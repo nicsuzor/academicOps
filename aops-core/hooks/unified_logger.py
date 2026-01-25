@@ -29,6 +29,11 @@ from lib.insights_generator import (
     extract_short_hash,
     generate_fallback_insights,
 )
+from lib.session_paths import (
+    get_session_file_path_direct,
+    get_session_short_hash,
+    get_session_status_dir,
+)
 from lib.session_state import (
     get_or_create_session_state,
     record_subagent_invocation,
@@ -45,7 +50,7 @@ logger = logging.getLogger(__name__)
 
 def log_event_to_session(
     session_id: str, hook_event: str, input_data: dict[str, Any]
-) -> None:
+) -> dict[str, Any] | None:
     """Log a hook event to the single session file.
 
     Updates the session file with event timestamp. For SubagentStop and Stop events,
@@ -63,10 +68,23 @@ def log_event_to_session(
         handle_subagent_stop(session_id, input_data)
     elif hook_event == "Stop":
         handle_stop(session_id, input_data)
+    elif hook_event == "SessionStart":
+        # Create session state and return path + session_id only (not full contents)
+        state = get_or_create_session_state(session_id)
+        short_hash = get_session_short_hash(session_id)
+        state_path = get_session_file_path_direct(session_id, state.get("date"))
+        return {
+            "hookSpecificOutput": {
+                "hookEventName": "SessionStart",
+                "additionalContext": f"Session: {short_hash}\nState file: {state_path}",
+            },
+            "systemMessage": f"SessionStart:startup hook success: Success",
+        }
     else:
         # For other events, just ensure session exists (creates if needed)
         # This updates the session file with the latest access
         get_or_create_session_state(session_id)
+    return None
 
 
 def handle_subagent_stop(session_id: str, input_data: dict[str, Any]) -> None:
@@ -220,14 +238,15 @@ def main():
     hook_event = input_data.get("hook_event_name", "Unknown")
 
     # Log event to single session file
+    result: dict[str, Any] = {}
     try:
-        log_event_to_session(session_id, hook_event, input_data)
+        result = log_event_to_session(session_id, hook_event, input_data) or {}
     except Exception as e:
         # Log but don't fail - hook should continue with noop
         logger.warning(f"Failed to log event to session: {type(e).__name__}: {e}")
 
-    # Noop response - continue without modification
-    print("{}")
+    # Output result (may contain debug info for SessionStart)
+    print(json.dumps(result))
     sys.exit(0)
 
 

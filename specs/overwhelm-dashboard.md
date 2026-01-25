@@ -274,6 +274,74 @@ If Phase 1 fallback removal leaves too many empty cards:
 2. Show recently modified files
 3. Parse working directory for project indicators
 
+## Knowledge Base Graph Tab
+
+The Task Graph tab includes a toggle to switch between Tasks and Knowledge Base views.
+
+### Data Sources
+
+| View | Data File | Generator |
+|------|-----------|-----------|
+| Tasks | `graph.json` | fast-indexer |
+| Knowledge Base | `knowledge-graph.json` | TBD (garden skill or dedicated indexer) |
+
+### KB Graph Content
+
+The Knowledge Base graph visualizes:
+- Notes and documents as nodes
+- Wikilinks as edges (bidirectional)
+- Clusters by folder/project
+- Tags as grouping attribute
+
+**Implementation approach**:
+1. Index markdown files in `data/` directory
+2. Parse wikilinks `[[target]]` from each file
+3. Generate node-link JSON in same format as task graph
+4. Health metrics: orphan notes, broken links, cluster density
+
+## Task Management Interface
+
+CRUD operations for tasks directly through the dashboard UI.
+
+### Required Operations
+
+| Operation | UI Element | Backend |
+|-----------|------------|---------|
+| **Create** | Quick task form in sidebar | Task MCP `create_task` |
+| **Read** | Task details on node click | Task MCP `get_task` |
+| **Update** | Inline edit on task card | Task MCP `update_task` |
+| **Delete** | Delete button with confirmation | Task MCP `delete_task` |
+| **Complete** | Checkbox/button on task card | Task MCP `complete_task` |
+
+### Inline Task Editor
+
+When a task node is clicked or a task card is selected:
+
+```
+┌──────────────────────────────────────────────────┐
+│ ✏️ Edit Task: Fix fallback violations            │
+├──────────────────────────────────────────────────┤
+│ Title:    [Fix fallback violations in X.py    ] │
+│ Status:   [active ▼]  Priority: [P1 ▼]         │
+│ Project:  [aops ▼]    Due: [____-__-__]        │
+│ Tags:     [bug, framework]                      │
+├──────────────────────────────────────────────────┤
+│ Body:                                            │
+│ ┌────────────────────────────────────────────┐  │
+│ │ Description markdown...                    │  │
+│ └────────────────────────────────────────────┘  │
+├──────────────────────────────────────────────────┤
+│ [Save]  [Cancel]  [Complete ✓]  [Delete 🗑️]     │
+└──────────────────────────────────────────────────┘
+```
+
+### Design Principles
+
+- **Non-blocking**: Task operations should not freeze the UI
+- **Optimistic updates**: Show changes immediately, sync in background
+- **Minimal clicks**: Common operations (complete, change status) in 1-2 clicks
+- **Context preservation**: Editing a task shouldn't lose graph position
+
 ## Acceptance Criteria
 
 - [x] fast-indexer generates valid index.json from task files
@@ -286,6 +354,19 @@ If Phase 1 fallback removal leaves too many empty cards:
 - [ ] Active sessions use 4h window (not 24h)
 - [ ] No "Local activity" placeholder displayed
 - [ ] Session triage buckets visible when count >10
+
+### Graph Visualization
+- [ ] Task graph renders without freezing browser
+- [ ] Knowledge Base graph view displays notes and wikilinks
+- [ ] Graph loads within 2 seconds for typical data size
+- [ ] Node selection shows task/note details
+
+### Task Management
+- [ ] Create task from dashboard UI
+- [ ] Edit task inline (title, status, priority, project)
+- [ ] Complete task with single click
+- [ ] Delete task with confirmation
+- [ ] Changes sync to task files immediately
 
 ## Related
 

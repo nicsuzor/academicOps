@@ -11,7 +11,7 @@ permalink: skills-daily
 
 Manage daily note lifecycle: morning briefing, task recommendations, and session sync.
 
-Location: `$ACA_DATA/../sessions/YYYYMMDD-daily.md`
+Location: `$ACA_SESSIONS/YYYYMMDD-daily.md`
 
 ## CRITICAL BOUNDARY: Planning Only
 
@@ -43,7 +43,7 @@ Location: `$ACA_DATA/../sessions/YYYYMMDD-daily.md`
 
 ## 1. Create note
 
-Check `$ACA_DATA/../sessions/YYYYMMDD-daily.md`.
+Check `$ACA_SESSIONS/YYYYMMDD-daily.md`.
 
 **If missing**: Create from template (see Daily Note Structure above), then:
 
@@ -267,7 +267,7 @@ Update daily note from session JSON files. Run after sessions complete or period
 ### Step 4.1: Find Session JSONs
 
 ```bash
-ls $ACA_DATA/../sessions/YYYY-MM-DD-*.json 2>/dev/null
+ls $ACA_SESSIONS/summaries/YYYYMMDD*.json 2>/dev/null
 ```
 
 ### Step 4.1.5: Load Closure History

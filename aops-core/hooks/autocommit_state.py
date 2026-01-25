@@ -412,10 +412,15 @@ def main() -> None:
 
     # Extract tool name and input
     # Support both toolName/toolInput (old) and tool_name/tool_input (new router format)
-    tool_name = input_data.get("tool_name") or input_data.get("toolName")
-    if not tool_name:
+    tool_name = input_data.get("tool_name")
+    if tool_name is None:
+        tool_name = input_data.get("toolName")
+    if tool_name is None:
         raise ValueError("input_data requires 'tool_name' or 'toolName' parameter (P#8: fail-fast)")
-    tool_input = input_data.get("tool_input") or input_data.get("toolInput")
+
+    tool_input = input_data.get("tool_input")
+    if tool_input is None:
+        tool_input = input_data.get("toolInput")
     if tool_input is None:
         raise ValueError("input_data requires 'tool_input' or 'toolInput' parameter (P#8: fail-fast)")
 

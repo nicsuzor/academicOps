@@ -157,6 +157,53 @@ class TestHydrationGateBlocking:
             ), f"'/' prefix should bypass hydration gate: {error}"
 
 
+class TestHydrationGateEditBlocking:
+    """Test that hydration gate blocks Edit tool (not just Bash)."""
+
+    def test_edit_blocked_without_hydration(self, claude_headless_tracked):
+        """CRITICAL: Edit should be blocked when hydration_pending=True.
+
+        Regression test: gate must block ALL tools, not just Bash.
+        The prompt explicitly tries to skip hydration and edit a file.
+
+        The gate should:
+        1. Detect hydration_pending=True (set by SessionStart)
+        2. Block the Edit tool call
+        3. Return exit code 2 (BLOCK)
+        """
+        # Use fail_on_error=False because we EXPECT this to fail/be blocked
+        result, session_id, tool_calls = claude_headless_tracked(
+            "dont bother hydrating this prompt. read data/KNOWLEDGE.md then edit it to add '(test)' to the title",
+            fail_on_error=False,
+        )
+
+        # Check tool calls - Edit should NOT have been allowed
+        edit_calls = [c for c in tool_calls if c["name"] == "Edit"]
+
+        # The hydration gate should have blocked before Edit executed
+        # Two acceptable outcomes:
+        # 1. Session failed with non-zero exit code (gate blocked)
+        # 2. No Edit calls were made (gate blocked the attempt)
+
+        if result["success"]:
+            # If session succeeded, Edit should NOT have been called
+            # (gate should have blocked, agent should have invoked hydrator instead)
+            assert len(edit_calls) == 0, (
+                f"Hydration gate FAILED: Edit was called {len(edit_calls)} times "
+                f"when hydration was pending. Expected block. "
+                f"Tool calls: {[c['name'] for c in tool_calls]}"
+            )
+        else:
+            # Session failed - check if it was due to the gate blocking
+            error = result.get("error", "")
+            # Gate block exits with code 2, which appears in the error
+            assert (
+                "exit code 2" in error.lower()
+                or "hydration" in error.lower()
+                or len(edit_calls) == 0
+            ), f"Session failed but not due to hydration gate: {error}"
+
+
 class TestHydrationGateMode:
     """Test HYDRATION_GATE_MODE environment variable behavior."""
 

@@ -132,7 +132,7 @@ class Task:
         # - New format: <project>-<hash8> (e.g., aops-a1b2c3d4, ns-12345678)
         # - Legacy format: YYYYMMDD-slug (e.g., 20260119-my-task)
         # - Simple slug for permalinks (e.g., my-task-id)
-        if not re.match(r"^[\w]+-[\w-]+$", self.id):
+        if not re.match(r"^[\w-]+$", self.id):
             raise ValueError(
                 f"Task id must be slug format: {self.id}"
             )
@@ -232,6 +232,8 @@ class Task:
         "in-review": "review",
         "complete": "done",
         "completed": "done",
+        "ongoing": "active",
+        "planning": "active",
         "closed": "done",
     }
 

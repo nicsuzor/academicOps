@@ -30,7 +30,9 @@ from pathlib import Path
 from typing import Any
 
 from lib.reflection_detector import has_reflection
-from lib.session_state import get_current_task
+from lib.session_state import get_current_task, load_session_state
+from lib.session_paths import get_session_short_hash, get_session_status_dir
+from lib.insights_generator import find_existing_insights, get_summaries_dir
 from lib.transcript_parser import SessionProcessor
 
 # Set up logging
@@ -358,6 +360,186 @@ def attempt_auto_commit() -> bool:
         return False
 
 
+def generate_session_transcript(transcript_path: str) -> bool:
+    """Generate transcript and insights from session JSONL file.
+
+    Invokes transcript.py to parse the session and generate:
+    - Markdown transcripts (full and abridged)
+    - Insights JSON file (from Framework Reflection if present)
+
+    Args:
+        transcript_path: Path to session.jsonl file
+
+    Returns:
+        True if transcript generation succeeded
+    """
+    try:
+        # Get path to transcript.py script
+        script_dir = Path(__file__).parent.parent / "scripts"
+        transcript_script = script_dir / "transcript.py"
+
+        if not transcript_script.exists():
+            logger.warning(f"Transcript script not found: {transcript_script}")
+            return False
+
+        # Run transcript.py with the session file
+        result = subprocess.run(
+            ["python", str(transcript_script), transcript_path],
+            capture_output=True,
+            text=True,
+            timeout=120,  # 2 minute timeout for transcript generation
+            cwd=str(script_dir.parent),  # Run from aops-core root
+        )
+
+        if result.returncode == 0:
+            logger.info(f"Transcript generated successfully for {transcript_path}")
+            return True
+        elif result.returncode == 2:
+            # Exit 2 = skipped (not enough content) - still OK
+            logger.info(f"Transcript skipped (insufficient content): {transcript_path}")
+            return True
+        else:
+            logger.warning(f"Transcript generation failed: {result.stderr}")
+            return False
+
+    except subprocess.TimeoutExpired:
+        logger.warning("Transcript generation timed out")
+        return False
+    except Exception as e:
+        logger.warning(f"Transcript generation error: {type(e).__name__}: {e}")
+        return False
+
+
+def verify_insights_exist(session_id: str, date: str | None = None) -> bool:
+    """Verify that insights JSON was generated for this session.
+
+    Args:
+        session_id: Claude Code session ID (full ID, will be hashed)
+        date: Optional date in YYYY-MM-DD format (defaults to today)
+
+    Returns:
+        True if insights JSON file exists
+    """
+    try:
+        # Get 8-char hash from session ID
+        short_hash = get_session_short_hash(session_id)
+
+        # Use today's date if not provided
+        if date is None:
+            from datetime import datetime
+
+            date = datetime.now().astimezone().strftime("%Y-%m-%d")
+
+        # Check if insights file exists
+        existing = find_existing_insights(date, short_hash)
+        if existing:
+            logger.info(f"Insights found: {existing}")
+            return True
+
+        logger.debug(f"No insights found for session {short_hash} on {date}")
+        return False
+
+    except Exception as e:
+        logger.warning(f"Error checking insights: {type(e).__name__}: {e}")
+        return False
+
+
+def delete_session_state_file(session_id: str) -> bool:
+    """Delete the session state JSON file after successful cleanup.
+
+    Args:
+        session_id: Claude Code session ID
+
+    Returns:
+        True if deletion succeeded or file didn't exist
+    """
+    try:
+        status_dir = get_session_status_dir()
+        short_hash = get_session_short_hash(session_id)
+
+        # Find matching state file(s) - may have different date prefixes
+        # Pattern: YYYYMMDD-HH-hash.json or legacy YYYYMMDD-hash.json
+        matches = list(status_dir.glob(f"*-{short_hash}.json"))
+
+        if not matches:
+            logger.debug(f"No session state file found for {short_hash}")
+            return True
+
+        for state_file in matches:
+            try:
+                state_file.unlink()
+                logger.info(f"Deleted session state file: {state_file}")
+            except OSError as e:
+                logger.warning(f"Failed to delete state file {state_file}: {e}")
+                return False
+
+        return True
+
+    except Exception as e:
+        logger.warning(f"Error deleting session state: {type(e).__name__}: {e}")
+        return False
+
+
+def perform_session_cleanup(session_id: str, transcript_path: str | None) -> dict[str, Any]:
+    """Perform end-of-session cleanup: transcript generation and state file deletion.
+
+    Order of operations (fail-fast):
+    1. Generate transcript (includes insights extraction)
+    2. Verify insights JSON exists
+    3. Delete session state file
+
+    Args:
+        session_id: Claude Code session ID
+        transcript_path: Path to session.jsonl file
+
+    Returns:
+        Dictionary with:
+        - success: bool - all cleanup steps succeeded
+        - transcript_generated: bool
+        - insights_verified: bool
+        - state_deleted: bool
+        - message: str - human-readable status
+    """
+    result = {
+        "success": False,
+        "transcript_generated": False,
+        "insights_verified": False,
+        "state_deleted": False,
+        "message": "",
+    }
+
+    if not transcript_path:
+        result["message"] = "No transcript path provided - skipping cleanup"
+        result["success"] = True  # Not a failure, just nothing to clean up
+        return result
+
+    # Step 1: Generate transcript
+    if generate_session_transcript(transcript_path):
+        result["transcript_generated"] = True
+    else:
+        result["message"] = "Transcript generation failed"
+        return result
+
+    # Step 2: Verify insights exist (may not exist for very short sessions)
+    # We proceed with cleanup even if insights don't exist - the transcript
+    # generation already handled that case (exit code 2 for insufficient content)
+    result["insights_verified"] = verify_insights_exist(session_id)
+
+    # Step 3: Delete session state file
+    if delete_session_state_file(session_id):
+        result["state_deleted"] = True
+        result["success"] = True
+        result["message"] = "Session cleanup completed"
+        if result["insights_verified"]:
+            result["message"] += " (transcript + insights generated)"
+        else:
+            result["message"] += " (transcript generated, no insights)"
+    else:
+        result["message"] = "Failed to delete session state file"
+
+    return result
+
+
 def check_uncommitted_work(session_id: str, transcript_path: str | None) -> dict[str, Any]:
     """Check if session has uncommitted work or unpushed commits.
 
@@ -525,6 +707,17 @@ def main():
 
         except Exception as e:
             logger.warning(f"Uncommitted work check failed: {type(e).__name__}: {e}")
+
+        # Perform session cleanup (transcript generation + state file deletion)
+        # Only run if all blocking checks passed
+        try:
+            cleanup_result = perform_session_cleanup(session_id, transcript_path)
+            if cleanup_result["success"]:
+                logger.info(f"Session cleanup: {cleanup_result['message']}")
+            else:
+                logger.warning(f"Session cleanup incomplete: {cleanup_result['message']}")
+        except Exception as e:
+            logger.warning(f"Session cleanup failed: {type(e).__name__}: {e}")
 
     # Allow session to proceed normally - add verification message for user if not already set
     if "systemMessage" not in output_data:
