@@ -2285,7 +2285,7 @@ def get_task_by_graph_node(node_id: str, graph_nodes: list[dict]) -> Task | None
 def render_interactive_task_graph(graph: dict, view_mode: str = "Tasks"):
     """
     Render interactive graph using streamlit-agraph and handle task management.
-    
+
     Args:
         graph: The graph data dict
         view_mode: "Tasks" or "Knowledge Base" to adjust styling defaults
@@ -2295,6 +2295,15 @@ def render_interactive_task_graph(graph: dict, view_mode: str = "Tasks"):
     except ImportError:
         st.error("streamlit-agraph not installed. Please run `uv pip install streamlit-agraph`.")
         return
+
+    # Assignee color scheme (border colors for ownership visualization)
+    ASSIGNEE_COLORS = {
+        "bot": "#17a2b8",     # cyan/teal - AI agent
+        "claude": "#17a2b8",  # same as bot
+        "worker": "#fd7e14",  # orange - background worker
+        "nic": "#6f42c1",     # purple - human
+    }
+    ASSIGNEE_DEFAULT = "#475569"  # slate for unassigned
 
     # --- Controls Section ---
     with st.expander("⚙️ Graph Controls", expanded=False):
@@ -2317,6 +2326,8 @@ def render_interactive_task_graph(graph: dict, view_mode: str = "Tasks"):
         with c3:
             # Visuals
             node_size = st.slider("Base Node Size", 10, 50, 25)
+            show_assignee = st.checkbox("Show Assignee Borders", value=True,
+                help="Color borders by assignee: purple=nic, cyan=bot, orange=worker")
 
     # Handle task selection from agraph return value
     # We don't use query params for agraph selection as it returns the value directly
@@ -2402,16 +2413,35 @@ def render_interactive_task_graph(graph: dict, view_mode: str = "Tasks"):
             if ntype == "project": size = node_size + 5
             prio = n.get("priority", 2)
             if prio == 0: size += 10
-            
+
+            # Determine border color (assignee-based if enabled)
+            assignee = n.get("assignee")
+            if show_assignee and assignee:
+                border_color = ASSIGNEE_COLORS.get(assignee, ASSIGNEE_DEFAULT)
+                border_width = 3
+            else:
+                border_color = "#334155"  # default slate border
+                border_width = 1
+
+            # Build color dict for vis.js (background + border)
+            node_color = {
+                "background": color,
+                "border": border_color,
+                "highlight": {
+                    "background": color,
+                    "border": "#f1f5f9"
+                }
+            }
+
             nodes.append(Node(
                 id=n["id"],
                 label=n.get("label", n["id"])[:20],
                 title=n.get("label", n["id"]), # Tooltip
                 shape=shape,
-                color=color,
+                color=node_color,
                 size=size,
                 font={ "color": "#f1f5f9", "face": "Inter" },
-                borderWidth=1
+                borderWidth=border_width
             ))
             
         edges = []
@@ -2480,7 +2510,10 @@ def render_interactive_task_graph(graph: dict, view_mode: str = "Tasks"):
                     st.markdown(f"**Priority:** P{task.priority}")
                     if task.project:
                         st.markdown(f"**Project:** {task.project}")
-                        
+                    if hasattr(task, 'assignee') and task.assignee:
+                        assignee_emoji = {"nic": "👤", "bot": "🤖", "claude": "🤖", "worker": "⚙️"}.get(task.assignee, "")
+                        st.markdown(f"**Assignee:** {assignee_emoji} {task.assignee}")
+
                     st.divider()
                     
                     # Quick Actions
