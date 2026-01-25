@@ -23,6 +23,7 @@ Quick reference for routing user requests to skills/commands. When a request mat
 | `/diag` | "what's loaded", "session status", "diagnostic" | Quick diagnostic check of what's currently loaded in this session |
 | `/dump` | "emergency handoff", "save work", "interrupted" | Emergency work handover - update task, file follow-ups, persist to memory, output reflection, halt |
 | `/email` | "process email", "email to task", "handle this email" | Create "ready for action" tasks from emails - with summaries, downloaded documents, and clear response requirements |
+| `/handover` | stop hook blocked, session end | Session handover - commit changes, output Framework Reflection, clear stop gate. Required before session end. |
 | `/learn` | "framework issue", "fix this pattern", "improve the system" | Make minimal, graduated framework tweaks with experiment tracking |
 | `/log` | "log observation", "note this", "framework feedback" | Log framework observations to tasks for continuous improvement |
 | `/pull` | "pull task", "get work", "what should I work on", "next task" | Pull a task from queue, claim it (mark active), and mark complete when done |

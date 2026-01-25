@@ -89,6 +89,7 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
         {"script": "custodiet_gate.py"},  # Periodic compliance check
         {"script": "task_binding.py"},  # Bind task to session on create/claim
         {"script": "todowrite_handover_gate.py"},  # Set todo_with_handover gate on TodoWrite
+        {"script": "handover_gate.py"},  # Clear stop gate when /handover skill invoked
         # {"script": "todowrite_fallback.py"},  # DISABLED: Proving main path first
         # {"script": "autocommit_state.py"},  # DISABLED: Auto-commit data/ changes
     ],
@@ -105,7 +106,7 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
         # stopping turn due to transcript timing. The hook validates that a parseable
         # Framework Reflection exists using parse_framework_reflection.
         {"script": "reflection_check.py"},  # Validate parseable Framework Reflection
-        # {"script": "session_end_commit_check.py"},  # DISABLED: Commit check belongs in commit hook
+        # {"script": "session_end_commit_check.py"},  
         {"script": "unified_logger.py"},
     ],
     "SessionEnd": [

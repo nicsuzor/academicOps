@@ -918,3 +918,52 @@ def check_all_gates(session_id: str) -> dict[str, bool]:
         "todo_with_handover": todo_handover,
         "all_passed": task_bound and critic_invoked and todo_handover,
     }
+
+
+# ============================================================================
+# Handover Skill Tracking API
+# ============================================================================
+
+
+def set_handover_skill_invoked(session_id: str) -> None:
+    """Set handover_skill_invoked flag when /handover skill is executed.
+
+    Called by the PostToolUse handover_gate.py hook when it detects
+    the Skill tool being invoked with skill="handover".
+
+    Args:
+        session_id: Claude Code session ID
+    """
+    state = get_or_create_session_state(session_id)
+    state["state"]["handover_skill_invoked"] = True
+    save_session_state(session_id, state)
+
+
+def is_handover_skill_invoked(session_id: str) -> bool:
+    """Check if the /handover skill has been invoked this session.
+
+    Args:
+        session_id: Claude Code session ID
+
+    Returns:
+        True if handover_skill_invoked flag is set
+    """
+    state = load_session_state(session_id)
+    if state is None:
+        return False
+    return state.get("state", {}).get("handover_skill_invoked", False)
+
+
+def clear_handover_skill_invoked(session_id: str) -> None:
+    """Clear handover_skill_invoked flag.
+
+    Called on new user prompt to reset for multi-turn sessions.
+
+    Args:
+        session_id: Claude Code session ID
+    """
+    state = load_session_state(session_id)
+    if state is None:
+        return
+    state["state"]["handover_skill_invoked"] = False
+    save_session_state(session_id, state)
