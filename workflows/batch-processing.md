@@ -18,7 +18,7 @@ Multiple similar items processed in parallel.
 
 - Items have dependencies → process sequentially
 - Shared state → conflicts likely
-- Single item → [[minor-edit]] or [[design]]
+- Single item → [[design]]
 
 ## Unique Steps
 

@@ -17,8 +17,8 @@ Break goals into actionable work under genuine uncertainty.
 
 ## NOT This Workflow
 
-- Known tasks, clear steps → [[design]] or [[minor-edit]]
-- Completable in one session → [[minor-edit]]
+- Known tasks, clear steps → [[design]]
+- Pure information request → [[simple-question]]
 
 ## Unique Steps
 

@@ -14,7 +14,7 @@ Use this workflow when:
 Do NOT use for:
 - Items that have dependencies (process sequentially instead)
 - Shared state exists (conflicts are likely)
-- Single item (use minor-edit or design)
+- Single item (use design)
 
 ## Constraints
 

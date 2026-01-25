@@ -731,7 +731,7 @@ def test_hydration_temp_file_structure() -> None:
     # Workflow index should be present (pre-loaded from WORKFLOWS.md)
     assert "## Workflow Index" in content, "Missing Workflow Index section"
     # Verify key workflows are present
-    workflows = ["simple-question", "minor-edit", "feature-dev", "debugging", "decompose"]
+    workflows = ["simple-question", "design", "feature-dev", "debugging", "decompose"]
     for workflow in workflows:
         assert f"[[{workflow}]]" in content, f"Missing workflow: {workflow}"
 
@@ -882,8 +882,7 @@ def test_directive_disguised_as_question_routes_to_feature_dev(
     hydrator_routed_correctly = (
         "feature-dev" in output.lower()
         or "feature_dev" in output.lower()
-        or "minor-edit" in output.lower()
-        or "minor_edit" in output.lower()
+        or "design" in output.lower()
         # Also acceptable: decompose for multi-session scope
         or "decompose" in output.lower()
     )
@@ -905,7 +904,7 @@ def test_directive_disguised_as_question_routes_to_feature_dev(
     has_todowrite = "TodoWrite" in output or "todo" in output.lower()
 
     assert has_todowrite or hydrator_routed_correctly, (
-        f"Expected either TodoWrite plan or feature-dev/minor-edit workflow selection. "
+        f"Expected either TodoWrite plan or feature-dev/design workflow selection. "
         f"Directive prompts should produce execution plans, not direct answers. "
         f"Session: {session_id}"
     )

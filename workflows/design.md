@@ -16,7 +16,6 @@ Specification and planning for known work.
 
 ## NOT This Workflow
 
-- Obvious scope → [[minor-edit]]
 - Uncertain path → [[decompose]] first
 - Simple bug → [[debugging]]
 

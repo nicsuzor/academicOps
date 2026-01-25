@@ -13,8 +13,8 @@ Use this workflow when:
 - The path forward is unknown
 
 Do NOT use for:
-- Known tasks with clear steps (use design or minor-edit)
-- Work completable in one session (use minor-edit)
+- Known tasks with clear steps (use design)
+- Pure information request (use simple-question)
 
 ## Constraints
 

@@ -12,7 +12,6 @@ Use this workflow when:
 - Asking "how should we build this?"
 
 Do NOT use for:
-- Obvious scope (use minor-edit)
 - Uncertain path (use decompose first)
 - Simple bugs (use debugging)
 

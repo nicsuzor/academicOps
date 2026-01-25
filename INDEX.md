@@ -65,7 +65,7 @@ $AOPS/
 │   ├── email-reply.md           # Email reply workflow
 │   ├── framework-change.md      # Framework change workflow
 │   ├── handover.md              # Work handover workflow
-│   ├── minor-edit.md            # Minor edit workflow
+│   ├── interactive-triage.md    # Interactive triage workflow
 │   ├── peer-review.md           # Peer review workflow
 │   ├── prove-feature.md         # Prove feature workflow
 │   ├── qa.md                    # Quality assurance workflow
@@ -720,7 +720,7 @@ $AOPS/
 │       ├── direct-skill.md      # Direct skill invocation
 │       ├── email-capture.md     # Email capture workflow
 │       ├── feature-dev.md       # Feature development
-│       ├── minor-edit.md        # Minor edit workflow
+│       ├── framework-change.md  # Framework change workflow
 │       ├── prove-feature.md     # Prove feature workflow
 │       ├── qa-demo.md           # QA demo workflow
 │       ├── simple-question.md   # Simple question workflow

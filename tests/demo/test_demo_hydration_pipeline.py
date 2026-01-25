@@ -165,7 +165,7 @@ class TestHydrationPipelineDemo:
             print("\n--- Workflow Selection Evidence ---")
             workflow_indicators = {
                 "question": "question" in response_lower and "workflow" in response_lower,
-                "minor-edit": "minor" in response_lower or "edit" in response_lower,
+                "design": "design" in response_lower,
                 "tdd": "tdd" in response_lower or "test-driven" in response_lower,
                 "debug": "debug" in response_lower,
                 "batch": "batch" in response_lower or "parallel" in response_lower,

@@ -112,8 +112,8 @@ Specification and planning for known work.
 
 ## NOT This Workflow
 
-- Obvious scope → [[minor-edit]]
 - Uncertain path → [[decompose]] first
+- Simple bug → [[debugging]]
 
 ## Unique Steps
 
@@ -335,7 +335,7 @@ When an agent claims a task, apply this decision tree:
 ### Phase 1: Foundation ✓ COMPLETED
 - [x] Create `workflows/` directory
 - [x] Create `WORKFLOWS.md` index file
-- [x] Write workflow files as simple markdown (feature-dev, spec-review, tdd-cycle, qa-demo, minor-edit, debugging, batch-processing, simple-question, direct-skill)
+- [x] Write workflow files as simple markdown (feature-dev, spec-review, tdd-cycle, qa-demo, debugging, batch-processing, simple-question, direct-skill, design)
 - [x] Update hydrator to read WORKFLOWS.md and select workflows
 - [x] Update hydrator to read workflow files
 - [x] Add tests for workflow file structure

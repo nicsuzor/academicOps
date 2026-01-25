@@ -12,7 +12,7 @@ Use this workflow when:
 - Facing a bug where the cause is unknown
 
 Do NOT use for:
-- Cause already known (use minor-edit or design)
+- Cause already known (use design)
 
 ## Constraints
 
@@ -29,8 +29,7 @@ Do NOT use for:
 ### Exit Routing
 
 After debugging completes, route to the appropriate workflow:
-- If it's a simple fix → use minor-edit
-- If it's a complex fix → use design
+- Fix identified → use design
 - If unsure → ask the user
 
 ## Triggers

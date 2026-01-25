@@ -41,7 +41,7 @@ PROMPT → HYDRATE → EXECUTE (following plan)
 The hydrator receives the user prompt along with session history and memory context, then outputs:
 
 1. **Intent**: What the user actually wants
-2. **Workflow**: Which workflow template applies (question, minor-edit, tdd, batch, qa-proof, plan-mode)
+2. **Workflow**: Which workflow template applies (simple-question, design, tdd, batch, qa-proof, plan-mode)
 3. **TodoWrite Plan**: Concrete steps with per-step skill assignments
 4. **Guardrails**: Constraints based on workflow + domain
 
@@ -49,8 +49,8 @@ The hydrator receives the user prompt along with session history and memory cont
 
 | Workflow   | Trigger                       | Quality Gate                   |
 | ---------- | ----------------------------- | ------------------------------ |
-| question   | "?", "how", "what"            | Answer accuracy                |
-| minor-edit | Single file, clear change     | Verification                   |
+| simple-question | "?", "how", "what"       | Answer accuracy                |
+| design     | File-modifying work           | Verification + commit          |
 | tdd        | New feature, "implement"      | Tests pass                     |
 | batch      | Multiple files, "all", "each" | Per-item + aggregate QA        |
 | qa-proof   | "verify", "check"             | Evidence gathered              |

@@ -164,7 +164,7 @@ class TestWorkflowFiles:
         workflows_dir = get_aops_root() / "workflows"
         expected_workflows = [
             "feature-dev.md",
-            "minor-edit.md",
+            "design.md",
             "debugging.md",
             "tdd-cycle.md",
             "spec-review.md",
@@ -202,7 +202,7 @@ class TestWorkflowFiles:
         "workflow_id",
         [
             "feature-dev",
-            "minor-edit",
+            "design",
             "debugging",
             "tdd-cycle",
             "spec-review",

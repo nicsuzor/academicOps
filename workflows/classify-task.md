@@ -181,7 +181,7 @@ Complexity and workflow are related but not 1:1. The relationship:
 
 | Complexity | Typical Workflows | Execution Style |
 |------------|-------------------|-----------------|
-| `mechanical` | [[minor-edit]], [[direct-skill]] | Skip optional verification; fast path |
+| `mechanical` | [[design]], [[direct-skill]] | Skip optional verification; fast path |
 | `requires-judgment` | [[debugging]], [[design]], [[feature-dev]] | Standard execution with checkpoints |
 | `multi-step` | [[decompose]] then [[feature-dev]] | Break into sessions; track cross-session |
 | `needs-decomposition` | [[decompose]] | TRIAGE: decompose first, don't execute |
@@ -189,7 +189,7 @@ Complexity and workflow are related but not 1:1. The relationship:
 
 ### Workflow Refinement by Complexity
 
-**mechanical + minor-edit**:
+**mechanical + design**:
 - Skip detailed critic (use fast critic or none)
 - Minimal verification checkpoint
 - Direct commit after change

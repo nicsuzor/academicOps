@@ -53,7 +53,7 @@ Intent: Fix the type error in parser.py that's causing the build to fail
 Which workflow from the catalog applies:
 
 ```
-Workflow: minor-edit
+Workflow: design
 Quality gate: Verification step required
 Commit required: Yes
 ```
@@ -241,7 +241,7 @@ check the custodiet agent -- make sure it doesn't use inline python:
 ## Prompt Hydration
 
 **Intent**: Audit custodiet agent implementation to ensure it uses packaged scripts instead of inline Python for operations like setting session state
-**Workflow**: minor-edit (Verification required)
+**Workflow**: design (Verification required)
 **Guardrails**: verify_before_complete, test_changes
 
 ### Relevant Context

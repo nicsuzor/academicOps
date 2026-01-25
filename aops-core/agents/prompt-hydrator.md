@@ -96,7 +96,7 @@ For ANY framework modification, include in your output:
 **Governance level**: [governance (AXIOMS/HEURISTICS/hooks) | code (specs/workflows/skills)]
 ```
 
-**CRITICAL**: Framework work MUST go through the appropriate workflow. Never route framework changes to `[[simple-question]]` or `[[minor-edit]]` regardless of apparent simplicity.
+**CRITICAL**: Framework work MUST go through the appropriate workflow. Never route framework changes to `[[simple-question]]` regardless of apparent simplicity.
 
 ## Steps
 

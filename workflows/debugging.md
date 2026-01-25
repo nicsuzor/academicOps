@@ -16,7 +16,7 @@ Understand the problem before fixing it.
 
 ## NOT This Workflow
 
-- Cause already known → [[minor-edit]] or [[design]]
+- Cause already known → [[design]]
 
 ## Unique Steps
 
@@ -28,6 +28,5 @@ Understand the problem before fixing it.
 ## Exit Routing
 
 After debugging:
-- Simple fix → [[minor-edit]]
-- Complex fix → [[design]]
+- Fix identified → [[design]]
 - Unsure → ask user

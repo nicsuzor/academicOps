@@ -12,7 +12,7 @@ Use this workflow when:
 Do NOT use for:
 - "Can you...", "Please...", "Fix..." (action is required)
 - Questions that lead to investigation (use debugging)
-- Requests that need file modifications (use minor-edit or design)
+- Requests that need file modifications (use design)
 
 ## Constraints
 

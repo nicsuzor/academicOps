@@ -18,7 +18,7 @@ Answer and HALT. No modifications.
 
 - "Can you...", "Please...", "Fix..." → action required
 - Leads to investigation → [[debugging]]
-- Needs file modifications → [[minor-edit]] or [[design]]
+- Needs file modifications → [[design]]
 
 ## Unique Steps
 

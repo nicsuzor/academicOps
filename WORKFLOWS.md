@@ -10,12 +10,14 @@ tags: [framework, routing, workflows, index]
 
 # Workflow Index
 <!-- @nic: general rule: self-documenting files are good, but documentation should NOT be in template text that goes to a LLM. We EITHER have to delineate this markdown or move it into the frontmatter or spec file.  -->
-<!-- @claude 2026-01-24: This file is type:index - it's for human reference and hydrator routing, not direct LLM injection. Individual workflow files (e.g., workflows/minor-edit.md) are what get loaded. Those should stay lean. This index can remain self-documenting. -->
+<!-- @claude 2026-01-24: This file is type:index - it's for human reference and hydrator routing, not direct LLM injection. Individual workflow files (e.g., workflows/design.md) are what get loaded. Those should stay lean. This index can remain self-documenting. -->
 
 Workflows are **hydrator hints**, not complete instructions. They tell the hydrator:
 1. When this workflow applies (routing signals)
 2. What's unique to this workflow
 3. Which base workflows to compose
+
+> **Design note (2026-01-25)**: The former `minor-edit` workflow was removed. Any file-modifying work requires full hydration planning—there is no "minor edit" category. Pure information requests route to `simple-question`; all file modifications route to `design` or more specific workflows.
 
 ## Base Workflows (Composable Patterns)
 
@@ -48,8 +50,6 @@ User request
     ├─ Planning/designing known work? ─────────> [[design]]
     │   (know what to build, designing how)
     │
-    ├─ Small, focused change? ─────────────────> [[minor-edit]]
-    │
     ├─ Need QA verification? ──────────────────> [[qa-demo]]
     │
     └─ Framework governance change? ───────────> [[framework-change]]
@@ -60,7 +60,7 @@ User request
 | Signal | Route to |
 |--------|----------|
 | "Write a paper", "Build X", "Plan the project" | [[decompose]] |
-| "Add feature X", "Fix bug Y" (clear steps) | [[design]] → [[minor-edit]] |
+| "Add feature X", "Fix bug Y" (clear steps) | [[design]] |
 | "How do I..." (information only) | [[simple-question]] |
 | "Process all X", "batch update" | [[batch-processing]] |
 | "/commit", "/email" (skill name) | [[direct-skill]] |
@@ -71,7 +71,6 @@ User request
 
 | Workflow | When to Use | Bases |
 |----------|-------------|-------|
-| [[minor-edit]] | Single file, obvious change | task-tracking, tdd, verification, commit |
 | [[tdd-cycle]] | Any testable code change | tdd |
 | [[debugging]] | Cause unknown, investigating | task-tracking, verification |
 
@@ -128,5 +127,5 @@ User request
 |-----------------------------|--------|
 | [[decompose]] vs [[design]] | "Figure out what to do" vs "design how to do it" |
 | [[qa-demo]] vs [[prove-feature]] | "Does it run?" vs "Does it integrate correctly?" |
-| [[minor-edit]] vs [[design]] | Single file, obvious fix vs multi-file, decisions needed |
+| [[simple-question]] vs [[design]] | Pure info (no file mods) vs any file-modifying work |
 | [[simple-question]] vs [[debugging]] | Pure info vs leads to investigation |

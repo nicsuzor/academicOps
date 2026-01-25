@@ -6,7 +6,7 @@ real session transcripts with an LLM that searches for evidence of:
 
 1. **Agents (5)**: prompt-hydrator, critic, custodiet, qa, framework
 2. **Hooks (6)**: router, user_prompt_submit, unified_logger, session_env_setup, custodiet_gate, overdue_enforcement
-3. **Workflows (6)**: question, minor-edit, tdd, batch, qa-proof, plan-mode
+3. **Workflows (6)**: question, design, tdd, batch, qa-proof, plan-mode
 4. **QA Gates (3)**: Critic (BEFORE), Custodiet (DURING), QA-verifier (AFTER)
 5. **Session Close**: Format, commit, push mandatory workflow
 
@@ -145,7 +145,7 @@ For EACH component below, determine if there is CLEAR EVIDENCE in the transcript
 ### Workflows (6)
 Look for explicit workflow mentions like "Workflow: tdd" or "workflow: question"
 6. **question** - Question answering workflow
-7. **minor-edit** - Single file edit workflow
+7. **design** - Design/implementation workflow
 8. **tdd** - Test-driven development workflow
 9. **batch** - Batch processing workflow
 10. **qa-proof** - QA evidence gathering workflow
@@ -174,7 +174,7 @@ Return your analysis as JSON with this structure:
     }},
     "workflows": {{
         "question": {{"found": bool, "evidence": "quote"}},
-        "minor-edit": {{"found": bool, "evidence": "quote"}},
+        "design": {{"found": bool, "evidence": "quote"}},
         "tdd": {{"found": bool, "evidence": "quote"}},
         "batch": {{"found": bool, "evidence": "quote"}},
         "qa-proof": {{"found": bool, "evidence": "quote"}},
@@ -324,7 +324,7 @@ class TestV1ComponentsDemo:
             },
             "workflows": {
                 "question": 0,
-                "minor-edit": 0,
+                "design": 0,
                 "tdd": 0,
                 "batch": 0,
                 "qa-proof": 0,
