@@ -17,9 +17,10 @@ Bypass conditions:
 - Task operations themselves (create_task, update_task)
 - Read-only tools (Read, Glob, Grep, etc.)
 
-Exit codes:
-    0: Allow (all gates passed, bypassed, or read-only operation)
-    2: Block (destructive operation without gate compliance)
+Output format (JSON on stdout, always exit 0):
+- Allow: {} (empty JSON)
+- Block: {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "additionalContext": "..."}}
+- Warn: {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "additionalContext": "..."}}
 
 Environment variables:
 - TASK_GATE_MODE: "warn" (default) or "block"
@@ -262,28 +263,56 @@ def should_require_task(tool_name: str, tool_input: dict[str, Any]) -> bool:
     return False
 
 
+def _make_deny_output(message: str) -> dict:
+    """Build JSON output for deny/block decision."""
+    return {
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny",
+            "additionalContext": message
+        }
+    }
+
+
+def _make_warn_output(message: str) -> dict:
+    """Build JSON output for warn (allow with warning) decision."""
+    return {
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "allow",
+            "additionalContext": message
+        }
+    }
+
+
 def main() -> None:
     """Main hook entry point."""
     try:
         input_data = json.load(sys.stdin)
     except json.JSONDecodeError:
         # FAIL-CLOSED: block on parse error
-        print("⛔ TASK GATE: Failed to parse hook input", file=sys.stderr)
-        sys.exit(2)
+        output = _make_deny_output("⛔ TASK GATE: Failed to parse hook input")
+        print(json.dumps(output))
+        sys.exit(0)
 
     tool_name = input_data.get("tool_name")
     if tool_name is None:
-        raise ValueError("hook input missing required 'tool_name' field")
+        output = _make_deny_output("⛔ TASK GATE: hook input missing required 'tool_name' field")
+        print(json.dumps(output))
+        sys.exit(0)
     tool_input = input_data.get("tool_input")
     if tool_input is None:
-        raise ValueError("hook input missing required 'tool_input' field")
+        output = _make_deny_output("⛔ TASK GATE: hook input missing required 'tool_input' field")
+        print(json.dumps(output))
+        sys.exit(0)
     session_id = get_session_id(input_data)
 
     # FAIL-CLOSED: if no session_id, block for destructive ops
     if not session_id:
         if should_require_task(tool_name, tool_input):
-            print("⛔ TASK GATE: No session ID available", file=sys.stderr)
-            sys.exit(2)
+            output = _make_deny_output("⛔ TASK GATE: No session ID available")
+            print(json.dumps(output))
+            sys.exit(0)
         # Non-destructive ops can proceed
         print(json.dumps({}))
         sys.exit(0)
@@ -313,12 +342,13 @@ def main() -> None:
     # Gates not passed - enforce based on mode
     gate_mode = get_gate_mode()
     if gate_mode == "block":
-        print(build_block_message(gates), file=sys.stderr)
-        sys.exit(2)
+        output = _make_deny_output(build_block_message(gates))
+        print(json.dumps(output))
+        sys.exit(0)
     else:
-        # Warn mode: log but allow
-        print(build_warn_message(gates), file=sys.stderr)
-        print(json.dumps({}))
+        # Warn mode: allow but inject warning as context
+        output = _make_warn_output(build_warn_message(gates))
+        print(json.dumps(output))
         sys.exit(0)
 
 

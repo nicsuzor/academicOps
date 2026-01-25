@@ -274,6 +274,11 @@ Destructive operations require ALL THREE gates to pass. See [[specs/permission-m
 
 **Enforcement**: `task_required_gate.py` PreToolUse hook.
 
+**Output format** (JSON, always exit 0):
+- Allow: `{}` (empty JSON)
+- Block: `{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "additionalContext": "..."}}`
+- Warn: `{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "additionalContext": "..."}}`
+
 ### Three-Gate Requirement
 
 All three gates must pass before destructive operations are allowed:
