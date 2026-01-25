@@ -7,5 +7,5 @@
   },
   "license": "MIT",
   "keywords": ["academicOps", "research", "framework", "workflow"],
-  "hooks": "./hooks.json"
+  "hooks": "./hooks/hooks.json"
 }
