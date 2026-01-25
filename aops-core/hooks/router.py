@@ -103,9 +103,6 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
         {"script": "unified_logger.py"},
     ],
     "Stop": [
-        # NOTE: reflection_check.py requires reflection to be output BEFORE the
-        # stopping turn due to transcript timing. The hook validates that a parseable
-        # Framework Reflection exists using parse_framework_reflection.
         #{"script": "reflection_check.py"},  # Validate parseable Framework Reflection
         # {"script": "session_end_commit_check.py"},  
         {"script": "unified_logger.py"},

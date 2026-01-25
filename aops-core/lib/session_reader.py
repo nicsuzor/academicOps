@@ -279,7 +279,19 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
 
                 # Truncate - but preserve more for the most recent (first found)
                 # This ensures short user prompts like "yes" can see the question
-                max_len = 500 if len(agent_responses) == 0 else 300
+                #
+                # When user prompt is short (≤10 chars), it's likely a confirmation
+                # like "yes", "ok", "all", etc. Preserve much more context (2000 chars)
+                # so the hydrator can see what question the user is responding to.
+                current_prompt = recent_prompts[-1] if recent_prompts else ""
+                is_short_response = len(current_prompt.strip()) <= 10
+
+                if is_short_response and len(agent_responses) == 0:
+                    max_len = 2000  # Preserve full context for short responses
+                elif len(agent_responses) == 0:
+                    max_len = 500
+                else:
+                    max_len = 300
                 if len(full_text) > max_len:
                     full_text = full_text[:max_len] + "..."
                 agent_responses.append(full_text)

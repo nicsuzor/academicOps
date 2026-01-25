@@ -99,6 +99,80 @@ def is_closeable(body: str, fm: dict[str, Any]) -> tuple[bool, str]:
     return False, ""
 
 
+def determine_complexity(
+    body: str, fm: dict[str, Any], title: str, has_children: bool = False
+) -> str:
+    """Classify task complexity for routing.
+
+    Returns one of:
+    - blocked-human: Requires human judgment/interaction
+    - needs-decomposition: Too large, needs breaking down
+    - mechanical: Clear, automatable steps
+    - multi-step: Complex but well-defined
+    - requires-judgment: Default - needs human review
+    """
+    title_lower = title.lower()
+    body_lower = body.lower()
+    tags = fm.get("tags", []) or []
+    task_type = fm.get("type", "task")
+    combined_text = f"{body_lower} {title_lower}"
+    word_count = len(body.split())
+    has_checklist = "- [ ]" in body or "- [x]" in body
+    has_file_paths = bool(re.search(r"[/\\][\w.-]+\.(py|ts|js|md|yaml|json)", body))
+    has_acceptance = "## acceptance" in body_lower or "acceptance criteria" in body_lower
+
+    # Already set - respect existing value
+    if fm.get("complexity"):
+        return fm["complexity"]
+
+    # 1. blocked-human: requires human interaction/judgment
+    human_patterns = [
+        r"\breview\b",
+        r"\bvote\b",
+        r"\bmeeting\b",
+        r"\brespond\b",
+        r"\bapprove\b",
+        r"\bfinance\b",
+        r"\bpolicy\b",
+        r"\bdecide\b",
+    ]
+    human_tags = {"peer_review", "vote", "human-required", "needs-review"}
+    if task_type == "learn":
+        return "blocked-human"
+    if any(tag in human_tags for tag in tags):
+        return "blocked-human"
+    for pattern in human_patterns:
+        if re.search(pattern, combined_text):
+            return "blocked-human"
+
+    # 2. needs-decomposition: too vague or large without structure
+    is_container_type = task_type in ("epic", "project", "goal")
+    if is_container_type and not has_children:
+        return "needs-decomposition"
+    if word_count < 50 and not has_checklist and is_container_type:
+        return "needs-decomposition"
+    if re.search(r"\b(decide|choose|which)\b", combined_text) and not has_checklist:
+        return "needs-decomposition"
+
+    # 3. mechanical: clear, automatable
+    mechanical_title_words = ["rename", "remove", "delete", "move", "update config"]
+    if any(word in title_lower for word in mechanical_title_words):
+        return "mechanical"
+    if has_checklist and has_file_paths:
+        return "mechanical"
+    if re.search(r"\bfix\b", title_lower) and has_file_paths:
+        return "mechanical"
+
+    # 4. multi-step: complex but well-defined
+    if is_container_type and has_children:
+        return "multi-step"
+    if word_count > 500 and has_acceptance:
+        return "multi-step"
+
+    # 5. requires-judgment: default fallback
+    return "requires-judgment"
+
+
 def determine_assignee(body: str, fm: dict[str, Any], title: str) -> str:
     """Determine if task should go to nic or bot."""
     title_lower = title.lower()
@@ -173,8 +247,8 @@ def ensure_wikilink(body: str, fm: dict[str, Any]) -> str:
     return f"Project: {wikilink}\n\n{body}"
 
 
-def process_task(task_path: str) -> dict[str, Any]:
-    """Process a single task file (triage: close, assign, wikilink)."""
+def process_task(task_path: str, has_children: bool = False) -> dict[str, Any]:
+    """Process a single task file (triage: close, assign, classify, wikilink)."""
     path = Path(task_path)
     result: dict[str, Any] = {
         "path": str(path),
@@ -196,7 +270,21 @@ def process_task(task_path: str) -> dict[str, Any]:
             fm["status"] = "done"
             result["changes"].append("status->done")
     else:
-        assignee = determine_assignee(body, fm, title)
+        # Set complexity first (informs assignee logic)
+        complexity = determine_complexity(body, fm, title, has_children)
+        if fm.get("complexity") != complexity:
+            fm["complexity"] = complexity
+            result["changes"].append(f"complexity->{complexity}")
+        result["complexity"] = complexity
+
+        # Assign based on complexity
+        if complexity == "blocked-human":
+            assignee = "nic"
+        elif complexity == "mechanical":
+            assignee = "bot"
+        else:
+            assignee = determine_assignee(body, fm, title)
+
         if fm.get("assignee") != assignee:
             fm["assignee"] = assignee
             result["changes"].append(f"assignee->{assignee}")

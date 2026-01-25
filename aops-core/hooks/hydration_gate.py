@@ -125,8 +125,11 @@ def is_hydrator_task(tool_input: dict[str, Any]) -> bool:
     subagent_type = tool_input.get("subagent_type")
     if subagent_type is None:
         return False
-    return subagent_type == "prompt-hydrator"
-
+    if subagent_type == "prompt-hydrator":
+        return True
+    if 'hydrator' in subagent_type.lower():
+        return True
+    return False
 
 import hashlib
 
