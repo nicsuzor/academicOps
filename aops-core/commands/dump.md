@@ -30,6 +30,9 @@ Execute the [[handover-workflow]]:
 1. Identify current task (or create historical task if work was done without one)
 2. Update task with progress checkpoint
 3. File follow-up tasks for incomplete work
+   - For EACH incomplete item, call `create_task()` with details
+   - Mentioning follow-up in reflection text is NOT sufficient
+   - Tasks must exist in the system before proceeding
 4. Persist discoveries to memory (if any)
 5. **MANDATORY: Commit changes** - DO NOT proceed to step 6 until all file changes are committed and pushed. If there are uncommitted changes, commit them now.
 6. Output Framework Reflection (must confirm commit happened in step 5)
