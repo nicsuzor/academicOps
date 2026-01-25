@@ -136,6 +136,24 @@ Interactive force-directed graph at the top of the page.
 | **View** | Tasks, Knowledge Base |
 | **Layout** | ↓ Top-Down, → Left-Right, ◎ Radial, ⚛ Force |
 
+**Visual Settings** (in collapsible expander):
+
+| Setting | Range | Default | Purpose |
+|---------|-------|---------|---------|
+| Node Size | 1-20 | 6 | Size of node circles |
+| Link Width | 0.5-5.0 | 1.0 | Thickness of edges |
+| Text Size | 6-24 | 12 | Base font size for labels |
+| Link Opacity | 0.1-1.0 | 0.6 | Edge transparency |
+| Repulsion | -500 to -10 | -100 | Node repulsion strength |
+| Show Labels | checkbox | On | Toggle label visibility |
+| Hide Orphans | checkbox | Off | Remove nodes with no connections |
+
+**Filter** (in collapsible expander):
+
+| Setting | Type | Purpose |
+|---------|------|---------|
+| Show Types | multiselect | Filter nodes by frontmatter type |
+
 **Layout modes** (DAG layouts for hierarchical task trees):
 - `td` - Top-down: goals at top, actions at bottom
 - `lr` - Left-right: horizontal hierarchy
@@ -145,6 +163,11 @@ Interactive force-directed graph at the top of the page.
 **Data Sources**:
 - Tasks view: `$ACA_DATA/outputs/graph.json`
 - Knowledge Base view: `$ACA_DATA/outputs/knowledge-graph.json`
+
+**Default Type Filtering**:
+- Tasks view defaults to: `goal`, `project`, `epic`, `task`, `action`, `bug`, `feature`, `learn`
+- Knowledge Base view defaults to: all types
+- Users can adjust via the Filter expander
 
 **Node colors** (Tasks view by status):
 - Blue: active

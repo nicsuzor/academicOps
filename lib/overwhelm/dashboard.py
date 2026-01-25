@@ -2292,6 +2292,8 @@ def render_force_graph(
     link_width: float = 1.0,
     show_labels: bool = True,
     link_opacity: float = 0.6,
+    text_size: int = 12,
+    repulsion: int = -100,
 ):
     """
     Render graph using force-graph (Canvas/WebGL).
@@ -2398,14 +2400,15 @@ def render_force_graph(
                     ctx.fill();
 
                     // Draw label if zoom level sufficient
-                    if (globalScale > 0.5) {{
+                    if (globalScale > 0.3) {{
                         const label = node.label || '';
-                        const fontSize = Math.max(10 / globalScale, 3);
+                        const baseFontSize = {text_size};
+                        const fontSize = Math.max(baseFontSize / globalScale, 4);
                         ctx.font = `${{fontSize}}px Sans-Serif`;
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
                         ctx.fillStyle = '#fff';
-                        ctx.fillText(label, node.x, node.y + size + fontSize);
+                        ctx.fillText(label, node.x, node.y + size + fontSize * 0.6);
                     }}
                 }} : null)
                 .nodePointerAreaPaint((node, color, ctx) => {{
@@ -2425,6 +2428,12 @@ def render_force_graph(
                 }})
                 .cooldownTicks(100)
                 .onEngineStop(() => Graph.zoomToFit(400));
+
+            // Modify charge force after initialization
+            const chargeForce = Graph.d3Force('charge');
+            if (chargeForce) {{
+                chargeForce.strength({repulsion});
+            }}
         </script>
     </body>
     </html>
@@ -2447,19 +2456,7 @@ def render_graph_section():
             format_func=lambda x: {"td": "↓ Top-Down", "lr": "→ Left-Right", "radial-out": "◎ Radial", "force": "⚛ Force"}.get(x, x),
         )
 
-    # Visual controls in expander
-    with st.expander("⚙️ Visual Settings", expanded=False):
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            node_size = st.slider("Node Size", min_value=1, max_value=20, value=6, step=1)
-        with col2:
-            link_width = st.slider("Link Width", min_value=0.5, max_value=5.0, value=1.0, step=0.5)
-        with col3:
-            show_labels = st.checkbox("Show Labels", value=True)
-        with col4:
-            link_opacity = st.slider("Link Opacity", min_value=0.1, max_value=1.0, value=0.6, step=0.1)
-
-    # Load graph data based on selection
+    # Load graph data based on selection (need this first for type options)
     filename = "graph.json"
     if view_mode == "Knowledge Base":
         filename = "knowledge-graph.json"
@@ -2469,6 +2466,64 @@ def render_graph_section():
         st.warning(f"No graph found ({filename}). Run `/task-viz` to generate.")
         return
 
+    # Get available types from graph
+    all_types = sorted(set(n.get("node_type", "unknown") for n in graph.get("nodes", [])))
+
+    # Default type selection based on view mode
+    if view_mode == "Tasks":
+        task_types = ["goal", "project", "epic", "task", "action", "bug", "feature", "learn"]
+        default_types = [t for t in task_types if t in all_types]
+    else:
+        default_types = all_types
+
+    # Visual controls in expander
+    with st.expander("⚙️ Visual Settings", expanded=False):
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            node_size = st.slider("Node Size", min_value=1, max_value=20, value=6, step=1)
+            link_width = st.slider("Link Width", min_value=0.5, max_value=5.0, value=1.0, step=0.5)
+        with col2:
+            text_size = st.slider("Text Size", min_value=6, max_value=24, value=12, step=1)
+            link_opacity = st.slider("Link Opacity", min_value=0.1, max_value=1.0, value=0.6, step=0.1)
+        with col3:
+            repulsion = st.slider("Repulsion", min_value=-500, max_value=-10, value=-100, step=10,
+                                  help="Node repulsion strength (more negative = stronger)")
+            show_labels = st.checkbox("Show Labels", value=True)
+            hide_orphans = st.checkbox("Hide Orphans", value=False,
+                                       help="Remove nodes with no connections")
+
+    # Filter controls in separate expander
+    with st.expander("🔍 Filter", expanded=False):
+        selected_types = st.multiselect(
+            "Show Types",
+            options=all_types,
+            default=default_types,
+            help="Filter nodes by type"
+        )
+
+    # Apply type filter
+    if selected_types:
+        type_set = set(selected_types)
+        nodes = graph.get("nodes", [])
+        filtered_nodes = [n for n in nodes if n.get("node_type", "unknown") in type_set]
+        filtered_ids = {n["id"] for n in filtered_nodes}
+        filtered_edges = [e for e in graph.get("edges", [])
+                          if e["source"] in filtered_ids and e["target"] in filtered_ids]
+        graph = {"nodes": filtered_nodes, "edges": filtered_edges}
+
+    # Apply orphan filter
+    if hide_orphans:
+        edges = graph.get("edges", [])
+        connected_ids = set()
+        for e in edges:
+            connected_ids.add(e["source"])
+            connected_ids.add(e["target"])
+        nodes = graph.get("nodes", [])
+        graph = {
+            "nodes": [n for n in nodes if n["id"] in connected_ids],
+            "edges": edges
+        }
+
     # Render graph with visual settings
     render_force_graph(
         graph, view_mode, layout,
@@ -2476,6 +2531,8 @@ def render_graph_section():
         link_width=link_width,
         show_labels=show_labels,
         link_opacity=link_opacity,
+        text_size=text_size,
+        repulsion=repulsion,
     )
 
 
