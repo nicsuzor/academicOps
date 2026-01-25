@@ -602,28 +602,61 @@ def reindex(force: bool):
 def find_duplicates(delete: bool, plain: bool):
     """Find and optionally remove duplicate tasks.
 
-    Identifies tasks with identical titles. When --delete is used,
-    keeps the task that is 'done' (if any), otherwise keeps the newest.
+    Identifies tasks with identical frontmatter IDs (data corruption) or
+    identical titles. When --delete is used, keeps the task that is 'done'
+    (if any), otherwise keeps the newest.
     """
     storage = get_storage()
-    index = get_index()
+    # Note: Don't call get_index() here - it would fail on duplicates
+    # (fast-indexer refuses to run with duplicate IDs)
 
-    # Group tasks by title
+    # Group tasks by title AND by ID (for detecting frontmatter ID collisions)
     from collections import defaultdict
     by_title: dict[str, list] = defaultdict(list)
+    by_id: dict[str, list] = defaultdict(list)
 
     for task in storage._iter_all_tasks():
         by_title[task.title].append(task)
+        by_id[task.id].append(task)
 
-    # Find duplicates (titles with >1 task)
-    duplicates = {title: tasks for title, tasks in by_title.items() if len(tasks) > 1}
+    # Find title duplicates (same title, different files)
+    title_duplicates = {title: tasks for title, tasks in by_title.items() if len(tasks) > 1}
+
+    # Find ID duplicates (same frontmatter id in different files) - MORE SERIOUS
+    id_duplicates = {task_id: tasks for task_id, tasks in by_id.items() if len(tasks) > 1}
+
+    # Merge: ID duplicates take precedence (use "ID: {id}" as key to distinguish)
+    duplicates: dict[str, list] = {}
+
+    # Add ID duplicates first
+    for task_id, tasks in id_duplicates.items():
+        duplicates[f"ID: {task_id}"] = tasks
+
+    # Add title duplicates that aren't already covered by ID duplicates
+    covered_tasks = set()
+    for tasks in id_duplicates.values():
+        for t in tasks:
+            covered_tasks.add(id(t))
+
+    for title, tasks in title_duplicates.items():
+        remaining = [t for t in tasks if id(t) not in covered_tasks]
+        if len(remaining) > 1:
+            duplicates[title] = remaining
 
     if not duplicates:
         console.print("[green]✓[/green] No duplicate tasks found.")
         return
 
+    id_dup_count = sum(1 for k in duplicates.keys() if k.startswith("ID: "))
+    title_dup_count = len(duplicates) - id_dup_count
     total_dups = sum(len(tasks) - 1 for tasks in duplicates.values())
-    console.print(f"[yellow]Found {len(duplicates)} titles with {total_dups} duplicate(s)[/yellow]")
+
+    msg_parts = []
+    if id_dup_count:
+        msg_parts.append(f"{id_dup_count} ID duplicate(s)")
+    if title_dup_count:
+        msg_parts.append(f"{title_dup_count} title duplicate(s)")
+    console.print(f"[yellow]Found {' and '.join(msg_parts)} ({total_dups} files to remove)[/yellow]")
     console.print()
 
     to_delete = []
