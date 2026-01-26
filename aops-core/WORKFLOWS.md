@@ -122,6 +122,16 @@ User request
 |----------|-------------|-------|
 | [[framework-change]] | AXIOMS/HEURISTICS/enforcement | task-tracking |
 
+### Hydration (Internal)
+
+These workflows support prompt hydration. Used internally by the hydrator agent.
+
+| Workflow | When to Use | Bases |
+|----------|-------------|-------|
+| [[hydrate]] | Main hydration decision process | - |
+| [[framework-gate]] | First check - detect framework modifications | - |
+| [[constraint-check]] | Verify plan satisfies workflow constraints | - |
+
 ## Key Distinctions
 
 | If you're unsure between... | Ask... |

@@ -22,6 +22,44 @@ Users type terse prompts. Agents need:
 
 Prompt Hydration bridges this gap automatically on every prompt, outputting a complete execution plan the agent can follow.
 
+## Architecture (Modular Workflow System)
+
+The hydrator follows a **composition-based architecture** where routing logic is defined in reusable workflows:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   prompt-hydrator.md                         │
+│            (Minimal agent - 284 lines)                       │
+│                                                              │
+│  Responsibilities:                                           │
+│  - Read input file                                           │
+│  - Gather context from memory                                │
+│  - Output formatted plans                                    │
+│                                                              │
+│  Delegates to workflows for decision logic:                  │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
+│  │ [[hydrate]]     │  │ [[framework-    │  │ [[constraint-│ │
+│  │ Main decision   │  │    gate]]       │  │    check]]   │ │
+│  │ process         │  │ Framework       │  │ Plan         │ │
+│  │                 │  │ detection       │  │ verification │ │
+│  └─────────────────┘  └─────────────────┘  └──────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Key Workflows
+
+| Workflow | Purpose | Location |
+|----------|---------|----------|
+| [[hydrate]] | Main hydration decision process | `workflows/hydrate.md` |
+| [[framework-gate]] | First check - detect framework modifications | `workflows/framework-gate.md` |
+| [[constraint-check]] | Verify plan satisfies workflow constraints | `workflows/constraint-check.md` |
+
+### Design Principles
+
+1. **Composition over embedding** - Routing logic lives in workflows, not hardcoded in agent
+2. **Single responsibility** - Agent handles I/O and formatting; workflows define decisions
+3. **Reusable patterns** - Framework gate and constraint check can be invoked by other agents
+
 ## When It Runs
 
 **Every UserPromptSubmit** - This closes the "control gap" where freeform prompts previously got baseline context only.
@@ -210,7 +248,10 @@ Main agent follows the plan
 | `hooks/user_prompt_submit.py`                | Entry point - extracts context, writes temp file, returns short instruction |
 | `hooks/templates/prompt-hydrator-context.md` | Full context template written to temp file                                  |
 | `lib/session_reader.py`                      | `extract_router_context()` - extracts session state from transcript         |
-| `agents/prompt-hydrator.md`                  | Subagent that reads temp file and generates execution plan                  |
+| `agents/prompt-hydrator.md`                  | Minimal routing layer (284 lines) - delegates to workflows                  |
+| `workflows/hydrate.md`                       | Main hydration decision process workflow                                    |
+| `workflows/framework-gate.md`                | Framework modification detection and routing                                |
+| `workflows/constraint-check.md`              | Plan constraint verification logic                                          |
 
 ---
 
