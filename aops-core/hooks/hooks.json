@@ -61,7 +61,9 @@
             "type": "command",
             "command": "PYTHONPATH=${CLAUDE_PLUGIN_ROOT} uv run python ${CLAUDE_PLUGIN_ROOT}/hooks/router.py",
             "timeout": 5000
-          },
+          }
+        ],
+        "hooks-disabled": [
           {
             "type": "prompt",
             "prompt": "Evaluate if this subagent should stop. Do not print this to the user.\n\nIgnore this step if the agent is still in discussion with the user. Only run when where the agent plans to finish the session.\n\n Input: $ARGUMENTS\n\nTo avoid data loss, you MUST block exit unless ALL of these handover conditions are met:\n- Changes are commited to git\n- Work done is recorded in task.\n- All outstanding todo items have been completed\n- Task has been marked complete.\n- Any follow up actions have been recorded in a new task.\n- A complete framework reflection has been printed in the correct format using the 'HANDOVER' skill.\n\nReturn: {\"ok\": true} to allow stopping, or {\"ok\": false, \"reason\": \"explanation\"} to require agent to complete handover.\n\nNote that all state is ephemeral and may be lost at any time; we commit and record work frequently to avoid data loss.\n\nIf no modifications have been made, it is sufficient to ensure that any required tasks have been created and updated (including future tasks for follow up actions)."

@@ -7,8 +7,6 @@ import shutil
 from pathlib import Path
 
 # Add aops-core to path for lib imports
-# Assumes this script will be running from ~/src/academicOps/polecat/manager.py
-# after being moved
 SCRIPT_DIR = Path(__file__).parent.resolve()
 REPO_ROOT = SCRIPT_DIR.parent
 sys.path.insert(0, str(REPO_ROOT / "aops-core"))
@@ -18,15 +16,29 @@ try:
     from lib.task_model import TaskStatus, TaskType
     from lib.task_storage import TaskStorage
 except ImportError:
-    # Fallback for when running in gastown context (for linting/verification if needed)
     pass
 
 class PolecatManager:
     def __init__(self):
-        self.repo_root = REPO_ROOT
-        self.storage = TaskStorage()
-        self.polecats_dir = self.repo_root / "polecats"
+        # Global location for all active agents
+        self.polecats_dir = Path.home() / "polecats"
         self.polecats_dir.mkdir(exist_ok=True)
+        
+        # We still need access to the task DB
+        self.storage = TaskStorage()
+
+    def get_repo_path(self, task) -> Path:
+        """Determines which git repo to spawn the worktree from.
+        
+        TODO: Add your project mapping logic here.
+        """
+        if task.project == "buttermilk":
+             return Path.home() / "src/buttermilk"
+        if task.project == "writing":
+             return Path.home() / "writing"
+             
+        # Default fallback
+        return REPO_ROOT
 
     def claim_next_task(self, caller: str, project: str = None):
         """Finds and claims the highest priority ready task."""
@@ -35,7 +47,6 @@ class PolecatManager:
         if not tasks:
             return None
 
-        # Try to claim tasks in priority order
         for task in tasks:
             task_path = self.storage._find_task_path(task.id)
             if task_path is None:
@@ -48,24 +59,18 @@ class PolecatManager:
                     try:
                         fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
                     except BlockingIOError:
-                        continue  # Locked by another process
+                        continue 
 
                     try:
-                        # Re-load task to ensure it's still valid/unclaimed
                         fresh_task = self.storage.get_task(task.id)
-                        if fresh_task is None:
-                            continue
-
-                        if fresh_task.status != TaskStatus.ACTIVE:
+                        if fresh_task is None or fresh_task.status != TaskStatus.ACTIVE:
                             continue
                         if fresh_task.assignee and fresh_task.assignee != caller:
                             continue
 
-                        # Claim it
                         fresh_task.status = TaskStatus.IN_PROGRESS
                         fresh_task.assignee = caller
                         self.storage.save_task(fresh_task)
-                        
                         return fresh_task
 
                     finally:
@@ -83,19 +88,20 @@ class PolecatManager:
         return None
 
     def setup_worktree(self, task):
-        """Creates a git worktree for the task."""
+        """Creates a git worktree in ~/polecats linked to the project repo."""
+        repo_path = self.get_repo_path(task)
+        if not repo_path.exists():
+            raise FileNotFoundError(f"Project repository not found at {repo_path}")
+
         worktree_path = self.polecats_dir / task.id
         branch_name = f"polecat/{task.id}"
 
-        # If worktree already exists, return it
         if worktree_path.exists():
             return worktree_path
 
-        print(f"Creating worktree at {worktree_path} for task {task.id}...")
+        print(f"Creating worktree at {worktree_path} from repo {repo_path}...")
 
-        # Create branch and worktree
-        # git worktree add -b <branch> <path> <start-point>
-        # We assume starting from main
+        # We must run git commands from the PARENT repo
         cmd = [
             "git", "worktree", "add",
             "-b", branch_name,
@@ -104,52 +110,54 @@ class PolecatManager:
         ]
 
         try:
-            subprocess.run(cmd, cwd=self.repo_root, check=True)
+            subprocess.run(cmd, cwd=repo_path, check=True)
         except subprocess.CalledProcessError as e:
-            # Maybe branch already exists? Try without -b
-            # Or handle detached head if main is checked out? 
-            # Git worktrees require distinct branches usually.
-            # If branch exists, we might need to use it.
             print(f"Worktree creation failed: {e}. Attempting recovery...", file=sys.stderr)
-            
-            # Check if branch exists
-            if self._branch_exists(branch_name):
+            if self._branch_exists(repo_path, branch_name):
                  cmd = ["git", "worktree", "add", str(worktree_path), branch_name]
-                 subprocess.run(cmd, cwd=self.repo_root, check=True)
+                 subprocess.run(cmd, cwd=repo_path, check=True)
             else:
                  raise e
 
         return worktree_path
 
-    def _branch_exists(self, branch_name):
+    def _branch_exists(self, repo_path, branch_name):
         res = subprocess.run(
             ["git", "rev-parse", "--verify", branch_name], 
-            cwd=self.repo_root, 
+            cwd=repo_path,
             capture_output=True
         )
         return res.returncode == 0
 
     def nuke_worktree(self, task_id):
         """Removes the worktree and deletes the branch."""
+        # We need the task to know which repo it came from, but if we don't have it
+        # (e.g. CLI just passed an ID), we might have to guess or search.
+        # For simplicity, let's look up the task.
+        task = self.storage.get_task(task_id)
+        if task:
+             repo_path = self.get_repo_path(task)
+        else:
+             # Fallback: assume academicOps if task deleted
+             repo_path = REPO_ROOT
+
         worktree_path = self.polecats_dir / task_id
         branch_name = f"polecat/{task_id}"
 
         if worktree_path.exists():
             print(f"Removing worktree {worktree_path}...")
-            # git worktree remove --force <path>
             subprocess.run(
                 ["git", "worktree", "remove", "--force", str(worktree_path)],
-                cwd=self.repo_root,
+                cwd=repo_path,
                 check=False 
             )
-            # Just in case git leaves folders
             if worktree_path.exists():
                 shutil.rmtree(worktree_path)
         
-        if self._branch_exists(branch_name):
+        if self._branch_exists(repo_path, branch_name):
             print(f"Deleting branch {branch_name}...")
             subprocess.run(
                 ["git", "branch", "-D", branch_name],
-                cwd=self.repo_root,
+                cwd=repo_path,
                 check=False
             )
