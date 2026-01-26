@@ -133,18 +133,23 @@ def finish(no_push, do_nuke):
     if do_nuke:
         print("Nuking worktree...")
         os.chdir(Path.home())  # Move out of worktree before nuking
-        manager.nuke_worktree(task_id)
+        manager.nuke_worktree(task_id, force=False)
         print(f"Worktree removed")
     else:
         print(f"\nTo clean up later: polecat nuke {task_id}")
 
 @main.command()
 @click.argument("task_id")
-def nuke(task_id):
+@click.option("--force", "-f", is_flag=True, help="Delete even if work is not merged")
+def nuke(task_id, force):
     """Destroy a polecat (remove worktree and branch)."""
     manager = PolecatManager()
-    manager.nuke_worktree(task_id)
-    print(f"Nuked polecat {task_id}")
+    try:
+        manager.nuke_worktree(task_id, force=force)
+        print(f"Nuked polecat {task_id}")
+    except RuntimeError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
 
 @main.command()
 def list():
@@ -233,27 +238,35 @@ def run(project, caller, task_id, no_finish, gemini, interactive):
     # Step 3: Build prompt from task
     prompt = f"/pull {task.id}"
 
-    # Step 4: Run agent in the worktree with proper plugin dirs
+    # Step 4: Run agent in the worktree
     # Choose CLI tool based on --gemini flag
     cli_tool = "gemini" if gemini else "claude"
     mode = "interactive" if interactive else "headless"
     print(f"\n🤖 Starting {cli_tool} agent ({mode})...")
     print("-" * 50)
 
-    # Build command
-    cmd = [cli_tool]
-
-    # Add headless flags only if not interactive
-    if not interactive:
-        cmd.append("--dangerously-skip-permissions")
-
-    cmd.extend([
-        "--permission-mode", "plan",
-        "--setting-sources=user",
-        "--plugin-dir", str(worktree_path / "aops-core"),
-        "--plugin-dir", str(worktree_path / "aops-tools"),
-        "-p", prompt,
-    ])
+    # Build command - gemini and claude have different CLI interfaces
+    if gemini:
+        # Gemini CLI
+        cmd = ["gemini"]
+        if interactive:
+            # -i starts interactive mode with initial prompt
+            cmd.extend(["-i", prompt])
+        else:
+            # Headless mode with auto-approve
+            cmd.extend(["--approval-mode", "yolo", "-p", prompt])
+    else:
+        # Claude CLI
+        cmd = ["claude"]
+        if not interactive:
+            cmd.append("--dangerously-skip-permissions")
+        cmd.extend([
+            "--permission-mode", "plan",
+            "--setting-sources=user",
+            "--plugin-dir", str(worktree_path / "aops-core"),
+            "--plugin-dir", str(worktree_path / "aops-tools"),
+            "-p", prompt,
+        ])
 
     try:
         result = subprocess.run(
