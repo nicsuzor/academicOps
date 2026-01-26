@@ -11,10 +11,17 @@ The MCP server is a **data access layer only**. It exposes raw data structures t
 - Perform semantic analysis
 
 The server DOES:
-- Compute deterministic metrics
+- Compute deterministic metrics (counts, depths, degrees)
 - Return structured data
-- Filter and aggregate
+- Apply mechanical filters (status, project, type)
 - Expose graph topology
+
+The server does NOT:
+- Compute similarity (no word overlap, no NLP)
+- Apply hardcoded thresholds (agent decides what's "deep" or "stale")
+- Select "candidates" (return all data, agent filters)
+
+**Per P#78**: Deterministic computation (counting, aggregation) stays in code. Judgment (similarity, classification, threshold decisions) goes to LLM.
 
 Reference: `tasks_server.py` already follows this pattern with 18 thin data-access tools.
 
@@ -121,8 +128,6 @@ Server does LLM calls, generates proposals.
 @mcp.tool()
 def get_decomposition_context(
     task_id: str,
-    include_similar: bool = True,
-    similar_limit: int = 10,
 ) -> dict[str, Any]:
     """
     Return context for decomposition. Agent proposes breakdown.
@@ -135,18 +140,20 @@ def get_decomposition_context(
             - siblings: list[task]         # other children of parent
         - project_context:
             - project: str | None
-            - project_tasks: list[task]    # other tasks in same project
-            - common_patterns: list[str]   # frequent task types/prefixes in project
-        - similar_tasks: list[{task, similarity_reason}]  # by title overlap
-        - related_by_tags: list[task]      # tasks sharing tags
+            - project_tasks: list[task]    # ALL other tasks in same project (agent decides relevance)
     """
 ```
 
-**What moved to agent:** Generating decomposition proposal, deciding subtask structure, LLM reasoning about breakdown.
+**What moved to agent:**
+- Finding "similar" tasks (LLM reads titles, decides similarity)
+- Generating decomposition proposal
+- Deciding subtask structure
+
+**Removed from server:** `similar_tasks`, `common_patterns`, `related_by_tags` - all require judgment about relevance. Agent gets raw project task list and reasons over it.
 
 ---
 
-### 4. suggest_relationships() → `get_relationship_candidates()`
+### 4. suggest_relationships() → `get_task_neighborhood()`
 
 **Original Conception (WRONG):**
 ```python
@@ -158,31 +165,34 @@ Server does semantic analysis, generates suggestions with confidence.
 **New Conception (CORRECT):**
 ```python
 @mcp.tool()
-def get_relationship_candidates(
+def get_task_neighborhood(
     task_id: str,
-    limit: int = 20,
 ) -> dict[str, Any]:
     """
-    Return candidate tasks for relationships. Agent suggests connections.
+    Return the task and its graph neighborhood. Agent decides relationships.
 
     Returns:
-        - task: Full task data
-        - same_project_tasks: list[task]           # other tasks in project
-        - similar_title_tasks: list[{task, overlap_terms}]  # word overlap
-        - same_tag_tasks: list[task]               # shared tags
-        - orphan_tasks: list[task]                 # tasks with no relationships
-        - potential_parents: list[task]            # tasks that could be parents (higher type)
-        - potential_dependencies: list[task]       # active tasks in same project
-        - blocked_by_this: list[task]              # already depending on this task
-        - this_depends_on: list[task]              # existing dependencies
+        - task: Full task data (title, body, tags, project, etc.)
+        - existing_relationships:
+            - parent: task | None
+            - children: list[task]
+            - depends_on: list[task]
+            - blocks: list[task]              # tasks that depend on this
+        - same_project_tasks: list[task]      # ALL tasks in same project
+        - orphan_tasks: list[task]            # tasks with no parent AND no dependencies
     """
 ```
 
-**What moved to agent:** Deciding which candidates should actually be related, suggesting relationship types, confidence scoring.
+**What moved to agent:**
+- Deciding which tasks are "similar" (LLM reads titles)
+- Suggesting relationship types
+- Identifying "candidates" (agent reviews same_project_tasks list)
+
+**Removed from server:** `similar_title_tasks`, `potential_parents`, `potential_dependencies` - all imply server deciding what's "potential". Agent gets raw lists and reasons.
 
 ---
 
-### 5. identify_refactoring_opportunities() → `get_structural_signals()`
+### 5. identify_refactoring_opportunities() → `get_tasks_with_topology()`
 
 **Original Conception (WRONG):**
 ```python
@@ -194,25 +204,36 @@ Server identifies issues and recommends actions.
 **New Conception (CORRECT):**
 ```python
 @mcp.tool()
-def get_structural_signals(
+def get_tasks_with_topology(
     project: Optional[str] = None,
+    status: Optional[str] = None,  # filter by status
+    min_depth: Optional[int] = None,  # agent specifies threshold
+    min_blocking_count: Optional[int] = None,  # agent specifies threshold
 ) -> dict[str, Any]:
     """
-    Return structural data patterns. Agent identifies issues.
+    Return tasks with their topology metrics. Agent identifies issues.
 
-    Returns:
-        - orphans: list[task]                      # no parent, no dependencies
-        - deep_tasks: list[{task, depth}]          # depth > 5
-        - high_fanout_tasks: list[{task, blocking_count}]  # blocking > 5 others
-        - long_chains: list[{start_id, chain_length, chain_ids}]  # dependency chains > 5
-        - similar_titles: list[{task_a, task_b, shared_words}]  # potential duplicates
-        - stale_ready: list[{task, ready_days}]    # ready > 7 days, not started
-        - empty_parents: list[task]                # non-leaf tasks with no children
-        - type_mismatches: list[{task, issue}]     # e.g., "action" type with children
+    Returns list of tasks, each with:
+        - id, title, type, status, project, tags
+        - depth: int                    # levels from root
+        - parent: str | None
+        - child_count: int
+        - blocking_count: int           # tasks depending on this
+        - blocked_by_count: int         # dependencies this has
+        - is_leaf: bool
+        - created: datetime
+        - modified: datetime
+        - ready_days: float | None      # days since became ready (if status=active)
     """
 ```
 
-**What moved to agent:** Deciding which signals indicate actual problems, prioritizing issues, recommending specific refactoring actions.
+**What moved to agent:**
+- Deciding what depth is "too deep" (agent passes min_depth if desired)
+- Deciding what blocking count is "high fanout" (agent passes min_blocking_count)
+- Identifying "similar titles" (agent reads titles, uses LLM for similarity)
+- All threshold decisions and issue classification
+
+**Removed from server:** `deep_tasks`, `high_fanout_tasks`, `similar_titles`, `stale_ready` as pre-filtered lists. Server returns raw metrics; agent applies its own thresholds.
 
 ---
 
@@ -268,21 +289,23 @@ These existing helpers in tasks_server.py can be reused:
 ### New Helper Functions Needed
 
 ```python
-def _compute_word_overlap(title_a: str, title_b: str) -> list[str]:
-    """Return shared significant words between two titles."""
-
 def _get_dependency_chain_length(task_id: str, index: TaskIndex) -> int:
     """Compute longest dependency chain starting from task."""
 
 def _tasks_created_since(storage: TaskStorage, days: int) -> list[Task]:
     """Return tasks created in last N days."""
+
+def _compute_ready_days(task: Task) -> float | None:
+    """Days since task became ready (status=active, deps satisfied)."""
 ```
+
+**Removed:** `_compute_word_overlap()` - no NLP in server per P#78.
 
 ### Performance Considerations
 
 - Most metrics can be computed from TaskIndex (cached)
-- Similar title search may need optimization for large graphs
-- Consider caching structural signals with TTL
+- Large project task lists may need pagination
+- Agent can request filtered subsets via parameters
 
 ---
 
@@ -320,9 +343,17 @@ These 6 P0 tasks need body updates to reflect the new conception:
 
 | Original Name | New Name | Server Does | Agent Does |
 |--------------|----------|-------------|------------|
-| analyze_graph_health() | get_graph_metrics() | Compute metrics | Interpret health |
+| analyze_graph_health() | get_graph_metrics() | Compute counts/metrics | Interpret health |
 | identify_high_voi_tasks() | get_task_scoring_factors() | Return raw factors | Compute VOI, rank |
-| propose_decomposition() | get_decomposition_context() | Gather context | Generate proposal |
-| suggest_relationships() | get_relationship_candidates() | Find candidates | Suggest connections |
-| identify_refactoring_opportunities() | get_structural_signals() | Expose patterns | Identify issues |
-| daily_graph_review() | get_review_snapshot() | Snapshot state | Generate report |
+| propose_decomposition() | get_decomposition_context() | Return task + project tasks | Find similar, propose breakdown |
+| suggest_relationships() | get_task_neighborhood() | Return graph neighborhood | Decide similarity, suggest links |
+| identify_refactoring_opportunities() | get_tasks_with_topology() | Return tasks + metrics | Apply thresholds, identify issues |
+| daily_graph_review() | get_review_snapshot() | Return snapshot data | Generate report |
+
+## P#78 Compliance Checklist
+
+- [x] No word overlap / NLP functions in server
+- [x] No hardcoded thresholds (all via parameters or agent decision)
+- [x] No "candidate selection" - raw lists returned
+- [x] No "similarity" computation - agent uses LLM
+- [x] Deterministic only: counts, depths, degrees, timestamps
