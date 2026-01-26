@@ -123,26 +123,54 @@ class PolecatManager:
 
     def _branch_exists(self, repo_path, branch_name):
         res = subprocess.run(
-            ["git", "rev-parse", "--verify", branch_name], 
+            ["git", "rev-parse", "--verify", branch_name],
             cwd=repo_path,
             capture_output=True
         )
         return res.returncode == 0
 
-    def nuke_worktree(self, task_id):
-        """Removes the worktree and deletes the branch."""
+    def _is_branch_merged(self, repo_path: Path, branch_name: str, target: str = "main") -> bool:
+        """Check if branch has been merged into target branch."""
+        # Check if any commits in branch are NOT in target
+        result = subprocess.run(
+            ["git", "log", "--oneline", f"{target}..{branch_name}"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True
+        )
+        # If output is empty, branch is fully merged
+        return result.returncode == 0 and not result.stdout.strip()
+
+    def nuke_worktree(self, task_id, force=False):
+        """Removes the worktree and deletes the branch.
+
+        Args:
+            task_id: The task ID whose worktree should be removed
+            force: If True, skip merge verification check
+
+        Raises:
+            RuntimeError: If branch has unmerged commits and force=False
+        """
         # We need the task to know which repo it came from, but if we don't have it
         # (e.g. CLI just passed an ID), we might have to guess or search.
         # For simplicity, let's look up the task.
         task = self.storage.get_task(task_id)
         if task:
-             repo_path = self.get_repo_path(task)
+            repo_path = self.get_repo_path(task)
         else:
-             # Fallback: assume academicOps if task deleted
-             repo_path = REPO_ROOT
+            # Fallback: assume academicOps if task deleted
+            repo_path = REPO_ROOT
 
         worktree_path = self.polecats_dir / task_id
         branch_name = f"polecat/{task_id}"
+
+        # Safety check: verify branch is merged before deletion
+        if not force and self._branch_exists(repo_path, branch_name):
+            if not self._is_branch_merged(repo_path, branch_name):
+                raise RuntimeError(
+                    f"Branch {branch_name} has unmerged commits. "
+                    f"Use --force to delete anyway, or merge first with 'polecat merge'."
+                )
 
         if worktree_path.exists():
             print(f"Removing worktree {worktree_path}...")
