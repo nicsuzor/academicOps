@@ -152,6 +152,7 @@ class TaskStorage:
         status: TaskStatus = TaskStatus.ACTIVE,
         parent: str | None = None,
         depends_on: list[str] | None = None,
+        soft_depends_on: list[str] | None = None,
         priority: int = 2,
         due: datetime | None = None,
         tags: list[str] | None = None,
@@ -167,7 +168,8 @@ class TaskStorage:
             type: Task type (goal, project, epic, task, action, bug, feature, learn)
             status: Task status (inbox, active, blocked, waiting, done, cancelled)
             parent: Parent task ID for hierarchy
-            depends_on: List of dependency task IDs
+            depends_on: List of blocking dependency task IDs
+            soft_depends_on: List of non-blocking context dependency task IDs
             priority: Priority 0-4 (0=critical, 4=someday)
             due: Optional due date
             tags: Optional tags
@@ -196,6 +198,7 @@ class TaskStorage:
             project=project,
             parent=parent,
             depends_on=depends_on or [],
+            soft_depends_on=soft_depends_on or [],
             depth=depth,
             leaf=True,
             due=due,
@@ -247,17 +250,19 @@ class TaskStorage:
         return path
 
     def _populate_inverse_relationships(self, task: Task) -> None:
-        """Populate inverse relationships (children, blocks) for a task.
+        """Populate inverse relationships (children, blocks, soft_blocks) for a task.
 
         Scans all tasks to compute:
         - children: tasks that have this task as parent
-        - blocks: tasks that depend on this task
+        - blocks: tasks that depend on this task (hard blocking)
+        - soft_blocks: tasks that soft-depend on this task (non-blocking context)
 
         Args:
             task: Task to populate relationships for
         """
         children = []
         blocks = []
+        soft_blocks = []
 
         for other_task in self._iter_all_tasks():
             # Skip self
@@ -268,12 +273,17 @@ class TaskStorage:
             if other_task.parent == task.id:
                 children.append(other_task.id)
 
-            # Blocks: tasks that depend on this task
+            # Blocks: tasks that hard-depend on this task
             if task.id in other_task.depends_on:
                 blocks.append(other_task.id)
 
+            # Soft blocks: tasks that soft-depend on this task
+            if task.id in other_task.soft_depends_on:
+                soft_blocks.append(other_task.id)
+
         task.children = children
         task.blocks = blocks
+        task.soft_blocks = soft_blocks
 
     def _atomic_write(self, path: Path, task: Task) -> None:
         """Write task to file atomically with file locking.

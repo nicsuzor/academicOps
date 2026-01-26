@@ -96,7 +96,8 @@ class Task:
 
     # Graph relationships (stored in frontmatter)
     parent: str | None = None  # Parent task ID (null = root)
-    depends_on: list[str] = field(default_factory=list)  # Must complete first
+    depends_on: list[str] = field(default_factory=list)  # Must complete first (blocking)
+    soft_depends_on: list[str] = field(default_factory=list)  # Context hints (non-blocking)
 
     # Decomposition metadata
     depth: int = 0  # Distance from root (0 = root goal)
@@ -116,7 +117,8 @@ class Task:
 
     # Computed relationships (populated by index, not stored in file)
     children: list[str] = field(default_factory=list)
-    blocks: list[str] = field(default_factory=list)
+    blocks: list[str] = field(default_factory=list)  # Inverse of depends_on
+    soft_blocks: list[str] = field(default_factory=list)  # Inverse of soft_depends_on
 
     def __post_init__(self) -> None:
         """Validate task after initialization."""
@@ -200,6 +202,7 @@ class Task:
             "modified": self.modified.isoformat(),
             "parent": self.parent,
             "depends_on": self.depends_on if self.depends_on else [],
+            "soft_depends_on": self.soft_depends_on if self.soft_depends_on else [],
             "depth": self.depth,
             "leaf": self.leaf,
         }
@@ -308,6 +311,7 @@ class Task:
             modified=modified,
             parent=fm.get("parent"),
             depends_on=fm.get("depends_on", []),
+            soft_depends_on=fm.get("soft_depends_on", []),
             depth=depth,
             leaf=fm.get("leaf", True),
             due=due,
@@ -328,13 +332,21 @@ class Task:
         """
         lines = []
 
-        # depends_on: tasks this task depends on (from frontmatter)
+        # depends_on: tasks this task depends on (from frontmatter) - blocking
         for dep_id in self.depends_on:
             lines.append(f"- [depends_on] [[{dep_id}]]")
 
-        # blocks: tasks that depend on this task (computed inverse)
+        # soft_depends_on: tasks this task soft-depends on (from frontmatter) - non-blocking
+        for soft_dep_id in self.soft_depends_on:
+            lines.append(f"- [soft_depends_on] [[{soft_dep_id}]]")
+
+        # blocks: tasks that depend on this task (computed inverse of depends_on)
         for block_id in self.blocks:
             lines.append(f"- [blocks] [[{block_id}]]")
+
+        # soft_blocks: tasks that soft-depend on this task (computed inverse of soft_depends_on)
+        for soft_block_id in self.soft_blocks:
+            lines.append(f"- [soft_blocks] [[{soft_block_id}]]")
 
         # parent: parent task (from frontmatter)
         if self.parent:

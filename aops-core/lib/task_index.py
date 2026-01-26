@@ -70,10 +70,12 @@ class TaskIndexEntry:
     children: list[str]  # Computed: inverse of parent
     depends_on: list[str]
     blocks: list[str]  # Computed: inverse of depends_on
-    depth: int
-    leaf: bool
-    project: str | None
-    path: str
+    soft_depends_on: list[str] = field(default_factory=list)  # Non-blocking context hints
+    soft_blocks: list[str] = field(default_factory=list)  # Computed: inverse of soft_depends_on
+    depth: int = 0
+    leaf: bool = True
+    project: str | None = None
+    path: str = ""
     due: str | None = None
     tags: list[str] = field(default_factory=list)
     assignee: str | None = None
@@ -91,6 +93,8 @@ class TaskIndexEntry:
             "children": self.children,
             "depends_on": self.depends_on,
             "blocks": self.blocks,
+            "soft_depends_on": self.soft_depends_on,
+            "soft_blocks": self.soft_blocks,
             "depth": self.depth,
             "leaf": self.leaf,
             "project": self.project,
@@ -114,6 +118,8 @@ class TaskIndexEntry:
             children=data.get("children", []),
             depends_on=data.get("depends_on", []),
             blocks=data.get("blocks", []),
+            soft_depends_on=data.get("soft_depends_on", []),
+            soft_blocks=data.get("soft_blocks", []),
             depth=data.get("depth", 0),
             leaf=data.get("leaf", True),
             project=data.get("project"),
@@ -137,6 +143,8 @@ class TaskIndexEntry:
             children=[],  # Computed during index build
             depends_on=task.depends_on,
             blocks=[],  # Computed during index build
+            soft_depends_on=task.soft_depends_on,
+            soft_blocks=[],  # Computed during index build
             depth=task.depth,
             leaf=task.leaf,
             project=task.project,
@@ -251,6 +259,12 @@ class TaskIndex:
             for dep_id in entry.depends_on:
                 if dep_id in self._tasks:
                     self._tasks[dep_id].blocks.append(task_id)
+
+        # Compute soft_blocks (inverse of soft_depends_on)
+        for task_id, entry in self._tasks.items():
+            for soft_dep_id in entry.soft_depends_on:
+                if soft_dep_id in self._tasks:
+                    self._tasks[soft_dep_id].soft_blocks.append(task_id)
 
         # Update leaf status based on computed children AND frontmatter
         # A task is a leaf only if:

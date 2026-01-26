@@ -97,6 +97,7 @@ def _task_to_dict(task: Task) -> dict[str, Any]:
         "modified": task.modified.isoformat(),
         "parent": task.parent,
         "depends_on": task.depends_on,
+        "soft_depends_on": task.soft_depends_on,
         "depth": task.depth,
         "leaf": task.leaf,
         "due": task.due.isoformat() if task.due else None,
@@ -109,6 +110,7 @@ def _task_to_dict(task: Task) -> dict[str, Any]:
         "body": task.body,
         "children": task.children,
         "blocks": task.blocks,
+        "soft_blocks": task.soft_blocks,
     }
 
 
@@ -187,6 +189,7 @@ def create_task(
     project: Optional[str] = None,
     parent: Optional[str] = None,
     depends_on: Optional[list[str]] = None,
+    soft_depends_on: Optional[list[str]] = None,
     order: int = 0,
     priority: int = 2,
     due: Optional[str] = None,
@@ -206,7 +209,8 @@ def create_task(
         status: Task status - "active", "in_progress", "blocked", "waiting", "review", "done", or "cancelled" (default: "active")
         project: Project slug for organization (determines storage location)
         parent: Parent task ID for hierarchical relationships
-        depends_on: List of task IDs this task depends on
+        depends_on: List of task IDs this task depends on (blocking)
+        soft_depends_on: List of task IDs for non-blocking context relationships
         order: Sibling ordering (lower = first, default: 0)
         priority: Priority 0-4 (0=critical, 4=someday, default: 2)
         due: Due date in ISO format (YYYY-MM-DDTHH:MM:SSZ)
@@ -286,6 +290,7 @@ def create_task(
             status=task_status,
             parent=parent,
             depends_on=depends_on,
+            soft_depends_on=soft_depends_on,
             priority=priority,
             due=due_datetime,
             tags=tags,
@@ -344,12 +349,13 @@ def get_task(id: str) -> dict[str, Any]:
                 "message": f"Task not found: {id}",
             }
 
-        # Load index for computed fields (children, blocks)
+        # Load index for computed fields (children, blocks, soft_blocks)
         index = _get_index()
         entry = index.get_task(id)
         if entry:
             task.children = entry.children
             task.blocks = entry.blocks
+            task.soft_blocks = entry.soft_blocks
 
         return {
             "success": True,
@@ -376,6 +382,7 @@ def update_task(
     order: Optional[int] = None,
     parent: Optional[str] = None,
     depends_on: Optional[list[str]] = None,
+    soft_depends_on: Optional[list[str]] = None,
     due: Optional[str] = None,
     project: Optional[str] = None,
     tags: Optional[list[str]] = None,
@@ -398,7 +405,8 @@ def update_task(
         priority: New priority 0-4
         order: New sibling order
         parent: New parent task ID (or "" to clear)
-        depends_on: New dependency list (replaces existing)
+        depends_on: New blocking dependency list (replaces existing)
+        soft_depends_on: New non-blocking context dependency list (replaces existing)
         due: New due date in ISO format (or "" to clear)
         project: New project slug (or "" to clear)
         tags: New tags list (replaces existing)
@@ -483,6 +491,10 @@ def update_task(
         if depends_on is not None:
             task.depends_on = depends_on
             modified_fields.append("depends_on")
+
+        if soft_depends_on is not None:
+            task.soft_depends_on = soft_depends_on
+            modified_fields.append("soft_depends_on")
 
         if due is not None:
             if due == "":
