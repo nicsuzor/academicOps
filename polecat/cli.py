@@ -230,13 +230,23 @@ def run(project, caller, task_id, no_finish):
     # Step 3: Build prompt from task
     prompt = f"/pull {task.id}"
 
-    # Step 4: Run claude in the worktree
+    # Step 4: Run claude in the worktree with proper plugin dirs
     print(f"\n🤖 Starting claude agent...")
     print("-" * 50)
 
+    claude_cmd = [
+        "claude",
+        "--dangerously-skip-permissions",
+        "--permission-mode", "plan",
+        "--setting-sources=user",
+        "--plugin-dir", str(worktree_path / "aops-core"),
+        "--plugin-dir", str(worktree_path / "aops-tools"),
+        "-p", prompt,
+    ]
+
     try:
         result = subprocess.run(
-            ["claude", "-p", prompt],
+            claude_cmd,
             cwd=worktree_path,
         )
         exit_code = result.returncode
