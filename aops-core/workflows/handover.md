@@ -57,6 +57,33 @@ git push  # Push to remote
 
 **No uncommitted work is allowed at session end.** The commit message should summarize what was accomplished. Skip only if `git status` shows no changes.
 
+### Polecat Worktree: Signal Ready for Merge
+
+If you're working in a **polecat worktree** (path under `~/polecats/`), the work isn't complete until the Refinery merges it. Instead of marking the task `done`, signal it's ready for merge:
+
+1. **Push the feature branch**:
+```bash
+git push -u origin polecat/<task-id>
+```
+
+2. **Set task status to `review`** (ready for merge):
+```
+mcp__plugin_aops-tools_task_manager__update_task(
+  id="<task-id>",
+  status="review"
+)
+```
+
+3. **Do NOT mark as `done`** - the Refinery sets `done` after merging to main.
+
+The task lifecycle in polecat workflow:
+```
+active → in_progress → review → done
+         (claimed)    (you)    (refinery)
+```
+
+**CLI alternative**: If running interactively, use `polecat finish` which does steps 1-2 atomically.
+
 ## Step 3: File Follow-up Tasks
 
 For each incomplete work item from the current TodoWrite list:
