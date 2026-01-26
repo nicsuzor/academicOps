@@ -98,6 +98,25 @@ Follow the task's workflow or use standard execution pattern:
 5. Commit changes
 6. Complete task (see Step 4)
 
+### Step 3A.1: Execute Spike/Learn Tasks
+
+For tasks with `type: learn`:
+
+1. **Investigate** per task instructions
+2. **Write findings to task body** - Use `update_task(id, body=...)` to append findings
+3. **Summarize in parent epic** - Read parent, append to "## Findings from Spikes"
+4. **Decompose actionable items** - Create subtasks for each fix/recommendation:
+   ```
+   mcp__plugin_aops-tools_task_manager__decompose_task(
+     id="<spike-id>",
+     children=[
+       {"title": "[Fix] Issue 1", "type": "task", "body": "Context from spike..."},
+       {"title": "[Fix] Issue 2", "type": "task", "body": "Context from spike..."}
+     ]
+   )
+   ```
+5. **Complete the spike** - Decomposition IS completion for learn tasks (per P#71, P#81)
+
 ### Step 3B: Triage (TRIAGE Path)
 
 Take appropriate action based on what's needed:

@@ -115,6 +115,20 @@ After completing a spike task:
 
 **Why this works**: The `/pull` workflow reads parent context before executing child tasks. Parent epic body is the natural context hub.
 
+### Spike Completion Checklist
+
+When completing a spike/learn task:
+
+1. **Write detailed findings to task body** - This is the primary output location
+2. **Summarize in parent epic** - Add to "## Findings from Spikes" section
+3. **Decompose actionable items** - Each recommendation/fix becomes a subtask:
+   - Create subtasks with `depends_on: [this-spike-id]` or as siblings
+   - Use clear action verbs: "Fix X", "Add Y", "Update Z"
+   - Include enough context in subtask body to execute independently
+4. **Complete the spike** - Per P#71, parent completes when decomposition is done
+
+**Anti-pattern**: Creating standalone files (e.g., `docs/AUDIT-REPORT.md`) for spike output. The task graph IS the documentation system.
+
 ## Anti-Patterns
 
 - Expanding everything at once (premature detail)

@@ -302,3 +302,17 @@ description: Working hypotheses validated by evidence.
 - If the only fix removes required functionality → ask user about acceptable tradeoffs
 
 **Derivation**: Specs define required behavior. A "fix" that removes required functionality is a design change requiring user approval, not a bug fix. P#31 (Acceptance Criteria Own Success) establishes that only user-defined criteria determine completion.
+
+---
+
+## Spike Output Goes to Task Graph (P#81)
+
+**Statement**: Spike/learn task output belongs in the task graph, not random files. Write findings to: (1) task body, (2) parent epic "Findings from Spikes" section, (3) decomposed subtasks for actionable items.
+
+**Corollaries**:
+- NEVER create standalone markdown files for spike output
+- If task doesn't specify output location, output goes to task body
+- Actionable findings become subtasks with depends_on relationships
+- Parent epic inherits summary for sibling task context
+
+**Derivation**: Random output files are orphaned from the task graph. Task body is the canonical location for work products. Decomposition ensures findings become executable work.
