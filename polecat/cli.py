@@ -79,7 +79,7 @@ def finish(no_push, do_nuke):
     """Mark current task as ready for merge.
 
     Must be run from within a polecat worktree.
-    Pushes branch and sets task status to 'review'.
+    Pushes branch and sets task status to 'merge_ready'.
     """
     import subprocess
 
@@ -119,13 +119,12 @@ def finish(no_push, do_nuke):
             print(f"Error pushing to origin: {e}", file=sys.stderr)
             sys.exit(1)
 
-    # Update task status to review (clear assignee so merge can pick it up)
+    # Update task status to merge_ready
     try:
         from lib.task_model import TaskStatus
-        task.status = TaskStatus.REVIEW
-        task.assignee = None
+        task.status = TaskStatus.MERGE_READY
         manager.storage.save_task(task)
-        print(f"✅ Task marked as 'review' (ready for merge)")
+        print(f"✅ Task marked as 'merge_ready'")
     except ImportError:
         print("Warning: Could not update task status (lib.task_model not available)")
 
@@ -286,10 +285,9 @@ def colab(project, title, caller, gemini, no_finish):
         try:
             from lib.task_model import TaskStatus
             task = manager.storage.get_task(task.id)
-            task.status = TaskStatus.REVIEW
-            task.assignee = None
+            task.status = TaskStatus.MERGE_READY
             manager.storage.save_task(task)
-            print(f"✅ Task marked as 'review' (ready for merge)")
+            print(f"✅ Task marked as 'merge_ready'")
         except ImportError:
             print("Warning: Could not update task status")
 
@@ -427,14 +425,13 @@ def run(project, caller, task_id, no_finish, gemini, interactive):
             print("⚠️  Push failed - you may need to commit changes first")
             sys.exit(1)
 
-        # Mark as review (clear assignee so merge can pick it up)
+        # Mark as merge_ready
         try:
             from lib.task_model import TaskStatus
             task = manager.storage.get_task(task.id)  # Refresh
-            task.status = TaskStatus.REVIEW
-            task.assignee = None
+            task.status = TaskStatus.MERGE_READY
             manager.storage.save_task(task)
-            print(f"✅ Task marked as 'review' (ready for merge)")
+            print(f"✅ Task marked as 'merge_ready'")
         except ImportError:
             print("Warning: Could not update task status")
 

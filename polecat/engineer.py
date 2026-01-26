@@ -22,19 +22,16 @@ class Engineer:
         self.polecat_mgr = PolecatManager()
 
     def scan_and_merge(self):
-        """Scans for tasks in REVIEW status and attempts to merge them."""
-        # Only process tasks assigned to 'refinery' (the automated bot) or unassigned
-        # Tasks assigned to 'engineer' are waiting for human/LLM intervention
-        tasks = self.storage.list_tasks(status=TaskStatus.REVIEW)
-        
+        """Scans for tasks in MERGE_READY status and attempts to merge them."""
+        tasks = self.storage.list_tasks(status=TaskStatus.MERGE_READY)
+
         if not tasks:
-            print("No tasks in REVIEW status.")
+            print("No tasks in MERGE_READY status.")
             return
 
-        to_process = [t for t in tasks if t.assignee in (None, "refinery", "")]
-        print(f"Found {len(to_process)} tasks awaiting merge (skipping {len(tasks)-len(to_process)} assigned to engineer).")
+        print(f"Found {len(tasks)} tasks awaiting merge.")
 
-        for task in to_process:
+        for task in tasks:
             print(f"\nProcessing {task.id}: {task.title}")
             try:
                 self.process_merge(task)
@@ -117,19 +114,18 @@ class Engineer:
         print("  ✅ Merge Complete.")
 
     def handle_failure(self, task, error_msg):
-        """Kickback workflow: Assign to 'engineer' for manual review."""
-        print("  ↪ Kickback: Assigning to 'engineer' for review.")
-        
+        """Kickback workflow: Set status to review for human intervention."""
+        print("  ↪ Kickback: Setting status to REVIEW.")
+
         task.status = TaskStatus.REVIEW
-        task.assignee = "engineer"
-        
+
         # Append report
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
         report = f"\n\n## 🏭 Refinery Report ({timestamp})\n"
         report += f"**❌ Merge Failed**\n\n"
         report += f"```\n{error_msg}\n```\n"
-        report += "Assigned to `engineer` for manual intervention."
-        
+        report += "Status set to `review` for manual intervention."
+
         task.body += report
         self.storage.save_task(task)
 

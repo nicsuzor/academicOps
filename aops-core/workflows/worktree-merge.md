@@ -12,7 +12,7 @@ Merge completed work from polecat worktrees into the main branch.
 
 Use this workflow when:
 - A polecat worker has completed its task in a worktree
-- Task status is `review` or `done` and branch exists
+- Task status is `merge_ready` or `done` and branch exists
 - You need to integrate worktree changes into main
 
 ## Prerequisites
@@ -46,7 +46,7 @@ polecat merge
 # Or programmatically
 from polecat.engineer import Engineer
 eng = Engineer()
-eng.scan_and_merge()  # Scans REVIEW status tasks
+eng.scan_and_merge()  # Scans MERGE_READY status tasks
 ```
 
 ### 2. Pre-Merge Validation
@@ -124,7 +124,7 @@ mcp__plugin_aops-tools_task_manager__complete_task(id="{task-id}")
 
 The `Engineer.scan_and_merge()` method automates this workflow:
 
-1. Finds all tasks with `status: review`
+1. Finds all tasks with `status: merge_ready`
 2. For each task:
    - Locates the repo path via PolecatManager
    - Fetches from origin
@@ -146,6 +146,71 @@ Or programmatically:
 from polecat.engineer import Engineer
 Engineer().scan_and_merge()
 ```
+
+## Bulk Merge Operations
+
+When merging multiple polecat branches at once (e.g., "merge all polecats"), follow this systematic approach:
+
+### 1. Audit ALL Branches (Local AND Remote)
+
+Local branches may be synced but remote branches can have unmerged work:
+
+```bash
+# Check LOCAL polecat branches
+git branch --list 'polecat/*' | while read branch; do
+  echo "=== $branch ==="
+  git log main..$branch --oneline 2>/dev/null || echo "(no commits ahead)"
+done
+
+# Check REMOTE polecat branches (critical - often missed!)
+for branch in $(git branch -r | grep 'origin/polecat'); do
+  commits=$(git log main..$branch --oneline 2>/dev/null | wc -l)
+  if [ "$commits" -gt 0 ]; then
+    echo "$branch: $commits unmerged commits"
+    git log main..$branch --oneline
+  fi
+done
+```
+
+**Common pitfall**: Local branches may show "no commits ahead" because they were already merged locally, but corresponding remote branches may have additional commits pushed after the local merge.
+
+### 2. Handle Worktrees Before Branch Deletion
+
+Branches attached to worktrees cannot be deleted:
+
+```bash
+# List worktrees
+git worktree list
+
+# Remove worktrees first (for completed work only!)
+git worktree remove ~/polecats/{task-id}
+
+# Then delete the branch
+git branch -d polecat/{task-id}
+```
+
+### 3. Force Delete After Verification
+
+If `-d` refuses because remote isn't merged but HEAD is:
+
+```bash
+# Safe if you've verified the commits are in main
+git branch -D polecat/{task-id}
+```
+
+### 4. Query Task Status
+
+Check if any tasks are awaiting review:
+
+```bash
+# Via MCP tool
+mcp__plugin_aops-tools_task_manager__list_tasks(status="merge_ready")
+
+# Or search for polecat-related tasks
+mcp__plugin_aops-tools_task_manager__search_tasks(query="polecat")
+```
+
+**Note**: Task assignees use `nic` (human) or `bot` (agent), not "engineer".
 
 ## Edge Cases
 

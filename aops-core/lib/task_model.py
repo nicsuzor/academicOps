@@ -54,7 +54,8 @@ class TaskStatus(Enum):
     IN_PROGRESS = "in_progress"  # Currently being worked on (claimed)
     BLOCKED = "blocked"  # Waiting on dependencies
     WAITING = "waiting"  # Waiting on external input
-    REVIEW = "review"  # Awaiting human review before completion
+    MERGE_READY = "merge_ready"  # Work complete, ready for automated merge/integration
+    REVIEW = "review"  # Requires human review before proceeding
     DONE = "done"  # Completed
     CANCELLED = "cancelled"  # Abandoned
 
@@ -225,19 +226,10 @@ class Task:
 
         return fm
 
-    # Status aliases for backwards compatibility
+    # Status aliases for convenience (hyphenated forms)
     STATUS_ALIASES = {
-        "todo": "active",
-        "open": "active",
-        "inbox": "active",  # Legacy: inbox now maps to active
         "in-progress": "in_progress",
-        "in_review": "review",
-        "in-review": "review",
-        "complete": "done",
-        "completed": "done",
-        "ongoing": "active",
-        "planning": "active",
-        "closed": "done",
+        "merge-ready": "merge_ready",
     }
 
     @classmethod

@@ -257,7 +257,7 @@ def create_task(
             except ValueError:
                 return {
                     "success": False,
-                    "message": f"Invalid status: {status}. Must be one of: active, in_progress, blocked, waiting, review, done, cancelled",
+                    "message": f"Invalid status: {status}. Must be one of: active, in_progress, blocked, waiting, merge_ready, review, done, cancelled",
                 }
 
         # Parse due date
