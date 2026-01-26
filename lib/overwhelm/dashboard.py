@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import streamlit as st
+import streamlit.components.v1 as components
 from datetime import datetime, timezone
 from pathlib import Path
 import json
@@ -1752,7 +1753,50 @@ st.markdown(
         gap: 8px;
         align-items: flex-start;
     }
-    
+
+    /* v1.1 Progress Panel */
+    .v11-progress-panel {
+        background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+        border: 1px solid #312e81;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 24px;
+    }
+
+    .v11-progress-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .v11-progress-title {
+        font-size: 1.1em;
+        font-weight: 700;
+        color: #c4b5fd;
+    }
+
+    .v11-progress-pct {
+        font-size: 1.4em;
+        font-weight: 800;
+        color: #a78bfa;
+    }
+
+    .v11-progress-bar {
+        height: 10px;
+        background: #1e293b;
+        border-radius: 5px;
+        overflow: hidden;
+        margin-bottom: 16px;
+    }
+
+    .v11-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #6366f1, #a78bfa);
+        border-radius: 5px;
+        transition: width 0.3s ease;
+    }
+
     /* ==========================================================================
      * PROJECT & TASK LISTS
      * ========================================================================== */
@@ -1907,6 +1951,38 @@ st.markdown(
         margin-top: 8px;
         margin-bottom: 4px;
     }
+    .epic-progress {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+        font-size: 0.85em;
+    }
+    .epic-title {
+        flex: 1;
+        color: #cbd5e1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .epic-bar {
+        width: 60px;
+        height: 6px;
+        background: #1e293b;
+        border-radius: 3px;
+        overflow: hidden;
+    }
+    .epic-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #6366f1, #a78bfa);
+        border-radius: 3px;
+    }
+    .epic-count {
+        font-size: 0.8em;
+        color: #64748b;
+        font-family: monospace;
+        min-width: 30px;
+    }
     .agent-card {
         background: #0f172a;
         border-left: 2px solid #38bdf8;
@@ -2042,16 +2118,18 @@ def load_task_graph() -> dict | None:
     return load_graph_data("graph.json")
 
 
+# Default task graph SVG location
+TASK_GRAPH_SVG = Path(os.environ.get("ACA_DATA", str(Path.home() / "writing/data"))) / "outputs" / "task-map.svg"
+
+
 def find_latest_svg() -> Path | None:
-    """Find the most recent task-viz SVG file."""
-    outputs_dir = (
-        Path(os.environ.get("ACA_DATA", str(Path.home() / "writing/data"))) / "outputs"
-    )
+    """Find the task graph SVG file."""
+    if TASK_GRAPH_SVG.exists():
+        return TASK_GRAPH_SVG
 
+    # Fallback: search for any task-viz SVG
+    outputs_dir = TASK_GRAPH_SVG.parent
     svgs = list(outputs_dir.glob("task-viz*.svg"))
-    if not svgs:
-        svgs = list(outputs_dir.glob("*.svg"))
-
     if svgs:
         return max(svgs, key=lambda p: p.stat().st_mtime)
     return None
@@ -2442,105 +2520,219 @@ def render_force_graph(
     components.html(html, height=600)
 
 
-def render_graph_section():
-    """Render the task/knowledge graph with controls."""
-    # Controls row
-    col_view, col_layout = st.columns(2)
-    with col_view:
-        view_mode = st.radio("View", ["Tasks", "Knowledge Base"], horizontal=True)
-    with col_layout:
-        layout = st.radio(
-            "Layout",
-            ["td", "lr", "radial-out", "force"],
-            horizontal=True,
-            format_func=lambda x: {"td": "↓ Top-Down", "lr": "→ Left-Right", "radial-out": "◎ Radial", "force": "⚛ Force"}.get(x, x),
-        )
-
-    # Load graph data based on selection (need this first for type options)
-    filename = "graph.json"
-    if view_mode == "Knowledge Base":
-        filename = "knowledge-graph.json"
-
-    graph = load_graph_data(filename)
-    if not graph:
-        st.warning(f"No graph found ({filename}). Run `/task-viz` to generate.")
+def render_svg_graph():
+    """Render the latest SVG task graph."""
+    svg_path = find_latest_svg()
+    if not svg_path:
+        st.warning("No SVG graph found. Run `/task-viz` to generate one.")
         return
 
-    # Get available types from graph
-    all_types = sorted(set(n.get("node_type", "unknown") for n in graph.get("nodes", [])))
-
-    # Default type selection based on view mode
-    if view_mode == "Tasks":
-        task_types = ["goal", "project", "epic", "task", "action", "bug", "feature", "learn"]
-        default_types = [t for t in task_types if t in all_types]
+    # Show age
+    mtime = datetime.fromtimestamp(svg_path.stat().st_mtime)
+    age = datetime.now() - mtime
+    if age.total_seconds() < 3600:
+        age_str = f"{int(age.total_seconds() / 60)}m ago"
     else:
-        default_types = all_types
+        age_str = f"{int(age.total_seconds() / 3600)}h ago"
+    st.caption(f"Generated: {age_str} | {svg_path.name}")
 
-    # Visual controls in expander
-    with st.expander("⚙️ Visual Settings", expanded=False):
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            node_size = st.slider("Node Size", min_value=1, max_value=20, value=6, step=1)
-            link_width = st.slider("Link Width", min_value=0.5, max_value=5.0, value=1.0, step=0.5)
-        with col2:
-            text_size = st.slider("Text Size", min_value=6, max_value=24, value=12, step=1)
-            link_opacity = st.slider("Link Opacity", min_value=0.1, max_value=1.0, value=0.6, step=0.1)
-        with col3:
-            repulsion = st.slider("Repulsion", min_value=-500, max_value=-10, value=-100, step=10,
-                                  help="Node repulsion strength (more negative = stronger)")
-            show_labels = st.checkbox("Show Labels", value=True)
-            hide_orphans = st.checkbox("Hide Orphans", value=False,
-                                       help="Remove nodes with no connections")
+    # Embed SVG with pan/zoom via components.html (allows JS execution)
+    svg_content = svg_path.read_text()
+    zoom_html = f'''<!DOCTYPE html>
+<html><head><style>
+body {{ margin: 0; background: #0d0d1a; }}
+#viewport {{ width: 100%; height: 580px; overflow: hidden; cursor: grab; position: relative; }}
+#svg-container {{ transform-origin: 0 0; }}
+#svg-container svg {{ width: 100%; height: auto; }}
+.zoom-controls {{ position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; z-index: 10; }}
+.zoom-btn {{ background: #1e293b; border: 1px solid #334155; color: #94a3b8; width: 28px; height: 28px; border-radius: 4px; cursor: pointer; font-size: 16px; }}
+.zoom-btn:hover {{ background: #334155; color: #fff; }}
+</style></head><body>
+<div id="viewport">
+    <div class="zoom-controls">
+        <button class="zoom-btn" id="zi">+</button>
+        <button class="zoom-btn" id="zo">−</button>
+        <button class="zoom-btn" id="zr">⟲</button>
+    </div>
+    <div id="svg-container">{svg_content}</div>
+</div>
+<script>
+let scale=1, panX=0, panY=0, isDrag=false, startX, startY;
+const c=document.getElementById('svg-container'), v=document.getElementById('viewport');
+function upd(){{ c.style.transform=`translate(${{panX}}px,${{panY}}px) scale(${{scale}})`; }}
+document.getElementById('zi').onclick=()=>{{ scale=Math.min(scale*1.25,5); upd(); }};
+document.getElementById('zo').onclick=()=>{{ scale=Math.max(scale/1.25,0.2); upd(); }};
+document.getElementById('zr').onclick=()=>{{ scale=1; panX=0; panY=0; upd(); }};
+v.onwheel=(e)=>{{ e.preventDefault(); scale*=e.deltaY>0?0.9:1.1; scale=Math.min(Math.max(scale,0.2),5); upd(); }};
+v.onmousedown=(e)=>{{ isDrag=true; startX=e.clientX-panX; startY=e.clientY-panY; v.style.cursor='grabbing'; }};
+v.onmousemove=(e)=>{{ if(!isDrag)return; panX=e.clientX-startX; panY=e.clientY-startY; upd(); }};
+v.onmouseup=()=>{{ isDrag=false; v.style.cursor='grab'; }};
+v.onmouseleave=()=>{{ isDrag=false; v.style.cursor='grab'; }};
+</script></body></html>'''
+    components.html(zoom_html, height=600)
 
-    # Filter controls in separate expander
-    with st.expander("🔍 Filter", expanded=False):
-        selected_types = st.multiselect(
-            "Show Types",
-            options=all_types,
-            default=default_types,
-            help="Filter nodes by type"
+
+def render_v11_progress():
+    """Render v1.1 epic progress tracking section."""
+    V11_EPIC_ID = "aops-5056bc83"
+
+    tasks = load_tasks_from_index()
+    tasks_by_id = {t["id"]: t for t in tasks}
+
+    epic = tasks_by_id.get(V11_EPIC_ID)
+    if not epic:
+        return  # Skip silently if epic not found
+
+    # Get children and count by status
+    children_ids = epic.get("children", [])
+    children = [tasks_by_id.get(cid) for cid in children_ids if cid in tasks_by_id]
+
+    status_counts = {"done": 0, "active": 0, "blocked": 0}
+    for child in children:
+        if child:
+            status = child.get("status", "active")
+            if status in status_counts:
+                status_counts[status] += 1
+
+    total = len(children)
+    done_pct = (status_counts["done"] / total * 100) if total > 0 else 0
+
+    # Render HTML with synthesis-card pattern
+    html = f"""
+    <div class="v11-progress-panel">
+        <div class="v11-progress-header">
+            <div class="v11-progress-title">🚀 v1.1 Production Release</div>
+            <div class="v11-progress-pct">{done_pct:.0f}%</div>
+        </div>
+        <div class="v11-progress-bar">
+            <div class="v11-progress-fill" style="width: {done_pct}%;"></div>
+        </div>
+        <div class="synthesis-grid">
+            <div class="synthesis-card done">
+                <div class="synthesis-card-title">✅ Done</div>
+                <div class="synthesis-card-content" style="font-size: 1.5em; font-weight: 700;">{status_counts['done']}</div>
+            </div>
+            <div class="synthesis-card context">
+                <div class="synthesis-card-title">🔄 In Progress</div>
+                <div class="synthesis-card-content" style="font-size: 1.5em; font-weight: 700;">{status_counts['active']}</div>
+            </div>
+            <div class="synthesis-card waiting">
+                <div class="synthesis-card-title">🚫 Blocked</div>
+                <div class="synthesis-card-content" style="font-size: 1.5em; font-weight: 700;">{status_counts['blocked']}</div>
+            </div>
+        </div>
+    </div>
+    """
+    st.markdown(html, unsafe_allow_html=True)
+
+
+def render_graph_section():
+    """Render the task/knowledge graph with tabs."""
+    tab_svg, tab_interactive = st.tabs(["📊 SVG Graph", "⚛️ Interactive Graph"])
+
+    with tab_svg:
+        render_svg_graph()
+
+    with tab_interactive:
+        # Controls row
+        col_view, col_layout = st.columns(2)
+        with col_view:
+            view_mode = st.radio("View", ["Tasks", "Knowledge Base"], horizontal=True, key="fg_view")
+        with col_layout:
+            layout = st.radio(
+                "Layout",
+                ["td", "lr", "radial-out", "force"],
+                horizontal=True,
+                format_func=lambda x: {"td": "↓ Top-Down", "lr": "→ Left-Right", "radial-out": "◎ Radial", "force": "⚛ Force"}.get(x, x),
+                key="fg_layout",
+            )
+
+        # Load graph data based on selection (need this first for type options)
+        filename = "graph.json"
+        if view_mode == "Knowledge Base":
+            filename = "knowledge-graph.json"
+
+        graph = load_graph_data(filename)
+        if not graph:
+            st.warning(f"No graph found ({filename}). Run `/task-viz` to generate.")
+            return
+
+        # Get available types from graph
+        all_types = sorted(set(n.get("node_type", "unknown") for n in graph.get("nodes", [])))
+
+        # Default type selection based on view mode
+        if view_mode == "Tasks":
+            task_types = ["goal", "project", "epic", "task", "action", "bug", "feature", "learn"]
+            default_types = [t for t in task_types if t in all_types]
+        else:
+            default_types = all_types
+
+        # Visual controls in expander
+        with st.expander("⚙️ Visual Settings", expanded=False):
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                node_size = st.slider("Node Size", min_value=1, max_value=20, value=6, step=1, key="fg_node_size")
+                link_width = st.slider("Link Width", min_value=0.5, max_value=5.0, value=1.0, step=0.5, key="fg_link_width")
+            with col2:
+                text_size = st.slider("Text Size", min_value=6, max_value=24, value=12, step=1, key="fg_text_size")
+                link_opacity = st.slider("Link Opacity", min_value=0.1, max_value=1.0, value=0.6, step=0.1, key="fg_link_opacity")
+            with col3:
+                repulsion = st.slider("Repulsion", min_value=-500, max_value=-10, value=-100, step=10,
+                                      help="Node repulsion strength (more negative = stronger)", key="fg_repulsion")
+                show_labels = st.checkbox("Show Labels", value=True, key="fg_show_labels")
+                hide_orphans = st.checkbox("Hide Orphans", value=False,
+                                           help="Remove nodes with no connections", key="fg_hide_orphans")
+
+        # Filter controls in separate expander
+        with st.expander("🔍 Filter", expanded=False):
+            selected_types = st.multiselect(
+                "Show Types",
+                options=all_types,
+                default=default_types,
+                help="Filter nodes by type",
+                key="fg_selected_types",
+            )
+
+        # Apply type filter
+        if selected_types:
+            type_set = set(selected_types)
+            nodes = graph.get("nodes", [])
+            filtered_nodes = [n for n in nodes if n.get("node_type", "unknown") in type_set]
+            filtered_ids = {n["id"] for n in filtered_nodes}
+            filtered_edges = [e for e in graph.get("edges", [])
+                              if e["source"] in filtered_ids and e["target"] in filtered_ids]
+            graph = {"nodes": filtered_nodes, "edges": filtered_edges}
+
+        # Apply orphan filter
+        if hide_orphans:
+            edges = graph.get("edges", [])
+            connected_ids = set()
+            for e in edges:
+                connected_ids.add(e["source"])
+                connected_ids.add(e["target"])
+            nodes = graph.get("nodes", [])
+            graph = {
+                "nodes": [n for n in nodes if n["id"] in connected_ids],
+                "edges": edges
+            }
+
+        # Render graph with visual settings
+        render_force_graph(
+            graph, view_mode, layout,
+            node_size=node_size,
+            link_width=link_width,
+            show_labels=show_labels,
+            link_opacity=link_opacity,
+            text_size=text_size,
+            repulsion=repulsion,
         )
-
-    # Apply type filter
-    if selected_types:
-        type_set = set(selected_types)
-        nodes = graph.get("nodes", [])
-        filtered_nodes = [n for n in nodes if n.get("node_type", "unknown") in type_set]
-        filtered_ids = {n["id"] for n in filtered_nodes}
-        filtered_edges = [e for e in graph.get("edges", [])
-                          if e["source"] in filtered_ids and e["target"] in filtered_ids]
-        graph = {"nodes": filtered_nodes, "edges": filtered_edges}
-
-    # Apply orphan filter
-    if hide_orphans:
-        edges = graph.get("edges", [])
-        connected_ids = set()
-        for e in edges:
-            connected_ids.add(e["source"])
-            connected_ids.add(e["target"])
-        nodes = graph.get("nodes", [])
-        graph = {
-            "nodes": [n for n in nodes if n["id"] in connected_ids],
-            "edges": edges
-        }
-
-    # Render graph with visual settings
-    render_force_graph(
-        graph, view_mode, layout,
-        node_size=node_size,
-        link_width=link_width,
-        show_labels=show_labels,
-        link_opacity=link_opacity,
-        text_size=text_size,
-        repulsion=repulsion,
-    )
 
 
 # ============================================================================
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-# Graph section first
+# Graph section with tabs
 render_graph_section()
 
 # Then project-centric content
@@ -2811,7 +3003,26 @@ try:
         | set(accomplishments_by_project.keys())
         | set(sessions_by_project.keys())
     )
-    
+
+    # Filter to valid projects only (exclude hooks, unknown, tasks, inbox, hash-like names)
+    valid_project_ids = {t.get("id") for t in all_tasks if t.get("type") == "project"}
+    # Also include project field values from tasks
+    valid_project_ids |= {t.get("project") for t in all_tasks if t.get("project")}
+
+    def is_valid_project(name):
+        if not name:
+            return False
+        # Exclude known non-projects
+        if name.lower() in ("hooks", "unknown", "tasks", "inbox", "tmp"):
+            return False
+        # Exclude hash-like names (8+ hex chars)
+        if len(name) >= 8 and all(c in "0123456789abcdef-" for c in name.lower()):
+            return False
+        # Must be in valid project list or look like a real project name
+        return name in valid_project_ids or name.lower() in valid_project_ids
+
+    all_projects = {p for p in all_projects if is_valid_project(p)}
+
     # Project Card Renderer
     project_cards = []
     
@@ -2864,44 +3075,38 @@ try:
     
         # --- HTML Building ---
         card_parts = []
-    
+
         # 1. Header is handled by the container style, but let's add a title block
         card_parts.append(
             f"<div class='pkey-header' style='color:{color}; border-bottom: 2px solid {color}'>{esc(proj)}</div>"
         )
-    
-        # 2. Active Agents (The "Working Now" section)
-        if p_sessions:
-            card_parts.append("<div class='p-section-title'>⚡ WORKING NOW</div>")
-            # Limit to 3 most recent active agents
-            for s in p_sessions[:3]:
-                sid = s.get("session_short", "")
-                ago = s.get("time_ago", "")
-                prompt = s.get("last_prompt", "")
-                todowrite = s.get("todowrite")
-    
-                # Agent Chronology / Status
-                history_html = ""
-                if todowrite:
-                    curr = todowrite.get("current_task")
-                    if curr:
-                        history_html += f"<div class='agent-history-item current'>▶ {esc(curr)}</div>"
-                    for pending in todowrite.get("pending_tasks", [])[:2]:
-                        history_html += (
-                            f"<div class='agent-history-item'>• {esc(pending)}</div>"
-                        )
-                else:
-                    # Fallback to prompt if no structured plan
-                    history_html += f"<div class='agent-history-item context'>\"{esc(prompt)}\"</div>"
-    
+
+        # 1.5. Epic Progress - show progress bars for each active epic in this project
+        project_epics = [t for t in all_tasks if t.get("type") == "epic" and t.get("project") == proj and t.get("status") not in ("done", "closed")]
+        if project_epics:
+            card_parts.append("<div class='p-section-title'>📊 EPICS</div>")
+            tasks_by_id = {t["id"]: t for t in all_tasks}
+            for epic in project_epics[:3]:  # Limit to 3 epics
+                epic_title = epic.get("title", "").replace("Epic: ", "")
+                children_ids = epic.get("children", [])
+                done_count = sum(1 for cid in children_ids if tasks_by_id.get(cid, {}).get("status") == "done")
+                total_count = len(children_ids)
+                pct = (done_count / total_count * 100) if total_count > 0 else 0
                 card_parts.append(
-                    f"<div class='agent-card'><div class='agent-meta'>{esc(sid)} · {esc(ago)}</div>{history_html}</div>"
+                    f"<div class='epic-progress'><div class='epic-title'>{esc(epic_title)}</div>"
+                    f"<div class='epic-bar'><div class='epic-fill' style='width: {pct:.0f}%'></div></div>"
+                    f"<div class='epic-count'>{done_count}/{total_count}</div></div>"
                 )
-    
-            if len(p_sessions) > 3:
-                card_parts.append(
-                    f"<div class='more-row'>+ {len(p_sessions) - 3} more active sessions</div>"
-                )
+
+        # 2. Recently Closed Tasks
+        closed_tasks = [t for t in p_tasks if t.get("status") in ("done", "closed")]
+        if closed_tasks:
+            card_parts.append("<div class='p-section-title'>✅ RECENTLY CLOSED</div>")
+            for t in closed_tasks[:3]:
+                title = t.get("title", "")
+                card_parts.append(f"<div class='acc-row'>✓ {esc(title)}</div>")
+            if len(closed_tasks) > 3:
+                card_parts.append(f"<div class='more-row'>+ {len(closed_tasks) - 3} more closed</div>")
     
         # 3. Priority Tasks (Backlog)
         # We only show top 3-5 incomplete tasks to save space
