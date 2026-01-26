@@ -36,3 +36,39 @@ This noise trains agents to skim past system-reminders, causing important guidan
 | `continue`           | AND logic (any false = false)            |
 | `suppressOutput`     | OR logic (any true = true)               |
 | exit code            | MAX (worst wins: 2 > 1 > 0)              |
+
+## Plugin-Scoped Hooks
+
+**Critical**: Claude Code hooks are **plugin-scoped**. Hooks defined in a plugin only fire for tools and events from that same plugin.
+
+### Implications
+
+| Scenario | Hooks Fire? |
+|----------|-------------|
+| MCP tool in plugin A, hooks defined in plugin A | ✓ Yes |
+| MCP tool in plugin A, hooks defined in plugin B | ✗ No |
+| Built-in tool (Bash, Read, etc.), hooks in any plugin | ✓ Yes |
+
+### Example: Task Manager
+
+The `task_manager` MCP server must be defined in **aops-core** (where hooks are defined), not aops-tools. Otherwise, PreToolUse/PostToolUse hooks won't fire for task operations.
+
+```
+# Correct: task_manager in aops-core/.mcp.json
+aops-core/
+├── .mcp.json          # defines task_manager
+├── hooks/hooks.json   # defines PreToolUse, PostToolUse
+└── hooks/task_binding.py  # fires for task_manager calls ✓
+
+# Wrong: task_manager in aops-tools/.mcp.json
+aops-tools/
+├── .mcp.json          # defines task_manager
+└── (no hooks)         # task_binding.py never fires ✗
+```
+
+### Debugging Hook Scope Issues
+
+If hooks aren't firing for an MCP tool:
+1. Check which plugin defines the MCP server (`.mcp.json`)
+2. Check which plugin defines the hooks (`hooks/hooks.json`)
+3. Ensure they're the **same plugin**

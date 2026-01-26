@@ -127,15 +127,53 @@ Example: Instead of creating 5 separate "bug fix" tasks at trunk level, group th
 
 ### Project Assignment
 
-**Project is REQUIRED** - Always set a project value:
-- Work clearly belongs to a specific domain (use that project slug)
-- No obvious domain match? Default to `ns` (namespace for general infrastructure/framework work)
-- Multiple related tasks exist or will exist (project groups them)
-- Project provides useful organizational context
+**Project is REQUIRED** - Always set a project value.
 
-**Standard projects**: `aops`, `tja`, `osb`, `buttermilk`, `ns`, etc.
+#### Assignment with Confidence
 
-**Default**: Use `ns` if no specific project fits
+When assigning projects, assess your confidence level:
+
+| Confidence | Signals | Action |
+|------------|---------|--------|
+| **High** | Task clearly mentions project, matches existing epic, domain obvious | Assign directly |
+| **Medium** | Could fit multiple projects, context suggests one | Present suggestion with reasoning, confirm |
+| **Low** | Ambiguous, cross-cutting, or unfamiliar domain | Ask user before assigning |
+
+#### Confirmation Pattern (Medium/Low Confidence)
+
+When uncertain, present suggestions rather than guessing:
+
+```
+| Task | Current | Suggested | Reasoning |
+|------|---------|-----------|-----------|
+| [task-id] title | project=X | → project=Y | [why Y is better fit] |
+```
+
+Then use `AskUserQuestion` with specific options:
+- "Move to project Y" (your suggestion)
+- "Keep in project X"
+- Let user specify via "Other"
+
+**Example from recategorization session:**
+- Task "omcp repo size" was under `aops` project
+- Content clearly about omcp repository, not aops framework
+- Presented suggestion: "Move to project=omcp?" with reasoning
+- User confirmed → applied change
+
+#### Standard Projects
+
+| Project | Domain |
+|---------|--------|
+| `aops` | Framework infrastructure, hooks, workflows |
+| `buttermilk` | Data pipelines, processing infrastructure |
+| `tja` | TJA research project |
+| `osb` | Oversight Board research |
+| `omcp` | Outlook MCP server |
+| `personal` | Personal infrastructure, GCP, home automation |
+| `academic` | Teaching, research admin |
+| `ns` | General/uncategorized (default fallback) |
+
+**Default**: Use `ns` only if no specific project fits AND user confirmation isn't practical
 
 ## Part 3: Agent Type Routing
 

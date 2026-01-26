@@ -242,12 +242,16 @@ def colab(project, title, caller, gemini, no_finish):
     if gemini:
         cmd = ["gemini", "-i", prompt]
     else:
+        aops_dir = os.environ.get("AOPS")
+        if not aops_dir:
+            print("Error: $AOPS environment variable not set", file=sys.stderr)
+            sys.exit(1)
         cmd = [
             "claude",
             "--permission-mode", "plan",
             "--setting-sources=user",
-            "--plugin-dir", str(worktree_path / "aops-core"),
-            "--plugin-dir", str(worktree_path / "aops-tools"),
+            "--plugin-dir", str(Path(aops_dir) / "aops-core"),
+            "--plugin-dir", str(Path(aops_dir) / "aops-tools"),
             prompt,
         ]
 
@@ -371,14 +375,18 @@ def run(project, caller, task_id, no_finish, gemini, interactive):
             cmd.extend(["--approval-mode", "yolo", "-p", prompt])
     else:
         # Claude CLI
+        aops_dir = os.environ.get("AOPS")
+        if not aops_dir:
+            print("Error: $AOPS environment variable not set", file=sys.stderr)
+            sys.exit(1)
         cmd = ["claude"]
         if not interactive:
             cmd.append("--dangerously-skip-permissions")
         cmd.extend([
             "--permission-mode", "plan",
             "--setting-sources=user",
-            "--plugin-dir", str(worktree_path / "aops-core"),
-            "--plugin-dir", str(worktree_path / "aops-tools"),
+            "--plugin-dir", str(Path(aops_dir) / "aops-core"),
+            "--plugin-dir", str(Path(aops_dir) / "aops-tools"),
         ])
         if interactive:
             # Interactive: just append the prompt as positional arg

@@ -6,28 +6,70 @@ bases: []
 
 # Dogfooding
 
-Framework self-improvement during any task.
+Framework self-improvement through deliberate learning cycles.
 
 ## When to Apply
 
-- Working under uncertainty. If we don't know how to do it, but we want to try, we have to learn from the experiment.
+- Working under uncertainty (new process, unclear workflow)
+- Testing framework capabilities on real work
+- Any task where the process itself is worth examining
 
-## Decision Tree
+## The Dogfooding Loop
+
+Dogfooding is not just passive observation—it's an active improvement cycle:
+
+```
+EXECUTE → OBSERVE → CODIFY
+   ↑                    │
+   └────────────────────┘
+```
+
+### 1. Execute (Do the Work)
+
+Complete the task while staying aware of friction points:
+- What steps feel awkward or unclear?
+- Where did you need to ask for clarification?
+- What context was missing?
+
+### 2. Observe (Capture Learnings)
 
 | Observation | Action |
 |-------------|--------|
 | One-time friction | `/log [observation]` → continue |
 | Recurring pattern (3+) | Check HEURISTICS.md → `/learn` if missing |
-| Blocking current task | Fix minimally, `/learn` for tracked change |
-| Session end | Framework Reflection |
+| Blocking current task | Fix minimally, note for codification |
+| Better pattern discovered | Document what worked |
+
+### 3. Codify (Improve the Framework)
+
+**This is the critical step most often skipped.**
+
+After completing work, ask: "What did I learn that should become part of the framework?"
+
+| Learning Type | Codification Target |
+|---------------|---------------------|
+| Better workflow steps | Update workflow .md file |
+| Missing guardrail | Add to constraint-check or hooks |
+| Useful question pattern | Add to AskUserQuestion templates |
+| New heuristic | Add to HEURISTICS.md via `/learn` |
+
+**Example from task recategorization session:**
+- Executed: Interactive task recategorization with user
+- Observed: Presenting suggestions with confidence + getting confirmation works better than guessing
+- Codified: Updated classify-task.md with confirmation pattern
 
 ## Notice List
 
-1. Routing friction - unclear workflow?
-2. Missing context - what didn't surface?
-3. Instruction gaps - what guidance absent?
-4. Guardrail failures - what would prevent mistake?
+Watch for these during any task:
 
-## Key Rule
+1. **Routing friction** - unclear which workflow applies?
+2. **Missing context** - what information didn't surface?
+3. **Instruction gaps** - what guidance was absent?
+4. **Guardrail failures** - what would have prevented a mistake?
+5. **User friction** - where did the user need to correct or clarify?
 
-**Don't stop to fix everything.** Log with `/log`, continue working.
+## Key Rules
+
+1. **Don't stop to fix everything.** Log with `/log`, continue working.
+2. **Do codify at session end.** Before handover, ask: what learned → what changed?
+3. **Small improvements compound.** One workflow tweak per session adds up.
