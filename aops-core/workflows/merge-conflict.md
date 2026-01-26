@@ -11,13 +11,13 @@ Resolve merge conflicts and test failures kicked back from the Refinery.
 ## When to Use
 
 Use this workflow when:
-- Task is in `review` status AND assigned to `engineer`
+- Task is in `review` status (merge failed, needs human intervention)
 - Task body contains a `🏭 Refinery Report` with failure details
 - Automated merge failed due to conflicts or test failures
 
 ## Prerequisites
 
-- Task claimed: `status: review`, `assignee: engineer`
+- Task status: `review`
 - Refinery Report present in task body (contains error details)
 - Polecat branch exists: `polecat/{task-id}`
 
@@ -94,7 +94,7 @@ Update the task to trigger re-merge:
 ```
 mcp__plugin_aops-tools_task_manager__update_task(
   id="{task-id}",
-  assignee="",  # Clear assignee so Refinery picks it up
+  status="merge_ready",
   body="## Resolution ({date})\n\nConflicts resolved. Ready for re-merge."
 )
 ```
@@ -128,7 +128,7 @@ mcp__plugin_aops-tools_task_manager__complete_task(id="{task-id}")
 ## Decision Tree
 
 ```
-Task assigned to 'engineer'?
+Task status is 'review'?
 ├── No → Not this workflow (use [[worktree-merge]] or run Refinery)
 └── Yes → Read Refinery Report
     ├── "Merge conflicts" → Resolve conflicts (Step 3a)
@@ -143,7 +143,7 @@ Task assigned to 'engineer'?
 - Never force-push to shared branches
 - Always verify tests pass before handing back
 - Append resolution notes to task body (audit trail)
-- Clear `assignee` field to trigger Refinery retry
+- Set status to `merge_ready` to trigger Refinery retry
 
 ## Related
 
