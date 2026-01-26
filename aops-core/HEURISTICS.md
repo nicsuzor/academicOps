@@ -288,6 +288,12 @@ description: Working hypotheses validated by evidence.
 - Data aggregation → pandas/SQL (not LLM)
 - Pattern matching on logs → Python (not LLM)
 
+**Corollaries (MCP Tool Design)**:
+- Server returns **raw data** (counts, metrics, lists); agent does **all classification/selection**
+- NO word-matching, fuzzy search, or NLP in MCP servers - agent uses LLM for similarity
+- Thresholds as **parameters** (agent decides), not hardcoded constants
+- If a tool name contains "candidates", "similar", or "suggest" → wrong boundary, redesign
+
 **Derivation**: LLMs hallucinate numbers and fail at counting. Deterministic operations have exact solutions that code computes reliably. Session logs and hook logs already exist - process them with Python, not inference.
 
 ---
