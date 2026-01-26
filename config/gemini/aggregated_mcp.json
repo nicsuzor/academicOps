@@ -51,12 +51,12 @@
       "args": [
         "run",
         "--directory",
-        "/home/nic/src/academicOps/aops-tools/../aops-core",
+        "/home/nic/src/academicOps/aops-core",
         "python",
         "mcp_servers/tasks_server.py"
       ],
       "env": {
-        "AOPS": "/home/nic/src/academicOps/aops-tools/..",
+        "AOPS": "/home/nic/src/academicOps",
         "ACA_DATA": "/home/nic/writing/data"
       }
     }

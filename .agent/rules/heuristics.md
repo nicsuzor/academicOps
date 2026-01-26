@@ -1,0 +1,1 @@
+/home/nic/src/academicOps-gemini/HEURISTICS.md

@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
 #
-# Setup script for aOps framework (Claude Code + Gemini CLI)
+# Setup script for aOps framework on Gemini CLI
 #
-# This script:
-# 1. Creates symlinks in ~/.claude/ pointing to framework
-# 2. Configures MCP servers for Claude Code and Claude Desktop
-# 3. Sets up Gemini CLI (if installed) with hooks and commands
-# 4. Validates the setup
+# This script configures the Gemini CLI to work with the aOps framework.
+# It converts the framework's MCP configuration and installs necessary hooks.
 #
 # Prerequisites:
 #   - AOPS and ACA_DATA environment variables set
 #   - jq installed
+#   - gemini CLI installed
 #
 # Usage:
 #   ./setup.sh
@@ -23,9 +21,9 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo "aOps Framework Setup"
-echo "==================="
-echo
+echo "aOps Framework Setup (Gemini CLI)"
+echo "================================="
+echo 
 
 # Determine paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -40,7 +38,6 @@ if [ -z "${ACA_DATA:-}" ]; then
 fi
 
 ACA_DATA_PATH="${ACA_DATA}"
-CLAUDE_DIR="$HOME/.claude"
 
 # Check for emergency disable flag
 if [[ "${1:-}" == "--disable" ]]; then
@@ -55,12 +52,14 @@ if [[ "${1:-}" == "--disable" ]]; then
         crontab -l 2>/dev/null > "$TEMP_CRON" || true
         # Filter out aOps jobs
         grep -v "# aOps task index" "$TEMP_CRON" | grep -v "scripts/regenerate_task_index.py" | \
-        grep -v "# aOps session insights" | grep -v "scripts/cron_session_insights.sh" > "$TEMP_CRON.new"
+        grep -v "# aOps session insights" | grep -v "scripts/cron_session_insights.sh" | \
+        grep -v "# aOps transcripts" | grep -v "scripts/transcript.py" > "$TEMP_CRON.new"
         crontab "$TEMP_CRON.new"
         rm "$TEMP_CRON" "$TEMP_CRON.new"
         echo -e "${GREEN}✓ Cron jobs removed${NC}"
     fi
 
+<<<<<<< HEAD
     # Uninstall Claude plugins
     echo "Uninstalling Claude plugins..."
     if command -v claude &> /dev/null; then
@@ -74,6 +73,8 @@ if [[ "${1:-}" == "--disable" ]]; then
     echo -e "${GREEN}✓ Claude plugins uninstalled${NC}"
     echo -e "${YELLOW}Note: ~/.claude/settings.json not removed (user-managed file)${NC}"
 
+=======
+>>>>>>> academicOps-gemini
     # Remove Gemini config
     echo "Removing Gemini configuration..."
     GEMINI_DIR="$HOME/.gemini"
@@ -91,33 +92,13 @@ if [[ "${1:-}" == "--disable" ]]; then
 
     echo
     echo -e "${GREEN}aOps framework disabled.${NC}"
-    echo "Note: ~/.claude.json and ~/.claude/claude_desktop_config.json were not modified."
-    echo "      You may want to manually review them."
     exit 0
 fi
-
-# Detect container runtime (docker, podman, orbstack all provide 'docker' CLI)
-detect_container_runtime() {
-    if command -v docker &> /dev/null && docker info &> /dev/null; then
-        echo "docker"
-    elif command -v podman &> /dev/null; then
-        echo "podman"
-    else
-        echo ""
-    fi
-}
-
-CONTAINER_RUNTIME=$(detect_container_runtime)
 
 echo "Framework paths:"
 echo "  AOPS:     $AOPS_PATH"
 echo "  ACA_DATA: $ACA_DATA_PATH"
-if [ -n "$CONTAINER_RUNTIME" ]; then
-    echo -e "  Container: ${GREEN}$CONTAINER_RUNTIME${NC}"
-else
-    echo -e "  Container: ${YELLOW}none detected${NC}"
-fi
-echo
+echo 
 
 # Step 1: Verify environment variables
 echo "Step 1: Checking environment variables"
@@ -125,19 +106,20 @@ echo "--------------------------------------"
 
 if [ -z "${AOPS:-}" ] || [ -z "${ACA_DATA:-}" ]; then
     echo -e "${RED}✗ Required environment variables not set${NC}"
-    echo
+    echo 
     echo "Add to your shell RC file (~/.zshrc or ~/.bashrc):"
     echo "  export AOPS=\"$AOPS_PATH\""
     echo "  export ACA_DATA=\"/path/to/your/data\""
-    echo
+    echo 
     echo "Then: source ~/.zshrc && ./setup.sh"
     exit 1
 fi
 
 echo -e "${GREEN}✓ AOPS=$AOPS${NC}"
 echo -e "${GREEN}✓ ACA_DATA=$ACA_DATA${NC}"
-echo
+echo 
 
+<<<<<<< HEAD
 # Step 2: Create symlinks in ~/.claude/
 echo "Step 2: Creating symlinks"
 echo "-------------------------"
@@ -270,6 +252,11 @@ fi
 # We no longer write to ~/.claude.json to avoid conflicts.
 echo
 echo "Building MCP configuration..."
+=======
+# Step 2: Build MCP Configuration
+echo "Step 2: Building MCP Configuration"
+echo "----------------------------------"
+>>>>>>> academicOps-gemini
 
 # Check for MCP tokens (required for gh and memory servers)
 if [ -z "${GH_MCP_TOKEN:-}" ]; then
@@ -281,31 +268,6 @@ if [ -z "${MCP_MEMORY_API_KEY:-}" ]; then
     echo "  Set in shell RC: export MCP_MEMORY_API_KEY='your-memory-token'"
 fi
 
-# Step 2c: Configure Claude Desktop
-echo
-echo "Configuring Claude Desktop..."
-
-# For Claude Desktop, we still need to generate a config file because it doesn't support plugins yet.
-# We will aggregate all plugin MCPs into claude_desktop_config.json.
-
-# Detect Claude Desktop config location (cross-platform)
-case "$(uname -s)" in
-    Darwin)
-        CLAUDE_DESKTOP_DIR="$HOME/Library/Application Support/Claude"
-        ;;
-    Linux)
-        CLAUDE_DESKTOP_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/Claude"
-        ;;
-    MINGW*|MSYS*|CYGWIN*)
-        CLAUDE_DESKTOP_DIR="$APPDATA/Claude"
-        ;;
-    *)
-        CLAUDE_DESKTOP_DIR=""
-        ;;
-esac
-
-# Step 2d: Generate plugin-specific MCP configs from templates
-echo
 echo "Generating plugin-specific MCP configs..."
 
 # List of plugins with MCP templates
@@ -315,20 +277,42 @@ for plugin_name in aops-core aops-tools; do
     output_file="$plugin_dir/.mcp.json"
 
     if [ -f "$template_file" ]; then
-        # Substitute environment variables in template
-        # Note: We use absolute paths for placeholders like CLAUDE_PLUGIN_ROOT
-        sed -e "s|\${CONTEXT7_API_KEY}|${CONTEXT7_API_KEY:-}|g" \
-            -e "s|\${MCP_MEMORY_API_KEY}|${MCP_MEMORY_API_KEY:-}|g" \
-            -e "s|\${GH_MCP_TOKEN}|${GH_MCP_TOKEN:-}|g" \
-            -e "s|\${CLAUDE_PLUGIN_ROOT}|$plugin_dir|g" \
-            "$template_file" > "$output_file"
+        # Use python for safe substitution (handles special chars in env vars better than sed)
+        python3 - << 'EOF' "$template_file" "$output_file" "$plugin_dir"
+import os
+import sys
+
+template_path = sys.argv[1]
+output_path = sys.argv[2]
+plugin_dir = sys.argv[3]
+
+try:
+    with open(template_path, "r") as f:
+        content = f.read()
+
+    # Manual substitution to match specific placeholders
+    replacements = {
+        "${CONTEXT7_API_KEY}": os.environ.get("CONTEXT7_API_KEY", ""),
+        "${MCP_MEMORY_API_KEY}": os.environ.get("MCP_MEMORY_API_KEY", ""),
+        "${GH_MCP_TOKEN}": os.environ.get("GH_MCP_TOKEN", ""),
+        "${CLAUDE_PLUGIN_ROOT}": plugin_dir,
+    }
+
+    for key, value in replacements.items():
+        content = content.replace(key, value)
+
+    with open(output_path, "w") as f:
+        f.write(content)
+except Exception as e:
+    print(f"Error processing template: {e}", file=sys.stderr)
+    sys.exit(1)
+EOF
         echo -e "${GREEN}✓ Generated $plugin_name/.mcp.json from template${NC}"
     else
         echo -e "${YELLOW}⚠ No template found: $template_file${NC}"
     fi
 done
 
-# Now that we have plugin .mcp.json files, we can aggregate them for Claude Desktop and Gemini
 echo "Aggregating plugin MCPs..."
 AGGREGATED_MCP="$AOPS_PATH/config/gemini/aggregated_mcp.json"
 mkdir -p "$AOPS_PATH/config/gemini"
@@ -346,58 +330,16 @@ if command -v jq &> /dev/null; then
     done
     
     echo -e "${GREEN}✓ Aggregated plugin MCPs to $AGGREGATED_MCP${NC}"
-    
-    # Configure Claude Desktop with aggregated MCPs
-    if [ -n "$CLAUDE_DESKTOP_DIR" ] && [ -d "$CLAUDE_DESKTOP_DIR" ]; then
-        CLAUDE_DESKTOP_CONFIG="$CLAUDE_DESKTOP_DIR/claude_desktop_config.json"
-        
-        # Remove existing config
-        [ -e "$CLAUDE_DESKTOP_CONFIG" ] && rm -f "$CLAUDE_DESKTOP_CONFIG"
-
-        # Find uvx path
-        UVX_PATH=$(command -v uvx 2>/dev/null || echo "uvx")
-        GUI_PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
-
-        # Filter and configure for Desktop
-        if [ -n "$CONTAINER_RUNTIME" ]; then
-            jq --arg uvx "$UVX_PATH" --arg path "$GUI_PATH" --arg runtime "$CONTAINER_RUNTIME" \
-               --arg home "$HOME" --arg aops "$AOPS" --arg aca_data "$ACA_DATA" '
-                .mcpServers | to_entries
-                | map(select(.value.type != "http"))
-                | map(
-                    if .value.command == "uvx" then
-                        .value.command = $uvx |
-                        .value.env = (.value.env // {}) + {"PATH": $path}
-                    elif .value.command == "podman" or .value.command == "docker" then
-                        .value.command = $runtime
-                    else . end
-                ) | from_entries | {mcpServers: .}
-            ' "$AGGREGATED_MCP" > "$CLAUDE_DESKTOP_CONFIG"
-        else
-             jq --arg uvx "$UVX_PATH" --arg path "$GUI_PATH" \
-               --arg home "$HOME" --arg aops "$AOPS" --arg aca_data "$ACA_DATA" '
-                .mcpServers | to_entries
-                | map(select(.value.type != "http"))
-                | map(select(.value.command != "podman" and .value.command != "docker"))
-                | map(
-                    if .value.command == "uvx" then
-                        .value.command = $uvx |
-                        .value.env = (.value.env // {}) + {"PATH": $path}
-                    else . end
-                ) | from_entries | {mcpServers: .}
-            ' "$AGGREGATED_MCP" > "$CLAUDE_DESKTOP_CONFIG"
-        fi
-        echo -e "${GREEN}✓ Created $CLAUDE_DESKTOP_CONFIG from aggregated plugin MCPs${NC}"
-    elif [ -n "$CLAUDE_DESKTOP_DIR" ]; then
-         echo -e "${YELLOW}⚠ Claude Desktop directory not found - skipping config${NC}"
-    fi
 else
     echo -e "${RED}✗ jq not installed - cannot aggregate MCPs${NC}"
+    exit 1
 fi
 
-# Step 2e: Configure memory server default project
-echo
-echo "Configuring memory server..."
+echo 
+
+# Step 3: Configure memory server default project
+echo "Step 3: Configuring memory server"
+echo "---------------------------------"
 
 MEMORY_CONFIG="$HOME/.memory/config.json"
 
@@ -443,10 +385,10 @@ else
     echo -e "${YELLOW}⚠ uvx not found, skipping memory server configuration${NC}"
 fi
 
-echo
+echo 
 
-# Step 3: Gemini CLI setup
-echo "Step 3: Gemini CLI setup"
+# Step 4: Gemini CLI setup
+echo "Step 4: Gemini CLI setup"
 echo "------------------------"
 
 GEMINI_DIR="$HOME/.gemini"
@@ -488,45 +430,32 @@ else
 
     # Only create symlinks for directories that exist
     [ -d "$AOPS_PATH/config/gemini/hooks" ] && gemini_create_symlink "hooks" "$AOPS_PATH/config/gemini/hooks"
-    [ -d "$AOPS_PATH/config/gemini/commands" ] && gemini_create_symlink "commands" "$AOPS_PATH/config/gemini/commands"
-
+    
     # GEMINI.md generation (injects actual paths)
     if [ -L "$GEMINI_DIR/GEMINI.md" ] || [ -f "$GEMINI_DIR/GEMINI.md" ]; then
         rm "$GEMINI_DIR/GEMINI.md"
     fi
 
     # Read source and inject paths
-    #<!-- @NS: remove this hardcoded path from this and source files -->
     sed -e "s|~/src/academicOps|$AOPS_PATH|g" \
         -e "s|~/writing/data|$ACA_DATA_PATH|g" \
         "$AOPS_PATH/config/gemini/GEMINI.md" > "$GEMINI_DIR/GEMINI.md"
 
     echo -e "${GREEN}  Generated ~/.gemini/GEMINI.md with paths injected${NC}"
 
-    # Also update the Antigravity global workflow link to point to this generated file
-    # so Antigravity agents also see the correct paths
+    # Update Antigravity global workflow link
+    mkdir -p "$GLOBAL_WORKFLOWS_DIR"
     GLOBAL_GEMINI_MD="$GLOBAL_WORKFLOWS_DIR/GEMINI.md"
     if [ -L "$GLOBAL_GEMINI_MD" ]; then
         rm "$GLOBAL_GEMINI_MD"
         ln -s "$GEMINI_DIR/GEMINI.md" "$GLOBAL_GEMINI_MD"
-        echo -e "${GREEN}  Updated Antigravity GEMINI.md link to use generated file${NC}"
+        echo -e "${GREEN}  Updated Antigravity GEMINI.md link${NC}"
     elif [ ! -e "$GLOBAL_GEMINI_MD" ]; then
          ln -s "$GEMINI_DIR/GEMINI.md" "$GLOBAL_GEMINI_MD"
-         echo -e "${GREEN}  Linked Antigravity GEMINI.md to generated file${NC}"
-    fi
-
-    # Convert commands to TOML
-    echo
-    echo "Converting commands to TOML..."
-    if python3 "$AOPS_PATH/scripts/convert_commands_to_toml.py" 2>/dev/null; then
-        TOML_COUNT=$(ls -1 "$AOPS_PATH/config/gemini/commands/"*.toml 2>/dev/null | wc -l)
-        echo -e "${GREEN}✓ Converted $TOML_COUNT commands to TOML${NC}"
-    else
-        echo -e "${YELLOW}⚠ Command conversion failed - Gemini commands may not work${NC}"
+         echo -e "${GREEN}  Linked Antigravity GEMINI.md${NC}"
     fi
 
     # Convert MCP servers from Claude format to Gemini format
-    # We use the aggregated plugin MCPs generated in Step 2
     echo
     echo "Converting MCP servers for Gemini..."
     MCP_SOURCE="$AOPS_PATH/config/gemini/aggregated_mcp.json"
@@ -535,8 +464,10 @@ else
 
     if [ -f "$MCP_SOURCE" ]; then
         if AOPS="$AOPS_PATH" python3 "$AOPS_PATH/scripts/convert_mcp_to_gemini.py" "$MCP_SOURCE" "$MCP_CONVERTED" 2>&1; then
+            # Post-process to filter: Only keep task_manager
+            jq '{mcpServers: {task_manager: .mcpServers.task_manager}}' "$MCP_CONVERTED" > "$MCP_CONVERTED.tmp" && mv "$MCP_CONVERTED.tmp" "$MCP_CONVERTED"
             MCP_COUNT=$(jq '.mcpServers | keys | length' "$MCP_CONVERTED" 2>/dev/null || echo "0")
-            echo -e "${GREEN}✓ Converted $MCP_COUNT MCP servers to Gemini format${NC}"
+            echo -e "${GREEN}✓ Converted $MCP_COUNT MCP servers to Gemini format (task_manager only)${NC}"
         else
             echo -e "${YELLOW}⚠ MCP conversion failed - check script output above${NC}"
         fi
@@ -548,7 +479,7 @@ else
     echo
     echo "Merging Gemini settings..."
     GEMINI_SETTINGS="$GEMINI_DIR/settings.json"
-    # Prefer .template if it exists
+    
     if [ -f "$AOPS_PATH/config/gemini/config/settings.json.template" ]; then
         MERGE_FILE="$AOPS_PATH/config/gemini/config/settings.json.template"
     else
@@ -558,7 +489,6 @@ else
     if [ ! -f "$GEMINI_SETTINGS" ]; then
         echo "{}" > "$GEMINI_SETTINGS"
     else
-        # Validate existing settings.json
         if ! jq . "$GEMINI_SETTINGS" > /dev/null 2>&1; then
             echo -e "${YELLOW}⚠ Existing Gemini settings.json is invalid - backing up and resetting${NC}"
             mv "$GEMINI_SETTINGS" "$GEMINI_SETTINGS.bak.$(date +%s)"
@@ -567,29 +497,48 @@ else
     fi
 
     if [ -f "$MERGE_FILE" ]; then
-        # Substitute both ${AOPS} and $AOPS for backward compatibility
-        MERGE_CONTENT=$(cat "$MERGE_FILE" | sed -e "s|\${AOPS}|$AOPS_PATH|g" -e "s|\\\$AOPS|$AOPS_PATH|g")
+        # Substitute both ${AOPS} and $AOPS for backward compatibility using python
+        MERGE_CONTENT=$(python3 - << 'EOF' "$MERGE_FILE" "$AOPS_PATH"
+import sys
+import os
 
-        # Also merge converted MCP servers if available
+filepath = sys.argv[1]
+aops_path = sys.argv[2]
+
+try:
+    with open(filepath, "r") as f:
+        content = f.read()
+    
+    # Replace ${AOPS} and $AOPS
+    content = content.replace("${AOPS}", aops_path).replace("$AOPS", aops_path)
+    print(content)
+except Exception as e:
+    sys.exit(1)
+EOF
+)
+
+        # Merge new config with existing settings
+        # We overwrite hooks/hooksConfig with new values to ensure clean state
+        # We merge mcpServers to preserve any user-added servers
         if [ -f "$MCP_CONVERTED" ]; then
             MCP_CONTENT=$(cat "$MCP_CONVERTED")
-            MERGED=$(jq -s '
+            MERGED=$(jq -s ' 
                 .[0] as $existing |
                 .[1] as $new |
                 .[2] as $mcp |
                 $existing * {
-                    hooksConfig: (($existing.hooksConfig // {}) * ($new.hooksConfig // {})),
-                    hooks: (($existing.hooks // {}) * ($new.hooks // {})),
+                    hooksConfig: ($new.hooksConfig // {}),
+                    hooks: ($new.hooks // {}),
                     mcpServers: (($existing.mcpServers // {}) * ($new.mcpServers // {}) * ($mcp.mcpServers // {}))
                 } | del(.["$comment"])
             ' "$GEMINI_SETTINGS" <(echo "$MERGE_CONTENT") <(echo "$MCP_CONTENT"))
         else
-            MERGED=$(jq -s '
+            MERGED=$(jq -s ' 
                 .[0] as $existing |
                 .[1] as $new |
                 $existing * {
-                    hooksConfig: (($existing.hooksConfig // {}) * ($new.hooksConfig // {})),
-                    hooks: (($existing.hooks // {}) * ($new.hooks // {})),
+                    hooksConfig: ($new.hooksConfig // {}),
+                    hooks: ($new.hooks // {}),
                     mcpServers: (($existing.mcpServers // {}) * ($new.mcpServers // {}))
                 } | del(.["$comment"])
             ' "$GEMINI_SETTINGS" <(echo "$MERGE_CONTENT"))
@@ -602,20 +551,17 @@ else
     chmod +x "$AOPS_PATH/config/gemini/hooks/router.py" 2>/dev/null || true
 fi
 
-echo
+echo 
 
-# Step 3a: Antigravity setup
-echo "Step 3a: Antigravity setup"
+# Step 5: Antigravity setup
+echo "Step 5: Antigravity setup"
 echo "------------------------"
 
 ANTIGRAVITY_DIR="$GEMINI_DIR/antigravity"
 GLOBAL_WORKFLOWS_DIR="$ANTIGRAVITY_DIR/global_workflows"
-
-# Create directories
 mkdir -p "$GLOBAL_WORKFLOWS_DIR"
 
-# Generate Antigravity mcp_config.json from converted MCPs
-# Antigravity uses 'serverUrl' for HTTP servers instead of 'url'
+# Generate Antigravity mcp_config.json
 ANTIGRAVITY_MCP_CONFIG="$ANTIGRAVITY_DIR/mcp_config.json"
 if [ -f "$MCP_CONVERTED" ] && command -v jq &> /dev/null; then
     # Convert Gemini format to Antigravity format (url -> serverUrl for HTTP servers)
@@ -631,189 +577,85 @@ else
     echo -e "${YELLOW}⚠ Could not generate Antigravity mcp_config.json${NC}"
 fi
 
-# Install skills from all aops plugins as global workflows
-echo "Installing skills as Antigravity workflows..."
-for plugin_dir in "$AOPS_PATH"/aops-*; do
-    if [ -d "$plugin_dir" ] && [ -f "$plugin_dir/.claude-plugin/plugin.json" ]; then
-        plugin_name=$(basename "$plugin_dir")
-        skills_dir="$plugin_dir/skills"
-
-        if [ ! -d "$skills_dir" ]; then
-            continue
-        fi
-
-        for skill_dir in "$skills_dir"/*; do
-            if [ -d "$skill_dir" ] && [ ! -L "$skill_dir" ]; then
-                skill_name=$(basename "$skill_dir")
-                # Skip __pycache__ and other non-skill dirs
-                if [[ "$skill_name" == __* ]]; then
-                    continue
-                fi
-
-                skill_file="$skill_dir/SKILL.md"
-
-                if [ -f "$skill_file" ]; then
-                    # Link as ~/.gemini/antigravity/global_workflows/<skill_name>.md
-                    # This enables /<skill_name> invocation in Antigravity
-                    target="$skill_file"
-                    link_path="$GLOBAL_WORKFLOWS_DIR/$skill_name.md"
-
-                    if [ -L "$link_path" ]; then
-                        current_target="$(readlink "$link_path")"
-                        if [ "$current_target" != "$target" ]; then
-                            rm "$link_path"
-                            ln -s "$target" "$link_path"
-                            echo "  Updated $skill_name (from $plugin_name)"
-                        else
-                            echo "  $skill_name (already linked from $plugin_name)"
-                        fi
-                    elif [ -e "$link_path" ]; then
-                        echo -e "${YELLOW}⚠ $link_path exists and is not a symlink - skipping${NC}"
-                    else
-                        ln -s "$target" "$link_path"
-                        echo "  Linked $skill_name (from $plugin_name)"
-                    fi
-                fi
-            fi
-        done
-    fi
-done
-
 # Install core rules for Antigravity (Project Level)
 echo "Installing core rules for Antigravity..."
 PROJECT_RULES_DIR="$AOPS_PATH/.agent/rules"
 mkdir -p "$PROJECT_RULES_DIR"
 
-# Link AXIOMS.md
-target="$AOPS_PATH/AXIOMS.md"
-link_path="$PROJECT_RULES_DIR/axioms.md"
-if [ -L "$link_path" ]; then
-    current_target="$(readlink "$link_path")"
-    if [ "$current_target" != "$target" ]; then
+for rule_file in AXIOMS.md HEURISTICS.md; do
+    target="$AOPS_PATH/$rule_file"
+    link_path="$PROJECT_RULES_DIR/${rule_file,,}" # to lowercase
+    if [ -e "$link_path" ] || [ -L "$link_path" ]; then
         rm "$link_path"
-        ln -s "$target" "$link_path"
-        echo "  Updated axioms.md link"
     fi
-elif [ -e "$link_path" ]; then
-    rm "$link_path" # Replace file with symlink (enforce SSoT)
     ln -s "$target" "$link_path"
-    echo -e "${GREEN}  Replaced axioms.md file with symlink${NC}"
-else
-    ln -s "$target" "$link_path"
-    echo "  Linked axioms.md"
-fi
+    echo "  Linked ${rule_file,,}"
+done
 
-# Link HEURISTICS.md
-target="$AOPS_PATH/HEURISTICS.md"
-link_path="$PROJECT_RULES_DIR/heuristics.md"
-if [ -L "$link_path" ]; then
-    current_target="$(readlink "$link_path")"
-    if [ "$current_target" != "$target" ]; then
-        rm "$link_path"
-        ln -s "$target" "$link_path"
-        echo "  Updated heuristics.md link"
-    fi
-elif [ -e "$link_path" ]; then
-    rm "$link_path" # Replace file with symlink (enforce SSoT)
-    ln -s "$target" "$link_path"
-    echo -e "${GREEN}  Replaced heuristics.md file with symlink${NC}"
-else
-    ln -s "$target" "$link_path"
-    echo "  Linked heuristics.md"
-fi
-
-# Link core.md (hydrator workflow instructions)
+# Link core.md
 target="$AOPS_PATH/config/antigravity/rules/core.md"
 link_path="$PROJECT_RULES_DIR/core.md"
-if [ -L "$link_path" ]; then
-    current_target="$(readlink "$link_path")"
-    if [ "$current_target" != "$target" ]; then
-        rm "$link_path"
-        ln -s "$target" "$link_path"
-        echo "  Updated core.md link"
-    fi
-elif [ -e "$link_path" ]; then
-    rm "$link_path" # Replace file with symlink (enforce SSoT)
-    ln -s "$target" "$link_path"
-    echo -e "${GREEN}  Replaced core.md file with symlink${NC}"
-else
-    ln -s "$target" "$link_path"
-    echo "  Linked core.md"
+if [ -e "$link_path" ] || [ -L "$link_path" ]; then
+    rm "$link_path"
 fi
+ln -s "$target" "$link_path"
+echo "  Linked core.md"
 
 echo
 
-# Step 3b: Install cron job for task index regeneration
-echo "Step 3b: Task index cron job"
-echo "----------------------------"
+# Step 6: Install cron jobs
+echo "Step 6: Cron jobs"
+echo "-----------------"
 
 CRON_MARKER="# aOps task index"
 CRON_CMD="*/5 * * * * cd $AOPS_PATH && ACA_DATA=$ACA_DATA_PATH uv run python scripts/regenerate_task_index.py >> /tmp/task-index.log 2>&1"
 
-# Check if cron is available
+TRANSCRIPT_CRON_MARKER="# aOps transcripts"
+TRANSCRIPT_CRON_CMD="*/30 * * * * cd $AOPS_PATH && ACA_DATA=$ACA_DATA_PATH uv run python aops-core/scripts/transcript.py --recent >> /tmp/aops-transcripts.log 2>&1"
+
 if command -v crontab &> /dev/null; then
-    # Check if cron job already exists
-    # Note: grep -q exits 1 if no match, which with pipefail exits the script
-    # Capture existing crontab first to avoid pipefail issues
     existing_crontab=$(crontab -l 2>/dev/null || true)
+    
+    # Remove old session insights job if present
+    existing_crontab=$(echo "$existing_crontab" | grep -v "# aOps session insights" | grep -v "scripts/cron_session_insights.sh" || true)
+
+    # Task Index
     if echo "$existing_crontab" | grep -q "$CRON_MARKER"; then
         echo -e "${GREEN}✓ Task index cron job already installed${NC}"
     else
-        # Add cron job (append to existing)
-        if (echo "$existing_crontab"; echo "$CRON_MARKER"; echo "$CRON_CMD") | crontab -; then
-            echo -e "${GREEN}✓ Installed task index cron job (every 5 minutes)${NC}"
-        else
-            echo -e "${YELLOW}⚠ Could not install cron job - install manually:${NC}"
-            echo "  crontab -e"
-            echo "  Add: $CRON_CMD"
-        fi
+        existing_crontab="${existing_crontab}
+${CRON_MARKER}
+${CRON_CMD}"
+        echo -e "${GREEN}✓ Installed task index cron job${NC}"
     fi
-else
-    echo -e "${YELLOW}⚠ crontab not available - task index cron job not installed${NC}"
-    echo "  Run manually: cd \$AOPS && uv run python scripts/regenerate_task_index.py"
-fi
 
-echo
-
-# Step 3c: Install cron job for session insights
-echo "Step 3c: Session insights cron job"
-echo "----------------------------------"
-
-SESSION_CRON_MARKER="# aOps session insights"
-# Jitter (0-300s) in crontab prevents thundering herd across machines
-SESSION_CRON_CMD="*/30 * * * * sleep \$((RANDOM \% 300)) && cd $AOPS_PATH && ACA_DATA=$ACA_DATA_PATH scripts/cron_session_insights.sh >> /tmp/session-insights.log 2>&1"
-
-if command -v crontab &> /dev/null; then
-    # Refresh existing_crontab (may have been updated by Step 3b)
-    existing_crontab=$(crontab -l 2>/dev/null || true)
-    if echo "$existing_crontab" | grep -q "$SESSION_CRON_MARKER"; then
-        echo -e "${GREEN}✓ Session insights cron job already installed${NC}"
+    # Transcripts
+    if echo "$existing_crontab" | grep -q "$TRANSCRIPT_CRON_MARKER"; then
+        echo -e "${GREEN}✓ Transcripts cron job already installed${NC}"
     else
-        if (echo "$existing_crontab"; echo "$SESSION_CRON_MARKER"; echo "$SESSION_CRON_CMD") | crontab -; then
-            echo -e "${GREEN}✓ Installed session insights cron job (every 30 minutes)${NC}"
-        else
-            echo -e "${YELLOW}⚠ Could not install cron job - install manually:${NC}"
-            echo "  crontab -e"
-            echo "  Add: $SESSION_CRON_CMD"
-        fi
+        existing_crontab="${existing_crontab}
+${TRANSCRIPT_CRON_MARKER}
+${TRANSCRIPT_CRON_CMD}"
+        echo -e "${GREEN}✓ Installed transcripts cron job${NC}"
     fi
+    
+    # Install updated crontab
+    echo "$existing_crontab" | crontab -
 else
-    echo -e "${YELLOW}⚠ crontab not available - session insights cron job not installed${NC}"
-    echo "  Run manually: cd \$AOPS && scripts/cron_session_insights.sh"
+    echo -e "${YELLOW}⚠ crontab not available - cron jobs not installed${NC}"
 fi
 
 echo
-
-# Step 4: Validate setup
-echo "Step 4: Validating setup"
+echo "Step 7: Validating setup"
 echo "------------------------"
 
 VALIDATION_PASSED=true
 
 # Check environment variables
-if [ -z "${AOPS:-}" ]; then
-    echo -e "${RED}✗ AOPS environment variable not set${NC}"
+if [ -z "${AOPS:-}" ] || [ -z "${ACA_DATA:-}" ]; then
+    echo -e "${RED}✗ AOPS/ACA_DATA check failed${NC}"
     VALIDATION_PASSED=false
+<<<<<<< HEAD
 else
     echo -e "${GREEN}✓ AOPS=$AOPS${NC}"
 fi
@@ -900,14 +742,14 @@ if PYTHONPATH="$AOPS" python3 -c "from lib.paths import validate_environment; va
     echo -e "${GREEN}✓ Python path resolution working${NC}"
 else
     echo -e "${YELLOW}⚠ Python path resolution test failed${NC}"
+=======
+>>>>>>> academicOps-gemini
 fi
 
 # Validate Gemini setup (if not skipped)
 if [ "${GEMINI_SKIPPED:-true}" = "false" ]; then
-    echo
-    echo "Gemini CLI validation:"
     # Only validate symlinks for directories that exist in source
-    for link in hooks commands; do
+    for link in hooks; do
         if [ -d "$AOPS_PATH/config/gemini/$link" ]; then
             if [ -L "$GEMINI_DIR/$link" ]; then
                 echo -e "${GREEN}✓ Gemini $link symlink OK${NC}"
@@ -920,31 +762,27 @@ if [ "${GEMINI_SKIPPED:-true}" = "false" ]; then
 
     if [ -L "$GEMINI_DIR/GEMINI.md" ] || [ -f "$GEMINI_DIR/GEMINI.md" ]; then
         echo -e "${GREEN}✓ GEMINI.md present${NC}"
-    else
-        echo -e "${YELLOW}⚠ GEMINI.md missing${NC}"
     fi
 
     if jq -e '.hooks' "$GEMINI_DIR/settings.json" > /dev/null 2>&1; then
         echo -e "${GREEN}✓ Gemini settings.json has hooks${NC}"
     fi
 
-    TOML_COUNT=$(ls -1 "$AOPS_PATH/config/gemini/commands/"*.toml 2>/dev/null | wc -l)
-    if [ "$TOML_COUNT" -gt 0 ]; then
-        echo -e "${GREEN}✓ $TOML_COUNT Gemini TOML commands${NC}"
+    MCP_COUNT=$(jq '.mcpServers | length // 0' "$GEMINI_DIR/settings.json")
+    if [ "$MCP_COUNT" -gt 0 ]; then
+        if jq -e '.mcpServers.task_manager' "$GEMINI_DIR/settings.json" > /dev/null 2>&1; then
+             echo -e "${GREEN}✓ Gemini settings.json has task_manager MCP${NC}"
+        else
+             echo -e "${YELLOW}⚠ Gemini settings.json missing task_manager MCP${NC}"
+        fi
     fi
 fi
 
 echo
 if [ "$VALIDATION_PASSED" = true ]; then
     echo -e "${GREEN}✓ Setup completed successfully!${NC}"
-    if [ "${GEMINI_SKIPPED:-true}" = "false" ]; then
-        echo "  Both Claude Code and Gemini CLI are configured."
-    else
-        echo "  Claude Code configured. Install Gemini CLI and re-run for Gemini support."
-    fi
     exit 0
 else
     echo -e "${RED}✗ Setup validation failed${NC}"
-    echo "Please fix the errors above and re-run this script"
     exit 1
 fi
