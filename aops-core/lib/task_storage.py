@@ -215,6 +215,11 @@ class TaskStorage:
         Updates parent task's leaf status if this task has a parent.
         Populates inverse relationships (children, blocks) for rendering.
 
+        If the task already exists on disk, updates the existing file in place
+        rather than computing a new path. This prevents silent write failures
+        when a task's location differs from its computed path (e.g., after
+        migration or when project field changes).
+
         Args:
             task: Task to save
 
@@ -224,7 +229,9 @@ class TaskStorage:
         # Populate inverse relationships for markdown rendering
         self._populate_inverse_relationships(task)
 
-        path = self._get_task_path(task)
+        # Use existing path if task already exists, otherwise compute new path
+        existing_path = self._find_task_path(task.id)
+        path = existing_path if existing_path else self._get_task_path(task)
         self._atomic_write(path, task)
 
         # Update parent's leaf status
@@ -273,10 +280,14 @@ class TaskStorage:
 
         Uses a .lock file to coordinate concurrent access.
         Writes to temp file first, then renames for atomicity.
+        Verifies the write succeeded by checking file existence and validity.
 
         Args:
             path: Target file path
             task: Task to write
+
+        Raises:
+            IOError: If write verification fails (file missing or invalid)
         """
         import os
 
@@ -302,6 +313,17 @@ class TaskStorage:
                 temp.write_text(task.to_markdown(), encoding="utf-8")
                 # Atomic rename (on POSIX systems)
                 temp.rename(path)
+
+                # Verify write succeeded
+                if not path.exists():
+                    raise IOError(f"Write failed: {path} does not exist after rename")
+
+                # Verify written content is valid by reading back
+                try:
+                    Task.from_file(path)
+                except Exception as e:
+                    raise IOError(f"Write verification failed: {path} is not valid: {e}")
+
             except Exception:
                 # Clean up temp file on error
                 Path(temp_path).unlink(missing_ok=True)
