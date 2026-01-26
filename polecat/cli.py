@@ -119,10 +119,11 @@ def finish(no_push, do_nuke):
             print(f"Error pushing to origin: {e}", file=sys.stderr)
             sys.exit(1)
 
-    # Update task status to review
+    # Update task status to review (clear assignee so merge can pick it up)
     try:
         from lib.task_model import TaskStatus
         task.status = TaskStatus.REVIEW
+        task.assignee = None
         manager.storage.save_task(task)
         print(f"✅ Task marked as 'review' (ready for merge)")
     except ImportError:
@@ -180,7 +181,9 @@ def merge():
 @click.option("--caller", "-c", default="polecat", help="Identity claiming the task")
 @click.option("--task-id", "-t", help="Specific task ID to run (skips claim)")
 @click.option("--no-finish", is_flag=True, help="Don't auto-finish after agent exits")
-def run(project, caller, task_id, no_finish):
+@click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
+@click.option("--interactive", "-i", is_flag=True, help="Run in interactive mode (not headless)")
+def run(project, caller, task_id, no_finish, gemini, interactive):
     """Run a full polecat cycle: claim → work → finish.
 
     Claims a task, spawns a worktree, runs claude with the task context,
@@ -230,28 +233,36 @@ def run(project, caller, task_id, no_finish):
     # Step 3: Build prompt from task
     prompt = f"/pull {task.id}"
 
-    # Step 4: Run claude in the worktree with proper plugin dirs
-    print(f"\n🤖 Starting claude agent...")
+    # Step 4: Run agent in the worktree with proper plugin dirs
+    # Choose CLI tool based on --gemini flag
+    cli_tool = "gemini" if gemini else "claude"
+    mode = "interactive" if interactive else "headless"
+    print(f"\n🤖 Starting {cli_tool} agent ({mode})...")
     print("-" * 50)
 
-    claude_cmd = [
-        "claude",
-        "--dangerously-skip-permissions",
+    # Build command
+    cmd = [cli_tool]
+
+    # Add headless flags only if not interactive
+    if not interactive:
+        cmd.append("--dangerously-skip-permissions")
+
+    cmd.extend([
         "--permission-mode", "plan",
         "--setting-sources=user",
         "--plugin-dir", str(worktree_path / "aops-core"),
         "--plugin-dir", str(worktree_path / "aops-tools"),
         "-p", prompt,
-    ]
+    ])
 
     try:
         result = subprocess.run(
-            claude_cmd,
+            cmd,
             cwd=worktree_path,
         )
         exit_code = result.returncode
     except FileNotFoundError:
-        print("Error: 'claude' command not found. Is Claude Code installed?", file=sys.stderr)
+        print(f"Error: '{cli_tool}' command not found.", file=sys.stderr)
         sys.exit(1)
     except KeyboardInterrupt:
         print("\n\n⚠️  Agent interrupted by user")
@@ -276,11 +287,12 @@ def run(project, caller, task_id, no_finish):
             print("⚠️  Push failed - you may need to commit changes first")
             sys.exit(1)
 
-        # Mark as review
+        # Mark as review (clear assignee so merge can pick it up)
         try:
             from lib.task_model import TaskStatus
             task = manager.storage.get_task(task.id)  # Refresh
             task.status = TaskStatus.REVIEW
+            task.assignee = None
             manager.storage.save_task(task)
             print(f"✅ Task marked as 'review' (ready for merge)")
         except ImportError:
