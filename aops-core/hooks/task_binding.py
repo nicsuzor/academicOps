@@ -7,7 +7,7 @@ when task routing happens. The session state records current_task, allowing
 queries like "what task was this session working on?"
 
 Triggers (bind):
-- After update_task MCP tool with status="active" (task claimed)
+- After update_task MCP tool with status="active" or "in_progress" (task claimed)
 - After claim_next_task MCP tool (task claimed from queue)
 
 Triggers (unbind):
@@ -54,10 +54,10 @@ def should_bind_task(tool_name: str, tool_input: dict[str, Any]) -> bool:
     Returns:
         True if task binding should occur
     """
-    # Update task - only bind if claiming (status -> active)
+    # Update task - bind if claiming (status -> active or in_progress)
     if tool_name == "mcp__plugin_aops-tools_task_manager__update_task":
         new_status = tool_input.get("status", "")
-        return new_status == "active"
+        return new_status in ("active", "in_progress")
 
     # Claim next task - always bind (explicitly claiming from queue)
     if tool_name == "mcp__plugin_aops-tools_task_manager__claim_next_task":
