@@ -75,6 +75,13 @@ if [[ "${1:-}" == "--disable" ]]; then
     # Remove Gemini config
     echo "Removing Gemini configuration..."
     GEMINI_DIR="$HOME/.gemini"
+    
+    # Uninstall Gemini extension if it exists
+    if command -v gemini &> /dev/null; then
+        # Try both names just in case
+        gemini extensions uninstall aops-core academic-ops-core 2>/dev/null && echo "  Uninstalled aops-core extension" || true
+    fi
+
     rm -f "$GEMINI_DIR/hooks"
     rm -f "$GEMINI_DIR/commands"
     rm -f "$GEMINI_DIR/GEMINI.md"
@@ -175,29 +182,7 @@ EOF
     fi
 done
 
-echo "Aggregating plugin MCPs..."
-AGGREGATED_MCP="$AOPS_PATH/config/gemini/aggregated_mcp.json"
-mkdir -p "$AOPS_PATH/config/gemini"
-
-if command -v jq &> /dev/null; then
-    # Start with empty mcpServers object
-    echo '{"mcpServers": {}}' > "$AGGREGATED_MCP"
-    
-    # Merge each plugin's mcp.json
-    for plugin_name in aops-core aops-tools; do
-        plugin_mcp="$AOPS_PATH/$plugin_name/.mcp.json"
-        if [ -f "$plugin_mcp" ]; then
-            jq -s '.[0] * .[1]' "$AGGREGATED_MCP" "$plugin_mcp" > "$AGGREGATED_MCP.tmp" && mv "$AGGREGATED_MCP.tmp" "$AGGREGATED_MCP"
-        fi
-    done
-    
-    echo -e "${GREEN}✓ Aggregated plugin MCPs to $AGGREGATED_MCP${NC}"
-else
-    echo -e "${RED}✗ jq not installed - cannot aggregate MCPs${NC}"
-    exit 1
-fi
-
-echo 
+echo
 
 # Step 3: Configure memory server default project
 echo "Step 3: Configuring memory server"
@@ -322,7 +307,6 @@ else
     # Convert MCP servers from Claude format to Gemini format
     echo
     echo "Converting MCP servers for Gemini..."
-    # Use a temp dir for aggregation since config/gemini is gone/legacy
     MCP_BUILD_DIR="$AOPS_PATH/aops-core/config/gemini"
     mkdir -p "$MCP_BUILD_DIR"
     MCP_SOURCE="$MCP_BUILD_DIR/aggregated_mcp.json"
@@ -368,6 +352,9 @@ else
         echo -e "${GREEN}✓ Generated gemini-extension.json${NC}"
         
         if command -v gemini &> /dev/null; then
+             # Try to uninstall first to ensure a clean state
+             gemini extensions uninstall aops-core academic-ops-core 2>/dev/null || true
+             
              # Link the extension
              if (cd "$AOPS_PATH/aops-core" && gemini extensions link .); then
                 echo -e "${GREEN}✓ Linked aops-core extension${NC}"
@@ -512,18 +499,6 @@ fi
 
 # Validate Gemini setup (if not skipped)
 if [ "${GEMINI_SKIPPED:-true}" = "false" ]; then
-    # Only validate symlinks for directories that exist in source
-    for link in hooks; do
-        if [ -d "$AOPS_PATH/config/gemini/$link" ]; then
-            if [ -L "$GEMINI_DIR/$link" ]; then
-                echo -e "${GREEN}✓ Gemini $link symlink OK${NC}"
-            else
-                echo -e "${RED}✗ Gemini $link symlink missing${NC}"
-                VALIDATION_PASSED=false
-            fi
-        fi
-    done
-
     if [ -L "$GEMINI_DIR/GEMINI.md" ] || [ -f "$GEMINI_DIR/GEMINI.md" ]; then
         echo -e "${GREEN}✓ GEMINI.md present${NC}"
     fi
