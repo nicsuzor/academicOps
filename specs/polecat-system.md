@@ -75,6 +75,9 @@ polecat nuke <task-id>
 
 # Run the Refinery: merge all review tasks to main
 polecat merge
+
+# Full automation: claim → run agent → finish
+polecat run -p aops
 ```
 
 #### The `finish` Command
@@ -99,6 +102,21 @@ The `merge` command runs the Refinery to process all tasks in `review` status:
 5. **Cleans up** the branch and worktree
 
 On failure, the task is assigned to `engineer` for manual intervention.
+
+#### The `run` Command
+
+The `run` command automates the full polecat cycle:
+
+1. **Claims** the next ready task (or a specific task with `-t`)
+2. **Creates** the worktree
+3. **Runs** `claude -p "/pull <task-id>"` in the worktree
+4. **Finishes** automatically when the agent exits successfully (push + mark as `review`)
+
+```bash
+polecat run -p aops              # Run next ready task from aops
+polecat run -t task-123          # Run specific task
+polecat run --no-finish          # Don't auto-finish (manual review)
+```
 
 ## Workflow
 

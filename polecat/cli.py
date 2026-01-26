@@ -175,5 +175,111 @@ def merge():
     eng = Engineer()
     eng.scan_and_merge()
 
+@main.command()
+@click.option("--project", "-p", help="Project to claim tasks from")
+@click.option("--caller", "-c", default="polecat", help="Identity claiming the task")
+@click.option("--task-id", "-t", help="Specific task ID to run (skips claim)")
+@click.option("--no-finish", is_flag=True, help="Don't auto-finish after agent exits")
+def run(project, caller, task_id, no_finish):
+    """Run a full polecat cycle: claim → work → finish.
+
+    Claims a task, spawns a worktree, runs claude with the task context,
+    and marks as ready for merge when the agent exits.
+
+    Examples:
+        polecat run -p aops           # Run next ready task from aops project
+        polecat run -t task-123       # Run specific task
+        polecat run --no-finish       # Don't auto-finish (manual review)
+    """
+    import subprocess
+
+    manager = PolecatManager()
+
+    # Step 1: Get/claim task
+    if task_id:
+        task = manager.storage.get_task(task_id)
+        if not task:
+            print(f"Task not found: {task_id}", file=sys.stderr)
+            sys.exit(1)
+        # Claim if not already in progress
+        try:
+            from lib.task_model import TaskStatus
+            if task.status == TaskStatus.ACTIVE:
+                task.status = TaskStatus.IN_PROGRESS
+                task.assignee = caller
+                manager.storage.save_task(task)
+        except ImportError:
+            pass
+    else:
+        print(f"Looking for ready tasks{' in project ' + project if project else ''}...")
+        task = manager.claim_next_task(caller, project)
+        if not task:
+            print("No ready tasks found.")
+            sys.exit(0)
+
+    print(f"🎯 Task: {task.title} ({task.id})")
+
+    # Step 2: Setup worktree
+    try:
+        worktree_path = manager.setup_worktree(task)
+        print(f"📁 Worktree: {worktree_path}")
+    except Exception as e:
+        print(f"Error setting up worktree: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    # Step 3: Build prompt from task
+    prompt = f"/pull {task.id}"
+
+    # Step 4: Run claude in the worktree
+    print(f"\n🤖 Starting claude agent...")
+    print("-" * 50)
+
+    try:
+        result = subprocess.run(
+            ["claude", "-p", prompt],
+            cwd=worktree_path,
+        )
+        exit_code = result.returncode
+    except FileNotFoundError:
+        print("Error: 'claude' command not found. Is Claude Code installed?", file=sys.stderr)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        print("\n\n⚠️  Agent interrupted by user")
+        exit_code = 130
+
+    print("-" * 50)
+
+    # Step 5: Finish (push and mark as review)
+    if no_finish:
+        print(f"\n📝 Skipping auto-finish. To finish manually:")
+        print(f"   cd {worktree_path}")
+        print(f"   polecat finish")
+    elif exit_code == 0:
+        print(f"\n✅ Agent completed successfully. Finishing...")
+        os.chdir(worktree_path)
+
+        # Push
+        branch_name = f"polecat/{task.id}"
+        try:
+            subprocess.run(["git", "push", "-u", "origin", branch_name], check=True, cwd=worktree_path)
+        except subprocess.CalledProcessError:
+            print("⚠️  Push failed - you may need to commit changes first")
+            sys.exit(1)
+
+        # Mark as review
+        try:
+            from lib.task_model import TaskStatus
+            task = manager.storage.get_task(task.id)  # Refresh
+            task.status = TaskStatus.REVIEW
+            manager.storage.save_task(task)
+            print(f"✅ Task marked as 'review' (ready for merge)")
+        except ImportError:
+            print("Warning: Could not update task status")
+
+        print(f"\n🏭 To merge: polecat merge")
+    else:
+        print(f"\n⚠️  Agent exited with code {exit_code}. Not auto-finishing.")
+        print(f"   To finish manually: cd {worktree_path} && polecat finish")
+
 if __name__ == "__main__":
     main()
