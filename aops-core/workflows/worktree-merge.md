@@ -44,7 +44,7 @@ polecat merge
 
 ```python
 # Or programmatically
-from refinery.engineer import Engineer
+from polecat.engineer import Engineer
 eng = Engineer()
 eng.scan_and_merge()  # Scans REVIEW status tasks
 ```
@@ -143,7 +143,7 @@ polecat merge
 Or programmatically:
 
 ```python
-from refinery.engineer import Engineer
+from polecat.engineer import Engineer
 Engineer().scan_and_merge()
 ```
 

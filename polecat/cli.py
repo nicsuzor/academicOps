@@ -170,8 +170,6 @@ def merge():
     squash-merges their polecat branches, runs tests, and
     marks them 'done' on success.
     """
-    # Import here to avoid circular dependency
-    sys.path.insert(0, str(Path(__file__).parent.parent / "refinery"))
     from engineer import Engineer
 
     eng = Engineer()

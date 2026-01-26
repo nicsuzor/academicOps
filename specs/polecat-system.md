@@ -144,7 +144,7 @@ The Refinery completes the lifecycle by merging completed work back into the mai
 
 ### Components
 
-1.  **Engineer (`refinery/engineer.py`)**:
+1.  **Engineer (`polecat/engineer.py`)**:
     *   **`scan_and_merge()`**: Finds tasks with status `review` assigned to `refinery` or unassigned.
     *   **`process_merge(task)`**:
         1. Locates the repo using `PolecatManager.get_repo_path`.

@@ -12,7 +12,7 @@ sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 try:
     from lib.task_model import TaskStatus
     from lib.task_storage import TaskStorage
-    from polecat.manager import PolecatManager
+    from manager import PolecatManager
 except ImportError:
     pass
 
