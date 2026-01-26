@@ -59,7 +59,6 @@ if [[ "${1:-}" == "--disable" ]]; then
         echo -e "${GREEN}✓ Cron jobs removed${NC}"
     fi
 
-<<<<<<< HEAD
     # Uninstall Claude plugins
     echo "Uninstalling Claude plugins..."
     if command -v claude &> /dev/null; then
@@ -73,8 +72,6 @@ if [[ "${1:-}" == "--disable" ]]; then
     echo -e "${GREEN}✓ Claude plugins uninstalled${NC}"
     echo -e "${YELLOW}Note: ~/.claude/settings.json not removed (user-managed file)${NC}"
 
-=======
->>>>>>> academicOps-gemini
     # Remove Gemini config
     echo "Removing Gemini configuration..."
     GEMINI_DIR="$HOME/.gemini"
@@ -119,144 +116,9 @@ echo -e "${GREEN}✓ AOPS=$AOPS${NC}"
 echo -e "${GREEN}✓ ACA_DATA=$ACA_DATA${NC}"
 echo 
 
-<<<<<<< HEAD
-# Step 2: Create symlinks in ~/.claude/
-echo "Step 2: Creating symlinks"
-echo "-------------------------"
-
-mkdir -p "$CLAUDE_DIR"
-
-# Function to create or update symlink (force overwrite - no backups per AXIOMS #15)
-create_symlink() {
-    local name=$1
-    local target=$2
-    local link_path="$CLAUDE_DIR/$name"
-
-    if [ -L "$link_path" ]; then
-        current_target="$(readlink "$link_path")"
-        if [ "$current_target" = "$target" ]; then
-            echo "  $name → $target (already correct)"
-            return
-        fi
-        echo -e "${YELLOW}  Updating $name: $current_target → $target${NC}"
-    elif [ -e "$link_path" ]; then
-        echo -e "${YELLOW}  Replacing $name (was not a symlink)${NC}"
-    fi
-
-    # Force overwrite whatever exists (git is the backup system)
-    rm -rf "$link_path"
-    ln -s "$target" "$link_path"
-    echo -e "${GREEN}✓ $name → $target${NC}"
-}
-
-# Copy settings.json if it doesn't exist (user manages their own settings)
-SETTINGS_SRC="$AOPS_PATH/config/claude/settings.json"
-SETTINGS_DST="$CLAUDE_DIR/settings.json"
-if [ -L "$SETTINGS_DST" ]; then
-    # Convert symlink (old setup) to file
-    echo -e "${YELLOW}  Converting settings.json from symlink to file${NC}"
-    rm "$SETTINGS_DST"
-    cp "$SETTINGS_SRC" "$SETTINGS_DST"
-    echo -e "${GREEN}✓ Converted settings.json to file (edit ~/.claude/settings.json to customize)${NC}"
-elif [ ! -f "$SETTINGS_DST" ]; then
-    cp "$SETTINGS_SRC" "$SETTINGS_DST"
-    echo -e "${GREEN}✓ Copied settings.json (edit ~/.claude/settings.json to customize)${NC}"
-else
-    echo "  settings.json already exists (not overwriting)"
-fi
-
-# Note: CLAUDE.md symlink removed - use repo-level CLAUDE.md instead
-
-# Install plugins via Claude Code CLI
-echo
-echo "Installing plugins via Claude Code..."
-
-if command -v claude &> /dev/null; then
-    # Add marketplace (idempotent - won't fail if already added)
-    if claude plugin marketplace add @nicsuzor/academicOps 2>/dev/null; then
-        echo -e "${GREEN}✓ Added @nicsuzor/academicOps marketplace${NC}"
-    else
-        echo "  Marketplace @nicsuzor/academicOps already configured"
-    fi
-
-    # Install plugins
-    for plugin_name in aops-core aops-tools; do
-        if claude plugin install "$plugin_name" 2>/dev/null; then
-            echo -e "${GREEN}✓ Installed plugin: $plugin_name${NC}"
-        else
-            echo "  Plugin $plugin_name already installed or install failed"
-        fi
-    done
-else
-    echo -e "${YELLOW}⚠ claude CLI not found - install plugins manually:${NC}"
-    echo "  claude plugin marketplace add @nicsuzor/academicOps"
-    echo "  claude plugin install aops-core"
-    echo "  claude plugin install aops-tools"
-fi
-
-# Clean up legacy symlinks (content moved to plugins)
-for legacy in skills commands agents hooks; do
-    if [ -L "$CLAUDE_DIR/$legacy" ]; then
-        rm "$CLAUDE_DIR/$legacy"
-        echo -e "${YELLOW}  Removed legacy symlink: $legacy${NC}"
-    fi
-done
-
-# Clean up old plugin symlinks (now using CLI install)
-if [ -d "$CLAUDE_DIR/plugins" ]; then
-    for plugin_link in "$CLAUDE_DIR/plugins"/aops-*; do
-        if [ -L "$plugin_link" ]; then
-            rm "$plugin_link"
-            echo -e "${YELLOW}  Removed legacy plugin symlink: $(basename "$plugin_link")${NC}"
-        fi
-    done
-fi
-
-# Step 2a: Create settings.local.json with machine-specific env vars
-echo
-echo "Creating settings.local.json for environment variables..."
-
-LOCAL_SETTINGS="$CLAUDE_DIR/settings.local.json"
-
-# Check if jq is available (required for safe JSON generation)
-if ! command -v jq &> /dev/null; then
-    echo -e "${RED}✗ jq not installed - required for settings.local.json${NC}"
-    echo "  Install jq: sudo apt install jq"
-    exit 1
-fi
-
-# Generate JSON content safely with jq
-LOCAL_SETTINGS_CONTENT=$(jq -n --indent 2 \
-    --arg aops "$AOPS_PATH" \
-    --arg aca_data "$ACA_DATA_PATH" \
-    '{ "env": { "AOPS": $aops, "ACA_DATA": $aca_data } }')
-
-# Update or create settings.local.json
-if [ -f "$LOCAL_SETTINGS" ]; then
-    existing_aops=$(jq -r '.env.AOPS // ""' "$LOCAL_SETTINGS")
-    if [ "$existing_aops" = "$AOPS_PATH" ]; then
-        echo -e "${GREEN}✓ settings.local.json already correct${NC}"
-    else
-        echo "$LOCAL_SETTINGS_CONTENT" > "$LOCAL_SETTINGS"
-        echo -e "${GREEN}✓ Updated settings.local.json${NC}"
-    fi
-else
-    echo "$LOCAL_SETTINGS_CONTENT" > "$LOCAL_SETTINGS"
-    echo -e "${GREEN}✓ Created settings.local.json${NC}"
-fi
-
-# Step 2b: Build and sync MCP servers
-# Note: Claude Code reads user-scoped MCP servers from ~/.claude.json mcpServers key.
-# However, since we use plugins (symlinked to ~/.claude/plugins/), Claude Code will automatically
-# load MCP servers defined in each plugin's mcp.json file.
-# We no longer write to ~/.claude.json to avoid conflicts.
-echo
-echo "Building MCP configuration..."
-=======
 # Step 2: Build MCP Configuration
 echo "Step 2: Building MCP Configuration"
 echo "----------------------------------"
->>>>>>> academicOps-gemini
 
 # Check for MCP tokens (required for gh and memory servers)
 if [ -z "${GH_MCP_TOKEN:-}" ]; then
@@ -655,95 +517,6 @@ VALIDATION_PASSED=true
 if [ -z "${AOPS:-}" ] || [ -z "${ACA_DATA:-}" ]; then
     echo -e "${RED}✗ AOPS/ACA_DATA check failed${NC}"
     VALIDATION_PASSED=false
-<<<<<<< HEAD
-else
-    echo -e "${GREEN}✓ AOPS=$AOPS${NC}"
-fi
-
-if [ -z "${ACA_DATA:-}" ]; then
-    echo -e "${RED}✗ ACA_DATA environment variable not set${NC}"
-    VALIDATION_PASSED=false
-else
-    echo -e "${GREEN}✓ ACA_DATA=$ACA_DATA${NC}"
-fi
-
-# Check directories exist
-if [ ! -d "$AOPS_PATH" ]; then
-    echo -e "${RED}✗ AOPS directory doesn't exist: $AOPS_PATH${NC}"
-    VALIDATION_PASSED=false
-fi
-
-if [ ! -d "$ACA_DATA_PATH" ]; then
-    echo -e "${RED}✗ ACA_DATA directory doesn't exist: $ACA_DATA_PATH${NC}"
-    VALIDATION_PASSED=false
-fi
-
-# Check settings.json exists (file, not symlink - user-managed)
-if [ -f "$CLAUDE_DIR/settings.json" ]; then
-    if [ -L "$CLAUDE_DIR/settings.json" ]; then
-        echo -e "${YELLOW}⚠ settings.json is a symlink (old setup) - consider running setup.sh again to convert to file${NC}"
-    else
-        echo -e "${GREEN}✓ settings.json exists${NC}"
-    fi
-else
-    echo -e "${RED}✗ settings.json missing: $CLAUDE_DIR/settings.json${NC}"
-    VALIDATION_PASSED=false
-fi
-
-# Check plugins installed via Claude CLI
-INSTALLED_PLUGINS="$CLAUDE_DIR/plugins/installed_plugins.json"
-if [ -f "$INSTALLED_PLUGINS" ] && command -v jq &> /dev/null; then
-    for plugin_name in aops-core aops-tools; do
-        # Plugin keys include marketplace suffix, e.g., "aops-core@academicOps"
-        if jq -e ".plugins | keys[] | select(startswith(\"$plugin_name@\"))" "$INSTALLED_PLUGINS" > /dev/null 2>&1; then
-            echo -e "${GREEN}✓ Plugin $plugin_name installed${NC}"
-        else
-            echo -e "${RED}✗ Plugin $plugin_name not installed${NC}"
-            echo "  Run: claude plugin install $plugin_name"
-            VALIDATION_PASSED=false
-        fi
-    done
-elif [ -f "$INSTALLED_PLUGINS" ]; then
-    echo -e "${YELLOW}⚠ jq not installed - cannot verify plugins${NC}"
-else
-    echo -e "${RED}✗ No plugins installed (missing installed_plugins.json)${NC}"
-    echo "  Run: claude plugin marketplace add @nicsuzor/academicOps"
-    echo "  Run: claude plugin install aops-core aops-tools"
-    VALIDATION_PASSED=false
-fi
-
-# Check settings.local.json
-if [ -f "$CLAUDE_DIR/settings.local.json" ]; then
-    echo -e "${GREEN}✓ settings.local.json exists${NC}"
-    if command -v jq &> /dev/null; then
-        local_aops=$(jq -r '.env.AOPS // ""' "$CLAUDE_DIR/settings.local.json" 2>/dev/null || echo "")
-        if [ -n "$local_aops" ]; then
-            echo "  AOPS=$local_aops"
-        fi
-    fi
-else
-    echo -e "${YELLOW}⚠ settings.local.json not found - Claude Code may not have AOPS set${NC}"
-fi
-
-# Check MCP servers in ~/.claude.json
-if [ -f "$HOME/.claude.json" ] && command -v jq &> /dev/null; then
-    mcp_count=$(jq '.mcpServers | length // 0' "$HOME/.claude.json")
-    if [ "$mcp_count" -gt 0 ]; then
-        echo -e "${GREEN}✓ MCP servers configured: $mcp_count servers in ~/.claude.json${NC}"
-    else
-        echo -e "${YELLOW}⚠ No MCP servers in ~/.claude.json${NC}"
-    fi
-fi
-
-# Test Python path resolution
-echo
-echo "Testing Python path resolution..."
-if PYTHONPATH="$AOPS" python3 -c "from lib.paths import validate_environment; validate_environment()" 2>/dev/null; then
-    echo -e "${GREEN}✓ Python path resolution working${NC}"
-else
-    echo -e "${YELLOW}⚠ Python path resolution test failed${NC}"
-=======
->>>>>>> academicOps-gemini
 fi
 
 # Validate Gemini setup (if not skipped)
