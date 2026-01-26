@@ -1,1 +1,1 @@
-/home/nic/src/academicOps/HEURISTICS.md
+../../HEURISTICS.md
