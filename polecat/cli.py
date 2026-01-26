@@ -265,8 +265,13 @@ def run(project, caller, task_id, no_finish, gemini, interactive):
             "--setting-sources=user",
             "--plugin-dir", str(worktree_path / "aops-core"),
             "--plugin-dir", str(worktree_path / "aops-tools"),
-            "-p", prompt,
         ])
+        if interactive:
+            # Interactive: just append the prompt as positional arg
+            cmd.append(prompt)
+        else:
+            # Headless: use -p for print mode
+            cmd.extend(["-p", prompt])
 
     try:
         result = subprocess.run(
