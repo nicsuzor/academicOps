@@ -61,15 +61,15 @@ if [[ "${1:-}" == "--disable" ]]; then
         echo -e "${GREEN}✓ Cron jobs removed${NC}"
     fi
 
-    # Remove Claude symlinks
-    echo "Removing Claude symlinks..."
-    rm -f "$CLAUDE_DIR/settings.json"
-    rm -f "$CLAUDE_DIR/CLAUDE.md"
+    # Remove Claude plugins and generated files
+    echo "Removing Claude plugins..."
     rm -rf "$CLAUDE_DIR/plugins"
     rm -f "$CLAUDE_DIR/settings.local.json"
     # Clean up legacy symlinks
+    rm -f "$CLAUDE_DIR/CLAUDE.md"
     rm -f "$CLAUDE_DIR/skills" "$CLAUDE_DIR/commands" "$CLAUDE_DIR/agents" "$CLAUDE_DIR/hooks"
-    echo -e "${GREEN}✓ Claude symlinks removed${NC}"
+    echo -e "${GREEN}✓ Claude plugins removed${NC}"
+    echo -e "${YELLOW}Note: ~/.claude/settings.json not removed (user-managed file)${NC}"
 
     # Remove Gemini config
     echo "Removing Gemini configuration..."
@@ -164,8 +164,23 @@ create_symlink() {
     echo -e "${GREEN}✓ $name → $target${NC}"
 }
 
-create_symlink "settings.json" "$AOPS_PATH/config/claude/settings.json"
-create_symlink "CLAUDE.md" "$AOPS_PATH/config/claude/CLAUDE.md"
+# Copy settings.json if it doesn't exist (user manages their own settings)
+SETTINGS_SRC="$AOPS_PATH/config/claude/settings.json"
+SETTINGS_DST="$CLAUDE_DIR/settings.json"
+if [ -L "$SETTINGS_DST" ]; then
+    # Convert symlink (old setup) to file
+    echo -e "${YELLOW}  Converting settings.json from symlink to file${NC}"
+    rm "$SETTINGS_DST"
+    cp "$SETTINGS_SRC" "$SETTINGS_DST"
+    echo -e "${GREEN}✓ Converted settings.json to file (edit ~/.claude/settings.json to customize)${NC}"
+elif [ ! -f "$SETTINGS_DST" ]; then
+    cp "$SETTINGS_SRC" "$SETTINGS_DST"
+    echo -e "${GREEN}✓ Copied settings.json (edit ~/.claude/settings.json to customize)${NC}"
+else
+    echo "  settings.json already exists (not overwriting)"
+fi
+
+# Note: CLAUDE.md symlink removed - use repo-level CLAUDE.md instead
 
 # Create plugins directory and symlink all aops plugins
 # Note: skills, commands, agents, hooks now live in plugins (not top-level)
@@ -261,17 +276,7 @@ case "$(uname -s)" in
         ;;
 esac
 
-# Step 2d: Create repo-local .claude/ for remote coding (using sync_web_bundle.py)
-echo "Setting up repository .claude/ (for remote coding)..."
-
-if python3 "$AOPS_PATH/scripts/sync_web_bundle.py" --self > /dev/null 2>&1; then
-    echo -e "${GREEN}✓ Repository .claude/ configured via sync_web_bundle.py --self${NC}"
-else
-    echo -e "${YELLOW}⚠ sync_web_bundle.py not found - skipping repository .claude/ setup${NC}"
-    echo "  Create scripts/sync_web_bundle.py if remote coding support is needed"
-fi
-
-# Step 2d-1: Generate plugin-specific MCP configs from templates
+# Step 2d: Generate plugin-specific MCP configs from templates
 echo
 echo "Generating plugin-specific MCP configs..."
 
@@ -803,13 +808,17 @@ if [ ! -d "$ACA_DATA_PATH" ]; then
     VALIDATION_PASSED=false
 fi
 
-# Check symlinks (only settings.json, CLAUDE.md, and plugin remain at top level)
-for link in settings.json CLAUDE.md; do
-    if [ ! -L "$CLAUDE_DIR/$link" ]; then
-        echo -e "${RED}✗ Symlink missing: $CLAUDE_DIR/$link${NC}"
-        VALIDATION_PASSED=false
+# Check settings.json exists (file, not symlink - user-managed)
+if [ -f "$CLAUDE_DIR/settings.json" ]; then
+    if [ -L "$CLAUDE_DIR/settings.json" ]; then
+        echo -e "${YELLOW}⚠ settings.json is a symlink (old setup) - consider running setup.sh again to convert to file${NC}"
+    else
+        echo -e "${GREEN}✓ settings.json exists${NC}"
     fi
-done
+else
+    echo -e "${RED}✗ settings.json missing: $CLAUDE_DIR/settings.json${NC}"
+    VALIDATION_PASSED=false
+fi
 
 # Check plugin symlinks (auto-discover all aops-* plugins)
 plugin_count=0

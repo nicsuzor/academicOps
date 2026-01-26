@@ -65,9 +65,7 @@
   },
   "enabledPlugins": {
     "plugin-dev@claude-plugins-official": true,
-    "academicOps@inline": false,
-    "canvas@claude-canvas": true,
-    "aops-core@aops": true,
-    "aops-tools@aops": true
+    "aops-core@academicOps": true,
+    "aops-tools@academicOps": true
   }
 }

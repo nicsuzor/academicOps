@@ -54,19 +54,9 @@ The script configures three tools with distinct scoping:
 
 #### Claude Code (User-scoped)
 
-Creates symlinks in `~/.claude/` pointing to framework components:
-
-```
-~/.claude/
-├── settings.json      → $AOPS/config/claude/settings.json
-├── CLAUDE.md          → $AOPS/config/claude/CLAUDE.md
-├── settings.local.json   (generated - contains AOPS/ACA_DATA paths)
-└── plugins/
-    ├── aops-core      → $AOPS/aops-core
-    └── aops-tools     → $AOPS/aops-tools
-```
-
-MCP servers are merged into `~/.claude.json` (the user-level Claude Code config). Plugin-specific MCPs are generated from templates in each plugin's `.mcp.json`.
+Install plugins:
+- aops-core
+- aops-tools
 
 #### Gemini CLI (User-scoped)
 

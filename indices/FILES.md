@@ -782,22 +782,6 @@ $ACA_DATA/
     ├── VISION.md                # End state
     └── specs/                   # Design documents (timeless)
 
-# Episodic content → bd issues (.beads/issues.jsonl, git-tracked)
-# Labels: bug, experiment, devlog, decision, learning
-
 # Archive
 ~/writing/sessions/              # Session transcripts (raw data)
-```
-
-## Runtime (~/.claude/)
-
-```
-~/.claude/
-├── skills/      → $AOPS/skills/     (symlink)
-├── hooks/       → $AOPS/hooks/      (symlink)
-├── commands/    → $AOPS/commands/   (symlink)
-├── agents/      → $AOPS/agents/     (symlink)
-├── settings.json                    # User settings
-├── projects/                        # Session JSONL per repo
-└── debug/                           # Hook output logs
 ```
