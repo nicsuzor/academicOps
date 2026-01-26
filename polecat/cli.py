@@ -182,6 +182,120 @@ def merge():
     eng.scan_and_merge()
 
 @main.command()
+@click.option("--project", "-p", help="Project for the collaboration")
+@click.option("--title", "-t", help="Brief title for the collaboration task")
+@click.option("--caller", "-c", default="nic", help="Identity for the collaboration (default: nic)")
+@click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
+@click.option("--no-finish", is_flag=True, help="Don't auto-finish after agent exits")
+def colab(project, title, caller, gemini, no_finish):
+    """Start an interactive collaboration session.
+
+    Creates a new task, spawns a worktree, and starts an interactive
+    agent session for human-bot pairing. Marks ready for merge when done.
+
+    Examples:
+        polecat colab -p aops -t "Debug failing tests"
+        polecat colab -t "Refactor login flow"
+    """
+    import subprocess
+    from datetime import datetime, timezone
+
+    manager = PolecatManager()
+
+    # Generate title if not provided
+    if not title:
+        title = f"session-{datetime.now(timezone.utc).strftime('%H%M')}"
+
+    # Create a new task for tracking using storage.create_task (handles ID generation)
+    try:
+        from lib.task_model import TaskStatus, TaskType
+
+        task = manager.storage.create_task(
+            title=f"Collaborate: {title}",
+            type=TaskType.TASK,
+            status=TaskStatus.IN_PROGRESS,
+            project=project or "aops",
+            assignee=caller,
+        )
+        manager.storage.save_task(task)
+        print(f"📋 Created task: {task.title} ({task.id})")
+    except ImportError as e:
+        print(f"Error: Could not create task - {e}", file=sys.stderr)
+        sys.exit(1)
+
+    # Setup worktree
+    try:
+        worktree_path = manager.setup_worktree(task)
+        print(f"📁 Worktree: {worktree_path}")
+    except Exception as e:
+        print(f"Error setting up worktree: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    # Build prompt - just reference the task
+    prompt = f"/pull {task.id}"
+
+    # Run agent in interactive mode
+    cli_tool = "gemini" if gemini else "claude"
+    print(f"\n🤝 Starting {cli_tool} collaboration session...")
+    print("-" * 50)
+
+    if gemini:
+        cmd = ["gemini", "-i", prompt]
+    else:
+        cmd = [
+            "claude",
+            "--permission-mode", "plan",
+            "--setting-sources=user",
+            "--plugin-dir", str(worktree_path / "aops-core"),
+            "--plugin-dir", str(worktree_path / "aops-tools"),
+            prompt,
+        ]
+
+    try:
+        result = subprocess.run(cmd, cwd=worktree_path)
+        exit_code = result.returncode
+    except FileNotFoundError:
+        print(f"Error: '{cli_tool}' command not found.", file=sys.stderr)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        print("\n\n⚠️  Session interrupted by user")
+        exit_code = 130
+
+    print("-" * 50)
+
+    # Finish: push and mark as review
+    if no_finish:
+        print(f"\n📝 Skipping auto-finish. To finish manually:")
+        print(f"   cd {worktree_path}")
+        print(f"   polecat finish")
+    elif exit_code == 0:
+        print(f"\n✅ Collaboration completed. Finishing...")
+        os.chdir(worktree_path)
+
+        branch_name = f"polecat/{task.id}"
+        try:
+            subprocess.run(["git", "push", "-u", "origin", branch_name], check=True, cwd=worktree_path)
+        except subprocess.CalledProcessError:
+            print("⚠️  Push failed - you may need to commit changes first")
+            sys.exit(1)
+
+        try:
+            from lib.task_model import TaskStatus
+            task = manager.storage.get_task(task.id)
+            task.status = TaskStatus.REVIEW
+            task.assignee = None
+            manager.storage.save_task(task)
+            print(f"✅ Task marked as 'review' (ready for merge)")
+        except ImportError:
+            print("Warning: Could not update task status")
+
+        print(f"\n🏭 To merge: polecat merge")
+    else:
+        print(f"\n⚠️  Session exited with code {exit_code}. Not auto-finishing.")
+        print(f"   To finish manually: cd {worktree_path} && polecat finish")
+
+
+@main.command()
 @click.option("--project", "-p", help="Project to claim tasks from")
 @click.option("--caller", "-c", default="polecat", help="Identity claiming the task")
 @click.option("--task-id", "-t", help="Specific task ID to run (skips claim)")
