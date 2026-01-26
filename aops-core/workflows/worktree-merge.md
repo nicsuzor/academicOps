@@ -35,10 +35,16 @@ git branch -a | grep polecat
 git log --oneline main..polecat/{task-id}
 ```
 
-Alternatively, use the Engineer class:
+Alternatively, use the unified CLI or Engineer class:
+
+```bash
+# Unified CLI (preferred)
+polecat merge
+```
 
 ```python
-from refinery.refinery.engineer import Engineer
+# Or programmatically
+from refinery.engineer import Engineer
 eng = Engineer()
 eng.scan_and_merge()  # Scans REVIEW status tasks
 ```
@@ -130,8 +136,14 @@ The `Engineer.scan_and_merge()` method automates this workflow:
 
 **Usage:**
 
+```bash
+polecat merge
+```
+
+Or programmatically:
+
 ```python
-from refinery.refinery.engineer import Engineer
+from refinery.engineer import Engineer
 Engineer().scan_and_merge()
 ```
 

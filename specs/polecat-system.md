@@ -55,7 +55,7 @@ A Python library that handles the lifecycle:
 
 ### 2. CLI Tool (`polecat/cli.py`)
 
-The interface for humans and agents:
+The unified interface for worktree management and merging:
 
 ```bash
 # Start working on the next priority task
@@ -72,6 +72,9 @@ polecat finish [--no-push] [--nuke]
 
 # Clean up worktree (without marking ready)
 polecat nuke <task-id>
+
+# Run the Refinery: merge all review tasks to main
+polecat merge
 ```
 
 #### The `finish` Command
@@ -84,6 +87,18 @@ The `finish` command is the critical transition that marks a task as **ready to 
 4. **Optionally** nukes the worktree with `--nuke`
 
 This explicit command ensures workers intentionally signal completion rather than accidentally triggering merge through cleanup.
+
+#### The `merge` Command
+
+The `merge` command runs the Refinery to process all tasks in `review` status:
+
+1. **Scans** for tasks with `status: review`
+2. **Fetches** and squash-merges each polecat branch to main
+3. **Runs tests** after merge
+4. **Marks** task as `done` on success
+5. **Cleans up** the branch and worktree
+
+On failure, the task is assigned to `engineer` for manual intervention.
 
 ## Workflow
 
@@ -142,10 +157,10 @@ The Refinery completes the lifecycle by merging completed work back into the mai
         8. Updates task status to `done`.
         9. **Nukes** the local worktree via `PolecatManager`.
 
-2.  **CLI (`refinery/cli.py`)**:
+2.  **CLI (unified with polecat)**:
     ```bash
     # Run a single pass of the merge queue
-    uv run refinery/cli.py scan
+    polecat merge
     ```
 
 ### Kickback & Recovery Workflow

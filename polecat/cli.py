@@ -158,9 +158,24 @@ def list():
         if item.is_dir():
             print(f"{item.name} -> {item}")
             found = True
-            
+
     if not found:
         print("No active polecats.")
+
+@main.command()
+def merge():
+    """Scan for tasks in REVIEW status and merge them to main.
+
+    This runs the Refinery: finds all tasks marked 'review',
+    squash-merges their polecat branches, runs tests, and
+    marks them 'done' on success.
+    """
+    # Import here to avoid circular dependency
+    sys.path.insert(0, str(Path(__file__).parent.parent / "refinery"))
+    from engineer import Engineer
+
+    eng = Engineer()
+    eng.scan_and_merge()
 
 if __name__ == "__main__":
     main()
