@@ -51,8 +51,19 @@ PRIORITY_BORDERS = {
 TYPE_SHAPES = {
     "goal": "ellipse",
     "project": "box3d",
+    "epic": "octagon",      # Milestone grouping
     "task": "box",
     "action": "note",
+    "bug": "diamond",       # Defect to fix
+    "feature": "hexagon",   # New functionality
+    "learn": "tab",         # Observational tracking
+}
+
+EDGE_STYLES = {
+    "parent": {"color": "#6c757d", "style": "solid"},           # gray - hierarchy
+    "depends_on": {"color": "#dc3545", "style": "bold"},        # red - blocking
+    "soft_depends_on": {"color": "#17a2b8", "style": "dashed"}, # teal - advisory
+    "wikilink": {"color": "#adb5bd", "style": "dotted"},        # light gray - generic
 }
 
 # Structural completed nodes (completed parents with active children)
@@ -139,6 +150,18 @@ def filter_completed_smart(nodes: list[dict], edges: list[dict]) -> tuple[list[d
     return filtered_nodes, structural_ids
 
 
+def classify_edge(source_id: str, target_id: str, node_by_id: dict) -> str:
+    """Determine edge type from node relationships."""
+    source = node_by_id.get(source_id, {})
+    if source.get("parent") == target_id:
+        return "parent"
+    if target_id in source.get("depends_on", []):
+        return "depends_on"
+    if target_id in source.get("soft_depends_on", []):
+        return "soft_depends_on"
+    return "wikilink"
+
+
 def generate_dot(nodes: list[dict], edges: list[dict], include_orphans: bool = False,
                  structural_ids: set[str] | None = None) -> str:
     """Generate DOT format graph with styling.
@@ -166,19 +189,53 @@ def generate_dot(nodes: list[dict], edges: list[dict], include_orphans: bool = F
         "    node [style=filled, fontname=\"Helvetica\"];",
         "    edge [color=\"#6c757d\"];",
         "",
-        "    // Legend",
-        "    subgraph cluster_legend {",
-        "        label=\"Legend\";",
+        "    // Legend - Task Types",
+        "    subgraph cluster_legend_types {",
+        "        label=\"Task Types\";",
         "        style=dashed;",
         "        legend_goal [label=\"Goal\" shape=ellipse fillcolor=\"#cce5ff\"];",
         "        legend_project [label=\"Project\" shape=box3d fillcolor=\"#cce5ff\"];",
+        "        legend_epic [label=\"Epic\" shape=octagon fillcolor=\"#cce5ff\"];",
         "        legend_task [label=\"Task\" shape=box fillcolor=\"#cce5ff\"];",
+        "        legend_action [label=\"Action\" shape=note fillcolor=\"#cce5ff\"];",
+        "        legend_bug [label=\"Bug\" shape=diamond fillcolor=\"#cce5ff\"];",
+        "        legend_feature [label=\"Feature\" shape=hexagon fillcolor=\"#cce5ff\"];",
+        "        legend_learn [label=\"Learn\" shape=tab fillcolor=\"#cce5ff\"];",
+        "    }",
+        "",
+        "    // Legend - Status",
+        "    subgraph cluster_legend_status {",
+        "        label=\"Status\";",
+        "        style=dashed;",
+        "        legend_active [label=\"Active\" shape=box fillcolor=\"#cce5ff\"];",
         "        legend_done [label=\"Done\" shape=box fillcolor=\"#d4edda\"];",
         "        legend_structural [label=\"Done (structural)\" shape=box3d style=\"filled,dashed\" fillcolor=\"#c3e6cb\"];",
         "        legend_blocked [label=\"Blocked\" shape=box fillcolor=\"#f8d7da\"];",
+        "        legend_waiting [label=\"Waiting\" shape=box fillcolor=\"#fff3cd\"];",
+        "    }",
+        "",
+        "    // Legend - Assignee",
+        "    subgraph cluster_legend_assignee {",
+        "        label=\"Assignee\";",
+        "        style=dashed;",
         "        legend_bot [label=\"@bot\" shape=box fillcolor=\"#ffffff\" color=\"#17a2b8\" penwidth=3];",
         "        legend_nic [label=\"@nic\" shape=box fillcolor=\"#ffffff\" color=\"#6f42c1\" penwidth=3];",
         "        legend_worker [label=\"@worker\" shape=box fillcolor=\"#ffffff\" color=\"#fd7e14\" penwidth=3];",
+        "    }",
+        "",
+        "    // Legend - Edge Types",
+        "    subgraph cluster_legend_edges {",
+        "        label=\"Edge Types\";",
+        "        style=dashed;",
+        "        legend_e1 [label=\"\" shape=point width=0.1];",
+        "        legend_e2 [label=\"\" shape=point width=0.1];",
+        "        legend_e3 [label=\"\" shape=point width=0.1];",
+        "        legend_e4 [label=\"\" shape=point width=0.1];",
+        "        legend_e5 [label=\"\" shape=point width=0.1];",
+        "        legend_e6 [label=\"\" shape=point width=0.1];",
+        "        legend_e1 -> legend_e2 [label=\"parent\" color=\"#6c757d\" style=solid];",
+        "        legend_e3 -> legend_e4 [label=\"depends_on\" color=\"#dc3545\" style=bold];",
+        "        legend_e5 -> legend_e6 [label=\"soft_depends\" color=\"#17a2b8\" style=dashed];",
         "    }",
         "",
     ]
@@ -236,7 +293,12 @@ def generate_dot(nodes: list[dict], edges: list[dict], include_orphans: bool = F
     node_ids = {n["id"] for n in nodes}
     for edge in edges:
         if edge["source"] in node_ids and edge["target"] in node_ids:
-            lines.append(f'    "{edge["source"]}" -> "{edge["target"]}";')
+            edge_type = classify_edge(edge["source"], edge["target"], node_by_id)
+            style = EDGE_STYLES.get(edge_type, EDGE_STYLES["wikilink"])
+            lines.append(
+                f'    "{edge["source"]}" -> "{edge["target"]}" '
+                f'[color="{style["color"]}" style="{style["style"]}"];'
+            )
 
     lines.append("}")
     return "\n".join(lines)
