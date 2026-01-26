@@ -337,6 +337,27 @@ else
         echo -e "${YELLOW}⚠ No aggregated MCP source found at $MCP_SOURCE${NC}"
     fi
 
+    # Generate and Link Gemini Extension
+    echo
+    echo "Setting up Gemini Extension..."
+    EXTENSION_SETUP_SUCCESS=false
+    
+    if AOPS="$AOPS_PATH" ACA_DATA="$ACA_DATA_PATH" python3 "$AOPS_PATH/scripts/create_extension.py"; then
+        echo -e "${GREEN}✓ Generated gemini-extension.json${NC}"
+        
+        if command -v gemini &> /dev/null; then
+             # Link the extension
+             if (cd "$AOPS_PATH/aops-core" && gemini extensions link .); then
+                echo -e "${GREEN}✓ Linked aops-core extension${NC}"
+                EXTENSION_SETUP_SUCCESS=true
+             else
+                echo -e "${YELLOW}⚠ Failed to link extension${NC}"
+             fi
+        fi
+    else
+        echo -e "${RED}✗ Failed to generate gemini-extension.json${NC}"
+    fi
+
     # Merge settings
     echo
     echo "Merging Gemini settings..."
@@ -379,38 +400,31 @@ except Exception as e:
 EOF
 )
 
-        # Merge new config with existing settings
-        # We overwrite hooks/hooksConfig with new values to ensure clean state
-        # We merge mcpServers to preserve any user-added servers
-        if [ -f "$MCP_CONVERTED" ]; then
-            MCP_CONTENT=$(cat "$MCP_CONVERTED")
-            MERGED=$(jq -s ' 
-                .[0] as $existing |
-                .[1] as $new |
-                .[2] as $mcp |
-                $existing * {
-                    hooksConfig: ($new.hooksConfig // {}),
-                    hooks: ($new.hooks // {}),
-                    mcpServers: (($existing.mcpServers // {}) * ($new.mcpServers // {}) * ($mcp.mcpServers // {}))
-                } | del(.["$comment"])
-            ' "$GEMINI_SETTINGS" <(echo "$MERGE_CONTENT") <(echo "$MCP_CONTENT"))
-        else
-            MERGED=$(jq -s ' 
-                .[0] as $existing |
-                .[1] as $new |
-                $existing * {
-                    hooksConfig: ($new.hooksConfig // {}),
-                    hooks: ($new.hooks // {}),
-                    mcpServers: (($existing.mcpServers // {}) * ($new.mcpServers // {}))
-                } | del(.["$comment"])
-            ' "$GEMINI_SETTINGS" <(echo "$MERGE_CONTENT"))
-        fi
+        # Merge configuration
+        # We only verify hooksConfig is enabled and remove legacy hooks/task_manager from settings.json
+        # to avoid duplication with the extension.
+        MERGED=$(jq -s ' 
+            .[0] as $existing |
+            .[1] as $new |
+            ($existing * {
+                hooksConfig: ($new.hooksConfig // {"enabled": true})
+            }) 
+            | del(.hooks.SessionStart) 
+            | del(.hooks.BeforeTool) 
+            | del(.hooks.AfterTool) 
+            | del(.hooks.BeforeAgent) 
+            | del(.hooks.AfterAgent)
+            | del(.hooks.SessionEnd)
+            | del(.mcpServers.task_manager)
+            | del(.["$comment"])
+        ' "$GEMINI_SETTINGS" <(echo "$MERGE_CONTENT"))
         echo "$MERGED" > "$GEMINI_SETTINGS"
-        echo -e "${GREEN}✓ Merged hooks and MCP servers into Gemini settings.json${NC}"
+        echo -e "${GREEN}✓ Updated global settings (hooksConfig enabled, legacy settings cleaned)${NC}"
     fi
 
     # Set permissions
     chmod +x "$AOPS_PATH/config/gemini/hooks/router.py" 2>/dev/null || true
+    chmod +x "$AOPS_PATH/aops-core/hooks/gemini/router.py" 2>/dev/null || true
 fi
 
 echo 

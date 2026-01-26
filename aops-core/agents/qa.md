@@ -1,18 +1,6 @@
 ---
 name: qa
-category: instruction
 description: Independent end-to-end verification before completion
-permalink: aops/agents/qa
-type: agent
-tags:
-  - verification
-  - qa
-  - independent
-  - completion-gate
-tools:
-  - Read
-  - Grep
-  - Glob
 model: opus
 ---
 

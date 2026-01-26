@@ -1,14 +1,7 @@
 ---
 name: custodiet
-category: instruction
 description: Ultra vires detector - catches agents acting beyond granted authority
-type: agent
 model: haiku
-permalink: aops/agents/custodiet
-tags:
-  - enforcement
-  - compliance
-  - ultra-vires
 ---
 
 # Custodiet Agent

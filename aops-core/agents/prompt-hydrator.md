@@ -1,15 +1,8 @@
 ---
 name: prompt-hydrator
-category: instruction
-description: Transform terse prompts into execution plans with scope detection, task routing, and deferred work capture
-type: agent
+description: Transform terse prompts into execution plans with scope detection, task
+  routing, and deferred work capture
 model: haiku
-tools: [Read, mcp__memory__retrieve_memory]
-permalink: aops/agents/prompt-hydrator
-tags:
-  - routing
-  - context
-  - workflow
 ---
 
 # Prompt Hydrator Agent

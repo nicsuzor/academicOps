@@ -1,1 +1,1 @@
-/home/nic/src/academicOps-gemini/config/antigravity/rules/core.md
+/home/nic/src/academicOps/config/antigravity/rules/core.md

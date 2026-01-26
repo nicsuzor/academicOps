@@ -78,7 +78,9 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
         {
             "script": "command_intercept.py"
         },  # Transform tool inputs (e.g., Glob excludes)
-        # {            "script": "task_required_gate.py"        },  # Blocks destructive ops without task binding
+        {
+            "script": "task_required_gate.py"
+        },  # Blocks destructive ops without task binding
         # {           "script": "policy_enforcer.py"        },  # Blocks policy violations (enforcement-map.md)
         {"script": "overdue_enforcement.py"},
     ],

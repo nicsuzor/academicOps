@@ -1,1 +1,1 @@
-/home/nic/src/academicOps-gemini/AXIOMS.md
+/home/nic/src/academicOps/AXIOMS.md

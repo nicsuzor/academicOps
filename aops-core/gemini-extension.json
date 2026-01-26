@@ -8,12 +8,12 @@
       "args": [
         "run",
         "--directory",
-        "/home/nic/src/academicOps-gemini/aops-core",
+        "/home/nic/src/academicOps/aops-core",
         "python",
         "mcp_servers/tasks_server.py"
       ],
       "env": {
-        "AOPS": "/home/nic/src/academicOps-gemini",
+        "AOPS": "/home/nic/src/academicOps",
         "ACA_DATA": "/home/nic/writing/data"
       }
     }
@@ -26,7 +26,7 @@
           {
             "name": "aops-router",
             "type": "command",
-            "command": "AOPS=/home/nic/src/academicOps-gemini AOPS_SESSIONS=/home/nic/src/academicOps-gemini/.gemini/sessions python3 /home/nic/src/academicOps-gemini/aops-core/hooks/gemini/router.py SessionStart",
+            "command": "AOPS=/home/nic/src/academicOps AOPS_SESSIONS=/home/nic/src/academicOps/.gemini/sessions python3 /home/nic/src/academicOps/aops-core/hooks/gemini/router.py SessionStart",
             "timeout": 15000
           }
         ]
@@ -39,7 +39,7 @@
           {
             "name": "aops-router",
             "type": "command",
-            "command": "AOPS=/home/nic/src/academicOps-gemini AOPS_SESSIONS=/home/nic/src/academicOps-gemini/.gemini/sessions python3 /home/nic/src/academicOps-gemini/aops-core/hooks/gemini/router.py BeforeAgent",
+            "command": "AOPS=/home/nic/src/academicOps AOPS_SESSIONS=/home/nic/src/academicOps/.gemini/sessions python3 /home/nic/src/academicOps/aops-core/hooks/gemini/router.py BeforeAgent",
             "timeout": 20000
           }
         ]
@@ -52,7 +52,7 @@
           {
             "name": "aops-router",
             "type": "command",
-            "command": "AOPS=/home/nic/src/academicOps-gemini AOPS_SESSIONS=/home/nic/src/academicOps-gemini/.gemini/sessions python3 /home/nic/src/academicOps-gemini/aops-core/hooks/gemini/router.py BeforeTool",
+            "command": "AOPS=/home/nic/src/academicOps AOPS_SESSIONS=/home/nic/src/academicOps/.gemini/sessions python3 /home/nic/src/academicOps/aops-core/hooks/gemini/router.py BeforeTool",
             "timeout": 5000
           }
         ]
@@ -65,7 +65,7 @@
           {
             "name": "aops-router",
             "type": "command",
-            "command": "AOPS=/home/nic/src/academicOps-gemini AOPS_SESSIONS=/home/nic/src/academicOps-gemini/.gemini/sessions python3 /home/nic/src/academicOps-gemini/aops-core/hooks/gemini/router.py AfterTool",
+            "command": "AOPS=/home/nic/src/academicOps AOPS_SESSIONS=/home/nic/src/academicOps/.gemini/sessions python3 /home/nic/src/academicOps/aops-core/hooks/gemini/router.py AfterTool",
             "timeout": 55000
           }
         ]
@@ -78,7 +78,7 @@
           {
             "name": "aops-router",
             "type": "command",
-            "command": "AOPS=/home/nic/src/academicOps-gemini AOPS_SESSIONS=/home/nic/src/academicOps-gemini/.gemini/sessions python3 /home/nic/src/academicOps-gemini/aops-core/hooks/gemini/router.py SessionEnd",
+            "command": "AOPS=/home/nic/src/academicOps AOPS_SESSIONS=/home/nic/src/academicOps/.gemini/sessions python3 /home/nic/src/academicOps/aops-core/hooks/gemini/router.py SessionEnd",
             "timeout": 5000
           }
         ]
