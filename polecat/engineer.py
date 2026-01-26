@@ -50,9 +50,23 @@ class Engineer:
         if not repo_path.exists():
             raise FileNotFoundError(f"Repo not found at {repo_path}")
 
+        # 0. Pre-flight checks
+        if self._is_dirty(repo_path):
+            raise RuntimeError(
+                f"Repository has uncommitted changes. Run:\n"
+                f"  cd {repo_path} && git stash"
+            )
+
         # 1. Fetch & Verify
         print(f"  Fetching in {repo_path}...")
         self._run_git(repo_path, ["fetch", "origin"])
+
+        unpushed = self._get_unpushed_count(repo_path, target_branch)
+        if unpushed > 0:
+            raise RuntimeError(
+                f"Main branch has {unpushed} unpushed commits. Run:\n"
+                f"  cd {repo_path} && git push origin {target_branch}"
+            )
 
         remote_branch = f"origin/{branch_name}"
         if not self._branch_exists(repo_path, remote_branch) and not self._branch_exists(repo_path, branch_name):
@@ -126,3 +140,15 @@ class Engineer:
     def _branch_exists(self, cwd, branch):
         res = self._run_git(cwd, ["rev-parse", "--verify", branch], check=False)
         return res.returncode == 0
+
+    def _is_dirty(self, cwd):
+        """Check if working directory has uncommitted changes."""
+        res = self._run_git(cwd, ["status", "--porcelain"], check=False)
+        return bool(res.stdout.decode().strip())
+
+    def _get_unpushed_count(self, cwd, branch="main"):
+        """Count commits ahead of origin."""
+        res = self._run_git(cwd, ["rev-list", "--count", f"origin/{branch}..{branch}"], check=False)
+        if res.returncode == 0:
+            return int(res.stdout.decode().strip())
+        return 0
