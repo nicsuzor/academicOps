@@ -61,14 +61,17 @@ if [[ "${1:-}" == "--disable" ]]; then
         echo -e "${GREEN}✓ Cron jobs removed${NC}"
     fi
 
-    # Remove Claude plugins and generated files
-    echo "Removing Claude plugins..."
-    rm -rf "$CLAUDE_DIR/plugins"
+    # Uninstall Claude plugins
+    echo "Uninstalling Claude plugins..."
+    if command -v claude &> /dev/null; then
+        claude plugin uninstall aops-core 2>/dev/null && echo "  Uninstalled aops-core" || true
+        claude plugin uninstall aops-tools 2>/dev/null && echo "  Uninstalled aops-tools" || true
+    fi
     rm -f "$CLAUDE_DIR/settings.local.json"
     # Clean up legacy symlinks
     rm -f "$CLAUDE_DIR/CLAUDE.md"
     rm -f "$CLAUDE_DIR/skills" "$CLAUDE_DIR/commands" "$CLAUDE_DIR/agents" "$CLAUDE_DIR/hooks"
-    echo -e "${GREEN}✓ Claude plugins removed${NC}"
+    echo -e "${GREEN}✓ Claude plugins uninstalled${NC}"
     echo -e "${YELLOW}Note: ~/.claude/settings.json not removed (user-managed file)${NC}"
 
     # Remove Gemini config
@@ -182,25 +185,50 @@ fi
 
 # Note: CLAUDE.md symlink removed - use repo-level CLAUDE.md instead
 
-# Create plugins directory and symlink all aops plugins
-# Note: skills, commands, agents, hooks now live in plugins (not top-level)
-mkdir -p "$CLAUDE_DIR/plugins"
+# Install plugins via Claude Code CLI
+echo
+echo "Installing plugins via Claude Code..."
 
-# Auto-discover and link all aops-* plugins
-for plugin_dir in "$AOPS_PATH"/aops-*; do
-    if [ -d "$plugin_dir" ] && [ -f "$plugin_dir/.claude-plugin/plugin.json" ]; then
-        plugin_name=$(basename "$plugin_dir")
-        create_symlink "plugins/$plugin_name" "$plugin_dir"
+if command -v claude &> /dev/null; then
+    # Add marketplace (idempotent - won't fail if already added)
+    if claude plugin marketplace add @nicsuzor/academicOps 2>/dev/null; then
+        echo -e "${GREEN}✓ Added @nicsuzor/academicOps marketplace${NC}"
+    else
+        echo "  Marketplace @nicsuzor/academicOps already configured"
     fi
-done
 
-# Clean up legacy symlinks (content moved to aops-core plugin)
+    # Install plugins
+    for plugin_name in aops-core aops-tools; do
+        if claude plugin install "$plugin_name" 2>/dev/null; then
+            echo -e "${GREEN}✓ Installed plugin: $plugin_name${NC}"
+        else
+            echo "  Plugin $plugin_name already installed or install failed"
+        fi
+    done
+else
+    echo -e "${YELLOW}⚠ claude CLI not found - install plugins manually:${NC}"
+    echo "  claude plugin marketplace add @nicsuzor/academicOps"
+    echo "  claude plugin install aops-core"
+    echo "  claude plugin install aops-tools"
+fi
+
+# Clean up legacy symlinks (content moved to plugins)
 for legacy in skills commands agents hooks; do
     if [ -L "$CLAUDE_DIR/$legacy" ]; then
         rm "$CLAUDE_DIR/$legacy"
         echo -e "${YELLOW}  Removed legacy symlink: $legacy${NC}"
     fi
 done
+
+# Clean up old plugin symlinks (now using CLI install)
+if [ -d "$CLAUDE_DIR/plugins" ]; then
+    for plugin_link in "$CLAUDE_DIR/plugins"/aops-*; do
+        if [ -L "$plugin_link" ]; then
+            rm "$plugin_link"
+            echo -e "${YELLOW}  Removed legacy plugin symlink: $(basename "$plugin_link")${NC}"
+        fi
+    done
+fi
 
 # Step 2a: Create settings.local.json with machine-specific env vars
 echo
@@ -820,23 +848,26 @@ else
     VALIDATION_PASSED=false
 fi
 
-# Check plugin symlinks (auto-discover all aops-* plugins)
-plugin_count=0
-for plugin_dir in "$AOPS_PATH"/aops-*; do
-    if [ -d "$plugin_dir" ] && [ -f "$plugin_dir/.claude-plugin/plugin.json" ]; then
-        plugin_name=$(basename "$plugin_dir")
-        if [ ! -L "$CLAUDE_DIR/plugins/$plugin_name" ]; then
-            echo -e "${RED}✗ Plugin symlink missing: $CLAUDE_DIR/plugins/$plugin_name${NC}"
-            VALIDATION_PASSED=false
+# Check plugins installed via Claude CLI
+INSTALLED_PLUGINS="$CLAUDE_DIR/plugins/installed_plugins.json"
+if [ -f "$INSTALLED_PLUGINS" ] && command -v jq &> /dev/null; then
+    for plugin_name in aops-core aops-tools; do
+        # Plugin keys include marketplace suffix, e.g., "aops-core@academicOps"
+        if jq -e ".plugins | keys[] | select(startswith(\"$plugin_name@\"))" "$INSTALLED_PLUGINS" > /dev/null 2>&1; then
+            echo -e "${GREEN}✓ Plugin $plugin_name installed${NC}"
         else
-            echo -e "${GREEN}✓ Plugin $plugin_name linked${NC}"
-            plugin_count=$((plugin_count + 1))
+            echo -e "${RED}✗ Plugin $plugin_name not installed${NC}"
+            echo "  Run: claude plugin install $plugin_name"
+            VALIDATION_PASSED=false
         fi
-    fi
-done
-
-if [ "$plugin_count" -eq 0 ]; then
-    echo -e "${YELLOW}⚠ No aops plugins found${NC}"
+    done
+elif [ -f "$INSTALLED_PLUGINS" ]; then
+    echo -e "${YELLOW}⚠ jq not installed - cannot verify plugins${NC}"
+else
+    echo -e "${RED}✗ No plugins installed (missing installed_plugins.json)${NC}"
+    echo "  Run: claude plugin marketplace add @nicsuzor/academicOps"
+    echo "  Run: claude plugin install aops-core aops-tools"
+    VALIDATION_PASSED=false
 fi
 
 # Check settings.local.json

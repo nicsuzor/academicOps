@@ -6,5 +6,6 @@
     "name": "Nicolas Suzor"
   },
   "license": "MIT",
-  "keywords": ["pdf", "excalidraw", "flowchart", "mermaid", "document-conversion", "visualization"]
+  "keywords": ["pdf", "excalidraw", "flowchart", "mermaid", "document-conversion", "visualization"],
+  "mcpServers": "./.mcp.json"
 }

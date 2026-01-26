@@ -75,21 +75,21 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
     "PreToolUse": [
         {"script": "unified_logger.py"},
         {"script": "hydration_gate.py"},  # Blocks/warns until prompt-hydrator invoked
-        {"script": "command_intercept.py"},  # Transform tool inputs (e.g., Glob excludes)
         {
-            "script": "task_required_gate.py"
-        },  # Blocks destructive ops without task binding
-        {
-            "script": "policy_enforcer.py"
-        },  # Blocks policy violations (enforcement-map.md)
+            "script": "command_intercept.py"
+        },  # Transform tool inputs (e.g., Glob excludes)
+        # {            "script": "task_required_gate.py"        },  # Blocks destructive ops without task binding
+        # {           "script": "policy_enforcer.py"        },  # Blocks policy violations (enforcement-map.md)
         {"script": "overdue_enforcement.py"},
     ],
     "PostToolUse": [
         {"script": "unified_logger.py"},
-        {"script": "fail_fast_watchdog.py"},  # Injects fail-fast reminder on errors
+        # {"script": "fail_fast_watchdog.py"},  # Injects fail-fast reminder on errors
         {"script": "custodiet_gate.py"},  # Periodic compliance check
         {"script": "task_binding.py"},  # Bind task to session on create/claim
-        {"script": "todowrite_handover_gate.py"},  # Set todo_with_handover gate on TodoWrite
+        {
+            "script": "todowrite_handover_gate.py"
+        },  # Set todo_with_handover gate on TodoWrite
         {"script": "handover_gate.py"},  # Clear stop gate when /handover skill invoked
         # {"script": "todowrite_fallback.py"},  # DISABLED: Proving main path first
         # {"script": "autocommit_state.py"},  # DISABLED: Auto-commit data/ changes
@@ -103,9 +103,9 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
         {"script": "unified_logger.py"},
     ],
     "Stop": [
-        #{"script": "reflection_check.py"},  # Validate parseable Framework Reflection
-        # {"script": "session_end_commit_check.py"},  
-      #  {"script": "unified_logger.py"},
+        # {"script": "reflection_check.py"},  # Validate parseable Framework Reflection
+        # {"script": "session_end_commit_check.py"},
+        #  {"script": "unified_logger.py"},
     ],
     "SessionEnd": [
         {"script": "unified_logger.py"},

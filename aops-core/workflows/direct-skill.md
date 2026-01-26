@@ -1,42 +1,29 @@
-# Direct Skill Workflow
+---
+id: direct-skill
+category: routing
+bases: []
+---
 
-Request maps 1:1 to an existing skill. Skills contain their own workflows.
+# Direct Skill
 
-## When to Use
+Request maps 1:1 to existing skill. Skills contain their own workflows.
 
-Use this workflow when:
-- Explicit skill invocation: "/commit", "/email", "run /daily"
-- Implicit match: request matches a skill description exactly
+## Routing Signals
 
-Do NOT use for:
-- Multiple skills needed (use appropriate workflow)
-- Context composition required (use design)
-- Ambiguous mapping (ask user)
+- Explicit: "/commit", "/email", "run /daily"
+- Implicit: Request matches skill description exactly
 
-## Constraints
+## NOT This Workflow
 
-### Core Rules
+- Multiple skills needed → appropriate workflow
+- Context composition required → [[design]]
+- Ambiguous mapping → ask user
 
-- Invoke the skill directly without wrapping
-- Trust the skill to handle the request—skills are self-contained
+## Unique Steps
 
-### Never Do
+1. Invoke skill directly
+2. Do NOT wrap in TodoWrite or add ceremony
 
-- Never wrap skill invocation in TodoWrite
-- Never add ceremony around skill invocation
-- Never intercept or override the skill's internal workflow
+## Key Rule
 
-## Triggers
-
-- When explicit skill invocation detected → invoke skill directly
-- When implicit skill match detected → invoke skill directly
-
-## How to Check
-
-- Invoke directly: skill invoked without wrapper or preprocessing
-- Trust skill: skill's internal workflow followed without override
-- TodoWrite wrapping: skill invocation wrapped in TodoWrite tracking
-- Added ceremony: extra steps added around skill invocation
-- Intercept skill workflow: overriding or modifying skill's internal behavior
-- Explicit skill invocation: user message starts with "/" or says "run /<skill>"
-- Implicit skill match: request matches exactly one skill's description
+Skills are self-contained. Trust the skill to handle the request.
