@@ -61,21 +61,50 @@ The interface for humans and agents:
 # Start working on the next priority task
 polecat start --caller nic --project aops
 
+# Checkout a specific task by ID
+polecat checkout <task-id>
+
 # List active polecats
 polecat list
 
-# Clean up (when done)
+# Mark work complete and ready for merge
+polecat finish [--no-push] [--nuke]
+
+# Clean up worktree (without marking ready)
 polecat nuke <task-id>
 ```
+
+#### The `finish` Command
+
+The `finish` command is the critical transition that marks a task as **ready to merge**:
+
+1. **Validates** uncommitted changes (warns if dirty)
+2. **Pushes** the current branch to origin
+3. **Updates** task status from `in_progress` → `review`
+4. **Optionally** nukes the worktree with `--nuke`
+
+This explicit command ensures workers intentionally signal completion rather than accidentally triggering merge through cleanup.
 
 ## Workflow
 
 1.  **Start:** `polecat start` claims a task (e.g., `osb-c36de7ec`).
 2.  **Context Switch:** The user/agent `cd`s to `/home/nic/polecats/osb-c36de7ec`.
 3.  **Work:** Code changes are made, tested, and committed in this isolated environment.
-4.  **Push:** Changes are pushed to `origin/polecat/osb-c36de7ec`.
-5.  **Stop:** `polecat nuke` removes the directory.
-6.  **Merge (Future):** A "Refinery" process picks up the branch, runs tests, and merges it to `main`.
+4.  **Finish:** `polecat finish` pushes the branch and marks the task as `review` (ready for merge).
+5.  **Cleanup:** `polecat nuke` removes the worktree directory.
+6.  **Merge:** The Refinery scans `review` tasks, merges them to `main`, and marks them `done`.
+
+### Task Status Lifecycle
+
+```
+active → in_progress → review → done
+         (claimed)    (finish)  (merged)
+```
+
+- **active**: Task is ready to be claimed by a worker
+- **in_progress**: Worker is actively working on the task
+- **review**: Work is complete, branch pushed, ready for merge
+- **done**: Merged to main, branch cleaned up
 
 ## Repository Mapping
 
