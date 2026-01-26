@@ -34,6 +34,45 @@ def start(project, caller):
         sys.exit(1)
 
 @main.command()
+@click.argument("task_id")
+@click.option("--caller", "-c", default="polecat", help="Identity claiming the task")
+def checkout(task_id, caller):
+    """Checkout a specific task by ID and create its worktree.
+
+    Use with shell integration for automatic cd:
+        cd $(polecat checkout TASK_ID)
+
+    Or add to your shell rc:
+        pc() { cd "$(polecat checkout "$@")" 2>/dev/null || polecat checkout "$@"; }
+    """
+    manager = PolecatManager()
+
+    task = manager.storage.get_task(task_id)
+    if not task:
+        print(f"Task not found: {task_id}", file=sys.stderr)
+        sys.exit(1)
+
+    # Claim the task if not already in progress
+    try:
+        from lib.task_model import TaskStatus
+        if task.status == TaskStatus.ACTIVE:
+            task.status = TaskStatus.IN_PROGRESS
+            task.assignee = caller
+            manager.storage.save_task(task)
+            print(f"Claimed: {task.title}", file=sys.stderr)
+    except ImportError:
+        pass
+
+    try:
+        worktree_path = manager.setup_worktree(task)
+        # Output just the path for shell integration (cd $(polecat checkout ...))
+        print(worktree_path)
+    except Exception as e:
+        print(f"Error setting up worktree: {e}", file=sys.stderr)
+        sys.exit(1)
+
+@main.command()
+@click.argument("task_id")
 def nuke(task_id):
     """Destroy a polecat (remove worktree and branch)."""
     manager = PolecatManager()
