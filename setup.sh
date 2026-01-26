@@ -290,8 +290,7 @@ else
         echo -e "${GREEN}  $name → $target${NC}"
     }
 
-    # Only create symlinks for directories that exist
-    [ -d "$AOPS_PATH/config/gemini/hooks" ] && gemini_create_symlink "hooks" "$AOPS_PATH/config/gemini/hooks"
+    # Legacy hooks symlink removed (handled by extension)
     
     # GEMINI.md generation (injects actual paths)
     if [ -L "$GEMINI_DIR/GEMINI.md" ] || [ -f "$GEMINI_DIR/GEMINI.md" ]; then
@@ -299,11 +298,14 @@ else
     fi
 
     # Read source and inject paths
-    sed -e "s|~/src/academicOps|$AOPS_PATH|g" \
-        -e "s|~/writing/data|$ACA_DATA_PATH|g" \
-        "$AOPS_PATH/config/gemini/GEMINI.md" > "$GEMINI_DIR/GEMINI.md"
-
-    echo -e "${GREEN}  Generated ~/.gemini/GEMINI.md with paths injected${NC}"
+    if [ -f "$AOPS_PATH/aops-core/GEMINI.md" ]; then
+        sed -e "s|\${AOPS}|$AOPS_PATH|g" \
+            -e "s|\${ACA_DATA}|$ACA_DATA_PATH|g" \
+            "$AOPS_PATH/aops-core/GEMINI.md" > "$GEMINI_DIR/GEMINI.md"
+        echo -e "${GREEN}  Generated ~/.gemini/GEMINI.md with paths injected${NC}"
+    else
+        echo -e "${YELLOW}⚠ aops-core/GEMINI.md not found, skipping generation${NC}"
+    fi
 
     # Update Antigravity global workflow link
     mkdir -p "$GLOBAL_WORKFLOWS_DIR"
@@ -320,9 +322,29 @@ else
     # Convert MCP servers from Claude format to Gemini format
     echo
     echo "Converting MCP servers for Gemini..."
-    MCP_SOURCE="$AOPS_PATH/config/gemini/aggregated_mcp.json"
-    MCP_CONVERTED="$AOPS_PATH/config/gemini/mcp-servers.json"
-    mkdir -p "$AOPS_PATH/config/gemini"
+    # Use a temp dir for aggregation since config/gemini is gone/legacy
+    MCP_BUILD_DIR="$AOPS_PATH/aops-core/config/gemini"
+    mkdir -p "$MCP_BUILD_DIR"
+    MCP_SOURCE="$MCP_BUILD_DIR/aggregated_mcp.json"
+    MCP_CONVERTED="$MCP_BUILD_DIR/mcp-servers.json"
+
+    if command -v jq &> /dev/null; then
+        # Start with empty mcpServers object
+        echo '{"mcpServers": {}}' > "$MCP_SOURCE"
+        
+        # Merge each plugin's mcp.json
+        for plugin_name in aops-core aops-tools; do
+            plugin_mcp="$AOPS_PATH/$plugin_name/.mcp.json"
+            if [ -f "$plugin_mcp" ]; then
+                jq -s '.[0] * .[1]' "$MCP_SOURCE" "$plugin_mcp" > "$MCP_SOURCE.tmp" && mv "$MCP_SOURCE.tmp" "$MCP_SOURCE"
+            fi
+        done
+        
+        echo -e "${GREEN}✓ Aggregated plugin MCPs to $MCP_SOURCE${NC}"
+    else
+        echo -e "${RED}✗ jq not installed - cannot aggregate MCPs${NC}"
+        # Continue anyway, might not be fatal if extension handles it
+    fi
 
     if [ -f "$MCP_SOURCE" ]; then
         if AOPS="$AOPS_PATH" python3 "$AOPS_PATH/scripts/convert_mcp_to_gemini.py" "$MCP_SOURCE" "$MCP_CONVERTED" 2>&1; then
@@ -363,67 +385,22 @@ else
     echo "Merging Gemini settings..."
     GEMINI_SETTINGS="$GEMINI_DIR/settings.json"
     
-    if [ -f "$AOPS_PATH/config/gemini/config/settings.json.template" ]; then
-        MERGE_FILE="$AOPS_PATH/config/gemini/config/settings.json.template"
-    else
-        MERGE_FILE="$AOPS_PATH/config/gemini/config/settings-merge.json"
-    fi
-
+    # We no longer rely on config/gemini/config/settings.json.template since we deleted it.
+    # We just ensure hooksConfig is enabled.
+    
     if [ ! -f "$GEMINI_SETTINGS" ]; then
         echo "{}" > "$GEMINI_SETTINGS"
-    else
-        if ! jq . "$GEMINI_SETTINGS" > /dev/null 2>&1; then
-            echo -e "${YELLOW}⚠ Existing Gemini settings.json is invalid - backing up and resetting${NC}"
-            mv "$GEMINI_SETTINGS" "$GEMINI_SETTINGS.bak.$(date +%s)"
-            echo "{}" > "$GEMINI_SETTINGS"
-        fi
     fi
 
-    if [ -f "$MERGE_FILE" ]; then
-        # Substitute both ${AOPS} and $AOPS for backward compatibility using python
-        MERGE_CONTENT=$(python3 - << 'EOF' "$MERGE_FILE" "$AOPS_PATH"
-import sys
-import os
-
-filepath = sys.argv[1]
-aops_path = sys.argv[2]
-
-try:
-    with open(filepath, "r") as f:
-        content = f.read()
-    
-    # Replace ${AOPS} and $AOPS
-    content = content.replace("${AOPS}", aops_path).replace("$AOPS", aops_path)
-    print(content)
-except Exception as e:
-    sys.exit(1)
-EOF
-)
-
-        # Merge configuration
-        # We only verify hooksConfig is enabled and remove legacy hooks/task_manager from settings.json
-        # to avoid duplication with the extension.
-        MERGED=$(jq -s ' 
-            .[0] as $existing |
-            .[1] as $new |
-            ($existing * {
-                hooksConfig: ($new.hooksConfig // {"enabled": true})
-            }) 
-            | del(.hooks.SessionStart) 
-            | del(.hooks.BeforeTool) 
-            | del(.hooks.AfterTool) 
-            | del(.hooks.BeforeAgent) 
-            | del(.hooks.AfterAgent)
-            | del(.hooks.SessionEnd)
-            | del(.mcpServers.task_manager)
-            | del(.["$comment"])
-        ' "$GEMINI_SETTINGS" <(echo "$MERGE_CONTENT"))
+    # Basic merge to enable hooksConfig
+    if command -v jq &> /dev/null; then
+        MERGED=$(jq '.hooksConfig.enabled = true' "$GEMINI_SETTINGS")
         echo "$MERGED" > "$GEMINI_SETTINGS"
-        echo -e "${GREEN}✓ Updated global settings (hooksConfig enabled, legacy settings cleaned)${NC}"
+        echo -e "${GREEN}✓ Updated global settings (hooksConfig enabled)${NC}"
     fi
 
     # Set permissions
-    chmod +x "$AOPS_PATH/config/gemini/hooks/router.py" 2>/dev/null || true
+    # chmod +x "$AOPS_PATH/config/gemini/hooks/router.py" 2>/dev/null || true # Removed
     chmod +x "$AOPS_PATH/aops-core/hooks/gemini/router.py" 2>/dev/null || true
 fi
 

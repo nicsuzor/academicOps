@@ -83,6 +83,71 @@
           }
         ]
       }
+    ],
+    "Notification": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "name": "aops-router",
+            "type": "command",
+            "command": "AOPS=/home/nic/src/academicOps AOPS_SESSIONS=/home/nic/src/academicOps/.gemini/sessions python3 /home/nic/src/academicOps/aops-core/hooks/gemini/router.py Notification",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "BeforeModel": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "name": "aops-router",
+            "type": "command",
+            "command": "AOPS=/home/nic/src/academicOps AOPS_SESSIONS=/home/nic/src/academicOps/.gemini/sessions python3 /home/nic/src/academicOps/aops-core/hooks/gemini/router.py BeforeModel",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "AfterModel": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "name": "aops-router",
+            "type": "command",
+            "command": "AOPS=/home/nic/src/academicOps AOPS_SESSIONS=/home/nic/src/academicOps/.gemini/sessions python3 /home/nic/src/academicOps/aops-core/hooks/gemini/router.py AfterModel",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "BeforeToolSelection": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "name": "aops-router",
+            "type": "command",
+            "command": "AOPS=/home/nic/src/academicOps AOPS_SESSIONS=/home/nic/src/academicOps/.gemini/sessions python3 /home/nic/src/academicOps/aops-core/hooks/gemini/router.py BeforeToolSelection",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "PreCompress": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "name": "aops-router",
+            "type": "command",
+            "command": "AOPS=/home/nic/src/academicOps AOPS_SESSIONS=/home/nic/src/academicOps/.gemini/sessions python3 /home/nic/src/academicOps/aops-core/hooks/gemini/router.py PreCompress",
+            "timeout": 5000
+          }
+        ]
+      }
     ]
   }
 }

@@ -37,11 +37,12 @@ EVENT_MAP = {
     "BeforeAgent": "UserPromptSubmit",
     "AfterAgent": "Stop",
     "SessionEnd": "Stop",
+    "Notification": "Notification",
+    "PreCompress": "PreCompact",
     # Gemini-only events (no Claude equivalent - pass through for logging)
     "BeforeModel": None,
     "AfterModel": None,
     "BeforeToolSelection": None,
-    "PreCompress": None,
 }
 
 # Hook paths (from $AOPS environment variable)
