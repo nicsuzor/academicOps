@@ -57,6 +57,41 @@ Epic
 
 Use `depends_on` to enforce sequencing: implementation tasks should hard-depend on their investigation spikes.
 
+### Soft vs Hard Dependencies
+
+When decomposing, choose relationship types based on execution semantics:
+
+| Relationship | Field | Meaning | Use When |
+|--------------|-------|---------|----------|
+| **Hard** | `depends_on` | Task CANNOT proceed | Dependency produces required input |
+| **Soft** | `soft_depends_on` | Task BENEFITS from context | Dependency provides optional context |
+
+**Decision heuristic: "What happens if the dependency never completes?"**
+
+- **Impossible or wrong output** → Hard dependency (`depends_on`)
+- **Still valid but less informed** → Soft dependency (`soft_depends_on`)
+
+**Common patterns:**
+
+```
+# Hard: Implementation needs spike findings
+- id: implement-feature
+  depends_on: [spike-investigate-options]  # Can't proceed without findings
+
+# Soft: Parallel work benefits from sibling context
+- id: implement-module-b
+  soft_depends_on: [implement-module-a]  # Useful patterns, not required
+
+# Soft: Review benefits from related analysis
+- id: review-approach
+  soft_depends_on: [analyze-alternatives]  # Informs but doesn't block
+```
+
+**Agent behavior with soft deps:**
+- Read soft dependencies for context when claiming (if complete)
+- Proceed regardless of soft dependency completion status
+- Log context gaps, don't block on them
+
 ## Knowledge Flow Between Siblings
 
 **Problem**: Sibling tasks in an epic are isolated by default. Findings in one spike don't automatically propagate to related tasks.
