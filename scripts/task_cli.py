@@ -310,9 +310,16 @@ def create(title: str, project: str | None, task_type: str, parent: str | None, 
         console.print(f"Valid values: {', '.join(t.value for t in TaskType)}")
         raise SystemExit(1)
 
+    # P#62: Inherit project from parent if not explicitly specified
+    effective_project = project
+    if parent and not project:
+        parent_task = storage.get_task(parent)
+        if parent_task and parent_task.project:
+            effective_project = parent_task.project
+
     task = storage.create_task(
         title=title,
-        project=project,
+        project=effective_project,
         type=type_enum,
         parent=parent,
         priority=priority,
