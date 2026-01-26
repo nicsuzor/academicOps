@@ -352,15 +352,22 @@ else
         echo -e "${GREEN}✓ Generated gemini-extension.json${NC}"
         
         if command -v gemini &> /dev/null; then
-             # Try to uninstall first to ensure a clean state
-             gemini extensions uninstall aops-core academic-ops-core 2>/dev/null || true
-             
-             # Link the extension
-             if (cd "$AOPS_PATH/aops-core" && gemini extensions link .); then
+             # Try to link first
+             echo "Linking extension..."
+             set +e # Allow failure for check
+             LINK_OUTPUT=$(cd "$AOPS_PATH/aops-core/gemini-dist" && gemini extensions link . 2>&1)
+             LINK_EXIT_CODE=$?
+             set -e # Re-enable strict mode
+
+             if [ $LINK_EXIT_CODE -eq 0 ]; then
                 echo -e "${GREEN}✓ Linked aops-core extension${NC}"
                 EXTENSION_SETUP_SUCCESS=true
+             elif echo "$LINK_OUTPUT" | grep -q "already installed"; then
+                 echo -e "${GREEN}✓ Extension already linked (updated in place)${NC}"
+                 EXTENSION_SETUP_SUCCESS=true
              else
                 echo -e "${YELLOW}⚠ Failed to link extension${NC}"
+                echo "Output: $LINK_OUTPUT"
              fi
         fi
     else
@@ -507,12 +514,12 @@ if [ "${GEMINI_SKIPPED:-true}" = "false" ]; then
         echo -e "${GREEN}✓ Gemini settings.json has hooks${NC}"
     fi
 
-    MCP_COUNT=$(jq '.mcpServers | length // 0' "$GEMINI_DIR/settings.json")
-    if [ "$MCP_COUNT" -gt 0 ]; then
-        if jq -e '.mcpServers.task_manager' "$GEMINI_DIR/settings.json" > /dev/null 2>&1; then
-             echo -e "${GREEN}✓ Gemini settings.json has task_manager MCP${NC}"
+    # Check if extension manifest exists and has task_manager
+    if [ -f "$AOPS_PATH/aops-core/gemini-dist/gemini-extension.json" ]; then
+        if jq -e '.mcpServers.task_manager' "$AOPS_PATH/aops-core/gemini-dist/gemini-extension.json" > /dev/null 2>&1; then
+             echo -e "${GREEN}✓ Extension manifest has task_manager MCP${NC}"
         else
-             echo -e "${YELLOW}⚠ Gemini settings.json missing task_manager MCP${NC}"
+             echo -e "${YELLOW}⚠ Extension manifest missing task_manager MCP${NC}"
         fi
     fi
 fi

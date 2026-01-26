@@ -14,6 +14,19 @@ def main():
 
     plugin_root = os.path.join(aops_path, "aops-core")
 
+    # Create gemini-dist directory
+    dist_dir = os.path.join(plugin_root, "gemini-dist")
+    os.makedirs(dist_dir, exist_ok=True)
+
+    # Symlink required resources
+    for item in ["skills", "GEMINI.md"]:
+        src = os.path.join(plugin_root, item)
+        dst = os.path.join(dist_dir, item)
+        if os.path.exists(src):
+            if os.path.islink(dst) or os.path.exists(dst):
+                os.remove(dst)
+            os.symlink(src, dst)
+
     # Hook command template
     def hook_command(event_name, timeout=5000):
         return {
@@ -25,7 +38,7 @@ def main():
 
     # Extension Manifest
     manifest = {
-        "name": "academic-ops-core",
+        "name": "aops-core",
         "version": "0.1.0",
         "description": "AcademicOps Core Framework Extension for Gemini CLI",
         "mcpServers": {
@@ -110,7 +123,7 @@ def main():
     }
 
     # Write manifest
-    manifest_path = os.path.join(plugin_root, "gemini-extension.json")
+    manifest_path = os.path.join(dist_dir, "gemini-extension.json")
     with open(manifest_path, "w") as f:
         json.dump(manifest, f, indent=2)
 
