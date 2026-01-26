@@ -53,7 +53,7 @@ BLOCK_TEMPLATE = HOOK_DIR / "templates" / "task-gate-block.md"
 WARN_TEMPLATE = HOOK_DIR / "templates" / "task-gate-warn.md"
 
 # Default gate mode - start with warn for validation
-DEFAULT_GATE_MODE = "block"
+DEFAULT_GATE_MODE = "warn"
 
 # Destructive Bash command patterns (require task)
 DESTRUCTIVE_BASH_PATTERNS = [
@@ -303,10 +303,12 @@ def main() -> None:
         print(json.dumps(make_empty_output()))
         sys.exit(0)
 
-    # Three-gate check: task bound, critic invoked, todo with handover
+    # Gate check: currently only task_bound is enabled (others disabled for testing)
+    # Full four-gate check: task bound, plan mode, critic invoked, todo with handover
     gates = check_all_gates(session_id)
 
-    if gates["all_passed"]:
+    # TEMP: Only enforce task_bound gate (other 3 disabled for validation)
+    if gates["task_bound"]:
         print(json.dumps(make_empty_output()))
         sys.exit(0)
 
