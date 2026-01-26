@@ -22,13 +22,15 @@
 //!
 //! ### Derived Metadata Fields
 //! - `tags`: Extracted from frontmatter "tags" array or inline #hashtags
-//! - `depends_on`: Dependencies (task IDs or filenames)
+//! - `depends_on`: Hard dependencies (task IDs or filenames) - block ready status
+//! - `soft_depends_on`: Soft dependencies (informational only, do NOT block ready status)
 //! - `depth`: Nesting depth in hierarchy
 //! - `leaf`: Whether this node has children
 //!
 //! ### Relationship Fields
 //! - `due`: Due date (ISO format)
-//! - `blocks`: Computed inverse of depends_on
+//! - `blocks`: Computed inverse of depends_on (hard blocking relationship)
+//! - `soft_blocks`: Computed inverse of soft_depends_on (informational, non-blocking)
 //! - `children`: Computed inverse of parent
 //!
 //! ## Output Formats
@@ -101,10 +103,29 @@ struct Node {
     project: Option<String>,
 }
 
+/// Edge types for visual discrimination in graph output
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+enum EdgeType {
+    /// Hard dependency (blocking) - solid line
+    #[serde(rename = "depends_on")]
+    DependsOn,
+    /// Soft dependency (informational, non-blocking) - dashed line
+    #[serde(rename = "soft_depends_on")]
+    SoftDependsOn,
+    /// Parent-child relationship - thick line
+    #[serde(rename = "parent")]
+    Parent,
+    /// Wiki/markdown link - default style
+    #[serde(rename = "link")]
+    Link,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Edge {
     source: String,
     target: String,
+    #[serde(rename = "type")]
+    edge_type: EdgeType,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -128,6 +149,8 @@ struct McpIndexEntry {
     children: Vec<String>,      // Computed: inverse of parent
     depends_on: Vec<String>,
     blocks: Vec<String>,        // Computed: inverse of depends_on
+    soft_depends_on: Vec<String>,
+    soft_blocks: Vec<String>,   // Computed: inverse of soft_depends_on (informational, not blocking)
     depth: i32,
     leaf: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -170,8 +193,10 @@ struct FileData {
     order: i32,
     parent: Option<String>,
     depends_on: Vec<String>,
+    soft_depends_on: Vec<String>,
     children: Vec<String>,
     blocks: Vec<String>,
+    soft_blocks: Vec<String>,
     project: Option<String>,
     due: Option<String>,
     depth: i32,
@@ -323,6 +348,11 @@ fn parse_file(path: PathBuf) -> Option<FileData> {
         .and_then(|v| v.as_array())
         .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
         .unwrap_or_default();
+    let soft_depends_on = fm_data.as_ref()
+        .and_then(|fm| fm.get("soft_depends_on"))
+        .and_then(|v| v.as_array())
+        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+        .unwrap_or_default();
     let children = fm_data.as_ref()
         .and_then(|fm| fm.get("children"))
         .and_then(|v| v.as_array())
@@ -356,8 +386,10 @@ fn parse_file(path: PathBuf) -> Option<FileData> {
         order,
         parent,
         depends_on,
+        soft_depends_on,
         children,
         blocks,
+        soft_blocks: Vec::new(),  // Computed later in build_mcp_index
         project,
         due,
         depth,
@@ -415,6 +447,7 @@ fn output_graphml(graph: &Graph, path: &str) -> Result<()> {
   <key id="d6" for="node" attr.name="project" attr.type="string"/>
   <key id="d7" for="node" attr.name="assignee" attr.type="string"/>
   <key id="d8" for="node" attr.name="complexity" attr.type="string"/>
+  <key id="e0" for="edge" attr.name="type" attr.type="string"/>
   <graph id="G" edgedefault="directed">
 "#);
 
@@ -458,9 +491,15 @@ fn output_graphml(graph: &Graph, path: &str) -> Result<()> {
     }
 
     for (i, edge) in graph.edges.iter().enumerate() {
+        let edge_type_str = match edge.edge_type {
+            EdgeType::DependsOn => "depends_on",
+            EdgeType::SoftDependsOn => "soft_depends_on",
+            EdgeType::Parent => "parent",
+            EdgeType::Link => "link",
+        };
         xml.push_str(&format!(
-            "    <edge id=\"e{}\" source=\"{}\" target=\"{}\"/>\n",
-            i, edge.source, edge.target
+            "    <edge id=\"e{}\" source=\"{}\" target=\"{}\">\n      <data key=\"e0\">{}</data>\n    </edge>\n",
+            i, edge.source, edge.target, edge_type_str
         ));
     }
 
@@ -479,8 +518,19 @@ fn output_dot(graph: &Graph, path: &str) -> Result<()> {
 
     dot.push('\n');
 
+    // Edge styling based on type:
+    // - depends_on (hard): solid arrow, color=#d63384 (blocking, strong visual)
+    // - soft_depends_on: dashed arrow, color=#6c757d (non-blocking, subtle)
+    // - parent: thick solid line, color=#0d6efd (hierarchical)
+    // - link: thin gray line (default, lowest visual weight)
     for edge in &graph.edges {
-        dot.push_str(&format!("    \"{}\" -> \"{}\";\n", edge.source, edge.target));
+        let style = match edge.edge_type {
+            EdgeType::DependsOn => "style=solid, color=\"#d63384\", penwidth=2",
+            EdgeType::SoftDependsOn => "style=dashed, color=\"#6c757d\", penwidth=1.5",
+            EdgeType::Parent => "style=solid, color=\"#0d6efd\", penwidth=3",
+            EdgeType::Link => "style=solid, color=\"#adb5bd\", penwidth=1",
+        };
+        dot.push_str(&format!("    \"{}\" -> \"{}\" [{}];\n", edge.source, edge.target, style));
     }
 
     dot.push_str("}\n");
@@ -535,6 +585,8 @@ fn build_mcp_index(files: &[FileData], data_root: &Path) -> McpIndex {
                 children: Vec::new(),    // Computed below
                 depends_on: f.depends_on.clone(),
                 blocks: Vec::new(),      // Computed below
+                soft_depends_on: f.soft_depends_on.clone(),
+                soft_blocks: Vec::new(), // Computed below (inverse of soft_depends_on)
                 depth: f.depth,
                 leaf: f.leaf,
                 project: f.project.clone(),
@@ -579,6 +631,23 @@ fn build_mcp_index(files: &[FileData], data_root: &Path) -> McpIndex {
     for (dep_id, blocker_id) in block_updates {
         if let Some(dep_entry) = entries.get_mut(&dep_id) {
             dep_entry.blocks.push(blocker_id);
+        }
+    }
+
+    // Compute soft_blocks (inverse of soft_depends_on) - informational only, does NOT affect ready/blocked
+    let mut soft_block_updates: Vec<(String, String)> = Vec::new(); // (soft_dep_id, soft_blocker_id)
+    for tid in &task_ids {
+        if let Some(entry) = entries.get(tid) {
+            for soft_dep_id in &entry.soft_depends_on {
+                if entries.contains_key(soft_dep_id) {
+                    soft_block_updates.push((soft_dep_id.clone(), tid.clone()));
+                }
+            }
+        }
+    }
+    for (soft_dep_id, soft_blocker_id) in soft_block_updates {
+        if let Some(soft_dep_entry) = entries.get_mut(&soft_dep_id) {
+            soft_dep_entry.soft_blocks.push(soft_blocker_id);
         }
     }
 
@@ -765,6 +834,7 @@ fn main() -> Result<()> {
                              local_edges.push(Edge {
                                  source: f.id.clone(),
                                  target: target_id.clone(),
+                                 edge_type: EdgeType::Link,
                              });
                          }
                     }
@@ -778,54 +848,72 @@ fn main() -> Result<()> {
                         local_edges.push(Edge {
                             source: f.id.clone(),
                             target: target_id,
+                            edge_type: EdgeType::Parent,
                         });
                     }
                 }
             }
 
-            // Edges from frontmatter: depends_on (this -> dependency)
+            // Edges from frontmatter: depends_on (this -> dependency) - hard blocking
             for dep_ref in &f.depends_on {
                 if let Some(target_id) = resolve_fm_ref(dep_ref) {
                     if f.id != target_id {
                         local_edges.push(Edge {
                             source: f.id.clone(),
                             target: target_id,
+                            edge_type: EdgeType::DependsOn,
                         });
                     }
                 }
             }
 
-            // Edges from frontmatter: children (this -> child)
+            // Edges from frontmatter: soft_depends_on (this -> soft dependency) - non-blocking
+            for soft_dep_ref in &f.soft_depends_on {
+                if let Some(target_id) = resolve_fm_ref(soft_dep_ref) {
+                    if f.id != target_id {
+                        local_edges.push(Edge {
+                            source: f.id.clone(),
+                            target: target_id,
+                            edge_type: EdgeType::SoftDependsOn,
+                        });
+                    }
+                }
+            }
+
+            // Edges from frontmatter: children (this -> child) - parent relationship
             for child_ref in &f.children {
                 if let Some(target_id) = resolve_fm_ref(child_ref) {
                     if f.id != target_id {
                         local_edges.push(Edge {
                             source: f.id.clone(),
                             target: target_id,
+                            edge_type: EdgeType::Parent,
                         });
                     }
                 }
             }
 
-            // Edges from frontmatter: blocks (this -> blocked task)
+            // Edges from frontmatter: blocks (this -> blocked task) - hard dependency (inverse)
             for blocks_ref in &f.blocks {
                 if let Some(target_id) = resolve_fm_ref(blocks_ref) {
                     if f.id != target_id {
                         local_edges.push(Edge {
                             source: f.id.clone(),
                             target: target_id,
+                            edge_type: EdgeType::DependsOn,
                         });
                     }
                 }
             }
 
-            // Edges from frontmatter: project (this -> project)
+            // Edges from frontmatter: project (this -> project) - link type
             if let Some(ref project_ref) = f.project {
                 if let Some(target_id) = resolve_fm_ref(project_ref) {
                     if f.id != target_id {
                         local_edges.push(Edge {
                             source: f.id.clone(),
                             target: target_id,
+                            edge_type: EdgeType::Link,
                         });
                     }
                 }

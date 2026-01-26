@@ -31,6 +31,33 @@ This single call:
 - Check active/inbox tasks for any that can be worked on
 - If none exist, report and halt
 
+### Step 1.5: Inject Soft Dependency Context (Advisory)
+
+After claiming, check if the task has `soft_depends_on` relationships:
+
+1. Read the task's `soft_depends_on` array
+2. For each soft dependency ID:
+   - Call `mcp__plugin_aops-tools_task_manager__get_task(id="<soft-dep-id>")`
+   - If status is `done`, extract the task body for context
+   - If status is NOT done, log: "Soft dependency <id> not yet complete - proceeding without context"
+3. Present completed soft dependency context before execution:
+
+```markdown
+## Soft Dependency Context (Advisory)
+
+The following completed tasks provide informational context for this task:
+
+### [<soft-dep-id>] <title>
+<body excerpt or summary>
+
+---
+```
+
+**Important**: Soft dependencies are ADVISORY only:
+- Reading them is recommended but not mandatory
+- Missing/incomplete soft deps do NOT block task execution
+- Context injection helps but agent can proceed without it
+
 ### Step 2: Assess Task Path - EXECUTE or TRIAGE
 
 After claiming, determine whether to execute immediately or triage first.
