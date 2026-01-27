@@ -364,10 +364,6 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
             max_turns=15,  # Expanded for long-session drift detection
         )
 
-        # NOTE: Verbatim first prompt is now extracted earlier (before hydrator state),
-        # ensuring it ALWAYS appears regardless of hydrator state.
-        # This gives custodiet the raw user intent for scope creep detection.
-
         # Previous prompts (for context, excludes most recent which is the user request)
         prompts = ctx.get("prompts", [])
         previous_prompts = prompts[:-1] if len(prompts) > 1 else []
