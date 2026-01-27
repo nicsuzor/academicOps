@@ -384,23 +384,25 @@ else
         echo -e "${GREEN}✓ Generated gemini-extension.json${NC}"
         
         if command -v gemini &> /dev/null; then
-             # Try to link first
-             echo "Linking extension..."
-             set +e # Allow failure for check
-             LINK_OUTPUT=$(cd "$AOPS_PATH/dist" && gemini extensions link . 2>&1)
-             LINK_EXIT_CODE=$?
-             set -e # Re-enable strict mode
+             # Link both extensions
+             for ext_dir in aops-core aops-tools; do
+                 full_ext_path="$AOPS_PATH/dist/$ext_dir"
+                 if [ -d "$full_ext_path" ]; then
+                     echo "Linking $ext_dir extension..."
+                     set +e
+                     LINK_OUTPUT=$(cd "$full_ext_path" && yes | gemini extensions link . 2>&1)
+                     LINK_EXIT_CODE=$?
+                     set -e
 
-             if [ $LINK_EXIT_CODE -eq 0 ]; then
-                echo -e "${GREEN}✓ Linked aops-core extension${NC}"
-                EXTENSION_SETUP_SUCCESS=true
-             elif echo "$LINK_OUTPUT" | grep -q "already installed"; then
-                 echo -e "${GREEN}✓ Extension already linked (updated in place)${NC}"
-                 EXTENSION_SETUP_SUCCESS=true
-             else
-                echo -e "${YELLOW}⚠ Failed to link extension${NC}"
-                echo "Output: $LINK_OUTPUT"
-             fi
+                     if [ $LINK_EXIT_CODE -eq 0 ] || echo "$LINK_OUTPUT" | grep -q "already installed"; then
+                        echo -e "${GREEN}✓ Linked $ext_dir extension${NC}"
+                     else
+                        echo -e "${YELLOW}⚠ Failed to link $ext_dir extension${NC}"
+                        echo "Output: $LINK_OUTPUT"
+                     fi
+                 fi
+             done
+             EXTENSION_SETUP_SUCCESS=true
         fi
     else
         echo -e "${RED}✗ Failed to generate gemini-extension.json${NC}"
@@ -606,8 +608,8 @@ if [ "${GEMINI_SKIPPED:-true}" = "false" ]; then
     fi
 
     # Check if extension manifest exists and has task_manager
-    if [ -f "$AOPS_PATH/dist/gemini-extension.json" ]; then
-        if jq -e '.mcpServers.task_manager' "$AOPS_PATH/dist/gemini-extension.json" > /dev/null 2>&1; then
+    if [ -f "$AOPS_PATH/dist/aops-core/gemini-extension.json" ]; then
+        if jq -e '.mcpServers.task_manager' "$AOPS_PATH/dist/aops-core/gemini-extension.json" > /dev/null 2>&1; then
              echo -e "${GREEN}✓ Extension manifest has task_manager MCP${NC}"
         else
              echo -e "${YELLOW}⚠ Extension manifest missing task_manager MCP${NC}"
