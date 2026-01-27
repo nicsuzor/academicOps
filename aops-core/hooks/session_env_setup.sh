@@ -84,11 +84,11 @@ else
             echo 'export PATH="$PATH:./node_modules/.bin"' >> "$CLAUDE_ENV_FILE"
         fi
 
-        # Custodiet enforcement mode: "warn" (default) or "block"
+        # Custodiet enforcement mode: "block" (default) or "warn"
         # In warn mode, custodiet surfaces compliance warnings without halting
         # In block mode, violations halt the session until addressed
         if ! grep -q "export CUSTODIET_MODE=" "$CLAUDE_ENV_FILE" 2>/dev/null; then
-            echo 'export CUSTODIET_MODE="${CUSTODIET_MODE:-warn}"' >> "$CLAUDE_ENV_FILE"
+            echo 'export CUSTODIET_MODE="${CUSTODIET_MODE:-block}"' >> "$CLAUDE_ENV_FILE"
         fi
     fi
 
