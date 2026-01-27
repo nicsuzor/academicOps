@@ -15,7 +15,7 @@ def main():
 @main.command()
 @click.option("--project", "-p", help="Initialize only this project (default: all)")
 def init(project):
-    """Initialize bare mirror repos in ~/.polecats/.repos/
+    """Initialize bare mirror repos in ~/.aops/polecat/.repos/
 
     Creates bare clones of all registered projects for isolated worktree spawning.
     Run this once before using polecat, or when adding new projects.

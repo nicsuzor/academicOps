@@ -76,15 +76,15 @@ def load_crew_names() -> list[str]:
 class PolecatManager:
     def __init__(self):
         # Global location for all active agents
-        self.polecats_dir = Path.home() / "polecats"
-        self.polecats_dir.mkdir(exist_ok=True)
+        self.polecats_dir = Path.home() / ".aops" / "polecat"
+        self.polecats_dir.mkdir(parents=True, exist_ok=True)
 
         # Hidden directory for bare mirror repos
         self.repos_dir = self.polecats_dir / ".repos"
         self.repos_dir.mkdir(exist_ok=True)
 
-        # Directory for persistent crew workers (separate from polecats)
-        self.crew_dir = Path.home() / "src" / "crew"
+        # Directory for persistent crew workers (consolidated under polecats)
+        self.crew_dir = self.polecats_dir / "crew"
         self.crew_dir.mkdir(exist_ok=True)
 
         # Load project registry from config file
@@ -388,7 +388,7 @@ class PolecatManager:
         return None
 
     def setup_worktree(self, task):
-        """Creates a git worktree in ~/polecats linked to the project repo.
+        """Creates a git worktree in ~/.aops/polecat linked to the project repo.
 
         Uses the main repo directly (from polecat.yaml config).
         """

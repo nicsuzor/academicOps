@@ -14,7 +14,7 @@ flowchart TD
     end
 
     subgraph REPO["Repo Structure"]
-        R1[~/src/repo] -->|Spawns| R2[~/polecats/task-id]
+        R1[~/src/repo] -->|Spawns| R2[~/.aops/polecat/task-id]
         R2 -.->|Links back| R1
     end
 
@@ -31,24 +31,25 @@ flowchart TD
 
 Instead of creating temporary clones inside the main repo (which confuses IDEs), we use a centralized directory:
 
-*   **Location:** `~/polecats/`
-*   **Structure:** `~/polecats/<task-id>/`
+*   **Location:** `~/.aops/polecat/`
+*   **Structure:** `~/.aops/polecat/<task-id>/`
 *   **Mechanism:** `git worktree` linked to bare mirror repositories.
 
 ### Bare Mirror Architecture
 
-Worktrees are spawned from **bare mirror clones** stored in `~/polecats/.repos/`, not from your active development repos in `~/src/`. This provides:
+Worktrees are spawned from **bare mirror clones** stored in `~/.aops/polecat/.repos/`, not from your active development repos in `~/src/`. This provides:
 
 - **Isolation**: Complete decoupling from your dev environment
 - **Concurrency**: Bare repos handle unlimited concurrent worktrees
 - **Clean state**: Each spawn starts from origin, not local uncommitted changes
 
 ```
-~/polecats/
+~/.aops/polecat/
 ├── .repos/                    # Hidden bare mirror repos
 │   ├── aops.git               # bare clone of academicOps
 │   ├── buttermilk.git         # bare clone of buttermilk
 │   └── writing.git            # bare clone of writing
+├── crew/                      # Persistent crew worktrees
 └── task-abc123/               # worktree spawned from .repos/aops.git
 ```
 
@@ -66,7 +67,7 @@ A Python library that handles the lifecycle:
     *   Assigns it to the caller (e.g., `nic`, `bot`).
 *   **`setup_worktree(task)`**:
     *   Identifies the correct parent repo (e.g., `academicOps`, `buttermilk`).
-    *   Creates a `git worktree` at `~/polecats/<task-id>`.
+    *   Creates a `git worktree` at `~/.aops/polecat/<task-id>`.
     *   Creates a feature branch `polecat/<task-id>` from `main`.
 *   **`nuke_worktree(task_id)`**:
     *   Force-removes the worktree.
