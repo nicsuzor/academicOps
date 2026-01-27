@@ -83,8 +83,8 @@ class PolecatManager:
         self.repos_dir = self.polecats_dir / ".repos"
         self.repos_dir.mkdir(exist_ok=True)
 
-        # Directory for persistent crew workers
-        self.crew_dir = self.polecats_dir / "crew"
+        # Directory for persistent crew workers (separate from polecats)
+        self.crew_dir = Path.home() / "src" / "crew"
         self.crew_dir.mkdir(exist_ok=True)
 
         # Load project registry from config file
@@ -123,6 +123,9 @@ class PolecatManager:
         Unlike polecat worktrees (task-scoped, ephemeral), crew worktrees
         are named and persist across sessions.
 
+        Uses the local project repo (from polecat.yaml) as source instead of
+        cloning from origin. This is faster and works offline.
+
         Args:
             name: Crew worker name (e.g., "audre", "marsha")
             project: Project slug to work on
@@ -133,14 +136,13 @@ class PolecatManager:
         if project not in self.projects:
             raise ValueError(f"Unknown project: {project}. Known: {list(self.projects.keys())}")
 
-        # Get project config
+        # Get project config - use local repo path directly
         project_config = self.projects[project]
+        local_repo_path = project_config["path"]
         default_branch = project_config.get("default_branch", "main")
 
-        # Ensure mirror exists
-        mirror_path = self.repos_dir / f"{project}.git"
-        if not mirror_path.exists():
-            self.ensure_repo_mirror(project)
+        if not local_repo_path.exists():
+            raise FileNotFoundError(f"Local repo not found: {local_repo_path}")
 
         crew_path = self.crew_dir / name
         crew_path.mkdir(exist_ok=True)
@@ -152,26 +154,17 @@ class PolecatManager:
             # Already exists, just return it
             return worktree_path
 
-        # Fetch latest from default branch
-        print(f"Fetching latest from origin...")
-        subprocess.run(
-            ["git", "fetch", "origin", f"{default_branch}:{default_branch}"],
-            cwd=mirror_path,
-            check=True,
-            capture_output=True,
-        )
+        print(f"Creating crew worktree at {worktree_path} from local repo {local_repo_path}...")
 
-        print(f"Creating crew worktree at {worktree_path}...")
-
-        # Check if branch already exists
-        if self._branch_exists(mirror_path, branch_name):
+        # Check if branch already exists in local repo
+        if self._branch_exists(local_repo_path, branch_name):
             # Use existing branch
             cmd = ["git", "worktree", "add", str(worktree_path), branch_name]
         else:
             # Create new branch from default branch
             cmd = ["git", "worktree", "add", "-b", branch_name, str(worktree_path), default_branch]
 
-        subprocess.run(cmd, cwd=mirror_path, check=True)
+        subprocess.run(cmd, cwd=local_repo_path, check=True)
         return worktree_path
 
     def nuke_crew(self, name: str, force: bool = False):
@@ -190,12 +183,18 @@ class PolecatManager:
             if project_dir.is_dir():
                 project = project_dir.name
                 branch_name = f"crew/{name}"
-                mirror_path = self.repos_dir / f"{project}.git"
 
-                if mirror_path.exists():
+                # Use local repo path from projects config
+                if project in self.projects:
+                    repo_path = self.projects[project]["path"]
+                else:
+                    # Fallback to mirror if project not in config
+                    repo_path = self.repos_dir / f"{project}.git"
+
+                if repo_path.exists():
                     # Safety check
-                    if not force and self._branch_exists(mirror_path, branch_name):
-                        if not self._is_branch_merged(mirror_path, branch_name):
+                    if not force and self._branch_exists(repo_path, branch_name):
+                        if not self._is_branch_merged(repo_path, branch_name):
                             raise RuntimeError(
                                 f"Branch {branch_name} has unmerged commits. "
                                 f"Use --force to delete anyway."
@@ -204,15 +203,15 @@ class PolecatManager:
                     # Remove worktree
                     subprocess.run(
                         ["git", "worktree", "remove", "--force", str(project_dir)],
-                        cwd=mirror_path,
+                        cwd=repo_path,
                         check=False,
                     )
 
                     # Delete branch
-                    if self._branch_exists(mirror_path, branch_name):
+                    if self._branch_exists(repo_path, branch_name):
                         subprocess.run(
                             ["git", "branch", "-D", branch_name],
-                            cwd=mirror_path,
+                            cwd=repo_path,
                             check=False,
                         )
 
