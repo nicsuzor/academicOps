@@ -24,6 +24,38 @@ Location: `$ACA_SESSIONS/YYYYMMDD-daily.md`
 
 **User stating a priority ≠ authorization to execute that priority.**
 
+## Invocation Modes
+
+The daily skill supports multiple entry points for continuous updating throughout the day:
+
+| Mode | Trigger | Sections Run | User Approval |
+|------|---------|--------------|---------------|
+| **Morning** | `/daily` (no args, note missing) | 1 → 2 → 3 | Required (3.4) |
+| **Refresh** | `/daily` (note exists) | 2 → 3 | Required (3.4) |
+| **Sync** | `/daily sync` | 4 only | Required (4.8) |
+| **Quick Sync** | `/daily sync --quick` | 4.1-4.4 only | Skipped |
+
+**Mode Detection Logic:**
+
+```
+if args contains "sync":
+    if args contains "--quick":
+        mode = "Quick Sync"
+    else:
+        mode = "Sync"
+elif daily_note_exists():
+    mode = "Refresh"
+else:
+    mode = "Morning"
+```
+
+**Quick Sync Use Case**: Automated/periodic updates during the day. Adds session data to daily note without requiring user interaction. Full approval cycle runs on final sync or explicit `/daily sync`.
+
+**Continuous Updating Pattern**: Throughout a work day:
+1. Morning: Run `/daily` to create note, triage emails, set focus
+2. After each session: System or user runs `/daily sync --quick` to incrementally update progress
+3. End of day: Run `/daily sync` for final synthesis with user approval
+
 ## Section Ownership
 
 | Section                 | Owner    | Updated By             |
@@ -260,15 +292,21 @@ Ask: "Any of these ready to archive?"
 
 When user picks, use `mcp__plugin_aops-core_tasks__update_task(id="<id>", status="cancelled")` to archive.
 
-### 4. Daily progress
+### 4. Daily progress (Incremental)
 
-Update daily note from session JSON files. Run after sessions complete or periodically.
+Update daily note from session JSON files. Supports continuous updating throughout the day.
+
+**Invocation**: `/daily sync` (full with approval) or `/daily sync --quick` (incremental without approval)
+
+**Incremental behavior**: Each sync run is additive—it processes only NEW session JSONs since the last sync. Previously processed sessions are identified by their presence in the Session Log table.
 
 ### Step 4.1: Find Session JSONs
 
 ```bash
 ls $ACA_SESSIONS/summaries/YYYYMMDD*.json 2>/dev/null
 ```
+
+**Incremental filtering**: After listing JSONs, read the current daily note's Session Log table. Extract session IDs already present. Filter the JSON list to exclude already-processed sessions. This prevents duplicate entries on repeated syncs.
 
 ### Step 4.1.5: Load Closure History
 
@@ -455,9 +493,11 @@ Write `$ACA_DATA/dashboard/synthesis.json`:
 }
 ```
 
-### Step 4.8: User Approval of Synthesis (Required)
+### Step 4.8: User Approval of Synthesis (Conditional)
 
-**CRITICAL**: Do NOT consider daily progress sync complete without user approval.
+**Mode check**: Skip this step entirely if running in Quick Sync mode (`/daily sync --quick`).
+
+**For full Sync mode**: Do NOT consider daily progress sync complete without user approval.
 
 After updating the daily note and synthesis.json, present a summary to the user for approval:
 
