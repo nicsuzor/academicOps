@@ -38,12 +38,13 @@ Based on prompt keywords, these specific files may be relevant:
 
 | Content Type | Directory | Example |
 |--------------|-----------|---------|
-| **Specs** (design docs, architecture) | `$AOPS/aops-core/specs/` | `specs/workflow-system-spec.md` |
-| **Workflows** (step-by-step procedures) | `$AOPS/workflows/` | `workflows/feature-dev.md` |
-| **Agents** (subagent definitions) | `$AOPS/aops-core/agents/` | `agents/prompt-hydrator.md` |
-| **Skills** (user-invocable commands) | `$AOPS/aops-core/skills/` | `skills/commit/SKILL.md` |
+| **Specs** (design docs, architecture) | `$AOPS/specs/` | `specs/workflow-system-spec.md` |
+| **Workflows** (step-by-step procedures) | `$AOPS/aops-core/workflows/` | `aops-core/workflows/feature-dev.md` |
+| **Agents** (subagent definitions) | `$AOPS/aops-core/agents/` | `aops-core/agents/prompt-hydrator.md` |
+| **Core Skills** (framework infrastructure) | `$AOPS/aops-core/skills/` | `aops-core/skills/framework/SKILL.md` |
+| **Tool Skills** (domain utilities) | `$AOPS/aops-tools/skills/` | `aops-tools/skills/pdf/SKILL.md` |
 
-**CRITICAL**: Specs go in `specs/`, not alongside the thing they describe. Never create `workflows/SPEC.md` - use `specs/workflows.md`.
+**CRITICAL**: Specs go in top-level `specs/`, not inside plugins. Workflows go inside `aops-core/workflows/`. Never create `specs/SPEC.md` inside a plugin - use top-level `specs/`.
 
 ## Workflow Index (Pre-loaded)
 
@@ -72,7 +73,7 @@ Based on prompt keywords, these specific files may be relevant:
 3. **Determine execution path** - Should this be `direct` or `enqueue`?
 4. **Route to task** - Match to existing task or specify new task creation
 5. **Select workflow** - Use the pre-loaded Workflow Index above to select the appropriate workflow
-6. **Compose workflows** - Read workflow files in `$AOPS/workflows/` (and any [[referenced workflows]])
+6. **Compose workflows** - Read workflow files in `$AOPS/aops-core/workflows/` (and any [[referenced workflows]])
 7. **Capture deferred work** - For multi-session scope, create decomposition task for future work
 
 ### Execution Path Decision

@@ -448,13 +448,13 @@ Context injected via CORE.md at SessionStart. Guides where agents place files.
 | Mechanism        | Authoritative Source                                                            |
 | ---------------- | ------------------------------------------------------------------------------- |
 | Deny rules       | `$AOPS/config/claude/settings.json` → `permissions.deny`                        |
-| Agent tools      | `$AOPS/agents/*.md` → `tools:` frontmatter                                      |
-| PreToolUse       | `$AOPS/hooks/hydration_gate.py`, `task_required_gate.py`, `policy_enforcer.py`  |
-| PostToolUse      | `$AOPS/hooks/fail_fast_watchdog.py`, `autocommit_state.py`, `custodiet_gate.py`, `todowrite_handover_gate.py` |
-| SubagentStop     | `$AOPS/hooks/unified_logger.py` (sets `critic_invoked` flag)                    |
-| UserPromptSubmit | `$AOPS/hooks/user_prompt_submit.py`                                             |
-| SessionStart     | `$AOPS/hooks/sessionstart_load_axioms.py`                                       |
-| Stop             | `$AOPS/hooks/reflection_check.py`, `session_end_commit_check.py`                |
+| Agent tools      | `$AOPS/aops-core/agents/*.md` → `tools:` frontmatter                            |
+| PreToolUse       | `$AOPS/aops-core/hooks/hydration_gate.py`, `task_required_gate.py`, `policy_enforcer.py`  |
+| PostToolUse      | `$AOPS/aops-core/hooks/fail_fast_watchdog.py`, `autocommit_state.py`, `custodiet_gate.py`, `todowrite_handover_gate.py` |
+| SubagentStop     | `$AOPS/aops-core/hooks/unified_logger.py` (sets `critic_invoked` flag)          |
+| UserPromptSubmit | `$AOPS/aops-core/hooks/user_prompt_submit.py`                                   |
+| SessionStart     | `$AOPS/aops-core/hooks/sessionstart_load_axioms.py`                             |
+| Stop             | `$AOPS/aops-core/hooks/reflection_check.py`, `session_end_commit_check.py`      |
 | Pre-commit       | `~/writing/.pre-commit-config.yaml`                                             |
 | CI/CD            | `$AOPS/.github/workflows/`                                                      |
 | Remember skill   | `$AOPS/aops-core/skills/remember/SKILL.md`                                      |

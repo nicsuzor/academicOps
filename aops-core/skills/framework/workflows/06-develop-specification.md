@@ -20,7 +20,7 @@ description: Process for collaboratively developing task specifications before i
    - Confirm this is actual pain point worth automating
 
 1. **Create specification document**
-   - Copy `$AOPS/skills/framework/SPEC-TEMPLATE.md` to working location
+   - Copy `$AOPS/aops-core/skills/framework/SPEC-TEMPLATE.md` to working location
    - Name: `$AOPS/specs/[descriptive-name].md`
    - This is a collaborative working document
 

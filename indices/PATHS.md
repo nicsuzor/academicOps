@@ -38,12 +38,14 @@ Framework component directories within $AOPS:
 
 | Directory | Absolute Path |
 |-----------|---------------|
+| Specs     | /home/nic/writing/aops/specs   |
+| Workflows | /home/nic/writing/aops/aops-core/workflows |
 | Skills    | /home/nic/writing/aops/aops-core/skills  |
 | Hooks     | /home/nic/writing/aops/aops-core/hooks   |
 | Commands  | /home/nic/writing/aops/aops-core/commands |
+| Agents    | /home/nic/writing/aops/aops-core/agents  |
 | Tests     | /home/nic/writing/aops/tests   |
 | Config    | /home/nic/writing/aops/config  |
-| Workflows | /home/nic/writing/aops/workflows |
 
 ## Data Directories
 
