@@ -232,7 +232,7 @@ def merge():
     eng.scan_and_merge()
 
 @main.command()
-@click.option("--project", "-p", default="aops", help="Project to work on (default: aops)")
+@click.option("--project", "-p", required=True, help="Project to work on (required)")
 @click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
 @click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
@@ -247,7 +247,7 @@ def crew(project, name, gemini, resume):
     - Are not bound to a single task (but edits require task binding via hooks)
 
     Examples:
-        polecat crew                      # New crew, random name, aops project
+        polecat crew -p aops              # New crew for aops project
         polecat crew -p buttermilk        # New crew for buttermilk
         polecat crew -r audre             # Resume crew worker "audre"
         polecat crew -n marsha -p aops    # New crew named "marsha"
