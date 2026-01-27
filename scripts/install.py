@@ -23,10 +23,10 @@ except ImportError:
     sys.exit(1)
 
 
-def run_command(cmd, shell=False, env=None, check=True):
+def run_command(cmd, shell=False, env=None, check=True, **kwargs):
     """Run a command and check for errors."""
     try:
-        subprocess.run(cmd, check=check, shell=shell, env=env)
+        subprocess.run(cmd, check=check, shell=shell, env=env, **kwargs)
     except subprocess.CalledProcessError as e:
         print(f"Error running command: {e}")
         if check:
@@ -267,15 +267,30 @@ def main():
     if shutil.which("gemini"):
         print("Linking extensions...")
         for ext in ["aops-core", "aops-tools"]:
+            # Uninstall first to ensure clean state
+            run_command(
+                ["gemini", "extensions", "uninstall", ext],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+
             ext_path = aops_root / "dist" / ext
             if ext_path.exists():
-                subprocess.run(
-                    ["gemini", "extensions", "link", "."],
-                    cwd=ext_path,
-                    check=False,
-                    stdout=subprocess.DEVNULL,
-                )
-                print(f"✓ Linked {ext}")
+                try:
+                    subprocess.run(
+                        ["gemini", "extensions", "link", "."],
+                        cwd=ext_path,
+                        check=True,  # Now we want to fail if link fails
+                        stdout=subprocess.DEVNULL,
+                    )
+                    print(f"✓ Linked {ext}")
+                except subprocess.CalledProcessError as e:
+                    print(f"Error linking {ext}: {e}")
+                    # Don't exit, try others? Or exit? Using check=True raises, so we catch it.
+                    # We should probably warn but continue or exit.
+                    # Let's print error but continue for now to matching previous behavior logic,
+                    # but making it visible.
 
         settings_path = gemini_dir / "settings.json"
         settings = {}
