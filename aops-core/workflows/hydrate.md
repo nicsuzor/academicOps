@@ -81,7 +81,10 @@ From AXIOMS: **P#[n] [Name]**: [Why applies]
 From HEURISTICS: **P#[n] [Name]**: [Why applies]
 
 ### Execution Plan
-TodoWrite(todos=[...])
+## Execution Steps
+1. [Step 1]
+2. [Step 2]
+...
 
 ### Constraint Verification
 **Status**: [satisfied/violations]

@@ -26,7 +26,7 @@ Skip constraint checking for:
 
 | Section | Contains | Verification Method |
 |---------|----------|---------------------|
-| **Sequencing** | `X must complete before Y` | Check TodoWrite step order |
+| **Sequencing** | `X must complete before Y` | Check execution step order |
 | **After Each Step** | `After X: do Y` | Check post-action steps exist |
 | **Always True** | Invariants that must hold | Check no steps violate |
 | **Never Do** | Prohibited actions | Check no steps match |

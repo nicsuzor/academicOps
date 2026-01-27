@@ -22,7 +22,7 @@ Request maps 1:1 to existing skill. Skills contain their own workflows.
 ## Unique Steps
 
 1. Invoke skill directly
-2. Do NOT wrap in TodoWrite or add ceremony
+2. Do NOT add unnecessary ceremony around skill invocation
 
 ## Key Rule
 

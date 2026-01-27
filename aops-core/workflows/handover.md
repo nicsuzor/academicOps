@@ -86,7 +86,7 @@ active → in_progress → review → done
 
 ## Step 3: File Follow-up Tasks
 
-For each incomplete work item from the current TodoWrite list:
+For each incomplete work item from the current session:
 
 ```
 mcp__plugin_aops-core_tasks__create_task(

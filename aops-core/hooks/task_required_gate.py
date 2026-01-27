@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-PreToolUse hook: Block destructive operations without four-gate compliance.
+PreToolUse hook: Block destructive operations without task binding.
 
 Enforces task-gated permissions model. Destructive operations (Write, Edit,
-destructive Bash) require ALL FOUR gates to pass:
+destructive Bash) require task binding:
 
   (a) Task bound - session has an active task via update_task or create_task
-  (b) Plan mode invoked - EnterPlanMode has been called to design approach
-  (c) Critic invoked - critic agent has reviewed the plan (SubagentStop tracked)
-  (d) Todo with handover - TodoWrite includes a session end/handover step
 
-This ensures all work is planned, tracked, reviewed, and has a proper completion plan.
+Additional gates (b) plan mode invoked and (c) critic invoked are tracked
+but not currently enforced.
+
+This ensures all work is tracked and has an audit trail.
 
 Bypass conditions:
 - Subagent sessions (CLAUDE_AGENT_TYPE set)
@@ -132,14 +132,12 @@ def build_block_message(gates: dict[str, bool]) -> str:
         missing.append("(b) Enter plan mode: `EnterPlanMode()` - design your implementation approach first")
     if not gates["critic_invoked"]:
         missing.append("(c) Invoke critic: `Task(subagent_type=\"aops-core:critic\", prompt=\"Review this plan: ...\")`")
-    if not gates["todo_with_handover"]:
-        missing.append("(d) Create todo list with handover step: Include 'Session handover' or 'Commit and push' in TodoWrite")
 
     return load_template(BLOCK_TEMPLATE, {
         "task_bound_status": _gate_status(gates["task_bound"]),
         "plan_mode_invoked_status": _gate_status(gates["plan_mode_invoked"]),
         "critic_invoked_status": _gate_status(gates["critic_invoked"]),
-        "todo_with_handover_status": _gate_status(gates["todo_with_handover"]),
+        "todo_with_handover_status": "\u2713",  # Deprecated - always pass
         "missing_gates": "\n".join(missing),
     })
 
@@ -157,7 +155,7 @@ def build_warn_message(gates: dict[str, bool]) -> str:
         "task_bound_status": _gate_status(gates["task_bound"]),
         "plan_mode_invoked_status": _gate_status(gates["plan_mode_invoked"]),
         "critic_invoked_status": _gate_status(gates["critic_invoked"]),
-        "todo_with_handover_status": _gate_status(gates["todo_with_handover"]),
+        "todo_with_handover_status": "\u2713",  # Deprecated - always pass
     })
 
 

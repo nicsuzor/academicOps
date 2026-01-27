@@ -117,7 +117,7 @@ Example: Instead of creating 5 separate "bug fix" tasks at trunk level, group th
 | Level | What it is | Decompose to this? |
 |-------|-----------|-------------------|
 | **Task** | Tracked work item with complexity | ✅ Yes - decompose goals → tasks |
-| **TodoWrite step** | Progress tracking within execution | ❌ No - these are execution, not tasks |
+| **Execution step** | Progress tracking within execution | ❌ No - these are execution, not tasks |
 | **Task() call** | Subagent invocation | ❌ No - these are execution mechanisms |
 
 **Right granularity**: "Add pagination to API endpoint" (1 task, many steps)

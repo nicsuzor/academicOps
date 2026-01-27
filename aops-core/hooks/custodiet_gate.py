@@ -257,7 +257,6 @@ def build_audit_instruction(
     Context includes:
     - Original user intent (from hydrator state or first prompt)
     - Recent prompts (less truncated)
-    - Full TodoWrite plan (not just counts)
     - Tool errors (for Type A reactive helpfulness detection)
     - Files modified (for scope assessment)
     - Recent tools and agent responses
@@ -354,7 +353,6 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
             Path(transcript_path),
             include={
                 "prompts",
-                "todos",
                 "errors",
                 "tools",
                 "files",
@@ -373,44 +371,6 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
                 # Truncate at 300 chars instead of 100
                 display = prompt[:300] + "..." if len(prompt) > 300 else prompt
                 lines.append(f"{i}. {display}")
-            lines.append("")
-
-        # Full TodoWrite plan (critical for scope checking)
-        todos = ctx.get("todos")
-        if todos:
-            todo_list = todos.get("todos")
-            if todo_list is None:
-                raise ValueError("todos missing required 'todos' field")
-            counts = todos.get("counts")
-            if counts is None:
-                raise ValueError("todos missing required 'counts' field")
-            pending_count = counts.get("pending")
-            if pending_count is None:
-                raise ValueError("counts missing required 'pending' field")
-            in_progress_count = counts.get("in_progress")
-            if in_progress_count is None:
-                raise ValueError("counts missing required 'in_progress' field")
-            completed_count = counts.get("completed")
-            if completed_count is None:
-                raise ValueError("counts missing required 'completed' field")
-            lines.append(
-                f"**TodoWrite Plan** ({pending_count} pending, "
-                f"{in_progress_count} in_progress, "
-                f"{completed_count} completed):"
-            )
-            for todo in todo_list:
-                status = todo.get("status")
-                if status is None:
-                    raise ValueError("todo missing required 'status' field")
-                content = todo.get("content")
-                if content is None:
-                    raise ValueError("todo missing required 'content' field")
-                symbol = {
-                    "completed": "[x]",
-                    "in_progress": "[>]",
-                    "pending": "[ ]",
-                }.get(status, "[ ]")
-                lines.append(f"  {symbol} {content}")
             lines.append("")
 
         # Tool errors (critical for Type A detection)

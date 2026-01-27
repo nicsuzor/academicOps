@@ -3,7 +3,7 @@
 # One reminder per line. Lines starting with # are ignored.
 # Currently DORMANT - probability set to 0.0 in custodiet_gate.py
 
-Remember: Check your TodoWrite plan before proceeding. Are you on track?
+Remember: Check your task progress before proceeding. Are you on track?
 
 Remember: Error messages are primary evidence (H5). Quote them exactly.
 

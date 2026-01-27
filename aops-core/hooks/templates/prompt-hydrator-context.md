@@ -24,7 +24,7 @@ Transform this user prompt into an execution plan with scope detection and task 
 
 {framework_paths}
 
-**Use these prefixes in TodoWrite plans** - never use relative paths like `specs/file.md`.
+**Use these prefixes in execution plans** - never use relative paths like `specs/file.md`.
 
 ## Relevant Files (Selective Injection)
 
@@ -136,15 +136,12 @@ Return this EXACT structure:
 
 ### Execution Plan
 
-```javascript
-TodoWrite(todos=[
-  {{content: "[task claim/create from above]", status: "pending", activeForm: "Claiming work"}},
-  {{content: "[workflow step]", status: "pending", activeForm: "[participle]"}},
-  {{content: "CHECKPOINT: [verification]", status: "pending", activeForm: "Verifying"}},
-  {{content: "Task(subagent_type='qa', prompt='...')", status: "pending", activeForm: "QA verification"}},
-  {{content: "Complete task, commit, and output Framework Reflection", status: "pending", activeForm: "Completing session"}}
-])
-```
+## Execution Steps
+1. [Task claim/create from above]
+2. [Workflow step]
+3. CHECKPOINT: [verification]
+4. Task(subagent_type='qa', prompt='...')
+5. Complete task, commit, and output Framework Reflection
 
 ### Deferred Work (multi-session only)
 

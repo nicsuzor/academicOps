@@ -98,6 +98,6 @@ Verify still pass → (fails) → undo refactor
 - Tests still pass: all tests pass and no new failures were introduced
 - Test targets one behavior: test function has a single assertion focus (heuristic)
 - Implementation minimal: implementation addresses only what the test requires (requires judgment)
-- Acceptance criteria remain: TodoWrite has uncompleted acceptance criteria items
-- Acceptance complete: all acceptance criteria are marked completed
+- Acceptance criteria remain: uncompleted acceptance criteria items exist
+- Acceptance complete: all acceptance criteria are satisfied
 - Refactor complete: cleanup changes committed or explicitly skipped

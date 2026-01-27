@@ -71,7 +71,7 @@ UserPromptSubmit hook fires
     ↓
 Prompt Hydration runs
     ↓
-Main agent receives: complete execution plan with TodoWrite steps
+Main agent receives: complete execution plan with steps
 ```
 
 ## Hydrator Outputs
@@ -96,17 +96,16 @@ Quality gate: Verification step required
 Commit required: Yes
 ```
 
-### 3. TodoWrite Plan
+### 3. Execution Plan
 
 The hydrator interprets the workflow for this specific task, breaking it into concrete steps:
 
-```javascript
-TodoWrite(todos=[
-  {content: "Step 1: Read parser.py and understand the type error", status: "pending", activeForm: "Understanding"},
-  {content: "Step 2: Implement the fix", status: "pending", activeForm: "Implementing"},
-  {content: "CHECKPOINT: Run pytest to verify fix works", status: "pending", activeForm: "Verifying"},
-  {content: "Step 3: Commit and push", status: "pending", activeForm: "Committing"}
-])
+```markdown
+## Execution Steps
+1. Read parser.py and understand the type error
+2. Implement the fix
+3. CHECKPOINT: Run pytest to verify fix works
+4. Commit and push
 ```
 
 ### 4. Guardrails
@@ -133,7 +132,7 @@ The hydrator gathers context to inform workflow selection and step planning:
 | ------------- | ------------------------------------- | ------------ |
 | Memory server | Semantic search for related knowledge | ~200         |
 | Codebase      | Files relevant to the prompt          | ~150         |
-| Session       | Last 3-5 prompts, TodoWrite state     | ~100         |
+| Session       | Last 3-5 prompts, session state       | ~100         |
 
 **Total budget**: ~450 tokens of context
 
@@ -141,17 +140,14 @@ The hydrator gathers context to inform workflow selection and step planning:
 
 The main agent receives the hydrator's output and follows the plan:
 
-1. **Create TodoWrite** exactly as specified by hydrator
-2. **For each step**:
-   - Mark `in_progress`
-   - Execute the step
-   - Mark `completed`
+1. **Follow execution steps** exactly as specified by hydrator
+2. **For each step**: Execute sequentially
 3. **At CHECKPOINTs**: Verify with evidence before proceeding
 4. **Cleanup**: Commit, push as directed by workflow
 
 The agent doesn't need to make routing decisions — the hydrator already made them.
 
-> **Note on CHECKPOINTs**: The `CHECKPOINT:` prefix in TodoWrite steps is **behavioral guidance**, not programmatic enforcement. The agent is expected to gather evidence and verify before proceeding, but no code blocks progress if verification is skipped or fails. Reliability depends on agent instruction-following. This is an intentional design choice favoring simplicity over enforcement complexity.
+> **Note on CHECKPOINTs**: The `CHECKPOINT:` prefix in execution steps is **behavioral guidance**, not programmatic enforcement. The agent is expected to gather evidence and verify before proceeding, but no code blocks progress if verification is skipped or fails. Reliability depends on agent instruction-following. This is an intentional design choice favoring simplicity over enforcement complexity.
 
 ## Output Format
 
@@ -168,13 +164,13 @@ The hydrator returns structured guidance:
 
 - [context from memory/codebase/session]
 
-### TodoWrite Plan
+### Execution Plan
 
-```javascript
-TodoWrite(todos=[
-  {content: "Step 1: ...", status: "pending", activeForm: "..."},
-  ...
-])
+```markdown
+## Execution Steps
+1. [Step description]
+2. CHECKPOINT: [verification]
+3. [Final step]
 ```
 ````
 
@@ -235,7 +231,7 @@ Main agent follows the plan
 ## Acceptance Criteria
 
 1. Hydration runs on every UserPromptSubmit
-2. Hydrator outputs complete TodoWrite plan
+2. Hydrator outputs complete execution plan
 3. Each workflow type has defined quality gates (CHECKPOINTs)
 4. Main agent can execute plan without making routing decisions
 5. Latency meets performance requirements
@@ -291,18 +287,17 @@ check the custodiet agent -- make sure it doesn't use inline python:
 - Session state library: `$AOPS/aops-core/lib/session_state.py`
 - Framework rule: Tools should use packaged scripts, not inline code (maintainability, testability)
 
-### TodoWrite Plan
+### Execution Plan
 
-```javascript
-TodoWrite(todos=[
-  {content: "Step 1: Create bd task to track this issue", status: "pending", activeForm: "Creating issue"},
-  {content: "Step 2: Read custodiet agent and identify inline Python usage", status: "pending", activeForm: "Auditing"},
-  {content: "Step 3: Create packaged script in lib/ for the operation", status: "pending", activeForm: "Implementing"},
-  {content: "Step 4: Update agent to call script instead of inline Python", status: "pending", activeForm: "Refactoring"},
-  {content: "CHECKPOINT: Run tests to verify agent still functions correctly", status: "pending", activeForm: "Verifying"},
-  {content: "Step 5: Commit and push", status: "pending", activeForm: "Committing"},
-  {content: "Step 6: Close bd task", status: "pending", activeForm: "Closing issue"}
-])
+```markdown
+## Execution Steps
+1. Create task to track this issue
+2. Read custodiet agent and identify inline Python usage
+3. Create packaged script in lib/ for the operation
+4. Update agent to call script instead of inline Python
+5. CHECKPOINT: Run tests to verify agent still functions correctly
+6. Commit and push
+7. Complete task
 ```
 ````
 
@@ -335,16 +330,15 @@ what workflows are available?
 - Workflow catalog defined in WORKFLOWS.md
 - See [[WORKFLOWS.md]] for available workflows
 
-### TodoWrite Plan
+### Execution Plan
 
-```javascript
-TodoWrite(todos=[
-  {content: "Answer the question about available workflows", status: "pending", activeForm: "Answering"}
-])
+```markdown
+## Execution Steps
+1. Answer the question about available workflows
 ```
 ````
 
-**Key principle**: Questions don't need `bd` tasks — they're answered and done.
+**Key principle**: Questions don't need tasks — they're answered and done.
 
 ### Example 3: Investigation That May Lead to Work
 
@@ -368,18 +362,17 @@ figure out why the memory server isn't returning results
 - Memory server MCP: `mcp__plugin_aops-core_memory__*`
 - Database health check available: `mcp__plugin_aops-core_memory__check_database_health`
 
-### TodoWrite Plan
+### Execution Plan
 
-```javascript
-TodoWrite(todos=[
-  {content: "Step 1: Create bd task to track investigation", status: "pending", activeForm: "Creating issue"},
-  {content: "Step 2: Check memory server health with check_database_health", status: "pending", activeForm: "Checking health"},
-  {content: "Step 3: Test retrieve_memory with a known query", status: "pending", activeForm: "Testing retrieval"},
-  {content: "CHECKPOINT: Document findings - is this config, data, or code issue?", status: "pending", activeForm: "Documenting"},
-  {content: "Step 4: If fix needed, update task with scope and implement", status: "pending", activeForm: "Implementing fix"},
-  {content: "Step 5: Update and close bd task with resolution", status: "pending", activeForm: "Closing issue"}
-])
+```markdown
+## Execution Steps
+1. Create task to track investigation
+2. Check memory server health with check_database_health
+3. Test retrieve_memory with a known query
+4. CHECKPOINT: Document findings - is this config, data, or code issue?
+5. If fix needed, update task with scope and implement
+6. Complete task with resolution
 ```
 ````
 
-**Key principle**: Investigations that may lead to changes get a `bd` task upfront. The task description can be updated as the investigation reveals the actual problem
+**Key principle**: Investigations that may lead to changes get a task upfront. The task description can be updated as the investigation reveals the actual problem

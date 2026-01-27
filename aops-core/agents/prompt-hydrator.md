@@ -129,16 +129,15 @@ From HEURISTICS:
 
 ### Execution Plan
 
-**MANDATORY - Call TodoWrite with EXACTLY these steps:**
+Provide execution steps as a markdown list:
 
-```javascript
-TodoWrite(todos=[
-  {content: "[task claim/create]", status: "pending", activeForm: "Claiming work"},
-  {content: "[Step from workflow]", status: "pending", activeForm: "[present participle]"},
-  {content: "CHECKPOINT: [verification]", status: "pending", activeForm: "Verifying"},
-  {content: "Task(subagent_type='qa', prompt='...')", status: "pending", activeForm: "QA verification"},
-  {content: "Complete task and commit", status: "pending", activeForm: "Completing"}
-])
+```markdown
+## Execution Steps
+1. [Task claim/create]
+2. [Step from workflow]
+3. CHECKPOINT: [verification]
+4. Task(subagent_type='qa', prompt='...')
+5. Complete task and commit
 ```
 
 ### Constraint Verification
@@ -219,13 +218,13 @@ After TRIAGE action: **HALT**
 
 ### Path Detection
 
-- **EXECUTE**: All criteria pass → output execution plan with TodoWrite
+- **EXECUTE**: All criteria pass → output execution plan
 - **TRIAGE**: Any criterion fails → output triage guidance, then HALT
 
 ### Scope Detection
 
-- **Single-session**: One TodoWrite plan, one task, no deferred work section
-- **Multi-session**: TodoWrite for immediate work + decomposition task for the rest
+- **Single-session**: One execution plan, one task, no deferred work section
+- **Multi-session**: Execution steps for immediate work + decomposition task for the rest
 
 ### Task Rules
 
@@ -240,9 +239,9 @@ After TRIAGE action: **HALT**
 |-------|-----------|---------|
 | **Task** | Work item in task system | "Implement user authentication" |
 | **Task() tool** | Spawns subagent to do work | `Task(subagent_type="worker", ...)` |
-| **TodoWrite()** | Progress tracking within session | Steps like "Write tests", "Implement" |
+| **Execution Steps** | Progress tracking within session | Steps like "Write tests", "Implement" |
 
-### TodoWrite Rules
+### Execution Plan Rules
 
 1. **First step**: Claim existing task OR create new task
 2. **QA MANDATORY**: Every plan (except simple-question) includes QA verification step

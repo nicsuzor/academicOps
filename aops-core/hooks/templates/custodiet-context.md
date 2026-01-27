@@ -82,7 +82,7 @@ Correction: File a task for the infrastructure bug, then halt. Do not work aroun
 
 **Type B (Scope Creep)**: Work expands beyond original request without explicit approval.
 - Check: Does current activity match the **Most Recent User Request**?
-- Signal: TodoWrite items that don't trace to the ACTIVE request
+- Signal: Task body or execution steps that don't trace to the ACTIVE request
 - **CRITICAL**: Use **Most Recent User Request** as the primary scope reference. The **Original Session Intent** (from hydrator) may be stale if the user invoked a new command (e.g., `/learn` after `/pull`).
 - **Key pattern**: If Most Recent User Request contains a `/command` (like `/learn`, `/pull`, `/daily`), that command IS the active scope - work related to that command is NOT scope creep even if it differs from Original Session Intent.
 - **Exception**: If an **Active Skill** is shown, multi-step operations documented in that skill's workflow are legitimate (see "Available Skills & Commands" section above for what each skill authorizes)
@@ -92,7 +92,7 @@ Correction: File a task for the infrastructure bug, then halt. Do not work aroun
   - "While I'm at it..." / "I might as well..."
   - "It would also be helpful to..."
   - Proposing new infrastructure (scripts, files, automation) when task is about using existing infrastructure
-  These patterns signal scope creep even if TodoWrite doesn't explicitly show new items.
+  These patterns signal scope creep.
 
 **Type C (Authority Assumption)**: Agent makes decisions requiring user input.
 - Check: Are there design choices being made without user consultation?

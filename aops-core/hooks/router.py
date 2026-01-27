@@ -89,11 +89,7 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
         # {"script": "fail_fast_watchdog.py"},  # Injects fail-fast reminder on errors
         {"script": "custodiet_gate.py"},  # Periodic compliance check
         {"script": "task_binding.py"},  # Bind task to session on create/claim
-        {
-            "script": "todowrite_handover_gate.py"
-        },  # Set todo_with_handover gate on TodoWrite
         {"script": "handover_gate.py"},  # Clear stop gate when /handover skill invoked
-        # {"script": "todowrite_fallback.py"},  # DISABLED: Proving main path first
         # {"script": "autocommit_state.py"},  # DISABLED: Auto-commit data/ changes
     ],
     "UserPromptSubmit": [
@@ -129,7 +125,7 @@ def get_hooks_for_event(
 
     Args:
         event_name: Hook event name (SessionStart, PreToolUse, etc.)
-        matcher: Optional matcher for PostToolUse events (e.g., "TodoWrite")
+        matcher: Optional matcher for PostToolUse events (e.g., tool name)
 
     Returns:
         List of hook configurations for the event

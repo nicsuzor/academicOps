@@ -31,16 +31,6 @@
             "timeout": 55000
           }
         ]
-      },
-      {
-        "matcher": "TodoWrite",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "PYTHONPATH=${CLAUDE_PLUGIN_ROOT} uv run python ${CLAUDE_PLUGIN_ROOT}/hooks/router.py",
-            "timeout": 5000
-          }
-        ]
       }
     ],
     "UserPromptSubmit": [

@@ -101,7 +101,7 @@ Error handling:
 - Tests fail: pytest exit code is not 0 for feature tests
 - Tests pass: pytest exit code is 0 for all tests
 - Plan approved: task body contains "## Approved Plan" or user said "approved" or "lgtm"
-- Implementation complete: all TodoWrite items for implementation are marked completed
+- Implementation complete: all execution steps for implementation are done
 - Critic reviewed: critic agent was spawned and returned a verdict
 - No regressions: full test suite passes (not just feature tests)
 - Validation passed: all success criteria met, tests pass, and critic approved
