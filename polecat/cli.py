@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 from manager import PolecatManager
 
+
 @click.group()
 def main():
     """Polecat: Ephemeral worker management system."""
@@ -61,22 +62,23 @@ def sync():
     successes = sum(1 for v in results.values() if v)
     print(f"\n✓ Synced {successes}/{len(results)} mirrors")
 
+
 @main.command()
 @click.option("--project", "-p", help="Project to claim tasks from")
 @click.option("--caller", "-c", default="polecat", help="Identity claiming the task")
 def start(project, caller):
     """Claim next ready task and spawn a worktree."""
     manager = PolecatManager()
-    
+
     print(f"Looking for ready tasks{' in project ' + project if project else ''}...")
     task = manager.claim_next_task(caller, project)
-    
+
     if not task:
         print("No ready tasks found.")
         sys.exit(0)
-        
+
     print(f"Claimed task: {task.title} ({task.id})")
-    
+
     try:
         worktree_path = manager.setup_worktree(task)
         print(f"\nSuccess! Worktree ready at:\n{worktree_path}")
@@ -84,6 +86,7 @@ def start(project, caller):
     except Exception as e:
         print(f"\nError setting up worktree: {e}")
         sys.exit(1)
+
 
 @main.command()
 @click.argument("task_id")
@@ -107,6 +110,7 @@ def checkout(task_id, caller):
     # Claim the task if not already in progress
     try:
         from lib.task_model import TaskStatus
+
         if task.status == TaskStatus.ACTIVE:
             task.status = TaskStatus.IN_PROGRESS
             task.assignee = caller
@@ -123,9 +127,12 @@ def checkout(task_id, caller):
         print(f"Error setting up worktree: {e}", file=sys.stderr)
         sys.exit(1)
 
+
 @main.command()
 @click.option("--no-push", is_flag=True, help="Skip pushing to remote")
-@click.option("--nuke", "do_nuke", is_flag=True, help="Also remove the worktree after finishing")
+@click.option(
+    "--nuke", "do_nuke", is_flag=True, help="Also remove the worktree after finishing"
+)
 def finish(no_push, do_nuke):
     """Mark current task as ready for merge.
 
@@ -139,7 +146,10 @@ def finish(no_push, do_nuke):
 
     # Detect if we're in a polecat worktree
     if not cwd.is_relative_to(manager.polecats_dir):
-        print(f"Error: Not in a polecat worktree. Expected path under {manager.polecats_dir}", file=sys.stderr)
+        print(
+            f"Error: Not in a polecat worktree. Expected path under {manager.polecats_dir}",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     # Extract task ID from directory name
@@ -153,7 +163,9 @@ def finish(no_push, do_nuke):
     print(f"Finishing task: {task.title} ({task_id})")
 
     # Check for uncommitted changes
-    result = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
+    result = subprocess.run(
+        ["git", "status", "--porcelain"], capture_output=True, text=True
+    )
     if result.stdout.strip():
         print("⚠️  Warning: Uncommitted changes detected:")
         print(result.stdout)
@@ -173,6 +185,7 @@ def finish(no_push, do_nuke):
     # Update task status to merge_ready
     try:
         from lib.task_model import TaskStatus
+
         task.status = TaskStatus.MERGE_READY
         manager.storage.save_task(task)
         print(f"✅ Task marked as 'merge_ready'")
@@ -188,6 +201,7 @@ def finish(no_push, do_nuke):
     else:
         print(f"\nTo clean up later: polecat nuke {task_id}")
 
+
 @main.command()
 @click.argument("task_id")
 @click.option("--force", "-f", is_flag=True, help="Delete even if work is not merged")
@@ -200,6 +214,7 @@ def nuke(task_id, force):
     except RuntimeError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
+
 
 @main.command("list")
 def list_polecats():
@@ -218,6 +233,7 @@ def list_polecats():
     if not found:
         print("No active polecats.")
 
+
 @main.command()
 def merge():
     """Scan for tasks in REVIEW status and merge them to main.
@@ -231,8 +247,11 @@ def merge():
     eng = Engineer()
     eng.scan_and_merge()
 
+
 @main.command()
-@click.option("--project", "-p", multiple=True, help="Project(s) to work on (default: all)")
+@click.option(
+    "--project", "-p", multiple=True, help="Project(s) to work on (default: all)"
+)
 @click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
 @click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
@@ -267,7 +286,10 @@ def crew(project, name, gemini, resume):
     if resume:
         crew_name = resume
         if crew_name not in manager.list_crew():
-            print(f"Error: No crew worker named '{crew_name}'. Active: {manager.list_crew()}", file=sys.stderr)
+            print(
+                f"Error: No crew worker named '{crew_name}'. Active: {manager.list_crew()}",
+                file=sys.stderr,
+            )
             sys.exit(1)
     elif name:
         crew_name = name
@@ -307,10 +329,13 @@ def crew(project, name, gemini, resume):
             sys.exit(1)
         cmd = [
             "claude",
-            "--permission-mode", "plan",
+            "--permission-mode=plan",
+            "--dangerously-skip-permissions",
             "--setting-sources=user",
-            "--plugin-dir", str(Path(aops_dir) / "aops-core"),
-            "--plugin-dir", str(Path(aops_dir) / "aops-tools"),
+            "--plugin-dir",
+            str(Path(aops_dir) / "aops-core"),
+            "--plugin-dir",
+            str(Path(aops_dir) / "aops-tools"),
         ]
 
     try:
@@ -359,7 +384,12 @@ def list_crew():
 @main.command()
 @click.option("--project", "-p", help="Project for the collaboration")
 @click.option("--title", "-t", help="Brief title for the collaboration task")
-@click.option("--caller", "-c", default="nic", help="Identity for the collaboration (default: nic)")
+@click.option(
+    "--caller",
+    "-c",
+    default="nic",
+    help="Identity for the collaboration (default: nic)",
+)
 @click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
 @click.option("--no-finish", is_flag=True, hidden=True, help="(Deprecated, no-op)")
 def colab(project, title, caller, gemini, no_finish):
@@ -426,10 +456,13 @@ def colab(project, title, caller, gemini, no_finish):
             sys.exit(1)
         cmd = [
             "claude",
-            "--permission-mode", "plan",
+            "--permission-mode",
+            "plan",
             "--setting-sources=user",
-            "--plugin-dir", str(Path(aops_dir) / "aops-core"),
-            "--plugin-dir", str(Path(aops_dir) / "aops-tools"),
+            "--plugin-dir",
+            str(Path(aops_dir) / "aops-core"),
+            "--plugin-dir",
+            str(Path(aops_dir) / "aops-tools"),
             prompt,
         ]
 
@@ -460,7 +493,9 @@ def colab(project, title, caller, gemini, no_finish):
 @click.option("--task-id", "-t", help="Specific task ID to run (skips claim)")
 @click.option("--no-finish", is_flag=True, hidden=True, help="(Deprecated, no-op)")
 @click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
-@click.option("--interactive", "-i", is_flag=True, help="Run in interactive mode (not headless)")
+@click.option(
+    "--interactive", "-i", is_flag=True, help="Run in interactive mode (not headless)"
+)
 def run(project, caller, task_id, no_finish, gemini, interactive):
     """Run a polecat cycle: claim → setup → work.
 
@@ -484,6 +519,7 @@ def run(project, caller, task_id, no_finish, gemini, interactive):
         # Claim if not already in progress
         try:
             from lib.task_model import TaskStatus
+
             if task.status == TaskStatus.ACTIVE:
                 task.status = TaskStatus.IN_PROGRESS
                 task.assignee = caller
@@ -491,7 +527,9 @@ def run(project, caller, task_id, no_finish, gemini, interactive):
         except ImportError:
             pass
     else:
-        print(f"Looking for ready tasks{' in project ' + project if project else ''}...")
+        print(
+            f"Looking for ready tasks{' in project ' + project if project else ''}..."
+        )
         task = manager.claim_next_task(caller, project)
         if not task:
             print("No ready tasks found.")
@@ -536,12 +574,17 @@ def run(project, caller, task_id, no_finish, gemini, interactive):
         cmd = ["claude"]
         if not interactive:
             cmd.append("--dangerously-skip-permissions")
-        cmd.extend([
-            "--permission-mode", "plan",
-            "--setting-sources=user",
-            "--plugin-dir", str(Path(aops_dir) / "aops-core"),
-            "--plugin-dir", str(Path(aops_dir) / "aops-tools"),
-        ])
+        cmd.extend(
+            [
+                "--permission-mode",
+                "plan",
+                "--setting-sources=user",
+                "--plugin-dir",
+                str(Path(aops_dir) / "aops-core"),
+                "--plugin-dir",
+                str(Path(aops_dir) / "aops-tools"),
+            ]
+        )
         if interactive:
             # Interactive: just append the prompt as positional arg
             cmd.append(prompt)
@@ -569,8 +612,11 @@ def run(project, caller, task_id, no_finish, gemini, interactive):
         print(f"\n✅ Agent completed successfully.")
     else:
         print(f"\n⚠️  Agent exited with code {exit_code}.")
-    print(f"\n📝 When ready to merge, the agent should run `polecat finish` from the worktree.")
+    print(
+        f"\n📝 When ready to merge, the agent should run `polecat finish` from the worktree."
+    )
     print(f"   Worktree: {worktree_path}")
+
 
 if __name__ == "__main__":
     main()

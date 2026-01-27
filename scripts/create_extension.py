@@ -137,7 +137,12 @@ def main():
             "name": "aops-core",
             "version": "0.1.0",
             "description": "AcademicOps Core Framework",
-            "mcpServers": core_mcps,
+            "mcpServers": core_mcps
+        }, f, indent=2)
+
+    # Write hooks to hooks/hooks.json
+    with open(os.path.join(hooks_dst, "hooks.json"), "w") as f:
+        json.dump({
             "hooks": gemini_hooks
         }, f, indent=2)
 
