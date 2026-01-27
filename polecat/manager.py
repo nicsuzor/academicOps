@@ -133,6 +133,10 @@ class PolecatManager:
         if project not in self.projects:
             raise ValueError(f"Unknown project: {project}. Known: {list(self.projects.keys())}")
 
+        # Get project config
+        project_config = self.projects[project]
+        default_branch = project_config.get("default_branch", "main")
+
         # Ensure mirror exists
         mirror_path = self.repos_dir / f"{project}.git"
         if not mirror_path.exists():
@@ -148,10 +152,10 @@ class PolecatManager:
             # Already exists, just return it
             return worktree_path
 
-        # Fetch latest main
+        # Fetch latest from default branch
         print(f"Fetching latest from origin...")
         subprocess.run(
-            ["git", "fetch", "origin", "main:main"],
+            ["git", "fetch", "origin", f"{default_branch}:{default_branch}"],
             cwd=mirror_path,
             check=True,
             capture_output=True,
@@ -164,8 +168,8 @@ class PolecatManager:
             # Use existing branch
             cmd = ["git", "worktree", "add", str(worktree_path), branch_name]
         else:
-            # Create new branch from main
-            cmd = ["git", "worktree", "add", "-b", branch_name, str(worktree_path), "main"]
+            # Create new branch from default branch
+            cmd = ["git", "worktree", "add", "-b", branch_name, str(worktree_path), default_branch]
 
         subprocess.run(cmd, cwd=mirror_path, check=True)
         return worktree_path
