@@ -60,11 +60,16 @@ def get_hook_temp_dir(category: str) -> Path:
         path.mkdir(parents=True, exist_ok=True)
         return path
 
+    # 1.5 Check for explicit Gemini temp root (injected by router)
+    gemini_root = os.environ.get("AOPS_GEMINI_TEMP_ROOT")
+    if gemini_root:
+        path = Path(gemini_root) / category
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
     # 2. Gemini-specific discovery logic
     if os.environ.get("GEMINI_CLI"):
-        project_root = os.environ.get("AOPS")
-        if not project_root:
-            project_root = str(Path.cwd())
+        project_root = str(Path.cwd())
         abs_root = str(Path(project_root).resolve())
         project_hash = hashlib.sha256(abs_root.encode()).hexdigest()
         gemini_tmp = Path.home() / ".gemini" / "tmp" / project_hash

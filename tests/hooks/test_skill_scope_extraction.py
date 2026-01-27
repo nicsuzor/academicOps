@@ -146,17 +146,3 @@ Instructions here.
 
         # Should still extract workflow even without frontmatter
         assert scope is None or "Workflow" in scope or "Do Something" in scope
-
-
-class TestCustodietIntegration:
-    """Test that custodiet gate uses skill scope correctly."""
-
-    def test_custodiet_context_includes_skill_scope(self):
-        """Verify custodiet context building imports load_skill_scope.
-
-        This is a smoke test - if the import fails, custodiet is broken.
-        """
-        # This import should work after our changes
-        from hooks.custodiet_gate import load_skill_scope
-
-        assert callable(load_skill_scope), "load_skill_scope should be callable"

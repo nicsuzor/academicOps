@@ -33,21 +33,18 @@ def temp_session_dir(monkeypatch):
     """Create temporary session directory for tests."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Mock the session paths to use temp dir
-        session_path = Path(tmpdir) / "test-session"
-        session_path.mkdir(parents=True)
+        session_path = Path(tmpdir)
+        session_path.mkdir(parents=True, exist_ok=True)
 
-        # Mock get_session_directory to return our temp path
-        def mock_get_session_directory(session_id, date=None):
-            if date is None:
-                date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-            # Create directory structure: {YYYYMMDD}-{hash}/
-            date_compact = date.replace("-", "")
-            short_id = session_id[-8:] if len(session_id) >= 8 else session_id
-            session_dir = Path(tmpdir) / f"{date_compact}-{short_id}"
-            session_dir.mkdir(parents=True, exist_ok=True)
-            return session_dir
+        # Mock get_session_status_dir to return our temp path
+        def mock_get_session_status_dir():
+            return session_path
 
-        with patch("lib.session_paths.get_session_directory", mock_get_session_directory):
+        # Patch get_session_status_dir in lib.session_paths
+        # This is the single source of truth used by session_state
+        with patch(
+            "lib.session_paths.get_session_status_dir", mock_get_session_status_dir
+        ):
             yield tmpdir
 
 
@@ -176,7 +173,9 @@ class TestSubagentStopEvent:
 
         state = load_session_state(session_id)
         assert "explore" in state["subagents"]
-        assert state["subagents"]["explore"]["output"] == "Found 3 files matching pattern"
+        assert (
+            state["subagents"]["explore"]["output"] == "Found 3 files matching pattern"
+        )
         assert "stopped_at" in state["subagents"]["explore"]
 
     def test_multiple_subagents_recorded(self, temp_session_dir):
@@ -328,9 +327,10 @@ class TestMainHookEntry:
         # Should exit with 0 (success)
         assert exc_info.value.code == 0
 
-        # Should output noop response
+        # Should output response with hookSpecificOutput
         captured = capsys.readouterr()
-        assert "{}" in captured.out
+        assert "hookSpecificOutput" in captured.out
+        assert "SessionStart" in captured.out
 
         # Verify session file was created
         from lib.session_state import get_session_file_path
@@ -352,7 +352,9 @@ class TestMainHookEntry:
         captured = capsys.readouterr()
         assert "{}" in captured.out
 
-    def test_main_handles_missing_session_id(self, temp_session_dir, monkeypatch, capsys):
+    def test_main_handles_missing_session_id(
+        self, temp_session_dir, monkeypatch, capsys
+    ):
         """Test that main() handles missing session_id gracefully."""
         import io
 
