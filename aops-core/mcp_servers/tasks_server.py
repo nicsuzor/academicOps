@@ -869,19 +869,21 @@ def claim_next_task(caller: str, project: str = "") -> dict[str, Any]:
 
 
 @mcp.tool()
-def get_blocked_tasks(project: str) -> dict[str, Any]:
+def get_blocked_tasks(project: str, limit: int = 10) -> dict[str, Any]:
     """Get tasks blocked by dependencies.
 
     Returns tasks that have unmet dependencies or status "blocked".
 
     Args:
         project: Filter by project slug, or empty string "" for all projects
+        limit: Maximum number of tasks to return (default: 10, use 0 for unlimited)
 
     Returns:
         Dictionary with:
         - success: True
         - tasks: List of blocked task entries
-        - count: Number of blocked tasks
+        - count: Number of blocked tasks returned
+        - total: Total number of blocked tasks available
         - message: Status message
     """
     try:
@@ -892,13 +894,20 @@ def get_blocked_tasks(project: str) -> dict[str, Any]:
         if project:
             blocked = [e for e in blocked if e.project == project]
 
+        total = len(blocked)
+        # Apply limit (0 or negative means unlimited)
+        if limit > 0:
+            blocked = blocked[:limit]
+
         task_dicts = [_index_entry_to_dict(e) for e in blocked]
         return {
             "success": True,
             "tasks": task_dicts,
             "count": len(blocked),
+            "total": total,
             "formatted": _format_task_list(task_dicts),
             "message": f"Found {len(blocked)} blocked tasks"
+            + (f" (of {total} total)" if total > len(blocked) else "")
             + (f" in project {project}" if project else ""),
         }
 
@@ -913,7 +922,7 @@ def get_blocked_tasks(project: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def get_review_tasks(project: str = "") -> dict[str, Any]:
+def get_review_tasks(project: str = "", limit: int = 10) -> dict[str, Any]:
     """Get tasks awaiting human review.
 
     Returns tasks with status "review" that are waiting for human verification
@@ -921,12 +930,14 @@ def get_review_tasks(project: str = "") -> dict[str, Any]:
 
     Args:
         project: Filter by project slug, or empty string "" for all projects
+        limit: Maximum number of tasks to return (default: 10, use 0 for unlimited)
 
     Returns:
         Dictionary with:
         - success: True
         - tasks: List of review task entries
-        - count: Number of review tasks
+        - count: Number of review tasks returned
+        - total: Total number of review tasks available
         - message: Status message
     """
     try:
@@ -946,13 +957,20 @@ def get_review_tasks(project: str = "") -> dict[str, Any]:
         # Sort by priority, then order, then title
         review_tasks.sort(key=lambda e: (e.priority, e.order, e.title))
 
+        total = len(review_tasks)
+        # Apply limit (0 or negative means unlimited)
+        if limit > 0:
+            review_tasks = review_tasks[:limit]
+
         task_dicts = [_index_entry_to_dict(e) for e in review_tasks]
         return {
             "success": True,
             "tasks": task_dicts,
             "count": len(review_tasks),
+            "total": total,
             "formatted": _format_task_list(task_dicts),
             "message": f"Found {len(review_tasks)} tasks in review"
+            + (f" (of {total} total)" if total > len(review_tasks) else "")
             + (f" in project {project}" if project else ""),
         }
 
@@ -1408,13 +1426,14 @@ def list_tasks(
         project: Filter by project slug
         status: Filter by status - "active", "in_progress", "blocked", "waiting", "review", "done", "cancelled"
         type: Filter by type - "goal", "project", "epic", "task", "action", "bug", "feature", "learn"
-        limit: Maximum number of tasks to return (default: 10)
+        limit: Maximum number of tasks to return (default: 10, use 0 for unlimited)
 
     Returns:
         Dictionary with:
         - success: True
         - tasks: List of task entries
         - count: Number of tasks returned
+        - total: Total number of tasks matching filters
         - message: Status message
     """
     try:
@@ -1447,15 +1466,20 @@ def list_tasks(
                 }
 
         tasks = storage.list_tasks(project=project, status=task_status, type=task_type)
-        tasks = tasks[:limit]
+        total = len(tasks)
+        # Apply limit (0 or negative means unlimited)
+        if limit > 0:
+            tasks = tasks[:limit]
 
         task_dicts = [_task_to_dict(t) for t in tasks]
         return {
             "success": True,
             "tasks": task_dicts,
             "count": len(tasks),
+            "total": total,
             "formatted": _format_task_list(task_dicts),
-            "message": f"Found {len(tasks)} tasks",
+            "message": f"Found {len(tasks)} tasks"
+            + (f" (of {total} total)" if total > len(tasks) else ""),
         }
 
     except Exception as e:
@@ -1530,13 +1554,13 @@ def search_tasks(query: str, limit: int = 20) -> dict[str, Any]:
 
     Args:
         query: Search text to match
-        limit: Maximum number of results (default: 20)
+        limit: Maximum number of results (default: 20, use 0 for unlimited)
 
     Returns:
         Dictionary with:
         - success: True
         - tasks: List of matching task entries
-        - count: Number of matches
+        - count: Number of matches returned
         - message: Status message
     """
     try:
@@ -1549,7 +1573,8 @@ def search_tasks(query: str, limit: int = 20) -> dict[str, Any]:
             if query_lower in task.title.lower() or query_lower in task.body.lower():
                 matches.append(task)
 
-            if len(matches) >= limit:
+            # Apply limit during iteration (0 or negative means unlimited)
+            if limit > 0 and len(matches) >= limit:
                 break
 
         # Sort by priority then title
