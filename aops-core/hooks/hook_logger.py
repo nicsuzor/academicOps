@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """
-Shared hook logging module for Claude Code hooks.
+Shared hook logging module for Claude Code and Gemini CLI hooks.
 
 Provides centralized logging for hook events, consolidating duplicated logging
 logic across multiple hooks. All hooks should use log_hook_event() instead of
 implementing their own logging.
 
-Logs to ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
-(per-session file alongside Claude transcripts)
+Logs to:
+- Claude: ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
+- Gemini: ~/.gemini/tmp/<hash>/logs/<date>-<shorthash>-hooks.jsonl
+  (same directory as Gemini transcript for easy correlation)
 """
 
 import json
@@ -17,6 +19,53 @@ from pathlib import Path
 from typing import Any
 
 from lib.session_paths import get_claude_project_folder, get_session_short_hash
+
+
+def _is_gemini_session(session_id: str, input_data: dict[str, Any]) -> bool:
+    """
+    Detect if this is a Gemini CLI session.
+
+    Detection methods:
+    1. session_id starts with "gemini-"
+    2. transcript_path contains "/.gemini/"
+    """
+    if session_id.startswith("gemini-"):
+        return True
+
+    transcript_path = input_data.get("transcript_path", "")
+    if transcript_path and "/.gemini/" in transcript_path:
+        return True
+
+    return False
+
+
+def _get_gemini_logs_dir(input_data: dict[str, Any]) -> Path | None:
+    """
+    Get Gemini logs directory from transcript_path.
+
+    Gemini transcript paths look like:
+    ~/.gemini/tmp/<hash>/logs/session-<uuid>.jsonl
+
+    Returns the parent directory (the logs/ folder) or None if not found.
+    """
+    transcript_path = input_data.get("transcript_path", "")
+    if not transcript_path:
+        return None
+
+    path = Path(transcript_path)
+
+    # If transcript_path points to a file, use its parent directory
+    if path.suffix in (".jsonl", ".json"):
+        logs_dir = path.parent
+    else:
+        # Might be a directory already
+        logs_dir = path
+
+    # Validate it looks like a Gemini logs directory
+    if "/.gemini/" in str(logs_dir):
+        return logs_dir
+
+    return None
 
 
 def _json_serializer(obj: Any) -> str:
@@ -45,16 +94,23 @@ def log_hook_event(
     """
     Log a hook event to the per-session hooks log file.
 
-    Writes to: ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
+    Writes to (auto-detected based on session type):
+    - Claude: ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
+    - Gemini: ~/.gemini/tmp/<hash>/logs/<date>-<shorthash>-hooks.jsonl
 
-    Per-session hook logs are stored alongside Claude transcripts for easy correlation.
+    Per-session hook logs are stored alongside transcripts for easy correlation.
     Combines input and output data into a single JSONL entry with timestamp.
     If session_id is missing or empty, raises ValueError immediately (fail-fast).
 
+    Gemini detection uses:
+    1. session_id starting with "gemini-"
+    2. transcript_path in input_data containing "/.gemini/"
+
     Args:
-        session_id: Session ID from Claude Code. Must not be empty.
+        session_id: Session ID from Claude Code or Gemini CLI. Must not be empty.
         hook_event: Name of the hook event (e.g., "UserPromptSubmit", "SessionEnd")
-        input_data: Input data from Claude Code (hook parameters)
+        input_data: Input data from hook (parameters). For Gemini, should include
+            transcript_path to determine correct log directory.
         output_data: Optional output data from the hook (results/side effects)
         exit_code: Exit code of the hook (0 = success, non-zero = failure)
 
@@ -81,22 +137,30 @@ def log_hook_event(
         raise ValueError("session_id cannot be empty or None")
 
     try:
-        # Build per-session hook log path:
-        # ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
+        # Build per-session hook log path
         date = input_data.get("date")
         if date is None:
             date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-        project_folder = get_claude_project_folder()
         short_hash = get_session_short_hash(session_id)
         date_compact = date.replace("-", "")  # YYYY-MM-DD -> YYYYMMDD
 
-        # Claude projects directory
-        claude_projects_dir = Path.home() / ".claude" / "projects" / project_folder
-        claude_projects_dir.mkdir(parents=True, exist_ok=True)
-
-        # Per-session hooks file
-        log_path = claude_projects_dir / f"{date_compact}-{short_hash}-hooks.jsonl"
+        # Determine log directory based on session type
+        if _is_gemini_session(session_id, input_data):
+            # Gemini: write to same directory as transcript
+            # ~/.gemini/tmp/<hash>/logs/<date>-<shorthash>-hooks.jsonl
+            logs_dir = _get_gemini_logs_dir(input_data)
+            if logs_dir is None:
+                # Fallback: use ~/.gemini/tmp/hooks/ if transcript_path not available
+                logs_dir = Path.home() / ".gemini" / "tmp" / "hooks"
+            logs_dir.mkdir(parents=True, exist_ok=True)
+            log_path = logs_dir / f"{date_compact}-{short_hash}-hooks.jsonl"
+        else:
+            # Claude: ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
+            project_folder = get_claude_project_folder()
+            claude_projects_dir = Path.home() / ".claude" / "projects" / project_folder
+            claude_projects_dir.mkdir(parents=True, exist_ok=True)
+            log_path = claude_projects_dir / f"{date_compact}-{short_hash}-hooks.jsonl"
 
         # Create log entry combining input and output data
         log_entry: dict[str, Any] = {

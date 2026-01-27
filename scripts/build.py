@@ -49,6 +49,7 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
             safe_symlink(src, dist_dir / item)
 
     # 2. Hooks (Selective)
+    # Link hook files but exclude hooks/gemini/ subdirectory (router goes to router_gemini.py)
     hooks_src = src_dir / "hooks"
     hooks_dst = dist_dir / "hooks"
     hooks_dst.mkdir(parents=True)
@@ -56,9 +57,17 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
         for item in hooks_src.iterdir():
             if item.name == "hooks.json":
                 continue
+            if item.name == "gemini":
+                # Don't copy gemini/ subdirectory - router goes to hooks/router_gemini.py
+                continue
             # copy files or link
             # linking is better for dev, but copying safer for dist. keeping links for now as per old script
             safe_symlink(item, hooks_dst / item.name)
+
+    # Link the Gemini router directly to hooks/router_gemini.py (not hooks/gemini/router.py)
+    gemini_router_src = hooks_src / "gemini" / "router.py"
+    if gemini_router_src.exists():
+        safe_symlink(gemini_router_src, hooks_dst / "router_gemini.py")
 
     # 3. Generate Hooks Config
     hooks_json_path = hooks_src / "hooks.json"
@@ -73,7 +82,7 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
     # The router path inside the dist directory
     # Note: when installed, the extension runs relative to itself or absolute paths
     # We use absolute paths constructed from AOPS root to ensure it finds the file
-    router_script_path = dist_dir / "hooks" / "gemini" / "router.py"
+    router_script_path = dist_dir / "hooks" / "router_gemini.py"
 
     gemini_hooks = generate_gemini_hooks(
         claude_hooks, str(aops_root), str(router_script_path)

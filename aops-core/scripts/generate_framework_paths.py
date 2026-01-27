@@ -135,9 +135,18 @@ User data directories within $ACA_DATA:
 |-----------|---------------|
 | Sessions  | {sessions_dir} |
 | Projects  | {projects_dir} |
-| Logs      | {logs_dir}     |
+| Data Logs | {logs_dir}     |
 | Context   | {context_dir}  |
 | Goals     | {goals_dir}    |
+
+## Hook Logs (Not in $ACA_DATA)
+
+Hook logs are stored alongside session transcripts for correlation:
+
+| Client  | Hook Log Path |
+|---------|---------------|
+| Claude  | ~/.claude/projects/<project>/<date>-<hash>-hooks.jsonl |
+| Gemini  | ~/.gemini/tmp/<hash>/logs/<date>-<hash>-hooks.jsonl |
 
 ---
 

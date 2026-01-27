@@ -5,7 +5,7 @@ category: reference
 type: reference
 description: Resolved absolute paths for this framework instance (generated from paths.py)
 audience: agents
-generated: 2026-01-27T08:09:09.744994+00:00
+generated: 2026-01-27T11:39:36.856538+00:00
 permalink: agent-paths
 tags:
   - framework
@@ -17,7 +17,7 @@ tags:
 
 **⚠️ GENERATED FILE - DO NOT EDIT MANUALLY**
 
-Generated: 2026-01-27 08:09:09 UTC
+Generated: 2026-01-27 11:39:36 UTC
 Source: `aops-core/lib/paths.py`
 
 This file provides resolved absolute paths for agent use during sessions.
@@ -53,9 +53,18 @@ User data directories within $ACA_DATA:
 |-----------|---------------|
 | Sessions  | /home/nic/writing/sessions |
 | Projects  | /home/nic/writing/data/projects |
-| Logs      | /home/nic/writing/data/logs     |
+| Data Logs | /home/nic/writing/data/logs     |
 | Context   | /home/nic/writing/data/context  |
 | Goals     | /home/nic/writing/data/goals    |
+
+## Hook Logs (Not in $ACA_DATA)
+
+Hook logs are stored alongside session transcripts for correlation:
+
+| Client  | Hook Log Path |
+|---------|---------------|
+| Claude  | ~/.claude/projects/<project>/<date>-<hash>-hooks.jsonl |
+| Gemini  | ~/.gemini/tmp/<hash>/logs/<date>-<hash>-hooks.jsonl |
 
 ---
 
