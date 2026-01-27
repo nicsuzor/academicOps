@@ -232,7 +232,7 @@ def merge():
     eng.scan_and_merge()
 
 @main.command()
-@click.option("--project", "-p", required=True, help="Project to work on (required)")
+@click.option("--project", "-p", multiple=True, help="Project(s) to work on (default: all)")
 @click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
 @click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
@@ -247,14 +247,21 @@ def crew(project, name, gemini, resume):
     - Are not bound to a single task (but edits require task binding via hooks)
 
     Examples:
-        polecat crew -p aops              # New crew for aops project
-        polecat crew -p buttermilk        # New crew for buttermilk
+        polecat crew                      # New crew with ALL projects
+        polecat crew -p aops              # New crew for aops only
+        polecat crew -p aops -p buttermilk  # New crew for specific projects
         polecat crew -r audre             # Resume crew worker "audre"
-        polecat crew -n marsha -p aops    # New crew named "marsha"
     """
     import subprocess
 
     manager = PolecatManager()
+
+    # Determine which projects to use
+    if project:
+        projects = list(project)
+    else:
+        # Default to all projects
+        projects = list(manager.projects.keys())
 
     # Determine crew name
     if resume:
@@ -269,20 +276,26 @@ def crew(project, name, gemini, resume):
 
     print(f"🧑‍🤝‍🧑 Crew worker: {crew_name}")
 
-    # Setup worktree
+    # Setup worktrees for all projects
+    worktree_paths = {}
     try:
-        worktree_path = manager.setup_crew_worktree(crew_name, project)
-        print(f"📁 Worktree: {worktree_path}")
+        for proj in projects:
+            worktree_path = manager.setup_crew_worktree(crew_name, proj)
+            worktree_paths[proj] = worktree_path
+            print(f"📁 {proj}: {worktree_path}")
     except Exception as e:
         print(f"Error setting up worktree: {e}", file=sys.stderr)
         sys.exit(1)
+
+    # Crew root is the parent of all project worktrees
+    crew_root = manager.crew_dir / crew_name
 
     # Run agent in interactive mode (no task binding - hooks will enforce when needed)
     cli_tool = "gemini" if gemini else "claude"
     print(f"\n🤝 Starting {cli_tool} crew session...")
     print(f"   Crew: {crew_name}")
-    print(f"   Project: {project}")
-    print(f"   Worktree: {worktree_path}")
+    print(f"   Projects: {', '.join(projects)}")
+    print(f"   Working dir: {crew_root}")
     print("-" * 50)
 
     if gemini:
@@ -301,7 +314,7 @@ def crew(project, name, gemini, resume):
         ]
 
     try:
-        subprocess.run(cmd, cwd=worktree_path)
+        subprocess.run(cmd, cwd=crew_root)
     except FileNotFoundError:
         print(f"Error: '{cli_tool}' command not found.", file=sys.stderr)
         sys.exit(1)
@@ -310,7 +323,7 @@ def crew(project, name, gemini, resume):
 
     print("-" * 50)
     print(f"\n📋 Crew '{crew_name}' session ended.")
-    print(f"   Worktree preserved at: {worktree_path}")
+    print(f"   Worktrees preserved at: {crew_root}")
     print(f"   To resume: polecat crew -r {crew_name}")
     print(f"   To nuke:   polecat nuke-crew {crew_name}")
 
