@@ -2478,12 +2478,16 @@ session_id: {session_uuid}
         """Extract full conversation from sidechain entries.
 
         Deduplicates text content and tool operations to avoid showing the same content twice.
+        Groups consecutive calls to the same tool for readability.
         """
         if not sidechain_entries:
             return "No sidechain details available"
-        output_parts = []
-        seen_texts = set()  # Track seen text content to avoid duplicates
-        seen_tools = set()  # Track seen tool operations to avoid duplicates
+        output_parts: list[str] = []
+        seen_texts: set[str] = set()
+        seen_tool_keys: set[str] = set()  # Track unique tool calls
+
+        # First pass: collect all items in order, marking text vs tool
+        items: list[tuple[str, Any]] = []  # (type, content)
         for entry in sidechain_entries:
             if entry.type == "assistant" and entry.message:
                 content = entry.message.get("content", [])
@@ -2492,17 +2496,46 @@ session_id: {session_uuid}
                         if isinstance(block, dict):
                             if block.get("type") == "text":
                                 text = block.get("text", "").strip()
-                                # Only add if we haven't seen this exact text before
                                 if text and text not in seen_texts:
                                     seen_texts.add(text)
-                                    output_parts.append(text + "\n")
+                                    items.append(("text", text))
                             elif block.get("type") == "tool_use":
-                                formatted_tool = self._format_tool_operation(block)
-                                if formatted_tool:
-                                    # Only add if we haven't seen this exact tool operation before
-                                    if formatted_tool not in seen_tools:
-                                        seen_tools.add(formatted_tool)
-                                        output_parts.append(formatted_tool)
+                                tool_name = block.get("name", "")
+                                tool_input = block.get("input", {})
+                                # Create a unique key for deduplication
+                                tool_key = f"{tool_name}:{str(tool_input)}"
+                                if tool_key not in seen_tool_keys:
+                                    seen_tool_keys.add(tool_key)
+                                    items.append(("tool", block))
+
+        # Second pass: group consecutive tool calls of the same type
+        i = 0
+        while i < len(items):
+            item_type, content = items[i]
+
+            if item_type == "text":
+                output_parts.append(content + "\n")
+                i += 1
+            elif item_type == "tool":
+                # Collect consecutive tools of the same name
+                tool_name = content.get("name", "")
+                tool_group = [content]
+                j = i + 1
+                while j < len(items):
+                    next_type, next_content = items[j]
+                    if next_type == "tool" and next_content.get("name") == tool_name:
+                        tool_group.append(next_content)
+                        j += 1
+                    else:
+                        break
+
+                # Format the group
+                formatted = self._format_condensed_tool_group(tool_name, tool_group)
+                output_parts.append(formatted)
+                i = j
+            else:
+                i += 1
+
         return "\n".join(output_parts)
 
     def _extract_agent_id_from_result(
@@ -3006,6 +3039,75 @@ session_id: {session_uuid}
             result += f"  {symbol} {content_preview}\n"
 
         return result
+
+    def _format_condensed_tool_group(
+        self, tool_name: str, tool_blocks: list[dict[str, Any]]
+    ) -> str:
+        """Format a group of consecutive same-tool calls in condensed format.
+
+        For tools like Read, Glob, Grep - shows multiple calls on one line.
+        E.g., "- Read: file1.py, file2.py, file3.py"
+        """
+        if len(tool_blocks) == 1:
+            return self._format_tool_operation(tool_blocks[0])
+
+        # Extract key info based on tool type
+        if tool_name == "Read":
+            files = []
+            for block in tool_blocks:
+                tool_input = block.get("input", {})
+                path = tool_input.get("file_path", "")
+                if path:
+                    # Show just filename
+                    filename = path.split("/")[-1]
+                    files.append(filename)
+            if files:
+                return f"- Read: {', '.join(files)}\n"
+
+        elif tool_name == "Glob":
+            patterns = []
+            for block in tool_blocks:
+                tool_input = block.get("input", {})
+                pattern = tool_input.get("pattern", "")
+                if pattern:
+                    patterns.append(f'`{pattern}`')
+            if patterns:
+                return f"- Glob: {', '.join(patterns)}\n"
+
+        elif tool_name == "Grep":
+            patterns = []
+            for block in tool_blocks:
+                tool_input = block.get("input", {})
+                pattern = tool_input.get("pattern", "")
+                if pattern:
+                    if len(pattern) > 30:
+                        pattern = pattern[:27] + "..."
+                    patterns.append(f'`{pattern}`')
+            if patterns:
+                return f"- Grep: {', '.join(patterns)}\n"
+
+        elif tool_name == "Edit":
+            files = set()
+            for block in tool_blocks:
+                tool_input = block.get("input", {})
+                path = tool_input.get("file_path", "")
+                if path:
+                    filename = path.split("/")[-1]
+                    files.add(filename)
+            if files:
+                count = len(tool_blocks)
+                return f"- Edit ({count}x): {', '.join(sorted(files))}\n"
+
+        # Fallback: show count and first example
+        first_block = tool_blocks[0]
+        first_formatted = self._format_tool_operation(first_block).rstrip("\n")
+        return f"{first_formatted} (+{len(tool_blocks) - 1} more)\n"
+
+    def _extract_filename(self, path: str) -> str:
+        """Extract just the filename from a path."""
+        if not path:
+            return ""
+        return path.split("/")[-1]
 
     def _maybe_pretty_print_json(self, text: str) -> str:
         """Try to pretty-print JSON."""
