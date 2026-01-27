@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Pre-commit hook: Validate FRAMEWORK-PATHS.md exists and is current.
+Pre-commit hook: Validate .agent/PATHS.md exists and is current.
 
-This hook ensures that FRAMEWORK-PATHS.md exists and has been generated
+This hook ensures that .agent/PATHS.md exists and has been generated
 recently (within the last 7 days). Stale files may contain incorrect paths
 if the environment has changed.
 
@@ -30,7 +30,7 @@ except ImportError as e:
 
 def validate_framework_paths() -> tuple[bool, str]:
     """
-    Validate FRAMEWORK-PATHS.md exists and is current.
+    Validate .agent/PATHS.md exists and is current.
 
     Returns:
         tuple: (success: bool, message: str)
@@ -40,12 +40,12 @@ def validate_framework_paths() -> tuple[bool, str]:
     except RuntimeError as e:
         return False, f"Environment not configured: {e}"
 
-    framework_paths = aops_root / "FRAMEWORK-PATHS.md"
+    framework_paths = aops_root / ".agent/PATHS.md"
 
     # Check existence
     if not framework_paths.exists():
         return False, (
-            f"FRAMEWORK-PATHS.md not found at {framework_paths}\n"
+            f".agent/PATHS.md not found at {framework_paths}\n"
             f"Run: python3 aops-core/scripts/generate_framework_paths.py"
         )
 
@@ -53,7 +53,7 @@ def validate_framework_paths() -> tuple[bool, str]:
     try:
         content = framework_paths.read_text()
     except Exception as e:
-        return False, f"Failed to read FRAMEWORK-PATHS.md: {e}"
+        return False, f"Failed to read .agent/PATHS.md: {e}"
 
     # Extract generated timestamp from frontmatter
     # Format: generated: 2026-01-13T08:47:01.548202+00:00
@@ -61,7 +61,7 @@ def validate_framework_paths() -> tuple[bool, str]:
 
     if not timestamp_match:
         return False, (
-            "FRAMEWORK-PATHS.md is missing 'generated' field in frontmatter.\n"
+            ".agent/PATHS.md is missing 'generated' field in frontmatter.\n"
             "This file should be auto-generated. "
             "Run: python3 aops-core/scripts/generate_framework_paths.py"
         )
@@ -75,7 +75,7 @@ def validate_framework_paths() -> tuple[bool, str]:
         if generated_time.tzinfo is None:
             generated_time = generated_time.replace(tzinfo=timezone.utc)
     except ValueError as e:
-        return False, f"Invalid timestamp format in FRAMEWORK-PATHS.md: {e}"
+        return False, f"Invalid timestamp format in .agent/PATHS.md: {e}"
 
     # Check if stale (>7 days old)
     now = datetime.now(timezone.utc)
@@ -84,7 +84,7 @@ def validate_framework_paths() -> tuple[bool, str]:
 
     if age > max_age:
         return False, (
-            f"FRAMEWORK-PATHS.md is stale (generated {age.days} days ago).\n"
+            f".agent/PATHS.md is stale (generated {age.days} days ago).\n"
             f"File may contain outdated paths.\n"
             f"Run: python3 aops-core/scripts/generate_framework_paths.py"
         )
@@ -92,13 +92,13 @@ def validate_framework_paths() -> tuple[bool, str]:
     # Check that file contains "## Resolved Paths" section
     if "## Resolved Paths" not in content:
         return False, (
-            "FRAMEWORK-PATHS.md is missing '## Resolved Paths' section.\n"
+            ".agent/PATHS.md is missing '## Resolved Paths' section.\n"
             "This file may be malformed. "
             "Run: python3 aops-core/scripts/generate_framework_paths.py"
         )
 
     # All checks passed
-    return True, "FRAMEWORK-PATHS.md is valid and current"
+    return True, ".agent/PATHS.md is valid and current"
 
 
 def main() -> int:

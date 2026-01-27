@@ -107,9 +107,9 @@ repos:
         verbose: true
         stages: [pre-commit]
 
-      # Framework paths validation - ensures FRAMEWORK-PATHS.md exists and is current
+      # Framework paths validation - ensures .agent/PATHS.md exists and is current
       - id: validate-framework-paths
-        name: Validate FRAMEWORK-PATHS.md
+        name: Validate .agent/PATHS.md
         entry: python3 aops-core/hooks/pre_commit_validate_paths.py
         language: system
         pass_filenames: false

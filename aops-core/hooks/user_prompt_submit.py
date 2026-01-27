@@ -56,15 +56,15 @@ INTENT_MAX_LENGTH = 500
 
 
 def load_framework_paths() -> str:
-    """Load the Resolved Paths section from FRAMEWORK-PATHS.md.
+    """Load the Resolved Paths section from .agent/PATHS.md.
 
     Returns just the path table, not the full file.
     """
     aops_root = get_aops_root()
-    framework_path = aops_root / "FRAMEWORK-PATHS.md"
+    framework_path = aops_root / ".agent/PATHS.md"
 
     if not framework_path.exists():
-        return "(FRAMEWORK-PATHS.md not found - run: python3 aops-core/scripts/generate_framework_paths.py)"
+        return "(.agent/PATHS.md not found - run: python3 aops-core/scripts/generate_framework_paths.py)"
 
     content = framework_path.read_text()
 
@@ -78,7 +78,7 @@ def load_framework_paths() -> str:
             return rest[:end].strip()
         return rest.strip()
 
-    return "(Path table not found in FRAMEWORK-PATHS.md)"
+    return "(Path table not found in .agent/PATHS.md)"
 
 
 def _strip_frontmatter(content: str) -> str:
@@ -272,7 +272,7 @@ def get_task_work_state() -> str:
     try:
         # Get active work
         active_result = subprocess.run(
-            ["python", str(task_cli_path), "list", "--status=active"],
+            ["python", str(task_cli_path), "list", "--status=active", "--limit=20"],
             capture_output=True,
             text=True,
             timeout=5,
@@ -281,7 +281,7 @@ def get_task_work_state() -> str:
 
         # Get inbox work (ready to pick up)
         inbox_result = subprocess.run(
-            ["python", str(task_cli_path), "list", "--status=inbox"],
+            ["python", str(task_cli_path), "list", "--status=inbox", "--limit=20"],
             capture_output=True,
             text=True,
             timeout=5,
@@ -295,9 +295,7 @@ def get_task_work_state() -> str:
         if active:
             sections.append(f"### Active Tasks\n\n{active}")
         if inbox:
-            # Limit inbox work to first 10 lines to avoid context bloat
-            inbox_lines = inbox.split("\n")[:12]
-            sections.append(f"### Ready Tasks (inbox)\n\n" + "\n".join(inbox_lines))
+            sections.append(f"### Incoming Tasks (inbox)\n\n{inbox}")
 
         return "\n\n".join(sections)
 

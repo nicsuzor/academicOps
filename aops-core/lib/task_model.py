@@ -55,6 +55,7 @@ class TaskType(Enum):
 class TaskStatus(Enum):
     """Task lifecycle states."""
 
+    INBOX = "inbox"  # New task, not yet triaged
     ACTIVE = "active"  # Ready to be claimed (no blockers)
     IN_PROGRESS = "in_progress"  # Currently being worked on (claimed)
     BLOCKED = "blocked"  # Waiting on dependencies
@@ -306,11 +307,14 @@ class Task:
         if isinstance(due, str):
             due = datetime.fromisoformat(due)
 
-        # Parse enums with graceful coercion for invalid values
+        # Parse type - reject invalid types (item is not a task)
         task_type_str = fm.get("type", "task")
-        task_type = _safe_parse_enum(
-            task_type_str, TaskType, TaskType.TASK, "type", task_id
-        )
+        try:
+            task_type = TaskType(task_type_str)
+        except ValueError:
+            raise ValueError(
+                f"Invalid type '{task_type_str}' for item {task_id} - not a task"
+            )
 
         # Map status aliases and parse with graceful coercion
         status_str = fm.get("status", "active")

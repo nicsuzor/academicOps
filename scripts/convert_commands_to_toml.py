@@ -55,7 +55,7 @@ def escape_toml_string(s: str) -> str:
 def escape_toml_basic_string(s: str) -> str:
     """Escape a string for TOML basic (double-quoted) string."""
     # Escape backslashes first, then double quotes
-    return s.replace("\", "\\\\").replace('"', '\"')
+    return s.replace("\\", "\\\\").replace('"', '\\"')
 
 
 def convert_command(md_path: Path) -> str:

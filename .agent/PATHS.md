@@ -1,23 +1,23 @@
 ---
-name: framework-paths
-title: Framework Paths (Generated)
+name: agent-paths
+title: Agent Paths (Generated)
 category: reference
 type: reference
 description: Resolved absolute paths for this framework instance (generated from paths.py)
 audience: agents
-generated: 2026-01-27T00:27:06.817308+00:00
-permalink: framework-paths
+generated: 2026-01-27T03:45:25.177740+00:00
+permalink: agent-paths
 tags:
   - framework
   - paths
   - generated
 ---
 
-# Framework Paths
+# Agent Paths
 
 **⚠️ GENERATED FILE - DO NOT EDIT MANUALLY**
 
-Generated: 2026-01-27 00:27:06 UTC
+Generated: 2026-01-27 03:45:25 UTC
 Source: `aops-core/lib/paths.py`
 
 This file provides resolved absolute paths for agent use during sessions.

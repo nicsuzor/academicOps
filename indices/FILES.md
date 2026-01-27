@@ -3,7 +3,7 @@ name: index
 category: spec
 title: Framework Index
 type: reference
-description: Complete file accounting for audits. NOT injected to agents - use FRAMEWORK-PATHS.md for paths.
+description: Complete file accounting for audits. NOT injected to agents - use .agent/PATHS.md for paths.
 permalink: framework-index
 audience: maintainers, audit-scripts
 tags:
@@ -16,7 +16,7 @@ tags:
 
 Complete file accounting for audit processes. See [[documentation-architecture]] for document purposes.
 
-**Audience**: Maintainers and audit scripts only. Agents use [[FRAMEWORK-PATHS.md]] for paths.
+**Audience**: Maintainers and audit scripts only. Agents use [[.agent/PATHS.md]] for paths.
 
 For human-readable overview, see [[README]].
 
@@ -26,7 +26,7 @@ For human-readable overview, see [[README]].
 $AOPS/
 ├── [[AXIOMS.md]]                # Inviolable principles (injected at session start)
 ├── [[HEURISTICS.md]]            # Empirically validated rules (injected at session start)
-├── [[FRAMEWORK-PATHS.md]]       # Resolved paths for this session (injected at session start)
+├── [[.agent/PATHS.md]]          # Resolved paths for this session (injected at session start)
 ├── [[README.md]]                # Brief overview, feature inventory
 ├── [[INDEX.md]]                 # THIS FILE - complete file tree
 ├── [[WORKFLOWS.md]]             # Task routing and workflow selection

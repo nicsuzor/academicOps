@@ -27,6 +27,7 @@ Quick reference for routing user requests to skills/commands. When a request mat
 | `/learn` | "framework issue", "fix this pattern", "improve the system" | Make minimal, graduated framework tweaks with experiment tracking |
 | `/log` | "log observation", "note this", "framework feedback" | Log framework observations to tasks for continuous improvement |
 | `/pull` | "pull task", "get work", "what should I work on", "next task" | Pull a task from queue, claim it (mark active), and mark complete when done |
+| `/q` | "queue task", "save for later", "add to backlog", "new task:" | Quick-queue a task for later without hydration overhead |
 
 ## Skills (Auto-Triggered)
 

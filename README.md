@@ -115,7 +115,7 @@ $AOPS/.agent/rules/
 - [AXIOMS.md](AXIOMS.md) - Inviolable principles
 - [HEURISTICS.md](HEURISTICS.md) - Empirically validated rules
 - [enforcement-map.md](indices/enforcement-map.md) - Enforcement mechanisms mapping rules to controls
-- [FRAMEWORK-PATHS.md](FRAMEWORK-PATHS.md) - Paths and configuration (generated)
+- [PATHS.md](.agent/PATHS.md) - Paths and configuration (generated)
 
 ## Core Concepts
 

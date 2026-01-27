@@ -81,21 +81,21 @@ def generate_markdown() -> str:
 
     # Build markdown content
     content = f"""---
-name: framework-paths
-title: Framework Paths (Generated)
+name: agent-paths
+title: Agent Paths (Generated)
 category: reference
 type: reference
 description: Resolved absolute paths for this framework instance (generated from paths.py)
 audience: agents
 generated: {timestamp_iso}
-permalink: framework-paths
+permalink: agent-paths
 tags:
   - framework
   - paths
   - generated
 ---
 
-# Framework Paths
+# Agent Paths
 
 **⚠️ GENERATED FILE - DO NOT EDIT MANUALLY**
 
@@ -152,7 +152,7 @@ or after modifying the framework directory structure.
 
 def main() -> int:
     """
-    Main entry point - generate and write FRAMEWORK-PATHS.md.
+    Main entry point - generate and write .agent/PATHS.md.
 
     Returns:
         int: Exit code (0=success, 1=error)
@@ -161,8 +161,12 @@ def main() -> int:
         # Generate content
         content = generate_markdown()
 
-        # Determine output path (always at framework root)
-        output_path = get_aops_root() / "FRAMEWORK-PATHS.md"
+        # Determine output path (.agent/PATHS.md)
+        aops_root = get_aops_root()
+        agent_dir = aops_root / ".agent"
+        agent_dir.mkdir(exist_ok=True)
+        
+        output_path = agent_dir / "PATHS.md"
 
         # Write file
         output_path.write_text(content)

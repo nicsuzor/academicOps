@@ -61,7 +61,7 @@ def get_claude_router() -> Path:
 
 def get_gemini_user_prompt_hook() -> Path:
     """Get Gemini-specific user_prompt_submit hook path."""
-    return get_aops_root() / "config" / "gemini" / "hooks" / "user_prompt_submit.py"
+    return get_aops_root() / "aops-core" / "hooks" / "gemini" / "user_prompt_submit.py"
 
 # Session ID file location (from $AOPS_SESSIONS environment variable)
 def get_session_id_file() -> Path:
