@@ -18,6 +18,7 @@ Exit codes:
 """
 
 import json
+import os
 import random
 import sys
 from pathlib import Path
@@ -55,6 +56,7 @@ FILE_PREFIX = "audit_"
 
 # Configuration
 TOOL_CALL_THRESHOLD = 7  # Check every ~7 tool calls
+DEFAULT_CUSTODIET_MODE = "warn"  # "warn" (default) or "block"
 
 # Random reminders: DORMANT (set to 0.0)
 # This mechanism is preserved as a potential enforcement tool if evidence shows
@@ -215,6 +217,15 @@ def set_drift_warning(session_id: str, warning: str) -> None:
     save_custodiet_state(session_id, state)
 
 
+def get_custodiet_mode() -> str:
+    """Get custodiet mode from environment.
+
+    Returns:
+        "warn" (default) or "block"
+    """
+    return os.environ.get("CUSTODIET_MODE", DEFAULT_CUSTODIET_MODE).lower()
+
+
 def load_framework_content() -> tuple[str, str, str]:
     """Load AXIOMS.md, HEURISTICS.md, and SKILLS.md content for custodiet.
 
@@ -259,6 +270,9 @@ def build_audit_instruction(
     # Load framework principles (fail-fast if missing)
     axioms_content, heuristics_content, skills_content = load_framework_content()
 
+    # Get enforcement mode
+    custodiet_mode = get_custodiet_mode()
+
     # Build full context
     context_template = load_template(CONTEXT_TEMPLATE_FILE)
     full_context = context_template.format(
@@ -267,6 +281,7 @@ def build_audit_instruction(
         axioms_content=axioms_content,
         heuristics_content=heuristics_content,
         skills_content=skills_content,
+        custodiet_mode=custodiet_mode,
     )
 
     # Write to temp file

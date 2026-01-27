@@ -36,7 +36,7 @@ After reading the file:
 
 **CRITICAL: Your output is parsed programmatically.** The calling hook extracts your verdict using regex. Any deviation from the exact format below will cause parsing failures and break the enforcement pipeline.
 
-**YOUR ENTIRE RESPONSE must be ONE of the formats below. NO preamble. NO analysis. NO "I'll check..." text. Start your response with either `OK` or `BLOCK`.**
+**YOUR ENTIRE RESPONSE must be ONE of the formats below. NO preamble. NO analysis. NO "I'll check..." text. Start your response with either `OK`, `WARN`, or `BLOCK`.**
 
 **If everything is fine:**
 
@@ -46,6 +46,19 @@ OK
 
 **STOP. Output exactly those two characters. Nothing before or after.**
 
+**If issues found and mode is WARN (advisory only):**
+
+```
+WARN
+
+Issue: [DIAGNOSTIC statement - what violation occurred, max 15 words]
+Principle: [axiom/heuristic number only, e.g., "A#3" or "H#12"]
+Suggestion: [1 sentence, max 15 words]
+```
+
+That's 4 lines total. No preamble. No elaboration. No block flag.
+In WARN mode, the main agent receives this as advisory guidance but is NOT halted.
+
 ❌ BAD: "Everything looks compliant with the framework principles."
 ❌ BAD: "OK - the agent is following the plan correctly."
 ❌ BAD: "I've reviewed the context and found no issues."
@@ -53,7 +66,7 @@ OK
 ❌ BAD: "**Assessment:** [text] ...OK"
 ✅ GOOD: "OK"
 
-**If issues found (BLOCK):**
+**If issues found and mode is BLOCK (enforcement):**
 
 ```
 BLOCK
@@ -64,6 +77,7 @@ Correction: [1 sentence, max 15 words]
 ```
 
 That's 4 lines total. No preamble. No elaboration. No context. No caveats.
+Only use BLOCK when the context explicitly says "Enforcement Mode: block".
 
 **Issue field guidance**: Be DIAGNOSTIC (identify the violation), not NARRATIVE (describe what happened).
 
@@ -81,7 +95,7 @@ That's 4 lines total. No preamble. No elaboration. No context. No caveats.
 ❌ BAD: "**Assessment:** [text] ...BLOCK..."
 ✅ GOOD: Response starts with the word "BLOCK" on line 1
 
-**CRITICAL: On BLOCK you MUST**:
+**CRITICAL: On BLOCK you MUST** (only when mode is "block", NOT for WARN):
 
 1. **Save block record for review** using Write tool:
    ```
@@ -113,7 +127,7 @@ That's 4 lines total. No preamble. No elaboration. No context. No caveats.
 
 ## What You Do NOT Do
 
-- Write ANY text before "OK" or "BLOCK" (no preamble, no "I'll analyze...")
+- Write ANY text before "OK", "WARN", or "BLOCK" (no preamble, no "I'll analyze...")
 - Write ANYTHING except "OK" when compliant
 - Explain your reasoning
 - Summarize what you checked
