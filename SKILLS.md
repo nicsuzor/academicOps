@@ -1,1 +1,0 @@
-aops-core/SKILLS.md
