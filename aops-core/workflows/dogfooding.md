@@ -58,6 +58,17 @@ After completing work, ask: "What did I learn that should become part of the fra
 - Observed: Presenting suggestions with confidence + getting confirmation works better than guessing
 - Codified: Updated classify-task.md with confirmation pattern
 
+**Example from daily note synthesis (2026-01-27):**
+- Executed: Retroactive update of yesterday's daily note from 40 session JSONs
+- Observed:
+  - 35/40 session JSONs had empty accomplishment arrays (Gemini mining gap)
+  - "Goals vs. Achieved" reflection section revealed intention drift
+  - Tracking "unplanned work that consumed the day" explained why goals weren't met
+- Codified:
+  - Validates priority of transcript improvement tasks (aops-3aede0df, aops-f7b56e8b)
+  - Daily notes should include reflection comparing stated goals to actual achievements
+  - Unplanned work should be explicitly tracked to explain goal drift
+
 ## Notice List
 
 Watch for these during any task:

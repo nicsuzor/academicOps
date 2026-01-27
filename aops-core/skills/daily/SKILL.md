@@ -66,6 +66,7 @@ else:
 | FYI                     | `/daily` | Email triage           |
 | Session Log/Timeline    | `/daily` | Session JSON synthesis |
 | Project Accomplishments | `/daily` | Session JSON synthesis |
+| Reflection              | `/daily` | End-of-day sync (Step 4.4.5) |
 | Abandoned Todos         | `/daily` | End-of-day             |
 
 ## Formatting Rules
@@ -394,6 +395,41 @@ Using **Edit tool** (not Write) to preserve existing content:
 - **Scheduled**: Tasks with `scheduled: YYYY-MM-DD` matching today
 - **Unscheduled**: Accomplishments not matching scheduled tasks
 - Format: `Scheduled: ██████░░░░ 6/10 | Unscheduled: 3 items`
+
+### Step 4.4.5: Generate Goals vs. Achieved Reflection
+
+If the daily note contains a goals section (e.g., "## Things I want to achieve today", "## Focus", or similar), generate a reflection comparing stated intentions against actual outcomes.
+
+**Check for goals section**: Look for sections like:
+- `## Things I want to achieve today`
+- `## Focus` (the task recommendations from morning planning)
+- `## Today's Work Queue` (scheduled tasks)
+
+**For each stated goal/priority**:
+1. Check if corresponding work appears in session accomplishments
+2. Check if related tasks were completed (from Step 4.1.5)
+3. Classify as: ✅ Achieved | ⚠️ Partially/Spawned | ❌ Not achieved
+
+**Generate reflection section**:
+
+```markdown
+## Reflection: Goals vs. Achieved
+
+**Goals from "[section name]":**
+
+| Goal | Status | Notes |
+|------|--------|-------|
+| [Goal 1] | ✅ Achieved | Completed in session [id] |
+| [Goal 2] | ⚠️ Partially | Task created but no completion data |
+| [Goal 3] | ❌ Not achieved | No matching work found |
+
+**Unplanned work that consumed the day:**
+- [Major unplanned item] (~Xh) - [brief explanation]
+
+**Key insight**: [One-sentence observation about drift, priorities, or patterns]
+```
+
+**Purpose**: This reflection reveals intention drift and helps understand why plans diverge from reality. Tracking "unplanned work that consumed the day" explains goal displacement.
 
 ### Step 4.5: Task Matching (Session → Task Sync)
 
