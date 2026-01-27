@@ -11,6 +11,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -85,6 +86,44 @@ HOOK_REGISTRY: Dict[str, List[Dict[str, Any]]] = {
     ],
 }
 
+# --- Path Validation ---
+
+
+def validate_temp_path(path: str) -> bool:
+    """Validate that a temp path is safe (no traversal attacks).
+
+    Args:
+        path: Path string to validate
+
+    Returns:
+        True if path is safe, False otherwise
+    """
+    if not path:
+        return False
+
+    try:
+        # Resolve to absolute path and check it's within expected bounds
+        resolved = Path(path).resolve()
+
+        # Must be within /tmp or user's home directory
+        allowed_prefixes = [
+            Path("/tmp"),
+            Path.home(),
+            Path(os.environ.get("AOPS_SESSIONS", "/tmp")),
+        ]
+
+        for prefix in allowed_prefixes:
+            try:
+                resolved.relative_to(prefix.resolve())
+                return True
+            except ValueError:
+                continue
+
+        return False
+    except (OSError, RuntimeError):
+        return False
+
+
 # --- Session Management (Gemini Support) ---
 
 
@@ -100,19 +139,38 @@ def get_session_file_path() -> Path:
 
 
 def persist_session_data(data: Dict[str, Any]) -> None:
-    """Write session metadata to the fallback file."""
+    """Write session metadata atomically using temp file + rename.
+
+    Uses atomic write pattern to prevent race conditions when
+    multiple hook invocations occur concurrently.
+    """
     try:
         session_file = get_session_file_path()
+
         # Merge with existing if possible
         if session_file.exists():
             try:
                 existing = json.loads(session_file.read_text())
                 existing.update(data)
                 data = existing
-            except Exception:
-                pass
-        session_file.write_text(json.dumps(data))
-    except Exception as e:
+            except json.JSONDecodeError:
+                pass  # Use new data if existing is corrupt
+
+        # Atomic write: write to temp file, then rename
+        session_file.parent.mkdir(parents=True, exist_ok=True)
+        fd, temp_path = tempfile.mkstemp(
+            prefix="session-", suffix=".tmp", dir=str(session_file.parent)
+        )
+        try:
+            os.write(fd, json.dumps(data).encode())
+            os.close(fd)
+            Path(temp_path).rename(session_file)
+        except Exception:
+            os.close(fd) if fd else None
+            Path(temp_path).unlink(missing_ok=True)
+            raise
+
+    except OSError as e:
         print(f"WARNING: Failed to write session data: {e}", file=sys.stderr)
 
 
@@ -230,19 +288,21 @@ def run_hook_script(
         else:
             cmd = [sys.executable, str(script_path)]
 
-        # Ensure PYTHONPATH propagates
+        # Ensure PYTHONPATH propagates (avoid duplicates)
         env = os.environ.copy()
         current_pp = env.get("PYTHONPATH", "")
-        # Add AOPS_CORE_DIR if not present, but avoid duplicates if possible
-        # Simple prepend is robust enough
-        env["PYTHONPATH"] = (
-            f"{AOPS_CORE_DIR}:{current_pp}" if current_pp else str(AOPS_CORE_DIR)
-        )
+        aops_core_str = str(AOPS_CORE_DIR)
+        # Only prepend if not already present
+        if aops_core_str not in current_pp.split(os.pathsep):
+            env["PYTHONPATH"] = (
+                f"{aops_core_str}{os.pathsep}{current_pp}" if current_pp else aops_core_str
+            )
 
-        # Inject Gemini Temp Root if available
+        # Inject Gemini Temp Root if available and valid
         session_data = get_session_data()
-        if session_data.get("temp_root"):
-            env["AOPS_GEMINI_TEMP_ROOT"] = session_data["temp_root"]
+        temp_root = session_data.get("temp_root")
+        if temp_root and validate_temp_path(temp_root):
+            env["AOPS_GEMINI_TEMP_ROOT"] = temp_root
 
         # Pass hook dir as CWD
         result = subprocess.run(
@@ -267,8 +327,17 @@ def run_hook_script(
 
         return output, result.returncode
 
-    except (subprocess.TimeoutExpired, Exception) as e:
-        print(f"ERROR: Hook {script_path.name} failed: {e}", file=sys.stderr)
+    except subprocess.TimeoutExpired as e:
+        print(f"ERROR: Hook {script_path.name} timed out after {timeout}s", file=sys.stderr)
+        return {}, 2
+    except FileNotFoundError as e:
+        print(f"ERROR: Hook script not found: {script_path}: {e}", file=sys.stderr)
+        return {}, 2
+    except PermissionError as e:
+        print(f"ERROR: Permission denied for hook {script_path.name}: {e}", file=sys.stderr)
+        return {}, 2
+    except OSError as e:
+        print(f"ERROR: OS error running hook {script_path.name}: {e}", file=sys.stderr)
         return {}, 2
 
 

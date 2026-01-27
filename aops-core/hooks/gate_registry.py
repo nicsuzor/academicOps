@@ -11,14 +11,30 @@ import sys
 import os
 
 # Adjust imports to work within the aops-core environment
+# These imports are REQUIRED for gate functionality - fail explicitly if missing
+_IMPORT_ERROR: str | None = None
 try:
     from lib import session_state
     from lib import hook_utils
     from lib.template_loader import load_template
     from lib.session_reader import extract_gate_context, load_skill_scope
-except ImportError:
-    # Fallback/Mocking for tests if not in environment
-    pass
+except ImportError as e:
+    _IMPORT_ERROR = str(e)
+    # Provide stub implementations that raise clear errors when used
+    session_state = None  # type: ignore[assignment]
+    hook_utils = None  # type: ignore[assignment]
+    load_template = None  # type: ignore[assignment]
+    extract_gate_context = None  # type: ignore[assignment]
+    load_skill_scope = None  # type: ignore[assignment]
+
+
+def _check_imports() -> None:
+    """Verify required imports are available. Raises RuntimeError if not."""
+    if _IMPORT_ERROR is not None:
+        raise RuntimeError(
+            f"gate_registry: Required imports failed: {_IMPORT_ERROR}. "
+            "Ensure PYTHONPATH includes aops-core directory."
+        )
 
 # --- Constants & Configuration ---
 
@@ -106,6 +122,8 @@ def check_hydration_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
     Check if hydration is required.
     Returns None if allowed, or an output dict if blocked.
     """
+    _check_imports()  # Fail fast if imports unavailable
+
     # Bypass for subagent sessions
     if _hydration_is_subagent_session():
         return None
@@ -146,9 +164,11 @@ def _custodiet_load_framework_content() -> Tuple[str, str, str]:
 def _custodiet_build_session_context(
     transcript_path: Optional[str], session_id: str
 ) -> str:
-    """Build rich session context (simplified port)."""
-    # ... (Logic ported from custodiet_gate.py _build_session_context)
-    # For brevity in this refactor, relying on extract_gate_context primarily
+    """Build rich session context for custodiet compliance checks.
+
+    Extracts recent conversation history, tool usage, files modified,
+    and any errors to provide context for compliance evaluation.
+    """
     if not transcript_path:
         return "(No transcript path available)"
 
@@ -161,13 +181,40 @@ def _custodiet_build_session_context(
         max_turns=15,
     )
 
-    # (Simplified reconstruction of the detailed formatting)
+    # Most recent user request
     prompts = gate_ctx.get("prompts", [])
     if prompts:
         lines.append("**Most Recent User Request**:")
         lines.append(f"> {prompts[-1]}")
         lines.append("")
 
+    # Active skill context (if any)
+    skill = gate_ctx.get("skill")
+    if skill:
+        lines.append(f"**Active Skill**: {skill}")
+        lines.append("")
+
+    # Recent tool usage summary
+    tools = gate_ctx.get("tools", [])
+    if tools:
+        lines.append("**Recent Tool Calls**:")
+        for tool in tools[-10:]:  # Last 10 tools
+            tool_name = tool.get("name", "unknown")
+            status = tool.get("status", "")
+            lines.append(f"  - {tool_name} ({status})")
+        lines.append("")
+
+    # Files modified/read
+    files = gate_ctx.get("files", [])
+    if files:
+        lines.append("**Files Accessed**:")
+        for f in files[-10:]:  # Last 10 files
+            action = f.get("action", "accessed")
+            path = f.get("path", "unknown")
+            lines.append(f"  - [{action}] {path}")
+        lines.append("")
+
+    # Tool errors (important for compliance)
     errors = gate_ctx.get("errors", [])
     if errors:
         lines.append("**Tool Errors**:")
@@ -175,7 +222,20 @@ def _custodiet_build_session_context(
             lines.append(f"  - {e.get('tool_name')}: {e.get('error')}")
         lines.append("")
 
-    # ... (Include other sections as needed)
+    # Conversation summary
+    conversation = gate_ctx.get("conversation", [])
+    if conversation:
+        lines.append("**Recent Conversation Summary**:")
+        # Include last few turns for context
+        for turn in conversation[-5:]:
+            role = turn.get("role", "unknown")
+            content = turn.get("content", "")[:200]  # Truncate long content
+            if content:
+                lines.append(f"  [{role}]: {content}...")
+        lines.append("")
+
+    if not lines:
+        return "(No session context extracted)"
 
     return "\n".join(lines)
 
@@ -214,6 +274,8 @@ def check_custodiet_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
     Check compliancy via Custodiet.
     Returns None if allowed (or no check needed), or an output dict with instruction if check needed.
     """
+    _check_imports()  # Fail fast if imports unavailable
+
     # Skip for certain tools
     skip_tools = {"Read", "Glob", "Grep", "mcp__memory__retrieve_memory"}
     if ctx.tool_name in skip_tools:
