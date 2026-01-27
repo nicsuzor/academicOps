@@ -130,18 +130,19 @@ On failure, the task status is set to `review` for manual intervention.
 
 #### The `run` Command
 
-The `run` command automates the full polecat cycle:
+The `run` command automates the polecat setup cycle:
 
 1. **Claims** the next ready task (or a specific task with `-t`)
 2. **Creates** the worktree
 3. **Runs** `claude -p "/pull <task-id>"` in the worktree
-4. **Finishes** automatically when the agent exits successfully (push + mark as `merge_ready`)
+4. **Reports** exit status (agents should call `polecat finish` themselves when ready)
 
 ```bash
 polecat run -p aops              # Run next ready task from aops
 polecat run -t task-123          # Run specific task
-polecat run --no-finish          # Don't auto-finish (manual review)
 ```
+
+Note: Agents are responsible for calling `polecat finish` at the end of their workflow to mark work as ready for merge. This ensures agents explicitly signal completion rather than having it triggered automatically.
 
 ## Workflow
 

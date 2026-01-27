@@ -361,12 +361,12 @@ def list_crew():
 @click.option("--title", "-t", help="Brief title for the collaboration task")
 @click.option("--caller", "-c", default="nic", help="Identity for the collaboration (default: nic)")
 @click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
-@click.option("--no-finish", is_flag=True, help="Don't auto-finish after agent exits")
+@click.option("--no-finish", is_flag=True, hidden=True, help="(Deprecated, no-op)")
 def colab(project, title, caller, gemini, no_finish):
     """[DEPRECATED] Use 'polecat crew' instead.
 
     Creates a new task, spawns a worktree, and starts an interactive
-    agent session for human-bot pairing. Marks ready for merge when done.
+    agent session for human-bot pairing. Agents should call `polecat finish` when ready.
 
     Examples:
         polecat colab -p aops -t "Debug failing tests"
@@ -445,54 +445,31 @@ def colab(project, title, caller, gemini, no_finish):
 
     print("-" * 50)
 
-    # Finish: push and mark as review
-    if no_finish:
-        print(f"\n📝 Skipping auto-finish. To finish manually:")
-        print(f"   cd {worktree_path}")
-        print(f"   polecat finish")
-    elif exit_code == 0:
-        print(f"\n✅ Collaboration completed. Finishing...")
-        os.chdir(worktree_path)
-
-        branch_name = f"polecat/{task.id}"
-        try:
-            subprocess.run(["git", "push", "-u", "origin", branch_name], check=True, cwd=worktree_path)
-        except subprocess.CalledProcessError:
-            print("⚠️  Push failed - you may need to commit changes first")
-            sys.exit(1)
-
-        try:
-            from lib.task_model import TaskStatus
-            task = manager.storage.get_task(task.id)
-            task.status = TaskStatus.MERGE_READY
-            manager.storage.save_task(task)
-            print(f"✅ Task marked as 'merge_ready'")
-        except ImportError:
-            print("Warning: Could not update task status")
-
-        print(f"\n🏭 To merge: polecat merge")
+    # Report status - agents should call `polecat finish` themselves
+    if exit_code == 0:
+        print(f"\n✅ Collaboration completed.")
     else:
-        print(f"\n⚠️  Session exited with code {exit_code}. Not auto-finishing.")
-        print(f"   To finish manually: cd {worktree_path} && polecat finish")
+        print(f"\n⚠️  Session exited with code {exit_code}.")
+    print(f"\n📝 When ready to merge, run `polecat finish` from the worktree.")
+    print(f"   Worktree: {worktree_path}")
 
 
 @main.command()
 @click.option("--project", "-p", help="Project to claim tasks from")
 @click.option("--caller", "-c", default="polecat", help="Identity claiming the task")
 @click.option("--task-id", "-t", help="Specific task ID to run (skips claim)")
-@click.option("--no-finish", is_flag=True, help="Don't auto-finish after agent exits")
+@click.option("--no-finish", is_flag=True, hidden=True, help="(Deprecated, no-op)")
 @click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
 @click.option("--interactive", "-i", is_flag=True, help="Run in interactive mode (not headless)")
 def run(project, caller, task_id, no_finish, gemini, interactive):
-    """Run a full polecat cycle: claim → work → finish.
+    """Run a polecat cycle: claim → setup → work.
 
-    Claims a task, spawns a worktree, runs claude with the task context,
-    and marks as ready for merge when the agent exits.
+    Claims a task, spawns a worktree, and runs claude with the task context.
+    Agents should call `polecat finish` themselves when ready to merge.
 
     Examples:
         polecat run -p aops           # Run next ready task from aops project
         polecat run -t task-123       # Run specific task
-        polecat run --no-finish       # Don't auto-finish (manual review)
     """
     import subprocess
 
@@ -587,37 +564,13 @@ def run(project, caller, task_id, no_finish, gemini, interactive):
 
     print("-" * 50)
 
-    # Step 5: Finish (push and mark as review)
-    if no_finish:
-        print(f"\n📝 Skipping auto-finish. To finish manually:")
-        print(f"   cd {worktree_path}")
-        print(f"   polecat finish")
-    elif exit_code == 0:
-        print(f"\n✅ Agent completed successfully. Finishing...")
-        os.chdir(worktree_path)
-
-        # Push
-        branch_name = f"polecat/{task.id}"
-        try:
-            subprocess.run(["git", "push", "-u", "origin", branch_name], check=True, cwd=worktree_path)
-        except subprocess.CalledProcessError:
-            print("⚠️  Push failed - you may need to commit changes first")
-            sys.exit(1)
-
-        # Mark as merge_ready
-        try:
-            from lib.task_model import TaskStatus
-            task = manager.storage.get_task(task.id)  # Refresh
-            task.status = TaskStatus.MERGE_READY
-            manager.storage.save_task(task)
-            print(f"✅ Task marked as 'merge_ready'")
-        except ImportError:
-            print("Warning: Could not update task status")
-
-        print(f"\n🏭 To merge: polecat merge")
+    # Step 5: Report status - agents should call `polecat finish` themselves
+    if exit_code == 0:
+        print(f"\n✅ Agent completed successfully.")
     else:
-        print(f"\n⚠️  Agent exited with code {exit_code}. Not auto-finishing.")
-        print(f"   To finish manually: cd {worktree_path} && polecat finish")
+        print(f"\n⚠️  Agent exited with code {exit_code}.")
+    print(f"\n📝 When ready to merge, the agent should run `polecat finish` from the worktree.")
+    print(f"   Worktree: {worktree_path}")
 
 if __name__ == "__main__":
     main()
