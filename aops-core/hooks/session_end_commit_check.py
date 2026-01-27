@@ -330,12 +330,48 @@ def get_git_push_status(cwd: str | None = None) -> dict[str, Any]:
         }
 
 
+def get_current_branch() -> str | None:
+    """Get the current branch name.
+
+    Returns:
+        Branch name, or None if detached HEAD or error
+    """
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        if result.returncode == 0:
+            branch = result.stdout.strip()
+            return None if branch == "HEAD" else branch
+        return None
+    except Exception:
+        return None
+
+
+def is_protected_branch(branch: str | None) -> bool:
+    """Check if branch is protected from auto-commits."""
+    if branch is None:
+        return True  # Detached HEAD - don't auto-commit
+    return branch.lower() in ("main", "master")
+
+
 def attempt_auto_commit() -> bool:
     """Attempt to auto-commit staged changes.
+
+    Will NOT auto-commit to main/master branches.
 
     Returns:
         True if commit succeeded
     """
+    # Branch protection: never auto-commit to main/master
+    current_branch = get_current_branch()
+    if is_protected_branch(current_branch):
+        logger.info(f"Skipping auto-commit: protected branch '{current_branch or 'detached HEAD'}'")
+        return False
+
     try:
         message = "Auto-commit: Session-end enforcement hook detected uncommitted work\n\nCo-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>"
         result = subprocess.run(

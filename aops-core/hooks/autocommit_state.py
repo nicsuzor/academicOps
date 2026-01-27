@@ -307,12 +307,46 @@ def get_aops_root() -> Path | None:
     return Path(aops_path)
 
 
+def get_current_branch(repo_path: Path) -> str | None:
+    """Get the current branch name.
+
+    Returns:
+        Branch name, or None if detached HEAD or error
+    """
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+        if result.returncode == 0:
+            branch = result.stdout.strip()
+            return None if branch == "HEAD" else branch  # HEAD means detached
+        return None
+    except Exception:
+        return None
+
+
+def is_protected_branch(branch: str | None) -> bool:
+    """Check if branch is protected from auto-commits.
+
+    Protected branches: main, master
+    """
+    if branch is None:
+        return True  # Detached HEAD - don't auto-commit
+    return branch.lower() in ("main", "master")
+
+
 def commit_and_push_repo(
     repo_path: Path, subdir: str | None = None, commit_prefix: str = "update"
 ) -> tuple[bool, str]:
     """Commit and push changes in a repo (optionally scoped to subdir).
 
     Syncs with remote before committing to prevent conflicts.
+    Will NOT auto-commit to main/master branches.
 
     Args:
         repo_path: Path to repository root
@@ -322,6 +356,11 @@ def commit_and_push_repo(
     Returns:
         Tuple of (success: bool, message: str)
     """
+    # Branch protection: never auto-commit to main/master
+    current_branch = get_current_branch(repo_path)
+    if is_protected_branch(current_branch):
+        return False, f"Skipping auto-commit: protected branch '{current_branch or 'detached HEAD'}'"
+
     sync_warning = ""
 
     # Step 1: Check if sync is possible

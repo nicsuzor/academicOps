@@ -222,22 +222,15 @@ class PolecatManager:
         print(f"Nuked crew worker: {name}")
 
     def get_repo_path(self, task) -> Path:
-        """Returns the bare mirror repo path for the task's project.
+        """Returns the main repo path for the task's project.
 
-        Uses .repos/ mirrors if available, falls back to legacy ~/src/ paths.
+        Uses the project paths from polecat.yaml config directly.
+        This is simpler and avoids bare mirror complexity.
         """
         project = task.project or "aops"
-        mirror_path = self.repos_dir / f"{project}.git"
 
-        # Use mirror if it exists
-        if mirror_path.exists():
-            return mirror_path
-
-        # Legacy fallback to ~/src/ repos (for backwards compatibility)
-        if project == "buttermilk":
-            return Path.home() / "src/buttermilk"
-        if project == "writing":
-            return Path.home() / "writing"
+        if project in self.projects:
+            return self.projects[project]["path"]
 
         # Default fallback
         return REPO_ROOT
@@ -397,7 +390,7 @@ class PolecatManager:
     def setup_worktree(self, task):
         """Creates a git worktree in ~/polecats linked to the project repo.
 
-        For bare mirror repos (.repos/), fetches latest from origin first.
+        Uses the main repo directly (from polecat.yaml config).
         """
         repo_path = self.get_repo_path(task)
         if not repo_path.exists():
@@ -405,31 +398,18 @@ class PolecatManager:
 
         worktree_path = self.polecats_dir / task.id
         branch_name = f"polecat/{task.id}"
+        default_branch = self.projects.get(task.project or "aops", {}).get("default_branch", "main")
 
         if worktree_path.exists():
             return worktree_path
 
-        # Detect if this is a bare mirror repo
-        is_bare = repo_path.name.endswith(".git") or (repo_path / "HEAD").exists() and not (repo_path / ".git").exists()
-
-        # Pre-fetch: ensure we have latest main from origin
-        if is_bare:
-            print(f"Fetching latest from origin...")
-            subprocess.run(
-                ["git", "fetch", "origin", "main:main"],
-                cwd=repo_path,
-                check=True,
-                capture_output=True,
-            )
-
         print(f"Creating worktree at {worktree_path} from repo {repo_path}...")
 
-        # We must run git commands from the PARENT repo
         cmd = [
             "git", "worktree", "add",
             "-b", branch_name,
             str(worktree_path),
-            "main"
+            default_branch
         ]
 
         try:
