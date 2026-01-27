@@ -455,6 +455,61 @@ Write `$ACA_DATA/dashboard/synthesis.json`:
 }
 ```
 
+### Step 4.8: User Approval of Synthesis (Required)
+
+**CRITICAL**: Do NOT consider daily progress sync complete without user approval.
+
+After updating the daily note and synthesis.json, present a summary to the user for approval:
+
+**4.8.1: Present Synthesis Summary**
+
+Output the key synthesized content for review:
+
+```markdown
+## Daily Progress Synthesis - Review Required
+
+**Today's Story** (synthesized narrative):
+> [The narrative text from Today's Story section]
+
+**Sessions Processed**: [N] sessions across [projects]
+
+**Accomplishments** ([count] items):
+- [First 3-5 accomplishments listed]
+- ...
+
+**Task Matches Made**:
+- [List of high-confidence task matches, if any]
+```
+
+**4.8.2: Request Approval**
+
+Use `AskUserQuestion` to get explicit approval:
+
+```python
+AskUserQuestion(
+    questions=[{
+        "question": "Does this synthesis accurately capture today's progress?",
+        "header": "Synthesis",
+        "options": [
+            {"label": "Looks good", "description": "Synthesis is accurate, proceed to save"},
+            {"label": "Needs edits", "description": "I'll make manual corrections to the daily note"},
+            {"label": "Regenerate", "description": "Re-run synthesis with different approach"}
+        ],
+        "multiSelect": false
+    }]
+)
+```
+
+**4.8.3: Handle Response**
+
+| Response | Action |
+|----------|--------|
+| "Looks good" | Proceed to completion, output "Daily sync complete." |
+| "Needs edits" | Output "Daily note ready for your edits at [path]. Run `/daily` again after editing to re-sync." HALT without marking complete. |
+| "Regenerate" | Ask what should change, then re-run Steps 4.4-4.7 |
+
+**Rationale**: Per AXIOM #3 (Don't Make Shit Up), Gemini-mined accomplishments may contain inaccuracies. User approval catches hallucinations before they persist in the daily record.
+
 ## Error Handling
 
 - **Outlook unavailable**: Skip email triage, continue with recommendations

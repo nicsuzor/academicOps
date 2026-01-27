@@ -195,6 +195,7 @@ Daily note is SSoT for daily coordination. Other skills read from but don't writ
 4. **Verified sync**: Accomplishment descriptions match actual work (no Gemini hallucinations)
 5. **Carryover captured**: Yesterday's incomplete work visible
 6. **Single invocation**: Complete briefing in one /daily call
+7. **Synthesis approval**: User approves synthesized progress before daily note is finalized
 
 ## Design Rationale
 
@@ -217,6 +218,10 @@ Reduces context switching. Email clients encourage rabbit-holes. Presenting FYI 
 **Why synthesis.json?**
 
 Enables dashboard consumption without parsing markdown. Structured data for Streamlit visualization.
+
+**Why require synthesis approval?**
+
+Gemini mining of session transcripts can hallucinate accomplishments or mischaracterize work. User approval before finalization catches inaccuracies before they persist in the daily record. This aligns with AXIOM #3 (Don't Make Shit Up) - we verify AI-generated content before treating it as fact.
 
 ## Axiom Derivations
 
