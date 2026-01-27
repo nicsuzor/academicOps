@@ -69,6 +69,12 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
     if gemini_router_src.exists():
         safe_symlink(gemini_router_src, hooks_dst / "router_gemini.py")
 
+    # Create templates symlink in gemini/ so user_prompt_submit.py can find templates
+    # (user_prompt_submit.py uses HOOK_DIR / "templates" where HOOK_DIR is hooks/gemini/)
+    gemini_templates_link = hooks_src / "gemini" / "templates"
+    if not gemini_templates_link.exists():
+        safe_symlink(Path("../templates"), gemini_templates_link)
+
     # 3. Generate Hooks Config
     hooks_json_path = hooks_src / "hooks.json"
     claude_hooks = {}
