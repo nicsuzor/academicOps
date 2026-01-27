@@ -141,6 +141,67 @@ def call_claude_for_insights(
     )
 
 
+def _validate_framework_reflections(reflections: list[dict[str, Any]]) -> None:
+    """Validate framework_reflections array structure.
+
+    Expected structure for each reflection:
+    {
+        "prompts": str,
+        "guidance_received": str | None,
+        "followed": bool,
+        "outcome": "success" | "partial" | "failure",
+        "accomplishments": list[str],
+        "friction_points": list[str],
+        "root_cause": str | None,
+        "proposed_changes": list[str],
+        "next_step": str | None,
+        "quick_exit": bool (optional)
+    }
+
+    Args:
+        reflections: List of reflection dictionaries to validate
+
+    Raises:
+        InsightsValidationError: If validation fails
+    """
+    if not isinstance(reflections, list):
+        raise InsightsValidationError(
+            f"Field 'framework_reflections' must be a list, got {type(reflections).__name__}"
+        )
+
+    valid_outcomes = {"success", "partial", "failure"}
+
+    for i, reflection in enumerate(reflections):
+        if not isinstance(reflection, dict):
+            raise InsightsValidationError(
+                f"Field 'framework_reflections[{i}]' must be a dict, got {type(reflection).__name__}"
+            )
+
+        # Validate outcome if present
+        if "outcome" in reflection and reflection["outcome"] is not None:
+            if reflection["outcome"] not in valid_outcomes:
+                raise InsightsValidationError(
+                    f"Field 'framework_reflections[{i}].outcome' must be one of {valid_outcomes}, "
+                    f"got '{reflection['outcome']}'"
+                )
+
+        # Validate followed as boolean if present
+        if "followed" in reflection and reflection["followed"] is not None:
+            if not isinstance(reflection["followed"], bool):
+                raise InsightsValidationError(
+                    f"Field 'framework_reflections[{i}].followed' must be a boolean"
+                )
+
+        # Validate list fields
+        list_fields = ["accomplishments", "friction_points", "proposed_changes"]
+        for field in list_fields:
+            if field in reflection and reflection[field] is not None:
+                if not isinstance(reflection[field], list):
+                    raise InsightsValidationError(
+                        f"Field 'framework_reflections[{i}].{field}' must be a list"
+                    )
+
+
 def _validate_token_metrics(token_metrics: dict[str, Any]) -> None:
     """Validate token_metrics nested structure.
 
@@ -302,6 +363,7 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
         "workflow_improvements",
         "jit_context_needed",
         "context_distractions",
+        "framework_reflections",
     ]
     for field in array_fields:
         if field in insights and not isinstance(insights[field], list):
@@ -340,6 +402,10 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
     # Validate token_metrics structure (optional)
     if "token_metrics" in insights and insights["token_metrics"] is not None:
         _validate_token_metrics(insights["token_metrics"])
+
+    # Validate framework_reflections structure (optional)
+    if "framework_reflections" in insights and insights["framework_reflections"] is not None:
+        _validate_framework_reflections(insights["framework_reflections"])
 
 
 def get_summaries_dir() -> Path:

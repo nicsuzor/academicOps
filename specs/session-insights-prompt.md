@@ -183,7 +183,75 @@ Examples:
 
 Empty array `[]` if no distractions identified.
 
-### 12. Token Metrics (Usage Tracking)
+### 12. Framework Reflections (Agent Self-Assessment)
+
+Extract ALL Framework Reflection sections found in the transcript. These structured reflections are output by agents at session end (via `/dump`, `/handover`, or `/learn` skills) and contain valuable session metadata.
+
+**Where to find them:**
+- Look for `## Framework Reflection` markdown headers in assistant messages
+- May appear multiple times in a session (all should be captured)
+- May appear in both main agent and subagent entries
+
+**Framework Reflection format:**
+
+```markdown
+## Framework Reflection
+
+**Prompts**: [The user request that triggered the session]
+**Guidance received**: [Guidance from hydrator/system]
+**Followed**: Yes|No
+**Outcome**: success|partial|failure
+**Accomplishments**: [List of completed items]
+**Friction points**: [Issues encountered]
+**Root cause** (if not success): [Category that failed]
+**Proposed changes**: [Framework improvements identified]
+**Next step**: [Follow-up work needed]
+```
+
+**Output structure:**
+
+```json
+{
+  "framework_reflections": [
+    {
+      "prompts": "User request that triggered session",
+      "guidance_received": "Hydrator/system guidance text",
+      "followed": true,
+      "outcome": "success",
+      "accomplishments": ["Item 1", "Item 2"],
+      "friction_points": ["Issue 1"],
+      "root_cause": null,
+      "proposed_changes": ["Change 1"],
+      "next_step": "Follow-up action or null"
+    }
+  ]
+}
+```
+
+**Field mappings:**
+- `prompts`: String - the user request
+- `guidance_received`: String or null - guidance from hydrator
+- `followed`: Boolean - whether guidance was followed (true for "Yes", false for "No")
+- `outcome`: String - must be "success", "partial", or "failure"
+- `accomplishments`: Array of strings - completed items
+- `friction_points`: Array of strings - issues encountered (empty array if none)
+- `root_cause`: String or null - failure category (only if outcome != success)
+- `proposed_changes`: Array of strings - suggested improvements (empty array if none)
+- `next_step`: String or null - follow-up action
+
+**Quick Exit format:**
+If a reflection shows `Answered user's question: "<summary>"`, parse as:
+```json
+{
+  "prompts": "<summary>",
+  "outcome": "success",
+  "quick_exit": true
+}
+```
+
+If no Framework Reflections are found in the transcript, return empty array `[]`.
+
+### 13. Token Metrics (Usage Tracking)
 
 Object containing token usage statistics for observability. This data helps humans analyze patterns and tune JIT hydrator behavior.
 
@@ -285,6 +353,19 @@ Output ONLY this JSON structure (no markdown code fences, no explanatory text be
   "workflow_improvements": ["Should have run linter earlier", "Skill docs unclear"],
   "jit_context_needed": ["Project uses pytest not unittest"],
   "context_distractions": ["Plugin architecture docs not needed for bug fix"],
+  "framework_reflections": [
+    {
+      "prompts": "User request that triggered the session",
+      "guidance_received": "Hydrator guidance text",
+      "followed": true,
+      "outcome": "success",
+      "accomplishments": ["Completed task 1", "Fixed bug 2"],
+      "friction_points": [],
+      "root_cause": null,
+      "proposed_changes": ["Add validation step"],
+      "next_step": null
+    }
+  ],
   "token_metrics": {
     "totals": {
       "input_tokens": 45000,
