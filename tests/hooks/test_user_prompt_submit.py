@@ -37,24 +37,18 @@ def temp_hydrator_dir(monkeypatch):
         temp_path = Path(tmpdir) / "claude-hydrator"
         temp_path.mkdir(parents=True)
 
-        # Mock the TEMP_DIR constant
-        import user_prompt_submit
-
-        original_temp_dir = user_prompt_submit.TEMP_DIR
-        user_prompt_submit.TEMP_DIR = temp_path
-
-        yield temp_path
-
-        # Restore original
-        user_prompt_submit.TEMP_DIR = original_temp_dir
+        # Mock the get_hydration_temp_dir function
+        with patch("user_prompt_submit.get_hydration_temp_dir", return_value=temp_path):
+            yield temp_path
 
 
 @pytest.fixture
 def mock_session_state():
     """Mock session state functions."""
-    with patch("user_prompt_submit.set_hydration_pending") as mock_set, patch(
-        "user_prompt_submit.clear_hydration_pending"
-    ) as mock_clear:
+    with (
+        patch("user_prompt_submit.set_hydration_pending") as mock_set,
+        patch("user_prompt_submit.clear_hydration_pending") as mock_clear,
+    ):
         yield {"set": mock_set, "clear": mock_clear}
 
 
@@ -142,15 +136,12 @@ class TestTempFileCreation:
 
     def test_cleanup_handles_missing_dir(self):
         """Test that cleanup handles missing temp directory gracefully."""
-        import user_prompt_submit
-
-        original = user_prompt_submit.TEMP_DIR
-        user_prompt_submit.TEMP_DIR = Path("/nonexistent/path")
-
-        # Should not raise
-        cleanup_old_temp_files()
-
-        user_prompt_submit.TEMP_DIR = original
+        with patch(
+            "user_prompt_submit.get_hydration_temp_dir",
+            return_value=Path("/nonexistent/path"),
+        ):
+            # Should not raise
+            cleanup_old_temp_files()
 
     def test_cleanup_handles_permission_errors(self, temp_hydrator_dir):
         """Test that cleanup ignores files that can't be deleted."""
@@ -212,12 +203,12 @@ class TestHydrationContext:
         prompt = "Fix the authentication bug"
 
         # Mock template loading and framework paths
-        with patch(
-            "user_prompt_submit.load_template"
-        ) as mock_load, patch(
-            "user_prompt_submit.load_framework_paths", return_value="# Paths\n..."
-        ), patch(
-            "user_prompt_submit.get_task_work_state", return_value=""
+        with (
+            patch("user_prompt_submit.load_template") as mock_load,
+            patch(
+                "user_prompt_submit.load_framework_paths", return_value="# Paths\n..."
+            ),
+            patch("user_prompt_submit.get_task_work_state", return_value=""),
         ):
             # Set up template mocks
             mock_load.side_effect = [
@@ -245,12 +236,10 @@ class TestHydrationContext:
         session_id = "test-session-long"
         long_prompt = "a" * 100  # 100 chars, should be truncated to 80
 
-        with patch(
-            "user_prompt_submit.load_template"
-        ) as mock_load, patch(
-            "user_prompt_submit.load_framework_paths", return_value=""
-        ), patch(
-            "user_prompt_submit.get_task_work_state", return_value=""
+        with (
+            patch("user_prompt_submit.load_template") as mock_load,
+            patch("user_prompt_submit.load_framework_paths", return_value=""),
+            patch("user_prompt_submit.get_task_work_state", return_value=""),
         ):
             mock_load.side_effect = [
                 "{prompt}\n{session_context}\n{framework_paths}\n{task_state}",
@@ -279,15 +268,18 @@ class TestHydrationContext:
             transcript_path = f.name
 
         try:
-            with patch(
-                "user_prompt_submit.load_template"
-            ) as mock_load, patch(
-                "user_prompt_submit.load_framework_paths", return_value="# Paths"
-            ), patch(
-                "user_prompt_submit.get_task_work_state", return_value="# BD State"
-            ), patch(
-                "user_prompt_submit.extract_router_context",
-                return_value="## Session Context\nRecent activity...",
+            with (
+                patch("user_prompt_submit.load_template") as mock_load,
+                patch(
+                    "user_prompt_submit.load_framework_paths", return_value="# Paths"
+                ),
+                patch(
+                    "user_prompt_submit.get_task_work_state", return_value="# BD State"
+                ),
+                patch(
+                    "user_prompt_submit.extract_router_context",
+                    return_value="## Session Context\nRecent activity...",
+                ),
             ):
                 mock_load.side_effect = [
                     "Prompt: {prompt}\nContext: {session_context}\nPaths: {framework_paths}\nBD: {task_state}",
@@ -304,7 +296,9 @@ class TestHydrationContext:
                 content = temp_files[0].read_text()
 
                 # Verify session context was included in the temp file content
-                assert "Recent activity" in content, "Session context should be in temp file"
+                assert "Recent activity" in content, (
+                    "Session context should be in temp file"
+                )
                 assert "Test prompt" in content, "Prompt should be in temp file"
 
         finally:
@@ -317,15 +311,14 @@ class TestHydrationContext:
         session_id = "test-graceful"
         prompt = "Test prompt"
 
-        with patch(
-            "user_prompt_submit.load_template"
-        ) as mock_load, patch(
-            "user_prompt_submit.load_framework_paths", return_value=""
-        ), patch(
-            "user_prompt_submit.get_task_work_state", return_value=""
-        ), patch(
-            "user_prompt_submit.extract_router_context",
-            side_effect=Exception("Context extraction failed"),
+        with (
+            patch("user_prompt_submit.load_template") as mock_load,
+            patch("user_prompt_submit.load_framework_paths", return_value=""),
+            patch("user_prompt_submit.get_task_work_state", return_value=""),
+            patch(
+                "user_prompt_submit.extract_router_context",
+                side_effect=Exception("Context extraction failed"),
+            ),
         ):
             mock_load.side_effect = [
                 "{prompt}{session_context}{framework_paths}{task_state}",
@@ -347,14 +340,13 @@ class TestHydrationContext:
         session_id = "test-io-error"
         prompt = "Test prompt"
 
-        with patch(
-            "user_prompt_submit.load_template"
-        ) as mock_load, patch(
-            "user_prompt_submit.load_framework_paths", return_value=""
-        ), patch(
-            "user_prompt_submit.get_task_work_state", return_value=""
-        ), patch(
-            "user_prompt_submit.write_temp_file", side_effect=IOError("Disk full")
+        with (
+            patch("user_prompt_submit.load_template") as mock_load,
+            patch("user_prompt_submit.load_framework_paths", return_value=""),
+            patch("user_prompt_submit.get_task_work_state", return_value=""),
+            patch(
+                "user_prompt_submit.write_temp_file", side_effect=IOError("Disk full")
+            ),
         ):
             mock_load.side_effect = [
                 "{prompt}{session_context}{framework_paths}{task_state}",
@@ -438,7 +430,10 @@ class TestMainHookEntry:
 
             captured = capsys.readouterr()
             output = json.loads(captured.out)
-            assert "Hydration instruction" in output["hookSpecificOutput"]["additionalContext"]
+            assert (
+                "Hydration instruction"
+                in output["hookSpecificOutput"]["additionalContext"]
+            )
 
     def test_main_handles_missing_session_id(
         self, temp_hydrator_dir, monkeypatch, capsys
@@ -501,9 +496,7 @@ class TestMainHookEntry:
             captured = capsys.readouterr()
             assert "Disk full" in captured.err
 
-    def test_main_handles_empty_prompt(
-        self, temp_hydrator_dir, monkeypatch, capsys
-    ):
+    def test_main_handles_empty_prompt(self, temp_hydrator_dir, monkeypatch, capsys):
         """Test that main() handles empty prompt gracefully."""
         import io
 

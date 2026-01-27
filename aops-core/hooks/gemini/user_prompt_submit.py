@@ -42,7 +42,6 @@ from hooks.user_prompt_submit import (
     write_initial_hydrator_state,
     clear_reflection_output,
     CONTEXT_TEMPLATE_FILE,
-    TEMP_DIR,
 )
 from hooks.hook_logger import log_hook_event
 
@@ -54,6 +53,7 @@ from lib.template_loader import load_template
 def safe_log_to_debug_file(event: str, input_data: Any, output_data: Any) -> None:
     """No-op debug logging stub (hook_debug module removed)."""
     pass
+
 
 # Gemini-specific paths
 HOOK_DIR = Path(__file__).parent
@@ -150,9 +150,7 @@ def main():
                 "additionalContext": "",
             }
         }
-        safe_log_to_debug_file(
-            "BeforeAgent", input_data, {"skipped": "no_session_id"}
-        )
+        safe_log_to_debug_file("BeforeAgent", input_data, {"skipped": "no_session_id"})
         print(json.dumps(output_data))
         sys.exit(0)
 
@@ -168,9 +166,7 @@ def main():
                 "additionalContext": "",
             }
         }
-        safe_log_to_debug_file(
-            "BeforeAgent", input_data, {"skipped": "system_message"}
-        )
+        safe_log_to_debug_file("BeforeAgent", input_data, {"skipped": "system_message"})
         log_hook_event(
             session_id=session_id,
             hook_event="BeforeAgent",

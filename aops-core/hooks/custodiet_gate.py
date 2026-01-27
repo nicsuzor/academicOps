@@ -21,6 +21,7 @@ import json
 import os
 import random
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -435,24 +436,27 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
             lines.append("**Recent Tools**:")
             for tool in tools[-10:]:
                 name = tool.get("name")
-                if name is None:
-                    raise ValueError("tool missing required 'name' field")
-                args = tool.get("args")
-                if args is None:
-                    raise ValueError("tool missing required 'args' field")
+                if not name:
+                    continue  # Skip malformed tool entries
+
+                # Handle various tool input formats (Gemini vs Claude)
+                args = tool.get("args") or tool.get("input") or {}
+
                 # Compact display
                 if name in ("Read", "Write", "Edit"):
-                    path = args.get("file_path")
-                    if path is None:
-                        raise ValueError("tool args missing required 'file_path' field")
-                    short = path.split("/")[-1] if "/" in path else path
-                    lines.append(f"  - {name}({short})")
+                    path = args.get("file_path") or args.get("path")
+                    if path:
+                        short = path.split("/")[-1] if "/" in path else path
+                        lines.append(f"  - {name}({short})")
+                    else:
+                        lines.append(f"  - {name}")
                 elif name == "Bash":
-                    command = args.get("command")
-                    if command is None:
-                        raise ValueError("tool args missing required 'command' field")
-                    cmd = str(command)[:50]
-                    lines.append(f"  - Bash({cmd}...)")
+                    command = args.get("command") or args.get("code")
+                    if command:
+                        cmd = str(command)[:50]
+                        lines.append(f"  - Bash({cmd}...)")
+                    else:
+                        lines.append("  - Bash")
                 else:
                     lines.append(f"  - {name}")
             lines.append("")
@@ -470,10 +474,14 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
                     # Legacy fallback - requires explicit None checks
                     role = item.get("role")
                     if role is None:
-                        raise ValueError("conversation item missing required 'role' field")
+                        raise ValueError(
+                            "conversation item missing required 'role' field"
+                        )
                     content = item.get("content")
                     if content is None:
-                        raise ValueError("conversation item missing required 'content' field")
+                        raise ValueError(
+                            "conversation item missing required 'content' field"
+                        )
                     prefix = "User" if role == "user" else "Agent"
                     lines.append(f"  [{prefix}]: {content}")
                 else:
@@ -526,7 +534,9 @@ def main():
             instruction = build_audit_instruction(
                 transcript_path, tool_name, session_id
             )
-            output_data = make_context_output(instruction, "PostToolUse", wrap_in_reminder=True)
+            output_data = make_context_output(
+                instruction, "PostToolUse", wrap_in_reminder=True
+            )
             # Reset shared counter (syncs with overdue_enforcement.py)
             reset_compliance_state(session_id)
         except (IOError, OSError) as e:
@@ -539,7 +549,9 @@ def main():
         # On non-threshold calls, maybe inject a random reminder (passive, not blocking)
         reminder = get_random_reminder()
         if reminder:
-            output_data = make_context_output(reminder, "PostToolUse", wrap_in_reminder=True)
+            output_data = make_context_output(
+                reminder, "PostToolUse", wrap_in_reminder=True
+            )
 
     print(json.dumps(output_data))
     sys.exit(0)

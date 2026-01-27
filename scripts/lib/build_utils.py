@@ -132,7 +132,7 @@ def generate_gemini_hooks(
                             {
                                 "name": "aops-router",
                                 "type": "command",
-                                "command": f"AOPS={aops_path} AOPS_SESSIONS={aops_path}/.gemini/sessions python3 {router_script_path} {g_event}",
+                                "command": f"uv run --directory {aops_path} python {router_script_path} {g_event}",
                                 "timeout": timeout,
                             }
                         ],

@@ -45,9 +45,13 @@ class TestFirstPromptHydration:
         session_id = "test-session-12345"
 
         # Mock external dependencies to isolate the test
-        with patch("hooks.user_prompt_submit.get_aops_root") as mock_root, \
-             patch("hooks.user_prompt_submit.set_hydration_pending") as mock_pending:
-
+        with (
+            patch("hooks.user_prompt_submit.get_aops_root") as mock_root,
+            patch("hooks.user_prompt_submit.set_hydration_pending") as mock_pending,
+            patch(
+                "hooks.user_prompt_submit.get_hydration_temp_dir", return_value=tmp_path
+            ),
+        ):
             # Set up mocks
             mock_root.return_value = AOPS_CORE.parent
 
@@ -55,11 +59,15 @@ class TestFirstPromptHydration:
             instruction = build_hydration_instruction(session_id, prompt, None)
 
             # Verify non-empty instruction returned
-            assert instruction, "build_hydration_instruction should return non-empty string"
-            assert "prompt-hydrator" in instruction.lower(), \
+            assert instruction, (
+                "build_hydration_instruction should return non-empty string"
+            )
+            assert "prompt-hydrator" in instruction.lower(), (
                 "Instruction should mention prompt-hydrator"
-            assert "/tmp/claude-hydrator/hydrate_" in instruction, \
+            )
+            assert str(tmp_path) in instruction, (
                 "Instruction should contain temp file path"
+            )
 
             # Verify hydration pending was set
             mock_pending.assert_called_once()
@@ -81,6 +89,8 @@ class TestFirstPromptHydration:
             "skills_index": "skills content",
             "heuristics": "heuristics content",
             "task_state": "",
+            "relevant_files": "",
+            "axioms": "",
         }
 
         # This should NOT raise KeyError
@@ -115,15 +125,17 @@ class TestFirstPromptHydration:
             "skills_index": "",
             "heuristics": "",
             "task_state": "",
+            "relevant_files": "",
+            "axioms": "",
         }
 
         result = template.format(**test_values)
 
         # After formatting, {{content: should become {content:
-        assert "{content:" in result, \
+        assert "{content:" in result, (
             "Template should contain {content: in TodoWrite examples (escaped as {{content:)"
-        assert "status:" in result, \
-            "Template should contain TodoWrite status field"
+        )
+        assert "status:" in result, "Template should contain TodoWrite status field"
 
     def test_hook_does_not_silently_fail(self):
         """Verify hook infrastructure errors propagate, not silently return empty.
@@ -146,18 +158,20 @@ class TestFirstPromptHydration:
         prompt = "Help me implement a new feature"
         session_id = "test-session-67890"
 
-        with patch("hooks.user_prompt_submit.get_aops_root") as mock_root, \
-             patch("hooks.user_prompt_submit.set_hydration_pending") as mock_set, \
-             patch("hooks.user_prompt_submit.clear_hydration_pending") as mock_clear:
-
+        with (
+            patch("hooks.user_prompt_submit.get_aops_root") as mock_root,
+            patch("hooks.user_prompt_submit.set_hydration_pending") as mock_set,
+            patch("hooks.user_prompt_submit.clear_hydration_pending") as mock_clear,
+        ):
             mock_root.return_value = AOPS_CORE.parent
 
             build_hydration_instruction(session_id, prompt, None)
 
             # Should set pending, not clear
             mock_set.assert_called_once()
-            assert session_id in str(mock_set.call_args), \
+            assert session_id in str(mock_set.call_args), (
                 "set_hydration_pending should be called with session_id"
+            )
             mock_clear.assert_not_called()
 
 
@@ -190,8 +204,9 @@ class TestTemplateEscaping:
             template_content = raw_content
 
         # Check that TodoWrite examples use {{ escaping
-        assert "{{content:" in template_content, \
+        assert "{{content:" in template_content, (
             "Template must escape {content: as {{content: in TodoWrite examples"
+        )
 
         # Verify no unescaped {content: outside of comments
         # (Single brace would cause format() to fail)
@@ -203,7 +218,7 @@ class TestTemplateEscaping:
             # Fail if unescaped {content: found
             if "{content:" in line:
                 pytest.fail(
-                    f"Line {i+1} has unescaped {{content:}} which will cause "
+                    f"Line {i + 1} has unescaped {{content:}} which will cause "
                     f"KeyError during formatting:\n{line}"
                 )
 
@@ -236,33 +251,40 @@ class TestSkillsIndex:
             result = load_skills_index()
 
             # Key trigger phrases that should enable fast routing
-            assert "daily list" in result.lower() or "daily note" in result.lower(), \
+            assert "daily list" in result.lower() or "daily note" in result.lower(), (
                 "Skills index should include 'daily list' or 'daily note' trigger"
+            )
 
     def test_skills_index_in_hydration_context(self):
         """Verify skills_index is included in hydration context template."""
         template = load_template(CONTEXT_TEMPLATE_FILE)
 
         # The template should have a {skills_index} placeholder
-        assert "{skills_index}" in template or "skills_index" in template, \
+        assert "{skills_index}" in template or "skills_index" in template, (
             "Hydration context template should include skills_index placeholder"
+        )
 
-    def test_build_hydration_includes_skills(self):
+    def test_build_hydration_includes_skills(self, tmp_path):
         """Verify build_hydration_instruction includes skills index in output."""
         prompt = "update my daily list"
         session_id = "test-session-skills"
 
-        with patch("hooks.user_prompt_submit.get_aops_root") as mock_root, \
-             patch("hooks.user_prompt_submit.set_hydration_pending"):
-
+        with (
+            patch("hooks.user_prompt_submit.get_aops_root") as mock_root,
+            patch("hooks.user_prompt_submit.set_hydration_pending"),
+            patch(
+                "hooks.user_prompt_submit.get_hydration_temp_dir", return_value=tmp_path
+            ),
+        ):
             mock_root.return_value = AOPS_CORE.parent
 
             instruction = build_hydration_instruction(session_id, prompt, None)
 
             # The temp file should be created with skills content
             # We verify by checking the instruction references the temp file
-            assert "/tmp/claude-hydrator/hydrate_" in instruction, \
+            assert str(tmp_path) in instruction, (
                 "Instruction should reference temp file containing skills index"
+            )
 
     def test_task_viz_skill_has_triggers(self):
         """Verify task-viz skill has trigger phrases for routing.
@@ -287,11 +309,17 @@ class TestSkillsIndex:
             assert task_viz_line is not None, "Could not find /task-viz line"
 
             # Should NOT have empty triggers (just "—")
-            assert "| — |" not in task_viz_line, \
+            assert "| — |" not in task_viz_line, (
                 "task-viz skill must have trigger phrases, not empty triggers"
+            )
 
             # Should have at least one meaningful trigger
-            meaningful_triggers = ["task visualization", "visualize tasks", "bd visualization"]
+            meaningful_triggers = [
+                "task visualization",
+                "visualize tasks",
+                "bd visualization",
+            ]
             has_trigger = any(t in task_viz_line.lower() for t in meaningful_triggers)
-            assert has_trigger, \
+            assert has_trigger, (
                 f"task-viz should have routing triggers like {meaningful_triggers}"
+            )

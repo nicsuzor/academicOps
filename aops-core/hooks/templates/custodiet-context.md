@@ -50,6 +50,14 @@ Key areas to check:
 - Plan mode usage (complex work planned first vs jumping to implementation)
 - Derivation from axioms (following conventions vs ad-hoc solutions)
 
+### Skills with implicit authority grants
+
+Certain skills grant implicit authority to perform actions that might otherwise look like scope creep or unauthorized task claiming.
+
+- `/pull` (Pull Request): Grants authority to **claim** tasks, execute implementation plans, and modify code. Implicitly authorizes `bd update --status=in_progress` (which maps to task claiming).
+- `/q` (Question/Issue): Grants authority to create issues/tasks for tracking.
+- `/dump` (Context Dump): Grants broad authority to read/analyze context.
+
 ### Infrastructure Failure Detection (P#9, P#25)
 
 **When tooling fails unexpectedly, agents must HALT and file an issue - NO WORKAROUNDS.**
