@@ -6,6 +6,8 @@ import subprocess
 import shutil
 from pathlib import Path
 
+import yaml
+
 # Add aops-core to path for lib imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
 REPO_ROOT = SCRIPT_DIR.parent
@@ -18,27 +20,329 @@ try:
 except ImportError:
     pass
 
+
+# Config file location (private, not in public repo)
+POLECAT_CONFIG = Path.home() / ".aops" / "polecat.yaml"
+
+
+def load_config() -> dict:
+    """Load full polecat config from file.
+
+    Returns:
+        Dict with projects and crew_names
+    """
+    if not POLECAT_CONFIG.exists():
+        raise FileNotFoundError(
+            f"Polecat config not found: {POLECAT_CONFIG}\n"
+            f"Create it with your project definitions. See polecat docs for format."
+        )
+
+    with open(POLECAT_CONFIG) as f:
+        return yaml.safe_load(f)
+
+
+def load_projects() -> dict:
+    """Load project registry from config file.
+
+    Returns:
+        Dict mapping project slug to config (path, default_branch)
+    """
+    config = load_config()
+
+    projects = {}
+    for slug, proj in config.get("projects", {}).items():
+        path = proj.get("path", "")
+        # Expand ~ in paths
+        if path.startswith("~"):
+            path = Path(path).expanduser()
+        else:
+            path = Path(path)
+        projects[slug] = {
+            "path": path,
+            "default_branch": proj.get("default_branch", "main"),
+        }
+    return projects
+
+
+def load_crew_names() -> list[str]:
+    """Load crew names from config file.
+
+    Returns:
+        List of crew names for random selection
+    """
+    config = load_config()
+    return config.get("crew_names", ["crew"])
+
 class PolecatManager:
     def __init__(self):
         # Global location for all active agents
         self.polecats_dir = Path.home() / "polecats"
         self.polecats_dir.mkdir(exist_ok=True)
-        
+
+        # Hidden directory for bare mirror repos
+        self.repos_dir = self.polecats_dir / ".repos"
+        self.repos_dir.mkdir(exist_ok=True)
+
+        # Directory for persistent crew workers
+        self.crew_dir = self.polecats_dir / "crew"
+        self.crew_dir.mkdir(exist_ok=True)
+
+        # Load project registry from config file
+        self.projects = load_projects()
+
+        # Load crew names for random selection
+        self.crew_names = load_crew_names()
+
         # We still need access to the task DB
         self.storage = TaskStorage()
 
-    def get_repo_path(self, task) -> Path:
-        """Determines which git repo to spawn the worktree from.
-        
-        TODO: Add your project mapping logic here.
+    def generate_crew_name(self) -> str:
+        """Generate a random crew name, avoiding active crew names."""
+        import random
+
+        active_crew = self.list_crew()
+        available = [n for n in self.crew_names if n not in active_crew]
+
+        if not available:
+            # All names in use, add a suffix
+            base = random.choice(self.crew_names)
+            suffix = random.randint(1, 99)
+            return f"{base}_{suffix}"
+
+        return random.choice(available)
+
+    def list_crew(self) -> list[str]:
+        """List active crew worker names."""
+        if not self.crew_dir.exists():
+            return []
+        return [d.name for d in self.crew_dir.iterdir() if d.is_dir()]
+
+    def setup_crew_worktree(self, name: str, project: str) -> Path:
+        """Creates a persistent crew worktree for interactive work.
+
+        Unlike polecat worktrees (task-scoped, ephemeral), crew worktrees
+        are named and persist across sessions.
+
+        Args:
+            name: Crew worker name (e.g., "audre", "marsha")
+            project: Project slug to work on
+
+        Returns:
+            Path to the crew worktree
         """
-        if task.project == "buttermilk":
-             return Path.home() / "src/buttermilk"
-        if task.project == "writing":
-             return Path.home() / "writing"
-             
+        if project not in self.projects:
+            raise ValueError(f"Unknown project: {project}. Known: {list(self.projects.keys())}")
+
+        # Ensure mirror exists
+        mirror_path = self.repos_dir / f"{project}.git"
+        if not mirror_path.exists():
+            self.ensure_repo_mirror(project)
+
+        crew_path = self.crew_dir / name
+        crew_path.mkdir(exist_ok=True)
+
+        worktree_path = crew_path / project
+        branch_name = f"crew/{name}"
+
+        if worktree_path.exists():
+            # Already exists, just return it
+            return worktree_path
+
+        # Fetch latest main
+        print(f"Fetching latest from origin...")
+        subprocess.run(
+            ["git", "fetch", "origin", "main:main"],
+            cwd=mirror_path,
+            check=True,
+            capture_output=True,
+        )
+
+        print(f"Creating crew worktree at {worktree_path}...")
+
+        # Check if branch already exists
+        if self._branch_exists(mirror_path, branch_name):
+            # Use existing branch
+            cmd = ["git", "worktree", "add", str(worktree_path), branch_name]
+        else:
+            # Create new branch from main
+            cmd = ["git", "worktree", "add", "-b", branch_name, str(worktree_path), "main"]
+
+        subprocess.run(cmd, cwd=mirror_path, check=True)
+        return worktree_path
+
+    def nuke_crew(self, name: str, force: bool = False):
+        """Remove a crew worker and all their worktrees.
+
+        Args:
+            name: Crew worker name
+            force: Skip merge verification
+        """
+        crew_path = self.crew_dir / name
+        if not crew_path.exists():
+            raise ValueError(f"Crew worker not found: {name}")
+
+        # Remove each project worktree
+        for project_dir in crew_path.iterdir():
+            if project_dir.is_dir():
+                project = project_dir.name
+                branch_name = f"crew/{name}"
+                mirror_path = self.repos_dir / f"{project}.git"
+
+                if mirror_path.exists():
+                    # Safety check
+                    if not force and self._branch_exists(mirror_path, branch_name):
+                        if not self._is_branch_merged(mirror_path, branch_name):
+                            raise RuntimeError(
+                                f"Branch {branch_name} has unmerged commits. "
+                                f"Use --force to delete anyway."
+                            )
+
+                    # Remove worktree
+                    subprocess.run(
+                        ["git", "worktree", "remove", "--force", str(project_dir)],
+                        cwd=mirror_path,
+                        check=False,
+                    )
+
+                    # Delete branch
+                    if self._branch_exists(mirror_path, branch_name):
+                        subprocess.run(
+                            ["git", "branch", "-D", branch_name],
+                            cwd=mirror_path,
+                            check=False,
+                        )
+
+        # Remove crew directory
+        if crew_path.exists():
+            shutil.rmtree(crew_path)
+
+        print(f"Nuked crew worker: {name}")
+
+    def get_repo_path(self, task) -> Path:
+        """Returns the bare mirror repo path for the task's project.
+
+        Uses .repos/ mirrors if available, falls back to legacy ~/src/ paths.
+        """
+        project = task.project or "aops"
+        mirror_path = self.repos_dir / f"{project}.git"
+
+        # Use mirror if it exists
+        if mirror_path.exists():
+            return mirror_path
+
+        # Legacy fallback to ~/src/ repos (for backwards compatibility)
+        if project == "buttermilk":
+            return Path.home() / "src/buttermilk"
+        if project == "writing":
+            return Path.home() / "writing"
+
         # Default fallback
         return REPO_ROOT
+
+    def _get_remote_url(self, repo_path: Path) -> str:
+        """Gets the origin remote URL from a git repository."""
+        result = subprocess.run(
+            ["git", "remote", "get-url", "origin"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stdout.strip()
+
+    def ensure_repo_mirror(self, project: str) -> Path:
+        """Creates or updates a bare mirror clone for the project.
+
+        Derives the remote URL from the actual repo's git config (not hardcoded).
+
+        Args:
+            project: Project slug (must exist in PROJECTS registry)
+
+        Returns:
+            Path to the bare mirror repo (.repos/<project>.git)
+
+        Raises:
+            ValueError: If project not in registry
+            FileNotFoundError: If source repo doesn't exist
+            subprocess.CalledProcessError: If git operations fail
+        """
+        if project not in self.projects:
+            raise ValueError(f"Unknown project: {project}. Known: {list(self.projects.keys())}")
+
+        config = self.projects[project]
+        source_path = config["path"]
+        mirror_path = self.repos_dir / f"{project}.git"
+
+        if not source_path.exists():
+            raise FileNotFoundError(f"Source repo not found: {source_path}")
+
+        if mirror_path.exists():
+            # Update existing mirror
+            print(f"Fetching latest for {project}...")
+            subprocess.run(
+                ["git", "fetch", "--all", "--prune"],
+                cwd=mirror_path,
+                check=True,
+            )
+        else:
+            # Derive remote URL from source repo
+            remote_url = self._get_remote_url(source_path)
+            print(f"Cloning {project} from {remote_url}...")
+            subprocess.run(
+                ["git", "clone", "--bare", remote_url, str(mirror_path)],
+                check=True,
+            )
+            # Configure fetch refspec to get all branches
+            subprocess.run(
+                ["git", "config", "remote.origin.fetch", "+refs/heads/*:refs/heads/*"],
+                cwd=mirror_path,
+                check=True,
+            )
+
+        return mirror_path
+
+    def init_all_mirrors(self) -> dict[str, Path]:
+        """Initialize bare mirrors for all registered projects.
+
+        Returns:
+            Dict mapping project slug to mirror path
+        """
+        results = {}
+        for project in self.projects:
+            try:
+                results[project] = self.ensure_repo_mirror(project)
+                print(f"✓ {project}")
+            except Exception as e:
+                print(f"✗ {project}: {e}")
+                results[project] = None
+        return results
+
+    def sync_all_mirrors(self) -> dict[str, bool]:
+        """Fetch latest from origin for all existing mirrors.
+
+        Returns:
+            Dict mapping project slug to success status
+        """
+        results = {}
+        for project in self.projects:
+            mirror_path = self.repos_dir / f"{project}.git"
+            if not mirror_path.exists():
+                print(f"⊘ {project}: no mirror (run 'polecat init' first)")
+                results[project] = False
+                continue
+            try:
+                subprocess.run(
+                    ["git", "fetch", "--all", "--prune"],
+                    cwd=mirror_path,
+                    check=True,
+                    capture_output=True,
+                )
+                print(f"✓ {project}")
+                results[project] = True
+            except subprocess.CalledProcessError as e:
+                print(f"✗ {project}: {e}")
+                results[project] = False
+        return results
 
     def claim_next_task(self, caller: str, project: str = None):
         """Finds and claims the highest priority ready task."""
@@ -88,7 +392,10 @@ class PolecatManager:
         return None
 
     def setup_worktree(self, task):
-        """Creates a git worktree in ~/polecats linked to the project repo."""
+        """Creates a git worktree in ~/polecats linked to the project repo.
+
+        For bare mirror repos (.repos/), fetches latest from origin first.
+        """
         repo_path = self.get_repo_path(task)
         if not repo_path.exists():
             raise FileNotFoundError(f"Project repository not found at {repo_path}")
@@ -98,6 +405,19 @@ class PolecatManager:
 
         if worktree_path.exists():
             return worktree_path
+
+        # Detect if this is a bare mirror repo
+        is_bare = repo_path.name.endswith(".git") or (repo_path / "HEAD").exists() and not (repo_path / ".git").exists()
+
+        # Pre-fetch: ensure we have latest main from origin
+        if is_bare:
+            print(f"Fetching latest from origin...")
+            subprocess.run(
+                ["git", "fetch", "origin", "main:main"],
+                cwd=repo_path,
+                check=True,
+                capture_output=True,
+            )
 
         print(f"Creating worktree at {worktree_path} from repo {repo_path}...")
 
@@ -114,10 +434,10 @@ class PolecatManager:
         except subprocess.CalledProcessError as e:
             print(f"Worktree creation failed: {e}. Attempting recovery...", file=sys.stderr)
             if self._branch_exists(repo_path, branch_name):
-                 cmd = ["git", "worktree", "add", str(worktree_path), branch_name]
-                 subprocess.run(cmd, cwd=repo_path, check=True)
+                cmd = ["git", "worktree", "add", str(worktree_path), branch_name]
+                subprocess.run(cmd, cwd=repo_path, check=True)
             else:
-                 raise e
+                raise e
 
         return worktree_path
 

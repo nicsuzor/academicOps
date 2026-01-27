@@ -10,6 +10,57 @@ def main():
     """Polecat: Ephemeral worker management system."""
     pass
 
+
+@main.command()
+@click.option("--project", "-p", help="Initialize only this project (default: all)")
+def init(project):
+    """Initialize bare mirror repos in ~/.polecats/.repos/
+
+    Creates bare clones of all registered projects for isolated worktree spawning.
+    Run this once before using polecat, or when adding new projects.
+
+    Examples:
+        polecat init              # Initialize all projects
+        polecat init -p aops      # Initialize only aops
+    """
+    manager = PolecatManager()
+
+    if project:
+        try:
+            path = manager.ensure_repo_mirror(project)
+            print(f"✓ {project} -> {path}")
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+        except Exception as e:
+            print(f"Failed to initialize {project}: {e}", file=sys.stderr)
+            sys.exit(1)
+    else:
+        print(f"Initializing mirrors in {manager.repos_dir}...")
+        results = manager.init_all_mirrors()
+        failures = [p for p, path in results.items() if path is None]
+        if failures:
+            print(f"\n⚠️  Failed: {', '.join(failures)}")
+            sys.exit(1)
+        print(f"\n✓ All mirrors ready")
+
+
+@main.command()
+def sync():
+    """Fetch latest from origin for all mirror repos.
+
+    Updates existing bare mirrors with latest branches from origin.
+    Use before spawning polecats to ensure they have recent code.
+
+    Examples:
+        polecat sync
+    """
+    manager = PolecatManager()
+    print(f"Syncing mirrors in {manager.repos_dir}...")
+    results = manager.sync_all_mirrors()
+    successes = sum(1 for v in results.values() if v)
+    print(f"\n✓ Synced {successes}/{len(results)} mirrors")
+
 @main.command()
 @click.option("--project", "-p", help="Project to claim tasks from")
 @click.option("--caller", "-c", default="polecat", help="Identity claiming the task")
@@ -181,13 +232,125 @@ def merge():
     eng.scan_and_merge()
 
 @main.command()
+@click.option("--project", "-p", default="aops", help="Project to work on (default: aops)")
+@click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
+@click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
+@click.option("--resume", "-r", help="Resume existing crew worker by name")
+def crew(project, name, gemini, resume):
+    """Start an interactive crew session.
+
+    Crew workers are persistent, named agents for interactive collaboration.
+    Unlike polecats (autonomous, task-scoped), crew workers:
+    - Have randomly generated names (famous queer women of color)
+    - Persist across sessions
+    - Can work on multiple tasks
+    - Are not bound to a single task (but edits require task binding via hooks)
+
+    Examples:
+        polecat crew                      # New crew, random name, aops project
+        polecat crew -p buttermilk        # New crew for buttermilk
+        polecat crew -r audre             # Resume crew worker "audre"
+        polecat crew -n marsha -p aops    # New crew named "marsha"
+    """
+    import subprocess
+
+    manager = PolecatManager()
+
+    # Determine crew name
+    if resume:
+        crew_name = resume
+        if crew_name not in manager.list_crew():
+            print(f"Error: No crew worker named '{crew_name}'. Active: {manager.list_crew()}", file=sys.stderr)
+            sys.exit(1)
+    elif name:
+        crew_name = name
+    else:
+        crew_name = manager.generate_crew_name()
+
+    print(f"🧑‍🤝‍🧑 Crew worker: {crew_name}")
+
+    # Setup worktree
+    try:
+        worktree_path = manager.setup_crew_worktree(crew_name, project)
+        print(f"📁 Worktree: {worktree_path}")
+    except Exception as e:
+        print(f"Error setting up worktree: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    # Run agent in interactive mode (no task binding - hooks will enforce when needed)
+    cli_tool = "gemini" if gemini else "claude"
+    print(f"\n🤝 Starting {cli_tool} crew session...")
+    print(f"   Crew: {crew_name}")
+    print(f"   Project: {project}")
+    print(f"   Worktree: {worktree_path}")
+    print("-" * 50)
+
+    if gemini:
+        cmd = ["gemini"]
+    else:
+        aops_dir = os.environ.get("AOPS")
+        if not aops_dir:
+            print("Error: $AOPS environment variable not set", file=sys.stderr)
+            sys.exit(1)
+        cmd = [
+            "claude",
+            "--permission-mode", "plan",
+            "--setting-sources=user",
+            "--plugin-dir", str(Path(aops_dir) / "aops-core"),
+            "--plugin-dir", str(Path(aops_dir) / "aops-tools"),
+        ]
+
+    try:
+        subprocess.run(cmd, cwd=worktree_path)
+    except FileNotFoundError:
+        print(f"Error: '{cli_tool}' command not found.", file=sys.stderr)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        print("\n\n⚠️  Session interrupted")
+
+    print("-" * 50)
+    print(f"\n📋 Crew '{crew_name}' session ended.")
+    print(f"   Worktree preserved at: {worktree_path}")
+    print(f"   To resume: polecat crew -r {crew_name}")
+    print(f"   To nuke:   polecat nuke-crew {crew_name}")
+
+
+@main.command("nuke-crew")
+@click.argument("name")
+@click.option("--force", "-f", is_flag=True, help="Delete even if work is not merged")
+def nuke_crew(name, force):
+    """Remove a crew worker and their worktrees."""
+    manager = PolecatManager()
+    try:
+        manager.nuke_crew(name, force=force)
+    except (ValueError, RuntimeError) as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+@main.command("list-crew")
+def list_crew():
+    """List active crew workers."""
+    manager = PolecatManager()
+    crew = manager.list_crew()
+    if not crew:
+        print("No active crew workers.")
+        return
+    print("Active crew workers:")
+    for name in crew:
+        crew_path = manager.crew_dir / name
+        projects = [d.name for d in crew_path.iterdir() if d.is_dir()]
+        print(f"  {name}: {', '.join(projects)}")
+
+
+@main.command()
 @click.option("--project", "-p", help="Project for the collaboration")
 @click.option("--title", "-t", help="Brief title for the collaboration task")
 @click.option("--caller", "-c", default="nic", help="Identity for the collaboration (default: nic)")
 @click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
 @click.option("--no-finish", is_flag=True, help="Don't auto-finish after agent exits")
 def colab(project, title, caller, gemini, no_finish):
-    """Start an interactive collaboration session.
+    """[DEPRECATED] Use 'polecat crew' instead.
 
     Creates a new task, spawns a worktree, and starts an interactive
     agent session for human-bot pairing. Marks ready for merge when done.
@@ -196,6 +359,9 @@ def colab(project, title, caller, gemini, no_finish):
         polecat colab -p aops -t "Debug failing tests"
         polecat colab -t "Refactor login flow"
     """
+    print("⚠️  'colab' is deprecated. Use 'polecat crew' instead.")
+    print("   polecat crew -p aops")
+    print("")
     import subprocess
     from datetime import datetime, timezone
 

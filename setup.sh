@@ -450,8 +450,67 @@ echo "  Linked core.md"
 
 echo
 
-# Step 6: Install cron jobs
-echo "Step 6: Cron jobs"
+# Step 6: Polecats configuration
+echo "Step 6: Polecats configuration"
+echo "------------------------------"
+
+POLECATS_DIR="$HOME/polecats"
+mkdir -p "$POLECATS_DIR/.claude" "$POLECATS_DIR/.gemini" "$POLECATS_DIR/.repos" "$POLECATS_DIR/crew"
+
+# Create .claude/settings.local.json for polecats
+POLECAT_CLAUDE_SETTINGS="$POLECATS_DIR/.claude/settings.local.json"
+cat > "$POLECAT_CLAUDE_SETTINGS" << 'CLAUDE_EOF'
+{
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "mcp__plugin_aops-core_*(*)",
+      "mcp__plugin_aops-tools_*(*)"
+    ]
+  }
+}
+CLAUDE_EOF
+echo -e "${GREEN}✓ Created polecats .claude/settings.local.json${NC}"
+
+# Create .gemini/settings.json for polecats
+POLECAT_GEMINI_SETTINGS="$POLECATS_DIR/.gemini/settings.json"
+cat > "$POLECAT_GEMINI_SETTINGS" << 'GEMINI_EOF'
+{
+  "hooks": {
+    "preToolCall": [],
+    "postToolCall": []
+  },
+  "permissions": {
+    "allowAll": true
+  }
+}
+GEMINI_EOF
+echo -e "${GREEN}✓ Created polecats .gemini/settings.json${NC}"
+
+# Create .env for polecats
+POLECAT_ENV="$POLECATS_DIR/.env"
+cat > "$POLECAT_ENV" << ENV_EOF
+# Polecat environment configuration
+# Loaded by crew/polecat sessions
+
+# Framework paths
+AOPS="$AOPS_PATH"
+ACA_DATA="$ACA_DATA_PATH"
+
+# Polecat-specific
+POLECAT_ROOT="$POLECATS_DIR"
+ENV_EOF
+echo -e "${GREEN}✓ Created polecats .env${NC}"
+
+echo
+
+# Step 7: Install cron jobs
+echo "Step 7: Cron jobs"
 echo "-----------------"
 
 CRON_MARKER="# aOps task index"
@@ -493,7 +552,7 @@ else
 fi
 
 echo
-echo "Step 7: Validating setup"
+echo "Step 8: Validating setup"
 echo "------------------------"
 
 VALIDATION_PASSED=true

@@ -470,22 +470,62 @@ def update(task_id: str, status: str | None, title: str | None, priority: int | 
 
 
 @main.command()
-@click.argument("caller")
 @click.option("--project", "-p", default="", help="Filter by project (empty for all)")
-def ready(caller: str, project: str):
-    """Get next ready task and claim it atomically.
+@click.option("--claim", "-c", "caller", default=None, help="Claim the highest-priority task as CALLER (e.g., 'nic' or 'bot')")
+@click.option("--limit", "-n", default=20, help="Number of tasks to show (default: 20)")
+def ready(project: str, caller: str | None, limit: int):
+    """Show ready tasks ordered by priority, or claim one.
 
-    Finds one ready task (leaf + no blockers), claims it by setting
-    status to "active" and assignee to CALLER. Uses file locking to
-    prevent race conditions.
+    Without --claim: Lists up to 20 ready tasks (leaf + no blockers)
+    in priority order (P0 first) without claiming any.
 
-    CALLER is who is claiming the task - typically 'nic' or 'bot'.
+    With --claim CALLER: Claims the highest-priority ready task by
+    setting status to "in_progress" and assignee to CALLER. Uses file
+    locking to prevent race conditions.
+
+    Examples:
+        task ready                  # List top 20 ready tasks
+        task ready -n 10            # List top 10 ready tasks
+        task ready --claim nic      # Claim highest-priority task as 'nic'
+        task ready -p aops --claim bot  # Claim from 'aops' project as 'bot'
     """
     storage = get_storage()
     tasks = storage.get_ready_tasks(project=project or None)
 
     if not tasks:
         console.print(f"[dim]No ready tasks available{' in project ' + project if project else ''}[/dim]")
+        return
+
+    # If not claiming, just list tasks
+    if caller is None:
+        # Show table of ready tasks
+        table = Table(show_header=True, header_style="bold", box=None, padding=(0, 1))
+        table.add_column("#", width=3, justify="right")
+        table.add_column("", width=2)  # Type icon
+        table.add_column("Pri", width=3)
+        table.add_column("Project", style="cyan", width=12)
+        table.add_column("Assignee", style="dim", width=8)
+        table.add_column("Title")
+        table.add_column("ID", style="dim", width=20)
+
+        for i, task in enumerate(tasks[:limit], 1):
+            type_icon = TYPE_ICON.get(task.type.value, "•")
+            pri_label, pri_style = PRIORITY_STYLE.get(task.priority, ("P?", "white"))
+            assignee = f"@{task.assignee}" if task.assignee else ""
+
+            table.add_row(
+                str(i),
+                Text(type_icon, style="dim"),
+                Text(pri_label, style=pri_style),
+                task.project or "inbox",
+                assignee,
+                task.title,
+                task.id,
+            )
+
+        console.print(table)
+        console.print(f"\n[dim]{len(tasks)} ready task(s) total, showing top {min(limit, len(tasks))}[/dim]")
+        console.print("[dim]Use --claim CALLER to claim the highest-priority task[/dim]")
         return
 
     # Try to claim tasks in priority order

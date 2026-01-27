@@ -23,15 +23,20 @@ Usage:
 
 from __future__ import annotations
 
+import logging
 import re
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 import yaml
+
+logger = logging.getLogger(__name__)
+
+E = TypeVar("E", bound=Enum)
 
 
 class TaskType(Enum):
@@ -74,6 +79,42 @@ class TaskComplexity(Enum):
     MULTI_STEP = "multi-step"  # Multi-session orchestration
     NEEDS_DECOMPOSITION = "needs-decomposition"  # Must break down first
     BLOCKED_HUMAN = "blocked-human"  # Requires human decision/input
+
+
+def _safe_parse_enum(
+    value: str | None,
+    enum_cls: type[E],
+    default: E,
+    field_name: str,
+    task_id: str | None = None,
+) -> E:
+    """Safely parse an enum value, coercing invalid values to default with warning.
+
+    Args:
+        value: String value to parse (or None)
+        enum_cls: Enum class to parse into
+        default: Default value if parsing fails or value is None
+        field_name: Field name for warning message
+        task_id: Task ID for warning message (optional)
+
+    Returns:
+        Parsed enum value, or default if invalid
+    """
+    if value is None:
+        return default
+
+    try:
+        return enum_cls(value)
+    except ValueError:
+        task_ref = f" (task: {task_id})" if task_id else ""
+        logger.warning(
+            "Invalid %s '%s'%s, coercing to '%s'",
+            field_name,
+            value,
+            task_ref,
+            default.value,
+        )
+        return default
 
 
 @dataclass
@@ -265,16 +306,19 @@ class Task:
         if isinstance(due, str):
             due = datetime.fromisoformat(due)
 
-        # Parse enums
-        task_type = fm.get("type", "task")
-        if isinstance(task_type, str):
-            task_type = TaskType(task_type)
+        # Parse enums with graceful coercion for invalid values
+        task_type_str = fm.get("type", "task")
+        task_type = _safe_parse_enum(
+            task_type_str, TaskType, TaskType.TASK, "type", task_id
+        )
 
-        # Map status aliases
-        status = fm.get("status", "inbox")
-        if isinstance(status, str):
-            status = cls.STATUS_ALIASES.get(status, status)
-            status = TaskStatus(status)
+        # Map status aliases and parse with graceful coercion
+        status_str = fm.get("status", "active")
+        if isinstance(status_str, str):
+            status_str = cls.STATUS_ALIASES.get(status_str, status_str)
+        status = _safe_parse_enum(
+            status_str, TaskStatus, TaskStatus.ACTIVE, "status", task_id
+        )
 
         # Parse numeric fields (may come as strings from YAML)
         priority = fm.get("priority", 2)
@@ -287,10 +331,18 @@ class Task:
         if isinstance(depth, str):
             depth = int(depth) if depth.isdigit() else 0
 
-        # Parse complexity
-        complexity = fm.get("complexity")
-        if isinstance(complexity, str):
-            complexity = TaskComplexity(complexity)
+        # Parse complexity (optional field - None is valid)
+        complexity_str = fm.get("complexity")
+        complexity: TaskComplexity | None = None
+        if complexity_str is not None:
+            try:
+                complexity = TaskComplexity(complexity_str)
+            except ValueError:
+                logger.warning(
+                    "Invalid complexity '%s' (task: %s), ignoring",
+                    complexity_str,
+                    task_id,
+                )
 
         return cls(
             id=task_id,

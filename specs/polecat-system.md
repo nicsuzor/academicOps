@@ -33,7 +33,26 @@ Instead of creating temporary clones inside the main repo (which confuses IDEs),
 
 *   **Location:** `~/polecats/`
 *   **Structure:** `~/polecats/<task-id>/`
-*   **Mechanism:** `git worktree` linked to the parent repository.
+*   **Mechanism:** `git worktree` linked to bare mirror repositories.
+
+### Bare Mirror Architecture
+
+Worktrees are spawned from **bare mirror clones** stored in `~/polecats/.repos/`, not from your active development repos in `~/src/`. This provides:
+
+- **Isolation**: Complete decoupling from your dev environment
+- **Concurrency**: Bare repos handle unlimited concurrent worktrees
+- **Clean state**: Each spawn starts from origin, not local uncommitted changes
+
+```
+~/polecats/
+├── .repos/                    # Hidden bare mirror repos
+│   ├── aops.git               # bare clone of academicOps
+│   ├── buttermilk.git         # bare clone of buttermilk
+│   └── writing.git            # bare clone of writing
+└── task-abc123/               # worktree spawned from .repos/aops.git
+```
+
+**Setup:** Run `polecat init` once to create bare mirrors for all registered projects. Use `polecat sync` to fetch latest from origin before spawning new polecats.
 
 ## Components
 
@@ -58,6 +77,12 @@ A Python library that handles the lifecycle:
 The unified interface for worktree management and merging:
 
 ```bash
+# One-time setup: create bare mirrors for all projects
+polecat init
+
+# Refresh mirrors with latest from origin
+polecat sync
+
 # Start working on the next priority task
 polecat start --caller nic --project aops
 
