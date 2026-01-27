@@ -21,16 +21,45 @@ class TestUniversalRouter:
         ):
             yield
 
+    @pytest.fixture
+    def mock_session_file(self):
+        # Mock Path for session file operations
+        with patch("hooks.router.get_session_file_path") as mock_get:
+            mock_path = MagicMock(spec=Path)
+            mock_get.return_value = mock_path
+            yield mock_path
+
     def test_map_gemini_to_claude_basic(self, mock_env):
         gemini_input = {"tool_name": "read_file", "tool_input": {"path": "test.txt"}}
         event = "BeforeTool"
 
-        claude_input = router.map_gemini_to_claude(event, gemini_input)
+        with patch(
+            "hooks.router.get_session_data", return_value={"session_id": "gemini-test"}
+        ):
+            claude_input = router.map_gemini_to_claude(event, gemini_input)
 
         assert claude_input["hook_event_name"] == "PreToolUse"
         assert claude_input["tool_name"] == "read_file"
-        assert "session_id" in claude_input
-        assert claude_input["session_id"].startswith("gemini-fallback")
+        assert claude_input["session_id"] == "gemini-test"
+
+    def test_session_start_captures_temp_root(self, mock_env, mock_session_file):
+        # Setup: SessionStart with transcript_path
+        transcript_path = "/home/user/.gemini/tmp/hash123/chats/session-1.json"
+        gemini_input = {"transcript_path": transcript_path}
+        mock_session_file.exists.return_value = False
+
+        # Action
+        with patch("hooks.router.persist_session_data") as mock_persist:
+            # We must mock get_gemini_session_id to return a fixed ID or similar,
+            # but persist_session_data is called inside map_gemini_to_claude.
+            # actually get_gemini_session_id calls get_session_data or generates new.
+
+            router.map_gemini_to_claude("SessionStart", gemini_input)
+
+            # Assert
+            args = mock_persist.call_args[0][0]
+            assert "session_id" in args
+            assert args["temp_root"] == "/home/user/.gemini/tmp/hash123"
 
     def test_map_claude_to_gemini_permission(self):
         claude_output = {
@@ -46,8 +75,6 @@ class TestUniversalRouter:
 
         assert gemini_output["decision"] == "deny"
         assert gemini_output["hookSpecificOutput"]["hookEventName"] == "BeforeTool"
-        # Check mapping cleaned up permissionDecision from nested dict?
-        # The implementation pops it, so it should be gone from hookSpecificOutput
         assert "permissionDecision" not in gemini_output["hookSpecificOutput"]
 
     @patch("hooks.router.run_hook_script")
@@ -57,8 +84,6 @@ class TestUniversalRouter:
         input_data = {"hook_event_name": "SessionStart", "session_id": "test"}
         router.execute_hooks("SessionStart", input_data)
 
-        # Verify calls - updated for actual REGISTRY content
-        # SessionStart has 2 hooks: session_env_setup.sh, unified_logger.py
         assert mock_run.call_count == 2
         calls = [c[0][0].name for c in mock_run.call_args_list]
         assert "session_env_setup.sh" in calls
@@ -66,18 +91,36 @@ class TestUniversalRouter:
 
     @patch("hooks.router.run_hook_script")
     def test_block_behavior(self, mock_run):
-        # Simulate a block from the first hook
         mock_run.side_effect = [
-            ({"systemMessage": "Blocked"}, 2),  # Block
-            ({}, 0),  # Should not run
+            ({"systemMessage": "Blocked"}, 2),
+            ({}, 0),
         ]
 
         input_data = {"hook_event_name": "PreToolUse"}
         output, code = router.execute_hooks("PreToolUse", input_data)
 
         assert code == 2
-        # Should verify break after first block
         assert mock_run.call_count == 1
+
+    def test_run_hook_injects_env(self, mock_env):
+        # Setup: session data has temp config
+        with (
+            patch(
+                "hooks.router.get_session_data",
+                return_value={"temp_root": "/custom/temp"},
+            ),
+            patch("subprocess.run") as mock_run,
+        ):
+            mock_run.return_value = MagicMock(stdout="{}", stderr="", returncode=0)
+
+            # We call run_hook_script directly
+            script_path = Path("hooks/foo.py")
+            with patch.object(Path, "exists", return_value=True):  # if referenced
+                router.run_hook_script(script_path, {})
+
+            # Assert env var injected
+            call_env = mock_run.call_args[1]["env"]
+            assert call_env["AOPS_GEMINI_TEMP_ROOT"] == "/custom/temp"
 
 
 class TestGateRegistry:

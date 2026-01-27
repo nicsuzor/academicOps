@@ -14,7 +14,7 @@ import sys
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 # --- Path Setup ---
 HOOK_DIR = Path(__file__).parent
@@ -88,24 +88,48 @@ HOOK_REGISTRY: Dict[str, List[Dict[str, Any]]] = {
 # --- Session Management (Gemini Support) ---
 
 
-def get_session_id_file() -> Path:
-    """Get session ID file path from $AOPS_SESSIONS environment variable."""
+def get_session_file_path() -> Path:
+    """Get session metadata file path from $AOPS_SESSIONS environment variable."""
     aops_sessions = Path(os.getenv("AOPS_SESSIONS", ""))
     if not aops_sessions.name:
         # Fallback to tmp location if env not set
-        return Path(f"/tmp/gemini-session-{os.getppid()}.txt")
+        return Path(f"/tmp/gemini-session-{os.getppid()}.json")
 
     aops_sessions.mkdir(parents=True, exist_ok=True)
-    return aops_sessions / f"session-{os.getppid()}.txt"
+    return aops_sessions / f"session-{os.getppid()}.json"
 
 
-def persist_session_id(session_id: str) -> None:
-    """Write session ID to the fallback file."""
+def persist_session_data(data: Dict[str, Any]) -> None:
+    """Write session metadata to the fallback file."""
     try:
-        session_id_file = get_session_id_file()
-        session_id_file.write_text(session_id)
+        session_file = get_session_file_path()
+        # Merge with existing if possible
+        if session_file.exists():
+            try:
+                existing = json.loads(session_file.read_text())
+                existing.update(data)
+                data = existing
+            except Exception:
+                pass
+        session_file.write_text(json.dumps(data))
     except Exception as e:
-        print(f"WARNING: Failed to write session ID: {e}", file=sys.stderr)
+        print(f"WARNING: Failed to write session data: {e}", file=sys.stderr)
+
+
+def get_session_data() -> Dict[str, Any]:
+    """Read session metadata."""
+    try:
+        session_file = get_session_file_path()
+        if session_file.exists():
+            content = session_file.read_text().strip()
+            # Handle potential legacy plain text ID
+            try:
+                return json.loads(content)
+            except json.JSONDecodeError:
+                return {"session_id": content}
+    except Exception:
+        pass
+    return {}
 
 
 def get_gemini_session_id(event_name: str) -> str:
@@ -115,13 +139,10 @@ def get_gemini_session_id(event_name: str) -> str:
     if env_session_id:
         return env_session_id
 
-    # Read existing ID from fallback file
-    try:
-        session_id_file = get_session_id_file()
-        if session_id_file.exists():
-            return session_id_file.read_text().strip()
-    except Exception:
-        pass
+    # Read existing ID
+    data = get_session_data()
+    if data.get("session_id"):
+        return data["session_id"]
 
     if event_name == "SessionStart":
         # Generate new session ID
@@ -151,8 +172,28 @@ def map_gemini_to_claude(
     session_id = claude_input.get("session_id") or get_gemini_session_id(gemini_event)
     claude_input["session_id"] = session_id
 
-    if gemini_event == "SessionStart" and session_id:
-        persist_session_id(session_id)
+    if gemini_event == "SessionStart":
+        update_data = {"session_id": session_id}
+
+        # Extract temp root from transcript_path
+        # format: .../tmp/<hash>/chats/session-....json
+        transcript_path = gemini_input.get("transcript_path")
+        if transcript_path:
+            try:
+                trans_p = Path(transcript_path)
+                # We want the parent of 'chats', i.e. the hash dir
+                # If path is .../chats/session.json:
+                # parent = chats, parent.parent = hash dir
+                if trans_p.parent.name == "chats":
+                    temp_root = str(trans_p.parent.parent)
+                    update_data["temp_root"] = temp_root
+                else:
+                    # Fallback: just use parent
+                    update_data["temp_root"] = str(trans_p.parent)
+            except Exception:
+                pass
+
+        persist_session_data(update_data)
 
     return claude_input
 
@@ -198,6 +239,11 @@ def run_hook_script(
             f"{AOPS_CORE_DIR}:{current_pp}" if current_pp else str(AOPS_CORE_DIR)
         )
 
+        # Inject Gemini Temp Root if available
+        session_data = get_session_data()
+        if session_data.get("temp_root"):
+            env["AOPS_GEMINI_TEMP_ROOT"] = session_data["temp_root"]
+
         # Pass hook dir as CWD
         result = subprocess.run(
             cmd,
@@ -231,7 +277,7 @@ def merge_outputs(outputs: List[Dict[str, Any]], event_name: str) -> Dict[str, A
     if not outputs:
         return {}
 
-    result = {}
+    result: Dict[str, Any] = {}
     system_messages = []
     permission_decisions = []  # deny > ask > allow
 
