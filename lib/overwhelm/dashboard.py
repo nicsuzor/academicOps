@@ -25,8 +25,12 @@ sys.path.insert(0, str(aops_core))
 from lib.session_reader import find_sessions
 from lib.session_analyzer import SessionAnalyzer, extract_todowrite_from_session
 from lib.task_storage import TaskStorage
-from lib.task_model import TaskStatus
+from lib.task_model import Task, TaskStatus
 from collections import defaultdict
+
+# Add local directory to path for sibling imports
+sys.path.append(str(Path(__file__).parent))
+from task_manager_ui import render_task_manager
 
 
 # index.json integration (2026-01-21)
@@ -149,8 +153,14 @@ def find_active_session_states(hours: int = 4) -> list[dict]:
                     "session_short": session_id[:8]
                     if len(session_id) >= 8
                     else session_id,
-                    "project": (state_data.get("insights") or {}).get("project") or state_data.get("project") or project_dir.name,
-                    "project_display": ((state_data.get("insights") or {}).get("project") or state_data.get("project") or _format_project_name(project_dir.name)),
+                    "project": (state_data.get("insights") or {}).get("project")
+                    or state_data.get("project")
+                    or project_dir.name,
+                    "project_display": (
+                        (state_data.get("insights") or {}).get("project")
+                        or state_data.get("project")
+                        or _format_project_name(project_dir.name)
+                    ),
                     "state": state_data,
                     "last_modified": mtime,
                     "time_ago": time_ago,
@@ -875,7 +885,7 @@ def fetch_session_activity(hours: int = 4) -> list[dict]:
                     )  # Preserve if we had it
                     if project != "unknown":
                         sessions[sid]["project"] = project
-                    
+
                     # Trust the project from the status file (insights)
                     if project != "unknown":
                         sessions[sid]["project"] = project
@@ -2098,7 +2108,6 @@ def clean_activity_text(raw_text: str) -> str:
 # ============================================================================
 
 
-
 def load_graph_data(filename: str = "graph.json") -> dict | None:
     """Load graph JSON from outputs directory."""
     outputs_dir = (
@@ -2113,13 +2122,18 @@ def load_graph_data(filename: str = "graph.json") -> dict | None:
             pass
     return None
 
+
 def load_task_graph() -> dict | None:
     """Load the most recent task graph JSON (shim)."""
     return load_graph_data("graph.json")
 
 
 # Default task graph SVG location
-TASK_GRAPH_SVG = Path(os.environ.get("ACA_DATA", str(Path.home() / "writing/data"))) / "outputs" / "task-map.svg"
+TASK_GRAPH_SVG = (
+    Path(os.environ.get("ACA_DATA", str(Path.home() / "writing/data")))
+    / "outputs"
+    / "task-map.svg"
+)
 
 
 def find_latest_svg() -> Path | None:
@@ -2322,32 +2336,34 @@ def calculate_graph_health(graph: dict) -> dict:
         "orphan_examples": orphan_tasks[:5],
     }
 
+
 @st.cache_resource(ttl=60)
 def get_task_lookup_maps() -> tuple[dict[str, Task], dict[str, Task]]:
     """Build lookup maps for tasks by ID and by Path.
-    
+
     Returns:
         Tuple of (id_map, path_map)
     """
     storage = TaskStorage()
     id_map = {}
     path_map = {}
-    
+
     # Iterate all tasks that storage can find
     for task, path in storage._iter_all_tasks_with_paths():
         id_map[task.id] = task
         path_map[str(path.resolve())] = task
-        
+
     return id_map, path_map
+
 
 def get_task_by_graph_node(node_id: str, graph_nodes: list[dict]) -> Task | None:
     """Resolve a graph node ID to a Task object."""
     id_map, path_map = get_task_lookup_maps()
-    
+
     # 1. Try direct ID match (if graph uses semantic IDs)
     if node_id in id_map:
         return id_map[node_id]
-        
+
     # 2. Try Path match (if graph has path info)
     # Find the node definition
     node_def = next((n for n in graph_nodes if n["id"] == node_id), None)
@@ -2386,12 +2402,20 @@ def render_force_graph(
 
     # Status color mapping (hex with #)
     status_colors = {
-        "done": "#22c55e", "active": "#3b82f6", "blocked": "#ef4444",
-        "waiting": "#eab308", "review": "#a855f7", "cancelled": "#94a3b8"
+        "done": "#22c55e",
+        "active": "#3b82f6",
+        "blocked": "#ef4444",
+        "waiting": "#eab308",
+        "review": "#a855f7",
+        "cancelled": "#94a3b8",
     }
     type_colors = {
-        "goal": "#ef4444", "project": "#a855f7", "epic": "#8b5cf6",
-        "task": "#3b82f6", "action": "#06b6d4", "bug": "#f97316",
+        "goal": "#ef4444",
+        "project": "#a855f7",
+        "epic": "#8b5cf6",
+        "task": "#3b82f6",
+        "action": "#06b6d4",
+        "bug": "#f97316",
     }
 
     # Build nodes
@@ -2407,20 +2431,24 @@ def render_force_graph(
         else:
             color = type_colors.get(ntype, "#64748b")
 
-        fg_nodes.append({
-            "id": n["id"],
-            "label": n.get("label", n["id"])[:30],
-            "color": color,
-        })
+        fg_nodes.append(
+            {
+                "id": n["id"],
+                "label": n.get("label", n["id"])[:30],
+                "color": color,
+            }
+        )
 
     # Filter edges to only include valid nodes (keep string IDs for force-graph)
     fg_links = []
     for e in edges:
         if e["source"] in node_ids and e["target"] in node_ids:
-            fg_links.append({
-                "source": e["source"],
-                "target": e["target"],
-            })
+            fg_links.append(
+                {
+                    "source": e["source"],
+                    "target": e["target"],
+                }
+            )
 
     nodes_json = json.dumps(fg_nodes)
     links_json = json.dumps(fg_links)
@@ -2459,7 +2487,7 @@ def render_force_graph(
             const nodes = {nodes_json};
             const links = {links_json};
 
-            const showLabels = {'true' if show_labels else 'false'};
+            const showLabels = {"true" if show_labels else "false"};
 
             const Graph = ForceGraph()
                 (document.getElementById('container'))
@@ -2538,7 +2566,7 @@ def render_svg_graph():
 
     # Embed SVG with pan/zoom via components.html (allows JS execution)
     svg_content = svg_path.read_text()
-    zoom_html = f'''<!DOCTYPE html>
+    zoom_html = f"""<!DOCTYPE html>
 <html><head><style>
 body {{ margin: 0; background: #0d0d1a; }}
 #viewport {{ width: 100%; height: 580px; overflow: hidden; cursor: grab; position: relative; }}
@@ -2568,7 +2596,7 @@ v.onmousedown=(e)=>{{ isDrag=true; startX=e.clientX-panX; startY=e.clientY-panY;
 v.onmousemove=(e)=>{{ if(!isDrag)return; panX=e.clientX-startX; panY=e.clientY-startY; upd(); }};
 v.onmouseup=()=>{{ isDrag=false; v.style.cursor='grab'; }};
 v.onmouseleave=()=>{{ isDrag=false; v.style.cursor='grab'; }};
-</script></body></html>'''
+</script></body></html>"""
     components.html(zoom_html, height=600)
 
 
@@ -2610,15 +2638,15 @@ def render_v11_progress():
         <div class="synthesis-grid">
             <div class="synthesis-card done">
                 <div class="synthesis-card-title">✅ Done</div>
-                <div class="synthesis-card-content" style="font-size: 1.5em; font-weight: 700;">{status_counts['done']}</div>
+                <div class="synthesis-card-content" style="font-size: 1.5em; font-weight: 700;">{status_counts["done"]}</div>
             </div>
             <div class="synthesis-card context">
                 <div class="synthesis-card-title">🔄 In Progress</div>
-                <div class="synthesis-card-content" style="font-size: 1.5em; font-weight: 700;">{status_counts['active']}</div>
+                <div class="synthesis-card-content" style="font-size: 1.5em; font-weight: 700;">{status_counts["active"]}</div>
             </div>
             <div class="synthesis-card waiting">
                 <div class="synthesis-card-title">🚫 Blocked</div>
-                <div class="synthesis-card-content" style="font-size: 1.5em; font-weight: 700;">{status_counts['blocked']}</div>
+                <div class="synthesis-card-content" style="font-size: 1.5em; font-weight: 700;">{status_counts["blocked"]}</div>
             </div>
         </div>
     </div>
@@ -2637,13 +2665,20 @@ def render_graph_section():
         # Controls row
         col_view, col_layout = st.columns(2)
         with col_view:
-            view_mode = st.radio("View", ["Tasks", "Knowledge Base"], horizontal=True, key="fg_view")
+            view_mode = st.radio(
+                "View", ["Tasks", "Knowledge Base"], horizontal=True, key="fg_view"
+            )
         with col_layout:
             layout = st.radio(
                 "Layout",
                 ["td", "lr", "radial-out", "force"],
                 horizontal=True,
-                format_func=lambda x: {"td": "↓ Top-Down", "lr": "→ Left-Right", "radial-out": "◎ Radial", "force": "⚛ Force"}.get(x, x),
+                format_func=lambda x: {
+                    "td": "↓ Top-Down",
+                    "lr": "→ Left-Right",
+                    "radial-out": "◎ Radial",
+                    "force": "⚛ Force",
+                }.get(x, x),
                 key="fg_layout",
             )
 
@@ -2658,11 +2693,22 @@ def render_graph_section():
             return
 
         # Get available types from graph
-        all_types = sorted(set(n.get("node_type", "unknown") for n in graph.get("nodes", [])))
+        all_types = sorted(
+            set(n.get("node_type", "unknown") for n in graph.get("nodes", []))
+        )
 
         # Default type selection based on view mode
         if view_mode == "Tasks":
-            task_types = ["goal", "project", "epic", "task", "action", "bug", "feature", "learn"]
+            task_types = [
+                "goal",
+                "project",
+                "epic",
+                "task",
+                "action",
+                "bug",
+                "feature",
+                "learn",
+            ]
             default_types = [t for t in task_types if t in all_types]
         else:
             default_types = all_types
@@ -2671,17 +2717,58 @@ def render_graph_section():
         with st.expander("⚙️ Visual Settings", expanded=False):
             col1, col2, col3 = st.columns(3)
             with col1:
-                node_size = st.slider("Node Size", min_value=1, max_value=20, value=6, step=1, key="fg_node_size")
-                link_width = st.slider("Link Width", min_value=0.5, max_value=5.0, value=1.0, step=0.5, key="fg_link_width")
+                node_size = st.slider(
+                    "Node Size",
+                    min_value=1,
+                    max_value=20,
+                    value=6,
+                    step=1,
+                    key="fg_node_size",
+                )
+                link_width = st.slider(
+                    "Link Width",
+                    min_value=0.5,
+                    max_value=5.0,
+                    value=1.0,
+                    step=0.5,
+                    key="fg_link_width",
+                )
             with col2:
-                text_size = st.slider("Text Size", min_value=6, max_value=24, value=12, step=1, key="fg_text_size")
-                link_opacity = st.slider("Link Opacity", min_value=0.1, max_value=1.0, value=0.6, step=0.1, key="fg_link_opacity")
+                text_size = st.slider(
+                    "Text Size",
+                    min_value=6,
+                    max_value=24,
+                    value=12,
+                    step=1,
+                    key="fg_text_size",
+                )
+                link_opacity = st.slider(
+                    "Link Opacity",
+                    min_value=0.1,
+                    max_value=1.0,
+                    value=0.6,
+                    step=0.1,
+                    key="fg_link_opacity",
+                )
             with col3:
-                repulsion = st.slider("Repulsion", min_value=-500, max_value=-10, value=-100, step=10,
-                                      help="Node repulsion strength (more negative = stronger)", key="fg_repulsion")
-                show_labels = st.checkbox("Show Labels", value=True, key="fg_show_labels")
-                hide_orphans = st.checkbox("Hide Orphans", value=False,
-                                           help="Remove nodes with no connections", key="fg_hide_orphans")
+                repulsion = st.slider(
+                    "Repulsion",
+                    min_value=-500,
+                    max_value=-10,
+                    value=-100,
+                    step=10,
+                    help="Node repulsion strength (more negative = stronger)",
+                    key="fg_repulsion",
+                )
+                show_labels = st.checkbox(
+                    "Show Labels", value=True, key="fg_show_labels"
+                )
+                hide_orphans = st.checkbox(
+                    "Hide Orphans",
+                    value=False,
+                    help="Remove nodes with no connections",
+                    key="fg_hide_orphans",
+                )
 
         # Filter controls in separate expander
         with st.expander("🔍 Filter", expanded=False):
@@ -2697,10 +2784,15 @@ def render_graph_section():
         if selected_types:
             type_set = set(selected_types)
             nodes = graph.get("nodes", [])
-            filtered_nodes = [n for n in nodes if n.get("node_type", "unknown") in type_set]
+            filtered_nodes = [
+                n for n in nodes if n.get("node_type", "unknown") in type_set
+            ]
             filtered_ids = {n["id"] for n in filtered_nodes}
-            filtered_edges = [e for e in graph.get("edges", [])
-                              if e["source"] in filtered_ids and e["target"] in filtered_ids]
+            filtered_edges = [
+                e
+                for e in graph.get("edges", [])
+                if e["source"] in filtered_ids and e["target"] in filtered_ids
+            ]
             graph = {"nodes": filtered_nodes, "edges": filtered_edges}
 
         # Apply orphan filter
@@ -2713,12 +2805,14 @@ def render_graph_section():
             nodes = graph.get("nodes", [])
             graph = {
                 "nodes": [n for n in nodes if n["id"] in connected_ids],
-                "edges": edges
+                "edges": edges,
             }
 
         # Render graph with visual settings
         render_force_graph(
-            graph, view_mode, layout,
+            graph,
+            view_mode,
+            layout,
             node_size=node_size,
             link_width=link_width,
             show_labels=show_labels,
@@ -2731,6 +2825,13 @@ def render_graph_section():
 # ============================================================================
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
+
+# Navigation
+page = st.sidebar.radio("View Mode", ["Dashboard", "Manage Tasks"], index=0)
+
+if page == "Manage Tasks":
+    render_task_manager()
+    st.stop()
 
 # Graph section with tabs
 render_graph_section()
@@ -2764,9 +2865,7 @@ if synthesis:
     narrative = synthesis.get("narrative", [])
     if narrative:
         synth_html += "<div class='synthesis-narrative'>"
-        synth_html += (
-            "<div class='synthesis-narrative-title'>📖 TODAY'S STORY</div>"
-        )
+        synth_html += "<div class='synthesis-narrative-title'>📖 TODAY'S STORY</div>"
         synth_html += "<ul class='synthesis-narrative-list'>"
         for bullet in narrative:
             synth_html += f"<li>{esc(bullet)}</li>"
@@ -2792,9 +2891,7 @@ if synthesis:
             "✅" if status == "on_track" else "⚠️" if status == "drifted" else "🚫"
         )
         synth_html += f"<div class='synthesis-card {status_class}'>"
-        synth_html += (
-            f"<div class='synthesis-card-title'>{status_icon} ALIGNMENT</div>"
-        )
+        synth_html += f"<div class='synthesis-card-title'>{status_icon} ALIGNMENT</div>"
         synth_html += f"<div class='synthesis-card-content'>{esc(alignment.get('note', ''))}</div>"
         synth_html += "</div>"
 
@@ -2812,16 +2909,16 @@ if synthesis:
     if waiting_on:
         first_blocker = waiting_on[0]
         synth_html += "<div class='synthesis-card waiting'>"
-        synth_html += f"<div class='synthesis-card-title'>⏳ BLOCKED ({len(waiting_on)})</div>"
+        synth_html += (
+            f"<div class='synthesis-card-title'>⏳ BLOCKED ({len(waiting_on)})</div>"
+        )
         synth_html += f"<div class='synthesis-card-content'>{esc(first_blocker.get('task', ''))}</div>"
         synth_html += "</div>"
 
     # Token usage card
     token_metrics = load_token_metrics()
     if token_metrics:
-        total_tokens = (
-            token_metrics["input_tokens"] + token_metrics["output_tokens"]
-        )
+        total_tokens = token_metrics["input_tokens"] + token_metrics["output_tokens"]
         # Format tokens: K for thousands, M for millions
         if total_tokens >= 1_000_000:
             tokens_str = f"{total_tokens / 1_000_000:.1f}M"
@@ -2857,9 +2954,7 @@ if synthesis:
         compliance = skill_insights.get("compliance_rate")
         if compliance is not None:
             pct = int(compliance * 100)
-            color = (
-                "#4ade80" if pct >= 70 else "#fbbf24" if pct >= 40 else "#f87171"
-            )
+            color = "#4ade80" if pct >= 70 else "#fbbf24" if pct >= 40 else "#f87171"
             synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Skill Compliance:</span> <span class='insights-stat-value' style='color: {color};'>{pct}%</span></span>"
 
         corrections = skill_insights.get("corrections_count", 0)
@@ -2935,7 +3030,7 @@ has_blockers = daily_log and daily_log.get("blockers")
 try:
     sessions = find_sessions()
     # analyzer already initialized above for daily log
-    
+
     # Load daily note accomplishments
     daily_note = analyzer.read_daily_note()
     accomplishments_by_project: dict[str, list] = {}
@@ -2945,16 +3040,16 @@ try:
             if proj not in accomplishments_by_project:
                 accomplishments_by_project[proj] = []
             accomplishments_by_project[proj].extend(session.get("accomplishments", []))
-    
+
     # Load priority tasks from index
     all_tasks = load_tasks_from_index()
     tasks_by_project: dict[str, list] = {}
-    
+
     for task in all_tasks:
         # Skip closed/done tasks
         if task.get("status") in ("closed", "done", "completed"):
             continue
-    
+
         # Determine project
         # 1. explicit project field
         proj = task.get("project")
@@ -2965,15 +3060,15 @@ try:
                 proj = tid.split("-")[0]
             else:
                 proj = "inbox"
-    
+
         if not proj:
             proj = "inbox"
-    
+
         if proj not in tasks_by_project:
             tasks_by_project[proj] = []
-    
+
         tasks_by_project[proj].append(task)
-    
+
     # Group sessions by project locally for "Project Status" indicators
     projects: dict[str, dict] = {}
     for session in sessions:
@@ -2983,19 +3078,19 @@ try:
             continue
         if "-tmp" in session.project or "-var-folders" in session.project:
             continue
-    
+
         proj = _format_project_name(session.project)
-    
+
         if proj not in projects:
             projects[proj] = {
                 "last_modified": session.last_modified,
                 "session_count": 0,
             }
-    
+
         projects[proj]["session_count"] += 1
         if session.last_modified > projects[proj]["last_modified"]:
             projects[proj]["last_modified"] = session.last_modified
-    
+
     # Define All Projects Union
     all_projects = (
         set(projects.keys())
@@ -3025,43 +3120,43 @@ try:
 
     # Project Card Renderer
     project_cards = []
-    
+
     def get_project_sort_score(p):
         # Active agents = highest priority (1000 pts per agent)
         # P0 tasks = high priority (100 pts)
         # Recent modification = tie breaker
         score = 0
         score += len(sessions_by_project.get(p, [])) * 1000
-    
+
         tasks = tasks_by_project.get(p, [])
         has_p0 = any(t.get("priority") == 0 for t in tasks)
         if has_p0:
             score += 100
-    
+
         # Recency (days ago invert)
         data = projects.get(p, {})
         last_mod = data.get("last_modified")
         if last_mod:
             days_ago = (datetime.now(timezone.utc) - last_mod).days
             score += max(0, 10 - days_ago)
-    
+
         return score
-    
+
     sorted_projects = sorted(all_projects, key=get_project_sort_score, reverse=True)
-    
+
     for proj in sorted_projects:
         # Gather Data
         p_sessions = sessions_by_project.get(proj, [])
         p_tasks = tasks_by_project.get(proj, [])
         p_acc = accomplishments_by_project.get(proj, [])
-    
+
         # sorting tasks
         p_tasks.sort(key=lambda t: t.get("priority", 99))
-    
+
         # Identify "Active" tasks (in progress) vs "Queued"
         # For now, assumption: Sessions might be working on them, but TJA doesn't strictly link yet.
         # We'll list Top P0/P1 as "Priority" and maybe a separate list for "Done" if we had it.
-    
+
         # Filter out dull projects
         if (
             not p_sessions
@@ -3070,9 +3165,9 @@ try:
             and not projects.get(proj, {}).get("session_count")
         ):
             continue
-    
+
         color = get_project_color(proj)
-    
+
         # --- HTML Building ---
         card_parts = []
 
@@ -3082,14 +3177,24 @@ try:
         )
 
         # 1.5. Epic Progress - show progress bars for each active epic in this project
-        project_epics = [t for t in all_tasks if t.get("type") == "epic" and t.get("project") == proj and t.get("status") not in ("done", "closed")]
+        project_epics = [
+            t
+            for t in all_tasks
+            if t.get("type") == "epic"
+            and t.get("project") == proj
+            and t.get("status") not in ("done", "closed")
+        ]
         if project_epics:
             card_parts.append("<div class='p-section-title'>📊 EPICS</div>")
             tasks_by_id = {t["id"]: t for t in all_tasks}
             for epic in project_epics[:3]:  # Limit to 3 epics
                 epic_title = epic.get("title", "").replace("Epic: ", "")
                 children_ids = epic.get("children", [])
-                done_count = sum(1 for cid in children_ids if tasks_by_id.get(cid, {}).get("status") == "done")
+                done_count = sum(
+                    1
+                    for cid in children_ids
+                    if tasks_by_id.get(cid, {}).get("status") == "done"
+                )
                 total_count = len(children_ids)
                 pct = (done_count / total_count * 100) if total_count > 0 else 0
                 card_parts.append(
@@ -3106,8 +3211,10 @@ try:
                 title = t.get("title", "")
                 card_parts.append(f"<div class='acc-row'>✓ {esc(title)}</div>")
             if len(closed_tasks) > 3:
-                card_parts.append(f"<div class='more-row'>+ {len(closed_tasks) - 3} more closed</div>")
-    
+                card_parts.append(
+                    f"<div class='more-row'>+ {len(closed_tasks) - 3} more closed</div>"
+                )
+
         # 3. Priority Tasks (Backlog)
         # We only show top 3-5 incomplete tasks to save space
         incomplete_tasks = [
@@ -3126,13 +3233,13 @@ try:
                 card_parts.append(
                     f"<div class='more-row'>+ {len(incomplete_tasks) - 3} more tasks</div>"
                 )
-    
+
         # 4. Recent Accomplishments
         if p_acc:
             card_parts.append("<div class='p-section-title'>✅ RECENTLY</div>")
             for acc in p_acc[:3]:
                 card_parts.append(f"<div class='acc-row'>✓ {esc(acc)}</div>")
-    
+
         # Wrap in Project Card Div
         # Wrap in Project Card Div
         project_cards.append(
@@ -3142,10 +3249,10 @@ try:
         </div>
         """)
         )
-    
+
         if len(project_cards) >= 20:  # Limit total boxes to avoid crashing browser
             break
-    
+
     # Render Grid
     if project_cards:
         # CSS is already loaded in main block
@@ -3155,11 +3262,11 @@ try:
         )
     else:
         st.info("No active projects found")
-    
+
     # Spacer
     st.write("")
-    
-    
+
+
 except Exception as e:
     st.error(f"Error loading projects: {e}")
     st.exception(e)

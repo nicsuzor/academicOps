@@ -201,8 +201,8 @@ def nuke(task_id, force):
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
-@main.command()
-def list():
+@main.command("list")
+def list_polecats():
     """List active polecats."""
     manager = PolecatManager()
     if not manager.polecats_dir.exists():
