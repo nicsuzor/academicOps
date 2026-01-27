@@ -121,7 +121,39 @@ fi
 
 echo -e "${GREEN}✓ AOPS=$AOPS${NC}"
 echo -e "${GREEN}✓ ACA_DATA=$ACA_DATA${NC}"
-echo 
+echo
+
+# Step 1b: Create framework file symlinks at root
+echo "Step 1b: Creating framework file symlinks"
+echo "-----------------------------------------"
+
+# Framework files live in aops-core/ but hydrator expects them at root
+for file in WORKFLOWS.md SKILLS.md AXIOMS.md HEURISTICS.md; do
+    target="aops-core/$file"
+    link_path="$AOPS_PATH/$file"
+    if [ -L "$link_path" ]; then
+        current_target="$(readlink "$link_path")"
+        if [ "$current_target" = "$target" ]; then
+            echo "  $file → $target (already correct)"
+            continue
+        fi
+        rm "$link_path"
+    elif [ -e "$link_path" ]; then
+        echo -e "${YELLOW}⚠ $file exists as regular file, skipping symlink${NC}"
+        continue
+    fi
+    ln -s "$target" "$link_path"
+    echo -e "${GREEN}  $file → $target${NC}"
+done
+
+# Generate FRAMEWORK-PATHS.md
+echo "Generating FRAMEWORK-PATHS.md..."
+if python3 "$AOPS_PATH/aops-core/scripts/generate_framework_paths.py"; then
+    echo -e "${GREEN}✓ Generated FRAMEWORK-PATHS.md${NC}"
+else
+    echo -e "${YELLOW}⚠ Failed to generate FRAMEWORK-PATHS.md${NC}"
+fi
+echo
 
 # Step 2: Build MCP Configuration
 echo "Step 2: Building MCP Configuration"
