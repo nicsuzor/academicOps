@@ -25,10 +25,7 @@ AOPS_CORE_DIR = HOOK_DIR.parent
 if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
-try:
-    from hooks.hook_logger import log_hook_event
-except ImportError:
-    log_hook_event = None
+# Hook logging is handled by unified_logger.py in the hook registry
 
 # --- Configuration ---
 
@@ -165,8 +162,12 @@ def persist_session_data(data: Dict[str, Any]) -> None:
             os.write(fd, json.dumps(data).encode())
             os.close(fd)
             Path(temp_path).rename(session_file)
-        except Exception:
-            os.close(fd) if fd else None
+        except (IOError, OSError):
+            # Clean up temp file on write failure; fd may already be closed
+            try:
+                os.close(fd)
+            except OSError:
+                pass
             Path(temp_path).unlink(missing_ok=True)
             raise
 
@@ -185,7 +186,8 @@ def get_session_data() -> Dict[str, Any]:
                 return json.loads(content)
             except json.JSONDecodeError:
                 return {"session_id": content}
-    except Exception:
+    except OSError:
+        # Session file read errors are non-fatal; return empty dict
         pass
     return {}
 
@@ -248,7 +250,9 @@ def map_gemini_to_claude(
                 else:
                     # Fallback: just use parent
                     update_data["temp_root"] = str(trans_p.parent)
-            except Exception:
+            except (OSError, ValueError, AttributeError):
+                # Best-effort extraction of temp_root; if parsing fails,
+                # continue without it - hooks can still function
                 pass
 
         persist_session_data(update_data)
@@ -342,13 +346,18 @@ def run_hook_script(
 
 
 def merge_outputs(outputs: List[Dict[str, Any]], event_name: str) -> Dict[str, Any]:
-    """Merge outputs from multiple hooks (simplified)."""
+    """Merge outputs from multiple hooks.
+
+    Combines system messages, permission decisions (deny > ask > allow),
+    and additionalContext from all hook outputs.
+    """
     if not outputs:
         return {}
 
     result: Dict[str, Any] = {}
-    system_messages = []
-    permission_decisions = []  # deny > ask > allow
+    system_messages: List[str] = []
+    additional_contexts: List[str] = []
+    permission_decisions: List[str] = []  # deny > ask > allow
 
     for out in outputs:
         if not out:
@@ -358,18 +367,16 @@ def merge_outputs(outputs: List[Dict[str, Any]], event_name: str) -> Dict[str, A
         if "systemMessage" in out:
             system_messages.append(out["systemMessage"])
 
-        # Collect permission decisions
+        # Collect from hookSpecificOutput
         if "hookSpecificOutput" in out:
-            if "permissionDecision" in out["hookSpecificOutput"]:
-                permission_decisions.append(
-                    out["hookSpecificOutput"]["permissionDecision"]
-                )
+            hso = out["hookSpecificOutput"]
 
-            # Flatten additionalContext for simple merging
-            if "additionalContext" in out["hookSpecificOutput"]:
-                # Append as system message for simplicity or merge contexts
-                # Just appending to system messages is a safe fallback for general tools
-                pass
+            if "permissionDecision" in hso:
+                permission_decisions.append(hso["permissionDecision"])
+
+            # Collect additionalContext - these are injected into model context
+            if "additionalContext" in hso:
+                additional_contexts.append(hso["additionalContext"])
 
     # Aggregation
     if system_messages:
@@ -385,9 +392,13 @@ def merge_outputs(outputs: List[Dict[str, Any]], event_name: str) -> Dict[str, A
     else:
         final_perm = None
 
-    if final_perm:
-        result.setdefault("hookSpecificOutput", {})["permissionDecision"] = final_perm
-        result["hookSpecificOutput"]["hookEventName"] = event_name
+    if final_perm or additional_contexts:
+        result.setdefault("hookSpecificOutput", {})["hookEventName"] = event_name
+        if final_perm:
+            result["hookSpecificOutput"]["permissionDecision"] = final_perm
+        if additional_contexts:
+            # Merge all additional contexts with newline separator
+            result["hookSpecificOutput"]["additionalContext"] = "\n\n".join(additional_contexts)
 
     return result
 

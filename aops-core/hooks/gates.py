@@ -8,9 +8,7 @@ It loads active gates from configuration and executes them.
 
 import json
 import sys
-import os
 from pathlib import Path
-from typing import Any, Dict
 
 # Ensure aops-core is in path
 HOOK_DIR = Path(__file__).parent

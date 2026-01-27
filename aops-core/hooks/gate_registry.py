@@ -6,7 +6,6 @@ This module contains the "Conditions" that gates evaluate.
 
 from typing import Any, Dict, Optional, Tuple
 from pathlib import Path
-import json
 import sys
 import os
 
@@ -17,7 +16,7 @@ try:
     from lib import session_state
     from lib import hook_utils
     from lib.template_loader import load_template
-    from lib.session_reader import extract_gate_context, load_skill_scope
+    from lib.session_reader import extract_gate_context
 except ImportError as e:
     _IMPORT_ERROR = str(e)
     # Provide stub implementations that raise clear errors when used
@@ -25,7 +24,6 @@ except ImportError as e:
     hook_utils = None  # type: ignore[assignment]
     load_template = None  # type: ignore[assignment]
     extract_gate_context = None  # type: ignore[assignment]
-    load_skill_scope = None  # type: ignore[assignment]
 
 
 def _check_imports() -> None:
@@ -281,11 +279,7 @@ def check_custodiet_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
     if ctx.tool_name in skip_tools:
         return None
 
-    # Increment counter using session_state (assumed shared logic or lib method)
-    # Note: Need to verify if increment_tool_count is available in session_state lib
-    # If not, we implement it here using generic session state loading
-
-    # Logic ported from custodiet_gate.py:
+    # Track tool calls and trigger compliance check when threshold reached
     loaded = session_state.load_custodiet_state(ctx.session_id)
     state = (
         loaded
@@ -316,9 +310,10 @@ def check_custodiet_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
             session_state.save_custodiet_state(ctx.session_id, state)
 
             return output
-        except Exception as e:
-            # Log error but fail-safe
-            print(f"Custodiet error: {e}", file=sys.stderr)
+        except (OSError, KeyError, TypeError) as e:
+            # Fail-open: compliance checking errors should not block operations.
+            # Log the error for debugging but allow the tool call to proceed.
+            print(f"WARNING: Custodiet audit failed (fail-open): {e}", file=sys.stderr)
             return None
 
     return None
