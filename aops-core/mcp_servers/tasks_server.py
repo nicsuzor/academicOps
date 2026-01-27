@@ -77,15 +77,81 @@ def _get_index() -> TaskIndex:
     return index
 
 
-def _task_to_dict(task: Task) -> dict[str, Any]:
+def _truncate_body(body: str, max_length: int = 200) -> str:
+    """Truncate body text to a brief extract.
+
+    Extracts meaningful content, skipping markdown headers and relationship sections.
+    Truncates at word boundaries and adds ellipsis if truncated.
+
+    Args:
+        body: Full body text
+        max_length: Maximum length of extract (default: 200 chars)
+
+    Returns:
+        Truncated body text with ellipsis if truncated
+    """
+    if not body or len(body) <= max_length:
+        return body
+
+    # Skip common markdown headers and relationship sections
+    lines = body.split("\n")
+    content_lines = []
+    skip_section = False
+    found_content = False  # Track if we've found non-header content
+
+    for line in lines:
+        stripped = line.strip()
+        # Skip relationship sections
+        if stripped.startswith("## Relationships"):
+            skip_section = True
+            continue
+        # Reset skip on new section
+        if stripped.startswith("## ") and skip_section:
+            skip_section = False
+            continue
+        if skip_section:
+            continue
+        # Skip empty lines at start
+        if not stripped and not found_content:
+            continue
+        # Skip markdown H1 headers before any real content
+        if stripped.startswith("# ") and not found_content:
+            continue
+        found_content = True
+        content_lines.append(line)
+
+    # Join and truncate
+    content = "\n".join(content_lines).strip()
+    if not content:
+        content = body.strip()
+
+    if len(content) <= max_length:
+        return content
+
+    # Truncate at word boundary
+    truncated = content[:max_length]
+    last_space = truncated.rfind(" ")
+    if last_space > max_length // 2:
+        truncated = truncated[:last_space]
+
+    return truncated.rstrip() + "..."
+
+
+def _task_to_dict(task: Task, truncate_body: int | None = None) -> dict[str, Any]:
     """Convert Task to dictionary for MCP response.
 
     Args:
         task: Task instance
+        truncate_body: If provided, truncate body to this many characters.
+            Use for list/search results to reduce response size.
 
     Returns:
         Dictionary representation suitable for JSON serialization
     """
+    body = task.body
+    if truncate_body is not None:
+        body = _truncate_body(body, truncate_body)
+
     return {
         "id": task.id,
         "title": task.title,
@@ -107,7 +173,7 @@ def _task_to_dict(task: Task) -> dict[str, Any]:
         "context": task.context,
         "assignee": task.assignee,
         "complexity": task.complexity.value if task.complexity else None,
-        "body": task.body,
+        "body": body,
         "children": task.children,
         "blocks": task.blocks,
         "soft_blocks": task.soft_blocks,
@@ -1580,7 +1646,8 @@ def search_tasks(query: str, limit: int = 20) -> dict[str, Any]:
         # Sort by priority then title
         matches.sort(key=lambda t: (t.priority, t.title))
 
-        task_dicts = [_task_to_dict(t) for t in matches]
+        # Truncate body to 200 chars for search results to reduce response size
+        task_dicts = [_task_to_dict(t, truncate_body=200) for t in matches]
         return {
             "success": True,
             "tasks": task_dicts,
