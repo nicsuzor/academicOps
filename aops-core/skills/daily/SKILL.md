@@ -61,6 +61,7 @@ else:
 | Section                 | Owner    | Updated By             |
 | ----------------------- | -------- | ---------------------- |
 | Focus                   | `/daily` | Morning briefing + task recommendations |
+| Task Tree               | `/daily` | Task hierarchy snapshot |
 | Today's Story           | `/daily` | Session JSON synthesis |
 | FYI                     | `/daily` | Email triage           |
 | Session Log/Timeline    | `/daily` | Session JSON synthesis |
@@ -195,6 +196,38 @@ Parse task data from output to identify:
 - Overdue tasks (negative days_until_due)
 - Today's work by project
 - Blocked tasks
+
+### 3.1.5: Generate Task Tree
+
+After loading task data, generate the ASCII task tree for the `## Task Tree` section:
+
+```python
+mcp__plugin_aops-tools_task_manager__get_task_tree(
+    exclude_status=["done", "cancelled"],
+    max_depth=2
+)
+```
+
+This provides a bird's eye view of active project hierarchy. The tree:
+- Excludes completed and cancelled tasks
+- Shows up to 2 levels deep (roots + children + grandchildren)
+- Displays task ID, title, and status
+
+**Format in daily note**:
+
+```markdown
+## Task Tree
+
+```
+[project-id] Project Name (status)
+  [task-id] Task title (status)
+    [subtask-id] Subtask title (status)
+```
+
+*Active projects with depth 2, excluding done/cancelled tasks*
+```
+
+Copy the `formatted` field from the response directly into the code block.
 
 ### 3.2: Build Focus Section
 

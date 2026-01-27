@@ -26,6 +26,22 @@ P3 ██░░░░░░░░  15/85
 
 *Suggested sequence*: Tackle overdue items first, then deep work.
 
+## Task Tree
+
+```
+[aops] AcademicOps (in_progress)
+  [aops-79edb5a4] Daily Goals - Session Review... (active)
+    [aops-b1854175] Add ASCII task tree to daily note (in_progress)
+
+[arc-future-fellowship] ARC Future Fellowship (active)
+  [arc-ft-reviews] Complete FT26 Reviews (in_progress)
+
+[writing] Writing Projects (active)
+  [toxicity] Toxicity paper (in_progress)
+```
+
+*Active projects with depth 2, excluding done/cancelled tasks*
+
 ## Today's Story
 
 Synthesized narrative from session summaries (2-3 sentences).

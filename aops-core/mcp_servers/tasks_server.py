@@ -1051,7 +1051,12 @@ def get_review_tasks(project: str = "", limit: int = 10) -> dict[str, Any]:
 
 
 @mcp.tool()
-def get_task_tree(id: Optional[str] = None) -> dict[str, Any]:
+def get_task_tree(
+    id: Optional[str] = None,
+    exclude_status: Optional[list[str]] = None,
+    max_depth: Optional[int] = None,
+    project: Optional[str] = None,
+) -> dict[str, Any]:
     """Get the decomposition tree for a task, or all root tasks.
 
     Returns the task and all its descendants in a tree structure.
@@ -1059,6 +1064,9 @@ def get_task_tree(id: Optional[str] = None) -> dict[str, Any]:
 
     Args:
         id: Root task ID to get tree for. If not provided, returns all root trees.
+        exclude_status: List of statuses to exclude (e.g., ["done", "cancelled"])
+        max_depth: Maximum tree depth (0 = roots only, 1 = roots + children, etc.)
+        project: Filter roots by project slug (only applies when id is None)
 
     Returns:
         Dictionary with:
@@ -1071,6 +1079,32 @@ def get_task_tree(id: Optional[str] = None) -> dict[str, Any]:
     """
     try:
         index = _get_index()
+        exclude_set = set(exclude_status) if exclude_status else set()
+
+        def should_include(entry: TaskIndexEntry) -> bool:
+            """Check if task should be included based on filters."""
+            if entry.status in exclude_set:
+                return False
+            return True
+
+        def build_tree(entry: TaskIndexEntry, depth: int = 0) -> Optional[dict[str, Any]]:
+            """Recursively build tree structure with filtering."""
+            if not should_include(entry):
+                return None
+
+            # Get children if within depth limit
+            children_nodes = []
+            if max_depth is None or depth < max_depth:
+                children = index.get_children(entry.id)
+                for child in children:
+                    child_tree = build_tree(child, depth + 1)
+                    if child_tree is not None:
+                        children_nodes.append(child_tree)
+
+            return {
+                "task": _index_entry_to_dict(entry),
+                "children": children_nodes,
+            }
 
         # If no ID provided, return all root trees
         if id is None:
@@ -1082,21 +1116,31 @@ def get_task_tree(id: Optional[str] = None) -> dict[str, Any]:
                     "message": "No root tasks found",
                 }
 
-            def build_tree(entry: TaskIndexEntry) -> dict[str, Any]:
-                """Recursively build tree structure."""
-                children = index.get_children(entry.id)
-                return {
-                    "task": _index_entry_to_dict(entry),
-                    "children": [build_tree(child) for child in children],
-                }
+            # Filter roots by project if specified
+            if project:
+                roots = [r for r in roots if r.project == project]
 
-            trees = [build_tree(root) for root in roots]
+            trees = []
+            for root in roots:
+                tree = build_tree(root, 0)
+                if tree is not None:
+                    trees.append(tree)
+
             formatted_trees = "\n\n".join(_format_tree(t) for t in trees)
+            filters_desc = []
+            if exclude_status:
+                filters_desc.append(f"excluding {exclude_status}")
+            if max_depth is not None:
+                filters_desc.append(f"depth≤{max_depth}")
+            if project:
+                filters_desc.append(f"project={project}")
+            filter_msg = f" ({', '.join(filters_desc)})" if filters_desc else ""
+
             return {
                 "success": True,
                 "tree": trees,
                 "formatted": formatted_trees,
-                "message": f"Found {len(trees)} root task trees",
+                "message": f"Found {len(trees)} root task trees{filter_msg}",
             }
 
         # Single task tree
@@ -1109,15 +1153,14 @@ def get_task_tree(id: Optional[str] = None) -> dict[str, Any]:
                 "message": f"Task not found: {id}",
             }
 
-        def build_tree(entry: TaskIndexEntry) -> dict[str, Any]:
-            """Recursively build tree structure."""
-            children = index.get_children(entry.id)
-            return {
-                "task": _index_entry_to_dict(entry),
-                "children": [build_tree(child) for child in children],
-            }
+        tree = build_tree(root, 0)
 
-        tree = build_tree(root)
+        if tree is None:
+            return {
+                "success": False,
+                "tree": None,
+                "message": f"Task excluded by filters: {id}",
+            }
 
         return {
             "success": True,
