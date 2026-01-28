@@ -218,8 +218,10 @@ class TestGateRegistry:
             assert result is None  # Allowed
 
     def test_hydration_block(self):
+        # Use Bash (not in safe tools list) to test blocking behavior
+        # read_file is now in HYDRATION_SAFE_TOOLS and won't be blocked
         ctx = gate_registry.GateContext(
-            "sess1", "PreToolUse", {"tool_name": "read_file"}
+            "sess1", "PreToolUse", {"tool_name": "Bash"}
         )
 
         with (

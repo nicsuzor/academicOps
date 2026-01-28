@@ -11,10 +11,10 @@ description: |
 
 This session is in WARN mode for testing. In production, this would BLOCK all tools.
 
-To proceed correctly, spawn the hydrator subagent:
+To proceed correctly, invoke the prompt-hydrator skill:
 
 ```
-Delegate to **prompt-hydrator**:
+Invoke the **prompt-hydrator** skill:
 
 "Read {temp_path} and provide workflow guidance."
 ```

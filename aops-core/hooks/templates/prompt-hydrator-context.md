@@ -141,7 +141,7 @@ Return this EXACT structure:
 1. [Task claim/create from above]
 2. [Workflow step]
 3. CHECKPOINT: [verification]
-4. Delegate to **QA**: "Verify implementation..."
+4. Invoke the **qa** skill: "Verify implementation..."
 5. Complete task, commit, and output Framework Reflection
 
 ### Deferred Work (multi-session only)

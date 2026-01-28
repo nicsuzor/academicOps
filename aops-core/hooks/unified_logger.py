@@ -68,6 +68,8 @@ def log_event_to_session(
         handle_subagent_stop(session_id, input_data)
     elif hook_event == "Stop":
         handle_stop(session_id, input_data)
+    elif hook_event == "PostToolUse":
+        handle_post_tool_use(session_id, input_data)
     elif hook_event == "SessionStart":
         # Create session state and return path + session_id only (not full contents)
         state = get_or_create_session_state(session_id)
@@ -85,6 +87,30 @@ def log_event_to_session(
         # This updates the session file with the latest access
         get_or_create_session_state(session_id)
     return None
+
+
+def handle_post_tool_use(session_id: str, input_data: dict[str, Any]) -> None:
+    """Handle PostToolUse event.
+
+    Checks for skill activations that trigger gates (e.g., critic).
+
+    Args:
+        session_id: Claude Code session ID
+        input_data: Hook input data
+    """
+    tool_name = input_data.get("tool_name")
+    tool_input = input_data.get("tool_input", {})
+
+    # Detect activate_skill(name="critic")
+    if tool_name == "activate_skill":
+        skill_name = tool_input.get("name")
+        if skill_name == "critic":
+            # Critic skill invoked - satisfy the gate
+            # Verdict is not available from activation (it comes from the agent's subsequent analysis)
+            # We assume PROCEED or rely on user to halt if critic finds issues.
+            # The gate mainly checks *that* it was invoked.
+            set_critic_invoked(session_id, verdict="INVOKED")
+            logger.info("Critic gate set via activate_skill")
 
 
 def handle_subagent_stop(session_id: str, input_data: dict[str, Any]) -> None:

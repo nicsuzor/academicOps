@@ -42,6 +42,24 @@ HYDRATION_TEMP_CATEGORY = "hydrator"
 HYDRATION_BLOCK_TEMPLATE = (
     Path(__file__).parent / "templates" / "hydration-gate-block.md"
 )
+# Safe tools that should NOT be blocked by hydration gate (read-only operations)
+# These tools gather context and don't modify state, so blocking them is counterproductive
+HYDRATION_SAFE_TOOLS = {
+    # Claude tools
+    "Read",
+    "Glob",
+    "Grep",
+    "WebFetch",
+    "WebSearch",
+    # Gemini tools
+    "read_file",
+    "view_file",
+    "list_dir",
+    "find_by_name",
+    "grep_search",
+    "search_web",
+    "read_url_content",
+}
 
 # Custodiet
 CUSTODIET_TEMP_CATEGORY = "compliance"
@@ -81,13 +99,17 @@ def _hydration_is_subagent_session() -> bool:
 
 
 def _hydration_is_hydrator_task(tool_input: dict[str, Any]) -> bool:
-    """Check if Task/delegate_to_agent invocation is spawning prompt-hydrator."""
+    """Check if Task/delegate_to_agent/activate_skill invocation is spawning prompt-hydrator."""
     # Claude Task tool uses 'subagent_type'
     target = tool_input.get("subagent_type")
 
     # Gemini delegate_to_agent uses 'agent_name'
     if not target:
         target = tool_input.get("agent_name")
+
+    # Gemini activate_skill uses 'name'
+    if not target:
+        target = tool_input.get("name")
 
     if target is None:
         return False
@@ -135,12 +157,17 @@ def check_hydration_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
     if _hydration_is_subagent_session():
         return None
 
+    # Bypass for safe read-only tools (context gathering shouldn't be blocked)
+    if ctx.tool_name in HYDRATION_SAFE_TOOLS:
+        return None
+
     # Check if hydration is pending
     if not session_state.is_hydration_pending(ctx.session_id):
         return None
 
     # Check if this is the hydrator being invoked
-    is_hydrator_tool = ctx.tool_name in ("Task", "delegate_to_agent")
+    # Claude uses Task, Gemini uses delegate_to_agent or activate_skill
+    is_hydrator_tool = ctx.tool_name in ("Task", "delegate_to_agent", "activate_skill")
     is_hydrator = is_hydrator_tool and _hydration_is_hydrator_task(ctx.tool_input)
     is_gemini = _hydration_is_gemini_hydration_attempt(
         ctx.tool_name or "", ctx.tool_input, ctx.input_data

@@ -190,12 +190,12 @@ def list_tasks(status: str | None, project: str | None, task_type: str | None, p
 
     # Rich table output
     table = Table(show_header=True, header_style="bold", box=None, padding=(0, 1))
+    table.add_column("ID", style="dim", no_wrap=True)
     table.add_column("", width=2)  # Status icon
     table.add_column("", width=2)  # Type icon
     table.add_column("Pri", width=3)
     table.add_column("Project", style="cyan", width=12)
     table.add_column("Title")
-    table.add_column("ID", style="dim", width=20)
 
     for task in tasks:
         icon, style = STATUS_STYLE.get(task.status.value, ("?", "white"))
@@ -205,12 +205,12 @@ def list_tasks(status: str | None, project: str | None, task_type: str | None, p
         title_style = style if task.status.value in ("done", "cancelled") else "white"
 
         table.add_row(
+            task.id,
             Text(icon, style=style),
             Text(type_icon, style="dim"),
             Text(pri_label, style=pri_style),
             task.project or "inbox",
             Text(task.title, style=title_style),
-            task.id,
         )
 
     console.print(table)
@@ -501,12 +501,12 @@ def ready(project: str, caller: str | None, limit: int):
         # Show table of ready tasks
         table = Table(show_header=True, header_style="bold", box=None, padding=(0, 1))
         table.add_column("#", width=3, justify="right")
+        table.add_column("ID", style="dim", no_wrap=True)
         table.add_column("", width=2)  # Type icon
         table.add_column("Pri", width=3)
         table.add_column("Project", style="cyan", width=12)
         table.add_column("Assignee", style="dim", width=8)
         table.add_column("Title")
-        table.add_column("ID", style="dim", width=20)
 
         for i, task in enumerate(tasks[:limit], 1):
             type_icon = TYPE_ICON.get(task.type.value, "•")
@@ -515,12 +515,12 @@ def ready(project: str, caller: str | None, limit: int):
 
             table.add_row(
                 str(i),
+                task.id,
                 Text(type_icon, style="dim"),
                 Text(pri_label, style=pri_style),
                 task.project or "inbox",
                 assignee,
                 task.title,
-                task.id,
             )
 
         console.print(table)

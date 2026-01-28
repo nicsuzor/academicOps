@@ -1,7 +1,7 @@
 # Hydrate Before Acting
 
 **Execute this Task call:**
-Delegate to **prompt-hydrator**:
+Invoke the **prompt-hydrator** skill:
 
 "Read {temp_path} and provide workflow guidance."
 

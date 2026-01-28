@@ -496,15 +496,22 @@ def colab(project, title, caller, gemini, no_finish):
 @click.option(
     "--interactive", "-i", is_flag=True, help="Run in interactive mode (not headless)"
 )
-def run(project, caller, task_id, no_finish, gemini, interactive):
-    """Run a polecat cycle: claim → setup → work.
+@click.option(
+    "--no-auto-finish",
+    is_flag=True,
+    help="Skip automatic 'polecat finish' on successful completion",
+)
+@click.pass_context
+def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_finish):
+    """Run a polecat cycle: claim → setup → work → finish.
 
     Claims a task, spawns a worktree, and runs claude with the task context.
-    Agents should call `polecat finish` themselves when ready to merge.
+    On successful completion (exit code 0), automatically runs `polecat finish`.
 
     Examples:
-        polecat run -p aops           # Run next ready task from aops project
-        polecat run -t task-123       # Run specific task
+        polecat run -p aops              # Run next ready task from aops project
+        polecat run -t task-123          # Run specific task
+        polecat run -p aops --no-auto-finish  # Skip auto-finish on success
     """
     import subprocess
 
@@ -607,15 +614,33 @@ def run(project, caller, task_id, no_finish, gemini, interactive):
 
     print("-" * 50)
 
-    # Step 5: Report status - agents should call `polecat finish` themselves
+    # Step 5: Auto-finish on success (unless disabled)
     if exit_code == 0:
         print(f"\n✅ Agent completed successfully.")
+        if not no_auto_finish:
+            print(f"🔄 Running auto-finish...")
+            # Change to worktree directory and invoke finish directly
+            original_cwd = os.getcwd()
+            try:
+                os.chdir(worktree_path)
+                ctx.invoke(finish, no_push=False, do_nuke=False)
+                print(f"✅ Auto-finish completed.")
+            except SystemExit as e:
+                if e.code != 0:
+                    print(f"⚠️  Auto-finish failed.")
+                    print(f"   You can retry manually: cd {worktree_path} && polecat finish")
+            except Exception as e:
+                print(f"⚠️  Auto-finish failed: {e}")
+                print(f"   You can retry manually: cd {worktree_path} && polecat finish")
+            finally:
+                os.chdir(original_cwd)
+        else:
+            print(f"📝 Auto-finish disabled. Run `polecat finish` when ready.")
+            print(f"   Worktree: {worktree_path}")
     else:
-        print(f"\n⚠️  Agent exited with code {exit_code}.")
-    print(
-        f"\n📝 When ready to merge, the agent should run `polecat finish` from the worktree."
-    )
-    print(f"   Worktree: {worktree_path}")
+        print(f"\n⚠️  Agent exited with code {exit_code}. Skipping auto-finish.")
+        print(f"   Worktree: {worktree_path}")
+        print(f"   To finish manually: cd {worktree_path} && polecat finish")
 
 
 if __name__ == "__main__":
