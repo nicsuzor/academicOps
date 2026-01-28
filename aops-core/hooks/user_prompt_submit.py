@@ -51,6 +51,7 @@ def get_hydration_temp_dir() -> Path:
     """
     return get_hook_temp_dir(TEMP_CATEGORY)
 
+
 # Intent envelope max length
 INTENT_MAX_LENGTH = 500
 
@@ -191,7 +192,7 @@ def load_axioms() -> str:
     Returns content after frontmatter separator.
     """
     aops_root = get_aops_root()
-    axioms_path = aops_root / "AXIOMS.md"
+    axioms_path = aops_root / "aops-core" / "AXIOMS.md"
 
     if not axioms_path.exists():
         return "(AXIOMS.md not found)"
@@ -392,6 +393,7 @@ def build_hydration_instruction(
             # Unexpected: I/O errors, parsing failures - log but continue
             # Context is optional, so we degrade gracefully
             import logging
+
             logging.getLogger(__name__).debug(
                 f"Context extraction failed (degrading gracefully): {type(e).__name__}: {e}"
             )
@@ -478,7 +480,10 @@ def main():
         input_data["argv"] = sys.argv
     except Exception as e:
         # Fail-fast: no silent failures (P#8, P#25)
-        print(f"ERROR: UserPromptSubmit hook failed to parse stdin JSON: {e}", file=sys.stderr)
+        print(
+            f"ERROR: UserPromptSubmit hook failed to parse stdin JSON: {e}",
+            file=sys.stderr,
+        )
         sys.exit(2)
 
     prompt = input_data.get("prompt", "")
@@ -488,7 +493,10 @@ def main():
     # Require session_id for state isolation
     if not session_id:
         # Fail-fast: session_id is required for state management (P#8, P#25)
-        print("ERROR: UserPromptSubmit hook requires session_id for state isolation", file=sys.stderr)
+        print(
+            "ERROR: UserPromptSubmit hook requires session_id for state isolation",
+            file=sys.stderr,
+        )
         sys.exit(2)
 
     # Clear reflection tracking flag for new user prompt
@@ -528,7 +536,10 @@ def main():
             }
         except (IOError, OSError) as e:
             # Fail-fast on infrastructure errors (P#8, P#25)
-            print(f"ERROR: UserPromptSubmit hook temp file write failed: {e}", file=sys.stderr)
+            print(
+                f"ERROR: UserPromptSubmit hook temp file write failed: {e}",
+                file=sys.stderr,
+            )
             sys.exit(2)
 
     # Output JSON

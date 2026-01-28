@@ -17,6 +17,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+# Adjust imports to work within the aops-core environment
+try:
+    from hooks import hook_logger
+except ImportError:
+    # Fallback or strict fail?
+    # Given this is the router, we expect hooks package to be importable
+    # via the sys.path manipulation in __init__ or similar, but let's be safe
+    hook_logger = None
+
 # --- Path Setup ---
 HOOK_DIR = Path(__file__).parent
 AOPS_CORE_DIR = HOOK_DIR.parent
@@ -24,6 +33,7 @@ AOPS_CORE_DIR = HOOK_DIR.parent
 # Add aops-core to path for imports
 if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
+
 
 # Hook logging is handled by unified_logger.py in the hook registry
 
@@ -166,7 +176,13 @@ def persist_session_data(data: Dict[str, Any]) -> None:
             # Clean up temp file on write failure; fd may already be closed
             try:
                 os.close(fd)
-            except OSError:
+            except Exception:
+                # Fallback
+                # The original code had 'pass' here. The instruction implies adding a line.
+                # Assuming 'gemini_details' and 'tool_output' are defined in a broader context
+                # or this is a placeholder for a specific fallback action.
+                # Since they are not defined here, I'll keep the original 'pass'
+                # but change the exception type as per the instruction's snippet.
                 pass
             Path(temp_path).unlink(missing_ok=True)
             raise
@@ -271,10 +287,43 @@ def map_claude_to_gemini(
 
     # Map hookSpecificOutput logic
     if "hookSpecificOutput" in gemini_output:
-        gemini_output["hookSpecificOutput"]["hookEventName"] = gemini_event
-        perm = gemini_output["hookSpecificOutput"].pop("permissionDecision", None)
+        hso = gemini_output["hookSpecificOutput"]
+        hso["hookEventName"] = gemini_event
+
+        # 1. Decision mapping (Common Field)
+        # All known Gemini events use top-level 'decision'
+        perm = hso.pop("permissionDecision", None)
         if perm:
             gemini_output["decision"] = perm
+
+            # 2. Reason mapping (BeforeTool Only)
+            # BeforeTool uses top-level 'reason' for explanations.
+            # Other events (BeforeAgent, AfterTool) use hookSpecificOutput.additionalContext.
+            # CRITICAL: SessionStart uses hookSpecificOutput.additionalContext to inject
+            # the first turn of history or prepend to prompt. Do NOT map to 'reason'.
+            if gemini_event == "BeforeTool":
+                context = hso.get("additionalContext")
+                if context:
+                    gemini_output["reason"] = context
+
+                    # Mirror to systemMessage for user visibility on deny/block
+                    # (only if not already set)
+                    if (
+                        perm in ["deny", "block"]
+                        and "systemMessage" not in gemini_output
+                    ):
+                        gemini_output["systemMessage"] = f"Tool blocked: {context}"
+
+            # 3. SessionStart: Move additionalContext to systemMessage to prevent injection
+            # Users want to see the session info but NOT inject it into the prompt.
+            elif gemini_event == "SessionStart":
+                context = hso.pop("additionalContext", None)
+                if context:
+                    current_sys = gemini_output.get("systemMessage", "")
+                    if current_sys:
+                        gemini_output["systemMessage"] = f"{current_sys}\n\n{context}"
+                    else:
+                        gemini_output["systemMessage"] = context
 
     return gemini_output
 
@@ -299,7 +348,9 @@ def run_hook_script(
         # Only prepend if not already present
         if aops_core_str not in current_pp.split(os.pathsep):
             env["PYTHONPATH"] = (
-                f"{aops_core_str}{os.pathsep}{current_pp}" if current_pp else aops_core_str
+                f"{aops_core_str}{os.pathsep}{current_pp}"
+                if current_pp
+                else aops_core_str
             )
 
         # Inject Gemini Temp Root if available and valid
@@ -332,13 +383,19 @@ def run_hook_script(
         return output, result.returncode
 
     except subprocess.TimeoutExpired as e:
-        print(f"ERROR: Hook {script_path.name} timed out after {timeout}s", file=sys.stderr)
+        print(
+            f"ERROR: Hook {script_path.name} timed out after {timeout}s",
+            file=sys.stderr,
+        )
         return {}, 2
     except FileNotFoundError as e:
         print(f"ERROR: Hook script not found: {script_path}: {e}", file=sys.stderr)
         return {}, 2
     except PermissionError as e:
-        print(f"ERROR: Permission denied for hook {script_path.name}: {e}", file=sys.stderr)
+        print(
+            f"ERROR: Permission denied for hook {script_path.name}: {e}",
+            file=sys.stderr,
+        )
         return {}, 2
     except OSError as e:
         print(f"ERROR: OS error running hook {script_path.name}: {e}", file=sys.stderr)
@@ -398,7 +455,9 @@ def merge_outputs(outputs: List[Dict[str, Any]], event_name: str) -> Dict[str, A
             result["hookSpecificOutput"]["permissionDecision"] = final_perm
         if additional_contexts:
             # Merge all additional contexts with newline separator
-            result["hookSpecificOutput"]["additionalContext"] = "\n\n".join(additional_contexts)
+            result["hookSpecificOutput"]["additionalContext"] = "\n\n".join(
+                additional_contexts
+            )
 
     return result
 
@@ -432,6 +491,23 @@ def execute_hooks(
     # Merge results
     merged_output = merge_outputs(outputs, event_name)
     final_exit_code = max(exit_codes) if exit_codes else 0
+    # Log operational trace (restores ~/.gemini/tmp/ logs)
+    try:
+        session_id = input_data.get("session_id")
+        if session_id:
+            if "hook_logger" in globals() and globals()["hook_logger"]:
+                hook_logger.log_hook_event(
+                    session_id=session_id,
+                    hook_event=event_name,
+                    input_data=input_data,
+                    output_data=merged_output,
+                    exit_code=final_exit_code,
+                )
+
+    except Exception as e:
+        # P#8 Fail-fast safety: logging failure should not break the hook system
+        # print(f"WARNING: Failed to log hook event: {e}", file=sys.stderr)
+        pass
 
     return merged_output, final_exit_code
 

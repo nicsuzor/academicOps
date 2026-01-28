@@ -11,9 +11,9 @@ description: |
 **MANDATORY**: Spawn custodiet compliance check (do NOT read the temp file yourself):
 
 ```
-Task(subagent_type="custodiet", model="haiku",
-     description="Compliance check",
-     prompt="{temp_path}")
+Delegate to **custodiet**:
+
+"Analyze the user's implicit authority and provide a risk assessment of {temp_path}."
 ```
 
 Follow custodiet's guidance: if BLOCK is returned, STOP and address the issue before continuing.

@@ -274,6 +274,10 @@ description: Working hypotheses validated by evidence.
 - Find files by type: `fd -e py` (not `ls *.py`)
 - Find with time filter: `fd --changed-within 1d` (not `find -mtime`)
 
+**Corollaries**:
+- Before creating a file in a new location, use `fd` to discover if related files already exist elsewhere
+- Example: Before creating `data/osb/osb.md`, run `fd "osb\|oversight" $ACA_DATA` to find existing locations
+
 **Derivation**: fd is faster, has built-in time filtering, and respects .gitignore. Generic `ls *.jsonl` matches unintended files (transcripts vs hooks). Specific patterns prevent deceptive results.
 
 ---

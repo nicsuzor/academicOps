@@ -43,7 +43,7 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
     dist_dir.mkdir(parents=True)
 
     # 1. Symlinks
-    for item in ["skills", "GEMINI.md"]:
+    for item in ["skills", "lib", "agents", "GEMINI.md"]:
         src = src_dir / item
         if src.exists():
             safe_symlink(src, dist_dir / item)
@@ -58,16 +58,16 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
             if item.name == "hooks.json":
                 continue
             if item.name == "gemini":
-                # Don't copy gemini/ subdirectory - router goes to hooks/router_gemini.py
+                # Don't copy gemini/ subdirectory - we use unified router.py now
                 continue
             # copy files or link
             # linking is better for dev, but copying safer for dist. keeping links for now as per old script
             safe_symlink(item, hooks_dst / item.name)
 
-    # Link the Gemini router directly to hooks/router_gemini.py (not hooks/gemini/router.py)
-    gemini_router_src = hooks_src / "gemini" / "router.py"
-    if gemini_router_src.exists():
-        safe_symlink(gemini_router_src, hooks_dst / "router_gemini.py")
+    # Link the Unified router directly
+    router_src = hooks_src / "router.py"
+    if router_src.exists():
+        safe_symlink(router_src, hooks_dst / "router.py")
 
     # Create templates symlink in gemini/ so user_prompt_submit.py can find templates
     # (user_prompt_submit.py uses HOOK_DIR / "templates" where HOOK_DIR is hooks/gemini/)
@@ -88,7 +88,7 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
     # The router path inside the dist directory
     # Note: when installed, the extension runs relative to itself or absolute paths
     # We use absolute paths constructed from AOPS root to ensure it finds the file
-    router_script_path = dist_dir / "hooks" / "router_gemini.py"
+    router_script_path = dist_dir / "hooks" / "router.py"
 
     gemini_hooks = generate_gemini_hooks(
         claude_hooks, str(aops_root), str(router_script_path)
@@ -142,13 +142,43 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
         "env": {"AOPS": str(aops_root), "ACA_DATA": aca_data_path},
     }
 
-    # 5. Build Final Manifest
+    # 5. Build Sub-Agents from agents/ directory
+    # Format: https://geminicli.com/docs/extensions/reference/#sub-agents
+    sub_agents = []
+    agents_dir = src_dir / "agents"
+    if agents_dir.exists():
+        for agent_file in agents_dir.glob("*.md"):
+            try:
+                # Parse frontmatter to get name, description
+                content = agent_file.read_text()
+                parts = content.split("---", 2)
+                if len(parts) >= 3:
+                    import yaml
+
+                    frontmatter = yaml.safe_load(parts[1])
+                    if "name" in frontmatter:
+                        sub_agents.append(
+                            {
+                                "name": frontmatter["name"],
+                                "description": frontmatter.get(
+                                    "description", f"Agent {frontmatter['name']}"
+                                ),
+                                "uri": f"file://${{extensionPath}}/agents/{agent_file.name}",
+                                # Pass through other fields if needed, e.g. model
+                                "model": frontmatter.get("model"),
+                            }
+                        )
+            except Exception as e:
+                print(f"Warning: Failed to parse agent {agent_file}: {e}")
+
+    # 6. Build Final Manifest
     # Start with base keys we care about
     manifest = {
         "name": manifest_base.get("name", "aops-core"),
         "version": manifest_base.get("version", "0.1.0"),
         "description": manifest_base.get("description", "AcademicOps Core Framework"),
         "mcpServers": gemini_mcps,
+        "subAgents": sub_agents,
         # hooksConfig is implicit in Gemini checks for hooks/hooks.json,
         # but sometimes needed in simplified settings.
     }

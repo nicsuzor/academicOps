@@ -12,12 +12,17 @@ Checks:
 import re
 import sys
 from pathlib import Path
+from typing import Optional
 
 import os
+import argparse
 
 # Get repo root from AOPS env var (Authoritative)
 if "AOPS" not in os.environ:
-    print("Error: AOPS environment variable not set. Run via 'uv run' in $AOPS.", file=sys.stderr)
+    print(
+        "Error: AOPS environment variable not set. Run via 'uv run' in $AOPS.",
+        file=sys.stderr,
+    )
     sys.exit(1)
 
 REPO_ROOT = Path(os.environ["AOPS"])
@@ -27,7 +32,7 @@ BOTS_DIR = REPO_ROOT
 README_PATH = REPO_ROOT / "README.md"
 
 
-def check_links_resolve(target_path: Path = None) -> list[str]:
+def check_links_resolve(target_path: Optional[Path] = None) -> list[str]:
     """Check that all [[file.md]] links resolve to existing files."""
     errors = []
 
@@ -49,21 +54,25 @@ def check_links_resolve(target_path: Path = None) -> list[str]:
 
         # Remove code blocks to avoid false positives in examples
         content_no_code = re.sub(r"```.*?```", "", content, flags=re.DOTALL)
-        content_no_code = re.sub(r"`[^`]*`", "", content_no_code) # Also inline code
+        content_no_code = re.sub(r"`[^`]*`", "", content_no_code)  # Also inline code
 
         links = re.findall(r"\[\[([^\]]+\.md)\]\]", content_no_code)
 
         for link in links:
             # Try 1: Relative to file
             # Try 2: Relative to AOPS root
-            # Try 3: Relative to ACA_DATA (if set)
+            # Try 3: Relative to aops-core (new location for rules)
+            # Try 4: Relative to ACA_DATA (if set)
             candidates = [
                 md_file.parent / link,
                 REPO_ROOT / link,
+                REPO_ROOT
+                / "aops-core"
+                / link,  # Check aops-core for global files like AXIOMS.md
             ]
             if aca_data.exists():
                 candidates.append(aca_data / link)
-                candidates.append(aca_data / "data" / link) # Common pattern
+                candidates.append(aca_data / "data" / link)  # Common pattern
 
             if not any(c.exists() for c in candidates):
                 errors.append(f"{md_file.name}: Link [[{link}]] does not resolve")
@@ -71,10 +80,10 @@ def check_links_resolve(target_path: Path = None) -> list[str]:
     return errors
 
 
-def check_no_axiom_duplication(target_path: Path = None) -> list[str]:
+def check_no_axiom_duplication(target_path: Optional[Path] = None) -> list[str]:
     """Check that axioms aren't duplicated across files."""
     errors = []
-    axiom_path = REPO_ROOT / "AXIOMS.md"
+    axiom_path = REPO_ROOT / "aops-core" / "AXIOMS.md"
     if not axiom_path.exists():
         return [f"AXIOMS.md not found at {axiom_path}"]
 
@@ -119,21 +128,30 @@ def check_no_axiom_duplication(target_path: Path = None) -> list[str]:
             # Check if pattern exists
             if re.search(pattern, content_no_code, re.IGNORECASE):
                 # Check line-by-line
-                lines = content_no_code.split('\n')
+                lines = content_no_code.split("\n")
                 for i, line in enumerate(lines):
                     if re.search(pattern, line, re.IGNORECASE):
                         # 1. Allow references (See AXIOMS)
-                        if any(x in line for x in ["[[AXIOMS", "@AXIOMS", "See AXIOMS", "per AXIOMS", "from AXIOMS"]):
+                        if any(
+                            x in line
+                            for x in [
+                                "[[AXIOMS",
+                                "@AXIOMS",
+                                "See AXIOMS",
+                                "per AXIOMS",
+                                "from AXIOMS",
+                            ]
+                        ):
                             continue
 
                         # 2. Only strictly enforce duplication on HEADER lines for short phrases
                         # If it's body text (not a header), we assume it's usage, not definition.
                         # Unless it's a very long match (unlikely for "Fail-Fast")
-                        if not line.strip().startswith('#'):
-                             continue
+                        if not line.strip().startswith("#"):
+                            continue
 
                         errors.append(
-                            f"{md_file.name}:{i+1}: Header contains axiom '{pattern}' "
+                            f"{md_file.name}:{i + 1}: Header contains axiom '{pattern}' "
                             f"without reference to AXIOMS.md (Redefinition risk)"
                         )
 
@@ -166,12 +184,12 @@ def check_directory_structure_matches() -> list[str]:
     return errors
 
 
-import argparse
-
 def main() -> int:
     """Run all validation checks."""
     parser = argparse.ArgumentParser(description="Validate documentation integrity.")
-    parser.add_argument("--path", type=str, help="Specific path to validate (default: repo root)")
+    parser.add_argument(
+        "--path", type=str, help="Specific path to validate (default: repo root)"
+    )
     args = parser.parse_args()
 
     target_path = Path(args.path).resolve() if args.path else REPO_ROOT
@@ -187,7 +205,7 @@ def main() -> int:
     checks = [
         ("Link resolution", lambda: check_links_resolve(target_path)),
         ("Axiom duplication", lambda: check_no_axiom_duplication(target_path)),
-        ("Directory structure", check_directory_structure_matches), # Always global
+        ("Directory structure", check_directory_structure_matches),  # Always global
     ]
 
     for check_name, check_func in checks:

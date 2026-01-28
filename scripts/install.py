@@ -183,16 +183,6 @@ def uninstall_framework(aops_path: Path):
     print("Uninstallation complete.")
 
 
-def setup_framework_symlinks(aops_root: Path):
-    """Setup root symlinks like WORKFLOWS.md."""
-    print("Setting up framework symlinks...")
-    for file in ["WORKFLOWS.md", "SKILLS.md", "AXIOMS.md", "HEURISTICS.md"]:
-        target = aops_root / "aops-core" / file
-        link = aops_root / file
-        if target.exists():
-            safe_symlink(target, link)
-
-
 def generate_paths_md(aops_root: Path):
     """Run generate_framework_paths.py."""
     print("Generating .agent/PATHS.md...")
@@ -230,7 +220,6 @@ def main():
 
     print("\n=== Phase 2: Install ===")
 
-    setup_framework_symlinks(aops_root)
     generate_paths_md(aops_root)
 
     gemini_dir = Path.home() / ".gemini"
@@ -254,65 +243,29 @@ def main():
     if dist_mcp_config.exists():
         safe_symlink(dist_mcp_config, ag_dir / "mcp_config.json")
 
-    project_rules_dir = aops_root / ".agent" / "rules"
-    project_rules_dir.mkdir(parents=True, exist_ok=True)
-    for rule in ["AXIOMS.md", "HEURISTICS.md"]:
-        target = aops_root / rule
-        safe_symlink(target, project_rules_dir / rule.lower())
-
-    core_md = aops_root / "config" / "antigravity" / "rules" / "core.md"
-    if core_md.exists():
-        safe_symlink(core_md, project_rules_dir / "core.md")
-
+    print("\n=== Phase 3: Link Extensions ===")
     if shutil.which("gemini"):
-        print("Linking extensions...")
-        for ext in ["aops-core", "aops-tools"]:
-            # Uninstall first to ensure clean state
+        # Link aops-core
+        dist_core = aops_root / "dist" / "aops-core"
+        if dist_core.exists():
+            print(f"Installing extension: {dist_core}")
+            # Uninstall first to avoid "already installed" error
+            run_command(["gemini", "extensions", "uninstall", "aops-core"], check=False)
+            run_command(["gemini", "extensions", "link", str(dist_core)], check=False)
+        else:
+            print(f"Warning: {dist_core} not found. Skipping link.")
+
+        # Link aops-tools
+        dist_tools = aops_root / "dist" / "aops-tools"
+        if dist_tools.exists():
+            print(f"Installing extension: {dist_tools}")
+            # Uninstall first to avoid "already installed" error
             run_command(
-                ["gemini", "extensions", "uninstall", ext],
-                check=False,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+                ["gemini", "extensions", "uninstall", "aops-tools"], check=False
             )
-
-            ext_path = aops_root / "dist" / ext
-            if ext_path.exists():
-                try:
-                    subprocess.run(
-                        ["gemini", "extensions", "link", "."],
-                        cwd=ext_path,
-                        check=True,  # Now we want to fail if link fails
-                        stdout=subprocess.DEVNULL,
-                    )
-                    print(f"✓ Linked {ext}")
-                except subprocess.CalledProcessError as e:
-                    print(f"Error linking {ext}: {e}")
-                    # Don't exit, try others? Or exit? Using check=True raises, so we catch it.
-                    # We should probably warn but continue or exit.
-                    # Let's print error but continue for now to matching previous behavior logic,
-                    # but making it visible.
-
-        settings_path = gemini_dir / "settings.json"
-        settings = {}
-        if settings_path.exists():
-            try:
-                with open(settings_path) as f:
-                    settings = json.load(f)
-            except:
-                pass
-
-        if "hooksConfig" not in settings:
-            settings["hooksConfig"] = {}
-        settings["hooksConfig"]["enabled"] = True
-
-        with open(settings_path, "w") as f:
-            json.dump(settings, f, indent=2)
-        print("✓ Enabled hooks in global settings")
-
-    configure_memory_server(str(aca_data_path))
-    install_cron_jobs(aops_root, str(aca_data_path))
-
-    print("\n✓ Installation Complete!")
+            run_command(["gemini", "extensions", "link", str(dist_tools)], check=False)
+    else:
+        print("Warning: 'gemini' executable not found. Skipping extension linking.")
 
 
 if __name__ == "__main__":

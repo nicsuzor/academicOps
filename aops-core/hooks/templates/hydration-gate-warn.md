@@ -14,7 +14,7 @@ This session is in WARN mode for testing. In production, this would BLOCK all to
 To proceed correctly, spawn the hydrator subagent:
 
 ```
-Task(subagent_type="prompt-hydrator", model="haiku",
-     description="Hydrate user request",
-     prompt="<path from UserPromptSubmit hook>")
+Delegate to **prompt-hydrator**:
+
+"Read {temp_path} and provide workflow guidance."
 ```

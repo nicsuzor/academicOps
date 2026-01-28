@@ -12,9 +12,9 @@ description: |
 **MANDATORY**: Spawn the hydrator subagent FIRST:
 
 ```
-Task(subagent_type="prompt-hydrator", model="haiku",
-     description="Hydrate user request",
-     prompt="<path from UserPromptSubmit hook>")
+Delegate to **prompt-hydrator**:
+
+"Read {temp_path} and provide workflow guidance."
 ```
 
 The hydrator provides workflow guidance, context, and guardrails. Follow its output before continuing.

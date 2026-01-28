@@ -129,6 +129,95 @@ When completing a spike/learn task:
 
 **Anti-pattern**: Creating standalone files (e.g., `docs/AUDIT-REPORT.md`) for spike output. The task graph IS the documentation system.
 
+## Patterns from Real Decompositions
+
+### Confirmed vs TBD Tables
+
+When requirements are partially known, structure the task body with explicit decision tracking:
+
+```markdown
+## CONFIRMED
+| Decision | Status | Notes |
+|----------|--------|-------|
+| Use framework X | ✓ Confirmed | Validates system utility |
+| Question style | ✓ Confirmed | Content generation approach |
+
+## TO BE DECIDED
+| Decision | Owner | Blocker |
+|----------|-------|---------|
+| Exact template | TBD | Needs examples first |
+| Output format | TBD | Depends on template |
+```
+
+**Why this works**: Makes uncertainty visible. Prevents premature decisions while documenting what IS known. Future agents can see exactly what's settled vs. open.
+
+### Human Handoff as Blocking Dependency
+
+When external human input is required before work can proceed:
+
+```
+[task-receive-examples] Receive X's input (complexity: blocked-human)
+       ↓ blocks
+[task-design-based-on-input] Design based on findings
+```
+
+Mark with `complexity: blocked-human` to signal this isn't bot-executable. The dependency enforces sequencing without pretending the bot can do the waiting.
+
+### Soft Dependencies for Contextual Relationships
+
+Use `soft_depends_on` for "this matters but doesn't block":
+
+| Context Type | Example | Why Soft |
+|--------------|---------|----------|
+| **Strategic validation** | Using framework X proves utility | Work can proceed; validation is bonus |
+| **Infrastructure constraints** | Hook router blocks dev work | Planning continues; only implementation blocked |
+| **Environmental factors** | Workspace setup affects comfort | Work possible, just less optimal |
+
+### Parent as Project Boundary
+
+When tasks span multiple concerns, use parent to clarify scope:
+
+**Anti-pattern**: Workspace constraints embedded in research task body
+**Pattern**: Move to separate project with own parent, link via soft_depends_on
+
+```
+[osb-project] Research task
+  soft_depends_on: [personal-workspace-goal]
+
+[personal-project] Workspace goal
+  └── KVM switch evaluation
+  └── Desk layout optimization
+```
+
+The parent defines what belongs together. Cross-project relationships use soft dependencies.
+
+### Actionable Context → Tasks
+
+When decomposing, distinguish:
+- **Actionable constraints** → Create tasks (can be worked on)
+- **Informational context** → Keep in body (just background)
+
+**Test**: "Can someone complete this independently?" If yes → task. If no → note.
+
+### Project Structure for Visualization
+
+Tasks cluster in visualizations based on their parent chain reaching a canonical project file. When tasks appear disconnected:
+
+**Checklist:**
+1. **Project file exists**: `$ACA_DATA/{project}/{project}.md` with `type: project`
+2. **Root goals link to project**: Goals have `parent: {project-id}`
+3. **Tasks link to goals**: Every task has `parent:` pointing up the chain
+4. **Project field matches**: `project: {slug}` matches the project file's `id:`
+
+**Structure:**
+```
+{project}.md (type: project)
+├── {goal}.md (type: goal, parent: project-id)
+│   └── {task}.md (type: task, parent: goal-id, project: slug)
+```
+
+**Diagnosis**: If tasks with `project: X` don't cluster, check whether `X.md` exists with `type: project`. Missing project files are a common cause of orphaned-looking tasks.
+
 ## Anti-Patterns
 
 - Expanding everything at once (premature detail)
@@ -136,3 +225,6 @@ When completing a spike/learn task:
 - Hidden assumptions (planning as if everything is known)
 - **Isolated spikes**: Completing investigation tasks without propagating findings to parent epic
 - **Missing sequencing**: Implementation tasks that don't depend_on their investigation spikes
+- **Embedded actionable context**: Putting fixable constraints in task body instead of creating proper subtasks
+- **Cross-project pollution**: Putting personal/infrastructure tasks under unrelated project parents
+- **Missing project anchors**: Creating goals/tasks with `project: X` but no `X.md` project file exists, causing disconnected visualization clusters

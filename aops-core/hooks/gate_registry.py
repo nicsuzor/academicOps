@@ -34,6 +34,7 @@ def _check_imports() -> None:
             "Ensure PYTHONPATH includes aops-core directory."
         )
 
+
 # --- Constants & Configuration ---
 
 # Hydration
@@ -54,9 +55,9 @@ CUSTODIET_INSTRUCTION_TEMPLATE_FILE = (
 AOPS_ROOT = Path(
     __file__
 ).parent.parent.parent  # aops-core -> hooks -> gate_registry -> ...
-AXIOMS_FILE = AOPS_ROOT / "AXIOMS.md"
-HEURISTICS_FILE = AOPS_ROOT / "HEURISTICS.md"
-SKILLS_FILE = AOPS_ROOT / "SKILLS.md"
+AXIOMS_FILE = AOPS_ROOT / "aops-core" / "AXIOMS.md"
+HEURISTICS_FILE = AOPS_ROOT / "aops-core" / "HEURISTICS.md"
+SKILLS_FILE = AOPS_ROOT / "aops-core" / "SKILLS.md"
 
 
 class GateContext:

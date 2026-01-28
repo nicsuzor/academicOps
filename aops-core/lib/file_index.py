@@ -42,36 +42,62 @@ class FileEntry:
 FILE_INDEX: tuple[FileEntry, ...] = (
     # --- Core Framework Files ---
     FileEntry(
-        path="AXIOMS.md",
+        path="aops-core/AXIOMS.md",
         description="Inviolable principles (failure = system failure)",
-        keywords=("axiom", "axioms", "principle", "principles", "governance", "rule", "enforcement"),
+        keywords=(
+            "axiom",
+            "axioms",
+            "principle",
+            "principles",
+            "governance",
+            "rule",
+            "enforcement",
+        ),
     ),
     FileEntry(
-        path="HEURISTICS.md",
+        path="aops-core/HEURISTICS.md",
         description="Operational guidelines (violation = friction, not failure)",
-        keywords=("heuristic", "heuristics", "guideline", "guidelines", "best practice", "operational"),
+        keywords=(
+            "heuristic",
+            "heuristics",
+            "guideline",
+            "guidelines",
+            "best practice",
+            "operational",
+        ),
     ),
     FileEntry(
-        path="WORKFLOWS.md",
+        path="aops-core/WORKFLOWS.md",
         description="Workflow decision tree and routing",
         keywords=("workflow", "workflows", "routing", "decision tree", "flow"),
     ),
     FileEntry(
-        path="SKILLS.md",
+        path="aops-core/SKILLS.md",
         description="Skills index with invocation patterns",
         keywords=("skill", "skills", "command", "slash command"),
     ),
     FileEntry(
         path="indices/enforcement-map.md",
         description="Maps principles to enforcement mechanisms",
-        keywords=("enforcement", "enforcement-map", "hook enforcement", "gate", "policy"),
+        keywords=(
+            "enforcement",
+            "enforcement-map",
+            "hook enforcement",
+            "gate",
+            "policy",
+        ),
     ),
-
     # --- Prompt Hydration System ---
     FileEntry(
         path="aops-core/agents/prompt-hydrator.md",
         description="Prompt hydrator agent definition (routing logic)",
-        keywords=("hydrator", "prompt-hydrator", "prompt hydration", "routing", "triage"),
+        keywords=(
+            "hydrator",
+            "prompt-hydrator",
+            "prompt hydration",
+            "routing",
+            "triage",
+        ),
     ),
     FileEntry(
         path="aops-core/specs/prompt-hydration.md",
@@ -81,7 +107,13 @@ FILE_INDEX: tuple[FileEntry, ...] = (
     FileEntry(
         path="aops-core/hooks/user_prompt_submit.py",
         description="UserPromptSubmit hook (builds hydrator context)",
-        keywords=("user prompt", "prompt submit", "hook", "userpromptsubmit", "context injection"),
+        keywords=(
+            "user prompt",
+            "prompt submit",
+            "hook",
+            "userpromptsubmit",
+            "context injection",
+        ),
     ),
     FileEntry(
         path="aops-core/hooks/templates/prompt-hydrator-context.md",
@@ -93,12 +125,17 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         description="Short instruction template for main agent",
         keywords=("hydration instruction", "instruction template"),
     ),
-
     # --- Workflow System ---
     FileEntry(
         path="aops-core/specs/workflow-system-spec.md",
         description="Workflow architecture and composition rules",
-        keywords=("workflow spec", "workflow system", "workflow architecture", "bases", "composition"),
+        keywords=(
+            "workflow spec",
+            "workflow system",
+            "workflow architecture",
+            "bases",
+            "composition",
+        ),
     ),
     FileEntry(
         path="aops-core/specs/workflow-constraints.md",
@@ -118,7 +155,12 @@ FILE_INDEX: tuple[FileEntry, ...] = (
     FileEntry(
         path="workflows/framework-change.md",
         description="Framework governance change workflow",
-        keywords=("framework change", "governance", "framework modification", "aops change"),
+        keywords=(
+            "framework change",
+            "governance",
+            "framework modification",
+            "aops change",
+        ),
     ),
     FileEntry(
         path="workflows/decompose.md",
@@ -145,7 +187,6 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         description="Simple question workflow (no task needed)",
         keywords=("simple question", "question", "explain", "what is"),
     ),
-
     # --- Task System ---
     FileEntry(
         path="aops-core/specs/work-management.md",
@@ -162,7 +203,6 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         description="Task index and graph relationships",
         keywords=("task index", "task graph", "dependencies", "blockers"),
     ),
-
     # --- Hooks ---
     FileEntry(
         path="aops-core/specs/hook-router.md",
@@ -189,7 +229,6 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         description="Hydration gate (ensures hydrator was invoked)",
         keywords=("hydration gate", "hydrator gate"),
     ),
-
     # --- Agent System ---
     FileEntry(
         path="aops-core/agents/critic.md",
@@ -216,7 +255,6 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         description="Worker agent for task execution",
         keywords=("worker", "task worker", "executor"),
     ),
-
     # --- Skills ---
     FileEntry(
         path="aops-core/skills/commit/SKILL.md",
@@ -248,7 +286,6 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         description="Hypervisor skill for batch processing",
         keywords=("hypervisor", "batch", "parallel", "/hypervisor"),
     ),
-
     # --- Specs ---
     FileEntry(
         path="aops-core/specs/enforcement.md",
@@ -275,7 +312,6 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         description="Session insights prompt engineering",
         keywords=("session insights", "transcript", "analysis"),
     ),
-
     # --- Session Management ---
     FileEntry(
         path="aops-core/lib/session_state.py",
@@ -292,7 +328,6 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         description="Transcript processing script",
         keywords=("transcript", "session transcript", "transcript parser"),
     ),
-
     # --- Paths and Config ---
     FileEntry(
         path="aops-core/lib/paths.py",
@@ -314,7 +349,7 @@ FILE_INDEX: tuple[FileEntry, ...] = (
 
 def _normalize_text(text: str) -> str:
     """Normalize text for keyword matching (lowercase, collapse whitespace)."""
-    return re.sub(r'\s+', ' ', text.lower().strip())
+    return re.sub(r"\s+", " ", text.lower().strip())
 
 
 def _extract_keywords_from_prompt(prompt: str) -> set[str]:
@@ -375,11 +410,13 @@ def get_relevant_file_paths(prompt: str, max_files: int = 10) -> list[dict[str, 
             # If AOPS not set, use relative path
             abs_path = f"$AOPS/{entry.path}"
 
-        results.append({
-            "path": entry.path,
-            "description": entry.description,
-            "absolute_path": abs_path,
-        })
+        results.append(
+            {
+                "path": entry.path,
+                "description": entry.description,
+                "absolute_path": abs_path,
+            }
+        )
 
     return results
 
