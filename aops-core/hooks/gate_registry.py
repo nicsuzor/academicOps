@@ -99,11 +99,13 @@ def _hydration_is_hydrator_task(tool_input: dict[str, Any]) -> bool:
 
 
 def _hydration_is_gemini_hydration_attempt(
-    tool_name: str, tool_input: dict[str, Any]
+    tool_name: str, tool_input: dict[str, Any], input_data: dict[str, Any]
 ) -> bool:
     """Check if Gemini is attempting to read hydration context."""
     try:
-        temp_dir = str(hook_utils.get_hook_temp_dir(HYDRATION_TEMP_CATEGORY))
+        temp_dir = str(
+            hook_utils.get_hook_temp_dir(HYDRATION_TEMP_CATEGORY, input_data)
+        )
     except RuntimeError:
         return False
 
@@ -141,7 +143,7 @@ def check_hydration_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
     is_hydrator_tool = ctx.tool_name in ("Task", "delegate_to_agent")
     is_hydrator = is_hydrator_tool and _hydration_is_hydrator_task(ctx.tool_input)
     is_gemini = _hydration_is_gemini_hydration_attempt(
-        ctx.tool_name or "", ctx.tool_input
+        ctx.tool_name or "", ctx.tool_input, ctx.input_data
     )
 
     if is_hydrator or is_gemini:
@@ -151,7 +153,7 @@ def check_hydration_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
 
     # Block
     block_msg = load_template(HYDRATION_BLOCK_TEMPLATE)
-    return hook_utils.make_deny_output(block_msg)
+    return dict(hook_utils.make_deny_output(block_msg))
 
 
 # --- Custodiet Logic ---
@@ -232,8 +234,14 @@ def _custodiet_build_session_context(
         lines.append("**Recent Conversation Summary**:")
         # Include last few turns for context
         for turn in conversation[-5:]:
-            role = turn.get("role", "unknown")
-            content = turn.get("content", "")[:200]  # Truncate long content
+            if isinstance(turn, dict):
+                role = turn.get("role", "unknown")
+                content = turn.get("content", "")[:200]  # Truncate long content
+            else:
+                # Handle string turns (legacy or other formats)
+                role = "unknown"
+                content = str(turn)[:200]
+            
             if content:
                 lines.append(f"  [{role}]: {content}...")
         lines.append("")
@@ -248,8 +256,11 @@ def _custodiet_build_audit_instruction(
     transcript_path: Optional[str], tool_name: str, session_id: str
 ) -> str:
     """Build instruction for compliance audit."""
+    # Build minimal input_data for hook_utils resolution
+    input_data = {"transcript_path": transcript_path} if transcript_path else None
+
     hook_utils.cleanup_old_temp_files(
-        hook_utils.get_hook_temp_dir(CUSTODIET_TEMP_CATEGORY), "audit_"
+        hook_utils.get_hook_temp_dir(CUSTODIET_TEMP_CATEGORY, input_data), "audit_"
     )
 
     session_context = _custodiet_build_session_context(transcript_path, session_id)
@@ -266,7 +277,7 @@ def _custodiet_build_audit_instruction(
         custodiet_mode=custodiet_mode,
     )
 
-    temp_dir = hook_utils.get_hook_temp_dir(CUSTODIET_TEMP_CATEGORY)
+    temp_dir = hook_utils.get_hook_temp_dir(CUSTODIET_TEMP_CATEGORY, input_data)
     temp_path = hook_utils.write_temp_file(full_context, temp_dir, "audit_")
 
     instruction_template = load_template(CUSTODIET_INSTRUCTION_TEMPLATE_FILE)
@@ -330,7 +341,7 @@ def check_custodiet_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
             state["tool_calls_since_compliance"] = 0
             session_state.save_custodiet_state(ctx.session_id, state)
 
-            return output
+            return dict(output)
         except (OSError, KeyError, TypeError) as e:
             # Fail-open: compliance checking errors should not block operations.
             # Log the error for debugging but allow the tool call to proceed.

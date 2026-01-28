@@ -68,8 +68,11 @@ def build_gemini_hydration_instruction(
 
     Same as Claude version but uses Gemini template (no Task subagent).
     """
+    # Build input_data for hook_utils resolution
+    input_data = {"transcript_path": transcript_path} if transcript_path else None
+
     # Cleanup old temp files first
-    cleanup_old_temp_files()
+    cleanup_old_temp_files(input_data)
 
     # Extract session context from transcript
     session_context = ""
@@ -107,7 +110,7 @@ def build_gemini_hydration_instruction(
     )
 
     # Write to temp file
-    temp_path = write_temp_file(full_context)
+    temp_path = write_temp_file(full_context, input_data)
 
     # Write hydrator state for downstream gates
     # For Gemini, hydration is "complete" when we return additionalContext

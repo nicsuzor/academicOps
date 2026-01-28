@@ -126,10 +126,7 @@ def transform_glob(
     # fd syntax: fd [OPTIONS] [pattern] [path]
     fd_command = f"fd {fd_args} {exclude_flags} . '{search_path}'"
 
-    context = (
-        f"Glob blocked: use fd instead (respects .gitignore).\n"
-        f"Run: {fd_command}"
-    )
+    context = f"Glob blocked: use fd instead (respects .gitignore).\nRun: {fd_command}"
 
     # Return should_block=True to deny the Glob call
     return None, context, True
@@ -190,10 +187,7 @@ def transform_grep(
     args_str = " ".join(rg_args)
     rg_command = f"rg {args_str} '{pattern}' '{search_path}'"
 
-    context = (
-        f"Grep blocked: use rg instead (respects .gitignore).\n"
-        f"Run: {rg_command}"
-    )
+    context = f"Grep blocked: use rg instead (respects .gitignore).\nRun: {rg_command}"
 
     return None, context, True
 
@@ -223,6 +217,8 @@ def transform_tool(
     if tool_name == "Glob":
         return transform_glob(tool_input, tool_config)
     elif tool_name == "Grep":
+        return None, None, False
+        # <!-- NS: I think this is broken for gemini at the moment. -->
         return transform_grep(tool_input, tool_config)
 
     return None, None, False

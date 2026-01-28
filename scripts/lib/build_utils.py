@@ -125,12 +125,18 @@ def generate_gemini_hooks(
                 if g_event not in gemini_hooks:
                     gemini_hooks[g_event] = []
 
+                # Convert CamelCase to kebab-case for the name suffix
+                # e.g., SessionStart -> session-start
+                slug = "".join(
+                    ["-" + c.lower() if c.isupper() else c for c in g_event]
+                ).lstrip("-")
+
                 gemini_hooks[g_event].append(
                     {
                         "matcher": matcher,
                         "hooks": [
                             {
-                                "name": "aops-router",
+                                "name": f"aops-router-{slug}",
                                 "type": "command",
                                 "command": f"uv run --directory {aops_path} python {router_script_path} {g_event}",
                                 "timeout": timeout,

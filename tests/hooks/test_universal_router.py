@@ -109,6 +109,7 @@ class TestUniversalRouter:
                 "hooks.router.get_session_data",
                 return_value={"temp_root": "/custom/temp"},
             ),
+            patch("hooks.router.validate_temp_path", return_value=True),
             patch("subprocess.run") as mock_run,
         ):
             mock_run.return_value = MagicMock(stdout="{}", stderr="", returncode=0)

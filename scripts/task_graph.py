@@ -163,14 +163,18 @@ def classify_edge(source_id: str, target_id: str, node_by_id: dict) -> str:
 
 
 def generate_dot(nodes: list[dict], edges: list[dict], include_orphans: bool = False,
-                 structural_ids: set[str] | None = None) -> str:
+                 structural_ids: set[str] | None = None,
+                 stats: dict | None = None) -> str:
     """Generate DOT format graph with styling.
 
     Args:
         structural_ids: Set of node IDs that are completed but kept for structure.
                        These get box3d shape with dashed style.
+        stats: Optional dict with graph statistics to display in legend.
+               Expected keys: total_nodes, total_edges, by_type, by_status
     """
     structural_ids = structural_ids or set()
+    stats = stats or {}
 
     # Build node lookup by id
     node_by_id = {n["id"]: n for n in nodes}
@@ -239,6 +243,47 @@ def generate_dot(nodes: list[dict], edges: list[dict], include_orphans: bool = F
         "    }",
         "",
     ]
+
+    # Add statistics subgraph if stats provided
+    if stats:
+        total_nodes = stats.get("total_nodes", 0)
+        total_edges = stats.get("total_edges", 0)
+        by_type = stats.get("by_type", {})
+        by_status = stats.get("by_status", {})
+
+        # Build type breakdown string
+        type_parts = [f"{v} {k}" for k, v in sorted(by_type.items(), key=lambda x: -x[1])]
+        type_str = ", ".join(type_parts[:5])  # Top 5 types
+        if len(type_parts) > 5:
+            type_str += f", +{len(type_parts) - 5} more"
+
+        # Build status breakdown string
+        status_parts = [f"{v} {k}" for k, v in sorted(by_status.items(), key=lambda x: -x[1])]
+        status_str = ", ".join(status_parts[:5])  # Top 5 statuses
+        if len(status_parts) > 5:
+            status_str += f", +{len(status_parts) - 5} more"
+
+        stats_label = (
+            f"Graph Statistics\\n"
+            f"─────────────────\\n"
+            f"Nodes: {total_nodes}\\n"
+            f"Edges: {total_edges}\\n"
+            f"─────────────────\\n"
+            f"By Type:\\n{type_str}\\n"
+            f"─────────────────\\n"
+            f"By Status:\\n{status_str}"
+        )
+
+        lines.extend([
+            "    // Statistics",
+            "    subgraph cluster_stats {",
+            "        label=\"\";",
+            "        style=filled;",
+            "        fillcolor=\"#f8f9fa\";",
+            f'        stats_box [label=\"{stats_label}\" shape=note fillcolor=\"#ffffff\" fontsize=10];',
+            "    }",
+            "",
+        ])
 
     # Add nodes
     for node in nodes:
@@ -349,8 +394,16 @@ def main():
     print(f"  Types: {by_type}")
     print(f"  Status: {by_status}")
 
+    # Build stats dict for legend
+    stats = {
+        "total_nodes": len(nodes),
+        "total_edges": len(edges),
+        "by_type": by_type,
+        "by_status": by_status,
+    }
+
     # Generate DOT
-    dot_content = generate_dot(nodes, edges, args.include_orphans, structural_ids)
+    dot_content = generate_dot(nodes, edges, args.include_orphans, structural_ids, stats)
     dot_path = f"{args.output}.dot"
     Path(dot_path).write_text(dot_content)
     print(f"  Written {dot_path}")

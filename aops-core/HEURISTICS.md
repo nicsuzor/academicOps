@@ -217,6 +217,20 @@ description: Working hypotheses validated by evidence.
 
 ---
 
+## Mandatory Reproduction Tests (P#82)
+
+**Statement**: Every framework bug fix MUST be preceded by a failing reproduction test case.
+
+**Derivation**: Fixing bugs without a failing test leads to "success theater" where the agent claims a fix that might not address the root cause or might regress. A failing test provides objective proof of the bug and objective proof of the fix.
+
+**Protocol**: 
+1. Identify the failing input/state.
+2. Create a test in `tests/` that fails with that input.
+3. Apply the fix.
+4. Verify the test passes.
+
+---
+
 ## Tasks Have Single Objectives (P#75)
 
 **Statement**: Each task should have one primary objective. When work spans multiple concerns (execute work + improve framework, verify fix + document pattern), create separate tasks with dependency relationships.

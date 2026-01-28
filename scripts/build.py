@@ -97,50 +97,70 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
     with open(hooks_dst / "hooks.json", "w") as f:
         json.dump({"hooks": gemini_hooks}, f, indent=2)
 
-    # 4. Load Manifest Base and MCPs
+    # 4. Generate MCP Config from Template
+    template_path = src_dir / "mcp.json.template"
+    mcp_config = {}
+
+    if template_path.exists():
+        print(f"Generating MCP config from {template_path.name}...")
+        try:
+            content = template_path.read_text()
+
+            # Variables to substitute
+            # CLAUDE_PLUGIN_ROOT: Absolute path to the plugin root (source for .mcp.json, but dist for extension really?
+            # Actually for Claude Desktop it points to the source usually if dev, or installed location.
+            # But here we are generating .mcp.json in SOURCE. So it should point to SOURCE src_dir.
+            # For Gemini, the tasks server expects absolute paths too.
+            # Let's use the src_dir (absolute) for now as that's where the python code lives for Claude to run.
+            # If we are distributing, we might need to adjust this for the distributed location?
+            # But the build script is running typically in a dev context or CI.
+            # The user request implies we want parity.
+
+            subs = {
+                "${CLAUDE_PLUGIN_ROOT}": str(src_dir.resolve()),
+                "${MCP_MEMORY_API_KEY}": os.environ.get("MCP_MEMORY_API_KEY", ""),
+                "${ACA_DATA}": aca_data_path,
+            }
+
+            for key, val in subs.items():
+                content = content.replace(key, val)
+
+            mcp_config = json.loads(content)
+
+            # Write back to source .mcp.json for Claude
+            mcp_json_path = src_dir / ".mcp.json"
+            with open(mcp_json_path, "w") as f:
+                json.dump(mcp_config, f, indent=2)
+            print(f"✓ Updated {mcp_json_path}")
+
+            # Prepare for Gemini Extension (convert to gemini format if needed)
+            # The template is in Standard MCP format ("mcpServers": {...})
+            # convert_mcp_to_gemini handles the "mcpServers" key wrapper or direct dict.
+            servers_config = mcp_config.get("mcpServers", mcp_config)
+            gemini_mcps = convert_mcp_to_gemini(servers_config)
+
+        except Exception as e:
+            print(f"Error processing template {template_path}: {e}", file=sys.stderr)
+            # Fallback to empty if failed? Or exit?
+            # Better to show error but maybe not crash build if it's partial?
+            # Let's re-raise to fail build if strict
+            raise
+    else:
+        print(f"Warning: Template {template_path} not found. Skipping MCP generation.")
+
+    # Validation/Fallback: If task_manager was not in template, we might be missing it.
+    # But the user said "we should read from ... template", implying template is source of truth.
+    # So we don't manually inject it anymore.
+
+    # 4b. Load Manifest Base (plugin.json)
     plugin_json_path = src_dir / ".claude-plugin" / "plugin.json"
     manifest_base = {}
-    gemini_mcps = {}
-
     if plugin_json_path.exists():
         try:
             with open(plugin_json_path) as f:
                 manifest_base = json.load(f)
         except json.JSONDecodeError:
             print(f"Warning: Invalid JSON in {plugin_json_path}")
-
-    # Resolve MCP Servers from manifest pointer or default file
-    mcp_ref = manifest_base.get("mcpServers")
-    if isinstance(mcp_ref, str):
-        # It's a file path relative to plugin root
-        mcp_path = src_dir / mcp_ref
-    else:
-        # It might be inline (rare for this repo) or missing
-        mcp_path = src_dir / ".mcp.json"
-
-    if mcp_path.exists():
-        try:
-            with open(mcp_path) as f:
-                data = json.load(f)
-                # Handle both wrapped "mcpServers": {...} and direct {...} formats if they exist
-                # Claude usually puts them under mcpServers key
-                servers_config = data.get("mcpServers", data)
-                gemini_mcps = convert_mcp_to_gemini(servers_config)
-        except json.JSONDecodeError:
-            print(f"Warning: Invalid JSON in {mcp_path}")
-
-    # Inject task_manager (always required for core)
-    gemini_mcps["task_manager"] = {
-        "command": "uv",
-        "args": [
-            "run",
-            "--directory",
-            str(src_dir),
-            "python",
-            "mcp_servers/tasks_server.py",
-        ],
-        "env": {"AOPS": str(aops_root), "ACA_DATA": aca_data_path},
-    }
 
     # 5. Build Sub-Agents from agents/ directory
     # Format: https://geminicli.com/docs/extensions/reference/#sub-agents

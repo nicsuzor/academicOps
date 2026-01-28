@@ -18,8 +18,11 @@ import time
 from pathlib import Path
 from typing import Any, TypedDict
 
+from lib.session_paths import get_claude_project_folder
+
 # Default temp directory for hooks (under home for persistence across reboots)
-DEFAULT_HOOK_TMP = Path.home() / ".aops" / "tmp"
+# Default temp directory for hooks (under home for persistence across reboots)
+# DEFAULT_HOOK_TMP removed - now using ~/.claude/projects/... or ~/.gemini/...
 
 # Cleanup age: 1 hour in seconds
 CLEANUP_AGE_SECONDS = 60 * 60
@@ -31,27 +34,27 @@ class HookOutput(TypedDict, total=False):
     hookSpecificOutput: dict[str, Any]
 
 
-def get_hook_temp_dir(category: str) -> Path:
+def get_hook_temp_dir(category: str, input_data: dict[str, Any] | None = None) -> Path:
     """Get temporary directory for hook files.
 
     Unified temp directory resolution:
     1. TMPDIR env var (highest priority - host CLI provided)
-    2. GEMINI_CLI mode: ~/.gemini/tmp/{project_hash}/
-    3. Default: ~/.aops/tmp/{category}/
+    2. AOPS_GEMINI_TEMP_ROOT env var (Gemini router provided)
+    3. GEMINI_CLI mode: ~/.gemini/tmp/{project_hash}/{category}/
+       - Discovered via input_data["transcript_path"] (preferred)
+       - Discovered via CWD hash (fallback)
 
-    Using ~/.aops/tmp/ instead of /tmp/ because:
-    - Persists across reboots (useful for debugging)
-    - No permission issues on shared systems
-    - Still accessible by subagents (home dir access)
+    Using ~/.gemini/tmp/ to keep all Gemini artifacts in one place.
 
     Args:
         category: Subdirectory name for this hook type (e.g., "hydrator", "compliance", "session")
+        input_data: Hook input data (optional). Used to extract transcript_path for precise location.
 
     Returns:
         Path to temp directory (created if doesn't exist)
 
     Raises:
-        RuntimeError: If GEMINI_CLI is set but temp dir doesn't exist (fail-closed)
+        RuntimeError: If GEMINI_CLI is set but temp dir resolves to nothing or doesn't exist
     """
     # 1. Check for standard temp dir env var
     tmpdir = os.environ.get("TMPDIR")
@@ -60,31 +63,56 @@ def get_hook_temp_dir(category: str) -> Path:
         path.mkdir(parents=True, exist_ok=True)
         return path
 
-    # 1.5 Check for explicit Gemini temp root (injected by router)
+    # 2. Check for Gemini router provided temp root
     gemini_root = os.environ.get("AOPS_GEMINI_TEMP_ROOT")
     if gemini_root:
         path = Path(gemini_root) / category
         path.mkdir(parents=True, exist_ok=True)
         return path
 
-    # 2. Gemini-specific discovery logic
-    if os.environ.get("GEMINI_CLI"):
+    # 3. Gemini-specific discovery logic
+    if os.environ.get("GEMINI_CLI") or (Path.cwd() / ".gemini").exists():
+        # Strategy A: Use transcript path (most reliable for sub-agents or complex setups)
+        if input_data:
+            transcript_path = input_data.get("transcript_path")
+            if transcript_path:
+                # Path is usually ~/.gemini/tmp/<hash>/logs/session.jsonl
+                # We want ~/.gemini/tmp/<hash>/<category>/
+                # So we go up 2 levels from the file: logs/ -> hash/
+                t_path = Path(transcript_path)
+                # Handle both file path and directory path (just in case)
+                if t_path.suffix in (".jsonl", ".json"):
+                    project_hash_dir = t_path.parent.parent
+                else:
+                    project_hash_dir = t_path.parent
+
+                if project_hash_dir.exists() and ".gemini" in str(project_hash_dir):
+                    path = project_hash_dir / category
+                    path.mkdir(parents=True, exist_ok=True)
+                    return path
+
+        # Strategy B: Use CWD hash (standard Gemini behavior)
         project_root = str(Path.cwd())
         abs_root = str(Path(project_root).resolve())
         project_hash = hashlib.sha256(abs_root.encode()).hexdigest()
         gemini_tmp = Path.home() / ".gemini" / "tmp" / project_hash
+
         if gemini_tmp.exists():
             path = gemini_tmp / category
             path.mkdir(parents=True, exist_ok=True)
             return path
+
         # FAIL-CLOSED: Gemini temp dir doesn't exist
+        # We generally do NOT want to use a fallback here if we strictly want isolation.
         raise RuntimeError(
-            f"GEMINI_CLI is set but temp dir does not exist: {gemini_tmp}. "
-            "Create the directory or unset GEMINI_CLI."
+            f"GEMINI_CLI is set but temp root not found. "
+            f"Tried transcript path and CWD hash: {gemini_tmp}. "
+            "Ensure you are running inside a Gemini project."
         )
 
-    # 3. Default: ~/.aops/tmp/{category}/
-    path = DEFAULT_HOOK_TMP / category
+    # 3. Default: ~/.claude/projects/{project}/tmp/{category}/ (Claude behavior)
+    project_folder = get_claude_project_folder()
+    path = Path.home() / ".claude" / "projects" / project_folder / "tmp" / category
     path.mkdir(parents=True, exist_ok=True)
     return path
 

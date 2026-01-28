@@ -44,12 +44,12 @@ TEMP_CATEGORY = "hydrator"
 FILE_PREFIX = "hydrate_"
 
 
-def get_hydration_temp_dir() -> Path:
+def get_hydration_temp_dir(input_data: dict[str, Any] | None = None) -> Path:
     """Get the temporary directory for hydration context.
 
     Uses shared hook_utils for consistent temp directory resolution.
     """
-    return get_hook_temp_dir(TEMP_CATEGORY)
+    return get_hook_temp_dir(TEMP_CATEGORY, input_data)
 
 
 # Intent envelope max length
@@ -334,25 +334,26 @@ def write_initial_hydrator_state(
         clear_hydration_pending(session_id)
 
 
-def cleanup_old_temp_files() -> None:
+def cleanup_old_temp_files(input_data: dict[str, Any] | None = None) -> None:
     """Delete temp files older than 1 hour.
 
     Called on each hook invocation to prevent disk accumulation.
     """
     try:
-        temp_dir = get_hydration_temp_dir()
+        temp_dir = get_hydration_temp_dir(input_data)
         _cleanup_temp(temp_dir, FILE_PREFIX)
     except RuntimeError:
         pass  # Graceful degradation if temp dir resolution fails
 
 
-def write_temp_file(content: str) -> Path:
+def write_temp_file(content: str, input_data: dict[str, Any] | None = None) -> Path:
     """Write content to temp file, return path.
 
     Raises:
         IOError: If temp file cannot be written (fail-fast)
     """
-    temp_dir = get_hydration_temp_dir()
+    temp_dir = get_hydration_temp_dir(input_data)
+    _cleanup_temp(temp_dir, FILE_PREFIX)  # Ensure cleanup happens before write
     return _write_temp(content, temp_dir, FILE_PREFIX)
 
 
@@ -375,8 +376,11 @@ def build_hydration_instruction(
     Raises:
         IOError: If temp file write fails (fail-fast per AXIOM #7)
     """
+    # Build input_data for hook_utils resolution
+    input_data = {"transcript_path": transcript_path} if transcript_path else None
+
     # Cleanup old temp files first
-    cleanup_old_temp_files()
+    cleanup_old_temp_files(input_data)
 
     # Extract session context from transcript
     session_context = ""
@@ -428,7 +432,7 @@ def build_hydration_instruction(
     )
 
     # Write to temp file (raises IOError on failure - fail-fast)
-    temp_path = write_temp_file(full_context)
+    temp_path = write_temp_file(full_context, input_data)
 
     # Write initial hydrator state for downstream gates
     write_initial_hydrator_state(session_id, prompt)
