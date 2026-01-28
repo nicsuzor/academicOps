@@ -81,13 +81,19 @@ def _hydration_is_subagent_session() -> bool:
 
 
 def _hydration_is_hydrator_task(tool_input: dict[str, Any]) -> bool:
-    """Check if Task invocation is spawning prompt-hydrator."""
-    subagent_type = tool_input.get("subagent_type")
-    if subagent_type is None:
+    """Check if Task/delegate_to_agent invocation is spawning prompt-hydrator."""
+    # Claude Task tool uses 'subagent_type'
+    target = tool_input.get("subagent_type")
+
+    # Gemini delegate_to_agent uses 'agent_name'
+    if not target:
+        target = tool_input.get("agent_name")
+
+    if target is None:
         return False
-    if subagent_type == "prompt-hydrator":
+    if target == "prompt-hydrator":
         return True
-    if "hydrator" in subagent_type.lower():
+    if "hydrator" in target.lower():
         return True
     return False
 
@@ -132,9 +138,8 @@ def check_hydration_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
         return None
 
     # Check if this is the hydrator being invoked
-    is_hydrator = ctx.tool_name == "Task" and _hydration_is_hydrator_task(
-        ctx.tool_input
-    )
+    is_hydrator_tool = ctx.tool_name in ("Task", "delegate_to_agent")
+    is_hydrator = is_hydrator_tool and _hydration_is_hydrator_task(ctx.tool_input)
     is_gemini = _hydration_is_gemini_hydration_attempt(
         ctx.tool_name or "", ctx.tool_input
     )
