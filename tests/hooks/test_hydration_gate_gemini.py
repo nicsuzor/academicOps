@@ -463,43 +463,87 @@ class TestSafeToolsAllowlist:
 class TestPostToolUseHydrationCompletion:
     """Test that PostToolUse events can mark hydration complete.
 
-    CURRENT BEHAVIOR: Hydration gate only runs on PreToolUse, so PostToolUse
-    events like activate_skill completion are not handled.
-
-    EXPECTED BEHAVIOR: PostToolUse with hydrator activation should clear
-    hydration_pending state.
+    For Gemini, the hydrator is invoked via activate_skill, and the completion
+    event is PostToolUse. The gate must handle this to clear hydration_pending.
     """
 
-    def test_hydration_gate_registered_for_pretooluse_only(self):
-        """Verify current registration is PreToolUse only (documents current state)."""
+    def test_hydration_gate_registered_for_both_events(self):
+        """Verify hydration gate handles both PreToolUse and PostToolUse."""
         from hooks.gates import ACTIVE_GATES
 
         hydration_gate = next(g for g in ACTIVE_GATES if g["name"] == "hydration")
-        assert hydration_gate["events"] == ["PreToolUse"]
-        # Note: This is the current state. If PostToolUse handling is added,
-        # this test should be updated to verify the new registration.
+        # Must handle both events for cross-agent compatibility
+        assert "PreToolUse" in hydration_gate["events"]
+        assert "PostToolUse" in hydration_gate["events"]
 
-    @pytest.mark.xfail(reason="PostToolUse hydration handling not yet implemented")
+    @patch("hooks.gate_registry.session_state")
+    @patch("hooks.gate_registry.hook_utils")
     def test_posttooluse_activate_skill_clears_hydration(
-        self, gemini_post_tool_use_activate_skill_hydrator
+        self, mock_hook_utils, mock_session_state
     ):
         """PostToolUse with activate_skill 'prompt-hydrator' should clear pending.
 
-        This test will pass once a PostToolUse handler is added for hydration.
+        This is the REAL Gemini event format - the hydrator completion fires
+        on PostToolUse, not PreToolUse.
         """
-        # This test documents the expected behavior for future implementation
-        event = gemini_post_tool_use_activate_skill_hydrator
+        mock_hook_utils.is_subagent_session.return_value = False
+        mock_session_state.is_hydration_pending.return_value = True
 
-        # Expected: After this event, hydration_pending should be False
-        # Implementation options:
-        # 1. Add "PostToolUse" to hydration gate events list
-        # 2. Create separate PostToolUse handler for activate_skill detection
-        # 3. Detect activate_skill in PreToolUse (before it runs)
+        # Real Gemini PostToolUse event for hydrator completion
+        event = {
+            "hook_event": "PostToolUse",
+            "exit_code": 0,
+            "session_id": "6a416d2b-8864-4a05-ac5e-85e3ebeef207",
+            "transcript_path": "/home/nic/.gemini/tmp/02446fdfe96b1eb171c290b1b3da4c0aafff4108395fdefaac4dd1a188242b94/chats/session-2026-01-28T08-02-6a416d2b.json",
+            "cwd": "/home/nic/src/academicOps",
+            "hook_event_name": "PostToolUse",
+            "timestamp": "2026-01-28T08:03:53.288Z",
+            "tool_name": "activate_skill",
+            "tool_input": {"name": "prompt-hydrator"},
+            "tool_response": {"llmContent": "<activated_skill>..."},
+        }
 
-        # For now, just verify the event structure is correct
-        assert event["hook_event"] == "PostToolUse"
-        assert event["tool_name"] == "activate_skill"
-        assert event["tool_input"]["name"] == "prompt-hydrator"
+        ctx = GateContext(
+            session_id=event["session_id"],
+            event_name=event["hook_event_name"],
+            input_data=event,
+        )
+
+        result = check_hydration_gate(ctx)
+
+        # Should allow (return None) and clear pending
+        assert result is None, "PostToolUse activate_skill hydrator should clear pending"
+        mock_session_state.clear_hydration_pending.assert_called_once_with(
+            "6a416d2b-8864-4a05-ac5e-85e3ebeef207"
+        )
+
+    @patch("hooks.gate_registry.session_state")
+    @patch("hooks.gate_registry.hook_utils")
+    def test_posttooluse_other_tool_does_not_clear_hydration(
+        self, mock_hook_utils, mock_session_state
+    ):
+        """PostToolUse with non-hydrator tool should NOT clear pending."""
+        mock_hook_utils.is_subagent_session.return_value = False
+        mock_session_state.is_hydration_pending.return_value = True
+
+        event = {
+            "hook_event_name": "PostToolUse",
+            "session_id": "test-session",
+            "tool_name": "activate_skill",
+            "tool_input": {"name": "commit"},  # Not hydrator
+        }
+
+        ctx = GateContext(
+            session_id=event["session_id"],
+            event_name=event["hook_event_name"],
+            input_data=event,
+        )
+
+        result = check_hydration_gate(ctx)
+
+        # Should allow but NOT clear pending (it's not the hydrator)
+        assert result is None  # PostToolUse doesn't block
+        mock_session_state.clear_hydration_pending.assert_not_called()
 
 
 # ============================================================================

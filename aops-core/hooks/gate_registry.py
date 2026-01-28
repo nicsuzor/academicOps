@@ -150,6 +150,10 @@ def check_hydration_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
     """
     Check if hydration is required.
     Returns None if allowed, or an output dict if blocked.
+
+    Behavior differs by event type:
+    - PreToolUse: Blocks non-hydrator tools until hydration completes
+    - PostToolUse: Never blocks, but clears pending if hydrator completed
     """
     _check_imports()  # Fail fast if imports unavailable
 
@@ -161,17 +165,23 @@ def check_hydration_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
     if ctx.tool_name in HYDRATION_SAFE_TOOLS:
         return None
 
-    # Check if hydration is pending
-    if not session_state.is_hydration_pending(ctx.session_id):
-        return None
-
-    # Check if this is the hydrator being invoked
+    # Check if this is the hydrator being invoked/completed
     # Claude uses Task, Gemini uses delegate_to_agent or activate_skill
     is_hydrator_tool = ctx.tool_name in ("Task", "delegate_to_agent", "activate_skill")
     is_hydrator = is_hydrator_tool and _hydration_is_hydrator_task(ctx.tool_input)
     is_gemini = _hydration_is_gemini_hydration_attempt(
         ctx.tool_name or "", ctx.tool_input, ctx.input_data
     )
+
+    # PostToolUse: Never block, just clear state if hydrator completed
+    if ctx.event_name == "PostToolUse":
+        if is_hydrator or is_gemini:
+            session_state.clear_hydration_pending(ctx.session_id)
+        return None  # PostToolUse never blocks
+
+    # PreToolUse: Check if hydration is pending
+    if not session_state.is_hydration_pending(ctx.session_id):
+        return None
 
     if is_hydrator or is_gemini:
         # Clear gate and allow

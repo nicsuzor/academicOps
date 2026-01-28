@@ -23,7 +23,10 @@ from lib.hook_utils import make_empty_output, get_session_id
 # matching the logic of the old system.
 # In the future this can be loaded from hooks.json or gates.json
 ACTIVE_GATES = [
-    {"name": "hydration", "check": "hydration", "events": ["PreToolUse"]},
+    # Hydration runs on both events:
+    # - PreToolUse: blocks non-hydrator tools until hydration completes
+    # - PostToolUse: clears pending state when hydrator completes (Gemini activate_skill)
+    {"name": "hydration", "check": "hydration", "events": ["PreToolUse", "PostToolUse"]},
     {"name": "custodiet", "check": "custodiet", "events": ["PostToolUse"]},
 ]
 
