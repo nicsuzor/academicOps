@@ -315,6 +315,29 @@ description: Working hypotheses validated by evidence.
 
 ---
 
+## Match Planning Abstraction (P#82)
+
+**Statement**: When user is deconstructing/planning, match their level of abstraction. Don't fill in blanks until they signal readiness for specifics.
+
+**Signals of planning phase**:
+- "Let's figure out...", "What are we building...", "First steps first..."
+- Questions being explored, decisions not yet made
+- User providing partial answers with room for more discussion
+
+**Signals of execution phase**:
+- "Let's do it", "Go ahead", specific values provided
+- User answering all questions, decisions finalized
+
+**Corollaries**:
+- If user says "we need to decide X, Y, Z" - help explore, don't propose X=foo, Y=bar
+- If user answers 2 of 3 questions, ask about the 3rd - don't assume
+- Premature specifics break the user's planning flow
+- **Vital question first**: During planning, identify the vital question (usually "what does success look like?") before listing implementation details. Success criteria unlock everything else; notebook contents don't.
+
+**Derivation**: P#5 (Do One Thing) applies to abstraction level too. When user is planning, the task is planning - not executing. Jumping to implementation details violates the requested scope.
+
+---
+
 ## Spike Output Goes to Task Graph (P#81)
 
 **Statement**: Spike/learn task output belongs in the task graph, not random files. Write findings to: (1) task body, (2) parent epic "Findings from Spikes" section, (3) decomposed subtasks for actionable items.
@@ -326,3 +349,35 @@ description: Working hypotheses validated by evidence.
 - Parent epic inherits summary for sibling task context
 
 **Derivation**: Random output files are orphaned from the task graph. Task body is the canonical location for work products. Decomposition ensures findings become executable work.
+
+---
+
+## Make Cross-Project Dependencies Explicit (P#83)
+
+**Statement**: When a task uses infrastructure from another project as its implementation vehicle, create explicit linkage: (1) document in task body, (2) add soft_depends_on to infrastructure project task if exists, (3) create sibling task for infrastructure improvements discovered.
+
+**Corollaries**:
+- Using buttermilk pipeline for OSB work → document "also testing buttermilk batch" in task body
+- Discovering buttermilk bug during OSB work → create buttermilk task, link via soft_depends_on
+- "Incidental improvements" = separate tracked tasks, not hidden scope creep
+
+**Derivation**: P#22 (Dogfooding) encourages using real work to test infrastructure. But dual-purpose work has dual objectives (P#75 violation) unless both are tracked. Explicit cross-project links make infrastructure improvements visible and prevent the secondary work from being lost.
+
+---
+
+## Methodology Belongs to Researcher (P#84)
+
+**Statement**: Methodological choices in research (how to classify, measure, or evaluate) belong to the researcher. When implementation requires methodology not yet specified, HALT and ask - do not invent approaches.
+
+**Signs you're making a methodological choice**:
+- "I'll detect X by checking for Y" (classification method)
+- "I'll measure success by Z" (evaluation criteria)
+- "I'll use pattern matching to identify..." (measurement approach)
+
+**Corollaries**:
+- Text matching for LLM output classification → methodological choice, needs researcher approval
+- Defining evaluation rubrics → methodological choice, needs researcher approval
+- Choosing statistical tests → methodological choice, needs researcher approval
+- Building infrastructure to RUN an evaluation → agent work, proceed
+
+**Derivation**: Research methodology requires disciplinary expertise and ethical oversight that agents cannot provide. P#48 (Human Tasks) establishes that decisions requiring human judgment route back to users. Methodology is inherently such a decision. P#8 (Fail-Fast) requires halting on uncertainty rather than inventing fallbacks - this applies to methodological uncertainty too.
