@@ -70,17 +70,32 @@ def get_hook_temp_dir(category: str, input_data: dict[str, Any] | None = None) -
         path.mkdir(parents=True, exist_ok=True)
         return path
 
-    # 3. Gemini-specific discovery logic
+    # 3. Check transcript_path for Gemini CLI detection (before cwd check)
+    # This handles cases where hook runs with different cwd than Gemini CLI
+    if input_data:
+        transcript_path = input_data.get("transcript_path")
+        if transcript_path and ".gemini" in str(transcript_path):
+            # Path is usually ~/.gemini/tmp/<hash>/chats/session.json
+            # We want ~/.gemini/tmp/<hash>/<category>/
+            # So we go up 2 levels from the file: chats/ -> hash/
+            t_path = Path(transcript_path)
+            if t_path.suffix in (".jsonl", ".json"):
+                project_hash_dir = t_path.parent.parent
+            else:
+                project_hash_dir = t_path.parent
+
+            if project_hash_dir.exists():
+                path = project_hash_dir / category
+                path.mkdir(parents=True, exist_ok=True)
+                return path
+
+    # 4. Gemini-specific discovery logic (GEMINI_CLI env or .gemini in cwd)
     if os.environ.get("GEMINI_CLI") or (Path.cwd() / ".gemini").exists():
-        # Strategy A: Use transcript path (most reliable for sub-agents or complex setups)
+        # Strategy A: Use transcript path (already checked above, but keep for completeness)
         if input_data:
             transcript_path = input_data.get("transcript_path")
             if transcript_path:
-                # Path is usually ~/.gemini/tmp/<hash>/logs/session.jsonl
-                # We want ~/.gemini/tmp/<hash>/<category>/
-                # So we go up 2 levels from the file: logs/ -> hash/
                 t_path = Path(transcript_path)
-                # Handle both file path and directory path (just in case)
                 if t_path.suffix in (".jsonl", ".json"):
                     project_hash_dir = t_path.parent.parent
                 else:
@@ -110,7 +125,7 @@ def get_hook_temp_dir(category: str, input_data: dict[str, Any] | None = None) -
             "Ensure you are running inside a Gemini project."
         )
 
-    # 3. Default: ~/.claude/projects/{project}/tmp/{category}/ (Claude behavior)
+    # 5. Default: ~/.claude/projects/{project}/tmp/{category}/ (Claude behavior)
     project_folder = get_claude_project_folder()
     path = Path.home() / ".claude" / "projects" / project_folder / "tmp" / category
     path.mkdir(parents=True, exist_ok=True)
