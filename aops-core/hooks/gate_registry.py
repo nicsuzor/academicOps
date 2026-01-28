@@ -37,14 +37,9 @@ def _check_imports() -> None:
 
 # --- Constants & Configuration ---
 
-# Hydration
-HYDRATION_TEMP_CATEGORY = "hydrator"
-HYDRATION_BLOCK_TEMPLATE = (
-    Path(__file__).parent / "templates" / "hydration-gate-block.md"
-)
-# Safe tools that should NOT be blocked by hydration gate (read-only operations)
-# These tools gather context and don't modify state, so blocking them is counterproductive
-HYDRATION_SAFE_TOOLS = {
+# Shared safe tools for all gates (read-only operations that don't modify state)
+# Used by hydration gate, custodiet gate, and other gates for consistency
+SAFE_READ_TOOLS = {
     # Claude tools
     "Read",
     "Glob",
@@ -59,7 +54,19 @@ HYDRATION_SAFE_TOOLS = {
     "grep_search",
     "search_web",
     "read_url_content",
+    # MCP tools (memory retrieval)
+    "mcp__memory__retrieve_memory",
+    "mcp_memory_retrieve_memory",
+    "mcp__plugin_aops-core_memory__retrieve_memory",
 }
+
+# Hydration
+HYDRATION_TEMP_CATEGORY = "hydrator"
+HYDRATION_BLOCK_TEMPLATE = (
+    Path(__file__).parent / "templates" / "hydration-gate-block.md"
+)
+# Alias for backward compatibility
+HYDRATION_SAFE_TOOLS = SAFE_READ_TOOLS
 
 # Custodiet
 CUSTODIET_TEMP_CATEGORY = "compliance"
@@ -328,24 +335,8 @@ def check_custodiet_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
     """
     _check_imports()  # Fail fast if imports unavailable
 
-    # Skip for certain tools
-    skip_tools = {
-        # Claude tools
-        "Read",
-        "Glob",
-        "Grep",
-        "mcp__memory__retrieve_memory",
-        # Gemini tools
-        "view_file",
-        "read_file",
-        "read_url_content",
-        "list_dir",
-        "find_by_name",
-        "grep_search",
-        "search_web",
-        "mcp_memory_retrieve_memory",
-    }
-    if ctx.tool_name in skip_tools:
+    # Skip for safe read-only tools (uses shared constant for consistency across gates)
+    if ctx.tool_name in SAFE_READ_TOOLS:
         return None
 
     # Track tool calls and trigger compliance check when threshold reached

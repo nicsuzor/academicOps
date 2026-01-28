@@ -35,13 +35,17 @@ def is_handover_skill_invocation(tool_name: str, tool_input: dict[str, Any]) -> 
     Returns:
         True if this is a handover skill invocation
     """
-    if tool_name != "Skill":
-        return False
+    # Claude Skill tool
+    if tool_name == "Skill":
+        skill_name = tool_input.get("skill", "")
+        if skill_name in ("handover", "aops-core:handover"):
+            return True
 
-    skill_name = tool_input.get("skill", "")
-    # Match both short and fully-qualified names
-    if skill_name in ("handover", "aops-core:handover"):
-        return True
+    # Gemini activate_skill tool (matches hydration gate pattern)
+    if tool_name == "activate_skill":
+        name = tool_input.get("name", "")
+        if name in ("handover", "aops-core:handover"):
+            return True
 
     return False
 
