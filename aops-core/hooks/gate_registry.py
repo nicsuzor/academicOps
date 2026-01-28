@@ -176,12 +176,14 @@ SAFE_BASH_PATTERNS = [
 # Template paths for task gate messages
 TASK_GATE_BLOCK_TEMPLATE = Path(__file__).parent / "templates" / "task-gate-block.md"
 TASK_GATE_WARN_TEMPLATE = Path(__file__).parent / "templates" / "task-gate-warn.md"
-DEFAULT_TASK_GATE_MODE = "warn"
-
+DEFAULT_TASK_GATE_MODE = "block"
+DEFAULT_CUSTODIET_GATE_MODE = "block"
 # --- Overdue Enforcement Constants ---
 
 OVERDUE_THRESHOLD = 7
-OVERDUE_BLOCK_TEMPLATE = Path(__file__).parent / "templates" / "overdue-enforcement-block.md"
+OVERDUE_BLOCK_TEMPLATE = (
+    Path(__file__).parent / "templates" / "overdue-enforcement-block.md"
+)
 
 
 class GateContext:
@@ -531,7 +533,7 @@ def _custodiet_build_session_context(
                 # Handle string turns (legacy or other formats)
                 role = "unknown"
                 content = str(turn)[:200]
-            
+
             if content:
                 lines.append(f"  [{role}]: {content}...")
         lines.append("")
@@ -555,7 +557,9 @@ def _custodiet_build_audit_instruction(
 
     session_context = _custodiet_build_session_context(transcript_path, session_id)
     axioms, heuristics, skills = _custodiet_load_framework_content()
-    custodiet_mode = os.environ.get("CUSTODIET_MODE", "warn").lower()
+    custodiet_mode = os.environ.get(
+        "CUSTODIET_MODE", DEFAULT_CUSTODIET_GATE_MODE
+    ).lower()
 
     context_template = load_template(CUSTODIET_CONTEXT_TEMPLATE_FILE)
     full_context = context_template.format(
@@ -782,9 +786,7 @@ def check_handover_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
     try:
         session_state.set_handover_skill_invoked(ctx.session_id)
         # Return a system message but don't block
-        return {
-            "systemMessage": "[Gate] Handover skill invoked. Stop gate cleared."
-        }
+        return {"systemMessage": "[Gate] Handover skill invoked. Stop gate cleared."}
     except Exception as e:
         print(f"WARNING: handover_gate failed to set flag: {e}", file=sys.stderr)
         return None

@@ -44,7 +44,7 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
     dist_dir.mkdir(parents=True)
 
     # 1. Copy content directories (not symlinks - avoids polluting canonical source)
-    for item in ["skills", "lib", "agents", "GEMINI.md"]:
+    for item in ["skills", "lib", "GEMINI.md"]:  # not agents right now.
         src = src_dir / item
         if src.exists():
             safe_copy(src, dist_dir / item)
@@ -193,24 +193,28 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
                         # This allows invoke via activate_skill(name="agent-name")
                         skill_dir = dist_dir / "skills" / agent_name
                         skill_dir.mkdir(parents=True, exist_ok=True)
-                        
+
                         # Read content
                         text = agent_file.read_text()
-                        
+
                         # Dynamic replacement for Gemini compatibility
                         # 1. Task(subagent_type=...) -> activate_skill(name=...)
-                        text = text.replace('Task(subagent_type=', 'activate_skill(name=')
-                        text = text.replace("Task(subagent_type=", "activate_skill(name=")
-                        
+                        text = text.replace(
+                            "Task(subagent_type=", "activate_skill(name="
+                        )
+                        text = text.replace(
+                            "Task(subagent_type=", "activate_skill(name="
+                        )
+
                         # 2. Skill(skill=...) -> activate_skill(name=...)
-                        text = text.replace('Skill(skill=', 'activate_skill(name=')
                         text = text.replace("Skill(skill=", "activate_skill(name=")
-                        
+                        text = text.replace("Skill(skill=", "activate_skill(name=")
+
                         # 3. Update descriptive text references
                         text = text.replace("Task() tool", "activate_skill() tool")
-                        text = text.replace("`Task(`", "`activate_skill(`") 
+                        text = text.replace("`Task(`", "`activate_skill(`")
                         text = text.replace("`Skill(`", "`activate_skill(`")
-                        
+
                         # Write modified content
                         with open(skill_dir / "SKILL.md", "w") as f:
                             f.write(text)
