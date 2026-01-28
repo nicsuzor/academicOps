@@ -99,6 +99,20 @@ mcp__memory__store_memory(
 
 Use memory server semantic search for `$ACA_DATA/` content. Never grep for markdown in the knowledge base. Give agents enough context to make decisions - never use algorithmic matching (fuzzy, keyword, regex).
 
+## Abstraction Level (CRITICAL for Framework Work)
+
+When capturing learnings from debugging/development sessions, **prefer generalizable patterns over implementation specifics**.
+
+| ❌ Too Specific | ✅ Generalizable |
+|----------------|------------------|
+| "AOPS_SESSION_STATE_DIR env var set at SessionStart in router.py:350" | "Configuration should be set once at initialization, no fallbacks" |
+| "Fixed bug in session_paths.py on 2026-01-28" | "Single source of truth prevents cascading ambiguity" |
+| "Gemini uses ~/.gemini/tmp/<hash>/ for state" | "Derive paths from authoritative input, don't hardcode locations" |
+
+**Why this matters**: Specific implementation details are only useful for one code path. Generalizable patterns apply across all future framework work. We're dogfooding - capture what helps NEXT session, not what happened THIS session.
+
+**Test**: Would this memory help an agent working on a DIFFERENT component? If not, it's too specific.
+
 ## General Knowledge (Fast Path)
 
 For factual observations NOT about the user. Location: `knowledge/<topic>/`
