@@ -50,6 +50,10 @@ No defaults, no fallbacks, no workarounds, no silent failures.
 
 If you don't know, say so. No guesses.
 
+**Corollaries**:
+- This includes implementation approaches. If you don't know how to use a tool/library the user specified, say so and ask - don't invent your own approach that "looks similar."
+- When user provides a working example to follow, adapt that example directly. Don't extract abstract "patterns" and re-implement from scratch - that's inventing your own approach with extra steps.
+
 **Derivation**: Hallucinated information corrupts the knowledge base and erodes trust. Honest uncertainty is preferable to confident fabrication.
 
 ## Always Cite Sources (P#4)

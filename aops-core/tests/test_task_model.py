@@ -20,7 +20,7 @@ class TestTaskStatusInbox:
 
     def test_from_frontmatter_parses_inbox_status(self):
         """from_frontmatter correctly parses inbox status."""
-        fm = {"id": "test-456", "title": "Test", "status": "inbox"}
+        fm = {"id": "test-456", "title": "Test", "type": "task", "status": "inbox"}
         task = Task.from_frontmatter(fm)
         assert task.status == TaskStatus.INBOX
 
@@ -61,8 +61,10 @@ class TestTaskTypeValidation:
             task = Task.from_frontmatter(fm)
             assert task.type.value == task_type
 
-    def test_default_type_is_task(self):
-        """from_frontmatter defaults to task type when not specified."""
+    def test_missing_type_raises_valueerror(self):
+        """from_frontmatter raises ValueError when type field is missing."""
         fm = {"id": "test-default", "title": "Test"}
-        task = Task.from_frontmatter(fm)
-        assert task.type == TaskType.TASK
+        with pytest.raises(ValueError) as exc_info:
+            Task.from_frontmatter(fm)
+        assert "missing 'type' field" in str(exc_info.value).lower()
+        assert "not a task file" in str(exc_info.value).lower()
