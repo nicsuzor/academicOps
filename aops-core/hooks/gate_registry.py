@@ -74,6 +74,53 @@ class GateContext:
 
 # --- Hydration Logic ---
 
+# MCP tools that should bypass hydration gate (infrastructure operations)
+# These tools need to work even before hydration so the agent can:
+# - Create/update/list tasks (task binding for other gates)
+# - Store/retrieve memories (context persistence)
+# - Other infrastructure operations
+MCP_TOOLS_EXEMPT_FROM_HYDRATION = {
+    # Task manager MCP tools (Claude format)
+    "mcp__plugin_aops-tools_task_manager__create_task",
+    "mcp__plugin_aops-tools_task_manager__update_task",
+    "mcp__plugin_aops-tools_task_manager__complete_task",
+    "mcp__plugin_aops-tools_task_manager__get_task",
+    "mcp__plugin_aops-tools_task_manager__list_tasks",
+    "mcp__plugin_aops-tools_task_manager__search_tasks",
+    "mcp__plugin_aops-tools_task_manager__claim_next_task",
+    "mcp__plugin_aops-tools_task_manager__get_task_tree",
+    "mcp__plugin_aops-tools_task_manager__get_children",
+    "mcp__plugin_aops-tools_task_manager__decompose_task",
+    "mcp__plugin_aops-tools_task_manager__get_blocked_tasks",
+    "mcp__plugin_aops-tools_task_manager__get_review_tasks",
+    "mcp__plugin_aops-tools_task_manager__get_dependencies",
+    "mcp__plugin_aops-tools_task_manager__rebuild_index",
+    "mcp__plugin_aops-tools_task_manager__get_index_stats",
+    # Memory MCP tools (Claude format)
+    "mcp__plugin_aops-core_memory__store_memory",
+    "mcp__plugin_aops-core_memory__retrieve_memory",
+    "mcp__plugin_aops-core_memory__recall_memory",
+    "mcp__plugin_aops-core_memory__search_by_tag",
+    "mcp__plugin_aops-core_memory__list_memories",
+    "mcp__plugin_aops-core_memory__check_database_health",
+    # Gemini / Short names (used by Gemini CLI)
+    "create_task",
+    "update_task",
+    "complete_task",
+    "get_task",
+    "list_tasks",
+    "search_tasks",
+    "claim_next_task",
+    "get_task_tree",
+    "get_children",
+    "decompose_task",
+    "store_memory",
+    "retrieve_memory",
+    "recall_memory",
+    "search_by_tag",
+    "list_memories",
+}
+
 
 def _hydration_is_subagent_session() -> bool:
     """Check if this is a subagent session."""
@@ -131,6 +178,11 @@ def check_hydration_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
 
     # Bypass for subagent sessions
     if _hydration_is_subagent_session():
+        return None
+
+    # Bypass for MCP infrastructure tools (task manager, memory, etc.)
+    # These must work before hydration so agents can bind tasks, persist context, etc.
+    if ctx.tool_name in MCP_TOOLS_EXEMPT_FROM_HYDRATION:
         return None
 
     # Check if hydration is pending
