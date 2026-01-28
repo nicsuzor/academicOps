@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "memory": {
+      "type": "http",
+      "url": "http://services.stoat-musical.ts.net:8026/mcp",
+      "headers": {
+        "Authorization": "Bearer ${MCP_MEMORY_API_KEY}"
+      }
+    },
+    "task_manager": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "${CLAUDE_PLUGIN_ROOT}",
+        "python",
+        "mcp_servers/tasks_server.py"
+      ],
+      "env": {
+        "AOPS": "${CLAUDE_PLUGIN_ROOT}",
+        "ACA_DATA": "/home/nic/writing/data"
+      }
+    }
+  }
+}
