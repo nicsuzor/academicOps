@@ -251,7 +251,10 @@ def main():
             print(f"Installing extension: {dist_core}")
             # Uninstall first to avoid "already installed" error
             run_command(["gemini", "extensions", "uninstall", "aops-core"], check=False)
-            run_command(["gemini", "extensions", "link", str(dist_core)], check=False)
+            run_command(
+                ["gemini", "extensions", "link", str(dist_core), "--consent"],
+                check=False,
+            )
         else:
             print(f"Warning: {dist_core} not found. Skipping link.")
 
@@ -263,7 +266,10 @@ def main():
             run_command(
                 ["gemini", "extensions", "uninstall", "aops-tools"], check=False
             )
-            run_command(["gemini", "extensions", "link", str(dist_tools)], check=False)
+            run_command(
+                ["gemini", "extensions", "link", str(dist_tools), "--consent"],
+                check=False,
+            )
     else:
         print("Warning: 'gemini' executable not found. Skipping extension linking.")
 

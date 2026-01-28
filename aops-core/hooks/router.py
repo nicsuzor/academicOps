@@ -17,15 +17,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-# Adjust imports to work within the aops-core environment
-try:
-    from hooks import hook_logger
-except ImportError:
-    # Fallback or strict fail?
-    # Given this is the router, we expect hooks package to be importable
-    # via the sys.path manipulation in __init__ or similar, but let's be safe
-    hook_logger = None
-
 # --- Path Setup ---
 HOOK_DIR = Path(__file__).parent
 AOPS_CORE_DIR = HOOK_DIR.parent
@@ -33,6 +24,9 @@ AOPS_CORE_DIR = HOOK_DIR.parent
 # Add aops-core to path for imports
 if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
+
+# Adjust imports to work within the aops-core environment
+from hooks import hook_logger
 
 
 # Hook logging is handled by unified_logger.py in the hook registry
@@ -492,22 +486,16 @@ def execute_hooks(
     merged_output = merge_outputs(outputs, event_name)
     final_exit_code = max(exit_codes) if exit_codes else 0
     # Log operational trace (restores ~/.gemini/tmp/ logs)
-    try:
-        session_id = input_data.get("session_id")
-        if session_id:
-            if "hook_logger" in globals() and globals()["hook_logger"]:
-                hook_logger.log_hook_event(
-                    session_id=session_id,
-                    hook_event=event_name,
-                    input_data=input_data,
-                    output_data=merged_output,
-                    exit_code=final_exit_code,
-                )
-
-    except Exception as e:
-        # P#8 Fail-fast safety: logging failure should not break the hook system
-        # print(f"WARNING: Failed to log hook event: {e}", file=sys.stderr)
-        pass
+    session_id = input_data.get("session_id")
+    if session_id:
+        if "hook_logger" in globals() and globals()["hook_logger"]:
+            hook_logger.log_hook_event(
+                session_id=session_id,
+                hook_event=event_name,
+                input_data=input_data,
+                output_data=merged_output,
+                exit_code=final_exit_code,
+            )
 
     return merged_output, final_exit_code
 
