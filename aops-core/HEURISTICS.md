@@ -378,6 +378,20 @@ description: Working hypotheses validated by evidence.
 - Text matching for LLM output classification → methodological choice, needs researcher approval
 - Defining evaluation rubrics → methodological choice, needs researcher approval
 - Choosing statistical tests → methodological choice, needs researcher approval
+- LLM generation parameters (temperature, max_tokens, top_p) → methodological choice, needs researcher approval
 - Building infrastructure to RUN an evaluation → agent work, proceed
 
 **Derivation**: Research methodology requires disciplinary expertise and ethical oversight that agents cannot provide. P#48 (Human Tasks) establishes that decisions requiring human judgment route back to users. Methodology is inherently such a decision. P#8 (Fail-Fast) requires halting on uncertainty rather than inventing fallbacks - this applies to methodological uncertainty too.
+
+---
+
+## Error Recovery Returns to Reference (P#85)
+
+**Statement**: When implementation fails and a reference example exists, re-read the reference before inventing alternatives.
+
+**Corollaries**:
+- Error → problem-solving mode is the wrong instinct when following an example
+- Error → "what does the reference actually do?" is the right first question
+- If reference uses X and you tried Y, fix is to use X, not to simplify to Z
+
+**Derivation**: P#3 says "adapt the example directly, don't re-implement." This applies equally during error recovery. Errors don't license divergence from the reference - they signal that you haven't matched it closely enough.
