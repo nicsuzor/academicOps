@@ -46,7 +46,7 @@ GEMINI_EVENT_MAP = {
 }
 
 # Hooks Registry
-# "gates.py" is the new universal gate runner.
+# "gates.py" is the universal gate runner - handles all gates via gate_registry.py
 # "unified_logger.py" logs for Claude events.
 HOOK_REGISTRY: Dict[str, List[Dict[str, Any]]] = {
     "SessionStart": [
@@ -55,16 +55,16 @@ HOOK_REGISTRY: Dict[str, List[Dict[str, Any]]] = {
     ],
     "PreToolUse": [
         {"script": "unified_logger.py"},
-        {"script": "gates.py"},  # Universal gate runner (Hydration)
+        {"script": "gates.py"},  # Universal gate runner (hydration, task_required, overdue_enforcement)
         {"script": "command_intercept.py"},
-        {"script": "task_required_gate.py"},
-        {"script": "overdue_enforcement.py"},
+        # REMOVED: task_required_gate.py - consolidated into gates.py
+        # REMOVED: overdue_enforcement.py - consolidated into gates.py
     ],
     "PostToolUse": [
         {"script": "unified_logger.py"},
-        {"script": "gates.py"},  # Universal gate runner (Custodiet)
+        {"script": "gates.py"},  # Universal gate runner (custodiet, handover)
         {"script": "task_binding.py"},
-        {"script": "handover_gate.py"},
+        # REMOVED: handover_gate.py - consolidated into gates.py
     ],
     "UserPromptSubmit": [
         {"script": "user_prompt_submit.py"},

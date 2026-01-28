@@ -23,11 +23,20 @@ from lib.hook_utils import make_empty_output, get_session_id
 # matching the logic of the old system.
 # In the future this can be loaded from hooks.json or gates.json
 ACTIVE_GATES = [
+    # PreToolUse gates (order matters - hydration first, then task/overdue)
     # Hydration runs on both events:
     # - PreToolUse: blocks non-hydrator tools until hydration completes
     # - PostToolUse: clears pending state when hydrator completes (Gemini activate_skill)
     {"name": "hydration", "check": "hydration", "events": ["PreToolUse", "PostToolUse"]},
+    # Task required: blocks destructive operations without task binding
+    {"name": "task_required", "check": "task_required", "events": ["PreToolUse"]},
+    # Overdue enforcement: blocks mutating tools when compliance is overdue
+    {"name": "overdue_enforcement", "check": "overdue_enforcement", "events": ["PreToolUse"]},
+    # PostToolUse gates
+    # Custodiet: tracks tool calls and triggers compliance checks
     {"name": "custodiet", "check": "custodiet", "events": ["PostToolUse"]},
+    # Handover: detects /handover skill and clears stop gate
+    {"name": "handover", "check": "handover", "events": ["PostToolUse"]},
 ]
 
 

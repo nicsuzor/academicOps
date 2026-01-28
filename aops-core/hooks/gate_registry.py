@@ -6,6 +6,7 @@ This module contains the "Conditions" that gates evaluate.
 
 from typing import Any, Dict, Optional, Tuple
 from pathlib import Path
+import re
 import sys
 import os
 
@@ -84,6 +85,104 @@ AXIOMS_FILE = AOPS_ROOT / "aops-core" / "AXIOMS.md"
 HEURISTICS_FILE = AOPS_ROOT / "aops-core" / "HEURISTICS.md"
 SKILLS_FILE = AOPS_ROOT / "aops-core" / "SKILLS.md"
 
+# --- Task Required Gate Constants ---
+
+# Safe temp directories - writes allowed without task binding
+# These are framework-controlled, session-local, not user data
+SAFE_TEMP_PREFIXES = [
+    str(Path.home() / ".claude" / "tmp"),
+    str(Path.home() / ".claude" / "projects"),
+    str(Path.home() / ".gemini" / "tmp"),
+    str(Path.home() / ".aops" / "tmp"),
+]
+
+# Task MCP tools that should always be allowed (they establish binding)
+TASK_BINDING_TOOLS = {
+    "mcp__plugin_aops-tools_task_manager__create_task",
+    "mcp__plugin_aops-tools_task_manager__update_task",
+    "mcp__plugin_aops-tools_task_manager__complete_task",
+    "mcp__plugin_aops-tools_task_manager__decompose_task",
+    "mcp__plugin_aops-tools_task_manager__claim_next_task",
+    # Gemini / Short names
+    "create_task",
+    "update_task",
+    "complete_task",
+    "decompose_task",
+    "claim_next_task",
+}
+
+# Mutating tools that require task binding
+MUTATING_TOOLS = {
+    # Claude/Legacy
+    "Edit",
+    "Write",
+    "Bash",
+    "NotebookEdit",
+    # Gemini
+    "write_to_file",
+    "replace_file_content",
+    "multi_replace_file_content",
+    "run_command",
+    "run_shell_command",
+}
+
+# Destructive Bash command patterns (require task)
+DESTRUCTIVE_BASH_PATTERNS = [
+    r"\brm\b",  # remove files
+    r"\bmv\b",  # move files
+    r"\bcp\b",  # copy files (creates new)
+    r"\bmkdir\b",  # create directories
+    r"\btouch\b",  # create files
+    r"\bchmod\b",  # change permissions
+    r"\bchown\b",  # change ownership
+    r"\bgit\s+commit\b",  # git commit
+    r"\bgit\s+push\b",  # git push
+    r"\bgit\s+reset\b",  # git reset
+    r"\bgit\s+checkout\b.*--",  # git checkout with file paths
+    r"\bnpm\s+install\b",  # npm install
+    r"\bpip\s+install\b",  # pip install
+    r"\buv\s+add\b",  # uv add
+    r"\bsed\s+-i\b",  # sed in-place
+    r"\bawk\s+-i\b",  # awk in-place
+    r">\s*[^&]",  # redirect to file (but not >& which is fd redirect)
+    r">>\s*",  # append to file
+]
+
+# Safe Bash command patterns (explicitly allowed without task)
+SAFE_BASH_PATTERNS = [
+    r"^\s*cat\s",  # cat (read)
+    r"^\s*head\s",  # head (read)
+    r"^\s*tail\s",  # tail (read)
+    r"^\s*less\s",  # less (read)
+    r"^\s*more\s",  # more (read)
+    r"^\s*ls\b",  # ls (read)
+    r"^\s*find\s",  # find (read)
+    r"^\s*grep\s",  # grep (read)
+    r"^\s*rg\s",  # ripgrep (read)
+    r"^\s*echo\s",  # echo (output only, unless redirected)
+    r"^\s*pwd\b",  # pwd (read)
+    r"^\s*which\s",  # which (read)
+    r"^\s*type\s",  # type (read)
+    r"^\s*git\s+status\b",  # git status (read)
+    r"^\s*git\s+diff\b",  # git diff (read)
+    r"^\s*git\s+log\b",  # git log (read)
+    r"^\s*git\s+show\b",  # git show (read)
+    r"^\s*git\s+branch\b",  # git branch (list)
+    r"^\s*npm\s+list\b",  # npm list (read)
+    r"^\s*pip\s+list\b",  # pip list (read)
+    r"^\s*uv\s+pip\s+list\b",  # uv pip list (read)
+]
+
+# Template paths for task gate messages
+TASK_GATE_BLOCK_TEMPLATE = Path(__file__).parent / "templates" / "task-gate-block.md"
+TASK_GATE_WARN_TEMPLATE = Path(__file__).parent / "templates" / "task-gate-warn.md"
+DEFAULT_TASK_GATE_MODE = "warn"
+
+# --- Overdue Enforcement Constants ---
+
+OVERDUE_THRESHOLD = 7
+OVERDUE_BLOCK_TEMPLATE = Path(__file__).parent / "templates" / "overdue-enforcement-block.md"
+
 
 class GateContext:
     """Context passed to gate evaluators."""
@@ -95,6 +194,153 @@ class GateContext:
         self.tool_name = input_data.get("tool_name")
         self.tool_input = input_data.get("tool_input", {})
         self.transcript_path = input_data.get("transcript_path")
+
+
+# --- Shared Helper Functions ---
+
+
+def _is_safe_temp_path(file_path: str | None) -> bool:
+    """Check if file path is in a safe temp directory.
+
+    Safe temp directories are framework-controlled, session-local paths
+    that don't require task binding for writes. This allows session state
+    management, hook logging, and other framework operations to work.
+
+    Args:
+        file_path: Target file path from tool_input
+
+    Returns:
+        True if path is in a safe temp directory, False otherwise
+    """
+    if not file_path:
+        return False
+
+    # Expand ~ and resolve to absolute path
+    try:
+        resolved = str(Path(file_path).expanduser().resolve())
+    except (OSError, ValueError):
+        return False
+
+    # Check if path starts with any safe prefix
+    for prefix in SAFE_TEMP_PREFIXES:
+        if resolved.startswith(prefix):
+            return True
+
+    return False
+
+
+def _is_destructive_bash(command: str) -> bool:
+    """Check if a Bash command is destructive (modifies state).
+
+    Uses a two-pass approach:
+    1. Check if command matches safe patterns (allow without task)
+    2. Check if command matches destructive patterns (require task)
+
+    Args:
+        command: The Bash command string
+
+    Returns:
+        True if command is destructive, False if read-only
+    """
+    # Normalize command for matching
+    cmd = command.strip()
+
+    # First check: explicitly safe patterns
+    for pattern in SAFE_BASH_PATTERNS:
+        if re.search(pattern, cmd, re.IGNORECASE):
+            # But check if there's a redirect that makes it destructive
+            if not re.search(r">\s*[^&]|>>\s*", cmd):
+                return False
+
+    # Second check: destructive patterns
+    for pattern in DESTRUCTIVE_BASH_PATTERNS:
+        if re.search(pattern, cmd, re.IGNORECASE):
+            return True
+
+    # Default: allow (fail-open for unknown commands - they're likely read-only)
+    return False
+
+
+def _should_require_task(tool_name: str, tool_input: Dict[str, Any]) -> bool:
+    """Determine if this tool call requires task binding.
+
+    Args:
+        tool_name: Name of the tool being invoked
+        tool_input: Tool input parameters
+
+    Returns:
+        True if task binding required, False otherwise
+    """
+    # Task binding tools always allowed (they establish binding)
+    if tool_name in TASK_BINDING_TOOLS:
+        return False
+
+    # File modification tools require task, EXCEPT for safe temp directories
+    if tool_name in (
+        "Write",
+        "Edit",
+        "NotebookEdit",
+        "write_to_file",
+        "replace_file_content",
+        "multi_replace_file_content",
+    ):
+        # Check if target path is in safe temp directory (framework-controlled)
+        file_path = tool_input.get("file_path") or tool_input.get("notebook_path")
+        if _is_safe_temp_path(file_path):
+            return False  # Allow writes to temp dirs without task
+        return True
+
+    # Bash commands: check for destructive patterns
+    if tool_name in ("Bash", "run_shell_command"):
+        command = tool_input.get("command")
+        if command is None:
+            return True  # Fail-closed: no command = require task
+        return _is_destructive_bash(command)
+
+    # Gemini run_command (checks CommandLine)
+    if tool_name == "run_command":
+        command = tool_input.get("CommandLine") or tool_input.get("command")
+        if command is None:
+            return True  # Fail-closed: no command = require task
+        return _is_destructive_bash(command)
+
+    # All other tools (Read, Glob, Grep, Task, MCP reads, etc.) don't require task
+    return False
+
+
+def _is_handover_skill_invocation(tool_name: str, tool_input: Dict[str, Any]) -> bool:
+    """Check if this is a handover skill invocation.
+
+    Args:
+        tool_name: Name of the tool being invoked
+        tool_input: Tool input parameters
+
+    Returns:
+        True if this is a handover skill invocation
+    """
+    # Claude Skill tool
+    if tool_name == "Skill":
+        skill_name = tool_input.get("skill", "")
+        if skill_name in ("handover", "aops-core:handover"):
+            return True
+
+    # Gemini activate_skill tool
+    if tool_name == "activate_skill":
+        name = tool_input.get("name", "")
+        if name in ("handover", "aops-core:handover"):
+            return True
+
+    # Gemini delegate_to_agent (unlikely for handover, but supported)
+    if tool_name == "delegate_to_agent":
+        agent_name = tool_input.get("agent_name", "")
+        if agent_name in ("handover", "aops-core:handover"):
+            return True
+
+    # Direct tool name
+    if tool_name == "handover":
+        return True
+
+    return False
 
 
 # --- Hydration Logic ---
@@ -379,8 +625,176 @@ def check_custodiet_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
     return None
 
 
+# --- Task Required Gate Logic ---
+
+
+def _task_gate_status(passed: bool) -> str:
+    """Return gate status indicator."""
+    return "\u2713" if passed else "\u2717"
+
+
+def _build_task_block_message(gates: Dict[str, bool]) -> str:
+    """Build a detailed block message showing which gates are missing."""
+    missing = []
+    if not gates["task_bound"]:
+        missing.append(
+            '(a) Claim a task: `mcp__plugin_aops-tools_task_manager__update_task(id="...", status="active")`'
+        )
+    if not gates["plan_mode_invoked"]:
+        missing.append(
+            "(b) Enter plan mode: `EnterPlanMode()` - design your implementation approach first"
+        )
+    if not gates["critic_invoked"]:
+        missing.append(
+            '(c) Invoke critic: `Task(subagent_type="aops-core:critic", prompt="Review this plan: ...")`'
+        )
+
+    return load_template(
+        TASK_GATE_BLOCK_TEMPLATE,
+        {
+            "task_bound_status": _task_gate_status(gates["task_bound"]),
+            "plan_mode_invoked_status": _task_gate_status(gates["plan_mode_invoked"]),
+            "critic_invoked_status": _task_gate_status(gates["critic_invoked"]),
+            "todo_with_handover_status": "\u2713",  # Deprecated - always pass
+            "missing_gates": "\n".join(missing),
+        },
+    )
+
+
+def _build_task_warn_message(gates: Dict[str, bool]) -> str:
+    """Build a warning message for warn-only mode."""
+    return load_template(
+        TASK_GATE_WARN_TEMPLATE,
+        {
+            "task_bound_status": _task_gate_status(gates["task_bound"]),
+            "plan_mode_invoked_status": _task_gate_status(gates["plan_mode_invoked"]),
+            "critic_invoked_status": _task_gate_status(gates["critic_invoked"]),
+            "todo_with_handover_status": "\u2713",  # Deprecated - always pass
+        },
+    )
+
+
+def check_task_required_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
+    """
+    Check if task binding is required for this operation.
+    Returns None if allowed, or an output dict if blocked/warned.
+
+    Only runs on PreToolUse events. Enforces task-gated permissions model
+    where destructive operations require task binding.
+    """
+    _check_imports()
+
+    # Only applies to PreToolUse
+    if ctx.event_name != "PreToolUse":
+        return None
+
+    # Bypass for subagent sessions
+    if hook_utils.is_subagent_session():
+        return None
+
+    # Check if operation requires task binding
+    if not _should_require_task(ctx.tool_name or "", ctx.tool_input):
+        return None
+
+    # Check if gates are bypassed (. prefix)
+    state = session_state.load_session_state(ctx.session_id)
+    if state and state.get("state", {}).get("gates_bypassed"):
+        return None
+
+    # Check gate status
+    gates = session_state.check_all_gates(ctx.session_id)
+
+    # Currently only enforce task_bound gate (others disabled for validation)
+    if gates["task_bound"]:
+        return None
+
+    # Gates not passed - enforce based on mode
+    gate_mode = os.environ.get("TASK_GATE_MODE", DEFAULT_TASK_GATE_MODE).lower()
+    if gate_mode == "block":
+        block_msg = _build_task_block_message(gates)
+        return dict(hook_utils.make_deny_output(block_msg, "PreToolUse"))
+    else:
+        # Warn mode: allow but inject warning as context
+        warn_msg = _build_task_warn_message(gates)
+        return dict(hook_utils.make_allow_output(warn_msg, "PreToolUse"))
+
+
+# --- Overdue Enforcement Gate Logic ---
+
+
+def check_overdue_enforcement_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
+    """
+    Check if compliance is overdue and block mutating tools if so.
+    Returns None if allowed, or an output dict if blocked.
+
+    Only runs on PreToolUse events. Blocks mutating tools when too many
+    tool calls have occurred without a compliance check.
+    """
+    _check_imports()
+
+    # Only applies to PreToolUse
+    if ctx.event_name != "PreToolUse":
+        return None
+
+    # Only block mutating tools
+    if ctx.tool_name not in MUTATING_TOOLS:
+        return None
+
+    # Load custodiet state to check tool call count
+    state = session_state.load_custodiet_state(ctx.session_id)
+    if state is None:
+        # No state = first session, no baseline to enforce against
+        return None
+
+    tool_calls = state.get("tool_calls_since_compliance", 0)
+
+    # Under threshold - allow everything
+    if tool_calls < OVERDUE_THRESHOLD:
+        return None
+
+    # At or over threshold - block mutating tool
+    block_msg = load_template(OVERDUE_BLOCK_TEMPLATE, {"tool_calls": str(tool_calls)})
+    return dict(hook_utils.make_deny_output(block_msg, "PreToolUse"))
+
+
+# --- Handover Gate Logic ---
+
+
+def check_handover_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
+    """
+    Detect /handover skill invocation and set handover flag.
+    Returns None (never blocks), but sets session state flag.
+
+    Only runs on PostToolUse events. Sets handover_skill_invoked flag
+    when handover skill is completed.
+    """
+    _check_imports()
+
+    # Only applies to PostToolUse
+    if ctx.event_name != "PostToolUse":
+        return None
+
+    # Check if this is a handover invocation
+    if not _is_handover_skill_invocation(ctx.tool_name or "", ctx.tool_input):
+        return None
+
+    # Set handover skill invoked flag
+    try:
+        session_state.set_handover_skill_invoked(ctx.session_id)
+        # Return a system message but don't block
+        return {
+            "systemMessage": "[Gate] Handover skill invoked. Stop gate cleared."
+        }
+    except Exception as e:
+        print(f"WARNING: handover_gate failed to set flag: {e}", file=sys.stderr)
+        return None
+
+
 # Registry of available gate checks
 GATE_CHECKS = {
     "hydration": check_hydration_gate,
     "custodiet": check_custodiet_gate,
+    "task_required": check_task_required_gate,
+    "overdue_enforcement": check_overdue_enforcement_gate,
+    "handover": check_handover_gate,
 }
