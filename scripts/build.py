@@ -21,6 +21,7 @@ try:
         convert_gemini_to_antigravity,
         generate_gemini_hooks,
         safe_symlink,
+        safe_copy,
         format_path_for_json,
     )
 except ImportError as e:
@@ -42,14 +43,13 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
         shutil.rmtree(dist_dir)
     dist_dir.mkdir(parents=True)
 
-    # 1. Symlinks
+    # 1. Copy content directories (not symlinks - avoids polluting canonical source)
     for item in ["skills", "lib", "agents", "GEMINI.md"]:
         src = src_dir / item
         if src.exists():
-            safe_symlink(src, dist_dir / item)
+            safe_copy(src, dist_dir / item)
 
-    # 2. Hooks (Selective)
-    # Link hook files but exclude hooks/gemini/ subdirectory (router goes to router_gemini.py)
+    # 2. Hooks (Selective copy - not symlinks to avoid source pollution)
     hooks_src = src_dir / "hooks"
     hooks_dst = dist_dir / "hooks"
     hooks_dst.mkdir(parents=True)
@@ -60,17 +60,16 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
             if item.name == "gemini":
                 # Don't copy gemini/ subdirectory - we use unified router.py now
                 continue
-            # copy files or link
-            # linking is better for dev, but copying safer for dist. keeping links for now as per old script
-            safe_symlink(item, hooks_dst / item.name)
+            safe_copy(item, hooks_dst / item.name)
 
-    # Link the Unified router directly
+    # Copy the Unified router directly
     router_src = hooks_src / "router.py"
     if router_src.exists():
-        safe_symlink(router_src, hooks_dst / "router.py")
+        safe_copy(router_src, hooks_dst / "router.py")
 
     # Create templates symlink in gemini/ so user_prompt_submit.py can find templates
     # (user_prompt_submit.py uses HOOK_DIR / "templates" where HOOK_DIR is hooks/gemini/)
+    # NOTE: This symlink stays in SOURCE, not dist - it's for the gemini hook to find templates
     gemini_templates_link = hooks_src / "gemini" / "templates"
     if not gemini_templates_link.exists():
         safe_symlink(Path("../templates"), gemini_templates_link)
@@ -177,17 +176,44 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
 
                     frontmatter = yaml.safe_load(parts[1])
                     if "name" in frontmatter:
+                        agent_name = frontmatter["name"]
                         sub_agents.append(
                             {
-                                "name": frontmatter["name"],
+                                "name": agent_name,
                                 "description": frontmatter.get(
-                                    "description", f"Agent {frontmatter['name']}"
+                                    "description", f"Agent {agent_name}"
                                 ),
                                 "uri": f"file://${{extensionPath}}/agents/{agent_file.name}",
                                 # Pass through other fields if needed, e.g. model
                                 "model": frontmatter.get("model"),
                             }
                         )
+
+                        # ALSO create a Skill for this agent (auto-generated)
+                        # This allows invoke via activate_skill(name="agent-name")
+                        skill_dir = dist_dir / "skills" / agent_name
+                        skill_dir.mkdir(parents=True, exist_ok=True)
+                        
+                        # Read content
+                        text = agent_file.read_text()
+                        
+                        # Dynamic replacement for Gemini compatibility
+                        # 1. Task(subagent_type=...) -> activate_skill(name=...)
+                        text = text.replace('Task(subagent_type=', 'activate_skill(name=')
+                        text = text.replace("Task(subagent_type=", "activate_skill(name=")
+                        
+                        # 2. Skill(skill=...) -> activate_skill(name=...)
+                        text = text.replace('Skill(skill=', 'activate_skill(name=')
+                        text = text.replace("Skill(skill=", "activate_skill(name=")
+                        
+                        # 3. Update descriptive text references
+                        text = text.replace("Task() tool", "activate_skill() tool")
+                        text = text.replace("`Task(`", "`activate_skill(`") 
+                        text = text.replace("`Skill(`", "`activate_skill(`")
+                        
+                        # Write modified content
+                        with open(skill_dir / "SKILL.md", "w") as f:
+                            f.write(text)
             except Exception as e:
                 print(f"Warning: Failed to parse agent {agent_file}: {e}")
 
@@ -198,7 +224,10 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
         "version": manifest_base.get("version", "0.1.0"),
         "description": manifest_base.get("description", "AcademicOps Core Framework"),
         "mcpServers": gemini_mcps,
-        "subAgents": sub_agents,
+        # NOTE: subAgents disabled - Gemini CLI doesn't support them yet.
+        # The agent Skills are still generated (see loop above) and can be invoked
+        # via activate_skill(). Re-enable this line when Gemini adds subagent support:
+        # "subAgents": sub_agents,
         # hooksConfig is implicit in Gemini checks for hooks/hooks.json,
         # but sometimes needed in simplified settings.
     }
@@ -230,11 +259,11 @@ def build_aops_tools(aops_root: Path, dist_root: Path):
         shutil.rmtree(dist_dir)
     dist_dir.mkdir(parents=True)
 
-    # 1. Symlinks
+    # 1. Copy content directories (not symlinks - avoids polluting canonical source)
     for item in ["skills"]:
         src = src_dir / item
         if src.exists():
-            safe_symlink(src, dist_dir / item)
+            safe_copy(src, dist_dir / item)
 
     # 2. Load Manifest and MCPs
     plugin_json_path = src_dir / ".claude-plugin" / "plugin.json"

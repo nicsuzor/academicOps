@@ -87,6 +87,28 @@ def safe_symlink(src: Path, dst: Path):
     print(f"  Linked {src.name} -> {dst}")
 
 
+def safe_copy(src: Path, dst: Path):
+    """Copy file or directory, removing the destination if it exists.
+
+    Use this instead of safe_symlink when you need isolated copies
+    (e.g., for Gemini dist to avoid polluting Claude canonical source).
+    """
+    if dst.is_symlink() or dst.exists():
+        if dst.is_dir() and not dst.is_symlink():
+            shutil.rmtree(dst)
+        else:
+            dst.unlink()
+
+    if not dst.parent.exists():
+        dst.parent.mkdir(parents=True)
+
+    if src.is_dir():
+        shutil.copytree(src, dst)
+    else:
+        shutil.copy2(src, dst)
+    print(f"  Copied {src.name} -> {dst}")
+
+
 def generate_gemini_hooks(
     claude_hooks: Dict[str, Any], aops_path: str, router_script_path: str
 ) -> Dict[str, Any]:
