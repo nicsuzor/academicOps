@@ -496,7 +496,11 @@ def set_hydration_pending(session_id: str, original_prompt: str) -> None:
 def clear_hydration_pending(session_id: str) -> None:
     """Clear hydration_pending flag.
 
-    Called when prompt-hydrator is invoked.
+    Called when prompt-hydrator is invoked or when a skill is invoked
+    (via UserPromptSubmit detecting '/' prefix).
+
+    Uses get_or_create to ensure state exists - otherwise clearing would
+    silently fail and is_hydration_pending would return True (fail-closed).
 
     Args:
         session_id: Claude Code session ID
