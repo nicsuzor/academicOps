@@ -281,7 +281,22 @@ def check_custodiet_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
     _check_imports()  # Fail fast if imports unavailable
 
     # Skip for certain tools
-    skip_tools = {"Read", "Glob", "Grep", "mcp__memory__retrieve_memory"}
+    skip_tools = {
+        # Claude tools
+        "Read",
+        "Glob",
+        "Grep",
+        "mcp__memory__retrieve_memory",
+        # Gemini tools
+        "view_file",
+        "read_file",
+        "read_url_content",
+        "list_dir",
+        "find_by_name",
+        "grep_search",
+        "search_web",
+        "mcp_memory_retrieve_memory",
+    }
     if ctx.tool_name in skip_tools:
         return None
 

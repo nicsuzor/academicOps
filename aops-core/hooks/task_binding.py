@@ -57,12 +57,20 @@ def should_bind_task(tool_name: str, tool_input: dict[str, Any]) -> bool:
     """
     # Update task - bind if claiming (status -> in_progress)
     # Note: "active" means ready/available in queue, not being worked on
-    if tool_name == "mcp__plugin_aops-tools_task_manager__update_task":
+    # Update task - bind if claiming (status -> in_progress)
+    # Note: "active" means ready/available in queue, not being worked on
+    if tool_name in (
+        "mcp__plugin_aops-tools_task_manager__update_task",
+        "update_task",
+    ):
         new_status = tool_input.get("status", "")
         return new_status == "in_progress"
 
     # Claim next task - always bind (explicitly claiming from queue)
-    if tool_name == "mcp__plugin_aops-tools_task_manager__claim_next_task":
+    if tool_name in (
+        "mcp__plugin_aops-tools_task_manager__claim_next_task",
+        "claim_next_task",
+    ):
         return True
 
     return False
@@ -83,11 +91,17 @@ def should_unbind_task(tool_name: str, tool_result: dict[str, Any]) -> bool:
         True if task unbinding should occur
     """
     # Complete task - unbind if successful
-    if tool_name == "mcp__plugin_aops-tools_task_manager__complete_task":
+    if tool_name in (
+        "mcp__plugin_aops-tools_task_manager__complete_task",
+        "complete_task",
+    ):
         return tool_result.get("success", False)
 
     # Complete tasks (batch) - unbind if any succeeded
-    if tool_name == "mcp__plugin_aops-tools_task_manager__complete_tasks":
+    if tool_name in (
+        "mcp__plugin_aops-tools_task_manager__complete_tasks",
+        "complete_tasks",
+    ):
         return tool_result.get("success_count", 0) > 0
 
     return False
@@ -148,7 +162,9 @@ def main() -> None:
             current = get_current_task(session_id)
             if current:
                 clear_current_task(session_id)
-                output = {"systemMessage": f"Task completed and unbound from session: {current}"}
+                output = {
+                    "systemMessage": f"Task completed and unbound from session: {current}"
+                }
                 print(json.dumps(output))
                 sys.exit(0)
         except Exception as e:

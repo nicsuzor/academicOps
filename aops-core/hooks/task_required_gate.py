@@ -109,7 +109,14 @@ TASK_BINDING_TOOLS = {
     "mcp__plugin_aops-tools_task_manager__complete_task",
     "mcp__plugin_aops-tools_task_manager__decompose_task",
     "mcp__plugin_aops-tools_task_manager__claim_next_task",
+    # Gemini / Short names
+    "create_task",
+    "update_task",
+    "complete_task",
+    "decompose_task",
+    "claim_next_task",
 }
+
 
 def _gate_status(passed: bool) -> str:
     """Return gate status indicator."""
@@ -127,19 +134,28 @@ def build_block_message(gates: dict[str, bool]) -> str:
     """
     missing = []
     if not gates["task_bound"]:
-        missing.append("(a) Claim a task: `mcp__plugin_aops-tools_task_manager__update_task(id=\"...\", status=\"active\")`")
+        missing.append(
+            '(a) Claim a task: `mcp__plugin_aops-tools_task_manager__update_task(id="...", status="active")`'
+        )
     if not gates["plan_mode_invoked"]:
-        missing.append("(b) Enter plan mode: `EnterPlanMode()` - design your implementation approach first")
+        missing.append(
+            "(b) Enter plan mode: `EnterPlanMode()` - design your implementation approach first"
+        )
     if not gates["critic_invoked"]:
-        missing.append("(c) Invoke critic: `Task(subagent_type=\"aops-core:critic\", prompt=\"Review this plan: ...\")`")
+        missing.append(
+            '(c) Invoke critic: `Task(subagent_type="aops-core:critic", prompt="Review this plan: ...")`'
+        )
 
-    return load_template(BLOCK_TEMPLATE, {
-        "task_bound_status": _gate_status(gates["task_bound"]),
-        "plan_mode_invoked_status": _gate_status(gates["plan_mode_invoked"]),
-        "critic_invoked_status": _gate_status(gates["critic_invoked"]),
-        "todo_with_handover_status": "\u2713",  # Deprecated - always pass
-        "missing_gates": "\n".join(missing),
-    })
+    return load_template(
+        BLOCK_TEMPLATE,
+        {
+            "task_bound_status": _gate_status(gates["task_bound"]),
+            "plan_mode_invoked_status": _gate_status(gates["plan_mode_invoked"]),
+            "critic_invoked_status": _gate_status(gates["critic_invoked"]),
+            "todo_with_handover_status": "\u2713",  # Deprecated - always pass
+            "missing_gates": "\n".join(missing),
+        },
+    )
 
 
 def build_warn_message(gates: dict[str, bool]) -> str:
@@ -151,12 +167,15 @@ def build_warn_message(gates: dict[str, bool]) -> str:
     Returns:
         Formatted warning message
     """
-    return load_template(WARN_TEMPLATE, {
-        "task_bound_status": _gate_status(gates["task_bound"]),
-        "plan_mode_invoked_status": _gate_status(gates["plan_mode_invoked"]),
-        "critic_invoked_status": _gate_status(gates["critic_invoked"]),
-        "todo_with_handover_status": "\u2713",  # Deprecated - always pass
-    })
+    return load_template(
+        WARN_TEMPLATE,
+        {
+            "task_bound_status": _gate_status(gates["task_bound"]),
+            "plan_mode_invoked_status": _gate_status(gates["plan_mode_invoked"]),
+            "critic_invoked_status": _gate_status(gates["critic_invoked"]),
+            "todo_with_handover_status": "\u2713",  # Deprecated - always pass
+        },
+    )
 
 
 def get_gate_mode() -> str:
@@ -230,14 +249,33 @@ def should_require_task(tool_name: str, tool_input: dict[str, Any]) -> bool:
         return False
 
     # File modification tools always require task
-    if tool_name in ("Write", "Edit", "NotebookEdit"):
+    if tool_name in (
+        "Write",
+        "Edit",
+        "NotebookEdit",
+        "write_to_file",
+        "replace_file_content",
+        "multi_replace_file_content",
+    ):
         return True
 
     # Bash commands: check for destructive patterns
-    if tool_name == "Bash":
+    if tool_name in ("Bash", "run_shell_command"):
         command = tool_input.get("command")
         if command is None:
-            raise ValueError("Bash tool_input missing required 'command' field")
+            raise ValueError(f"{tool_name} tool_input missing required 'command' field")
+        return is_destructive_bash(command)
+
+    # Gemini run_command (checks CommandLine)
+    if tool_name == "run_command":
+        command = tool_input.get("CommandLine")
+        if command is None:
+            # Fallback for some variations?
+            command = tool_input.get("command")
+        if command is None:
+            raise ValueError(
+                "run_command tool_input missing required 'CommandLine' field"
+            )
         return is_destructive_bash(command)
 
     # All other tools (Read, Glob, Grep, Task, MCP reads, etc.) don't require task
@@ -266,12 +304,16 @@ def main() -> None:
 
     tool_name = input_data.get("tool_name")
     if tool_name is None:
-        output = _make_deny_output("⛔ TASK GATE: hook input missing required 'tool_name' field")
+        output = _make_deny_output(
+            "⛔ TASK GATE: hook input missing required 'tool_name' field"
+        )
         print(json.dumps(output))
         sys.exit(0)
     tool_input = input_data.get("tool_input")
     if tool_input is None:
-        output = _make_deny_output("⛔ TASK GATE: hook input missing required 'tool_input' field")
+        output = _make_deny_output(
+            "⛔ TASK GATE: hook input missing required 'tool_input' field"
+        )
         print(json.dumps(output))
         sys.exit(0)
     session_id = get_session_id(input_data)

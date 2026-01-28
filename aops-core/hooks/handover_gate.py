@@ -40,7 +40,30 @@ def is_handover_skill_invocation(tool_name: str, tool_input: dict[str, Any]) -> 
 
     skill_name = tool_input.get("skill", "")
     # Match both short and fully-qualified names
-    return skill_name in ("handover", "aops-core:handover")
+    if skill_name in ("handover", "aops-core:handover"):
+        return True
+
+    return False
+
+
+def is_handover_delegation(tool_name: str, tool_input: dict[str, Any]) -> bool:
+    """Check if this is a handover delegation (Gemini)."""
+    if tool_name != "delegate_to_agent":
+        return False
+
+    agent_name = tool_input.get("agent_name", "")
+    # If delegating to something named "handover" or "aops-core:handover"
+    # Or generically, if the *agent* is handover.
+    # But usually handover is a SKILL, not an AGENT.
+    # If Gemini uses a skill via delegation? Unlikely.
+    # But if there's an agent named 'handover-agent'?
+    # Assuming for now mostly Skill tool usage, but supporting direct tool call 'handover' if exposed.
+    return agent_name in ("handover", "aops-core:handover")
+
+
+def is_handover_tool(tool_name: str) -> bool:
+    """Check if tool name itself is handover."""
+    return tool_name == "handover"
 
 
 def main() -> None:
@@ -55,8 +78,14 @@ def main() -> None:
     tool_name = input_data.get("tool_name") or input_data.get("toolName", "")
     tool_input = input_data.get("tool_input") or input_data.get("toolInput", {})
 
-    # Only handle Skill tool
-    if not is_handover_skill_invocation(tool_name, tool_input):
+    # Support Skill tool, direct tool, or delegation
+    is_handover = (
+        is_handover_skill_invocation(tool_name, tool_input)
+        or is_handover_delegation(tool_name, tool_input)
+        or is_handover_tool(tool_name)
+    )
+
+    if not is_handover:
         print(json.dumps({}))
         sys.exit(0)
 
@@ -71,9 +100,7 @@ def main() -> None:
         from lib.session_state import set_handover_skill_invoked
 
         set_handover_skill_invoked(session_id)
-        output = {
-            "systemMessage": "[Gate] Handover skill invoked. Stop gate cleared."
-        }
+        output = {"systemMessage": "[Gate] Handover skill invoked. Stop gate cleared."}
         print(json.dumps(output))
     except Exception as e:
         print(f"handover_gate hook error: {e}", file=sys.stderr)

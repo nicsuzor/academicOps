@@ -24,10 +24,41 @@ BLOCK_TEMPLATE = HOOK_DIR / "templates" / "overdue-enforcement-block.md"
 THRESHOLD = 7
 
 # Mutating tools that get hard-blocked when overdue
-MUTATING_TOOLS = {"Edit", "Write", "Bash", "NotebookEdit"}
+# Mutating tools that get hard-blocked when overdue
+MUTATING_TOOLS = {
+    # Claude/Legacy
+    "Edit",
+    "Write",
+    "Bash",
+    "NotebookEdit",
+    # Gemini
+    "write_to_file",
+    "replace_file_content",
+    "multi_replace_file_content",
+    "run_command",  # Assuming generic command runner, could be destructive
+    "run_shell_command",
+}
 
 # Read-only tools that get soft reminder only
-READONLY_TOOLS = {"Read", "Glob", "Grep", "WebFetch", "WebSearch", "LSP"}
+READONLY_TOOLS = {
+    # Claude/Legacy
+    "Read",
+    "Glob",
+    "Grep",
+    "WebFetch",
+    "WebSearch",
+    "LSP",
+    # Gemini
+    "read_file",
+    "read_url_content",
+    "view_file",
+    "view_file_outline",
+    "view_code_item",
+    "list_dir",
+    "find_by_name",
+    "grep_search",
+    "search_web",
+}
 
 
 def get_session_id() -> str | None:
