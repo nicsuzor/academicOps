@@ -50,10 +50,6 @@ class TestUniversalRouter:
 
         # Action
         with patch("hooks.router.persist_session_data") as mock_persist:
-            # We must mock get_gemini_session_id to return a fixed ID or similar,
-            # but persist_session_data is called inside map_gemini_to_claude.
-            # actually get_gemini_session_id calls get_session_data or generates new.
-
             router.map_gemini_to_claude("SessionStart", gemini_input)
 
             # Assert
@@ -103,25 +99,112 @@ class TestUniversalRouter:
         assert mock_run.call_count == 1
 
     def test_run_hook_injects_env(self, mock_env):
-        # Setup: session data has temp config
+        # Setup: input_data has temp_root (as passed from SessionStart)
         with (
-            patch(
-                "hooks.router.get_session_data",
-                return_value={"temp_root": "/custom/temp"},
-            ),
             patch("hooks.router.validate_temp_path", return_value=True),
             patch("subprocess.run") as mock_run,
         ):
             mock_run.return_value = MagicMock(stdout="{}", stderr="", returncode=0)
 
-            # We call run_hook_script directly
+            # We call run_hook_script directly with temp_root in input_data
             script_path = Path("hooks/foo.py")
-            with patch.object(Path, "exists", return_value=True):  # if referenced
-                router.run_hook_script(script_path, {})
+            with patch.object(Path, "exists", return_value=True):
+                router.run_hook_script(script_path, {"temp_root": "/custom/temp"})
 
             # Assert env var injected
             call_env = mock_run.call_args[1]["env"]
-            assert call_env["AOPS_GEMINI_TEMP_ROOT"] == "/custom/temp"
+            assert call_env["AOPS_SESSION_STATE_DIR"] == "/custom/temp"
+
+    def test_gemini_acceptance_session_start(self, mock_env, capsys, tmp_path):
+        """Acceptance test for Gemini SessionStart output.
+        
+        Verifies:
+        1. Output contains hook_event and source fields.
+        2. State file is created in the temp root (derived from transcript_path).
+        """
+        # Create directory structure for Gemini session
+        session_root = tmp_path / "gemini_root_123"
+        session_root.mkdir()
+        chats_dir = session_root / "chats"
+        chats_dir.mkdir()
+        
+        with patch.dict(os.environ, {}):
+            gemini_input = {
+                "hook_event": "SessionStart",
+                "transcript_path": str(chats_dir / "session-1.json"),
+                "cwd": "/home/nic/src/academicOps",
+            }
+            
+            mock_stdin = MagicMock()
+            mock_stdin.read.return_value = json.dumps(gemini_input)
+            mock_stdin.isatty.return_value = False
+            
+            with patch("sys.stdin", mock_stdin):
+                with patch("sys.argv", ["router.py", "SessionStart"]):
+                    with pytest.raises(SystemExit) as exc:
+                        router.main()
+                    
+                    assert exc.value.code == 0
+                    captured = capsys.readouterr()
+                    output = json.loads(captured.out.strip())
+                    
+                    # 1. Output Structure
+                    assert output["hook_event"] == "SessionStart"
+                    assert output["source"] == "startup"
+                    
+                    # 2. Path Verification
+                    system_msg = output.get("systemMessage", "")
+                    import re
+                    match = re.search(r"State file: (.*)", system_msg)
+                    assert match, "State file path not found in systemMessage"
+                    
+                    state_file_path = Path(match.group(1))
+                    
+                    # Crucial: The state file should be in the session_root (temp root), NOT fallback
+                    # router.py logic: chats/session.json -> temp_root = parent of chats
+                    assert state_file_path.parent == session_root, \
+                        f"State file {state_file_path} not in session root {session_root}"
+                    
+                    # Verify file exists
+                    assert state_file_path.exists(), "State file was not created"
+
+    def test_claude_acceptance_session_start(self, mock_env, capsys, tmp_path):
+        """Acceptance test for Claude SessionStart output."""
+        cwd = "/home/nic/src/academicOps"
+        # Expected path: ~/.claude/projects/-home-nic-src-academicOps/
+        expected_dir = str(Path.home() / ".claude" / "projects" / "-home-nic-src-academicOps")
+
+        with patch.dict(os.environ, {}):
+            claude_input = {
+                "hook_event_name": "SessionStart",
+                "session_id": "test-session-claude",
+                "cwd": cwd,
+            }
+
+            mock_stdin = MagicMock()
+            mock_stdin.read.return_value = json.dumps(claude_input)
+            mock_stdin.isatty.return_value = False
+
+            with patch("sys.stdin", mock_stdin):
+                # Claude mode: no args
+                with patch("sys.argv", ["router.py"]):
+                    with pytest.raises(SystemExit) as exc:
+                        router.main()
+
+                    assert exc.value.code == 0
+                    captured = capsys.readouterr()
+                    output = json.loads(captured.out.strip())
+
+                    # Verify Claude output structure (NO hook_event/source top level)
+                    assert "hook_event" not in output
+                    assert "source" not in output
+
+                    # Verify Path Correctness in Output
+                    hso = output.get("hookSpecificOutput", {})
+                    context = hso.get("additionalContext", "")
+
+                    # Should use ~/.claude/projects/<encoded-cwd>/
+                    assert expected_dir in context
 
 
 class TestGateRegistry:

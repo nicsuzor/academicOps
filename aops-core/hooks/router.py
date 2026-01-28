@@ -256,10 +256,11 @@ def map_gemini_to_claude(
                 # parent = chats, parent.parent = hash dir
                 if trans_p.parent.name == "chats":
                     temp_root = str(trans_p.parent.parent)
-                    update_data["temp_root"] = temp_root
                 else:
                     # Fallback: just use parent
-                    update_data["temp_root"] = str(trans_p.parent)
+                    temp_root = str(trans_p.parent)
+                update_data["temp_root"] = temp_root
+                claude_input["temp_root"] = temp_root  # Pass directly to hooks
             except (OSError, ValueError, AttributeError):
                 # Best-effort extraction of temp_root; if parsing fails,
                 # continue without it - hooks can still function
@@ -347,11 +348,17 @@ def run_hook_script(
                 else aops_core_str
             )
 
-        # Inject Gemini Temp Root if available and valid
-        session_data = get_session_data()
-        temp_root = session_data.get("temp_root")
+        # Set session state directory (required by hooks)
+        # First check input_data (direct pass from SessionStart), then session file
+        temp_root = input_data.get("temp_root") or get_session_data().get("temp_root")
         if temp_root and validate_temp_path(temp_root):
-            env["AOPS_GEMINI_TEMP_ROOT"] = temp_root
+            # Gemini: use temp_root from transcript_path
+            env["AOPS_SESSION_STATE_DIR"] = temp_root
+        else:
+            # Claude: use ~/.claude/projects/<encoded-cwd>/
+            cwd = input_data.get("cwd") or os.getcwd()
+            encoded_cwd = "-" + cwd.replace("/", "-")[1:]
+            env["AOPS_SESSION_STATE_DIR"] = str(Path.home() / ".claude" / "projects" / encoded_cwd)
 
         # Pass hook dir as CWD
         result = subprocess.run(
@@ -536,6 +543,14 @@ def main():
 
         output, exit_code = execute_hooks(claude_input["hook_event_name"], claude_input)
         gemini_output = map_claude_to_gemini(output, gemini_event)
+        
+        # Add metadata fields for Gemini acceptance criteria
+        gemini_output["hook_event"] = gemini_event
+        if gemini_event == "SessionStart":
+            gemini_output["source"] = "startup"
+        elif gemini_event == "SessionEnd":
+            gemini_output["source"] = "exit"
+            
         print(json.dumps(gemini_output))
         sys.exit(exit_code)
 

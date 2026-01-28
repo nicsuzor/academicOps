@@ -43,18 +43,22 @@ def get_session_short_hash(session_id: str) -> str:
 
 
 def get_session_status_dir() -> Path:
-    """Get centralized session status directory.
+    """Get session status directory from AOPS_SESSION_STATE_DIR.
 
-    Returns ~/writing/sessions/status/ by default, or CLAUDE_SESSION_STATE_DIR if set.
+    This env var is set by the router at SessionStart:
+    - Gemini: ~/.gemini/tmp/<hash>/ (from transcript_path)
+    - Claude: ~/.claude/projects/<encoded-cwd>/
+
+    Falls back to /tmp for unit tests that don't go through the router.
 
     Returns:
         Path to session status directory (created if doesn't exist)
     """
-    status_dir = Path(
-        os.environ.get(
-            "CLAUDE_SESSION_STATE_DIR", str(Path.home() / "writing" / "sessions" / "status")
-        )
-    )
+    state_dir = os.environ.get("AOPS_SESSION_STATE_DIR")
+    if not state_dir:
+        # Fallback for unit tests that don't go through router
+        state_dir = "/tmp/aops-test-sessions"
+    status_dir = Path(state_dir)
     status_dir.mkdir(parents=True, exist_ok=True)
     return status_dir
 
