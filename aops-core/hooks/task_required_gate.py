@@ -117,6 +117,45 @@ TASK_BINDING_TOOLS = {
     "claim_next_task",
 }
 
+# Safe temp directories - writes allowed without task binding
+# These are framework-controlled, session-local, not user data
+SAFE_TEMP_PREFIXES = [
+    str(Path.home() / ".claude" / "tmp"),
+    str(Path.home() / ".claude" / "projects"),
+    str(Path.home() / ".gemini" / "tmp"),
+    str(Path.home() / ".aops" / "tmp"),
+]
+
+
+def _is_safe_temp_path(file_path: str | None) -> bool:
+    """Check if file path is in a safe temp directory.
+
+    Safe temp directories are framework-controlled, session-local paths
+    that don't require task binding for writes. This allows session state
+    management, hook logging, and other framework operations to work.
+
+    Args:
+        file_path: Target file path from tool_input
+
+    Returns:
+        True if path is in a safe temp directory, False otherwise
+    """
+    if not file_path:
+        return False
+
+    # Expand ~ and resolve to absolute path
+    try:
+        resolved = str(Path(file_path).expanduser().resolve())
+    except (OSError, ValueError):
+        return False
+
+    # Check if path starts with any safe prefix
+    for prefix in SAFE_TEMP_PREFIXES:
+        if resolved.startswith(prefix):
+            return True
+
+    return False
+
 
 def _gate_status(passed: bool) -> str:
     """Return gate status indicator."""
@@ -248,7 +287,7 @@ def should_require_task(tool_name: str, tool_input: dict[str, Any]) -> bool:
     if tool_name in TASK_BINDING_TOOLS:
         return False
 
-    # File modification tools always require task
+    # File modification tools require task, EXCEPT for safe temp directories
     if tool_name in (
         "Write",
         "Edit",
@@ -257,6 +296,10 @@ def should_require_task(tool_name: str, tool_input: dict[str, Any]) -> bool:
         "replace_file_content",
         "multi_replace_file_content",
     ):
+        # Check if target path is in safe temp directory (framework-controlled)
+        file_path = tool_input.get("file_path") or tool_input.get("notebook_path")
+        if _is_safe_temp_path(file_path):
+            return False  # Allow writes to temp dirs without task
         return True
 
     # Bash commands: check for destructive patterns

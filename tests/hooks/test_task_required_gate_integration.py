@@ -111,3 +111,63 @@ class TestTaskRequiredGateIntegration:
             script_names = [Path(c[1]).name for c in calls if len(c) > 1]  # cmd is list
 
             assert "task_required_gate.py" in script_names
+
+
+class TestSafeTempPaths:
+    """Test safe temp directory allowlist for writes without task binding."""
+
+    def test_is_safe_temp_path_claude_tmp(self):
+        """Writes to ~/.claude/tmp/ should be allowed without task."""
+        from hooks.task_required_gate import _is_safe_temp_path
+
+        claude_tmp = str(Path.home() / ".claude" / "tmp" / "test.txt")
+        assert _is_safe_temp_path(claude_tmp), "~/.claude/tmp/ should be safe"
+
+    def test_is_safe_temp_path_claude_projects(self):
+        """Writes to ~/.claude/projects/ should be allowed without task."""
+        from hooks.task_required_gate import _is_safe_temp_path
+
+        claude_projects = str(Path.home() / ".claude" / "projects" / "abc" / "state.json")
+        assert _is_safe_temp_path(claude_projects), "~/.claude/projects/ should be safe"
+
+    def test_is_safe_temp_path_gemini_tmp(self):
+        """Writes to ~/.gemini/tmp/ should be allowed without task."""
+        from hooks.task_required_gate import _is_safe_temp_path
+
+        gemini_tmp = str(Path.home() / ".gemini" / "tmp" / "hash" / "logs.jsonl")
+        assert _is_safe_temp_path(gemini_tmp), "~/.gemini/tmp/ should be safe"
+
+    def test_is_safe_temp_path_aops_tmp(self):
+        """Writes to ~/.aops/tmp/ should be allowed without task."""
+        from hooks.task_required_gate import _is_safe_temp_path
+
+        aops_tmp = str(Path.home() / ".aops" / "tmp" / "hydrator" / "ctx.md")
+        assert _is_safe_temp_path(aops_tmp), "~/.aops/tmp/ should be safe"
+
+    def test_is_safe_temp_path_user_file_blocked(self):
+        """Writes to regular user files should NOT be safe (require task)."""
+        from hooks.task_required_gate import _is_safe_temp_path
+
+        user_file = str(Path.home() / "src" / "project" / "main.py")
+        assert not _is_safe_temp_path(user_file), "User files should not be safe"
+
+    def test_is_safe_temp_path_claude_settings_blocked(self):
+        """Writes to ~/.claude/settings.json should NOT be safe."""
+        from hooks.task_required_gate import _is_safe_temp_path
+
+        settings = str(Path.home() / ".claude" / "settings.json")
+        assert not _is_safe_temp_path(settings), "~/.claude/settings.json should not be safe"
+
+    def test_should_require_task_write_to_temp_allowed(self):
+        """Write to temp dir should NOT require task."""
+        from hooks.task_required_gate import should_require_task
+
+        tool_input = {"file_path": str(Path.home() / ".claude" / "tmp" / "test.md")}
+        assert not should_require_task("Write", tool_input), "Write to temp should not require task"
+
+    def test_should_require_task_write_to_user_file_required(self):
+        """Write to user file SHOULD require task."""
+        from hooks.task_required_gate import should_require_task
+
+        tool_input = {"file_path": "/home/user/src/main.py"}
+        assert should_require_task("Write", tool_input), "Write to user file should require task"
