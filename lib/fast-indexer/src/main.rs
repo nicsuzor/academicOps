@@ -964,6 +964,16 @@ fn main() -> Result<()> {
         })
         .collect();
 
+    // Deduplicate edges by (source, target, type) to prevent sfdp crash
+    let mut seen_edges: HashSet<(String, String, String)> = HashSet::new();
+    let edges: Vec<Edge> = edges
+        .into_iter()
+        .filter(|e| {
+            let key = (e.source.clone(), e.target.clone(), format!("{:?}", e.edge_type));
+            seen_edges.insert(key)
+        })
+        .collect();
+
     let graph = Graph { nodes, edges };
 
     let formats: Vec<&str> = match args.format.to_lowercase().as_str() {
