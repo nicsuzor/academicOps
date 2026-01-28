@@ -307,8 +307,12 @@ class Task:
         if isinstance(due, str):
             due = datetime.fromisoformat(due)
 
-        # Parse type - reject invalid types (item is not a task)
-        task_type_str = fm.get("type", "task")
+        # Parse type - require explicit type field (skip non-task files)
+        task_type_str = fm.get("type")
+        if task_type_str is None:
+            raise ValueError(
+                f"Missing 'type' field for item {task_id} - not a task file"
+            )
         try:
             task_type = TaskType(task_type_str)
         except ValueError:
