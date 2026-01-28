@@ -686,13 +686,18 @@ def check_custodiet_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
     if ctx.tool_name not in MUTATING_TOOLS:
         return None
 
-    # Load custodiet state to check tool call count
-    state = session_state.load_custodiet_state(ctx.session_id)
-    if state is None:
-        # No state = first session, no baseline to enforce against
-        return None
+    # Track tool calls and trigger compliance check when threshold reached
+    # Use unified SessionState API directly (no backwards compat wrappers)
+    sess = session_state.get_or_create_session_state(ctx.session_id)
+    state = sess.get("state", {})
 
-    tool_calls = state.get("tool_calls_since_compliance", 0)
+    # Initialize custodiet fields if not present
+    state.setdefault("tool_calls_since_compliance", 0)
+    state.setdefault("last_compliance_ts", 0.0)
+
+    state["tool_calls_since_compliance"] += 1
+    session_state.save_session_state(ctx.session_id, sess)
+    tool_calls = state["tool_calls_since_compliance"]
 
     # Under threshold - allow everything
     if tool_calls < OVERDUE_THRESHOLD:
@@ -714,14 +719,6 @@ def check_custodiet_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
         print(f"WARNING: Custodiet audit generation failed: {e}", file=sys.stderr)
         block_msg = load_template(OVERDUE_BLOCK_TEMPLATE, {"tool_calls": str(tool_calls)})
         return dict(hook_utils.make_deny_output(block_msg, "PreToolUse"))
-
-
-# --- Task Required Gate Logic ---
-
-
-def _task_gate_status(passed: bool) -> str:
-    """Return gate status indicator."""
-    return "\u2713" if passed else "\u2717"
 
 
 def _build_task_block_message(gates: Dict[str, bool]) -> str:
@@ -750,7 +747,6 @@ def _build_task_block_message(gates: Dict[str, bool]) -> str:
             "missing_gates": "\n".join(missing),
         },
     )
-
 
 def _build_task_warn_message(gates: Dict[str, bool]) -> str:
     """Build a warning message for warn-only mode."""
@@ -858,8 +854,12 @@ def run_accountant(ctx: GateContext) -> Optional[Dict[str, Any]]:
         # Check for reset (custodiet invoked) or increment
         if _is_custodiet_invocation(ctx.tool_name or "", ctx.tool_input):
             state["tool_calls_since_compliance"] = 0
+<<<<<<< HEAD
         else:
             state["tool_calls_since_compliance"] += 1
+=======
+            session_state.save_session_state(ctx.session_id, sess)
+>>>>>>> 9c01b8b3 (refactor: remove backwards compatibility API from session_state.py)
 
         session_state.save_custodiet_state(ctx.session_id, state)
 

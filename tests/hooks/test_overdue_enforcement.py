@@ -7,6 +7,19 @@ Tests hard-blocking of mutating tools when compliance check is overdue.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
+
+
+def setup_custodiet_state(
+    session_id: str, tool_calls_since_compliance: int = 0
+) -> None:
+    """Helper to set up custodiet state using unified SessionState API."""
+    from lib.session_state import get_or_create_session_state, save_session_state
+
+    state = get_or_create_session_state(session_id)
+    state["state"]["tool_calls_since_compliance"] = tool_calls_since_compliance
+    state["state"]["last_compliance_ts"] = 0.0
+    save_session_state(session_id, state)
 
 
 class TestOverdueThreshold:
@@ -14,19 +27,14 @@ class TestOverdueThreshold:
 
     def test_under_threshold_allows_mutating(self, tmp_path: Path, monkeypatch) -> None:
         """Under threshold (< 7 tool calls), mutating tools allowed."""
-        from lib.session_state import CustodietState, save_custodiet_state
-
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(state_dir))
         cwd = "/test/project"
+        monkeypatch.setenv("CLAUDE_SESSION_ID", cwd)  # Use SESSION_ID (preferred over CWD)
+        monkeypatch.setenv("CLAUDE_SESSION_ID", cwd)  # SESSION_ID preferred over CWD
         monkeypatch.setenv("CLAUDE_CWD", cwd)
 
-        state: CustodietState = {
-            "last_compliance_ts": 0.0,
-            "tool_calls_since_compliance": 5,  # Under threshold
-            "last_drift_warning": None,
-        }
-        save_custodiet_state(cwd, state)
+        setup_custodiet_state(cwd, tool_calls_since_compliance=5)
 
         from hooks.overdue_enforcement import check_overdue
 
@@ -35,19 +43,13 @@ class TestOverdueThreshold:
 
     def test_at_threshold_blocks_mutating(self, tmp_path: Path, monkeypatch) -> None:
         """At threshold (>= 7 tool calls), mutating tools blocked."""
-        from lib.session_state import CustodietState, save_custodiet_state
-
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(state_dir))
         cwd = "/test/project"
+        monkeypatch.setenv("CLAUDE_SESSION_ID", cwd)  # SESSION_ID preferred over CWD
         monkeypatch.setenv("CLAUDE_CWD", cwd)
 
-        state: CustodietState = {
-            "last_compliance_ts": 0.0,
-            "tool_calls_since_compliance": 7,  # At threshold
-            "last_drift_warning": None,
-        }
-        save_custodiet_state(cwd, state)
+        setup_custodiet_state(cwd, tool_calls_since_compliance=7)
 
         from hooks.overdue_enforcement import check_overdue
 
@@ -57,19 +59,13 @@ class TestOverdueThreshold:
 
     def test_over_threshold_blocks_mutating(self, tmp_path: Path, monkeypatch) -> None:
         """Over threshold (> 7 tool calls), mutating tools blocked."""
-        from lib.session_state import CustodietState, save_custodiet_state
-
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(state_dir))
         cwd = "/test/project"
+        monkeypatch.setenv("CLAUDE_SESSION_ID", cwd)  # SESSION_ID preferred over CWD
         monkeypatch.setenv("CLAUDE_CWD", cwd)
 
-        state: CustodietState = {
-            "last_compliance_ts": 0.0,
-            "tool_calls_since_compliance": 10,  # Over threshold
-            "last_drift_warning": None,
-        }
-        save_custodiet_state(cwd, state)
+        setup_custodiet_state(cwd, tool_calls_since_compliance=10)
 
         from hooks.overdue_enforcement import check_overdue
 
@@ -83,19 +79,13 @@ class TestToolCategories:
 
     def test_edit_is_mutating(self, tmp_path: Path, monkeypatch) -> None:
         """Edit tool is mutating and blocked when overdue."""
-        from lib.session_state import CustodietState, save_custodiet_state
-
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(state_dir))
         cwd = "/test/project"
+        monkeypatch.setenv("CLAUDE_SESSION_ID", cwd)  # SESSION_ID preferred over CWD
         monkeypatch.setenv("CLAUDE_CWD", cwd)
 
-        state: CustodietState = {
-            "last_compliance_ts": 0.0,
-            "tool_calls_since_compliance": 10,
-            "last_drift_warning": None,
-        }
-        save_custodiet_state(cwd, state)
+        setup_custodiet_state(cwd, tool_calls_since_compliance=10)
 
         from hooks.overdue_enforcement import check_overdue
 
@@ -105,19 +95,13 @@ class TestToolCategories:
 
     def test_write_is_mutating(self, tmp_path: Path, monkeypatch) -> None:
         """Write tool is mutating and blocked when overdue."""
-        from lib.session_state import CustodietState, save_custodiet_state
-
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(state_dir))
         cwd = "/test/project"
+        monkeypatch.setenv("CLAUDE_SESSION_ID", cwd)  # SESSION_ID preferred over CWD
         monkeypatch.setenv("CLAUDE_CWD", cwd)
 
-        state: CustodietState = {
-            "last_compliance_ts": 0.0,
-            "tool_calls_since_compliance": 10,
-            "last_drift_warning": None,
-        }
-        save_custodiet_state(cwd, state)
+        setup_custodiet_state(cwd, tool_calls_since_compliance=10)
 
         from hooks.overdue_enforcement import check_overdue
 
@@ -127,19 +111,13 @@ class TestToolCategories:
 
     def test_bash_is_mutating(self, tmp_path: Path, monkeypatch) -> None:
         """Bash tool is mutating and blocked when overdue."""
-        from lib.session_state import CustodietState, save_custodiet_state
-
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(state_dir))
         cwd = "/test/project"
+        monkeypatch.setenv("CLAUDE_SESSION_ID", cwd)  # SESSION_ID preferred over CWD
         monkeypatch.setenv("CLAUDE_CWD", cwd)
 
-        state: CustodietState = {
-            "last_compliance_ts": 0.0,
-            "tool_calls_since_compliance": 10,
-            "last_drift_warning": None,
-        }
-        save_custodiet_state(cwd, state)
+        setup_custodiet_state(cwd, tool_calls_since_compliance=10)
 
         from hooks.overdue_enforcement import check_overdue
 
@@ -149,19 +127,13 @@ class TestToolCategories:
 
     def test_read_is_readonly(self, tmp_path: Path, monkeypatch) -> None:
         """Read tool is read-only and NOT blocked when overdue."""
-        from lib.session_state import CustodietState, save_custodiet_state
-
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(state_dir))
         cwd = "/test/project"
+        monkeypatch.setenv("CLAUDE_SESSION_ID", cwd)  # SESSION_ID preferred over CWD
         monkeypatch.setenv("CLAUDE_CWD", cwd)
 
-        state: CustodietState = {
-            "last_compliance_ts": 0.0,
-            "tool_calls_since_compliance": 10,
-            "last_drift_warning": None,
-        }
-        save_custodiet_state(cwd, state)
+        setup_custodiet_state(cwd, tool_calls_since_compliance=10)
 
         from hooks.overdue_enforcement import check_overdue
 
@@ -171,19 +143,13 @@ class TestToolCategories:
 
     def test_glob_is_readonly(self, tmp_path: Path, monkeypatch) -> None:
         """Glob tool is read-only and NOT blocked when overdue."""
-        from lib.session_state import CustodietState, save_custodiet_state
-
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(state_dir))
         cwd = "/test/project"
+        monkeypatch.setenv("CLAUDE_SESSION_ID", cwd)  # SESSION_ID preferred over CWD
         monkeypatch.setenv("CLAUDE_CWD", cwd)
 
-        state: CustodietState = {
-            "last_compliance_ts": 0.0,
-            "tool_calls_since_compliance": 10,
-            "last_drift_warning": None,
-        }
-        save_custodiet_state(cwd, state)
+        setup_custodiet_state(cwd, tool_calls_since_compliance=10)
 
         from hooks.overdue_enforcement import check_overdue
 
@@ -192,19 +158,13 @@ class TestToolCategories:
 
     def test_grep_is_readonly(self, tmp_path: Path, monkeypatch) -> None:
         """Grep tool is read-only and NOT blocked when overdue."""
-        from lib.session_state import CustodietState, save_custodiet_state
-
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(state_dir))
         cwd = "/test/project"
+        monkeypatch.setenv("CLAUDE_SESSION_ID", cwd)  # SESSION_ID preferred over CWD
         monkeypatch.setenv("CLAUDE_CWD", cwd)
 
-        state: CustodietState = {
-            "last_compliance_ts": 0.0,
-            "tool_calls_since_compliance": 10,
-            "last_drift_warning": None,
-        }
-        save_custodiet_state(cwd, state)
+        setup_custodiet_state(cwd, tool_calls_since_compliance=10)
 
         from hooks.overdue_enforcement import check_overdue
 
@@ -232,19 +192,13 @@ class TestBlockReason:
 
     def test_block_includes_reason(self, tmp_path: Path, monkeypatch) -> None:
         """Block response includes reason message."""
-        from lib.session_state import CustodietState, save_custodiet_state
-
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(state_dir))
         cwd = "/test/project"
+        monkeypatch.setenv("CLAUDE_SESSION_ID", cwd)  # SESSION_ID preferred over CWD
         monkeypatch.setenv("CLAUDE_CWD", cwd)
 
-        state: CustodietState = {
-            "last_compliance_ts": 0.0,
-            "tool_calls_since_compliance": 10,
-            "last_drift_warning": None,
-        }
-        save_custodiet_state(cwd, state)
+        setup_custodiet_state(cwd, tool_calls_since_compliance=10)
 
         from hooks.overdue_enforcement import check_overdue
 
@@ -258,19 +212,13 @@ class TestBlockReason:
 
     def test_block_suggests_custodiet(self, tmp_path: Path, monkeypatch) -> None:
         """Block response suggests spawning custodiet."""
-        from lib.session_state import CustodietState, save_custodiet_state
-
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(state_dir))
         cwd = "/test/project"
+        monkeypatch.setenv("CLAUDE_SESSION_ID", cwd)  # SESSION_ID preferred over CWD
         monkeypatch.setenv("CLAUDE_CWD", cwd)
 
-        state: CustodietState = {
-            "last_compliance_ts": 0.0,
-            "tool_calls_since_compliance": 10,
-            "last_drift_warning": None,
-        }
-        save_custodiet_state(cwd, state)
+        setup_custodiet_state(cwd, tool_calls_since_compliance=10)
 
         from hooks.overdue_enforcement import check_overdue
 
@@ -286,19 +234,13 @@ class TestSoftReminder:
         self, tmp_path: Path, monkeypatch
     ) -> None:
         """Read-only tools get soft reminder (not block) when overdue."""
-        from lib.session_state import CustodietState, save_custodiet_state
-
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(state_dir))
         cwd = "/test/project"
+        monkeypatch.setenv("CLAUDE_SESSION_ID", cwd)  # SESSION_ID preferred over CWD
         monkeypatch.setenv("CLAUDE_CWD", cwd)
 
-        state: CustodietState = {
-            "last_compliance_ts": 0.0,
-            "tool_calls_since_compliance": 10,
-            "last_drift_warning": None,
-        }
-        save_custodiet_state(cwd, state)
+        setup_custodiet_state(cwd, tool_calls_since_compliance=10)
 
         from hooks.overdue_enforcement import check_overdue
 
