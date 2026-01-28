@@ -252,7 +252,14 @@ def main():
             # Uninstall first to avoid "already installed" error
             run_command(["gemini", "extensions", "uninstall", "aops-core"], check=False)
             run_command(
-                ["gemini", "extensions", "link", str(dist_core), "--consent"],
+                [
+                    "gemini",
+                    "extensions",
+                    "link",
+                    str(dist_core),
+                    "--consent",
+                    # "--pre-release",
+                ],
                 check=False,
             )
         else:
@@ -267,7 +274,14 @@ def main():
                 ["gemini", "extensions", "uninstall", "aops-tools"], check=False
             )
             run_command(
-                ["gemini", "extensions", "link", str(dist_tools), "--consent"],
+                [
+                    "gemini",
+                    "extensions",
+                    "link",
+                    str(dist_tools),
+                    "--consent",
+                    # "--pre-release",
+                ],
                 check=False,
             )
     else:

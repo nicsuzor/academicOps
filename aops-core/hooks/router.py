@@ -308,16 +308,16 @@ def map_claude_to_gemini(
                     ):
                         gemini_output["systemMessage"] = f"Tool blocked: {context}"
 
-            # 3. SessionStart: Move additionalContext to systemMessage to prevent injection
-            # Users want to see the session info but NOT inject it into the prompt.
-            elif gemini_event == "SessionStart":
-                context = hso.pop("additionalContext", None)
-                if context:
-                    current_sys = gemini_output.get("systemMessage", "")
-                    if current_sys:
-                        gemini_output["systemMessage"] = f"{current_sys}\n\n{context}"
-                    else:
-                        gemini_output["systemMessage"] = context
+        # 3. SessionStart: Move additionalContext to systemMessage to prevent injection
+        # Users want to see the session info but NOT inject it into the prompt.
+        if gemini_event == "SessionStart":
+            context = hso.pop("additionalContext", None)
+            if context:
+                current_sys = gemini_output.get("systemMessage", "")
+                if current_sys:
+                    gemini_output["systemMessage"] = f"{current_sys}\n\n{context}"
+                else:
+                    gemini_output["systemMessage"] = context
 
     return gemini_output
 
