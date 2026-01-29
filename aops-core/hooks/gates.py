@@ -34,10 +34,16 @@ ACTIVE_GATES = [
     # PostToolUse gates (Accounting Pipeline)
     # 1. Accountant: Updates state (hydration cleared, tool counts, handover flags)
     {"name": "accountant", "check": "accountant", "events": ["PostToolUse"]},
+    # 2. Post-hydration trigger: Injects next step after hydration
+    {"name": "post_hydration", "check": "post_hydration", "events": ["PostToolUse"]},
+    # 3. Post-critic trigger: Updates state after critic invocation
+    {"name": "post_critic", "check": "post_critic", "events": ["PostToolUse"]},
 
     # Stop / AfterAgent gates (Final Review Pipeline)
     # 1. Stop Gate: Enforces Critic invocation and handover warnings
     {"name": "stop_gate", "check": "stop_gate", "events": ["Stop"]},
+    # 2. Hydration Recency: Blocks exit if turns since hydration == 0
+    {"name": "hydration_recency", "check": "hydration_recency", "events": ["Stop"]},
 ]
 
 

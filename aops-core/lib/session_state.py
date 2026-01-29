@@ -39,7 +39,8 @@ class SessionState(TypedDict, total=False):
     # Hydration data
     hydration: dict[
         str, Any
-    ]  # original_prompt, hydrated_intent, acceptance_criteria, critic_verdict
+    ]  # original_prompt, hydrated_intent, acceptance_criteria, critic_verdict,
+    # turns_since_hydration, turns_since_critic
 
     # Agent tracking
     main_agent: dict[str, Any]  # current_task, todos_completed, todos_total
@@ -207,6 +208,8 @@ def create_session_state(session_id: str) -> SessionState:
             "hydrated_intent": None,
             "acceptance_criteria": [],
             "critic_verdict": None,
+            "turns_since_hydration": -1,
+            "turns_since_critic": -1,
         },
         main_agent={
             "current_task": None,
@@ -407,6 +410,26 @@ def get_hydration_data(session_id: str) -> dict[str, Any] | None:
     if state is None:
         return None
     return state.get("hydration")
+
+
+def update_hydration_metrics(
+    session_id: str,
+    turns_since_hydration: int | None = None,
+    turns_since_critic: int | None = None
+) -> None:
+    """Update hydration tracking metrics.
+
+    Args:
+        session_id: Claude Code session ID
+        turns_since_hydration: Optional override for turns count
+        turns_since_critic: Optional override for critic count
+    """
+    state = get_or_create_session_state(session_id)
+    if turns_since_hydration is not None:
+        state["hydration"]["turns_since_hydration"] = turns_since_hydration
+    if turns_since_critic is not None:
+        state["hydration"]["turns_since_critic"] = turns_since_critic
+    save_session_state(session_id, state)
 
 
 # ============================================================================
