@@ -1,1 +1,1 @@
-/home/nic/src/academicOps/config/antigravity/rules/core.md
+../../config/antigravity/rules/core.md
