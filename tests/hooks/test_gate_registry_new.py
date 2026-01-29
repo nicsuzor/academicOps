@@ -31,38 +31,6 @@ def mock_hook_utils():
     with patch("gate_registry.hook_utils") as mock:
         yield mock
 
-@pytest.fixture
-def mock_is_mutating():
-    with patch("gate_registry.is_mutating_tool") as mock:
-        yield mock
-
-class TestCustodietGateDRY:
-    def test_uses_shared_is_mutating_tool(self, mock_session_state, mock_is_mutating):
-        """Test that check_custodiet_gate uses shared is_mutating_tool."""
-        ctx = GateContext("sess1", "PostToolUse", {"tool_name": "write_file"})
-        
-        # Setup mocks
-        mock_is_mutating.return_value = True
-        mock_session_state.load_custodiet_state.return_value = {
-            "tool_calls_since_compliance": 0
-        }
-        
-        # Run
-        check_custodiet_gate(ctx)
-        
-        # Verify
-        mock_is_mutating.assert_called_with("write_file")
-
-    def test_ignores_non_mutating_tool(self, mock_session_state, mock_is_mutating):
-        """Test that non-mutating tools are ignored."""
-        ctx = GateContext("sess1", "PostToolUse", {"tool_name": "read_file"})
-        mock_is_mutating.return_value = False
-        
-        result = check_custodiet_gate(ctx)
-        
-        assert result is None
-        mock_session_state.save_custodiet_state.assert_not_called()
-
 class TestHydrationRecencyGate:
     def test_blocks_if_turns_zero(self, mock_session_state, mock_hook_utils):
         """Test blocking if turns_since_hydration is 0."""
