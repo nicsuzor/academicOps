@@ -55,7 +55,9 @@ HOOK_REGISTRY: Dict[str, List[Dict[str, Any]]] = {
     ],
     "PreToolUse": [
         {"script": "unified_logger.py"},
-        {"script": "gates.py"},  # Universal gate runner (hydration, task_required, overdue_enforcement)
+        {
+            "script": "gates.py"
+        },  # Universal gate runner (hydration, task_required, overdue_enforcement)
         {"script": "command_intercept.py"},
         # REMOVED: task_required_gate.py - consolidated into gates.py
         # REMOVED: overdue_enforcement.py - consolidated into gates.py
@@ -74,6 +76,7 @@ HOOK_REGISTRY: Dict[str, List[Dict[str, Any]]] = {
         {"script": "unified_logger.py"},
     ],
     "Stop": [
+        {"script": "unified_logger.py"},
         # {"script": "session_end_commit_check.py"},
     ],
     "SessionEnd": [
@@ -358,7 +361,9 @@ def run_hook_script(
             # Claude: use ~/.claude/projects/<encoded-cwd>/
             cwd = input_data.get("cwd") or os.getcwd()
             encoded_cwd = "-" + cwd.replace("/", "-")[1:]
-            env["AOPS_SESSION_STATE_DIR"] = str(Path.home() / ".claude" / "projects" / encoded_cwd)
+            env["AOPS_SESSION_STATE_DIR"] = str(
+                Path.home() / ".claude" / "projects" / encoded_cwd
+            )
 
         # Pass hook dir as CWD
         result = subprocess.run(
@@ -543,14 +548,14 @@ def main():
 
         output, exit_code = execute_hooks(claude_input["hook_event_name"], claude_input)
         gemini_output = map_claude_to_gemini(output, gemini_event)
-        
+
         # Add metadata fields for Gemini acceptance criteria
         gemini_output["hook_event"] = gemini_event
         if gemini_event == "SessionStart":
             gemini_output["source"] = "startup"
         elif gemini_event == "SessionEnd":
             gemini_output["source"] = "exit"
-            
+
         print(json.dumps(gemini_output))
         sys.exit(exit_code)
 
