@@ -17,6 +17,7 @@ try:
     from lib import hook_utils
     from lib.template_loader import load_template
     from lib.session_reader import extract_gate_context
+    from hooks.overdue_enforcement import is_mutating_tool
 except ImportError as e:
     _IMPORT_ERROR = str(e)
     # Provide stub implementations that raise clear errors when used
@@ -24,6 +25,7 @@ except ImportError as e:
     hook_utils = None  # type: ignore[assignment]
     load_template = None  # type: ignore[assignment]
     extract_gate_context = None  # type: ignore[assignment]
+    is_mutating_tool = None # type: ignore[assignment]
 
 
 def _check_imports() -> None:
@@ -332,24 +334,8 @@ def check_custodiet_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
     """
     _check_imports()  # Fail fast if imports unavailable
 
-    # Skip for certain tools
-    skip_tools = {
-        # Claude tools
-        "Read",
-        "Glob",
-        "Grep",
-        "mcp__memory__retrieve_memory",
-        # Gemini tools
-        "view_file",
-        "read_file",
-        "read_url_content",
-        "list_dir",
-        "find_by_name",
-        "grep_search",
-        "search_web",
-        "mcp_memory_retrieve_memory",
-    }
-    if ctx.tool_name in skip_tools:
+    # DRY: Use shared mutating tool definition
+    if not is_mutating_tool(ctx.tool_name):
         return None
 
     # Track tool calls and trigger compliance check when threshold reached
@@ -391,9 +377,82 @@ def check_custodiet_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
 
     return None
 
+def check_hydration_recency_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
+    """
+    Stop hook: Block exit if turns since hydration == 0.
+    This ensures the agent doesn't hydrate then immediately exit (e.g. "Plan approved").
+    """
+    _check_imports()
+
+    # Load session state to check turns since hydration
+    # Note: We need to load full state to check this tracker
+    state = session_state.get_or_create_session_state(ctx.session_id)
+    hydration_state = state.get("hydration", {})
+    
+    # Default to -1 if not tracked (e.g. legacy session), which won't block
+    turns_since = hydration_state.get("turns_since_hydration", -1)
+
+    if turns_since == 0:
+        return hook_utils.make_deny_output("Plan approved, start execution now")
+    
+    return None
+
+def post_hydration_trigger(ctx: GateContext) -> Optional[Dict[str, Any]]:
+    """
+    PostToolUse: Detect successful hydration and inject next step.
+    """
+    _check_imports()
+
+    # Check if this was a successful hydration
+    # We re-use logic from check_hydration_gate to identify hydrator tools
+    is_hydrator_tool = ctx.tool_name in ("Task", "delegate_to_agent")
+    is_hydrator = is_hydrator_tool and _hydration_is_hydrator_task(ctx.tool_input)
+    # Note: Gemini hydration uses read_file/run_shell, which is harder to detect reliably
+    # in PostToolUse without input data. For now, we support the standard Task/delegate method.
+
+    if is_hydrator:
+        # Reset trackers
+        session_state.update_hydration_metrics(ctx.session_id, turns_since_hydration=0)
+        session_state.clear_hydration_pending(ctx.session_id)
+
+        # Inject message
+        return hook_utils.make_context_output(
+            "Next, invoke the critic and revise your plan.", 
+            "PostToolUse", 
+            wrap_in_reminder=True
+        )
+    
+    return None
+
+def post_critic_trigger(ctx: GateContext) -> Optional[Dict[str, Any]]:
+    """
+    PostToolUse: Detect successful critic invocation and update state.
+    """
+    _check_imports()
+    
+    # Check if this was a critic invocation
+    is_delegate = ctx.tool_name == "delegate_to_agent"
+    is_critic = is_delegate and ctx.tool_input.get("agent_name") == "critic"
+    
+    # Also check Task tool (Claude)
+    is_task = ctx.tool_name == "Task"
+    is_critic_task = is_task and ctx.tool_input.get("subagent_type") == "critic"
+
+    if is_critic or is_critic_task:
+        # Set flags
+        session_state.set_critic_invoked(ctx.session_id, "INVOKED") # Generic verdict for now
+        session_state.update_hydration_metrics(ctx.session_id, turns_since_critic=0)
+        
+        return None
+
+    return None
+
 
 # Registry of available gate checks
 GATE_CHECKS = {
     "hydration": check_hydration_gate,
     "custodiet": check_custodiet_gate,
+    "hydration_recency": check_hydration_recency_gate,
+    "post_hydration": post_hydration_trigger,
+    "post_critic": post_critic_trigger,
 }

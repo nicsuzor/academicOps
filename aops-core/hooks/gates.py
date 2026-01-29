@@ -25,6 +25,9 @@ from lib.hook_utils import make_empty_output, get_session_id
 ACTIVE_GATES = [
     {"name": "hydration", "check": "hydration", "events": ["PreToolUse"]},
     {"name": "custodiet", "check": "custodiet", "events": ["PostToolUse"]},
+    {"name": "hydration_recency", "check": "hydration_recency", "events": ["Stop"]},
+    {"name": "post_hydration", "check": "post_hydration", "events": ["PostToolUse"]},
+    {"name": "post_critic", "check": "post_critic", "events": ["PostToolUse"]},
 ]
 
 
