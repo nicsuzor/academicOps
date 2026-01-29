@@ -8,9 +8,17 @@ tags: [testing, H37, patterns]
 ---
 <!-- NS: move this to a testing workflow and consolidate with other test writing instructions. -->
 <!-- @claude 2026-01-22: Acknowledged. Task created to consolidate testing documentation into a unified testing workflow. -->
+<!-- NS: 2026-01-30: Make sure you append the task id when you reply to a comment like this. -->
+
 # Test Design Patterns
 
 How to write tests that verify actual behavior, not surface patterns. Per H37: never use keyword/substring matching for verification.
+
+## File Naming & Invocation
+
+- **File Naming**: All test files MUST be named `tests/.../test_*.py` (e.g., `tests/hooks/test_router.py`).
+- **Interactive/Demo Tests**: Tests designed to demonstrate features by outputting to stdout MUST be marked with `@pytest.mark.demo`.
+  - **Invocation**: Invoke these tests with: `uv run pytest -m demo -n 0 -s -v`
 
 ## The Problem: Volkswagen Tests
 

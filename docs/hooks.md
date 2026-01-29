@@ -1,3 +1,11 @@
+---
+name: hooks_guide
+category: developer_guide
+description: Detailed guide for developing and debugging agents, hooks, and gates in the AcademicOps framework.
+permalink: docs/hooks.md
+keywords: [hook, gate, router, event, hydration, userpromptsubmit]
+---
+
 # Agent Development Guide for AOPS Framework
 
 This guide summarizes key architectural patterns and "gotchas" for agents working on the `aops-core` hooks and gates system.
