@@ -73,7 +73,12 @@ HYDRATION_TEMP_CATEGORY = "hydrator"
 HYDRATION_BLOCK_TEMPLATE = (
     Path(__file__).parent / "templates" / "hydration-gate-block.md"
 )
-# Alias for backward compatibility
+# Strict allow list for Hydration (Blocks reads by default)
+HYDRATION_ALLOWED_TOOLS = {
+    "list_prompts",  # Allowed to check available prompts? Maybe.
+    # Keep empty for maximum strictness as requested.
+}
+# Alias for backward compatibility (Deprecated usage in Hydration Gate)
 HYDRATION_SAFE_TOOLS = SAFE_READ_TOOLS
 
 # Custodiet
@@ -499,6 +504,12 @@ def _hydration_is_gemini_hydration_attempt(
             path = str(file_path)
             return path.startswith(temp_dir) or path.startswith("/tmp/claude-hydrator/")
 
+    if tool_name == "write_to_file":
+        target_file = tool_input.get("TargetFile") or tool_input.get("file_path")
+        if target_file:
+            path = str(target_file)
+            return path.startswith(temp_dir) or path.startswith("/tmp/claude-hydrator/")
+
     if tool_name == "run_shell_command":
         command = tool_input.get("command")
         if command:
@@ -523,8 +534,8 @@ def check_hydration_gate(ctx: GateContext) -> Optional[GateResult]:
     if _hydration_is_subagent_session():
         return None
 
-    # Bypass for safe read-only tools (context gathering shouldn't be blocked)
-    if ctx.tool_name in HYDRATION_SAFE_TOOLS:
+    # Bypass for accepted tools (Strict List)
+    if ctx.tool_name in HYDRATION_ALLOWED_TOOLS:
         return None
 
     # Bypass for MCP infrastructure tools (task manager, memory, etc.)
