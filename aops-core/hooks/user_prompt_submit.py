@@ -39,7 +39,9 @@ from lib.template_loader import load_template
 HOOK_DIR = Path(__file__).parent
 CONTEXT_TEMPLATE_FILE = HOOK_DIR / "templates" / "prompt-hydrator-context.md"
 INSTRUCTION_TEMPLATE_FILE = HOOK_DIR / "templates" / "prompt-hydration-instruction.md"
-SIMPLE_QUESTION_TEMPLATE_FILE = HOOK_DIR / "templates" / "simple-question-instruction.md"
+SIMPLE_QUESTION_TEMPLATE_FILE = (
+    HOOK_DIR / "templates" / "simple-question-instruction.md"
+)
 
 # Temp directory category (matches hydration_gate.py)
 TEMP_CATEGORY = "hydrator"
@@ -196,9 +198,7 @@ def load_axioms() -> str:
     aops_root = get_aops_root()
     axioms_path = aops_root / "aops-core" / "AXIOMS.md"
 
-    if not axioms_path.exists():
-        return "(AXIOMS.md not found)"
-
+    # Fail fast, raises if SKILLS.md doesn't exist
     content = axioms_path.read_text()
 
     # Skip frontmatter if present
@@ -210,6 +210,7 @@ def load_axioms() -> str:
     return content.strip()
 
 
+# <!-- NS: these repetitive functions should be refactored. -->
 def load_heuristics() -> str:
     """Load HEURISTICS.md for hydrator context.
 
@@ -217,11 +218,9 @@ def load_heuristics() -> str:
     Returns content after frontmatter separator.
     """
     aops_root = get_aops_root()
-    heuristics_path = aops_root / "HEURISTICS.md"
+    heuristics_path = aops_root / "aops-core" / "HEURISTICS.md"
 
-    if not heuristics_path.exists():
-        return "(HEURISTICS.md not found)"
-
+    # Fail fast, raises if file doesn't exist
     content = heuristics_path.read_text()
 
     # Skip frontmatter if present
@@ -240,11 +239,9 @@ def load_skills_index() -> str:
     without needing to search memory. Returns content after frontmatter separator.
     """
     aops_root = get_aops_root()
-    skills_path = aops_root / "SKILLS.md"
+    skills_path = aops_root / "aops-core" / "SKILLS.md"
 
-    if not skills_path.exists():
-        return "(SKILLS.md not found - hydrator will use memory search for skill recognition)"
-
+    # Fail fast, raises if file doesn't exist
     content = skills_path.read_text()
 
     # Skip frontmatter if present
@@ -480,40 +477,102 @@ def should_skip_hydration(prompt: str) -> bool:
 # Keywords that indicate work/action requests (not pure questions)
 # These are checked with word boundaries to avoid false positives
 # (e.g., "does" should not match "do", "commits" should not match "commit")
-_ACTION_KEYWORDS = frozenset([
-    # Imperatives
-    "add", "create", "write", "implement", "fix", "update", "change", "modify",
-    "delete", "remove", "refactor", "move", "rename", "build", "deploy",
-    "execute", "install", "configure", "set up", "setup", "enable", "disable",
-    # Request forms
-    "can you", "could you", "would you", "please", "help me", "i need you to",
-    "i want you to", "make", "let's",
-    # File operations
-    "edit", "save", "push", "merge", "pull request",
-])
+_ACTION_KEYWORDS = frozenset(
+    [
+        # Imperatives
+        "add",
+        "create",
+        "write",
+        "implement",
+        "fix",
+        "update",
+        "change",
+        "modify",
+        "delete",
+        "remove",
+        "refactor",
+        "move",
+        "rename",
+        "build",
+        "deploy",
+        "execute",
+        "install",
+        "configure",
+        "set up",
+        "setup",
+        "enable",
+        "disable",
+        # Request forms
+        "can you",
+        "could you",
+        "would you",
+        "please",
+        "help me",
+        "i need you to",
+        "i want you to",
+        "make",
+        "let's",
+        # File operations
+        "edit",
+        "save",
+        "push",
+        "merge",
+        "pull request",
+    ]
+)
 
 # Separate patterns that need word-boundary matching
 # "commit" shouldn't match "commits" when talking about git history
 # "do" shouldn't match "does" in questions
 # "run" shouldn't match "running" when describing current state
-_ACTION_KEYWORDS_WORD_BOUNDARY = frozenset([
-    "commit", "do", "pr", "run",
-])
+_ACTION_KEYWORDS_WORD_BOUNDARY = frozenset(
+    [
+        "commit",
+        "do",
+        "pr",
+        "run",
+    ]
+)
 
 # Interrogative starters that signal pure questions
 _QUESTION_STARTERS = (
-    "what ", "what's", "whats",
-    "how ", "how's", "hows",
-    "where ", "where's", "wheres",
-    "when ", "when's", "whens",
-    "why ", "why's", "whys",
+    "what ",
+    "what's",
+    "whats",
+    "how ",
+    "how's",
+    "hows",
+    "where ",
+    "where's",
+    "wheres",
+    "when ",
+    "when's",
+    "whens",
+    "why ",
+    "why's",
+    "whys",
     "which ",
-    "who ", "who's", "whos",
-    "is ", "are ", "was ", "were ",
-    "does ", "do ", "did ",
-    "can ", "could ", "would ", "should ",
-    "has ", "have ", "had ",
-    "explain", "describe", "tell me about", "tell me what",
+    "who ",
+    "who's",
+    "whos",
+    "is ",
+    "are ",
+    "was ",
+    "were ",
+    "does ",
+    "do ",
+    "did ",
+    "can ",
+    "could ",
+    "would ",
+    "should ",
+    "has ",
+    "have ",
+    "had ",
+    "explain",
+    "describe",
+    "tell me about",
+    "tell me what",
 )
 
 
@@ -523,7 +582,7 @@ def _has_word_boundary_match(text: str, word: str) -> bool:
     Returns True if 'word' appears as a standalone word in 'text',
     not as part of another word (e.g., 'do' matches ' do ' but not 'does').
     """
-    pattern = r'\b' + re.escape(word) + r'\b'
+    pattern = r"\b" + re.escape(word) + r"\b"
     return bool(re.search(pattern, text))
 
 

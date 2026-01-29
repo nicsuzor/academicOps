@@ -3,7 +3,10 @@ name: skills
 title: Skills Index
 type: index
 category: framework
-description: Quick reference for routing user requests to skills and commands
+description: |
+    Quick reference for routing user requests to skills and commands.
+    Hydrator uses this to immediately recognize skill invocations 
+    without memory search, reducing latency for known workflows.
 permalink: skills
 tags: [framework, routing, skills, index]
 ---
@@ -15,9 +18,9 @@ tags: [framework, routing, skills, index]
 
 Quick reference for routing user requests to skills/commands. When a request matches triggers below, use `[[direct-skill]]` workflow and invoke directly.
 
-## Commands (User-Invocable)
+## Skills and Commands
 
-| Command | Triggers | Description |
+| Skill | Triggers | Description |
 |---------|----------|-------------|
 | `/aops` | "show capabilities", "what can you do", "help with framework" | Show framework capabilities - commands, skills, agents, and how to use them |
 | `/diag` | "what's loaded", "session status", "diagnostic" | Quick diagnostic check of what's currently loaded in this session |
@@ -28,13 +31,6 @@ Quick reference for routing user requests to skills/commands. When a request mat
 | `/log` | "log observation", "note this", "framework feedback" | Log framework observations to tasks for continuous improvement |
 | `/pull` | "pull task", "get work", "what should I work on", "next task" | Pull a task from queue, claim it (mark active), and mark complete when done |
 | `/q` | "queue task", "save for later", "add to backlog", "new task:" | Quick-queue a task for later without hydration overhead |
-
-## Skills (Auto-Triggered)
-
-These skills activate based on task context, not explicit invocation:
-
-| Skill | Triggers | Description |
-|-------|----------|-------------|
 | `/analyst` | "data analysis", "dbt project", "streamlit app", "research pipeline" | Support academic research data analysis using dbt and Streamlit. Use this skill when working with computational research projects (identified by dbt/ directory, Streamlit apps, or empirical data pipelines). The skill enforces academicOps best practices for reproducible, transparent, self-documenting research with collaborative single-step workflow. |
 | `/audit` | "framework audit", "check structure" | Comprehensive framework governance audit - structure checking, justification checking, and index file updates. |
 | `/convert-to-md` | "convert document", DOCX/PDF/XLSX conversion | Batch convert documents (DOCX, PDF, XLSX, TXT, PPTX, MSG, DOC) to markdown, preserving tracked changes and comments. |
@@ -56,7 +52,3 @@ These skills activate based on task context, not explicit invocation:
 2. **Trigger match**: User request matches trigger phrases → suggest skill, confirm if ambiguous
 3. **Context match**: File types or project structure indicate skill → apply skill guidance
 4. **No match**: Route through normal workflow selection (WORKFLOWS.md)
-
-## Why This Index Exists
-
-Hydrator uses this to immediately recognize skill invocations without memory search, reducing latency for known workflows.
