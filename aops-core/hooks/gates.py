@@ -40,7 +40,14 @@ ACTIVE_GATES = [
     # 2. Post-hydration trigger: Injects next step after hydration
     {"name": "post_hydration", "check": "post_hydration", "events": ["PostToolUse"]},
     # 3. Post-critic trigger: Updates state after critic invocation
+    # 3. Post-critic trigger: Updates state after critic invocation
     {"name": "post_critic", "check": "post_critic", "events": ["PostToolUse"]},
+    # 4. Skill Activation Listener: Clears hydration if skill activated
+    {
+        "name": "skill_activation",
+        "check": "skill_activation",
+        "events": ["PostToolUse"],
+    },
     # AfterAgent gates (Response Review Pipeline)
     # 1. Agent Response Listener: Updates state based on response text (Hydration, Handover)
     {

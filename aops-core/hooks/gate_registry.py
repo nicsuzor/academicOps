@@ -542,19 +542,26 @@ def check_hydration_gate(ctx: GateContext) -> Optional[GateResult]:
     if ctx.tool_name in MCP_TOOLS_EXEMPT_FROM_HYDRATION:
         return None
 
-    # Check if this is the hydrator being invoked (allow it to run)
-    is_hydrator_tool = ctx.tool_name in ("Task", "delegate_to_agent", "activate_skill")
-    is_hydrator = is_hydrator_tool and _hydration_is_hydrator_task(ctx.tool_input)
+    # Check if a skill is being activated (allow ANY skill to bypass hydration check)
+    # If the user explicitly activates a skill, they are providing a plan/context.
+    is_skill_activation = ctx.tool_name == "activate_skill"
+    # Legacy: prompt-hydrator specific check (kept for robust detection context)
+    is_hydrator_tool = ctx.tool_name in ("Task", "delegate_to_agent")
+    is_hydrator_legacy = is_hydrator_tool and _hydration_is_hydrator_task(
+        ctx.tool_input
+    )
     is_gemini = _hydration_is_gemini_hydration_attempt(
         ctx.tool_name or "", ctx.tool_input, ctx.input_data
     )
 
-    if is_hydrator or is_gemini:
+    if is_skill_activation or is_hydrator_legacy or is_gemini:
         return None
 
     # Check if hydration is pending
     if not session_state.is_hydration_pending(ctx.session_id):
         return None
+
+    # If we reach here, hydration is pending and not bypassed, so we block.
 
     # Block
     # Block
@@ -1178,17 +1185,51 @@ def check_session_start_gate(ctx: GateContext) -> Optional[GateResult]:
         )
 
 
+# Handover Gate (Placeholder/Simplification)
+def check_handover_gate(ctx: GateContext) -> Optional[GateResult]:
+    """
+    Check if handover is required or valid.
+    Currently a placeholder as logic was consolidated or removed.
+    """
+    return None
+
+
+def check_skill_activation_listener(ctx: GateContext) -> Optional[GateResult]:
+    """
+    Listener: Clear hydration pending if a skill was successfully activated.
+    """
+    _check_imports()
+
+    if ctx.event_name != "PostToolUse":
+        return None
+
+    if ctx.tool_name != "activate_skill":
+        return None
+
+    # Determine if tool use was successful (Gemini doesn't pass success bit easily in input_data?)
+    # Input data usually has 'tool_output'.
+    # If the tool ran, we assume success or at least an attempt.
+    # The user intent "run this skill" is sufficient to clear the generic hydration block.
+
+    # Always clear hydration pending if a skill is activated.
+    # We don't check is_hydration_pending() first to ensure idempotency and robustness.
+    session_state.clear_hydration_pending(ctx.session_id)
+
+    return GateResult(
+        verdict=GateVerdict.ALLOW, metadata={"source": "skill_activation_bypass"}
+    )
+
+    return None
+
+
 # Registry of available gate checks
 GATE_CHECKS = {
-    "hydration": check_hydration_gate,
-    "custodiet": check_custodiet_gate,
-    "axiom_enforcer": check_axiom_enforcer_gate,
-    "task_required": check_task_required_gate,
-    "accountant": run_accountant,
-    "stop_gate": check_stop_gate,
-    "hydration_recency": check_hydration_recency_gate,
-    "post_hydration": post_hydration_trigger,
-    "post_critic": post_critic_trigger,
-    "agent_response_listener": check_agent_response_listener,
     "session_start": check_session_start_gate,
+    "hydration": check_hydration_gate,  # PreToolUse
+    "custodiet": check_custodiet_gate,  # Pre/Post
+    "handover": check_handover_gate,  # PostToolUse
+    "agent_response": check_agent_response_listener,  # AfterAgent
+    "stop": check_stop_gate,  # Stop
+    "hydration_recency": check_hydration_recency_gate,  # Stop
+    "skill_activation": check_skill_activation_listener,  # PostToolUse
 }

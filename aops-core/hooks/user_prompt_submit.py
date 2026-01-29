@@ -189,6 +189,54 @@ def load_workflows_index(prompt: str = "") -> str:
     return base_workflows + project_workflows
 
 
+def load_project_context_index() -> str:
+    """Load JIT project context index from .agent/context-map.json.
+
+    Returns a markdown list of available topics and file paths.
+    Does NOT read the files - leaves that decision to the agent (P#49).
+
+    Returns:
+        Formatted markdown index, or empty string.
+    """
+    cwd = Path.cwd()
+    map_file = cwd / ".agent" / "context-map.json"
+
+    if not map_file.exists():
+        return ""
+
+    try:
+        context_map = json.loads(map_file.read_text())
+        docs = context_map.get("docs", [])
+    except (json.JSONDecodeError, OSError):
+        return ""
+
+    if not docs:
+        return ""
+
+    lines = []
+
+    # Header handled in template
+
+    for doc in docs:
+        topic = doc.get("topic", "Unknown").replace("_", " ").title()
+        path = doc.get("path", "")
+        desc = doc.get("description", "")
+        keywords = ", ".join(doc.get("keywords", []))
+
+        entry = f"- **{topic}** (`{path}`)"
+        if desc:
+            entry += f": {desc}"
+        if keywords:
+            entry += f" [Keywords: {keywords}]"
+
+        lines.append(entry)
+
+    if not lines:
+        return ""
+
+    return "\n".join(lines)
+
+
 def load_axioms() -> str:
     """Load AXIOMS.md for hydrator context.
 
@@ -416,12 +464,16 @@ def build_hydration_instruction(
     # Get relevant file paths based on prompt keywords (selective injection)
     relevant_files = get_formatted_relevant_paths(prompt, max_files=10)
 
+    # Load JIT project context index (P#49: Agent decides what to read)
+    project_context_index = load_project_context_index()
+
     # Build full context for temp file
     context_template = load_template(CONTEXT_TEMPLATE_FILE)
     full_context = context_template.format(
         prompt=prompt,
         session_context=session_context,
         framework_paths=framework_paths,
+        project_context_index=project_context_index,
         relevant_files=relevant_files,
         workflows_index=workflows_index,
         skills_index=skills_index,

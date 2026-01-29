@@ -69,3 +69,17 @@ A dedicated hook `hooks/generate_transcript.py` is registered to the `Stop` (Ses
 
 * **Logs**: Check `~/.gemini/tmp/academicOps-hooks.log` (or `hooks.log`) to see the raw JSON passing through the router.
 * **Gemini CLI**: Use `gemini hooks list` to verify your hook is registered.
+
+## Key Principles for Hook Development
+
+1. **The Registration Triad**: A gate only runs if it is:
+    * **Implemented** in `gate_registry.py`.
+    * **Mapped** in `GATE_CHECKS`.
+    * **Registered** in `hooks/gates.py` (ACTIVE_GATES).
+    * *Tip*: Always check `hooks/gates.py` first if your code isn't running.
+
+2. **Explicit State Management**: Hooks are stateless. Any decision to block or unblock must be explicitly persisted to `session_state`. Do not rely on implicit side effects or in-memory variables across tool calls.
+
+3. **Template-Driven Control**: If the agent stalls or loops, check the injected templates (`hooks/templates/`). The prompt is the primary control plane. Use strong, explicit directives (e.g., "IMMEDIATE ACTION") in templates to override default model stopping behaviors.
+
+4. **Lifecycle Awareness**: Unit tests confirm logic, but **Integration Tests** confirm behavior. Test the full chain (PreTool -> State Change -> PostTool) using real (temp) session files to catch persistence and router issues that mocks miss.

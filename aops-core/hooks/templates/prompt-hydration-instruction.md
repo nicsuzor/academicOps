@@ -1,8 +1,8 @@
 # Hydrate Before Acting
 
-**Execute this Task call:**
-Invoke the **prompt-hydrator** skill:
-
+**Preliminary Step**: Invoke the **prompt-hydrator** skill to gather context.
 "Read {temp_path} and provide workflow guidance."
 
-Then follow the returned execution path.
+**IMMEDIATE ACTION REQUIRED**:
+Once the hydrator returns the plan, you **MUST IMMEDIATELY PROCEED** to execute it (e.g. claim task, invoke critic).
+**DO NOT STOP** after hydration. This is just a context-loading step.

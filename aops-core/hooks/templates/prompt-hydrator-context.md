@@ -26,6 +26,12 @@ Transform this user prompt into an execution plan with scope detection and task 
 
 **Use these prefixes in execution plans** - never use relative paths like `specs/file.md`.
 
+## Available Project Context
+
+The following files are mapped in this project's context map. **You must decide** if any of them are relevant to the user's request. If so, read them immediately.
+
+{project_context_index}
+
 ## Relevant Files (Selective Injection)
 
 Based on prompt keywords, these specific files may be relevant:
