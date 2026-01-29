@@ -184,6 +184,16 @@ Merge a crew branch when:
 
 For each project in the crew (e.g., `~/.aops/polecat/crew/cheryl/aops`):
 
+0. **Create tracking task** (before starting):
+   ```
+   mcp__plugin_aops-tools_task_manager__create_task(
+     title="Merge crew/<name> into <project>",
+     type="task",
+     project="<project>",
+     body="Merging crew work. Document conflicts and resolution here."
+   )
+   ```
+
 1. **Check status**:
    ```bash
    cd ~/.aops/polecat/crew/<name>/<project>
@@ -205,6 +215,12 @@ For each project in the crew (e.g., `~/.aops/polecat/crew/cheryl/aops`):
 
 4. **Resolve conflicts** if any, then commit
 
+4b. **Document conflicts** (if any occurred):
+   Update the tracking task body with:
+   - Which files had conflicts
+   - How conflicts were resolved (e.g., "combined both feature sets")
+   - Why certain changes were kept/discarded
+
 5. **Push**:
    ```bash
    git push origin main
@@ -214,6 +230,9 @@ For each project in the crew (e.g., `~/.aops/polecat/crew/cheryl/aops`):
    ```bash
    polecat nuke-crew <name> --force
    ```
+
+7. **Complete tracking task**:
+   Mark the task as done. The task body now serves as audit trail for daily summary.
 
 ### Multi-Project Crews
 
