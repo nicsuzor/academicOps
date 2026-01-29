@@ -18,6 +18,7 @@ from lib.gate_model import GateResult, GateVerdict
 _IMPORT_ERROR: str | None = None
 try:
     from lib import session_state
+    from lib import session_paths
     from lib import hook_utils
     from lib import axiom_detector
     from lib.template_loader import load_template
@@ -26,6 +27,7 @@ except ImportError as e:
     _IMPORT_ERROR = str(e)
     # Provide stub implementations that raise clear errors when used
     session_state = None  # type: ignore[assignment]
+    session_paths = None  # type: ignore[assignment]
     hook_utils = None  # type: ignore[assignment]
     axiom_detector = None  # type: ignore[assignment]
     load_template = None  # type: ignore[assignment]
@@ -1116,6 +1118,42 @@ def check_axiom_enforcer_gate(ctx: GateContext) -> Optional[GateResult]:
     return None
 
 
+def check_session_start_gate(ctx: GateContext) -> Optional[GateResult]:
+    """
+    Handle SessionStart event.
+    Returns GateResult with startup information message.
+    """
+    _check_imports()
+
+    if ctx.event_name != "SessionStart":
+        return None
+
+    try:
+        status_dir = session_paths.get_session_status_dir()
+        short_hash = session_paths.get_session_short_hash(ctx.session_id)
+
+        # Build startup message
+        msg_lines = [
+            f"Session Started: {ctx.session_id} ({short_hash})",
+            f"State File: {status_dir}/*-{short_hash}.json",
+            "Hooks: Loaded and Active",
+        ]
+
+        return GateResult(
+            verdict=GateVerdict.ALLOW,
+            context_injection="\n".join(msg_lines),
+            metadata={"source": "session_start"},
+        )
+
+    except Exception as e:
+        # Fallback if session state access fails
+        return GateResult(
+            verdict=GateVerdict.ALLOW,
+            context_injection=f"Session Started: {ctx.session_id}\n(Error loading details: {e})",
+            metadata={"source": "session_start", "error": str(e)},
+        )
+
+
 # Registry of available gate checks
 GATE_CHECKS = {
     "hydration": check_hydration_gate,
@@ -1128,4 +1166,5 @@ GATE_CHECKS = {
     "post_hydration": post_hydration_trigger,
     "post_critic": post_critic_trigger,
     "agent_response_listener": check_agent_response_listener,
+    "session_start": check_session_start_gate,
 }

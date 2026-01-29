@@ -23,6 +23,8 @@ from lib.hook_utils import make_empty_output, get_session_id
 # matching the logic of the old system.
 # In the future this can be loaded from hooks.json or gates.json
 ACTIVE_GATES = [
+    # SessionStart (Startup Info)
+    {"name": "session_start", "check": "session_start", "events": ["SessionStart"]},
     # PreToolUse gates (Enforcement Pipeline)
     # 1. Hydration: Blocks non-hydrator tools until context is loaded
     {"name": "hydration", "check": "hydration", "events": ["PreToolUse"]},
