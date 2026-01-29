@@ -81,6 +81,9 @@ CUSTODIET_CONTEXT_TEMPLATE_FILE = (
 CUSTODIET_INSTRUCTION_TEMPLATE_FILE = (
     Path(__file__).parent / "templates" / "custodiet-instruction.md"
 )
+CUSTODIET_FALLBACK_TEMPLATE = (
+    Path(__file__).parent / "templates" / "overdue-enforcement-block.md"
+)
 AOPS_ROOT = Path(
     __file__
 ).parent.parent.parent  # aops-core -> hooks -> gate_registry -> ...
@@ -702,7 +705,7 @@ def check_custodiet_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
     tool_calls = state["tool_calls_since_compliance"]
 
     # Under threshold - allow everything
-    if tool_calls < OVERDUE_THRESHOLD:
+    if tool_calls < CUSTODIET_TOOL_CALL_THRESHOLD:
         return None
 
     # At or over threshold - block mutating tool with full instruction
@@ -720,7 +723,7 @@ def check_custodiet_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
         # Fail-open: if instruction generation fails, fall back to simple block
         print(f"WARNING: Custodiet audit generation failed: {e}", file=sys.stderr)
         block_msg = load_template(
-            OVERDUE_BLOCK_TEMPLATE, {"tool_calls": str(tool_calls)}
+            CUSTODIET_FALLBACK_TEMPLATE, {"tool_calls": str(tool_calls)}
         )
         return dict(hook_utils.make_deny_output(block_msg, "PreToolUse"))
 
@@ -737,22 +740,23 @@ def _build_task_block_message(gates: Dict[str, bool]) -> str:
         missing.append(
             '(a) Claim a task: `mcp__plugin_aops-tools_task_manager__update_task(id="...", status="active")`'
         )
+    # Check for hydration (using hydrated_intent or hydrator_invoked equivalent)
+    # We map "plan_mode_invoked" to "hydrator_invoked" in the template
     if not gates["plan_mode_invoked"]:
         missing.append(
-            "(b) Enter plan mode: `EnterPlanMode()` - design your implementation approach first"
+            "(b) Hydrate prompt: Invoke the `prompt-hydrator` skill to transform your prompt into a plan."
         )
     if not gates["critic_invoked"]:
         missing.append(
-            '(c) Invoke critic: `Task(subagent_type="aops-core:critic", prompt="Review this plan: ...")`'
+            '(c) Invoke critic: `activate_skill(name="critic", prompt="Review this plan: ...")`'
         )
 
     return load_template(
         TASK_GATE_BLOCK_TEMPLATE,
         {
             "task_bound_status": _task_gate_status(gates["task_bound"]),
-            "plan_mode_invoked_status": _task_gate_status(gates["plan_mode_invoked"]),
+            "hydrator_invoked_status": _task_gate_status(gates["plan_mode_invoked"]),
             "critic_invoked_status": _task_gate_status(gates["critic_invoked"]),
-            "todo_with_handover_status": "\u2713",  # Deprecated - always pass
             "missing_gates": "\n".join(missing),
         },
     )
@@ -764,9 +768,8 @@ def _build_task_warn_message(gates: Dict[str, bool]) -> str:
         TASK_GATE_WARN_TEMPLATE,
         {
             "task_bound_status": _task_gate_status(gates["task_bound"]),
-            "plan_mode_invoked_status": _task_gate_status(gates["plan_mode_invoked"]),
+            "hydrator_invoked_status": _task_gate_status(gates["plan_mode_invoked"]),
             "critic_invoked_status": _task_gate_status(gates["critic_invoked"]),
-            "todo_with_handover_status": "\u2713",  # Deprecated - always pass
         },
     )
 

@@ -222,12 +222,17 @@ class PolecatManager:
         print(f"Nuked crew worker: {name}")
 
     def get_repo_path(self, task) -> Path:
-        """Returns the main repo path for the task's project.
+        """Returns the repository path to use as source for the worktree.
 
-        Uses the project paths from polecat.yaml config directly.
-        This is simpler and avoids bare mirror complexity.
+        Prefers bare mirror in ~/.aops/polecat/.repos/ if it exists (for isolation).
+        Falls back to local project path from config.
         """
         project = task.project or "aops"
+
+        # Check for bare mirror first
+        mirror_path = self.repos_dir / f"{project}.git"
+        if mirror_path.exists():
+            return mirror_path
 
         if project in self.projects:
             return self.projects[project]["path"]
