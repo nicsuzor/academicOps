@@ -30,9 +30,9 @@ from pathlib import Path
 from typing import Any
 
 from lib.reflection_detector import has_reflection
-from lib.session_state import get_current_task, load_session_state
+from lib.session_state import get_current_task
 from lib.session_paths import get_session_short_hash, get_session_status_dir
-from lib.insights_generator import find_existing_insights, get_summaries_dir
+from lib.insights_generator import find_existing_insights
 from lib.transcript_parser import SessionProcessor
 
 # Set up logging
@@ -574,9 +574,13 @@ def perform_session_cleanup(
         result["success"] = True
         result["message"] = "Session cleanup completed"
         if result["insights_verified"]:
-            result["message"] += " (transcript + insights generated)"
+            result["message"] = (
+                str(result["message"]) + " (transcript + insights generated)"
+            )
         else:
-            result["message"] += " (transcript generated, no insights)"
+            result["message"] = (
+                str(result["message"]) + " (transcript generated, no insights)"
+            )
     else:
         result["message"] = "Failed to delete session state file"
 
@@ -670,7 +674,7 @@ def check_uncommitted_work(
                 # Update reminder for any unpushed commits
                 if push_status.get("branch_ahead"):
                     result["reminder_needed"] = True
-                    result["message"] += (
+                    result["message"] = str(result["message"]) + (
                         f"\nReminder: Push {push_status.get('commits_ahead', 1)} unpushed commit(s) on {push_status.get('current_branch', 'current branch')}"
                     )
             else:

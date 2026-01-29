@@ -35,7 +35,7 @@ EVENT_MAP = {
     "BeforeTool": "PreToolUse",
     "AfterTool": "PostToolUse",
     "BeforeAgent": "UserPromptSubmit",
-    "AfterAgent": "Stop",
+    "AfterAgent": "AfterAgent",
     "SessionEnd": "Stop",
     # Gemini-only events (no Claude equivalent - pass through for logging)
     "BeforeModel": None,
@@ -43,6 +43,7 @@ EVENT_MAP = {
     "BeforeToolSelection": None,
     "PreCompress": None,
 }
+
 
 # Hook paths (from $AOPS environment variable)
 def get_aops_root() -> Path:
@@ -61,6 +62,7 @@ def get_claude_router() -> Path:
 def get_gemini_user_prompt_hook() -> Path:
     """Get Gemini-specific user_prompt_submit hook path."""
     return get_aops_root() / "config" / "gemini" / "hooks" / "user_prompt_submit.py"
+
 
 # Session ID file location (from $AOPS_SESSIONS environment variable)
 def get_session_id_file() -> Path:
@@ -139,12 +141,12 @@ def map_gemini_input(gemini_event: str, gemini_input: dict) -> dict:
 
     # Resolve session_id
     session_id = claude_input.get("session_id")
-    
+
     # If not in input, try environment or fallback file
     if not session_id:
         session_id = get_session_id(gemini_event)
         claude_input["session_id"] = session_id
-    
+
     # Always persist on SessionStart (to support fallback for later hooks)
     if gemini_event == "SessionStart" and session_id:
         persist_session_id(session_id)

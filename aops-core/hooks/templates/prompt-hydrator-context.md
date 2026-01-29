@@ -43,7 +43,7 @@ Based on prompt keywords, these specific files may be relevant:
 ### File Placement Rules
 <!-- NS: this is framework specific stuff that should be in framework instructions. -->
 | Content Type | Directory | Example |
-|--------------|-----------|---------|
+| :--- | :--- | :--- |
 | **Specs** (design docs, architecture) | `$AOPS/specs/` | `specs/workflow-system-spec.md` |
 | **Workflows** (step-by-step procedures) | `$AOPS/aops-core/workflows/` | `aops-core/workflows/feature-dev.md` |
 | **Agents** (subagent definitions) | `$AOPS/aops-core/agents/` | `aops-core/agents/prompt-hydrator.md` |
@@ -188,7 +188,7 @@ mcp__plugin_aops-core_tasks__create_task(
 These scripts exist but aren't user-invocable skills. Provide exact invocation when relevant:
 
 | Request | Script | Invocation |
-|---------|--------|------------|
+| :--- | :--- | :--- |
 | "save transcript", "export session" | `session_transcript.py` | `uv run python $AOPS/scripts/session_transcript.py <session.jsonl> -o output.md` |
 
 ## The AcademicOps Framework (AOPS)

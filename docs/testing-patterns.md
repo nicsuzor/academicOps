@@ -134,15 +134,23 @@ def test_hydrator_temp_file_structure(self):
 
 ## Fixture Reference
 
-<!-- NS: update for gemini cli fixtures. -->
-<!-- NS: when replying to annotations, if the user hasn't added a date or formatted their annotation correctly, please do so. -->
-
 ### `claude_headless`
+
+<!-- @nic 2026-01-30: Update for gemini cli fixtures. -->
 
 Basic headless execution, returns parsed result:
 
 ```python
 result = claude_headless("prompt", model="haiku", timeout_seconds=120)
+# result = {"success": bool, "output": str, "result": dict}
+```
+
+### `gemini_headless`
+
+Headless Gemini execution:
+
+```python
+result = gemini_headless("prompt", model="gemini-2.0-flash")
 # result = {"success": bool, "output": str, "result": dict}
 ```
 
