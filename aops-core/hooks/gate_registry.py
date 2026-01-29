@@ -1055,6 +1055,18 @@ def check_agent_response_listener(ctx: GateContext) -> Optional[GateResult]:
         # Reset turns counter since hydration just happened
         session_state.update_hydration_metrics(ctx.session_id, turns_since_hydration=0)
 
+        # Inject instruction to invoke critic
+        return GateResult(
+            verdict=GateVerdict.ALLOW,
+            context_injection=(
+                "<system-reminder>\n"
+                "Hydration plan detected. Next step: Invoke the critic to review this plan.\n"
+                "Use: `activate_skill(name='critic', prompt='Review this plan...')`\n"
+                "</system-reminder>"
+            ),
+            metadata={"source": "post_hydration_trigger"},
+        )
+
     # 2. Update Handover State
     if "## Framework Reflection" in response_text:
         session_state.set_handover_skill_invoked(ctx.session_id)
