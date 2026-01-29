@@ -261,25 +261,23 @@ def main() -> None:
         print(json.dumps({}))
         sys.exit(0)
 
-    output: dict[str, Any] = {
-        "hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-        }
-    }
+    output: dict[str, Any] = {}
 
     if should_block:
         # Block the tool call and provide alternative
-        output["hookSpecificOutput"]["permissionDecision"] = "deny"
-        if context:
-            output["hookSpecificOutput"]["additionalContext"] = context
+        output = {"verdict": "deny", "context_injection": context if context else None}
     elif updated_input is not None:
-        output["hookSpecificOutput"]["updatedInput"] = updated_input
-        output["hookSpecificOutput"]["permissionDecision"] = "allow"
+        # Allow with modified input
+        output = {"verdict": "allow", "metadata": {"updated_input": updated_input}}
         if context:
-            output["hookSpecificOutput"]["additionalContext"] = context
+            output["context_injection"] = context
     elif context is not None:
-        # Advisory only
-        output["hookSpecificOutput"]["additionalContext"] = context
+        # Advisory only (Warn/Allow with context)
+        # Using 'warn' to signify attention needed, which maps to allowed with context in Claude
+        output = {"verdict": "warn", "context_injection": context}
+    else:
+        # Pass through empty
+        output = {}
 
     print(json.dumps(output))
     sys.exit(0)

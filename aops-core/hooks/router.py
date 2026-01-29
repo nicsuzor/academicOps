@@ -427,53 +427,63 @@ def merge_outputs(outputs: List[Dict[str, Any]], event_name: str) -> Dict[str, A
     if not outputs:
         return {}
 
-    result: Dict[str, Any] = {}
+    # Initialize canonical merge container
     system_messages: List[str] = []
-    additional_contexts: List[str] = []
-    permission_decisions: List[str] = []  # deny > ask > allow
+    context_injections: List[str] = []
+    verdicts: List[str] = []  # deny > warn > allow
+    metadata: Dict[str, Any] = {}
 
     for out in outputs:
         if not out:
             continue
 
-        # Collect system messages
-        if "systemMessage" in out:
-            system_messages.append(out["systemMessage"])
+        # Canonical format
+        if out.get("system_message"):
+            system_messages.append(out["system_message"])
+        if out.get("context_injection"):
+            context_injections.append(out["context_injection"])
+        if out.get("verdict"):
+            verdicts.append(out["verdict"])
 
-        # Collect from hookSpecificOutput
-        if "hookSpecificOutput" in out:
-            hso = out["hookSpecificOutput"]
-
-            if "permissionDecision" in hso:
-                permission_decisions.append(hso["permissionDecision"])
-
-            # Collect additionalContext - these are injected into model context
-            if "additionalContext" in hso:
-                additional_contexts.append(hso["additionalContext"])
+        # Metadata merging (e.g. updated_input)
+        if out.get("metadata"):
+            for k, v in out["metadata"].items():
+                if k not in metadata:
+                    metadata[k] = v
+                elif isinstance(metadata[k], list) and isinstance(v, list):
+                    metadata[k].extend(v)
+                # Last write wins for other scalars, or specialized logic if needed
 
     # Aggregation
+    result = {}
+
+    # 1. System Message
     if system_messages:
-        result["systemMessage"] = "\n".join(system_messages)
+        result["system_message"] = "\n".join(system_messages)
 
-    # Permission logic: Deny wins
-    if "deny" in permission_decisions:
-        final_perm = "deny"
-    elif "ask" in permission_decisions:
-        final_perm = "ask"
-    elif "allow" in permission_decisions:
-        final_perm = "allow"
-    else:
-        final_perm = None
+    # 2. Verdict Resolution (Deny wins)
+    final_verdict = "allow"
+    if "deny" in verdicts:
+        final_verdict = "deny"
+    elif "ask" in verdicts:
+        final_verdict = (
+            "ask"  # Or mapped to warn? Keeping 'ask' for now to match legacy
+        )
+    elif "warn" in verdicts:
+        final_verdict = "warn"  # New verdict type
 
-    if final_perm or additional_contexts:
-        result.setdefault("hookSpecificOutput", {})["hookEventName"] = event_name
-        if final_perm:
-            result["hookSpecificOutput"]["permissionDecision"] = final_perm
-        if additional_contexts:
-            # Merge all additional contexts with newline separator
-            result["hookSpecificOutput"]["additionalContext"] = "\n\n".join(
-                additional_contexts
-            )
+    # 3. Context Injection (Merge all)
+    final_context = "\n\n".join(context_injections) if context_injections else None
+
+    # 4. Construct Output (Internal Canonical Representation)
+    # We return a mixed dict that can be easily mapped to Claude or Gemini
+    # For compatibility with legacy map_claude_to_gemini, we structure it slightly carefully
+
+    result["verdict"] = final_verdict
+    if final_context:
+        result["context_injection"] = final_context
+    if metadata:
+        result["metadata"] = metadata
 
     return result
 
@@ -507,28 +517,132 @@ def execute_hooks(
     # Merge results
     merged_output = merge_outputs(outputs, event_name)
     final_exit_code = max(exit_codes) if exit_codes else 0
+
     # Log operational trace (restores ~/.gemini/tmp/ logs)
     session_id = input_data.get("session_id")
     if session_id:
-        # Enrich input_data with persisted session data (e.g. transcript_path)
-        # to ensure logging goes to the correct directory
+        # Enrich input_data with persisted session data
         session_data = get_session_data()
         if session_data:
-            # Only add if missing to avoid overwriting current event data
             for k, v in session_data.items():
                 if k not in input_data:
                     input_data[k] = v
 
         if "hook_logger" in globals() and globals()["hook_logger"]:
+            # Need to reconstruct a legacy-ish output for the logger if it expects strictly Claude format
+            # Or assume logger handles dicts gracefully.
+            # Constructing a temporary 'loggable' output based on canonical merge
+            log_output = dict(merged_output)
+            # Ensure it looks like what logger expects if it parses hookSpecificOutput
+            if "verdict" in log_output or "context_injection" in log_output:
+                hso = {}
+                hso["hookEventName"] = event_name
+                if "verdict" in log_output:
+                    hso["permissionDecision"] = log_output["verdict"]
+                if "context_injection" in log_output:
+                    hso["additionalContext"] = log_output["context_injection"]
+                # Removed map_claude_to_gemini as it is no longer used (replaced by format_for_gemini)
+                log_output["hookSpecificOutput"] = hso
+
             hook_logger.log_hook_event(
                 session_id=session_id,
                 hook_event=event_name,
                 input_data=input_data,
-                output_data=merged_output,
+                output_data=log_output,
                 exit_code=final_exit_code,
             )
 
     return merged_output, final_exit_code
+
+
+def format_for_gemini(
+    canonical_output: Dict[str, Any], event_name: str
+) -> Dict[str, Any]:
+    """Format canonical internal output for Gemini."""
+    result = {}
+
+    # 1. System Message
+    if "system_message" in canonical_output:
+        result["systemMessage"] = canonical_output["system_message"]
+
+    # 2. Decision / Reason
+    verdict = canonical_output.get("verdict", "allow")
+    context = canonical_output.get("context_injection")
+    metadata = canonical_output.get("metadata", {})
+
+    # Map verdict
+    if verdict == "deny":
+        result["decision"] = "deny"
+    # Note: 'warn' is typically allowed but with context
+
+    # Map context to reason (for BeforeTool/AfterAgent) or ignored/logged
+    if event_name in ["BeforeTool", "AfterAgent"]:
+        if context:
+            result["reason"] = context
+            # Fallback: Mirror to systemMessage if blocking
+            if verdict == "deny" and "systemMessage" not in result:
+                result["systemMessage"] = f"Tool blocked: {context}"
+
+    # 3. SessionStart Special Handling
+    if event_name == "SessionStart":
+        # Inject context into system message
+        if context:
+            current = result.get("systemMessage", "")
+            result["systemMessage"] = f"{current}\n\n{context}" if current else context
+
+    # 4. Canonical Metadata
+    result["hook_event"] = event_name
+    if event_name == "SessionStart":
+        result["source"] = "startup"
+    elif event_name == "SessionEnd":
+        result["source"] = "exit"
+
+    # 5. Updated Input (from command_intercept)
+    if "updated_input" in metadata:
+        result["updatedInput"] = metadata["updated_input"]
+
+    return result
+
+
+def format_for_claude(
+    canonical_output: Dict[str, Any], event_name: str
+) -> Dict[str, Any]:
+    """Format canonical internal output for Claude."""
+    result = {}
+
+    # 1. System Message
+    if "system_message" in canonical_output:
+        result["systemMessage"] = canonical_output["system_message"]
+
+    # 2. HookSpecificOutput
+    hso = {}
+    hso["hookEventName"] = event_name
+
+    verdict = canonical_output.get("verdict")
+    metadata = canonical_output.get("metadata", {})
+
+    if verdict:
+        hso["permissionDecision"] = verdict  # allow, deny, ask
+        # Map 'warn' to 'allow' for Claude (since Claude doesn't support 'warn' natively)
+        if verdict == "warn":
+            hso["permissionDecision"] = "allow"
+
+    context = canonical_output.get("context_injection")
+    if context:
+        hso["additionalContext"] = context
+
+    # updatedInput (from command_intercept)
+    if "updated_input" in metadata:
+        hso["updatedInput"] = metadata["updated_input"]
+
+    if (
+        hso.get("permissionDecision")
+        or hso.get("additionalContext")
+        or hso.get("updatedInput")
+    ):
+        result["hookSpecificOutput"] = hso
+
+    return result
 
 
 # --- Main Entry Point ---
@@ -566,14 +680,9 @@ def main():
             pass
 
         output, exit_code = execute_hooks(claude_input["hook_event_name"], claude_input)
-        gemini_output = map_claude_to_gemini(output, gemini_event)
 
-        # Add metadata fields for Gemini acceptance criteria
-        gemini_output["hook_event"] = gemini_event
-        if gemini_event == "SessionStart":
-            gemini_output["source"] = "startup"
-        elif gemini_event == "SessionEnd":
-            gemini_output["source"] = "exit"
+        # New Format Logic
+        gemini_output = format_for_gemini(output, gemini_event)
 
         print(json.dumps(gemini_output))
         sys.exit(exit_code)
@@ -587,7 +696,11 @@ def main():
             sys.exit(0)
 
         output, exit_code = execute_hooks(event_name, input_data)
-        print(json.dumps(output))
+
+        # New Format Logic
+        claude_output = format_for_claude(output, event_name)
+
+        print(json.dumps(claude_output))
         sys.exit(exit_code)
 
 

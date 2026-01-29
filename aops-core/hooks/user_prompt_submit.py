@@ -686,10 +686,8 @@ def main():
         if prompt.strip().startswith("."):
             set_gates_bypassed(session_id, True)
         output_data = {
-            "hookSpecificOutput": {
-                "hookEventName": "UserPromptSubmit",
-                "additionalContext": "",  # No hydration needed
-            }
+            "verdict": "allow",
+            # No hydration needed
         }
         print(json.dumps(output_data))
         sys.exit(0)
@@ -700,10 +698,8 @@ def main():
         write_initial_hydrator_state(session_id, prompt, hydration_pending=False)
         simple_instruction = build_simple_question_instruction(prompt)
         output_data = {
-            "hookSpecificOutput": {
-                "hookEventName": "UserPromptSubmit",
-                "additionalContext": simple_instruction,
-            }
+            "verdict": "allow",
+            "context_injection": simple_instruction,
         }
         print(json.dumps(output_data))
         sys.exit(0)
@@ -718,10 +714,8 @@ def main():
                 session_id, prompt, transcript_path
             )
             output_data = {
-                "hookSpecificOutput": {
-                    "hookEventName": "UserPromptSubmit",
-                    "additionalContext": hydration_instruction,
-                }
+                "verdict": "allow",
+                "context_injection": hydration_instruction,
             }
         except (IOError, OSError) as e:
             # Fail-fast on infrastructure errors (P#8, P#25)

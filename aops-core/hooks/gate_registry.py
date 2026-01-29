@@ -11,6 +11,8 @@ import sys
 import os
 import json
 
+from lib.gate_model import GateResult, GateVerdict
+
 # Adjust imports to work within the aops-core environment
 # These imports are REQUIRED for gate functionality - fail explicitly if missing
 _IMPORT_ERROR: str | None = None
@@ -504,10 +506,10 @@ def _hydration_is_gemini_hydration_attempt(
     return False
 
 
-def check_hydration_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
+def check_hydration_gate(ctx: GateContext) -> Optional[GateResult]:
     """
     Check if hydration is required (Pre-Tool Enforcement).
-    Returns None if allowed, or an output dict if blocked.
+    Returns None if allowed, or GateResult if blocked.
     """
     _check_imports()  # Fail fast if imports unavailable
 
@@ -542,8 +544,13 @@ def check_hydration_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
         return None
 
     # Block
+    # Block
     block_msg = load_template(HYDRATION_BLOCK_TEMPLATE)
-    return dict(hook_utils.make_deny_output(block_msg))
+    return GateResult(
+        verdict=GateVerdict.DENY,
+        system_message=None,  # Hydration usually just needs context injection often, but let's check make_deny_output
+        context_injection=block_msg,
+    )
 
 
 # --- Custodiet Logic ---
@@ -676,10 +683,10 @@ def _custodiet_build_audit_instruction(
     return instruction_template.format(temp_path=str(temp_path))
 
 
-def check_custodiet_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
+def check_custodiet_gate(ctx: GateContext) -> Optional[GateResult]:
     """
     Check if compliance is overdue (The Bouncer).
-    Returns None if allowed, or an output dict if blocked.
+    Returns None if allowed, or GateResult if blocked.
 
     Only runs on PreToolUse events. Blocks mutating tools when too many
     tool calls have occurred without a compliance check.
@@ -720,7 +727,11 @@ def check_custodiet_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
         )
 
         # Return as a deny/block
-        return dict(hook_utils.make_deny_output(instruction, "PreToolUse"))
+        return GateResult(
+            verdict=GateVerdict.DENY,
+            context_injection=instruction,
+            metadata={"source": "custodiet", "tool_calls": tool_calls},
+        )
 
     except (OSError, KeyError, TypeError) as e:
         # Fail-open: if instruction generation fails, fall back to simple block
@@ -728,7 +739,11 @@ def check_custodiet_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
         block_msg = load_template(
             CUSTODIET_FALLBACK_TEMPLATE, {"tool_calls": str(tool_calls)}
         )
-        return dict(hook_utils.make_deny_output(block_msg, "PreToolUse"))
+        return GateResult(
+            verdict=GateVerdict.DENY,
+            context_injection=block_msg,
+            metadata={"source": "custodiet_fallback", "error": str(e)},
+        )
 
 
 def _task_gate_status(passed: bool) -> str:
@@ -777,10 +792,10 @@ def _build_task_warn_message(gates: Dict[str, bool]) -> str:
     )
 
 
-def check_task_required_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
+def check_task_required_gate(ctx: GateContext) -> Optional[GateResult]:
     """
     Check if task binding is required for this operation.
-    Returns None if allowed, or an output dict if blocked/warned.
+    Returns None if allowed, or GateResult if blocked/warned.
 
     Only runs on PreToolUse events. Enforces task-gated permissions model
     where destructive operations require task binding.
@@ -815,17 +830,17 @@ def check_task_required_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
     gate_mode = os.environ.get("TASK_GATE_MODE", DEFAULT_TASK_GATE_MODE).lower()
     if gate_mode == "block":
         block_msg = _build_task_block_message(gates)
-        return dict(hook_utils.make_deny_output(block_msg, "PreToolUse"))
+        return GateResult(verdict=GateVerdict.DENY, context_injection=block_msg)
     else:
         # Warn mode: allow but inject warning as context
         warn_msg = _build_task_warn_message(gates)
-        return dict(hook_utils.make_allow_output(warn_msg, "PreToolUse"))
+        return GateResult(verdict=GateVerdict.WARN, context_injection=warn_msg)
 
 
 # --- Accountant Logic (Post-Tool State Updates) ---
 
 
-def run_accountant(ctx: GateContext) -> Optional[Dict[str, Any]]:
+def run_accountant(ctx: GateContext) -> Optional[GateResult]:
     """
     The Accountant: General state tracking for all components.
     Runs on PostToolUse. Never blocks, only updates state.
@@ -883,9 +898,11 @@ def run_accountant(ctx: GateContext) -> Optional[Dict[str, Any]]:
         try:
             session_state.set_handover_skill_invoked(ctx.session_id)
             # Return a system message to acknowledge
-            return {
-                "systemMessage": "[Accountant] Handover recorded. Stop gate cleared."
-            }
+            # Return a system message to acknowledge
+            return GateResult(
+                verdict=GateVerdict.ALLOW,
+                system_message="[Accountant] Handover recorded. Stop gate cleared.",
+            )
         except Exception as e:
             print(
                 f"WARNING: Accountant failed to set handover flag: {e}", file=sys.stderr
@@ -894,10 +911,10 @@ def run_accountant(ctx: GateContext) -> Optional[Dict[str, Any]]:
     return None
 
 
-def check_stop_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
+def check_stop_gate(ctx: GateContext) -> Optional[GateResult]:
     """
     Check if the agent is allowed to stop (Stop / AfterAgent Enforcement).
-    Returns None if allowed, or an output dict if blocked/warned.
+    Returns None if allowed, or GateResult if blocked/warned.
 
     Rules:
     1. Critic Check: If turns_since_hydration == 0, deny stop and demand Critic.
@@ -926,18 +943,18 @@ def check_stop_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
         # User explicitly asked for turns_since_hydration == 0 logic
         # This implies the agent is trying to stop immediately after the hydrator finished.
         msg = load_template(STOP_GATE_CRITIC_TEMPLATE)
-        return dict(hook_utils.make_deny_output(msg, "Stop"))
+        return GateResult(verdict=GateVerdict.DENY, context_injection=msg)
 
     # --- 2. Handover Check ---
     if not session_state.is_handover_skill_invoked(ctx.session_id):
         # Issue warning but allow stop
         msg = load_template(STOP_GATE_HANDOVER_BLOCK_TEMPLATE)
-        return dict(hook_utils.make_deny_output(msg, "Stop"))
+        return GateResult(verdict=GateVerdict.DENY, context_injection=msg)
 
     return None
 
 
-def check_hydration_recency_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
+def check_hydration_recency_gate(ctx: GateContext) -> Optional[GateResult]:
     """
     Stop hook: Block exit if turns since hydration == 0.
     This ensures the agent doesn't hydrate then immediately exit.
@@ -952,12 +969,15 @@ def check_hydration_recency_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
     turns_since = hydration_state["turns_since_hydration"]
 
     if turns_since == 0:
-        return hook_utils.make_deny_output("Plan approved, start execution now")
+        return GateResult(
+            verdict=GateVerdict.DENY,
+            context_injection="Plan approved, start execution now",
+        )
 
     return None
 
 
-def post_hydration_trigger(ctx: GateContext) -> Optional[Dict[str, Any]]:
+def post_hydration_trigger(ctx: GateContext) -> Optional[GateResult]:
     """
     PostToolUse: Detect successful hydration and inject next step.
     """
@@ -977,16 +997,16 @@ def post_hydration_trigger(ctx: GateContext) -> Optional[Dict[str, Any]]:
         session_state.clear_hydration_pending(ctx.session_id)
 
         # Inject message
-        return hook_utils.make_context_output(
-            "Next, invoke the critic and revise your plan.",
-            "PostToolUse",
-            wrap_in_reminder=True,
+        # Inject message
+        return GateResult(
+            verdict=GateVerdict.ALLOW,
+            context_injection="<system-reminder>\nNext, invoke the critic and revise your plan.\n</system-reminder>",
         )
 
     return None
 
 
-def post_critic_trigger(ctx: GateContext) -> Optional[Dict[str, Any]]:
+def post_critic_trigger(ctx: GateContext) -> Optional[GateResult]:
     """
     PostToolUse: Detect successful critic invocation and update state.
     """
@@ -1012,7 +1032,7 @@ def post_critic_trigger(ctx: GateContext) -> Optional[Dict[str, Any]]:
     return None
 
 
-def check_agent_response_listener(ctx: GateContext) -> Optional[Dict[str, Any]]:
+def check_agent_response_listener(ctx: GateContext) -> Optional[GateResult]:
     """
     AfterAgent: Listen to agent response for state updates and optional enforcement.
 
@@ -1040,8 +1060,7 @@ def check_agent_response_listener(ctx: GateContext) -> Optional[Dict[str, Any]]:
     return None
 
 
-
-def check_axiom_enforcer_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
+def check_axiom_enforcer_gate(ctx: GateContext) -> Optional[GateResult]:
     """
     Check for axiom violations in tool calls (Pre-Tool Enforcement).
     """
@@ -1090,7 +1109,9 @@ def check_axiom_enforcer_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
             "Please fix these violations before submitting. No fallbacks, no workarounds."
         )
 
-        return dict(hook_utils.make_deny_output("\n".join(msg_lines), "PreToolUse"))
+        return GateResult(
+            verdict=GateVerdict.DENY, context_injection="\n".join(msg_lines)
+        )
 
     return None
 

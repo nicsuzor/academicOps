@@ -32,7 +32,6 @@ ACTIVE_GATES = [
     {"name": "task_required", "check": "task_required", "events": ["PreToolUse"]},
     # 4. Custodiet: Blocks mutating tools when compliance check is overdue
     {"name": "custodiet", "check": "custodiet", "events": ["PreToolUse"]},
-
     # PostToolUse gates (Accounting Pipeline)
     # 1. Accountant: Updates state (hydration cleared, tool counts, handover flags)
     {"name": "accountant", "check": "accountant", "events": ["PostToolUse"]},
@@ -40,11 +39,13 @@ ACTIVE_GATES = [
     {"name": "post_hydration", "check": "post_hydration", "events": ["PostToolUse"]},
     # 3. Post-critic trigger: Updates state after critic invocation
     {"name": "post_critic", "check": "post_critic", "events": ["PostToolUse"]},
-
     # AfterAgent gates (Response Review Pipeline)
     # 1. Agent Response Listener: Updates state based on response text (Hydration, Handover)
-    {"name": "agent_response_listener", "check": "agent_response_listener", "events": ["AfterAgent"]},
-
+    {
+        "name": "agent_response_listener",
+        "check": "agent_response_listener",
+        "events": ["AfterAgent"],
+    },
     # Stop / AfterAgent gates (Final Review Pipeline)
     # 1. Stop Gate: Enforces Critic invocation and handover warnings
     {"name": "stop_gate", "check": "stop_gate", "events": ["Stop"]},
@@ -83,13 +84,11 @@ def main():
                 result = check_func(ctx)
                 if result:
                     # Gate triggered! Return the result immediately.
-                    # This supports fail-fast / single-failure blocking.
-                    # We could also collect multiple failures, but sticking to "first block wins" is safer.
-                    print(json.dumps(result))
+                    print(json.dumps(result.to_json()))
                     sys.exit(0)
 
     # No gates triggered
-    print(json.dumps(make_empty_output()))
+    print(json.dumps({}))
     sys.exit(0)
 
 

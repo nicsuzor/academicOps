@@ -208,7 +208,10 @@ def get_git_status(cwd: str | None = None) -> dict[str, Any]:
                 "status_output": "",
             }
 
-        has_staged = any(line.startswith(("A ", "M ", "D ", "R ", "C ")) for line in output.split("\n"))
+        has_staged = any(
+            line.startswith(("A ", "M ", "D ", "R ", "C "))
+            for line in output.split("\n")
+        )
         has_unstaged = any(line.startswith((" M", " D")) for line in output.split("\n"))
         has_untracked = any(line.startswith("??") for line in output.split("\n"))
 
@@ -369,7 +372,9 @@ def attempt_auto_commit() -> bool:
     # Branch protection: never auto-commit to main/master
     current_branch = get_current_branch()
     if is_protected_branch(current_branch):
-        logger.info(f"Skipping auto-commit: protected branch '{current_branch or 'detached HEAD'}'")
+        logger.info(
+            f"Skipping auto-commit: protected branch '{current_branch or 'detached HEAD'}'"
+        )
         return False
 
     try:
@@ -516,7 +521,9 @@ def delete_session_state_file(session_id: str) -> bool:
         return False
 
 
-def perform_session_cleanup(session_id: str, transcript_path: str | None) -> dict[str, Any]:
+def perform_session_cleanup(
+    session_id: str, transcript_path: str | None
+) -> dict[str, Any]:
     """Perform end-of-session cleanup: transcript generation and state file deletion.
 
     Order of operations (fail-fast):
@@ -576,7 +583,9 @@ def perform_session_cleanup(session_id: str, transcript_path: str | None) -> dic
     return result
 
 
-def check_uncommitted_work(session_id: str, transcript_path: str | None) -> dict[str, Any]:
+def check_uncommitted_work(
+    session_id: str, transcript_path: str | None
+) -> dict[str, Any]:
     """Check if session has uncommitted work or unpushed commits.
 
     Args:
@@ -661,7 +670,9 @@ def check_uncommitted_work(session_id: str, transcript_path: str | None) -> dict
                 # Update reminder for any unpushed commits
                 if push_status.get("branch_ahead"):
                     result["reminder_needed"] = True
-                    result["message"] += f"\nReminder: Push {push_status.get('commits_ahead', 1)} unpushed commit(s) on {push_status.get('current_branch', 'current branch')}"
+                    result["message"] += (
+                        f"\nReminder: Push {push_status.get('commits_ahead', 1)} unpushed commit(s) on {push_status.get('current_branch', 'current branch')}"
+                    )
             else:
                 result["message"] = (
                     "Commit staged changes before ending session, "
@@ -675,7 +686,11 @@ def check_uncommitted_work(session_id: str, transcript_path: str | None) -> dict
     elif reminder_parts:
         # Non-blocking reminder for unpushed commits or other git state
         result["reminder_needed"] = True
-        result["message"] = "Reminder: " + " and ".join(reminder_parts) + ". Consider committing and pushing before ending session."
+        result["message"] = (
+            "Reminder: "
+            + " and ".join(reminder_parts)
+            + ". Consider committing and pushing before ending session."
+        )
 
     return result
 
@@ -707,8 +722,8 @@ def main():
             current_task = get_current_task(session_id)
             if current_task:
                 output_data = {
-                    "decision": "block",
-                    "reason": (
+                    "verdict": "deny",  # Deny the stop -> Block session end
+                    "system_message": (
                         f"Active task bound to session: {current_task}. "
                         "Complete the task or use AskUserQuestion to request permission to end without completing."
                     ),
@@ -728,16 +743,19 @@ def main():
                 # Note: Stop hooks can't send messages to agent (hookSpecificOutput
                 # not supported for Stop event). Keep reason concise to avoid spam.
                 output_data = {
-                    "decision": "block",
-                    "reason": check_result["message"],
+                    "verdict": "deny",  # Deny the stop -> Block session end
+                    "system_message": check_result["message"],
                 }
                 logger.info(f"Session end blocked: {check_result['message'][:80]}...")
                 print(json.dumps(output_data))
-                sys.exit(0)  # Exit 0 so JSON is processed; decision:block does the blocking
+                sys.exit(
+                    0
+                )  # Exit 0 so JSON is processed; decision:block does the blocking
             elif check_result["reminder_needed"]:
                 # Allow session to proceed, but include reminder message
                 output_data = {
-                    "systemMessage": check_result["message"],
+                    "verdict": "allow",
+                    "system_message": check_result["message"],
                 }
                 logger.info(f"Reminder shown: {check_result['message'][:80]}...")
 
@@ -751,13 +769,17 @@ def main():
             if cleanup_result["success"]:
                 logger.info(f"Session cleanup: {cleanup_result['message']}")
             else:
-                logger.warning(f"Session cleanup incomplete: {cleanup_result['message']}")
+                logger.warning(
+                    f"Session cleanup incomplete: {cleanup_result['message']}"
+                )
         except Exception as e:
             logger.warning(f"Session cleanup failed: {type(e).__name__}: {e}")
 
     # Allow session to proceed normally - add verification message for user if not already set
-    if "systemMessage" not in output_data:
-        output_data["systemMessage"] = "✓ handover verified"
+    if "system_message" not in output_data:
+        output_data["system_message"] = "✓ handover verified"
+    if "verdict" not in output_data:
+        output_data["verdict"] = "allow"
     print(json.dumps(output_data))
     sys.exit(0)
 
