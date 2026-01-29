@@ -373,6 +373,8 @@ class TaskStorage:
         project: str | None = None,
         status: TaskStatus | None = None,
         type: TaskType | None = None,
+        priority: int | None = None,
+        priority_max: int | None = None,
     ) -> list[Task]:
         """List tasks with optional filters.
 
@@ -380,6 +382,8 @@ class TaskStorage:
             project: Filter by project (None = all projects)
             status: Filter by status
             type: Filter by type
+            priority: Filter by exact priority
+            priority_max: Filter by priority <= max
 
         Returns:
             List of matching tasks
@@ -391,6 +395,10 @@ class TaskStorage:
             if status is not None and task.status != status:
                 continue
             if type is not None and task.type != type:
+                continue
+            if priority is not None and task.priority != priority:
+                continue
+            if priority_max is not None and task.priority > priority_max:
                 continue
             tasks.append(task)
 

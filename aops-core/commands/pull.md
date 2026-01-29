@@ -12,24 +12,20 @@ permalink: commands/pull
 
 ## Workflow
 
-### Step 1: Get and Claim a Task (Atomic)
+### Step 1: Get and Claim a Task
 
-Call `mcp__plugin_aops-tools_task_manager__claim_next_task(caller="bot", project="aops")` to atomically get and claim a task.
-
-This single call:
-- Finds the highest priority ready task (leaf, no blockers, inbox/active)
-- Atomically claims it (sets status="active", assignee=caller)
-- Uses file locking to prevent race conditions
-- Returns the claimed task
+1.  **List ready tasks**: Call `mcp__plugin_aops-tools_task_manager__list_tasks(status="active", limit=10)` to find ready tasks.
+2.  **Select task**: Review the list and select the highest priority task (lowest priority number, e.g., P0).
+3.  **Claim task**: Call `mcp__plugin_aops-tools_task_manager__update_task(id="<task-id>", status="in_progress", assignee="bot")` to claim it.
 
 **If a specific task ID is provided** (`/pull <task-id>`):
-- Call `mcp__plugin_aops-tools_task_manager__get_task(id="<task-id>")` to load it
-- If the task has children (leaf=false), navigate to the first ready leaf subtask instead
-- Claim with `mcp__plugin_aops-tools_task_manager__update_task(id="<task-id>", status="active", assignee="bot")`
+1.  Call `mcp__plugin_aops-tools_task_manager__get_task(id="<task-id>")` to load it.
+2.  If the task has children (leaf=false), navigate to the first ready leaf subtask instead.
+3.  Claim with `mcp__plugin_aops-tools_task_manager__update_task(id="<task-id>", status="in_progress", assignee="bot")`.
 
 **If no tasks are ready**:
-- Check active/inbox tasks for any that can be worked on
-- If none exist, report and halt
+- Check active/inbox tasks for any that can be worked on.
+- If none exist, report and halt.
 
 ### Step 1.5: Inject Soft Dependency Context (Advisory)
 

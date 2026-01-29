@@ -103,13 +103,11 @@ TASK_BINDING_TOOLS = {
     "mcp__plugin_aops-tools_task_manager__update_task",
     "mcp__plugin_aops-tools_task_manager__complete_task",
     "mcp__plugin_aops-tools_task_manager__decompose_task",
-    "mcp__plugin_aops-tools_task_manager__claim_next_task",
     # Gemini / Short names
     "create_task",
     "update_task",
     "complete_task",
     "decompose_task",
-    "claim_next_task",
 }
 
 # Mutating tools that require task binding
@@ -346,6 +344,37 @@ def _is_handover_skill_invocation(tool_name: str, tool_input: Dict[str, Any]) ->
     return False
 
 
+def _is_custodiet_invocation(tool_name: str, tool_input: Dict[str, Any]) -> bool:
+    """Check if this is a custodiet skill invocation.
+
+    Args:
+        tool_name: Name of the tool being invoked
+        tool_input: Tool input parameters
+
+    Returns:
+        True if this is a custodiet invocation
+    """
+    # Claude Skill tool
+    if tool_name == "Skill":
+        skill_name = tool_input.get("skill", "")
+        if skill_name in ("custodiet", "aops-core:custodiet"):
+            return True
+
+    # Gemini activate_skill tool
+    if tool_name == "activate_skill":
+        name = tool_input.get("name", "")
+        if name in ("custodiet", "aops-core:custodiet"):
+            return True
+
+    # Gemini delegate_to_agent
+    if tool_name == "delegate_to_agent":
+        agent_name = tool_input.get("agent_name", "")
+        if agent_name in ("custodiet", "aops-core:custodiet"):
+            return True
+
+    return False
+
+
 # --- Hydration Logic ---
 
 # MCP tools that should bypass hydration gate (infrastructure operations)
@@ -361,7 +390,6 @@ MCP_TOOLS_EXEMPT_FROM_HYDRATION = {
     "mcp__plugin_aops-tools_task_manager__get_task",
     "mcp__plugin_aops-tools_task_manager__list_tasks",
     "mcp__plugin_aops-tools_task_manager__search_tasks",
-    "mcp__plugin_aops-tools_task_manager__claim_next_task",
     "mcp__plugin_aops-tools_task_manager__get_task_tree",
     "mcp__plugin_aops-tools_task_manager__get_children",
     "mcp__plugin_aops-tools_task_manager__decompose_task",
@@ -384,7 +412,6 @@ MCP_TOOLS_EXEMPT_FROM_HYDRATION = {
     "get_task",
     "list_tasks",
     "search_tasks",
-    "claim_next_task",
     "get_task_tree",
     "get_children",
     "decompose_task",
@@ -471,14 +498,14 @@ def _hydration_is_gemini_hydration_attempt(
 
 def check_hydration_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
     """
-    Check if hydration is required.
+    Check if hydration is required (Pre-Tool Enforcement).
     Returns None if allowed, or an output dict if blocked.
-
-    Behavior differs by event type:
-    - PreToolUse: Blocks non-hydrator tools until hydration completes
-    - PostToolUse: Never blocks, but clears pending if hydrator completed
     """
     _check_imports()  # Fail fast if imports unavailable
+
+    # Only applies to PreToolUse
+    if ctx.event_name != "PreToolUse":
+        return None
 
     # Bypass for subagent sessions
     if _hydration_is_subagent_session():
@@ -489,31 +516,21 @@ def check_hydration_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
         return None
 
     # Bypass for MCP infrastructure tools (task manager, memory, etc.)
-    # These must work before hydration so agents can bind tasks, persist context, etc.
     if ctx.tool_name in MCP_TOOLS_EXEMPT_FROM_HYDRATION:
         return None
 
-    # Check if this is the hydrator being invoked/completed
-    # Claude uses Task, Gemini uses delegate_to_agent or activate_skill
+    # Check if this is the hydrator being invoked (allow it to run)
     is_hydrator_tool = ctx.tool_name in ("Task", "delegate_to_agent", "activate_skill")
     is_hydrator = is_hydrator_tool and _hydration_is_hydrator_task(ctx.tool_input)
     is_gemini = _hydration_is_gemini_hydration_attempt(
         ctx.tool_name or "", ctx.tool_input, ctx.input_data
     )
 
-    # PostToolUse: Never block, just clear state if hydrator completed
-    if ctx.event_name == "PostToolUse":
-        if is_hydrator or is_gemini:
-            session_state.clear_hydration_pending(ctx.session_id)
-        return None  # PostToolUse never blocks
-
-    # PreToolUse: Check if hydration is pending
-    if not session_state.is_hydration_pending(ctx.session_id):
+    if is_hydrator or is_gemini:
         return None
 
-    if is_hydrator or is_gemini:
-        # Clear gate and allow
-        session_state.clear_hydration_pending(ctx.session_id)
+    # Check if hydration is pending
+    if not session_state.is_hydration_pending(ctx.session_id):
         return None
 
     # Block
@@ -653,53 +670,50 @@ def _custodiet_build_audit_instruction(
 
 def check_custodiet_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
     """
-    Check compliancy via Custodiet.
-    Returns None if allowed (or no check needed), or an output dict with instruction if check needed.
-    """
-    _check_imports()  # Fail fast if imports unavailable
+    Check if compliance is overdue (The Bouncer).
+    Returns None if allowed, or an output dict if blocked.
 
-    # Skip for safe read-only tools (uses shared constant for consistency across gates)
-    if ctx.tool_name in SAFE_READ_TOOLS:
+    Only runs on PreToolUse events. Blocks mutating tools when too many
+    tool calls have occurred without a compliance check.
+    """
+    _check_imports()
+
+    # Only applies to PreToolUse
+    if ctx.event_name != "PreToolUse":
         return None
 
-    # Track tool calls and trigger compliance check when threshold reached
-    loaded = session_state.load_custodiet_state(ctx.session_id)
-    state = (
-        loaded
-        if loaded is not None
-        else {
-            "last_compliance_ts": 0.0,
-            "tool_calls_since_compliance": 0,
-            "last_drift_warning": None,
-            "error_flag": None,
-        }
-    )
+    # Only block mutating tools
+    if ctx.tool_name not in MUTATING_TOOLS:
+        return None
 
-    state["tool_calls_since_compliance"] += 1
-    session_state.save_custodiet_state(ctx.session_id, state)
-    tool_count = state["tool_calls_since_compliance"]
+    # Load custodiet state to check tool call count
+    state = session_state.load_custodiet_state(ctx.session_id)
+    if state is None:
+        # No state = first session, no baseline to enforce against
+        return None
 
-    if tool_count >= CUSTODIET_TOOL_CALL_THRESHOLD:
-        try:
-            instruction = _custodiet_build_audit_instruction(
-                ctx.transcript_path, ctx.tool_name or "unknown", ctx.session_id
-            )
-            output = hook_utils.make_context_output(
-                instruction, "PostToolUse", wrap_in_reminder=True
-            )
+    tool_calls = state.get("tool_calls_since_compliance", 0)
 
-            # Reset
-            state["tool_calls_since_compliance"] = 0
-            session_state.save_custodiet_state(ctx.session_id, state)
+    # Under threshold - allow everything
+    if tool_calls < OVERDUE_THRESHOLD:
+        return None
 
-            return dict(output)
-        except (OSError, KeyError, TypeError) as e:
-            # Fail-open: compliance checking errors should not block operations.
-            # Log the error for debugging but allow the tool call to proceed.
-            print(f"WARNING: Custodiet audit failed (fail-open): {e}", file=sys.stderr)
-            return None
+    # At or over threshold - block mutating tool with full instruction
+    try:
+        # Build the instruction using the full context logic
+        # (This creates the temp file and formats the custodiet-instruction.md template)
+        instruction = _custodiet_build_audit_instruction(
+            ctx.transcript_path, ctx.tool_name or "unknown", ctx.session_id
+        )
 
-    return None
+        # Return as a deny/block
+        return dict(hook_utils.make_deny_output(instruction, "PreToolUse"))
+
+    except (OSError, KeyError, TypeError) as e:
+        # Fail-open: if instruction generation fails, fall back to simple block
+        print(f"WARNING: Custodiet audit generation failed: {e}", file=sys.stderr)
+        block_msg = load_template(OVERDUE_BLOCK_TEMPLATE, {"tool_calls": str(tool_calls)})
+        return dict(hook_utils.make_deny_output(block_msg, "PreToolUse"))
 
 
 # --- Task Required Gate Logic ---
@@ -796,54 +810,18 @@ def check_task_required_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
         return dict(hook_utils.make_allow_output(warn_msg, "PreToolUse"))
 
 
-# --- Overdue Enforcement Gate Logic ---
+# --- Accountant Logic (Post-Tool State Updates) ---
 
 
-def check_overdue_enforcement_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
+def run_accountant(ctx: GateContext) -> Optional[Dict[str, Any]]:
     """
-    Check if compliance is overdue and block mutating tools if so.
-    Returns None if allowed, or an output dict if blocked.
+    The Accountant: General state tracking for all components.
+    Runs on PostToolUse. Never blocks, only updates state.
 
-    Only runs on PreToolUse events. Blocks mutating tools when too many
-    tool calls have occurred without a compliance check.
-    """
-    _check_imports()
-
-    # Only applies to PreToolUse
-    if ctx.event_name != "PreToolUse":
-        return None
-
-    # Only block mutating tools
-    if ctx.tool_name not in MUTATING_TOOLS:
-        return None
-
-    # Load custodiet state to check tool call count
-    state = session_state.load_custodiet_state(ctx.session_id)
-    if state is None:
-        # No state = first session, no baseline to enforce against
-        return None
-
-    tool_calls = state.get("tool_calls_since_compliance", 0)
-
-    # Under threshold - allow everything
-    if tool_calls < OVERDUE_THRESHOLD:
-        return None
-
-    # At or over threshold - block mutating tool
-    block_msg = load_template(OVERDUE_BLOCK_TEMPLATE, {"tool_calls": str(tool_calls)})
-    return dict(hook_utils.make_deny_output(block_msg, "PreToolUse"))
-
-
-# --- Handover Gate Logic ---
-
-
-def check_handover_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
-    """
-    Detect /handover skill invocation and set handover flag.
-    Returns None (never blocks), but sets session state flag.
-
-    Only runs on PostToolUse events. Sets handover_skill_invoked flag
-    when handover skill is completed.
+    Components tracked:
+    1. Hydration: Clears pending flag if hydrator ran.
+    2. Custodiet: Increments tool count or resets if custodiet ran.
+    3. Handover: Sets handover flag if handover skill ran.
     """
     _check_imports()
 
@@ -851,18 +829,50 @@ def check_handover_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
     if ctx.event_name != "PostToolUse":
         return None
 
-    # Check if this is a handover invocation
-    if not _is_handover_skill_invocation(ctx.tool_name or "", ctx.tool_input):
-        return None
+    # 1. Update Hydration State
+    # Check if this is the hydrator being completed
+    is_hydrator_tool = ctx.tool_name in ("Task", "delegate_to_agent", "activate_skill")
+    is_hydrator = is_hydrator_tool and _hydration_is_hydrator_task(ctx.tool_input)
+    is_gemini = _hydration_is_gemini_hydration_attempt(
+        ctx.tool_name or "", ctx.tool_input, ctx.input_data
+    )
 
-    # Set handover skill invoked flag
-    try:
-        session_state.set_handover_skill_invoked(ctx.session_id)
-        # Return a system message but don't block
-        return {"systemMessage": "[Gate] Handover skill invoked. Stop gate cleared."}
-    except Exception as e:
-        print(f"WARNING: handover_gate failed to set flag: {e}", file=sys.stderr)
-        return None
+    if is_hydrator or is_gemini:
+        session_state.clear_hydration_pending(ctx.session_id)
+
+    # 2. Update Custodiet State
+    # Skip for safe read-only tools to avoid noise
+    if ctx.tool_name not in SAFE_READ_TOOLS:
+        loaded = session_state.load_custodiet_state(ctx.session_id)
+        state = (
+            loaded
+            if loaded is not None
+            else {
+                "last_compliance_ts": 0.0,
+                "tool_calls_since_compliance": 0,
+                "last_drift_warning": None,
+                "error_flag": None,
+            }
+        )
+
+        # Check for reset (custodiet invoked) or increment
+        if _is_custodiet_invocation(ctx.tool_name or "", ctx.tool_input):
+            state["tool_calls_since_compliance"] = 0
+        else:
+            state["tool_calls_since_compliance"] += 1
+
+        session_state.save_custodiet_state(ctx.session_id, state)
+
+    # 3. Update Handover State
+    if _is_handover_skill_invocation(ctx.tool_name or "", ctx.tool_input):
+        try:
+            session_state.set_handover_skill_invoked(ctx.session_id)
+            # Return a system message to acknowledge
+            return {"systemMessage": "[Accountant] Handover recorded. Stop gate cleared."}
+        except Exception as e:
+            print(f"WARNING: Accountant failed to set handover flag: {e}", file=sys.stderr)
+
+    return None
 
 
 # Registry of available gate checks
@@ -870,6 +880,5 @@ GATE_CHECKS = {
     "hydration": check_hydration_gate,
     "custodiet": check_custodiet_gate,
     "task_required": check_task_required_gate,
-    "overdue_enforcement": check_overdue_enforcement_gate,
-    "handover": check_handover_gate,
+    "accountant": run_accountant,
 }

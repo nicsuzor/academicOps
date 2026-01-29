@@ -8,7 +8,6 @@ queries like "what task was this session working on?"
 
 Triggers (bind):
 - After update_task MCP tool with status="in_progress" (task claimed for work)
-- After claim_next_task MCP tool (task claimed from queue)
 Note: "active" status means ready/available, not being worked on - no binding.
 
 Triggers (unbind):
@@ -44,7 +43,6 @@ def should_bind_task(tool_name: str, tool_input: dict[str, Any]) -> bool:
 
     Binding occurs for:
     - update_task with status="active": Task being claimed
-    - claim_next_task: Task claimed from queue
 
     Note: create_task does NOT bind - creating a task doesn't mean claiming it.
 
@@ -57,21 +55,12 @@ def should_bind_task(tool_name: str, tool_input: dict[str, Any]) -> bool:
     """
     # Update task - bind if claiming (status -> in_progress)
     # Note: "active" means ready/available in queue, not being worked on
-    # Update task - bind if claiming (status -> in_progress)
-    # Note: "active" means ready/available in queue, not being worked on
     if tool_name in (
         "mcp__plugin_aops-tools_task_manager__update_task",
         "update_task",
     ):
         new_status = tool_input.get("status", "")
         return new_status == "in_progress"
-
-    # Claim next task - always bind (explicitly claiming from queue)
-    if tool_name in (
-        "mcp__plugin_aops-tools_task_manager__claim_next_task",
-        "claim_next_task",
-    ):
-        return True
 
     return False
 

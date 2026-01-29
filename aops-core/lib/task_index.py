@@ -368,6 +368,7 @@ class TaskIndex:
             "mcp-index",
             "-o",
             output_base,
+            "--quiet",
         ]
 
         try:

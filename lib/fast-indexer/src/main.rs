@@ -73,9 +73,21 @@ struct Args {
     #[arg(short = 't', long, value_delimiter = ',')]
     filter_type: Option<Vec<String>>,
 
+    /// Filter by status (e.g., active,in_progress)
+    #[arg(short = 's', long, value_delimiter = ',')]
+    status: Option<Vec<String>>,
+
+    /// Filter by priority (e.g., 0,1)
+    #[arg(short = 'p', long, value_delimiter = ',')]
+    priority: Option<Vec<i32>>,
+
     /// Tasks directory for MCP index (relative path within root, e.g., "tasks")
     #[arg(long)]
     tasks_dir: Option<String>,
+
+    /// Suppress informational output
+    #[arg(short, long)]
+    quiet: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -737,7 +749,9 @@ fn main() -> Result<()> {
     let args = Args::parse();
     let root = Path::new(&args.root).canonicalize()?;
     
-    println!("Scanning directory: {:?}", root);
+    if !args.quiet {
+        println!("Scanning directory: {:?}", root);
+    }
 
     // 1. Find all markdown files (ignores .gitignore for complete task indexing)
     let walker = WalkBuilder::new(&root)
@@ -756,7 +770,9 @@ fn main() -> Result<()> {
         .map(|e| e.path().to_owned())
         .collect();
 
-    println!("Found {} markdown files. Parsing...", entries.len());
+    if !args.quiet {
+        println!("Found {} markdown files. Parsing...", entries.len());
+    }
 
     // 2. Parse files in parallel
     let mut files: Vec<FileData> = entries
@@ -767,11 +783,34 @@ fn main() -> Result<()> {
     // 3. Filter by type if specified
     if let Some(ref filter_types) = args.filter_type {
         let filter_set: HashSet<String> = filter_types.iter().map(|s| s.to_lowercase()).collect();
-        let before_count = files.len();
         files.retain(|f| {
             f.node_type.as_ref().map(|t| filter_set.contains(&t.to_lowercase())).unwrap_or(false)
         });
-        println!("Filtered to {} files with type in {:?}", files.len(), filter_types);
+        if !args.quiet {
+            println!("Filtered to {} files with type in {:?}", files.len(), filter_types);
+        }
+    }
+
+    // 3.1 Filter by status if specified
+    if let Some(ref filter_statuses) = args.status {
+        let filter_set: HashSet<String> = filter_statuses.iter().map(|s| s.to_lowercase()).collect();
+        files.retain(|f| {
+            f.status.as_ref().map(|s| filter_set.contains(&s.to_lowercase())).unwrap_or(false)
+        });
+        if !args.quiet {
+            println!("Filtered to {} files with status in {:?}", files.len(), filter_statuses);
+        }
+    }
+
+    // 3.2 Filter by priority if specified
+    if let Some(ref filter_priorities) = args.priority {
+        let filter_set: HashSet<i32> = filter_priorities.iter().cloned().collect();
+        files.retain(|f| {
+            f.priority.map(|p| filter_set.contains(&p)).unwrap_or(false)
+        });
+        if !args.quiet {
+            println!("Filtered to {} files with priority in {:?}", files.len(), filter_priorities);
+        }
     }
 
     // 3a. Detect duplicate IDs (same frontmatter id in multiple files)
@@ -932,14 +971,16 @@ fn main() -> Result<()> {
     if args.format.to_lowercase() == "mcp-index" {
         let path = format!("{}.json", output_base);
         output_mcp_index(&files, &path, &root)?;
-        println!("  Saved MCP task index: {}", path);
-        let index = build_mcp_index(&files, &root);
-        println!(
-            "MCP index generated: {} tasks, {} ready, {} blocked",
-            index.tasks.len(),
-            index.ready.len(),
-            index.blocked.len(),
-        );
+        if !args.quiet {
+            println!("  Saved MCP task index: {}", path);
+            let index = build_mcp_index(&files, &root);
+            println!(
+                "MCP index generated: {} tasks, {} ready, {} blocked",
+                index.tasks.len(),
+                index.ready.len(),
+                index.blocked.len(),
+            );
+        }
         return Ok(());
     }
 
@@ -988,29 +1029,37 @@ fn main() -> Result<()> {
             "graphml" => {
                 let path = format!("{}.graphml", output_base);
                 output_graphml(&graph, &path)?;
-                println!("  Saved {}", path);
+                if !args.quiet {
+                    println!("  Saved {}", path);
+                }
             }
             "dot" => {
                 let path = format!("{}.dot", output_base);
                 output_dot(&graph, &path)?;
-                println!("  Saved {}", path);
+                if !args.quiet {
+                    println!("  Saved {}", path);
+                }
             }
             _ => {
                 let path = format!("{}.json", output_base);
                 let json = serde_json::to_string_pretty(&graph)?;
                 fs::write(&path, json)?;
-                println!("  Saved {}", path);
+                if !args.quiet {
+                    println!("  Saved {}", path);
+                }
             }
         }
     }
 
-    println!(
-        "Graph generated: {} nodes, {} edges ({} format{})",
-        graph.nodes.len(),
-        graph.edges.len(),
-        formats.len(),
-        if formats.len() > 1 { "s" } else { "" }
-    );
+    if !args.quiet {
+        println!(
+            "Graph generated: {} nodes, {} edges ({} format{})",
+            graph.nodes.len(),
+            graph.edges.len(),
+            formats.len(),
+            if formats.len() > 1 { "s" } else { "" }
+        );
+    }
 
     Ok(())
 }

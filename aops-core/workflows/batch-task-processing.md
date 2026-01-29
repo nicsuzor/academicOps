@@ -24,9 +24,10 @@ Workers MUST use MCP tools directly, NOT Skills:
 
 ```
 Pull and complete a task. Use MCP task tools directly:
-1. mcp__plugin_aops-tools_task_manager__claim_next_task(caller="bot")
-2. Execute the claimed task
-3. mcp__plugin_aops-tools_task_manager__complete_task(id="...")
+1. mcp__plugin_aops-tools_task_manager__list_tasks(status="active")
+2. mcp__plugin_aops-tools_task_manager__update_task(id="...", status="in_progress", assignee="bot")
+3. Execute the claimed task
+4. mcp__plugin_aops-tools_task_manager__complete_task(id="...")
 ```
 
 **Why**: Skills require interactive prompts which are auto-denied in background mode.
@@ -51,7 +52,7 @@ When a worker completes, spawn a replacement to maintain pool size.
 | Skill tool denied | Background agents can't prompt | Use MCP tools directly |
 | Bash denied (some) | Same permission issue | Workers can use Glob/Grep/Read |
 | Can't kill agents | KillShell only for bash tasks | Wait for natural completion |
-| Race conditions | Manual task searching | Use `claim_next_task` for atomic locking |
+| Race conditions | Multiple workers claiming same task | Check status/assignee before claiming |
 
 ## Efficiency Guidelines
 

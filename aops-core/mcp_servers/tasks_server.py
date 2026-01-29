@@ -17,7 +17,6 @@ Usage:
 
 from __future__ import annotations
 
-import fcntl
 import logging
 from dataclasses import asdict
 from datetime import datetime
@@ -702,238 +701,6 @@ def complete_task(id: str) -> dict[str, Any]:
 # =============================================================================
 
 
-def _get_ready_tasks(
-    project: str, caller: Optional[str] = None, limit: int = 1
-) -> dict[str, Any]:
-    """Internal helper: Get tasks ready to work on.
-
-    Ready tasks are:
-    - Leaves (no children)
-    - No unmet dependencies (all depends_on are done/cancelled)
-    - Status is "active" or "inbox"
-    - Assignee is unset OR matches caller (if caller specified)
-
-    Args:
-        project: Filter by project slug, or empty string "" for all projects
-        caller: Filter by assignee - 'nic' or 'bot'. Returns tasks where
-                assignee is None or matches caller. If not specified, returns all.
-        limit: Maximum number of tasks to return (default: 1 for highest priority task)
-
-    Returns:
-        Dictionary with:
-        - success: True
-        - tasks: List of ready task entries (sorted by priority, limited)
-        - count: Number of tasks returned
-        - total: Total number of ready tasks available
-        - message: Status message
-    """
-    try:
-        storage = _get_storage()
-        index = _get_index()
-        ready = index.get_ready_tasks(project=project or None, caller=caller)
-
-        # Validate each task is genuinely ready (defensive against stale index)
-        ready = [e for e in ready if _is_task_truly_ready(index, e, storage)]
-
-        total = len(ready)
-        ready = ready[:limit] if limit > 0 else ready
-
-        return {
-            "success": True,
-            "tasks": [_index_entry_to_dict(e) for e in ready],
-            "count": len(ready),
-            "total": total,
-            "message": f"Found {len(ready)} ready task(s)"
-            + (f" (of {total} total)" if total > len(ready) else "")
-            + (f" in project {project}" if project else "")
-            + (f" for {caller}" if caller else ""),
-        }
-
-    except Exception as e:
-        logger.exception("get_ready_tasks failed")
-        return {
-            "success": False,
-            "tasks": [],
-            "count": 0,
-            "message": f"Failed to get ready tasks: {e}",
-        }
-
-
-def _is_task_truly_ready(index: TaskIndex, entry: TaskIndexEntry, storage: TaskStorage) -> bool:
-    """Validate that an index entry is genuinely ready to work on.
-
-    Performs real-time validation beyond the cached _ready list:
-    - Task must be a leaf (no children in index AND leaf=true in file)
-    - All dependencies must be done or cancelled
-    - Status must be inbox or active (not blocked, waiting, done, cancelled)
-    - Task type must be actionable (not goal, project, or epic)
-
-    Args:
-        index: TaskIndex for looking up dependencies
-        entry: TaskIndexEntry to validate
-        storage: TaskStorage for loading task file
-
-    Returns:
-        True if task is ready, False otherwise
-    """
-    # Must be a leaf (no children) - use computed children list from index
-    if entry.children:
-        return False
-
-    # Defensive: load task file to check its actual leaf field
-    # A task with leaf=false in frontmatter is a parent even if children aren't linked
-    task = storage.get_task(entry.id)
-    if task is None:
-        # Task file missing - not ready
-        return False
-    if not task.leaf:
-        # Task explicitly marked as non-leaf (parent task)
-        return False
-
-    # Task type check: goals, projects, and epics should not be directly actionable
-    non_actionable_types = {TaskType.GOAL.value, TaskType.PROJECT.value, TaskType.EPIC.value}
-    if entry.type in non_actionable_types:
-        return False
-
-    # Status must be actionable
-    if entry.status != TaskStatus.ACTIVE.value:
-        return False
-
-    # All dependencies must be satisfied (done or cancelled)
-    completed_statuses = {TaskStatus.DONE.value, TaskStatus.CANCELLED.value}
-    for dep_id in entry.depends_on:
-        dep = index.get_task(dep_id)
-        if dep is None:
-            # Missing dependency - treat as blocking (fail-safe)
-            return False
-        if dep.status not in completed_statuses:
-            return False
-
-    return True
-
-
-@mcp.tool()
-def claim_next_task(caller: str, project: str = "") -> dict[str, Any]:
-    """Claim the next ready task atomically.
-
-    Finds one ready task, atomically claims it by setting status to "in_progress"
-    and assignee to caller. Uses file locking to prevent race conditions
-    where multiple workers might claim the same task.
-
-    Args:
-        caller: Who is claiming the task - typically 'nic' or 'bot'
-        project: Filter by project slug, or empty string "" for all projects
-
-    Returns:
-        Dictionary with:
-        - success: True if a task was claimed
-        - task: The claimed task data (or None if no tasks available)
-        - message: Status message
-    """
-    try:
-        storage = _get_storage()
-        index = _get_index()
-
-        # Get ready tasks for this caller
-        ready = index.get_ready_tasks(project=project or None, caller=caller)
-
-        if not ready:
-            return {
-                "success": True,
-                "task": None,
-                "message": "No ready tasks available"
-                + (f" in project {project}" if project else "")
-                + f" for {caller}",
-            }
-
-        # Filter to only tasks that are genuinely ready (defensive validation)
-        # The _ready list can be stale if the index wasn't rebuilt after changes
-        ready = [e for e in ready if _is_task_truly_ready(index, e, storage)]
-
-        if not ready:
-            return {
-                "success": True,
-                "task": None,
-                "message": "No ready tasks available (all candidates filtered)"
-                + (f" in project {project}" if project else "")
-                + f" for {caller}",
-            }
-
-        # Try to claim tasks in priority order
-        for entry in ready:
-            task_path = storage._find_task_path(entry.id)
-            if task_path is None:
-                continue
-
-            lock_path = task_path.with_suffix(".lock")
-
-            try:
-                # Try to acquire exclusive lock (non-blocking)
-                with open(lock_path, "w") as lock_file:
-                    try:
-                        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                    except BlockingIOError:
-                        # Another process has the lock, try next task
-                        continue
-
-                    try:
-                        # Re-load task to check it's still claimable
-                        task = storage.get_task(entry.id)
-                        if task is None:
-                            continue
-
-                        # Check still ready (status active, not already claimed)
-                        if task.status != TaskStatus.ACTIVE:
-                            continue
-                        if task.assignee:
-                            continue  # Already claimed by someone, skip
-
-                        # Claim it - set to in_progress
-                        task.status = TaskStatus.IN_PROGRESS
-                        task.assignee = caller
-                        storage.save_task(task)
-
-                        # Rebuild index to reflect the change
-                        new_index = TaskIndex(get_data_root())
-                        new_index.rebuild()
-
-                        logger.info(f"claim_next_task: {entry.id} claimed by {caller}")
-
-                        return {
-                            "success": True,
-                            "task": _task_to_dict(task),
-                            "message": f"Claimed task: {task.title}",
-                        }
-                    finally:
-                        # Release lock
-                        fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
-
-            except Exception as e:
-                logger.warning(f"Failed to claim {entry.id}: {e}")
-                continue
-            finally:
-                # Clean up lock file
-                try:
-                    lock_path.unlink(missing_ok=True)
-                except Exception:
-                    pass
-
-        # No task could be claimed (all locked or claimed by others)
-        return {
-            "success": True,
-            "task": None,
-            "message": "No tasks available to claim (all locked or already assigned)",
-        }
-
-    except Exception as e:
-        logger.exception("claim_next_task failed")
-        return {
-            "success": False,
-            "task": None,
-            "message": f"Failed to claim task: {e}",
-        }
-
-
 @mcp.tool()
 def get_blocked_tasks(project: str, limit: int = 10) -> dict[str, Any]:
     """Get tasks blocked by dependencies.
@@ -1527,6 +1294,8 @@ def list_tasks(
     project: Optional[str] = None,
     status: Optional[str] = None,
     type: Optional[str] = None,
+    priority: Optional[int] = None,
+    priority_max: Optional[int] = None,
     limit: int = 10,
 ) -> dict[str, Any]:
     """List tasks with optional filters.
@@ -1534,7 +1303,9 @@ def list_tasks(
     Args:
         project: Filter by project slug
         status: Filter by status - "active", "in_progress", "blocked", "waiting", "review", "done", "cancelled"
-        type: Filter by type - "goal", "project", "epic", "task", "action", "bug", "feature", "learn"
+        type: Filter by type - "goal", "project", "epic", "task", "action", "bug", "feature", or "learn"
+        priority: Filter by exact priority (0-4)
+        priority_max: Filter by priority <= N (e.g. 1 for P0 and P1)
         limit: Maximum number of tasks to return (default: 10, use 0 for unlimited)
 
     Returns:
@@ -1574,7 +1345,13 @@ def list_tasks(
                     "message": f"Invalid type: {type}",
                 }
 
-        tasks = storage.list_tasks(project=project, status=task_status, type=task_type)
+        tasks = storage.list_tasks(
+            project=project,
+            status=task_status,
+            type=task_type,
+            priority=priority,
+            priority_max=priority_max,
+        )
         total = len(tasks)
         # Apply limit (0 or negative means unlimited)
         if limit > 0:
