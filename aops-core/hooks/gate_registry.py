@@ -177,11 +177,11 @@ TASK_GATE_BLOCK_TEMPLATE = Path(__file__).parent / "templates" / "task-gate-bloc
 TASK_GATE_WARN_TEMPLATE = Path(__file__).parent / "templates" / "task-gate-warn.md"
 DEFAULT_TASK_GATE_MODE = "block"
 DEFAULT_CUSTODIET_GATE_MODE = "block"
-# --- Overdue Enforcement Constants ---
+# --- Stop Gate Constants ---
 
-OVERDUE_THRESHOLD = 7
-OVERDUE_BLOCK_TEMPLATE = (
-    Path(__file__).parent / "templates" / "overdue-enforcement-block.md"
+STOP_GATE_CRITIC_TEMPLATE = Path(__file__).parent / "templates" / "stop-gate-critic.md"
+STOP_GATE_HANDOVER_WARN_TEMPLATE = (
+    Path(__file__).parent / "templates" / "stop-gate-handover-warn.md"
 )
 
 
@@ -886,10 +886,54 @@ def run_accountant(ctx: GateContext) -> Optional[Dict[str, Any]]:
     return None
 
 
+def check_stop_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
+    """
+    Check if the agent is allowed to stop (Stop / AfterAgent Enforcement).
+    Returns None if allowed, or an output dict if blocked/warned.
+
+    Rules:
+    1. Critic Check: If turns_since_hydration == 0, deny stop and demand Critic.
+    2. Handover Check: If handover skill not invoked, issue warning but allow stop.
+    """
+    _check_imports()
+
+    # Only applies to Stop event
+    if ctx.event_name != "Stop":
+        return None
+
+    state = session_state.load_session_state(ctx.session_id)
+    if not state:
+        return None
+
+    # --- 1. Critic Check (turns_since_hydration == 0) ---
+    # We estimate turns since hydration by checking if hydrated_intent is set
+    # but no subagents have been recorded yet.
+    hydration_data = state.get("hydration", {})
+    subagents = state.get("subagents", {})
+
+    is_hydrated = hydration_data.get("hydrated_intent") is not None
+    has_run_subagents = len(subagents) > 0
+
+    if is_hydrated and not has_run_subagents:
+        # User explicitly asked for turns_since_hydration == 0 logic
+        # This implies the agent is trying to stop immediately after the hydrator finished.
+        msg = load_template(STOP_GATE_CRITIC_TEMPLATE)
+        return dict(hook_utils.make_deny_output(msg, "Stop"))
+
+    # --- 2. Handover Check ---
+    if not session_state.is_handover_skill_invoked(ctx.session_id):
+        # Issue warning but allow stop
+        msg = load_template(STOP_GATE_HANDOVER_WARN_TEMPLATE)
+        return dict(hook_utils.make_allow_output(msg, "Stop"))
+
+    return None
+
+
 # Registry of available gate checks
 GATE_CHECKS = {
     "hydration": check_hydration_gate,
     "custodiet": check_custodiet_gate,
     "task_required": check_task_required_gate,
     "accountant": run_accountant,
+    "stop_gate": check_stop_gate,
 }

@@ -34,6 +34,10 @@ ACTIVE_GATES = [
     # PostToolUse gates (Accounting Pipeline)
     # 1. Accountant: Updates state (hydration cleared, tool counts, handover flags)
     {"name": "accountant", "check": "accountant", "events": ["PostToolUse"]},
+
+    # Stop / AfterAgent gates (Final Review Pipeline)
+    # 1. Stop Gate: Enforces Critic invocation and handover warnings
+    {"name": "stop_gate", "check": "stop_gate", "events": ["Stop"]},
 ]
 
 
