@@ -49,16 +49,31 @@ def get_session_status_dir() -> Path:
     - Gemini: ~/.gemini/tmp/<hash>/ (from transcript_path)
     - Claude: ~/.claude/projects/<encoded-cwd>/
 
-    Falls back to /tmp for unit tests that don't go through the router.
+    Falls back to Gemini project hash detection or /tmp for unit tests.
 
     Returns:
         Path to session status directory (created if doesn't exist)
     """
+    # 1. Prefer explicit env var from router
     state_dir = os.environ.get("AOPS_SESSION_STATE_DIR")
-    if not state_dir:
-        # Fallback for unit tests that don't go through router
-        state_dir = "/tmp/aops-test-sessions"
-    status_dir = Path(state_dir)
+    if state_dir:
+        status_dir = Path(state_dir)
+        status_dir.mkdir(parents=True, exist_ok=True)
+        return status_dir
+
+    # 2. Auto-detect Gemini environment (for CLI tools outside router)
+    if os.environ.get("GEMINI_CLI") or (Path.cwd() / ".gemini").exists():
+        # Use CWD hash (standard Gemini behavior)
+        project_root = str(Path.cwd().resolve())
+        project_hash = hashlib.sha256(project_root.encode()).hexdigest()
+        gemini_tmp = Path.home() / ".gemini" / "tmp" / project_hash
+        
+        # Only use if it exists to avoid creating junk dirs
+        if gemini_tmp.exists():
+             return gemini_tmp
+
+    # 3. Fallback for unit tests
+    status_dir = Path("/tmp/aops-test-sessions")
     status_dir.mkdir(parents=True, exist_ok=True)
     return status_dir
 

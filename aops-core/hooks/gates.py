@@ -41,6 +41,10 @@ ACTIVE_GATES = [
     # 3. Post-critic trigger: Updates state after critic invocation
     {"name": "post_critic", "check": "post_critic", "events": ["PostToolUse"]},
 
+    # AfterAgent gates (Response Review Pipeline)
+    # 1. Agent Response Listener: Updates state based on response text (Hydration, Handover)
+    {"name": "agent_response_listener", "check": "agent_response_listener", "events": ["AfterAgent"]},
+
     # Stop / AfterAgent gates (Final Review Pipeline)
     # 1. Stop Gate: Enforces Critic invocation and handover warnings
     {"name": "stop_gate", "check": "stop_gate", "events": ["Stop"]},

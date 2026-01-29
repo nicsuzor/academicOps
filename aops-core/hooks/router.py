@@ -39,7 +39,7 @@ GEMINI_EVENT_MAP = {
     "BeforeTool": "PreToolUse",
     "AfterTool": "PostToolUse",
     "BeforeAgent": "UserPromptSubmit",
-    "AfterAgent": "Stop",
+    "AfterAgent": "AfterAgent",
     "SessionEnd": "Stop",
     "Notification": "Notification",
     "PreCompress": "PreCompact",
@@ -70,6 +70,10 @@ HOOK_REGISTRY: Dict[str, List[Dict[str, Any]]] = {
     ],
     "UserPromptSubmit": [
         {"script": "user_prompt_submit.py"},
+        {"script": "unified_logger.py"},
+    ],
+    "AfterAgent": [
+        {"script": "gates.py"},  # Universal gate runner (agent_response_listener)
         {"script": "unified_logger.py"},
     ],
     "SubagentStop": [
@@ -293,14 +297,19 @@ def map_claude_to_gemini(
         # All known Gemini events use top-level 'decision'
         perm = hso.pop("permissionDecision", None)
         if perm:
-            gemini_output["decision"] = perm
+            if perm == "block":
+                # translate block to 'deny'
+                gemini_output["decision"] = "deny"
+            else:
+                gemini_output["decision"] = perm
 
-            # 2. Reason mapping (BeforeTool Only)
+            # 2. Reason mapping (BeforeTool, AfterAgent)
             # BeforeTool uses top-level 'reason' for explanations.
+            # AfterAgent uses top-level 'reason' for correction prompts.
             # Other events (BeforeAgent, AfterTool) use hookSpecificOutput.additionalContext.
             # CRITICAL: SessionStart uses hookSpecificOutput.additionalContext to inject
             # the first turn of history or prepend to prompt. Do NOT map to 'reason'.
-            if gemini_event == "BeforeTool":
+            if gemini_event in ["BeforeTool", "AfterAgent"]:
                 context = hso.get("additionalContext")
                 if context:
                     gemini_output["reason"] = context

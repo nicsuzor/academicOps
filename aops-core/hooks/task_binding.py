@@ -33,6 +33,16 @@ def get_task_id_from_result(tool_result: dict[str, Any]) -> str | None:
     Returns:
         Task ID string or None if not found
     """
+    # Handle Gemini tool_response structure (JSON in returnDisplay string)
+    if "returnDisplay" in tool_result:
+        try:
+            content = tool_result["returnDisplay"]
+            if isinstance(content, str):
+                data = json.loads(content)
+                return data.get("task", {}).get("id")
+        except (json.JSONDecodeError, TypeError):
+            pass
+
     # MCP task tools return {"success": true, "task": {"id": "...", ...}}
     task = tool_result.get("task", {})
     return task.get("id")
@@ -79,19 +89,32 @@ def should_unbind_task(tool_name: str, tool_result: dict[str, Any]) -> bool:
     Returns:
         True if task unbinding should occur
     """
+    # Check success in Gemini format
+    success = False
+    if "returnDisplay" in tool_result:
+        try:
+            content = tool_result["returnDisplay"]
+            if isinstance(content, str):
+                data = json.loads(content)
+                success = data.get("success", False) or data.get("success_count", 0) > 0
+        except (json.JSONDecodeError, TypeError):
+            pass
+    else:
+        success = tool_result.get("success", False) or tool_result.get("success_count", 0) > 0
+
     # Complete task - unbind if successful
     if tool_name in (
         "mcp__plugin_aops-tools_task_manager__complete_task",
         "complete_task",
     ):
-        return tool_result.get("success", False)
+        return success
 
     # Complete tasks (batch) - unbind if any succeeded
     if tool_name in (
         "mcp__plugin_aops-tools_task_manager__complete_tasks",
         "complete_tasks",
     ):
-        return tool_result.get("success_count", 0) > 0
+        return success
 
     return False
 
@@ -120,10 +143,16 @@ def main() -> None:
     # Extract tool info (support both naming conventions)
     tool_name = input_data.get("tool_name") or input_data.get("toolName", "")
     tool_input = input_data.get("tool_input") or input_data.get("toolInput", {})
-    tool_result = input_data.get("tool_result") or input_data.get("toolResult", {})
+    
+    # Handle Gemini tool_response vs Claude tool_result
+    tool_result = (
+        input_data.get("tool_result") 
+        or input_data.get("toolResult") 
+        or input_data.get("tool_response", {})
+    )
 
-    # Get session ID from environment
-    session_id = os.environ.get("CLAUDE_SESSION_ID")
+    # Get session ID from input_data (Gemini) or environment (Claude)
+    session_id = input_data.get("session_id") or os.environ.get("CLAUDE_SESSION_ID")
     if not session_id:
         print(json.dumps({}))
         sys.exit(0)

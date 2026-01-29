@@ -188,6 +188,9 @@ STOP_GATE_CRITIC_TEMPLATE = Path(__file__).parent / "templates" / "stop-gate-cri
 STOP_GATE_HANDOVER_WARN_TEMPLATE = (
     Path(__file__).parent / "templates" / "stop-gate-handover-warn.md"
 )
+STOP_GATE_HANDOVER_BLOCK_TEMPLATE = (
+    Path(__file__).parent / "templates" / "stop-gate-handover-block.md"
+)
 
 
 class GateContext:
@@ -928,15 +931,16 @@ def check_stop_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
     # --- 2. Handover Check ---
     if not session_state.is_handover_skill_invoked(ctx.session_id):
         # Issue warning but allow stop
-        msg = load_template(STOP_GATE_HANDOVER_WARN_TEMPLATE)
-        return dict(hook_utils.make_allow_output(msg, "Stop"))
+        msg = load_template(STOP_GATE_HANDOVER_BLOCK_TEMPLATE)
+        return dict(hook_utils.make_deny_output(msg, "Stop"))
 
     return None
+
 
 def check_hydration_recency_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
     """
     Stop hook: Block exit if turns since hydration == 0.
-    This ensures the agent doesn't hydrate then immediately exit (e.g. "Plan approved").
+    This ensures the agent doesn't hydrate then immediately exit.
     """
     _check_imports()
 
@@ -944,14 +948,14 @@ def check_hydration_recency_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
     # Note: We need to load full state to check this tracker
     state = session_state.get_or_create_session_state(ctx.session_id)
     hydration_state = state.get("hydration", {})
-    
-    # Default to -1 if not tracked (e.g. legacy session), which won't block
-    turns_since = hydration_state.get("turns_since_hydration", -1)
+
+    turns_since = hydration_state["turns_since_hydration"]
 
     if turns_since == 0:
         return hook_utils.make_deny_output("Plan approved, start execution now")
-    
+
     return None
+
 
 def post_hydration_trigger(ctx: GateContext) -> Optional[Dict[str, Any]]:
     """
@@ -963,45 +967,78 @@ def post_hydration_trigger(ctx: GateContext) -> Optional[Dict[str, Any]]:
     # We re-use logic from check_hydration_gate to identify hydrator tools
     is_hydrator_tool = ctx.tool_name in ("Task", "delegate_to_agent")
     is_hydrator = is_hydrator_tool and _hydration_is_hydrator_task(ctx.tool_input)
-    # Note: Gemini hydration uses read_file/run_shell, which is harder to detect reliably
-    # in PostToolUse without input data. For now, we support the standard Task/delegate method.
+    is_gemini = _hydration_is_gemini_hydration_attempt(
+        ctx.tool_name or "", ctx.tool_input, ctx.input_data
+    )
 
-    if is_hydrator:
+    if is_hydrator or is_gemini:
         # Reset trackers
         session_state.update_hydration_metrics(ctx.session_id, turns_since_hydration=0)
         session_state.clear_hydration_pending(ctx.session_id)
 
         # Inject message
         return hook_utils.make_context_output(
-            "Next, invoke the critic and revise your plan.", 
-            "PostToolUse", 
-            wrap_in_reminder=True
+            "Next, invoke the critic and revise your plan.",
+            "PostToolUse",
+            wrap_in_reminder=True,
         )
-    
+
     return None
+
 
 def post_critic_trigger(ctx: GateContext) -> Optional[Dict[str, Any]]:
     """
     PostToolUse: Detect successful critic invocation and update state.
     """
     _check_imports()
-    
+
     # Check if this was a critic invocation
     is_delegate = ctx.tool_name == "delegate_to_agent"
     is_critic = is_delegate and ctx.tool_input.get("agent_name") == "critic"
-    
+
     # Also check Task tool (Claude)
     is_task = ctx.tool_name == "Task"
     is_critic_task = is_task and ctx.tool_input.get("subagent_type") == "critic"
 
     if is_critic or is_critic_task:
         # Set flags
-        session_state.set_critic_invoked(ctx.session_id, "INVOKED") # Generic verdict for now
+        session_state.set_critic_invoked(
+            ctx.session_id, "INVOKED"
+        )  # Generic verdict for now
         session_state.update_hydration_metrics(ctx.session_id, turns_since_critic=0)
-        
+
         return None
 
     return None
+
+
+def check_agent_response_listener(ctx: GateContext) -> Optional[Dict[str, Any]]:
+    """
+    AfterAgent: Listen to agent response for state updates and optional enforcement.
+
+    Checks:
+    1. Hydration result in text -> clear pending flag
+    2. Handover reflection in text -> set handover flag
+    """
+    _check_imports()
+
+    if ctx.event_name != "AfterAgent":
+        return None
+
+    response_text = ctx.input_data.get("prompt_response", "")
+
+    # 1. Update Hydration State
+    if "## HYDRATION RESULT" in response_text:
+        session_state.clear_hydration_pending(ctx.session_id)
+        # Reset turns counter since hydration just happened
+        session_state.update_hydration_metrics(ctx.session_id, turns_since_hydration=0)
+
+    # 2. Update Handover State
+    if "## Framework Reflection" in response_text:
+        session_state.set_handover_skill_invoked(ctx.session_id)
+
+    return None
+
 
 
 def check_axiom_enforcer_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
@@ -1069,4 +1106,5 @@ GATE_CHECKS = {
     "hydration_recency": check_hydration_recency_gate,
     "post_hydration": post_hydration_trigger,
     "post_critic": post_critic_trigger,
+    "agent_response_listener": check_agent_response_listener,
 }
