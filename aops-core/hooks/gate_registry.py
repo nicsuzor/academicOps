@@ -1061,7 +1061,8 @@ def check_agent_response_listener(ctx: GateContext) -> Optional[GateResult]:
     response_text = ctx.input_data.get("prompt_response", "")
 
     # 1. Update Hydration State
-    if "## HYDRATION RESULT" in response_text:
+    # Check for "HYDRATION RESULT" with optional markdown headers (##) or bolding (**)
+    if re.search(r"(?:##\s*|\*\*)?HYDRATION RESULT", response_text, re.IGNORECASE):
         session_state.clear_hydration_pending(ctx.session_id)
         # Reset turns counter since hydration just happened
         session_state.update_hydration_metrics(ctx.session_id, turns_since_hydration=0)
