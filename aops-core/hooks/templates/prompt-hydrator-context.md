@@ -35,7 +35,7 @@ Based on prompt keywords, these specific files may be relevant:
 **Usage**: Reference these paths in your output when main agent needs to read specific files for context.
 
 ### File Placement Rules
-
+<!-- NS: this is framework specific stuff that should be in framework instructions. -->
 | Content Type | Directory | Example |
 |--------------|-----------|---------|
 | **Specs** (design docs, architecture) | `$AOPS/specs/` | `specs/workflow-system-spec.md` |
@@ -72,9 +72,11 @@ Based on prompt keywords, these specific files may be relevant:
 2. **Assess scope** - Single-session (bounded, path known) or multi-session (goal-level, uncertain path)?
 3. **Determine execution path** - Should this be `direct` or `enqueue`?
 4. **Route to task** - Match to existing task or specify new task creation
-5. **Select workflow** - Use the pre-loaded Workflow Index above to select the appropriate workflow
-6. **Compose workflows** - Read workflow files in `$AOPS/aops-core/workflows/` (and any [[referenced workflows]])
+5. **Select workflows** - Use the pre-loaded Workflow Index above to select the appropriate workflows
+6. **Compose workflows** - Read workflow files in `$AOPS/aops-core/workflows/` (and any [[referenced workflows]]) to construct a single ordered list of required steps
 7. **Capture deferred work** - For multi-session scope, create decomposition task for future work
+
+Note: DO NOT plan the actual work. Your ONLY job is to provide background information and enumerate the required workflow steps the agent must follow. Working out HOW to achieve each step is the agent's responsibility.
 
 ### Execution Path Decision
 
@@ -102,7 +104,7 @@ Return this EXACT structure:
 **Intent**: [what user actually wants, in clear terms]
 **Scope**: single-session | multi-session
 **Execution Path**: direct | enqueue
-**Workflow**: [[workflows/[workflow-id]]]
+**Workflows**: [[workflows/[workflow-id]]], ...
 
 ### Task Routing
 
@@ -120,6 +122,11 @@ Return this EXACT structure:
 **OR**
 
 **No task needed** (simple-question only)
+ 
+
+**NOTE** ⛔ Task-Gated Permissions (ENFORCED by system hook): 
+
+**Write/Edit operations will be BLOCKED** until a task is bound to the session.
 
 ### Acceptance Criteria
 
@@ -139,10 +146,12 @@ Return this EXACT structure:
 
 ## Execution Steps
 1. [Task claim/create from above]
-2. [Workflow step]
-3. CHECKPOINT: [verification]
-4. Invoke the **qa** skill: "Verify implementation..."
-5. Complete task, commit, and output Framework Reflection
+2. Investigate task and develop a detailed work plan
+3. Invoke CRITIC to review the plan
+4. [Workflow step]
+5. CHECKPOINT: [verification]
+6. Invoke the **qa** skill: "Verify implementation..."
+7. Complete task, commit, and output Framework Reflection
 
 ### Deferred Work (multi-session only)
 
@@ -169,16 +178,19 @@ mcp__plugin_aops-core_tasks__create_task(
 ````
 
 ## Utility Scripts (Not Skills)
-
+<!-- Nic: we should move these to a new index and inject them above. -->
 These scripts exist but aren't user-invocable skills. Provide exact invocation when relevant:
 
 | Request | Script | Invocation |
 |---------|--------|------------|
 | "save transcript", "export session" | `session_transcript.py` | `uv run python $AOPS/scripts/session_transcript.py <session.jsonl> -o output.md` |
 
-## Key Rules
-
+## The AcademicOps Framework (AOPS)
+<!-- Nic: we should clarify here the distinction between working on the AOPS framework and USING the AOPS framework when working on another project. -->
 - **Framework Gate (CHECK FIRST)**: If prompt involves modifying `$AOPS/` (framework files), route to `[[framework-change]]` (governance) or `[[feature-dev]]` (code). NEVER route framework work to `[[simple-question]]`. Include Framework Change Context in output.
+
+## Key Rules
+<!-- Nic: Rules are duplicated -- we should just have them in one place. We should also separate out the rules for working on AOPS from the universal rules. -->
 - **Code Changes → Search Existing Patterns First**: Before recommending new code (functions, classes, utilities), search `$AOPS/aops-core/hooks/` and `$AOPS/aops-core/lib/` for existing patterns. Common patterns: loading markdown files (see `user_prompt_submit.py`), parsing content (see `transcript_parser.py`), session state (see `lib/session_state.py`). Per P#12 (DRY), reuse existing code rather than duplicating.
 - **Hook Changes → Read Docs First**: When modifying files in `**/hooks/*.py` OR adding/changing hook output fields (`decision`, `reason`, `stopReason`, `systemMessage`, `hookSpecificOutput`, `additionalContext`), classify as `cc_hook` task type and require reading `$AOPS/aops-core/skills/framework/references/hooks.md` for field semantics. Route to `[[feature-dev]]` workflow. P#26 (Verify First).
 - **Python Code Changes → TDD**: When debugging or fixing Python code (`.py` files), include `Skill(skill="python-dev")` in the execution plan. The python-dev skill enforces TDD: write failing test FIRST, then implement fix. No trial-and-error edits.
@@ -186,7 +198,7 @@ These scripts exist but aren't user-invocable skills. Provide exact invocation w
 - **Short confirmations**: If prompt is very short (≤10 chars: "yes", "ok", "do it", "sure"), check the MOST RECENT agent response and tools. The user is likely confirming/proceeding with what was just proposed, NOT requesting new work from task queue.
 - **Scope detection**: Multi-session = goal-level, uncertain path, spans days+. Single-session = bounded, known steps.
 - **Prefer existing tasks**: Search task state before creating new tasks.
-- **QA MANDATORY**: Every plan (except simple-question) needs QA verification step.
+- **CRITIC MANDATORY**: Every plan (except simple-question) needs CRITIC verification step.
 - **Deferred work**: Only for multi-session. Captures what can't be done now without losing it.
 - **Set dependency when sequential**: If immediate work is meaningless without the rest, set depends_on.
 
@@ -194,8 +206,12 @@ These scripts exist but aren't user-invocable skills. Provide exact invocation w
 
 **Every file-modifying execution plan MUST include these final steps:**
 
-1. **Complete task**: `mcp__plugin_aops-core_tasks__complete_task(id="<task-id>")`
-2. **Commit and push**: `git add -A && git commit -m "..." && git push` (use Skill(skill="commit") if available)
+1. **Complete task**
+
+**Why**:⛔ Task-Gated Permissions: Write/Edit operations will be **BLOCKED** until a task is bound to the session.
+
+2. **Commit and push**: Include the task ID in your commit message.
+
 3. **Output Framework Reflection** in this exact format:
 
 ```markdown
@@ -213,26 +229,3 @@ These scripts exist but aren't user-invocable skills. Provide exact invocation w
 ```
 
 **Why**: Session insights parsing depends on this format. Work without reflection is invisible to aggregation.
-
-**Include in execution plan**:
-```javascript
-{{content: "Complete task, commit, and output Framework Reflection", status: "pending", activeForm: "Completing session"}}
-```
-
-## ⛔ Task-Gated Permissions (ENFORCED)
-
-**Write/Edit operations will be BLOCKED** until a task is bound to the session.
-
-The `task_required_gate` PreToolUse hook enforces this:
-- **Claim existing**: `mcp__plugin_aops-core_tasks__update_task(id="...", status="active")`
-- **Create new**: `mcp__plugin_aops-core_tasks__create_task(...)`
-
-Until one of these runs, the agent CANNOT modify files. This is architectural enforcement, not a suggestion.
-
-**Bypass**: User prefix `.` bypasses this gate for emergency/trivial fixes.
-
-**Flow**: Your plan → main agent → (optional critic review) → main agent executes.
-
-**NOTE**: You do NOT invoke critic. Main agent decides based on plan complexity:
-- **Skip critic**: simple-question workflow, direct skill routes, trivial single-step tasks
-- **Invoke critic**: multi-step execution plans, file modifications, architectural decisions
