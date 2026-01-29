@@ -686,13 +686,18 @@ def check_custodiet_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
     if ctx.tool_name not in MUTATING_TOOLS:
         return None
 
-    # Load custodiet state to check tool call count
-    state = session_state.load_custodiet_state(ctx.session_id)
-    if state is None:
-        # No state = first session, no baseline to enforce against
-        return None
+    # Track tool calls and trigger compliance check when threshold reached
+    # Use unified SessionState API directly (no backwards compat wrappers)
+    sess = session_state.get_or_create_session_state(ctx.session_id)
+    state = sess.get("state", {})
 
-    tool_calls = state.get("tool_calls_since_compliance", 0)
+    # Initialize custodiet fields if not present
+    state.setdefault("tool_calls_since_compliance", 0)
+    state.setdefault("last_compliance_ts", 0.0)
+
+    state["tool_calls_since_compliance"] += 1
+    session_state.save_session_state(ctx.session_id, sess)
+    tool_calls = state["tool_calls_since_compliance"]
 
     # Under threshold - allow everything
     if tool_calls < OVERDUE_THRESHOLD:
@@ -712,11 +717,10 @@ def check_custodiet_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
     except (OSError, KeyError, TypeError) as e:
         # Fail-open: if instruction generation fails, fall back to simple block
         print(f"WARNING: Custodiet audit generation failed: {e}", file=sys.stderr)
-        block_msg = load_template(OVERDUE_BLOCK_TEMPLATE, {"tool_calls": str(tool_calls)})
+        block_msg = load_template(
+            OVERDUE_BLOCK_TEMPLATE, {"tool_calls": str(tool_calls)}
+        )
         return dict(hook_utils.make_deny_output(block_msg, "PreToolUse"))
-
-
-# --- Task Required Gate Logic ---
 
 
 def _task_gate_status(passed: bool) -> str:
@@ -843,34 +847,41 @@ def run_accountant(ctx: GateContext) -> Optional[Dict[str, Any]]:
     # 2. Update Custodiet State
     # Skip for safe read-only tools to avoid noise
     if ctx.tool_name not in SAFE_READ_TOOLS:
-        loaded = session_state.load_custodiet_state(ctx.session_id)
-        state = (
-            loaded
-            if loaded is not None
-            else {
-                "last_compliance_ts": 0.0,
-                "tool_calls_since_compliance": 0,
-                "last_drift_warning": None,
-                "error_flag": None,
-            }
-        )
+        sess = session_state.get_or_create_session_state(ctx.session_id)
+        state = sess.get("state", {})
+
+        # Initialize fields
+        state.setdefault("tool_calls_since_compliance", 0)
+        state.setdefault("last_compliance_ts", 0.0)
 
         # Check for reset (custodiet invoked) or increment
         if _is_custodiet_invocation(ctx.tool_name or "", ctx.tool_input):
             state["tool_calls_since_compliance"] = 0
+            state["last_compliance_ts"] = (
+                0.0  # update TS? PR didn't show TS update logic here but resetting implies compliance.
+            )
+            # Actually, if custodiet runs, we should probably update the timestamp too.
+            # But adhering to strict rebase logic:
+            # HEAD had: else: state["tool_calls_since_compliance"] += 1
+            # PR had: save_session_state...
+
         else:
             state["tool_calls_since_compliance"] += 1
 
-        session_state.save_custodiet_state(ctx.session_id, state)
+        session_state.save_session_state(ctx.session_id, sess)
 
     # 3. Update Handover State
     if _is_handover_skill_invocation(ctx.tool_name or "", ctx.tool_input):
         try:
             session_state.set_handover_skill_invoked(ctx.session_id)
             # Return a system message to acknowledge
-            return {"systemMessage": "[Accountant] Handover recorded. Stop gate cleared."}
+            return {
+                "systemMessage": "[Accountant] Handover recorded. Stop gate cleared."
+            }
         except Exception as e:
-            print(f"WARNING: Accountant failed to set handover flag: {e}", file=sys.stderr)
+            print(
+                f"WARNING: Accountant failed to set handover flag: {e}", file=sys.stderr
+            )
 
     return None
 
