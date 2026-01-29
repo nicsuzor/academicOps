@@ -331,3 +331,4 @@ aops-core/.mcp.json
 dist/
 aops-tools/.mcp.json
 streamlit_log.txt
+.agent/PATHS.md
