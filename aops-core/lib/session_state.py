@@ -501,9 +501,7 @@ def clear_hydration_pending(session_id: str) -> None:
     Args:
         session_id: Claude Code session ID
     """
-    state = load_session_state(session_id)
-    if state is None:
-        return
+    state = get_or_create_session_state(session_id)
     state["state"]["hydration_pending"] = False
     save_session_state(session_id, state)
 

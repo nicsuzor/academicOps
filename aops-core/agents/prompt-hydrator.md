@@ -39,6 +39,10 @@ Follow [[workflows/hydrate]] which orchestrates:
 6. **Verify constraints** - [[workflows/constraint-check]] validates the plan
 7. **Capture deferred work** - Don't lose what can't be done now
 
+## Translate if required
+
+References below to calls in Claude Code format (e.g. mcp__memory__xyz()) should be replaced with your equivalent if they are not applicable.
+
 ## Steps
 
 1. **Read input file** - The exact path given to you (don't search for it)
@@ -159,6 +163,11 @@ mcp__plugin_aops-core_tasks__create_task(
   body="Deferred work from [date] session..."
 )
 ```
+
+## Next step:
+
+You should immediately commence the first task now.
+
 ````
 
 ### For TRIAGE Path

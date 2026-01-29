@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 import sys
 import os
+import json
 
 # Adjust imports to work within the aops-core environment
 # These imports are REQUIRED for gate functionality - fail explicitly if missing
@@ -400,8 +401,18 @@ def _hydration_is_subagent_session() -> bool:
     return hook_utils.is_subagent_session()
 
 
-def _hydration_is_hydrator_task(tool_input: dict[str, Any]) -> bool:
+def _hydration_is_hydrator_task(tool_input: dict[str, Any] | str) -> bool:
     """Check if Task/delegate_to_agent/activate_skill invocation is spawning prompt-hydrator."""
+    # Ensure tool_input is a dictionary before calling .get()
+    if isinstance(tool_input, str):
+        try:
+            tool_input = json.loads(tool_input)
+        except json.JSONDecodeError:
+            return False
+
+    if not isinstance(tool_input, dict):
+        return False
+
     # Claude Task tool uses 'subagent_type'
     target = tool_input.get("subagent_type")
 
@@ -423,9 +434,19 @@ def _hydration_is_hydrator_task(tool_input: dict[str, Any]) -> bool:
 
 
 def _hydration_is_gemini_hydration_attempt(
-    tool_name: str, tool_input: dict[str, Any], input_data: dict[str, Any]
+    tool_name: str, tool_input: dict[str, Any] | str, input_data: dict[str, Any]
 ) -> bool:
     """Check if Gemini is attempting to read hydration context."""
+    # Ensure tool_input is a dictionary before calling .get()
+    if isinstance(tool_input, str):
+        try:
+            tool_input = json.loads(tool_input)
+        except json.JSONDecodeError:
+            return False
+
+    if not isinstance(tool_input, dict):
+        return False
+
     try:
         temp_dir = str(
             hook_utils.get_hook_temp_dir(HYDRATION_TEMP_CATEGORY, input_data)
