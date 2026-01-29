@@ -61,6 +61,10 @@ Always output `GateResult` objects (serialized to JSON).
 * `system_message`: Text shown to the model/user.
 * `context_injection`: Internal context injected into the prompt.
 
+### 5. Transcript Generation
+
+A dedicated hook `hooks/generate_transcript.py` is registered to the `Stop` (SessionEnd) event. It invokes `scripts/transcript.py` to generate clean markdown transcripts for the session log.
+
 ## Debugging
 
 * **Logs**: Check `~/.gemini/tmp/academicOps-hooks.log` (or `hooks.log`) to see the raw JSON passing through the router.
