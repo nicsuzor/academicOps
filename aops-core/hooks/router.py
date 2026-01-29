@@ -500,6 +500,15 @@ def execute_hooks(
     # Log operational trace (restores ~/.gemini/tmp/ logs)
     session_id = input_data.get("session_id")
     if session_id:
+        # Enrich input_data with persisted session data (e.g. transcript_path)
+        # to ensure logging goes to the correct directory
+        session_data = get_session_data()
+        if session_data:
+            # Only add if missing to avoid overwriting current event data
+            for k, v in session_data.items():
+                if k not in input_data:
+                    input_data[k] = v
+
         if "hook_logger" in globals() and globals()["hook_logger"]:
             hook_logger.log_hook_event(
                 session_id=session_id,

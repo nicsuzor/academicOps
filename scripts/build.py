@@ -228,6 +228,7 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
         "version": manifest_base.get("version", "0.1.0"),
         "description": manifest_base.get("description", "AcademicOps Core Framework"),
         "mcpServers": gemini_mcps,
+        "hooks": gemini_hooks,
         # NOTE: subAgents disabled - Gemini CLI doesn't support them yet.
         # The agent Skills are still generated (see loop above) and can be invoked
         # via activate_skill(). Re-enable this line when Gemini adds subagent support:

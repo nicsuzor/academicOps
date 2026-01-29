@@ -189,45 +189,19 @@ def handle_stop(session_id: str, input_data: dict[str, Any]) -> None:
         "project": extract_project_name(),
     }
 
-    # Build operational metrics
-    if "subagents" not in state:
-        raise ValueError("Required field 'subagents' missing from session state")
-    subagents = state["subagents"]
-
-    if "state" not in state:
-        raise ValueError("Required field 'state' missing from session state")
-    state_section = state["state"]
-    current_workflow = state_section.get("current_workflow")
-
-    if "custodiet_blocked" not in state_section:
-        raise ValueError("Required field 'custodiet_blocked' missing from state section")
-    custodiet_blocked = state_section["custodiet_blocked"]
-
-    if "hydration" not in state:
-        raise ValueError("Required field 'hydration' missing from session state")
-    hydration = state["hydration"]
-
-    # Extract acceptance criteria with explicit validation
-    if "acceptance_criteria" not in hydration:
-        raise ValueError("Required field 'acceptance_criteria' missing from hydration")
-    acceptance_criteria = hydration["acceptance_criteria"]
-
-    # Extract stop_reason (optional, but required in this context)
-    if "stop_reason" not in input_data:
-        raise ValueError("Required field 'stop_reason' missing from input_data")
-    stop_reason = input_data["stop_reason"]
-
-    # Extract critic_verdict (optional, so explicit None check)
-    critic_verdict = hydration.get("critic_verdict") if "critic_verdict" in hydration else None
+    # Build operational metrics with safe defaults
+    state_section = state.get("state", {})
+    hydration = state.get("hydration", {})
+    subagents = state.get("subagents", {})
 
     operational_metrics = {
-        "workflows_used": [current_workflow] if current_workflow else [],
+        "workflows_used": [state_section.get("current_workflow")] if state_section.get("current_workflow") else [],
         "subagents_invoked": list(subagents.keys()),
         "subagent_count": len(subagents),
-        "custodiet_blocks": 1 if custodiet_blocked else 0,
-        "stop_reason": stop_reason,
-        "critic_verdict": critic_verdict,
-        "acceptance_criteria_count": len(acceptance_criteria),
+        "custodiet_blocks": 1 if state_section.get("custodiet_blocked") else 0,
+        "stop_reason": input_data.get("stop_reason", "unknown"),
+        "critic_verdict": hydration.get("critic_verdict"),
+        "acceptance_criteria_count": len(hydration.get("acceptance_criteria", [])),
     }
 
     # Generate minimal insights for session state only
