@@ -17,17 +17,17 @@ _IMPORT_ERROR: str | None = None
 try:
     from lib import session_state
     from lib import hook_utils
+    from lib import axiom_detector
     from lib.template_loader import load_template
     from lib.session_reader import extract_gate_context
-    from hooks.overdue_enforcement import is_mutating_tool
 except ImportError as e:
     _IMPORT_ERROR = str(e)
     # Provide stub implementations that raise clear errors when used
     session_state = None  # type: ignore[assignment]
     hook_utils = None  # type: ignore[assignment]
+    axiom_detector = None  # type: ignore[assignment]
     load_template = None  # type: ignore[assignment]
     extract_gate_context = None  # type: ignore[assignment]
-    is_mutating_tool = None # type: ignore[assignment]
 
 
 def _check_imports() -> None:
@@ -1004,10 +1004,65 @@ def post_critic_trigger(ctx: GateContext) -> Optional[Dict[str, Any]]:
     return None
 
 
+def check_axiom_enforcer_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
+    """
+    Check for axiom violations in tool calls (Pre-Tool Enforcement).
+    """
+    _check_imports()
+
+    if ctx.event_name != "PreToolUse":
+        return None
+
+    # Only check mutating tools that write/edit files
+    if ctx.tool_name not in (
+        "Write",
+        "Edit",
+        "write_to_file",
+        "replace_file_content",
+        "multi_replace_file_content",
+    ):
+        return None
+
+    # Extract code/content
+    code = ""
+    if ctx.tool_name in ("Write", "write_to_file"):
+        code = ctx.tool_input.get("content", "")
+    elif ctx.tool_name in ("Edit", "replace_file_content"):
+        code = ctx.tool_input.get("new_string", "")
+    elif ctx.tool_name == "multi_replace_file_content":
+        # Handle list of replacements
+        replacements = ctx.tool_input.get("replacements", [])
+        code = "\n".join([r.get("new_string", "") for r in replacements])
+
+    if not code:
+        return None
+
+    # Detect violations
+    violations = axiom_detector.detect_all_violations(code)
+
+    if violations:
+        # Format violation messages
+        msg_lines = ["⛔ **AXIOM ENFORCEMENT BLOCKED**", ""]
+        for v in violations:
+            msg_lines.append(f"- **{v.axiom}**: {v.message}")
+            if v.line_number:
+                msg_lines.append(f"  Line {v.line_number}: `{v.context}`")
+
+        msg_lines.append("")
+        msg_lines.append(
+            "Please fix these violations before submitting. No fallbacks, no workarounds."
+        )
+
+        return dict(hook_utils.make_deny_output("\n".join(msg_lines), "PreToolUse"))
+
+    return None
+
+
 # Registry of available gate checks
 GATE_CHECKS = {
     "hydration": check_hydration_gate,
     "custodiet": check_custodiet_gate,
+    "axiom_enforcer": check_axiom_enforcer_gate,
     "task_required": check_task_required_gate,
     "accountant": run_accountant,
     "stop_gate": check_stop_gate,
