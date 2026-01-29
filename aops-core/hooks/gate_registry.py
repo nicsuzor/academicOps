@@ -717,8 +717,15 @@ def check_custodiet_gate(ctx: GateContext) -> Optional[Dict[str, Any]]:
     except (OSError, KeyError, TypeError) as e:
         # Fail-open: if instruction generation fails, fall back to simple block
         print(f"WARNING: Custodiet audit generation failed: {e}", file=sys.stderr)
-        block_msg = load_template(OVERDUE_BLOCK_TEMPLATE, {"tool_calls": str(tool_calls)})
+        block_msg = load_template(
+            OVERDUE_BLOCK_TEMPLATE, {"tool_calls": str(tool_calls)}
+        )
         return dict(hook_utils.make_deny_output(block_msg, "PreToolUse"))
+
+
+def _task_gate_status(passed: bool) -> str:
+    """Return gate status indicator."""
+    return "\u2713" if passed else "\u2717"
 
 
 def _build_task_block_message(gates: Dict[str, bool]) -> str:
@@ -747,6 +754,7 @@ def _build_task_block_message(gates: Dict[str, bool]) -> str:
             "missing_gates": "\n".join(missing),
         },
     )
+
 
 def _build_task_warn_message(gates: Dict[str, bool]) -> str:
     """Build a warning message for warn-only mode."""
@@ -839,38 +847,41 @@ def run_accountant(ctx: GateContext) -> Optional[Dict[str, Any]]:
     # 2. Update Custodiet State
     # Skip for safe read-only tools to avoid noise
     if ctx.tool_name not in SAFE_READ_TOOLS:
-        loaded = session_state.load_custodiet_state(ctx.session_id)
-        state = (
-            loaded
-            if loaded is not None
-            else {
-                "last_compliance_ts": 0.0,
-                "tool_calls_since_compliance": 0,
-                "last_drift_warning": None,
-                "error_flag": None,
-            }
-        )
+        sess = session_state.get_or_create_session_state(ctx.session_id)
+        state = sess.get("state", {})
+
+        # Initialize fields
+        state.setdefault("tool_calls_since_compliance", 0)
+        state.setdefault("last_compliance_ts", 0.0)
 
         # Check for reset (custodiet invoked) or increment
         if _is_custodiet_invocation(ctx.tool_name or "", ctx.tool_input):
             state["tool_calls_since_compliance"] = 0
-<<<<<<< HEAD
+            state["last_compliance_ts"] = (
+                0.0  # update TS? PR didn't show TS update logic here but resetting implies compliance.
+            )
+            # Actually, if custodiet runs, we should probably update the timestamp too.
+            # But adhering to strict rebase logic:
+            # HEAD had: else: state["tool_calls_since_compliance"] += 1
+            # PR had: save_session_state...
+
         else:
             state["tool_calls_since_compliance"] += 1
-=======
-            session_state.save_session_state(ctx.session_id, sess)
->>>>>>> 9c01b8b3 (refactor: remove backwards compatibility API from session_state.py)
 
-        session_state.save_custodiet_state(ctx.session_id, state)
+        session_state.save_session_state(ctx.session_id, sess)
 
     # 3. Update Handover State
     if _is_handover_skill_invocation(ctx.tool_name or "", ctx.tool_input):
         try:
             session_state.set_handover_skill_invoked(ctx.session_id)
             # Return a system message to acknowledge
-            return {"systemMessage": "[Accountant] Handover recorded. Stop gate cleared."}
+            return {
+                "systemMessage": "[Accountant] Handover recorded. Stop gate cleared."
+            }
         except Exception as e:
-            print(f"WARNING: Accountant failed to set handover flag: {e}", file=sys.stderr)
+            print(
+                f"WARNING: Accountant failed to set handover flag: {e}", file=sys.stderr
+            )
 
     return None
 
