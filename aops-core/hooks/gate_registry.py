@@ -734,7 +734,42 @@ def check_custodiet_gate(ctx: GateContext) -> Optional[GateResult]:
     session_state.save_session_state(ctx.session_id, sess)
     tool_calls = state["tool_calls_since_compliance"]
 
-    # Under threshold - allow everything
+    # Under threshold - allow everything (unless axiom violation)
+    # BUT first, check for Axiom Violations (Real-time Enforcement)
+    # This logic was migrated from check_axiom_enforcer_gate
+
+    # Extract code/content for analysis
+    code = ""
+    if ctx.tool_name in ("Write", "write_to_file"):
+        code = ctx.tool_input.get("content", "")
+    elif ctx.tool_name in ("Edit", "replace_file_content"):
+        code = ctx.tool_input.get("new_string", "")
+    elif ctx.tool_name == "multi_replace_file_content":
+        replacements = ctx.tool_input.get("replacements", [])
+        code = "\n".join([r.get("new_string", "") for r in replacements])
+
+    if code:
+        # Detect violations
+        violations = axiom_detector.detect_all_violations(code)
+
+        if violations:
+            # Format violation messages
+            msg_lines = ["⛔ **AXIOM ENFORCEMENT BLOCKED**", ""]
+            for v in violations:
+                msg_lines.append(f"- **{v.axiom}**: {v.message}")
+                if v.line_number:
+                    msg_lines.append(f"  Line {v.line_number}: `{v.context}`")
+
+            msg_lines.append("")
+            msg_lines.append(
+                "Please fix these violations before submitting. No fallbacks, no workarounds."
+            )
+
+            return GateResult(
+                verdict=GateVerdict.DENY, context_injection="\n".join(msg_lines)
+            )
+
+    # If no axiom violations, check compliance threshold
     if tool_calls < CUSTODIET_TOOL_CALL_THRESHOLD:
         return None
 
@@ -1097,62 +1132,6 @@ def check_agent_response_listener(ctx: GateContext) -> Optional[GateResult]:
     return None
 
 
-def check_axiom_enforcer_gate(ctx: GateContext) -> Optional[GateResult]:
-    """
-    Check for axiom violations in tool calls (Pre-Tool Enforcement).
-    """
-    _check_imports()
-
-    if ctx.event_name != "PreToolUse":
-        return None
-
-    # Only check mutating tools that write/edit files
-    if ctx.tool_name not in (
-        "Write",
-        "Edit",
-        "write_to_file",
-        "replace_file_content",
-        "multi_replace_file_content",
-    ):
-        return None
-
-    # Extract code/content
-    code = ""
-    if ctx.tool_name in ("Write", "write_to_file"):
-        code = ctx.tool_input.get("content", "")
-    elif ctx.tool_name in ("Edit", "replace_file_content"):
-        code = ctx.tool_input.get("new_string", "")
-    elif ctx.tool_name == "multi_replace_file_content":
-        # Handle list of replacements
-        replacements = ctx.tool_input.get("replacements", [])
-        code = "\n".join([r.get("new_string", "") for r in replacements])
-
-    if not code:
-        return None
-
-    # Detect violations
-    violations = axiom_detector.detect_all_violations(code)
-
-    if violations:
-        # Format violation messages
-        msg_lines = ["⛔ **AXIOM ENFORCEMENT BLOCKED**", ""]
-        for v in violations:
-            msg_lines.append(f"- **{v.axiom}**: {v.message}")
-            if v.line_number:
-                msg_lines.append(f"  Line {v.line_number}: `{v.context}`")
-
-        msg_lines.append("")
-        msg_lines.append(
-            "Please fix these violations before submitting. No fallbacks, no workarounds."
-        )
-
-        return GateResult(
-            verdict=GateVerdict.DENY, context_injection="\n".join(msg_lines)
-        )
-
-    return None
-
-
 def check_session_start_gate(ctx: GateContext) -> Optional[GateResult]:
     """
     Handle SessionStart event.
@@ -1230,7 +1209,8 @@ def check_skill_activation_listener(ctx: GateContext) -> Optional[GateResult]:
 GATE_CHECKS = {
     "session_start": check_session_start_gate,
     "hydration": check_hydration_gate,  # PreToolUse
-    "custodiet": check_custodiet_gate,  # Pre/Post
+    "custodiet": check_custodiet_gate,
+    # "axiom_enforcer": merged into custodiet
     "handover": check_handover_gate,  # PostToolUse
     "agent_response": check_agent_response_listener,  # AfterAgent
     "stop": check_stop_gate,  # Stop

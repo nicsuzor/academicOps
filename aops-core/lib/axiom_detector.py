@@ -23,6 +23,7 @@ class AxiomViolation(NamedTuple):
 class P8FallbackDetector:
     """Detects violations of P#8 (Fail-Fast: No fallbacks/defaults)."""
 
+    # <!-- NS: this violates the 'no shitty nlp' axiom. -->
     AXIOM = "P#8"
 
     # Common "safe" defaults that don't necessarily violate fail-fast (existence checks)
@@ -33,32 +34,32 @@ class P8FallbackDetector:
     PATTERNS = [
         # os.environ.get("VAR", "default") or os.getenv("VAR", "default")
         (
-            r'''(?:os\.(?:environ\.get|getenv))\s*\(\s*['"][^'"]+['"]\s*,\s*['"][^'"]+['"]\s*\)''',
+            r"""(?:os\.(?:environ\.get|getenv))\s*\(\s*['"][^'"]+['"]\s*,\s*['"][^'"]+['"]\s*\)""",
             "env_get_default",
             "Environment variable access with hardcoded default. Use os.environ['VAR'] for fail-fast.",
         ),
         # try: ... except: pass (handles same line or next line)
         (
-            r'''except\s*(?:\w+)?\s*:\s*(?:\n\s*)?pass\b''',
+            r"""except\s*(?:\w+)?\s*:\s*(?:\n\s*)?pass\b""",
             "except_pass",
             "Silent exception suppression (except: pass). Handle errors explicitly or let them propagate.",
         ),
         # try: ... except: continue
         (
-            r'''except\s*(?:\w+)?\s*:\s*(?:\n\s*)?continue\b''',
+            r"""except\s*(?:\w+)?\s*:\s*(?:\n\s*)?continue\b""",
             "except_continue",
             "Silent exception suppression in loop (except: continue).",
         ),
         # val or "fallback" (assignment or return with fallback)
         (
-            r'''\b\w+\s+or\s+['"][^'"]+['"]''',
+            r"""\b\w+\s+or\s+['"][^'"]+['"]""",
             "or_fallback",
             "Value fallback using 'or default'. Use explicit checks and fail fast if value missing.",
         ),
         # .get(key, default) on dicts
         # We capture the default to check it logically
         (
-            r'''\.get\s*\(\s*['"][^'"]+['"]\s*,\s*(?P<default>[^)]+)\)''',
+            r"""\.get\s*\(\s*['"][^'"]+['"]\s*,\s*(?P<default>[^)]+)\)""",
             "dict_get_default",
             "Dictionary access with default value. Prefer dict['key'] for fail-fast.",
         ),
@@ -86,7 +87,9 @@ class P8FallbackDetector:
 
                 # Calculate line number
                 line_number = code.count("\n", 0, match.start()) + 1
-                context = match.group(0).strip().split("\n")[0]  # Just the first line of match for context
+                context = (
+                    match.group(0).strip().split("\n")[0]
+                )  # Just the first line of match for context
                 violations.append(
                     AxiomViolation(
                         axiom=self.AXIOM,

@@ -28,8 +28,8 @@ ACTIVE_GATES = [
     # PreToolUse gates (Enforcement Pipeline)
     # 1. Hydration: Blocks non-hydrator tools until context is loaded
     {"name": "hydration", "check": "hydration", "events": ["PreToolUse"]},
-    # 2. Axiom Enforcer: Blocks axiom violations in tool calls
-    {"name": "axiom_enforcer", "check": "axiom_enforcer", "events": ["PreToolUse"]},
+    # 2. (Merged) Axiom Enforcer: Now part of Custodiet
+    # {"name": "axiom_enforcer", "check": "axiom_enforcer", "events": ["PreToolUse"]},
     # 3. Task Required: Blocks destructive operations without task binding
     {"name": "task_required", "check": "task_required", "events": ["PreToolUse"]},
     # 4. Custodiet: Blocks mutating tools when compliance check is overdue
