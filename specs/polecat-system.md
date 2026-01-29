@@ -168,6 +168,58 @@ active → in_progress → merge_ready → done
 - **review**: Merge failed, requires human intervention
 - **done**: Merged to main, branch cleaned up
 
+## Crew Merge Workflow
+
+Unlike task-bound polecats, **crews** are persistent named worktrees for interactive work.
+They don't have `merge_ready` status transitions - merging is manual.
+
+### When to Merge
+
+Merge a crew branch when:
+- Interactive work session is complete
+- Changes are ready for integration into main
+- Crew is no longer needed for ongoing collaboration
+
+### Merge Steps
+
+For each project in the crew (e.g., `~/.aops/polecat/crew/cheryl/aops`):
+
+1. **Check status**:
+   ```bash
+   cd ~/.aops/polecat/crew/<name>/<project>
+   git status
+   git log main..HEAD --oneline  # See commits to merge
+   ```
+
+2. **Commit uncommitted changes** (if dirty):
+   ```bash
+   git add <files>
+   git commit -m "feat: describe the changes"
+   ```
+
+3. **Merge to main** (from main repo):
+   ```bash
+   cd ~/src/<project-repo>
+   git merge crew/<name>
+   ```
+
+4. **Resolve conflicts** if any, then commit
+
+5. **Push**:
+   ```bash
+   git push origin main
+   ```
+
+6. **Cleanup** (optional - only after ALL projects merged):
+   ```bash
+   polecat nuke-crew <name> --force
+   ```
+
+### Multi-Project Crews
+
+Crews can span multiple projects (e.g., cheryl had aops, buttermilk, mediamarkets).
+Repeat steps 1-5 for each project before nuking the crew.
+
 ## Repository Mapping
 
 Since worktrees depend on a parent repo, the system maps projects to paths:
