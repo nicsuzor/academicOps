@@ -736,8 +736,8 @@ def check_custodiet_gate(ctx: GateContext) -> Optional[GateResult]:
     state.setdefault("tool_calls_since_compliance", 0)
     state.setdefault("last_compliance_ts", 0.0)
 
-    state["tool_calls_since_compliance"] += 1
-    session_state.save_session_state(ctx.session_id, sess)
+    # NOTE: Counter is incremented by run_accountant in PostToolUse, not here
+    # We only READ the counter here to check if we should block
     tool_calls = state["tool_calls_since_compliance"]
 
     # Under threshold - allow everything (unless axiom violation)
