@@ -21,6 +21,7 @@ dependencies = [
   "pdfminer-six>=20260107",
   "rich>=13.0.0",
   "streamlit-agraph>=0.0.45",
+  "matplotlib>=3.10.8",
 ]
 
 [project.scripts]
