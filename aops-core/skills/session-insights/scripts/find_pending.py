@@ -55,6 +55,7 @@ def main():
             break
 
         # Format: YYYYMMDD-{project}-{session_id}-{suffix}.md
+        # or v3.7.0+: YYYYMMDD-HH-{project}-{session_id}-{suffix}.md
         parts = transcript.stem.split("-")
 
         # We need at least date and session_id
@@ -64,17 +65,22 @@ def main():
                 date_str = parts[0]
                 date_formatted = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
 
-                # Session ID is usually the 3rd or later part, but let's be more robust
-                # The inline script assumed parts[2].
-                # Standard format: YYYYMMDD-project-session_id
-                session_id = parts[2]
+                # Check for hour component (v3.7.0+)
+                shift = 0
+                if len(parts[1]) == 2 and parts[1].isdigit():
+                    shift = 1
 
-                # Check if insights exist (v3.4.0: YYYYMMDD format)
-                insights_file = insights_dir / f"{date_str}-{session_id}.json"
+                # Ensure we have enough parts with the shift
+                if len(parts) >= 3 + shift:
+                    # Standard format: YYYYMMDD-[HH]-project-session_id
+                    session_id = parts[2 + shift]
 
-                if not insights_file.exists():
-                    print(f"{transcript}|{session_id}|{date_formatted}")
-                    count += 1
+                    # Check if insights exist (v3.4.0: YYYYMMDD format)
+                    insights_file = insights_dir / f"{date_str}-{session_id}.json"
+
+                    if not insights_file.exists():
+                        print(f"{transcript}|{session_id}|{date_formatted}")
+                        count += 1
 
     if count == 0:
         # No output means no pending sessions found
