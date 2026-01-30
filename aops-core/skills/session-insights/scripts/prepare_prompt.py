@@ -45,7 +45,16 @@ def extract_metadata_from_filename(filename: str) -> dict[str, str]:
     # Remove extension
     stem = filename.rsplit(".", 1)[0] if "." in filename else filename
 
-    # Pattern 1: YYYYMMDD-{project}-{session_id}-{suffix}
+    # Pattern 1a: YYYYMMDD-HH-{project}-{session_id}-{suffix} (v3.7.0+)
+    # Example: 20260130-17-academicOps-a1b2c3d4-main-abridged
+    match = re.match(r"^(\d{8})-\d{2}-([^-]+)-([a-f0-9]{8})", stem)
+    if match:
+        date_str, project, session_id = match.groups()
+        # Convert YYYYMMDD to YYYY-MM-DD
+        date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+        return {"session_id": session_id, "date": date, "project": project}
+
+    # Pattern 1b: YYYYMMDD-{project}-{session_id}-{suffix} (Legacy)
     # Example: 20260113-academicOps-a1b2c3d4-main-abridged
     match = re.match(r"^(\d{8})-([^-]+)-([a-f0-9]{8})", stem)
     if match:
@@ -80,7 +89,8 @@ def extract_metadata_from_filename(filename: str) -> dict[str, str]:
             date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
         # Try to extract project (usually between date and session_id)
-        project_match = re.match(r"^\d{8}-([^-]+)-", stem)
+        # Handle optional hour component: YYYYMMDD-[HH]-project
+        project_match = re.match(r"^\d{8}-(?:\d{2}-)?([^-]+)-", stem)
         project = project_match.group(1) if project_match else "unknown"
 
         return {"session_id": session_id, "date": date, "project": project}

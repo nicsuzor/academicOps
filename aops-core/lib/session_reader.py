@@ -1076,8 +1076,9 @@ def get_session_state(session: SessionInfo, aca_data: Path) -> SessionState:
     has_mining = False
 
     if insights_dir.exists():
-        # New format: {date}-{session_id}.json (e.g., 2025-01-12-a1b2c3d4.json)
-        pattern = str(insights_dir / f"*-{session_prefix}.json")
+        # Support various formats (with/without slug, project, hour)
+        # Match anything containing the session_prefix and ending in .json
+        pattern = str(insights_dir / f"*{session_prefix}*.json")
         import glob as glob_module
 
         matches = glob_module.glob(pattern)

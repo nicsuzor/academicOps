@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 
 # Script location
-SCRIPT_PATH = Path(__file__).parent.parent / "scripts" / "transcript.py"
+SCRIPT_PATH = Path(__file__).parent.parent / "aops-core" / "scripts" / "transcript.py"
 
 
 class TestTranscriptCLI:
