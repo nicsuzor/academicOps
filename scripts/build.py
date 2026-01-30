@@ -161,6 +161,27 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
             servers_config = mcp_config.get("mcpServers", mcp_config)
             gemini_mcps = convert_mcp_to_gemini(servers_config)
 
+            # Update extension manifest with generated MCPs
+            if dist_extension_json.exists():
+                try:
+                    with open(dist_extension_json, "r") as f:
+                        manifest = json.load(f)
+
+                    # Merge MCPs (template takes precedence or just add missing?)
+                    # Let's override/update with template values as they are the source of truth for MCPs
+                    current_mcps = manifest.get("mcpServers", {})
+                    # We want to preserve existing ones if they aren't in template?
+                    # No, user wants template to be source of truth.
+                    # But the source gemini-extension.json has task_manager placeholders too.
+                    # Let's just merge, with template overwriting.
+                    manifest["mcpServers"] = {**current_mcps, **gemini_mcps}
+
+                    with open(dist_extension_json, "w") as f:
+                        json.dump(manifest, f, indent=2)
+                    print(f"✓ Updated {dist_extension_json} with MCP config")
+                except Exception as e:
+                    print(f"Error updating manifest with MCPs: {e}", file=sys.stderr)
+
         except Exception as e:
             print(f"Error processing template {template_path}: {e}", file=sys.stderr)
             # Fallback to empty if failed? Or exit?

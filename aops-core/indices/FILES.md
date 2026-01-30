@@ -24,8 +24,6 @@ For human-readable overview, see [[README]].
 
 ```
 $AOPS/
-├── [[AXIOMS.md]]                # Inviolable principles (injected at session start)
-├── [[HEURISTICS.md]]            # Empirically validated rules (injected at session start)
 ├── [[.agent/PATHS.md]]          # Resolved paths for this session (injected at session start)
 ├── [[README.md]]                # Brief overview, feature inventory
 ├── [[INDEX.md]]                 # THIS FILE - complete file tree
@@ -176,7 +174,7 @@ $AOPS/
 │       └── custodiet-instruction.md           # Custodiet instruction template
 │
 ├── indices/                     # Internal lookup indices (not user-facing)
-│   └── [[enforcement-map.md]]   # Axiom/heuristic → enforcement mechanism mapping
+│
 │
 ├── lib/                         # Shared Python
 │   ├── __init__.py              # Package init
@@ -562,6 +560,11 @@ $AOPS/
 │   │   ├── dump.md              # Emergency work handover
 │   │   ├── learn.md             # Minor instruction adjustments
 │   │   └── log.md               # Learning log entry
+│   │
+│   ├── framework/               # Framework core definitions
+│   │   ├── [[AXIOMS.md]]            # Inviolable principles
+│   │   ├── [[HEURISTICS.md]]        # Operational guidelines
+│   │   └── [[enforcement-map.md]]   # Enforcement mapping
 │   │
 │   ├── heuristics/              # Empirically validated rules
 │   │   ├── file-category-classification.md  # File categorization
