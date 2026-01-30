@@ -557,10 +557,34 @@ class PolecatManager:
         except subprocess.CalledProcessError as e:
             print(f"Worktree creation failed: {e}. Attempting recovery...", file=sys.stderr)
             if self._branch_exists(repo_path, branch_name):
-                cmd = ["git", "worktree", "add", str(worktree_path), branch_name]
-                subprocess.run(cmd, cwd=repo_path, check=True)
+                # Branch exists - delete it if orphan, then recreate
+                if self._is_orphan_branch(repo_path, branch_name):
+                    print(f"Branch {branch_name} is orphan, deleting...", file=sys.stderr)
+                    subprocess.run(["git", "branch", "-D", branch_name], cwd=repo_path, check=False)
+                    # Recreate with -b flag from default_branch
+                    subprocess.run(cmd, cwd=repo_path, check=True)
+                else:
+                    # Branch exists with commits - use it
+                    cmd = ["git", "worktree", "add", str(worktree_path), branch_name]
+                    subprocess.run(cmd, cwd=repo_path, check=True)
             else:
                 raise e
+
+        # Post-creation validation: ensure worktree has valid history
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=worktree_path,
+            capture_output=True,
+        )
+        if result.returncode != 0:
+            # Worktree was created but is orphan - this should not happen
+            print(f"ERROR: Worktree created with orphan branch at {worktree_path}", file=sys.stderr)
+            print(f"Branch: {branch_name}, Default: {default_branch}", file=sys.stderr)
+            # Clean up and fail
+            shutil.rmtree(worktree_path)
+            subprocess.run(["git", "worktree", "prune"], cwd=repo_path, check=False)
+            subprocess.run(["git", "branch", "-D", branch_name], cwd=repo_path, check=False)
+            raise RuntimeError(f"Failed to create valid worktree - orphan branch detected")
 
         return worktree_path
 
@@ -571,6 +595,20 @@ class PolecatManager:
             capture_output=True
         )
         return res.returncode == 0
+
+    def _is_orphan_branch(self, repo_path, branch_name):
+        """Check if a branch exists but has no commits (orphan branch)."""
+        # Check if branch exists
+        if not self._branch_exists(repo_path, branch_name):
+            return False
+
+        # Try to get the commit SHA - will fail for orphan branches
+        result = subprocess.run(
+            ["git", "rev-parse", "--verify", f"{branch_name}^{{commit}}"],
+            cwd=repo_path,
+            capture_output=True,
+        )
+        return result.returncode != 0
 
     def _is_branch_merged(self, repo_path: Path, branch_name: str, target: str = "main") -> bool:
         """Check if branch has been merged into target branch."""
