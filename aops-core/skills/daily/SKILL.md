@@ -11,7 +11,7 @@ permalink: skills-daily
 
 Manage daily note lifecycle: morning briefing, task recommendations, and session sync.
 
-Location: `$ACA_SESSIONS/YYYYMMDD-daily.md`
+Location: `$ACA_DATA/daily/YYYYMMDD-daily.md`
 
 ## CRITICAL BOUNDARY: Planning Only
 
@@ -77,7 +77,7 @@ else:
 
 ## 1. Create note
 
-Check `$ACA_SESSIONS/YYYYMMDD-daily.md`.
+Check `$ACA_DATA/daily/YYYYMMDD-daily.md`.
 
 **If missing**: Create from template (see Daily Note Structure above), then:
 
@@ -152,11 +152,13 @@ From [sender]: [Actual content or summary]
 ```
 
 **CRITICAL - For each FYI item, IMMEDIATELY after writing it:**
-1. **If action required** (feedback, review, response, decision) → `mcp__plugin_aops-core_tasks__create_task()` NOW
+1. **If action required** (feedback, review, response, decision, "review X before Y") → `mcp__plugin_aops-core_tasks__create_task()` NOW
+   - Include deadline if mentioned or implied (e.g., "before Planning Day" = Planning Day date)
+   - **Then add task link to FYI content**: `- **→ Task**: [task-id] Task title`
 2. **If links to existing task** → `mcp__plugin_aops-core_tasks__update_task()` with the info
 3. **If worth future recall** → `mcp__memory__store_memory()` with tags
 
-Do NOT batch these to a later step. Task creation happens AS you process each email, not after.
+Do NOT batch these to a later step. Task creation AND linking happens AS you process each email, not after.
 
 **Archive flow (user confirmation required)**:
 1. Present FYI content in daily note (complete section 2.2)
@@ -174,6 +176,7 @@ Do NOT batch these to a later step. Task creation happens AS you process each em
 Before moving to section 3, verify you completed the inline persistence from 2.2:
 
 - [ ] Each action-requiring FYI has a task created
+- [ ] Each created task is linked back in the FYI section (`→ Task: [id]`)
 - [ ] Relevant existing tasks updated with new info
 - [ ] High-value FYI items stored in memory
 

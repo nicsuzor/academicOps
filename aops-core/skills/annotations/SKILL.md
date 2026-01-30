@@ -93,6 +93,12 @@ This skill integrates with daily workflow:
 - Human comments may or may not include dates
 - If human comment has date, preserve it; if not, infer from file mtime or mark "undated"
 
+## Critical Rules
+
+- **ALL matches are actionable**: NEVER dismiss matches as "documentation" or "examples". HTML comments are NEVER used casually in this codebase. If the pattern matches, it's a real annotation requiring action.
+- **Examples use code blocks**: Documentation examples appear inside ` ```markdown ` code blocks, NOT as bare HTML comments. A bare `<!-- @ns: -->` in ANY file is a real annotation.
+- **Task ID in responses**: When creating a task for an annotation, the `<!-- @claude -->` response MUST include the task ID. Format: `<!-- @claude YYYY-MM-DD: Task created: task-id. [brief description] -->`
+
 ## Boundaries
 
 - **Scope**: `$ACA_DATA` markdown files only
