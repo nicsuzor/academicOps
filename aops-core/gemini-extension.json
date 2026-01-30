@@ -1,5 +1,5 @@
 {
-  "name": "academic-ops-core",
+  "name": "aops-core",
   "version": "0.1.0",
   "description": "AcademicOps Core Framework Extension for Gemini CLI",
   "mcpServers": {

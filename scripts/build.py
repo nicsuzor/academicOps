@@ -358,6 +358,20 @@ def build_antigravity(aops_root: Path, dist_root: Path, all_mcps: dict):
     global_workflows = ag_dist / "global_workflows"
     global_workflows.mkdir()
 
+    # Copy Workflows from aops-core/workflows
+    workflows_src = aops_root / "aops-core" / "workflows"
+    if workflows_src.exists():
+        for item in workflows_src.iterdir():
+            if item.is_file() and not item.name.startswith("."):
+                safe_copy(item, global_workflows / item.name)
+
+    # Copy Commands as Workflows from aops-core/commands
+    commands_src = aops_root / "aops-core" / "commands"
+    if commands_src.exists():
+        for item in commands_src.iterdir():
+            if item.is_file() and not item.name.startswith("."):
+                safe_copy(item, global_workflows / item.name)
+
     # We can prepare the link target for installation time, or just leave empty dir
 
     # 2. MCP Config (Antigravity format)

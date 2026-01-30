@@ -153,7 +153,7 @@ def uninstall_framework(aops_path: Path):
 
     # 2. Gemini Extensions
     if shutil.which("gemini"):
-        for ext in ["aops-core", "aops-tools", "academic-ops-core"]:
+        for ext in ["aops-core", "aops-tools"]:
             run_command(["gemini", "extensions", "uninstall", ext], check=False)
         print("✓ Gemini extensions uninstalled")
 
@@ -249,11 +249,28 @@ def main():
             if item.is_dir() and not item.name.startswith("."):
                 safe_symlink(item, global_skills / item.name)
 
-    # Install Commands
-    print("Installing Commands...")
+    # Install Workflows
+    print("Installing Workflows...")
+    # 1. From workflows dir
+    workflows_src = aops_root / "aops-core" / "workflows"
+    if workflows_src.exists():
+        for item in workflows_src.iterdir():
+            if item.is_file() and not item.name.startswith("."):
+                safe_symlink(item, global_workflows / item.name)
+
+    # 2. Convert Commands to Workflows (symlink commands to global_workflows)
+    # The user requested that commands also be available as workflows.
+    commands_src = aops_root / "aops-core" / "commands"
+    if commands_src.exists():
+        for item in commands_src.iterdir():
+            if item.is_file() and not item.name.startswith("."):
+                # Symlink to global_workflows
+                safe_symlink(item, global_workflows / item.name)
+
+    # Install Commands (Legacy / Gemini CLI native)
+    print("Installing Commands (Gemini)...")
     global_commands = ag_dir / "global_commands"
     global_commands.mkdir(exist_ok=True)
-    commands_src = aops_root / "aops-core" / "commands"
     if commands_src.exists():
         for item in commands_src.iterdir():
             if item.is_file() and not item.name.startswith("."):
