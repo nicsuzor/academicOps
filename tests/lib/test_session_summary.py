@@ -6,6 +6,7 @@ TDD tests for lib/session_summary.py - write tests first, then implementation.
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
 
 import pytest
@@ -42,9 +43,11 @@ class TestSessionSummaryPaths:
 
         from lib.session_summary import get_task_contributions_path
 
-        result = get_task_contributions_path("abc12345-uuid-here")
+        sid = "abc12345-uuid-here"
+        h = hashlib.sha256(sid.encode()).hexdigest()[:8]
+        result = get_task_contributions_path(sid)
         assert result == Path(
-            "/home/test/data/dashboard/sessions/abc12345-uuid-here-tasks.json"
+            f"/home/test/data/dashboard/sessions/{h}-tasks.json"
         )
 
     def test_get_session_summary_path(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -53,9 +56,11 @@ class TestSessionSummaryPaths:
 
         from lib.session_summary import get_session_summary_path
 
-        result = get_session_summary_path("abc12345-uuid-here")
+        sid = "abc12345-uuid-here"
+        h = hashlib.sha256(sid.encode()).hexdigest()[:8]
+        result = get_session_summary_path(sid)
         assert result == Path(
-            "/home/test/data/dashboard/sessions/abc12345-uuid-here.json"
+            f"/home/test/data/dashboard/sessions/{h}.json"
         )
 
 
@@ -83,17 +88,19 @@ class TestTaskContributions:
             "project": "aops",
         }
 
-        append_task_contribution("test-session-123", task_data)
+        sid = "test-session-123"
+        h = hashlib.sha256(sid.encode()).hexdigest()[:8]
+        append_task_contribution(sid, task_data)
 
         # Verify file was created
         tasks_file = (
-            temp_aca_data / "dashboard" / "sessions" / "test-session-123-tasks.json"
+            temp_aca_data / "dashboard" / "sessions" / f"{h}-tasks.json"
         )
         assert tasks_file.exists()
 
         # Verify content
         data = json.loads(tasks_file.read_text())
-        assert data["session_id"] == "test-session-123"
+        assert data["session_id"] == sid
         assert len(data["tasks"]) == 1
         assert data["tasks"][0]["request"] == "Create stub spec"
 
@@ -103,9 +110,12 @@ class TestTaskContributions:
         """Subsequent contributions append to existing file."""
         from lib.session_summary import append_task_contribution
 
+        sid = "test-session-123"
+        h = hashlib.sha256(sid.encode()).hexdigest()[:8]
+
         # First task
         append_task_contribution(
-            "test-session-123",
+            sid,
             {
                 "request": "Task 1",
                 "outcome": "success",
@@ -114,7 +124,7 @@ class TestTaskContributions:
 
         # Second task
         append_task_contribution(
-            "test-session-123",
+            sid,
             {
                 "request": "Task 2",
                 "outcome": "success",
@@ -123,7 +133,7 @@ class TestTaskContributions:
 
         # Verify both tasks present
         tasks_file = (
-            temp_aca_data / "dashboard" / "sessions" / "test-session-123-tasks.json"
+            temp_aca_data / "dashboard" / "sessions" / f"{h}-tasks.json"
         )
         data = json.loads(tasks_file.read_text())
         assert len(data["tasks"]) == 2
@@ -136,10 +146,12 @@ class TestTaskContributions:
         """Each contribution gets a timestamp."""
         from lib.session_summary import append_task_contribution
 
-        append_task_contribution("test-session-123", {"request": "Test"})
+        sid = "test-session-123"
+        h = hashlib.sha256(sid.encode()).hexdigest()[:8]
+        append_task_contribution(sid, {"request": "Test"})
 
         tasks_file = (
-            temp_aca_data / "dashboard" / "sessions" / "test-session-123-tasks.json"
+            temp_aca_data / "dashboard" / "sessions" / f"{h}-tasks.json"
         )
         data = json.loads(tasks_file.read_text())
 
