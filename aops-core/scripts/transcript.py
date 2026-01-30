@@ -119,10 +119,14 @@ def _save_minimal_token_summary(
         # Check for existing insights
         existing = find_existing_insights(date_str, session_id)
         if existing:
-            print(f"⏭️  Insights already exist for session {session_id}: {existing.name}")
+            print(
+                f"⏭️  Insights already exist for session {session_id}: {existing.name}"
+            )
             return
 
-        insights_path = get_insights_file_path(date_str, session_id, slug, None, project)
+        insights_path = get_insights_file_path(
+            date_str, session_id, slug, None, project
+        )
         write_insights_file(insights_path, insights, session_id=session_id)
         print(f"📊 Token metrics saved (no reflection): {insights_path}")
     except Exception as e:
@@ -162,8 +166,13 @@ def _process_reflection(
         # No reflection found, but still save token_metrics if available
         if usage_stats and usage_stats.has_data():
             _save_minimal_token_summary(
-                session_id, date_str, project, slug, timestamp,
-                usage_stats, session_duration_minutes
+                session_id,
+                date_str,
+                project,
+                slug,
+                timestamp,
+                usage_stats,
+                session_duration_minutes,
             )
         return None, None
 
@@ -222,6 +231,11 @@ def _is_test_session(p: Path) -> bool:
     keywords like test, demo, scratch, sample, example, tmp, local, dev.
     """
     s = str(p).lower()
+
+    # Whitelist Gemini tmp directory
+    if ".gemini/tmp" in s:
+        return False
+
     name = p.name.lower()
     parts = [part.lower() for part in p.parts]
 
@@ -790,9 +804,7 @@ Examples:
                 return 2
 
             # Extract reflection (get date and project from path for insights)
-            date_iso = (
-                datetime.now().astimezone().replace(microsecond=0).isoformat()
-            )
+            date_iso = datetime.now().astimezone().replace(microsecond=0).isoformat()
             session_timestamp = None
             for entry in entries:
                 if entry.timestamp:
