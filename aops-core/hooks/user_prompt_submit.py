@@ -32,6 +32,8 @@ from lib.session_state import (
     clear_hydration_pending,
     set_gates_bypassed,
     clear_reflection_output,
+    get_or_create_session_state,
+    save_session_state,
 )
 from lib.template_loader import load_template
 
@@ -729,6 +731,32 @@ def main():
     # Clear reflection tracking flag for new user prompt
     # This tracks whether the agent outputs a Framework Reflection before session end
     clear_reflection_output(session_id)
+
+    # Check hydration state (Hydrate Once per Session)
+    # If the agent has already hydrated (turns_since_hydration >= 0),
+    # we increment the turn counter and bypass the hydration instruction.
+    state = get_or_create_session_state(session_id)
+    hydration_state = state.get("hydration", {})
+    turns_since_hydration = hydration_state.get("turns_since_hydration", -1)
+
+    if turns_since_hydration >= 0:
+        # Increment turn counter
+        hydration_state["turns_since_hydration"] = turns_since_hydration + 1
+        save_session_state(session_id, state)
+
+        # User explicitly requesting re-hydration?
+        # If the prompt is exactly asking for hydration, we should probably let it through
+        # to the generic logic, but the generic logic forces hydration anyway.
+        # For now, we assume implicit authority: if they want to re-hydrate,
+        # they can use the `prompt-hydrator` skill explicitly or we can add a specific keyword check here.
+        # But for normal conversation, we skip.
+
+        output_data = {
+            "verdict": "allow",
+            # No context injection needed for continued conversation
+        }
+        print(json.dumps(output_data))
+        sys.exit(0)
 
     # Skip hydration for system messages, skill invocations, and user ignore shortcut
     if should_skip_hydration(prompt):
