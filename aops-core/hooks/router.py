@@ -574,6 +574,9 @@ def format_for_gemini(
     # Map verdict
     if verdict == "deny":
         result["decision"] = "deny"
+    else:
+        # Gemini requires specific "decision" field even for allow
+        result["decision"] = "allow"
     # Note: 'warn' is typically allowed but with context
 
     # Map context to reason (for BeforeTool/AfterAgent) or ignored/logged
@@ -584,21 +587,29 @@ def format_for_gemini(
             if verdict == "deny" and "systemMessage" not in result:
                 result["systemMessage"] = f"Tool blocked: {context}"
 
-    # 3. SessionStart Special Handling
-    if event_name == "SessionStart":
+    # 3. BeforeAgent (UserPromptSubmit) Special Handling
+    elif event_name == "BeforeAgent":
+        if context:
+            # Map context injection (hydration instruction) to systemMessage
+            # This is what prompts the model to run the hydrator
+            current = result.get("systemMessage", "")
+            result["systemMessage"] = f"{current}\n\n{context}" if current else context
+
+    # 4. SessionStart Special Handling
+    elif event_name == "SessionStart":
         # Inject context into system message
         if context:
             current = result.get("systemMessage", "")
             result["systemMessage"] = f"{current}\n\n{context}" if current else context
 
-    # 4. Canonical Metadata
+    # 5. Canonical Metadata
     result["hook_event"] = event_name
     if event_name == "SessionStart":
         result["source"] = "startup"
     elif event_name == "SessionEnd":
         result["source"] = "exit"
 
-    # 5. Updated Input (from command_intercept)
+    # 6. Updated Input (from command_intercept)
     if "updated_input" in metadata:
         result["updatedInput"] = metadata["updated_input"]
 
