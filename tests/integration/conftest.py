@@ -14,7 +14,7 @@ from typing import Any, Callable
 
 import pytest
 
-from lib.paths import get_aops_root
+from lib.paths import get_plugin_root as get_aops_root
 
 
 def extract_response_text(result: dict[str, Any]) -> str:
