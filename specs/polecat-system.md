@@ -53,7 +53,15 @@ Worktrees are spawned from **bare mirror clones** stored in `~/.aops/polecat/.re
 └── task-abc123/               # worktree spawned from .repos/aops.git
 ```
 
-**Setup:** Run `polecat init` once to create bare mirrors for all registered projects. Use `polecat sync` to fetch latest from origin before spawning new polecats.
+**Setup:** Run `polecat init` once to create bare mirrors for all registered projects.
+
+### Mirror Sync Behavior
+
+**Automatic safe sync on spawn**: When creating a new worktree, the system automatically runs a safe sync (`git fetch --all` without `--prune`) to pull the latest commits. This is non-fatal - if the sync fails (e.g., offline), the worktree creation continues using the existing mirror state, with a warning.
+
+**Manual sync with `polecat sync`**: This command runs `git fetch --all --prune` which removes stale refs. **Warning**: Running `polecat sync` while worktrees are active may cause issues if it prunes refs that active worktrees depend on. Prefer to run `polecat sync` only when no polecats are running.
+
+**Freshness check**: On worktree creation, the system compares the mirror's main branch to the local repo's main branch. If the mirror is stale (commits behind), a warning is logged but creation proceeds.
 
 ## Components
 
@@ -66,6 +74,8 @@ A Python library that handles the lifecycle:
     *   Atomically locks it and updates status to `in_progress`.
     *   Assigns it to the caller (e.g., `nic`, `bot`).
 *   **`setup_worktree(task)`**:
+    *   Performs a safe sync of the mirror (if used) before creating the worktree.
+    *   Checks mirror freshness and warns if stale.
     *   Identifies the correct parent repo (e.g., `academicOps`, `buttermilk`).
     *   Creates a `git worktree` at `~/.aops/polecat/<task-id>`.
     *   Creates a feature branch `polecat/<task-id>` from `main`.
@@ -81,7 +91,7 @@ The unified interface for worktree management and merging:
 # One-time setup: create bare mirrors for all projects
 polecat init
 
-# Refresh mirrors with latest from origin
+# Refresh mirrors with latest from origin (WARNING: uses --prune, run only when no polecats active)
 polecat sync
 
 # Start working on the next priority task

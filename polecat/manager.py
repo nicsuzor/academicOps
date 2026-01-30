@@ -302,6 +302,109 @@ class PolecatManager:
 
         return mirror_path
 
+    def safe_sync_mirror(self, project: str) -> bool:
+        """Safely syncs a mirror without pruning refs.
+
+        Unlike ensure_repo_mirror() which uses --prune, this method only fetches
+        new commits. Safe to run while worktrees are active.
+
+        Args:
+            project: Project slug
+
+        Returns:
+            True if sync succeeded, False if failed (non-fatal for offline operation)
+        """
+        mirror_path = self.repos_dir / f"{project}.git"
+
+        if not mirror_path.exists():
+            # No mirror to sync - caller should use ensure_repo_mirror() first
+            print(f"⚠ No mirror for {project} - skipping sync")
+            return False
+
+        try:
+            print(f"Syncing {project} mirror (safe mode)...")
+            subprocess.run(
+                ["git", "fetch", "--all"],  # NO --prune flag
+                cwd=mirror_path,
+                check=True,
+                capture_output=True,
+            )
+            return True
+        except subprocess.CalledProcessError as e:
+            print(f"⚠ Mirror sync failed for {project}: {e}", file=sys.stderr)
+            return False
+        except Exception as e:
+            # Network errors, etc - non-fatal for offline operation
+            print(f"⚠ Mirror sync failed for {project}: {e}", file=sys.stderr)
+            return False
+
+    def check_mirror_freshness(self, project: str) -> tuple[bool, str]:
+        """Checks if mirror is up-to-date with origin.
+
+        Compares the mirror's main branch HEAD to the local repo's main branch.
+
+        Args:
+            project: Project slug
+
+        Returns:
+            Tuple of (is_fresh, message) where is_fresh is True if up-to-date
+        """
+        if project not in self.projects:
+            return False, f"Unknown project: {project}"
+
+        mirror_path = self.repos_dir / f"{project}.git"
+        if not mirror_path.exists():
+            return False, f"No mirror exists for {project}"
+
+        config = self.projects[project]
+        local_path = config["path"]
+        default_branch = config.get("default_branch", "main")
+
+        if not local_path.exists():
+            return False, f"Local repo not found: {local_path}"
+
+        try:
+            # Get mirror's HEAD for the default branch
+            mirror_result = subprocess.run(
+                ["git", "rev-parse", f"refs/heads/{default_branch}"],
+                cwd=mirror_path,
+                capture_output=True,
+                text=True,
+            )
+            if mirror_result.returncode != 0:
+                return False, f"Mirror missing branch {default_branch}"
+            mirror_head = mirror_result.stdout.strip()
+
+            # Get local repo's HEAD for the default branch
+            local_result = subprocess.run(
+                ["git", "rev-parse", f"refs/heads/{default_branch}"],
+                cwd=local_path,
+                capture_output=True,
+                text=True,
+            )
+            if local_result.returncode != 0:
+                return False, f"Local repo missing branch {default_branch}"
+            local_head = local_result.stdout.strip()
+
+            if mirror_head == local_head:
+                return True, f"Mirror is up-to-date ({default_branch}: {mirror_head[:8]})"
+
+            # Count commits behind
+            count_result = subprocess.run(
+                ["git", "rev-list", "--count", f"{mirror_head}..{local_head}"],
+                cwd=local_path,
+                capture_output=True,
+                text=True,
+            )
+            if count_result.returncode == 0:
+                commits_behind = count_result.stdout.strip()
+                return False, f"Mirror is {commits_behind} commits behind {default_branch}"
+            else:
+                return False, f"Mirror HEAD ({mirror_head[:8]}) differs from local ({local_head[:8]})"
+
+        except Exception as e:
+            return False, f"Freshness check failed: {e}"
+
     def init_all_mirrors(self) -> dict[str, Path]:
         """Initialize bare mirrors for all registered projects.
 
@@ -395,8 +498,22 @@ class PolecatManager:
     def setup_worktree(self, task):
         """Creates a git worktree in ~/.aops/polecat linked to the project repo.
 
-        Uses the main repo directly (from polecat.yaml config).
+        Before creating the worktree, performs a safe sync of the mirror (if used)
+        to ensure we have the latest commits from origin. Sync failures are non-fatal
+        to support offline operation.
         """
+        project = task.project or "aops"
+
+        # Safe sync before worktree creation (non-fatal for offline operation)
+        mirror_path = self.repos_dir / f"{project}.git"
+        if mirror_path.exists():
+            self.safe_sync_mirror(project)
+
+            # Check freshness and warn if stale
+            is_fresh, message = self.check_mirror_freshness(project)
+            if not is_fresh:
+                print(f"⚠ {message}", file=sys.stderr)
+
         repo_path = self.get_repo_path(task)
         if not repo_path.exists():
             raise FileNotFoundError(f"Project repository not found at {repo_path}")
