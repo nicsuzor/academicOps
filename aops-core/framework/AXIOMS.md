@@ -168,6 +168,7 @@ Check actual state, never assume.
 - If you catch yourself saying "should work" or "probably" -> STOP and verify
 - The onus is on YOU to discharge the burden of proof
 - Use LLM semantic evaluation to determine whether command output shows success or failure
+- When another agent marks work complete, verify by checking the OUTCOME (does the feature exist? does the code work?), not by second-guessing whether they did their job
 
 **Derivation**: Assumptions cause cascading failures. Verification catches problems early.
 
