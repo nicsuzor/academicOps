@@ -556,8 +556,11 @@ def should_skip_hydration(prompt: str) -> bool:
         return True
     if prompt_stripped.startswith("<task-notification>"):
         return True
-    # Skill invocations - already have instructions, don't need routing
+    # Skill invocations - generally skip hydration, UNLESS it's a pull command
+    # /pull implies picking up a task, which requires context to understand
     if prompt_stripped.startswith("/"):
+        if prompt_stripped.startswith("/pull"):
+            return False
         return True
     # User ignore shortcut - user explicitly wants no hydration
     if prompt_stripped.startswith("."):
