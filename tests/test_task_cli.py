@@ -78,7 +78,7 @@ class TestCliCreate:
         result = run_cli("create", "My Test Task", env={"ACA_DATA": str(tmp_path)})
         assert result.returncode == 0
         # Should output the created task ID
-        assert "20" in result.stdout  # Task IDs start with date like 20260119
+        assert "ID:" in result.stdout
 
     def test_create_with_project(self, tmp_path):
         """'task create --project book "My Task"' assigns to project."""
@@ -106,12 +106,20 @@ class TestCliComplete:
         # First create a task
         create_result = run_cli("create", "Task to complete", env=env)
         assert create_result.returncode == 0
-        # Extract task ID from output (first word that looks like an ID)
+        # Extract task ID from output
         task_id = None
-        for word in create_result.stdout.split():
-            if word.startswith("20"):  # Date-based ID
-                task_id = word.strip()
+        for line in create_result.stdout.splitlines():
+            if "ID:" in line:
+                task_id = line.split("ID:")[-1].strip()
                 break
+        
+        # Fallback to searching for date-like ID if ID: line not found (legacy)
+        if not task_id:
+            for word in create_result.stdout.split():
+                if word.startswith("20") and len(word) >= 8:
+                    task_id = word.strip()
+                    break
+                    
         assert task_id is not None, f"Could not find task ID in: {create_result.stdout}"
 
         # Now complete it
@@ -138,11 +146,19 @@ class TestCliShow:
         # First create a task
         create_result = run_cli("create", "Task to show", env=env)
         assert create_result.returncode == 0
+        
         task_id = None
-        for word in create_result.stdout.split():
-            if word.startswith("20"):
-                task_id = word.strip()
+        for line in create_result.stdout.splitlines():
+            if "ID:" in line:
+                task_id = line.split("ID:")[-1].strip()
                 break
+        
+        if not task_id:
+            for word in create_result.stdout.split():
+                if word.startswith("20") and len(word) >= 8:
+                    task_id = word.strip()
+                    break
+                    
         assert task_id is not None, f"Could not find task ID in: {create_result.stdout}"
 
         # Now show it

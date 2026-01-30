@@ -150,9 +150,13 @@ def main():
 @click.option("--status", "-s", help="Filter by status (inbox, active, done, etc.)")
 @click.option("--project", "-p", help="Filter by project")
 @click.option("--type", "-t", "task_type", help="Filter by type (goal, project, task, action)")
+@click.option("--all", "-a", "show_all", is_flag=True, help="Show all tasks (including done/cancelled)")
 @click.option("--plain", is_flag=True, help="Plain output without formatting")
-def list_tasks(status: str | None, project: str | None, task_type: str | None, plain: bool):
-    """List tasks with optional filters."""
+def list_tasks(status: str | None, project: str | None, task_type: str | None, show_all: bool, plain: bool):
+    """List tasks with optional filters.
+
+    By default, hides done and cancelled tasks. Use --all to show them.
+    """
     storage = get_storage()
 
     # Convert string filters to enums
@@ -175,6 +179,10 @@ def list_tasks(status: str | None, project: str | None, task_type: str | None, p
             raise SystemExit(1)
 
     tasks = storage.list_tasks(project=project, status=status_filter, type=type_filter)
+
+    # Filter out done/cancelled unless showing all or specifically asked for that status
+    if not show_all and not status:
+        tasks = [t for t in tasks if t.status not in (TaskStatus.DONE, TaskStatus.CANCELLED)]
 
     if not tasks:
         console.print("[dim]No tasks found.[/dim]")
