@@ -13,7 +13,6 @@ Exit codes:
 
 import json
 import os
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -56,9 +55,6 @@ from lib.template_loader import load_template
 HOOK_DIR = Path(__file__).parent
 CONTEXT_TEMPLATE_FILE = HOOK_DIR / "templates" / "prompt-hydrator-context.md"
 INSTRUCTION_TEMPLATE_FILE = HOOK_DIR / "templates" / "prompt-hydration-instruction.md"
-SIMPLE_QUESTION_TEMPLATE_FILE = (
-    HOOK_DIR / "templates" / "simple-question-instruction.md"
-)
 
 # Temp directory category (matches hydration_gate.py)
 TEMP_CATEGORY = "hydrator"
@@ -568,178 +564,6 @@ def should_skip_hydration(prompt: str) -> bool:
     return False
 
 
-# Keywords that indicate work/action requests (not pure questions)
-# These are checked with word boundaries to avoid false positives
-# (e.g., "does" should not match "do", "commits" should not match "commit")
-_ACTION_KEYWORDS = frozenset(
-    [
-        # Imperatives
-        "add",
-        "create",
-        "write",
-        "implement",
-        "fix",
-        "update",
-        "change",
-        "modify",
-        "delete",
-        "remove",
-        "refactor",
-        "move",
-        "rename",
-        "build",
-        "deploy",
-        "execute",
-        "install",
-        "configure",
-        "set up",
-        "setup",
-        "enable",
-        "disable",
-        # Request forms
-        "can you",
-        "could you",
-        "would you",
-        "please",
-        "help me",
-        "i need you to",
-        "i want you to",
-        "make",
-        "let's",
-        # File operations
-        "edit",
-        "save",
-        "push",
-        "merge",
-        "pull request",
-    ]
-)
-
-# Separate patterns that need word-boundary matching
-# "commit" shouldn't match "commits" when talking about git history
-# "do" shouldn't match "does" in questions
-# "run" shouldn't match "running" when describing current state
-_ACTION_KEYWORDS_WORD_BOUNDARY = frozenset(
-    [
-        "commit",
-        "do",
-        "pr",
-        "run",
-    ]
-)
-
-# Interrogative starters that signal pure questions
-_QUESTION_STARTERS = (
-    "what ",
-    "what's",
-    "whats",
-    "how ",
-    "how's",
-    "hows",
-    "where ",
-    "where's",
-    "wheres",
-    "when ",
-    "when's",
-    "whens",
-    "why ",
-    "why's",
-    "whys",
-    "which ",
-    "who ",
-    "who's",
-    "whos",
-    "is ",
-    "are ",
-    "was ",
-    "were ",
-    "does ",
-    "do ",
-    "did ",
-    "can ",
-    "could ",
-    "would ",
-    "should ",
-    "has ",
-    "have ",
-    "had ",
-    "explain",
-    "describe",
-    "tell me about",
-    "tell me what",
-)
-
-
-def _has_word_boundary_match(text: str, word: str) -> bool:
-    """Check if word appears with word boundaries in text.
-
-    Returns True if 'word' appears as a standalone word in 'text',
-    not as part of another word (e.g., 'do' matches ' do ' but not 'does').
-    """
-    pattern = r"\b" + re.escape(word) + r"\b"
-    return bool(re.search(pattern, text))
-
-
-def is_pure_question(prompt: str) -> bool:
-    """Detect if prompt is a pure informational question.
-
-    Pure questions:
-    - Start with interrogative words (what, how, where, why, when, which, who)
-    - Don't contain action keywords (add, create, fix, implement, etc.)
-    - Don't contain imperatives or request forms
-
-    Returns True for questions that should fast-track to simple-question workflow.
-
-    Examples that ARE pure questions:
-    - "What is the hydrator?"
-    - "How does the task system work?"
-    - "Where are errors handled?"
-    - "Why is this test failing?" (investigation question, not action request)
-    - "Explain the architecture"
-
-    Examples that are NOT pure questions:
-    - "What should I add to fix this?" (contains "add", "fix")
-    - "How can you help me implement X?" (contains "implement", "help me")
-    - "Can you create a new file?" (contains "create", "can you")
-    - "Please explain and then fix it" (contains "please", "fix")
-    """
-    prompt_lower = prompt.strip().lower()
-
-    # Must start with interrogative or explanation request
-    if not prompt_lower.startswith(_QUESTION_STARTERS):
-        return False
-
-    # Check for action keywords that indicate work request (substring match)
-    for keyword in _ACTION_KEYWORDS:
-        if keyword in prompt_lower:
-            return False
-
-    # Check for word-boundary keywords (avoid "do" matching "does", etc.)
-    for keyword in _ACTION_KEYWORDS_WORD_BOUNDARY:
-        if _has_word_boundary_match(prompt_lower, keyword):
-            return False
-
-    # No action keywords found - this is a pure question
-    return True
-
-
-def build_simple_question_instruction(prompt: str) -> str:
-    """Build fast-track instruction for pure questions.
-
-    Skips full hydration context (workflows, axioms, heuristics, task state)
-    and returns a minimal instruction that routes directly to simple-question
-    workflow behavior.
-
-    Args:
-        prompt: The user's question
-
-    Returns:
-        Short instruction string for answering directly
-    """
-    template = load_template(SIMPLE_QUESTION_TEMPLATE_FILE)
-    return template.format(prompt=prompt)
-
-
 def main():
     """Main hook entry point - writes context to temp file, returns short instruction."""
     # Read input from stdin
@@ -808,18 +632,6 @@ def main():
         output_data = {
             "verdict": "allow",
             # No hydration needed
-        }
-        print(json.dumps(output_data))
-        sys.exit(0)
-
-    # Fast-track for pure questions - skip full hydration context
-    if is_pure_question(prompt):
-        # Write state with hydration_pending=False (no hydrator agent needed)
-        write_initial_hydrator_state(session_id, prompt, hydration_pending=False)
-        simple_instruction = build_simple_question_instruction(prompt)
-        output_data = {
-            "verdict": "allow",
-            "context_injection": simple_instruction,
         }
         print(json.dumps(output_data))
         sys.exit(0)
