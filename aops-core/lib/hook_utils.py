@@ -220,13 +220,32 @@ def get_session_id(input_data: dict[str, Any], require: bool = False) -> str:
     return session_id
 
 
-def is_subagent_session() -> bool:
+def is_subagent_session(input_data: dict[str, Any] | None = None) -> bool:
     """Check if this is a subagent session.
 
+    Uses multiple detection methods since env vars may not be passed to hook subprocesses:
+    1. CLAUDE_AGENT_TYPE env var (if Claude passes it)
+    2. Transcript path contains /subagents/ (Claude Code stores subagent transcripts there)
+
+    Args:
+        input_data: Hook input data containing transcript_path (optional)
+
     Returns:
-        True if CLAUDE_AGENT_TYPE is set (indicating subagent context)
+        True if this appears to be a subagent session
     """
-    return bool(os.environ.get("CLAUDE_AGENT_TYPE"))
+    # Method 1: Env var (traditional detection)
+    if os.environ.get("CLAUDE_AGENT_TYPE"):
+        return True
+
+    # Method 2: Check transcript path for /subagents/ directory
+    # Claude Code stores subagent transcripts at:
+    #   ~/.claude/projects/<project>/<session-uuid>/subagents/agent-<hash>.jsonl
+    if input_data:
+        transcript_path = input_data.get("transcript_path", "")
+        if transcript_path and "/subagents/" in str(transcript_path):
+            return True
+
+    return False
 
 
 # ============================================================================

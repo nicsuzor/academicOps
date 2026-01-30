@@ -440,9 +440,9 @@ MCP_TOOLS_EXEMPT_FROM_HYDRATION = {
 }
 
 
-def _hydration_is_subagent_session() -> bool:
+def _hydration_is_subagent_session(input_data: dict[str, Any] | None = None) -> bool:
     """Check if this is a subagent session."""
-    return hook_utils.is_subagent_session()
+    return hook_utils.is_subagent_session(input_data)
 
 
 def _hydration_is_hydrator_task(tool_input: dict[str, Any] | str) -> bool:
@@ -531,7 +531,7 @@ def check_hydration_gate(ctx: GateContext) -> Optional[GateResult]:
         return None
 
     # Bypass for subagent sessions
-    if _hydration_is_subagent_session():
+    if _hydration_is_subagent_session(ctx.input_data):
         return None
 
     # Bypass for accepted tools (Strict List)
@@ -862,7 +862,7 @@ def check_task_required_gate(ctx: GateContext) -> Optional[GateResult]:
         return None
 
     # Bypass for subagent sessions
-    if hook_utils.is_subagent_session():
+    if hook_utils.is_subagent_session(ctx.input_data):
         return None
 
     # Check if operation requires task binding
