@@ -83,7 +83,7 @@ HOOK_REGISTRY: Dict[str, List[Dict[str, Any]]] = {
         {"script": "unified_logger.py"},
         {"script": "gates.py"},  # Universal gate runner (stop_gate, hydration_recency)
         {"script": "generate_transcript.py"},
-        # {"script": "session_end_commit_check.py"},
+        {"script": "session_end_commit_check.py"},  # Enforce commit before session end
     ],
     "SessionEnd": [
         {"script": "unified_logger.py"},
