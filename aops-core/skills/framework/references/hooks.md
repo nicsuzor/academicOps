@@ -843,7 +843,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from lib.paths import get_aops_root, get_data_root  # NEVER hardcode paths
+from lib.paths import get_plugin_root, get_data_root  # NEVER hardcode paths
 
 
 def main():
@@ -903,7 +903,7 @@ except Exception:
 
 | Utility              | Purpose                          | Import                                                  |
 | -------------------- | -------------------------------- | ------------------------------------------------------- |
-| `lib.paths`          | Path resolution (NEVER hardcode) | `from lib.paths import get_aops_root, get_data_root`    |
+| `lib.paths`          | Path resolution (NEVER hardcode) | `from lib.paths import get_plugin_root, get_data_root`  |
 | `lib.session_reader` | Transcript parsing               | `from lib.session_reader import extract_router_context` |
 
 **Note**: Hook logging is centralized in `router.py` - individual hooks don't need to log.

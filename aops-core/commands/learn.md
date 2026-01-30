@@ -28,9 +28,9 @@ permalink: commands/learn
 **Before any framework change, read these files:**
 
 ```
-Read AXIOMS.md
-Read HEURISTICS.md
-Read enforcement-map.md
+Read framework/AXIOMS.md
+Read framework/HEURISTICS.md
+Read framework/enforcement-map.md
 ```
 
 You CANNOT proceed without loading this context. Note which principles are relevant.
@@ -73,7 +73,7 @@ See [[specs/enforcement.md]] "Component Responsibilities" for the full model.
 
 | Root Cause Category | Definition                     | Fix Location                  |
 | ------------------- | ------------------------------ | ----------------------------- |
-| Clarity Failure     | Instruction ambiguous/weak     | AXIOMS, skill text, guardrail |
+| Clarity Failure     | Instruction ambiguous/weak     | framework/AXIOMS, skill text, guardrail |
 | Context Failure     | Didn't provide relevant info   | Intent router, hydration      |
 | Blocking Failure    | Should have blocked but didn't | PreToolUse hook, deny rule    |
 | Detection Failure   | Should have caught but didn't  | PostToolUse hook              |
@@ -122,9 +122,9 @@ See @docs/ENFORCEMENT.md for mechanism details.
 
 | Fix Type | File | When to Use |
 |----------|------|-------------|
-| Hard rule, never violate | AXIOMS.md | Principles that apply universally |
-| Soft guidance, exceptions exist | HEURISTICS.md | Rules of thumb, "prefer X over Y" |
-| Enforcement wiring | enforcement-map.md | Document how rule is enforced |
+| Hard rule, never violate | framework/AXIOMS.md | Principles that apply universally |
+| Soft guidance, exceptions exist | framework/HEURISTICS.md | Rules of thumb, "prefer X over Y" |
+| Enforcement wiring | framework/enforcement-map.md | Document how rule is enforced |
 | Session context | CORE.md | Paths, environment, "what exists" |
 
 ### 4. Emit Structured Justification (MANDATORY)
@@ -134,12 +134,12 @@ Before editing ANY framework file, output this exact format:
 ```yaml
 ## Rule Change Justification
 
-**Scope**: [AXIOMS.md | HEURISTICS.md | enforcement-map.md | hooks/*.py | settings.json]
+**Scope**: [framework/AXIOMS.md | framework/HEURISTICS.md | framework/enforcement-map.md | hooks/*.py | settings.json]
 
 **Rules Loaded**:
-- AXIOMS.md: [P#X, P#Y - or "not relevant"]
-- HEURISTICS.md: [H#X, H#Y - or "not relevant"]
-- enforcement-map.md: [enforcement entry name - or "not relevant"]
+- framework/AXIOMS.md: [P#X, P#Y - or "not relevant"]
+- framework/HEURISTICS.md: [H#X, H#Y - or "not relevant"]
+- framework/enforcement-map.md: [enforcement entry name - or "not relevant"]
 
 **Prior Art**:
 - Search query: "[keywords used in task search]"
@@ -192,7 +192,7 @@ mcp__plugin_aops-core_tasks__update_task(
 After fixing the immediate issue, ask: **What general class of error is this?**
 
 1. **Name the pattern** - e.g., "user data in framework files", "scope creep", "missing validation"
-2. **Check existing rules** - Does an axiom/heuristic already cover this? (Search AXIOMS.md, HEURISTICS.md, enforcement-map.md)
+2. **Check existing rules** - Does an axiom/heuristic already cover this? (Search framework/AXIOMS.md, framework/HEURISTICS.md, framework/enforcement-map.md)
 3. **If rule exists but wasn't followed** - Strengthen enforcement (add to task notes)
 4. **If novel pattern** - Log it in the task body for future tracking
 

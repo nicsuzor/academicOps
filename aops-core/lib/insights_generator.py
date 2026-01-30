@@ -10,24 +10,15 @@ import json
 import os
 import re
 import tempfile
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from lib.paths import get_plugin_root
+
 
 class InsightsValidationError(Exception):
-    """Raised when insights JSON fails validation."""
-
     pass
-
-
-def get_aops_root() -> Path:
-    """Get aops-core root directory from AOPS env var or relative path."""
-    aops_env = os.environ.get("AOPS")
-    if aops_env:
-        return Path(aops_env)
-    # Fallback: assume we're in aops-core/lib/
-    return Path(__file__).parent.parent
 
 
 def load_prompt_template() -> str:
@@ -39,7 +30,7 @@ def load_prompt_template() -> str:
     Raises:
         FileNotFoundError: If template file doesn't exist
     """
-    template_path = get_aops_root() / "specs" / "session-insights-prompt.md"
+    template_path = get_plugin_root() / "specs" / "session-insights-prompt.md"
     return template_path.read_text()
 
 
@@ -404,7 +395,10 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
         _validate_token_metrics(insights["token_metrics"])
 
     # Validate framework_reflections structure (optional)
-    if "framework_reflections" in insights and insights["framework_reflections"] is not None:
+    if (
+        "framework_reflections" in insights
+        and insights["framework_reflections"] is not None
+    ):
         _validate_framework_reflections(insights["framework_reflections"])
 
 
@@ -479,8 +473,12 @@ def _sanitize_filename_segment(segment: str) -> str:
 
 
 def get_insights_file_path(
-    date: str, session_id: str, slug: str = "", index: int | None = None,
-    project: str = "", hour: str | None = None
+    date: str,
+    session_id: str,
+    slug: str = "",
+    index: int | None = None,
+    project: str = "",
+    hour: str | None = None,
 ) -> Path:
     """Get path to unified session JSON file in summaries/.
 
@@ -566,7 +564,9 @@ def merge_insights(existing: dict[str, Any], new: dict[str, Any]) -> dict[str, A
     return merged
 
 
-def write_insights_file(path: Path, insights: dict[str, Any], session_id: str | None = None) -> None:
+def write_insights_file(
+    path: Path, insights: dict[str, Any], session_id: str | None = None
+) -> None:
     """Atomically write insights JSON file.
 
     Uses temp file + rename pattern for atomic writes.
@@ -598,7 +598,9 @@ def write_insights_file(path: Path, insights: dict[str, Any], session_id: str | 
         patterns_to_try.append(status_dir / f"{session_id}.json")
         # Fallback: search with glob for pattern matching (handles renamed files)
         if date_compact:
-            patterns_to_try.extend(status_dir.glob(f"{date_compact}-*{session_id}*.json"))
+            patterns_to_try.extend(
+                status_dir.glob(f"{date_compact}-*{session_id}*.json")
+            )
         patterns_to_try.extend(status_dir.glob(f"*{session_id}*.json"))
 
         for candidate in patterns_to_try:

@@ -24,7 +24,22 @@ from lib.hook_utils import (
     get_hook_temp_dir,
     write_temp_file as _write_temp,
 )
-from lib.paths import get_aops_root
+from lib.paths import (
+    get_plugin_root,
+    get_data_root,
+    get_skills_dir,
+    get_hooks_dir,
+    get_commands_dir,
+    get_tests_dir,
+    get_config_dir,
+    get_workflows_dir,
+    get_indices_dir,
+    get_sessions_dir,
+    get_projects_dir,
+    get_logs_dir,
+    get_context_dir,
+    get_goals_dir,
+)
 from lib.file_index import get_formatted_relevant_paths
 from lib.session_reader import extract_router_context
 from lib.session_state import (
@@ -63,29 +78,51 @@ INTENT_MAX_LENGTH = 500
 
 
 def load_framework_paths() -> str:
-    """Load the Resolved Paths section from .agent/PATHS.md.
+    """Generate the Framework Paths table dynamically.
 
-    Returns just the path table, not the full file.
+    Previously read from .agent/PATHS.md, now generated on fly.
     """
-    aops_root = get_aops_root()
-    framework_path = aops_root / ".agent/PATHS.md"
+    try:
+        plugin_root = get_plugin_root()
+        # data_root = get_data_root()  # May raise if not set, handled by catch-all
 
-    if not framework_path.exists():
-        return "(.agent/PATHS.md not found - run: python3 aops-core/scripts/generate_framework_paths.py)"
+        # Build path table dynamically
+        lines = [
+            "## Resolved Paths",
+            "",
+            "These are the concrete absolute paths for this framework instance:",
+            "",
+            "| Path Variable | Resolved Path |",
+            "|--------------|---------------|",
+            f"| $PLUGIN_ROOT | {plugin_root} |",
+            f"| $ACA_DATA    | {get_data_root()} |",
+            "",
+            "## Framework Directories",
+            "",
+            "| Directory | Absolute Path |",
+            "|-----------|---------------|",
+            f"| Skills    | {get_skills_dir()} |",
+            f"| Hooks     | {get_hooks_dir()} |",
+            f"| Commands  | {get_commands_dir()} |",
+            f"| Tests     | {get_tests_dir()} |",
+            f"| Config    | {get_config_dir()} |",
+            f"| Workflows | {get_workflows_dir()} |",
+            f"| Indices   | {get_indices_dir()} |",
+            "",
+            "## Data Directories",
+            "",
+            "| Directory | Absolute Path |",
+            "|-----------|---------------|",
+            f"| Sessions  | {get_sessions_dir()} |",
+            f"| Projects  | {get_projects_dir()} |",
+            f"| Data Logs | {get_logs_dir()} |",
+            f"| Context   | {get_context_dir()} |",
+            f"| Goals     | {get_goals_dir()} |",
+        ]
+        return "\n".join(lines)
 
-    content = framework_path.read_text()
-
-    # Extract the "Resolved Paths" section
-    if "## Resolved Paths" in content:
-        start = content.index("## Resolved Paths")
-        # Find next section or end
-        rest = content[start:]
-        if "\n## " in rest[10:]:  # Skip the header we just found
-            end = rest.index("\n## ", 10)
-            return rest[:end].strip()
-        return rest.strip()
-
-    return "(Path table not found in .agent/PATHS.md)"
+    except Exception as e:
+        return f"(Error gathering framework paths: {e})"
 
 
 def _strip_frontmatter(content: str) -> str:
@@ -176,8 +213,8 @@ def load_workflows_index(prompt: str = "") -> str:
     Args:
         prompt: User prompt to detect relevant workflow types for project workflows
     """
-    aops_root = get_aops_root()
-    workflows_path = aops_root / "WORKFLOWS.md"
+    plugin_root = get_plugin_root()
+    workflows_path = plugin_root / "WORKFLOWS.md"
 
     if not workflows_path.exists():
         return "(WORKFLOWS.md not found)"
@@ -245,10 +282,10 @@ def load_axioms() -> str:
     Pre-loads axioms so hydrator can select relevant principles.
     Returns content after frontmatter separator.
     """
-    aops_root = get_aops_root()
-    axioms_path = aops_root / "aops-core" / "AXIOMS.md"
+    plugin_root = get_plugin_root()
+    axioms_path = plugin_root / "framework" / "AXIOMS.md"
 
-    # Fail fast, raises if SKILLS.md doesn't exist
+    # Fail fast, raises if file doesn't exist
     content = axioms_path.read_text()
 
     # Skip frontmatter if present
@@ -267,8 +304,8 @@ def load_heuristics() -> str:
     Pre-loads heuristics so hydrator doesn't need to Read() at runtime.
     Returns content after frontmatter separator.
     """
-    aops_root = get_aops_root()
-    heuristics_path = aops_root / "aops-core" / "HEURISTICS.md"
+    plugin_root = get_plugin_root()
+    heuristics_path = plugin_root / "framework" / "HEURISTICS.md"
 
     # Fail fast, raises if file doesn't exist
     content = heuristics_path.read_text()
@@ -288,8 +325,8 @@ def load_skills_index() -> str:
     Pre-loads skills index so hydrator can immediately recognize skill invocations
     without needing to search memory. Returns content after frontmatter separator.
     """
-    aops_root = get_aops_root()
-    skills_path = aops_root / "aops-core" / "SKILLS.md"
+    plugin_root = get_plugin_root()
+    skills_path = plugin_root / "SKILLS.md"
 
     # Fail fast, raises if file doesn't exist
     content = skills_path.read_text()
@@ -313,8 +350,8 @@ def get_task_work_state() -> str:
     Gracefully returns empty string if task CLI not found or on failure.
     """
     # Get task CLI path
-    aops_root = get_aops_root()
-    task_cli_path = aops_root / "scripts" / "task_cli.py"
+    plugin_root = get_plugin_root()
+    task_cli_path = plugin_root / "scripts" / "task_cli.py"
 
     if not task_cli_path.exists():
         return ""

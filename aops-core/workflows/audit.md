@@ -44,7 +44,7 @@ The full audit runs 10 phases (see `skills/audit/SKILL.md` for details):
 | 2 | Reference Graph | Build reference map, find orphans and broken links |
 | 3 | Skill Content | Verify size limits (<500 lines) and actionability |
 | 4 | File Justification | Ensure files trace to specs |
-| 4b | Instruction Justification | Verify instructions trace to enforcement-map.md |
+| 4b | Instruction Justification | Verify instructions trace to framework/enforcement-map.md |
 | 5 | Documentation Accuracy | Verify README.md flowchart matches hooks |
 | 6 | Regenerate Indices | Rebuild INDEX.md, WORKFLOWS.md, etc. |
 | 7 | Other Updates | Fix violations, update tables |
@@ -85,15 +85,18 @@ Format defined in `skills/audit/references/report-format.md`:
 ## Constraints
 
 ### Completeness
+
 - All 10 phases must run for a full audit
 - Partial runs should be documented as such
 
 ### No Rationalization
+
 - Report ALL discrepancies found
 - Do NOT justify ignoring files as "generated" or "acceptable"
 - The user decides what's acceptable, not the auditor
 
 ### Evidence Required
+
 - Every finding must cite specific file:line references
 - Link to source evidence, not just claims
 

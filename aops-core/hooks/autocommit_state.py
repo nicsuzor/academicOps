@@ -208,7 +208,9 @@ def get_modified_repos(tool_name: str, tool_input: dict[str, Any]) -> set[str]:
     # Task script patterns (Bash commands) -> data repo
     if tool_name == "Bash":
         if "command" not in tool_input:
-            raise ValueError("Bash tool_input requires 'command' parameter (P#8: fail-fast)")
+            raise ValueError(
+                "Bash tool_input requires 'command' parameter (P#8: fail-fast)"
+            )
         command = tool_input["command"]
         task_script_patterns = [
             "task_add.py",
@@ -254,7 +256,9 @@ def get_modified_repos(tool_name: str, tool_input: dict[str, Any]) -> set[str]:
     # Write/Edit operations - check path to determine repo
     if tool_name in ["Write", "Edit"]:
         if "file_path" not in tool_input:
-            raise ValueError("Write/Edit tool_input requires 'file_path' parameter (P#8: fail-fast)")
+            raise ValueError(
+                "Write/Edit tool_input requires 'file_path' parameter (P#8: fail-fast)"
+            )
         file_path = tool_input["file_path"]
         if "data/" in file_path or file_path.startswith("data/"):
             modified.add("data")
@@ -293,18 +297,18 @@ def has_repo_changes(repo_path: Path, subdir: str | None = None) -> bool:
         return False
 
 
-def get_aops_root() -> Path | None:
-    """Get the AOPS repository root path.
+def get_plugin_root_safe() -> Path | None:
+    """Get the plugin root path safely.
 
     Returns:
-        Path to AOPS root, or None if not available
+        Path to plugin root, or None if not available
     """
-    import os
+    try:
+        from lib.paths import get_plugin_root
 
-    aops_path = os.environ.get("AOPS")
-    if aops_path is None:
+        return get_plugin_root()
+    except Exception:
         return None
-    return Path(aops_path)
 
 
 def get_current_branch(repo_path: Path) -> str | None:
@@ -359,7 +363,10 @@ def commit_and_push_repo(
     # Branch protection: never auto-commit to main/master
     current_branch = get_current_branch(repo_path)
     if is_protected_branch(current_branch):
-        return False, f"Skipping auto-commit: protected branch '{current_branch or 'detached HEAD'}'"
+        return (
+            False,
+            f"Skipping auto-commit: protected branch '{current_branch or 'detached HEAD'}'",
+        )
 
     sync_warning = ""
 
@@ -455,13 +462,17 @@ def main() -> None:
     if tool_name is None:
         tool_name = input_data.get("toolName")
     if tool_name is None:
-        raise ValueError("input_data requires 'tool_name' or 'toolName' parameter (P#8: fail-fast)")
+        raise ValueError(
+            "input_data requires 'tool_name' or 'toolName' parameter (P#8: fail-fast)"
+        )
 
     tool_input = input_data.get("tool_input")
     if tool_input is None:
         tool_input = input_data.get("toolInput")
     if tool_input is None:
-        raise ValueError("input_data requires 'tool_input' or 'toolInput' parameter (P#8: fail-fast)")
+        raise ValueError(
+            "input_data requires 'tool_input' or 'toolInput' parameter (P#8: fail-fast)"
+        )
 
     # Check which repos were modified
     modified_repos = get_modified_repos(tool_name, tool_input)

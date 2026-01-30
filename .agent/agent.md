@@ -1,3 +1,4 @@
 - Your job is not finished until you COMMIT your changes.
+- use `uv` to manage dependencies (`uv run pytest`, `uv run python`, etc.)
 - don't maintain backwards compatability / legacy code
 - you can't hardcode paths in the template extension directories. They need to refer to env vars that we rely on. If something absolutely must be hardcoded, it should be replaced in the install process for the dist/ output only, not the source.

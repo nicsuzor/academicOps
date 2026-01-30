@@ -96,8 +96,8 @@ CUSTODIET_FALLBACK_TEMPLATE = (
 AOPS_ROOT = Path(
     __file__
 ).parent.parent.parent  # aops-core -> hooks -> gate_registry -> ...
-AXIOMS_FILE = AOPS_ROOT / "aops-core" / "AXIOMS.md"
-HEURISTICS_FILE = AOPS_ROOT / "aops-core" / "HEURISTICS.md"
+AXIOMS_FILE = AOPS_ROOT / "aops-core" / "framework" / "AXIOMS.md"
+HEURISTICS_FILE = AOPS_ROOT / "aops-core" / "framework" / "HEURISTICS.md"
 SKILLS_FILE = AOPS_ROOT / "aops-core" / "SKILLS.md"
 
 # --- Task Required Gate Constants ---

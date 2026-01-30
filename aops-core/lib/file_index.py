@@ -19,30 +19,31 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator
 
-from lib.paths import get_aops_root
+from lib.paths import get_plugin_root
 
 
 @dataclass
 class FileEntry:
     """A file with its path, description, and matching keywords."""
 
-    path: str  # Relative to $AOPS (e.g., "aops-core/agents/prompt-hydrator.md")
+    path: str  # Relative to plugin root (e.g., "agents/prompt-hydrator.md")
     description: str  # What this file does
     keywords: tuple[str, ...]  # Keywords that trigger inclusion
 
     def absolute_path(self) -> Path:
         """Return absolute path."""
-        return get_aops_root() / self.path
+        return get_plugin_root() / self.path
 
 
+# File index organized by category
+# Each entry maps keywords to specific files with descriptions
 # File index organized by category
 # Each entry maps keywords to specific files with descriptions
 FILE_INDEX: tuple[FileEntry, ...] = (
     # --- Core Framework Files ---
     FileEntry(
-        path="aops-core/AXIOMS.md",
+        path="framework/AXIOMS.md",
         description="Inviolable principles (failure = system failure)",
         keywords=(
             "axiom",
@@ -55,7 +56,7 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         ),
     ),
     FileEntry(
-        path="aops-core/HEURISTICS.md",
+        path="framework/HEURISTICS.md",
         description="Operational guidelines (violation = friction, not failure)",
         keywords=(
             "heuristic",
@@ -67,17 +68,17 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         ),
     ),
     FileEntry(
-        path="aops-core/WORKFLOWS.md",
+        path="WORKFLOWS.md",
         description="Workflow decision tree and routing",
         keywords=("workflow", "workflows", "routing", "decision tree", "flow"),
     ),
     FileEntry(
-        path="aops-core/SKILLS.md",
+        path="SKILLS.md",
         description="Skills index with invocation patterns",
         keywords=("skill", "skills", "command", "slash command"),
     ),
     FileEntry(
-        path="indices/enforcement-map.md",
+        path="framework/enforcement-map.md",
         description="Maps principles to enforcement mechanisms",
         keywords=(
             "enforcement",
@@ -89,7 +90,7 @@ FILE_INDEX: tuple[FileEntry, ...] = (
     ),
     # --- Prompt Hydration System ---
     FileEntry(
-        path="aops-core/agents/prompt-hydrator.md",
+        path="agents/prompt-hydrator.md",
         description="Prompt hydrator agent definition (routing logic)",
         keywords=(
             "hydrator",
@@ -100,12 +101,12 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         ),
     ),
     FileEntry(
-        path="aops-core/specs/prompt-hydration.md",
+        path="specs/prompt-hydration.md",
         description="Prompt hydration system spec",
         keywords=("hydrator", "prompt-hydrator", "hydration spec", "routing spec"),
     ),
     FileEntry(
-        path="aops-core/hooks/user_prompt_submit.py",
+        path="hooks/user_prompt_submit.py",
         description="UserPromptSubmit hook (builds hydrator context)",
         keywords=(
             "user prompt",
@@ -116,18 +117,18 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         ),
     ),
     FileEntry(
-        path="aops-core/hooks/templates/prompt-hydrator-context.md",
+        path="hooks/templates/prompt-hydrator-context.md",
         description="Template for hydrator temp file",
         keywords=("hydrator template", "context template", "hydrator context"),
     ),
     FileEntry(
-        path="aops-core/hooks/templates/prompt-hydration-instruction.md",
+        path="hooks/templates/prompt-hydration-instruction.md",
         description="Short instruction template for main agent",
         keywords=("hydration instruction", "instruction template"),
     ),
     # --- Workflow System ---
     FileEntry(
-        path="aops-core/specs/workflow-system-spec.md",
+        path="specs/workflow-system-spec.md",
         description="Workflow architecture and composition rules",
         keywords=(
             "workflow spec",
@@ -138,7 +139,7 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         ),
     ),
     FileEntry(
-        path="aops-core/specs/workflow-constraints.md",
+        path="specs/workflow-constraints.md",
         description="Constraint checking and verification",
         keywords=("constraint", "constraints", "verification", "predicate"),
     ),
@@ -189,160 +190,150 @@ FILE_INDEX: tuple[FileEntry, ...] = (
     ),
     # --- Task System ---
     FileEntry(
-        path="aops-core/specs/work-management.md",
+        path="specs/work-management.md",
         description="Task system architecture and lifecycle",
         keywords=("task", "tasks", "work management", "task system", "task lifecycle"),
     ),
     FileEntry(
-        path="aops-core/lib/task_storage.py",
+        path="lib/task_storage.py",
         description="Task file storage implementation",
         keywords=("task storage", "task file", "task persistence"),
     ),
     FileEntry(
-        path="aops-core/lib/task_index.py",
+        path="lib/task_index.py",
         description="Task index and graph relationships",
         keywords=("task index", "task graph", "dependencies", "blockers"),
     ),
     # --- Hooks ---
     FileEntry(
-        path="aops-core/specs/hook-router.md",
+        path="specs/hook-router.md",
         description="Hook routing and lifecycle spec",
         keywords=("hook", "hooks", "hook router", "pretooluse", "posttooluse"),
     ),
     FileEntry(
-        path="aops-core/hooks/pre_tool_use.py",
+        path="hooks/pre_tool_use.py",
         description="PreToolUse hook dispatcher",
         keywords=("pretooluse", "pre tool", "tool gate", "tool validation"),
     ),
     FileEntry(
-        path="aops-core/hooks/post_tool_use.py",
+        path="hooks/post_tool_use.py",
         description="PostToolUse hook dispatcher",
         keywords=("posttooluse", "post tool", "after tool"),
     ),
     FileEntry(
-        path="aops-core/hooks/gates/task_required_gate.py",
+        path="hooks/gates/task_required_gate.py",
         description="Task-required gate (blocks Write/Edit without task)",
         keywords=("task gate", "task required", "write gate", "edit gate"),
     ),
     FileEntry(
-        path="aops-core/hooks/gates/hydration_gate.py",
+        path="hooks/gates/hydration_gate.py",
         description="Hydration gate (ensures hydrator was invoked)",
         keywords=("hydration gate", "hydrator gate"),
     ),
     # --- Agent System ---
     FileEntry(
-        path="aops-core/agents/critic.md",
+        path="agents/critic.md",
         description="Critic agent for plan review",
         keywords=("critic", "review", "plan review", "second opinion"),
     ),
     FileEntry(
-        path="aops-core/agents/custodiet.md",
+        path="agents/custodiet.md",
         description="Custodiet agent (ultra vires detection)",
         keywords=("custodiet", "ultra vires", "authority", "scope violation"),
     ),
     FileEntry(
-        path="aops-core/specs/ultra-vires-custodiet.md",
+        path="specs/ultra-vires-custodiet.md",
         description="Ultra vires detection spec",
         keywords=("ultra vires", "custodiet spec", "authority violation"),
     ),
     FileEntry(
-        path="aops-core/agents/qa.md",
+        path="agents/qa.md",
         description="QA agent for verification",
         keywords=("qa", "quality", "verification", "validate", "test"),
     ),
     FileEntry(
-        path="aops-core/agents/worker.md",
+        path="agents/worker.md",
         description="Worker agent for task execution",
         keywords=("worker", "task worker", "executor"),
     ),
     # --- Skills ---
     FileEntry(
-        path="aops-core/skills/commit/SKILL.md",
+        path="skills/commit/SKILL.md",
         description="Commit skill for git operations",
         keywords=("commit", "git", "push", "/commit"),
     ),
     FileEntry(
-        path="aops-core/skills/remember/SKILL.md",
+        path="skills/remember/SKILL.md",
         description="Remember skill for knowledge persistence",
         keywords=("remember", "memory", "persist", "knowledge", "/remember"),
     ),
     FileEntry(
-        path="aops-core/skills/framework/SKILL.md",
+        path="skills/framework/SKILL.md",
         description="Framework development skill",
         keywords=("framework skill", "framework dev", "/framework"),
     ),
     FileEntry(
-        path="aops-core/skills/audit/SKILL.md",
+        path="skills/audit/SKILL.md",
         description="Audit skill for governance checking",
         keywords=("audit", "governance", "compliance", "/audit"),
     ),
     FileEntry(
-        path="aops-core/skills/session-insights/SKILL.md",
+        path="skills/session-insights/SKILL.md",
         description="Session insights skill",
         keywords=("session insights", "insights", "reflection", "/session-insights"),
     ),
     FileEntry(
-        path="aops-core/skills/hypervisor/SKILL.md",
+        path="skills/hypervisor/SKILL.md",
         description="Hypervisor skill for batch processing",
         keywords=("hypervisor", "batch", "parallel", "/hypervisor"),
     ),
     # --- Specs ---
     FileEntry(
-        path="aops-core/specs/enforcement.md",
+        path="specs/enforcement.md",
         description="Enforcement architecture spec",
         keywords=("enforcement spec", "policy enforcement", "gate architecture"),
     ),
     FileEntry(
-        path="aops-core/specs/plugin-architecture.md",
+        path="specs/plugin-architecture.md",
         description="Plugin system architecture",
         keywords=("plugin", "plugin architecture", "aops-core", "aops-tools"),
     ),
     FileEntry(
-        path="aops-core/specs/verification-system.md",
+        path="specs/verification-system.md",
         description="Verification and predicate system",
         keywords=("verification", "predicate", "assertion", "check"),
     ),
     FileEntry(
-        path="aops-core/specs/framework-observability.md",
+        path="specs/framework-observability.md",
         description="Observability and logging spec",
         keywords=("observability", "logging", "metrics", "tracing"),
     ),
     FileEntry(
-        path="aops-core/specs/session-insights-prompt.md",
+        path="specs/session-insights-prompt.md",
         description="Session insights prompt engineering",
         keywords=("session insights", "transcript", "analysis"),
     ),
     # --- Session Management ---
     FileEntry(
-        path="aops-core/lib/session_state.py",
+        path="lib/session_state.py",
         description="Session state management",
         keywords=("session state", "session", "state management"),
     ),
     FileEntry(
-        path="aops-core/lib/session_reader.py",
+        path="lib/session_reader.py",
         description="Session transcript reading",
         keywords=("session reader", "transcript", "conversation history"),
     ),
     FileEntry(
-        path="aops-core/scripts/transcript.py",
+        path="scripts/transcript.py",
         description="Transcript processing script",
         keywords=("transcript", "session transcript", "transcript parser"),
     ),
     # --- Paths and Config ---
     FileEntry(
-        path="aops-core/lib/paths.py",
+        path="lib/paths.py",
         description="Path resolution functions",
         keywords=("paths", "path resolution", "directory", "location"),
-    ),
-    FileEntry(
-        path="aops-core/scripts/generate_framework_paths.py",
-        description="Generate FRAMEWORK-PATHS.md",
-        keywords=("framework paths", "path generation", "generate paths"),
-    ),
-    FileEntry(
-        path="FRAMEWORK-PATHS.md",
-        description="Resolved absolute paths (generated)",
-        keywords=("framework paths", "absolute paths", "directory paths"),
     ),
 )
 

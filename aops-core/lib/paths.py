@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """
-Path resolution for aOps framework (fail-fast, no fallbacks).
+Path resolution for aOps framework (plugin-centric).
+
+Resolves paths relative to this file's location in the aops-core plugin.
+Dependency on $AOPS environment variable has been removed.
 
 Required environment variables:
-- $AOPS: Framework root
-- $ACA_DATA: User data directory
+- $ACA_DATA: User data directory (still required for user data)
 """
 
 from __future__ import annotations
@@ -18,33 +20,19 @@ from functools import lru_cache
 logger = logging.getLogger(__name__)
 
 
-def get_aops_root() -> Path:
+def get_plugin_root() -> Path:
     """
-    Get framework root directory (fail-fast).
+    Get the root directory of the aops-core plugin.
+
+    Resolution strategy:
+    - This file is in <root>/lib/paths.py
+    - Root is 2 levels up from this file
 
     Returns:
-        Path: Absolute path to aOps framework root
-
-    Raises:
-        RuntimeError: If $AOPS not set or invalid
+        Path: Absolute path to aops-core plugin root
     """
-    aops = os.environ.get("AOPS")
-    if not aops:
-        raise RuntimeError(
-            "$AOPS environment variable not set.\n"
-            "Run: ./setup.sh  or  export AOPS='/path/to/aOps'"
-        )
-
-    aops_path = Path(aops).resolve()
-    if not aops_path.exists():
-        raise RuntimeError(f"$AOPS path doesn't exist: {aops_path}")
-    # v1.0: lib/ moved into aops-core plugin
-    if not (aops_path / "aops-core").is_dir():
-        raise RuntimeError(
-            f"$AOPS doesn't look like aOps framework (missing aops-core/): {aops_path}"
-        )
-
-    return aops_path
+    # this file is at .../aops-core/lib/paths.py
+    return Path(__file__).resolve().parent.parent
 
 
 def get_data_root() -> Path:
@@ -73,36 +61,42 @@ def get_data_root() -> Path:
 
 
 # Framework component directories
+# All resolved relative to get_plugin_root()
 
 
 def get_skills_dir() -> Path:
-    """Get skills directory ($AOPS/aops-core/skills)."""
-    return get_aops_root() / "aops-core" / "skills"
+    """Get skills directory (plugin_root/skills)."""
+    return get_plugin_root() / "skills"
 
 
 def get_hooks_dir() -> Path:
-    """Get hooks directory ($AOPS/aops-core/hooks)."""
-    return get_aops_root() / "aops-core" / "hooks"
+    """Get hooks directory (plugin_root/hooks)."""
+    return get_plugin_root() / "hooks"
 
 
 def get_commands_dir() -> Path:
-    """Get commands directory ($AOPS/aops-core/commands)."""
-    return get_aops_root() / "aops-core" / "commands"
+    """Get commands directory (plugin_root/commands)."""
+    return get_plugin_root() / "commands"
 
 
 def get_tests_dir() -> Path:
-    """Get tests directory ($AOPS/tests)."""
-    return get_aops_root() / "tests"
+    """Get tests directory (plugin_root/tests)."""
+    return get_plugin_root() / "tests"
 
 
 def get_config_dir() -> Path:
-    """Get config directory ($AOPS/config)."""
-    return get_aops_root() / "config"
+    """Get config directory (plugin_root/config)."""
+    return get_plugin_root() / "config"
 
 
 def get_workflows_dir() -> Path:
-    """Get workflows directory ($AOPS/workflows)."""
-    return get_aops_root() / "workflows"
+    """Get workflows directory (plugin_root/workflows)."""
+    return get_plugin_root() / "workflows"
+
+
+def get_indices_dir() -> Path:
+    """Get indices directory (plugin_root/indices)."""
+    return get_plugin_root() / "indices"
 
 
 # Data directories
@@ -138,16 +132,13 @@ def get_goals_dir() -> Path:
 
 def validate_environment() -> dict[str, Path]:
     """
-    Validate that all required environment variables are set and paths exist.
+    Validate that required environment variables are set and paths exist.
 
     Returns:
-        dict: Dictionary mapping variable names to resolved paths
-
-    Raises:
-        RuntimeError: If any required environment variable is missing or invalid
+        dict: Dictionary mapping names to resolved paths
     """
     return {
-        "AOPS": get_aops_root(),
+        "PLUGIN_ROOT": get_plugin_root(),
         "ACA_DATA": get_data_root(),
     }
 
@@ -157,17 +148,19 @@ def print_environment() -> None:
     try:
         env = validate_environment()
         print("aOps Environment Configuration:")
-        print(f"  AOPS:     {env['AOPS']}")
-        print(f"  ACA_DATA: {env['ACA_DATA']}")
+        print(f"  PLUGIN_ROOT: {env['PLUGIN_ROOT']}")
+        print(f"  ACA_DATA:    {env['ACA_DATA']}")
         print("\nFramework directories:")
-        print(f"  Skills:   {get_skills_dir()}")
-        print(f"  Hooks:    {get_hooks_dir()}")
-        print(f"  Commands: {get_commands_dir()}")
-        print(f"  Tests:    {get_tests_dir()}")
+        print(f"  Skills:      {get_skills_dir()}")
+        print(f"  Hooks:       {get_hooks_dir()}")
+        print(f"  Commands:    {get_commands_dir()}")
+        print(f"  Tests:       {get_tests_dir()}")
+        print(f"  Workflows:   {get_workflows_dir()}")
+        print(f"  Indices:     {get_indices_dir()}")
         print("\nData directories:")
-        print(f"  Sessions: {get_sessions_dir()}")
-        print(f"  Projects: {get_projects_dir()}")
-        print(f"  Logs:     {get_logs_dir()}")
+        print(f"  Sessions:    {get_sessions_dir()}")
+        print(f"  Projects:    {get_projects_dir()}")
+        print(f"  Logs:        {get_logs_dir()}")
     except RuntimeError as e:
         print(f"Environment validation failed: {e}")
         raise
@@ -215,4 +208,8 @@ def resolve_binary(name: str) -> Path | None:
 
 
 if __name__ == "__main__":
-    print_environment()
+    try:
+        print_environment()
+    except Exception as e:
+        print(f"Error: {e}")
+        exit(1)
