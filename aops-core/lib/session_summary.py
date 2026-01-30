@@ -13,6 +13,8 @@ import os
 from pathlib import Path
 from typing import Any, TypedDict
 
+from .session_paths import get_session_short_hash
+
 
 class SessionSummary(TypedDict, total=False):
     """Full session summary structure."""
@@ -54,9 +56,10 @@ def get_session_summary_path(session_id: str) -> Path:
         session_id: Main session UUID (or short ID)
 
     Returns:
-        Path to {session_id}.json
+        Path to {short_hash}.json
     """
-    return get_session_summary_dir() / f"{session_id}.json"
+    short_hash = get_session_short_hash(session_id)
+    return get_session_summary_dir() / f"{short_hash}.json"
 
 
 def get_task_contributions_path(session_id: str) -> Path:
@@ -66,9 +69,10 @@ def get_task_contributions_path(session_id: str) -> Path:
         session_id: Main session UUID
 
     Returns:
-        Path to {session_id}-tasks.json
+        Path to {short_hash}-tasks.json
     """
-    return get_session_summary_dir() / f"{session_id}-tasks.json"
+    short_hash = get_session_short_hash(session_id)
+    return get_session_summary_dir() / f"{short_hash}-tasks.json"
 
 
 def save_session_summary(session_id: str, summary: SessionSummary) -> None:
