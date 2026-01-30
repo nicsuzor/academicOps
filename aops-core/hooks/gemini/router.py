@@ -61,7 +61,7 @@ def get_claude_router() -> Path:
 
 def get_gemini_user_prompt_hook() -> Path:
     """Get Gemini-specific user_prompt_submit hook path."""
-    return get_aops_root() / "config" / "gemini" / "hooks" / "user_prompt_submit.py"
+    return get_aops_root() / "aops-core" / "hooks" / "user_prompt_submit.py"
 
 
 # Session ID file location (from $AOPS_SESSIONS environment variable)
@@ -316,7 +316,22 @@ def main():
             gemini_input["session_id"] = get_session_id(gemini_event)
 
         # Call Gemini-specific hook directly
-        gemini_output, exit_code = call_gemini_user_prompt_hook(gemini_input)
+        raw_output, exit_code = call_gemini_user_prompt_hook(gemini_input)
+
+        # Map Claude-style output to Gemini
+        gemini_output = {}
+
+        # Map decision
+        verdict = raw_output.get("verdict", "allow")
+        if verdict == "deny":
+            gemini_output["decision"] = "deny"
+        else:
+            gemini_output["decision"] = "allow"  # warn maps to allow
+
+        # Map instructions to systemMessage
+        if "context_injection" in raw_output:
+            gemini_output["systemMessage"] = raw_output["context_injection"]
+
         print(json.dumps(gemini_output))
         sys.exit(exit_code)
 
