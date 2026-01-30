@@ -113,6 +113,18 @@ For tasks with `type: learn`:
    ```
 5. **Complete the spike** - Decomposition IS completion for learn tasks (per P#71, P#81)
 
+### Step 3A.2: Commit Before Completion
+
+Before marking task complete, verify work is committed:
+
+1. Run `git status` - should show no uncommitted changes to tracked files
+2. If uncommitted changes exist:
+   - Stage relevant files: `git add <files>`
+   - Commit with task context: `git commit -m "feat(<area>): <task summary>"`
+3. Only after commit succeeds, proceed to Step 4
+
+**Enforcement**: Do NOT call `complete_task()` until commit is verified.
+
 ### Step 3B: Triage (TRIAGE Path)
 
 Take appropriate action based on what's needed:
