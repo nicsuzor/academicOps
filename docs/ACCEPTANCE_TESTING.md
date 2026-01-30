@@ -92,10 +92,39 @@ uv run scripts/automated_test_harness.py --agent gemini
 
 After tests, verify that artifacts are correct:
 
-1. **Transcripts**: Check `~/.claude/sessions` (or `~/.gemini/sessions`) for `*-session-abridged.md` files.
-    - Ensure they contain the task context injected by hydration.
-    - Ensure they contain the agent's output.
+1. **Transcripts**: Check `~/writing/sessions/` for generated transcripts.
+    - **CRITICAL**: Worker session IDs do NOT match task IDs. To find a transcript:
+      ```bash
+      rg "task-id" ~/writing/sessions/  # Search by task ID mentioned in transcript
+      ```
+    - Use `session_transcript.py` to generate readable transcripts:
+      ```bash
+      uv run python $AOPS/aops-core/scripts/session_transcript.py <session.jsonl> -o ~/writing/sessions/<task-id>-transcript.md
+      ```
+    - Ensure transcripts contain task context injected by hydration.
+    - Ensure transcripts contain the agent's output.
+
 2. **Task Status**: Check that test tasks are either closed or in the expected state (if `--keep` was used).
+
+3. **Worker Session Tracking** (Known Gap):
+    - Worker sessions generate auto-IDs (e.g., `59513a-f50d0dd2`) that differ from task IDs (e.g., `aops-dd44aefa`)
+    - **Workaround**: Search transcripts by task ID content, not filename
+    - **Future fix**: See task `aops-f24e2bb8` for session ID tracking implementation
+
+## 5.1 Review Workflow (Before Merge)
+
+Before merging worker output to main:
+
+1. **Find the transcript** - Search by task ID in `~/writing/sessions/`
+2. **Review the session** - Check agent reasoning, not just final output
+3. **Verify tests pass** - Run `pytest` in the worktree
+4. **Check for uncommitted work** - Workers sometimes mark done without committing
+5. **Create REVIEW task** - Document findings for approval before merge
+6. **Merge only after approval** - Use:
+   ```bash
+   git fetch ~/.aops/polecat/<task-id> polecat/<task-id>
+   git merge FETCH_HEAD -m "Merge <task-id>: <description>"
+   ```
 
 ## 6. Report Generation
 
