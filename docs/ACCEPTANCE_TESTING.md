@@ -23,7 +23,7 @@ Verify that the setup script correctly installs commands and workflows (fixing t
     ```bash
     cd $AOPS
     ./setup.sh
-    ```
+    ``
 
 2. **Verify Global Workflows**: Check if `~/.gemini/antigravity/global_workflows` contains framework workflows.
 
