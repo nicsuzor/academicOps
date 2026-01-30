@@ -15,6 +15,7 @@ import json
 import os
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -58,6 +59,19 @@ INSTRUCTION_TEMPLATE_FILE = HOOK_DIR / "templates" / "prompt-hydration-instructi
 
 # Temp directory category (matches hydration_gate.py)
 TEMP_CATEGORY = "hydrator"
+
+DEBUG_LOG_FILE = Path("/home/nic/gemini_hook_debug.log")
+
+
+def _log_debug(msg: str) -> None:
+    try:
+        with open(DEBUG_LOG_FILE, "a") as f:
+            ts = datetime.now().isoformat()
+            f.write(f"[{ts}] {msg}\n")
+    except Exception:
+        pass
+
+
 FILE_PREFIX = "hydrate_"
 
 
@@ -572,6 +586,7 @@ def main():
         input_data = json.load(sys.stdin)
         input_data["argv"] = sys.argv
     except Exception as e:
+        _log_debug(f"Input Parse Error: {e}")
         # Fail-fast: no silent failures (P#8, P#25)
         print(
             f"ERROR: UserPromptSubmit hook failed to parse stdin JSON: {e}",
@@ -579,69 +594,68 @@ def main():
         )
         sys.exit(2)
 
-    prompt = input_data.get("prompt", "")
-    transcript_path = input_data.get("transcript_path")
-    session_id = input_data.get("session_id", "")
+    try:
+        prompt = input_data.get("prompt", "")
+        transcript_path = input_data.get("transcript_path")
+        session_id = input_data.get("session_id", "")
 
-    # Require session_id for state isolation
-    if not session_id:
-        # Fail-fast: session_id is required for state management (P#8, P#25)
-        print(
-            "ERROR: UserPromptSubmit hook requires session_id for state isolation",
-            file=sys.stderr,
-        )
-        sys.exit(2)
+        _log_debug(f"SID={session_id} Prompt='{prompt[:50]}...'")
 
-    # Clear reflection tracking flag for new user prompt
-    # This tracks whether the agent outputs a Framework Reflection before session end
-    clear_reflection_output(session_id)
+        # Require session_id for state isolation
+        if not session_id:
+            msg = "ERROR: UserPromptSubmit hook requires session_id for state isolation"
+            _log_debug(msg)
+            print(msg, file=sys.stderr)
+            sys.exit(2)
 
-    # Check hydration state (Hydrate Once per Session)
-    # If the agent has already hydrated (turns_since_hydration >= 0),
-    # we increment the turn counter and bypass the hydration instruction.
-    state = get_or_create_session_state(session_id)
-    hydration_state = state.get("hydration", {})
-    turns_since_hydration = hydration_state.get("turns_since_hydration", -1)
+        # Clear reflection tracking flag for new user prompt
+        # This tracks whether the agent outputs a Framework Reflection before session end
+        clear_reflection_output(session_id)
 
-    if turns_since_hydration >= 0:
-        # Increment turn counter
-        hydration_state["turns_since_hydration"] = turns_since_hydration + 1
-        save_session_state(session_id, state)
+        # Check hydration state (Hydrate Once per Session)
+        # If the agent has already hydrated (turns_since_hydration >= 0),
+        # we increment the turn counter and bypass the hydration instruction.
+        state = get_or_create_session_state(session_id)
+        hydration_state = state.get("hydration", {})
+        turns_since_hydration = hydration_state.get("turns_since_hydration", -1)
 
-        # User explicitly requesting re-hydration?
-        # If the prompt is exactly asking for hydration, we should probably let it through
-        # to the generic logic, but the generic logic forces hydration anyway.
-        # For now, we assume implicit authority: if they want to re-hydrate,
-        # they can use the `prompt-hydrator` skill explicitly or we can add a specific keyword check here.
-        # But for normal conversation, we skip.
+        _log_debug(f"Turns since hydration: {turns_since_hydration}")
 
-        output_data = {
-            "verdict": "allow",
-            # No context injection needed for continued conversation
-        }
-        print(json.dumps(output_data))
-        sys.exit(0)
+        if turns_since_hydration >= 0:
+            # Increment turn counter
+            hydration_state["turns_since_hydration"] = turns_since_hydration + 1
+            save_session_state(session_id, state)
 
-    # Skip hydration for system messages, skill invocations, and user ignore shortcut
-    if should_skip_hydration(prompt):
-        # Write state with hydration_pending=False so gate doesn't block
-        write_initial_hydrator_state(session_id, prompt, hydration_pending=False)
-        # If '.' prefix, also set gates_bypassed for task_required_gate
-        if prompt.strip().startswith("."):
-            set_gates_bypassed(session_id, True)
-        output_data = {
-            "verdict": "allow",
-            # No hydration needed
-        }
-        print(json.dumps(output_data))
-        sys.exit(0)
+            _log_debug("Skipping: Already hydrated")
+            output_data = {
+                "verdict": "allow",
+                # No context injection needed for continued conversation
+            }
+            print(json.dumps(output_data))
+            sys.exit(0)
 
-    # Build hydration instruction (writes temp file)
-    output_data: dict[str, Any] = {}
-    exit_code = 0
+        # Skip hydration for system messages, skill invocations, and user ignore shortcut
+        if should_skip_hydration(prompt):
+            # Write state with hydration_pending=False so gate doesn't block
+            write_initial_hydrator_state(session_id, prompt, hydration_pending=False)
+            # If '.' prefix, also set gates_bypassed for task_required_gate
+            if prompt.strip().startswith("."):
+                set_gates_bypassed(session_id, True)
 
-    if prompt:
-        try:
+            _log_debug("Skipping: should_skip_hydration=True")
+            output_data = {
+                "verdict": "allow",
+                # No hydration needed
+            }
+            print(json.dumps(output_data))
+            sys.exit(0)
+
+        # Build hydration instruction (writes temp file)
+        output_data: dict[str, Any] = {}
+        exit_code = 0
+
+        if prompt:
+            _log_debug("Attempting to build hydration instruction...")
             hydration_instruction = build_hydration_instruction(
                 session_id, prompt, transcript_path
             )
@@ -649,18 +663,17 @@ def main():
                 "verdict": "allow",
                 "context_injection": hydration_instruction,
             }
-        except (IOError, OSError) as e:
-            # Fail-fast on infrastructure errors (P#8, P#25)
-            print(
-                f"ERROR: UserPromptSubmit hook temp file write failed: {e}",
-                file=sys.stderr,
-            )
-            sys.exit(2)
+            _log_debug("Hydration instruction built successfully")
 
-    # Output JSON
-    print(json.dumps(output_data))
-    sys.exit(exit_code)
+        # Output JSON
+        print(json.dumps(output_data))
+        sys.exit(exit_code)
 
+    except Exception as e:
+        import traceback
 
-if __name__ == "__main__":
-    main()
+        tb = traceback.format_exc()
+        _log_debug(f"CRITICAL ERROR in main: {e}\n{tb}")
+        # Fail-fast
+        print(f"ERROR: UserPromptSubmit hook crashed: {e}", file=sys.stderr)
+        sys.exit(2)
