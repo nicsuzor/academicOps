@@ -239,6 +239,26 @@ def main():
     global_workflows.mkdir(exist_ok=True)
     safe_symlink(gemini_dir / "GEMINI.md", global_workflows / "GEMINI.md")
 
+    # Install Skills
+    print("Installing Skills...")
+    global_skills = ag_dir / "global_skills"
+    global_skills.mkdir(exist_ok=True)
+    skills_src = aops_root / "aops-core" / "skills"
+    if skills_src.exists():
+        for item in skills_src.iterdir():
+            if item.is_dir() and not item.name.startswith("."):
+                safe_symlink(item, global_skills / item.name)
+
+    # Install Commands
+    print("Installing Commands...")
+    global_commands = ag_dir / "global_commands"
+    global_commands.mkdir(exist_ok=True)
+    commands_src = aops_root / "aops-core" / "commands"
+    if commands_src.exists():
+        for item in commands_src.iterdir():
+            if item.is_file() and not item.name.startswith("."):
+                safe_symlink(item, global_commands / item.name)
+
     dist_mcp_config = aops_root / "dist" / "antigravity" / "mcp_config.json"
     if dist_mcp_config.exists():
         safe_symlink(dist_mcp_config, ag_dir / "mcp_config.json")
