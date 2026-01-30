@@ -406,13 +406,13 @@ def colab(project, title, caller, gemini, no_finish):
     print("   polecat crew -p aops")
     print("")
     import subprocess
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     manager = PolecatManager()
 
     # Generate title if not provided
     if not title:
-        title = f"session-{datetime.now(timezone.utc).strftime('%H%M')}"
+        title = f"session-{datetime.now().astimezone().strftime('%H%M')}"
 
     # Create a new task for tracking using storage.create_task (handles ID generation)
     try:
