@@ -19,7 +19,6 @@ try:
     from build_utils import (
         convert_mcp_to_gemini,
         convert_gemini_to_antigravity,
-        generate_gemini_hooks,
         safe_symlink,
         safe_copy,
         format_path_for_json,
@@ -74,27 +73,51 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
     if not gemini_templates_link.exists():
         safe_symlink(Path("../templates"), gemini_templates_link)
 
-    # 3. Generate Hooks Config
-    hooks_json_path = hooks_src / "hooks.json"
-    claude_hooks = {}
-    if hooks_json_path.exists():
+    # 3. Generate Hooks Config / Extension Manifest
+    # If a source gemini-extension.json exists, we use it as a template and perform substitution.
+    # Otherwise, we generate from hooks.json (legacy/fallback).
+
+    src_extension_json = src_dir / "gemini-extension.json"
+    dist_extension_json = dist_dir / "gemini-extension.json"
+
+    if src_extension_json.exists():
+        print(f"Generating extension manifest from {src_extension_json.name}...")
         try:
-            with open(hooks_json_path) as f:
-                claude_hooks = json.load(f).get("hooks", {})
-        except json.JSONDecodeError:
-            print(f"Warning: Invalid JSON in {hooks_json_path}")
+            content = src_extension_json.read_text()
 
-    # The router path inside the dist directory
-    # Note: when installed, the extension runs relative to itself or absolute paths
-    # We use absolute paths constructed from AOPS root to ensure it finds the file
-    router_script_path = dist_dir / "hooks" / "router.py"
+            # Substitutions
+            # ${AOPS} -> aops_root (but for installed extension, this must be absolute path)
+            # The installed extension runs in the user's environment.
+            # We assume aops_root here IS the path where it will be valid (dev/install mode).
 
-    gemini_hooks = generate_gemini_hooks(
-        claude_hooks, str(aops_root), str(router_script_path)
-    )
+            # Note: For strict distribution to others, these logic paths might need to be dynamic on install.
+            # But currently `install.py` effectively "installs" to current directory structure.
 
-    with open(hooks_dst / "hooks.json", "w") as f:
-        json.dump({"hooks": gemini_hooks}, f, indent=2)
+            subs = {
+                "${AOPS}": str(aops_root),
+                "${ACA_DATA}": aca_data_path,
+            }
+
+            for key, val in subs.items():
+                content = content.replace(key, val)
+
+            # Write processed JSON to dist
+            with open(dist_extension_json, "w") as f:
+                f.write(content)  # format is already JSON string
+
+            # We also need to write a dummy hooks.json or rely on the extension manifest entirely?
+            # Gemini reads extension manifest. hooks.json is for older separate hook config?
+            # If the manifest has "hooks", we are good.
+
+        except Exception as e:
+            print(f"Error processing extension template: {e}", file=sys.stderr)
+            raise
+    else:
+        print(
+            f"Error: {src_extension_json} not found. This file is required for the build.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     # 4. Generate MCP Config from Template
     template_path = src_dir / "mcp.json.template"
@@ -221,23 +244,7 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
             except Exception as e:
                 print(f"Warning: Failed to parse agent {agent_file}: {e}")
 
-    # 6. Build Final Manifest
-    # Start with base keys we care about
-    manifest = {
-        "name": manifest_base.get("name", "aops-core"),
-        "version": manifest_base.get("version", "0.1.0"),
-        "description": manifest_base.get("description", "AcademicOps Core Framework"),
-        "mcpServers": gemini_mcps,
-        "hooks": gemini_hooks,
-        # NOTE: subAgents disabled - Gemini CLI doesn't support them yet.
-        # The agent Skills are still generated (see loop above) and can be invoked
-        # via activate_skill(). Re-enable this line when Gemini adds subagent support:
-        # "subAgents": sub_agents,
-        # hooksConfig is implicit in Gemini checks for hooks/hooks.json,
-        # but sometimes needed in simplified settings.
-    }
-    with open(dist_dir / "gemini-extension.json", "w") as f:
-        json.dump(manifest, f, indent=2)
+    # Manifest already generated in step 3.
 
     # 6. Commands
     commands_dist = dist_dir / "commands"
