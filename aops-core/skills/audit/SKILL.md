@@ -24,7 +24,7 @@ TodoWrite(todos=[
   {content: "Phase 2: Reference graph - invoke Skill(skill='framework') then run link audit scripts", status: "pending", activeForm: "Building reference graph"},
   {content: "Phase 3: Skill content audit - check size and actionability", status: "pending", activeForm: "Auditing skill content"},
   {content: "Phase 4: Justification audit - check specs for file references", status: "pending", activeForm: "Auditing file justifications"},
-  {content: "Phase 4b: Instruction justification - verify every instruction traces to enforcement-map.md", status: "pending", activeForm: "Auditing instruction justifications"},
+  {content: "Phase 4b: Instruction justification - verify every instruction traces to framework/enforcement-map.md", status: "pending", activeForm: "Auditing instruction justifications"},
   {content: "Phase 5: Documentation accuracy - verify README.md flowchart vs hooks", status: "pending", activeForm": "Verifying documentation"},
   {content: "Phase 6: Regenerate indices - invoke Skill(skill='flowchart') for README.md flowchart", status: "pending", activeForm: "Regenerating indices"},
   {content: "Phase 7: Other updates", status: "pending", activeForm: "Finalizing updates"},
@@ -138,14 +138,14 @@ For each significant file in `$AOPS/`:
 
 ### Phase 4b: Instruction Justification Audit
 
-**Every behavioral instruction injected to agents must trace to enforcement-map.md.**
+**Every behavioral instruction injected to agents must trace to framework/enforcement-map.md.**
 
 Unjustified instructions are bloat - they cost tokens and create confusion about what's actually enforced.
 
 **Sources to scan** (files injected at SessionStart or via hooks):
 
 - `FRAMEWORK-PATHS.md` - core instructions
-- `AXIOMS.md`, `HEURISTICS.md` - principle statements
+- `framework/AXIOMS.md`, `framework/HEURISTICS.md` - principle statements
 - `skills/*/SKILL.md` - skill-specific instructions
 - `commands/*.md` - command instructions
 - `agents/*.md` - agent instructions

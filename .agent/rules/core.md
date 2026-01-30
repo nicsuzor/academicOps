@@ -1,1 +1,0 @@
-../../config/antigravity/rules/core.md
