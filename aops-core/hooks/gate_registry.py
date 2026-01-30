@@ -555,6 +555,12 @@ def check_hydration_gate(ctx: GateContext) -> Optional[GateResult]:
     )
 
     if is_skill_activation or is_hydrator_legacy or is_gemini:
+        # CRITICAL: Clear hydration_pending NOW, not in PostToolUse.
+        # Subagents share the same session_id as the main session.
+        # If we wait until PostToolUse to clear, the subagent's tool calls
+        # will be blocked because hydration_pending is still True.
+        if is_hydrator_legacy or is_gemini:
+            session_state.clear_hydration_pending(ctx.session_id)
         return None
 
     # Check if hydration is pending
