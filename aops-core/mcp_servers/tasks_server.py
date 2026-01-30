@@ -271,7 +271,7 @@ def create_task(
     Args:
         task_title: Task title (required)
         type: Task type - "goal", "project", "epic", "task", "action", "bug", "feature", or "learn" (default: "task")
-        status: Task status - "active", "in_progress", "blocked", "waiting", "review", "done", or "cancelled" (default: "active")
+        status: Task status - "active", "in_progress", "blocked", "waiting", "review", "merge_ready", "done", or "cancelled" (default: "active")
         project: Project slug for organization (determines storage location)
         parent: Parent task ID for hierarchical relationships
         depends_on: List of task IDs this task depends on (blocking)
@@ -322,7 +322,7 @@ def create_task(
             except ValueError:
                 return {
                     "success": False,
-                    "message": f"Invalid status: {status}. Must be one of: active, in_progress, blocked, waiting, merge_ready, review, done, cancelled",
+                    "message": f"Invalid status: {status}. Must be one of: active, in_progress, blocked, waiting, review, merge_ready, done, cancelled",
                 }
 
         # Parse due date
@@ -466,7 +466,7 @@ def update_task(
         id: Task ID to update (required)
         task_title: New title
         type: New type - "goal", "project", "epic", "task", "action", "bug", "feature", or "learn"
-        status: New status - "active", "in_progress", "blocked", "waiting", "review", "done", "cancelled"
+        status: New status - "active", "in_progress", "blocked", "waiting", "review", "merge_ready", "done", "cancelled"
         priority: New priority 0-4
         order: New sibling order
         parent: New parent task ID (or "" to clear)
@@ -1302,7 +1302,7 @@ def list_tasks(
 
     Args:
         project: Filter by project slug
-        status: Filter by status - "active", "in_progress", "blocked", "waiting", "review", "done", "cancelled"
+        status: Filter by status - "active", "in_progress", "blocked", "waiting", "review", "merge_ready", "done", "cancelled"
         type: Filter by type - "goal", "project", "epic", "task", "action", "bug", "feature", or "learn"
         priority: Filter by exact priority (0-4)
         priority_max: Filter by priority <= N (e.g. 1 for P0 and P1)

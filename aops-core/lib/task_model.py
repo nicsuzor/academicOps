@@ -60,8 +60,8 @@ class TaskStatus(Enum):
     IN_PROGRESS = "in_progress"  # Currently being worked on (claimed)
     BLOCKED = "blocked"  # Waiting on dependencies
     WAITING = "waiting"  # Waiting on external input
-    MERGE_READY = "merge_ready"  # Work complete, ready for automated merge/integration
     REVIEW = "review"  # Requires human review before proceeding
+    MERGE_READY = "merge_ready"  # Work complete, ready for automated merge/integration
     DONE = "done"  # Completed
     CANCELLED = "cancelled"  # Abandoned
 
