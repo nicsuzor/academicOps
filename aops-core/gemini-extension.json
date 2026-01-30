@@ -73,7 +73,7 @@
     ],
     "SessionEnd": [
       {
-        "matcher": "exit|logout",
+        "matcher": "*",
         "hooks": [
           {
             "name": "aops-router",

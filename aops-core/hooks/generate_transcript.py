@@ -32,12 +32,15 @@ def main():
         # Run transcript.py
         # We don't capture output because we don't want to interfere with the hook output
         # unless debug logging is needed.
-        # transcript.py typically writes to files side-by-side with the transcript.
-        subprocess.run(
+        result = subprocess.run(
             [sys.executable, str(script_path), transcript_path],
             check=False,
+            text=True,
             capture_output=True,  # Capture to avoid polluting stdout
         )
+
+        if result.returncode != 0:
+            print(f"Error generating transcript: {result.stderr}", file=sys.stderr)
 
     # Hooks must return JSON
     print(json.dumps({}))

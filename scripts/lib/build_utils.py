@@ -123,7 +123,7 @@ def generate_gemini_hooks(
         "Notification": ["Notification"],
         "PreCompact": ["PreCompress"],
     }
-    MATCHERS = {"SessionStart": "startup", "SessionEnd": "exit|logout"}
+    MATCHERS = {"SessionStart": "startup", "SessionEnd": "*"}
 
     gemini_hooks = {}
 
