@@ -523,7 +523,25 @@ class PolecatManager:
         default_branch = self.projects.get(task.project or "aops", {}).get("default_branch", "main")
 
         if worktree_path.exists():
-            return worktree_path
+            # Validate it's actually a git worktree (has .git file pointing to parent repo)
+            git_file = worktree_path / ".git"
+            if git_file.exists():
+                # Verify the worktree has valid git state (not orphan/corrupted)
+                result = subprocess.run(
+                    ["git", "rev-parse", "HEAD"],
+                    cwd=worktree_path,
+                    capture_output=True,
+                )
+                if result.returncode == 0:
+                    return worktree_path
+                # Worktree exists but is broken (orphan branch or corrupted)
+                print(f"Worktree at {worktree_path} is corrupted, recreating...", file=sys.stderr)
+            else:
+                print(f"Directory {worktree_path} exists but is not a git worktree, recreating...", file=sys.stderr)
+            # Remove the broken/non-worktree directory
+            shutil.rmtree(worktree_path)
+            # Prune stale worktree references from git
+            subprocess.run(["git", "worktree", "prune"], cwd=repo_path, check=False)
 
         print(f"Creating worktree at {worktree_path} from repo {repo_path}...")
 
