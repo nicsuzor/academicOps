@@ -11,10 +11,7 @@ description: |
 
 This session is in WARN mode for testing. In production, this would BLOCK all tools.
 
-To proceed correctly, invoke the prompt-hydrator skill:
+To proceed correctly, invoke the **aops-core:prompt-hydrator** agent or skill:
 
-```
-Invoke the **prompt-hydrator** skill:
-
-"Read {temp_path} and provide workflow guidance."
-```
+- For Claude Code: `activate_skill(name="aops-core:prompt-hydrator", prompt="Analyze context in {temp_path}")`
+- For Gemini CLI: `activate_skill(name="prompt-hydrator", prompt="Analyze context in {temp_path}")`

@@ -865,7 +865,7 @@ def _build_task_block_message(gates: Dict[str, bool]) -> str:
     # We map "plan_mode_invoked" to "hydrator_invoked" in the template
     if not gates["plan_mode_invoked"]:
         missing.append(
-            "(b) Hydrate prompt: Invoke the `prompt-hydrator` skill to transform your prompt into a plan."
+            "(b) Hydrate prompt: invoke the **aops-core:prompt-hydrator** agent or skill (Claude: `activate_skill(name=\"aops-core:prompt-hydrator\", ...)` | Gemini: `activate_skill(name=\"prompt-hydrator\", ...)`) to transform your prompt into a plan."
         )
     if not gates["critic_invoked"]:
         missing.append(
@@ -1303,4 +1303,7 @@ GATE_CHECKS = {
     "stop": check_stop_gate,  # Stop
     "hydration_recency": check_hydration_recency_gate,  # Stop
     "skill_activation": check_skill_activation_listener,  # PostToolUse
+    "accountant": run_accountant,  # PostToolUse
+    "post_hydration": post_hydration_trigger,  # PostToolUse
+    "post_critic": post_critic_trigger,  # PostToolUse
 }
