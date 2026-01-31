@@ -21,33 +21,75 @@ except ImportError:
     pass
 
 
+def get_polecat_home() -> Path:
+    """Get the polecat home directory.
+
+    Checks in order:
+    1. POLECAT_HOME environment variable
+    2. Default: ~/.aops
+
+    Returns:
+        Path to the polecat home directory
+    """
+    env_home = os.environ.get("POLECAT_HOME")
+    if env_home:
+        if env_home.startswith("~"):
+            return Path(env_home).expanduser()
+        return Path(env_home)
+    return Path.home() / ".aops"
+
+
+def get_config_path(home_dir: Path = None) -> Path:
+    """Get the polecat config file path.
+
+    Args:
+        home_dir: Optional home directory override
+
+    Returns:
+        Path to polecat.yaml config file
+    """
+    if home_dir is None:
+        home_dir = get_polecat_home()
+    return home_dir / "polecat.yaml"
+
+
 # Config file location (private, not in public repo)
-POLECAT_CONFIG = Path.home() / ".aops" / "polecat.yaml"
+# This is the default, but load_config() should use get_config_path() for flexibility
+POLECAT_CONFIG = get_config_path()
 
 
-def load_config() -> dict:
+def load_config(config_path: Path = None) -> dict:
     """Load full polecat config from file.
+
+    Args:
+        config_path: Optional path to config file. Defaults to get_config_path().
 
     Returns:
         Dict with projects and crew_names
     """
-    if not POLECAT_CONFIG.exists():
+    if config_path is None:
+        config_path = get_config_path()
+
+    if not config_path.exists():
         raise FileNotFoundError(
-            f"Polecat config not found: {POLECAT_CONFIG}\n"
+            f"Polecat config not found: {config_path}\n"
             f"Create it with your project definitions. See polecat docs for format."
         )
 
-    with open(POLECAT_CONFIG) as f:
+    with open(config_path) as f:
         return yaml.safe_load(f)
 
 
-def load_projects() -> dict:
+def load_projects(config_path: Path = None) -> dict:
     """Load project registry from config file.
+
+    Args:
+        config_path: Optional path to config file.
 
     Returns:
         Dict mapping project slug to config (path, default_branch)
     """
-    config = load_config()
+    config = load_config(config_path)
 
     projects = {}
     for slug, proj in config.get("projects", {}).items():
@@ -64,36 +106,60 @@ def load_projects() -> dict:
     return projects
 
 
-def load_crew_names() -> list[str]:
+def load_crew_names(config_path: Path = None) -> list[str]:
     """Load crew names from config file.
+
+    Args:
+        config_path: Optional path to config file.
 
     Returns:
         List of crew names for random selection
     """
-    config = load_config()
+    config = load_config(config_path)
     return config.get("crew_names", ["crew"])
 
 
 class PolecatManager:
-    def __init__(self):
-        # Global location for all active agents
-        self.polecats_dir = Path.home() / ".aops" / "polecat"
-        self.polecats_dir.mkdir(parents=True, exist_ok=True)
+    def __init__(self, home_dir: Path = None):
+        """Initialize the polecat manager.
+
+        Args:
+            home_dir: Optional home directory override. If not specified,
+                      uses POLECAT_HOME env var or defaults to ~/.aops
+        """
+        # Determine home directory
+        if home_dir is not None:
+            if isinstance(home_dir, str):
+                home_dir = Path(home_dir)
+            if str(home_dir).startswith("~"):
+                home_dir = home_dir.expanduser()
+            self.home_dir = home_dir
+        else:
+            self.home_dir = get_polecat_home()
+
+        # Config file location
+        self.config_path = self.home_dir / "polecat.yaml"
+
+        # Ensure home directory exists
+        self.home_dir.mkdir(parents=True, exist_ok=True)
+
+        # Global location for all active agents (directly in home_dir)
+        self.polecats_dir = self.home_dir
 
         # Hidden directory for bare mirror repos
         self.repos_dir = self.polecats_dir / ".repos"
         self.repos_dir.mkdir(exist_ok=True)
 
-        # Directory for persistent crew workers (consolidated under polecats)
+        # Directory for persistent crew workers
         self.crew_dir = self.polecats_dir / "crew"
         self.crew_dir.mkdir(exist_ok=True)
 
         # Load project registry from config file
-        self.config = load_config()
-        self.projects = load_projects()
+        self.config = load_config(self.config_path)
+        self.projects = load_projects(self.config_path)
 
         # Load crew names for random selection
-        self.crew_names = load_crew_names()
+        self.crew_names = load_crew_names(self.config_path)
 
         # We still need access to the task DB
         self.storage = TaskStorage()

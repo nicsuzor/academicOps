@@ -7,15 +7,24 @@ from manager import PolecatManager
 
 
 @click.group()
-def main():
+@click.option(
+    "--home",
+    envvar="POLECAT_HOME",
+    type=click.Path(path_type=Path),
+    help="Polecat home directory (default: ~/.aops, or POLECAT_HOME env var)",
+)
+@click.pass_context
+def main(ctx, home):
     """Polecat: Ephemeral worker management system."""
-    pass
+    ctx.ensure_object(dict)
+    ctx.obj["home"] = home
 
 
 @main.command()
 @click.option("--project", "-p", help="Initialize only this project (default: all)")
-def init(project):
-    """Initialize bare mirror repos in ~/.aops/polecat/.repos/
+@click.pass_context
+def init(ctx, project):
+    """Initialize bare mirror repos in <home>/polecat/.repos/
 
     Creates bare clones of all registered projects for isolated worktree spawning.
     Run this once before using polecat, or when adding new projects.
@@ -23,8 +32,9 @@ def init(project):
     Examples:
         polecat init              # Initialize all projects
         polecat init -p aops      # Initialize only aops
+        polecat --home /custom/path init  # Use custom home directory
     """
-    manager = PolecatManager()
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
 
     if project:
         try:
@@ -47,7 +57,8 @@ def init(project):
 
 
 @main.command()
-def sync():
+@click.pass_context
+def sync(ctx):
     """Fetch latest from origin for all mirror repos.
 
     Updates existing bare mirrors with latest branches from origin.
@@ -56,7 +67,7 @@ def sync():
     Examples:
         polecat sync
     """
-    manager = PolecatManager()
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
     print(f"Syncing mirrors in {manager.repos_dir}...")
     results = manager.sync_all_mirrors()
     successes = sum(1 for v in results.values() if v)
@@ -66,9 +77,10 @@ def sync():
 @main.command()
 @click.option("--project", "-p", help="Project to claim tasks from")
 @click.option("--caller", "-c", default="polecat", help="Identity claiming the task")
-def start(project, caller):
+@click.pass_context
+def start(ctx, project, caller):
     """Claim next ready task and spawn a worktree."""
-    manager = PolecatManager()
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
 
     print(f"Looking for ready tasks{' in project ' + project if project else ''}...")
     task = manager.claim_next_task(caller, project)
@@ -91,7 +103,8 @@ def start(project, caller):
 @main.command()
 @click.argument("task_id")
 @click.option("--caller", "-c", default="polecat", help="Identity claiming the task")
-def checkout(task_id, caller):
+@click.pass_context
+def checkout(ctx, task_id, caller):
     """Checkout a specific task by ID and create its worktree.
 
     Use with shell integration for automatic cd:
@@ -100,7 +113,7 @@ def checkout(task_id, caller):
     Or add to your shell rc:
         pc() { cd "$(polecat checkout "$@")" 2>/dev/null || polecat checkout "$@"; }
     """
-    manager = PolecatManager()
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
 
     task = manager.storage.get_task(task_id)
     if not task:
@@ -133,7 +146,8 @@ def checkout(task_id, caller):
 @click.option(
     "--nuke", "do_nuke", is_flag=True, help="Also remove the worktree after finishing"
 )
-def finish(no_push, do_nuke):
+@click.pass_context
+def finish(ctx, no_push, do_nuke):
     """Mark current task as ready for merge.
 
     Must be run from within a polecat worktree.
@@ -141,7 +155,7 @@ def finish(no_push, do_nuke):
     """
     import subprocess
 
-    manager = PolecatManager()
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
     cwd = Path.cwd()
 
     # Detect if we're in a polecat worktree
@@ -260,9 +274,10 @@ def finish(no_push, do_nuke):
 @main.command()
 @click.argument("task_id")
 @click.option("--force", "-f", is_flag=True, help="Delete even if work is not merged")
-def nuke(task_id, force):
+@click.pass_context
+def nuke(ctx, task_id, force):
     """Destroy a polecat (remove worktree and branch)."""
-    manager = PolecatManager()
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
     try:
         manager.nuke_worktree(task_id, force=force)
         print(f"Nuked polecat {task_id}")
@@ -272,16 +287,20 @@ def nuke(task_id, force):
 
 
 @main.command("list")
-def list_polecats():
+@click.pass_context
+def list_polecats(ctx):
     """List active polecats."""
-    manager = PolecatManager()
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
     if not manager.polecats_dir.exists():
         print("No polecats directory found.")
         return
 
+    # Directories to exclude from listing (system dirs)
+    exclude = {".repos", "crew"}
+
     found = False
     for item in manager.polecats_dir.iterdir():
-        if item.is_dir():
+        if item.is_dir() and not item.name.startswith(".") and item.name not in exclude:
             print(f"{item.name} -> {item}")
             found = True
 
@@ -310,7 +329,8 @@ def merge():
 @click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
 @click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
-def crew(project, name, gemini, resume):
+@click.pass_context
+def crew(ctx, project, name, gemini, resume):
     """Start an interactive crew session.
 
     Crew workers are persistent, named agents for interactive collaboration.
@@ -328,7 +348,7 @@ def crew(project, name, gemini, resume):
     """
     import subprocess
 
-    manager = PolecatManager()
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
 
     # Determine which projects to use
     if project:
@@ -411,9 +431,10 @@ def crew(project, name, gemini, resume):
 @main.command("nuke-crew")
 @click.argument("name")
 @click.option("--force", "-f", is_flag=True, help="Delete even if work is not merged")
-def nuke_crew(name, force):
+@click.pass_context
+def nuke_crew(ctx, name, force):
     """Remove a crew worker and their worktrees."""
-    manager = PolecatManager()
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
     try:
         manager.nuke_crew(name, force=force)
     except (ValueError, RuntimeError) as e:
@@ -422,9 +443,10 @@ def nuke_crew(name, force):
 
 
 @main.command("list-crew")
-def list_crew():
+@click.pass_context
+def list_crew(ctx):
     """List active crew workers."""
-    manager = PolecatManager()
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
     crew = manager.list_crew()
     if not crew:
         print("No active crew workers.")
@@ -464,7 +486,7 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
     """
     import subprocess
 
-    manager = PolecatManager()
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
 
     # Step 1: Get/claim task
     if task_id:
@@ -601,7 +623,8 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
 @click.option("--gemini", "-g", default=0, help="Number of Gemini workers")
 @click.option("--project", "-p", help="Project to focus on (default: all)")
 @click.option("--dry-run", is_flag=True, help="Simulate execution")
-def swarm(claude, gemini, project, dry_run):
+@click.pass_context
+def swarm(ctx, claude, gemini, project, dry_run):
     """Run a swarm of parallel Polecat workers.
 
     Spawns N claude and M gemini workers, managing CPU affinity.
@@ -623,7 +646,8 @@ def swarm(claude, gemini, project, dry_run):
                 print("Error: Could not import swarm module.", file=sys.stderr)
                 sys.exit(1)
 
-    run_swarm(claude, gemini, project, dry_run)
+    home = ctx.obj.get("home")
+    run_swarm(claude, gemini, project, dry_run, str(home) if home else None)
 
 
 if __name__ == "__main__":

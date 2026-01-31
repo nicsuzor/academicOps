@@ -45,7 +45,11 @@ def alert(message: str):
 
 
 def worker_loop(
-    agent_type: str, cpu_id: Optional[int], project: Optional[str], dry_run: bool
+    agent_type: str,
+    cpu_id: Optional[int],
+    project: Optional[str],
+    dry_run: bool,
+    home_dir: Optional[str] = None,
 ):
     """
     Main loop for a single worker process.
@@ -55,6 +59,7 @@ def worker_loop(
         cpu_id: The CPU core index to bind this process to (0-indexed).
         project: Optional project filter.
         dry_run: If True, do not actually run polecat, just simulate.
+        home_dir: Optional polecat home directory override.
     """
     # Set affinity if a CPU ID is provided
     if cpu_id is not None:
@@ -89,8 +94,13 @@ def worker_loop(
                 "--project",
                 aops_path,
                 os.path.join(aops_path, "polecat/cli.py"),
-                "run",
             ]
+
+            # Add --home option before subcommand if specified
+            if home_dir:
+                cmd.extend(["--home", home_dir])
+
+            cmd.append("run")
 
             if agent_type == "gemini":
                 cmd.append("-g")
@@ -131,8 +141,17 @@ def run_swarm(
     gemini_count: int,
     project: Optional[str] = None,
     dry_run: bool = False,
+    home_dir: Optional[str] = None,
 ):
-    """Entry point for CLI integration."""
+    """Entry point for CLI integration.
+
+    Args:
+        claude_count: Number of Claude workers to spawn.
+        gemini_count: Number of Gemini workers to spawn.
+        project: Optional project filter.
+        dry_run: If True, simulate execution.
+        home_dir: Optional polecat home directory override.
+    """
     total_workers = claude_count + gemini_count
     if total_workers == 0:
         print(
@@ -168,7 +187,7 @@ def run_swarm(
     for _ in range(claude_count):
         cpu = available_cpus[cpu_idx % len(available_cpus)]
         p = multiprocessing.Process(
-            target=worker_loop, args=("claude", cpu, project, dry_run)
+            target=worker_loop, args=("claude", cpu, project, dry_run, home_dir)
         )
         p.start()
         processes.append(p)
@@ -178,7 +197,7 @@ def run_swarm(
     for _ in range(gemini_count):
         cpu = available_cpus[cpu_idx % len(available_cpus)]
         p = multiprocessing.Process(
-            target=worker_loop, args=("gemini", cpu, project, dry_run)
+            target=worker_loop, args=("gemini", cpu, project, dry_run, home_dir)
         )
         p.start()
         processes.append(p)
@@ -216,9 +235,14 @@ def main():
         action="store_true",
         help="Simulate execution without running actual agents",
     )
+    parser.add_argument(
+        "--home",
+        type=str,
+        help="Polecat home directory (default: ~/.aops, or POLECAT_HOME env var)",
+    )
 
     args = parser.parse_args()
-    run_swarm(args.claude, args.gemini, args.project, args.dry_run)
+    run_swarm(args.claude, args.gemini, args.project, args.dry_run, args.home)
 
 
 if __name__ == "__main__":
