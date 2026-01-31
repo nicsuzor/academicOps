@@ -398,19 +398,13 @@ def crew(ctx, project, name, gemini, resume):
     if gemini:
         cmd = ["gemini"]
     else:
-        aops_dir = os.environ.get("AOPS")
-        if not aops_dir:
-            print("Error: $AOPS environment variable not set", file=sys.stderr)
-            sys.exit(1)
+        # Plugins are installed at user level (~/.claude/plugins/cache/)
+        # No need for --plugin-dir; user-level hooks apply to all Claude Code calls
         cmd = [
             "claude",
             "--permission-mode=plan",
             "--dangerously-skip-permissions",
             "--setting-sources=user",
-            "--plugin-dir",
-            str(Path(aops_dir) / "aops-core"),
-            "--plugin-dir",
-            str(Path(aops_dir) / "aops-tools"),
         ]
 
     try:
@@ -545,10 +539,8 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
             cmd.extend(["--approval-mode", "yolo", "-p", prompt])
     else:
         # Claude CLI
-        aops_dir = os.environ.get("AOPS")
-        if not aops_dir:
-            print("Error: $AOPS environment variable not set", file=sys.stderr)
-            sys.exit(1)
+        # Plugins are installed at user level (~/.claude/plugins/cache/)
+        # No need for --plugin-dir; user-level hooks apply to all Claude Code calls
         cmd = ["claude"]
         if not interactive:
             cmd.append("--dangerously-skip-permissions")
@@ -557,10 +549,6 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
                 "--permission-mode",
                 "plan",
                 "--setting-sources=user",
-                "--plugin-dir",
-                str(Path(aops_dir) / "aops-core"),
-                "--plugin-dir",
-                str(Path(aops_dir) / "aops-tools"),
             ]
         )
         if interactive:
