@@ -619,9 +619,42 @@ def format_for_gemini(
 def format_for_claude(
     canonical_output: Dict[str, Any], event_name: str
 ) -> Dict[str, Any]:
-    """Format canonical internal output for Claude."""
+    """Format canonical internal output for Claude.
+
+    IMPORTANT: Stop hooks have a DIFFERENT output format than other hooks.
+    They use decision/reason/stopReason instead of hookSpecificOutput.
+    See aops-core/skills/framework/references/hooks.md for details.
+    """
     result = {}
 
+    verdict = canonical_output.get("verdict")
+    context = canonical_output.get("context_injection")
+    metadata = canonical_output.get("metadata", {})
+
+    # Stop hooks use a different output format (decision/reason/stopReason)
+    # hookSpecificOutput is NOT supported for Stop events in Claude Code
+    if event_name == "Stop":
+        # Map verdict to decision
+        if verdict == "deny":
+            result["decision"] = "block"
+        elif verdict:
+            result["decision"] = verdict  # allow, etc.
+
+        # reason: Shown to Claude agent (instructions)
+        if context:
+            result["reason"] = context
+
+        # stopReason: Shown to user
+        if "system_message" in canonical_output:
+            result["stopReason"] = canonical_output["system_message"]
+
+        # systemMessage also visible to user (optional additional message)
+        if "system_message" in canonical_output:
+            result["systemMessage"] = canonical_output["system_message"]
+
+        return result
+
+    # All other events use hookSpecificOutput format
     # 1. System Message
     if "system_message" in canonical_output:
         result["systemMessage"] = canonical_output["system_message"]
@@ -630,16 +663,12 @@ def format_for_claude(
     hso = {}
     hso["hookEventName"] = event_name
 
-    verdict = canonical_output.get("verdict")
-    metadata = canonical_output.get("metadata", {})
-
     if verdict:
         hso["permissionDecision"] = verdict  # allow, deny, ask
         # Map 'warn' to 'allow' for Claude (since Claude doesn't support 'warn' natively)
         if verdict == "warn":
             hso["permissionDecision"] = "allow"
 
-    context = canonical_output.get("context_injection")
     if context:
         hso["additionalContext"] = context
 

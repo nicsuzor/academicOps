@@ -65,6 +65,36 @@ class TestRouterFormatting:
         assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
         assert output["hookSpecificOutput"]["updatedInput"] == {"arg": "value"}
 
+    def test_format_for_claude_stop_event_deny(self):
+        """Stop events use decision/reason/stopReason, NOT hookSpecificOutput."""
+        canonical = {
+            "verdict": "deny",
+            "system_message": "Uncommitted changes detected",
+            "context_injection": "Please commit before stopping",
+        }
+        output = format_for_claude(canonical, "Stop")
+
+        # Stop hooks use decision/reason/stopReason format
+        assert output["decision"] == "block"
+        assert output["reason"] == "Please commit before stopping"
+        assert output["stopReason"] == "Uncommitted changes detected"
+        assert output["systemMessage"] == "Uncommitted changes detected"
+
+        # hookSpecificOutput should NOT be present for Stop events
+        assert "hookSpecificOutput" not in output
+
+    def test_format_for_claude_stop_event_allow(self):
+        """Stop event with allow verdict."""
+        canonical = {
+            "verdict": "allow",
+            "system_message": "Session ending normally",
+        }
+        output = format_for_claude(canonical, "Stop")
+
+        assert output["decision"] == "allow"
+        assert output["stopReason"] == "Session ending normally"
+        assert "hookSpecificOutput" not in output
+
     def test_format_for_gemini_updated_input(self):
         # Gemini formatter supports updatedInput now?
         # I added support in format_for_gemini:
