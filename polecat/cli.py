@@ -4,6 +4,7 @@ import os
 import sys
 from pathlib import Path
 from manager import PolecatManager
+from validation import TaskIDValidationError, validate_task_id_or_raise
 
 
 @click.group()
@@ -113,6 +114,13 @@ def checkout(ctx, task_id, caller):
     Or add to your shell rc:
         pc() { cd "$(polecat checkout "$@")" 2>/dev/null || polecat checkout "$@"; }
     """
+    # Validate task ID before any operations
+    try:
+        validate_task_id_or_raise(task_id)
+    except TaskIDValidationError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
 
     task = manager.storage.get_task(task_id)
@@ -277,6 +285,13 @@ def finish(ctx, no_push, do_nuke):
 @click.pass_context
 def nuke(ctx, task_id, force):
     """Destroy a polecat (remove worktree and branch)."""
+    # Validate task ID before any operations
+    try:
+        validate_task_id_or_raise(task_id)
+    except TaskIDValidationError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
     try:
         manager.nuke_worktree(task_id, force=force)
@@ -484,6 +499,13 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
 
     # Step 1: Get/claim task
     if task_id:
+        # Validate task ID before any operations
+        try:
+            validate_task_id_or_raise(task_id)
+        except TaskIDValidationError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+
         task = manager.storage.get_task(task_id)
         if not task:
             print(f"Task not found: {task_id}", file=sys.stderr)

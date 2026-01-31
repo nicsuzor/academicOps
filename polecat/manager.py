@@ -8,6 +8,8 @@ from pathlib import Path
 
 import yaml
 
+from validation import TaskIDValidationError, validate_task_id_or_raise
+
 # Add aops-core to path for lib imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
 REPO_ROOT = SCRIPT_DIR.parent
@@ -592,8 +594,14 @@ class PolecatManager:
         Before creating the worktree, performs a safe sync of the mirror (if used)
         to ensure we have the latest commits from origin. Sync failures are non-fatal
         to support offline operation.
+
+        Raises:
+            TaskIDValidationError: If task.id contains invalid characters
         """
-        project = task.project or "aops"
+        # Validate task ID before using in filesystem path and git branch name
+        validate_task_id_or_raise(task.id)
+
+        project = task.project if task.project else "aops"
 
         # Safe sync before worktree creation (non-fatal for offline operation)
         mirror_path = self.repos_dir / f"{project}.git"
@@ -768,7 +776,11 @@ class PolecatManager:
 
         Raises:
             RuntimeError: If branch has unmerged commits and force=False
+            TaskIDValidationError: If task_id contains invalid characters
         """
+        # Validate task ID before using in filesystem path and git branch name
+        validate_task_id_or_raise(task_id)
+
         # We need the task to know which repo it came from, but if we don't have it
         # (e.g. CLI just passed an ID), we might have to guess or search.
         # For simplicity, let's look up the task.
