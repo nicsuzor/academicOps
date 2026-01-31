@@ -85,74 +85,54 @@ uv run python $AOPS/aops-tools/skills/hypervisor/scripts/batch_worker.py --batch
 - Operations where duplicate processing would cause problems
 - Batch operations that benefit from parallelism
 
-## Parallel Task Agent Pattern
+## Polecat Herd Management (Parallel Execution)
 
-For executing multiple framework tasks in parallel (e.g., from an epic's children):
+For executing multiple framework tasks in parallel using the `polecat` CLI. This replaces the deprecated `Task` subagent pattern which failed to provide worktree isolation.
 
-```python
-# Spawn 4-5 worker agents in parallel
-Task(subagent_type="aops-core:worker", model="haiku",
-     description="Worker 1: <task-summary>",
-     prompt="/pull <task-id-1>",
-     run_in_background=True)
-# Repeat for each task...
-```
+### 1. Spawn a Herd
 
-### Experiment Results (2026-01-22)
-
-Tested spawning 5 parallel haiku workers on aops framework tasks:
-
-| Metric | Result |
-|--------|--------|
-| Spawn success | 5/5 (100%) |
-| Execution success | 5/5 (100%) |
-| Conflicts/collisions | 0 |
-| Commits produced | 5 |
-| Notification delivery | 4/5 (80%) |
-
-### Known Issues
-
-> ⚠️ **CRITICAL**: Background agent notifications are unreliable. See P#86 for details and workarounds.
-
-1. **Notifications unreliable (P#86)**: Empirical testing showed ~20% of notifications didn't arrive, others delayed 2-5 minutes. **Never use `TaskOutput(block=true)`** - it can deadlock.
-2. **Output file cleanup**: Worker output files at `/tmp/claude/.../tasks/*.output` are cleaned up after completion, making post-hoc analysis difficult
-3. **No batch status view**: Must check `git log` or task status individually to verify completions
-4. **Worker agents lack MCP tools**: Workers cannot call MCP tools (Outlook, Zotero, memory, calendar, browser). Only file operations, git, and code edits work. Filter queue to MCP-independent tasks before spawning workers. See HEURISTICS.md P#77.
-
-### Supervision Pattern (Fire-and-Forget)
-
-Since notifications are unreliable, use **fire-and-forget** with MCP polling:
-
-```python
-# 1. Spawn workers (don't wait for notifications)
-Task(subagent_type="aops-core:worker", run_in_background=True, ...)
-
-# 2. Continue other work
-
-# 3. Poll MCP task status to check completions
-mcp__plugin_aops-tools_task_manager__list_tasks(status="done", limit=20)
-
-# 4. Workers update task status directly - no need for notifications
-```
-
-**Anti-patterns to avoid**:
-- ❌ `TaskOutput(block=true)` - deadlocks when notifications fail
-- ❌ Waiting for `<agent-notification>` - unreliable
-- ❌ Reading `.output` files for status - files are cleaned up
-
-### Monitoring Workarounds
+Use `polecat run` to spawn autonomous agents. Each process handles its own lifecycle, git operations, and completion.
 
 ```bash
-# Check recent commits for worker output
-git log --oneline -10
+# Spawn a Claude (Sonnet) polecat for the 'aops' project
+uv run --project ${AOPS} ${AOPS}/polecat/cli.py run -p aops
 
-# Check task completion status directly (PREFERRED)
-mcp__plugin_aops-tools_task_manager__list_tasks(status="done")
-mcp__plugin_aops-tools_task_manager__get_task(id="<task-id>")
-
-# Poll output files while workers run (before cleanup)
-tail -f /tmp/claude/-home-nic-writing/tasks/*.output
+# Spawn a Gemini polecat (cheaper/faster for mechanical tasks)
+uv run --project ${AOPS} ${AOPS}/polecat/cli.py run -p aops -g
 ```
+
+To spawn a "herd" in parallel (Bash):
+
+```bash
+# Spawn 5 Gemini polecats in background
+for i in {1..5}; do
+  uv run --project ${AOPS} ${AOPS}/polecat/cli.py run -p aops -g &
+  sleep 2  # Stagger starts to avoid race conditions on initial lock checks
+done
+```
+
+### 2. Monitor Status
+
+Check the status of the herd and the worktree:
+
+```bash
+# List active polecat processes
+pgrep -f "polecat/cli.py"
+
+# Check git status (they all share the worktree, so be careful!)
+git status
+```
+
+**Note on Isolation**: Polecats run in the *same worktree*. They rely on atomic task claiming (via lockfiles or API) to avoid collisions. If two polecats edit the same file, git merge conflicts may occur.
+
+### 3. Handle Failures
+
+If a polecat gets stuck or crashes:
+
+1. Identify the process ID (`pgrep -a -f polecat`)
+2. Kill it (`kill <pid>`)
+3. Check for stale lockfiles in `/tmp/hypervisor/locks/` or the task status.
+
 
 ## Gemini CLI Task Offloading
 
