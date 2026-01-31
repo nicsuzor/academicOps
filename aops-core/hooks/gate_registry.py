@@ -569,12 +569,49 @@ def check_hydration_gate(ctx: GateContext) -> Optional[GateResult]:
     """
     _check_imports()  # Fail fast if imports unavailable
 
+    # DEBUG: Log to fixed file for subagent visibility
+    from datetime import datetime
+    debug_file = Path("/tmp/hydration-gate-debug.jsonl")
+    try:
+        with open(debug_file, "a") as f:
+            f.write(json.dumps({
+                "ts": str(datetime.now()),
+                "event": ctx.event_name,
+                "tool": ctx.tool_name,
+                "session_id": ctx.session_id,
+                "transcript_path": ctx.input_data.get("transcript_path") if ctx.input_data else None,
+                "env_agent_type": os.environ.get("CLAUDE_AGENT_TYPE"),
+                "env_subagent_type": os.environ.get("CLAUDE_SUBAGENT_TYPE"),
+                "input_keys": list(ctx.input_data.keys()) if ctx.input_data else [],
+            }) + "\n")
+    except Exception:
+        pass  # Don't fail on debug logging
+    # END DEBUG
+
     # Only applies to PreToolUse
     if ctx.event_name != "PreToolUse":
         return None
 
     # Bypass for subagent sessions
     if _hydration_is_subagent_session(ctx.input_data):
+        return None
+
+    # BELT & SUSPENDERS: Additional detection for hydrator subagent
+    # Check env var that might be set for subagent processes
+    subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE", "")
+    if subagent_type and "hydrator" in subagent_type.lower():
+        return None
+
+    # Also check transcript path directly (redundant but catches edge cases)
+    if ctx.input_data:
+        transcript_path = str(ctx.input_data.get("transcript_path", ""))
+        if "/subagents/" in transcript_path or "/agent-" in transcript_path:
+            return None
+
+    # STATEFUL BYPASS: Check if hydrator is currently active (set when Task(hydrator) starts)
+    # This is the reliable way to detect subagent tool calls since Claude Code
+    # passes the main session's context to hooks, not the subagent's context.
+    if session_state.is_hydrator_active(ctx.session_id):
         return None
 
     # Bypass for accepted tools (Strict List)
@@ -587,22 +624,23 @@ def check_hydration_gate(ctx: GateContext) -> Optional[GateResult]:
 
     # Check if a skill is being activated (allow ANY skill to bypass hydration check)
     # If the user explicitly activates a skill, they are providing a plan/context.
-    is_skill_activation = ctx.tool_name == "activate_skill"
+    is_skill_activation = ctx.tool_name in ("activate_skill", "Skill")
     # Legacy: prompt-hydrator specific check (kept for robust detection context)
-    is_hydrator_tool = ctx.tool_name in ("Task", "delegate_to_agent")
-    is_hydrator_legacy = is_hydrator_tool and _hydration_is_hydrator_task(
-        ctx.tool_input
-    )
+    is_hydrator_tool_or_agent = _hydration_is_hydrator_task(ctx.tool_input)
     is_gemini = _hydration_is_gemini_hydration_attempt(
         ctx.tool_name or "", ctx.tool_input, ctx.input_data
     )
 
-    if is_skill_activation or is_hydrator_legacy or is_gemini:
+    if is_skill_activation or is_hydrator_tool_or_agent or is_gemini:
         # Allow hydrator invocation but DO NOT clear hydration_pending here.
         # hydration_pending is cleared by SubagentStop handler when hydrator
         # completes with a valid ## HYDRATION RESULT output.
         # Subagent sessions bypass this gate at line 577, so hydrator can use
         # Read tools. The main agent's gates stay closed until hydrator completes.
+        #
+        # SET hydrator_active flag so the hydrator's own tool calls bypass this gate.
+        if is_hydrator_tool_or_agent:
+            session_state.set_hydrator_active(ctx.session_id)
         return None
 
     # Check if hydration is pending
@@ -611,12 +649,16 @@ def check_hydration_gate(ctx: GateContext) -> Optional[GateResult]:
 
     # If we reach here, hydration is pending and not bypassed, so we block.
 
-    # Block
-    # Block
-    block_msg = load_template(HYDRATION_BLOCK_TEMPLATE)
+    # Get temp_path from session state to include in block message
+    temp_path = session_state.get_hydration_temp_path(ctx.session_id)
+    if not temp_path:
+        temp_path = "(temp file not found - check session state)"
+
+    # Block with formatted message including the temp path
+    block_msg = load_template(HYDRATION_BLOCK_TEMPLATE, {"temp_path": temp_path})
     return GateResult(
         verdict=GateVerdict.DENY,
-        system_message=None,  # Hydration usually just needs context injection often, but let's check make_deny_output
+        system_message=None,
         context_injection=block_msg,
     )
 
@@ -964,6 +1006,13 @@ def run_accountant(ctx: GateContext) -> Optional[GateResult]:
     # Task tool call completes, but the subagent hasn't returned yet.
     # hydration_pending is cleared by SubagentStop handler when the hydrator
     # actually completes with a valid ## HYDRATION RESULT output.
+    #
+    # BUT we DO clear hydrator_active here because the Task tool has completed,
+    # meaning the hydrator subagent has finished running.
+    # Include Skill/activate_skill for Claude/Gemini which may use them to spawn hydrator.
+    if ctx.tool_name in ("Task", "delegate_to_agent", "activate_skill", "Skill"):
+        if _hydration_is_hydrator_task(ctx.tool_input):
+            session_state.clear_hydrator_active(ctx.session_id)
 
     # 2. Update Custodiet State
     # Skip for safe read-only tools to avoid noise

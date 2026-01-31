@@ -360,6 +360,36 @@ def clear_hydration_pending(session_id: str) -> None:
     save_session_state(session_id, state)
 
 
+def set_hydration_temp_path(session_id: str, temp_path: str) -> None:
+    """Store the hydration temp file path.
+
+    Called by user_prompt_submit.py after writing the hydration context file.
+    The gate can then retrieve this to include in the block message.
+
+    Args:
+        session_id: Claude Code session ID
+        temp_path: Absolute path to the hydration temp file
+    """
+    state = get_or_create_session_state(session_id)
+    state["hydration"]["temp_path"] = temp_path
+    save_session_state(session_id, state)
+
+
+def get_hydration_temp_path(session_id: str) -> str | None:
+    """Get the hydration temp file path.
+
+    Args:
+        session_id: Claude Code session ID
+
+    Returns:
+        Path to temp file, or None if not set
+    """
+    state = load_session_state(session_id)
+    if state is None:
+        return None
+    return state.get("hydration", {}).get("temp_path")
+
+
 # ============================================================================
 # Hydration Data API
 # ============================================================================
@@ -906,4 +936,51 @@ def clear_handover_skill_invoked(session_id: str) -> None:
     if state is None:
         return
     state["state"]["handover_skill_invoked"] = False
+    save_session_state(session_id, state)
+
+
+def set_hydrator_active(session_id: str) -> None:
+    """Set hydrator_active flag when prompt-hydrator subagent starts.
+
+    Called by PreToolUse when Task tool is invoked with hydrator subagent_type.
+    This flag allows the hydration gate to bypass checks for the hydrator's
+    own tool calls (which would otherwise be blocked in a recursive loop).
+
+    Args:
+        session_id: Claude Code session ID
+    """
+    state = get_or_create_session_state(session_id)
+    state["state"]["hydrator_active"] = True
+    save_session_state(session_id, state)
+
+
+def is_hydrator_active(session_id: str) -> bool:
+    """Check if the prompt-hydrator subagent is currently active.
+
+    Used by hydration gate to bypass blocking for the hydrator's tool calls.
+
+    Args:
+        session_id: Claude Code session ID
+
+    Returns:
+        True if hydrator_active flag is set
+    """
+    state = load_session_state(session_id)
+    if state is None:
+        return False
+    return state.get("state", {}).get("hydrator_active", False)
+
+
+def clear_hydrator_active(session_id: str) -> None:
+    """Clear hydrator_active flag when prompt-hydrator subagent completes.
+
+    Called by PostToolUse when Task tool completes.
+
+    Args:
+        session_id: Claude Code session ID
+    """
+    state = load_session_state(session_id)
+    if state is None:
+        return
+    state["state"]["hydrator_active"] = False
     save_session_state(session_id, state)

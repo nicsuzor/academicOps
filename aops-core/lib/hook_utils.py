@@ -225,7 +225,10 @@ def is_subagent_session(input_data: dict[str, Any] | None = None) -> bool:
 
     Uses multiple detection methods since env vars may not be passed to hook subprocesses:
     1. CLAUDE_AGENT_TYPE env var (if Claude passes it)
-    2. Transcript path contains /subagents/ (Claude Code stores subagent transcripts there)
+    2. CLAUDE_SUBAGENT_TYPE env var (alternative Claude env var)
+    3. Transcript path contains /subagents/ (Claude Code stores subagent transcripts there)
+    4. Transcript path contains /agent- (subagent filename pattern)
+    5. Session ID starts with agent- (subagent ID format)
 
     Args:
         input_data: Hook input data containing transcript_path (optional)
@@ -233,16 +236,46 @@ def is_subagent_session(input_data: dict[str, Any] | None = None) -> bool:
     Returns:
         True if this appears to be a subagent session
     """
-    # Method 1: Env var (traditional detection)
+    import json
+    from datetime import datetime
+
+    # DEBUG: Log detection attempts
+    debug_file = Path("/tmp/subagent-detection-debug.jsonl")
+    try:
+        with open(debug_file, "a") as f:
+            f.write(json.dumps({
+                "ts": str(datetime.now()),
+                "env_agent_type": os.environ.get("CLAUDE_AGENT_TYPE"),
+                "env_subagent_type": os.environ.get("CLAUDE_SUBAGENT_TYPE"),
+                "transcript_path": input_data.get("transcript_path") if input_data else None,
+                "session_id": input_data.get("session_id") if input_data else None,
+            }) + "\n")
+    except Exception:
+        pass
+    # END DEBUG
+
+    # Method 1: Env vars (check all known variants)
     if os.environ.get("CLAUDE_AGENT_TYPE"):
+        return True
+    if os.environ.get("CLAUDE_SUBAGENT_TYPE"):
         return True
 
     # Method 2: Check transcript path for /subagents/ directory
     # Claude Code stores subagent transcripts at:
     #   ~/.claude/projects/<project>/<session-uuid>/subagents/agent-<hash>.jsonl
     if input_data:
-        transcript_path = input_data.get("transcript_path", "")
-        if transcript_path and "/subagents/" in str(transcript_path):
+        transcript_path = str(input_data.get("transcript_path", ""))
+        if "/subagents/" in transcript_path:
+            return True
+        # Also check for agent- prefix in filename (subagent transcripts often have this)
+        if "/agent-" in transcript_path:
+            return True
+
+    # Method 3: Check if session_id looks like a subagent ID
+    # (Main sessions are UUIDs, subagents may have different format)
+    if input_data:
+        session_id = str(input_data.get("session_id", ""))
+        if session_id.startswith("agent-"):
             return True
 
     return False

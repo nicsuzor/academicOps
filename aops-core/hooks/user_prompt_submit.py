@@ -44,6 +44,7 @@ from lib.file_index import get_formatted_relevant_paths
 from lib.session_reader import extract_router_context
 from lib.session_state import (
     set_hydration_pending,
+    set_hydration_temp_path,
     clear_hydration_pending,
     set_gates_bypassed,
     clear_reflection_output,
@@ -533,6 +534,9 @@ def build_hydration_instruction(
 
     # Write to temp file (raises IOError on failure - fail-fast)
     temp_path = write_temp_file(full_context, input_data)
+
+    # Store temp path in session state so hydration gate can include it in block message
+    set_hydration_temp_path(session_id, str(temp_path))
 
     # Write initial hydrator state for downstream gates
     write_initial_hydrator_state(session_id, prompt)
