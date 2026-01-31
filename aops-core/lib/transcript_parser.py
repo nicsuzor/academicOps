@@ -2025,7 +2025,7 @@ class SessionProcessor:
                 first_timestamp = entry.timestamp
                 break
         date_str = (
-            first_timestamp.strftime("%Y-%m-%d") if first_timestamp else "unknown"
+            first_timestamp.isoformat() if first_timestamp else "unknown"
         )
 
         full_mode = variant == "full"
