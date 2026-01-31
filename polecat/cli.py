@@ -628,10 +628,14 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
             except SystemExit as e:
                 if e.code != 0:
                     print(f"⚠️  Auto-finish failed.")
-                    print(f"   You can retry manually: cd {worktree_path} && polecat finish")
+                    print(
+                        f"   You can retry manually: cd {worktree_path} && polecat finish"
+                    )
             except Exception as e:
                 print(f"⚠️  Auto-finish failed: {e}")
-                print(f"   You can retry manually: cd {worktree_path} && polecat finish")
+                print(
+                    f"   You can retry manually: cd {worktree_path} && polecat finish"
+                )
             finally:
                 os.chdir(original_cwd)
         else:
@@ -641,6 +645,36 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
         print(f"\n⚠️  Agent exited with code {exit_code}. Skipping auto-finish.")
         print(f"   Worktree: {worktree_path}")
         print(f"   To finish manually: cd {worktree_path} && polecat finish")
+
+
+@main.command()
+@click.option("--claude", "-c", default=0, help="Number of Claude workers")
+@click.option("--gemini", "-g", default=0, help="Number of Gemini workers")
+@click.option("--project", "-p", help="Project to focus on (default: all)")
+@click.option("--dry-run", is_flag=True, help="Simulate execution")
+def swarm(claude, gemini, project, dry_run):
+    """Run a swarm of parallel Polecat workers.
+
+    Spawns N claude and M gemini workers, managing CPU affinity.
+    Restarting workers on success, stopping on failure.
+    """
+    try:
+        from swarm import run_swarm
+    except ImportError:
+        # Fallback for when running as script in same dir
+        try:
+            from .swarm import run_swarm
+        except ImportError:
+            # Last ditch for direct execution
+            try:
+                import swarm as swarm_module
+
+                run_swarm = swarm_module.run_swarm
+            except ImportError:
+                print("Error: Could not import swarm module.", file=sys.stderr)
+                sys.exit(1)
+
+    run_swarm(claude, gemini, project, dry_run)
 
 
 if __name__ == "__main__":
