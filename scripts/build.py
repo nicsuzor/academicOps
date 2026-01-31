@@ -31,6 +31,102 @@ except ImportError as e:
     sys.exit(1)
 
 
+# Event name mapping: Claude Code -> Gemini CLI
+CLAUDE_TO_GEMINI_EVENTS = {
+    "PreToolUse": "BeforeTool",
+    "PostToolUse": "AfterTool",
+    "UserPromptSubmit": "BeforeAgent",
+    "Stop": "SessionEnd",
+    # These are the same in both
+    "SessionStart": "SessionStart",
+    "SessionEnd": "SessionEnd",
+    "SubagentStop": "SubagentStop",
+    # Gemini-specific (keep as-is if present)
+    "BeforeTool": "BeforeTool",
+    "AfterTool": "AfterTool",
+    "BeforeAgent": "BeforeAgent",
+}
+
+
+def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
+    """Transform hooks.json from Claude Code format to Gemini CLI format.
+
+    Gemini CLI reads hooks from <extension>/hooks/hooks.json with:
+    - Different event names (BeforeTool vs PreToolUse, etc.)
+    - ${extensionPath} variable instead of ${CLAUDE_PLUGIN_ROOT}
+    """
+    try:
+        with open(src_path) as f:
+            config = json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"Warning: Could not read hooks.json: {e}")
+        return
+
+    if "hooks" not in config:
+        print("Warning: hooks.json has no 'hooks' key")
+        return
+
+    src_hooks = config["hooks"]
+    gemini_hooks: dict = {}
+
+    for claude_event, hook_list in src_hooks.items():
+        # Skip disabled hooks
+        if claude_event.endswith("-disabled"):
+            continue
+
+        # Map event name
+        gemini_event = CLAUDE_TO_GEMINI_EVENTS.get(claude_event, claude_event)
+
+        # Skip events that don't exist in Gemini
+        # Valid Gemini events: SessionStart, BeforeAgent, BeforeTool, AfterTool, SessionEnd
+        # SubagentStop is NOT a valid Gemini event - do not include it
+        VALID_GEMINI_EVENTS = (
+            "SessionStart",
+            "BeforeAgent",
+            "BeforeTool",
+            "AfterTool",
+            "SessionEnd",
+        )
+        if gemini_event not in VALID_GEMINI_EVENTS:
+            print(f"  Skipping unsupported Gemini event: {claude_event}")
+            continue
+
+        # Transform hook commands
+        transformed_hooks = []
+        for hook_entry in hook_list:
+            new_entry = {}
+            for key, value in hook_entry.items():
+                if key == "hooks":
+                    new_hooks = []
+                    for hook in value:
+                        new_hook = dict(hook)
+                        if "command" in new_hook:
+                            # Replace Claude variable with Gemini variable
+                            cmd = new_hook["command"]
+                            cmd = cmd.replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
+                            # Also ensure PYTHONPATH is set correctly for Gemini
+                            if "PYTHONPATH=" in cmd and "${extensionPath}" in cmd:
+                                # Simplify: use uv run --directory which handles PYTHONPATH
+                                cmd = cmd.replace(
+                                    "PYTHONPATH=${extensionPath} uv run python",
+                                    "uv run --directory ${extensionPath}/.. python"
+                                )
+                            new_hook["command"] = cmd
+                        new_hooks.append(new_hook)
+                    new_entry[key] = new_hooks
+                else:
+                    new_entry[key] = value
+            transformed_hooks.append(new_entry)
+
+        gemini_hooks[gemini_event] = transformed_hooks
+
+    # Write Gemini-compatible hooks.json
+    gemini_config = {"hooks": gemini_hooks}
+    with open(dst_path, "w") as f:
+        json.dump(gemini_config, f, indent=2)
+    print(f"  ✓ Generated Gemini hooks.json with {len(gemini_hooks)} events")
+
+
 def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
     """Build the aops-core extension."""
     print("Building aops-core...")
@@ -55,6 +151,7 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
     if hooks_src.exists():
         for item in hooks_src.iterdir():
             if item.name == "hooks.json":
+                # Handle hooks.json separately - transform for Gemini
                 continue
             if item.name == "gemini":
                 # Don't copy gemini/ subdirectory - we use unified router.py now
@@ -65,6 +162,12 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
     router_src = hooks_src / "router.py"
     if router_src.exists():
         safe_copy(router_src, hooks_dst / "router.py")
+
+    # Generate Gemini-compatible hooks.json
+    # Gemini CLI looks for hooks/hooks.json with different event names
+    hooks_json_src = hooks_src / "hooks.json"
+    if hooks_json_src.exists():
+        _generate_gemini_hooks_json(hooks_json_src, hooks_dst / "hooks.json")
 
     # Create templates symlink in gemini/ so user_prompt_submit.py can find templates
     # (user_prompt_submit.py uses HOOK_DIR / "templates" where HOOK_DIR is hooks/gemini/)
