@@ -486,6 +486,48 @@ MCP_TOOLS_EXEMPT_FROM_HYDRATION = {
     "list_memories",
 }
 
+# Infrastructure skills that should NOT clear hydration_pending when activated.
+# These are utility/navigation commands that don't satisfy the "provide context" intent.
+# Hydration should only be cleared by actual hydration-completing skills (prompt-hydrator).
+INFRASTRUCTURE_SKILLS_NO_HYDRATION_CLEAR = {
+    # Simple commands (navigation/utility)
+    "bump",
+    "aops-core:bump",
+    "diag",
+    "aops-core:diag",
+    "dump",
+    "aops-core:dump",
+    "aops",
+    "aops-core:aops",
+    "log",
+    "aops-core:log",
+    "q",
+    "aops-core:q",
+    "email",
+    "aops-core:email",
+    "learn",
+    "aops-core:learn",
+    "pull",
+    "aops-core:pull",
+    # Infrastructure skills (don't complete hydration)
+    "task-viz",
+    "aops-core:task-viz",
+    "remember",
+    "aops-core:remember",
+    "handover",
+    "aops-core:handover",
+    "garden",
+    "aops-core:garden",
+    "audit",
+    "aops-core:audit",
+    "annotations",
+    "aops-core:annotations",
+    "session-insights",
+    "aops-core:session-insights",
+    "hypervisor",
+    "aops-core:hypervisor",
+}
+
 
 def _hydration_is_subagent_session(input_data: dict[str, Any] | None = None) -> bool:
     """Check if this is a subagent session."""
@@ -1275,27 +1317,47 @@ def check_handover_gate(ctx: GateContext) -> Optional[GateResult]:
 
 def check_skill_activation_listener(ctx: GateContext) -> Optional[GateResult]:
     """
-    Listener: Clear hydration pending if a skill was successfully activated.
+    Listener: Clear hydration pending if a non-infrastructure skill was activated.
+
+    Infrastructure skills (like /bump, /diag, /log) do NOT clear hydration state
+    because they are utility/navigation commands, not hydration-completing actions.
+    Only skills that provide meaningful context should clear the hydration gate.
     """
     _check_imports()
 
     if ctx.event_name != "PostToolUse":
         return None
 
-    if ctx.tool_name != "activate_skill":
+    # Handle both Claude Code (Skill) and Gemini (activate_skill) tool names
+    if ctx.tool_name not in ("activate_skill", "Skill"):
         return None
 
-    # Determine if tool use was successful (Gemini doesn't pass success bit easily in input_data?)
-    # Input data usually has 'tool_output'.
-    # If the tool ran, we assume success or at least an attempt.
-    # The user intent "run this skill" is sufficient to clear the generic hydration block.
+    # Extract skill name from tool input
+    # Claude Skill tool uses 'skill', Gemini activate_skill uses 'name'
+    tool_input = ctx.tool_input or {}
+    if isinstance(tool_input, str):
+        try:
+            tool_input = json.loads(tool_input)
+        except json.JSONDecodeError:
+            tool_input = {}
 
-    # Always clear hydration pending if a skill is activated.
-    # We don't check is_hydration_pending() first to ensure idempotency and robustness.
+    skill_name = tool_input.get("skill") or tool_input.get("name") or ""
+
+    # Infrastructure skills should NOT clear hydration pending
+    # These are utility/navigation commands that don't satisfy the hydration intent
+    if skill_name in INFRASTRUCTURE_SKILLS_NO_HYDRATION_CLEAR:
+        return GateResult(
+            verdict=GateVerdict.ALLOW,
+            metadata={"source": "skill_activation_infrastructure", "skill": skill_name},
+        )
+
+    # Non-infrastructure skill activated - clear hydration pending
+    # The user intent "run this skill" with a substantive skill satisfies hydration.
     session_state.clear_hydration_pending(ctx.session_id)
 
     return GateResult(
-        verdict=GateVerdict.ALLOW, metadata={"source": "skill_activation_bypass"}
+        verdict=GateVerdict.ALLOW,
+        metadata={"source": "skill_activation_bypass", "skill": skill_name},
     )
 
 

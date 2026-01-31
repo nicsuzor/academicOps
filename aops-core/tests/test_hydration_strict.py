@@ -10,12 +10,16 @@ from hooks.gate_registry import (
 from lib.gate_model import GateResult, GateVerdict
 
 
+@patch("hooks.gate_registry._hydration_is_subagent_session")
+@patch("hooks.gate_registry.session_state.is_hydrator_active")
 @patch("hooks.gate_registry.session_state.is_hydration_pending")
 @patch("hooks.gate_registry.hook_utils.get_hook_temp_dir")
-def test_strict_hydration(mock_get_temp_dir, mock_is_pending):
+def test_strict_hydration(mock_get_temp_dir, mock_is_pending, mock_is_hydrator_active, mock_is_subagent):
     """Verify hydration block behavior."""
-    mock_is_pending.return_value = True
     mock_get_temp_dir.return_value = "/tmp/hydrator"
+    mock_is_pending.return_value = True
+    mock_is_hydrator_active.return_value = False
+    mock_is_subagent.return_value = False
 
     # 1. Block ReadFile (previously allowed)
     ctx = GateContext(
@@ -71,10 +75,15 @@ def test_strict_hydration(mock_get_temp_dir, mock_is_pending):
     assert result is None  # Allowed
 
 
+@patch("hooks.gate_registry._hydration_is_subagent_session")
+@patch("hooks.gate_registry.session_state.is_hydrator_active")
 @patch("hooks.gate_registry.session_state.is_hydration_pending")
 @patch("hooks.gate_registry.hook_utils.get_hook_temp_dir")
-def test_hydration_bypass_when_not_pending(mock_get_temp_dir, mock_is_pending):
+def test_hydration_bypass_when_not_pending(mock_get_temp_dir, mock_is_pending, mock_is_hydrator_active, mock_is_subagent):
+    mock_get_temp_dir.return_value = "/tmp/hydrator"
     mock_is_pending.return_value = False
+    mock_is_hydrator_active.return_value = False
+    mock_is_subagent.return_value = False
     ctx = GateContext("s1", "PreToolUse", {"tool_name": "read_file"})
     result = check_hydration_gate(ctx)
     assert result is None

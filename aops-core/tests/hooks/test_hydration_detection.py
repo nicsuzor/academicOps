@@ -82,15 +82,14 @@ class TestHydrationDetection(unittest.TestCase):
 
     @patch("hooks.gate_registry.hook_utils.get_hook_temp_dir")
     @patch("hooks.gate_registry.session_state")
-    @patch("hooks.gate_registry.hook_utils.make_context_output")
-    def test_post_hydration_trigger_gemini(self, mock_make_context, mock_session_state, mock_get_temp_dir):
+    def test_post_hydration_trigger_gemini(self, mock_session_state, mock_get_temp_dir):
         # Verify that post_hydration_trigger correctly identifies Gemini hydration
         mock_get_temp_dir.return_value = self.temp_dir
-        
+
         # Simulating Gemini read_file on hydration path
         path = str(self.temp_dir / "hydrate_xbq_whk1.md")
         tool_input = {"file_path": path}
-        
+
         ctx = gate_registry.GateContext(
             session_id="test-session",
             event_name="PostToolUse",
@@ -100,14 +99,15 @@ class TestHydrationDetection(unittest.TestCase):
                 "tool_input": tool_input
             }
         )
-        
+
         result = gate_registry.post_hydration_trigger(ctx)
-        
+
         # Assertions
         mock_session_state.update_hydration_metrics.assert_called_with("test-session", turns_since_hydration=0)
         mock_session_state.clear_hydration_pending.assert_called_with("test-session")
-        mock_make_context.assert_called()
-        self.assertIsNotNone(result, "Should return context output")
+        self.assertIsNotNone(result, "Should return GateResult with critic injection")
+        self.assertEqual(result.verdict, gate_registry.GateVerdict.ALLOW)
+        self.assertIn("critic", result.context_injection.lower())
 
     @patch("hooks.gate_registry.hook_utils.get_hook_temp_dir")
     @patch("hooks.gate_registry.session_state")
