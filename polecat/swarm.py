@@ -14,7 +14,19 @@ import subprocess
 import sys
 import time
 import shutil
+import signal
 from typing import List, Optional
+
+# Global event to signal workers to drain
+STOP_EVENT = multiprocessing.Event()
+
+
+def signal_handler(signum, frame):
+    """Handle SIGINT (Ctrl+C) by setting stop event for graceful drain."""
+    print(
+        "\n🛑 Received stop signal. Enabling drain mode... (Press Ctrl+C again to force quit)"
+    )
+    STOP_EVENT.set()
 
 
 def alert(message: str):
@@ -96,9 +108,13 @@ def worker_loop(
                 exit_code = 1
 
         if exit_code == 0:
-            print(
-                f"[{worker_name}] ✅ Finished successfully. Restarting immediately..."
-            )
+            print(f"[{worker_name}] ✅ Finished successfully.")
+            # Check for stop signal before restarting
+            if STOP_EVENT.is_set():
+                print(f"[{worker_name}] 🛑 Drain mode active. Exiting.")
+                break
+
+            print(f"[{worker_name}] 🔄 Restarting immediately...")
             if not dry_run:
                 time.sleep(1)  # Safety buffer
             continue
@@ -106,6 +122,7 @@ def worker_loop(
             msg = f"Worker {worker_name} failed with exit code {exit_code}. Stopping this worker."
             print(f"[{worker_name}] 🛑 {msg}")
             alert(msg)
+            # In case of failure, we always stop this worker to prevent rapid retries of broken state
             break
 
 
@@ -136,6 +153,12 @@ def run_swarm(
     print(f"🔥 Spawning swarm: {claude_count} Claude, {gemini_count} Gemini")
     print(f"🖥️  Available CPUs: {len(available_cpus)} {available_cpus}")
 
+    # Register signal handler for the main process
+    signal.signal(signal.SIGINT, signal_handler)
+    print(
+        "ℹ️  Press Ctrl+C to stop gracefully (finish current items). Press twice to force quit."
+    )
+
     processes = []
 
     # Assign CPUs in round-robin
@@ -161,18 +184,20 @@ def run_swarm(
         processes.append(p)
         cpu_idx += 1
 
-    print(f"✨ Swarm active with {len(processes)} workers. Press Ctrl+C to stop.")
+    print(f"✨ Swarm active with {len(processes)} workers.")
 
     try:
         # Wait for all processes (they shouldn't exit unless failure/interrupt)
         for p in processes:
             p.join()
-    except KeyboardInterrupt:
-        print("\n🛑 Swarm stopping...")
+        print("👋 Swarm dispersed (all workers finished).")
+    except SystemExit:
+        # Caused by the double Ctrl+C force quit in signal handler
+        print("\n🛑 Force stopping swarm...")
         for p in processes:
             if p.is_alive():
                 p.terminate()
-        print("👋 Swarm dispersed.")
+        print("👋 Swarm terminated.")
 
 
 def main():

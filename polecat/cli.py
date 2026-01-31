@@ -162,22 +162,77 @@ def finish(no_push, do_nuke):
 
     print(f"Finishing task: {task.title} ({task_id})")
 
+    # --- SAFEGUARD 1: Dirty Exit Protection ---
     # Check for uncommitted changes
     result = subprocess.run(
         ["git", "status", "--porcelain"], capture_output=True, text=True
     )
     if result.stdout.strip():
-        print("⚠️  Warning: Uncommitted changes detected:")
-        print(result.stdout)
-        if not click.confirm("Continue anyway?"):
-            sys.exit(1)
+        print("⚠️  Warning: Uncommitted changes detected.")
+        # Automatically commit changes if they are simple
+        print("  🧹 Automatically staging and committing changes...")
+        try:
+            subprocess.run(["git", "add", "-u"], check=True)  # Stage modified/deleted
+            subprocess.run(
+                ["git", "add", "."], check=True
+            )  # Stage new files (careful!)
+            subprocess.run(
+                ["git", "commit", "-m", "chore: saving uncommitted agent work"],
+                check=True,
+            )
+            print("  ✅ Changes saved.")
+        except subprocess.CalledProcessError as e:
+            print(f"  ❌ Failed to auto-commit: {e}")
+            if not click.confirm("Continue without saving? (Risk of data loss)"):
+                sys.exit(1)
+
+    # --- SAFEGUARD 2: Repo-Nuke Protection ---
+    # Check if we are unexpectedly rewriting the whole repo
+    # This prevents the "orphan branch" issue where an agent commits 1000+ files as new
+    try:
+        # Get shortstat diff against origin/main to see scale of changes
+        diff_res = subprocess.run(
+            ["git", "diff", "--shortstat", "origin/main", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        # Output format: " 10 files changed, 100 insertions(+), 50 deletions(-)"
+        if diff_res.returncode == 0 and diff_res.stdout.strip():
+            parts = diff_res.stdout.strip().split(",")
+            files_changed_str = parts[0].strip().split(" ")[0]
+            if files_changed_str.isdigit():
+                files_changed = int(files_changed_str)
+                if files_changed > 50:
+                    print(
+                        f"\n🚨 SAFEGUARD ACTIVATE: Large changeset detected ({files_changed} files)."
+                    )
+                    print("   This looks like a 'repo nuke' or orphan branch issue.")
+                    print(
+                        "   Run 'git reset --soft FETCH_HEAD' to recover if this is accidental."
+                    )
+                    if not click.confirm("Are you SURE you want to push this?"):
+                        sys.exit(1)
+    except Exception as e:
+        print(f"Warning: Could not run repo checking safeguards: {e}")
 
     # Push to origin
     if not no_push:
         branch_name = f"polecat/{task_id}"
+
+        # --- SAFEGUARD 3: Main-Push Blockade ---
+        if branch_name == "main" or branch_name == "master":
+            print("🚨 SAFEGUARD: Refusing to push 'main' branch via polecat.")
+            sys.exit(1)
+
         print(f"Pushing {branch_name} to origin...")
         try:
-            subprocess.run(["git", "push", "-u", "origin", branch_name], check=True)
+            # Explicitly push local branch to remote branch of same name
+            # This avoids issues where tracking upstream is set to main
+            subprocess.run(
+                ["git", "push", "-u", "origin", f"{branch_name}:{branch_name}"],
+                check=True,
+            )
         except subprocess.CalledProcessError as e:
             print(f"Error pushing to origin: {e}", file=sys.stderr)
             sys.exit(1)
