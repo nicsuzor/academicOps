@@ -150,3 +150,39 @@ def test_non_skill_tool_ignored(mock_session_state):
 
     assert result is None
     mock_session_state.clear_hydration_pending.assert_not_called()
+
+
+@patch("hooks.gate_registry.session_state")
+def test_empty_skill_name_does_not_clear_hydration(mock_session_state):
+    """Verify empty/missing skill name does NOT clear hydration (fail-safe)."""
+    # Test with empty skill name
+    ctx_empty = GateContext(
+        session_id="s8",
+        event_name="PostToolUse",
+        input_data={"tool_name": "Skill", "tool_input": {"skill": ""}},
+    )
+
+    result = check_skill_activation_listener(ctx_empty)
+
+    assert result is not None
+    assert result.verdict == GateVerdict.ALLOW
+    assert result.metadata.get("source") == "skill_activation_unknown"
+    mock_session_state.clear_hydration_pending.assert_not_called()
+
+
+@patch("hooks.gate_registry.session_state")
+def test_missing_skill_name_does_not_clear_hydration(mock_session_state):
+    """Verify missing skill name key does NOT clear hydration (fail-safe)."""
+    # Test with no skill/name key at all
+    ctx_missing = GateContext(
+        session_id="s9",
+        event_name="PostToolUse",
+        input_data={"tool_name": "Skill", "tool_input": {}},
+    )
+
+    result = check_skill_activation_listener(ctx_missing)
+
+    assert result is not None
+    assert result.verdict == GateVerdict.ALLOW
+    assert result.metadata.get("source") == "skill_activation_unknown"
+    mock_session_state.clear_hydration_pending.assert_not_called()

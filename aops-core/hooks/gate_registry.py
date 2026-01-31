@@ -1343,6 +1343,14 @@ def check_skill_activation_listener(ctx: GateContext) -> Optional[GateResult]:
 
     skill_name = tool_input.get("skill") or tool_input.get("name") or ""
 
+    # Fail-safe: Empty/unknown skill names should NOT clear hydration
+    # We require a known substantive skill to clear the hydration gate
+    if not skill_name:
+        return GateResult(
+            verdict=GateVerdict.ALLOW,
+            metadata={"source": "skill_activation_unknown", "skill": ""},
+        )
+
     # Infrastructure skills should NOT clear hydration pending
     # These are utility/navigation commands that don't satisfy the hydration intent
     if skill_name in INFRASTRUCTURE_SKILLS_NO_HYDRATION_CLEAR:
