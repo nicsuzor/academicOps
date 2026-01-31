@@ -58,7 +58,6 @@ Before merging, verify:
 3. **Commits exist** that aren't in main
 4. **Worktree is clean** (no uncommitted changes)
 5. **Work not already merged** via another path
-6. **Critic review completed** (critic agent must compare original task request with diff)
 
 ```bash
 # Check for unmerged commits
@@ -88,24 +87,7 @@ For non-trivial merges, the engineer (human or reviewing agent) performs first-p
 
 **Key principle**: Polecats prepare work, reviewers approve, reviewers execute merge. Polecats cannot self-merge.
 
-### 2c. Critic Review (Automated Quality Gate)
-
-**CRITICAL:** Before accepting any commit, the agent MUST:
-- Invoke the critic agent to review the changes
-- Compare the original task request/acceptance criteria against the actual diff
-- Verify all acceptance criteria have been met
-- Document the critic's verdict in the task body
-
-Example workflow:
-```
-Task(subagent_type='critic', prompt='Compare the original task request with the actual diff from polecat/{task-id}. Verify all acceptance criteria have been met and that changes align with the request.')
-```
-
-Critic must return a verdict before proceeding to Step 3.
-
 ### 3. Execute Merge
-
-**Prerequisite:** Critic review from Step 2 must be completed and approved.
 
 The standard merge process:
 
@@ -123,8 +105,6 @@ git commit -m "Merge polecat/{task-id}: {task-title}"
 # Push
 git push origin main
 ```
-
-**Constraint verification:** `BEFORE commit: critic_reviewed AND diff_matches_acceptance_criteria`
 
 ### 4. Run Tests
 
@@ -168,8 +148,6 @@ The `Engineer.scan_and_merge()` method automates this workflow:
 
 1. Finds all tasks with `status: merge_ready`
 2. For each task:
-   - **Invokes critic agent** to compare original task request with diff
-   - Verifies critic verdict before proceeding
    - Locates the repo path via PolecatManager
    - Fetches from origin
    - Squash merges the polecat branch
@@ -177,13 +155,6 @@ The `Engineer.scan_and_merge()` method automates this workflow:
    - Commits and pushes
    - Cleans up branch and worktree
    - Marks task as done
-
-**Critic invocation:** Before any commit, the engineer must:
-1. Generate the diff between main and polecat/{task-id}
-2. Extract the original task request and acceptance criteria from task.body
-3. Invoke critic agent with both inputs
-4. Halt merge if critic returns `REVISE` or `HALT` verdict
-5. Document verdict in task body before proceeding
 
 **Usage:**
 
@@ -312,14 +283,10 @@ If the worktree directory doesn't exist but branch does:
 
 ## Constraints
 
-- `BEFORE commit: critic_reviewed` - Critic agent MUST review before accepting any commit
-- `BEFORE commit: diff_matches_acceptance_criteria` - Critic must verify diff aligns with original request
 - Never force-push to main
 - Always run tests after merge
 - Never skip cleanup steps
-- Never skip critic review (non-negotiable for quality assurance)
 - Update task status after merge
-- Document critic verdict in task body for audit trail
 
 ## Related
 

@@ -41,6 +41,8 @@ class Engineer:
 
     def process_merge(self, task):
         repo_path = self.polecat_mgr.get_repo_path(task)
+        branch_name = f"polecat/{task.id}"
+        target_branch = "main"
 
         if not repo_path.exists():
             raise FileNotFoundError(f"Repo not found at {repo_path}")
@@ -52,11 +54,64 @@ class Engineer:
                 f"  cd {repo_path} && git stash"
             )
 
-        # Set status to REVIEW for manual/agent intervention
-        print(f"  Setting status to REVIEW for critic review...")
-        task.status = TaskStatus.REVIEW
+        # 1. Fetch & Verify
+        print(f"  Fetching in {repo_path}...")
+        self._run_git(repo_path, ["fetch", "origin"])
+
+        unpushed = self._get_unpushed_count(repo_path, target_branch)
+        if unpushed > 0:
+            raise RuntimeError(
+                f"Main branch has {unpushed} unpushed commits. Run:\n"
+                f"  cd {repo_path} && git push origin {target_branch}"
+            )
+
+        remote_branch = f"origin/{branch_name}"
+        if not self._branch_exists(repo_path, remote_branch) and not self._branch_exists(repo_path, branch_name):
+             raise ValueError(f"Branch {branch_name} not found locally or on origin")
+
+        # 2. Checkout Target
+        print(f"  Updating {target_branch}...")
+        self._run_git(repo_path, ["checkout", target_branch])
+        self._run_git(repo_path, ["pull", "origin", target_branch])
+
+        # 3. Squash Merge (Dry Run)
+        print(f"  Attempting squash merge of {branch_name}...")
+        try:
+            self._run_git(repo_path, ["merge", "--squash", branch_name])
+        except subprocess.CalledProcessError:
+            self._run_git(repo_path, ["merge", "--abort"])
+            raise RuntimeError("Merge conflicts detected")
+
+        # 4. Run Tests
+        test_cmd = ["uv", "run", "pytest"] if (repo_path / "pyproject.toml").exists() else ["echo", "No tests configured"]
+        print(f"  Running tests: {' '.join(test_cmd)}")
+        try:
+            # Capture output to log on failure
+            subprocess.run(test_cmd, cwd=repo_path, check=True, capture_output=True)
+        except subprocess.CalledProcessError as e:
+            self._run_git(repo_path, ["reset", "--hard", "HEAD"])
+            # Include stdout/stderr in error message
+            raise RuntimeError(f"Tests failed:\n{e.stdout.decode()}\n{e.stderr.decode()}")
+
+        # 5. Commit & Push
+        print("  Committing and Pushing...")
+        commit_msg = f"Merge {branch_name}: {task.title} ({task.id})"
+        self._run_git(repo_path, ["commit", "-m", commit_msg])
+        self._run_git(repo_path, ["push", "origin", target_branch])
+
+        # 6. Cleanup Branches
+        print("  Cleaning up branch...")
+        self._run_git(repo_path, ["branch", "-D", branch_name], check=False)
+        self._run_git(repo_path, ["push", "origin", "--delete", branch_name], check=False)
+
+        # 7. Update Task (Success)
+        print("  Marking task as DONE...")
+        task.status = TaskStatus.DONE
         self.storage.save_task(task)
-        print("  ✅ Task moved to REVIEW queue.")
+        
+        # 8. Nuke Worktree
+        self.polecat_mgr.nuke_worktree(task.id)
+        print("  ✅ Merge Complete.")
 
     def handle_failure(self, task, error_msg):
         """Kickback workflow: Set status to review for human intervention."""

@@ -201,29 +201,37 @@ Parse task data from output to identify:
 - Today's work by project
 - Blocked tasks
 
-### 3.1.5: Generate Project Status (Summary)
+### 3.1.5: Generate Task Tree
 
-Use the task data loaded in Step 3.1 (`list_tasks`) to generate a summarized view of active projects. DO NOT print the full task tree (it is too verbose).
+After loading task data, generate the ASCII task tree for the `## Task Tree` section:
 
-**Objective**: Show highest priority work explicitly, summarize the rest.
+```python
+mcp__plugin_aops-tools_task_manager__get_task_tree(
+    exclude_status=["done", "cancelled"],
+    max_depth=2
+)
+```
 
-**Logic**:
-1. Group tasks by Project
-2. For each project with active tasks:
-   - List P0 and P1 tasks explicitly (Title + ID)
-   - Count P2/P3/P4 tasks
-   - Format as a summary line
+This provides a bird's eye view of active project hierarchy. The tree:
+- Excludes completed and cancelled tasks
+- Shows up to 2 levels deep (roots + children + grandchildren)
+- Displays task ID, title, and status
 
 **Format in daily note**:
 
 ```markdown
-## Project Status
+## Task Tree
 
-**[[Project Name]]**: [task-id] Task Title (P0), [task-id] Task Title (P1) + N other tasks
-**[[Another Project]]**: 3 active tasks (all P2+)
+```
+[project-id] Project Name (status)
+  [task-id] Task title (status)
+    [subtask-id] Subtask title (status)
 ```
 
-*Active projects summary (P0/P1 explicit, others aggregated)*
+*Active projects with depth 2, excluding done/cancelled tasks*
+```
+
+Copy the `formatted` field from the response directly into the code block.
 
 ### 3.2: Build Focus Section
 
