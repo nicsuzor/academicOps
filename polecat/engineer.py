@@ -83,7 +83,12 @@ class Engineer:
             raise RuntimeError("Merge conflicts detected")
 
         # 4. Run Tests
-        test_cmd = ["uv", "run", "pytest"] if (repo_path / "pyproject.toml").exists() else ["echo", "No tests configured"]
+        if not (repo_path / "pyproject.toml").exists():
+            raise RuntimeError(
+                f"No test configuration found. Expected pyproject.toml at {repo_path}. "
+                f"Merge verification requires a test suite."
+            )
+        test_cmd = ["uv", "run", "pytest"]
         print(f"  Running tests: {' '.join(test_cmd)}")
         try:
             # Capture output to log on failure
