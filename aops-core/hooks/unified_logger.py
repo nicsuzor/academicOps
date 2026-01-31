@@ -39,6 +39,7 @@ from lib.session_state import (
     get_or_create_session_state,
     record_subagent_invocation,
     set_critic_invoked,
+    set_qa_invoked,
     set_session_insights,
 )
 
@@ -112,6 +113,10 @@ def handle_post_tool_use(session_id: str, input_data: dict[str, Any]) -> None:
             # The gate mainly checks *that* it was invoked.
             set_critic_invoked(session_id, verdict="INVOKED")
             logger.info("Critic gate set via activate_skill")
+        elif skill_name == "qa":
+            # QA skill invoked
+            set_qa_invoked(session_id)
+            logger.info("QA gate set via activate_skill")
 
 
 def handle_subagent_stop(session_id: str, input_data: dict[str, Any]) -> None:

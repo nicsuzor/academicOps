@@ -34,6 +34,8 @@ ACTIVE_GATES = [
     {"name": "task_required", "check": "task_required", "events": ["PreToolUse"]},
     # 4. Custodiet: Blocks mutating tools when compliance check is overdue
     {"name": "custodiet", "check": "custodiet", "events": ["PreToolUse"]},
+    # 5. QA Enforcement: Blocks task completion if QA missing
+    {"name": "qa_enforcement", "check": "qa_enforcement", "events": ["PreToolUse"]},
     # PostToolUse gates (Accounting Pipeline)
     # 1. Accountant: Updates state (hydration cleared, tool counts, handover flags)
     {"name": "accountant", "check": "accountant", "events": ["PostToolUse"]},

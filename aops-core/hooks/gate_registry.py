@@ -1245,7 +1245,49 @@ def check_skill_activation_listener(ctx: GateContext) -> Optional[GateResult]:
         verdict=GateVerdict.ALLOW, metadata={"source": "skill_activation_bypass"}
     )
 
-    return None
+
+def check_qa_enforcement_gate(ctx: GateContext) -> Optional[GateResult]:
+    """
+    Check if QA verification is required before task completion.
+    """
+    _check_imports()
+
+    # Only applies to PreToolUse
+    if ctx.event_name != "PreToolUse":
+        return None
+
+    # Only applies to complete_task
+    if ctx.tool_name not in ("complete_task", "mcp__plugin_aops-tools_task_manager__complete_task"):
+        return None
+
+    # Check if QA is required
+    # Requirement: If prompt-hydrator was used (hydrated_intent exists), QA is mandatory.
+    state = session_state.load_session_state(ctx.session_id)
+    if not state:
+        return None
+
+    hydration = state.get("hydration", {})
+    hydrated_intent = hydration.get("hydrated_intent")
+
+    if not hydrated_intent:
+        # No hydration occurred, so strictly speaking QA might not be mandated by hydrator.
+        return None
+
+    # Check if QA was invoked
+    if session_state.is_qa_invoked(ctx.session_id):
+        return None
+
+    # Block
+    return GateResult(
+        verdict=GateVerdict.DENY,
+        context_injection=(
+            "⛔ **BLOCKED: QA Verification Required**\n\n"
+            "This task was planned via `prompt-hydrator`, which mandates a QA step.\n"
+            "You have not invoked the QA skill yet.\n\n"
+            "**Action Required**: Run `activate_skill(name='qa')` to verify your work before completion."
+        ),
+        metadata={"source": "qa_enforcement"},
+    )
 
 
 # Registry of available gate checks
@@ -1254,6 +1296,7 @@ GATE_CHECKS = {
     "session_start": check_session_start_gate,
     "hydration": check_hydration_gate,  # PreToolUse
     "custodiet": check_custodiet_gate,
+    "qa_enforcement": check_qa_enforcement_gate,  # PreToolUse
     # "axiom_enforcer": merged into custodiet
     "handover": check_handover_gate,  # PostToolUse
     "agent_response": check_agent_response_listener,  # AfterAgent

@@ -202,6 +202,7 @@ def create_session_state(session_id: str) -> SessionState:
             "custodiet_block_reason": None,
             "current_workflow": None,
             "hydration_pending": True,  # Default True - gate blocks until hydrator invoked
+            "qa_invoked": False,
         },
         hydration={
             "original_prompt": None,
@@ -711,6 +712,37 @@ def is_critic_invoked(session_id: str) -> bool:
     if state is None:
         return False
     return state.get("state", {}).get("critic_invoked", False)
+
+
+# ============================================================================
+# QA Invocation Tracking API
+# ============================================================================
+
+
+def set_qa_invoked(session_id: str) -> None:
+    """Set qa_invoked flag when QA skill is executed.
+
+    Args:
+        session_id: Claude Code session ID
+    """
+    state = get_or_create_session_state(session_id)
+    state["state"]["qa_invoked"] = True
+    save_session_state(session_id, state)
+
+
+def is_qa_invoked(session_id: str) -> bool:
+    """Check if QA skill has been invoked for this session.
+
+    Args:
+        session_id: Claude Code session ID
+
+    Returns:
+        True if qa_invoked flag is set
+    """
+    state = load_session_state(session_id)
+    if state is None:
+        return False
+    return state.get("state", {}).get("qa_invoked", False)
 
 
 # ============================================================================
