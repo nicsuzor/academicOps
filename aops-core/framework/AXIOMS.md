@@ -53,6 +53,7 @@ If you don't know, say so. No guesses.
 **Corollaries**:
 - This includes implementation approaches. If you don't know how to use a tool/library the user specified, say so and ask - don't invent your own approach that "looks similar."
 - When user provides a working example to follow, adapt that example directly. Don't extract abstract "patterns" and re-implement from scratch - that's inventing your own approach with extra steps.
+- Subagent claims about external systems (GitHub issue numbers, version info, API behavior) require verification before propagation. Subagents can hallucinate plausible-sounding specifics.
 
 **Derivation**: Hallucinated information corrupts the knowledge base and erodes trust. Honest uncertainty is preferable to confident fabrication.
 
@@ -128,6 +129,7 @@ We work in git repositories - git is the backup system.
 - Edit files directly, rely on git to track changes
 - Commit AND push after completing logical work units
 - Commit promptly - don't hesitate or wait for review. Git makes reversion trivial.
+- Git-derivable data (diffs, logs, blame) should be computed on-demand, not embedded in persistent storage
 
 **Derivation**: Backup files create clutter and confusion. Git provides complete history with branching, diffing, and recovery.
 
@@ -183,6 +185,7 @@ Never close issues or claim success without confirmation. No error is somebody e
 - Never rationalize away requirements. If a test fails, fix it or ask for help
 - Reporting failure is not completing the task. If infrastructure fails, demand it be fixed and verify it works before moving on. No partial success.
 - When documenting a command or workflow, execute it to verify it works. Documentation without execution is incomplete.
+- **Warning messages are errors.** "Expected warning" is an oxymoron. If output contains warnings, fix the cause - don't rationalize it as acceptable.
 
 **Derivation**: Partial success is failure. The user needs working solutions, not excuses.
 
@@ -267,6 +270,7 @@ Tasks requiring external communication (emails to non-users), unknown file locat
 - "Send email to [external party]" → HALT, ask user to send or provide exact content
 - "Find [file with unknown location]" → HALT, ask user for path
 - "Schedule meeting" → HALT unless all details are explicit
+- "Test interactive CLI" (gemini, npm prompts, any tool requiring stdin) → HALT, ask user to execute and report results
 
 **Derivation**: Agent attempts at human tasks waste cycles and risk incorrect actions. Clear delegation boundaries prevent fishing expeditions.
 

@@ -38,8 +38,49 @@ Verify that the setup script correctly installs commands and workflows (fixing t
 Verify that the hydration system (which injects context) is working and failing hooks are visible.
 
 1. **Verify Hook Configuration**:
-    Check `aops-core/gemini-extension.json` ensures `hooks` are pointing to the correct router.
-2. **Manual Hook Check** (Optional):
+    Check that `dist/aops-core/hooks/hooks.json` exists and contains Gemini event names.
+
+    **CRITICAL**: Gemini CLI reads hooks from `hooks/hooks.json`, NOT from `gemini-extension.json`.
+    The `gemini-extension.json` file should NOT have a `hooks` key - hooks belong ONLY in `hooks/hooks.json`.
+
+    ```bash
+    # Verify hooks.json exists in dist
+    cat dist/aops-core/hooks/hooks.json | jq '.hooks | keys'
+    # Expected: ["AfterTool", "BeforeAgent", "BeforeTool", "SessionEnd", "SessionStart", "SubagentStop"]
+
+    # Verify gemini-extension.json has NO hooks key
+    cat dist/aops-core/gemini-extension.json | jq 'has("hooks")'
+    # Expected: false
+    ```
+
+2. **Quick Hook Loading Test** (Recommended):
+    Run gemini with a short prompt to verify hooks are discovered:
+    ```bash
+    gemini -p "what hooks do you have enabled?"
+    ```
+
+    *Expected output (working state)*:
+    ```
+    Loaded cached credentials.
+    Loading extension: aops-core
+    Loading extension: aops-tools
+    Invalid hook event name: "SubagentStop" from extensions config. Skipping.
+    Hook registry initialized with 5 hook entries  # 5+ indicates hooks loaded
+    ```
+
+    *Broken state indicator*:
+    ```
+    Hook registry initialized with 0 hook entries  # Hooks not loading from hooks/hooks.json
+    ```
+
+    This test completes in ~3s and requires no interactive session. See [[workflows/debugging]] for hook debugging procedures.
+
+    **Common failure causes**:
+    - `hooks/hooks.json` missing from dist (check build.py)
+    - Hooks defined in `gemini-extension.json` instead of `hooks/hooks.json`
+    - Wrong event names (Claude uses PreToolUse, Gemini uses BeforeTool)
+
+3. **Manual Hook Check** (Optional):
     Inspect `logs/user_prompt_submit.log` (if enabled) or ensure the previous silent failures are now logging errors.
 
 ## 4. Automated Agent Testing (The Harness)

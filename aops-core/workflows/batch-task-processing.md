@@ -32,18 +32,34 @@ Pull and complete a task. Use MCP task tools directly:
 
 **Why**: Skills require interactive prompts which are auto-denied in background mode.
 
-### 3. Monitor via Notifications
+### 3. Monitor Completion (Fire-and-Forget Pattern)
 
-**DO NOT** poll TaskOutput with full content - it bloats context with JSONL transcripts.
+> ⚠️ **WARNING**: Background agent notifications are unreliable (P#86). Empirical testing showed ~20% didn't arrive, others delayed 2-5 minutes. Never use `TaskOutput(block=true)` - it can deadlock.
 
-Instead:
-- Wait for system notifications: "Agent X (status: completed)"
-- Only read output files if you need specific failure details
-- Use `block=false, timeout=1000` for quick status checks if absolutely needed
+**Recommended pattern - Fire and Forget**:
 
-### 4. Replace Completed Workers
+1. Spawn all workers with `run_in_background=true`
+2. **Continue other work** - don't wait for notifications
+3. Periodically check task completion via MCP:
+   ```
+   mcp__plugin_aops-tools_task_manager__list_tasks(status="done", limit=20)
+   ```
+4. Workers update task status to `done` when they complete
 
-When a worker completes, spawn a replacement to maintain pool size.
+**Why this works**: Workers call `complete_task()` directly, updating task status in the MCP database. You don't need notifications - just poll the task database.
+
+**Avoid these anti-patterns**:
+- ❌ `TaskOutput(block=true)` - deadlock risk
+- ❌ Waiting for `<agent-notification>` or `<task-notification>` - unreliable
+- ❌ Reading `.output` files for status - files are cleaned up after completion
+
+### 4. Replace Completed Workers (Optional)
+
+If maintaining a worker pool:
+
+1. Poll task status via MCP to detect completions
+2. Spawn replacement workers for tasks still in queue
+3. Continue until queue is empty
 
 ## Known Limitations
 
@@ -53,20 +69,27 @@ When a worker completes, spawn a replacement to maintain pool size.
 | Bash denied (some) | Same permission issue | Workers can use Glob/Grep/Read |
 | Can't kill agents | KillShell only for bash tasks | Wait for natural completion |
 | Race conditions | Multiple workers claiming same task | Check status/assignee before claiming |
+| **Notifications unreliable** | Empirical observation (P#86) | Use fire-and-forget + MCP polling |
 
 ## Efficiency Guidelines
 
-1. **Don't read full outputs** - completion notifications tell you status
-2. **Batch spawn workers** - single message with multiple Task calls
-3. **Clear instructions** - explicit MCP tool names prevent confusion
-4. **Let workers fail fast** - they'll report blockers in their output
+1. **Fire-and-forget** - spawn workers and continue other work
+2. **Poll MCP for status** - task database is the source of truth, not notifications
+3. **Batch spawn workers** - single message with multiple Task calls
+4. **Clear instructions** - explicit MCP tool names prevent confusion
+5. **Let workers fail fast** - they'll update task status to blocked/review
 
 ## Example Supervisor Loop
 
 ```
-1. Spawn 8 workers with MCP-direct instructions
-2. Continue other work
-3. When notified of completion, check if task succeeded
-4. Spawn replacement worker
-5. Repeat until queue empty
+1. Spawn 8 workers with MCP-direct instructions (run_in_background=true)
+2. Continue other work (don't wait for notifications)
+3. Periodically: list_tasks(status="done") to check completions
+4. Periodically: list_tasks(status="active") to see remaining queue
+5. When queue is empty and all workers done, summarize results
 ```
+
+## References
+
+- P#86: Background Agent Notifications Are Unreliable
+- P#77: CLI-MCP Interface Parity (workers use MCP, not CLI)

@@ -25,7 +25,9 @@ This document covers both Claude Code's hook system and the academicOps implemen
 
 ## Router Architecture
 
-All hooks are dispatched through a single router (`hooks/router.py`). This consolidates multiple hook outputs into a single response.
+All hooks are dispatched through a single router (`hooks/router.py`). This consolidates multiple hook outputs into a single response. The router is **unified for both Claude Code and Gemini CLI** - the same router.py handles both platforms.
+
+**Note:** The `hooks/gemini/` subdirectory is legacy/unused. We now use the unified router at `hooks/router.py` for all platforms.
 
 ### Async Dispatch
 
@@ -54,6 +56,114 @@ For async execution, add `"async": True`:
 ```python
 {"script": "slow_hook.py", "async": True}
 ```
+
+After adding a hook, run `setup.sh` to rebuild and reinstall the extension (see Deployment Architecture below).
+
+## academicOps Deployment Architecture
+
+academicOps uses a **three-phase build system** for hooks, not the standard Claude Code settings.json approach. Hooks are bundled into the Gemini extension package and installed atomically.
+
+### Phase 1: Source
+
+Hooks live in `$AOPS/aops-core/hooks/`:
+
+```
+aops-core/hooks/
+├── router.py              # Unified dispatcher (Claude + Gemini)
+├── sessionstart_load_axioms.py
+├── user_prompt_submit.py
+├── policy_enforcer.py
+├── autocommit_state.py
+├── unified_logger.py
+├── lib/                   # Shared utilities
+├── templates/             # Template files for context injection
+└── gemini/                # LEGACY - not used (unified router replaced this)
+```
+
+### Phase 2: Build (`scripts/build.py`)
+
+The build script **copies** hooks to the distribution directory:
+
+```
+$AOPS/aops-core/hooks/ → $AOPS/dist/aops-core/hooks/
+```
+
+Key behaviors:
+- Hooks are **copied**, not symlinked (avoids source pollution)
+- `gemini/` subdirectory is **not copied** (uses unified router)
+- `router.py` is the single entry point for all hook events
+- Variable substitution: `${AOPS}` replaced with absolute path
+
+### Phase 3: Install (`scripts/install.py`)
+
+The extension is linked via Gemini CLI:
+
+```bash
+gemini extensions link dist/aops-core --consent
+```
+
+This registers the extension with Gemini, including the hooks defined in `gemini-extension.json`.
+
+### Extension Manifest (`gemini-extension.json`)
+
+Hooks are registered in the extension manifest, **not** in settings.json:
+
+```json
+{
+  "name": "aops-core",
+  "hooks": {
+    "SessionStart": [{
+      "matcher": "startup",
+      "hooks": [{
+        "name": "aops-router",
+        "type": "command",
+        "command": "uv run --directory ${AOPS} python ${AOPS}/dist/aops-core/hooks/router.py SessionStart",
+        "timeout": 15000
+      }]
+    }],
+    "BeforeTool": [{
+      "matcher": "*",
+      "hooks": [{
+        "name": "aops-router",
+        "type": "command",
+        "command": "uv run --directory ${AOPS} python ${AOPS}/dist/aops-core/hooks/router.py BeforeTool",
+        "timeout": 5000
+      }]
+    }]
+  }
+}
+```
+
+**Key differences from standard Claude Code:**
+
+| Aspect | Standard Claude Code | academicOps |
+|--------|---------------------|-------------|
+| Config location | `settings.json` | `gemini-extension.json` |
+| Hook paths | Absolute paths or `$CLAUDE_PROJECT_DIR` | `${AOPS}/dist/aops-core/hooks/router.py` |
+| Installation | Manual settings edit | `gemini extensions link` |
+| Hook scripts | Individual scripts per event | Single router dispatches all |
+| Rebuild needed | No (settings hot-reload) | Yes (`setup.sh` after changes) |
+
+### Workflow: Adding or Modifying Hooks
+
+1. Edit hooks in `$AOPS/aops-core/hooks/`
+2. If adding a new hook, register in `HOOK_REGISTRY` in `router.py`
+3. Run `setup.sh` (triggers build.py → install.py)
+4. Test with `gemini --debug` to verify hooks are loading
+
+### Event Name Mapping
+
+Gemini CLI uses different event names than Claude Code:
+
+| Claude Code | Gemini CLI |
+|-------------|------------|
+| SessionStart | SessionStart |
+| PreToolUse | BeforeTool |
+| PostToolUse | AfterTool |
+| UserPromptSubmit | BeforeAgent |
+| Stop | SessionEnd |
+
+The router handles this mapping transparently - register hooks using Claude Code event names in `HOOK_REGISTRY`, and the router translates for Gemini
 
 ---
 

@@ -112,11 +112,33 @@ Tested spawning 5 parallel haiku workers on aops framework tasks:
 
 ### Known Issues
 
-1. **Notification delays**: Task completion notifications arrive 2-5 minutes late, not real-time
-2. **Missing notifications**: ~20% of notifications may not arrive at all
-3. **Output file cleanup**: Worker output files at `/tmp/claude/.../tasks/*.output` are cleaned up after completion, making post-hoc analysis difficult
-4. **No batch status view**: Must check `git log` or task status individually to verify completions
-5. **Worker agents lack MCP tools**: Workers cannot call MCP tools (Outlook, Zotero, memory, calendar, browser). Only file operations, git, and code edits work. Filter queue to MCP-independent tasks before spawning workers. See HEURISTICS.md P#77.
+> ⚠️ **CRITICAL**: Background agent notifications are unreliable. See P#86 for details and workarounds.
+
+1. **Notifications unreliable (P#86)**: Empirical testing showed ~20% of notifications didn't arrive, others delayed 2-5 minutes. **Never use `TaskOutput(block=true)`** - it can deadlock.
+2. **Output file cleanup**: Worker output files at `/tmp/claude/.../tasks/*.output` are cleaned up after completion, making post-hoc analysis difficult
+3. **No batch status view**: Must check `git log` or task status individually to verify completions
+4. **Worker agents lack MCP tools**: Workers cannot call MCP tools (Outlook, Zotero, memory, calendar, browser). Only file operations, git, and code edits work. Filter queue to MCP-independent tasks before spawning workers. See HEURISTICS.md P#77.
+
+### Supervision Pattern (Fire-and-Forget)
+
+Since notifications are unreliable, use **fire-and-forget** with MCP polling:
+
+```python
+# 1. Spawn workers (don't wait for notifications)
+Task(subagent_type="aops-core:worker", run_in_background=True, ...)
+
+# 2. Continue other work
+
+# 3. Poll MCP task status to check completions
+mcp__plugin_aops-tools_task_manager__list_tasks(status="done", limit=20)
+
+# 4. Workers update task status directly - no need for notifications
+```
+
+**Anti-patterns to avoid**:
+- ❌ `TaskOutput(block=true)` - deadlocks when notifications fail
+- ❌ Waiting for `<agent-notification>` - unreliable
+- ❌ Reading `.output` files for status - files are cleaned up
 
 ### Monitoring Workarounds
 
@@ -124,19 +146,13 @@ Tested spawning 5 parallel haiku workers on aops framework tasks:
 # Check recent commits for worker output
 git log --oneline -10
 
-# Check task completion status directly
-mcp__plugin_aops-core_tasks__get_task(id="<task-id>")
+# Check task completion status directly (PREFERRED)
+mcp__plugin_aops-tools_task_manager__list_tasks(status="done")
+mcp__plugin_aops-tools_task_manager__get_task(id="<task-id>")
 
 # Poll output files while workers run (before cleanup)
 tail -f /tmp/claude/-home-nic-writing/tasks/*.output
 ```
-
-### Recommendations for Improvement
-
-1. **Notification reliability**: Investigate why 20% of notifications fail
-2. **Persist worker summaries**: Write completion reports to task body or memory
-3. **Batch coordinator**: Add a status aggregator that tracks parallel workers
-4. **Output retention**: Keep output files for N minutes after completion
 
 ## Gemini CLI Task Offloading
 

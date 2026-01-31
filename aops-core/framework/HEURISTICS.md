@@ -172,6 +172,8 @@ description: Working hypotheses validated by evidence.
 - A child task with an empty body (just title) is a sign of premature decomposition
 - Decompose when work is claimed OR when subtasks need independent tracking
 - Numbered lists in parent body are sufficient for planning; tasks are for execution
+- For debugging tasks, validate the hypothesis (e.g., "working version exists at commit X") BEFORE decomposing into fix steps. An unvalidated hypothesis leads to wasted subtasks.
+- **Tests passing ≠ acceptance criteria met**. When a task specifies a methodology (e.g., "use git bisect"), follow the methodology. A passing test found by a different path doesn't satisfy "identify the breaking commit."
 
 **Derivation**: Empty child tasks duplicate information without adding value. They create task sprawl and make the queue harder to navigate. Decomposition should be triggered by need (claiming work, adding detail), not by reflex.
 
@@ -212,6 +214,7 @@ description: Working hypotheses validated by evidence.
 - Agent's role: verify with minimal steps, then act or report findings
 - Investigate root cause ONLY if user asks "why" or if minimal verification fails
 - Do NOT explain investigation reasoning ("I had to rule out X...") - just report the result
+- **When user/task specifies a methodology, EXECUTE THAT METHODOLOGY.** Do not substitute your own approach. "User says git bisect" → do git bisect. "User says X worked yesterday" → it's a regression, find when it broke.
 
 **Derivation**: Users have ground-truth about their own system. Over-investigation violates P#5 (Do One Thing) by wasting context on "proving" what the user already knows. Verification ≠ Investigation. One test: reproduce the bug, fix it, stop. P#5's warning applies: "I'll just [investigate a bit more]" is the exact friction the axiom exists to prevent.
 
@@ -409,3 +412,33 @@ description: Working hypotheses validated by evidence.
 - If reference uses X and you tried Y, fix is to use X, not to simplify to Z
 
 **Derivation**: P#3 says "adapt the example directly, don't re-implement." This applies equally during error recovery. Errors don't license divergence from the reference - they signal that you haven't matched it closely enough.
+
+---
+
+## Background Agent Notifications Are Unreliable (P#86)
+
+**Statement**: Claude Code background task completion notifications may not arrive or may be delayed. Never block on TaskOutput waiting for notifications. Use polling or fire-and-forget patterns.
+
+**Empirical Evidence (2026-01-22 hypervisor test)**:
+- 4/5 (80%) notification delivery observed with 5 parallel workers
+- Delivered notifications were delayed 2-5 minutes
+- `TaskOutput(block=true)` can deadlock when notifications fail to arrive
+- Output files are cleaned up after completion, making post-hoc analysis difficult
+
+**Workaround Patterns**:
+- **Fire-and-forget**: Spawn workers, continue other work, don't wait for completion
+- **MCP status polling**: Check task status directly via `get_task` MCP calls
+- **Never use** `TaskOutput(block=true)` with background agents
+
+**Example (polling pattern)**:
+```python
+# Instead of blocking:
+# TaskOutput(task_id=id, block=true)  # DEADLOCK RISK
+
+# Poll MCP task status or just continue other work
+# Workers will update task status when done
+mcp__plugin_aops-tools_task_manager__get_task(id="...")
+# Check if status == "done"
+```
+
+**Derivation**: Empirical observation from hypervisor testing (see specs/worker-hypervisor.md "Empirical Findings"). P#8 (Fail-Fast) says we should fail on unreliable dependencies - notification-blocking supervision patterns fail silently via deadlock instead.

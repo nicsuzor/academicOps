@@ -21,6 +21,7 @@ tags: [framework, enforcement, moc]
 | [[dont-make-shit-up]]                       | Don't Make Shit Up              | AXIOMS.md                                       | SessionStart         |       |
 | [[always-cite-sources]]                     | Always Cite Sources             | AXIOMS.md                                       | SessionStart         |       |
 | [[do-one-thing]]                            | Do One Thing                    | TodoWrite visibility, custodiet drift detection, verbatim prompt comparison | During execution     |       |
+| [[do-one-thing]]                            | Hydrator Returns Plan Only      | check_subagent_tool_restrictions blocks Edit/Write for prompt-hydrator | PreToolUse | Hard Gate |
 | [[data-boundaries]]                         | Data Boundaries                 | settings.json deny rules                        | PreToolUse           |       |
 | [[project-independence]]                    | Project Independence            | AXIOMS.md                                       | SessionStart         |       |
 | [[fail-fast-code]]                          | Fail-Fast (Code)                | policy_enforcer.py blocks destructive git       | PreToolUse           |       |
@@ -110,7 +111,7 @@ tags: [framework, enforcement, moc]
 
 | Level      | Count | Description                                                |
 | ---------- | ----- | ---------------------------------------------------------- |
-| Hard Gate  | 11    | Blocks action (PreToolUse hooks, deny rules, pre-commit)   |
+| Hard Gate  | 12    | Blocks action (PreToolUse hooks, deny rules, pre-commit)   |
 | Soft Gate  | 8     | Injects guidance, agent can proceed                        |
 | Prompt     | 43    | Instructional (AXIOMS.md, HEURISTICS.md, CORE.md, REMINDERS.md at SessionStart) |
 | Observable | 2     | Creates visible artifact (TodoWrite)                       |
@@ -393,7 +394,7 @@ Main agent has all tools except deny rules. Subagents are restricted:
 | Agent             | Tools Granted                                  | Model  | Purpose                 |
 | ----------------- | ---------------------------------------------- | ------ | ----------------------- |
 | Main agent        | All (minus deny rules)                         | varies | Primary task execution  |
-| prompt-hydrator   | Read, Grep, mcp__memory__retrieve_memory, Task | haiku  | Context enrichment      |
+| prompt-hydrator   | Read, Grep, mcp__memory__retrieve_memory, Task | haiku  | Context enrichment (Edit/Write blocked by check_subagent_tool_restrictions) |
 | custodiet         | Read                                           | haiku  | Compliance checking     |
 | critic            | Read                                           | opus   | Plan/conclusion review  |
 | qa                | Read, Grep, Glob                               | opus   | Independent verification|
@@ -450,7 +451,7 @@ Context injected via CORE.md at SessionStart. Guides where agents place files.
 | ---------------- | ------------------------------------------------------------------------------- |
 | Deny rules       | `$AOPS/config/claude/settings.json` → `permissions.deny`                        |
 | Agent tools      | `$AOPS/aops-core/agents/*.md` → `tools:` frontmatter                            |
-| PreToolUse       | `$AOPS/aops-core/hooks/hydration_gate.py`, `task_required_gate.py`, `policy_enforcer.py`  |
+| PreToolUse       | `$AOPS/aops-core/hooks/gate_registry.py` (hydration, custodiet, subagent_restrictions), `task_required_gate.py`, `policy_enforcer.py`  |
 | PostToolUse      | `$AOPS/aops-core/hooks/fail_fast_watchdog.py`, `autocommit_state.py`, `custodiet_gate.py`, `todowrite_handover_gate.py` |
 | SubagentStop     | `$AOPS/aops-core/hooks/unified_logger.py` (sets `critic_invoked` flag)          |
 | UserPromptSubmit | `$AOPS/aops-core/hooks/user_prompt_submit.py`                                   |

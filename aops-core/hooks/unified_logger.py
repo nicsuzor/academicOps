@@ -35,6 +35,7 @@ from lib.session_paths import (
     get_session_status_dir,
 )
 from lib.session_state import (
+    clear_hydration_pending,
     get_or_create_session_state,
     record_subagent_invocation,
     set_critic_invoked,
@@ -163,6 +164,26 @@ def handle_subagent_stop(session_id: str, input_data: dict[str, Any]) -> None:
                     break
         set_critic_invoked(session_id, verdict)
         logger.info(f"Critic gate set: verdict={verdict}")
+
+    # Clear hydration_pending when hydrator completes with valid output
+    # This is the ONLY place hydration_pending should be cleared for hydrator
+    if "hydrator" in subagent_type.lower():
+        result_text = ""
+        if isinstance(subagent_result, dict):
+            result_text = subagent_result.get("output", "")
+        elif isinstance(subagent_result, str):
+            result_text = subagent_result
+
+        # Validate hydrator returned a proper plan (has HYDRATION RESULT marker)
+        if "## HYDRATION RESULT" in result_text or "HYDRATION RESULT" in result_text:
+            clear_hydration_pending(session_id)
+            logger.info("Hydration gate cleared: valid hydrator output received")
+        else:
+            # Invalid hydrator output - keep gate blocked
+            logger.warning(
+                "Hydrator completed without valid plan. "
+                "Missing '## HYDRATION RESULT' marker. Gate remains blocked."
+            )
 
 
 def handle_stop(session_id: str, input_data: dict[str, Any]) -> None:

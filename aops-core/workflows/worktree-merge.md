@@ -57,13 +57,35 @@ Before merging, verify:
 2. **Branch exists** locally or on origin
 3. **Commits exist** that aren't in main
 4. **Worktree is clean** (no uncommitted changes)
+5. **Work not already merged** via another path
 
 ```bash
 # Check for unmerged commits
 git log --oneline main..polecat/{task-id}
 
 # If empty output: branch is already merged, skip to cleanup
+
+# Quick check if commits are already in main (different SHAs, same content)
+git cherry main polecat/{task-id}
+# + = needs merge, - = already in main
 ```
+
+### 2b. Engineer Review (Human-in-Loop)
+
+For non-trivial merges, the engineer (human or reviewing agent) performs first-pass review:
+
+1. **Analyze each commit**: Read the diff, understand the changes
+2. **Check against task requirements**: Does the change satisfy the original task?
+3. **Present analysis to human**: Summary, findings, recommendation
+4. **Decision gate**: Human approves, rejects, or requests changes
+
+**Rejection workflow**:
+- Create task documenting rejection rationale
+- Assign task back to the polecat (e.g., `assignee: audre`)
+- Include specific fix instructions in task body
+- Do NOT merge rejected commits
+
+**Key principle**: Polecats prepare work, reviewers approve, reviewers execute merge. Polecats cannot self-merge.
 
 ### 3. Execute Merge
 
@@ -220,6 +242,29 @@ If `git log main..polecat/{task-id}` returns empty:
 - Branch commits are already in main
 - Skip merge, proceed directly to cleanup
 - This happens when work was cherry-picked or merged manually
+
+Use `git cherry` to detect commits merged via different SHAs:
+```bash
+git cherry main polecat/{task-id}
+# - = already in main (safe to delete branch)
+# + = needs merge
+```
+
+### Stale Worktrees (Branch Behind Main)
+
+Worktrees can become stale when main moves faster than polecat work:
+
+```bash
+# Check how far behind
+git log --oneline polecat/{task-id}..main | wc -l
+```
+
+**If branch is significantly behind** (e.g., 60+ commits):
+1. Check `git cherry` first - work may already be in main
+2. If work needs merging: rebase or merge main into branch, then proceed
+3. If work is obsolete: delete branch, no merge needed
+
+**Key insight**: Large diffs (100+ files) often indicate staleness, not large changes. The polecat's actual work is usually small; the diff shows main's evolution.
 
 ### Merge Conflicts
 

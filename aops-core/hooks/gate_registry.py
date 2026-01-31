@@ -214,6 +214,49 @@ class GateContext:
         self.transcript_path = input_data.get("transcript_path")
 
 
+# --- Subagent Tool Restrictions ---
+
+
+def check_subagent_tool_restrictions(ctx: GateContext) -> Optional[GateResult]:
+    """Block mutating tools for restricted subagents like prompt-hydrator.
+
+    The prompt-hydrator agent should ONLY return a plan, never execute work.
+    This gate enforces that by blocking Edit/Write/Bash for hydrator sessions.
+
+    Args:
+        ctx: Gate context with tool and session information
+
+    Returns:
+        GateResult with DENY if blocked, None if allowed
+    """
+    if ctx.event_name != "PreToolUse":
+        return None
+
+    # Check if we're in a restricted subagent session
+    subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE", "")
+
+    # prompt-hydrator should only have Read + memory tools
+    if subagent_type == "aops-core:prompt-hydrator" or "hydrator" in subagent_type.lower():
+        if ctx.tool_name in MUTATING_TOOLS:
+            return GateResult(
+                verdict=GateVerdict.DENY,
+                context_injection=(
+                    "⛔ **BLOCKED: prompt-hydrator cannot use mutating tools**\n\n"
+                    "The hydrator agent is read-only. It must return a hydration plan, "
+                    "not execute the work directly.\n\n"
+                    "**Action Required**: Return your `## HYDRATION RESULT` section with:\n"
+                    "- Intent summary\n"
+                    "- Execution path\n"
+                    "- Acceptance criteria\n"
+                    "- Execution steps\n\n"
+                    "Do NOT attempt to Edit, Write, or run Bash commands."
+                ),
+                metadata={"source": "subagent_tool_restriction", "blocked_tool": ctx.tool_name},
+            )
+
+    return None
+
+
 # --- Shared Helper Functions ---
 
 
@@ -555,12 +598,11 @@ def check_hydration_gate(ctx: GateContext) -> Optional[GateResult]:
     )
 
     if is_skill_activation or is_hydrator_legacy or is_gemini:
-        # CRITICAL: Clear hydration_pending NOW, not in PostToolUse.
-        # Subagents share the same session_id as the main session.
-        # If we wait until PostToolUse to clear, the subagent's tool calls
-        # will be blocked because hydration_pending is still True.
-        if is_hydrator_legacy or is_gemini:
-            session_state.clear_hydration_pending(ctx.session_id)
+        # Allow hydrator invocation but DO NOT clear hydration_pending here.
+        # hydration_pending is cleared by SubagentStop handler when hydrator
+        # completes with a valid ## HYDRATION RESULT output.
+        # Subagent sessions bypass this gate at line 577, so hydrator can use
+        # Read tools. The main agent's gates stay closed until hydrator completes.
         return None
 
     # Check if hydration is pending
@@ -917,16 +959,11 @@ def run_accountant(ctx: GateContext) -> Optional[GateResult]:
     if ctx.event_name != "PostToolUse":
         return None
 
-    # 1. Update Hydration State
-    # Check if this is the hydrator being completed
-    is_hydrator_tool = ctx.tool_name in ("Task", "delegate_to_agent", "activate_skill")
-    is_hydrator = is_hydrator_tool and _hydration_is_hydrator_task(ctx.tool_input)
-    is_gemini = _hydration_is_gemini_hydration_attempt(
-        ctx.tool_name or "", ctx.tool_input, ctx.input_data
-    )
-
-    if is_hydrator or is_gemini:
-        session_state.clear_hydration_pending(ctx.session_id)
+    # 1. Hydration State Update
+    # NOTE: Do NOT clear hydration_pending here. PostToolUse fires when the
+    # Task tool call completes, but the subagent hasn't returned yet.
+    # hydration_pending is cleared by SubagentStop handler when the hydrator
+    # actually completes with a valid ## HYDRATION RESULT output.
 
     # 2. Update Custodiet State
     # Skip for safe read-only tools to avoid noise
@@ -1213,6 +1250,7 @@ def check_skill_activation_listener(ctx: GateContext) -> Optional[GateResult]:
 
 # Registry of available gate checks
 GATE_CHECKS = {
+    "subagent_restrictions": check_subagent_tool_restrictions,  # PreToolUse - MUST run first
     "session_start": check_session_start_gate,
     "hydration": check_hydration_gate,  # PreToolUse
     "custodiet": check_custodiet_gate,

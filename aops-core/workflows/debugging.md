@@ -14,6 +14,23 @@ Use this workflow when:
 Do NOT use for:
 - Cause already known (use design)
 
+## User-Specified Methodology (MANDATORY)
+
+**When the user or task specifies a debugging methodology, FOLLOW THAT METHODOLOGY EXACTLY.**
+
+This is non-negotiable. Do not:
+- Substitute your own "faster" approach
+- Skip steps because you think you know the answer
+- Conclude the opposite of user observations without evidence
+
+**If user says "X worked yesterday"**: X worked yesterday. Period. This is a regression, not a missing feature. Your job is to find WHEN it broke, not to theorize about whether it ever worked.
+
+**If task says "use git bisect"**: Use git bisect. Not web searches. Not reading random source files. Git bisect.
+
+**If task specifies steps**: Execute those steps in order. Document findings at each step. Only deviate if a step is impossible AND you document why.
+
+See P#74: "When user makes specific assertions about their own system, trust the assertion."
+
 ## Constraints
 
 ### Investigation Sequencing
@@ -48,3 +65,14 @@ After debugging completes, route to the appropriate workflow:
 - Root cause documented: task body contains "## Root Cause" or explicit cause statement
 - Simple fix: fix is single-file, obvious change
 - Complex fix: fix requires multiple files or design decisions
+
+## Quick Diagnostic Commands
+
+### Hook Loading Issues (Gemini)
+
+For hook initialization problems, use the quick hook test:
+```bash
+gemini -p "what hooks do you have enabled?"
+```
+
+Output shows "Hook registry initialized with N hook entries" - if N=0, hooks aren't loading. See [[docs/ACCEPTANCE_TESTING]] §3 for expected output patterns.
