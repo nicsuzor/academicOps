@@ -12,8 +12,13 @@ from pathlib import Path
 def main():
     try:
         data = json.load(sys.stdin)
-    except Exception:
-        # If no input or invalid JSON, just exit
+    except json.JSONDecodeError as e:
+        # Empty or malformed stdin - expected in some invocations
+        print(f"DEBUG: generate_transcript.py - no valid JSON input: {e}", file=sys.stderr)
+        sys.exit(0)
+    except Exception as e:
+        # Unexpected error - log before exit
+        print(f"ERROR: generate_transcript.py stdin read failed: {type(e).__name__}: {e}", file=sys.stderr)
         sys.exit(0)
 
     transcript_path = data.get("transcript_path")

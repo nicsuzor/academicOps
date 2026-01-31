@@ -16,7 +16,6 @@ Exit codes:
     0: Success (always continues, may inject reminder)
 """
 
-import contextlib
 import json
 import sys
 from pathlib import Path
@@ -72,8 +71,14 @@ def contains_error(text: str) -> bool:
 def main():
     """Main hook entry point."""
     input_data: dict[str, Any] = {}
-    with contextlib.suppress(Exception):
+    try:
         input_data = json.load(sys.stdin)
+    except json.JSONDecodeError as e:
+        # Log JSON parse error - likely empty stdin or malformed input
+        print(f"WARNING: JSON parse failed: {e}", file=sys.stderr)
+    except Exception as e:
+        # Log unexpected errors during stdin read
+        print(f"ERROR: Failed to read stdin: {type(e).__name__}: {e}", file=sys.stderr)
 
     if "hook_event_name" not in input_data:
         raise ValueError("input_data requires 'hook_event_name' parameter (P#8: fail-fast)")

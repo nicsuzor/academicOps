@@ -179,14 +179,9 @@ def persist_session_data(data: Dict[str, Any]) -> None:
             # Clean up temp file on write failure; fd may already be closed
             try:
                 os.close(fd)
-            except Exception:
-                # Fallback
-                # The original code had 'pass' here. The instruction implies adding a line.
-                # Assuming 'gemini_details' and 'tool_output' are defined in a broader context
-                # or this is a placeholder for a specific fallback action.
-                # Since they are not defined here, I'll keep the original 'pass'
-                # but change the exception type as per the instruction's snippet.
-                pass
+            except Exception as e:
+                # fd already closed - log and continue cleanup
+                print(f"DEBUG: router.py fd close failed (likely already closed): {e}", file=sys.stderr)
             Path(temp_path).unlink(missing_ok=True)
             raise
 
@@ -205,9 +200,9 @@ def get_session_data() -> Dict[str, Any]:
                 return json.loads(content)
             except json.JSONDecodeError:
                 return {"session_id": content}
-    except OSError:
-        # Session file read errors are non-fatal; return empty dict
-        pass
+    except OSError as e:
+        # Session file read errors are non-fatal; log and return empty dict
+        print(f"DEBUG: router.py session file read failed: {e}", file=sys.stderr)
     return {}
 
 
@@ -391,8 +386,9 @@ def run_hook_script(
         if result.stdout.strip():
             try:
                 output = json.loads(result.stdout)
-            except json.JSONDecodeError:
-                pass
+            except json.JSONDecodeError as e:
+                # Hook returned non-JSON output - log for debugging
+                print(f"WARNING: Hook {script_path.name} returned non-JSON: {e}", file=sys.stderr)
 
         if result.stderr:
             print(result.stderr, file=sys.stderr)

@@ -68,20 +68,28 @@ ACTIVE_GATES = [
 def main():
     try:
         input_data = json.load(sys.stdin)
-    except Exception:
-        # If we can't parse input, we can't do anything meaningful.
-        # Fail open or closed? Safe default is empty output (no action).
+    except json.JSONDecodeError as e:
+        # JSON parse error - log and fail open (gates shouldn't block on malformed input)
+        print(f"WARNING: gates.py JSON parse failed: {e}", file=sys.stderr)
+        print(json.dumps(make_empty_output()))
+        sys.exit(0)
+    except Exception as e:
+        # Unexpected error - log and fail open
+        print(f"ERROR: gates.py stdin read failed: {type(e).__name__}: {e}", file=sys.stderr)
         print(json.dumps(make_empty_output()))
         sys.exit(0)
 
     event_name = input_data.get("hook_event_name")
     if not event_name:
-        # Fallback for direct invocation if needed, or error
+        # No event name - can't evaluate gates. Fail open with debug log.
+        print("DEBUG: gates.py - no hook_event_name, skipping", file=sys.stderr)
         print(json.dumps(make_empty_output()))
         sys.exit(0)
 
     session_id = get_session_id(input_data, require=False)
     if not session_id:
+        # No session ID - can't evaluate session-scoped gates. Fail open with debug log.
+        print("DEBUG: gates.py - no session_id, skipping", file=sys.stderr)
         print(json.dumps(make_empty_output()))
         sys.exit(0)
 
