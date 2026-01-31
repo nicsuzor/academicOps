@@ -208,7 +208,7 @@ class TaskStorage:
             complexity=complexity,
         )
 
-    def save_task(self, task: Task) -> Path:
+    def save_task(self, task: Task, *, update_body: bool = True) -> Path:
         """Save task to file with file locking and atomic writes.
 
         Uses file locking to prevent concurrent modification conflicts.
@@ -225,6 +225,8 @@ class TaskStorage:
 
         Args:
             task: Task to save
+            update_body: If True (default), overwrite body with task.body.
+                         If False, preserve existing body from disk if file exists.
 
         Returns:
             Path where task was saved
@@ -235,7 +237,7 @@ class TaskStorage:
         # Use existing path if task already exists, otherwise compute new path
         existing_path = self._find_task_path(task.id)
         path = existing_path if existing_path else self._get_task_path(task)
-        self._atomic_write(path, task)
+        self._atomic_write(path, task, update_body=update_body)
 
         # Update parent's leaf status
         if task.parent:
@@ -245,7 +247,8 @@ class TaskStorage:
                 self._populate_inverse_relationships(parent)
                 parent_path = self._find_task_path(task.parent)
                 if parent_path:
-                    self._atomic_write(parent_path, parent)
+                    # Parent update is metadata-only (children list), so preserve body
+                    self._atomic_write(parent_path, parent, update_body=False)
 
         return path
 
@@ -285,7 +288,7 @@ class TaskStorage:
         task.blocks = blocks
         task.soft_blocks = soft_blocks
 
-    def _atomic_write(self, path: Path, task: Task) -> None:
+    def _atomic_write(self, path: Path, task: Task, update_body: bool = True) -> None:
         """Write task to file atomically with file locking.
 
         Uses a .lock file to coordinate concurrent access.
@@ -295,6 +298,8 @@ class TaskStorage:
         Args:
             path: Target file path
             task: Task to write
+            update_body: If True, overwrite body with task.body.
+                         If False, preserve existing body from disk if file exists.
 
         Raises:
             IOError: If write verification fails (file missing or invalid)
@@ -307,6 +312,23 @@ class TaskStorage:
         with lock:
             # Update modified timestamp
             task.modified = task.modified.__class__.now(task.modified.tzinfo)
+
+            # Preserve existing body if requested and file exists
+            if not update_body and path.exists():
+                try:
+                    # Read current file content
+                    content = path.read_text(encoding="utf-8")
+                    # Parse to get body (using Task.from_markdown is safest)
+                    # We create a temporary task just to extract the body
+                    existing_task = Task.from_markdown(content)
+                    # Update the task object with the existing body
+                    task.body = existing_task.body
+                except Exception as e:
+                    # Log warning but proceed with overwrite if read fails
+                    import logging
+                    logging.getLogger(__name__).warning(
+                        f"Failed to read existing body from {path}, overwriting: {e}"
+                    )
 
             # Create parent directory if needed
             path.parent.mkdir(parents=True, exist_ok=True)

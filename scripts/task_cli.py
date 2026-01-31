@@ -429,7 +429,7 @@ def complete(task_id: str):
         raise SystemExit(1)
 
     task.status = TaskStatus.DONE
-    storage.save_task(task)
+    storage.save_task(task, update_body=False)
     console.print(f"[green]✓[/green] Completed: [strike]{task.title}[/strike]")
 
 
@@ -470,7 +470,7 @@ def update(task_id: str, status: str | None, title: str | None, priority: int | 
         task.project = project if project else None
         changes.append(f"project → {project or 'inbox'}")
 
-    storage.save_task(task)
+    storage.save_task(task, update_body=False)
 
     console.print(f"[green]✓[/green] Updated [bold]{task.id}[/bold]")
     for change in changes:
@@ -565,7 +565,7 @@ def ready(project: str, caller: str | None, limit: int):
                     # Claim it - set to in_progress
                     fresh_task.status = TaskStatus.IN_PROGRESS
                     fresh_task.assignee = caller
-                    storage.save_task(fresh_task)
+                    storage.save_task(fresh_task, update_body=False)
 
                     # Rich output
                     type_icon = TYPE_ICON.get(fresh_task.type.value, "•")
