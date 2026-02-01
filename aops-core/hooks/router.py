@@ -327,7 +327,7 @@ class HookRouter:
             if result.verdict == "deny":
                 output.decision = "block"
             else:
-                output.decision = "allow"
+                output.decision = "approve"
                 
             if result.context_injection:
                 output.reason = result.context_injection

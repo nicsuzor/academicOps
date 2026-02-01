@@ -30,7 +30,7 @@ class TestRouterFormatting:
         assert result.stopReason == "Session blocked: Reflection required."
 
     def test_format_for_claude_stop_event_allow(self, router_instance):
-        """Verify Stop hook allow verdict maps to 'allow' decision."""
+        """Verify Stop hook allow verdict maps to 'approve' decision."""
         canonical_output = CanonicalHookOutput(
             verdict="allow",
             system_message="Session ending normally."
@@ -39,7 +39,7 @@ class TestRouterFormatting:
 
         result = router_instance.output_for_claude(canonical_output, event_name)
 
-        assert result.decision == "allow"
+        assert result.decision == "approve"
         assert result.stopReason == "Session ending normally."
 
     def test_format_for_claude_standard_event(self, router_instance):

@@ -141,7 +141,7 @@ class TestRouterClaudeFormat:
 
         # Claude Stop uses different format - top-level decision
         assert "decision" in output, f"Missing decision. Output: {output}"
-        assert output["decision"] in ["allow", "block"]
+        assert output["decision"] in ["approve", "block"]
 
 
 class TestRouterGeminiFormat:

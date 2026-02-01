@@ -783,8 +783,7 @@ def main():
     if "system_message" not in output_data:
         output_data["system_message"] = "✓ handover verified"
     if "verdict" not in output_data:
-        output_data["verdict"] = "approve"
-    output_data["decision"] = "approve"
+        output_data["verdict"] = "allow"
 
     print(json.dumps(output_data))
     sys.exit(0)

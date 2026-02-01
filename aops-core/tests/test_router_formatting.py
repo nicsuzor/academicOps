@@ -89,7 +89,7 @@ class TestRouterFormatting:
         )
         output = self.router.output_for_claude(canonical, "Stop")
 
-        assert output.decision == "allow"
+        assert output.decision == "approve"
         assert output.stopReason == "Session ending normally"
 
     def test_format_for_gemini_updated_input(self):

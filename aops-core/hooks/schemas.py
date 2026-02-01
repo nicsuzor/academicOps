@@ -42,8 +42,8 @@ class ClaudeStopHookOutput(BaseModel):
     Output structure specifically for the Claude 'Stop' event.
     Unlike other events, 'Stop' uses top-level fields instead of hookSpecificOutput.
     """
-    decision: Optional[Literal["allow", "block"]] = Field(
-        None, description="Decision for the Stop event (allow/block)."
+    decision: Optional[Literal["approve", "block"]] = Field(
+        None, description="Decision for the Stop event (approve/block)."
     )
     reason: Optional[str] = Field(
         None, description="Reason for the decision (visible to the agent)."
