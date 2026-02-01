@@ -13,7 +13,7 @@ from typing import Any
 
 import pytest
 
-from .conftest import extract_response_text
+from tests.conftest import extract_response_text
 
 
 @pytest.mark.slow

@@ -1186,7 +1186,7 @@ def check_hydration_recency_gate(ctx: GateContext) -> Optional[GateResult]:
     if turns_since == 0:
         return GateResult(
             verdict=GateVerdict.DENY,
-            context_injection="Plan approved, start execution now",
+            context_injection="You just completed hydration. Please execute the plan before ending the session.",
         )
 
     return None
