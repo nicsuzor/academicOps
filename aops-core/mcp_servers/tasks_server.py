@@ -524,7 +524,31 @@ def update_task(
         if status is not None:
             try:
                 resolved_status = _resolve_status_alias(status)
-                task.status = TaskStatus(resolved_status)
+                new_status = TaskStatus(resolved_status)
+
+                # Double-claim prevention: reject if task is already claimed by someone else
+                # A task is "claimed" when status=IN_PROGRESS and has an assignee
+                if new_status == TaskStatus.IN_PROGRESS:
+                    is_already_claimed = (
+                        task.status == TaskStatus.IN_PROGRESS
+                        and task.assignee is not None
+                    )
+                    # Determine who is trying to claim
+                    new_assignee = assignee if assignee is not None else task.assignee
+
+                    if is_already_claimed and new_assignee != task.assignee:
+                        return {
+                            "success": False,
+                            "task": _task_to_dict(task),
+                            "modified_fields": [],
+                            "message": (
+                                f"Task already claimed by '{task.assignee}' "
+                                f"(status: in_progress since {task.modified.isoformat()}). "
+                                f"Cannot claim for '{new_assignee}'."
+                            ),
+                        }
+
+                task.status = new_status
                 modified_fields.append("status")
             except ValueError:
                 return {
