@@ -459,18 +459,9 @@ def main():
     if args.client:
         client_type = args.client
         gemini_event = args.event
-    elif raw_input.get("hook_event_name"):
-        # Claude payload detected (overrides positional args)
-        client_type = "claude"
-        gemini_event = None
-    elif args.event:
-        # Positional arg without Claude payload -> Gemini
-        client_type = "gemini"
-        gemini_event = args.event
+
     else:
-        # Default
-        client_type = "claude"
-        gemini_event = None
+        raise OSError("No --client flag provided on hook invocation.")
         
     # Pipeline
     ctx = router.normalize_input(raw_input, gemini_event)
