@@ -10,6 +10,7 @@ import re
 import sys
 import os
 import json
+import time
 
 from lib.gate_model import GateResult, GateVerdict
 
@@ -436,6 +437,12 @@ def _is_custodiet_invocation(tool_name: str, tool_input: Dict[str, Any]) -> bool
     if tool_name == "delegate_to_agent":
         agent_name = tool_input.get("agent_name", "")
         if agent_name in ("custodiet", "aops-core:custodiet"):
+            return True
+
+    # Claude Task tool with subagent_type
+    if tool_name == "Task":
+        subagent_type = tool_input.get("subagent_type", "")
+        if subagent_type in ("custodiet", "aops-core:custodiet"):
             return True
 
     return False
@@ -1094,13 +1101,7 @@ def run_accountant(ctx: GateContext) -> Optional[GateResult]:
         # Check for reset (custodiet invoked) or increment
         if _is_custodiet_invocation(ctx.tool_name or "", ctx.tool_input):
             state["tool_calls_since_compliance"] = 0
-            state["last_compliance_ts"] = (
-                0.0  # update TS? PR didn't show TS update logic here but resetting implies compliance.
-            )
-            # Actually, if custodiet runs, we should probably update the timestamp too.
-            # But adhering to strict rebase logic:
-            # HEAD had: else: state["tool_calls_since_compliance"] += 1
-            # PR had: save_session_state...
+            state["last_compliance_ts"] = time.time()
 
         else:
             state["tool_calls_since_compliance"] += 1
