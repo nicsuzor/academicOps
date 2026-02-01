@@ -189,6 +189,26 @@ SAFE_BASH_PATTERNS = [
     r"^\s*uv\s+pip\s+list\b",  # uv pip list (read)
 ]
 
+# Git operations that are safe to allow through hydration gate
+# These don't corrupt history or affect other branches, and are commonly
+# needed during handover/session-end workflows
+HYDRATION_SAFE_GIT_PATTERNS = [
+    r"^\s*git\s+status\b",  # Check repo state
+    r"^\s*git\s+diff\b",  # View changes
+    r"^\s*git\s+log\b",  # View history
+    r"^\s*git\s+show\b",  # View commits
+    r"^\s*git\s+branch\b(?!\s+-[dD])",  # List branches (not delete)
+    r"^\s*git\s+add\b",  # Stage files
+    r"^\s*git\s+commit\b",  # Create commit
+    r"^\s*git\s+fetch\b",  # Download from remote (no merge)
+    r"^\s*git\s+pull\b(?!.*--force)",  # Pull (no force)
+    r"^\s*git\s+push\b(?!.*--force)",  # Push (no force) - safe for current branch
+    r"^\s*git\s+stash\b",  # Stash changes
+    r"^\s*git\s+remote\b",  # List/manage remotes
+    r"^\s*git\s+worktree\s+list\b",  # List worktrees
+    r"^\s*git\s+cherry\b",  # Check cherry-pick status
+]
+
 # Template paths for task gate messages
 TASK_GATE_BLOCK_TEMPLATE = Path(__file__).parent / "templates" / "task-gate-block.md"
 TASK_GATE_WARN_TEMPLATE = Path(__file__).parent / "templates" / "task-gate-warn.md"
@@ -291,6 +311,25 @@ def _is_safe_temp_path(file_path: str | None) -> bool:
         if resolved.startswith(prefix):
             return True
 
+    return False
+
+
+def _is_hydration_safe_bash(command: str) -> bool:
+    """Check if a Bash command is safe to allow through hydration gate.
+
+    Safe commands are git operations that don't corrupt history or
+    affect other branches. These are commonly needed during handover.
+
+    Args:
+        command: The Bash command string
+
+    Returns:
+        True if command is safe for hydration bypass, False otherwise
+    """
+    cmd = command.strip()
+    for pattern in HYDRATION_SAFE_GIT_PATTERNS:
+        if re.search(pattern, cmd, re.IGNORECASE):
+            return True
     return False
 
 
@@ -707,6 +746,13 @@ def check_hydration_gate(ctx: GateContext) -> Optional[GateResult]:
     # Bypass for MCP infrastructure tools (task manager, memory, etc.)
     if ctx.tool_name in MCP_TOOLS_EXEMPT_FROM_HYDRATION:
         return None
+
+    # Bypass for safe git operations (add, commit, fetch, pull, status, etc.)
+    # These are commonly needed during handover and don't corrupt history
+    if ctx.tool_name in ("Bash", "run_shell_command", "run_command"):
+        command = ctx.tool_input.get("command") or ctx.tool_input.get("CommandLine") or ""
+        if _is_hydration_safe_bash(command):
+            return None
 
     # Check if a skill is being activated (allow ANY skill to bypass hydration check)
     # If the user explicitly activates a skill, they are providing a plan/context.
