@@ -22,6 +22,8 @@ try:
         safe_symlink,
         safe_copy,
         format_path_for_json,
+        get_git_commit_sha,
+        write_plugin_version,
     )
 except ImportError as e:
     # Fallback if running from a different location without setting path correctly
@@ -137,6 +139,11 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
     plugin_name = "aops-core"
     src_dir = aops_root / plugin_name
     dist_dir = dist_root / plugin_name
+
+    # Write version info for tracking
+    commit_sha = get_git_commit_sha(aops_root)
+    if commit_sha:
+        write_plugin_version(src_dir, commit_sha)
 
     if dist_dir.exists():
         shutil.rmtree(dist_dir)
@@ -388,6 +395,11 @@ def build_aops_tools(aops_root: Path, dist_root: Path, aca_data_path: str):
     plugin_name = "aops-tools"
     src_dir = aops_root / plugin_name
     dist_dir = dist_root / plugin_name
+
+    # Write version info for tracking
+    commit_sha = get_git_commit_sha(aops_root)
+    if commit_sha:
+        write_plugin_version(src_dir, commit_sha)
 
     if dist_dir.exists():
         shutil.rmtree(dist_dir)

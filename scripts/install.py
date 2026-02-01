@@ -17,7 +17,12 @@ SCRIPT_DIR = Path(__file__).parent.resolve()
 sys.path.append(str(SCRIPT_DIR / "lib"))
 
 try:
-    from build_utils import safe_symlink
+    from build_utils import (
+        safe_symlink,
+        get_git_commit_sha,
+        check_installed_plugin_version,
+        emit_version_mismatch_warning,
+    )
 except ImportError:
     print("Error: Could not import build_utils.", file=sys.stderr)
     sys.exit(1)
@@ -250,6 +255,26 @@ def main():
     dist_mcp_config = aops_root / "dist" / "antigravity" / "mcp_config.json"
     if dist_mcp_config.exists():
         safe_symlink(dist_mcp_config, ag_dir / "mcp_config.json")
+
+    # Check for version mismatches with installed Claude plugins
+    print("\n=== Version Check ===")
+    source_commit = get_git_commit_sha(aops_root)
+    if source_commit:
+        for plugin_name in ["aops-core", "aops-tools"]:
+            matches, installed_commit = check_installed_plugin_version(
+                plugin_name, source_commit
+            )
+            if not matches and installed_commit:
+                emit_version_mismatch_warning(
+                    plugin_name, source_commit, installed_commit
+                )
+        if all(
+            check_installed_plugin_version(p, source_commit)[0]
+            for p in ["aops-core", "aops-tools"]
+        ):
+            print(f"✓ Source commit {source_commit} matches installed plugins")
+    else:
+        print("⚠️  Could not determine source commit (not a git repo?)")
 
     print("\n=== Phase 3: Link Extensions ===")
     if shutil.which("gemini"):

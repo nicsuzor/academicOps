@@ -1,6 +1,7 @@
 import os
 import json
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -107,6 +108,130 @@ def safe_copy(src: Path, dst: Path):
     else:
         shutil.copy2(src, dst)
     print(f"  Copied {src.name} -> {dst}")
+
+
+def get_git_commit_sha(repo_path: Optional[Path] = None) -> Optional[str]:
+    """Get the current git commit SHA for version tracking.
+
+    Args:
+        repo_path: Path to the git repository. If None, uses current directory.
+
+    Returns:
+        The short commit SHA (8 chars) or None if not a git repo.
+    """
+    try:
+        cmd = ["git", "rev-parse", "--short=8", "HEAD"]
+        result = subprocess.run(
+            cmd,
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stdout.strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+
+
+def write_plugin_version(plugin_dir: Path, commit_sha: str) -> Path:
+    """Write version info to plugin directory for tracking.
+
+    Creates .aops-version file with git commit SHA.
+    This enables install-time warnings when installed plugins drift from source.
+
+    Args:
+        plugin_dir: Path to plugin directory (e.g., aops-core/)
+        commit_sha: Git commit SHA to record
+
+    Returns:
+        Path to the created version file.
+    """
+    version_file = plugin_dir / ".claude-plugin" / ".aops-version"
+    version_file.parent.mkdir(parents=True, exist_ok=True)
+
+    version_data = {
+        "source_commit": commit_sha,
+        "build_timestamp": subprocess.run(
+            ["date", "-Iseconds"],
+            capture_output=True,
+            text=True,
+        ).stdout.strip(),
+    }
+
+    with open(version_file, "w") as f:
+        json.dump(version_data, f, indent=2)
+
+    print(f"  ✓ Wrote version info: {commit_sha}")
+    return version_file
+
+
+def check_installed_plugin_version(
+    plugin_name: str,
+    source_commit: str,
+    installed_plugins_path: Optional[Path] = None,
+) -> tuple[bool, Optional[str]]:
+    """Check if installed plugin matches source version.
+
+    Args:
+        plugin_name: Name of plugin (e.g., "aops-core")
+        source_commit: Current git commit SHA of source
+        installed_plugins_path: Path to installed_plugins.json.
+            Defaults to ~/.claude/plugins/installed_plugins.json
+
+    Returns:
+        Tuple of (version_matches: bool, installed_commit: Optional[str])
+        If plugin not installed, returns (True, None) - no mismatch to report.
+    """
+    if installed_plugins_path is None:
+        installed_plugins_path = Path.home() / ".claude" / "plugins" / "installed_plugins.json"
+
+    if not installed_plugins_path.exists():
+        return (True, None)  # No installed plugins file, nothing to compare
+
+    try:
+        with open(installed_plugins_path) as f:
+            data = json.load(f)
+
+        # Claude uses "aops-core@aops" format for plugin keys
+        plugin_key = f"{plugin_name}@aops"
+        plugins = data.get("plugins", {})
+
+        if plugin_key not in plugins:
+            return (True, None)  # Plugin not installed
+
+        # Get the first (and usually only) installation
+        installs = plugins[plugin_key]
+        if not installs:
+            return (True, None)
+
+        installed_commit = installs[0].get("gitCommitSha", "")
+
+        # Compare: installed commit should start with source commit (or vice versa)
+        # since one might be short and one long
+        if installed_commit.startswith(source_commit) or source_commit.startswith(installed_commit[:8]):
+            return (True, installed_commit)
+
+        return (False, installed_commit)
+
+    except (json.JSONDecodeError, KeyError, IndexError):
+        return (True, None)  # Can't determine, assume OK
+
+
+def emit_version_mismatch_warning(
+    plugin_name: str,
+    source_commit: str,
+    installed_commit: str,
+) -> None:
+    """Emit a warning about version mismatch between source and installed plugin.
+
+    This is informational only - does not block installation.
+    """
+    print(f"\n⚠️  VERSION MISMATCH: {plugin_name}", file=sys.stderr)
+    print(f"   Source commit:    {source_commit}", file=sys.stderr)
+    print(f"   Installed commit: {installed_commit[:8]}...", file=sys.stderr)
+    print(f"   The installed Claude plugin may be outdated.", file=sys.stderr)
+    print(f"   Consider reinstalling the plugin in Claude Desktop.", file=sys.stderr)
+    print("", file=sys.stderr)
 
 
 def generate_gemini_hooks(
