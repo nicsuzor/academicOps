@@ -29,7 +29,8 @@ This handles discovery, merge, tests, and cleanup automatically.
    - `git cherry main origin/polecat/{id}` — detect already-merged (- = merged)
 
 3. **Task** (based on findings, not assumptions)
-   - If merge_ready tasks exist: claim one
+   - Check both `merge_ready` AND `review` status tasks
+   - If merge candidates exist: claim one (review tasks need inspection first)
    - If none: create task with actual branch list from step 2
 
 4. **Merge** (sequential, one branch at a time)
@@ -265,15 +266,26 @@ git branch -D polecat/{task-id}
 
 ### 4. Query Task Status
 
-Check if any tasks are awaiting review:
+Check for tasks awaiting merge. Look for **both** `merge_ready` AND `review` status:
 
 ```bash
-# Via MCP tool
-mcp__plugin_aops-tools_task_manager__list_tasks(status="merge_ready")
+# Check merge_ready tasks (ready for immediate merge)
+mcp__plugin_aops-core_task_manager__list_tasks(status="merge_ready")
 
-# Or search for polecat-related tasks
-mcp__plugin_aops-tools_task_manager__search_tasks(query="polecat")
+# Check review tasks (pending engineer approval - may also be mergeable)
+mcp__plugin_aops-core_task_manager__list_tasks(status="review")
+# Or use the dedicated tool:
+mcp__plugin_aops-core_task_manager__get_review_tasks(project="")
+
+# Search for polecat-related tasks
+mcp__plugin_aops-core_task_manager__search_tasks(query="polecat")
 ```
+
+**When to merge review vs merge_ready:**
+- `merge_ready`: Pre-approved work, merge immediately
+- `review`: Requires engineer inspection first. Review the work, then either:
+  - Merge if acceptable (update status to done after merge)
+  - Reject with feedback (create follow-up task, assign back to polecat)
 
 **Note**: Task assignees use `nic` (human) or `bot` (agent), not "engineer".
 
