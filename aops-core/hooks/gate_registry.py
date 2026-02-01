@@ -201,9 +201,6 @@ DEFAULT_HYDRATION_GATE_MODE = "warn"
 # --- Stop Gate Constants ---
 
 STOP_GATE_CRITIC_TEMPLATE = Path(__file__).parent / "templates" / "stop-gate-critic.md"
-STOP_GATE_HANDOVER_WARN_TEMPLATE = (
-    Path(__file__).parent / "templates" / "stop-gate-handover-warn.md"
-)
 STOP_GATE_HANDOVER_BLOCK_TEMPLATE = (
     Path(__file__).parent / "templates" / "stop-gate-handover-block.md"
 )
@@ -1329,15 +1326,6 @@ def check_session_start_gate(ctx: GateContext) -> Optional[GateResult]:
         )
 
 
-# Handover Gate (Placeholder/Simplification)
-def check_handover_gate(ctx: GateContext) -> Optional[GateResult]:
-    """
-    Check if handover is required or valid.
-    Currently a placeholder as logic was consolidated or removed.
-    """
-    return None
-
-
 def check_skill_activation_listener(ctx: GateContext) -> Optional[GateResult]:
     """
     Listener: Clear hydration pending if a non-infrastructure skill was activated.
@@ -1444,8 +1432,6 @@ GATE_CHECKS = {
     "task_required": check_task_required_gate,
     "custodiet": check_custodiet_gate,
     "qa_enforcement": check_qa_enforcement_gate,  # PreToolUse
-    # "axiom_enforcer": merged into custodiet
-    "handover": check_handover_gate,  # PostToolUse
     "agent_response": check_agent_response_listener,  # AfterAgent
     "stop_gate": check_stop_gate,  # Stop
     "hydration_recency": check_hydration_recency_gate,  # Stop
