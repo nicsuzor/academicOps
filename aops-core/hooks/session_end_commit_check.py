@@ -568,6 +568,12 @@ def perform_session_cleanup(
     # generation already handled that case (exit code 2 for insufficient content)
     result["insights_verified"] = verify_insights_exist(session_id)
 
+    # skip deleting
+    result["state_deleted"] = False
+    result["success"] = True
+    result["message"] = "Session cleanup completed"
+    return result
+
     # Step 3: Delete session state file
     if delete_session_state_file(session_id):
         result["state_deleted"] = True
