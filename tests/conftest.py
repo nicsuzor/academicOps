@@ -311,8 +311,22 @@ def run_claude_headless(
             "error": "claude CLI not found in PATH - these tests require Claude Code CLI installed",
         }
 
+    # Get aops-core plugin directory for testing against current code
+    aops_root = get_aops_root()
+    plugin_dir = aops_root / "aops-core"
+
     # Build command with --debug flag and --no-session-persistence for test isolation
-    cmd = ["claude", "-p", prompt, "--output-format", "json", "--debug", "--no-session-persistence"]
+    cmd = [
+        "claude",
+        "-p",
+        prompt,
+        "--output-format",
+        "json",
+        "--debug",
+        "--no-session-persistence",
+        "--plugin-dir",
+        str(plugin_dir),
+    ]
 
     if model:
         cmd.extend(["--model", model])
