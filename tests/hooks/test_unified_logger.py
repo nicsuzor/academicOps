@@ -37,7 +37,7 @@ def temp_session_dir(monkeypatch):
         session_path.mkdir(parents=True, exist_ok=True)
 
         # Mock get_session_status_dir to return our temp path
-        def mock_get_session_status_dir():
+        def mock_get_session_status_dir(session_id=None):
             return session_path
 
         # Patch get_session_status_dir in lib.session_paths

@@ -495,7 +495,7 @@ def delete_session_state_file(session_id: str) -> bool:
         True if deletion succeeded or file didn't exist
     """
     try:
-        status_dir = get_session_status_dir()
+        status_dir = get_session_status_dir(session_id)
         short_hash = get_session_short_hash(session_id)
 
         # Find matching state file(s) - may have different date prefixes

@@ -89,7 +89,7 @@ def load_session_state(session_id: str, retries: int = 3) -> SessionState | None
     yesterday = (now - timedelta(days=1)).strftime("%Y%m%d")
 
     short_hash = get_session_short_hash(session_id)
-    status_dir = get_session_status_dir()
+    status_dir = get_session_status_dir(session_id)
 
     # Search for files matching this session_id on today or yesterday
     for date_compact in [today, yesterday]:

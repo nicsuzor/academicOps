@@ -42,14 +42,20 @@ def get_session_short_hash(session_id: str) -> str:
     return hashlib.sha256(session_id.encode()).hexdigest()[:8]
 
 
-def get_session_status_dir() -> Path:
-    """Get session status directory from AOPS_SESSION_STATE_DIR.
+def get_session_status_dir(session_id: str | None = None) -> Path:
+    """Get session status directory from AOPS_SESSION_STATE_DIR or auto-detect.
 
     This env var is set by the router at SessionStart:
     - Gemini: ~/.gemini/tmp/<hash>/ (from transcript_path)
     - Claude: ~/.claude/projects/<encoded-cwd>/
 
-    Falls back to Gemini project hash detection or /tmp for unit tests.
+    Falls back to auto-detection based on session_id format:
+    - session_id starting with "gemini-" -> Gemini path
+    - Otherwise (UUID format) -> Claude path derived from cwd
+
+    Args:
+        session_id: Optional session ID for client detection. If provided and
+            starts with "gemini-", uses Gemini path. Otherwise uses Claude path.
 
     Returns:
         Path to session status directory (created if doesn't exist)
@@ -61,21 +67,21 @@ def get_session_status_dir() -> Path:
         status_dir.mkdir(parents=True, exist_ok=True)
         return status_dir
 
-    # 2. Auto-detect Gemini environment (for CLI tools outside router)
-    # Check for standard Gemini tmp directory structure based on CWD hash
-    project_root = str(Path.cwd().resolve())
-    project_hash = hashlib.sha256(project_root.encode()).hexdigest()
-    gemini_tmp = Path.home() / ".gemini" / "tmp" / project_hash
-
-    # Only use if it exists to avoid creating junk dirs
-    if gemini_tmp.exists():
+    # 2. Auto-detect based on session_id format
+    if session_id and session_id.startswith("gemini-"):
+        # Gemini session - use hash-based path
+        project_root = str(Path.cwd().resolve())
+        project_hash = hashlib.sha256(project_root.encode()).hexdigest()
+        gemini_tmp = Path.home() / ".gemini" / "tmp" / project_hash
+        gemini_tmp.mkdir(parents=True, exist_ok=True)
         return gemini_tmp
 
-    # 3. Fail fast if no valid session directory found
-    raise RuntimeError(
-        "Could not determine session status directory. "
-        "Ensure AOPS_SESSION_STATE_DIR is set or running within a valid Gemini/Claude environment."
-    )
+    # 3. Claude Code session (or unknown) - derive path from cwd
+    # Same logic as session_env_setup.sh: ~/.claude/projects/-<cwd-with-dashes>/
+    project_folder = get_claude_project_folder()
+    status_dir = Path.home() / ".claude" / "projects" / project_folder
+    status_dir.mkdir(parents=True, exist_ok=True)
+    return status_dir
 
 
 def get_session_file_path_direct(session_id: str, date: str | None = None) -> Path:
@@ -107,7 +113,7 @@ def get_session_file_path_direct(session_id: str, date: str | None = None) -> Pa
 
     short_hash = get_session_short_hash(session_id)
 
-    return get_session_status_dir() / f"{date_compact}-{hour}-{short_hash}.json"
+    return get_session_status_dir(session_id) / f"{date_compact}-{hour}-{short_hash}.json"
 
 
 def get_session_directory(
@@ -152,4 +158,4 @@ def get_session_directory(
         return session_dir
 
     # Production mode - use centralized status directory
-    return get_session_status_dir()
+    return get_session_status_dir(session_id)

@@ -22,7 +22,7 @@ class TestSessionPaths(unittest.TestCase):
 
     @patch.dict(os.environ, {"AOPS_SESSION_STATE_DIR": ""}, clear=True)
     def test_get_session_status_dir_gemini_fallback(self):
-        """When AOPS_SESSION_STATE_DIR not set and gemini dir exists, use gemini fallback."""
+        """When AOPS_SESSION_STATE_DIR not set and session_id starts with gemini-, use gemini path."""
         import tempfile
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -30,14 +30,33 @@ class TestSessionPaths(unittest.TestCase):
             project_root = str(Path(tmpdir) / "project")
             project_hash = hashlib.sha256(project_root.encode()).hexdigest()
             gemini_tmp = Path(tmpdir) / ".gemini" / "tmp" / project_hash
-            gemini_tmp.mkdir(parents=True)
 
             # Patch Path.home() and Path.cwd()
             with patch.object(Path, "home", return_value=Path(tmpdir)), \
                  patch.object(Path, "cwd", return_value=Path(project_root)):
 
-                result = session_paths.get_session_status_dir()
+                # Pass gemini- prefixed session_id to trigger gemini path
+                result = session_paths.get_session_status_dir("gemini-test-session")
                 self.assertEqual(result, gemini_tmp)
+
+    @patch.dict(os.environ, {"AOPS_SESSION_STATE_DIR": ""}, clear=True)
+    def test_get_session_status_dir_claude_fallback(self):
+        """When AOPS_SESSION_STATE_DIR not set and session_id is UUID format, use claude path."""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = str(Path(tmpdir) / "project")
+            # Expected Claude path: ~/.claude/projects/-<cwd-with-dashes>/
+            expected_folder = "-" + project_root.replace("/", "-")[1:]
+            expected_path = Path(tmpdir) / ".claude" / "projects" / expected_folder
+
+            # Patch Path.home() and Path.cwd()
+            with patch.object(Path, "home", return_value=Path(tmpdir)), \
+                 patch.object(Path, "cwd", return_value=Path(project_root)):
+
+                # Pass UUID-style session_id to trigger claude path
+                result = session_paths.get_session_status_dir("abc123-def456-ghi789")
+                self.assertEqual(result, expected_path)
 
 if __name__ == "__main__":
     unittest.main()

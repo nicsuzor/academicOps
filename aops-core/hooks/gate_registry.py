@@ -1372,7 +1372,7 @@ def check_session_start_gate(ctx: GateContext) -> Optional[GateResult]:
     try:
         from hooks.unified_logger import get_hook_log_path
 
-        status_dir = session_paths.get_session_status_dir()
+        status_dir = session_paths.get_session_status_dir(ctx.session_id)
         short_hash = session_paths.get_session_short_hash(ctx.session_id)
 
         # Get hook log path for this session (full absolute path)
