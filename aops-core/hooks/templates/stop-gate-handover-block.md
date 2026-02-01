@@ -1,13 +1,16 @@
-# Handover Reminder
+# Handover Required
 
-You are stopping the session, but the `handover` skill has not been invoked.
+You are stopping the session, but the `/handover` skill has not been invoked.
 
-Please ensure you have:
+**To clear this gate, you must invoke `/handover`** (use the Skill tool with skill="aops-core:handover").
 
-1. Executed and completed all plan steps.
-2. Created follow-up tasks for deferred work.
-3. Commited your work.
-4. Marked your task as complete and recorded your work.
-5. Provided a Framework Reflection in the required form.
+**Important**: Using any mutating tools (Edit, Write, Bash with file operations, git commands, etc.) will reset this gate. Complete all file changes first, then invoke `/handover` as your final action before stopping.
 
-**Note:** If you weren't actually trying to finish the session here, either keep going or use your user question tool to pause and wait for a response.
+The `/handover` skill will guide you through:
+
+1. Checking for uncommitted changes
+2. Committing any remaining work
+3. Outputting the required Framework Reflection
+4. Clearing the stop gate
+
+**Note:** If you weren't trying to finish the session, either keep going or use AskUserQuestion to pause and wait for a response.
