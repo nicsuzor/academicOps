@@ -243,6 +243,7 @@ class HookRouter:
                 "system_message": merged_result.system_message,
                 "context_injection": merged_result.context_injection,
                 "metadata": merged_result.metadata,
+                "argv": sys.argv,  # Debug: log how hook was invoked
             }
             log_hook_event(
                 ctx.session_id, ctx.hook_event, gate_input, output_data=output_data
