@@ -10,13 +10,13 @@ class HookContext(BaseModel):
     # Core Identity
     session_id: str = Field(..., description="The unique session identifier.")
     hook_event: str = Field(..., description="The normalized event name (e.g., SessionStart, PreToolUse).")
-    
+
     # Event Data
     tool_name: Optional[str] = None
     tool_input: Dict[str, Any] = Field(default_factory=dict)
     transcript_path: Optional[str] = None
     cwd: Optional[str] = None
-    
+
     # Raw Input (for fallback/passthrough)
     raw_input: Dict[str, Any] = Field(default_factory=dict)
 

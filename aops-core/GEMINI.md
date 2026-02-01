@@ -4,7 +4,7 @@ This project uses the `academic-ops-core` extension to manage hooks, skills, and
 
 ## Active Configuration
 
-- **Hooks**: Managed by `aops-core/gemini-extension.json` routing to `aops-core/hooks/gemini/router.py`
+- **Hooks**: Managed by `aops-core/gemini-extension.json` routing to `aops-core/hooks/router.py`
 - **MCP Servers**: `task_manager` (Tasks v2)
 - **Skills**: All skills in `aops-core/skills/` are available
 

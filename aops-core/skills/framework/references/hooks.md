@@ -27,7 +27,7 @@ This document covers both Claude Code's hook system and the academicOps implemen
 
 All hooks are dispatched through a single router (`hooks/router.py`). This consolidates multiple hook outputs into a single response. The router is **unified for both Claude Code and Gemini CLI** - the same router.py handles both platforms.
 
-**Note:** The `hooks/gemini/` subdirectory is legacy/unused. We now use the unified router at `hooks/router.py` for all platforms.
+All schemas are consolidated in `hooks/schemas.py` (Pydantic models for HookContext, CanonicalHookOutput, ClaudeHookOutput, GeminiHookOutput, etc.).
 
 ### Async Dispatch
 

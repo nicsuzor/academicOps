@@ -26,7 +26,7 @@ if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
 try:
-    from hooks.gemini.schemas import (
+    from hooks.schemas import (
         HookContext,
         CanonicalHookOutput,
         ClaudeHookOutput,
@@ -255,7 +255,7 @@ class HookRouter:
         if "systemMessage" in raw:
             canonical.system_message = raw["systemMessage"]
             
-        hso = raw.get("hookSpecificOutput", {{}})
+        hso = raw.get("hookSpecificOutput", {})
         if hso:
             decision = hso.get("permissionDecision")
             if decision == "deny":
@@ -384,9 +384,9 @@ def main():
         if not sys.stdin.isatty():
             raw_input = json.load(sys.stdin)
         else:
-            raw_input = {{}}
+            raw_input = {}
     except Exception:
-        raw_input = {{}}
+        raw_input = {}
         
     # Pipeline
     ctx = router.normalize_input(raw_input, gemini_event)

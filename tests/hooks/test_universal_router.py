@@ -11,7 +11,7 @@ if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
 from hooks.router import HookRouter, CanonicalHookOutput
-from hooks.gemini.schemas import HookContext, GeminiHookOutput, ClaudeHookOutput
+from hooks.schemas import HookContext, GeminiHookOutput, ClaudeHookOutput
 
 class TestUniversalRouter:
     @pytest.fixture

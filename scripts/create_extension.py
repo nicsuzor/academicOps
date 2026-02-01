@@ -112,7 +112,7 @@ def main():
                     "hooks": [{
                         "name": "aops-router",
                         "type": "command",
-                        "command": f"AOPS={aops_path} AOPS_SESSIONS={aops_path}/.gemini/sessions python3 {core_dist}/hooks/gemini/router.py {g_event}",
+                        "command": f"AOPS={aops_path} AOPS_SESSIONS={aops_path}/.gemini/sessions python3 {core_dist}/hooks/router.py {g_event}",
                         "timeout": timeout
                     }]
                 })

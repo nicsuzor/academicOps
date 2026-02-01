@@ -169,13 +169,6 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
     if hooks_json_src.exists():
         _generate_gemini_hooks_json(hooks_json_src, hooks_dst / "hooks.json")
 
-    # Create templates symlink in gemini/ so user_prompt_submit.py can find templates
-    # (user_prompt_submit.py uses HOOK_DIR / "templates" where HOOK_DIR is hooks/gemini/)
-    # NOTE: This symlink stays in SOURCE, not dist - it's for the gemini hook to find templates
-    gemini_templates_link = hooks_src / "gemini" / "templates"
-    if not gemini_templates_link.exists():
-        safe_symlink(Path("../templates"), gemini_templates_link)
-
     # 3. Generate Hooks Config / Extension Manifest
     # If a source gemini-extension.json exists, we use it as a template and perform substitution.
     # Otherwise, we generate from hooks.json (legacy/fallback).
