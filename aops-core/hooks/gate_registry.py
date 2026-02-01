@@ -86,7 +86,7 @@ HYDRATION_SAFE_TOOLS = SAFE_READ_TOOLS
 
 # Custodiet
 CUSTODIET_TEMP_CATEGORY = "compliance"
-CUSTODIET_TOOL_CALL_THRESHOLD = 7
+CUSTODIET_TOOL_CALL_THRESHOLD = os.environ.get("CUSTODIET_TOOL_CALL_THRESHOLD", 7)
 CUSTODIET_CONTEXT_TEMPLATE_FILE = (
     Path(__file__).parent / "templates" / "custodiet-context.md"
 )
