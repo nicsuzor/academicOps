@@ -50,23 +50,6 @@ class SessionState(TypedDict, total=False):
     insights: dict[str, Any] | None
 
 
-def get_session_file_path(session_id: str, date: str | None = None) -> Path:
-    """Get unified session file path.
-
-    Returns: ~/writing/session/status/YYYYMMDD-sessionID.json
-
-    Args:
-        session_id: Claude Code session ID
-        date: Optional date string (YYYY-MM-DD). Defaults to today UTC.
-
-    Returns:
-        Path to session state file
-    """
-    from lib.session_paths import get_session_file_path_direct
-
-    return get_session_file_path_direct(session_id, date)
-
-
 def load_session_state(session_id: str, retries: int = 3) -> SessionState | None:
     """Load unified session state.
 
@@ -149,6 +132,7 @@ def save_session_state(session_id: str, state: SessionState) -> None:
 
     # Path uses the full ISO date (including hour) to ensure consistent file naming
     # across session lifetime - prevents creating new files when hour changes
+    from lib.session_paths import get_session_file_path
     path = get_session_file_path(session_id, state["date"])
 
     # Ensure directory exists

@@ -7,7 +7,7 @@ from hooks.gate_registry import check_session_start_gate, GateContext
 from lib.gate_model import GateResult, GateVerdict
 
 
-@patch("hooks.gate_registry.session_paths.get_session_file_path_direct")
+@patch("hooks.gate_registry.session_paths.get_session_file_path")
 @patch("hooks.gate_registry.session_paths.get_session_status_dir")
 @patch("hooks.gate_registry.session_paths.get_session_short_hash")
 def test_session_start_message_generation(mock_get_hash, mock_get_status_dir, mock_get_file_path):

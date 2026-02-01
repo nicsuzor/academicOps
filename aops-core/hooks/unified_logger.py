@@ -34,7 +34,7 @@ from lib.insights_generator import (
 )
 from lib.session_paths import (
     get_claude_project_folder,
-    get_session_file_path_direct,
+    get_session_file_path,
     get_session_short_hash,
     get_session_status_dir,
 )

@@ -43,6 +43,7 @@ try:
     from hooks.gate_registry import GATE_CHECKS, GateContext
     from hooks.unified_logger import log_hook_event
     from lib.gate_model import GateResult, GateVerdict
+    from lib.session_paths import get_pid_session_map_path
 except ImportError as e:
     # Fail fast if schemas missing
     print(f"CRITICAL: Failed to import: {e}", file=sys.stderr)
@@ -103,21 +104,10 @@ GATE_CONFIG: Dict[str, List[str]] = {
 
 # --- Session Management ---
 
-def get_session_file_path() -> Path:
-    """Get session metadata file path."""
-    aops_sessions = Path(os.getenv("AOPS_SESSIONS", "/tmp"))
-    if not aops_sessions.exists():
-        try:
-            aops_sessions.mkdir(parents=True, exist_ok=True)
-        except OSError:
-            pass # Fallback to /tmp
-            
-    return aops_sessions / f"session-{os.getppid()}.json"
-
 def get_session_data() -> Dict[str, Any]:
     """Read session metadata."""
     try:
-        session_file = get_session_file_path()
+        session_file = get_pid_session_map_path()
         if session_file.exists():
             return json.loads(session_file.read_text().strip())
     except (OSError, json.JSONDecodeError):
@@ -127,7 +117,7 @@ def get_session_data() -> Dict[str, Any]:
 def persist_session_data(data: Dict[str, Any]) -> None:
     """Write session metadata atomically."""
     try:
-        session_file = get_session_file_path()
+        session_file = get_pid_session_map_path()
         existing = get_session_data()
         existing.update(data)
         

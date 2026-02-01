@@ -113,11 +113,8 @@ class TestPathResolution:
 
 
 class TestRealEnvironment:
-    """Tests using actual environment (skipped if not set up)."""
+    """Tests using actual environment."""
 
-    @pytest.mark.skipif(
-        not os.environ.get("AOPS"), reason="AOPS environment variable not set"
-    )
     def test_real_aops_root(self):
         """Test get_aops_root with real environment."""
         result = paths.get_aops_root()

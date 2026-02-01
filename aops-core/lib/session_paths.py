@@ -147,7 +147,7 @@ def get_session_status_dir(
     return status_dir
 
 
-def get_session_file_path_direct(
+def get_session_file_path(
     session_id: str, date: str | None = None, input_data: dict | None = None
 ) -> Path:
     """Get session state file path (flat structure).
@@ -225,3 +225,19 @@ def get_session_directory(
 
     # Production mode - use centralized status directory
     return get_session_status_dir(session_id)
+
+
+def get_pid_session_map_path() -> Path:
+    """Get path for PID -> SessionID mapping file.
+
+    Used by router to bootstrap session ID from process ID when not provided.
+    Stores simple JSON: {"session_id": "..."}
+    """
+    aops_sessions = Path(os.getenv("AOPS_SESSIONS", "/tmp"))
+    if not aops_sessions.exists():
+        try:
+            aops_sessions.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            pass  # Fallback to /tmp
+
+    return aops_sessions / f"session-{os.getppid()}.json"
