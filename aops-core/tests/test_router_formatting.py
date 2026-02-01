@@ -1,9 +1,9 @@
-"""Tests for GateResult model and Router formatting logic."""
+"""Tests for GateResult model and HookRouter formatting logic."""
 
 import pytest
-import json
 from lib.gate_model import GateResult, GateVerdict
-from hooks.router import format_for_gemini, format_for_claude, merge_outputs
+from hooks.router import HookRouter
+from hooks.schemas import CanonicalHookOutput
 
 
 class TestGateModel:
@@ -24,124 +24,128 @@ class TestGateModel:
 
 
 class TestRouterFormatting:
-    """Tests for format_for_gemini and format_for_claude."""
+    """Tests for HookRouter.output_for_gemini and output_for_claude."""
+
+    def setup_method(self):
+        self.router = HookRouter()
 
     def test_format_for_gemini_deny(self):
-        canonical = {
-            "verdict": "deny",
-            "system_message": "Blocked",
-            "context_injection": "Reasoning here",
-        }
-        output = format_for_gemini(canonical, "BeforeTool")
-        assert output["decision"] == "deny"
-        assert output["systemMessage"] == "Blocked"
-        assert output["reason"] == "Reasoning here"
+        canonical = CanonicalHookOutput(
+            verdict="deny",
+            system_message="Blocked",
+            context_injection="Reasoning here",
+        )
+        output = self.router.output_for_gemini(canonical, "BeforeTool")
+        assert output.decision == "deny"
+        assert output.systemMessage == "Blocked"
+        assert output.reason == "Reasoning here"
 
     def test_format_for_gemini_allow_with_context(self):
-        canonical = {"verdict": "allow", "context_injection": "Info"}
-        output = format_for_gemini(canonical, "BeforeTool")
-        # Allow implies no 'decision' field in Gemini typically, or decision="allow"
-        # The formatter implementation only sets decision="deny" if verdict="deny"
-        assert "decision" not in output
-        assert output["reason"] == "Info"
+        canonical = CanonicalHookOutput(verdict="allow", context_injection="Info")
+        output = self.router.output_for_gemini(canonical, "BeforeTool")
+        assert output.decision == "allow"
+        assert output.reason == "Info"
 
     def test_format_for_claude_deny(self):
-        canonical = {
-            "verdict": "deny",
-            "system_message": "Blocked",
-            "context_injection": "Reasoning here",
-        }
-        output = format_for_claude(canonical, "PreToolUse")
-        assert output["systemMessage"] == "Blocked"
-        assert output["hookSpecificOutput"]["permissionDecision"] == "deny"
-        assert output["hookSpecificOutput"]["additionalContext"] == "Reasoning here"
+        canonical = CanonicalHookOutput(
+            verdict="deny",
+            system_message="Blocked",
+            context_injection="Reasoning here",
+        )
+        output = self.router.output_for_claude(canonical, "PreToolUse")
+        assert output.systemMessage == "Blocked"
+        assert output.hookSpecificOutput.permissionDecision == "deny"
+        assert output.hookSpecificOutput.additionalContext == "Reasoning here"
 
     def test_format_for_claude_updated_input(self):
-        canonical = {
-            "verdict": "allow",
-            "metadata": {"updated_input": {"arg": "value"}},
-        }
-        output = format_for_claude(canonical, "PreToolUse")
-        assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
-        assert output["hookSpecificOutput"]["updatedInput"] == {"arg": "value"}
+        canonical = CanonicalHookOutput(
+            verdict="allow",
+            updated_input='{"arg": "value"}',
+        )
+        output = self.router.output_for_claude(canonical, "PreToolUse")
+        assert output.hookSpecificOutput.permissionDecision == "allow"
+        assert output.hookSpecificOutput.updatedInput == '{"arg": "value"}'
 
     def test_format_for_claude_stop_event_deny(self):
         """Stop events use decision/reason/stopReason, NOT hookSpecificOutput."""
-        canonical = {
-            "verdict": "deny",
-            "system_message": "Uncommitted changes detected",
-            "context_injection": "Please commit before stopping",
-        }
-        output = format_for_claude(canonical, "Stop")
+        canonical = CanonicalHookOutput(
+            verdict="deny",
+            system_message="Uncommitted changes detected",
+            context_injection="Please commit before stopping",
+        )
+        output = self.router.output_for_claude(canonical, "Stop")
 
         # Stop hooks use decision/reason/stopReason format
-        assert output["decision"] == "block"
-        assert output["reason"] == "Please commit before stopping"
-        assert output["stopReason"] == "Uncommitted changes detected"
-        assert output["systemMessage"] == "Uncommitted changes detected"
-
-        # hookSpecificOutput should NOT be present for Stop events
-        assert "hookSpecificOutput" not in output
+        assert output.decision == "block"
+        assert output.reason == "Please commit before stopping"
+        assert output.stopReason == "Uncommitted changes detected"
+        assert output.systemMessage == "Uncommitted changes detected"
 
     def test_format_for_claude_stop_event_allow(self):
         """Stop event with allow verdict."""
-        canonical = {
-            "verdict": "allow",
-            "system_message": "Session ending normally",
-        }
-        output = format_for_claude(canonical, "Stop")
+        canonical = CanonicalHookOutput(
+            verdict="allow",
+            system_message="Session ending normally",
+        )
+        output = self.router.output_for_claude(canonical, "Stop")
 
-        assert output["decision"] == "allow"
-        assert output["stopReason"] == "Session ending normally"
-        assert "hookSpecificOutput" not in output
+        assert output.decision == "allow"
+        assert output.stopReason == "Session ending normally"
 
     def test_format_for_gemini_updated_input(self):
-        # Gemini formatter supports updatedInput now?
-        # I added support in format_for_gemini:
-        #     if "updated_input" in metadata:
-        #        result["updatedInput"] = metadata["updated_input"]
-        # So yes, it should pass it through as top-level field?
-        # Let's check my implementation of format_for_gemini in Step 96.
-        # Yes: result["updatedInput"] = metadata["updated_input"]
-
-        canonical = {
-            "verdict": "allow",
-            "metadata": {"updated_input": {"arg": "value"}},
-        }
-        output = format_for_gemini(canonical, "BeforeTool")
-        assert output["updatedInput"] == {"arg": "value"}
+        canonical = CanonicalHookOutput(
+            verdict="allow",
+            updated_input='{"arg": "value"}',
+        )
+        output = self.router.output_for_gemini(canonical, "BeforeTool")
+        assert output.updatedInput == '{"arg": "value"}'
 
 
 class TestRouterMerge:
-    """Tests for merge_outputs logic."""
+    """Tests for HookRouter._merge_result logic."""
+
+    def setup_method(self):
+        self.router = HookRouter()
 
     def test_merge_metadata(self):
-        out1 = {"verdict": "allow", "metadata": {"updated_input": {"a": 1}}}
-        out2 = {
-            "verdict": "warn",
-            "context_injection": "Warning",
-            "metadata": {"other": "value"},
-        }
+        target = CanonicalHookOutput(
+            verdict="allow",
+            metadata={"updated_input": {"a": 1}},
+        )
+        source = CanonicalHookOutput(
+            verdict="warn",
+            context_injection="Warning",
+            metadata={"other": "value"},
+        )
 
-        merged = merge_outputs([out1, out2], "PreToolUse")
+        self.router._merge_result(target, source)
 
         # Verdict: warn > allow
-        assert merged["verdict"] == "warn"
-        assert merged["context_injection"] == "Warning"
-        assert merged["metadata"]["updated_input"] == {"a": 1}
-        assert merged["metadata"]["other"] == "value"
+        assert target.verdict == "warn"
+        assert target.context_injection == "Warning"
+        assert target.metadata["updated_input"] == {"a": 1}
+        assert target.metadata["other"] == "value"
 
-    def test_merge_legacy_ignored(self):
-        # Legacy fields should be ignored now as we removed the else branch
-        legacy = {"hookSpecificOutput": {"permissionDecision": "deny"}}
-        canonical = {"verdict": "allow"}
+    def test_merge_deny_takes_precedence(self):
+        target = CanonicalHookOutput(verdict="allow")
+        source = CanonicalHookOutput(verdict="deny", system_message="Blocked")
 
-        merged = merge_outputs([legacy, canonical], "PreToolUse")
+        self.router._merge_result(target, source)
 
-        # 'legacy' input has NO 'verdict', so it should be skipped by the new loop logic
-        # merge_outputs loop: if "verdict" in out: ...
-        # So legacy input is completely ignored.
-        # Thus result should be 'allow' (from canonical)
+        assert target.verdict == "deny"
+        assert target.system_message == "Blocked"
 
-        assert merged["verdict"] == "allow"
-        # And no 'deny' from legacy
+    def test_merge_context_concatenates(self):
+        target = CanonicalHookOutput(
+            verdict="allow",
+            context_injection="First message",
+        )
+        source = CanonicalHookOutput(
+            verdict="allow",
+            context_injection="Second message",
+        )
+
+        self.router._merge_result(target, source)
+
+        assert "First message" in target.context_injection
+        assert "Second message" in target.context_injection
