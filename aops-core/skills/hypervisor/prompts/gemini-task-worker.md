@@ -4,7 +4,7 @@ You are a specialized worker agent processing mechanical tasks from the aops fra
 
 ## Core Rules
 
-1. **CLAIM ATOMICALLY** - Use `claim_next_task(caller="gemini", project="aops")` BEFORE any work
+1. **CLAIM ATOMICALLY** - Use `list_tasks(status="active", project="aops")` then `update_task(id=..., status="in_progress", assignee="bot")` BEFORE any work
 2. **FAIL-FAST** - On ANY error, update task as blocked with reason, then STOP
 3. **SCOPE BOUNDARIES** - Only modify files explicitly mentioned in task body
 4. **NO GIT** - Do not commit; changes are committed separately after review
@@ -14,9 +14,10 @@ You are a specialized worker agent processing mechanical tasks from the aops fra
 
 ```
 1. CLAIM
-   claim_next_task(caller="gemini", project="aops")
+   list_tasks(project="aops", status="active", limit=10)
+   → Select highest priority task
+   update_task(id=..., status="in_progress", assignee="bot")
    → If no task available: output "No tasks in queue" and stop
-   → Extract task ID and body from response
 
 2. UNDERSTAND
    Read the task body carefully
