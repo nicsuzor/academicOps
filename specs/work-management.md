@@ -40,15 +40,15 @@ flowchart LR
 
 | Function | Purpose |
 |----------|---------|
-| `mcp__plugin_aops-core_tasks__create_task()` | Create new task |
-| `mcp__plugin_aops-core_tasks__get_task(id)` | Get task details |
-| `mcp__plugin_aops-core_tasks__update_task(id, ...)` | Update task fields |
-| `mcp__plugin_aops-core_tasks__complete_task(id)` | Mark task done |
-| `mcp__plugin_aops-core_tasks__list_tasks(...)` | List/filter tasks |
-| `mcp__plugin_aops-core_tasks__search_tasks(query)` | Search tasks |
-| `mcp__plugin_aops-core_tasks__get_ready_tasks(project, caller)` | Get actionable tasks (caller filters by assignee) |
-| `mcp__plugin_aops-core_tasks__get_blocked_tasks()` | Get blocked tasks |
-| `mcp__plugin_aops-core_tasks__decompose_task(id, children)` | Break down task |
+| `mcp__plugin_aops-core_task_manager__create_task()` | Create new task |
+| `mcp__plugin_aops-core_task_manager__get_task(id)` | Get task details |
+| `mcp__plugin_aops-core_task_manager__update_task(id, ...)` | Update task fields |
+| `mcp__plugin_aops-core_task_manager__complete_task(id)` | Mark task done |
+| `mcp__plugin_aops-core_task_manager__list_tasks(...)` | List/filter tasks |
+| `mcp__plugin_aops-core_task_manager__search_tasks(query)` | Search tasks |
+| `mcp__plugin_aops-core_task_manager__get_ready_tasks(project, caller)` | Get actionable tasks (caller filters by assignee) |
+| `mcp__plugin_aops-core_task_manager__get_blocked_tasks()` | Get blocked tasks |
+| `mcp__plugin_aops-core_task_manager__decompose_task(id, children)` | Break down task |
 
 ## Task Lifecycle
 
@@ -78,7 +78,7 @@ Tasks are organized by `project` field:
 
 **Create with project**:
 ```python
-mcp__plugin_aops-core_tasks__create_task(
+mcp__plugin_aops-core_task_manager__create_task(
     title="Task title",
     type="task",
     project="aops",
@@ -92,13 +92,13 @@ Tasks can depend on other tasks:
 
 ```python
 # Create dependent task
-mcp__plugin_aops-core_tasks__create_task(
+mcp__plugin_aops-core_task_manager__create_task(
     title="Implement feature",
     depends_on=["task-id-of-prerequisite"]
 )
 
 # Check what's blocked
-mcp__plugin_aops-core_tasks__get_blocked_tasks()
+mcp__plugin_aops-core_task_manager__get_blocked_tasks()
 ```
 
 ## Graph Insertion Responsibility
@@ -126,13 +126,13 @@ When creating a task, the agent MUST:
 
 ```python
 # WRONG: Orphaned task
-mcp__plugin_aops-core_tasks__create_task(
+mcp__plugin_aops-core_task_manager__create_task(
     title="Fix login bug",
     project="webapp"
 )
 
 # RIGHT: Connected to parent epic
-mcp__plugin_aops-core_tasks__create_task(
+mcp__plugin_aops-core_task_manager__create_task(
     title="Fix login bug",
     project="webapp",
     depends_on=["webapp-auth-epic"]  # Links to parent
@@ -151,7 +151,7 @@ Tasks can be assigned to a specific actor:
 
 **Creating assigned tasks**:
 ```python
-mcp__plugin_aops-core_tasks__create_task(
+mcp__plugin_aops-core_task_manager__create_task(
     title="Review proposal",
     assignee="nic"  # Human task
 )
@@ -160,13 +160,13 @@ mcp__plugin_aops-core_tasks__create_task(
 **Getting ready tasks by caller**:
 ```python
 # Bot tasks + unassigned (default for /pull)
-mcp__plugin_aops-core_tasks__get_ready_tasks(project="aops", caller="bot")
+mcp__plugin_aops-core_task_manager__get_ready_tasks(project="aops", caller="bot")
 
 # Human tasks + unassigned
-mcp__plugin_aops-core_tasks__get_ready_tasks(project="aops", caller="nic")
+mcp__plugin_aops-core_task_manager__get_ready_tasks(project="aops", caller="nic")
 
 # All ready tasks (no filter)
-mcp__plugin_aops-core_tasks__get_ready_tasks(project="aops")
+mcp__plugin_aops-core_task_manager__get_ready_tasks(project="aops")
 ```
 
 ## Task Storage

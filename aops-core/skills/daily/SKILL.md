@@ -152,10 +152,10 @@ From [sender]: [Actual content or summary]
 ```
 
 **CRITICAL - For each FYI item, IMMEDIATELY after writing it:**
-1. **If action required** (feedback, review, response, decision, "review X before Y") → `mcp__plugin_aops-core_tasks__create_task()` NOW
+1. **If action required** (feedback, review, response, decision, "review X before Y") → `mcp__plugin_aops-core_task_manager__create_task()` NOW
    - Include deadline if mentioned or implied (e.g., "before Planning Day" = Planning Day date)
    - **Then add task link to FYI content**: `- **→ Task**: [task-id] Task title`
-2. **If links to existing task** → `mcp__plugin_aops-core_tasks__update_task()` with the info
+2. **If links to existing task** → `mcp__plugin_aops-core_task_manager__update_task()` with the info
 3. **If worth future recall** → `mcp__memory__store_memory()` with tags
 
 Do NOT batch these to a later step. Task creation AND linking happens AS you process each email, not after.
@@ -191,7 +191,7 @@ Populate the `## Focus` section with priority dashboard and task recommendations
 ### 3.1: Load Task Data
 
 ```python
-mcp__plugin_aops-core_tasks__list_tasks(limit=100)
+mcp__plugin_aops-core_task_manager__list_tasks(limit=100)
 ```
 
 Parse task data from output to identify:
@@ -327,7 +327,7 @@ After presenting recommendations, use `AskUserQuestion` to confirm priorities:
 
 Ask: "Any of these ready to archive?"
 
-When user picks, use `mcp__plugin_aops-core_tasks__update_task(id="<id>", status="cancelled")` to archive.
+When user picks, use `mcp__plugin_aops-core_task_manager__update_task(id="<id>", status="cancelled")` to archive.
 
 ### 4. Daily progress (Incremental)
 
@@ -350,7 +350,7 @@ ls $ACA_DATA/../summaries/YYYYMMDD*.json 2>/dev/null
 Fetch recently completed tasks to provide context for today's story synthesis:
 
 ```python
-mcp__plugin_aops-core_tasks__list_tasks(status="done", limit=20)
+mcp__plugin_aops-core_task_manager__list_tasks(status="done", limit=20)
 ```
 
 **Purpose**: Completed tasks represent work that may not appear in session JSONs (e.g., tasks completed in previous sessions, or completed without a dedicated session). This context enriches the daily narrative.

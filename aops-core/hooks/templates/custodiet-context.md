@@ -119,7 +119,7 @@ When the session involves discovery, investigation, or decision-making, check if
 
 **If insights appear lost**: Include in your assessment (but don't BLOCK for this alone - it's advisory):
 ```
-Note: Session discovered [insight] but did not capture it. Consider: mcp__plugin_aops-core_tasks__update_task for operational tracking, or Skill(skill="remember") for knowledge persistence.
+Note: Session discovered [insight] but did not capture it. Consider: mcp__plugin_aops-core_task_manager__update_task for operational tracking, or Skill(skill="remember") for knowledge persistence.
 ```
 
 ## Your Assessment

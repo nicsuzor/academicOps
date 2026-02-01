@@ -37,7 +37,7 @@ Update your claimed task with progress and release it.
 
 <!--@NS: add proper syntax here for updating and releasing the task. -->
 ```
-mcp__plugin_aops-core_tasks__update_task(
+mcp__plugin_aops-core_task_manager__update_task(
   id="<task-id>",
 )
 ```
@@ -89,7 +89,7 @@ active → in_progress → review → done
 For each incomplete work item from the current session:
 
 ```
-mcp__plugin_aops-core_tasks__create_task(
+mcp__plugin_aops-core_task_manager__create_task(
   title="<incomplete task>",
   type="task",
   project="aops",
@@ -156,7 +156,7 @@ Next: `/pull <task-id>` to resume.
 CREATE a historical task to capture the session's work:
 
 ```
-mcp__plugin_aops-core_tasks__create_task(
+mcp__plugin_aops-core_task_manager__create_task(
   title="[Session] <brief description of work done>",
   type="task",
   project="<relevant project or 'aops'>",
@@ -175,7 +175,7 @@ When session ends because tooling failed and a bug was filed:
 
 1. **Mark original task as blocked**:
 ```
-mcp__plugin_aops-core_tasks__update_task(
+mcp__plugin_aops-core_task_manager__update_task(
   id="<original-task-id>",
   status="blocked",
   depends_on=["<bug-task-id>"]

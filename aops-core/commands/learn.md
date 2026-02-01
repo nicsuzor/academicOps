@@ -28,9 +28,9 @@ permalink: commands/learn
 **Before any framework change, read these files:**
 
 ```
-Read framework/AXIOMS.md
-Read framework/HEURISTICS.md
-Read framework/enforcement-map.md
+Read aops-core/framework/AXIOMS.md
+Read aops-core/framework/HEURISTICS.md
+Read aops-core/framework/enforcement-map.md
 ```
 
 You CANNOT proceed without loading this context. Note which principles are relevant.
@@ -40,7 +40,7 @@ You CANNOT proceed without loading this context. Note which principles are relev
 **Before any fix, document in a task.** This is non-negotiable.
 
 ```
-mcp__plugin_aops-core_tasks__create_task(
+mcp__plugin_aops-core_task_manager__create_task(
   title="[Learn] Root cause summary",
   type="task",
   project="aops",
@@ -51,7 +51,7 @@ mcp__plugin_aops-core_tasks__create_task(
 
 OR if related task exists:
 ```
-mcp__plugin_aops-core_tasks__update_task(
+mcp__plugin_aops-core_task_manager__update_task(
   id="<id>",
   body="<existing body>\n\nAdding learning observation: ..."
 )
@@ -105,7 +105,7 @@ When a subagent (custodiet, critic, qa, etc.) makes an incorrect decision:
 Search tasks for related issues before creating a new one:
 
 ```
-mcp__plugin_aops-core_tasks__search_tasks(query="[keywords]")
+mcp__plugin_aops-core_task_manager__search_tasks(query="[keywords]")
 ```
 
 If a related task exists, update it with your observation. Pattern recognition across multiple occurrences informs escalation decisions.
@@ -181,7 +181,7 @@ Keep changes brief (1-3 sentences for soft interventions). If you need a bigger 
 - How to verify (what behavior to observe)
 
 ```
-mcp__plugin_aops-core_tasks__update_task(
+mcp__plugin_aops-core_task_manager__update_task(
   id="<id>",
   body="<existing>\n\nFix applied: [commit hash]. Changed [file]. Verify by [observable behavior]."
 )

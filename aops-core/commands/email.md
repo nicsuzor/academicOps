@@ -30,7 +30,7 @@ permalink: commands/email
 **Task creation**:
 
 ```
-mcp__plugin_aops-core_tasks__create_task(
+mcp__plugin_aops-core_task_manager__create_task(
   title="Reply to <sender name>: <subject summary>",
   type="task",
   project="aops",

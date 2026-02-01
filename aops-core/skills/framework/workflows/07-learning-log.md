@@ -23,8 +23,8 @@ description: Document agent behavior patterns as learn-type tasks for later synt
 **First**: Search for existing task that matches this observation:
 
 ```python
-mcp__plugin_aops-core_tasks__list_tasks(status="active")
-mcp__plugin_aops-core_tasks__search_tasks(query="[keywords]")
+mcp__plugin_aops-core_task_manager__list_tasks(status="active")
+mcp__plugin_aops-core_task_manager__search_tasks(query="[keywords]")
 ```
 
 Categories/labels:
@@ -39,9 +39,9 @@ Categories/labels:
 **If matching task exists**: Update with new observation (append to body)
 
 ```python
-task = mcp__plugin_aops-core_tasks__get_task(id="[TASK_ID]")
+task = mcp__plugin_aops-core_task_manager__get_task(id="[TASK_ID]")
 # Append new observation to existing body
-mcp__plugin_aops-core_tasks__update_task(
+mcp__plugin_aops-core_task_manager__update_task(
     id="[TASK_ID]",
     body=task["body"] + """
 
@@ -57,7 +57,7 @@ mcp__plugin_aops-core_tasks__update_task(
 **If no matching task**: Create new learn task
 
 ```python
-mcp__plugin_aops-core_tasks__create_task(
+mcp__plugin_aops-core_task_manager__create_task(
     title="[category]: [descriptive-title]",
     type="learn",  # Learn tasks are for observation/tracking, NOT execution
     tags=["[category]"],
@@ -139,12 +139,12 @@ We don't control agents - they're probabilistic. Root causes must be framework c
 User: /log agent ignored my explicit request to run ALL tests, only ran 3
 
 Phase 1 - Search:
-mcp__plugin_aops-core_tasks__search_tasks(query="instruction scope learning")
+mcp__plugin_aops-core_task_manager__search_tasks(query="instruction scope learning")
 → Found: aops-42 "learning: agents ignoring explicit scope instructions"
 
 Phase 2 - Update existing task:
-task = mcp__plugin_aops-core_tasks__get_task(id="aops-42")
-mcp__plugin_aops-core_tasks__update_task(id="aops-42", body="[existing + new observation]")
+task = mcp__plugin_aops-core_task_manager__get_task(id="aops-42")
+mcp__plugin_aops-core_task_manager__update_task(id="aops-42", body="[existing + new observation]")
 
 Report: "Added observation to aops-42 - recurring pattern. Run `/qa aops-42` to perform full analysis."
 ```
@@ -155,11 +155,11 @@ Report: "Added observation to aops-42 - recurring pattern. Run `/qa aops-42` to 
 User: /log hook crashed with TypeError in prompt_router.py
 
 Phase 1 - Search:
-mcp__plugin_aops-core_tasks__search_tasks(query="prompt_router TypeError bug")
+mcp__plugin_aops-core_task_manager__search_tasks(query="prompt_router TypeError bug")
 → No matching tasks
 
 Phase 2 - Create new learn task:
-mcp__plugin_aops-core_tasks__create_task(
+mcp__plugin_aops-core_task_manager__create_task(
     title="bug: prompt_router.py TypeError on None response",
     type="learn",  # Observational - NOT for direct execution
     tags=["bug"],
