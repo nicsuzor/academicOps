@@ -1423,7 +1423,7 @@ GATE_CHECKS = {
     # "axiom_enforcer": merged into custodiet
     "handover": check_handover_gate,  # PostToolUse
     "agent_response": check_agent_response_listener,  # AfterAgent
-    "stop": check_stop_gate,  # Stop
+    "stop_gate": check_stop_gate,  # Stop
     "hydration_recency": check_hydration_recency_gate,  # Stop
     "skill_activation": check_skill_activation_listener,  # PostToolUse
     "accountant": run_accountant,  # PostToolUse
