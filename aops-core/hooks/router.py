@@ -9,8 +9,8 @@ Manages session persistence for Gemini.
 
 import json
 import os
-import subprocess
 import sys
+import subprocess
 import tempfile
 import uuid
 from datetime import datetime
@@ -18,36 +18,44 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 # --- Path Setup ---
-HOOK_DIR = Path(__file__).parent
-AOPS_CORE_DIR = HOOK_DIR.parent
+HOOK_DIR = Path(__file__).parent # aops-core/hooks
+AOPS_CORE_DIR = HOOK_DIR.parent  # aops-core
 
 # Add aops-core to path for imports
 if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
-# Adjust imports to work within the aops-core environment
-from hooks import hook_logger
+try:
+    from hooks.gemini.schemas import (
+        HookContext,
+        CanonicalHookOutput,
+        ClaudeHookOutput,
+        GeminiHookOutput,
+        ClaudeHookSpecificOutput,
+        ClaudeGeneralHookOutput,
+        ClaudeStopHookOutput
+    )
+except ImportError as e:
+    # Fail fast if schemas missing
+    print(f"CRITICAL: Failed to import schemas: {e}", file=sys.stderr)
+    sys.exit(1)
 
-
-# Hook logging is handled by unified_logger.py in the hook registry
 
 # --- Configuration ---
 
-# Event mapping: Gemini -> Claude
+# Event mapping: Gemini -> Claude (internal normalization)
 GEMINI_EVENT_MAP = {
     "SessionStart": "SessionStart",
     "BeforeTool": "PreToolUse",
     "AfterTool": "PostToolUse",
-    "BeforeAgent": "UserPromptSubmit",
+    "BeforeAgent": "UserPromptSubmit", # Mapped to UPS for unified handling
     "AfterAgent": "AfterAgent",
-    "SessionEnd": "Stop",
+    "SessionEnd": "Stop", # Map SessionEnd to Stop to trigger stop gates
     "Notification": "Notification",
     "PreCompress": "PreCompact",
 }
 
 # Hooks Registry
-# "gates.py" is the universal gate runner - handles all gates via gate_registry.py
-# "unified_logger.py" logs for Claude events.
 HOOK_REGISTRY: Dict[str, List[Dict[str, Any]]] = {
     "SessionStart": [
         {"script": "session_env_setup.sh"},
@@ -55,25 +63,19 @@ HOOK_REGISTRY: Dict[str, List[Dict[str, Any]]] = {
     ],
     "PreToolUse": [
         {"script": "unified_logger.py"},
-        {
-            "script": "gates.py"
-        },  # Universal gate runner (hydration, task_required, overdue_enforcement)
-        # {"script": "command_intercept.py"},
-        # REMOVED: task_required_gate.py - consolidated into gates.py
-        # REMOVED: overdue_enforcement.py - consolidated into gates.py
+        {"script": "gates.py"},  # Universal gate runner
     ],
     "PostToolUse": [
         {"script": "unified_logger.py"},
-        {"script": "gates.py"},  # Universal gate runner (custodiet, handover)
+        {"script": "gates.py"},
         {"script": "task_binding.py"},
-        # REMOVED: handover_gate.py - consolidated into gates.py
     ],
     "UserPromptSubmit": [
         {"script": "user_prompt_submit.py"},
         {"script": "unified_logger.py"},
     ],
     "AfterAgent": [
-        {"script": "gates.py"},  # Universal gate runner (agent_response_listener)
+        {"script": "gates.py"},
         {"script": "unified_logger.py"},
     ],
     "SubagentStop": [
@@ -81,678 +83,324 @@ HOOK_REGISTRY: Dict[str, List[Dict[str, Any]]] = {
     ],
     "Stop": [
         {"script": "unified_logger.py"},
-        {"script": "gates.py"},  # Universal gate runner (stop_gate, hydration_recency)
+        {"script": "gates.py"},
         {"script": "generate_transcript.py"},
-        {"script": "session_end_commit_check.py"},  # Enforce commit before session end
+        {"script": "session_end_commit_check.py"},
     ],
-    "SessionEnd": [
-        {"script": "unified_logger.py"},
-    ],
-    "PreCompact": [
-        {"script": "unified_logger.py"},
-    ],
-    "Notification": [
-        {"script": "unified_logger.py"},
-    ],
+    # Fallback/Passthrough for others
+    "SessionEnd": [{"script": "unified_logger.py"}], # Post-Stop cleanup
 }
 
-# --- Path Validation ---
-
-
-def validate_temp_path(path: str) -> bool:
-    """Validate that a temp path is safe (no traversal attacks).
-
-    Args:
-        path: Path string to validate
-
-    Returns:
-        True if path is safe, False otherwise
-    """
-    if not path:
-        return False
-
-    try:
-        # Resolve to absolute path and check it's within expected bounds
-        resolved = Path(path).resolve()
-
-        # Must be within /tmp or user's home directory
-        allowed_prefixes = [
-            Path("/tmp"),
-            Path.home(),
-            Path(os.environ.get("AOPS_SESSIONS", "/tmp")),
-        ]
-
-        for prefix in allowed_prefixes:
-            try:
-                resolved.relative_to(prefix.resolve())
-                return True
-            except ValueError:
-                continue
-
-        return False
-    except (OSError, RuntimeError):
-        return False
-
-
-# --- Session Management (Gemini Support) ---
-
+# --- Session Management ---
 
 def get_session_file_path() -> Path:
-    """Get session metadata file path from $AOPS_SESSIONS environment variable."""
-    aops_sessions = Path(os.getenv("AOPS_SESSIONS", ""))
-    if not aops_sessions.name:
-        # Fallback to tmp location if env not set
-        return Path(f"/tmp/gemini-session-{os.getppid()}.json")
-
-    aops_sessions.mkdir(parents=True, exist_ok=True)
-    return aops_sessions / f"session-{os.getppid()}.json"
-
-
-def persist_session_data(data: Dict[str, Any]) -> None:
-    """Write session metadata atomically using temp file + rename.
-
-    Uses atomic write pattern to prevent race conditions when
-    multiple hook invocations occur concurrently.
-    """
-    try:
-        session_file = get_session_file_path()
-
-        # Merge with existing if possible
-        if session_file.exists():
-            try:
-                existing = json.loads(session_file.read_text())
-                existing.update(data)
-                data = existing
-            except json.JSONDecodeError:
-                pass  # Use new data if existing is corrupt
-
-        # Atomic write: write to temp file, then rename
-        session_file.parent.mkdir(parents=True, exist_ok=True)
-        fd, temp_path = tempfile.mkstemp(
-            prefix="session-", suffix=".tmp", dir=str(session_file.parent)
-        )
+    """Get session metadata file path."""
+    aops_sessions = Path(os.getenv("AOPS_SESSIONS", "/tmp"))
+    if not aops_sessions.exists():
         try:
-            os.write(fd, json.dumps(data).encode())
-            os.close(fd)
-            Path(temp_path).rename(session_file)
-        except (IOError, OSError):
-            # Clean up temp file on write failure; fd may already be closed
-            try:
-                os.close(fd)
-            except Exception as e:
-                # fd already closed - log and continue cleanup
-                print(f"DEBUG: router.py fd close failed (likely already closed): {e}", file=sys.stderr)
-            Path(temp_path).unlink(missing_ok=True)
-            raise
-
-    except OSError as e:
-        print(f"WARNING: Failed to write session data: {e}", file=sys.stderr)
-
+            aops_sessions.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            pass # Fallback to /tmp
+            
+    return aops_sessions / f"session-{os.getppid()}.json"
 
 def get_session_data() -> Dict[str, Any]:
     """Read session metadata."""
     try:
         session_file = get_session_file_path()
         if session_file.exists():
-            content = session_file.read_text().strip()
-            # Handle potential legacy plain text ID
-            try:
-                return json.loads(content)
-            except json.JSONDecodeError:
-                return {"session_id": content}
-    except OSError as e:
-        # Session file read errors are non-fatal; log and return empty dict
-        print(f"DEBUG: router.py session file read failed: {e}", file=sys.stderr)
+            return json.loads(session_file.read_text().strip())
+    except (OSError, json.JSONDecodeError):
+        pass
     return {}
 
-
-def get_gemini_session_id(event_name: str) -> str:
-    """Get or create a persistent session ID details for Gemini."""
-    # Check for native Gemini session ID
-    env_session_id = os.environ.get("GEMINI_SESSION_ID")
-    if env_session_id:
-        return env_session_id
-
-    # Read existing ID
-    data = get_session_data()
-    if data.get("session_id"):
-        return data["session_id"]
-
-    if event_name == "SessionStart":
-        # Generate new session ID
-        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        short_uuid = str(uuid.uuid4())[:8]
-        session_id = f"gemini-{timestamp}-{short_uuid}"
-        return session_id
-
-    # Fallback
-    return f"gemini-fallback-{str(uuid.uuid4())[:8]}"
-
-
-# --- Routing Logic ---
-
-
-def map_gemini_to_claude(
-    gemini_event: str, gemini_input: Dict[str, Any]
-) -> Optional[Dict[str, Any]]:
-    """Map Gemini input format to Claude input format."""
-    claude_event = GEMINI_EVENT_MAP.get(gemini_event)
-    if not claude_event:
-        return None
-
-    claude_input = dict(gemini_input)
-    claude_input["hook_event_name"] = claude_event
-
-    session_id = claude_input.get("session_id") or get_gemini_session_id(gemini_event)
-    claude_input["session_id"] = session_id
-
-    if gemini_event == "SessionStart":
-        update_data = {"session_id": session_id}
-
-        # Extract temp root from transcript_path
-        # format: .../tmp/<hash>/chats/session-....json
-        transcript_path = gemini_input.get("transcript_path")
-        if transcript_path:
-            try:
-                trans_p = Path(transcript_path)
-                # We want the parent of 'chats', i.e. the hash dir
-                # If path is .../chats/session.json:
-                # parent = chats, parent.parent = hash dir
-                if trans_p.parent.name == "chats":
-                    temp_root = str(trans_p.parent.parent)
-                else:
-                    # Fallback: just use parent
-                    temp_root = str(trans_p.parent)
-                update_data["temp_root"] = temp_root
-                claude_input["temp_root"] = temp_root  # Pass directly to hooks
-            except (OSError, ValueError, AttributeError):
-                # Best-effort extraction of temp_root; if parsing fails,
-                # continue without it - hooks can still function
-                pass
-
-        persist_session_data(update_data)
-
-    return claude_input
-
-
-def map_claude_to_gemini(
-    claude_output: Dict[str, Any], gemini_event: str
-) -> Dict[str, Any]:
-    """Map Claude output format to Gemini output format."""
-    if not claude_output:
-        return {}
-
-    gemini_output = dict(claude_output)
-
-    # Map hookSpecificOutput logic
-    if "hookSpecificOutput" in gemini_output:
-        hso = gemini_output["hookSpecificOutput"]
-        hso["hookEventName"] = gemini_event
-
-        # 1. Decision mapping (Common Field)
-        # All known Gemini events use top-level 'decision'
-        perm = hso.pop("permissionDecision", None)
-        if perm:
-            if perm == "block":
-                # translate block to 'deny'
-                gemini_output["decision"] = "deny"
-            else:
-                gemini_output["decision"] = perm
-
-            # 2. Reason mapping (BeforeTool, AfterAgent)
-            # BeforeTool uses top-level 'reason' for explanations.
-            # AfterAgent uses top-level 'reason' for correction prompts.
-            # Other events (BeforeAgent, AfterTool) use hookSpecificOutput.additionalContext.
-            # CRITICAL: SessionStart uses hookSpecificOutput.additionalContext to inject
-            # the first turn of history or prepend to prompt. Do NOT map to 'reason'.
-            if gemini_event in ["BeforeTool", "AfterAgent"]:
-                context = hso.get("additionalContext")
-                if context:
-                    gemini_output["reason"] = context
-
-                    # Mirror to systemMessage for user visibility on deny/block
-                    # (only if not already set)
-                    if (
-                        perm in ["deny", "block"]
-                        and "systemMessage" not in gemini_output
-                    ):
-                        gemini_output["systemMessage"] = f"Tool blocked: {context}"
-
-        # 3. SessionStart: Move additionalContext to systemMessage to prevent injection
-        # Users want to see the session info but NOT inject it into the prompt.
-        if gemini_event == "SessionStart":
-            context = hso.pop("additionalContext", None)
-            if context:
-                current_sys = gemini_output.get("systemMessage", "")
-                if current_sys:
-                    gemini_output["systemMessage"] = f"{current_sys}\n\n{context}"
-                else:
-                    gemini_output["systemMessage"] = context
-
-    return gemini_output
-
-
-# --- Execution Logic ---
-
-
-def run_hook_script(
-    script_path: Path, input_data: Dict[str, Any], timeout: float = 30.0
-) -> Tuple[Dict[str, Any], int]:
-    """Run a single hook script and return output/exit code."""
+def persist_session_data(data: Dict[str, Any]) -> None:
+    """Write session metadata atomically."""
     try:
-        if script_path.suffix == ".sh":
-            cmd = ["bash", str(script_path)]
-        else:
-            cmd = [sys.executable, str(script_path)]
-
-        # Ensure PYTHONPATH propagates (avoid duplicates)
-        env = os.environ.copy()
-        current_pp = env.get("PYTHONPATH", "")
-        aops_core_str = str(AOPS_CORE_DIR)
-        # Only prepend if not already present
-        if aops_core_str not in current_pp.split(os.pathsep):
-            env["PYTHONPATH"] = (
-                f"{aops_core_str}{os.pathsep}{current_pp}"
-                if current_pp
-                else aops_core_str
-            )
-
-        # Set session state directory (required by hooks)
-        # First check input_data (direct pass from SessionStart), then session file
-        temp_root = input_data.get("temp_root") or get_session_data().get("temp_root")
-        if temp_root and validate_temp_path(temp_root):
-            # Gemini: use temp_root from transcript_path
-            env["AOPS_SESSION_STATE_DIR"] = temp_root
-        else:
-            # Claude: derive from transcript_path or cwd
-            # transcript_path format: ~/.claude/projects/<encoded-cwd>/<session>.jsonl
-            # The parent directory is the state directory
-            transcript_path = input_data.get("transcript_path")
-            if transcript_path:
-                state_dir = str(Path(transcript_path).parent)
-                env["AOPS_SESSION_STATE_DIR"] = state_dir
-            else:
-                # Fallback to cwd-based derivation (less reliable if cwd is missing)
-                # NOTE: os.getcwd() returns HOOK_DIR since we run with cwd=HOOK_DIR,
-                # so only use it if input_data.cwd is explicitly set
-                cwd = input_data.get("cwd")
-                if cwd:
-                    encoded_cwd = "-" + cwd.replace("/", "-")[1:]
-                    env["AOPS_SESSION_STATE_DIR"] = str(
-                        Path.home() / ".claude" / "projects" / encoded_cwd
-                    )
-                # If neither transcript_path nor cwd available, don't set env var
-                # and let session_paths.py use its fallback logic
-
-        # Pass hook dir as CWD
-        result = subprocess.run(
-            cmd,
-            input=json.dumps(input_data),
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            env=env,
-            cwd=HOOK_DIR,
-        )
-
-        output = {}
-        if result.stdout.strip():
-            try:
-                output = json.loads(result.stdout)
-            except json.JSONDecodeError as e:
-                # Hook returned non-JSON output - log for debugging
-                print(f"WARNING: Hook {script_path.name} returned non-JSON: {e}", file=sys.stderr)
-
-        if result.stderr:
-            print(result.stderr, file=sys.stderr)
-
-        return output, result.returncode
-
-    except subprocess.TimeoutExpired as e:
-        print(
-            f"ERROR: Hook {script_path.name} timed out after {timeout}s",
-            file=sys.stderr,
-        )
-        return {}, 2
-    except FileNotFoundError as e:
-        print(f"ERROR: Hook script not found: {script_path}: {e}", file=sys.stderr)
-        return {}, 2
-    except PermissionError as e:
-        print(
-            f"ERROR: Permission denied for hook {script_path.name}: {e}",
-            file=sys.stderr,
-        )
-        return {}, 2
+        session_file = get_session_file_path()
+        existing = get_session_data()
+        existing.update(data)
+        
+        # Atomic write
+        fd, temp_path = tempfile.mkstemp(dir=str(session_file.parent), text=True)
+        try:
+            with os.fdopen(fd, 'w') as f:
+                json.dump(existing, f)
+            Path(temp_path).rename(session_file)
+        except Exception:
+            Path(temp_path).unlink(missing_ok=True)
+            raise
     except OSError as e:
-        print(f"ERROR: OS error running hook {script_path.name}: {e}", file=sys.stderr)
-        return {}, 2
+        print(f"WARNING: Failed to persist session data: {e}", file=sys.stderr)
 
 
-def merge_outputs(outputs: List[Dict[str, Any]], event_name: str) -> Dict[str, Any]:
-    """Merge outputs from multiple hooks.
+# --- Router Logic ---
 
-    Combines system messages, permission decisions (deny > ask > allow),
-    and additionalContext from all hook outputs.
-    """
-    if not outputs:
-        return {}
+class HookRouter:
+    def __init__(self):
+        self.session_data = get_session_data()
 
-    # Initialize canonical merge container
-    system_messages: List[str] = []
-    context_injections: List[str] = []
-    verdicts: List[str] = []  # deny > warn > allow
-    metadata: Dict[str, Any] = {}
+    def normalize_input(self, raw_input: Dict[str, Any], gemini_event: Optional[str] = None) -> HookContext:
+        """Create a normalized HookContext from raw input."""
+        
+        # 1. Determine Event Name
+        if gemini_event:
+            hook_event = GEMINI_EVENT_MAP.get(gemini_event, gemini_event)
+        else:
+            hook_event = raw_input.get("hook_event_name", "Unknown")
 
-    for out in outputs:
-        if not out:
-            continue
+        # 2. Determine Session ID
+        session_id = raw_input.get("session_id")
+        if not session_id:
+            session_id = self.session_data.get("session_id")
+        
+        if not session_id and hook_event == "SessionStart":
+            # Generate new ID for Gemini if missing
+            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            short_uuid = str(uuid.uuid4())[:8]
+            session_id = f"gemini-{timestamp}-{short_uuid}"
+            
+        if not session_id:
+            session_id = f"unknown-{str(uuid.uuid4())[:8]}"
 
-        # Canonical format
-        if out.get("system_message"):
-            system_messages.append(out["system_message"])
-        if out.get("context_injection"):
-            context_injections.append(out["context_injection"])
-        if out.get("verdict"):
-            verdicts.append(out["verdict"])
+        # 3. Transcript Path / Temp Root
+        transcript_path = raw_input.get("transcript_path")
+        
+        # Persist session data on start
+        if hook_event == "SessionStart":
+            persist_session_data({"session_id": session_id})
+            if transcript_path:
+                 pass 
 
-        # Metadata merging (e.g. updated_input)
-        if out.get("metadata"):
-            for k, v in out["metadata"].items():
-                if k not in metadata:
-                    metadata[k] = v
-                elif isinstance(metadata[k], list) and isinstance(v, list):
-                    metadata[k].extend(v)
-                # Last write wins for other scalars, or specialized logic if needed
-
-    # Aggregation
-    result = {}
-
-    # 1. System Message
-    if system_messages:
-        result["system_message"] = "\n".join(system_messages)
-
-    # 2. Verdict Resolution (Deny wins)
-    final_verdict = "allow"
-    if "deny" in verdicts:
-        final_verdict = "deny"
-    elif "ask" in verdicts:
-        final_verdict = (
-            "ask"  # Or mapped to warn? Keeping 'ask' for now to match legacy
+        return HookContext(
+            session_id=session_id,
+            hook_event=hook_event,
+            tool_name=raw_input.get("tool_name"),
+            tool_input=raw_input.get("tool_input", {{}}),
+            transcript_path=transcript_path,
+            cwd=raw_input.get("cwd"),
+            raw_input=raw_input
         )
-    elif "warn" in verdicts:
-        final_verdict = "warn"  # New verdict type
 
-    # 3. Context Injection (Merge all)
-    final_context = "\n\n".join(context_injections) if context_injections else None
+    def execute_hooks(self, ctx: HookContext) -> CanonicalHookOutput:
+        """Run all configured hooks for the event and merge results."""
+        hooks = HOOK_REGISTRY.get(ctx.hook_event, [])
+        if not hooks:
+            return CanonicalHookOutput()
 
-    # 4. Construct Output (Internal Canonical Representation)
-    # We return a mixed dict that can be easily mapped to Claude or Gemini
-    # For compatibility with legacy map_claude_to_gemini, we structure it slightly carefully
+        merged_result = CanonicalHookOutput()
+        
+        # Prepare environment
+        env = os.environ.copy()
+        
+        # Ensure PYTHONPATH
+        current_pp = env.get("PYTHONPATH", "")
+        if str(AOPS_CORE_DIR) not in current_pp:
+             env["PYTHONPATH"] = f"{AOPS_CORE_DIR}{os.pathsep}{current_pp}" if current_pp else str(AOPS_CORE_DIR)
 
-    result["verdict"] = final_verdict
-    if final_context:
-        result["context_injection"] = final_context
-    if metadata:
-        result["metadata"] = metadata
+        # Prepare Input JSON for subprocess
+        subprocess_input = ctx.raw_input.copy()
+        subprocess_input["hook_event_name"] = ctx.hook_event
+        subprocess_input["session_id"] = ctx.session_id
+        
+        json_input = json.dumps(subprocess_input)
 
-    return result
+        for hook_config in hooks:
+            script_name = hook_config["script"]
+            script_path = HOOK_DIR / script_name
+            
+            try:
+                cmd = ["bash", str(script_path)] if script_path.suffix == ".sh" else [sys.executable, str(script_path)]
+                
+                result = subprocess.run(
+                    cmd,
+                    input=json_input,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    env=env,
+                    cwd=HOOK_DIR
+                )
+                
+                if result.stderr:
+                    print(result.stderr, file=sys.stderr)
 
+                if result.returncode == 0 and result.stdout.strip():
+                    try:
+                        raw_output = json.loads(result.stdout)
+                        hook_output = self._normalize_hook_output(raw_output)
+                        self._merge_result(merged_result, hook_output)
+                        
+                        if hook_output.verdict == "deny":
+                            break
+                            
+                    except json.JSONDecodeError:
+                        print(f"WARNING: Invalid JSON from {script_name}", file=sys.stderr)
+                        
+                elif result.returncode != 0:
+                     print(f"ERROR: Hook {script_name} failed with code {result.returncode}", file=sys.stderr)
 
-def execute_hooks(
-    event_name: str, input_data: Dict[str, Any]
-) -> Tuple[Dict[str, Any], int]:
-    """Execute all configured hooks for an event."""
-    hooks = HOOK_REGISTRY.get(event_name, [])
-    if not hooks:
-        return {}, 0
+            except Exception as e:
+                print(f"ERROR: Executing {script_name}: {e}", file=sys.stderr)
 
-    outputs = []
-    exit_codes = []
+        return merged_result
 
-    # Simple sync execution for now (simplify async complexity until needed)
-    for hook_config in hooks:
-        script_name = hook_config["script"]
-        script_path = HOOK_DIR / script_name
+    def _normalize_hook_output(self, raw: Dict[str, Any]) -> CanonicalHookOutput:
+        """Convert raw dictionary to CanonicalHookOutput."""
+        if "verdict" in raw:
+            return CanonicalHookOutput(**raw)
+        
+        canonical = CanonicalHookOutput()
+        
+        if "systemMessage" in raw:
+            canonical.system_message = raw["systemMessage"]
+            
+        hso = raw.get("hookSpecificOutput", {{}})
+        if hso:
+            decision = hso.get("permissionDecision")
+            if decision == "deny":
+                canonical.verdict = "deny"
+            elif decision == "ask":
+                canonical.verdict = "ask"
+            
+            if "additionalContext" in hso:
+                canonical.context_injection = hso["additionalContext"]
+                
+            if "updatedInput" in hso:
+                canonical.updated_input = hso["updatedInput"]
+                
+        if raw.get("decision") == "block":
+            canonical.verdict = "deny"
+            if raw.get("reason"):
+                canonical.context_injection = raw["reason"]
+        
+        return canonical
 
-        # Dispatch
-        output, code = run_hook_script(script_path, input_data)
-
-        outputs.append(output)
-        exit_codes.append(code)
-
-        # Fail fast on blocks (exit code 2)
-        if code == 2:
-            break
-
-    # Merge results
-    merged_output = merge_outputs(outputs, event_name)
-    final_exit_code = max(exit_codes) if exit_codes else 0
-
-    # Log operational trace (restores ~/.gemini/tmp/ logs)
-    session_id = input_data.get("session_id")
-    if session_id:
-        # Enrich input_data with persisted session data
-        session_data = get_session_data()
-        if session_data:
-            for k, v in session_data.items():
-                if k not in input_data:
-                    input_data[k] = v
-
-        if "hook_logger" in globals() and globals()["hook_logger"]:
-            # Need to reconstruct a legacy-ish output for the logger if it expects strictly Claude format
-            # Or assume logger handles dicts gracefully.
-            # Constructing a temporary 'loggable' output based on canonical merge
-            log_output = dict(merged_output)
-            # Ensure it looks like what logger expects if it parses hookSpecificOutput
-            if "verdict" in log_output or "context_injection" in log_output:
-                hso = {}
-                hso["hookEventName"] = event_name
-                if "verdict" in log_output:
-                    hso["permissionDecision"] = log_output["verdict"]
-                if "context_injection" in log_output:
-                    hso["additionalContext"] = log_output["context_injection"]
-                # Removed map_claude_to_gemini as it is no longer used (replaced by format_for_gemini)
-                log_output["hookSpecificOutput"] = hso
-
-            hook_logger.log_hook_event(
-                session_id=session_id,
-                hook_event=event_name,
-                input_data=input_data,
-                output_data=log_output,
-                exit_code=final_exit_code,
-            )
-
-    return merged_output, final_exit_code
-
-
-def format_for_gemini(
-    canonical_output: Dict[str, Any], event_name: str
-) -> Dict[str, Any]:
-    """Format canonical internal output for Gemini."""
-    result = {}
-
-    # 1. System Message
-    if "system_message" in canonical_output:
-        result["systemMessage"] = canonical_output["system_message"]
-
-    # 2. Decision / Reason
-    verdict = canonical_output.get("verdict", "allow")
-    context = canonical_output.get("context_injection")
-    metadata = canonical_output.get("metadata", {})
-
-    # Map verdict
-    if verdict == "deny":
-        result["decision"] = "deny"
-    else:
-        # Gemini requires specific "decision" field even for allow
-        result["decision"] = "allow"
-    # Note: 'warn' is typically allowed but with context
-
-    # Map context to reason (for BeforeTool/AfterAgent) or ignored/logged
-    if event_name in ["BeforeTool", "AfterAgent"]:
-        if context:
-            result["reason"] = context
-            # Fallback: Mirror to systemMessage if blocking
-            if verdict == "deny" and "systemMessage" not in result:
-                result["systemMessage"] = f"Tool blocked: {context}"
-
-    # 3. BeforeAgent (UserPromptSubmit) Special Handling
-    elif event_name == "BeforeAgent":
-        if context:
-            # Map context injection (hydration instruction) to systemMessage
-            # This is what prompts the model to run the hydrator
-            current = result.get("systemMessage", "")
-            result["systemMessage"] = f"{current}\n\n{context}" if current else context
-
-    # 4. SessionStart Special Handling
-    elif event_name == "SessionStart":
-        # Inject context into system message
-        if context:
-            current = result.get("systemMessage", "")
-            result["systemMessage"] = f"{current}\n\n{context}" if current else context
-
-    # 5. Canonical Metadata
-    result["hook_event"] = event_name
-    if event_name == "SessionStart":
-        result["source"] = "startup"
-    elif event_name == "SessionEnd":
-        result["source"] = "exit"
-
-    # 6. Updated Input (from command_intercept)
-    if "updated_input" in metadata:
-        result["updatedInput"] = metadata["updated_input"]
-
-    return result
+    def _merge_result(self, target: CanonicalHookOutput, source: CanonicalHookOutput):
+        """Merge source into target (in-place)."""
+        if source.verdict == "deny":
+            target.verdict = "deny"
+        elif source.verdict == "ask" and target.verdict != "deny":
+            target.verdict = "ask"
+        elif source.verdict == "warn" and target.verdict == "allow":
+             target.verdict = "warn"
+             
+        if source.system_message:
+            target.system_message = f"{target.system_message}\n{source.system_message}" if target.system_message else source.system_message
+            
+        if source.context_injection:
+             target.context_injection = f"{target.context_injection}\n\n{source.context_injection}" if target.context_injection else source.context_injection
+             
+        if source.updated_input:
+            target.updated_input = source.updated_input
+            
+        target.metadata.update(source.metadata)
 
 
-def format_for_claude(
-    canonical_output: Dict[str, Any], event_name: str
-) -> Dict[str, Any]:
-    """Format canonical internal output for Claude.
+    def output_for_gemini(self, result: CanonicalHookOutput, event: str) -> GeminiHookOutput:
+        """Format for Gemini CLI."""
+        out = GeminiHookOutput()
+        
+        if result.system_message:
+            out.systemMessage = result.system_message
+            
+        if result.verdict == "deny":
+            out.decision = "deny"
+        else:
+            out.decision = "allow"
+            
+        if result.context_injection:
+            out.reason = result.context_injection
+            if out.decision == "deny" and not out.systemMessage:
+                out.systemMessage = f"Blocked: {result.context_injection}"
+        
+        if result.updated_input:
+            out.updatedInput = result.updated_input
+            
+        out.metadata = result.metadata
+        return out
 
-    IMPORTANT: Stop hooks have a DIFFERENT output format than other hooks.
-    They use decision/reason/stopReason instead of hookSpecificOutput.
-    See aops-core/skills/framework/references/hooks.md for details.
-    """
-    result = {}
+    def output_for_claude(self, result: CanonicalHookOutput, event: str) -> ClaudeHookOutput:
+        """Format for Claude Code."""
+        if event == "Stop":
+            output = ClaudeStopHookOutput()
+            if result.verdict == "deny":
+                output.decision = "block"
+            else:
+                output.decision = "allow"
+                
+            if result.context_injection:
+                output.reason = result.context_injection
+            
+            if result.system_message:
+                output.stopReason = result.system_message
+                output.systemMessage = result.system_message
+            
+            return output
 
-    verdict = canonical_output.get("verdict")
-    context = canonical_output.get("context_injection")
-    metadata = canonical_output.get("metadata", {})
+        output = ClaudeGeneralHookOutput()
+        if result.system_message:
+            output.systemMessage = result.system_message
+            
+        hso = ClaudeHookSpecificOutput(hookEventName=event)
+        has_hso = False
+        
+        if result.verdict:
+            if result.verdict == "deny":
+                hso.permissionDecision = "deny"
+                has_hso = True
+            elif result.verdict == "ask":
+                hso.permissionDecision = "ask"
+                has_hso = True
+            elif result.verdict == "warn":
+                hso.permissionDecision = "allow"
+                has_hso = True
+            else:
+                 hso.permissionDecision = "allow"
 
-    # Stop hooks use a different output format (decision/reason/stopReason)
-    # hookSpecificOutput is NOT supported for Stop events in Claude Code
-    if event_name == "Stop":
-        # Map verdict to decision
-        if verdict == "deny":
-            result["decision"] = "block"
-        elif verdict:
-            result["decision"] = verdict  # allow, etc.
-
-        # reason: Shown to Claude agent (instructions)
-        if context:
-            result["reason"] = context
-
-        # stopReason: Shown to user
-        if "system_message" in canonical_output:
-            result["stopReason"] = canonical_output["system_message"]
-
-        # systemMessage also visible to user (optional additional message)
-        if "system_message" in canonical_output:
-            result["systemMessage"] = canonical_output["system_message"]
-
-        return result
-
-    # All other events use hookSpecificOutput format
-    # 1. System Message
-    if "system_message" in canonical_output:
-        result["systemMessage"] = canonical_output["system_message"]
-
-    # 2. HookSpecificOutput
-    hso = {}
-    hso["hookEventName"] = event_name
-
-    if verdict:
-        hso["permissionDecision"] = verdict  # allow, deny, ask
-        # Map 'warn' to 'allow' for Claude (since Claude doesn't support 'warn' natively)
-        if verdict == "warn":
-            hso["permissionDecision"] = "allow"
-
-    if context:
-        hso["additionalContext"] = context
-
-    # updatedInput (from command_intercept)
-    if "updated_input" in metadata:
-        hso["updatedInput"] = metadata["updated_input"]
-
-    if (
-        hso.get("permissionDecision")
-        or hso.get("additionalContext")
-        or hso.get("updatedInput")
-    ):
-        result["hookSpecificOutput"] = hso
-
-    return result
-
+        if result.context_injection:
+            hso.additionalContext = result.context_injection
+            has_hso = True
+            
+        if result.updated_input:
+            hso.updatedInput = result.updated_input
+            has_hso = True
+            
+        if has_hso:
+            output.hookSpecificOutput = hso
+            
+        return output
 
 # --- Main Entry Point ---
 
-
 def main():
-    # Detect mode based on arguments
-    # invocations:
-    #   Claude: python router.py (reads json stdin with hook_event_name)
-    #   Gemini: python router.py <EventName> (reads json stdin WITHOUT event name usually)
-
-    is_gemini = len(sys.argv) > 1
-    gemini_event = sys.argv[1] if is_gemini else None
-
-    input_data = {}
+    router = HookRouter()
+    
+    # Detect Invocation Mode
+    gemini_event = sys.argv[1] if len(sys.argv) > 1 else None
+    
+    # Read Input
     try:
-        # P#8 Fail-fast: check stdin validity
         if not sys.stdin.isatty():
-            input_data = json.load(sys.stdin)
-    except Exception as e:
-        print(f"ERROR: Failed to parse input JSON: {e}", file=sys.stderr)
-        sys.exit(2)
-
-    if is_gemini:
-        # Gemini Mode
-        claude_input = map_gemini_to_claude(gemini_event, input_data)
-        if not claude_input:
-            # Unknown event or no mapping
-            print(json.dumps({}))
-            sys.exit(0)
-
-        # Special case: user_prompt_submit for Gemini (BeforeAgent)
-        if gemini_event == "BeforeAgent":
-            # Logic is handled by standard UserPromptSubmit hooks now
-            pass
-
-        output, exit_code = execute_hooks(claude_input["hook_event_name"], claude_input)
-
-        # New Format Logic
-        gemini_output = format_for_gemini(output, gemini_event)
-
-        print(json.dumps(gemini_output))
-        sys.exit(exit_code)
-
+            raw_input = json.load(sys.stdin)
+        else:
+            raw_input = {{}}
+    except Exception:
+        raw_input = {{}}
+        
+    # Pipeline
+    ctx = router.normalize_input(raw_input, gemini_event)
+    result = router.execute_hooks(ctx)
+    
+    # Output
+    if gemini_event:
+        output = router.output_for_gemini(result, gemini_event)
+        print(output.model_dump_json(exclude_none=True))
+        sys.exit(0)
     else:
-        # Claude Mode
-        event_name = input_data.get("hook_event_name")
-        if not event_name:
-            # Invalid input
-            print(json.dumps({}))
-            sys.exit(0)
-
-        output, exit_code = execute_hooks(event_name, input_data)
-
-        # New Format Logic
-        claude_output = format_for_claude(output, event_name)
-
-        print(json.dumps(claude_output))
-        sys.exit(exit_code)
-
+        output = router.output_for_claude(result, ctx.hook_event)
+        print(output.model_dump_json(exclude_none=True))
+        sys.exit(0)
 
 if __name__ == "__main__":
     main()

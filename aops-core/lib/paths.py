@@ -35,6 +35,19 @@ def get_plugin_root() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
+def get_aops_root() -> Path:
+    """
+    Get the AOPS root directory (alias for plugin root in this context, or $AOPS).
+    """
+    if os.environ.get("AOPS"):
+        return Path(os.environ["AOPS"]).resolve()
+    return get_plugin_root()
+
+def get_bots_dir() -> Path:
+    """Alias for get_aops_root."""
+    return get_aops_root()
+
+
 def get_data_root() -> Path:
     """
     Get shared memory vault root.

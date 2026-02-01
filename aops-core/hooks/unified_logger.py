@@ -77,12 +77,13 @@ def log_event_to_session(
         state = get_or_create_session_state(session_id)
         short_hash = get_session_short_hash(session_id)
         state_path = get_session_file_path_direct(session_id, state.get("date"))
+        
+        # Return CanonicalHookOutput structure
         return {
-            "hookSpecificOutput": {
-                "hookEventName": "SessionStart",
-                "additionalContext": f"Session: {short_hash}\nState file: {state_path}",
-            },
-            "systemMessage": f"SessionStart:startup hook success: Success",
+            "verdict": "allow",
+            "context_injection": f"Session: {short_hash}\nState file: {state_path}",
+            "system_message": f"SessionStart:startup hook success: Success",
+            "metadata": {"source": "unified_logger"}
         }
     else:
         # For other events, just ensure session exists (creates if needed)
