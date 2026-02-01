@@ -378,10 +378,11 @@ class TestMainHookEntry:
 
         assert exc_info.value.code == 0
 
-        # Verify output has empty additionalContext
+        # Verify output has no context injection
         captured = capsys.readouterr()
         output = json.loads(captured.out)
-        assert output["hookSpecificOutput"]["additionalContext"] == ""
+        assert output.get("context_injection") is None
+        assert output["verdict"] == "allow"
 
         # Verify hydration_pending was cleared
         mock_session_state["clear"].assert_called_once()
@@ -403,9 +404,11 @@ class TestMainHookEntry:
 
         assert exc_info.value.code == 0
 
+        # Verify output has no context injection
         captured = capsys.readouterr()
         output = json.loads(captured.out)
-        assert output["hookSpecificOutput"]["additionalContext"] == ""
+        assert output.get("context_injection") is None
+        assert output["verdict"] == "allow"
 
     def test_main_builds_hydration_for_normal_prompt(
         self, temp_hydrator_dir, mock_session_state, monkeypatch, capsys
@@ -432,9 +435,8 @@ class TestMainHookEntry:
             output = json.loads(captured.out)
             assert (
                 "Hydration instruction"
-                in output["hookSpecificOutput"]["additionalContext"]
+                in output["context_injection"]
             )
-
     def test_main_handles_missing_session_id(
         self, temp_hydrator_dir, monkeypatch, capsys
     ):

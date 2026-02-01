@@ -13,5 +13,5 @@ This session is in WARN mode for testing. In production, this would BLOCK all to
 
 To proceed correctly, invoke the **aops-core:prompt-hydrator** agent or skill:
 
-- For Claude Code: `activate_skill(name="aops-core:prompt-hydrator", prompt="Analyze context in {temp_path}")`
+- For Claude Code: `Task(subagent_type="aops-core:prompt-hydrator", prompt="Analyze context in {temp_path}")`
 - For Gemini CLI: `activate_skill(name="prompt-hydrator", prompt="Analyze context in {temp_path}")`

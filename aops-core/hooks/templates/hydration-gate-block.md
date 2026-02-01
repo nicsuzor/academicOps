@@ -13,7 +13,7 @@ You must invoke the **aops-core:prompt-hydrator** agent or skill FIRST to load c
 
 **Instruction**:
 1. Run the exact command for your client:
-   - For Claude Code: `activate_skill(name="aops-core:prompt-hydrator", prompt="Analyze context in {temp_path}")`
+   - For Claude Code: `Task(subagent_type="aops-core:prompt-hydrator", prompt="Analyze context in {temp_path}")`
    - For Gemini CLI: `activate_skill(name="prompt-hydrator", prompt="Analyze context in {temp_path}")`
 2. **IMMEDIATELY** after it returns, continue with the plan it provides. Do not stop.
 
