@@ -327,10 +327,10 @@ class TestMainHookEntry:
         # Should exit with 0 (success)
         assert exc_info.value.code == 0
 
-        # Should output response with hookSpecificOutput
+        # Should output response with CanonicalHookOutput format
         captured = capsys.readouterr()
-        assert "hookSpecificOutput" in captured.out
-        assert "SessionStart" in captured.out
+        assert "verdict" in captured.out
+        assert "Session:" in captured.out
 
         # Verify session file was created
         from lib.session_state import get_session_file_path

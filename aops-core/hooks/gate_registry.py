@@ -1317,13 +1317,19 @@ def check_session_start_gate(ctx: GateContext) -> Optional[GateResult]:
         return None
 
     try:
+        from hooks.unified_logger import get_hook_log_path
+
         status_dir = session_paths.get_session_status_dir()
         short_hash = session_paths.get_session_short_hash(ctx.session_id)
+
+        # Get hook log path for this session
+        hook_log_path = get_hook_log_path(ctx.session_id, ctx.input_data)
 
         # Build startup message
         msg_lines = [
             f"Session Started: {ctx.session_id} ({short_hash})",
             f"State File: {status_dir}/*-{short_hash}.json",
+            f"Hooks log: {hook_log_path}",
             "Hooks: Loaded and Active",
         ]
 

@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """
-Unified hook logger for Claude Code.
+Unified hook logger for Claude Code and Gemini CLI.
 
-Logs ALL hook events to the single session file per flow.md spec.
-Session file: /tmp/aops-{YYYY-MM-DD}-{session_id}.json
+Logs ALL hook events to:
+1. Session state file: /tmp/aops-{YYYY-MM-DD}-{session_id}.json (for gate state)
+2. Per-session JSONL hook log: ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
+   or ~/.gemini/tmp/<hash>/logs/<date>-<shorthash>-hooks.jsonl (for event audit trail)
 
 Event-specific behavior:
 - SubagentStop: Updates subagent states in session file
@@ -22,6 +24,7 @@ import json
 import logging
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from lib.insights_generator import (
@@ -30,6 +33,7 @@ from lib.insights_generator import (
     generate_fallback_insights,
 )
 from lib.session_paths import (
+    get_claude_project_folder,
     get_session_file_path_direct,
     get_session_short_hash,
     get_session_status_dir,
@@ -50,13 +54,192 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# --- Hook Event Logging (per-session JSONL files) ---
+
+
+def _is_gemini_session(session_id: str, input_data: dict[str, Any]) -> bool:
+    """
+    Detect if this is a Gemini CLI session.
+
+    Detection methods:
+    1. session_id starts with "gemini-"
+    2. transcript_path contains "/.gemini/"
+    """
+    if session_id.startswith("gemini-"):
+        return True
+
+    transcript_path = input_data.get("transcript_path", "")
+    if transcript_path and "/.gemini/" in transcript_path:
+        return True
+
+    return False
+
+
+def _get_gemini_logs_dir(input_data: dict[str, Any]) -> Path | None:
+    """
+    Get Gemini logs directory from transcript_path.
+
+    Gemini transcript paths look like:
+    ~/.gemini/tmp/<hash>/logs/session-<uuid>.jsonl
+
+    Returns the parent directory (the logs/ folder) or None if not found.
+    """
+    transcript_path = input_data.get("transcript_path", "")
+    if not transcript_path:
+        return None
+
+    path = Path(transcript_path)
+
+    # If transcript_path points to a file, use its parent directory
+    if path.suffix in (".jsonl", ".json"):
+        logs_dir = path.parent
+    else:
+        # Might be a directory already
+        logs_dir = path
+
+    # Validate it looks like a Gemini logs directory
+    if "/.gemini/" in str(logs_dir):
+        return logs_dir
+
+    return None
+
+
+def _json_serializer(obj: Any) -> str:
+    """
+    Convert non-serializable objects to strings for JSON serialization.
+
+    This is used as the default handler for json.dump() to handle objects
+    that don't have a standard JSON representation (datetime, Path, custom classes, etc).
+
+    Args:
+        obj: Any Python object
+
+    Returns:
+        String representation of the object
+    """
+    return str(obj)
+
+
+def get_hook_log_path(
+    session_id: str, input_data: dict[str, Any], date: str | None = None
+) -> Path:
+    """
+    Get the path for the per-session hook log file.
+
+    Logs to:
+    - Claude: ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
+    - Gemini: ~/.gemini/tmp/<hash>/logs/<date>-<shorthash>-hooks.jsonl
+
+    Args:
+        session_id: Session ID from Claude Code or Gemini CLI
+        input_data: Input data from hook (may contain transcript_path for Gemini)
+        date: Optional date in YYYY-MM-DD format (defaults to today)
+
+    Returns:
+        Path to the hook log file
+    """
+    if date is None:
+        date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    short_hash = get_session_short_hash(session_id)
+    date_compact = date.replace("-", "")  # YYYY-MM-DD -> YYYYMMDD
+
+    # Determine log directory based on session type
+    if _is_gemini_session(session_id, input_data):
+        # Gemini: write to same directory as transcript
+        logs_dir = _get_gemini_logs_dir(input_data)
+        if logs_dir is None:
+            # Fallback: use ~/.gemini/tmp/hooks/ if transcript_path not available
+            logs_dir = Path.home() / ".gemini" / "tmp" / "hooks"
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        return logs_dir / f"{date_compact}-{short_hash}-hooks.jsonl"
+    else:
+        # Claude: ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
+        project_folder = get_claude_project_folder()
+        claude_projects_dir = Path.home() / ".claude" / "projects" / project_folder
+        claude_projects_dir.mkdir(parents=True, exist_ok=True)
+        return claude_projects_dir / f"{date_compact}-{short_hash}-hooks.jsonl"
+
+
+def log_hook_event(
+    session_id: str,
+    hook_event: str,
+    input_data: dict[str, Any],
+    output_data: dict[str, Any] | None = None,
+    exit_code: int = 0,
+) -> None:
+    """
+    Log a hook event to the per-session hooks log file.
+
+    Writes to (auto-detected based on session type):
+    - Claude: ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
+    - Gemini: ~/.gemini/tmp/<hash>/logs/<date>-<shorthash>-hooks.jsonl
+
+    Per-session hook logs are stored alongside transcripts for easy correlation.
+    Combines input and output data into a single JSONL entry with timestamp.
+    If session_id is missing or empty, silently returns (fail-safe for logging).
+
+    Args:
+        session_id: Session ID from Claude Code or Gemini CLI. Empty = skip.
+        hook_event: Name of the hook event (e.g., "UserPromptSubmit", "SessionEnd")
+        input_data: Input data from hook (parameters). For Gemini, should include
+            transcript_path to determine correct log directory.
+        output_data: Optional output data from the hook (results/side effects)
+        exit_code: Exit code of the hook (0 = success, non-zero = failure)
+
+    Returns:
+        None (never raises - logging should not crash hooks)
+
+    Example:
+        >>> log_hook_event(
+        ...     session_id="abc123def456",
+        ...     hook_event="UserPromptSubmit",
+        ...     input_data={"prompt": "hello", "model": "claude-opus"},
+        ...     output_data={"additionalContext": "loaded from markdown"},
+        ...     exit_code=0
+        ... )
+    """
+    # Fail-safe: empty session_id = skip (don't crash hook)
+    if not session_id or session_id == "unknown":
+        return
+
+    try:
+        # Build per-session hook log path
+        date = input_data.get("date")
+        if date is None:
+            date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+        log_path = get_hook_log_path(session_id, input_data, date)
+
+        # Create log entry with separated input and output
+        log_entry: dict[str, Any] = {
+            "hook_event": hook_event,
+            "logged_at": datetime.now().astimezone().replace(microsecond=0).isoformat(),
+            "exit_code": exit_code,
+            "input": input_data,
+            "output": output_data,
+        }
+
+        # Append to JSONL file
+        with log_path.open("a") as f:
+            json.dump(log_entry, f, separators=(",", ":"), default=_json_serializer)
+            f.write("\n")
+
+    except Exception as e:
+        # Log error to stderr but don't crash the hook
+        print(f"[unified_logger] Error logging hook event: {e}", file=sys.stderr)
+        # Never crash the hook - silently continue
+        pass
+
+
 def log_event_to_session(
     session_id: str, hook_event: str, input_data: dict[str, Any]
 ) -> dict[str, Any] | None:
-    """Log a hook event to the single session file.
+    """Log a hook event to session state and per-session JSONL log.
 
-    Updates the session file with event timestamp. For SubagentStop and Stop events,
-    performs additional state updates.
+    1. Logs event to per-session JSONL file (audit trail)
+    2. Updates the session state file with event timestamp
+    3. For SubagentStop and Stop events, performs additional state updates
 
     Args:
         session_id: Claude Code session ID
@@ -65,6 +248,9 @@ def log_event_to_session(
     """
     if not session_id or session_id == "unknown":
         return
+
+    # Log ALL events to per-session JSONL file (audit trail)
+    log_hook_event(session_id, hook_event, input_data)
 
     if hook_event == "SubagentStop":
         handle_subagent_stop(session_id, input_data)

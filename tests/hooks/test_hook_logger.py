@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for hook_logger.py - centralized hook event logging.
+"""Tests for unified_logger.py - centralized hook event logging.
 
 Tests that log_hook_event correctly writes to per-session JSONL files.
 """
@@ -18,7 +18,7 @@ import pytest
 aops_core_dir = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(aops_core_dir))
 
-from hooks.hook_logger import log_hook_event
+from hooks.unified_logger import log_hook_event
 
 
 @pytest.fixture
@@ -57,7 +57,7 @@ class TestLogHookEvent:
         assert log_files[0].exists()
 
     def test_log_entry_structure(self, temp_claude_projects):
-        """Test that log entries have correct structure."""
+        """Test that log entries have correct structure with separated input/output."""
         session_id = "test-structure-abcd1234"
 
         log_hook_event(
@@ -80,10 +80,13 @@ class TestLogHookEvent:
         assert entry["hook_event"] == "PreToolUse"
         assert "logged_at" in entry
         assert entry["exit_code"] == 0
-        # Input data should be merged
-        assert entry["tool_name"] == "Edit"
-        # Output data should be merged
-        assert entry["additionalContext"] == "some context"
+        # Input data should be in 'input' key
+        assert "input" in entry
+        assert entry["input"]["tool_name"] == "Edit"
+        assert entry["input"]["tool_input"]["file"] == "test.py"
+        # Output data should be in 'output' key
+        assert "output" in entry
+        assert entry["output"]["additionalContext"] == "some context"
 
     def test_multiple_events_appended(self, temp_claude_projects):
         """Test that multiple events are appended to same file."""
@@ -108,23 +111,30 @@ class TestLogHookEvent:
         assert len(entries) == 3
         assert [e["hook_event"] for e in entries] == ["Event0", "Event1", "Event2"]
 
-    def test_empty_session_id_raises(self, temp_claude_projects):
-        """Test that empty session_id raises ValueError."""
-        with pytest.raises(ValueError, match="session_id cannot be empty"):
-            log_hook_event(
-                session_id="",
-                hook_event="TestEvent",
-                input_data={},
-            )
+    def test_empty_session_id_skips_silently(self, temp_claude_projects):
+        """Test that empty session_id silently skips (fail-safe for hooks)."""
+        # Should not raise or create files
+        log_hook_event(
+            session_id="",
+            hook_event="TestEvent",
+            input_data={},
+        )
 
-    def test_none_session_id_raises(self, temp_claude_projects):
-        """Test that None session_id raises ValueError."""
-        with pytest.raises(ValueError, match="session_id cannot be empty"):
-            log_hook_event(
-                session_id=None,
-                hook_event="TestEvent",
-                input_data={},
-            )
+        projects_dir = Path(temp_claude_projects) / ".claude" / "projects"
+        log_files = list(projects_dir.rglob("*-hooks.jsonl"))
+        assert len(log_files) == 0, "Empty session_id should not create log file"
+
+    def test_unknown_session_id_skips_silently(self, temp_claude_projects):
+        """Test that 'unknown' session_id silently skips."""
+        log_hook_event(
+            session_id="unknown",
+            hook_event="TestEvent",
+            input_data={},
+        )
+
+        projects_dir = Path(temp_claude_projects) / ".claude" / "projects"
+        log_files = list(projects_dir.rglob("*-hooks.jsonl"))
+        assert len(log_files) == 0, "'unknown' session_id should not create log file"
 
     def test_log_file_path_format(self, temp_claude_projects):
         """Test that log file path follows expected format: YYYYMMDD-shorthash-hooks.jsonl."""
