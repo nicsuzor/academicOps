@@ -5,6 +5,11 @@ Universal Hook Router.
 Handles hook events from both Claude Code and Gemini CLI.
 Consolidates multiple hooks per event into a single invocation.
 Manages session persistence for Gemini.
+
+Architecture:
+- Gate functions are imported directly from gate_registry.py
+- GateResult objects used internally, converted to JSON only at final output
+- Shell scripts (session_env_setup.sh) still executed via subprocess
 """
 
 import json
@@ -35,9 +40,11 @@ try:
         ClaudeGeneralHookOutput,
         ClaudeStopHookOutput
     )
+    from hooks.gate_registry import GATE_CHECKS, GateContext
+    from lib.gate_model import GateResult, GateVerdict
 except ImportError as e:
     # Fail fast if schemas missing
-    print(f"CRITICAL: Failed to import schemas: {e}", file=sys.stderr)
+    print(f"CRITICAL: Failed to import: {e}", file=sys.stderr)
     sys.exit(1)
 
 
@@ -55,40 +62,42 @@ GEMINI_EVENT_MAP = {
     "PreCompress": "PreCompact",
 }
 
-# Hooks Registry
-HOOK_REGISTRY: Dict[str, List[Dict[str, Any]]] = {
-    "SessionStart": [
-        {"script": "session_env_setup.sh"},
-        {"script": "unified_logger.py"},
-    ],
+# Shell scripts that must run via subprocess (can't be Python functions)
+SHELL_SCRIPTS: Dict[str, List[str]] = {
+    "SessionStart": ["session_env_setup.sh"],
+}
+
+# Gate configuration: Maps events to ordered list of gate function names
+# Gates are called directly from gate_registry.GATE_CHECKS - no subprocess
+GATE_CONFIG: Dict[str, List[str]] = {
+    "SessionStart": ["unified_logger", "session_start"],
+    "UserPromptSubmit": ["user_prompt_submit", "unified_logger"],
     "PreToolUse": [
-        {"script": "unified_logger.py"},
-        {"script": "gates.py"},  # Universal gate runner
+        "unified_logger",
+        "subagent_restrictions",
+        "hydration",
+        "task_required",
+        "custodiet",
+        "qa_enforcement",
     ],
     "PostToolUse": [
-        {"script": "unified_logger.py"},
-        {"script": "gates.py"},
-        {"script": "task_binding.py"},
+        "unified_logger",
+        "task_binding",
+        "accountant",
+        "post_hydration",
+        "post_critic",
+        "skill_activation",
     ],
-    "UserPromptSubmit": [
-        {"script": "user_prompt_submit.py"},
-        {"script": "unified_logger.py"},
-    ],
-    "AfterAgent": [
-        {"script": "gates.py"},
-        {"script": "unified_logger.py"},
-    ],
-    "SubagentStop": [
-        {"script": "unified_logger.py"},
-    ],
+    "AfterAgent": ["unified_logger", "agent_response"],
+    "SubagentStop": ["unified_logger"],
     "Stop": [
-        {"script": "unified_logger.py"},
-        {"script": "gates.py"},
-        {"script": "generate_transcript.py"},
-        {"script": "session_end_commit_check.py"},
+        "unified_logger",
+        "stop_gate",
+        "hydration_recency",
+        "generate_transcript",
+        "session_end_commit",
     ],
-    # Fallback/Passthrough for others
-    "SessionEnd": [{"script": "unified_logger.py"}], # Post-Stop cleanup
+    "SessionEnd": ["unified_logger"],
 }
 
 # --- Session Management ---
@@ -183,67 +192,106 @@ class HookRouter:
         )
 
     def execute_hooks(self, ctx: HookContext) -> CanonicalHookOutput:
-        """Run all configured hooks for the event and merge results."""
-        hooks = HOOK_REGISTRY.get(ctx.hook_event, [])
-        if not hooks:
-            return CanonicalHookOutput()
+        """Run all configured gates for the event and merge results.
 
+        Gates are called directly as Python functions (no subprocess).
+        Shell scripts are still executed via subprocess.
+        """
         merged_result = CanonicalHookOutput()
-        
-        # Prepare environment
+
+        # Build input dict for gate context
+        gate_input = ctx.raw_input.copy()
+        gate_input["hook_event_name"] = ctx.hook_event
+        gate_input["session_id"] = ctx.session_id
+
+        # 1. Execute shell scripts first (only SessionStart has them)
+        shell_scripts = SHELL_SCRIPTS.get(ctx.hook_event, [])
+        for script_name in shell_scripts:
+            self._execute_shell_script(script_name, ctx, merged_result)
+            if merged_result.verdict == "deny":
+                return merged_result
+
+        # 2. Execute gate functions directly (no subprocess)
+        gate_names = GATE_CONFIG.get(ctx.hook_event, [])
+        gate_ctx = GateContext(ctx.session_id, ctx.hook_event, gate_input)
+
+        for gate_name in gate_names:
+            check_func = GATE_CHECKS.get(gate_name)
+            if not check_func:
+                print(f"WARNING: Gate '{gate_name}' not found", file=sys.stderr)
+                continue
+
+            try:
+                result = check_func(gate_ctx)
+                if result:
+                    hook_output = self._gate_result_to_canonical(result)
+                    self._merge_result(merged_result, hook_output)
+
+                    if hook_output.verdict == "deny":
+                        break
+
+            except Exception as e:
+                print(f"ERROR: Gate '{gate_name}' failed: {e}", file=sys.stderr)
+                import traceback
+                traceback.print_exc(file=sys.stderr)
+
+        return merged_result
+
+    def _execute_shell_script(
+        self, script_name: str, ctx: HookContext, merged_result: CanonicalHookOutput
+    ) -> None:
+        """Execute a shell script via subprocess."""
+        script_path = HOOK_DIR / script_name
+        if not script_path.exists():
+            print(f"WARNING: Shell script not found: {script_path}", file=sys.stderr)
+            return
+
         env = os.environ.copy()
-        
-        # Ensure PYTHONPATH
         current_pp = env.get("PYTHONPATH", "")
         if str(AOPS_CORE_DIR) not in current_pp:
-             env["PYTHONPATH"] = f"{AOPS_CORE_DIR}{os.pathsep}{current_pp}" if current_pp else str(AOPS_CORE_DIR)
+            env["PYTHONPATH"] = f"{AOPS_CORE_DIR}{os.pathsep}{current_pp}" if current_pp else str(AOPS_CORE_DIR)
 
-        # Prepare Input JSON for subprocess
         subprocess_input = ctx.raw_input.copy()
         subprocess_input["hook_event_name"] = ctx.hook_event
         subprocess_input["session_id"] = ctx.session_id
-        
         json_input = json.dumps(subprocess_input)
 
-        for hook_config in hooks:
-            script_name = hook_config["script"]
-            script_path = HOOK_DIR / script_name
-            
-            try:
-                cmd = ["bash", str(script_path)] if script_path.suffix == ".sh" else [sys.executable, str(script_path)]
-                
-                result = subprocess.run(
-                    cmd,
-                    input=json_input,
-                    capture_output=True,
-                    text=True,
-                    timeout=30,
-                    env=env,
-                    cwd=HOOK_DIR
-                )
-                
-                if result.stderr:
-                    print(result.stderr, file=sys.stderr)
+        try:
+            result = subprocess.run(
+                ["bash", str(script_path)],
+                input=json_input,
+                capture_output=True,
+                text=True,
+                timeout=30,
+                env=env,
+                cwd=HOOK_DIR
+            )
 
-                if result.returncode == 0 and result.stdout.strip():
-                    try:
-                        raw_output = json.loads(result.stdout)
-                        hook_output = self._normalize_hook_output(raw_output)
-                        self._merge_result(merged_result, hook_output)
-                        
-                        if hook_output.verdict == "deny":
-                            break
-                            
-                    except json.JSONDecodeError:
-                        print(f"WARNING: Invalid JSON from {script_name}", file=sys.stderr)
-                        
-                elif result.returncode != 0:
-                     print(f"ERROR: Hook {script_name} failed with code {result.returncode}", file=sys.stderr)
+            if result.stderr:
+                print(result.stderr, file=sys.stderr)
 
-            except Exception as e:
-                print(f"ERROR: Executing {script_name}: {e}", file=sys.stderr)
+            if result.returncode == 0 and result.stdout.strip():
+                try:
+                    raw_output = json.loads(result.stdout)
+                    hook_output = self._normalize_hook_output(raw_output)
+                    self._merge_result(merged_result, hook_output)
+                except json.JSONDecodeError:
+                    print(f"WARNING: Invalid JSON from {script_name}", file=sys.stderr)
 
-        return merged_result
+            elif result.returncode != 0:
+                print(f"ERROR: {script_name} failed with code {result.returncode}", file=sys.stderr)
+
+        except Exception as e:
+            print(f"ERROR: Executing {script_name}: {e}", file=sys.stderr)
+
+    def _gate_result_to_canonical(self, result: GateResult) -> CanonicalHookOutput:
+        """Convert GateResult to CanonicalHookOutput."""
+        return CanonicalHookOutput(
+            verdict=result.verdict.value,
+            system_message=result.system_message,
+            context_injection=result.context_injection,
+            metadata=result.metadata,
+        )
 
     def _normalize_hook_output(self, raw: Dict[str, Any]) -> CanonicalHookOutput:
         """Convert raw dictionary to CanonicalHookOutput."""

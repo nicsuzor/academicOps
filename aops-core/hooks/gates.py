@@ -19,49 +19,49 @@ if str(AOPS_CORE_DIR) not in sys.path:
 from hooks.gate_registry import GATE_CHECKS, GateContext
 from lib.hook_utils import make_empty_output, get_session_id
 
-# Configuration could be loaded from a file, but for now we define it here
-# matching the logic of the old system.
-# In the future this can be loaded from hooks.json or gates.json
+# Gate configuration: Maps events to ordered list of gate checks
+# Order matters - gates run in sequence, first deny wins
 ACTIVE_GATES = [
-    # SessionStart (Startup Info)
+    # --- SessionStart ---
+    {"name": "unified_logger", "check": "unified_logger", "events": ["SessionStart"]},
     {"name": "session_start", "check": "session_start", "events": ["SessionStart"]},
-    # PreToolUse gates (Enforcement Pipeline)
-    # 1. Hydration: Blocks non-hydrator tools until context is loaded
+
+    # --- UserPromptSubmit ---
+    {"name": "user_prompt_submit", "check": "user_prompt_submit", "events": ["UserPromptSubmit"]},
+    {"name": "unified_logger_ups", "check": "unified_logger", "events": ["UserPromptSubmit"]},
+
+    # --- PreToolUse (Enforcement Pipeline) ---
+    {"name": "unified_logger_pre", "check": "unified_logger", "events": ["PreToolUse"]},
+    {"name": "subagent_restrictions", "check": "subagent_restrictions", "events": ["PreToolUse"]},
     {"name": "hydration", "check": "hydration", "events": ["PreToolUse"]},
-    # 2. (Merged) Axiom Enforcer: Now part of Custodiet
-    # {"name": "axiom_enforcer", "check": "axiom_enforcer", "events": ["PreToolUse"]},
-    # 3. Task Required: Blocks destructive operations without task binding
     {"name": "task_required", "check": "task_required", "events": ["PreToolUse"]},
-    # 4. Custodiet: Blocks mutating tools when compliance check is overdue
     {"name": "custodiet", "check": "custodiet", "events": ["PreToolUse"]},
-    # 5. QA Enforcement: Blocks task completion if QA missing
     {"name": "qa_enforcement", "check": "qa_enforcement", "events": ["PreToolUse"]},
-    # PostToolUse gates (Accounting Pipeline)
-    # 1. Accountant: Updates state (hydration cleared, tool counts, handover flags)
+
+    # --- PostToolUse (Accounting Pipeline) ---
+    {"name": "unified_logger_post", "check": "unified_logger", "events": ["PostToolUse"]},
+    {"name": "task_binding", "check": "task_binding", "events": ["PostToolUse"]},
     {"name": "accountant", "check": "accountant", "events": ["PostToolUse"]},
-    # 2. Post-hydration trigger: Injects next step after hydration
     {"name": "post_hydration", "check": "post_hydration", "events": ["PostToolUse"]},
-    # 3. Post-critic trigger: Updates state after critic invocation
-    # 3. Post-critic trigger: Updates state after critic invocation
     {"name": "post_critic", "check": "post_critic", "events": ["PostToolUse"]},
-    # 4. Skill Activation Listener: Clears hydration if skill activated
-    {
-        "name": "skill_activation",
-        "check": "skill_activation",
-        "events": ["PostToolUse"],
-    },
-    # AfterAgent gates (Response Review Pipeline)
-    # 1. Agent Response Listener: Updates state based on response text (Hydration, Handover)
-    {
-        "name": "agent_response_listener",
-        "check": "agent_response_listener",
-        "events": ["AfterAgent"],
-    },
-    # Stop / AfterAgent gates (Final Review Pipeline)
-    # 1. Stop Gate: Enforces Critic invocation and handover warnings
+    {"name": "skill_activation", "check": "skill_activation", "events": ["PostToolUse"]},
+
+    # --- AfterAgent ---
+    {"name": "unified_logger_agent", "check": "unified_logger", "events": ["AfterAgent"]},
+    {"name": "agent_response", "check": "agent_response", "events": ["AfterAgent"]},
+
+    # --- SubagentStop ---
+    {"name": "unified_logger_subagent", "check": "unified_logger", "events": ["SubagentStop"]},
+
+    # --- Stop (Final Review Pipeline) ---
+    {"name": "unified_logger_stop", "check": "unified_logger", "events": ["Stop"]},
     {"name": "stop_gate", "check": "stop_gate", "events": ["Stop"]},
-    # 2. Hydration Recency: Blocks exit if turns since hydration == 0
     {"name": "hydration_recency", "check": "hydration_recency", "events": ["Stop"]},
+    {"name": "generate_transcript", "check": "generate_transcript", "events": ["Stop"]},
+    {"name": "session_end_commit", "check": "session_end_commit", "events": ["Stop"]},
+
+    # --- SessionEnd (Post-Stop cleanup) ---
+    {"name": "unified_logger_end", "check": "unified_logger", "events": ["SessionEnd"]},
 ]
 
 

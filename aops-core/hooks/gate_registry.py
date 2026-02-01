@@ -1424,19 +1424,302 @@ def check_qa_enforcement_gate(ctx: GateContext) -> Optional[GateResult]:
     )
 
 
+# --- Unified Logger Gate (formerly unified_logger.py) ---
+
+
+def run_unified_logger(ctx: GateContext) -> Optional[GateResult]:
+    """
+    Log hook events to session file and handle SubagentStop/Stop state updates.
+    Never blocks, only updates state and returns context for SessionStart.
+    """
+    _check_imports()
+
+    try:
+        from hooks.unified_logger import log_event_to_session
+    except ImportError as e:
+        print(f"WARNING: unified_logger import failed: {e}", file=sys.stderr)
+        return None
+
+    try:
+        result = log_event_to_session(ctx.session_id, ctx.event_name, ctx.input_data)
+        if result:
+            return GateResult(
+                verdict=GateVerdict.ALLOW,
+                system_message=result.get("system_message"),
+                context_injection=result.get("context_injection"),
+                metadata=result.get("metadata", {}),
+            )
+    except Exception as e:
+        print(f"WARNING: unified_logger error: {e}", file=sys.stderr)
+
+    return None
+
+
+# --- User Prompt Submit Gate (formerly user_prompt_submit.py) ---
+
+
+def run_user_prompt_submit(ctx: GateContext) -> Optional[GateResult]:
+    """
+    UserPromptSubmit: Build hydration context and return instruction.
+    """
+    _check_imports()
+
+    if ctx.event_name != "UserPromptSubmit":
+        return None
+
+    try:
+        from hooks.user_prompt_submit import (
+            build_hydration_instruction,
+            should_skip_hydration,
+            write_initial_hydrator_state,
+        )
+        from lib.session_state import (
+            get_or_create_session_state,
+            save_session_state,
+            set_gates_bypassed,
+            clear_reflection_output,
+        )
+    except ImportError as e:
+        print(f"WARNING: user_prompt_submit import failed: {e}", file=sys.stderr)
+        return None
+
+    prompt = ctx.input_data.get("prompt", "")
+    transcript_path = ctx.input_data.get("transcript_path")
+    session_id = ctx.session_id
+
+    if not session_id:
+        return None
+
+    try:
+        clear_reflection_output(session_id)
+
+        state = get_or_create_session_state(session_id)
+        hydration_state = state.get("hydration", {})
+        turns_since_hydration = hydration_state.get("turns_since_hydration", -1)
+
+        if turns_since_hydration >= 0:
+            hydration_state["turns_since_hydration"] = turns_since_hydration + 1
+            save_session_state(session_id, state)
+            return None  # Already hydrated, no instruction needed
+
+        if should_skip_hydration(prompt):
+            write_initial_hydrator_state(session_id, prompt, hydration_pending=False)
+            if prompt.strip().startswith("."):
+                set_gates_bypassed(session_id, True)
+            return None
+
+        if prompt:
+            hydration_instruction = build_hydration_instruction(
+                session_id, prompt, transcript_path
+            )
+            return GateResult(
+                verdict=GateVerdict.ALLOW,
+                context_injection=hydration_instruction,
+                metadata={"source": "user_prompt_submit"},
+            )
+    except Exception as e:
+        import traceback
+        print(f"WARNING: user_prompt_submit error: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+
+    return None
+
+
+# --- Task Binding Gate (formerly task_binding.py) ---
+
+
+def run_task_binding(ctx: GateContext) -> Optional[GateResult]:
+    """
+    PostToolUse: Bind/unbind task to session when task MCP operations occur.
+    """
+    _check_imports()
+
+    if ctx.event_name != "PostToolUse":
+        return None
+
+    try:
+        from hooks.task_binding import get_task_id_from_result
+        from lib.event_detector import detect_tool_state_changes, StateChange
+    except ImportError as e:
+        print(f"WARNING: task_binding import failed: {e}", file=sys.stderr)
+        return None
+
+    tool_name = ctx.tool_name or ctx.input_data.get("tool_name", "")
+    tool_input = ctx.tool_input or ctx.input_data.get("tool_input", {})
+    tool_result = (
+        ctx.input_data.get("tool_result")
+        or ctx.input_data.get("toolResult")
+        or ctx.input_data.get("tool_response", {})
+    )
+
+    try:
+        changes = detect_tool_state_changes(tool_name, tool_input, tool_result)
+    except Exception as e:
+        print(f"WARNING: event_detector error: {e}", file=sys.stderr)
+        return None
+
+    if StateChange.PLAN_MODE in changes:
+        try:
+            if not session_state.is_plan_mode_invoked(ctx.session_id):
+                session_state.set_plan_mode_invoked(ctx.session_id)
+                return GateResult(
+                    verdict=GateVerdict.ALLOW,
+                    system_message="Plan mode gate passed ✓",
+                )
+        except Exception as e:
+            print(f"WARNING: task_binding plan_mode error: {e}", file=sys.stderr)
+
+    if StateChange.UNBIND_TASK in changes:
+        try:
+            current = session_state.get_current_task(ctx.session_id)
+            if current:
+                session_state.clear_current_task(ctx.session_id)
+                return GateResult(
+                    verdict=GateVerdict.ALLOW,
+                    system_message=f"Task completed and unbound: {current}",
+                )
+        except Exception as e:
+            print(f"WARNING: task_binding unbind error: {e}", file=sys.stderr)
+
+    if StateChange.BIND_TASK in changes:
+        task_id = get_task_id_from_result(tool_result)
+        if task_id:
+            try:
+                current = session_state.get_current_task(ctx.session_id)
+                if current and current != task_id:
+                    return GateResult(
+                        verdict=GateVerdict.ALLOW,
+                        system_message=f"Note: Already bound to {current}, ignoring {task_id}",
+                    )
+                session_state.set_current_task(ctx.session_id, task_id, source="claim")
+                return GateResult(
+                    verdict=GateVerdict.ALLOW,
+                    system_message=f"Task bound: {task_id}",
+                )
+            except Exception as e:
+                print(f"WARNING: task_binding bind error: {e}", file=sys.stderr)
+
+    return None
+
+
+# --- Session End Commit Check Gate (formerly session_end_commit_check.py) ---
+
+
+def run_session_end_commit_check(ctx: GateContext) -> Optional[GateResult]:
+    """
+    Stop: Check for uncommitted work and perform session cleanup.
+    """
+    _check_imports()
+
+    if ctx.event_name != "Stop":
+        return None
+
+    try:
+        from hooks.session_end_commit_check import (
+            check_uncommitted_work,
+            perform_session_cleanup,
+        )
+    except ImportError as e:
+        print(f"WARNING: session_end_commit_check import failed: {e}", file=sys.stderr)
+        return None
+
+    session_id = ctx.session_id
+    transcript_path = ctx.input_data.get("transcript_path")
+
+    # Check for active task
+    try:
+        current_task = session_state.get_current_task(session_id)
+        if current_task:
+            return GateResult(
+                verdict=GateVerdict.DENY,
+                system_message=f"Active task bound: {current_task}. Complete or unbind first.",
+            )
+    except Exception as e:
+        print(f"WARNING: task check failed: {e}", file=sys.stderr)
+
+    # Check for uncommitted work
+    try:
+        check_result = check_uncommitted_work(session_id, transcript_path)
+        if check_result["should_block"]:
+            return GateResult(
+                verdict=GateVerdict.DENY,
+                system_message=check_result["message"],
+            )
+    except Exception as e:
+        print(f"WARNING: uncommitted work check failed: {e}", file=sys.stderr)
+
+    # Perform cleanup
+    try:
+        perform_session_cleanup(session_id, transcript_path)
+    except Exception as e:
+        print(f"WARNING: session cleanup failed: {e}", file=sys.stderr)
+
+    return GateResult(
+        verdict=GateVerdict.ALLOW,
+        system_message="✓ handover verified",
+    )
+
+
+# --- Generate Transcript Gate (formerly generate_transcript.py) ---
+
+
+def run_generate_transcript(ctx: GateContext) -> Optional[GateResult]:
+    """
+    Stop: Run transcript.py on session end.
+    """
+    if ctx.event_name != "Stop":
+        return None
+
+    transcript_path = ctx.input_data.get("transcript_path")
+    if not transcript_path:
+        return None
+
+    try:
+        import subprocess
+        from pathlib import Path
+
+        root_dir = Path(__file__).parent.parent
+        script_path = root_dir / "scripts" / "transcript.py"
+
+        if script_path.exists():
+            result = subprocess.run(
+                [sys.executable, str(script_path), transcript_path],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0 and result.returncode != 2:
+                print(f"WARNING: Transcript generation failed: {result.stderr}", file=sys.stderr)
+    except Exception as e:
+        print(f"WARNING: generate_transcript error: {e}", file=sys.stderr)
+
+    return None
+
+
 # Registry of available gate checks
 GATE_CHECKS = {
-    "subagent_restrictions": check_subagent_tool_restrictions,  # PreToolUse - MUST run first
+    # Universal gates
+    "unified_logger": run_unified_logger,
+    # UserPromptSubmit
+    "user_prompt_submit": run_user_prompt_submit,
+    # PreToolUse gates (order matters)
+    "subagent_restrictions": check_subagent_tool_restrictions,
     "session_start": check_session_start_gate,
-    "hydration": check_hydration_gate,  # PreToolUse
+    "hydration": check_hydration_gate,
     "task_required": check_task_required_gate,
     "custodiet": check_custodiet_gate,
-    "qa_enforcement": check_qa_enforcement_gate,  # PreToolUse
-    "agent_response": check_agent_response_listener,  # AfterAgent
-    "stop_gate": check_stop_gate,  # Stop
-    "hydration_recency": check_hydration_recency_gate,  # Stop
-    "skill_activation": check_skill_activation_listener,  # PostToolUse
-    "accountant": run_accountant,  # PostToolUse
-    "post_hydration": post_hydration_trigger,  # PostToolUse
-    "post_critic": post_critic_trigger,  # PostToolUse
+    "qa_enforcement": check_qa_enforcement_gate,
+    # PostToolUse gates
+    "task_binding": run_task_binding,
+    "accountant": run_accountant,
+    "post_hydration": post_hydration_trigger,
+    "post_critic": post_critic_trigger,
+    "skill_activation": check_skill_activation_listener,
+    # AfterAgent gates
+    "agent_response": check_agent_response_listener,
+    # Stop gates
+    "stop_gate": check_stop_gate,
+    "hydration_recency": check_hydration_recency_gate,
+    "session_end_commit": run_session_end_commit_check,
+    "generate_transcript": run_generate_transcript,
 }
