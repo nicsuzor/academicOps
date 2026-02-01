@@ -117,13 +117,13 @@ Return this EXACT structure:
 [Choose ONE:]
 
 **Existing task found**: `[task-id]` - [title]
-- Verify first: `mcp__plugin_aops-core_tasks__get_task(id="[task-id]")` (confirm status=active or inbox)
-- Claim with: `mcp__plugin_aops-core_tasks__update_task(id="[task-id]", status="active")`
+- Verify first: `mcp__plugin_aops-core_task_manager__get_task(id="[task-id]")` (confirm status=active or inbox)
+- Claim with: `mcp__plugin_aops-core_task_manager__update_task(id="[task-id]", status="active")`
 
 **OR**
 
 **New task needed**:
-- Create with: `mcp__plugin_aops-core_tasks__create_task(task_title="[title]", type="task", project="aops", priority=2)`
+- Create with: `mcp__plugin_aops-core_task_manager__create_task(task_title="[title]", type="task", project="aops", priority=2)`
 
 **OR**
 
@@ -164,7 +164,7 @@ Return this EXACT structure:
 Create decomposition task for work that can't be done now:
 
 ```
-mcp__plugin_aops-core_tasks__create_task(
+mcp__plugin_aops-core_task_manager__create_task(
   title="Decompose: [goal]",
   type="task",
   project="aops",
@@ -175,7 +175,7 @@ mcp__plugin_aops-core_tasks__create_task(
 
 If immediate task depends on decomposition, set dependency:
 ```
-mcp__plugin_aops-core_tasks__create_task(
+mcp__plugin_aops-core_task_manager__create_task(
   title="[immediate task]",
   depends_on=["[decompose-task-id]"],
   ...

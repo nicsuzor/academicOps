@@ -92,13 +92,13 @@ References below to calls in Claude Code format (e.g. mcp__memory__xyz()) should
 [ONE of these three options:]
 
 **Existing task found**: `[task-id]` - [title]
-- Verify first: `mcp__plugin_aops-core_tasks__get_task(id="[task-id]")`
-- Claim with: `mcp__plugin_aops-core_tasks__update_task(id="[task-id]", status="active", complexity="[complexity]")`
+- Verify first: `mcp__plugin_aops-core_task_manager__get_task(id="[task-id]")`
+- Claim with: `mcp__plugin_aops-core_task_manager__update_task(id="[task-id]", status="active", complexity="[complexity]")`
 
 **OR**
 
 **New task needed**:
-- Create with: `mcp__plugin_aops-core_tasks__create_task(task_title="[title]", type="task", project="aops", priority=2, complexity="[complexity]")`
+- Create with: `mcp__plugin_aops-core_task_manager__create_task(task_title="[title]", type="task", project="aops", priority=2, complexity="[complexity]")`
 - [Brief rationale for task scope]
 
 **OR**
@@ -149,7 +149,7 @@ Provide execution steps as a markdown list.
 If scope is multi-session, create decomposition task:
 
 ```
-mcp__plugin_aops-core_tasks__create_task(
+mcp__plugin_aops-core_task_manager__create_task(
   title="Decompose: [goal description]",
   type="task",
   project="aops",
@@ -187,7 +187,7 @@ You should immediately commence the first task now.
 
 **Option A: Assign to Role**
 ```
-mcp__plugin_aops-core_tasks__update_task(
+mcp__plugin_aops-core_task_manager__update_task(
   id="[task-id]",
   assignee="[role]",
   status="blocked",
@@ -197,7 +197,7 @@ mcp__plugin_aops-core_tasks__update_task(
 
 **Option B: Subtask explosion**
 ```
-mcp__plugin_aops-core_tasks__decompose_task(
+mcp__plugin_aops-core_task_manager__decompose_task(
   id="[parent-id]",
   children=[...]
 )
@@ -205,7 +205,7 @@ mcp__plugin_aops-core_tasks__decompose_task(
 
 **Option C: Block for Clarification**
 ```
-mcp__plugin_aops-core_tasks__update_task(
+mcp__plugin_aops-core_task_manager__update_task(
   id="[task-id]",
   status="blocked",
   body="Blocked: [specific questions]"

@@ -414,7 +414,7 @@ For each finding from Phases 0-7 that requires action:
 #### Task Creation Pattern
 
 ```python
-mcp__plugin_aops-core_tasks__create_task(
+mcp__plugin_aops-core_task_manager__create_task(
     title="[Finding Type]: [specific details]",
     type="task",
     priority=[2|3],
