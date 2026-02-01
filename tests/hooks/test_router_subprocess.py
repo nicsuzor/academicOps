@@ -36,7 +36,7 @@ def run_router_claude(
     env["PYTHONPATH"] = str(AOPS_CORE_DIR)
 
     result = subprocess.run(
-        [sys.executable, str(ROUTER_PATH)],
+        [sys.executable, str(ROUTER_PATH), "--client", "claude"],
         input=json.dumps(input_data),
         capture_output=True,
         text=True,
@@ -71,7 +71,7 @@ def run_router_gemini(
     env["PYTHONPATH"] = str(AOPS_CORE_DIR)
 
     result = subprocess.run(
-        [sys.executable, str(ROUTER_PATH), event],
+        [sys.executable, str(ROUTER_PATH), "--client", "gemini", event],
         input=json.dumps(input_data),
         capture_output=True,
         text=True,

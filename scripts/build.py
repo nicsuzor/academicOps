@@ -104,6 +104,10 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
                             # Replace Claude variable with Gemini variable
                             cmd = new_hook["command"]
                             cmd = cmd.replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
+
+                            # Ensure we use the correct client flag for Gemini
+                            cmd = cmd.replace("--client claude", "--client gemini")
+
                             # Also ensure PYTHONPATH is set correctly for Gemini
                             if "PYTHONPATH=" in cmd and "${extensionPath}" in cmd:
                                 # Simplify: use uv run --directory which handles PYTHONPATH

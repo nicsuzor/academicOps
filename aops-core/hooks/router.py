@@ -140,8 +140,8 @@ def persist_session_data(data: Dict[str, Any]) -> None:
         except Exception:
             Path(temp_path).unlink(missing_ok=True)
             raise
-    except OSError as e:
-        print(f"WARNING: Failed to persist session data: {e}", file=sys.stderr)
+    except OSError:
+        pass # Silent failure to avoid protocol noise
 
 
 # --- Router Logic ---
@@ -219,7 +219,7 @@ class HookRouter:
         for gate_name in gate_names:
             check_func = GATE_CHECKS.get(gate_name)
             if not check_func:
-                print(f"WARNING: Gate '{gate_name}' not found", file=sys.stderr)
+                merged_result.metadata.setdefault("warnings", []).append(f"Gate '{gate_name}' not found")
                 continue
 
             try:
@@ -232,9 +232,10 @@ class HookRouter:
                         break
 
             except Exception as e:
-                print(f"ERROR: Gate '{gate_name}' failed: {e}", file=sys.stderr)
                 import traceback
-                traceback.print_exc(file=sys.stderr)
+                error_msg = f"Gate '{gate_name}' failed: {e}"
+                merged_result.metadata.setdefault("errors", []).append(error_msg)
+                merged_result.metadata.setdefault("tracebacks", []).append(traceback.format_exc())
 
         # Log hook event with output AFTER all gates complete
         try:
@@ -248,8 +249,8 @@ class HookRouter:
             log_hook_event(
                 ctx.session_id, ctx.hook_event, gate_input, output_data=output_data
             )
-        except Exception as e:
-            print(f"WARNING: Failed to log hook event: {e}", file=sys.stderr)
+        except Exception:
+            pass # Silent failure for logging to avoid protocol issues
 
         return merged_result
 
@@ -259,7 +260,7 @@ class HookRouter:
         """Execute a shell script via subprocess."""
         script_path = HOOK_DIR / script_name
         if not script_path.exists():
-            print(f"WARNING: Shell script not found: {script_path}", file=sys.stderr)
+            merged_result.metadata.setdefault("warnings", []).append(f"Shell script not found: {script_path}")
             return
 
         env = os.environ.copy()
@@ -284,7 +285,7 @@ class HookRouter:
             )
 
             if result.stderr:
-                print(result.stderr, file=sys.stderr)
+                merged_result.metadata.setdefault("shell_stderr", {}).update({script_name: result.stderr})
 
             if result.returncode == 0 and result.stdout.strip():
                 try:
@@ -292,13 +293,13 @@ class HookRouter:
                     hook_output = self._normalize_hook_output(raw_output)
                     self._merge_result(merged_result, hook_output)
                 except json.JSONDecodeError:
-                    print(f"WARNING: Invalid JSON from {script_name}", file=sys.stderr)
+                    merged_result.metadata.setdefault("warnings", []).append(f"Invalid JSON from {script_name}")
 
             elif result.returncode != 0:
-                print(f"ERROR: {script_name} failed with code {result.returncode}", file=sys.stderr)
+                 merged_result.metadata.setdefault("errors", []).append(f"{script_name} failed with code {result.returncode}")
 
         except Exception as e:
-            print(f"ERROR: Executing {script_name}: {e}", file=sys.stderr)
+            merged_result.metadata.setdefault("errors", []).append(f"Executing {script_name}: {e}")
 
     def _gate_result_to_canonical(self, result: GateResult) -> CanonicalHookOutput:
         """Convert GateResult to CanonicalHookOutput."""
@@ -438,15 +439,39 @@ class HookRouter:
 # --- Main Entry Point ---
 
 def main():
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Universal Hook Router")
+    parser.add_argument("--client", choices=["gemini", "claude"], help="Client type (gemini or claude)")
+    parser.add_argument("event", nargs="?", help="Event name (required for Gemini if not in payload)")
+    
+    # Parse known args to avoid issues if extra flags are passed
+    args, unknown = parser.parse_known_args()
+    
     router = HookRouter()
     
     # Detect Invocation Mode
-    gemini_event = sys.argv[1] if len(sys.argv) > 1 else None
+    # If --client is explicit, use it.
+    # Fallback: if positional event exists, assume Gemini (legacy). Else Claude.
+    if args.client:
+        client_type = args.client
+        gemini_event = args.event
+    elif args.event:
+        client_type = "gemini"
+        gemini_event = args.event
+    else:
+        client_type = "claude"
+        gemini_event = None
     
     # Read Input
     try:
         if not sys.stdin.isatty():
-            raw_input = json.load(sys.stdin)
+            # Check if stdin has content
+            input_data = sys.stdin.read()
+            if input_data.strip():
+                raw_input = json.loads(input_data)
+            else:
+                raw_input = {}
         else:
             raw_input = {}
     except Exception:
@@ -457,8 +482,9 @@ def main():
     result = router.execute_hooks(ctx)
     
     # Output
-    if gemini_event:
-        output = router.output_for_gemini(result, gemini_event)
+    if client_type == "gemini":
+        # Gemini typically passes event as argument, but we normalize in ctx
+        output = router.output_for_gemini(result, ctx.hook_event)
         print(output.model_dump_json(exclude_none=True))
         sys.exit(0)
     else:
