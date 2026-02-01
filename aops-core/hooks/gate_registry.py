@@ -1062,7 +1062,7 @@ def run_accountant(ctx: GateContext) -> Optional[GateResult]:
     Runs on PostToolUse. Never blocks, only updates state.
 
     Components tracked:
-    1. Hydration: Clears pending flag if hydrator ran.
+    1. Hydration: Clears pending flag if hydrator ran; increments turns_since_hydration.
     2. Custodiet: Increments tool count or resets if custodiet ran.
     3. Handover: Sets handover flag if handover skill ran.
     """
@@ -1084,6 +1084,22 @@ def run_accountant(ctx: GateContext) -> Optional[GateResult]:
     if ctx.tool_name in ("Task", "delegate_to_agent", "activate_skill", "Skill"):
         if _hydration_is_hydrator_task(ctx.tool_input):
             session_state.clear_hydrator_active(ctx.session_id)
+
+    # 1b. Increment turns_since_hydration for non-read-only tool calls.
+    # This tracks how many actions have occurred since hydration completed.
+    # The counter semantics:
+    #   -1 = never hydrated (new prompt needs hydration)
+    #    0 = just hydrated, no actions yet
+    #   >0 = N actions since hydration
+    # Only increment for non-safe tools to avoid inflating count on reads.
+    if ctx.tool_name not in SAFE_READ_TOOLS:
+        sess = session_state.get_or_create_session_state(ctx.session_id)
+        hydration_state = sess.setdefault("hydration", {})
+        hydration_state.setdefault("turns_since_hydration", -1)
+        turns_since = hydration_state["turns_since_hydration"]
+        if turns_since >= 0:
+            hydration_state["turns_since_hydration"] = turns_since + 1
+            session_state.save_session_state(ctx.session_id, sess)
 
     # 2. Update Custodiet State
     # Skip for safe read-only tools to avoid noise
@@ -1493,15 +1509,7 @@ def run_user_prompt_submit(ctx: GateContext) -> Optional[GateResult]:
     try:
         clear_reflection_output(session_id)
 
-        state = get_or_create_session_state(session_id)
-        hydration_state = state.get("hydration", {})
-        turns_since_hydration = hydration_state.get("turns_since_hydration", -1)
-
-        if turns_since_hydration >= 0:
-            hydration_state["turns_since_hydration"] = turns_since_hydration + 1
-            save_session_state(session_id, state)
-            return None  # Already hydrated, no instruction needed
-
+        # Check for skip patterns FIRST before any state changes
         if should_skip_hydration(prompt):
             write_initial_hydrator_state(session_id, prompt, hydration_pending=False)
             if prompt.strip().startswith("."):

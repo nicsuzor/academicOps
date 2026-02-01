@@ -613,28 +613,7 @@ def main():
         # This tracks whether the agent outputs a Framework Reflection before session end
         clear_reflection_output(session_id)
 
-        # Check hydration state (Hydrate Once per Session)
-        # If the agent has already hydrated (turns_since_hydration >= 0),
-        # we increment the turn counter and bypass the hydration instruction.
-        state = get_or_create_session_state(session_id)
-        hydration_state = state.get("hydration", {})
-        turns_since_hydration = hydration_state.get("turns_since_hydration", -1)
-
-        _log_debug(f"Turns since hydration: {turns_since_hydration}")
-
-        if turns_since_hydration >= 0:
-            # Increment turn counter
-            hydration_state["turns_since_hydration"] = turns_since_hydration + 1
-            save_session_state(session_id, state)
-
-            _log_debug("Skipping: Already hydrated")
-            output_data = {
-                "verdict": "allow",
-                # No context injection needed for continued conversation
-            }
-            print(json.dumps(output_data))
-            sys.exit(0)
-
+        # Check for skip patterns FIRST before any state changes
         # Skip hydration for system messages, skill invocations, and user ignore shortcut
         if should_skip_hydration(prompt):
             # Write state with hydration_pending=False so gate doesn't block
