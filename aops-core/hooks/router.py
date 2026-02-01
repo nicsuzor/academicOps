@@ -58,7 +58,7 @@ HOOK_REGISTRY: Dict[str, List[Dict[str, Any]]] = {
         {
             "script": "gates.py"
         },  # Universal gate runner (hydration, task_required, overdue_enforcement)
-        {"script": "command_intercept.py"},
+        # {"script": "command_intercept.py"},
         # REMOVED: task_required_gate.py - consolidated into gates.py
         # REMOVED: overdue_enforcement.py - consolidated into gates.py
     ],
