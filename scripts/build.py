@@ -382,7 +382,7 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
     return gemini_mcps  # Return for aggregation
 
 
-def build_aops_tools(aops_root: Path, dist_root: Path):
+def build_aops_tools(aops_root: Path, dist_root: Path, aca_data_path: str):
     """Build the aops-tools extension."""
     print("Building aops-tools...")
     plugin_name = "aops-tools"
@@ -398,6 +398,36 @@ def build_aops_tools(aops_root: Path, dist_root: Path):
         src = src_dir / item
         if src.exists():
             safe_copy(src, dist_dir / item)
+
+    # 1.5 Generate MCP Config from Template (Added to fix bug)
+    template_path = src_dir / "mcp.json.template"
+    if template_path.exists():
+        print(f"Generating MCP config from {template_path.name}...")
+        try:
+            content = template_path.read_text()
+            subs = {
+                "${CLAUDE_PLUGIN_ROOT}": str(src_dir.resolve()),
+                "${AOPS}": str(aops_root),
+                "${MCP_MEMORY_API_KEY}": os.environ.get("MCP_MEMORY_API_KEY", ""),
+                "${ACA_DATA}": aca_data_path,
+            }
+
+            for key, val in subs.items():
+                content = content.replace(key, val)
+
+            mcp_config = json.loads(content)
+
+            # Write back to source .mcp.json for Claude
+            mcp_json_path = src_dir / ".mcp.json"
+            with open(mcp_json_path, "w") as f:
+                json.dump(mcp_config, f, indent=2)
+            print(f"✓ Updated {mcp_json_path}")
+
+        except Exception as e:
+            print(f"Error processing template {template_path}: {e}", file=sys.stderr)
+            raise
+    else:
+        print(f"Warning: Template {template_path} not found. Skipping MCP generation.")
 
     # 2. Load Manifest and MCPs
     plugin_json_path = src_dir / ".claude-plugin" / "plugin.json"
@@ -518,7 +548,7 @@ def main():
 
     # Build components
     core_mcps = build_aops_core(aops_root, dist_root, aca_data_path)
-    tools_mcps = build_aops_tools(aops_root, dist_root)
+    tools_mcps = build_aops_tools(aops_root, dist_root, aca_data_path)
 
     # Aggregate MCPs for Antigravity (global config if needed)
     # Note: Antigravity usually uses project-specific mcp, but we can generate a global one too
