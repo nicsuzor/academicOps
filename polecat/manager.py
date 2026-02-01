@@ -802,6 +802,22 @@ class PolecatManager:
                     f"Use --force to delete anyway, or merge first with 'polecat merge'."
                 )
 
+        # Safety check: verify worktree has no uncommitted changes
+        # This prevents data loss when agent forgets to commit before marking task complete
+        if not force and worktree_path.exists() and (worktree_path / ".git").exists():
+            res = subprocess.run(
+                ["git", "status", "--porcelain"],
+                cwd=worktree_path,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if res.returncode == 0 and res.stdout.strip():
+                raise RuntimeError(
+                    f"Worktree {worktree_path} has uncommitted changes. "
+                    f"Use --force to delete anyway."
+                )
+
         if worktree_path.exists():
             print(f"Removing worktree {worktree_path}...")
             subprocess.run(
