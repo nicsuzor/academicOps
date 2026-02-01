@@ -203,6 +203,7 @@ def create_session_state(session_id: str) -> SessionState:
             "current_workflow": None,
             "hydration_pending": True,  # Default True - gate blocks until hydrator invoked
             "qa_invoked": False,
+            "handover_skill_invoked": True,  # Gate starts OPEN - reset when mutating tool used
         },
         hydration={
             "original_prompt": None,

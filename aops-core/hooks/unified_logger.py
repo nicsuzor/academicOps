@@ -46,6 +46,7 @@ from lib.session_state import (
     set_qa_invoked,
     set_session_insights,
 )
+from lib.gate_model import GateResult, GateVerdict
 
 # Set up logging
 logging.basicConfig(
@@ -234,7 +235,7 @@ def log_hook_event(
 
 def log_event_to_session(
     session_id: str, hook_event: str, input_data: dict[str, Any]
-) -> dict[str, Any] | None:
+) -> GateResult | None:
     """Log a hook event to session state and per-session JSONL log.
 
     1. Logs event to per-session JSONL file (audit trail)
@@ -245,9 +246,12 @@ def log_event_to_session(
         session_id: Claude Code session ID
         hook_event: Name of the hook event
         input_data: Full input data from the hook
+
+    Returns:
+        GateResult for SessionStart events, None otherwise
     """
     if not session_id or session_id == "unknown":
-        return
+        return None
 
     # Log ALL events to per-session JSONL file (audit trail)
     log_hook_event(session_id, hook_event, input_data)
@@ -263,14 +267,14 @@ def log_event_to_session(
         state = get_or_create_session_state(session_id)
         short_hash = get_session_short_hash(session_id)
         state_path = get_session_file_path_direct(session_id, state.get("date"))
-        
-        # Return CanonicalHookOutput structure
-        return {
-            "verdict": "allow",
-            "context_injection": f"Session: {short_hash}\nState file: {state_path}",
-            "system_message": f"SessionStart:startup hook success: Success",
-            "metadata": {"source": "unified_logger"}
-        }
+
+        # Return typed GateResult instead of dict
+        return GateResult(
+            verdict=GateVerdict.ALLOW,
+            context_injection=f"Session: {short_hash}\nState file: {state_path}",
+            system_message="SessionStart:startup hook success: Success",
+            metadata={"source": "unified_logger"}
+        )
     else:
         # For other events, just ensure session exists (creates if needed)
         # This updates the session file with the latest access
@@ -447,19 +451,36 @@ def main():
         # Unexpected failure: I/O errors, permissions, etc.
         logger.warning(f"Unexpected error reading stdin: {type(e).__name__}: {e}")
 
-    session_id = input_data.get("session_id", "unknown")
-    hook_event = input_data.get("hook_event_name", "Unknown")
+    # Session ID and hook event are required - fail if missing
+    if "session_id" not in input_data:
+        print(json.dumps({}))
+        sys.exit(0)
+    session_id = input_data["session_id"]
+
+    if "hook_event_name" not in input_data:
+        print(json.dumps({}))
+        sys.exit(0)
+    hook_event = input_data["hook_event_name"]
 
     # Log event to single session file
-    result: dict[str, Any] = {}
+    result: GateResult | None = None
     try:
-        result = log_event_to_session(session_id, hook_event, input_data) or {}
+        result = log_event_to_session(session_id, hook_event, input_data)
     except Exception as e:
         # Log but don't fail - hook should continue with noop
         logger.warning(f"Failed to log event to session: {type(e).__name__}: {e}")
 
-    # Output result (may contain debug info for SessionStart)
-    print(json.dumps(result))
+    # Output result as JSON (may contain debug info for SessionStart)
+    if result:
+        # Use pydantic model for proper serialization
+        print(json.dumps({
+            "verdict": result.verdict.value,
+            "system_message": result.system_message,
+            "context_injection": result.context_injection,
+            "metadata": result.metadata,
+        }))
+    else:
+        print(json.dumps({}))
     sys.exit(0)
 
 

@@ -1064,13 +1064,15 @@ def run_accountant(ctx: GateContext) -> Optional[GateResult]:
     Components tracked:
     1. Hydration: Clears pending flag if hydrator ran; increments turns_since_hydration.
     2. Custodiet: Increments tool count or resets if custodiet ran.
-    3. Handover: Sets handover flag if handover skill ran.
+    3. Handover: Sets handover flag if handover skill ran; clears on mutating tools.
     """
     _check_imports()
 
     # Only applies to PostToolUse
     if ctx.event_name != "PostToolUse":
         return None
+
+    system_messages: list[str] = []
 
     # 1. Hydration State Update
     # NOTE: Do NOT clear hydration_pending here. PostToolUse fires when the
@@ -1105,7 +1107,7 @@ def run_accountant(ctx: GateContext) -> Optional[GateResult]:
     # Skip for safe read-only tools to avoid noise
     if ctx.tool_name not in SAFE_READ_TOOLS:
         sess = session_state.get_or_create_session_state(ctx.session_id)
-        state = sess.get("state", {})
+        state = sess.setdefault("state", {})
 
         # Initialize fields
         state.setdefault("tool_calls_since_compliance", 0)
@@ -1122,19 +1124,32 @@ def run_accountant(ctx: GateContext) -> Optional[GateResult]:
         session_state.save_session_state(ctx.session_id, sess)
 
     # 3. Update Handover State
+    # Handover gate starts OPEN (handover_skill_invoked=True).
+    # Reset to False when mutating tools are used (requiring handover again).
+    # Read-only tools do NOT reset the gate.
     if _is_handover_skill_invocation(ctx.tool_name or "", ctx.tool_input):
         try:
             session_state.set_handover_skill_invoked(ctx.session_id)
-            # Return a system message to acknowledge
-            # Return a system message to acknowledge
-            return GateResult(
-                verdict=GateVerdict.ALLOW,
-                system_message="[Accountant] Handover recorded. Stop gate cleared.",
-            )
+            system_messages.append("[Gate] Handover recorded. Stop gate open.")
         except Exception as e:
             print(
                 f"WARNING: Accountant failed to set handover flag: {e}", file=sys.stderr
             )
+    elif ctx.tool_name in MUTATING_TOOLS:
+        # Mutating tool used - require handover before stop
+        try:
+            session_state.clear_handover_skill_invoked(ctx.session_id)
+            system_messages.append("[Gate] Mutating tool used. Handover required before stop.")
+        except Exception as e:
+            print(
+                f"WARNING: Accountant failed to clear handover flag: {e}", file=sys.stderr
+            )
+
+    if system_messages:
+        return GateResult(
+            verdict=GateVerdict.ALLOW,
+            system_message="\n".join(system_messages),
+        )
 
     return None
 
@@ -1224,10 +1239,10 @@ def post_hydration_trigger(ctx: GateContext) -> Optional[GateResult]:
         session_state.update_hydration_metrics(ctx.session_id, turns_since_hydration=0)
         session_state.clear_hydration_pending(ctx.session_id)
 
-        # Inject message
-        # Inject message
+        # User-facing output + agent context injection
         return GateResult(
             verdict=GateVerdict.ALLOW,
+            system_message="[Gate] Hydration complete. Critic required next.",
             context_injection="<system-reminder>\nNext, invoke the critic and revise your plan.\n</system-reminder>",
         )
 
@@ -1256,7 +1271,11 @@ def post_critic_trigger(ctx: GateContext) -> Optional[GateResult]:
         )  # Generic verdict for now
         session_state.update_hydration_metrics(ctx.session_id, turns_since_critic=0)
 
-        return None
+        # User-facing output for gate state change
+        return GateResult(
+            verdict=GateVerdict.ALLOW,
+            system_message="[Gate] Critic invoked. Gate satisfied.",
+        )
 
     return None
 
@@ -1302,6 +1321,10 @@ def check_agent_response_listener(ctx: GateContext) -> Optional[GateResult]:
     # 2. Update Handover State
     if "## Framework Reflection" in response_text:
         session_state.set_handover_skill_invoked(ctx.session_id)
+        return GateResult(
+            verdict=GateVerdict.ALLOW,
+            system_message="[Gate] Framework Reflection detected. Handover gate open.",
+        )
 
     return None
 
@@ -1309,7 +1332,7 @@ def check_agent_response_listener(ctx: GateContext) -> Optional[GateResult]:
 def check_session_start_gate(ctx: GateContext) -> Optional[GateResult]:
     """
     Handle SessionStart event.
-    Returns GateResult with startup information message.
+    Returns GateResult with startup information displayed to USER (system_message).
     """
     _check_imports()
 
@@ -1322,10 +1345,10 @@ def check_session_start_gate(ctx: GateContext) -> Optional[GateResult]:
         status_dir = session_paths.get_session_status_dir()
         short_hash = session_paths.get_session_short_hash(ctx.session_id)
 
-        # Get hook log path for this session
+        # Get hook log path for this session (full absolute path)
         hook_log_path = get_hook_log_path(ctx.session_id, ctx.input_data)
 
-        # Build startup message
+        # Build startup message for USER display (system_message, not context_injection)
         msg_lines = [
             f"Session Started: {ctx.session_id} ({short_hash})",
             f"State File: {status_dir}/*-{short_hash}.json",
@@ -1335,7 +1358,7 @@ def check_session_start_gate(ctx: GateContext) -> Optional[GateResult]:
 
         return GateResult(
             verdict=GateVerdict.ALLOW,
-            context_injection="\n".join(msg_lines),
+            system_message="\n".join(msg_lines),
             metadata={"source": "session_start"},
         )
 
@@ -1343,7 +1366,7 @@ def check_session_start_gate(ctx: GateContext) -> Optional[GateResult]:
         # Fallback if session state access fails
         return GateResult(
             verdict=GateVerdict.ALLOW,
-            context_injection=f"Session Started: {ctx.session_id}\n(Error loading details: {e})",
+            system_message=f"Session Started: {ctx.session_id}\n(Error loading details: {e})",
             metadata={"source": "session_start", "error": str(e)},
         )
 
@@ -1463,14 +1486,8 @@ def run_unified_logger(ctx: GateContext) -> Optional[GateResult]:
         return None
 
     try:
-        result = log_event_to_session(ctx.session_id, ctx.event_name, ctx.input_data)
-        if result:
-            return GateResult(
-                verdict=GateVerdict.ALLOW,
-                system_message=result.get("system_message"),
-                context_injection=result.get("context_injection"),
-                metadata=result.get("metadata", {}),
-            )
+        # log_event_to_session now returns GateResult directly (no dict conversion)
+        return log_event_to_session(ctx.session_id, ctx.event_name, ctx.input_data)
     except Exception as e:
         print(f"WARNING: unified_logger error: {e}", file=sys.stderr)
 
@@ -1578,7 +1595,7 @@ def run_task_binding(ctx: GateContext) -> Optional[GateResult]:
                 session_state.set_plan_mode_invoked(ctx.session_id)
                 return GateResult(
                     verdict=GateVerdict.ALLOW,
-                    system_message="Plan mode gate passed ✓",
+                    system_message="[Gate] Plan mode invoked. Gate satisfied.",
                 )
         except Exception as e:
             print(f"WARNING: task_binding plan_mode error: {e}", file=sys.stderr)
@@ -1590,7 +1607,7 @@ def run_task_binding(ctx: GateContext) -> Optional[GateResult]:
                 session_state.clear_current_task(ctx.session_id)
                 return GateResult(
                     verdict=GateVerdict.ALLOW,
-                    system_message=f"Task completed and unbound: {current}",
+                    system_message=f"[Gate] Task unbound: {current}",
                 )
         except Exception as e:
             print(f"WARNING: task_binding unbind error: {e}", file=sys.stderr)
@@ -1603,12 +1620,12 @@ def run_task_binding(ctx: GateContext) -> Optional[GateResult]:
                 if current and current != task_id:
                     return GateResult(
                         verdict=GateVerdict.ALLOW,
-                        system_message=f"Note: Already bound to {current}, ignoring {task_id}",
+                        system_message=f"[Gate] Already bound to {current}, ignoring {task_id}",
                     )
                 session_state.set_current_task(ctx.session_id, task_id, source="claim")
                 return GateResult(
                     verdict=GateVerdict.ALLOW,
-                    system_message=f"Task bound: {task_id}",
+                    system_message=f"[Gate] Task bound: {task_id}",
                 )
             except Exception as e:
                 print(f"WARNING: task_binding bind error: {e}", file=sys.stderr)
