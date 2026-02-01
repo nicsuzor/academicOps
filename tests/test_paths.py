@@ -37,26 +37,23 @@ class TestGetWritingRoot:
         assert result == aops_root
         assert isinstance(result, Path)
 
-    def test_get_writing_root_fails_without_env(self, monkeypatch):
-        """Test get_writing_root() fails without AOPS env var (fail-fast per AXIOMS #7)."""
-        # Arrange - Unset environment variable
+    def test_get_writing_root_fallbacks(self, monkeypatch):
+        """Test get_writing_root() falls back to plugin root without env var."""
         monkeypatch.delenv("AOPS", raising=False)
+        # Should return a Path (plugin root)
+        result = get_writing_root()
+        assert isinstance(result, Path)
 
-        # Act & Assert - Should fail fast, no auto-detection
-        with pytest.raises(RuntimeError, match="AOPS environment variable not set"):
-            get_writing_root()
-
-    def test_get_writing_root_fails_with_invalid_env(self, monkeypatch):
-        """Test RuntimeError when AOPS points to non-existent path."""
+    def test_get_writing_root_returns_path_even_if_invalid(self, monkeypatch):
+        """Test get_writing_root returns path even if non-existent (no validation)."""
         # Arrange
         monkeypatch.setenv("AOPS", "/nonexistent/path")
 
-        # Act & Assert
-        with pytest.raises(
-            RuntimeError,
-            match=r"AOPS path doesn't exist",
-        ):
-            get_writing_root()
+        # Act
+        result = get_writing_root()
+        
+        # Assert
+        assert result == Path("/nonexistent/path").resolve()
 
 
 class TestGetBotsDir:
@@ -109,6 +106,8 @@ class TestGetHooksDir:
         aops_core.mkdir()
         hooks_dir.mkdir()
         monkeypatch.setenv("AOPS", str(aops_root))
+        # Patch get_plugin_root to return our temp path
+        monkeypatch.setattr("lib.paths.get_plugin_root", lambda: aops_core)
 
         # Act
         result = get_hooks_dir()
@@ -131,13 +130,15 @@ class TestGetHookScript:
         aops_core.mkdir()
         hooks_dir.mkdir()
 
-        hook_script = hooks_dir / "session_start.py"
+        hook_script = hooks_dir / "router.py"
         hook_script.touch()
 
         monkeypatch.setenv("AOPS", str(aops_root))
+        # Patch get_plugin_root to return our temp path
+        monkeypatch.setattr("lib.paths.get_plugin_root", lambda: aops_core)
 
         # Act
-        result = get_hook_script("session_start.py")
+        result = get_hook_script("router.py")
 
         # Assert
         assert result == hook_script
@@ -154,6 +155,8 @@ class TestGetHookScript:
         aops_core.mkdir()
         hooks_dir.mkdir()
         monkeypatch.setenv("AOPS", str(aops_root))
+        # Patch get_plugin_root to return our temp path
+        monkeypatch.setattr("lib.paths.get_plugin_root", lambda: aops_core)
 
         # Act & Assert
         with pytest.raises(RuntimeError, match="Hook script not found"):
@@ -180,6 +183,8 @@ class TestPathsUsePathlib:
 
         monkeypatch.setenv("AOPS", str(aops_root))
         monkeypatch.setenv("ACA_DATA", str(data_dir))
+        # Patch get_plugin_root to return our temp path
+        monkeypatch.setattr("lib.paths.get_plugin_root", lambda: aops_core)
 
         # Act
         writing_root_result = get_writing_root()

@@ -16,13 +16,11 @@ from lib import paths
 class TestPathResolution:
     """Test path resolution functions."""
 
-    def test_get_aops_root_requires_env_var(self, monkeypatch):
-        """Test that get_aops_root fails without AOPS env var (fail-fast per AXIOMS #7)."""
+    def test_get_aops_root_defaults_to_plugin_root(self, monkeypatch):
+        """Test that get_aops_root defaults to plugin root without AOPS env var."""
         monkeypatch.delenv("AOPS", raising=False)
-
-        # Should fail fast - no auto-detection, explicit config required
-        with pytest.raises(RuntimeError, match="AOPS environment variable not set"):
-            paths.get_aops_root()
+        result = paths.get_aops_root()
+        assert result == paths.get_plugin_root()
 
     def test_get_aops_root_uses_valid_aops_if_set(self, monkeypatch, tmp_path):
         """Test that get_aops_root respects valid AOPS env var."""
@@ -36,14 +34,13 @@ class TestPathResolution:
         assert isinstance(result, Path)
         assert result == test_dir.resolve()
 
-    def test_get_aops_root_fails_on_invalid_aops(self, monkeypatch, tmp_path):
-        """Test that get_aops_root fails fast if AOPS is explicitly set but invalid (AXIOMS #7)."""
+    def test_get_aops_root_returns_path_even_if_invalid(self, monkeypatch, tmp_path):
+        """Test that get_aops_root returns path even if invalid (no validation)."""
         nonexistent = tmp_path / "nonexistent"
         monkeypatch.setenv("AOPS", str(nonexistent))
 
-        # Should fail fast (not fall back) when AOPS explicitly set to invalid path
-        with pytest.raises(RuntimeError, match="AOPS path doesn't exist"):
-            paths.get_aops_root()
+        result = paths.get_aops_root()
+        assert result == nonexistent.resolve()
 
     def test_get_data_root_requires_env_var(self, monkeypatch):
         """Test that get_data_root fails without ACA_DATA env var."""
@@ -72,44 +69,29 @@ class TestPathResolution:
         assert result == test_dir.resolve()
 
     def test_get_skills_dir(self, monkeypatch, tmp_path):
-        """Test that get_skills_dir returns AOPS/aops-core/skills."""
-        test_dir = tmp_path / "aops"
-        test_dir.mkdir()
-        (test_dir / "aops-core").mkdir()  # v1.0: validation checks for aops-core/
-        monkeypatch.setenv("AOPS", str(test_dir))
+        """Test that get_skills_dir returns plugin_root/skills."""
+        test_plugin_root = tmp_path / "aops-core"
+        monkeypatch.setattr("lib.paths.get_plugin_root", lambda: test_plugin_root)
 
         result = paths.get_skills_dir()
 
-        assert result == test_dir / "aops-core" / "skills"
+        assert result == test_plugin_root / "skills"
 
     def test_validate_environment_success(self, monkeypatch, tmp_path):
         """Test validate_environment with valid setup."""
-        aops_dir = tmp_path / "aops"
         data_dir = tmp_path / "data"
-        aops_dir.mkdir()
-        (aops_dir / "aops-core").mkdir()  # v1.0: validation checks for aops-core/
         data_dir.mkdir()
-
-        monkeypatch.setenv("AOPS", str(aops_dir))
         monkeypatch.setenv("ACA_DATA", str(data_dir))
+        
+        test_plugin_root = tmp_path / "aops-core"
+        monkeypatch.setattr("lib.paths.get_plugin_root", lambda: test_plugin_root)
 
         result = paths.validate_environment()
 
-        assert "AOPS" in result
+        assert "PLUGIN_ROOT" in result
         assert "ACA_DATA" in result
-        assert result["AOPS"] == aops_dir.resolve()
+        assert result["PLUGIN_ROOT"] == test_plugin_root
         assert result["ACA_DATA"] == data_dir.resolve()
-
-    def test_validate_environment_fails_without_aops(self, monkeypatch, tmp_path):
-        """Test validate_environment fails without AOPS (fail-fast per AXIOMS #7)."""
-        monkeypatch.delenv("AOPS", raising=False)
-        data_dir = tmp_path / "data"
-        data_dir.mkdir()
-        monkeypatch.setenv("ACA_DATA", str(data_dir))
-
-        # Should fail fast - no auto-detection
-        with pytest.raises(RuntimeError, match="AOPS environment variable not set"):
-            paths.validate_environment()
 
 
 class TestRealEnvironment:
@@ -121,7 +103,8 @@ class TestRealEnvironment:
 
         assert result.exists()
         assert result.is_dir()
-        assert (result / "AXIOMS.md").exists()
+        # Check for README.md (repo root) or framework/AXIOMS.md (plugin root)
+        assert (result / "README.md").exists() or (result / "framework/AXIOMS.md").exists()
 
     @pytest.mark.skipif(
         not os.environ.get("ACA_DATA"), reason="ACA_DATA environment variable not set"

@@ -17,7 +17,7 @@ for path in [_aops_root, _aops_core]:
         sys.path.insert(0, str(path))
 
 from lib.paths import (  # noqa: E402
-    get_plugin_root as get_bots_dir,  # Framework root IS the old bots dir
+    get_aops_root as get_bots_dir,  # Framework root IS the old bots dir
     get_data_root as get_data_dir,
     get_hooks_dir,
 )

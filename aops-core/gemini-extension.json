@@ -2,14 +2,6 @@
   "name": "aops-core",
   "version": "0.1.0",
   "description": "AcademicOps Core Framework Extension for Gemini CLI",
-  "hooks": {
-    "SessionStart": "uv run --directory ${AOPS} python aops-core/hooks/router.py --client gemini SessionStart",
-    "BeforeAgent": "uv run --directory ${AOPS} python aops-core/hooks/router.py --client gemini BeforeAgent",
-    "BeforeTool": "uv run --directory ${AOPS} python aops-core/hooks/router.py --client gemini BeforeTool",
-    "AfterTool": "uv run --directory ${AOPS} python aops-core/hooks/router.py --client gemini AfterTool",
-    "AfterAgent": "uv run --directory ${AOPS} python aops-core/hooks/router.py --client gemini AfterAgent",
-    "SessionEnd": "uv run --directory ${AOPS} python aops-core/hooks/router.py --client gemini SessionEnd"
-  },
   "mcpServers": {
     "task_manager": {
       "command": "uv",

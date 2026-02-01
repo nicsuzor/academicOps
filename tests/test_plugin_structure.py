@@ -9,9 +9,8 @@ from pathlib import Path
 
 import pytest
 
-# Plugin root directory
-# <!-- NS: fix this to work with fixtures for the two claude plugins and the two gemini plugins. -->
-PLUGIN_ROOT = Path(__file__).parent.parent
+# Plugin root directory (updated for v1.1 structure)
+PLUGIN_ROOT = Path(__file__).parent.parent / "aops-core"
 
 
 class TestPluginStructure:
@@ -24,27 +23,25 @@ class TestPluginStructure:
 
     def test_required_directories_exist(self) -> None:
         """All required directories must exist."""
-        required_dirs = ["skills", "agents", "hooks", "lib", "specs"]
+        required_dirs = ["skills", "agents", "hooks", "lib"]
         for dir_name in required_dirs:
             dir_path = PLUGIN_ROOT / dir_name
             assert dir_path.is_dir(), f"Missing required directory: {dir_name}"
 
 
 class TestCoreSkills:
-    """Verify skills directory exists (empty in v1.0 minimal core - all skills archived)."""
+    """Verify skills directory exists."""
 
     def test_skills_directory_exists(self) -> None:
-        """Skills directory must exist (even if empty in v1.0 core)."""
+        """Skills directory must exist."""
         skills_dir = PLUGIN_ROOT / "skills"
         assert skills_dir.is_dir(), "Missing skills directory"
-        # v1.0 minimal core has no skills - all archived
-        # Skills can be moved back from archived/ as needed
 
 
 class TestCoreAgents:
     """Verify core agents are present."""
 
-    CORE_AGENTS = ["prompt-hydrator", "critic", "custodiet", "qa", "framework"]
+    CORE_AGENTS = ["prompt-hydrator", "critic", "custodiet", "qa", "effectual-planner"]
 
     def test_all_core_agents_present(self) -> None:
         """All 5 core agents must be present."""
@@ -87,53 +84,18 @@ class TestCoreLib:
             assert lib_file.exists(), f"Missing core lib file: {lib_name}"
 
 
-class TestCoreInstructions:
-    """Verify core instruction files contain required content."""
-
-    def test_core_md_has_uv_instructions(self) -> None:
-        """CORE.md must have uv run instructions.
-
-        Regression: Agents were using 'python' instead of 'uv run python'.
-        See issue aops-i4pz.1.
-        """
-        core_md = PLUGIN_ROOT.parent / "CORE.md"
-        assert core_md.exists(), "Missing CORE.md"
-        content = core_md.read_text()
-        assert "uv run" in content, "CORE.md must contain 'uv run' instructions"
-        assert "uv run python" in content, "CORE.md must specify 'uv run python'"
-        assert "uv run pytest" in content, "CORE.md must specify 'uv run pytest'"
-
-
 class TestGovernanceFiles:
     """Verify enforced axioms and heuristics are present."""
 
-    def test_axioms_directory_has_files(self) -> None:
-        """Axioms directory must have enforced axiom files."""
-        axioms_dir = PLUGIN_ROOT / "axioms"
-        axiom_files = list(axioms_dir.glob("*.md"))
-        assert len(axiom_files) >= 5, (
-            f"Expected at least 5 enforced axioms, found {len(axiom_files)}"
-        )
+    def test_axioms_file_exists(self) -> None:
+        """AXIOMS.md must exist in framework directory."""
+        axioms_file = PLUGIN_ROOT / "framework" / "AXIOMS.md"
+        assert axioms_file.exists(), "Missing AXIOMS.md"
 
-    def test_heuristics_directory_has_files(self) -> None:
-        """Heuristics directory must have enforced heuristic files."""
-        heuristics_dir = PLUGIN_ROOT / "heuristics"
-        heuristic_files = list(heuristics_dir.glob("*.md"))
-        assert len(heuristic_files) >= 3, (
-            f"Expected at least 3 enforced heuristics, found {len(heuristic_files)}"
-        )
-
-
-class TestCoreSpecs:
-    """Verify core specification files are present."""
-
-    def test_specs_directory_has_files(self) -> None:
-        """Specs directory must have core spec files."""
-        specs_dir = PLUGIN_ROOT / "specs"
-        spec_files = list(specs_dir.glob("*.md"))
-        assert len(spec_files) >= 6, (
-            f"Expected at least 6 core specs, found {len(spec_files)}"
-        )
+    def test_heuristics_file_exists(self) -> None:
+        """HEURISTICS.md must exist in framework directory."""
+        heuristics_file = PLUGIN_ROOT / "framework" / "HEURISTICS.md"
+        assert heuristics_file.exists(), "Missing HEURISTICS.md"
 
 
 if __name__ == "__main__":

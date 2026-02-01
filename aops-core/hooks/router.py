@@ -412,6 +412,7 @@ class HookRouter:
                 has_hso = True
             else:
                  hso.permissionDecision = "allow"
+                 has_hso = True
 
         if result.context_injection:
             hso.additionalContext = result.context_injection
@@ -440,20 +441,7 @@ def main():
     
     router = HookRouter()
     
-    # Detect Invocation Mode
-    # If --client is explicit, use it.
-    # Fallback: if positional event exists, assume Gemini (legacy). Else Claude.
-    if args.client:
-        client_type = args.client
-        gemini_event = args.event
-    elif args.event:
-        client_type = "gemini"
-        gemini_event = args.event
-    else:
-        client_type = "claude"
-        gemini_event = None
-    
-    # Read Input
+    # Read Input First (needed for detection)
     try:
         if not sys.stdin.isatty():
             # Check if stdin has content
@@ -466,6 +454,23 @@ def main():
             raw_input = {}
     except Exception:
         raw_input = {}
+
+    # Detect Invocation Mode, relying on explicit --client flag    
+    if args.client:
+        client_type = args.client
+        gemini_event = args.event
+    elif raw_input.get("hook_event_name"):
+        # Claude payload detected (overrides positional args)
+        client_type = "claude"
+        gemini_event = None
+    elif args.event:
+        # Positional arg without Claude payload -> Gemini
+        client_type = "gemini"
+        gemini_event = args.event
+    else:
+        # Default
+        client_type = "claude"
+        gemini_event = None
         
     # Pipeline
     ctx = router.normalize_input(raw_input, gemini_event)

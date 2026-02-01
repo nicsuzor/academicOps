@@ -164,13 +164,21 @@ class TestRouterGeminiFormat:
             "tool_input": {"command": "ls"},
         }
 
-        output, stderr = run_router_gemini(input_data, "BeforeTool")
+        # Force block mode for hydration gate
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setenv("HYDRATION_MODE", "block")
+            # We need to set this in the actual OS environ because run_router_gemini copies it
+            os.environ["HYDRATION_MODE"] = "block"
+            try:
+                output, stderr = run_router_gemini(input_data, "BeforeTool")
+            finally:
+                del os.environ["HYDRATION_MODE"]
 
         # Gemini format has top-level decision
         assert "decision" in output, f"Missing decision. Output: {output}"
         assert output["decision"] in ["allow", "deny"]
         # Should be denied due to hydration gate
-        assert output["decision"] == "deny", "Expected deny due to hydration gate"
+        assert output["decision"] == "deny", f"Expected deny due to hydration gate. Output: {output}, Stderr: {stderr}"
         assert "reason" in output, "Should have reason for deny"
 
     def test_after_tool_output_format(self) -> None:
@@ -208,11 +216,18 @@ class TestRouterEventMapping:
             "tool_input": {"path": "test.txt"},
         }
 
-        output, stderr = run_router_gemini(input_data, "BeforeTool")
+        # Force block mode for hydration gate
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setenv("HYDRATION_MODE", "block")
+            os.environ["HYDRATION_MODE"] = "block"
+            try:
+                output, stderr = run_router_gemini(input_data, "BeforeTool")
+            finally:
+                del os.environ["HYDRATION_MODE"]
 
         # The gate messages should reference PreToolUse behavior
         # Hydration gate blocks read operations on unhydrated sessions
-        assert output["decision"] == "deny"
+        assert output["decision"] == "deny", f"Expected deny. Output: {output}, Stderr: {stderr}"
 
     def test_session_end_maps_to_stop(self) -> None:
         """Gemini SessionEnd maps to internal Stop event."""
