@@ -7,6 +7,9 @@ from manager import PolecatManager
 from validation import TaskIDValidationError, validate_task_id_or_raise
 
 
+from lib.paths import get_aops_root
+
+
 @click.group()
 @click.option(
     "--home",
@@ -413,13 +416,19 @@ def crew(ctx, project, name, gemini, resume):
     if gemini:
         cmd = ["gemini"]
     else:
-        # Plugins are installed at user level (~/.claude/plugins/cache/)
-        # No need for --plugin-dir; user-level hooks apply to all Claude Code calls
+        # Get aops-core plugin directory
+        aops_root = get_aops_root()
+        plugin_dir_core = aops_root / "aops-core"
+        plugin_dir_tools = aops_root / "aops-tools"
         cmd = [
             "claude",
             "--permission-mode=plan",
             "--dangerously-skip-permissions",
             "--setting-sources=user",
+            "--plugin-dir",
+            plugin_dir_core,
+            "--plugin-dir",
+            plugin_dir_tools,
         ]
 
     try:
@@ -561,16 +570,21 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
             cmd.extend(["--approval-mode", "yolo", "-p", prompt])
     else:
         # Claude CLI
-        # Plugins are installed at user level (~/.claude/plugins/cache/)
-        # No need for --plugin-dir; user-level hooks apply to all Claude Code calls
         cmd = ["claude"]
-        if not interactive:
-            cmd.append("--dangerously-skip-permissions")
+        # Get aops-core plugin directory
+        aops_root = get_aops_root()
+        plugin_dir_core = aops_root / "aops-core"
+        plugin_dir_tools = aops_root / "aops-tools"
         cmd.extend(
             [
+                "--dangerously-skip-permissions",
                 "--permission-mode",
                 "plan",
                 "--setting-sources=user",
+                "--plugin-dir",
+                plugin_dir_core,
+                "--plugin-dir",
+                plugin_dir_tools,
             ]
         )
         if interactive:
