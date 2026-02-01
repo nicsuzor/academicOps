@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Wrapper script for AcademicOps installation.
-# Delegates to scripts/install.py
+# Builds extensions then delegates to scripts/install.py
 #
 
 set -euo pipefail
@@ -15,5 +15,17 @@ if ! command -v python3 &> /dev/null; then
     exit 1
 fi
 
-# Pass all arguments to python script
+# Check for ACA_DATA (required for build)
+if [[ -z "${ACA_DATA:-}" ]]; then
+    echo "Error: ACA_DATA environment variable must be set."
+    exit 1
+fi
+
+# Build extensions first
+echo "=== Building extensions ==="
+python3 "$SCRIPT_DIR/scripts/build.py"
+
+# Then install/link
+echo ""
+echo "=== Installing ==="
 python3 "$SCRIPT_DIR/scripts/install.py" "$@"
