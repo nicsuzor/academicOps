@@ -313,8 +313,8 @@ def run_claude_headless(
 
     # Get aops-core plugin directory for testing against current code
     aops_root = get_aops_root()
-    plugin_dir_core = aops_root / "aops-core"
-    plugin_dir_tools = aops_root / "aops-core"
+    plugin_dir_core = aops_root
+    plugin_dir_tools = aops_root / ".." / "aops-tools"
 
     # Build command with --debug flag and --no-session-persistence for test isolation
     cmd = [
@@ -325,8 +325,10 @@ def run_claude_headless(
         "json",
         "--debug",
         "--no-session-persistence",
-        f"--plugin-dir {plugin_dir_core}",
-        f"--plugin-dir {plugin_dir_tools}",
+        "--plugin-dir",
+        plugin_dir_core,
+        "--plugin-dir",
+        plugin_dir_tools,
     ]
 
     if model:
@@ -920,8 +922,8 @@ def claude_headless_tracked():
 
         # Get aops-core plugin directory for agent availability
         aops_root = get_aops_root()
-        plugin_dir_core = aops_root / "aops-core"
-        plugin_dir_tools = aops_root / "aops-core"
+        plugin_dir_core = aops_root / ".." / "aops-core"
+        plugin_dir_tools = aops_root / ".." / "aops-tools"
 
         cmd = [
             "claude",
@@ -933,9 +935,12 @@ def claude_headless_tracked():
             session_id,
             "--model",
             model,
-            f"--permission-mode {permission_mode}",
-            f"--plugin-dir {plugin_dir_core}",
-            f"--plugin-dir {plugin_dir_tools}",
+            "--permission-mode",
+            permission_mode,
+            "--plugin-dir",
+            plugin_dir_core,
+            "--plugin-dir",
+            plugin_dir_tools,
             "--no-session-persistence",
         ]
 
