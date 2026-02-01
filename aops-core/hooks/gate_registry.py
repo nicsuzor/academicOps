@@ -1424,6 +1424,7 @@ GATE_CHECKS = {
     "subagent_restrictions": check_subagent_tool_restrictions,  # PreToolUse - MUST run first
     "session_start": check_session_start_gate,
     "hydration": check_hydration_gate,  # PreToolUse
+    "task_required": check_task_required_gate,
     "custodiet": check_custodiet_gate,
     "qa_enforcement": check_qa_enforcement_gate,  # PreToolUse
     # "axiom_enforcer": merged into custodiet
