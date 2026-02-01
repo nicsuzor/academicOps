@@ -76,7 +76,9 @@ HYDRATION_BLOCK_TEMPLATE = (
 # Strict allow list for Hydration (Blocks reads by default)
 HYDRATION_ALLOWED_TOOLS = {
     "list_prompts",  # Allowed to check available prompts? Maybe.
-    # Keep empty for maximum strictness as requested.
+    # Handover needs to run even if hydration blocked (to save/exit safely)
+    "handover",
+    "aops-core:handover",
 }
 # Alias for backward compatibility (Deprecated usage in Hydration Gate)
 HYDRATION_SAFE_TOOLS = SAFE_READ_TOOLS
@@ -999,6 +1001,10 @@ def check_task_required_gate(ctx: GateContext) -> Optional[GateResult]:
 
     # Bypass for subagent sessions
     if hook_utils.is_subagent_session(ctx.input_data):
+        return None
+
+    # Bypass for handover skill invocation (needs to run git/etc for closure)
+    if _is_handover_skill_invocation(ctx.tool_name or "", ctx.tool_input):
         return None
 
     # Check if operation requires task binding
