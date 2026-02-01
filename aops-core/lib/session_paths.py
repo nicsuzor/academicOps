@@ -42,34 +42,97 @@ def get_session_short_hash(session_id: str) -> str:
     return hashlib.sha256(session_id.encode()).hexdigest()[:8]
 
 
-def get_session_status_dir(session_id: str | None = None) -> Path:
+def _is_gemini_session(session_id: str | None, input_data: dict | None) -> bool:
+    """Detect if this is a Gemini CLI session.
+
+    Detection methods:
+    1. session_id starts with "gemini-"
+    2. transcript_path contains "/.gemini/"
+
+    Args:
+        session_id: Session ID (may have "gemini-" prefix)
+        input_data: Input data dict (may contain transcript_path)
+
+    Returns:
+        True if this is a Gemini session
+    """
+    if session_id is not None and session_id.startswith("gemini-"):
+        return True
+
+    if input_data is not None:
+        transcript_path = input_data.get("transcript_path")
+        if transcript_path is not None and "/.gemini/" in transcript_path:
+            return True
+
+    return False
+
+
+def _get_gemini_status_dir(input_data: dict | None) -> Path | None:
+    """Get Gemini status directory from transcript_path.
+
+    Gemini transcript paths look like:
+    ~/.gemini/tmp/<hash>/chats/session-<uuid>.json
+
+    Returns the ~/.gemini/tmp/<hash>/ directory or None if not detectable.
+    """
+    if input_data is None:
+        return None
+
+    transcript_path = input_data.get("transcript_path")
+    if transcript_path is None:
+        return None
+    if "/.gemini/" not in transcript_path:
+        return None
+
+    # Extract the base directory (before /chats/ or /logs/)
+    path = Path(transcript_path)
+
+    # Walk up to find the hash directory (parent of chats/logs)
+    for parent in path.parents:
+        if parent.name in ("chats", "logs"):
+            # Parent of chats/logs is the hash directory
+            return parent.parent
+
+    return None
+
+
+def get_session_status_dir(
+    session_id: str | None = None, input_data: dict | None = None
+) -> Path:
     """Get session status directory from AOPS_SESSION_STATE_DIR or auto-detect.
 
     This env var is set by the router at SessionStart:
     - Gemini: ~/.gemini/tmp/<hash>/ (from transcript_path)
     - Claude: ~/.claude/projects/<encoded-cwd>/
 
-    Falls back to auto-detection based on session_id format:
-    - session_id starting with "gemini-" -> Gemini path
-    - Otherwise (UUID format) -> Claude path derived from cwd
+    Falls back to auto-detection based on:
+    1. session_id starting with "gemini-" -> Gemini path
+    2. transcript_path containing "/.gemini/" -> Gemini path (extracts from path)
+    3. Otherwise (UUID format) -> Claude path derived from cwd
 
     Args:
-        session_id: Optional session ID for client detection. If provided and
-            starts with "gemini-", uses Gemini path. Otherwise uses Claude path.
+        session_id: Optional session ID for client detection.
+        input_data: Optional input data dict containing transcript_path for Gemini detection.
 
     Returns:
         Path to session status directory (created if doesn't exist)
     """
-    # 1. Prefer explicit env var from router
+    # 1. Prefer explicit env var from router (must be non-empty)
     state_dir = os.environ.get("AOPS_SESSION_STATE_DIR")
     if state_dir:
         status_dir = Path(state_dir)
         status_dir.mkdir(parents=True, exist_ok=True)
         return status_dir
 
-    # 2. Auto-detect based on session_id format
-    if session_id and session_id.startswith("gemini-"):
-        # Gemini session - use hash-based path
+    # 2. Auto-detect Gemini from session_id or transcript_path
+    if _is_gemini_session(session_id, input_data):
+        # Try to extract from transcript_path first
+        gemini_dir = _get_gemini_status_dir(input_data)
+        if gemini_dir is not None:
+            gemini_dir.mkdir(parents=True, exist_ok=True)
+            return gemini_dir
+
+        # Fallback: use hash-based path from cwd
         project_root = str(Path.cwd().resolve())
         project_hash = hashlib.sha256(project_root.encode()).hexdigest()
         gemini_tmp = Path.home() / ".gemini" / "tmp" / project_hash
@@ -84,7 +147,9 @@ def get_session_status_dir(session_id: str | None = None) -> Path:
     return status_dir
 
 
-def get_session_file_path_direct(session_id: str, date: str | None = None) -> Path:
+def get_session_file_path_direct(
+    session_id: str, date: str | None = None, input_data: dict | None = None
+) -> Path:
     """Get session state file path (flat structure).
 
     Returns: ~/writing/sessions/status/YYYYMMDD-HH-sessionID.json
@@ -94,6 +159,7 @@ def get_session_file_path_direct(session_id: str, date: str | None = None) -> Pa
         date: Date in YYYY-MM-DD format or ISO 8601 with timezone (defaults to now local time).
               The hour component is extracted from ISO 8601 dates (e.g., 2026-01-24T17:30:00+10:00).
               For simple YYYY-MM-DD dates, the current hour (local time) is used.
+        input_data: Optional input data dict containing transcript_path for Gemini detection.
 
     Returns:
         Path to session state file
@@ -113,7 +179,7 @@ def get_session_file_path_direct(session_id: str, date: str | None = None) -> Pa
 
     short_hash = get_session_short_hash(session_id)
 
-    return get_session_status_dir(session_id) / f"{date_compact}-{hour}-{short_hash}.json"
+    return get_session_status_dir(session_id, input_data) / f"{date_compact}-{hour}-{short_hash}.json"
 
 
 def get_session_directory(

@@ -236,11 +236,14 @@ def log_hook_event(
 def log_event_to_session(
     session_id: str, hook_event: str, input_data: dict[str, Any]
 ) -> GateResult | None:
-    """Log a hook event to session state and per-session JSONL log.
+    """Update session state for a hook event.
 
-    1. Logs event to per-session JSONL file (audit trail)
-    2. Updates the session state file with event timestamp
-    3. For SubagentStop and Stop events, performs additional state updates
+    NOTE: This function no longer logs to the JSONL file directly.
+    Logging is now done by the router AFTER all gates complete,
+    so that output data can be included in the log entry.
+
+    1. Updates the session state file with event timestamp
+    2. For SubagentStop and Stop events, performs additional state updates
 
     Args:
         session_id: Claude Code session ID
@@ -253,8 +256,7 @@ def log_event_to_session(
     if not session_id or session_id == "unknown":
         return None
 
-    # Log ALL events to per-session JSONL file (audit trail)
-    log_hook_event(session_id, hook_event, input_data)
+    # NOTE: JSONL logging moved to router.py execute_hooks() to include output
 
     if hook_event == "SubagentStop":
         handle_subagent_stop(session_id, input_data)

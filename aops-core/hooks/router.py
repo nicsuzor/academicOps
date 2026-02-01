@@ -41,6 +41,7 @@ try:
         ClaudeStopHookOutput
     )
     from hooks.gate_registry import GATE_CHECKS, GateContext
+    from hooks.unified_logger import log_hook_event
     from lib.gate_model import GateResult, GateVerdict
 except ImportError as e:
     # Fail fast if schemas missing
@@ -234,6 +235,20 @@ class HookRouter:
                 print(f"ERROR: Gate '{gate_name}' failed: {e}", file=sys.stderr)
                 import traceback
                 traceback.print_exc(file=sys.stderr)
+
+        # Log hook event with output AFTER all gates complete
+        try:
+            output_data = {
+                "verdict": merged_result.verdict,
+                "system_message": merged_result.system_message,
+                "context_injection": merged_result.context_injection,
+                "metadata": merged_result.metadata,
+            }
+            log_hook_event(
+                ctx.session_id, ctx.hook_event, gate_input, output_data=output_data
+            )
+        except Exception as e:
+            print(f"WARNING: Failed to log hook event: {e}", file=sys.stderr)
 
         return merged_result
 

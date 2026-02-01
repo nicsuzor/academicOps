@@ -1372,14 +1372,16 @@ def check_session_start_gate(ctx: GateContext) -> Optional[GateResult]:
     try:
         from hooks.unified_logger import get_hook_log_path
 
-        status_dir = session_paths.get_session_status_dir(ctx.session_id)
+        status_dir = session_paths.get_session_status_dir(ctx.session_id, ctx.input_data)
         short_hash = session_paths.get_session_short_hash(ctx.session_id)
 
         # Get hook log path for this session (full absolute path)
         hook_log_path = get_hook_log_path(ctx.session_id, ctx.input_data)
 
         # Get actual state file path (not a glob pattern)
-        state_file_path = session_paths.get_session_file_path_direct(ctx.session_id)
+        state_file_path = session_paths.get_session_file_path_direct(
+            ctx.session_id, input_data=ctx.input_data
+        )
 
         # Build startup message for USER display (system_message, not context_injection)
         msg_lines = [
