@@ -51,35 +51,6 @@ def check_env():
     return Path(aops), Path(aca_data)
 
 
-def configure_memory_server(aca_data_path: str):
-    """Configure the memory MCP server."""
-    print("Configuring memory server...")
-    memory_config_dir = Path.home() / ".memory"
-    memory_config = memory_config_dir / "config.json"
-
-    config_data = {}
-    if memory_config.exists():
-        try:
-            with open(memory_config) as f:
-                config_data = json.load(f)
-        except json.JSONDecodeError:
-            pass
-
-    if not memory_config_dir.exists():
-        memory_config_dir.mkdir(parents=True)
-
-    projects = config_data.get("projects", {})
-    projects["main"] = aca_data_path
-
-    config_data["projects"] = projects
-    config_data["default_project"] = "main"
-    config_data["default_project_mode"] = True
-
-    with open(memory_config, "w") as f:
-        json.dump(config_data, f, indent=2)
-    print("✓ Memory server configured")
-
-
 def install_cron_jobs(aops_path: Path, aca_data_path: str):
     """Install cron jobs."""
     print("Installing cron jobs...")
