@@ -36,6 +36,9 @@ def main():
                 "decision": "block",
                 "reason": "Invoke Skill aops-core:handover to end session. Only the handover skill clears this gate. Use AskUserQuestion if you need user input before handover.",
             }
+        else:
+            output_data["decision"] = "approve"
+    # Output
 
     print(json.dumps(output_data))
     sys.exit(0)

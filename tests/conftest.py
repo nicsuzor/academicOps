@@ -529,6 +529,11 @@ def run_gemini_headless(
             "result": {},
             "error": "AOPS environment variable not set - required for tests",
         }
+    
+    # Ensure CLAUDE_PLUGIN_ROOT is set for hooks.json variable expansion
+    if "CLAUDE_PLUGIN_ROOT" not in env:
+        # aops-core is the plugin root
+        env["CLAUDE_PLUGIN_ROOT"] = str(Path(env["AOPS"]) / "aops-core")
 
     try:
         # Execute command
