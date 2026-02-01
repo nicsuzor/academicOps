@@ -1071,7 +1071,6 @@ def get_session_state(session: SessionInfo, aca_data: Path) -> SessionState:
         return SessionState.PENDING_TRANSCRIPT
 
     # 2. Check for Mining JSON (unified session file)
-    # Pattern: $ACA_SESSIONS/summaries/YYYYMMDD-{session_id}.json
     insights_dir = aca_data / "sessions" / "summaries"
     has_mining = False
 

@@ -16,7 +16,8 @@ This document tracks all enforcement mechanisms in the academicOps framework.
 |----------|---------|--------|-------------|
 | `TASK_GATE_MODE` | `warn` | `warn`, `block` | Controls four-gate enforcement in task_required_gate.py |
 | `CUSTODIET_MODE` | `warn` | `warn`, `block` | Controls custodiet compliance audit enforcement |
-
+`HYDRATION_MODE` ...
+`HANDOVER_MODE` ...
 ## Enforcement Hooks
 
 ### PreToolUse Hooks

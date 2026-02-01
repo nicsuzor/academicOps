@@ -62,20 +62,20 @@ def get_session_status_dir() -> Path:
         return status_dir
 
     # 2. Auto-detect Gemini environment (for CLI tools outside router)
-    if os.environ.get("GEMINI_CLI") or (Path.cwd() / ".gemini").exists():
-        # Use CWD hash (standard Gemini behavior)
-        project_root = str(Path.cwd().resolve())
-        project_hash = hashlib.sha256(project_root.encode()).hexdigest()
-        gemini_tmp = Path.home() / ".gemini" / "tmp" / project_hash
-        
-        # Only use if it exists to avoid creating junk dirs
-        if gemini_tmp.exists():
-             return gemini_tmp
+    # Check for standard Gemini tmp directory structure based on CWD hash
+    project_root = str(Path.cwd().resolve())
+    project_hash = hashlib.sha256(project_root.encode()).hexdigest()
+    gemini_tmp = Path.home() / ".gemini" / "tmp" / project_hash
 
-    # 3. Fallback for unit tests
-    status_dir = Path("/tmp/aops-test-sessions")
-    status_dir.mkdir(parents=True, exist_ok=True)
-    return status_dir
+    # Only use if it exists to avoid creating junk dirs
+    if gemini_tmp.exists():
+        return gemini_tmp
+
+    # 3. Fail fast if no valid session directory found
+    raise RuntimeError(
+        "Could not determine session status directory. "
+        "Ensure AOPS_SESSION_STATE_DIR is set or running within a valid Gemini/Claude environment."
+    )
 
 
 def get_session_file_path_direct(session_id: str, date: str | None = None) -> Path:

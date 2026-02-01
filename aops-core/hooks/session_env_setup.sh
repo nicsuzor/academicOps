@@ -4,15 +4,7 @@
 #
 # This hook runs at session start to ensure AOPS and related env vars are available.
 # It works for both local and remote (web) Claude Code sessions.
-#
-# ARCHITECTURE:
-# - Hooks receive env vars from Claude Code's settings "env" section
-# - ~/.claude/settings.local.json (created by setup.sh) provides machine-specific paths
-# - This hook handles web/remote sessions where settings.local.json doesn't exist
-#
-# For local: AOPS and ACA_DATA come from settings.local.json (set by setup.sh)
-# For remote: Derives paths from $CLAUDE_PROJECT_DIR and writes to $CLAUDE_ENV_FILE
-#
+
 
 set -euo pipefail
 
@@ -73,20 +65,6 @@ if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
     fi
 fi
 
-
-# Derive ACA_SESSIONS from ACA_DATA (sibling directory pattern)
-# Matches paths.py get_sessions_dir(): ACA_DATA/../sessions
-if [ -n "${ACA_DATA:-}" ]; then
-    ACA_DATA_PARENT="$(dirname "$ACA_DATA")"
-    export ACA_SESSIONS="${ACA_DATA_PARENT}/sessions"
-
-    if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
-        if ! grep -q "export ACA_SESSIONS=" "$CLAUDE_ENV_FILE" 2>/dev/null; then
-            echo "export ACA_SESSIONS=\"$ACA_SESSIONS\"" >> "$CLAUDE_ENV_FILE"
-            echo "ACA_SESSIONS derived from ACA_DATA: $ACA_SESSIONS" >&2
-        fi
-    fi
-fi
 
 # Output success (no additional context needed, just ensure env is set)
 echo '{"continue": true}'

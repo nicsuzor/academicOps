@@ -59,31 +59,6 @@ class TestSessionEnvSetup:
         # Verify AOPS is NOT exported
         assert "export AOPS=" not in env_content
 
-    def test_aca_sessions_derived(self, tmp_path: Path) -> None:
-        """ACA_SESSIONS should be derived from ACA_DATA if set."""
-        env_file = tmp_path / "claude_env"
-        env_file.touch()
-
-        mock_data = tmp_path / "data"
-        mock_data.mkdir()
-
-        env = {
-            **os.environ,
-            "ACA_DATA": str(mock_data),
-            "CLAUDE_ENV_FILE": str(env_file),
-        }
-
-        result = subprocess.run(
-            ["bash", str(HOOK_SCRIPT)],
-            capture_output=True,
-            text=True,
-            env=env,
-        )
-
-        assert result.returncode == 0
-        env_content = env_file.read_text()
-        assert "export ACA_SESSIONS=" in env_content
-        assert "/sessions" in env_content
 
 
 class TestJsonOutput:

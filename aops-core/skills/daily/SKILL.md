@@ -340,7 +340,7 @@ Update daily note from session JSON files. Supports continuous updating througho
 ### Step 4.1: Find Session JSONs
 
 ```bash
-ls $ACA_SESSIONS/summaries/YYYYMMDD*.json 2>/dev/null
+ls $ACA_DATA/../summaries/YYYYMMDD*.json 2>/dev/null
 ```
 
 **Incremental filtering**: After listing JSONs, read the current daily note's Session Log table. Extract session IDs already present. Filter the JSON list to exclude already-processed sessions. This prevents duplicate entries on repeated syncs.
