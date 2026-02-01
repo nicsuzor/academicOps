@@ -36,7 +36,7 @@ def check_links_resolve(target_path: Optional[Path] = None) -> list[str]:
     """Check that all [[file.md]] links resolve to existing files."""
     errors = []
 
-    aca_data = Path(os.environ.get("ACA_DATA", ""))
+    aca_data = Path(os.environ["ACA_DATA"])
 
     # Use target_path if scanning a subset, else REPO_ROOT
     scan_root = target_path if target_path else REPO_ROOT

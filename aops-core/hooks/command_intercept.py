@@ -27,7 +27,7 @@ from typing import Any
 import yaml
 
 # Config location
-ACA_DATA = os.environ.get("ACA_DATA", str(Path.home() / ".aca"))
+ACA_DATA = os.environ["ACA_DATA"]
 CONFIG_PATH = Path(ACA_DATA) / "command_intercept.yaml"
 
 # Default exclusion patterns for Glob

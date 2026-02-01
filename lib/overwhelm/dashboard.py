@@ -40,7 +40,7 @@ def load_tasks_from_index() -> list[dict]:
     Returns:
         List of task dicts.
     """
-    aca_data = os.environ.get("ACA_DATA", str(Path.home() / "writing/data"))
+    aca_data = os.environ["ACA_DATA"]
     index_path = Path(aca_data) / "tasks" / "index.json"
 
     if not index_path.exists():
@@ -202,7 +202,7 @@ def load_synthesis() -> dict | None:
     Returns:
         Parsed synthesis dict with added '_age_minutes' field, or None if file doesn't exist.
     """
-    aca_data = os.environ.get("ACA_DATA")
+    aca_data = os.environ["ACA_DATA"]
     if not aca_data:
         return None
 
@@ -2110,9 +2110,7 @@ def clean_activity_text(raw_text: str) -> str:
 
 def load_graph_data(filename: str = "graph.json") -> dict | None:
     """Load graph JSON from outputs directory."""
-    outputs_dir = (
-        Path(os.environ.get("ACA_DATA", str(Path.home() / "writing/data"))) / "outputs"
-    )
+    outputs_dir = Path(os.environ["ACA_DATA"]) / "outputs"
 
     graph_path = outputs_dir / filename
     if graph_path.exists():

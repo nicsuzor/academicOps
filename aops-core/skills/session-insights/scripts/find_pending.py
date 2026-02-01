@@ -23,12 +23,8 @@ def main():
     )
     args = parser.parse_args()
 
-    aca_data_env = os.environ.get("ACA_DATA")
-    if not aca_data_env:
-        # Fallback for dev/test
-        aca_data = Path.home() / "writing/data"
-    else:
-        aca_data = Path(aca_data_env)
+    aca_data_env = os.environ["ACA_DATA"]
+    aca_data = Path(aca_data_env)
 
     transcripts_dir = aca_data / "sessions" / "claude"
     insights_dir = aca_data / "sessions" / "summaries"  # v3.4.0: summaries subdirectory
