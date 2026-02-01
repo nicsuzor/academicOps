@@ -227,6 +227,23 @@ After TRIAGE action: **HALT**
 - **Single-session**: One execution plan, one task, no deferred work section
 - **Multi-session**: Execution steps for immediate work + decomposition task for the rest
 
+### Verification Task Detection
+
+**Trigger patterns** (case-insensitive):
+- "check that X works"
+- "verify X installs/runs correctly"
+- "make sure X procedure works"
+- "test the installation/setup"
+- "confirm X is working"
+
+**When detected**:
+1. Route to `verification` workflow (or `code-review` if reviewing code)
+2. **MUST inject acceptance criteria**: "Task requires RUNNING the procedure and confirming success"
+3. **MUST add scope guard**: "Finding issues ≠ verification complete. Must execute end-to-end."
+4. Identify all phases/steps the procedure has and list them as verification checkpoints
+
+**Critical**: Discovering a bug during verification does NOT complete the verification task. The bug is a separate issue. Verification requires confirming the procedure succeeds end-to-end.
+
 ### Task Rules
 
 1. **Always route to task** for file-modifying work (except simple-question)
