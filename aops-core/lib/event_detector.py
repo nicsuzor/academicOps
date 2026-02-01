@@ -40,7 +40,7 @@ class EventDetector:
                 "change": StateChange.BIND_TASK,
                 "type": RuleType.TOOL_CALL,
                 "tools": [
-                    "mcp__plugin_aops-tools_task_manager__update_task",
+                    "mcp__plugin_aops-core_task_manager__update_task",
                     "update_task",
                 ],
                 "input_pattern": {"status": "in_progress"},
@@ -50,9 +50,9 @@ class EventDetector:
                 "change": StateChange.UNBIND_TASK,
                 "type": RuleType.TOOL_CALL,
                 "tools": [
-                    "mcp__plugin_aops-tools_task_manager__complete_task",
+                    "mcp__plugin_aops-core_task_manager__complete_task",
                     "complete_task",
-                    "mcp__plugin_aops-tools_task_manager__complete_tasks",
+                    "mcp__plugin_aops-core_task_manager__complete_tasks",
                     "complete_tasks",
                 ],
                 "result_check": "success",
@@ -61,7 +61,7 @@ class EventDetector:
                 "change": StateChange.UNBIND_TASK,
                 "type": RuleType.TOOL_CALL,
                 "tools": [
-                    "mcp__plugin_aops-tools_task_manager__update_task",
+                    "mcp__plugin_aops-core_task_manager__update_task",
                     "update_task",
                 ],
                 "input_pattern": {"status": "done"},
@@ -70,7 +70,7 @@ class EventDetector:
                 "change": StateChange.UNBIND_TASK,
                 "type": RuleType.TOOL_CALL,
                 "tools": [
-                    "mcp__plugin_aops-tools_task_manager__update_task",
+                    "mcp__plugin_aops-core_task_manager__update_task",
                     "update_task",
                 ],
                 "input_pattern": {"status": "cancelled"},

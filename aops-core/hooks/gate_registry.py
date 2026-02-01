@@ -115,10 +115,10 @@ SAFE_TEMP_PREFIXES = [
 
 # Task MCP tools that should always be allowed (they establish binding)
 TASK_BINDING_TOOLS = {
-    "mcp__plugin_aops-tools_task_manager__create_task",
-    "mcp__plugin_aops-tools_task_manager__update_task",
-    "mcp__plugin_aops-tools_task_manager__complete_task",
-    "mcp__plugin_aops-tools_task_manager__decompose_task",
+    "mcp__plugin_aops-core_task_manager__create_task",
+    "mcp__plugin_aops-core_task_manager__update_task",
+    "mcp__plugin_aops-core_task_manager__complete_task",
+    "mcp__plugin_aops-core_task_manager__decompose_task",
     # Gemini / Short names
     "create_task",
     "update_task",
@@ -191,8 +191,12 @@ SAFE_BASH_PATTERNS = [
 # Template paths for task gate messages
 TASK_GATE_BLOCK_TEMPLATE = Path(__file__).parent / "templates" / "task-gate-block.md"
 TASK_GATE_WARN_TEMPLATE = Path(__file__).parent / "templates" / "task-gate-warn.md"
-DEFAULT_TASK_GATE_MODE = "block"
-DEFAULT_CUSTODIET_GATE_MODE = "block"
+DEFAULT_TASK_GATE_MODE = "warn"
+DEFAULT_CUSTODIET_GATE_MODE = "warn"
+
+# Hydration gate mode: "block" (default) or "warn"
+HYDRATION_WARN_TEMPLATE = Path(__file__).parent / "templates" / "hydration-gate-warn.md"
+DEFAULT_HYDRATION_GATE_MODE = "warn"
 # --- Stop Gate Constants ---
 
 STOP_GATE_CRITIC_TEMPLATE = Path(__file__).parent / "templates" / "stop-gate-critic.md"
@@ -695,14 +699,25 @@ def check_hydration_gate(ctx: GateContext) -> Optional[GateResult]:
     if not session_state.is_hydration_pending(ctx.session_id):
         return None
 
-    # If we reach here, hydration is pending and not bypassed, so we block.
+    # If we reach here, hydration is pending and not bypassed.
+    # Check mode: "block" (default) or "warn"
+    hydration_mode = os.environ.get("HYDRATION_MODE", DEFAULT_HYDRATION_GATE_MODE)
 
-    # Get temp_path from session state to include in block message
+    # Get temp_path from session state to include in message
     temp_path = session_state.get_hydration_temp_path(ctx.session_id)
     if not temp_path:
         temp_path = "(temp file not found - check session state)"
 
-    # Block with formatted message including the temp path
+    if hydration_mode == "warn":
+        # Warn mode: allow but inject warning context
+        warn_msg = load_template(HYDRATION_WARN_TEMPLATE, {"temp_path": temp_path})
+        return GateResult(
+            verdict=GateVerdict.WARN,
+            system_message=None,
+            context_injection=warn_msg,
+        )
+
+    # Block mode (default): deny with formatted message
     block_msg = load_template(HYDRATION_BLOCK_TEMPLATE, {"temp_path": temp_path})
     return GateResult(
         verdict=GateVerdict.DENY,
@@ -1217,7 +1232,8 @@ def post_critic_trigger(ctx: GateContext) -> Optional[GateResult]:
 
     # Also check Task tool (Claude)
     is_task = ctx.tool_name == "Task"
-    is_critic_task = is_task and ctx.tool_input.get("subagent_type") == "critic"
+    subagent_type = ctx.tool_input.get("subagent_type", "")
+    is_critic_task = is_task and (subagent_type == "critic" or subagent_type == "aops-core:critic" or "critic" in subagent_type.lower())
 
     if is_critic or is_critic_task:
         # Set flags

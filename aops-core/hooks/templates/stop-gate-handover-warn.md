@@ -1,12 +1,12 @@
 # Handover Reminder
 
-You are stopping the session, but the `handover` skill has not been invoked.
+You are stopping the session, but the `handover` skill has not been invoked. We have not been able to locate the handover information in the right format in your output so far.
 
 Please ensure you have:
 1. Executed and completed all plan steps.
 2. Created follow-up tasks for deferred work.
 3. Commited your work.
 4. Marked your task as complete and recorded your work.
-3. Provided a Framework Reflection in the required form.
+5. Provided a Framework Reflection in the required form.
 
-If you have already done this manually, you may proceed. Otherwise, consider invoking the `handover` skill.
+**Note:** If you weren't actually trying to finish the session here, either keep going or use your user question tool to pause and wait for a response.

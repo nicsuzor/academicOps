@@ -103,6 +103,7 @@ def main():
                 result = check_func(ctx)
                 if result:
                     # Gate triggered! Return the result immediately.
+                    #<!-- NS: ensure we use our typed classes internally all the way up to here and only convert to in the required client-specific format json at the last step.  -->
                     print(json.dumps(result.to_json()))
                     sys.exit(0)
 

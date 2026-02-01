@@ -61,9 +61,15 @@ if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
         echo 'export PATH="$PATH:./node_modules/.bin"' >> "$CLAUDE_ENV_FILE"
     fi
 
-    # Custodiet enforcement mode: "block" (default) or "warn"
+    # Gate enforcement modes: "block" or "warn" (default: warn for all)
     if ! grep -q "export CUSTODIET_MODE=" "$CLAUDE_ENV_FILE" 2>/dev/null; then
-        echo 'export CUSTODIET_MODE="${CUSTODIET_MODE:-block}"' >> "$CLAUDE_ENV_FILE"
+        echo 'export CUSTODIET_MODE="${CUSTODIET_MODE:-warn}"' >> "$CLAUDE_ENV_FILE"
+    fi
+    if ! grep -q "export TASK_GATE_MODE=" "$CLAUDE_ENV_FILE" 2>/dev/null; then
+        echo 'export TASK_GATE_MODE="${TASK_GATE_MODE:-warn}"' >> "$CLAUDE_ENV_FILE"
+    fi
+    if ! grep -q "export HYDRATION_MODE=" "$CLAUDE_ENV_FILE" 2>/dev/null; then
+        echo 'export HYDRATION_MODE="${HYDRATION_MODE:-warn}"' >> "$CLAUDE_ENV_FILE"
     fi
 fi
 
