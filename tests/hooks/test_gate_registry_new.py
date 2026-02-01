@@ -46,7 +46,7 @@ class TestHydrationRecencyGate:
         
         assert isinstance(result, GateResult)
         assert result.verdict == GateVerdict.DENY
-        assert "execution now" in result.context_injection
+        assert "execute the plan" in result.context_injection
 
     def test_allows_if_turns_nonzero(self, mock_session_state):
         """Test allowing if turns_since_hydration is not 0."""

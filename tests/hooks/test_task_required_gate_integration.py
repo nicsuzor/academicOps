@@ -35,13 +35,18 @@ class TestTaskRequiredGateIntegration:
             "session_id": "sess-1",
         }
 
-        # We rely on default session state (None/empty) which means task_bound=False
-        # Safe bash should bypass task requirement
-        r = router.HookRouter()
-        output = r.execute_hooks(r.normalize_input(input_data))
+        # Mock hydration gate to bypass (we're testing task-required, not hydration)
+        with patch("hooks.gate_registry.session_state") as mock_session_state:
+            mock_session_state.is_hydration_pending.return_value = False
+            mock_session_state.is_hydrator_active.return_value = False
 
-        # Check output verdict
-        assert output.verdict != "deny"
+            # We rely on default session state (None/empty) which means task_bound=False
+            # Safe bash should bypass task requirement
+            r = router.HookRouter()
+            output = r.execute_hooks(r.normalize_input(input_data))
+
+            # Check output verdict
+            assert output.verdict != "deny"
 
     def test_destructive_bash_blocked_without_task(self, mock_env):
         """Destructive Bash command (rm) should be blocked without a task."""

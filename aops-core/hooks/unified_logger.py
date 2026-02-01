@@ -389,6 +389,12 @@ def handle_stop(session_id: str, input_data: dict[str, Any]) -> None:
     # Get current session state to build insights
     state = get_or_create_session_state(session_id)
 
+    # Fail-fast validation (P#8): Required fields must be present
+    if "hydration" not in state:
+        raise ValueError("Required field 'hydration' missing from session state")
+    if "stop_reason" not in input_data:
+        raise ValueError("Required field 'stop_reason' missing from input_data")
+
     # Extract metadata
     if "date" not in state:
         state["date"] = datetime.now().astimezone().replace(microsecond=0).isoformat()
@@ -399,19 +405,19 @@ def handle_stop(session_id: str, input_data: dict[str, Any]) -> None:
         "project": extract_project_name(),
     }
 
-    # Build operational metrics with safe defaults
-    state_section = state.get("state", {})
-    hydration = state.get("hydration", {})
-    subagents = state.get("subagents", {})
+    # Build operational metrics - required fields validated above
+    state_section = state["state"]
+    hydration = state["hydration"]
+    subagents = state["subagents"]
 
     operational_metrics = {
-        "workflows_used": [state_section.get("current_workflow")] if state_section.get("current_workflow") else [],
+        "workflows_used": [state_section["current_workflow"]] if "current_workflow" in state_section else [],
         "subagents_invoked": list(subagents.keys()),
         "subagent_count": len(subagents),
         "custodiet_blocks": 1 if state_section.get("custodiet_blocked") else 0,
-        "stop_reason": input_data.get("stop_reason", "unknown"),
-        "critic_verdict": hydration.get("critic_verdict"),
-        "acceptance_criteria_count": len(hydration.get("acceptance_criteria", [])),
+        "stop_reason": input_data["stop_reason"],
+        "critic_verdict": hydration["critic_verdict"] if "critic_verdict" in hydration else None,
+        "acceptance_criteria_count": len(hydration["acceptance_criteria"]) if "acceptance_criteria" in hydration else 0,
     }
 
     # Generate minimal insights for session state only

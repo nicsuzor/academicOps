@@ -124,7 +124,7 @@ class TestCustodietBlockIntegration:
         state_dir.mkdir()
 
         # Run from a known directory to get predictable project folder
-        env = {**subprocess.os.environ, "CLAUDE_SESSION_STATE_DIR": str(state_dir)}
+        env = {**subprocess.os.environ, "AOPS_SESSION_STATE_DIR": str(state_dir)}
 
         result = subprocess.run(
             [
@@ -141,8 +141,8 @@ class TestCustodietBlockIntegration:
 
         assert result.returncode == 0
 
-        # Find the session state file (it's in a subdirectory structure)
-        session_files = list(state_dir.rglob("session-state.json"))
+        # Find the session state file (named YYYYMMDD-HH-<hash>.json)
+        session_files = list(state_dir.rglob("*.json"))
         assert len(session_files) == 1, f"Expected 1 session file, found {len(session_files)}: {session_files}"
 
         # Read and verify the state directly
@@ -159,7 +159,7 @@ class TestCustodietBlockIntegration:
 
         env = {
             **subprocess.os.environ,
-            "CLAUDE_SESSION_STATE_DIR": str(state_dir),
+            "AOPS_SESSION_STATE_DIR": str(state_dir),
             "CUSTODIET_DISABLED": "1",
         }
 
@@ -178,8 +178,8 @@ class TestCustodietBlockIntegration:
 
         assert result.returncode == 0
 
-        # Find and verify the session state file
-        session_files = list(state_dir.rglob("session-state.json"))
+        # Find and verify the session state file (named YYYYMMDD-HH-<hash>.json)
+        session_files = list(state_dir.rglob("*.json"))
         assert len(session_files) == 1
 
         state = json.loads(session_files[0].read_text())

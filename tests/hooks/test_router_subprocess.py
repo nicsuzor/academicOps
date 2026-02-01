@@ -11,6 +11,7 @@ import json
 import os
 import subprocess
 import sys
+import uuid
 from pathlib import Path
 
 import pytest
@@ -159,9 +160,11 @@ class TestRouterGeminiFormat:
 
     def test_before_tool_output_format(self) -> None:
         """BeforeTool returns correct Gemini format with deny for unhydrated."""
+        # Use unique session_id to avoid state pollution from parallel tests
         input_data = {
             "tool_name": "shell",
             "tool_input": {"command": "ls"},
+            "session_id": f"test-{uuid.uuid4()}",
         }
 
         # Force block mode for hydration gate
@@ -211,9 +214,11 @@ class TestRouterEventMapping:
 
     def test_before_tool_maps_to_pretooluse(self) -> None:
         """Gemini BeforeTool maps to internal PreToolUse."""
+        # Use unique session_id to avoid state pollution from parallel tests
         input_data = {
             "tool_name": "read_file",
             "tool_input": {"path": "test.txt"},
+            "session_id": f"test-{uuid.uuid4()}",
         }
 
         # Force block mode for hydration gate

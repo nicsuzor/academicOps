@@ -2284,8 +2284,8 @@ class SessionProcessor:
                         is_error = item.get("is_error", False)
                         exit_suffix = ""
 
-                        # Show exit code for all tools when available
-                        if exit_code is not None:
+                        # Show exit code only for Bash tools (P#8: explicit, not inferred)
+                        if exit_code is not None and tool_name == "Bash":
                             exit_suffix = f" → exit {exit_code}"
                         # Show error indicator when no exit code but is_error is True
                         elif is_error:

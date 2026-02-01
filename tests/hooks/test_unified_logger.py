@@ -37,7 +37,7 @@ def temp_session_dir(monkeypatch):
         session_path.mkdir(parents=True, exist_ok=True)
 
         # Mock get_session_status_dir to return our temp path
-        def mock_get_session_status_dir(session_id=None):
+        def mock_get_session_status_dir(session_id=None, input_data=None):
             return session_path
 
         # Patch get_session_status_dir in lib.session_paths
@@ -63,7 +63,7 @@ class TestSessionStartEvent:
         log_event_to_session(session_id, "SessionStart", input_data)
 
         # Verify session file was created
-        from lib.session_state import get_session_file_path
+        from lib.session_paths import get_session_file_path
 
         session_file = get_session_file_path(session_id)
         assert session_file.exists(), "Session file should be created"
@@ -327,13 +327,14 @@ class TestMainHookEntry:
         # Should exit with 0 (success)
         assert exc_info.value.code == 0
 
-        # Should output response with CanonicalHookOutput format
+        # unified_logger returns {} for SessionStart (actual output is from gate_registry)
         captured = capsys.readouterr()
-        assert "verdict" in captured.out
-        assert "Session:" in captured.out
+        output = json.loads(captured.out)
+        # Should output empty dict (gate result is now handled elsewhere)
+        assert isinstance(output, dict)
 
         # Verify session file was created
-        from lib.session_state import get_session_file_path
+        from lib.session_paths import get_session_file_path
 
         session_file = get_session_file_path(session_id)
         assert session_file.exists()

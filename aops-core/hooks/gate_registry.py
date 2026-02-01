@@ -86,7 +86,8 @@ HYDRATION_SAFE_TOOLS = SAFE_READ_TOOLS
 
 # Custodiet
 CUSTODIET_TEMP_CATEGORY = "compliance"
-CUSTODIET_TOOL_CALL_THRESHOLD = os.environ.get("CUSTODIET_TOOL_CALL_THRESHOLD", 7)
+_custodiet_threshold_raw = os.environ.get("CUSTODIET_TOOL_CALL_THRESHOLD")
+CUSTODIET_TOOL_CALL_THRESHOLD: int = int(_custodiet_threshold_raw) if _custodiet_threshold_raw else 7
 CUSTODIET_CONTEXT_TEMPLATE_FILE = (
     Path(__file__).parent / "templates" / "custodiet-context.md"
 )
@@ -1346,7 +1347,7 @@ def post_hydration_trigger(ctx: GateContext) -> Optional[GateResult]:
 
     # Check if this was a successful hydration
     # We re-use logic from check_hydration_gate to identify hydrator tools
-    is_hydrator_tool = ctx.tool_name in ("Task", "delegate_to_agent")
+    is_hydrator_tool = ctx.tool_name in ("Task", "delegate_to_agent", "activate_skill", "Skill")
     is_hydrator = is_hydrator_tool and _hydration_is_hydrator_task(ctx.tool_input)
     is_gemini = _hydration_is_gemini_hydration_attempt(
         ctx.tool_name or "", ctx.tool_input, ctx.input_data

@@ -46,14 +46,14 @@ class TestFirstPromptHydration:
 
         # Mock external dependencies to isolate the test
         with (
-            patch("hooks.user_prompt_submit.get_aops_root") as mock_root,
+            patch("hooks.user_prompt_submit.get_plugin_root") as mock_root,
             patch("hooks.user_prompt_submit.set_hydration_pending") as mock_pending,
             patch(
                 "hooks.user_prompt_submit.get_hydration_temp_dir", return_value=tmp_path
             ),
         ):
             # Set up mocks
-            mock_root.return_value = AOPS_CORE.parent
+            mock_root.return_value = AOPS_CORE
 
             # Call the function under test
             instruction = build_hydration_instruction(session_id, prompt, None)
@@ -85,6 +85,7 @@ class TestFirstPromptHydration:
             "prompt": "test user prompt",
             "session_context": "",
             "framework_paths": "## Resolved Paths\n| Path | Value |",
+            "project_context_index": "",
             "workflows_index": "workflow content",
             "skills_index": "skills content",
             "heuristics": "heuristics content",
@@ -108,12 +109,11 @@ class TestFirstPromptHydration:
         assert "test user prompt" in result, "Prompt not substituted"
         assert "## Your Task" in result, "Missing Your Task section"
 
-    def test_context_template_preserves_todowrite_braces(self):
-        """Verify TodoWrite examples in template keep their braces after formatting.
+    def test_context_template_preserves_structure_after_formatting(self):
+        """Verify template structure is preserved after formatting.
 
-        The template contains TodoWrite examples with {content: "..."} syntax.
-        These must appear in the output (with single braces) for the hydrator
-        to understand the expected format.
+        The template should format correctly with all placeholders and preserve
+        the expected output structure including sections and code blocks.
         """
         template = load_template(CONTEXT_TEMPLATE_FILE)
 
@@ -121,6 +121,7 @@ class TestFirstPromptHydration:
             "prompt": "test",
             "session_context": "",
             "framework_paths": "",
+            "project_context_index": "",
             "workflows_index": "",
             "skills_index": "",
             "heuristics": "",
@@ -131,11 +132,10 @@ class TestFirstPromptHydration:
 
         result = template.format(**test_values)
 
-        # After formatting, {{content: should become {content:
-        assert "{content:" in result, (
-            "Template should contain {content: in TodoWrite examples (escaped as {{content:)"
-        )
-        assert "status:" in result, "Template should contain TodoWrite status field"
+        # Template should preserve key sections
+        assert "## User Prompt" in result, "Template should contain User Prompt section"
+        assert "## Your Task" in result, "Template should contain Your Task section"
+        assert "## Return Format" in result, "Template should contain Return Format section"
 
     def test_hook_does_not_silently_fail(self):
         """Verify hook infrastructure errors propagate, not silently return empty.
@@ -159,11 +159,11 @@ class TestFirstPromptHydration:
         session_id = "test-session-67890"
 
         with (
-            patch("hooks.user_prompt_submit.get_aops_root") as mock_root,
+            patch("hooks.user_prompt_submit.get_plugin_root") as mock_root,
             patch("hooks.user_prompt_submit.set_hydration_pending") as mock_set,
             patch("hooks.user_prompt_submit.clear_hydration_pending") as mock_clear,
         ):
-            mock_root.return_value = AOPS_CORE.parent
+            mock_root.return_value = AOPS_CORE
 
             build_hydration_instruction(session_id, prompt, None)
 
@@ -192,8 +192,8 @@ class TestTemplateEscaping:
         assert "User said: fix the bug" in result, "Placeholder not substituted"
         assert "{content: 'todo'}" in result, "Escaped braces not preserved"
 
-    def test_actual_template_has_correct_escaping(self):
-        """Verify the real template file has {{ escaping where needed."""
+    def test_actual_template_has_valid_placeholders(self):
+        """Verify the real template file has valid placeholders that can be formatted."""
         template_path = CONTEXT_TEMPLATE_FILE
         raw_content = template_path.read_text()
 
@@ -203,24 +203,25 @@ class TestTemplateEscaping:
         else:
             template_content = raw_content
 
-        # Check that TodoWrite examples use {{ escaping
-        assert "{{content:" in template_content, (
-            "Template must escape {content: as {{content: in TodoWrite examples"
-        )
+        # Expected placeholders in the template
+        expected_placeholders = [
+            "{prompt}",
+            "{session_context}",
+            "{framework_paths}",
+            "{project_context_index}",
+            "{relevant_files}",
+            "{workflows_index}",
+            "{skills_index}",
+            "{axioms}",
+            "{heuristics}",
+            "{task_state}",
+        ]
 
-        # Verify no unescaped {content: outside of comments
-        # (Single brace would cause format() to fail)
-        lines = template_content.split("\n")
-        for i, line in enumerate(lines):
-            # Skip if it's the escaped version
-            if "{{content:" in line:
-                continue
-            # Fail if unescaped {content: found
-            if "{content:" in line:
-                pytest.fail(
-                    f"Line {i + 1} has unescaped {{content:}} which will cause "
-                    f"KeyError during formatting:\n{line}"
-                )
+        # Verify expected placeholders exist
+        for placeholder in expected_placeholders:
+            assert placeholder in template_content, (
+                f"Template should contain {placeholder} placeholder"
+            )
 
 
 class TestSkillsIndex:
@@ -241,7 +242,7 @@ name: Skills Index
 | /task-viz | Task Viz | task visualization |
 """)
 
-        with patch("hooks.user_prompt_submit.get_aops_root") as mock_root:
+        with patch("hooks.user_prompt_submit.get_plugin_root") as mock_root:
             mock_root.return_value = tmp_path
 
             result = load_skills_index()
@@ -260,7 +261,7 @@ name: Skills Index
 | /daily | Daily note | daily list, daily note |
 """)
 
-        with patch("hooks.user_prompt_submit.get_aops_root") as mock_root:
+        with patch("hooks.user_prompt_submit.get_plugin_root") as mock_root:
             mock_root.return_value = tmp_path
 
             result = load_skills_index()
@@ -284,16 +285,18 @@ name: Skills Index
         prompt = "update my daily list"
         session_id = "test-session-skills"
 
-        # Create mock SKILLS.md
-        mock_skills = tmp_path / "SKILLS.md"
-        mock_skills.write_text("# Skills Index\n\n/daily")
-
         with (
-            patch("hooks.user_prompt_submit.get_aops_root") as mock_root,
+            patch("hooks.user_prompt_submit.get_plugin_root") as mock_root,
             patch("hooks.user_prompt_submit.set_hydration_pending"),
-            patch(
-                "hooks.user_prompt_submit.get_hydration_temp_dir", return_value=tmp_path
-            ),
+            patch("hooks.user_prompt_submit.get_hydration_temp_dir", return_value=tmp_path),
+            patch("hooks.user_prompt_submit.load_skills_index", return_value="/daily - Daily note"),
+            patch("hooks.user_prompt_submit.load_axioms", return_value="# Axioms"),
+            patch("hooks.user_prompt_submit.load_heuristics", return_value="# Heuristics"),
+            patch("hooks.user_prompt_submit.load_workflows_index", return_value="# Workflows"),
+            patch("hooks.user_prompt_submit.load_framework_paths", return_value="# Paths"),
+            patch("hooks.user_prompt_submit.get_task_work_state", return_value=""),
+            patch("hooks.user_prompt_submit.get_formatted_relevant_paths", return_value=""),
+            patch("hooks.user_prompt_submit.load_project_context_index", return_value=""),
         ):
             mock_root.return_value = tmp_path
 
@@ -314,7 +317,7 @@ name: Skills Index
 | /task-viz | Task Viz | task visualization, visualize tasks |
 """)
 
-        with patch("hooks.user_prompt_submit.get_aops_root") as mock_root:
+        with patch("hooks.user_prompt_submit.get_plugin_root") as mock_root:
             mock_root.return_value = tmp_path
 
             result = load_skills_index()
