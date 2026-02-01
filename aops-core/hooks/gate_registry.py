@@ -373,6 +373,36 @@ def _should_require_task(tool_name: str, tool_input: Dict[str, Any]) -> bool:
     return False
 
 
+def _is_actually_destructive(tool_name: str, tool_input: Dict[str, Any]) -> bool:
+    """Check if this tool call is actually destructive (modifies state).
+
+    For most mutating tools (Edit, Write), this returns True.
+    For Bash commands, checks if the command is actually destructive
+    (e.g., git commit) vs read-only (e.g., git status).
+
+    Args:
+        tool_name: Name of the tool being invoked
+        tool_input: Tool input parameters
+
+    Returns:
+        True if the operation is destructive, False if read-only
+    """
+    # Non-Bash mutating tools are always destructive
+    if tool_name in ("Edit", "Write", "NotebookEdit", "write_to_file",
+                     "replace_file_content", "multi_replace_file_content"):
+        return True
+
+    # Bash commands: check if actually destructive
+    if tool_name in ("Bash", "run_shell_command", "run_command"):
+        command = tool_input.get("command") or tool_input.get("CommandLine")
+        if command is None:
+            return True  # Fail-closed: no command = assume destructive
+        return _is_destructive_bash(command)
+
+    # All other tools are not destructive
+    return False
+
+
 def _is_handover_skill_invocation(tool_name: str, tool_input: Dict[str, Any]) -> bool:
     """Check if this is a handover skill invocation.
 
@@ -1125,8 +1155,8 @@ def run_accountant(ctx: GateContext) -> Optional[GateResult]:
 
     # 3. Update Handover State
     # Handover gate starts OPEN (handover_skill_invoked=True).
-    # Reset to False when mutating tools are used (requiring handover again).
-    # Read-only tools do NOT reset the gate.
+    # Reset to False when DESTRUCTIVE tools are used (requiring handover again).
+    # Read-only tools (including read-only Bash commands) do NOT reset the gate.
     if _is_handover_skill_invocation(ctx.tool_name or "", ctx.tool_input):
         try:
             session_state.set_handover_skill_invoked(ctx.session_id)
@@ -1135,11 +1165,11 @@ def run_accountant(ctx: GateContext) -> Optional[GateResult]:
             print(
                 f"WARNING: Accountant failed to set handover flag: {e}", file=sys.stderr
             )
-    elif ctx.tool_name in MUTATING_TOOLS:
-        # Mutating tool used - require handover before stop
+    elif _is_actually_destructive(ctx.tool_name or "", ctx.tool_input):
+        # Destructive tool used - require handover before stop
         try:
             session_state.clear_handover_skill_invoked(ctx.session_id)
-            system_messages.append("[Gate] Mutating tool used. Handover required before stop.")
+            system_messages.append("[Gate] Destructive tool used. Handover required before stop.")
         except Exception as e:
             print(
                 f"WARNING: Accountant failed to clear handover flag: {e}", file=sys.stderr
