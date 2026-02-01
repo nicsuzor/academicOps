@@ -109,7 +109,7 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
                                 # Simplify: use uv run --directory which handles PYTHONPATH
                                 cmd = cmd.replace(
                                     "PYTHONPATH=${extensionPath} uv run python",
-                                    "uv run --directory ${extensionPath}/.. python"
+                                    "uv run --directory ${AOPS} python"
                                 )
                             new_hook["command"] = cmd
                         new_hooks.append(new_hook)
@@ -236,6 +236,7 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
 
             subs = {
                 "${CLAUDE_PLUGIN_ROOT}": str(src_dir.resolve()),
+                "${AOPS}": str(aops_root),
                 "${MCP_MEMORY_API_KEY}": os.environ.get("MCP_MEMORY_API_KEY", ""),
                 "${ACA_DATA}": aca_data_path,
             }

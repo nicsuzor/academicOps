@@ -18,7 +18,7 @@
         "mcp_servers/tasks_server.py"
       ],
       "env": {
-        "AOPS": "${CLAUDE_PLUGIN_ROOT}",
+        "AOPS": "${AOPS}",
         "ACA_DATA": "${ACA_DATA}"
       }
     }
