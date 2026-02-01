@@ -288,8 +288,10 @@ All three gates must pass before destructive operations are allowed:
 | Gate | Requirement | How Set | Session State Flag |
 |------|-------------|---------|-------------------|
 | (a) Task bound | Session has active task | `update_task(status="active")` or `create_task(...)` | `main_agent.current_task` |
-| (b) Critic invoked | Critic agent reviewed plan | SubagentStop with `subagent_type="critic"` | `state.critic_invoked` |
-| (c) Todo with handover | Todo list has session end step | TodoWrite with handover pattern detected | `state.todo_with_handover` |
+| (b) Hydrator invoked | Prompt-hydrator analyzed task | SubagentStop with `subagent_type="prompt-hydrator"` | `state.hydrator_invoked` |
+| (c) Critic invoked | Critic agent reviewed plan | SubagentStop with `subagent_type="critic"` | `state.critic_invoked` |
+
+**Known Issue (aops-c6224bc2)**: The hydrator gate (`state.hydrator_invoked`) is not being set correctly by the SubagentStop handler. The flag should be set when prompt-hydrator completes, but currently shows "Hydrator invoked: ✗" even after successful hydration. Fix pending in hooks system.
 
 **Binding flow**:
 1. Hydrator guides: "claim existing or create new task"

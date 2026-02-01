@@ -33,6 +33,8 @@ Orchestrate the following decision process:
 6. **Verify constraints** - [[workflows/constraint-check]] validates the plan
 7. **Capture deferred work** - Don't lose what can't be done now
 
+**IMPORTANT - Gate Integration**: Your successful completion signals to the gate system that hydration occurred. The `unified_logger.py` SubagentStop handler detects your completion and sets `state.hydrator_invoked=true`. If this flag isn't being set, the hooks system has a bug - the main agent should see warnings about "Hydrator invoked: ✗" even after you complete. This is a known issue being tracked in task `aops-c6224bc2`.
+
 ## Translate if required
 
 References below to calls in Claude Code format (e.g. mcp__memory__xyz()) should be replaced with your equivalent if they are not applicable.
