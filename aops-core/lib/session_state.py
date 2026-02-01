@@ -895,18 +895,24 @@ def set_handover_skill_invoked(session_id: str) -> None:
 
 
 def is_handover_skill_invoked(session_id: str) -> bool:
-    """Check if the /handover skill has been invoked this session.
+    """Check if the handover gate is open (allowing stop without handover).
+
+    The gate starts OPEN (True) and closes when mutating tools are detected.
+    Returns True if no state exists or no mutations have occurred.
 
     Args:
         session_id: Claude Code session ID
 
     Returns:
-        True if handover_skill_invoked flag is set
+        True if gate is open (no handover required), False if closed (handover required)
     """
     state = load_session_state(session_id)
     if state is None:
-        return False
-    return state.get("state", {}).get("handover_skill_invoked", False)
+        # No state = no mutations = gate open
+        return True
+    # Default to True for backwards compatibility with old state files
+    # that don't have this field
+    return state.get("state", {}).get("handover_skill_invoked", True)
 
 
 def clear_handover_skill_invoked(session_id: str) -> None:
