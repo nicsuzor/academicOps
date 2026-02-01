@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 # Plugin root directory
+# <!-- NS: fix this to work with fixtures for the two claude plugins and the two gemini plugins. -->
 PLUGIN_ROOT = Path(__file__).parent.parent
 
 
