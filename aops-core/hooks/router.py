@@ -176,7 +176,7 @@ class HookRouter:
             session_id=session_id,
             hook_event=hook_event,
             tool_name=raw_input.get("tool_name"),
-            tool_input=raw_input.get("tool_input", {{}}),
+            tool_input=raw_input.get("tool_input", {}),
             transcript_path=transcript_path,
             cwd=raw_input.get("cwd"),
             raw_input=raw_input

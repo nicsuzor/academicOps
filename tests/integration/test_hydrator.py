@@ -19,7 +19,7 @@ from pathlib import Path
 import pytest
 
 from lib.paths import get_aops_root
-from tests.integration.conftest import extract_response_text
+from tests.conftest import extract_response_text
 
 
 def print_full_session_trace(output: str) -> None:

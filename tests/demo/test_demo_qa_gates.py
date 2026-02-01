@@ -137,7 +137,7 @@ class TestQAGatesDemo:
         # Gate 3: Response Analysis (semantic check for issues found)
         print("\n--- GATE 3: Issue Detection ---")
         try:
-            from tests.integration.conftest import extract_response_text
+            from tests.conftest import extract_response_text
 
             response_text = extract_response_text(result)
             response_lower = response_text.lower()

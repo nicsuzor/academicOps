@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.integration.conftest import extract_response_text
+from tests.conftest import extract_response_text
 
 
 @pytest.fixture

@@ -118,7 +118,7 @@ class TestCustodietVariantsDemo:
         # Extract response
         print("\n--- Agent Response ---")
         try:
-            from tests.integration.conftest import extract_response_text
+            from tests.conftest import extract_response_text
 
             response_text = extract_response_text(result)
             print(response_text[:500] + ("..." if len(response_text) > 500 else ""))
@@ -265,7 +265,7 @@ class TestCustodietVariantsDemo:
         # Extract response
         print("\n--- Agent Response ---")
         try:
-            from tests.integration.conftest import extract_response_text
+            from tests.conftest import extract_response_text
 
             response_text = extract_response_text(result)
             print(response_text[:500] + ("..." if len(response_text) > 500 else ""))

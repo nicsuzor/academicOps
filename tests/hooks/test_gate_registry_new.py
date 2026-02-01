@@ -20,6 +20,7 @@ from gate_registry import (
     post_critic_trigger,
     GateContext,
 )
+from lib.gate_model import GateResult, GateVerdict
 
 @pytest.fixture
 def mock_session_state():
@@ -40,12 +41,12 @@ class TestHydrationRecencyGate:
         mock_session_state.get_or_create_session_state.return_value = {
             "hydration": {"turns_since_hydration": 0}
         }
-        mock_hook_utils.make_deny_output.return_value = {"decision": "deny"}
         
         result = check_hydration_recency_gate(ctx)
         
-        assert result == {"decision": "deny"}
-        mock_hook_utils.make_deny_output.assert_called_with("Plan approved, start execution now")
+        assert isinstance(result, GateResult)
+        assert result.verdict == GateVerdict.DENY
+        assert "execution now" in result.context_injection
 
     def test_allows_if_turns_nonzero(self, mock_session_state):
         """Test allowing if turns_since_hydration is not 0."""
@@ -81,7 +82,8 @@ class TestPostHydrationTrigger:
         
         mock_session_state.update_hydration_metrics.assert_called_with("sess1", turns_since_hydration=0)
         mock_session_state.clear_hydration_pending.assert_called_with("sess1")
-        mock_hook_utils.make_context_output.assert_called()
+        assert check_result.verdict == GateVerdict.ALLOW
+        assert "invoke the critic" in check_result.context_injection
 
     def test_detects_delegate_hydrator(self, mock_session_state):
         """Test detecting hydrator via delegate_to_agent."""

@@ -168,7 +168,7 @@ def test_run_claude_headless_direct(data_dir) -> None:
     - Function returns properly structured result
     """
     # Import the function directly
-    from tests.integration.conftest import run_claude_headless
+    from tests.conftest import run_claude_headless
 
     result = run_claude_headless(
         prompt="What is 7+7?",

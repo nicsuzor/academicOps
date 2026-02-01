@@ -103,7 +103,7 @@ class TestMemoryPersistenceDemo:
         # Show response
         print("\n--- Agent Response (first 600 chars) ---")
         try:
-            from tests.integration.conftest import extract_response_text
+            from tests.conftest import extract_response_text
 
             response_text = extract_response_text(result)
             print(response_text[:600] + ("..." if len(response_text) > 600 else ""))

@@ -97,7 +97,7 @@ class TestHookSequenceDemo:
         # Session completed means SessionStart fired (it always does for aops sessions)
         print("\n--- Evidence 1: SessionStart Hook ---")
         try:
-            from tests.integration.conftest import extract_response_text
+            from tests.conftest import extract_response_text
 
             response_text = extract_response_text(result)
             # Session completed successfully means SessionStart injected context

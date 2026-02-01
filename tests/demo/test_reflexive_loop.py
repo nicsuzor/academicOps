@@ -102,7 +102,7 @@ class TestReflexiveLoopDemo:
         # Extract response
         print("\n--- Agent Response ---")
         try:
-            from tests.integration.conftest import extract_response_text
+            from tests.conftest import extract_response_text
 
             response_text = extract_response_text(result)
             # Show first 500 chars

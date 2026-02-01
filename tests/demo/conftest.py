@@ -10,7 +10,7 @@ Demo tests run with special settings:
 import pytest
 
 # Re-export fixtures from integration tests
-from tests.integration.conftest import (
+from tests.conftest import (
     claude_headless,
     claude_headless_tracked,
     extract_response_text,

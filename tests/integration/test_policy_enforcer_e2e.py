@@ -151,7 +151,7 @@ def test_e2e_blocks_git_push_force(claude_test, temp_repo) -> None:
     assert result["success"], f"Execution failed: {result.get('error')}"
 
     # Check response indicates block
-    from tests.integration.conftest import extract_response_text
+    from tests.conftest import extract_response_text
 
     try:
         response = extract_response_text(result).lower()
@@ -174,7 +174,7 @@ def test_e2e_allows_safe_git_commands(claude_test, temp_repo) -> None:
 
     assert result["success"], f"Execution failed: {result.get('error')}"
 
-    from tests.integration.conftest import extract_response_text
+    from tests.conftest import extract_response_text
 
     try:
         response = extract_response_text(result).lower()

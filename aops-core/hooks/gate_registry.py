@@ -1165,7 +1165,7 @@ def check_hydration_recency_gate(ctx: GateContext) -> Optional[GateResult]:
     state = session_state.get_or_create_session_state(ctx.session_id)
     hydration_state = state.get("hydration", {})
 
-    turns_since = hydration_state["turns_since_hydration"]
+    turns_since = hydration_state.get("turns_since_hydration")
 
     if turns_since == 0:
         return GateResult(

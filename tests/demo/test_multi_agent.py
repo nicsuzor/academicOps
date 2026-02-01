@@ -72,7 +72,7 @@ class TestMultiAgentDemo:
         # Check 3: Main agent processed critic output
         print("\n--- Response Analysis ---")
         try:
-            from tests.integration.conftest import extract_response_text
+            from tests.conftest import extract_response_text
 
             response_text = extract_response_text(result)
             response_lower = response_text.lower()

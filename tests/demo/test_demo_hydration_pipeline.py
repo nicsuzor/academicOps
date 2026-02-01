@@ -123,7 +123,7 @@ class TestHydrationPipelineDemo:
         # Stage 4: Response Quality (semantic check)
         print("\n--- STAGE 4: Response Quality ---")
         try:
-            from tests.integration.conftest import extract_response_text
+            from tests.conftest import extract_response_text
 
             response_text = extract_response_text(result)
             response_lower = response_text.lower()

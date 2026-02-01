@@ -205,7 +205,7 @@ IMPORTANT: Return ONLY the JSON, no other text.
     )
 
     # Extract JSON from response
-    from tests.integration.conftest import extract_response_text
+    from tests.conftest import extract_response_text
 
     response_text = extract_response_text(result)
 
