@@ -364,12 +364,25 @@ def run_hook_script(
             # Gemini: use temp_root from transcript_path
             env["AOPS_SESSION_STATE_DIR"] = temp_root
         else:
-            # Claude: use ~/.claude/projects/<encoded-cwd>/
-            cwd = input_data.get("cwd") or os.getcwd()
-            encoded_cwd = "-" + cwd.replace("/", "-")[1:]
-            env["AOPS_SESSION_STATE_DIR"] = str(
-                Path.home() / ".claude" / "projects" / encoded_cwd
-            )
+            # Claude: derive from transcript_path or cwd
+            # transcript_path format: ~/.claude/projects/<encoded-cwd>/<session>.jsonl
+            # The parent directory is the state directory
+            transcript_path = input_data.get("transcript_path")
+            if transcript_path:
+                state_dir = str(Path(transcript_path).parent)
+                env["AOPS_SESSION_STATE_DIR"] = state_dir
+            else:
+                # Fallback to cwd-based derivation (less reliable if cwd is missing)
+                # NOTE: os.getcwd() returns HOOK_DIR since we run with cwd=HOOK_DIR,
+                # so only use it if input_data.cwd is explicitly set
+                cwd = input_data.get("cwd")
+                if cwd:
+                    encoded_cwd = "-" + cwd.replace("/", "-")[1:]
+                    env["AOPS_SESSION_STATE_DIR"] = str(
+                        Path.home() / ".claude" / "projects" / encoded_cwd
+                    )
+                # If neither transcript_path nor cwd available, don't set env var
+                # and let session_paths.py use its fallback logic
 
         # Pass hook dir as CWD
         result = subprocess.run(
