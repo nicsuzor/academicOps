@@ -2,11 +2,54 @@
 id: worktree-merge
 category: integration
 bases: [base-commit]
+triggers: ["merge polecat", "merge polecats", "merge worktrees"]
 ---
 
 # Worktree Merge Workflow
 
 Merge completed work from polecat worktrees into the main branch.
+
+## Quick Reference (for "merge polecats" requests)
+
+**Primary method** — run the CLI:
+```bash
+polecat merge
+```
+This handles discovery, merge, tests, and cleanup automatically.
+
+**If CLI unavailable** — manual checklist (strict order):
+
+1. **Preflight** (before anything else)
+   - `git status` — main must be clean
+   - `git worktree list` — note active worktrees
+
+2. **Discover** (before creating any task)
+   - `git branch -r | grep polecat` — list remote polecat branches
+   - For each: `git log --oneline main..origin/polecat/{id}` — check unmerged commits
+   - `git cherry main origin/polecat/{id}` — detect already-merged (- = merged)
+
+3. **Task** (based on findings, not assumptions)
+   - If merge_ready tasks exist: claim one
+   - If none: create task with actual branch list from step 2
+
+4. **Merge** (sequential, one branch at a time)
+   - `git checkout main && git pull`
+   - `git merge --squash origin/polecat/{id}`
+   - `git commit -m "Merge polecat/{id}: {title}"`
+
+5. **Verify** (before any cleanup)
+   - `uv run pytest` — tests must pass
+   - If fail: `git reset --hard HEAD~1`, mark task blocked, stop
+
+6. **Cleanup** (only after QA passes)
+   - `git push origin main`
+   - `git branch -D polecat/{id}`
+   - `git push origin --delete polecat/{id}`
+   - `git worktree remove` (if exists)
+
+**Critical ordering**: Cleanup happens AFTER verify, never before. This prevents data loss.
+
+---
 
 ## When to Use
 
