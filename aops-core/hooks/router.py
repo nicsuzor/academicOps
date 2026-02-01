@@ -377,7 +377,7 @@ class HookRouter:
 
     def output_for_claude(self, result: CanonicalHookOutput, event: str) -> ClaudeHookOutput:
         """Format for Claude Code."""
-        if event == "Stop":
+        if event == "Stop" or event == "SessionEnd":
             output = ClaudeStopHookOutput()
             if result.verdict == "deny":
                 output.decision = "block"
