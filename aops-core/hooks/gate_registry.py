@@ -1348,10 +1348,13 @@ def check_session_start_gate(ctx: GateContext) -> Optional[GateResult]:
         # Get hook log path for this session (full absolute path)
         hook_log_path = get_hook_log_path(ctx.session_id, ctx.input_data)
 
+        # Get actual state file path (not a glob pattern)
+        state_file_path = session_paths.get_session_file_path_direct(ctx.session_id)
+
         # Build startup message for USER display (system_message, not context_injection)
         msg_lines = [
             f"Session Started: {ctx.session_id} ({short_hash})",
-            f"State File: {status_dir}/*-{short_hash}.json",
+            f"State File: {state_file_path}",
             f"Hooks log: {hook_log_path}",
             "Hooks: Loaded and Active",
         ]

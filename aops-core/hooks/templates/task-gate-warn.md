@@ -9,11 +9,9 @@ description: |
     {hydrator_invoked_status} - Gate status indicator
     {critic_invoked_status} - Gate status indicator
 ---
-TASK GATE (warn-only): Destructive operation without full gate compliance.
+TASK GATE (warn): Missing gate compliance (other gates may still block).
 
 Gate status:
 - Task bound: {task_bound_status}
 - Hydrator invoked: {hydrator_invoked_status}
 - Critic invoked: {critic_invoked_status}
-
-This session is in WARN mode for testing. In production, this would BLOCK.

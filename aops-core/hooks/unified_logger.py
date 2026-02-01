@@ -263,18 +263,9 @@ def log_event_to_session(
     elif hook_event == "PostToolUse":
         handle_post_tool_use(session_id, input_data)
     elif hook_event == "SessionStart":
-        # Create session state and return path + session_id only (not full contents)
-        state = get_or_create_session_state(session_id)
-        short_hash = get_session_short_hash(session_id)
-        state_path = get_session_file_path_direct(session_id, state.get("date"))
-
-        # Return typed GateResult instead of dict
-        return GateResult(
-            verdict=GateVerdict.ALLOW,
-            context_injection=f"Session: {short_hash}\nState file: {state_path}",
-            system_message="SessionStart:startup hook success: Success",
-            metadata={"source": "unified_logger"}
-        )
+        # Create session state - the actual output is handled by check_session_start_gate
+        # to avoid duplication. This just ensures state file exists.
+        get_or_create_session_state(session_id)
     else:
         # For other events, just ensure session exists (creates if needed)
         # This updates the session file with the latest access

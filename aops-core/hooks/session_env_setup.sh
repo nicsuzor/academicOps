@@ -33,11 +33,25 @@ if [ ! -f "$AOPS_CORE/lib/hook_utils.py" ]; then
     echo "WARNING: Cannot validate aops-core path - lib/hook_utils.py not found at $AOPS_CORE" >&2
 fi
 
+# Set AOPS_SESSION_STATE_DIR for Claude Code sessions
+# This ensures state files go to the same directory as hooks.jsonl
+# Path format: ~/.claude/projects/-<cwd-with-dashes>/
+# Example: /home/nic/src/academicOps -> ~/.claude/projects/-home-nic-src-academicOps/
+CWD_ENCODED=$(pwd | sed 's|/|-|g')
+AOPS_SESSION_STATE_DIR="$HOME/.claude/projects/$CWD_ENCODED"
+export AOPS_SESSION_STATE_DIR
+mkdir -p "$AOPS_SESSION_STATE_DIR"
+
 # Write to CLAUDE_ENV_FILE if available (persists for the session)
 if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
     # Only add to PYTHONPATH if not already present
     if ! grep -q "PYTHONPATH.*$AOPS_CORE" "$CLAUDE_ENV_FILE" 2>/dev/null; then
         echo "export PYTHONPATH=\"$AOPS_CORE:\${PYTHONPATH:-}\"" >> "$CLAUDE_ENV_FILE"
+    fi
+
+    # Persist AOPS_SESSION_STATE_DIR for subsequent hook invocations
+    if ! grep -q "export AOPS_SESSION_STATE_DIR=" "$CLAUDE_ENV_FILE" 2>/dev/null; then
+        echo "export AOPS_SESSION_STATE_DIR=\"$AOPS_SESSION_STATE_DIR\"" >> "$CLAUDE_ENV_FILE"
     fi
 
     # Add additional environment variables

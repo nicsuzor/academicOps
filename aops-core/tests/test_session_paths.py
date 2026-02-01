@@ -22,33 +22,22 @@ class TestSessionPaths(unittest.TestCase):
 
     @patch.dict(os.environ, {"AOPS_SESSION_STATE_DIR": ""}, clear=True)
     def test_get_session_status_dir_gemini_fallback(self):
-        # Should detect Gemini environment
-        project_root = "/mock/project"
-        project_hash = hashlib.sha256(project_root.encode()).hexdigest()
-        expected_path_str = f"/mock/home/.gemini/tmp/{project_hash}"
-        
-        with patch.dict(os.environ, {"GEMINI_CLI": "1"}):
-            with patch("pathlib.Path.cwd") as mock_cwd, \
-                 patch("pathlib.Path.home") as mock_home:
-                
-                mock_cwd.return_value = Path(project_root)
-                mock_cwd.return_value.resolve.return_value = Path(project_root)
-                mock_home.return_value = Path("/mock/home")
-                
-                # We need to mock Path construction AND .exists()
-                # This is complex because Path("...") returns a new object.
-                # Instead, we can verify the logic by inspecting the implementation or
-                # using a more sophisticated mock.
-                
-                # Let's rely on the fact that the implementation calls .exists()
-                # on the constructed path.
-                
-                # Mock Path to return a MagicMock that returns True for exists()
-                # But Path is used for type hinting too.
-                
-                # Alternative: Patch hashlib and assume path construction is correct,
-                # focusing on the logic flow.
-                pass
+        """When AOPS_SESSION_STATE_DIR not set and gemini dir exists, use gemini fallback."""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create a fake gemini tmp structure
+            project_root = str(Path(tmpdir) / "project")
+            project_hash = hashlib.sha256(project_root.encode()).hexdigest()
+            gemini_tmp = Path(tmpdir) / ".gemini" / "tmp" / project_hash
+            gemini_tmp.mkdir(parents=True)
+
+            # Patch Path.home() and Path.cwd()
+            with patch.object(Path, "home", return_value=Path(tmpdir)), \
+                 patch.object(Path, "cwd", return_value=Path(project_root)):
+
+                result = session_paths.get_session_status_dir()
+                self.assertEqual(result, gemini_tmp)
 
 if __name__ == "__main__":
     unittest.main()
