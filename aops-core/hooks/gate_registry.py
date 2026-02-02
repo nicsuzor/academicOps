@@ -1464,6 +1464,7 @@ def check_stop_gate(ctx: GateContext) -> Optional[GateResult]:
     Returns None if allowed, or GateResult if blocked/warned.
 
     Rules:
+    0. Bypass Check: If gates_bypassed flag is set in session state, skip all checks.
     1. Critic Check: If turns_since_hydration == 0, deny stop and demand Critic.
     2. Handover Check: If handover skill not invoked, issue warning but allow stop.
     """
@@ -1475,6 +1476,12 @@ def check_stop_gate(ctx: GateContext) -> Optional[GateResult]:
 
     state = session_state.load_session_state(ctx.session_id)
     if not state:
+        return None
+
+    # --- 0. Bypass Check ---
+    # If gates_bypassed is set (e.g., via '.' prefix), skip all stop gate checks
+    state_dict = state.get("state")
+    if state_dict is not None and state_dict.get("gates_bypassed"):
         return None
 
     # --- 1. Critic Check (turns_since_hydration == 0) ---
