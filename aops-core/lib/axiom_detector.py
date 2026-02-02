@@ -32,11 +32,11 @@ class P8FallbackDetector:
     # Regex patterns for common fallback signatures
     # Using re.MULTILINE and scanning full text
     PATTERNS = [
-        # os.environ.get("VAR", "default") or os.getenv("VAR", "default")
+        # Env var with default: os.environ[dot]get or os.getenv with 2nd arg (any expression)
         (
-            r"""(?:os\.(?:environ\.get|getenv))\s*\(\s*['"][^'"]+['"]\s*,\s*['"][^'"]+['"]\s*\)""",
+            r"""(?:os\.(?:environ\.get|getenv))\s*\(\s*['"][^'"]+['"]\s*,\s*.+?\)""",
             "env_get_default",
-            "Environment variable access with hardcoded default. Use os.environ['VAR'] for fail-fast.",
+            "Environment variable access with default. Use os.environ['VAR'] for fail-fast.",
         ),
         # try: ... except: pass (handles same line or next line)
         (

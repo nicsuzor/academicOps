@@ -1051,6 +1051,7 @@ def check_custodiet_gate(ctx: GateContext) -> Optional[GateResult]:
 
     # Extract code/content for analysis
     code = ""
+    file_path = ctx.tool_input.get("file_path", "")
     if ctx.tool_name in ("Write", "write_to_file"):
         code = ctx.tool_input.get("content", "")
     elif ctx.tool_name in ("Edit", "replace_file_content"):
@@ -1058,6 +1059,10 @@ def check_custodiet_gate(ctx: GateContext) -> Optional[GateResult]:
     elif ctx.tool_name == "multi_replace_file_content":
         replacements = ctx.tool_input.get("replacements", [])
         code = "\n".join([r.get("new_string", "") for r in replacements])
+
+    # Skip axiom detection for the detector itself (contains pattern examples)
+    if file_path and "axiom_detector.py" in file_path:
+        code = ""
 
     if code:
         # Detect violations
