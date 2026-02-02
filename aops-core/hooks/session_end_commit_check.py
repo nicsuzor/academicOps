@@ -787,7 +787,7 @@ def main():
 
     # Allow session to proceed normally - add verification message for user if not already set
     if "system_message" not in output_data:
-        output_data["system_message"] = "✓ handover verified"
+        output_data["system_message"] = "✅ handover verified"
     if "verdict" not in output_data:
         output_data["verdict"] = "allow"
 
