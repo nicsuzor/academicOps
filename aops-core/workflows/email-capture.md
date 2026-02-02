@@ -15,6 +15,14 @@ backend: scripts
 
 **When to invoke**: User says "check my email for tasks", "process emails", "any new tasks from email?", or similar phrases indicating email-to-task workflow.
 
+**Example triggers**:
+- "check my email for tasks"
+- "process emails"
+- "any new tasks from email?"
+- "email triage"
+- "clean up my inbox"
+- `/email`
+
 **Backend**: Pluggable - uses task scripts (Phase 1-2) or Tasks MCP (Phase 3+). Falls back gracefully if primary backend unavailable.
 
 ## Core Workflow
@@ -414,38 +422,36 @@ Brief context: who sent this, what it's about, when received.
 [Full email text preserved here]
 ```
 
-#### 6g. Backend and Script Usage
+#### 6g. Task Creation via MCP
 
-**Backend selection logic**:
+**Primary backend**: Tasks MCP (`mcp__plugin_aops-core_task_manager__create_task`)
 
-```
-1. Check if Tasks MCP is available:
-   - Try: Call view_tasks() tool
-   - If successful: Use Tasks MCP backend
-   - If fails: Fall back to scripts backend
-
-2. Scripts backend (Phase 1-2, always available):
-   - Use: task_add.py script via Bash tool
-   - Pass structured body via --body-from-file or --body
-```
-
-**Task creation parameters** (scripts backend):
-
-```
-Required:
-- --title: Action description (concise, actionable)
-- --source-email-id: Outlook entry_id (REQUIRED for emails - enables dedup)
-
-Optional:
-- --priority: P0, P1, P2, or P3 (inferred from signals)
-- --project: Project slug (from memory match)
-- --classification: "Action", "Review", "Admin", etc.
-- --due: Deadline in ISO8601 format
-- --tags: Comma-separated tags
-- --body or --body-from-file: Full structured task body
+```python
+mcp__plugin_aops-core_task_manager__create_task(
+  task_title="Reply to <sender name>: <subject summary>",
+  type="task",
+  project="aops",
+  priority=2,  # 1-3 for emails
+  body="<structured description>"
+)
 ```
 
-**Duplicate prevention**: If `--source-email-id` matches any existing task (inbox OR archived), creation is blocked.
+**Body format** - MUST include (in this order):
+- **entry_id**: `<entry_id>` (REQUIRED - enables direct email lookup, must be first line)
+- **From**: Sender name and email
+- **Date**: When received
+- **Context**: Brief who/what/when
+- **Summary**: What you need to respond to
+- **Response Needed**: Concrete action checklist
+- **Associated Documents**: Links to downloaded/converted files (if any)
+
+**CRITICAL**: The `entry_id` line must use exactly this format for parsing:
+```
+**entry_id**: `000000009A3C5E42...`
+```
+This enables `/pull` to retrieve the email in 1 API call instead of searching.
+
+**Duplicate prevention**: Search existing tasks for matching entry_id before creating.
 
 #### Failure Handling
 
