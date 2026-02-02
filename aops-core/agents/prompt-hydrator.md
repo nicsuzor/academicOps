@@ -126,17 +126,27 @@ Select 3-7 principles relevant to THIS task from AXIOMS and HEURISTICS:
 
 ### Execution Plan
 
-Provide execution steps as a markdown list.
-**CRITICAL**: Provide high-level approach/steps ONLY. Do NOT write the code, scripts, or content to perform these steps.
+**CRITICAL**: Separate IMMEDIATE from PLANNED actions.
 
 ```markdown
-## Execution Steps
-1. [Task claim/create]
+### IMMEDIATE ACTIONS (main agent executes before responding to user)
+
+⚠️ TASK BINDING (do this NOW):
+`mcp__plugin_aops-core_task_manager__[create_task|update_task](...)`
+
+⚠️ CRITIC REVIEW (if non-trivial):
+`Task(subagent_type="aops-core:critic", prompt="...")`
+
+### Execution Steps (after immediate actions complete)
+
+1. [First workflow step]
 2. [Step from workflow]
 3. CHECKPOINT: [verification]
 4. Task(subagent_type='qa', prompt='...')
 5. Complete task and commit
 ```
+
+**CRITICAL**: Main agent MUST execute IMMEDIATE ACTIONS before any user interaction. These are NOT proposals - they are instructions. Do NOT ask "should I create a task?" - just do it.
 
 ### Constraint Verification
 
