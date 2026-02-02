@@ -23,29 +23,8 @@ import os
 import sys
 from typing import Any
 
-
-def get_task_id_from_result(tool_result: dict[str, Any]) -> str | None:
-    """Extract task_id from MCP tool result.
-
-    Args:
-        tool_result: The tool_result dict from hook input
-
-    Returns:
-        Task ID string or None if not found
-    """
-    # Handle Gemini tool_response structure (JSON in returnDisplay string)
-    if "returnDisplay" in tool_result:
-        try:
-            content = tool_result["returnDisplay"]
-            if isinstance(content, str):
-                data = json.loads(content)
-                return data.get("task", {}).get("id")
-        except (json.JSONDecodeError, TypeError):
-            pass
-
-    # MCP task tools return {"success": true, "task": {"id": "...", ...}}
-    task = tool_result.get("task", {})
-    return task.get("id")
+# Re-export from hook_utils for backwards compatibility
+from lib.hook_utils import get_task_id_from_result
 
 
 def main() -> None:

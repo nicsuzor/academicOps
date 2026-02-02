@@ -20,8 +20,6 @@ from typing import Any, TypedDict
 
 from lib.session_paths import get_claude_project_folder
 
-# Default temp directory for hooks (under home for persistence across reboots)
-# Default temp directory for hooks (under home for persistence across reboots)
 # DEFAULT_HOOK_TMP removed - now using ~/.claude/projects/... or ~/.gemini/...
 
 # Cleanup age: 1 hour in seconds
@@ -236,24 +234,6 @@ def is_subagent_session(input_data: dict[str, Any] | None = None) -> bool:
     Returns:
         True if this appears to be a subagent session
     """
-    import json
-    from datetime import datetime
-
-    # DEBUG: Log detection attempts
-    debug_file = Path("/tmp/subagent-detection-debug.jsonl")
-    try:
-        with open(debug_file, "a") as f:
-            f.write(json.dumps({
-                "ts": str(datetime.now()),
-                "env_agent_type": os.environ.get("CLAUDE_AGENT_TYPE"),
-                "env_subagent_type": os.environ.get("CLAUDE_SUBAGENT_TYPE"),
-                "transcript_path": input_data.get("transcript_path") if input_data else None,
-                "session_id": input_data.get("session_id") if input_data else None,
-            }) + "\n")
-    except Exception:
-        pass
-    # END DEBUG
-
     # Method 1: Env vars (check all known variants)
     if os.environ.get("CLAUDE_AGENT_TYPE"):
         return True
@@ -366,3 +346,38 @@ def make_empty_output() -> dict:
         Empty dict {} which signals allow
     """
     return {}
+
+
+# ============================================================================
+# Task ID Extraction
+# ============================================================================
+
+
+def get_task_id_from_result(tool_result: dict[str, Any]) -> str | None:
+    """Extract task_id from MCP tool result.
+
+    Supports both Claude and Gemini response formats:
+    - Claude: {"success": true, "task": {"id": "..."}}
+    - Gemini: {"returnDisplay": '{"task": {"id": "..."}}'} (JSON in string)
+
+    Args:
+        tool_result: The tool_result dict from hook input
+
+    Returns:
+        Task ID string or None if not found
+    """
+    import json as _json
+
+    # Handle Gemini tool_response structure (JSON in returnDisplay string)
+    if "returnDisplay" in tool_result:
+        try:
+            content = tool_result["returnDisplay"]
+            if isinstance(content, str):
+                data = _json.loads(content)
+                return data.get("task", {}).get("id")
+        except (_json.JSONDecodeError, TypeError):
+            pass
+
+    # MCP task tools return {"success": true, "task": {"id": "...", ...}}
+    task = tool_result.get("task", {})
+    return task.get("id")
