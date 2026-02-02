@@ -352,6 +352,7 @@ The **framework agent** embodies the self-reflexive principle—it both executes
 | /task-next           | Get 2-3 task recommendations (should/enjoy/quick)                                            |
 | /task-viz            | Task graph visualization (Excalidraw)                                                        |
 | /ttd                 | TDD workflow (alias for /supervise tdd)                                                      |
+| /work                | Collaborative task execution (human-led)                                                     |
 
 
 ## Infrastructure
