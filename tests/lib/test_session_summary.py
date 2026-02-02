@@ -47,7 +47,7 @@ class TestSessionSummaryPaths:
         h = hashlib.sha256(sid.encode()).hexdigest()[:8]
         result = get_task_contributions_path(sid)
         assert result == Path(
-            f"/home/test/data/dashboard/sessions/{h}-tasks.json"
+            f"/home/test/data/dashboard/sessions/{h}.tasks.json"
         )
 
     def test_get_session_summary_path(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -60,7 +60,7 @@ class TestSessionSummaryPaths:
         h = hashlib.sha256(sid.encode()).hexdigest()[:8]
         result = get_session_summary_path(sid)
         assert result == Path(
-            f"/home/test/data/dashboard/sessions/{h}.json"
+            f"/home/test/data/dashboard/sessions/{h}.summary.json"
         )
 
 
@@ -94,7 +94,7 @@ class TestTaskContributions:
 
         # Verify file was created
         tasks_file = (
-            temp_aca_data / "dashboard" / "sessions" / f"{h}-tasks.json"
+            temp_aca_data / "dashboard" / "sessions" / f"{h}.tasks.json"
         )
         assert tasks_file.exists()
 
@@ -133,7 +133,7 @@ class TestTaskContributions:
 
         # Verify both tasks present
         tasks_file = (
-            temp_aca_data / "dashboard" / "sessions" / f"{h}-tasks.json"
+            temp_aca_data / "dashboard" / "sessions" / f"{h}.tasks.json"
         )
         data = json.loads(tasks_file.read_text())
         assert len(data["tasks"]) == 2
@@ -151,7 +151,7 @@ class TestTaskContributions:
         append_task_contribution(sid, {"request": "Test"})
 
         tasks_file = (
-            temp_aca_data / "dashboard" / "sessions" / f"{h}-tasks.json"
+            temp_aca_data / "dashboard" / "sessions" / f"{h}.tasks.json"
         )
         data = json.loads(tasks_file.read_text())
 

@@ -56,10 +56,10 @@ def get_session_summary_path(session_id: str) -> Path:
         session_id: Main session UUID (or short ID)
 
     Returns:
-        Path to {short_hash}.json
+        Path to {short_hash}.summary.json
     """
     short_hash = get_session_short_hash(session_id)
-    return get_session_summary_dir() / f"{short_hash}.json"
+    return get_session_summary_dir() / f"{short_hash}.summary.json"
 
 
 def get_task_contributions_path(session_id: str) -> Path:
@@ -69,10 +69,10 @@ def get_task_contributions_path(session_id: str) -> Path:
         session_id: Main session UUID
 
     Returns:
-        Path to {short_hash}-tasks.json
+        Path to {short_hash}.tasks.json
     """
     short_hash = get_session_short_hash(session_id)
-    return get_session_summary_dir() / f"{short_hash}-tasks.json"
+    return get_session_summary_dir() / f"{short_hash}.tasks.json"
 
 
 def save_session_summary(session_id: str, summary: SessionSummary) -> None:
