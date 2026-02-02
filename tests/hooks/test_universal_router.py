@@ -52,18 +52,21 @@ class TestUniversalRouter:
             # Expect merged messages from 2 hooks
             assert result.system_message == "Allowed\nAllowed"
             assert mock_run.called
-    @patch("hooks.router.subprocess.run")
-    def test_block_behavior(self, mock_run, router_instance):
-        # Mock blocking hook
-        mock_run.return_value = MagicMock(
-            returncode=0, # Router expects 0 from script usually, with verdict in JSON
-            stdout=json.dumps({"verdict": "deny", "system_message": "Blocked"}),
-            stderr=""
-        )
-        
+    @patch("hooks.router.GATE_CHECKS")
+    def test_block_behavior(self, mock_gate_checks, router_instance):
+        """Test that a gate returning deny verdict propagates correctly."""
+        from lib.gate_model import GateResult, GateVerdict
+
+        # Mock a gate that returns deny
+        def mock_deny_gate(ctx):
+            return GateResult(verdict=GateVerdict.DENY, system_message="Blocked")
+
+        # Replace gate checks with our mock
+        mock_gate_checks.get.return_value = mock_deny_gate
+
         ctx = HookContext(session_id="test", hook_event="PreToolUse", raw_input={})
         result = router_instance.execute_hooks(ctx)
-        
+
         assert result.verdict == "deny"
 
     def test_output_for_gemini(self, router_instance):

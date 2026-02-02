@@ -264,51 +264,50 @@ Uses passive `additionalContext` format - agent may proceed without addressing.
 
 **Note**: Technical enforcement prevents accidental premature completion. Agents must either complete children first or explicitly override with force flag.
 
-## Task-Gated Permissions (PreToolUse Hook)
+## TASK GATE (Unified PreToolUse Enforcement)
 
-Destructive operations require ALL THREE gates to pass. See [[specs/permission-model-v1]].
+Destructive operations require passing the TASK GATE. See [[specs/permission-model-v1]].
 
-| Operation Type | Tool | Requires Gates | Bypass |
-|----------------|------|----------------|--------|
-| File creation/modification | Write, Edit, NotebookEdit | All 3 gates | `.` prefix, subagent |
-| Destructive Bash | `rm`, `mv`, `git commit`, etc. | All 3 gates | `.` prefix, subagent |
-| Read-only | Read, Glob, Grep, `git status` | None | N/A |
-| Task operations | create_task, update_task | None (they establish gate a) | N/A |
+The TASK GATE consolidates multiple enforcement concerns into a single PreToolUse check:
+- Task binding (work tracking)
+- Hydration completion (plan before execute)
+- Critic review (second opinion)
 
-**Enforcement**: `task_required_gate.py` PreToolUse hook.
+| Operation Type | Tool | Requires TASK GATE | Bypass |
+|----------------|------|-------------------|--------|
+| File creation/modification | Write, Edit, NotebookEdit | Yes | `.` prefix, subagent |
+| Destructive Bash | `rm`, `mv`, `git commit`, etc. | Yes | `.` prefix, subagent |
+| Read-only | Read, Glob, Grep, `git status` | No | N/A |
+| Task operations | create_task, update_task | No (they establish gate a) | N/A |
+
+**Enforcement**: `check_task_required_gate()` in `gate_registry.py` (PreToolUse hook).
 
 **Output format** (JSON, always exit 0):
 - Allow: `{}` (empty JSON)
 - Block: `{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "additionalContext": "..."}}`
 - Warn: `{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "additionalContext": "..."}}`
 
-### Three-Gate Requirement
+### Three-Gate Conditions
 
-All three gates must pass before destructive operations are allowed:
+The TASK GATE tracks three conditions for full compliance:
 
 | Gate | Requirement | How Set | Session State Flag |
 |------|-------------|---------|-------------------|
-| (a) Task bound | Session has active task | `update_task(status="active")` or `create_task(...)` | `main_agent.current_task` |
-| (b) Hydrator invoked | Prompt-hydrator analyzed task | SubagentStop with `subagent_type="prompt-hydrator"` | `state.hydrator_invoked` |
+| (a) Task bound | Session has active task | `update_task(status="in_progress")` or `create_task(...)` | `main_agent.current_task` |
+| (b) Hydrator invoked | Plan mode or hydrator completed | `EnterPlanMode` tool or prompt-hydrator SubagentStop | `state.plan_mode_invoked` |
 | (c) Critic invoked | Critic agent reviewed plan | SubagentStop with `subagent_type="critic"` | `state.critic_invoked` |
 
-**Known Issue (aops-c6224bc2)**: The hydrator gate (`state.hydrator_invoked`) is not being set correctly by the SubagentStop handler. The flag should be set when prompt-hydrator completes, but currently shows "Hydrator invoked: ✗" even after successful hydration. Fix pending in hooks system.
+**Default enforcement**: Only gate (a) task_bound is enforced. Gates (b) and (c) are tracked for observability.
+
+**Full enforcement**: Set `TASK_GATE_ENFORCE_ALL=1` to require all three gates.
 
 **Binding flow**:
 1. Hydrator guides: "claim existing or create new task"
-2. Agent calls `update_task(status="active")` or `create_task(...)` → gate (a) set
+2. Agent calls `update_task(status="in_progress")` or `create_task(...)` → gate (a) set
 3. `task_binding.py` PostToolUse hook sets `current_task` in session state
-4. Agent invokes critic: `Task(subagent_type="aops-core:critic", ...)` → gate (b) set
-5. `unified_logger.py` SubagentStop handler sets `critic_invoked` flag
-6. Agent creates todo list with handover step → gate (c) set
-7. `todowrite_handover_gate.py` PostToolUse hook sets `todo_with_handover` flag
-8. `task_required_gate.py` checks all three gates before allowing destructive operations
-
-**Handover patterns detected** (case-insensitive):
-- "session end", "session close", "session handover"
-- "handover", "hand over", "hand-over"
-- "commit and push", "final commit"
-- "wrap up", "framework reflection"
+4. Agent enters plan mode or hydrator completes → gate (b) set
+5. Agent invokes critic: `Task(subagent_type="aops-core:critic", ...)` → gate (c) set
+6. `check_task_required_gate()` checks gates before allowing destructive operations
 
 **Bypass conditions**:
 - User prefix `.` (sets `gates_bypassed` flag via UserPromptSubmit)

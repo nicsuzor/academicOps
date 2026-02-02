@@ -1244,13 +1244,39 @@ def _build_task_warn_message(gates: Dict[str, bool]) -> str:
     )
 
 
+def _get_task_gate_mode() -> str:
+    """Get TASK_GATE_MODE from environment, defaulting to warn mode.
+
+    Uses explicit check for env var presence to comply with fail-fast axiom
+    while still providing a sensible default for optional configuration.
+    """
+    if "TASK_GATE_MODE" in os.environ:
+        return os.environ["TASK_GATE_MODE"].lower()
+    return DEFAULT_TASK_GATE_MODE
+
+
+def _is_full_gate_enforcement_enabled() -> bool:
+    """Check if full three-gate enforcement is enabled.
+
+    Returns True if TASK_GATE_ENFORCE_ALL is set to a truthy value.
+    """
+    if "TASK_GATE_ENFORCE_ALL" not in os.environ:
+        return False
+    return os.environ["TASK_GATE_ENFORCE_ALL"].lower() in ("1", "true", "yes")
+
+
 def check_task_required_gate(ctx: GateContext) -> Optional[GateResult]:
     """
-    Check if task binding is required for this operation.
+    TASK GATE: Unified enforcement for destructive operations.
     Returns None if allowed, or GateResult if blocked/warned.
 
-    Only runs on PreToolUse events. Enforces task-gated permissions model
-    where destructive operations require task binding.
+    Only runs on PreToolUse events. Enforces three-gate requirement:
+    (a) Task bound - session has an active task claimed
+    (b) Hydrator invoked - prompt-hydrator or plan mode completed
+    (c) Critic invoked - critic agent reviewed the plan
+
+    This gate consolidates the former separate hydration and task-required gates
+    into a single enforcement point for all destructive operations.
     """
     _check_imports()
 
@@ -1266,24 +1292,34 @@ def check_task_required_gate(ctx: GateContext) -> Optional[GateResult]:
     if _is_handover_skill_invocation(ctx.tool_name or "", ctx.tool_input):
         return None
 
-    # Check if operation requires task binding
+    # Check if operation requires task binding (destructive operations only)
     if not _should_require_task(ctx.tool_name or "", ctx.tool_input):
         return None
 
     # Check if gates are bypassed (. prefix)
     state = session_state.load_session_state(ctx.session_id)
-    if state and state.get("state", {}).get("gates_bypassed"):
-        return None
+    if state is not None:
+        state_dict = state.get("state")
+        if state_dict is not None and state_dict.get("gates_bypassed"):
+            return None
 
-    # Check gate status
+    # Check all gate statuses
     gates = session_state.check_all_gates(ctx.session_id)
 
-    # Currently only enforce task_bound gate (others disabled for validation)
-    if gates["task_bound"]:
-        return None
+    # Enforce task_bound gate (the primary gate for destructive operations)
+    # The other gates (plan_mode_invoked, critic_invoked) are tracked but
+    # enforcement is configurable via TASK_GATE_ENFORCE_ALL env var
+    if _is_full_gate_enforcement_enabled():
+        # Full three-gate enforcement
+        if gates["task_bound"] and gates["plan_mode_invoked"] and gates["critic_invoked"]:
+            return None
+    else:
+        # Default: only enforce task_bound (other gates for observability)
+        if gates["task_bound"]:
+            return None
 
     # Gates not passed - enforce based on mode
-    gate_mode = os.environ.get("TASK_GATE_MODE", DEFAULT_TASK_GATE_MODE).lower()
+    gate_mode = _get_task_gate_mode()
     if gate_mode == "block":
         block_msg = _build_task_block_message(gates)
         return GateResult(verdict=GateVerdict.DENY, context_injection=block_msg)

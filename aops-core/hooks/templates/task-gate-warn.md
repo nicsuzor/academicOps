@@ -5,13 +5,15 @@ category: template
 description: |
   Warning message when in warn-only mode without full gate compliance.
   Variables:
-    {task_bound_status} - Gate status indicator
-    {hydrator_invoked_status} - Gate status indicator
-    {critic_invoked_status} - Gate status indicator
+    {task_bound_status} - Gate status indicator (✓ or ✗)
+    {hydrator_invoked_status} - Gate status indicator (✓ or ✗)
+    {critic_invoked_status} - Gate status indicator (✓ or ✗)
 ---
-TASK GATE (warn): Missing gate compliance (other gates may still block).
+⚠️ **TASK GATE (warn)**: Missing gate compliance.
 
 Gate status:
 - Task bound: {task_bound_status}
 - Hydrator invoked: {hydrator_invoked_status}
 - Critic invoked: {critic_invoked_status}
+
+Proceeding in warn mode. For full enforcement, set `TASK_GATE_MODE=block`.
