@@ -99,13 +99,29 @@ class Engineer:
         self._run_git(repo_path, ["checkout", target_branch])
         self._run_git(repo_path, ["pull", "origin", target_branch])
 
-        # 3. Squash Merge (Dry Run)
+        # 3. Squash Merge (with auto-rebase on conflict)
         print(f"  Attempting squash merge of {branch_name}...")
         try:
             self._run_git(repo_path, ["merge", "--squash", branch_name])
         except subprocess.CalledProcessError:
             self._run_git(repo_path, ["merge", "--abort"])
-            raise RuntimeError("Merge conflicts detected")
+            print("  Merge conflict detected. Attempting auto-rebase...")
+
+            # Attempt auto-rebase before escalating
+            rebase_result = self._attempt_rebase(repo_path, branch_name, target_branch)
+            if rebase_result["success"]:
+                print("  Rebase succeeded. Retrying merge...")
+                try:
+                    self._run_git(repo_path, ["merge", "--squash", branch_name])
+                except subprocess.CalledProcessError:
+                    self._run_git(repo_path, ["merge", "--abort"])
+                    raise RuntimeError(
+                        "Merge conflicts persist after rebase.\n"
+                        f"Branch: {branch_name}\n"
+                        "Manual resolution required."
+                    )
+            else:
+                raise RuntimeError(rebase_result["error"])
 
         # 4. Run Tests
         if not (repo_path / "pyproject.toml").exists():
@@ -178,3 +194,77 @@ class Engineer:
         if res.returncode == 0:
             return int(res.stdout.decode().strip())
         return 0
+
+    def _attempt_rebase(self, repo_path, branch_name, target_branch):
+        """Attempt to rebase the polecat branch onto target before escalating merge conflicts.
+
+        Returns:
+            dict with keys:
+            - success: bool
+            - error: str (structured error message if failed)
+        """
+        try:
+            # Checkout the polecat branch
+            self._run_git(repo_path, ["checkout", branch_name])
+
+            # Attempt rebase onto target
+            self._run_git(repo_path, ["rebase", target_branch])
+
+            # Push the rebased branch (force required after rebase)
+            self._run_git(repo_path, ["push", "--force-with-lease", "origin", branch_name])
+
+            # Return to target branch for merge retry
+            self._run_git(repo_path, ["checkout", target_branch])
+
+            return {"success": True, "error": None}
+
+        except subprocess.CalledProcessError as e:
+            # Get conflicting files for structured error
+            conflicting_files = self._get_conflict_files(repo_path)
+
+            # Abort the failed rebase
+            self._run_git(repo_path, ["rebase", "--abort"], check=False)
+
+            # Return to target branch
+            self._run_git(repo_path, ["checkout", target_branch], check=False)
+
+            # Build structured error message
+            error_lines = [
+                "Auto-rebase failed. Manual resolution required.",
+                "",
+                f"**Branch**: `{branch_name}`",
+                f"**Target**: `{target_branch}`",
+                "",
+                "**Conflicting files**:",
+            ]
+            for f in conflicting_files:
+                error_lines.append(f"- `{f}`")
+
+            if e.stderr:
+                error_lines.extend([
+                    "",
+                    "**Rebase error**:",
+                    f"```\n{e.stderr.decode().strip()}\n```",
+                ])
+
+            error_lines.extend([
+                "",
+                "**Suggested resolution steps**:",
+                f"1. `cd {repo_path}`",
+                f"2. `git checkout {branch_name}`",
+                f"3. `git rebase {target_branch}`",
+                "4. Resolve conflicts in each file",
+                "5. `git add <resolved-files>`",
+                "6. `git rebase --continue`",
+                f"7. `git push --force-with-lease origin {branch_name}`",
+                "8. Re-run merge: `polecat merge <task-id>`",
+            ])
+
+            return {"success": False, "error": "\n".join(error_lines)}
+
+    def _get_conflict_files(self, repo_path):
+        """Get list of files with merge/rebase conflicts."""
+        res = self._run_git(repo_path, ["diff", "--name-only", "--diff-filter=U"], check=False)
+        if res.returncode == 0 and res.stdout:
+            return res.stdout.decode().strip().split("\n")
+        return ["(unable to determine conflicting files)"]
