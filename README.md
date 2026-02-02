@@ -365,6 +365,6 @@ The **framework agent** embodies the self-reflexive principle—it both executes
 
 ## Details
 
-- [[RULES]] for mapping of rules to enforcement measures
+- [[aops-core/framework/enforcement-map]] for mapping of rules to enforcement measures
 - [[WORKFLOWS]] all supported workflows
 - Framework [[VISION]].
