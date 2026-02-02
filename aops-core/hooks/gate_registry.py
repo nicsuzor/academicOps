@@ -1216,7 +1216,7 @@ def _build_task_block_message(gates: Dict[str, bool]) -> str:
     missing = []
     if not gates["task_bound"]:
         missing.append(
-            '(a) Claim a task: `mcp__plugin_aops-tools_task_manager__update_task(id="...", status="active")`'
+            '(a) Claim a task: `mcp__plugin_aops-core_task_manager__update_task(id="...", status="in_progress")`'
         )
     # Check for hydration (using hydrated_intent or hydrator_invoked equivalent)
     # We map "plan_mode_invoked" to "hydrator_invoked" in the template
@@ -1834,7 +1834,7 @@ def check_qa_enforcement_gate(ctx: GateContext) -> Optional[GateResult]:
     # Only applies to complete_task
     if ctx.tool_name not in (
         "complete_task",
-        "mcp__plugin_aops-tools_task_manager__complete_task",
+        "mcp__plugin_aops-core_task_manager__complete_task",
     ):
         return None
 
