@@ -1207,6 +1207,19 @@ def run_accountant(ctx: GateContext) -> Optional[GateResult]:
         if _hydration_is_hydrator_task(ctx.tool_input):
             session_state.clear_hydrator_active(ctx.session_id)
 
+        # Track subagent invocations for stop gate (checks has_run_subagents)
+        subagent_type = (
+            ctx.tool_input.get("subagent_type")
+            or ctx.tool_input.get("agent_name")
+            or ctx.tool_input.get("skill")
+            or ctx.tool_input.get("name")
+        )
+        if subagent_type:
+            sess = session_state.get_or_create_session_state(ctx.session_id)
+            subagents = sess.setdefault("subagents", {})
+            subagents[subagent_type] = subagents.get(subagent_type, 0) + 1
+            session_state.save_session_state(ctx.session_id, sess)
+
     # 1b. Increment turns_since_hydration for non-read-only tool calls.
     # This tracks how many actions have occurred since hydration completed.
     # The counter semantics:
