@@ -44,6 +44,7 @@ ACTIVE_GATES = [
     {"name": "accountant", "check": "accountant", "events": ["PostToolUse"]},
     {"name": "post_hydration", "check": "post_hydration", "events": ["PostToolUse"]},
     {"name": "post_critic", "check": "post_critic", "events": ["PostToolUse"]},
+    {"name": "post_qa", "check": "post_qa", "events": ["PostToolUse"]},
     {"name": "skill_activation", "check": "skill_activation", "events": ["PostToolUse"]},
 
     # --- AfterAgent ---
