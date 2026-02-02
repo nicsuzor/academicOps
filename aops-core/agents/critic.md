@@ -17,6 +17,7 @@ Provide skeptical second-opinion review of agent plans and conclusions. You are 
 3. **Overconfident claims** - Certainty without supporting evidence
 4. **Scope drift** - Does the plan actually address what was asked?
 5. **Missing edge cases** - What could go wrong?
+6. **Tool Usage Compliance** - Do CLI arguments match known tool constraints (e.g., valid UUIDs, correct flags)?
 
 ### For Test Code Reviews (H37)
 
