@@ -556,13 +556,83 @@ def build_hydration_instruction(
     return instruction
 
 
-def should_skip_hydration(prompt: str) -> bool:
+def is_followup_prompt(session_id: str, prompt: str) -> bool:
+    """Detect if this is a follow-up to existing session work.
+
+    Follow-ups are interactive continuations that don't need full hydration
+    ceremony (hydrator agent + critic). They inherit context from the active
+    session.
+
+    Returns True if ALL conditions met:
+    1. Session already has work context (turns_since_hydration > 0 OR task bound)
+    2. Prompt is short (< 30 words) - long prompts likely introduce new scope
+    3. Prompt contains continuation markers indicating same-context work
+
+    Rationale (aops-a63694ce):
+    - Full hydration adds ceremony for simple requests like "save to daily note"
+    - Follow-ups should inherit active task binding (no new task needed)
+    - Context injection still happens via MCP tools (memory, tasks) which bypass gates
+    """
+    from lib.session_state import load_session_state
+
+    # Check session state for existing work context
+    state = load_session_state(session_id)
+    if not state:
+        return False
+
+    # Check for existing work context - either hydrated or task-bound
+    # Use explicit key checks for fail-fast (P#8)
+    has_hydration_context = False
+    has_task_context = False
+
+    if "hydration" in state:
+        hydration = state["hydration"]
+        if "turns_since_hydration" in hydration:
+            turns_since = hydration["turns_since_hydration"]
+            if turns_since > 0:  # Has done work since hydration
+                has_hydration_context = True
+
+    if "state" in state:
+        session_state_data = state["state"]
+        if "current_task" in session_state_data:
+            if session_state_data["current_task"]:  # Non-empty task ID
+                has_task_context = True
+
+    if not has_hydration_context and not has_task_context:
+        return False  # No existing work - needs full hydration
+
+    # Short prompt check (< 30 words)
+    words = prompt.split()
+    if len(words) > 30:
+        return False  # Too long - likely new work scope
+
+    # Continuation markers indicating same-context work
+    continuation_markers = [
+        # Pronouns referring to prior context
+        "this", "that", "those", "these", "it",
+        # Additive markers
+        "also", "too", "as well", "while you're at it",
+        # Repetition markers
+        "same", "again", "another",
+        # Action verbs for quick tasks
+        "save", "add", "put", "update", "log", "note",
+        # Continuation phrases
+        "one more", "quick", "before you go",
+    ]
+    prompt_lower = prompt.lower()
+    has_continuation = any(marker in prompt_lower for marker in continuation_markers)
+
+    return has_continuation
+
+
+def should_skip_hydration(prompt: str, session_id: str | None = None) -> bool:
     """Check if prompt should skip hydration.
 
     Returns True for:
     - Agent/task completion notifications (<agent-notification>, <task-notification>)
     - Skill invocations (prompts starting with '/')
     - User ignore shortcut (prompts starting with '.')
+    - Follow-up prompts within active session work (requires session_id)
     """
     prompt_stripped = prompt.strip()
     # Agent/task completion notifications from background Task agents
@@ -575,6 +645,9 @@ def should_skip_hydration(prompt: str) -> bool:
         return True
     # User ignore shortcut - user explicitly wants no hydration
     if prompt_stripped.startswith("."):
+        return True
+    # Follow-up prompts within active session work
+    if session_id and is_followup_prompt(session_id, prompt_stripped):
         return True
     return False
 
@@ -614,8 +687,9 @@ def main():
         clear_reflection_output(session_id)
 
         # Check for skip patterns FIRST before any state changes
-        # Skip hydration for system messages, skill invocations, and user ignore shortcut
-        if should_skip_hydration(prompt):
+        # Skip hydration for system messages, skill invocations, user ignore shortcut,
+        # and follow-up prompts within active session work
+        if should_skip_hydration(prompt, session_id):
             # Write state with hydration_pending=False so gate doesn't block
             write_initial_hydrator_state(session_id, prompt, hydration_pending=False)
             # If '.' prefix, also set gates_bypassed for task_required_gate
