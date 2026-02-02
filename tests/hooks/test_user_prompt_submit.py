@@ -61,6 +61,11 @@ class TestSkipConditions:
         assert should_skip_hydration("/help") is True
         assert should_skip_hydration("/ test") is True
 
+    def test_skip_expanded_slash_command(self):
+        """Test that expanded slash commands (starting with # /) are skipped."""
+        assert should_skip_hydration("# /pull - Pull task") is True
+        assert should_skip_hydration("# /test - Test command") is True
+
     def test_skip_dot_prefix(self):
         """Test that prompts starting with . are skipped (user ignore shortcut)."""
         assert should_skip_hydration(".test") is True

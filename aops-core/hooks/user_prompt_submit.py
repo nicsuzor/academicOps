@@ -649,6 +649,9 @@ def should_skip_hydration(prompt: str, session_id: str | None = None) -> bool:
     # /pull implies picking up a task, which requires context to understand
     if prompt_stripped.startswith("/"):
         return True
+    # Slash command expansions (e.g. "# /pull ...")
+    if prompt_stripped.startswith("# /"):
+        return True
     # User ignore shortcut - user explicitly wants no hydration
     if prompt_stripped.startswith("."):
         return True
