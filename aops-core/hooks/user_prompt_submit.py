@@ -631,6 +631,7 @@ def should_skip_hydration(prompt: str, session_id: str | None = None) -> bool:
     Returns True for:
     - Agent/task completion notifications (<agent-notification>, <task-notification>)
     - Skill invocations (prompts starting with '/')
+    - Expanded slash commands (containing <command-name>/ tag)
     - User ignore shortcut (prompts starting with '.')
     - Follow-up prompts within active session work (requires session_id)
     """
@@ -640,7 +641,12 @@ def should_skip_hydration(prompt: str, session_id: str | None = None) -> bool:
         return True
     if prompt_stripped.startswith("<task-notification>"):
         return True
-    # Skill invocations - generally skip hydration
+    # Expanded slash commands - the skill expansion IS the hydration
+    # These contain <command-name>/xxx</command-name> tags from Claude Code
+    if "<command-name>/" in prompt:
+        return True
+    # Skill invocations - generally skip hydration, UNLESS it's a pull command
+    # /pull implies picking up a task, which requires context to understand
     if prompt_stripped.startswith("/"):
         return True
     # User ignore shortcut - user explicitly wants no hydration
