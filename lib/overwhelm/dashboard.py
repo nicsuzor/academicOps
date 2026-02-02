@@ -286,6 +286,52 @@ def get_waiting_tasks() -> list[dict]:
     return load_bd_issues(priority_max=4, status="blocked", limit=50)
 
 
+def get_recently_completed(project: str | None = None, hours: int = 24) -> list[dict]:
+    """Get tasks completed within the specified time window.
+
+    Args:
+        project: Filter by project slug, or None for all projects.
+        hours: Time window in hours (default 24).
+
+    Returns:
+        List of completed task dicts with 'modified' timestamp, sorted newest first.
+    """
+    from datetime import timedelta
+
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    all_tasks = load_tasks_from_index()
+
+    completed = []
+    for t in all_tasks:
+        if t.get("status") not in ("done", "closed"):
+            continue
+        if project and t.get("project") != project:
+            continue
+
+        # Parse modified timestamp
+        modified_str = t.get("modified")
+        if not modified_str:
+            continue
+
+        try:
+            # Handle ISO format with timezone
+            if modified_str.endswith("Z"):
+                modified_str = modified_str[:-1] + "+00:00"
+            modified = datetime.fromisoformat(modified_str)
+            if modified.tzinfo is None:
+                modified = modified.replace(tzinfo=timezone.utc)
+
+            if modified >= cutoff:
+                t["_modified_dt"] = modified
+                completed.append(t)
+        except (ValueError, TypeError):
+            continue
+
+    # Sort by modified time, newest first
+    completed.sort(key=lambda x: x["_modified_dt"], reverse=True)
+    return completed
+
+
 def get_priority_tasks() -> list[dict]:
     """Get P0/P1 actionable tasks from bd issues.
 
@@ -2158,6 +2204,27 @@ st.markdown(
         margin-bottom: 3px;
         line-height: 1.3;
     }
+    .completed-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 8px;
+        font-size: 0.85em;
+        margin-bottom: 3px;
+        line-height: 1.3;
+    }
+    .completed-title {
+        color: #10b981;
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .completed-time {
+        color: #64748b;
+        font-size: 0.8em;
+        white-space: nowrap;
+    }
 
 </style>
 """,
@@ -2932,6 +2999,17 @@ def render_graph_section():
 # Navigation
 page = st.sidebar.radio("View Mode", ["Dashboard", "Manage Tasks"], index=0)
 
+# Time range filter for "Completed Today" section
+completed_time_range = st.sidebar.selectbox(
+    "Completed Time Range",
+    options=["4h", "24h", "7d"],
+    index=1,  # Default to 24h
+    help="Filter completed tasks by time range",
+)
+# Convert to hours
+COMPLETED_HOURS_MAP = {"4h": 4, "24h": 24, "7d": 168}
+completed_hours = COMPLETED_HOURS_MAP.get(completed_time_range, 24)
+
 if page == "Manage Tasks":
     render_task_manager()
     st.stop()
@@ -3309,16 +3387,22 @@ try:
                     f"<div class='epic-count'>{done_count}/{total_count}</div></div>"
                 )
 
-        # 2. Recently Closed Tasks
-        closed_tasks = [t for t in p_tasks if t.get("status") in ("done", "closed")]
-        if closed_tasks:
-            card_parts.append("<div class='p-section-title'>✅ RECENTLY CLOSED</div>")
-            for t in closed_tasks[:3]:
+        # 2. Completed Today (time-filtered)
+        completed_tasks = get_recently_completed(project=proj, hours=completed_hours)
+        if completed_tasks:
+            time_label = completed_time_range.upper()
+            card_parts.append(f"<div class='p-section-title'>✅ COMPLETED ({time_label})</div>")
+            for t in completed_tasks[:3]:
                 title = t.get("title", "")
-                card_parts.append(f"<div class='acc-row'>✓ {esc(title)}</div>")
-            if len(closed_tasks) > 3:
+                modified_dt = t["_modified_dt"]
+                time_ago = _format_time_ago(modified_dt)
                 card_parts.append(
-                    f"<div class='more-row'>+ {len(closed_tasks) - 3} more closed</div>"
+                    f"<div class='completed-row'><span class='completed-title'>✓ {esc(title)}</span>"
+                    f"<span class='completed-time'>{time_ago}</span></div>"
+                )
+            if len(completed_tasks) > 3:
+                card_parts.append(
+                    f"<div class='more-row'>+ {len(completed_tasks) - 3} more completed</div>"
                 )
 
         # 3. Priority Tasks (Backlog)
