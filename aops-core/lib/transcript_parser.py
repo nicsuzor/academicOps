@@ -445,21 +445,31 @@ def reflection_to_insights(
     if usage_stats and usage_stats.has_data():
         token_metrics = usage_stats.to_token_metrics(session_duration_minutes)
 
+    # Build framework_reflections array with single reflection entry
+    # This matches the schema in specs/session-insights-prompt.md
+    framework_reflection_entry = {
+        "prompts": reflection.get("prompts"),
+        "guidance_received": reflection.get("guidance_received"),
+        "followed": reflection.get("followed"),
+        "outcome": outcome,
+        "accomplishments": reflection.get("accomplishments", []),
+        "friction_points": reflection.get("friction_points", []),
+        "root_cause": reflection.get("root_cause"),
+        "proposed_changes": reflection.get("proposed_changes", []),
+        "next_step": reflection.get("next_step"),
+    }
+
     return {
         "session_id": session_id,
         "date": date_iso,
         "project": project,
         "summary": summary,
-        "prompts": reflection.get("prompts"),  # verbatim user prompts (separate field)
         "outcome": outcome,
         "accomplishments": reflection.get("accomplishments", []),
         "friction_points": reflection.get("friction_points", []),
         "proposed_changes": reflection.get("proposed_changes", []),
-        # Additional fields from reflection
-        "guidance_received": reflection.get("guidance_received"),
-        "followed": reflection.get("followed"),
-        "root_cause": reflection.get("root_cause"),
-        "next_step": reflection.get("next_step"),
+        # Framework reflections as array (schema-compliant)
+        "framework_reflections": [framework_reflection_entry],
         # Token usage metrics (optional)
         "token_metrics": token_metrics,
     }
