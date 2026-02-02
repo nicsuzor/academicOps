@@ -580,7 +580,13 @@ class PolecatManager:
             return True, f"Mirror fast-forwarded to {local_head[:8]}"
 
         except subprocess.CalledProcessError as e:
-            return False, f"git error: {e}"
+            msg = f"git error: {e}"
+            if e.stderr:
+                try:
+                    msg += f" (stderr: {e.stderr.decode().strip()})"
+                except Exception:
+                    pass
+            return False, msg
         except Exception as e:
             return False, str(e)
 

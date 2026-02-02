@@ -607,12 +607,18 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
     if gemini:
         # Gemini CLI
         cmd = ["gemini"]
+        
+        # Generate deterministic UUID from task ID for persistent sessions
+        import uuid
+        session_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, task.id))
+        cmd.extend(["--session-id", session_uuid])
+
         if interactive:
             # -i starts interactive mode with initial prompt
-            cmd.extend(["--session-id", task.id, "-i", prompt])
+            cmd.extend(["-i", prompt])
         else:
             # Headless mode with auto-approve
-            cmd.extend(["--session-id", task.id, "--approval-mode", "yolo", "-p", prompt])
+            cmd.extend(["--approval-mode", "yolo", "-p", prompt])
     else:
         # Claude CLI
         cmd = ["claude"]
