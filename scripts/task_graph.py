@@ -4,12 +4,18 @@
 Reads JSON from fast-indexer and applies color coding based on
 status, priority, and type. Generates SVG using Graphviz sfdp.
 
+By default, generates multiple SVG variants:
+  - {output}.svg      : Smart-filtered (active work focus)
+  - {output}-full.svg : All tasks including completed
+  - {output}-all.svg  : Comprehensive view with orphan nodes
+
 Usage:
-    python task_graph.py INPUT.json [-o OUTPUT]
+    python task_graph.py INPUT.json [-o OUTPUT] [--single]
 
 Examples:
     fast-indexer ./data -o graph -f json -t task,project,goal
-    python task_graph.py graph.json -o tasks
+    python task_graph.py graph.json -o task-map          # Generates 3 SVGs
+    python task_graph.py graph.json -o task-map --single  # Single output only
 """
 
 import argparse
@@ -349,6 +355,52 @@ def generate_dot(nodes: list[dict], edges: list[dict], include_orphans: bool = F
     return "\n".join(lines)
 
 
+def generate_svg(dot_content: str, output_base: str, layout: str, keep_dot: bool = False) -> bool:
+    """Generate SVG from DOT content using Graphviz.
+
+    Args:
+        dot_content: The DOT format graph content
+        output_base: Base path for output (without extension)
+        layout: Graphviz layout engine to use
+        keep_dot: If True, keep the .dot file; otherwise delete after SVG generation
+
+    Returns:
+        True if SVG was successfully generated
+    """
+    dot_path = f"{output_base}.dot"
+    svg_path = f"{output_base}.svg"
+
+    Path(dot_path).write_text(dot_content)
+
+    layout_opts = {
+        "sfdp": ["-Goverlap=prism", "-Gsplines=true"],
+        "neato": ["-Goverlap=prism", "-Gsplines=true"],
+        "fdp": ["-Goverlap=prism", "-Gsplines=true"],
+        "dot": [],
+        "circo": [],
+        "twopi": [],
+    }
+
+    try:
+        cmd = [layout, "-Tsvg"] + layout_opts.get(layout, []) + [dot_path, "-o", svg_path]
+        subprocess.run(cmd, check=True, capture_output=True)
+        print(f"  Written {svg_path}")
+        success = True
+    except FileNotFoundError:
+        print(f"  Warning: {layout} not found, skipping SVG generation")
+        success = False
+    except subprocess.CalledProcessError as e:
+        print(f"  Warning: {layout} failed: {e.stderr.decode()}")
+        success = False
+
+    if not keep_dot and Path(dot_path).exists():
+        Path(dot_path).unlink()
+    elif keep_dot:
+        print(f"  Written {dot_path}")
+
+    return success
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate styled task graph from fast-indexer JSON")
     parser.add_argument("input", help="Input JSON file from fast-indexer")
@@ -358,6 +410,8 @@ def main():
                         help="Disable smart filtering (show all tasks including completed)")
     parser.add_argument("--layout", default="sfdp", choices=["dot", "neato", "sfdp", "fdp", "circo", "twopi"],
                         help="Graphviz layout engine (default: sfdp)")
+    parser.add_argument("--single", action="store_true",
+                        help="Generate only single output (default generates multiple variants)")
     args = parser.parse_args()
 
     input_path = Path(args.input)
@@ -369,63 +423,67 @@ def main():
     with open(input_path) as f:
         data = json.load(f)
 
-    nodes = data.get("nodes", [])
-    edges = data.get("edges", [])
+    all_nodes = data["nodes"]
+    all_edges = data["edges"]
 
-    print(f"Loaded {len(nodes)} nodes, {len(edges)} edges from {input_path}")
+    print(f"Loaded {len(all_nodes)} nodes, {len(all_edges)} edges from {input_path}")
 
-    # Smart filter by default: remove completed leaves, keep structural parents
-    structural_ids = set()
-    if not args.no_filter:
-        original_count = len(nodes)
-        nodes, structural_ids = filter_completed_smart(nodes, edges)
-        excluded_leaves = original_count - len(nodes)
-        if excluded_leaves > 0 or structural_ids:
-            print(f"  Filtered: {excluded_leaves} completed leaves removed, {len(structural_ids)} structural kept")
+    # Define variants to generate
+    # Each variant: (suffix, filter_completed, include_orphans, description)
+    if args.single:
+        # Single mode: respect --no-filter and --include-orphans flags
+        variants = [
+            ("", not args.no_filter, args.include_orphans, "single output"),
+        ]
+    else:
+        # Multi mode (default): generate all variants
+        variants = [
+            ("", True, False, "smart-filtered (active work)"),
+            ("-full", False, False, "all tasks including completed"),
+            ("-all", False, True, "comprehensive (all + orphans)"),
+        ]
 
-    # Count by type and status
-    by_type = {}
-    by_status = {}
-    for n in nodes:
-        t = n.get("node_type", "unknown")
-        s = n.get("status", "unknown")
-        by_type[t] = by_type.get(t, 0) + 1
-        by_status[s] = by_status.get(s, 0) + 1
-    print(f"  Types: {by_type}")
-    print(f"  Status: {by_status}")
+    for suffix, do_filter, include_orphans, description in variants:
+        output_base = f"{args.output}{suffix}"
+        print(f"\nGenerating {output_base}.svg: {description}")
 
-    # Build stats dict for legend
-    stats = {
-        "total_nodes": len(nodes),
-        "total_edges": len(edges),
-        "by_type": by_type,
-        "by_status": by_status,
-    }
+        # Start with fresh copy of all nodes
+        nodes = list(all_nodes)
+        edges = list(all_edges)
 
-    # Generate DOT
-    dot_content = generate_dot(nodes, edges, args.include_orphans, structural_ids, stats)
-    dot_path = f"{args.output}.dot"
-    Path(dot_path).write_text(dot_content)
-    print(f"  Written {dot_path}")
+        # Smart filter if requested
+        structural_ids = set()
+        if do_filter:
+            original_count = len(nodes)
+            nodes, structural_ids = filter_completed_smart(nodes, edges)
+            excluded_leaves = original_count - len(nodes)
+            if excluded_leaves > 0 or structural_ids:
+                print(f"  Filtered: {excluded_leaves} completed leaves removed, {len(structural_ids)} structural kept")
 
-    # Generate SVG
-    svg_path = f"{args.output}.svg"
-    layout_opts = {
-        "sfdp": ["-Goverlap=prism", "-Gsplines=true"],
-        "neato": ["-Goverlap=prism", "-Gsplines=true"],
-        "fdp": ["-Goverlap=prism", "-Gsplines=true"],
-        "dot": [],
-        "circo": [],
-        "twopi": [],
-    }
-    try:
-        cmd = [args.layout, "-Tsvg"] + layout_opts.get(args.layout, []) + [dot_path, "-o", svg_path]
-        subprocess.run(cmd, check=True, capture_output=True)
-        print(f"  Written {svg_path}")
-    except FileNotFoundError:
-        print(f"  Warning: {args.layout} not found, skipping SVG generation")
-    except subprocess.CalledProcessError as e:
-        print(f"  Warning: {args.layout} failed: {e.stderr.decode()}")
+        # Count by type and status for this variant
+        # Note: Some linked nodes (non-tasks) may lack status/type fields
+        by_type: dict[str, int] = {}
+        by_status: dict[str, int] = {}
+        for n in nodes:
+            t = n.get("node_type") or "unknown"
+            s = n.get("status") or "unknown"
+            by_type[t] = by_type.get(t, 0) + 1
+            by_status[s] = by_status.get(s, 0) + 1
+        print(f"  Types: {by_type}")
+        print(f"  Status: {by_status}")
+
+        # Build stats dict for legend
+        stats = {
+            "total_nodes": len(nodes),
+            "total_edges": len(edges),
+            "by_type": by_type,
+            "by_status": by_status,
+        }
+
+        # Generate DOT and SVG
+        dot_content = generate_dot(nodes, edges, include_orphans, structural_ids, stats)
+        # Keep .dot file only for primary output (no suffix)
+        generate_svg(dot_content, output_base, args.layout, keep_dot=(suffix == ""))
 
     return 0
 
