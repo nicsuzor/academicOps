@@ -1840,7 +1840,7 @@ def run_task_binding(ctx: GateContext) -> Optional[GateResult]:
         return None
 
     try:
-        from hooks.task_binding import get_task_id_from_result
+        from lib.hook_utils import get_task_id_from_result
         from lib.event_detector import detect_tool_state_changes, StateChange
     except ImportError as e:
         print(f"WARNING: task_binding import failed: {e}", file=sys.stderr)
