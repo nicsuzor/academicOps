@@ -287,9 +287,14 @@ class PolecatManager:
                 if repo_path.exists():
                     # Safety check
                     if not force and self._branch_exists(repo_path, branch_name):
-                        if not self._is_branch_merged(repo_path, branch_name):
+                        default_branch = self.projects.get(project, {}).get(
+                            "default_branch", "main"
+                        )
+                        if not self._is_branch_merged(
+                            repo_path, branch_name, target=default_branch
+                        ):
                             raise RuntimeError(
-                                f"Branch {branch_name} has unmerged commits. "
+                                f"Branch {branch_name} has unmerged commits into {default_branch}. "
                                 f"Use --force to delete anyway."
                             )
 
@@ -930,18 +935,23 @@ class PolecatManager:
         task = self.storage.get_task(task_id)
         if task:
             repo_path = self.get_repo_path(task)
+            project_slug = task.project or "aops"
         else:
             # Fallback: assume academicOps if task deleted
             repo_path = REPO_ROOT
+            project_slug = "aops"
 
         worktree_path = self.polecats_dir / task_id
         branch_name = f"polecat/{task_id}"
+        default_branch = self.projects.get(project_slug, {}).get(
+            "default_branch", "main"
+        )
 
         # Safety check: verify branch is merged before deletion
         if not force and self._branch_exists(repo_path, branch_name):
-            if not self._is_branch_merged(repo_path, branch_name):
+            if not self._is_branch_merged(repo_path, branch_name, target=default_branch):
                 raise RuntimeError(
-                    f"Branch {branch_name} has unmerged commits. "
+                    f"Branch {branch_name} has unmerged commits into {default_branch}. "
                     f"Use --force to delete anyway, or merge first with 'polecat merge'."
                 )
 
