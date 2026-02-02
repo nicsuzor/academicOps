@@ -180,14 +180,14 @@ class TestGeminiHooksEventNames:
 
 
 class TestGeminiExtensionJson:
-    """Tests that gemini-extension.json does NOT contain hooks."""
+    """Tests that gemini-extension.json contains hooks (injected by build)."""
 
-    def test_no_hooks_in_extension_manifest(self, gemini_extension_json: Path) -> None:
-        """Verify gemini-extension.json does NOT have a 'hooks' key.
+    def test_hooks_in_extension_manifest(self, gemini_extension_json: Path) -> None:
+        """Verify gemini-extension.json HAS a 'hooks' key.
 
-        Gemini CLI reads hooks from hooks/hooks.json, not the extension manifest.
-        Having hooks in gemini-extension.json is a common mistake that causes
-        'Hook registry initialized with 0 hook entries'.
+        The build script explicitly injects hooks into the manifest to ensure
+        reliable loading in the Gemini CLI. This regression test ensures
+        that injection is happening.
         """
         if not gemini_extension_json.exists():
             pytest.skip("gemini-extension.json doesn't exist - run build.py first")
@@ -195,8 +195,7 @@ class TestGeminiExtensionJson:
         with open(gemini_extension_json) as f:
             data = json.load(f)
 
-        assert "hooks" not in data, (
-            "gemini-extension.json must NOT have a 'hooks' key. "
-            "Gemini CLI reads hooks from hooks/hooks.json only. "
-            "Remove 'hooks' from the extension manifest."
+        assert "hooks" in data, (
+            "gemini-extension.json MUST have a 'hooks' key. "
+            "Build script should inject hooks/hooks.json content into the manifest."
         )

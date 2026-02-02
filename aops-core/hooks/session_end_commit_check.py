@@ -670,7 +670,7 @@ def check_uncommitted_work(
     # Don't block on git -- just warn.
     # Only trigger blocking if: (has reflection OR has test success) AND has uncommitted changes
     if (has_reflection or has_tests) and git_status.get("has_changes"):
-        result["should_block"] = False
+        result["should_block"] = True
 
         if git_status.get("staged_changes"):
             result["message"] = "Staged changes detected. Attempting auto-commit..."
