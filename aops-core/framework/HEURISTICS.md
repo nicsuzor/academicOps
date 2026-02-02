@@ -415,6 +415,19 @@ description: Working hypotheses validated by evidence.
 
 ---
 
+## Preserve Pre-Existing Content (P#87)
+
+**Statement**: Content you didn't write in this session is presumptively intentional. Append new content rather than replacing. Never delete existing content without explicit instruction. Never "correct" content you assume is wrong.
+
+**Corollaries**:
+- "Looks wrong" is not justification for deletion
+- When instructed to update a section, preserve unrelated sections intact
+- If content genuinely appears erroneous, flag it for user review rather than fixing
+
+**Derivation**: You cannot know who wrote content. Multi-agent collaboration, past-self context, and deliberate user choices all look identical. Unilateral "cleanup" destroys information the agent cannot reconstruct. Git recovery exists but imposes friction and context loss.
+
+---
+
 ## Background Agent Notifications Are Unreliable (P#86)
 
 **Statement**: Claude Code background task completion notifications may not arrive or may be delayed. Never block on TaskOutput waiting for notifications. Use polling or fire-and-forget patterns.

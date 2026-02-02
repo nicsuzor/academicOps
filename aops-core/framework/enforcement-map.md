@@ -106,6 +106,7 @@ tags: [framework, enforcement, moc]
 | [[decomposed-tasks-complete]]           | Decomposed Tasks Are Complete          | HEURISTICS.md                                         | SessionStart              |       |
 | [[task-sequencing-on-insert]]           | Task Sequencing on Insert              | HEURISTICS.md                                         | SessionStart              |       |
 | [[methodology-belongs-to-researcher]]   | Methodology Belongs to Researcher      | HEURISTICS.md, prompt-hydrator guidance               | SessionStart, UserPromptSubmit |       |
+| [[preserve-pre-existing-content]]       | Preserve Pre-Existing Content          | HEURISTICS.md                                         | SessionStart              |       |
 
 ## Enforcement Level Summary
 
