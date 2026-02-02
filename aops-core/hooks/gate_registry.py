@@ -1208,11 +1208,13 @@ def check_stop_gate(ctx: GateContext) -> Optional[GateResult]:
     # but no subagents have been recorded yet.
     hydration_data = state.get("hydration", {})
     subagents = state.get("subagents", {})
+    current_workflow = state.get("state", {}).get("current_workflow")
 
-    is_hydrated = hydration_data.get("hydrated_intent") is not None
+    is_hydrated = hydration_data.get("hydrated_intent") is not None or hydration_data.get("original_prompt") is not None
     has_run_subagents = len(subagents) > 0
+    is_streamlined = current_workflow in ("interactive-followup", "simple-question")
 
-    if is_hydrated and not has_run_subagents:
+    if is_hydrated and not has_run_subagents and not is_streamlined:
         # User explicitly asked for turns_since_hydration == 0 logic
         # This implies the agent is trying to stop immediately after the hydrator finished.
         msg = load_template(STOP_GATE_CRITIC_TEMPLATE)
@@ -1240,8 +1242,10 @@ def check_hydration_recency_gate(ctx: GateContext) -> Optional[GateResult]:
     hydration_state = state.get("hydration", {})
 
     turns_since = hydration_state.get("turns_since_hydration")
+    current_workflow = state.get("state", {}).get("current_workflow")
+    is_streamlined = current_workflow in ("interactive-followup", "simple-question")
 
-    if turns_since == 0:
+    if turns_since == 0 and not is_streamlined:
         return GateResult(
             verdict=GateVerdict.DENY,
             context_injection="You just completed hydration. Please execute the plan before ending the session.",
@@ -1335,6 +1339,25 @@ def check_agent_response_listener(ctx: GateContext) -> Optional[GateResult]:
         session_state.clear_hydration_pending(ctx.session_id)
         # Reset turns counter since hydration just happened
         session_state.update_hydration_metrics(ctx.session_id, turns_since_hydration=0)
+
+        # Parse workflow ID
+        workflow_match = re.search(r"\*\*Workflow\*\*:\s*\[\[workflows/([^\]]+)\]\]", response_text)
+        workflow_id = workflow_match.group(1) if workflow_match else None
+        
+        if workflow_id:
+            state = session_state.get_or_create_session_state(ctx.session_id)
+            state["state"]["current_workflow"] = workflow_id
+            session_state.save_session_state(ctx.session_id, state)
+
+        # Detect streamlined workflows that skip critic
+        is_streamlined = workflow_id in ("interactive-followup", "simple-question")
+
+        if is_streamlined:
+            return GateResult(
+                verdict=GateVerdict.ALLOW,
+                system_message=f"[Gate] Hydration complete (workflow: {workflow_id}). Streamlined mode enabled.",
+                metadata={"source": "post_hydration_trigger", "streamlined": True, "workflow": workflow_id},
+            )
 
         # Inject instruction to invoke critic
         return GateResult(

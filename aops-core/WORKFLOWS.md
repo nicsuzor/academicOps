@@ -40,6 +40,8 @@ User request
     │
     ├─ Simple question only? ──────────────────> [[simple-question]]
     │
+    ├─ Continuation of session work? ──────────> [[interactive-followup]]
+    │
     ├─ Goal-level / multi-month work? ─────────> [[decompose]]
     │   (uncertain path, need to figure out steps)
     │       └─ Task doesn't map to any skill? ─> [[skill-pilot]]
@@ -100,6 +102,7 @@ User request
 | [[triage-email]] | Email classification | - |
 | [[email-reply]] | Drafting replies | task-tracking |
 | [[interactive-triage]] | Backlog grooming | - |
+| [[interactive-followup]] | Simple session continuations | base-verification |
 | [[peer-review]] | Grant/fellowship reviews | task-tracking |
 
 ### Information & Routing
