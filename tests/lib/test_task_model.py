@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from datetime import datetime, timezone
-from aops_core.lib.task_model import Task, TaskType
+from task_model import Task, TaskType
 
 
 def test_task_planned_field_serialization_deserialization():
