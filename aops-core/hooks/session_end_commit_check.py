@@ -685,15 +685,10 @@ def main():
             current_task = get_current_task(session_id)
             if current_task:
                 output_data = {
-                    "verdict": "deny",  # Deny the stop -> Block session end
-                    "system_message": (
-                        f"Active task bound to session: {current_task}. "
-                        "Complete the task or use AskUserQuestion to request permission to end without completing."
-                    ),
+                    "verdict": "allow",  # Warn only, don't block
+                    "system_message": f"⚠️ Active task: {current_task}. If quitting, invoke /handover!",
                 }
-                logger.info(f"Session end blocked: active task {current_task}")
-                print(json.dumps(output_data))
-                sys.exit(0)
+                logger.info(f"Session end warning: active task {current_task}")
         except Exception as e:
             logger.warning(f"Task binding check failed: {type(e).__name__}: {e}")
 
@@ -702,18 +697,12 @@ def main():
             check_result = check_uncommitted_work(session_id, transcript_path)
 
             if check_result.should_block:
-                # Block the session and require commit
-                # Note: Stop hooks can't send messages to agent (hookSpecificOutput
-                # not supported for Stop event). Keep reason concise to avoid spam.
+                # Warn only - don't block session end
                 output_data = {
-                    "verdict": "deny",  # Deny the stop -> Block session end
-                    "system_message": check_result.message,
+                    "verdict": "allow",  # Warn only, don't block
+                    "system_message": "⚠️ Uncommitted work. If quitting, invoke /handover!",
                 }
-                logger.info(f"Session end blocked: {check_result.message[:80]}...")
-                print(json.dumps(output_data))
-                sys.exit(
-                    0
-                )  # Exit 0 so JSON is processed; decision:block does the blocking
+                logger.info(f"Session end warning: uncommitted work detected")
             elif check_result.reminder_needed:
                 # Allow session to proceed, but include reminder message
                 output_data = {
