@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from hooks.gate_registry import (
     _is_safe_temp_path,
     _is_destructive_bash,
+    _is_hydration_safe_bash,
     _should_require_task,
     _is_handover_skill_invocation,
     SAFE_TEMP_PREFIXES,
@@ -204,3 +205,87 @@ class TestMutatingToolsSet:
 
     def test_glob_not_in_mutating_tools(self):
         assert "Glob" not in MUTATING_TOOLS
+
+
+class TestIsHydrationSafeBash:
+    """Tests for _is_hydration_safe_bash helper.
+
+    This function determines which Bash commands can bypass the hydration gate.
+    It includes both git operations and read-only file operations (aops-2bbce5b0).
+    """
+
+    # Git operations (original functionality)
+    def test_git_status_is_safe(self):
+        assert _is_hydration_safe_bash("git status") is True
+
+    def test_git_diff_is_safe(self):
+        assert _is_hydration_safe_bash("git diff HEAD") is True
+
+    def test_git_log_is_safe(self):
+        assert _is_hydration_safe_bash("git log --oneline") is True
+
+    def test_git_add_is_safe(self):
+        assert _is_hydration_safe_bash("git add file.py") is True
+
+    def test_git_commit_is_safe(self):
+        assert _is_hydration_safe_bash("git commit -m 'message'") is True
+
+    def test_git_push_is_safe(self):
+        assert _is_hydration_safe_bash("git push origin main") is True
+
+    def test_git_push_force_is_not_safe(self):
+        assert _is_hydration_safe_bash("git push --force") is False
+
+    # Read-only file operations (aops-2bbce5b0)
+    def test_cat_is_safe(self):
+        assert _is_hydration_safe_bash("cat file.txt") is True
+        assert _is_hydration_safe_bash("cat /home/user/.claude/projects/foo/tool-results/bar.txt") is True
+
+    def test_cat_with_jq_pipe_is_safe(self):
+        """The specific use case from the task - reading tool results with jq."""
+        cmd = "cat /home/user/.claude/projects/foo/tool-results/result.txt | jq '.tasks[]'"
+        assert _is_hydration_safe_bash(cmd) is True
+
+    def test_jq_is_safe(self):
+        assert _is_hydration_safe_bash("jq '.key' file.json") is True
+
+    def test_head_is_safe(self):
+        assert _is_hydration_safe_bash("head -n 10 file.txt") is True
+
+    def test_tail_is_safe(self):
+        assert _is_hydration_safe_bash("tail -f log.txt") is True
+
+    def test_less_is_safe(self):
+        assert _is_hydration_safe_bash("less file.txt") is True
+
+    def test_grep_is_safe(self):
+        assert _is_hydration_safe_bash("grep pattern file.txt") is True
+
+    def test_find_is_safe(self):
+        assert _is_hydration_safe_bash("find . -name '*.py'") is True
+
+    def test_ls_is_safe(self):
+        assert _is_hydration_safe_bash("ls -la") is True
+
+    def test_wc_is_safe(self):
+        assert _is_hydration_safe_bash("wc -l file.txt") is True
+
+    # Redirect makes commands unsafe
+    def test_cat_with_redirect_is_not_safe(self):
+        assert _is_hydration_safe_bash("cat file.txt > output.txt") is False
+
+    def test_echo_with_redirect_is_not_safe(self):
+        assert _is_hydration_safe_bash("echo hello > file.txt") is False
+
+    def test_cat_with_append_is_not_safe(self):
+        assert _is_hydration_safe_bash("cat file.txt >> output.txt") is False
+
+    # Destructive commands should not be safe
+    def test_rm_is_not_safe(self):
+        assert _is_hydration_safe_bash("rm file.txt") is False
+
+    def test_mv_is_not_safe(self):
+        assert _is_hydration_safe_bash("mv old.txt new.txt") is False
+
+    def test_mkdir_is_not_safe(self):
+        assert _is_hydration_safe_bash("mkdir new_dir") is False
