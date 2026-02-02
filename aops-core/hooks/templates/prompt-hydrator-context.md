@@ -194,6 +194,7 @@ These scripts exist but aren't user-invocable skills. Provide exact invocation w
 ## The AcademicOps Framework (AOPS)
 <!-- Nic: we should clarify here the distinction between working on the AOPS framework and USING the AOPS framework when working on another project. -->
 - **Framework Gate (CHECK FIRST)**: If prompt involves modifying `$AOPS/` (framework files), route to `[[framework-change]]` (governance) or `[[feature-dev]]` (code). NEVER route framework work to `[[simple-question]]`. Include Framework Change Context in output.
+- **Internal Framework Development**: When work is ON the framework (not just using it) - modifying hooks, skills, workflows, agents, session logs, or debugging/fixing any of those - include `Skill(skill="framework")` in the execution plan. The framework skill has specialized workflows (e.g., `02-debug-framework-issue`) for this work. Distinguish: "using the framework to solve a user problem" vs "developing/debugging the framework itself".
 
 ## Key Rules
 <!-- Nic: Rules are duplicated -- we should just have them in one place. We should also separate out the rules for working on AOPS from the universal rules. -->
