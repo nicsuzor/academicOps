@@ -609,10 +609,10 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
         cmd = ["gemini"]
         if interactive:
             # -i starts interactive mode with initial prompt
-            cmd.extend(["-i", prompt])
+            cmd.extend(["--session-id", task.id, "-i", prompt])
         else:
             # Headless mode with auto-approve
-            cmd.extend(["--approval-mode", "yolo", "-p", prompt])
+            cmd.extend(["--session-id", task.id, "--approval-mode", "yolo", "-p", prompt])
     else:
         # Claude CLI
         cmd = ["claude"]
@@ -622,6 +622,8 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
         plugin_dir_tools = aops_root / "aops-tools"
         cmd.extend(
             [
+                "--session-id",
+                task.id,
                 "--dangerously-skip-permissions",
                 "--permission-mode",
                 "plan",
