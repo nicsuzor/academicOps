@@ -298,5 +298,6 @@ Legacy NLP (keyword matching, regex heuristics, fuzzy string matching) is forbid
 - Don't try to guess user intent with regex
 - Don't filter documentation based on keyword matches
 - Provide the Agent with the *index of choices* and let the Agent decide
+- Acceptance criteria for LLM-evaluated tests must be semantic ("QA verifies X"), not pattern-based ("output contains Y")
 
 **Derivation**: LLMs understand semantics; regex does not. Hardcoded NLP heuristics are brittle and require constant maintenance. Agentic decision-making scales better.

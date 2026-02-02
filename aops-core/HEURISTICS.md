@@ -332,7 +332,7 @@ description: Working hypotheses validated by evidence.
 
 ---
 
-## Match Planning Abstraction (P#82)
+## Match Planning Abstraction (P#90)
 
 **Statement**: When user is deconstructing/planning, match their level of abstraction. Don't fill in blanks until they signal readiness for specifics.
 
@@ -416,6 +416,7 @@ description: Working hypotheses validated by evidence.
 - Include user-centric litmus tests: "Can user answer [specific question]?" not just "Does code run?"
 - When unclear about user value, ASK rather than assume and build
 - Validation checks user value, not just technical correctness
+- Before completion, QA must verify deliverables against ORIGINAL user prompt, not derived acceptance criteria
 
 **Evidence**: Session 2026-02-03 - agent built "499 agents working" dashboard feature showing `unknown: No specific task` for every entry. Feature passed planning and technical review but provided zero value to user. The spec described WHAT to display without WHY users need it.
 
