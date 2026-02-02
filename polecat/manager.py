@@ -423,9 +423,10 @@ class PolecatManager:
             return False
 
     def check_mirror_freshness(self, project: str) -> tuple[bool, str]:
-        """Checks if mirror is up-to-date with origin.
+        """Checks if mirror is up-to-date with local repo, attempting fast-forward if stale.
 
         Compares the mirror's main branch HEAD to the local repo's main branch.
+        If stale, attempts to fast-forward the mirror before returning.
 
         Args:
             project: Project slug
@@ -442,7 +443,7 @@ class PolecatManager:
 
         config = self.projects[project]
         local_path = config["path"]
-        default_branch = config.get("default_branch", "main")
+        default_branch = config["default_branch"]  # Set at load time, always exists
 
         if not local_path.exists():
             return False, f"Local repo not found: {local_path}"
@@ -476,7 +477,14 @@ class PolecatManager:
                     f"Mirror is up-to-date ({default_branch}: {mirror_head[:8]})",
                 )
 
-            # Count commits behind
+            # Mirror is stale - attempt fast-forward before warning
+            ff_success, ff_msg = self._try_fast_forward_mirror(
+                mirror_path, local_path, default_branch, mirror_head, local_head
+            )
+            if ff_success:
+                return True, ff_msg
+
+            # Fast-forward failed - return staleness warning
             count_result = subprocess.run(
                 ["git", "rev-list", "--count", f"{mirror_head}..{local_head}"],
                 cwd=local_path,
@@ -487,7 +495,7 @@ class PolecatManager:
                 commits_behind = count_result.stdout.strip()
                 return (
                     False,
-                    f"Mirror is {commits_behind} commits behind {default_branch}",
+                    f"Mirror is {commits_behind} commits behind {default_branch} (fast-forward failed: {ff_msg})",
                 )
             else:
                 return (
@@ -497,6 +505,58 @@ class PolecatManager:
 
         except Exception as e:
             return False, f"Freshness check failed: {e}"
+
+    def _try_fast_forward_mirror(
+        self,
+        mirror_path: Path,
+        local_path: Path,
+        branch: str,
+        mirror_head: str,
+        local_head: str,
+    ) -> tuple[bool, str]:
+        """Attempt to fast-forward mirror's branch to match local repo.
+
+        This allows the mirror to stay current with local commits without
+        requiring a network fetch from origin.
+
+        Args:
+            mirror_path: Path to bare mirror repo
+            local_path: Path to local repo
+            branch: Branch name to fast-forward
+            mirror_head: Current mirror HEAD SHA
+            local_head: Target local HEAD SHA
+
+        Returns:
+            Tuple of (success, message)
+        """
+        try:
+            # Check if fast-forward is possible (mirror_head is ancestor of local_head)
+            merge_base_result = subprocess.run(
+                ["git", "merge-base", "--is-ancestor", mirror_head, local_head],
+                cwd=local_path,
+                capture_output=True,
+            )
+
+            if merge_base_result.returncode != 0:
+                # Not a fast-forward - histories have diverged
+                return False, "divergent history"
+
+            # Fast-forward is possible - update mirror's branch ref
+            # In a bare repo, we update the ref directly
+            print(f"  Fast-forwarding mirror {branch} to {local_head[:8]}...")
+            subprocess.run(
+                ["git", "update-ref", f"refs/heads/{branch}", local_head],
+                cwd=mirror_path,
+                check=True,
+                capture_output=True,
+            )
+
+            return True, f"Mirror fast-forwarded to {local_head[:8]}"
+
+        except subprocess.CalledProcessError as e:
+            return False, f"git error: {e}"
+        except Exception as e:
+            return False, str(e)
 
     def init_all_mirrors(self) -> dict[str, Path]:
         """Initialize bare mirrors for all registered projects.
