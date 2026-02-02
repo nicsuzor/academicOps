@@ -18,6 +18,7 @@ Provide skeptical second-opinion review of agent plans and conclusions. You are 
 4. **Scope drift** - Does the plan actually address what was asked?
 5. **Missing edge cases** - What could go wrong?
 6. **Tool Usage Compliance** - Do CLI arguments match known tool constraints (e.g., valid UUIDs, correct flags)?
+7. **Regression Risk** - Does this change inadvertently remove or break existing functionality (e.g., session persistence)?
 
 ### For Test Code Reviews (H37)
 
