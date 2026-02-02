@@ -1488,7 +1488,7 @@ def check_stop_gate(ctx: GateContext) -> Optional[GateResult]:
         or hydration_data.get("original_prompt") is not None
     )
     has_run_subagents = len(subagents) > 0
-    is_streamlined = current_workflow in ("interactive-followup", "simple-question")
+    is_streamlined = current_workflow in ("interactive-followup", "simple-question", "direct-skill")
 
     if is_hydrated and not has_run_subagents and not is_streamlined:
         # User explicitly asked for turns_since_hydration == 0 logic
@@ -1519,7 +1519,7 @@ def check_hydration_recency_gate(ctx: GateContext) -> Optional[GateResult]:
 
     turns_since = hydration_state.get("turns_since_hydration")
     current_workflow = state.get("state", {}).get("current_workflow")
-    is_streamlined = current_workflow in ("interactive-followup", "simple-question")
+    is_streamlined = current_workflow in ("interactive-followup", "simple-question", "direct-skill")
 
     if turns_since == 0 and not is_streamlined:
         return GateResult(
@@ -1681,7 +1681,7 @@ def check_agent_response_listener(ctx: GateContext) -> Optional[GateResult]:
             session_state.save_session_state(ctx.session_id, state)
 
         # Detect streamlined workflows that skip critic
-        is_streamlined = workflow_id in ("interactive-followup", "simple-question")
+        is_streamlined = workflow_id in ("interactive-followup", "simple-question", "direct-skill")
 
         if is_streamlined:
             return GateResult(
@@ -2258,7 +2258,7 @@ GATE_CHECKS = {
     "agent_response": check_agent_response_listener,
     # Stop gates
     "stop_gate": check_stop_gate,
-    "hydration_recency": check_hydration_recency_gate,
+    # "hydration_recency": check_hydration_recency_gate,  # Disabled: too restrictive for direct questions/skills
     "session_end_commit": run_session_end_commit_check,
     "generate_transcript": run_generate_transcript,
 }
