@@ -287,6 +287,11 @@ mcp__plugin_aops-core_task_manager__search_tasks(query="polecat")
   - Merge if acceptable (update status to done after merge)
   - Reject with feedback (create follow-up task, assign back to polecat)
 
+**User intent clarification**: When user says "merge ready tasks in", they typically mean "process `review` status tasks with oversight". The workflow is:
+1. Agent reviews each `review` task
+2. Simple/mechanical tasks: agent approves and marks done
+3. Complex/judgment tasks: agent asks user for resolution before proceeding
+
 **Note**: Task assignees use `nic` (human) or `bot` (agent), not "engineer".
 
 ## Edge Cases
