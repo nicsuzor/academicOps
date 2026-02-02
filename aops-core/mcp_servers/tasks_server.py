@@ -1320,6 +1320,7 @@ def list_tasks(
     type: Optional[str] = None,
     priority: Optional[int] = None,
     priority_max: Optional[int] = None,
+    assignee: Optional[str] = None,
     limit: int = 10,
 ) -> dict[str, Any]:
     """List tasks with optional filters.
@@ -1330,6 +1331,7 @@ def list_tasks(
         type: Filter by type - "goal", "project", "epic", "task", "action", "bug", "feature", or "learn"
         priority: Filter by exact priority (0-4)
         priority_max: Filter by priority <= N (e.g. 1 for P0 and P1)
+        assignee: Filter by assignee - typically "bot" (agent) or "nic" (human)
         limit: Maximum number of tasks to return (default: 10, use 0 for unlimited)
 
     Returns:
@@ -1375,6 +1377,7 @@ def list_tasks(
             type=task_type,
             priority=priority,
             priority_max=priority_max,
+            assignee=assignee,
         )
         total = len(tasks)
         # Apply limit (0 or negative means unlimited)

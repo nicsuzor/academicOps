@@ -397,6 +397,7 @@ class TaskStorage:
         type: TaskType | None = None,
         priority: int | None = None,
         priority_max: int | None = None,
+        assignee: str | None = None,
     ) -> list[Task]:
         """List tasks with optional filters.
 
@@ -406,6 +407,7 @@ class TaskStorage:
             type: Filter by type
             priority: Filter by exact priority
             priority_max: Filter by priority <= max
+            assignee: Filter by assignee (e.g., 'bot', 'nic')
 
         Returns:
             List of matching tasks
@@ -421,6 +423,8 @@ class TaskStorage:
             if priority is not None and task.priority != priority:
                 continue
             if priority_max is not None and task.priority > priority_max:
+                continue
+            if assignee is not None and task.assignee != assignee:
                 continue
             tasks.append(task)
 
