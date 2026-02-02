@@ -80,6 +80,9 @@ HYDRATION_ALLOWED_TOOLS = {
     # Handover needs to run even if hydration blocked (to save/exit safely)
     "handover",
     "aops-core:handover",
+    # Skill tool needed for subagent hydration bypass (prevents deadlock when
+    # is_hydrator_active() fails to detect subagent context correctly)
+    "Skill",
 }
 # Alias for backward compatibility (Deprecated usage in Hydration Gate)
 HYDRATION_SAFE_TOOLS = SAFE_READ_TOOLS
