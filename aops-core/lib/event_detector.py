@@ -36,11 +36,14 @@ class EventDetector:
                 "tools": ["EnterPlanMode"],
             },
             # --- Task Binding (Claim) ---
+            # Support both Claude (mcp__plugin_*) and Gemini (aops-core:*) naming conventions
             {
                 "change": StateChange.BIND_TASK,
                 "type": RuleType.TOOL_CALL,
                 "tools": [
                     "mcp__plugin_aops-core_task_manager__update_task",
+                    "aops-core:task_manager:update_task",
+                    "task_manager__update_task",
                     "update_task",
                 ],
                 "input_pattern": {"status": "in_progress"},
@@ -51,8 +54,12 @@ class EventDetector:
                 "type": RuleType.TOOL_CALL,
                 "tools": [
                     "mcp__plugin_aops-core_task_manager__complete_task",
+                    "aops-core:task_manager:complete_task",
+                    "task_manager__complete_task",
                     "complete_task",
                     "mcp__plugin_aops-core_task_manager__complete_tasks",
+                    "aops-core:task_manager:complete_tasks",
+                    "task_manager__complete_tasks",
                     "complete_tasks",
                 ],
                 "result_check": "success",
@@ -62,6 +69,8 @@ class EventDetector:
                 "type": RuleType.TOOL_CALL,
                 "tools": [
                     "mcp__plugin_aops-core_task_manager__update_task",
+                    "aops-core:task_manager:update_task",
+                    "task_manager__update_task",
                     "update_task",
                 ],
                 "input_pattern": {"status": "done"},
@@ -71,6 +80,8 @@ class EventDetector:
                 "type": RuleType.TOOL_CALL,
                 "tools": [
                     "mcp__plugin_aops-core_task_manager__update_task",
+                    "aops-core:task_manager:update_task",
+                    "task_manager__update_task",
                     "update_task",
                 ],
                 "input_pattern": {"status": "cancelled"},

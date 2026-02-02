@@ -213,8 +213,9 @@ class GateContext:
         self.session_id = session_id
         self.event_name = event_name
         self.input_data = input_data
-        self.tool_name = input_data.get("tool_name")
-        self.tool_input = input_data.get("tool_input", {})
+        # Support both Claude (snake_case) and Gemini (camelCase) field names
+        self.tool_name = input_data.get("tool_name") or input_data.get("toolName")
+        self.tool_input = input_data.get("tool_input") or input_data.get("toolInput", {})
         self.transcript_path = input_data.get("transcript_path")
 
 
@@ -1609,8 +1610,9 @@ def run_task_binding(ctx: GateContext) -> Optional[GateResult]:
         print(f"WARNING: task_binding import failed: {e}", file=sys.stderr)
         return None
 
-    tool_name = ctx.tool_name or ctx.input_data.get("tool_name", "")
-    tool_input = ctx.tool_input or ctx.input_data.get("tool_input", {})
+    # Support both Claude (snake_case) and Gemini (camelCase) field names
+    tool_name = ctx.tool_name or ctx.input_data.get("tool_name") or ctx.input_data.get("toolName", "")
+    tool_input = ctx.tool_input or ctx.input_data.get("tool_input") or ctx.input_data.get("toolInput", {})
     tool_result = (
         ctx.input_data.get("tool_result")
         or ctx.input_data.get("toolResult")
