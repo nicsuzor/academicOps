@@ -1661,6 +1661,175 @@ def dedup_tasks(delete: bool = False) -> dict[str, Any]:
 
 
 # =============================================================================
+# GRAPH NEIGHBORHOOD OPERATIONS
+# =============================================================================
+
+
+@mcp.tool()
+def get_task_neighborhood(task_id: str) -> dict[str, Any]:
+    """Return the task and its graph neighborhood. Agent decides relationships.
+
+    This tool provides raw graph data for the agent to reason about relationships.
+    Per P#78 (Dumb Server, Smart Agent): server returns data, agent interprets meaning.
+
+    The agent can use the returned data to:
+    - Identify similar tasks by reading titles (LLM judgment)
+    - Suggest relationship types (depends_on, soft_depends_on, parent)
+    - Find potential parents from orphan_tasks list
+
+    Args:
+        task_id: Task ID to get neighborhood for
+
+    Returns:
+        Dictionary with:
+        - success: True if task found
+        - task: Full task data (title, body, tags, project, etc.)
+        - existing_relationships:
+            - parent: task | None
+            - children: list[task]
+            - depends_on: list[task]
+            - blocks: list[task] (tasks that depend on this)
+            - soft_depends_on: list[task]
+            - soft_blocks: list[task]
+        - same_project_tasks: list[task] (ALL tasks in same project, for agent to find similar)
+        - orphan_tasks: list[task] (tasks with no parent AND no dependencies - potential parents/peers)
+        - message: Status message
+    """
+    try:
+        storage = _get_storage()
+        index = _get_index()
+
+        # Get the task
+        task = storage.get_task(task_id)
+        if task is None:
+            return {
+                "success": False,
+                "task": None,
+                "existing_relationships": None,
+                "same_project_tasks": [],
+                "orphan_tasks": [],
+                "message": f"Task not found: {task_id}",
+            }
+
+        # Get index entry for computed fields
+        entry = index.get_task(task_id)
+        if entry:
+            task.children = entry.children
+            task.blocks = entry.blocks
+            task.soft_blocks = entry.soft_blocks
+
+        # Build existing relationships
+        existing_relationships: dict[str, Any] = {
+            "parent": None,
+            "children": [],
+            "depends_on": [],
+            "blocks": [],
+            "soft_depends_on": [],
+            "soft_blocks": [],
+        }
+
+        # Parent
+        if task.parent:
+            parent_task = storage.get_task(task.parent)
+            if parent_task:
+                existing_relationships["parent"] = _task_to_dict(
+                    parent_task, truncate_body=200
+                )
+
+        # Children
+        children_entries = index.get_children(task_id)
+        for child_entry in children_entries:
+            child_task = storage.get_task(child_entry.id)
+            if child_task:
+                existing_relationships["children"].append(
+                    _task_to_dict(child_task, truncate_body=200)
+                )
+
+        # Depends on (blocking dependencies)
+        for dep_id in task.depends_on:
+            dep_task = storage.get_task(dep_id)
+            if dep_task:
+                existing_relationships["depends_on"].append(
+                    _task_to_dict(dep_task, truncate_body=200)
+                )
+
+        # Blocks (tasks that depend on this task)
+        if entry:
+            for blocker_id in entry.blocks:
+                blocker_task = storage.get_task(blocker_id)
+                if blocker_task:
+                    existing_relationships["blocks"].append(
+                        _task_to_dict(blocker_task, truncate_body=200)
+                    )
+
+        # Soft depends on (non-blocking context)
+        for soft_dep_id in task.soft_depends_on:
+            soft_dep_task = storage.get_task(soft_dep_id)
+            if soft_dep_task:
+                existing_relationships["soft_depends_on"].append(
+                    _task_to_dict(soft_dep_task, truncate_body=200)
+                )
+
+        # Soft blocks (tasks that soft-depend on this task)
+        if entry:
+            for soft_blocker_id in entry.soft_blocks:
+                soft_blocker_task = storage.get_task(soft_blocker_id)
+                if soft_blocker_task:
+                    existing_relationships["soft_blocks"].append(
+                        _task_to_dict(soft_blocker_task, truncate_body=200)
+                    )
+
+        # Same project tasks (excluding the task itself)
+        same_project_tasks = []
+        if task.project:
+            project_entries = index.get_by_project(task.project)
+            for proj_entry in project_entries:
+                if proj_entry.id != task_id:
+                    proj_task = storage.get_task(proj_entry.id)
+                    if proj_task:
+                        same_project_tasks.append(
+                            _task_to_dict(proj_task, truncate_body=100)
+                        )
+
+        # Orphan tasks: tasks with no parent AND no dependencies
+        # These are potential candidates for relationship creation
+        orphan_tasks = []
+        for tid, idx_entry in index._tasks.items():
+            if tid == task_id:
+                continue
+            # No parent and no dependencies = orphan
+            if idx_entry.parent is None and not idx_entry.depends_on:
+                orphan_task = storage.get_task(tid)
+                if orphan_task:
+                    orphan_tasks.append(_task_to_dict(orphan_task, truncate_body=100))
+
+        logger.info(
+            f"get_task_neighborhood: {task_id} - "
+            f"{len(same_project_tasks)} project tasks, {len(orphan_tasks)} orphans"
+        )
+
+        return {
+            "success": True,
+            "task": _task_to_dict(task),
+            "existing_relationships": existing_relationships,
+            "same_project_tasks": same_project_tasks,
+            "orphan_tasks": orphan_tasks,
+            "message": f"Neighborhood for: {task.title}",
+        }
+
+    except Exception as e:
+        logger.exception("get_task_neighborhood failed")
+        return {
+            "success": False,
+            "task": None,
+            "existing_relationships": None,
+            "same_project_tasks": [],
+            "orphan_tasks": [],
+            "message": f"Failed to get task neighborhood: {e}",
+        }
+
+
+# =============================================================================
 # INDEX OPERATIONS
 # =============================================================================
 
