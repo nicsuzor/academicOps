@@ -1277,9 +1277,7 @@ def run_accountant(ctx: GateContext) -> Optional[GateResult]:
         if _is_custodiet_invocation(ctx.tool_name or "", ctx.tool_input):
             state["tool_calls_since_compliance"] = 0
             state["last_compliance_ts"] = time.time()
-            system_messages.append(
-                "🛡️ [Gate] Compliance verified. Custodiet gate reset."
-            )
+            system_messages.append("🛡️ [Gate] Compliance verified. Custodiet gate reset.")
 
         else:
             state["tool_calls_since_compliance"] += 1
@@ -1302,9 +1300,7 @@ def run_accountant(ctx: GateContext) -> Optional[GateResult]:
         # Destructive tool used - require handover before stop
         try:
             session_state.clear_handover_skill_invoked(ctx.session_id)
-            system_messages.append(
-                "⚠️ [Gate] Destructive tool used. Handover required before stop."
-            )
+            system_messages.append("⚠️ [Gate] Destructive tool used. Handover required before stop.")
         except Exception as e:
             print(
                 f"WARNING: Accountant failed to clear handover flag: {e}",
@@ -1481,44 +1477,6 @@ def post_qa_trigger(ctx: GateContext) -> Optional[GateResult]:
     # Also check Task tool (Claude)
     is_task = ctx.tool_name == "Task"
     subagent_type = ctx.tool_input.get("subagent_type", "")
-    is_qa_task = is_task and (
-        subagent_type == "qa"
-        or subagent_type == "aops-core:qa"
-        or "qa" in subagent_type.lower()
-    )
-
-    # Also check Skill/activate_skill
-    is_skill = ctx.tool_name in ("activate_skill", "Skill")
-    skill_input = ctx.tool_input or {}
-    skill_name = skill_input.get("name") or skill_input.get("skill")
-    is_qa_skill = is_skill and skill_name == "qa"
-
-    if is_qa or is_qa_task or is_qa_skill:
-        # Set flags
-        session_state.set_qa_invoked(ctx.session_id)
-
-        # User-facing output for gate state change
-        return GateResult(
-            verdict=GateVerdict.ALLOW,
-            system_message="🧪 [Gate] QA verified. Gate satisfied.",
-        )
-
-    return None
-
-
-def post_qa_trigger(ctx: GateContext) -> Optional[GateResult]:
-    """
-    PostToolUse: Detect successful QA invocation and update state.
-    """
-    _check_imports()
-
-    # Check if this was a QA invocation
-    is_delegate = ctx.tool_name == "delegate_to_agent"
-    is_qa = is_delegate and ctx.tool_input.get("agent_name") == "qa"
-
-    # Also check Task tool (Claude)
-    is_task = ctx.tool_name == "Task"
-    subagent_type = ctx.tool_input.get("subagent_type", "")
     is_qa_task = is_task and (subagent_type == "qa" or subagent_type == "aops-core:qa" or "qa" in subagent_type.lower())
 
     # Also check Skill/activate_skill
@@ -1534,7 +1492,7 @@ def post_qa_trigger(ctx: GateContext) -> Optional[GateResult]:
         # User-facing output for gate state change
         return GateResult(
             verdict=GateVerdict.ALLOW,
-            system_message="[Gate] QA verified. Gate satisfied.",
+            system_message="🧪 [Gate] QA verified. Gate satisfied.",
         )
 
     return None
