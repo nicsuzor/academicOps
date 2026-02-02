@@ -23,6 +23,7 @@ dependencies = [
   "streamlit-agraph>=0.0.45",
   "matplotlib>=3.10.8",
   "types-pyyaml>=6.0.12.20250915",
+  "python-ntfy>=0.1.0",
 ]
 
 [project.scripts]

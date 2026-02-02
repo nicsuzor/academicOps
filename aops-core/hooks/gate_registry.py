@@ -13,6 +13,7 @@ import json
 import time
 
 from lib.gate_model import GateResult, GateVerdict
+from lib.paths import get_ntfy_config
 
 # Adjust imports to work within the aops-core environment
 # These imports are REQUIRED for gate functionality - fail explicitly if missing
@@ -2130,10 +2131,112 @@ def run_generate_transcript(ctx: GateContext) -> Optional[GateResult]:
     return None
 
 
+# --- ntfy Push Notification Gate ---
+
+
+def run_ntfy_notifier(ctx: GateContext) -> Optional[GateResult]:
+    """
+    Send push notifications for key session events via ntfy.
+
+    Non-blocking: notification failures are logged but don't affect execution.
+    Only runs if ntfy is configured (NTFY_TOPIC env var set).
+
+    Events:
+    - SessionStart: Notify session began
+    - Stop: Notify session ended
+    - PostToolUse: Notify task bind/unbind, subagent completion
+    """
+    # Check if ntfy is configured (returns None if disabled)
+    try:
+        config = get_ntfy_config()
+    except RuntimeError as e:
+        # Configuration error - log and continue (don't block)
+        print(f"WARNING: ntfy config error: {e}", file=sys.stderr)
+        return None
+
+    if not config:
+        # ntfy not configured - silently skip
+        return None
+
+    try:
+        from hooks.ntfy_notifier import (
+            notify_session_start,
+            notify_session_stop,
+            notify_subagent_stop,
+            notify_task_bound,
+            notify_task_completed,
+        )
+    except ImportError as e:
+        print(f"WARNING: ntfy_notifier import failed: {e}", file=sys.stderr)
+        return None
+
+    # SessionStart notification
+    if ctx.event_name == "SessionStart":
+        notify_session_start(config, ctx.session_id)
+        return None
+
+    # Stop notification
+    if ctx.event_name == "Stop":
+        # Get current task if any
+        try:
+            current_task = session_state.get_current_task(ctx.session_id)
+        except Exception:
+            current_task = None
+        notify_session_stop(config, ctx.session_id, current_task)
+        return None
+
+    # PostToolUse: task binding and subagent completion
+    if ctx.event_name == "PostToolUse":
+        # Check for task binding
+        if ctx.tool_name in TASK_BINDING_TOOLS:
+            tool_input = ctx.tool_input
+            # Use 'in' check instead of .get() for fail-fast compliance
+            if "status" in tool_input and "id" in tool_input:
+                status = tool_input["status"]
+                task_id = tool_input["id"]
+
+                if status == "in_progress":
+                    notify_task_bound(config, ctx.session_id, task_id)
+                elif status == "done":
+                    notify_task_completed(config, ctx.session_id, task_id)
+
+        # Check for subagent completion (Task tool)
+        if ctx.tool_name in ("Task", "delegate_to_agent"):
+            # Extract agent type - try both field names
+            agent_type = "unknown"
+            if "subagent_type" in ctx.tool_input:
+                agent_type = ctx.tool_input["subagent_type"]
+            elif "agent_name" in ctx.tool_input:
+                agent_type = ctx.tool_input["agent_name"]
+
+            # Try to extract verdict from tool result
+            verdict = None
+            if "tool_result" in ctx.input_data:
+                tool_result = ctx.input_data["tool_result"]
+                if isinstance(tool_result, dict) and "verdict" in tool_result:
+                    verdict = tool_result["verdict"]
+                elif isinstance(tool_result, str):
+                    try:
+                        parsed = json.loads(tool_result)
+                        if isinstance(parsed, dict) and "verdict" in parsed:
+                            verdict = parsed["verdict"]
+                    except (json.JSONDecodeError, AttributeError):
+                        pass
+            elif "toolResult" in ctx.input_data:
+                tool_result = ctx.input_data["toolResult"]
+                if isinstance(tool_result, dict) and "verdict" in tool_result:
+                    verdict = tool_result["verdict"]
+
+            notify_subagent_stop(config, ctx.session_id, agent_type, verdict)
+
+    return None
+
+
 # Registry of available gate checks
 GATE_CHECKS = {
     # Universal gates
     "unified_logger": run_unified_logger,
+    "ntfy_notifier": run_ntfy_notifier,
     # UserPromptSubmit
     "user_prompt_submit": run_user_prompt_submit,
     # PreToolUse gates (order matters)
