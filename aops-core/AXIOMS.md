@@ -74,6 +74,7 @@ Complete the task requested, then STOP. Don't be so fucking eager.
 - User asks to CREATE/SCHEDULE a task -> Create the task, then stop. Scheduling ≠ executing.
 - Find related issues -> Report them, don't fix them
 - "I'll just xyz" -> For the love of god, shut up and wait for direction
+- Collaborative mode ("work with me", "together") -> Execute ONE step, then wait.
 
 **Derivation**: Scope creep destroys focus and introduces unreviewed changes. Process and guardrails exist to reduce catastrophic failure.
 
