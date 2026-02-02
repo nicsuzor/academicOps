@@ -23,6 +23,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "pytest" },
     { name = "pytest-xdist" },
+    { name = "python-ntfy" },
     { name = "pyyaml" },
     { name = "rich" },
     { name = "ruff" },
@@ -52,6 +53,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.0" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-xdist", specifier = ">=3.8.0" },
+    { name = "python-ntfy", specifier = ">=0.1.0" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "rich", specifier = ">=13.0.0" },
     { name = "ruff", specifier = ">=0.14.10" },
@@ -3179,6 +3181,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/78/96/804520d0850c7db98e5ccb70282e29208723f0964e88ffd9d0da2f52ea09/python_multipart-0.0.21.tar.gz", hash = "sha256:7137ebd4d3bbf70ea1622998f902b97a29434a9e8dc40eb203bbcf7c2a2cba92", size = 37196, upload-time = "2025-12-17T09:24:22.446Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/aa/76/03af049af4dcee5d27442f71b6924f01f3efb5d2bd34f23fcd563f2cc5f5/python_multipart-0.0.21-py3-none-any.whl", hash = "sha256:cf7a6713e01c87aa35387f4774e812c4361150938d20d232800f75ffcf266090", size = 24541, upload-time = "2025-12-17T09:24:21.153Z" },
+]
+
+[[package]]
+name = "python-ntfy"
+version = "0.10.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/15/91/9d201b5ce535e96c9b16963979363c272ab9b3d378bed97353fc3b966a1c/python_ntfy-0.10.1.tar.gz", hash = "sha256:263b4a0351d1f8cc8e05a89dd756b2fe240176ffd2600c2ecca51580bcd197ed", size = 7052, upload-time = "2025-10-01T14:36:38.712Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/12/47/190fbb5d6f7c0f4ebb1cd8964799946516e52ba6085b6a6b28390c75e102/python_ntfy-0.10.1-py3-none-any.whl", hash = "sha256:6963a7753007d5767ee241227879426776277323900f2ac4c942299cce7fae2e", size = 8269, upload-time = "2025-10-01T14:36:37.572Z" },
 ]
 
 [[package]]
