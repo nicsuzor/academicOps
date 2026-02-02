@@ -952,3 +952,54 @@ class PolecatManager:
             subprocess.run(
                 ["git", "branch", "-D", branch_name], cwd=repo_path, check=False
             )
+
+    def analyze_transcript(self, task, stdout: str, stderr: str):
+        """Analyzes agent transcript for hook failures and flags the task if found.
+
+        Args:
+            task: The task object being worked on.
+            stdout: The stdout from the agent subprocess.
+            stderr: The stderr from the agent subprocess.
+        """
+        # Combine stdout and stderr for a complete transcript analysis
+        transcript = f"{stdout}\n{stderr}"
+        
+        failure_indicators = [
+            "HOOK ERROR",
+            "GATE FAILURE",
+            "PolicyEnforcer",
+            "hydration_gate.py",
+        ]
+
+        found_failures = []
+        for indicator in failure_indicators:
+            if indicator in transcript:
+                found_failures.append(indicator)
+
+        if found_failures:
+            print("\n" + "="*20, file=sys.stderr)
+            print("🚨 HOOK FAILURE DETECTED!", file=sys.stderr)
+            print(f"   Indicators found: {', '.join(found_failures)}", file=sys.stderr)
+            print(f"   Task: {task.id}", file=sys.stderr)
+            print("="*20 + "\n", file=sys.stderr)
+
+            # Update the task to flag it for review
+            try:
+                from lib.task_model import TaskStatus
+
+                task.status = TaskStatus.REVIEW
+                # Prepend a note to the body
+                note = (
+                    f"## 🚨 Hook Failure Detected\n\n"
+                    f"Polecat manager detected a potential hook failure during execution.\n"
+                    f"**Indicators**: {', '.join(found_failures)}\n"
+                    f"Task has been moved to 'review' for manual verification.\n\n"
+                    f"---\n\n"
+                )
+                task.body = note + (task.body or "")
+                self.storage.save_task(task)
+                print(f"✅ Task '{task.id}' moved to 'review' for manual inspection.")
+            except ImportError:
+                print("⚠️ Could not update task status (lib.task_model not available)", file=sys.stderr)
+            except Exception as e:
+                print(f"⚠️ Failed to update task '{task.id}': {e}", file=sys.stderr)
