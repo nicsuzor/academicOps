@@ -281,6 +281,67 @@ def load_token_metrics() -> dict | None:
     return totals
 
 
+def get_recent_sessions(hours: int = 24) -> list[dict]:
+    """Get recent session summaries for the Recent Activity section.
+
+    Scans ~/writing/sessions/summaries/ for files within the time range.
+
+    Args:
+        hours: Only include sessions from the last N hours (default: 24)
+
+    Returns:
+        List of session dicts, sorted by date (most recent first):
+        - session_id: Short session ID
+        - date: Session datetime
+        - project: Project name
+        - outcome: success/partial/etc (or None)
+        - summary: One-line description (or None)
+    """
+    from datetime import timedelta
+
+    summaries_dir = Path.home() / "writing" / "sessions" / "summaries"
+    if not summaries_dir.exists():
+        return []
+
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    sessions = []
+
+    for json_file in summaries_dir.glob("*.json"):
+        try:
+            data = json.loads(json_file.read_text())
+        except (json.JSONDecodeError, OSError):
+            # File unreadable or malformed - skip silently for dashboard robustness
+            continue
+
+        date_str = data.get("date")
+        if not date_str:
+            continue
+
+        # Parse date - handle both with and without timezone
+        session_date = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+
+        # Ensure timezone-aware for comparison
+        if session_date.tzinfo is None:
+            session_date = session_date.replace(tzinfo=timezone.utc)
+
+        if session_date < cutoff:
+            continue
+
+        sessions.append(
+            {
+                "session_id": data["session_id"],
+                "date": session_date,
+                "project": data["project"],
+                "outcome": data.get("outcome"),
+                "summary": data.get("summary"),
+            }
+        )
+
+    # Sort by date, newest first
+    sessions.sort(key=lambda s: s["date"], reverse=True)
+    return sessions
+
+
 def get_waiting_tasks() -> list[dict]:
     """Get tasks with blocked status from bd."""
     return load_bd_issues(priority_max=4, status="blocked", limit=50)
@@ -2226,6 +2287,83 @@ st.markdown(
         white-space: nowrap;
     }
 
+    /* ==========================================================================
+     * RECENT ACTIVITY SECTION
+     * ========================================================================== */
+    .recent-activity-panel {
+        margin: 16px 0;
+        padding: 12px 16px;
+        background-color: var(--bg-card-light);
+        border: 1px solid var(--border-subtle);
+        border-radius: 8px;
+    }
+
+    .recent-activity-header {
+        font-size: 1em;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 12px;
+        letter-spacing: -0.01em;
+    }
+
+    .recent-activity-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .recent-activity-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 8px;
+        border-radius: 4px;
+        background-color: var(--bg-card);
+        font-size: 0.85em;
+    }
+
+    .recent-activity-row.success {
+        border-left: 3px solid var(--text-success);
+    }
+
+    .recent-activity-row.partial {
+        border-left: 3px solid var(--text-warning);
+    }
+
+    .recent-activity-row.failure {
+        border-left: 3px solid var(--text-error);
+    }
+
+    .recent-activity-row.unknown {
+        border-left: 3px solid var(--border-subtle);
+    }
+
+    .activity-time {
+        color: var(--text-muted);
+        font-family: monospace;
+        min-width: 45px;
+    }
+
+    .activity-project {
+        color: var(--text-accent);
+        font-weight: 600;
+        min-width: 100px;
+        text-transform: lowercase;
+    }
+
+    .activity-outcome {
+        min-width: 20px;
+        text-align: center;
+    }
+
+    .activity-summary {
+        color: var(--text-secondary);
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
 </style>
 """,
     unsafe_allow_html=True,
@@ -3191,6 +3329,57 @@ if synthesis:
 
     synth_html += "</div>"  # End panel
     st.markdown(synth_html, unsafe_allow_html=True)
+
+# === RECENT ACTIVITY SECTION ===
+# Time range selector in sidebar
+activity_hours = st.sidebar.selectbox(
+    "Recent Activity Range",
+    options=[6, 12, 24, 48, 72],
+    index=2,  # Default to 24 hours
+    format_func=lambda h: f"Last {h}h",
+)
+
+recent_sessions = get_recent_sessions(hours=activity_hours)
+if recent_sessions:
+    activity_html = "<div class='recent-activity-panel'>"
+    activity_html += f"<div class='recent-activity-header'>📊 RECENT ACTIVITY (last {activity_hours}h)</div>"
+    activity_html += "<div class='recent-activity-list'>"
+
+    for session in recent_sessions[:10]:  # Limit to 10 most recent
+        time_str = session["date"].strftime("%H:%M")
+        project = session["project"]
+        outcome = session["outcome"]
+
+        # Outcome indicator
+        if outcome == "success":
+            outcome_icon = "✅"
+            outcome_class = "success"
+        elif outcome == "partial":
+            outcome_icon = "⚠️"
+            outcome_class = "partial"
+        elif outcome == "failure":
+            outcome_icon = "❌"
+            outcome_class = "failure"
+        else:
+            outcome_icon = "•"
+            outcome_class = "unknown"
+
+        # Summary text (truncate if too long)
+        summary = session["summary"]
+        if summary:
+            summary_text = summary[:80] + "..." if len(summary) > 80 else summary
+        else:
+            summary_text = "Session completed"
+
+        activity_html += f"<div class='recent-activity-row {outcome_class}'>"
+        activity_html += f"<span class='activity-time'>{time_str}</span>"
+        activity_html += f"<span class='activity-project'>{esc(project)}</span>"
+        activity_html += f"<span class='activity-outcome'>{outcome_icon}</span>"
+        activity_html += f"<span class='activity-summary'>{esc(summary_text)}</span>"
+        activity_html += "</div>"
+
+    activity_html += "</div></div>"
+    st.markdown(activity_html, unsafe_allow_html=True)
 
 # === PROJECT-CENTRIC DASHBOARD ===
 # Fetch Data
