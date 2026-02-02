@@ -48,6 +48,33 @@ Task state is scattered and not visible where needed. User returns to terminal a
 **I want** one place that shows all my tasks and what I was working on,
 **So that** I can recover context quickly and stay oriented.
 
+## User Workflow
+
+The dashboard is designed for a specific user pattern:
+
+### Daily Activities
+- **Long-running agents**: Multiple terminals with "crew" agents working on tasks
+- **Ad-hoc work**: Direct interaction with agents for one-off tasks
+- **Polecat batches**: Invoking batch processes and overseeing merge workflows
+- **Academic tasks**: Research, writing, analysis work
+- **Email and prioritization**: Triage and task management
+
+### Pain Points (What the Dashboard Solves)
+1. **Overwhelm from simultaneous tasks** - Too many things running, can't see the big picture
+2. **Losing track of progress** - What got done? What's still pending?
+3. **Context switching difficulty**:
+   - Not clear what each terminal was doing
+   - Not clear what the user wanted when they started that task
+   - Not clear what they planned to do next when they resumed
+
+### What the User Needs to Know
+When returning to work, the user needs to answer:
+- **"What terminal is this?"** → Session identity from initial prompt
+- **"What was I trying to do?"** → User intent, not agent state
+- **"What's the next step?"** → Planned action when resuming
+
+The dashboard must surface these answers directly, not require the user to reconstruct them from raw agent metadata.
+
 ## Streamlit Dashboard
 ### Data source
 index.json (created by [[fast-indexer]])
@@ -182,7 +209,7 @@ Grid of project cards below the graph. Each box contains:
 
 | Section | Content | Data Source |
 |---------|---------|-------------|
-| **⚡ WORKING NOW** | Active agent sessions | Session state files |
+| **⚡ WORKING NOW** | Active sessions with conversation context | Session state files |
 | **📌 UP NEXT** | Top 3 priority tasks | index.json |
 | **✅ RECENTLY** | Recent accomplishments | Daily notes |
 
@@ -192,6 +219,61 @@ Grid of project cards below the graph. Each box contains:
 - +recency bonus
 
 **Filtering**: Empty projects (no sessions, tasks, or accomplishments) are hidden.
+
+## Session Context Model
+
+**Core principle**: A session is a **conversation thread**, not an agent process. The user recognizes sessions by what they asked, not by agent IDs.
+
+### What Makes a Session Identifiable
+
+The user identifies "which terminal is this?" by:
+1. **Initial prompt** - What they first asked the agent to do
+2. **Follow-up prompts** - Subsequent requests that shaped the work
+3. **Working directory/project** - Secondary context
+
+### Session Context Schema
+
+Each displayed session MUST include:
+
+```json
+{
+  "session_id": "abc123",
+  "project": "academicOps",
+  "initial_prompt": "Review PR #42 for the fast-indexer changes",
+  "follow_up_prompts": [
+    "Also check the test coverage",
+    "Fix the linting errors you found"
+  ],
+  "last_user_message": "Fix the linting errors you found",
+  "current_status": "Fixing 3 linting errors in src/indexer.rs",
+  "planned_next_step": "Run tests after fixes, then mark PR ready for review",
+  "last_activity": "2026-02-03T10:30:00Z",
+  "started": "2026-02-03T09:15:00Z"
+}
+```
+
+### Session Display
+
+**Good** (conversation-centric):
+```
+📍 academicOps (2h ago)
+   Started: "Review PR #42 for fast-indexer changes"
+   Now: Fixing 3 linting errors
+   Next: Run tests, mark PR ready
+```
+
+**Bad** (agent-centric - REJECTED):
+```
+🤖 unknown: No specific task (started 165h ago)
+```
+
+### Minimum Viable Context
+
+A session MUST have at least:
+- Initial prompt OR current task status
+- If neither exists, session is not displayed (hidden as "unidentified")
+
+Sessions showing "unknown: No specific task" provide zero value and MUST be filtered out or prompted for archival.
 
 ## Design Principles
 
@@ -220,25 +302,52 @@ At 10+ active sessions, displaying a flat list creates decision paralysis. The d
 
 ### Session Triage
 
-When session count exceeds threshold (default: 10), apply recency-based triage:
+**Always apply** recency-based triage (not just at 10+ sessions):
 
 | Bucket | Definition | Display |
 |--------|-----------|---------|
-| **Active Now** | Activity within 4 hours | Full session cards, expanded |
+| **Active Now** | Activity within 4 hours | Full session cards with conversation context |
 | **Paused** | 4-24 hours since activity | Collapsed cards, click to expand |
-| **Stale** | >24 hours since activity | Grouped summary: "X stale sessions" |
+| **Stale** | >24 hours since activity | Auto-archive prompt (see below) |
 
 Within buckets, group by project for orientation.
 
 **Implementation**: `fetch_session_activity(hours=4)` for Active Now bucket.
 
+### Stale Session Handling
+
+Sessions >24h without activity are **not displayed in the main list**. Instead:
+
+```
+┌─────────────────────────────────────────────────────┐
+│ 📦 12 stale sessions (no activity >24h)             │
+│                                                     │
+│ [Archive All]  [Review & Select]  [Dismiss]         │
+└─────────────────────────────────────────────────────┘
+```
+
+**Archive** = Move session state to archive folder, remove from active display
+**Review** = Expand to see session summaries, select which to archive
+**Dismiss** = Hide prompt for this dashboard visit (reappears next load)
+
+**Rationale**: 499 sessions from days ago create noise, not signal. The user can't meaningfully act on them. Prompting for cleanup reduces cognitive load and keeps the dashboard focused on current work.
+
 ### Anti-Patterns
 
+**Decision-support anti-patterns:**
 - GPS/directive mode that hides options
 - Single-focus design that ignores multitasking reality
 - Over-indexing on "recommend ONE thing" *at baseline scale*
 - Assuming decision paralysis when the problem is memory *at baseline scale*
-- **Ignoring scale transitions**: Flat lists work for 5 sessions, not 50
+
+**Display anti-patterns:**
+- **Agent-centric display**: Showing "499 agents running" instead of meaningful session context
+- **Unknown/empty sessions**: Displaying "unknown: No specific task" provides zero value
+- **Flat lists at scale**: 499 items in a list creates paralysis, not orientation
+- **Ignoring recency**: Treating 275h-old sessions the same as 2h-old sessions
+- **Truncation that destroys meaning**: Cutting prompts to 60 chars makes them useless
+
+**The litmus test**: If a user sees a session entry and can't answer "what was I doing there?", the display has failed.
 
 ### Information Density
 
@@ -339,16 +448,29 @@ When a task node is clicked or a task card is selected:
 
 ## Acceptance Criteria
 
+### Core Rendering
 - [x] fast-indexer generates valid index.json from task files
 - [ ] Dashboard renders index.json without errors
 - [ ] Cross-machine prompts visible via R2 integration
 - [ ] Mobile/tablet accessible via browser
 - [ ] Graceful degradation when data sources unavailable
 - [ ] No LLM calls in render path (pre-computed synthesis only)
-- [ ] Truncation length ≥120 chars for session prompts
-- [ ] Active sessions use 4h window (not 24h)
-- [ ] No "Local activity" placeholder displayed
-- [ ] Session triage buckets visible when count >10
+
+### Session Display (Critical)
+- [ ] Each session shows initial prompt (what user asked)
+- [ ] Each session shows current status or planned next step
+- [ ] Sessions without meaningful context are hidden (not "unknown: No specific task")
+- [ ] Truncation preserves enough context to identify session (≥120 chars minimum)
+- [ ] Recency triage applied: Active (<4h), Paused (4-24h), Stale (>24h)
+- [ ] Stale sessions trigger auto-archive prompt, not flat list display
+- [ ] User can answer "what was I doing?" for every displayed session
+
+### Session Triage
+- [ ] Active sessions (last 4h) shown with full conversation context
+- [ ] Paused sessions (4-24h) shown collapsed, expandable
+- [ ] Stale sessions (>24h) show archive prompt with count
+- [ ] Archive action moves session to archive, removes from display
+- [ ] Review action expands stale sessions for selective archival
 
 ### Graph Visualization
 - [ ] Task graph renders without freezing browser
