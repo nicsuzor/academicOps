@@ -42,7 +42,9 @@ CLAUDE_TO_GEMINI_EVENTS = {
     # These are the same in both
     "SessionStart": "SessionStart",
     "SessionEnd": "SessionEnd",
-    "SubagentStop": "SubagentStop",
+    "SubagentStop": "AfterTool",  # Subagents are tools in Gemini, so map stop to AfterTool
+    "PreCompact": "BeforeAgent",  # Map to BeforeAgent as a safe fallback
+    "Notification": "BeforeAgent", # Map to BeforeAgent as a safe fallback
     # Gemini-specific (keep as-is if present)
     "BeforeTool": "BeforeTool",
     "AfterTool": "AfterTool",
@@ -298,6 +300,27 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
             raise
     else:
         print(f"Warning: Template {template_path} not found. Skipping MCP generation.")
+
+    # Inject hooks into gemini-extension.json manifest
+    # This ensures the CLI definitely loads them, as reliance on side-by-side file can be flaky
+    gemini_hooks_file = hooks_dst / "hooks.json"
+    if gemini_hooks_file.exists() and dist_extension_json.exists():
+        try:
+            with open(gemini_hooks_file) as f:
+                hooks_data = json.load(f)
+            
+            with open(dist_extension_json, "r") as f:
+                manifest = json.load(f)
+            
+            # Merge hooks (if any)
+            if "hooks" in hooks_data:
+                manifest["hooks"] = hooks_data["hooks"]
+                
+                with open(dist_extension_json, "w") as f:
+                    json.dump(manifest, f, indent=2)
+                print(f"  ✓ Injected hooks into gemini-extension.json")
+        except Exception as e:
+            print(f"Error injecting hooks into manifest: {e}", file=sys.stderr)
 
     # Validation/Fallback: If task_manager was not in template, we might be missing it.
     # But the user said "we should read from ... template", implying template is source of truth.

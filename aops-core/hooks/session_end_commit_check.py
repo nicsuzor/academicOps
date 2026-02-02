@@ -667,9 +667,10 @@ def check_uncommitted_work(
             f"{push_status.get('commits_ahead', 1)} unpushed commit(s) on {push_status.get('current_branch', 'current branch')}"
         )
 
+    # Don't block on git -- just warn.
     # Only trigger blocking if: (has reflection OR has test success) AND has uncommitted changes
     if (has_reflection or has_tests) and git_status.get("has_changes"):
-        result["should_block"] = True
+        result["should_block"] = False
 
         if git_status.get("staged_changes"):
             result["message"] = "Staged changes detected. Attempting auto-commit..."

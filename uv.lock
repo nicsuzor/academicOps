@@ -28,6 +28,7 @@ dependencies = [
     { name = "ruff" },
     { name = "streamlit" },
     { name = "streamlit-agraph" },
+    { name = "types-pyyaml" },
 ]
 
 [package.dev-dependencies]
@@ -56,6 +57,7 @@ requires-dist = [
     { name = "ruff", specifier = ">=0.14.10" },
     { name = "streamlit", specifier = ">=1.28.0" },
     { name = "streamlit-agraph", specifier = ">=0.0.45" },
+    { name = "types-pyyaml", specifier = ">=6.0.12.20250915" },
 ]
 
 [package.metadata.requires-dev]
