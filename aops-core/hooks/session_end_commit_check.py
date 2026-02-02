@@ -35,6 +35,13 @@ from lib.session_paths import get_session_short_hash, get_session_status_dir
 from lib.insights_generator import find_existing_insights
 from lib.transcript_parser import SessionProcessor
 
+from hooks.internal_models import (
+    GitStatus,
+    GitPushStatus,
+    SessionCleanupResult,
+    UncommittedWorkCheck,
+)
+
 # Set up logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -165,19 +172,14 @@ def has_test_success(messages: list[str]) -> bool:
     return False
 
 
-def get_git_status(cwd: str | None = None) -> dict[str, Any]:
+def get_git_status(cwd: str | None = None) -> GitStatus:
     """Get git status information.
 
     Args:
         cwd: Working directory for git command
 
     Returns:
-        Dictionary with:
-        - has_changes: bool - any uncommitted changes
-        - staged_changes: bool - changes in staging area
-        - unstaged_changes: bool - changes not staged
-        - untracked_files: bool - untracked files exist
-        - status_output: str - raw git status output
+        GitStatus with working tree status
     """
     try:
         result = subprocess.run(
@@ -190,23 +192,11 @@ def get_git_status(cwd: str | None = None) -> dict[str, Any]:
 
         if result.returncode != 0:
             logger.warning(f"git status failed: {result.stderr}")
-            return {
-                "has_changes": False,
-                "staged_changes": False,
-                "unstaged_changes": False,
-                "untracked_files": False,
-                "status_output": "",
-            }
+            return GitStatus()
 
         output = result.stdout
         if not output:
-            return {
-                "has_changes": False,
-                "staged_changes": False,
-                "unstaged_changes": False,
-                "untracked_files": False,
-                "status_output": "",
-            }
+            return GitStatus()
 
         has_staged = any(
             line.startswith(("A ", "M ", "D ", "R ", "C "))
@@ -215,37 +205,27 @@ def get_git_status(cwd: str | None = None) -> dict[str, Any]:
         has_unstaged = any(line.startswith((" M", " D")) for line in output.split("\n"))
         has_untracked = any(line.startswith("??") for line in output.split("\n"))
 
-        return {
-            "has_changes": bool(output.strip()),
-            "staged_changes": has_staged,
-            "unstaged_changes": has_unstaged,
-            "untracked_files": has_untracked,
-            "status_output": output,
-        }
+        return GitStatus(
+            has_changes=bool(output.strip()),
+            staged_changes=has_staged,
+            unstaged_changes=has_unstaged,
+            untracked_files=has_untracked,
+            status_output=output,
+        )
 
     except Exception as e:
         logger.warning(f"Failed to get git status: {e}")
-        return {
-            "has_changes": False,
-            "staged_changes": False,
-            "unstaged_changes": False,
-            "untracked_files": False,
-            "status_output": "",
-        }
+        return GitStatus()
 
 
-def get_git_push_status(cwd: str | None = None) -> dict[str, Any]:
+def get_git_push_status(cwd: str | None = None) -> GitPushStatus:
     """Get git push status information (commits ahead of remote).
 
     Args:
         cwd: Working directory for git command
 
     Returns:
-        Dictionary with:
-        - branch_ahead: bool - current branch is ahead of remote
-        - commits_ahead: int - number of commits ahead
-        - current_branch: str - current branch name
-        - tracking_branch: str - remote tracking branch (e.g., origin/main)
+        GitPushStatus with push status information
     """
     try:
         # Get current branch name
@@ -259,12 +239,7 @@ def get_git_push_status(cwd: str | None = None) -> dict[str, Any]:
 
         if result.returncode != 0:
             logger.warning(f"Failed to get current branch: {result.stderr}")
-            return {
-                "branch_ahead": False,
-                "commits_ahead": 0,
-                "current_branch": "",
-                "tracking_branch": "",
-            }
+            return GitPushStatus()
 
         current_branch = result.stdout.strip()
 
@@ -279,12 +254,7 @@ def get_git_push_status(cwd: str | None = None) -> dict[str, Any]:
 
         if result.returncode != 0:
             logger.debug(f"No tracking branch configured for {current_branch}")
-            return {
-                "branch_ahead": False,
-                "commits_ahead": 0,
-                "current_branch": current_branch,
-                "tracking_branch": "",
-            }
+            return GitPushStatus(current_branch=current_branch)
 
         tracking_branch = result.stdout.strip()
 
@@ -299,38 +269,26 @@ def get_git_push_status(cwd: str | None = None) -> dict[str, Any]:
 
         if result.returncode != 0:
             logger.debug(f"Failed to count commits ahead: {result.stderr}")
-            return {
-                "branch_ahead": False,
-                "commits_ahead": 0,
-                "current_branch": current_branch,
-                "tracking_branch": tracking_branch,
-            }
+            return GitPushStatus(
+                current_branch=current_branch,
+                tracking_branch=tracking_branch,
+            )
 
         commits_ahead = int(result.stdout.strip())
 
-        return {
-            "branch_ahead": commits_ahead > 0,
-            "commits_ahead": commits_ahead,
-            "current_branch": current_branch,
-            "tracking_branch": tracking_branch,
-        }
+        return GitPushStatus(
+            branch_ahead=commits_ahead > 0,
+            commits_ahead=commits_ahead,
+            current_branch=current_branch,
+            tracking_branch=tracking_branch,
+        )
 
     except ValueError:
         logger.warning("Failed to parse commits ahead count")
-        return {
-            "branch_ahead": False,
-            "commits_ahead": 0,
-            "current_branch": "",
-            "tracking_branch": "",
-        }
+        return GitPushStatus()
     except Exception as e:
         logger.warning(f"Failed to get git push status: {e}")
-        return {
-            "branch_ahead": False,
-            "commits_ahead": 0,
-            "current_branch": "",
-            "tracking_branch": "",
-        }
+        return GitPushStatus()
 
 
 def get_current_branch() -> str | None:
@@ -523,7 +481,7 @@ def delete_session_state_file(session_id: str) -> bool:
 
 def perform_session_cleanup(
     session_id: str, transcript_path: str | None
-) -> dict[str, Any]:
+) -> SessionCleanupResult:
     """Perform end-of-session cleanup: transcript generation and state file deletion.
 
     Order of operations (fail-fast):
@@ -536,66 +494,59 @@ def perform_session_cleanup(
         transcript_path: Path to session.jsonl file
 
     Returns:
-        Dictionary with:
-        - success: bool - all cleanup steps succeeded
-        - transcript_generated: bool
-        - insights_verified: bool
-        - state_deleted: bool
-        - message: str - human-readable status
+        SessionCleanupResult with cleanup status
     """
-    result = {
-        "success": False,
-        "transcript_generated": False,
-        "insights_verified": False,
-        "state_deleted": False,
-        "message": "",
-    }
-
     if not transcript_path:
-        result["message"] = "No transcript path provided - skipping cleanup"
-        result["success"] = True  # Not a failure, just nothing to clean up
-        return result
+        return SessionCleanupResult(
+            success=True,
+            message="No transcript path provided - skipping cleanup",
+        )
 
     # Step 1: Generate transcript
-    if generate_session_transcript(transcript_path):
-        result["transcript_generated"] = True
-    else:
-        result["message"] = "Transcript generation failed"
-        return result
+    transcript_generated = generate_session_transcript(transcript_path)
+    if not transcript_generated:
+        return SessionCleanupResult(message="Transcript generation failed")
 
     # Step 2: Verify insights exist (may not exist for very short sessions)
     # We proceed with cleanup even if insights don't exist - the transcript
     # generation already handled that case (exit code 2 for insufficient content)
-    result["insights_verified"] = verify_insights_exist(session_id)
+    insights_verified = verify_insights_exist(session_id)
 
     # skip deleting
-    result["state_deleted"] = False
-    result["success"] = True
-    result["message"] = "Session cleanup completed"
-    return result
+    return SessionCleanupResult(
+        success=True,
+        transcript_generated=True,
+        insights_verified=insights_verified,
+        state_deleted=False,
+        message="Session cleanup completed",
+    )
 
-    # Step 3: Delete session state file
-    if delete_session_state_file(session_id):
-        result["state_deleted"] = True
-        result["success"] = True
-        result["message"] = "Session cleanup completed"
-        if result["insights_verified"]:
-            result["message"] = (
-                str(result["message"]) + " (transcript + insights generated)"
-            )
+    # Step 3: Delete session state file (unreachable - kept for future reference)
+    state_deleted = delete_session_state_file(session_id)
+    if state_deleted:
+        message = "Session cleanup completed"
+        if insights_verified:
+            message += " (transcript + insights generated)"
         else:
-            result["message"] = (
-                str(result["message"]) + " (transcript generated, no insights)"
-            )
+            message += " (transcript generated, no insights)"
+        return SessionCleanupResult(
+            success=True,
+            transcript_generated=True,
+            insights_verified=insights_verified,
+            state_deleted=True,
+            message=message,
+        )
     else:
-        result["message"] = "Failed to delete session state file"
-
-    return result
+        return SessionCleanupResult(
+            transcript_generated=True,
+            insights_verified=insights_verified,
+            message="Failed to delete session state file",
+        )
 
 
 def check_uncommitted_work(
     session_id: str, transcript_path: str | None
-) -> dict[str, Any]:
+) -> UncommittedWorkCheck:
     """Check if session has uncommitted work or unpushed commits.
 
     Args:
@@ -603,107 +554,106 @@ def check_uncommitted_work(
         transcript_path: Path to session transcript
 
     Returns:
-        Dictionary with:
-        - should_block: bool - whether to block session
-        - has_reflection: bool - Framework Reflection found
-        - has_test_success: bool - Test success patterns found
-        - git_status: dict - git status information
-        - push_status: dict - git push status information
-        - reminder_needed: bool - if reminder should be shown (even if not blocking)
-        - message: str - human-readable message
+        UncommittedWorkCheck with check results
     """
-    result = {
-        "should_block": False,
-        "has_reflection": False,
-        "has_test_success": False,
-        "git_status": {},
-        "push_status": {},
-        "reminder_needed": False,
-        "message": "",
-    }
-
     if not transcript_path:
         logger.debug("No transcript path provided")
-        return result
+        return UncommittedWorkCheck()
 
     path = Path(transcript_path)
     messages = extract_recent_messages(path)
 
     if not messages:
         logger.debug("No assistant messages found")
-        return result
+        return UncommittedWorkCheck()
 
     # Check for Framework Reflection
-    has_reflection = has_framework_reflection(messages)
-    result["has_reflection"] = has_reflection
+    reflection_found = has_framework_reflection(messages)
 
     # Check for test success
-    has_tests = has_test_success(messages)
-    result["has_test_success"] = has_tests
+    tests_passed = has_test_success(messages)
 
     # Get git status
     git_status = get_git_status()
-    result["git_status"] = git_status
 
     # Get git push status
     push_status = get_git_push_status()
-    result["push_status"] = push_status
 
     # Build reminder message for any uncommitted work or unpushed commits
     reminder_parts = []
 
     # Check for uncommitted changes
-    if git_status.get("has_changes"):
-        if git_status.get("staged_changes"):
+    if git_status.has_changes:
+        if git_status.staged_changes:
             reminder_parts.append("Staged changes detected")
-        if git_status.get("unstaged_changes"):
+        if git_status.unstaged_changes:
             reminder_parts.append("Unstaged changes detected")
-        if git_status.get("untracked_files"):
+        if git_status.untracked_files:
             reminder_parts.append("Untracked files detected")
 
     # Check for unpushed commits
-    if push_status.get("branch_ahead"):
+    if push_status.branch_ahead:
+        branch_display = (
+            push_status.current_branch
+            if push_status.current_branch
+            else "unknown branch"
+        )
         reminder_parts.append(
-            f"{push_status.get('commits_ahead', 1)} unpushed commit(s) on {push_status.get('current_branch', 'current branch')}"
+            f"{push_status.commits_ahead} unpushed commit(s) on {branch_display}"
         )
 
-    # Don't block on git -- just warn.
+    # Build result
+    should_block = False
+    reminder_needed = False
+    message = ""
+
     # Only trigger blocking if: (has reflection OR has test success) AND has uncommitted changes
     if (has_reflection or has_tests) and git_status.get("has_changes"):
-        result["should_block"] = False
+        should_block = False
 
-        if git_status.get("staged_changes"):
-            result["message"] = "Staged changes detected. Attempting auto-commit..."
+        if git_status.staged_changes:
+            message = "Staged changes detected. Attempting auto-commit..."
             # Try to auto-commit
             if attempt_auto_commit():
-                result["should_block"] = False
-                result["message"] = "Auto-committed. Session can proceed."
+                should_block = False
+                message = "Auto-committed. Session can proceed."
                 # Update reminder for any unpushed commits
-                if push_status.get("branch_ahead"):
-                    result["reminder_needed"] = True
-                    result["message"] = str(result["message"]) + (
-                        f"\nReminder: Push {push_status.get('commits_ahead', 1)} unpushed commit(s) on {push_status.get('current_branch', 'current branch')}"
+                if push_status.branch_ahead:
+                    reminder_needed = True
+                    branch_display = (
+                        push_status.current_branch
+                        if push_status.current_branch
+                        else "unknown branch"
                     )
+                    message += f"\nReminder: Push {push_status.commits_ahead} unpushed commit(s) on {branch_display}"
             else:
-                result["message"] = (
+                message = (
                     "Commit staged changes before ending session, "
                     "or use AskUserQuestion to request permission to end without committing."
                 )
         else:
-            result["message"] = (
+            message = (
                 "Uncommitted changes detected. Commit before ending session, "
                 "or use AskUserQuestion to request permission to end without committing."
             )
     elif reminder_parts:
         # Non-blocking reminder for unpushed commits or other git state
-        result["reminder_needed"] = True
-        result["message"] = (
+        reminder_needed = True
+        message = (
             "Reminder: "
             + " and ".join(reminder_parts)
             + ". Consider committing and pushing before ending session."
         )
 
-    return result
+    return UncommittedWorkCheck(
+        should_block=should_block,
+        has_reflection=reflection_found,
+        has_test_success=tests_passed,
+        git_status=git_status,
+        push_status=push_status,
+        reminder_needed=reminder_needed,
+        message=message,
+    )
 
 
 def main():
@@ -749,26 +699,26 @@ def main():
         try:
             check_result = check_uncommitted_work(session_id, transcript_path)
 
-            if check_result["should_block"]:
+            if check_result.should_block:
                 # Block the session and require commit
                 # Note: Stop hooks can't send messages to agent (hookSpecificOutput
                 # not supported for Stop event). Keep reason concise to avoid spam.
                 output_data = {
                     "verdict": "deny",  # Deny the stop -> Block session end
-                    "system_message": check_result["message"],
+                    "system_message": check_result.message,
                 }
-                logger.info(f"Session end blocked: {check_result['message'][:80]}...")
+                logger.info(f"Session end blocked: {check_result.message[:80]}...")
                 print(json.dumps(output_data))
                 sys.exit(
                     0
                 )  # Exit 0 so JSON is processed; decision:block does the blocking
-            elif check_result["reminder_needed"]:
+            elif check_result.reminder_needed:
                 # Allow session to proceed, but include reminder message
                 output_data = {
                     "verdict": "allow",
-                    "system_message": check_result["message"],
+                    "system_message": check_result.message,
                 }
-                logger.info(f"Reminder shown: {check_result['message'][:80]}...")
+                logger.info(f"Reminder shown: {check_result.message[:80]}...")
 
         except Exception as e:
             logger.warning(f"Uncommitted work check failed: {type(e).__name__}: {e}")
@@ -777,12 +727,10 @@ def main():
         # Only run if all blocking checks passed
         try:
             cleanup_result = perform_session_cleanup(session_id, transcript_path)
-            if cleanup_result["success"]:
-                logger.info(f"Session cleanup: {cleanup_result['message']}")
+            if cleanup_result.success:
+                logger.info(f"Session cleanup: {cleanup_result.message}")
             else:
-                logger.warning(
-                    f"Session cleanup incomplete: {cleanup_result['message']}"
-                )
+                logger.warning(f"Session cleanup incomplete: {cleanup_result.message}")
         except Exception as e:
             logger.warning(f"Session cleanup failed: {type(e).__name__}: {e}")
 
