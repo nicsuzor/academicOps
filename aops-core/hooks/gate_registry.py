@@ -1384,7 +1384,13 @@ def post_critic_trigger(ctx: GateContext) -> Optional[GateResult]:
     subagent_type = ctx.tool_input.get("subagent_type", "")
     is_critic_task = is_task and (subagent_type == "critic" or subagent_type == "aops-core:critic" or "critic" in subagent_type.lower())
 
-    if is_critic or is_critic_task:
+    # Also check Skill/activate_skill
+    is_skill = ctx.tool_name in ("activate_skill", "Skill")
+    skill_input = ctx.tool_input or {}
+    skill_name = skill_input.get("name") or skill_input.get("skill")
+    is_critic_skill = is_skill and skill_name == "critic"
+
+    if is_critic or is_critic_task or is_critic_skill:
         # Set flags
         session_state.set_critic_invoked(
             ctx.session_id, "INVOKED"
@@ -1395,6 +1401,40 @@ def post_critic_trigger(ctx: GateContext) -> Optional[GateResult]:
         return GateResult(
             verdict=GateVerdict.ALLOW,
             system_message="[Gate] Critic invoked. Gate satisfied.",
+        )
+
+    return None
+
+
+def post_qa_trigger(ctx: GateContext) -> Optional[GateResult]:
+    """
+    PostToolUse: Detect successful QA invocation and update state.
+    """
+    _check_imports()
+
+    # Check if this was a QA invocation
+    is_delegate = ctx.tool_name == "delegate_to_agent"
+    is_qa = is_delegate and ctx.tool_input.get("agent_name") == "qa"
+
+    # Also check Task tool (Claude)
+    is_task = ctx.tool_name == "Task"
+    subagent_type = ctx.tool_input.get("subagent_type", "")
+    is_qa_task = is_task and (subagent_type == "qa" or subagent_type == "aops-core:qa" or "qa" in subagent_type.lower())
+
+    # Also check Skill/activate_skill
+    is_skill = ctx.tool_name in ("activate_skill", "Skill")
+    skill_input = ctx.tool_input or {}
+    skill_name = skill_input.get("name") or skill_input.get("skill")
+    is_qa_skill = is_skill and skill_name == "qa"
+
+    if is_qa or is_qa_task or is_qa_skill:
+        # Set flags
+        session_state.set_qa_invoked(ctx.session_id)
+
+        # User-facing output for gate state change
+        return GateResult(
+            verdict=GateVerdict.ALLOW,
+            system_message="[Gate] QA verified. Gate satisfied.",
         )
 
     return None
@@ -1871,6 +1911,7 @@ GATE_CHECKS = {
     "accountant": run_accountant,
     "post_hydration": post_hydration_trigger,
     "post_critic": post_critic_trigger,
+    "post_qa": post_qa_trigger,
     "skill_activation": check_skill_activation_listener,
     # AfterAgent gates
     "agent_response": check_agent_response_listener,
