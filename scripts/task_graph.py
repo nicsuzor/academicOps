@@ -4,17 +4,16 @@
 Reads JSON from fast-indexer and applies color coding based on
 status, priority, and type. Generates SVG using Graphviz sfdp.
 
-By default, generates multiple SVG variants:
-  - {output}.svg      : Smart-filtered (active work focus)
-  - {output}-full.svg : All tasks including completed
-  - {output}-all.svg  : Comprehensive view with orphan nodes
+By default, generates two SVG variants:
+  - {output}.svg         : Smart-filtered (active work focus)
+  - {output}-rollup.svg  : Pruned tree (unfinished nodes + structural ancestors)
 
 Usage:
     python task_graph.py INPUT.json [-o OUTPUT] [--single]
 
 Examples:
     fast-indexer ./data -o graph -f json -t task,project,goal
-    python task_graph.py graph.json -o task-map          # Generates 3 SVGs
+    python task_graph.py graph.json -o task-map          # Generates 2 SVGs
     python task_graph.py graph.json -o task-map --single  # Single output only
 """
 
@@ -153,6 +152,72 @@ def filter_completed_smart(nodes: list[dict], edges: list[dict]) -> tuple[list[d
     keep_ids = active_ids | structural_ids
     filtered_nodes = [n for n in nodes if n["id"] in keep_ids]
 
+    return filtered_nodes, structural_ids
+
+
+def filter_rollup(nodes: list[dict], edges: list[dict]) -> tuple[list[dict], set[str]]:
+    """Filter to show only unfinished nodes and ancestors with unfinished descendants.
+
+    This creates a "rollup" view showing the pruned tree of incomplete work.
+    Completed leaf nodes are removed, but completed structural nodes (those with
+    incomplete descendants) are preserved to maintain hierarchy context.
+
+    Returns:
+        (filtered_nodes, structural_ids) where structural_ids are completed nodes
+        kept because they have unfinished descendants (displayed differently).
+    """
+    done_statuses = {"done", "completed"}
+
+    # Build lookups
+    node_by_id = {n["id"]: n for n in nodes}
+    unfinished_ids = {n["id"] for n in nodes if n.get("status", "").lower() not in done_statuses}
+    finished_ids = {n["id"] for n in nodes if n.get("status", "").lower() in done_statuses}
+
+    # Build parent→children mapping from node.parent field
+    # (more reliable than parsing edges since nodes directly declare their parent)
+    children_of: dict[str, list[str]] = {n["id"]: [] for n in nodes}
+    for node in nodes:
+        parent_id = node.get("parent")
+        if parent_id and parent_id in children_of:
+            children_of[parent_id].append(node["id"])
+
+    # Memoized check: does this node have any unfinished descendant?
+    memo: dict[str, bool] = {}
+
+    def has_unfinished_descendant(node_id: str, visited: set[str]) -> bool:
+        """Check if node has any unfinished node in its subtree (children, grandchildren, etc.)."""
+        if node_id in memo:
+            return memo[node_id]
+        if node_id in visited:  # Cycle detection
+            return False
+        visited.add(node_id)
+
+        for child_id in children_of.get(node_id, []):
+            if child_id in unfinished_ids:
+                memo[node_id] = True
+                return True
+            if has_unfinished_descendant(child_id, visited):
+                memo[node_id] = True
+                return True
+
+        memo[node_id] = False
+        return False
+
+    # Determine which nodes to keep
+    keep_ids: set[str] = set()
+    structural_ids: set[str] = set()
+
+    for node_id in node_by_id:
+        if node_id in unfinished_ids:
+            # Always keep unfinished nodes
+            keep_ids.add(node_id)
+        elif has_unfinished_descendant(node_id, set()):
+            # Keep finished nodes that have unfinished descendants (structural)
+            keep_ids.add(node_id)
+            structural_ids.add(node_id)
+        # Otherwise: finished node with no unfinished descendants → prune
+
+    filtered_nodes = [n for n in nodes if n["id"] in keep_ids]
     return filtered_nodes, structural_ids
 
 
@@ -429,21 +494,21 @@ def main():
     print(f"Loaded {len(all_nodes)} nodes, {len(all_edges)} edges from {input_path}")
 
     # Define variants to generate
-    # Each variant: (suffix, filter_completed, include_orphans, description)
+    # Each variant: (suffix, filter_type, include_orphans, description)
+    # filter_type: "smart" = active work focus, "rollup" = pruned tree, None = no filter
     if args.single:
         # Single mode: respect --no-filter and --include-orphans flags
         variants = [
-            ("", not args.no_filter, args.include_orphans, "single output"),
+            ("", None if args.no_filter else "smart", args.include_orphans, "single output"),
         ]
     else:
-        # Multi mode (default): generate all variants
+        # Multi mode (default): generate both variants
         variants = [
-            ("", True, False, "smart-filtered (active work)"),
-            ("-full", False, False, "all tasks including completed"),
-            ("-all", False, True, "comprehensive (all + orphans)"),
+            ("", "smart", False, "smart-filtered (active work)"),
+            ("-rollup", "rollup", False, "pruned tree (unfinished + structural ancestors)"),
         ]
 
-    for suffix, do_filter, include_orphans, description in variants:
+    for suffix, filter_type, include_orphans, description in variants:
         output_base = f"{args.output}{suffix}"
         print(f"\nGenerating {output_base}.svg: {description}")
 
@@ -451,14 +516,18 @@ def main():
         nodes = list(all_nodes)
         edges = list(all_edges)
 
-        # Smart filter if requested
+        # Apply filter based on type
         structural_ids = set()
-        if do_filter:
-            original_count = len(nodes)
+        original_count = len(nodes)
+        if filter_type == "smart":
             nodes, structural_ids = filter_completed_smart(nodes, edges)
-            excluded_leaves = original_count - len(nodes)
-            if excluded_leaves > 0 or structural_ids:
-                print(f"  Filtered: {excluded_leaves} completed leaves removed, {len(structural_ids)} structural kept")
+        elif filter_type == "rollup":
+            nodes, structural_ids = filter_rollup(nodes, edges)
+        # filter_type == None means no filtering
+
+        excluded_count = original_count - len(nodes)
+        if excluded_count > 0 or structural_ids:
+            print(f"  Filtered: {excluded_count} nodes removed, {len(structural_ids)} structural kept")
 
         # Count by type and status for this variant
         # Note: Some linked nodes (non-tasks) may lack status/type fields
