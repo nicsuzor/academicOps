@@ -219,6 +219,29 @@ HYDRATION_SAFE_GIT_PATTERNS = [
     r"^\s*git\s+cherry\b",  # Check cherry-pick status
 ]
 
+# Read-only file operations safe to allow through hydration gate
+# These enable agents to re-read tool results and other cached data
+# without requiring full hydration (aops-2bbce5b0)
+HYDRATION_SAFE_READ_PATTERNS = [
+    r"^\s*cat\s",  # Read file contents
+    r"^\s*head\s",  # Read first N lines
+    r"^\s*tail\s",  # Read last N lines
+    r"^\s*less\s",  # View file (pager)
+    r"^\s*more\s",  # View file (pager)
+    r"^\s*jq\s",  # JSON query (read-only)
+    r"^\s*wc\s",  # Word/line count
+    r"^\s*file\s",  # File type detection
+    r"^\s*stat\s",  # File stats
+    r"^\s*ls\b",  # List directory
+    r"^\s*find\s",  # Find files
+    r"^\s*grep\s",  # Search file contents
+    r"^\s*rg\s",  # Ripgrep search
+    r"^\s*pwd\b",  # Print working directory
+    r"^\s*which\s",  # Locate command
+    r"^\s*type\s",  # Command type
+    r"^\s*echo\s",  # Echo (no redirect)
+]
+
 # Template paths for task gate messages
 TASK_GATE_BLOCK_TEMPLATE = Path(__file__).parent / "templates" / "task-gate-block.md"
 TASK_GATE_WARN_TEMPLATE = Path(__file__).parent / "templates" / "task-gate-warn.md"
@@ -334,8 +357,11 @@ def _is_safe_temp_path(file_path: str | None) -> bool:
 def _is_hydration_safe_bash(command: str) -> bool:
     """Check if a Bash command is safe to allow through hydration gate.
 
-    Safe commands are git operations that don't corrupt history or
-    affect other branches. These are commonly needed during handover.
+    Safe commands include:
+    - Git operations that don't corrupt history or affect other branches
+    - Read-only file operations (cat, jq, head, tail, etc.)
+
+    These are commonly needed during handover and for re-reading cached data.
 
     Args:
         command: The Bash command string
@@ -344,9 +370,20 @@ def _is_hydration_safe_bash(command: str) -> bool:
         True if command is safe for hydration bypass, False otherwise
     """
     cmd = command.strip()
+
+    # Check git patterns
     for pattern in HYDRATION_SAFE_GIT_PATTERNS:
         if re.search(pattern, cmd, re.IGNORECASE):
             return True
+
+    # Check read-only file patterns (but not if they redirect to files)
+    # A redirect like "cat foo > bar" or "cat foo >> bar" makes it destructive
+    has_redirect = re.search(r">\s*[^&]|>>\s*", cmd)
+    if not has_redirect:
+        for pattern in HYDRATION_SAFE_READ_PATTERNS:
+            if re.search(pattern, cmd, re.IGNORECASE):
+                return True
+
     return False
 
 
