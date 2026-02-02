@@ -102,6 +102,9 @@ def worker_loop(
 
             cmd.append("run")
 
+            # Claim tasks assigned to "bot" (the standard assignee for automated work)
+            cmd.extend(["-c", "bot"])
+
             if agent_type == "gemini":
                 cmd.append("-g")
 
