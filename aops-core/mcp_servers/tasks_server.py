@@ -1069,6 +1069,98 @@ def get_dependencies(id: str) -> dict[str, Any]:
         }
 
 
+@mcp.tool()
+def get_tasks_with_topology(
+    project: Optional[str] = None,
+    status: Optional[str] = None,
+    min_depth: Optional[int] = None,
+    min_blocking_count: Optional[int] = None,
+) -> dict[str, Any]:
+    """
+    Return tasks with their topology metrics. Agent identifies issues.
+
+    Returns list of tasks, each with:
+        - id, title, type, status, project, tags
+        - depth: int                    # levels from root
+        - parent: str | None
+        - child_count: int
+        - blocking_count: int           # tasks depending on this
+        - blocked_by_count: int         # dependencies this has
+        - is_leaf: bool
+        - created: datetime
+        - modified: datetime
+        - ready_days: float | None      # days since became ready (if status=active)
+    """
+    try:
+        index = _get_index()
+        storage = _get_storage()
+        now = datetime.now().astimezone()
+
+        # Get all tasks from the index
+        all_tasks = index._tasks.values()
+
+        # Apply filters
+        filtered_entries = []
+        for entry in all_tasks:
+            if project is not None and entry.project != project:
+                continue
+            if status is not None and entry.status != status:
+                continue
+            if min_depth is not None and entry.depth < min_depth:
+                continue
+            if min_blocking_count is not None and len(entry.blocks) < min_blocking_count:
+                continue
+            filtered_entries.append(entry)
+
+        # Build response dictionaries
+        task_dicts = []
+        for entry in filtered_entries:
+            # The index doesn't store timestamps, so we need to load the full task
+            full_task = storage.get_task(entry.id)
+            if not full_task:
+                continue # Skip if task file was deleted but index not rebuilt
+
+            ready_days = None
+            if entry.status == "active":
+                # Use timezone-aware datetime for comparison
+                ready_days = (now - full_task.modified).total_seconds() / (24 * 3600)
+
+            task_dict = {
+                "id": entry.id,
+                "title": entry.title,
+                "type": entry.type,
+                "status": entry.status,
+                "project": entry.project,
+                "tags": entry.tags,
+                "depth": entry.depth,
+                "parent": entry.parent,
+                "child_count": len(entry.children),
+                "blocking_count": len(entry.blocks),
+                "blocked_by_count": len(entry.depends_on),
+                "is_leaf": entry.leaf,
+                "created": full_task.created.isoformat(),
+                "modified": full_task.modified.isoformat(),
+                "ready_days": ready_days,
+            }
+            task_dicts.append(task_dict)
+
+        return {
+            "success": True,
+            "tasks": task_dicts,
+            "count": len(task_dicts),
+            "message": f"Found {len(task_dicts)} tasks matching criteria.",
+        }
+
+    except Exception as e:
+        logger.exception("get_tasks_with_topology failed")
+        return {
+            "success": False,
+            "tasks": [],
+            "count": 0,
+            "message": f"Failed to get tasks with topology: {e}",
+        }
+
+
 # =============================================================================
 # DECOMPOSITION OPERATIONS
 # =============================================================================
