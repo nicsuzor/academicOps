@@ -14,13 +14,17 @@ Architecture:
 
 import json
 import os
+import signal
 import sys
 import subprocess
 import tempfile
+import time
 import uuid
+from collections import deque
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
 
 # --- Path Setup ---
 HOOK_DIR = Path(__file__).parent # aops-core/hooks
@@ -140,6 +144,42 @@ def persist_session_data(data: Dict[str, Any]) -> None:
 class HookRouter:
     def __init__(self):
         self.session_data = get_session_data()
+        self._execution_timestamps = deque(maxlen=20)  # Store last 20 timestamps
+        self._MAX_CALLS_PER_WINDOW = 15
+        self._WINDOW_SECONDS = 5.0
+
+    def _check_for_loops(self):
+        """Detect if execute_hooks is being called in a tight loop."""
+        now = time.monotonic()
+        self._execution_timestamps.append(now)
+
+        if len(self._execution_timestamps) < self._MAX_CALLS_PER_WINDOW:
+            return
+
+        # Check if the last N calls happened within the time window
+        window_start_time = self._execution_timestamps[0]
+        if (now - window_start_time) < self._WINDOW_SECONDS:
+            # Loop detected
+            error_msg = (
+                f"CRITICAL: Infinite loop detected in hook router. "
+                f"Over {self._MAX_CALLS_PER_WINDOW} hook calls in {self._WINDOW_SECONDS:.1f} seconds. "
+                f"Terminating process {os.getpid()}."
+            )
+            print(error_msg, file=sys.stderr)
+            
+            # Log to unified logger if possible, but don't fail if it doesn't work
+            try:
+                log_hook_event(
+                    self.session_data.get("session_id", "unknown"),
+                    "RouterLoop",
+                    {"error": error_msg},
+                    output_data={"verdict": "deny", "system_message": "Infinite loop detected."},
+                )
+            except Exception:
+                pass # Do not prevent termination
+
+            # Terminate the current process forcefully.
+            os.kill(os.getpid(), signal.SIGKILL)
 
     def normalize_input(self, raw_input: Dict[str, Any], gemini_event: Optional[str] = None) -> HookContext:
         """Create a normalized HookContext from raw input."""
@@ -189,6 +229,7 @@ class HookRouter:
         Gates are called directly as Python functions (no subprocess).
         Shell scripts are still executed via subprocess.
         """
+        self._check_for_loops()
         merged_result = CanonicalHookOutput()
 
         # Build input dict for gate context
