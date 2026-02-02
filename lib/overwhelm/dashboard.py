@@ -5,6 +5,7 @@ from __future__ import annotations
 import streamlit as st
 import streamlit.components.v1 as components
 from datetime import datetime, timezone
+from dataclasses import dataclass
 from pathlib import Path
 import json
 import os
@@ -320,6 +321,110 @@ def get_next_actions() -> list[dict]:
     actionable.sort(key=lambda t: t.get("priority", 999))
 
     return actionable[:5]  # Top 5
+
+
+@dataclass
+class ActiveAgent:
+    session_id: str
+    task_id: str | None
+    project: str | None
+    started_at: str | None  # ISO format string
+
+
+def get_active_agents() -> list[ActiveAgent]:
+    """Parse sessions/status/*.json files to find active sessions."""
+    agents = []
+    # Assumes running from root where sessions/status exists, or check standard locations
+    # Use CWD first as per instructions "files to modify" logic usually implies relative to root
+    status_dir = Path("sessions/status")
+    
+    # Fallback to home dir location if CWD fails (for compatibility)
+    if not status_dir.exists():
+        status_dir = Path.home() / "writing" / "sessions" / "status"
+
+    if not status_dir.exists():
+        return []
+
+    for status_file in status_dir.glob("*.json"):
+        try:
+            data = json.loads(status_file.read_text())
+            if data.get("ended_at") is None:
+                # Extract fields with safe fallbacks
+                main_agent = data.get("main_agent", {})
+                insights = data.get("insights", {})
+                
+                agents.append(ActiveAgent(
+                    session_id=data.get("session_id", status_file.stem),
+                    task_id=main_agent.get("current_task"),
+                    project=insights.get("project"),
+                    started_at=data.get("started_at")
+                ))
+        except (json.JSONDecodeError, OSError):
+            continue
+            
+    return agents
+
+
+def render_agents_working():
+    """Render the 'AGENTS WORKING' section if any agents are active."""
+    agents = get_active_agents()
+    if not agents:
+        return
+
+    st.markdown(
+        f"<div class='agent-status-panel'><div class='agent-status-title'>🤖 AGENTS WORKING ({len(agents)} active)</div>",
+        unsafe_allow_html=True
+    )
+
+    all_tasks_cache = None
+
+    for agent in agents:
+        # Calculate duration
+        duration_str = "just started"
+        if agent.started_at:
+            try:
+                # Handle Z/timezone if present, or naive
+                start = datetime.fromisoformat(agent.started_at.replace("Z", "+00:00"))
+                if start.tzinfo is None:
+                    start = start.replace(tzinfo=timezone.utc)
+                
+                now = datetime.now(timezone.utc)
+                diff = now - start
+                
+                mins = int(diff.total_seconds() / 60)
+                if mins < 60:
+                    duration_str = f"started {mins}m ago"
+                else:
+                    hrs = int(mins / 60)
+                    duration_str = f"started {hrs}h ago"
+            except Exception:
+                pass
+
+        project = agent.project or "unknown"
+        
+        task_display = ""
+        if agent.task_id:
+             task_display = agent.task_id
+             # Try to resolve title
+             if all_tasks_cache is None:
+                 all_tasks_cache = load_tasks_from_index()
+                 
+             t_obj = next((t for t in all_tasks_cache if t["id"] == agent.task_id), None)
+             if t_obj:
+                 task_display += f' "{t_obj.get("title", "")}"'
+        else:
+             task_display = "No specific task"
+
+        html = f"""
+        <div class='agent-card'>
+            <span class='agent-project'>{esc(project)}</span>: 
+            <span class='agent-task-name'>{esc(task_display)}</span>
+            <span class='agent-meta'>({esc(duration_str)})</span>
+        </div>
+        """
+        st.markdown(html, unsafe_allow_html=True)
+        
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 # Project color scheme (matching Peacock)
@@ -2837,6 +2942,9 @@ render_graph_section()
 # Then project-centric content
 # Initialize analyzer for daily log
 analyzer = SessionAnalyzer()
+
+# Render Active Agents
+render_agents_working()
 
 # Load synthesis
 synthesis = load_synthesis()
