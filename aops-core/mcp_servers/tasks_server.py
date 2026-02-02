@@ -1918,6 +1918,309 @@ def get_index_stats(include_projects: bool) -> dict[str, Any]:
 
 
 # =============================================================================
+# GRAPH METRICS AND REVIEW
+# =============================================================================
+
+
+def _compute_graph_metrics(
+    index: TaskIndex,
+    scope: str = "all",
+    scope_id: str | None = None,
+) -> dict[str, Any]:
+    """Compute raw graph metrics from task index.
+
+    Internal helper that computes metrics for get_graph_metrics() and
+    get_review_snapshot(). Returns deterministic counts and metrics
+    without interpretation (per P#78).
+
+    Args:
+        index: TaskIndex instance
+        scope: "all", "project", or "subtree"
+        scope_id: Project slug (for scope="project") or task_id (for scope="subtree")
+
+    Returns:
+        Dictionary with graph metrics
+    """
+    # Get tasks based on scope
+    if scope == "project" and scope_id:
+        entries = index.get_by_project(scope_id)
+    elif scope == "subtree" and scope_id:
+        root = index.get_task(scope_id)
+        if root:
+            entries = [root] + index.get_descendants(scope_id)
+        else:
+            entries = []
+    else:
+        entries = list(index._tasks.values())
+
+    if not entries:
+        return {
+            "total_tasks": 0,
+            "tasks_by_status": {},
+            "tasks_by_type": {},
+            "orphan_count": 0,
+            "root_count": 0,
+            "leaf_count": 0,
+            "max_depth": 0,
+            "avg_depth": 0.0,
+            "dependency_stats": {
+                "total_edges": 0,
+                "max_in_degree": 0,
+                "max_out_degree": 0,
+                "tasks_with_high_out_degree": [],
+            },
+            "readiness_stats": {
+                "ready_count": 0,
+                "blocked_count": 0,
+                "in_progress_count": 0,
+            },
+        }
+
+    entry_ids = {e.id for e in entries}
+
+    # Basic counts
+    tasks_by_status: dict[str, int] = {}
+    tasks_by_type: dict[str, int] = {}
+    depths: list[int] = []
+    leaf_count = 0
+    orphan_count = 0
+    in_progress_count = 0
+
+    for entry in entries:
+        # Status counts
+        tasks_by_status[entry.status] = tasks_by_status.get(entry.status, 0) + 1
+        # Type counts
+        tasks_by_type[entry.type] = tasks_by_type.get(entry.type, 0) + 1
+        # Depth tracking
+        depths.append(entry.depth)
+        # Leaf counting
+        if entry.leaf:
+            leaf_count += 1
+        # Orphan: no parent AND no dependencies (within scope)
+        has_parent_in_scope = entry.parent and entry.parent in entry_ids
+        has_deps_in_scope = any(d in entry_ids for d in entry.depends_on)
+        if not has_parent_in_scope and not has_deps_in_scope:
+            orphan_count += 1
+        # In-progress
+        if entry.status == "in_progress":
+            in_progress_count += 1
+
+    # Root count (tasks with no parent within scope)
+    root_count = sum(
+        1 for e in entries if not e.parent or e.parent not in entry_ids
+    )
+
+    # Depth stats
+    max_depth = max(depths) if depths else 0
+    avg_depth = sum(depths) / len(depths) if depths else 0.0
+
+    # Dependency stats
+    total_edges = 0
+    in_degrees: dict[str, int] = {}  # How many deps each task has
+    out_degrees: dict[str, int] = {}  # How many tasks depend on each task
+
+    for entry in entries:
+        # In-degree: count dependencies this task has (within scope)
+        deps_in_scope = [d for d in entry.depends_on if d in entry_ids]
+        in_degrees[entry.id] = len(deps_in_scope)
+        total_edges += len(deps_in_scope)
+
+        # Out-degree: count tasks that depend on this task (within scope)
+        blocks_in_scope = [b for b in entry.blocks if b in entry_ids]
+        out_degrees[entry.id] = len(blocks_in_scope)
+
+    max_in_degree = max(in_degrees.values()) if in_degrees else 0
+    max_out_degree = max(out_degrees.values()) if out_degrees else 0
+
+    # Tasks with high out-degree (return all with out_degree > 0, sorted desc)
+    # Agent applies its own threshold
+    tasks_with_high_out_degree = [
+        {"id": e.id, "title": e.title, "out_degree": out_degrees.get(e.id, 0)}
+        for e in entries
+        if out_degrees.get(e.id, 0) > 0
+    ]
+    tasks_with_high_out_degree.sort(key=lambda x: -x["out_degree"])
+
+    # Readiness stats
+    ready_ids = set(index._ready)
+    blocked_ids = set(index._blocked)
+    ready_count = sum(1 for e in entries if e.id in ready_ids)
+    blocked_count = sum(1 for e in entries if e.id in blocked_ids)
+
+    return {
+        "total_tasks": len(entries),
+        "tasks_by_status": tasks_by_status,
+        "tasks_by_type": tasks_by_type,
+        "orphan_count": orphan_count,
+        "root_count": root_count,
+        "leaf_count": leaf_count,
+        "max_depth": max_depth,
+        "avg_depth": round(avg_depth, 2),
+        "dependency_stats": {
+            "total_edges": total_edges,
+            "max_in_degree": max_in_degree,
+            "max_out_degree": max_out_degree,
+            "tasks_with_high_out_degree": tasks_with_high_out_degree[:20],  # Limit output
+        },
+        "readiness_stats": {
+            "ready_count": ready_count,
+            "blocked_count": blocked_count,
+            "in_progress_count": in_progress_count,
+        },
+    }
+
+
+@mcp.tool()
+def get_review_snapshot(since_days: int = 1) -> dict[str, Any]:
+    """Return snapshot data for periodic review. Agent generates report.
+
+    Provides raw data for the agent to analyze and interpret. Server does NOT
+    make recommendations or identify issues - per P#78 "Dumb Server, Smart Agent".
+
+    Args:
+        since_days: Number of days to look back for changes (default: 1)
+
+    Returns:
+        Dictionary with:
+        - success: True if snapshot generated
+        - timestamp: Current timestamp
+        - metrics: Graph metrics (from get_graph_metrics logic)
+        - changes_since:
+            - tasks_created: List of tasks created in last N days
+            - tasks_completed: List of tasks completed in last N days
+            - tasks_modified: List of tasks modified in last N days
+        - staleness:
+            - oldest_ready_task: {task, days_ready} or None
+            - oldest_in_progress: {task, days_in_progress} or None
+        - velocity:
+            - completed_last_7_days: int
+            - created_last_7_days: int
+        - message: Status message
+    """
+    try:
+        from datetime import timedelta, timezone
+
+        storage = _get_storage()
+        index = _get_index()
+
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=since_days)
+        velocity_cutoff = now - timedelta(days=7)
+
+        # Compute metrics
+        metrics = _compute_graph_metrics(index)
+
+        # Track changes and velocity
+        tasks_created: list[dict[str, Any]] = []
+        tasks_completed: list[dict[str, Any]] = []
+        tasks_modified: list[dict[str, Any]] = []
+        completed_last_7_days = 0
+        created_last_7_days = 0
+
+        # Track staleness - oldest ready and in_progress tasks
+        oldest_ready_task: dict[str, Any] | None = None
+        oldest_in_progress: dict[str, Any] | None = None
+        oldest_ready_days = 0.0
+        oldest_in_progress_days = 0.0
+
+        # Iterate all tasks to compute changes and staleness
+        for task in storage._iter_all_tasks():
+            task_dict = _task_to_dict(task, truncate_body=100)
+
+            # Created timestamp
+            created_ts = task.created
+            if created_ts.tzinfo is None:
+                created_ts = created_ts.replace(tzinfo=timezone.utc)
+
+            # Modified timestamp
+            modified_ts = task.modified
+            if modified_ts.tzinfo is None:
+                modified_ts = modified_ts.replace(tzinfo=timezone.utc)
+
+            # Changes since cutoff
+            if created_ts >= cutoff:
+                tasks_created.append(task_dict)
+            if modified_ts >= cutoff and task.status.value == "done":
+                tasks_completed.append(task_dict)
+            elif modified_ts >= cutoff and created_ts < cutoff:
+                # Modified but not created in window (and not a completion)
+                tasks_modified.append(task_dict)
+
+            # Velocity (7-day window)
+            if created_ts >= velocity_cutoff:
+                created_last_7_days += 1
+            if task.status.value == "done" and modified_ts >= velocity_cutoff:
+                completed_last_7_days += 1
+
+            # Staleness: check ready tasks
+            if task.id in index._ready:
+                # Use modified date as proxy for "became ready" date
+                # (Tasks become ready when deps complete, which triggers a modification)
+                days_ready = (now - modified_ts).total_seconds() / 86400
+                if days_ready > oldest_ready_days:
+                    oldest_ready_days = days_ready
+                    oldest_ready_task = {
+                        "task": task_dict,
+                        "days_ready": round(days_ready, 1),
+                    }
+
+            # Staleness: check in_progress tasks
+            if task.status.value == "in_progress":
+                days_in_progress = (now - modified_ts).total_seconds() / 86400
+                if days_in_progress > oldest_in_progress_days:
+                    oldest_in_progress_days = days_in_progress
+                    oldest_in_progress = {
+                        "task": task_dict,
+                        "days_in_progress": round(days_in_progress, 1),
+                    }
+
+        # Sort changes by modified date (most recent first)
+        tasks_created.sort(key=lambda t: t["created"], reverse=True)
+        tasks_completed.sort(key=lambda t: t["modified"], reverse=True)
+        tasks_modified.sort(key=lambda t: t["modified"], reverse=True)
+
+        snapshot = {
+            "success": True,
+            "timestamp": now.isoformat(),
+            "metrics": metrics,
+            "changes_since": {
+                "since_days": since_days,
+                "tasks_created": tasks_created[:50],  # Limit output
+                "tasks_completed": tasks_completed[:50],
+                "tasks_modified": tasks_modified[:50],
+            },
+            "staleness": {
+                "oldest_ready_task": oldest_ready_task,
+                "oldest_in_progress": oldest_in_progress,
+            },
+            "velocity": {
+                "completed_last_7_days": completed_last_7_days,
+                "created_last_7_days": created_last_7_days,
+            },
+            "message": (
+                f"Review snapshot generated: {metrics['total_tasks']} total tasks, "
+                f"{len(tasks_created)} created, {len(tasks_completed)} completed "
+                f"in last {since_days} day(s)"
+            ),
+        }
+
+        logger.info(f"get_review_snapshot: {snapshot['message']}")
+        return snapshot
+
+    except Exception as e:
+        logger.exception("get_review_snapshot failed")
+        return {
+            "success": False,
+            "timestamp": datetime.now().astimezone().isoformat(),
+            "metrics": {},
+            "changes_since": {},
+            "staleness": {},
+            "velocity": {},
+            "message": f"Failed to generate review snapshot: {e}",
+        }
+
+
+# =============================================================================
 # MAIN ENTRY POINT
 # =============================================================================
 
