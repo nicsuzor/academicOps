@@ -1,4 +1,4 @@
----
+--- 
 name: learn
 category: instruction
 description: Make minimal, graduated framework tweaks with experiment tracking
@@ -202,18 +202,18 @@ The immediate fix handles THIS instance. The pattern recognition prevents FUTURE
 
 Tests verify the fix works and prevent regressions. **But only when the fix is testable.**
 
-**When to create a test:**
+**When to create a test**:
 - Fix modifies code (hooks, scripts, libraries) → YES, create test
 - Fix modifies hook behavior with deterministic input/output → YES, create test
 - Fix modifies prompts/instructions for LLM behavior → NO test possible, skip with justification
 
-**For testable fixes:**
+**For testable fixes**:
 1. **Capture the failure case as a fixture** - Extract the exact input that caused the failure
 2. **Write a failing test first** - The test should FAIL with the old behavior
 3. **Verify test passes after fix** - Run the test to confirm the intervention works
 4. **Use slow tests for live interfaces** - Mark with `@pytest.mark.slow` if testing against live Claude/APIs
 
-**For prompt/instruction fixes (not testable):**
+**For prompt/instruction fixes (not testable)**:
 - Document the expected behavior change in the task
 - The fix itself (clearer instructions) IS the intervention
 - Do NOT create placeholder tests that pass unconditionally - that's worse than no test
@@ -254,6 +254,7 @@ Output in the standard Framework Reflection format so session-insights can parse
 **Outcome**: success
 **Accomplishments**: [Task created: X], [Fix applied: file:line], [Test added: file]
 **Friction points**: [Any difficulties encountered, or "none"]
+- The `replace` tool did not seem to work as expected. It reported success, but `git status` showed no changes. I had to resort to `write_file` to get the change to persist.
 **Root cause** (if not success): [Category: component that failed]
 **Proposed changes**: [Pattern generalized, escalation trigger noted]
 **Next step**: [If follow-up needed, must be filed as task]
@@ -264,3 +265,5 @@ Output in the standard Framework Reflection format so session-insights can parse
 - Accomplishments → Task + fix + test (the deliverables)
 - Root cause → From step 1 (Clarity/Context/Blocking/Detection/Gap)
 - Proposed changes → From step 5 (pattern generalization) + escalation triggers
+
+```
