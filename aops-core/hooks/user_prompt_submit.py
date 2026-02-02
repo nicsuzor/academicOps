@@ -294,7 +294,7 @@ def load_axioms() -> str:
     Returns content after frontmatter separator.
     """
     plugin_root = get_plugin_root()
-    axioms_path = plugin_root / "framework" / "AXIOMS.md"
+    axioms_path = plugin_root / "AXIOMS.md"
 
     # Fail fast, raises if file doesn't exist
     content = axioms_path.read_text()
@@ -316,7 +316,7 @@ def load_heuristics() -> str:
     Returns content after frontmatter separator.
     """
     plugin_root = get_plugin_root()
-    heuristics_path = plugin_root / "framework" / "HEURISTICS.md"
+    heuristics_path = plugin_root / "HEURISTICS.md"
 
     # Fail fast, raises if file doesn't exist
     content = heuristics_path.read_text()

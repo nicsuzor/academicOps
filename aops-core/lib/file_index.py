@@ -43,7 +43,7 @@ class FileEntry:
 FILE_INDEX: tuple[FileEntry, ...] = (
     # --- Core Framework Files ---
     FileEntry(
-        path="framework/AXIOMS.md",
+        path="AXIOMS.md",
         description="Inviolable principles (failure = system failure)",
         keywords=(
             "axiom",
@@ -56,7 +56,7 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         ),
     ),
     FileEntry(
-        path="framework/HEURISTICS.md",
+        path="HEURISTICS.md",
         description="Operational guidelines (violation = friction, not failure)",
         keywords=(
             "heuristic",

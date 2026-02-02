@@ -103,8 +103,8 @@ class TestRealEnvironment:
 
         assert result.exists()
         assert result.is_dir()
-        # Check for README.md (repo root) or framework/AXIOMS.md (plugin root)
-        assert (result / "README.md").exists() or (result / "framework/AXIOMS.md").exists()
+        # Check for README.md (repo root) or AXIOMS.md (plugin root)
+        assert (result / "README.md").exists() or (result / "AXIOMS.md").exists()
 
     @pytest.mark.skipif(
         not os.environ.get("ACA_DATA"), reason="ACA_DATA environment variable not set"

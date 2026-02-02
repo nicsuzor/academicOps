@@ -89,12 +89,12 @@ class TestGovernanceFiles:
 
     def test_axioms_file_exists(self) -> None:
         """AXIOMS.md must exist in framework directory."""
-        axioms_file = PLUGIN_ROOT / "framework" / "AXIOMS.md"
+        axioms_file = PLUGIN_ROOT / "AXIOMS.md"
         assert axioms_file.exists(), "Missing AXIOMS.md"
 
     def test_heuristics_file_exists(self) -> None:
         """HEURISTICS.md must exist in framework directory."""
-        heuristics_file = PLUGIN_ROOT / "framework" / "HEURISTICS.md"
+        heuristics_file = PLUGIN_ROOT / "HEURISTICS.md"
         assert heuristics_file.exists(), "Missing HEURISTICS.md"
 
 
