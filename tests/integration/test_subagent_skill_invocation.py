@@ -80,8 +80,7 @@ def test_skill_invocation_produces_formatted_output(claude_headless) -> None:
 
     Format markers checked:
     - Proper frontmatter (title, permalink, type, tags)
-    - ## Observations section with [category] syntax
-    - ## Relations section with [[WikiLinks]]
+    - Content with [[wikilinks]] for related concepts
     """
 
     def _test_attempt():
@@ -140,8 +139,7 @@ def test_skill_invocation_produces_formatted_output(claude_headless) -> None:
         "title_field": "title:" in content,
         "permalink_field": "permalink:" in content,
         "type_field": "type:" in content,
-        "context_or_observations": "## Context" in content
-        or "## Observations" in content,
+        "has_wikilinks": "[[" in content and "]]" in content,
     }
 
     # At least 4 of 5 markers should be present if skill was properly loaded
