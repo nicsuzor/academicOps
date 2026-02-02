@@ -117,7 +117,7 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
                                 # Simplify: use uv run --directory which handles PYTHONPATH
                                 cmd = cmd.replace(
                                     "PYTHONPATH=${extensionPath} uv run python",
-                                    "uv run --directory ${AOPS} python"
+                                    "uv run --directory ${extensionPath} python"
                                 )
                             new_hook["command"] = cmd
                         new_hooks.append(new_hook)
