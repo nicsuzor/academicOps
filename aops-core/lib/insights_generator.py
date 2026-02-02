@@ -100,38 +100,6 @@ def extract_recent_context(session_id: str, max_turns: int = 20) -> str:
     return f"[Recent context for session {session_id} - max {max_turns} turns]"
 
 
-def call_claude_for_insights(
-    prompt: str,
-    transcript: str,
-    operational_metrics: dict[str, Any],
-    model: str = "claude-3-5-haiku-20241022",
-) -> str:
-    """Call Claude API to generate insights JSON.
-
-    Args:
-        prompt: Prepared prompt with metadata substituted
-        transcript: Recent session transcript or context
-        operational_metrics: Dict with workflows_used, subagents_invoked, etc.
-        model: Claude model to use (default: haiku for speed/cost)
-
-    Returns:
-        JSON string from Claude response
-
-    Raises:
-        Exception: If API call fails or times out
-
-    Note:
-        This is a placeholder. Actual implementation needs Claude API integration.
-        Consider using existing framework infrastructure if available.
-    """
-    # TODO: Implement actual Claude API call
-    # For now, return mock response for testing
-    raise NotImplementedError(
-        "Claude API integration not yet implemented. "
-        "This function needs to call Claude API with prompt + transcript + metrics."
-    )
-
-
 def _validate_framework_reflections(reflections: list[dict[str, Any]]) -> None:
     """Validate framework_reflections array structure.
 
