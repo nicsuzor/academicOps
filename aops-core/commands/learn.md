@@ -28,8 +28,8 @@ permalink: commands/learn
 **Before any framework change, read these files:**
 
 ```
-Read aops-core/framework/AXIOMS.md
-Read aops-core/framework/HEURISTICS.md
+Read aops-core/AXIOMS.md
+Read aops-core/HEURISTICS.md
 Read aops-core/framework/enforcement-map.md
 ```
 

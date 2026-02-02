@@ -149,6 +149,7 @@ class Task:
 
     # Optional fields
     due: datetime | None = None
+    planned: datetime | None = None
     project: str | None = None  # Project slug
     tags: list[str] = field(default_factory=list)
     effort: str | None = None  # Estimated effort
@@ -254,6 +255,8 @@ class Task:
         # Optional fields (only include if set)
         if self.due:
             fm["due"] = self.due.isoformat()
+        if self.planned:
+            fm["planned"] = self.planned.isoformat()
         if self.project:
             fm["project"] = self.project
         if self.tags:
@@ -307,6 +310,10 @@ class Task:
         due = fm.get("due")
         if isinstance(due, str):
             due = datetime.fromisoformat(due)
+
+        planned = fm.get("planned")
+        if isinstance(planned, str):
+            planned = datetime.fromisoformat(planned)
 
         # Parse type - require explicit type field (skip non-task files)
         task_type_str = fm.get("type")
@@ -368,6 +375,7 @@ class Task:
             depth=depth,
             leaf=fm.get("leaf", True),
             due=due,
+            planned=planned,
             project=fm.get("project"),
             tags=fm.get("tags", []),
             effort=fm.get("effort"),
