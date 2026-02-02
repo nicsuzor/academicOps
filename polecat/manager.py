@@ -407,6 +407,14 @@ class PolecatManager:
 
         try:
             print(f"Syncing {project} mirror (safe mode)...")
+            # Prune stale worktree refs first - prevents "refusing to fetch into
+            # branch checked out" errors when worktree dirs were deleted externally
+            subprocess.run(
+                ["git", "worktree", "prune"],
+                cwd=mirror_path,
+                check=True,
+                capture_output=True,
+            )
             subprocess.run(
                 ["git", "fetch", "--all"],  # NO --prune flag
                 cwd=mirror_path,
@@ -588,6 +596,14 @@ class PolecatManager:
                 results[project] = False
                 continue
             try:
+                # Prune stale worktree refs first - prevents "refusing to fetch into
+                # branch checked out" errors when worktree dirs were deleted externally
+                subprocess.run(
+                    ["git", "worktree", "prune"],
+                    cwd=mirror_path,
+                    check=True,
+                    capture_output=True,
+                )
                 subprocess.run(
                     ["git", "fetch", "--all", "--prune"],
                     cwd=mirror_path,
