@@ -623,10 +623,13 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
         aops_root = get_aops_root()
         plugin_dir_core = aops_root / "aops-core"
         plugin_dir_tools = aops_root / "aops-tools"
+        # Generate deterministic UUID from task ID (Claude CLI requires valid UUID format)
+        import uuid
+        session_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, task.id))
         cmd.extend(
             [
                 "--session-id",
-                task.id,
+                session_uuid,
                 "--dangerously-skip-permissions",
                 "--permission-mode",
                 "plan",
