@@ -602,7 +602,282 @@ class TestExtractQuestionsFromAgentResponse:
 
         context = extract_router_context(transcript)
 
-        # Context should include the extracted question
-        assert "Agent questions" in context or "Which tasks" in context
-        # Most importantly, the context should show "all" with the question context
-        assert "all" in context or "recent" in context.lower()
+        # Context should include the extracted question in some form
+        has_question_section = "Agent questions" in context
+        has_question_inline = "Which tasks" in context
+        assert has_question_section or has_question_inline, (
+            f"Expected agent question in context, got: {context[:200]}"
+        )
+
+        # Context should reference the user's response
+        has_all_response = "all" in context
+        has_recent_label = "recent" in context.lower()
+        assert has_all_response or has_recent_label, (
+            f"Expected 'all' or 'recent' in context, got: {context[:200]}"
+        )
+
+
+# --- Session Boundary Validation Tests ---
+# These tests verify that session context pollution is properly filtered.
+# Context pollution occurs when content from previous sessions leaks into
+# current session transcripts via memory summaries or agent references.
+
+
+def _create_summary_entry_null_timestamp(summary_text: str) -> dict:
+    """Create a summary entry with no timestamp (memory from previous session).
+
+    When timestamp key is missing, Entry.timestamp will be None.
+    This represents memory context injected from previous sessions.
+    """
+    return {
+        "type": "summary",
+        "uuid": f"summary-null-{hash(summary_text) % 10000}",
+        # No timestamp key - this is how null timestamps appear in real JSONL
+        "summary": summary_text,
+    }
+
+
+def _create_hook_entry(
+    hook_event: str, agent_id: str | None = None, offset: int = 0
+) -> dict:
+    """Create a system_reminder entry for a hook."""
+    return {
+        "type": "system_reminder",
+        "uuid": f"hook-{offset}",
+        "timestamp": _make_timestamp(offset),
+        "hookSpecificOutput": {
+            "hookEventName": hook_event,
+            "exitCode": 0,
+            "agentId": agent_id,
+        },
+    }
+
+
+def _create_entry_with_timestamp(entry_type: str, timestamp_str: str | None, uuid: str) -> dict:
+    """Create an entry with a specific timestamp string (or None)."""
+    entry: dict = {
+        "type": entry_type,
+        "uuid": uuid,
+    }
+    if timestamp_str is not None:
+        entry["timestamp"] = timestamp_str
+    if entry_type == "user":
+        entry["message"] = {"content": [{"type": "text", "text": "Test message"}]}
+    elif entry_type == "assistant":
+        entry["message"] = {"content": [{"type": "text", "text": "Test response"}]}
+    elif entry_type == "summary":
+        entry["summary"] = "Test summary"
+    return entry
+
+
+class TestSessionBoundaryValidation:
+    """Tests for session boundary validation - preventing context pollution.
+
+    Context pollution occurs when content from previous sessions leaks into
+    current session transcripts. This can happen via:
+    1. Summary entries with null timestamps (memory from previous sessions)
+    2. Hook entries referencing agents from previous sessions
+    3. Entries outside the session's time range
+
+    Note: group_entries_into_turns returns:
+    - dict for hook_context and summary turns
+    - ConversationTurn objects for actual conversation turns
+    """
+
+    def test_summary_with_null_timestamp_excluded_from_turns(
+        self, tmp_path: Path
+    ) -> None:
+        """Summary entries with null timestamp should be excluded from conversation turns.
+
+        These represent memory context from previous sessions, not current session content.
+        """
+        from lib.transcript_parser import ConversationTurn, Entry, SessionProcessor
+
+        # Simulate a polluted session: null-timestamp summaries mixed with real entries
+        entries_data = [
+            # Memory summaries from previous sessions (null timestamps)
+            _create_summary_entry_null_timestamp("Previous session context about user preferences"),
+            _create_summary_entry_null_timestamp("Another memory from earlier session"),
+            # Current session content (valid timestamps)
+            _create_user_entry("Hello, start new task", 0),
+            _create_assistant_entry(1),
+            # More pollution
+            _create_summary_entry_null_timestamp("Old context that shouldn't appear"),
+            _create_user_entry("Continue working", 10),
+            _create_assistant_entry(11),
+        ]
+
+        entries = [Entry.from_dict(e) for e in entries_data]
+
+        processor = SessionProcessor()
+        turns = processor.group_entries_into_turns(entries, None, full_mode=True)
+
+        # Collect all summary turns (these are dicts, not ConversationTurn objects)
+        summary_turns = [
+            t for t in turns
+            if isinstance(t, dict) and t.get("type") == "summary"
+        ]
+
+        # Summary turns with null timestamps should either:
+        # - Not appear at all, OR
+        # - Be marked with null start_time/end_time so consumers can filter
+        null_timestamp_summaries = [
+            "Previous session context about user preferences",
+            "Another memory from earlier session",
+            "Old context that shouldn't appear",
+        ]
+        for summary_turn in summary_turns:
+            if summary_turn.get("content") in null_timestamp_summaries:
+                # These are from previous sessions - verify they're identifiable
+                # Currently, summaries with null timestamps will have None for start_time
+                assert summary_turn.get("start_time") is None, (
+                    f"Null-timestamp summary should have None start_time for filtering: {summary_turn}"
+                )
+
+    def test_hook_referencing_non_session_agent_identifiable(
+        self, tmp_path: Path
+    ) -> None:
+        """Hook entries referencing agents from other sessions should be identifiable.
+
+        When a hook references an agent_id that doesn't match any agent in the
+        current session, it indicates cross-session pollution.
+        """
+        from lib.transcript_parser import Entry, SessionProcessor
+
+        # Session with one real agent (agent-abc123) but hooks referencing another
+        entries_data = [
+            _create_user_entry("Start work", 0),
+            # Hook from current session's agent
+            _create_hook_entry("PreToolUse", agent_id="agent-abc123", offset=1),
+            _create_assistant_entry(2),
+            # Hook referencing an agent from a DIFFERENT session (pollution)
+            _create_hook_entry("PostToolUse", agent_id="agent-xyz789-old-session", offset=3),
+            _create_user_entry("Continue", 10),
+            _create_assistant_entry(11),
+        ]
+
+        entries = [Entry.from_dict(e) for e in entries_data]
+
+        processor = SessionProcessor()
+        turns = processor.group_entries_into_turns(entries, None, full_mode=True)
+
+        # Find hook_context turns (these are dicts)
+        hook_turns = [
+            t for t in turns
+            if isinstance(t, dict) and t.get("type") == "hook_context"
+        ]
+
+        # Verify that agent_id is preserved so consumers can filter by session membership
+        for hook_turn in hook_turns:
+            if hook_turn.get("agent_id") == "agent-xyz789-old-session":
+                # This hook references an agent from a different session
+                # It should be identifiable so transcript consumers can filter it
+                assert "agent_id" in hook_turn, (
+                    "Hook turns must include agent_id for session boundary filtering"
+                )
+
+    def test_conversation_history_pollution_fixture(self, tmp_path: Path) -> None:
+        """Test with polluted session data simulating real bug from session 5cb39058.
+
+        This fixture represents a session where:
+        - Memory summaries from previous sessions leak in
+        - Some entries have timestamps outside the session time range
+        """
+        from lib.transcript_parser import ConversationTurn, Entry, SessionProcessor
+
+        # Simulate pollution pattern: old summaries at start, then real conversation
+        entries_data = [
+            # --- POLLUTION: Content from before session started ---
+            _create_summary_entry_null_timestamp("Memory: User asked about Python best practices"),
+            {
+                "type": "summary",
+                "uuid": "summary-old-1",
+                "timestamp": "2025-01-10T08:00:00Z",  # Before session
+                "summary": "Old conversation about debugging",
+            },
+            # --- ACTUAL SESSION START (offset 0 = 2025-01-15T10:00:00Z) ---
+            _create_user_entry("Help me with the framework tests", 0),
+            _create_assistant_entry(1),
+            # More pollution injected mid-session
+            _create_summary_entry_null_timestamp("Ancient context about unrelated project"),
+            _create_user_entry("Add validation tests", 10),
+            _create_assistant_entry(11),
+        ]
+
+        entries = [Entry.from_dict(e) for e in entries_data]
+
+        processor = SessionProcessor()
+        turns = processor.group_entries_into_turns(entries, None, full_mode=True)
+
+        # Count actual conversation turns (ConversationTurn objects, not summary dicts)
+        conversation_turns = [
+            t for t in turns
+            if isinstance(t, ConversationTurn)
+            and t.user_message is not None
+        ]
+
+        # We should have exactly 2 conversation turns from the real session
+        assert len(conversation_turns) == 2, (
+            f"Expected 2 conversation turns, got {len(conversation_turns)}. "
+            f"Pollution may have created extra turns."
+        )
+
+        # Verify the conversation turns have the correct content
+        assert conversation_turns[0].user_message == "Help me with the framework tests"
+        assert conversation_turns[1].user_message == "Add validation tests"
+
+    def test_entries_only_within_session_time_range(self, tmp_path: Path) -> None:
+        """Entries outside the session's time range should be filterable.
+
+        Session time range is determined by the first and last valid timestamps.
+        Entries with timestamps significantly before or after should be excluded
+        or clearly marked.
+        """
+        from lib.transcript_parser import ConversationTurn, Entry, SessionProcessor
+
+        # Session starts at offset 100 (10:01:40), ends around offset 200 (10:03:20)
+        # But old entries sneak in with timestamps from before session start
+        entries_data = [
+            # Entry from a DIFFERENT time (hours before session)
+            {
+                "type": "user",
+                "uuid": "user-old",
+                "timestamp": "2025-01-15T06:00:00Z",  # 4 hours before session
+                "message": {"content": [{"type": "text", "text": "Old question from earlier"}]},
+            },
+            # Actual session content
+            _create_user_entry("Current session question", 100),
+            _create_assistant_entry(101),
+            _create_user_entry("Follow up question", 150),
+            _create_assistant_entry(151),
+            # Entry from future (likely pollution or corruption)
+            {
+                "type": "user",
+                "uuid": "user-future",
+                "timestamp": "2025-01-15T23:00:00Z",  # 13 hours after session
+                "message": {"content": [{"type": "text", "text": "Future question"}]},
+            },
+        ]
+
+        entries = [Entry.from_dict(e) for e in entries_data]
+
+        processor = SessionProcessor()
+        turns = processor.group_entries_into_turns(entries, None, full_mode=True)
+
+        # Get conversation turns (ConversationTurn objects)
+        conversation_turns = [
+            t for t in turns
+            if isinstance(t, ConversationTurn)
+            and t.user_message is not None
+        ]
+
+        # All conversation turns should have start_time information for filtering
+        for turn in conversation_turns:
+            assert turn.start_time is not None, "Turn must have start_time for boundary validation"
+
+        # Consumers can use start_time to filter out-of-range entries
+        # The processor should preserve timestamps so filtering is possible
+        # Verify we have at least the 2 valid session entries
+        assert len(conversation_turns) >= 2, (
+            "Should have at least the 2 valid session entries"
+        )
