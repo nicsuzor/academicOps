@@ -202,6 +202,7 @@ These scripts exist but aren't user-invocable skills. Provide exact invocation w
 - **Python Code Changes → TDD**: When debugging or fixing Python code (`.py` files), include `Skill(skill="python-dev")` in the execution plan. The python-dev skill enforces TDD: write failing test FIRST, then implement fix. No trial-and-error edits.
 - **Token/Session Analysis → Use Tooling**: When prompt involves "token", "efficiency", "usage", or "session analysis", surface `/session-insights` skill and `transcript_parser.py`. Per P#78, deterministic computation (token counting, aggregation) stays in Python, not LLM exploration.
 - **Short confirmations**: If prompt is very short (≤10 chars: "yes", "ok", "do it", "sure"), check the MOST RECENT agent response and tools. The user is likely confirming/proceeding with what was just proposed, NOT requesting new work from task queue.
+- **Interactive Follow-ups**: If prompt is a bounded continuation of session work (e.g. "save that to X", "fix the typo I just made"), route to `[[workflows/interactive-followup]]`. This workflow skips redundant task creation and the CRITIC step.
 - **Scope detection**: Multi-session = goal-level, uncertain path, spans days+. Single-session = bounded, known steps.
 - **Prefer existing tasks**: Search task state before creating new tasks.
 - **CRITIC MANDATORY**: Every plan (except simple-question) needs CRITIC verification step.

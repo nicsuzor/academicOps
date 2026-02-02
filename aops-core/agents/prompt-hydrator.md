@@ -287,9 +287,21 @@ After TRIAGE action: **HALT**
 ### Critic Invocation
 
 **NOTE**: You do NOT invoke critic. The main agent decides based on plan complexity:
-- **Skip critic**: simple-question, direct skill, trivial tasks
+- **Skip critic**: simple-question, direct skill, interactive-followup, trivial tasks
 - **Fast critic (haiku)**: routine plans, standard file modifications (default)
 - **Detailed critic (opus)**: framework changes, architectural decisions
+
+### Interactive Follow-up Detection
+
+**Trigger patterns**:
+- Continuation of session work (check session context)
+- "Save this", "update that", "fix typo", "add to index"
+- Single, bounded action related to current file/task
+
+**When detected**:
+1. Route to `[[workflows/interactive-followup]]`
+2. **Reuse current task**: Set Task Routing to "Existing task found" with the bound task ID
+3. **Skip Critic**: Omit the `Invoke CRITIC` step from the execution plan
 
 ### Insight Capture Advice
 
