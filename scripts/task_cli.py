@@ -304,10 +304,18 @@ def tree(project: str | None, show_all: bool, roots_only: bool):
 @main.command()
 @click.argument("title")
 @click.option("--project", "-p", help="Assign to project")
-@click.option("--type", "-t", "task_type", default="task", help="Task type (goal, project, task, action)")
+@click.option("--type", "-t", "task_type", default="task", help="Task type (goal, project, epic, task, action)")
 @click.option("--parent", help="Parent task ID for hierarchy")
 @click.option("--priority", type=int, default=2, help="Priority 0-4 (0=critical, 4=someday)")
-def create(title: str, project: str | None, task_type: str, parent: str | None, priority: int):
+@click.option("--assignee", "-a", help="Assign to actor (nic/bot)")
+@click.option("--complexity", "-c", help="Task complexity")
+@click.option("--tags", help="Comma-separated tags")
+@click.option("--body", help="Markdown body content")
+@click.option("--depends-on", help="Comma-separated dependency IDs")
+@click.option("--soft-depends-on", help="Comma-separated soft dependency IDs")
+def create(title: str, project: str | None, task_type: str, parent: str | None, priority: int,
+           assignee: str | None, complexity: str | None, tags: str | None, body: str | None,
+           depends_on: str | None, soft_depends_on: str | None):
     """Create a new task."""
     storage = get_storage()
 
@@ -317,6 +325,23 @@ def create(title: str, project: str | None, task_type: str, parent: str | None, 
         console.print(f"[red]Invalid type: {task_type}[/red]")
         console.print(f"Valid values: {', '.join(t.value for t in TaskType)}")
         raise SystemExit(1)
+
+    # Parse complexity
+    task_complexity = None
+    if complexity:
+        try:
+            from lib.task_model import TaskComplexity
+            task_complexity = TaskComplexity(complexity)
+        except ValueError:
+            console.print(f"[red]Invalid complexity: {complexity}[/red]")
+            raise SystemExit(1)
+
+    # Parse tags
+    tag_list = [t.strip() for t in tags.split(",")] if tags else []
+    
+    # Parse dependencies
+    dep_list = [d.strip() for d in depends_on.split(",")] if depends_on else []
+    soft_dep_list = [d.strip() for d in soft_depends_on.split(",")] if soft_depends_on else []
 
     # P#62: Inherit project from parent if not explicitly specified
     effective_project = project
@@ -331,6 +356,12 @@ def create(title: str, project: str | None, task_type: str, parent: str | None, 
         type=type_enum,
         parent=parent,
         priority=priority,
+        assignee=assignee,
+        complexity=task_complexity,
+        tags=tag_list,
+        body=body or "",
+        depends_on=dep_list,
+        soft_depends_on=soft_dep_list,
     )
 
     path = storage.save_task(task)
@@ -386,11 +417,17 @@ def show(task_id: str):
     if task.depends_on:
         details.add_row("Depends on", ", ".join(task.depends_on))
 
+    if task.soft_depends_on:
+        details.add_row("Soft depends on", ", ".join(task.soft_depends_on))
+
     if task.tags:
         details.add_row("Tags", ", ".join(task.tags))
 
     if task.assignee:
         details.add_row("Assignee", f"@{task.assignee}")
+
+    if task.complexity:
+        details.add_row("Complexity", task.complexity.value)
 
     if task.due:
         details.add_row("Due", task.due.isoformat())
@@ -435,11 +472,50 @@ def complete(task_id: str):
 
 @main.command()
 @click.argument("task_id")
+@click.argument("titles", nargs=-1)
+def decompose(task_id: str, titles: list[str]):
+    """Decompose a task into subtasks."""
+    storage = get_storage()
+
+    if not titles:
+        console.print("[red]Please provide at least one subtask title.[/red]")
+        raise SystemExit(1)
+
+    children = [{"title": t} for t in titles]
+    try:
+        created = storage.decompose_task(task_id, children)
+        console.print(f"[green]✓[/green] Decomposed [bold]{task_id}[/bold] into {len(created)} subtasks:")
+        for child in created:
+            console.print(f"  [dim]• {child.id}[/dim] {child.title}")
+    except ValueError as e:
+        console.print(f"[red]{e}[/red]")
+        raise SystemExit(1)
+
+
+@main.command()
+@click.argument("task_id")
 @click.option("--status", "-s", help="New status")
 @click.option("--title", "-t", help="New title")
 @click.option("--priority", "-P", type=int, help="New priority (0-4)")
 @click.option("--project", "-p", help="Move to project")
-def update(task_id: str, status: str | None, title: str | None, priority: int | None, project: str | None):
+@click.option("--assignee", "-a", help="New assignee")
+@click.option("--complexity", "-c", help="New complexity")
+@click.option("--parent", help="New parent ID")
+@click.option("--tags", help="Comma-separated tags")
+@click.option("--type", "task_type", help="New task type")
+@click.option("--due", help="New due date (ISO)")
+@click.option("--order", type=int, help="New sibling order")
+@click.option("--depends-on", help="Comma-separated dependency IDs")
+@click.option("--soft-depends-on", help="Comma-separated soft dependency IDs")
+@click.option("--effort", help="New effort estimate")
+@click.option("--context", help="New context")
+@click.option("--body", help="New body content (append by default)")
+@click.option("--replace-body", is_flag=True, help="Replace body instead of appending")
+def update(task_id: str, status: str | None, title: str | None, priority: int | None,
+           project: str | None, assignee: str | None, complexity: str | None,
+           parent: str | None, tags: str | None, task_type: str | None, due: str | None,
+           order: int | None, depends_on: str | None, soft_depends_on: str | None,
+           effort: str | None, context: str | None, body: str | None, replace_body: bool):
     """Update a task."""
     storage = get_storage()
 
@@ -470,7 +546,83 @@ def update(task_id: str, status: str | None, title: str | None, priority: int | 
         task.project = project if project else None
         changes.append(f"project → {project or 'inbox'}")
 
-    storage.save_task(task, update_body=False)
+    if assignee is not None:
+        task.assignee = assignee if assignee else None
+        changes.append(f"assignee → {assignee or 'unassigned'}")
+
+    if complexity is not None:
+        if complexity == "":
+            task.complexity = None
+            changes.append("complexity → cleared")
+        else:
+            try:
+                from lib.task_model import TaskComplexity
+                task.complexity = TaskComplexity(complexity)
+                changes.append(f"complexity → {complexity}")
+            except ValueError:
+                console.print(f"[red]Invalid complexity: {complexity}[/red]")
+                raise SystemExit(1)
+
+    if parent is not None:
+        task.parent = parent if parent else None
+        changes.append(f"parent → {parent or 'none'}")
+
+    if tags is not None:
+        tag_list = [t.strip() for t in tags.split(",")] if tags else []
+        task.tags = tag_list
+        changes.append(f"tags → {tags or 'none'}")
+
+    if task_type is not None:
+        try:
+            task.type = TaskType(task_type)
+            changes.append(f"type → {task_type}")
+        except ValueError:
+            console.print(f"[red]Invalid type: {task_type}[/red]")
+            raise SystemExit(1)
+
+    if due is not None:
+        if due == "":
+            task.due = None
+            changes.append("due → cleared")
+        else:
+            try:
+                from datetime import datetime
+                task.due = datetime.fromisoformat(due.replace("Z", "+00:00"))
+                changes.append(f"due → {due}")
+            except ValueError:
+                console.print(f"[red]Invalid due date format: {due}[/red]")
+                raise SystemExit(1)
+
+    if order is not None:
+        task.order = order
+        changes.append(f"order → {order}")
+
+    if depends_on is not None:
+        dep_list = [d.strip() for d in depends_on.split(",")] if depends_on else []
+        task.depends_on = dep_list
+        changes.append(f"depends_on → {depends_on or 'none'}")
+
+    if soft_depends_on is not None:
+        soft_dep_list = [d.strip() for d in soft_depends_on.split(",")] if soft_depends_on else []
+        task.soft_depends_on = soft_dep_list
+        changes.append(f"soft_depends_on → {soft_depends_on or 'none'}")
+
+    if effort is not None:
+        task.effort = effort if effort else None
+        changes.append(f"effort → {effort or 'cleared'}")
+
+    if context is not None:
+        task.context = context if context else None
+        changes.append(f"context → {context or 'cleared'}")
+
+    if body is not None:
+        if replace_body or not task.body:
+            task.body = body
+        else:
+            task.body = task.body + "\n\n" + body
+        changes.append("body updated")
+
+    storage.save_task(task, update_body=True if body else False)
 
     console.print(f"[green]✓[/green] Updated [bold]{task.id}[/bold]")
     for change in changes:

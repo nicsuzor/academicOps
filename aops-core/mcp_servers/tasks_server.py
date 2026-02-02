@@ -1203,7 +1203,7 @@ def complete_tasks(ids: list[str]) -> dict[str, Any]:
             try:
                 task.complete()
                 storage.save_task(task)
-                completed.append(_task_to_dict(task))
+                completed.append(_task_to_dict(task, truncate_body=100))
             except Exception as e:
                 failures.append(
                     {
@@ -1381,7 +1381,8 @@ def list_tasks(
         if limit > 0:
             tasks = tasks[:limit]
 
-        task_dicts = [_task_to_dict(t) for t in tasks]
+        # Truncate body to 100 chars for list results to reduce response size
+        task_dicts = [_task_to_dict(t, truncate_body=100) for t in tasks]
         return {
             "success": True,
             "tasks": task_dicts,

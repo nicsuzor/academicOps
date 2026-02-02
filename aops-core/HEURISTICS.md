@@ -257,7 +257,7 @@ description: Working hypotheses validated by evidence.
 **Statement**: CLI commands and MCP tools exposing the same functionality MUST have identical default behavior. Users should get the same result whether using CLI or MCP.
 
 **Corollaries**:
-- Same function, same defaults: If MCP `get_ready_tasks` defaults to `limit=1`, CLI `task ready` must too
+- Same function, same defaults: If MCP `list_tasks` defaults to `limit=10`, CLI `task list` must too
 - CLI may offer convenience flags (`--all`) but defaults must match MCP
 - When adding features to one interface, update the other
 

@@ -262,8 +262,8 @@ Since worktrees depend on a parent repo, the system maps projects to paths:
 ## Integration with Task System
 
 This system builds *on top* of the existing Task MCP:
-- It consumes tasks via `get_ready_tasks`.
-- It updates tasks via `update_task` (status/assignee).
+- It consumes tasks via the internal `TaskStorage.get_ready_tasks()` method.
+- It updates tasks via `update_task` (status/assignee) MCP tool.
 - It does NOT replace the task database; it just provides the **workspace** for executing them.
 
 ## Refinery System

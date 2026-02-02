@@ -6,11 +6,11 @@ Tasks MCP is the primary work management system for multi-session tracking, depe
 flowchart LR
     subgraph CREATE["Create Work"]
         C1[create_task]
-        C2[get_ready_tasks]
+        C2[list_tasks]
     end
 
     subgraph EXECUTE["Execute"]
-        E1[update_task status=active]
+        E1[update_task status=in_progress]
         E2[Work on task]
         E3[complete_task]
     end
@@ -46,25 +46,26 @@ flowchart LR
 | `mcp__plugin_aops-core_task_manager__complete_task(id)` | Mark task done |
 | `mcp__plugin_aops-core_task_manager__list_tasks(...)` | List/filter tasks |
 | `mcp__plugin_aops-core_task_manager__search_tasks(query)` | Search tasks |
-| `mcp__plugin_aops-core_task_manager__get_ready_tasks(project, caller)` | Get actionable tasks (caller filters by assignee) |
 | `mcp__plugin_aops-core_task_manager__get_blocked_tasks()` | Get blocked tasks |
 | `mcp__plugin_aops-core_task_manager__decompose_task(id, children)` | Break down task |
 
 ## Task Lifecycle
 
 ```
-inbox → active → done
+active → in_progress → done
          ↓
       blocked/waiting
 ```
 
 **Statuses**:
-- `inbox`: New, not started
-- `active`: Currently being worked on
+- `active`: Ready to be worked on
+- `in_progress`: Currently being worked on
 - `blocked`: Waiting on dependencies
 - `waiting`: Deferred for later
 - `done`: Completed
 - `cancelled`: Abandoned
+- `merge_ready`: Work complete, awaiting merge to main
+- `review`: Needs human/manager review after failure
 
 ## Multi-Project Organization
 
@@ -157,16 +158,13 @@ mcp__plugin_aops-core_task_manager__create_task(
 )
 ```
 
-**Getting ready tasks by caller**:
+**Listing tasks by assignee**:
 ```python
-# Bot tasks + unassigned (default for /pull)
-mcp__plugin_aops-core_task_manager__get_ready_tasks(project="aops", caller="bot")
+# Bot tasks
+mcp__plugin_aops-core_task_manager__list_tasks(project="aops", assignee="bot")
 
-# Human tasks + unassigned
-mcp__plugin_aops-core_task_manager__get_ready_tasks(project="aops", caller="nic")
-
-# All ready tasks (no filter)
-mcp__plugin_aops-core_task_manager__get_ready_tasks(project="aops")
+# Human tasks
+mcp__plugin_aops-core_task_manager__list_tasks(project="aops", assignee="nic")
 ```
 
 ## Task Storage
