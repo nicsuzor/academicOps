@@ -1014,6 +1014,83 @@ def _custodiet_build_audit_instruction(
     return instruction_template.format(temp_path=str(temp_path))
 
 
+# --- Axiom Enforcer Logic ---
+
+
+def check_axiom_enforcer_gate(ctx: GateContext) -> Optional[GateResult]:
+    """
+    Real-time axiom violation detection for Edit/Write operations.
+
+    Blocks tool calls that contain code patterns violating framework axioms:
+    - P#8: Fail-fast violations (fallbacks, silent exception handling)
+    - P#12: DRY violations (future)
+    - P#26: Verify-first violations (future)
+
+    This gate runs BEFORE custodiet threshold checks to catch violations
+    immediately, regardless of compliance counter state.
+
+    Returns None if allowed, or GateResult with DENY if violation detected.
+    """
+    _check_imports()
+
+    # Only applies to PreToolUse
+    if ctx.event_name != "PreToolUse":
+        return None
+
+    # Only check code-modifying tools
+    if ctx.tool_name not in (
+        "Write",
+        "Edit",
+        "write_to_file",
+        "replace_file_content",
+        "multi_replace_file_content",
+    ):
+        return None
+
+    # Extract code/content for analysis
+    code = ""
+    if ctx.tool_name in ("Write", "write_to_file"):
+        code = ctx.tool_input.get("content", "")
+    elif ctx.tool_name in ("Edit", "replace_file_content"):
+        code = ctx.tool_input.get("new_string", "")
+    elif ctx.tool_name == "multi_replace_file_content":
+        replacements = ctx.tool_input.get("replacements", [])
+        code = "\n".join([r.get("new_string", "") for r in replacements])
+
+    if not code:
+        return None
+
+    # Detect violations
+    violations = axiom_detector.detect_all_violations(code)
+
+    if not violations:
+        return None
+
+    # Format violation messages
+    msg_lines = ["⛔ **AXIOM ENFORCEMENT BLOCKED**", ""]
+    for v in violations:
+        msg_lines.append(f"- **{v.axiom}**: {v.message}")
+        if v.line_number:
+            msg_lines.append(f"  Line {v.line_number}: `{v.context}`")
+
+    msg_lines.append("")
+    msg_lines.append(
+        "Please fix these violations before submitting. No fallbacks, no workarounds."
+    )
+
+    return GateResult(
+        verdict=GateVerdict.DENY,
+        context_injection="\n".join(msg_lines),
+        metadata={
+            "source": "axiom_enforcer",
+            "violations": [
+                {"axiom": v.axiom, "pattern": v.pattern_name, "line": v.line_number}
+                for v in violations
+            ],
+        },
+    )
+
+
 def check_custodiet_gate(ctx: GateContext) -> Optional[GateResult]:
     """
     Check if compliance is overdue (The Bouncer).
@@ -1045,42 +1122,10 @@ def check_custodiet_gate(ctx: GateContext) -> Optional[GateResult]:
     # We only READ the counter here to check if we should block
     tool_calls = state["tool_calls_since_compliance"]
 
-    # Under threshold - allow everything (unless axiom violation)
-    # BUT first, check for Axiom Violations (Real-time Enforcement)
-    # This logic was migrated from check_axiom_enforcer_gate
+    # NOTE: Axiom enforcement is now handled by dedicated check_axiom_enforcer_gate
+    # which runs before custodiet in the PreToolUse gate chain.
 
-    # Extract code/content for analysis
-    code = ""
-    if ctx.tool_name in ("Write", "write_to_file"):
-        code = ctx.tool_input.get("content", "")
-    elif ctx.tool_name in ("Edit", "replace_file_content"):
-        code = ctx.tool_input.get("new_string", "")
-    elif ctx.tool_name == "multi_replace_file_content":
-        replacements = ctx.tool_input.get("replacements", [])
-        code = "\n".join([r.get("new_string", "") for r in replacements])
-
-    if code:
-        # Detect violations
-        violations = axiom_detector.detect_all_violations(code)
-
-        if violations:
-            # Format violation messages
-            msg_lines = ["⛔ **AXIOM ENFORCEMENT BLOCKED**", ""]
-            for v in violations:
-                msg_lines.append(f"- **{v.axiom}**: {v.message}")
-                if v.line_number:
-                    msg_lines.append(f"  Line {v.line_number}: `{v.context}`")
-
-            msg_lines.append("")
-            msg_lines.append(
-                "Please fix these violations before submitting. No fallbacks, no workarounds."
-            )
-
-            return GateResult(
-                verdict=GateVerdict.DENY, context_injection="\n".join(msg_lines)
-            )
-
-    # If no axiom violations, check compliance threshold
+    # Check compliance threshold
     threshold = get_custodiet_threshold()
     if tool_calls < threshold:
         return None
@@ -2013,6 +2058,7 @@ GATE_CHECKS = {
     "session_start": check_session_start_gate,
     "hydration": check_hydration_gate,
     "task_required": check_task_required_gate,
+    "axiom_enforcer": check_axiom_enforcer_gate,
     "custodiet": check_custodiet_gate,
     "qa_enforcement": check_qa_enforcement_gate,
     # PostToolUse gates
