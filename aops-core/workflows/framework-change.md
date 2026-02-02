@@ -11,7 +11,7 @@ Governance modifications requiring justification and escalation.
 ## Routing Signals
 
 Modifying:
-- framework/AXIOMS.md, framework/HEURISTICS.md
+- AXIOMS.md, HEURISTICS.md
 - framework/enforcement-map.md
 - hooks/*.py
 - settings.json deny rules

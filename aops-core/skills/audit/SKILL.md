@@ -145,7 +145,7 @@ Unjustified instructions are bloat - they cost tokens and create confusion about
 **Sources to scan** (files injected at SessionStart or via hooks):
 
 - `FRAMEWORK-PATHS.md` - core instructions
-- `framework/AXIOMS.md`, `framework/HEURISTICS.md` - principle statements
+- `AXIOMS.md`, `HEURISTICS.md` - principle statements
 - `skills/*/SKILL.md` - skill-specific instructions
 - `commands/*.md` - command instructions
 - `agents/*.md` - agent instructions

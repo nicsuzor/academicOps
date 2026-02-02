@@ -122,8 +122,8 @@ See @docs/ENFORCEMENT.md for mechanism details.
 
 | Fix Type | File | When to Use |
 |----------|------|-------------|
-| Hard rule, never violate | framework/AXIOMS.md | Principles that apply universally |
-| Soft guidance, exceptions exist | framework/HEURISTICS.md | Rules of thumb, "prefer X over Y" |
+| Hard rule, never violate | AXIOMS.md | Principles that apply universally |
+| Soft guidance, exceptions exist | HEURISTICS.md | Rules of thumb, "prefer X over Y" |
 | Enforcement wiring | framework/enforcement-map.md | Document how rule is enforced |
 | Session context | CORE.md | Paths, environment, "what exists" |
 
@@ -134,11 +134,11 @@ Before editing ANY framework file, output this exact format:
 ```yaml
 ## Rule Change Justification
 
-**Scope**: [framework/AXIOMS.md | framework/HEURISTICS.md | framework/enforcement-map.md | hooks/*.py | settings.json]
+**Scope**: [AXIOMS.md | HEURISTICS.md | framework/enforcement-map.md | hooks/*.py | settings.json]
 
 **Rules Loaded**:
-- framework/AXIOMS.md: [P#X, P#Y - or "not relevant"]
-- framework/HEURISTICS.md: [H#X, H#Y - or "not relevant"]
+- AXIOMS.md: [P#X, P#Y - or "not relevant"]
+- HEURISTICS.md: [H#X, H#Y - or "not relevant"]
 - framework/enforcement-map.md: [enforcement entry name - or "not relevant"]
 
 **Prior Art**:
@@ -192,7 +192,7 @@ mcp__plugin_aops-core_task_manager__update_task(
 After fixing the immediate issue, ask: **What general class of error is this?**
 
 1. **Name the pattern** - e.g., "user data in framework files", "scope creep", "missing validation"
-2. **Check existing rules** - Does an axiom/heuristic already cover this? (Search framework/AXIOMS.md, framework/HEURISTICS.md, framework/enforcement-map.md)
+2. **Check existing rules** - Does an axiom/heuristic already cover this? (Search AXIOMS.md, HEURISTICS.md, framework/enforcement-map.md)
 3. **If rule exists but wasn't followed** - Strengthen enforcement (add to task notes)
 4. **If novel pattern** - Log it in the task body for future tracking
 
