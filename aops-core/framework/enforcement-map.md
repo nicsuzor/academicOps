@@ -107,6 +107,7 @@ tags: [framework, enforcement, moc]
 | [[task-sequencing-on-insert]]           | Task Sequencing on Insert              | HEURISTICS.md                                         | SessionStart              |       |
 | [[methodology-belongs-to-researcher]]   | Methodology Belongs to Researcher      | HEURISTICS.md, prompt-hydrator guidance               | SessionStart, UserPromptSubmit |       |
 | [[preserve-pre-existing-content]]       | Preserve Pre-Existing Content          | HEURISTICS.md                                         | SessionStart              |       |
+| [[user-intent-discovery]]               | User Intent Discovery Before Implementation | HEURISTICS.md, prompt-hydrator guidance          | SessionStart, UserPromptSubmit |       |
 
 ## Enforcement Level Summary
 

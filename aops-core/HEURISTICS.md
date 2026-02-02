@@ -402,6 +402,27 @@ description: Working hypotheses validated by evidence.
 
 ---
 
+## User Intent Discovery Before Implementation (P#88)
+
+**Statement**: Before implementing user-facing features, verify understanding of user intent, not just technical requirements. Ask "what question will this answer for the user?" before building.
+
+**Signs you're skipping intent discovery**:
+- Building from spec without asking "who uses this and what pain point does it solve?"
+- Acceptance criteria describe code behavior ("displays X") without user outcome ("user can determine Y")
+- Feature passes technical review but user says "this isn't useful"
+
+**Practice**:
+- Document user workflow in epic body: who uses this, what pain points, what success looks like
+- Include user-centric litmus tests: "Can user answer [specific question]?" not just "Does code run?"
+- When unclear about user value, ASK rather than assume and build
+- Validation checks user value, not just technical correctness
+
+**Evidence**: Session 2026-02-03 - agent built "499 agents working" dashboard feature showing `unknown: No specific task` for every entry. Feature passed planning and technical review but provided zero value to user. The spec described WHAT to display without WHY users need it.
+
+**Derivation**: P#31 (Acceptance Criteria Own Success) and P#74 (User System Expertise) establish user as authority on success. This heuristic operationalizes: verify understanding of user intent BEFORE building, not just validate technical correctness after.
+
+---
+
 ## Error Recovery Returns to Reference (P#85)
 
 **Statement**: When implementation fails and a reference example exists, re-read the reference before inventing alternatives.
