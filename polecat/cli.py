@@ -643,8 +643,19 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
         result = subprocess.run(
             cmd,
             cwd=worktree_path,
+            capture_output=True,
+            text=True,
         )
         exit_code = result.returncode
+        # Display agent output after run
+        if result.stdout:
+            print(result.stdout)
+        if result.stderr:
+            print(result.stderr, file=sys.stderr)
+        
+        # Analyze the transcript for failures
+        manager.analyze_transcript(task, result.stdout, result.stderr)
+
     except FileNotFoundError:
         print(f"Error: '{cli_tool}' command not found.", file=sys.stderr)
         sys.exit(1)
