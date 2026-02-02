@@ -225,6 +225,19 @@ mcp__plugin_aops-core_task_manager__update_task(
 ### Next Steps
 
 After TRIAGE action: **HALT**
+
+### User Approval Gate
+
+**CRITICAL**: After creating/updating the task, the main agent MUST request explicit user confirmation before proceeding to other work or decomposition:
+
+> "Epic created: [title]. Please review and confirm before I proceed to decomposition or other work."
+
+Do NOT:
+- Silently move to unrelated work after epic creation
+- Begin decomposition without user approval
+- Treat user pivot to different topic as implicit approval
+
+This gate ensures the epic scope and framing are correct before investment in decomposition.
 ````
 
 ## Output Rules
