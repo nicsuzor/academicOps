@@ -282,7 +282,7 @@ def load_token_metrics() -> dict | None:
 
 
 def get_recent_sessions(hours: int = 24) -> list[dict]:
-    """Get recent session summaries for the Recent Activity section.
+    """Get recent session summaries for the Where You Left Off section.
 
     Scans ~/writing/sessions/summaries/ for files within the time range.
 
@@ -296,10 +296,14 @@ def get_recent_sessions(hours: int = 24) -> list[dict]:
         - project: Project name
         - outcome: success/partial/etc (or None)
         - summary: One-line description (or None)
+        - accomplishments: List of accomplishment strings
+        - time_ago: Human-readable relative time
+        - session_file: Path to abridged session markdown (for re-entry link)
     """
     from datetime import timedelta
 
     summaries_dir = Path.home() / "writing" / "sessions" / "summaries"
+    sessions_dir = Path.home() / "writing" / "sessions" / "claude"
     if not summaries_dir.exists():
         return []
 
@@ -327,13 +331,28 @@ def get_recent_sessions(hours: int = 24) -> list[dict]:
         if session_date < cutoff:
             continue
 
+        # Find matching session file for re-entry link
+        session_id = data["session_id"]
+        project = data["project"]
+        session_file = None
+
+        # Try to find abridged session file
+        # Pattern: YYYYMMDD-HH-{project}-{session_id}-*-abridged.md
+        date_prefix = session_date.strftime("%Y%m%d")
+        for md_file in sessions_dir.glob(f"{date_prefix}*-{session_id}*-abridged.md"):
+            session_file = md_file.stem  # Just the filename without extension
+            break
+
         sessions.append(
             {
-                "session_id": data["session_id"],
+                "session_id": session_id,
                 "date": session_date,
-                "project": data["project"],
+                "project": project,
                 "outcome": data.get("outcome"),
                 "summary": data.get("summary"),
+                "accomplishments": data.get("accomplishments", []),
+                "time_ago": _format_time_ago(session_date),
+                "session_file": session_file,
             }
         )
 
@@ -1152,6 +1171,155 @@ def _format_time_ago(dt: datetime) -> str:
     else:
         days = int(seconds / 86400)
         return f"{days}d ago"
+
+
+def _check_text_for_pattern(text: str | None, pattern: str) -> bool:
+    """Check if pattern exists in text (case-insensitive)."""
+    if text is None:
+        return False
+    return pattern in text.lower()
+
+
+def _classify_session_outcome(session: dict) -> tuple[str, str]:
+    """Classify session outcome for 'Where You Left Off' display.
+
+    Args:
+        session: Session dict with outcome, summary, accomplishments
+
+    Returns:
+        Tuple of (outcome_text, css_class) for display.
+        outcome_text is like "→ MERGED", "→ COMPLETE", "→ NEEDS: follow-up"
+    """
+    outcome = session.get("outcome")
+    summary = session.get("summary")
+    accomplishments = session.get("accomplishments")
+
+    # Check for merge patterns
+    has_merged = _check_text_for_pattern(summary, "merged")
+    if accomplishments and not has_merged:
+        accomplishments_text = " ".join(accomplishments)
+        has_merged = _check_text_for_pattern(accomplishments_text, "merged")
+
+    if has_merged:
+        return "→ MERGED", "merged"
+
+    # Check for needs/follow-up patterns
+    has_needs = _check_text_for_pattern(summary, "needs:")
+    has_followup = _check_text_for_pattern(summary, "follow-up")
+    if has_needs or has_followup:
+        return "→ NEEDS: follow-up", "needs"
+
+    # Map standard outcomes
+    if outcome == "success":
+        return "→ COMPLETE", "success"
+    elif outcome == "partial":
+        return "→ PARTIAL", "partial"
+    elif outcome == "failure":
+        return "→ FAILED", "failure"
+
+    # Default for unknown/empty
+    return "", "unknown"
+
+
+def get_where_you_left_off(hours: int = 24, limit: int = 5) -> list[dict]:
+    """Get combined active + recent sessions for context recovery.
+
+    Merges active sessions (from fetch_session_activity) with recent completed
+    sessions (from get_recent_sessions), prioritizing active sessions first.
+
+    Args:
+        hours: Time window for recent sessions
+        limit: Maximum rows to return
+
+    Returns:
+        List of session dicts ready for display:
+        - is_active: True if currently running
+        - time_display: "NOW" for active, relative time for completed
+        - project: Project name
+        - description: Brief description of activity
+        - outcome_text: "→ MERGED", "→ COMPLETE", etc.
+        - outcome_class: CSS class for styling
+        - reentry_link: Obsidian link for re-entry (or None)
+    """
+    results = []
+
+    # 1. Get active sessions first (highest priority)
+    active_sessions = fetch_session_activity(hours=4)
+    for s in active_sessions:
+        # Skip idle sessions
+        last_prompt = s.get("last_prompt")
+        if not last_prompt or last_prompt in ("Idle", "New Session (Waiting for input)"):
+            continue
+
+        # Build description from prompt or todowrite
+        description = last_prompt
+        todowrite = s.get("todowrite")
+        if todowrite:
+            todos = todowrite.get("todos")
+            if todos:
+                in_progress = [t for t in todos if t.get("status") == "in_progress"]
+                if in_progress and "content" in in_progress[0]:
+                    description = in_progress[0]["content"]
+
+        project = s.get("project")
+        if not project:
+            project = "unknown"
+
+        session_short = s.get("session_short")
+        if not session_short:
+            session_id = s.get("session_id")
+            session_short = session_id[:7] if session_id else ""
+
+        results.append({
+            "is_active": True,
+            "time_display": "NOW",
+            "project": project,
+            "description": description[:60] + "..." if len(description) > 60 else description,
+            "outcome_text": "IN PROGRESS",
+            "outcome_class": "active",
+            "reentry_link": None,  # Active sessions don't need re-entry
+            "session_id": session_short,
+        })
+
+    # 2. Get recent completed sessions
+    recent_sessions = get_recent_sessions(hours=hours)
+    for s in recent_sessions:
+        # Skip sessions without meaningful content
+        summary = s.get("summary")
+        if not summary or summary == "Session completed":
+            # Check if there are accomplishments to use instead
+            accomplishments = s.get("accomplishments")
+            if accomplishments:
+                summary = accomplishments[0]
+            else:
+                continue  # Filter out empty sessions
+
+        outcome_text, outcome_class = _classify_session_outcome(s)
+
+        # Build Obsidian re-entry link
+        reentry_link = None
+        session_file = s.get("session_file")
+        if session_file:
+            # Obsidian link format: obsidian://open?vault=writing&file=sessions/claude/{filename}
+            reentry_link = f"obsidian://open?vault=writing&file=sessions/claude/{session_file}"
+
+        project = s.get("project")
+        if not project:
+            project = "unknown"
+
+        results.append({
+            "is_active": False,
+            "time_display": s.get("time_ago"),
+            "project": project,
+            "description": summary[:60] + "..." if len(summary) > 60 else summary,
+            "outcome_text": outcome_text,
+            "outcome_class": outcome_class,
+            "reentry_link": reentry_link,
+            "session_id": s.get("session_id"),
+        })
+
+    # Limit total results
+    return results[:limit]
 
 
 def group_sessions_by_project(sessions: list[dict]) -> dict[str, list[dict]]:
@@ -2288,9 +2456,9 @@ st.markdown(
     }
 
     /* ==========================================================================
-     * RECENT ACTIVITY SECTION
+     * WHERE YOU LEFT OFF SECTION (formerly RECENT ACTIVITY)
      * ========================================================================== */
-    .recent-activity-panel {
+    .where-left-off-panel {
         margin: 16px 0;
         padding: 12px 16px;
         background-color: var(--bg-card-light);
@@ -2298,70 +2466,116 @@ st.markdown(
         border-radius: 8px;
     }
 
-    .recent-activity-header {
+    .where-left-off-header {
         font-size: 1em;
         font-weight: 700;
         color: var(--text-primary);
         margin-bottom: 12px;
         letter-spacing: -0.01em;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
-    .recent-activity-list {
+    .where-left-off-list {
         display: flex;
         flex-direction: column;
         gap: 6px;
     }
 
-    .recent-activity-row {
-        display: flex;
+    .where-left-off-row {
+        display: grid;
+        grid-template-columns: 65px 110px 1fr auto auto;
         align-items: center;
         gap: 10px;
-        padding: 6px 8px;
+        padding: 8px 10px;
         border-radius: 4px;
         background-color: var(--bg-card);
         font-size: 0.85em;
     }
 
-    .recent-activity-row.success {
+    .where-left-off-row.active {
+        border-left: 3px solid #22c55e;
+        background-color: rgba(34, 197, 94, 0.08);
+    }
+
+    .where-left-off-row.success,
+    .where-left-off-row.merged {
         border-left: 3px solid var(--text-success);
     }
 
-    .recent-activity-row.partial {
+    .where-left-off-row.partial {
         border-left: 3px solid var(--text-warning);
     }
 
-    .recent-activity-row.failure {
+    .where-left-off-row.failure {
         border-left: 3px solid var(--text-error);
     }
 
-    .recent-activity-row.unknown {
+    .where-left-off-row.needs {
+        border-left: 3px solid #f59e0b;
+    }
+
+    .where-left-off-row.unknown {
         border-left: 3px solid var(--border-subtle);
     }
 
-    .activity-time {
+    .wlo-time {
         color: var(--text-muted);
         font-family: monospace;
-        min-width: 45px;
+        font-size: 0.9em;
     }
 
-    .activity-project {
+    .wlo-time.now {
+        color: #22c55e;
+        font-weight: 700;
+    }
+
+    .wlo-project {
         color: var(--text-accent);
         font-weight: 600;
-        min-width: 100px;
         text-transform: lowercase;
-    }
-
-    .activity-outcome {
-        min-width: 20px;
-        text-align: center;
-    }
-
-    .activity-summary {
-        color: var(--text-secondary);
-        flex: 1;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+
+    .wlo-description {
+        color: var(--text-secondary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .wlo-outcome {
+        color: var(--text-muted);
+        font-size: 0.85em;
+        white-space: nowrap;
+    }
+
+    .wlo-outcome.active {
+        color: #22c55e;
+        font-weight: 600;
+    }
+
+    .wlo-outcome.merged {
+        color: #a78bfa;
+    }
+
+    .wlo-outcome.needs {
+        color: #f59e0b;
+    }
+
+    .wlo-link {
+        color: var(--text-muted);
+        text-decoration: none;
+        opacity: 0.6;
+        transition: opacity 0.15s;
+    }
+
+    .wlo-link:hover {
+        opacity: 1;
+        color: var(--text-accent);
     }
 
 </style>
@@ -3330,56 +3544,47 @@ if synthesis:
     synth_html += "</div>"  # End panel
     st.markdown(synth_html, unsafe_allow_html=True)
 
-# === RECENT ACTIVITY SECTION ===
+# === WHERE YOU LEFT OFF SECTION ===
 # Time range selector in sidebar
 activity_hours = st.sidebar.selectbox(
-    "Recent Activity Range",
+    "Context Recovery Range",
     options=[6, 12, 24, 48, 72],
     index=2,  # Default to 24 hours
     format_func=lambda h: f"Last {h}h",
 )
 
-recent_sessions = get_recent_sessions(hours=activity_hours)
-if recent_sessions:
-    activity_html = "<div class='recent-activity-panel'>"
-    activity_html += f"<div class='recent-activity-header'>📊 RECENT ACTIVITY (last {activity_hours}h)</div>"
-    activity_html += "<div class='recent-activity-list'>"
+where_left_off = get_where_you_left_off(hours=activity_hours, limit=5)
+if where_left_off:
+    wlo_html = "<div class='where-left-off-panel'>"
+    wlo_html += "<div class='where-left-off-header'>📍 WHERE YOU LEFT OFF</div>"
+    wlo_html += "<div class='where-left-off-list'>"
 
-    for session in recent_sessions[:10]:  # Limit to 10 most recent
-        time_str = session["date"].strftime("%H:%M")
-        project = session["project"]
-        outcome = session["outcome"]
+    for entry in where_left_off:
+        outcome_class = entry["outcome_class"]
+        time_display = entry["time_display"]
+        time_class = "now" if entry["is_active"] else ""
 
-        # Outcome indicator
-        if outcome == "success":
-            outcome_icon = "✅"
-            outcome_class = "success"
-        elif outcome == "partial":
-            outcome_icon = "⚠️"
-            outcome_class = "partial"
-        elif outcome == "failure":
-            outcome_icon = "❌"
-            outcome_class = "failure"
+        wlo_html += f"<div class='where-left-off-row {outcome_class}'>"
+        wlo_html += f"<span class='wlo-time {time_class}'>{esc(time_display)}</span>"
+        wlo_html += f"<span class='wlo-project'>{esc(entry['project'])}</span>"
+        wlo_html += f"<span class='wlo-description'>{esc(entry['description'])}</span>"
+
+        # Outcome text with appropriate class
+        outcome_text = entry["outcome_text"]
+        outcome_text_class = outcome_class
+        wlo_html += f"<span class='wlo-outcome {outcome_text_class}'>{esc(outcome_text)}</span>"
+
+        # Re-entry link (if available)
+        reentry_link = entry.get("reentry_link")
+        if reentry_link:
+            wlo_html += f"<a href='{reentry_link}' class='wlo-link' title='Open in Obsidian'>↗</a>"
         else:
-            outcome_icon = "•"
-            outcome_class = "unknown"
+            wlo_html += "<span class='wlo-link'></span>"
 
-        # Summary text (truncate if too long)
-        summary = session["summary"]
-        if summary:
-            summary_text = summary[:80] + "..." if len(summary) > 80 else summary
-        else:
-            summary_text = "Session completed"
+        wlo_html += "</div>"
 
-        activity_html += f"<div class='recent-activity-row {outcome_class}'>"
-        activity_html += f"<span class='activity-time'>{time_str}</span>"
-        activity_html += f"<span class='activity-project'>{esc(project)}</span>"
-        activity_html += f"<span class='activity-outcome'>{outcome_icon}</span>"
-        activity_html += f"<span class='activity-summary'>{esc(summary_text)}</span>"
-        activity_html += "</div>"
-
-    activity_html += "</div></div>"
-    st.markdown(activity_html, unsafe_allow_html=True)
+    wlo_html += "</div></div>"
+    st.markdown(wlo_html, unsafe_allow_html=True)
 
 # === PROJECT-CENTRIC DASHBOARD ===
 # Fetch Data
