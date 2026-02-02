@@ -152,6 +152,47 @@ def checkout(ctx, task_id, caller):
         sys.exit(1)
 
 
+def _attempt_auto_merge(task, manager):
+    """Attempt to auto-merge a task after it's marked merge_ready.
+
+    This is a hook called from the finish command. It attempts to merge
+    immediately if conditions are right, otherwise leaves the task for
+    manual merge via 'polecat merge'.
+
+    Args:
+        task: Task object that was just marked merge_ready
+        manager: PolecatManager instance
+    """
+    try:
+        from engineer import Engineer
+        from lib.task_model import TaskStatus
+
+        # Check if any blocking dependencies are not done
+        if task.depends_on:
+            for dep_id in task.depends_on:
+                dep_task = manager.storage.get_task(dep_id)
+                if dep_task and dep_task.status != TaskStatus.DONE:
+                    print(f"  ⏸ Auto-merge skipped: dependency {dep_id} not done")
+                    return
+
+        print("  🔄 Attempting auto-merge...")
+        eng = Engineer()
+
+        # Process just this task (not a full scan)
+        try:
+            eng.process_merge(task)
+            print("  ✅ Auto-merge succeeded!")
+        except Exception as e:
+            # Merge failed - task stays at merge_ready for manual retry
+            print(f"  ⚠ Auto-merge failed: {e}")
+            print("  Task remains 'merge_ready' - run 'polecat merge' to retry manually")
+
+    except ImportError as e:
+        print(f"  ⚠ Auto-merge skipped: {e}")
+    except Exception as e:
+        print(f"  ⚠ Auto-merge error: {e}")
+
+
 @main.command()
 @click.option("--no-push", is_flag=True, help="Skip pushing to remote")
 @click.option(
@@ -269,6 +310,10 @@ def finish(ctx, no_push, do_nuke):
         task.status = TaskStatus.MERGE_READY
         manager.storage.save_task(task)
         print(f"✅ Task marked as 'merge_ready'")
+
+        # Auto-merge hook: attempt to merge immediately if no blockers
+        _attempt_auto_merge(task, manager)
+
     except ImportError:
         print("Warning: Could not update task status (lib.task_model not available)")
 
