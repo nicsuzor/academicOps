@@ -100,6 +100,8 @@ Note: DO NOT plan the actual work. Your ONLY job is to provide background inform
 
 **Detection heuristic**: Starts with `/` → direct. No file changes → direct. Everything else → enqueue.
 
+**Regression risk**: If the fix involves REMOVING code/functionality/arguments, classify as `enqueue` and include CRITIC review step. Removals carry regression risk - the removed code may serve a purpose not obvious from the error message. P#80 (Fixes Preserve Spec Behavior).
+
 ## Return Format
 
 Return this EXACT structure:
