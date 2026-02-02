@@ -458,7 +458,7 @@ def get_active_agents() -> list[ActiveAgent]:
             if data.get("ended_at") is None:
                 # Extract fields with safe fallbacks
                 main_agent = data.get("main_agent", {})
-                insights = data.get("insights", {})
+                insights = data.get("insights") or {}
                 
                 agents.append(ActiveAgent(
                     session_id=data.get("session_id", status_file.stem),
