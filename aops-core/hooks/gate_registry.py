@@ -1558,8 +1558,7 @@ def post_hydration_trigger(ctx: GateContext) -> Optional[GateResult]:
         # User-facing output + agent context injection
         return GateResult(
             verdict=GateVerdict.ALLOW,
-            system_message="💧 [Gate] Hydration complete. Critic required next.",
-            context_injection="<system-reminder>\nNext, invoke the critic and revise your plan.\n</system-reminder>",
+            system_message="💧 [Gate] Hydration complete.",
         )
 
     return None
