@@ -1,16 +1,26 @@
-# Handover Required
+# Landing the Plane (Session Completion)
 
-You are stopping the session, but the `/handover` skill has not been invoked.
+**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
 
-**To clear this gate, you must invoke `/handover`** (use the Skill tool with skill="aops-core:handover").
+## MANDATORY WORKFLOW
 
-**Important**: Using any mutating tools (Edit, Write, Bash with file operations, git commands, etc.) will reset this gate. Complete all file changes first, then invoke `/handover` as your final action before stopping.
+1. **Complete all file changes** - Finish any pending edits, writes, or code modifications
+2. **Run quality gates** - If code was changed, run tests and verify they pass
+3. **Update task status** - Mark tasks complete or update progress as appropriate
+4. **Invoke `/handover`** - Use the Skill tool with `skill="aops-core:handover"`
+5. **Commit and PUSH** - The handover skill will guide you, but ensure `git push` succeeds
+6. **Verify** - All changes committed AND pushed to remote
+7. **Output Framework Reflection** - Provide context for the next session
 
-The `/handover` skill will guide you through:
+## CRITICAL RULES
 
-1. Checking for uncommitted changes
-2. Committing any remaining work
-3. Outputting the required Framework Reflection
-4. Clearing the stop gate
+- Work is **NOT complete** until `git push` succeeds
+- **NEVER stop** before pushing to remote
+- If push fails, resolve and retry until it succeeds
+- Using mutating tools (Edit, Write, Bash, git) after handover will reset this gate
 
-**Note:** If you weren't trying to finish the session, either keep going or use AskUserQuestion to pause and wait for a response.
+## To Clear This Gate
+
+Invoke `/handover` as your final action: `Skill(skill="aops-core:handover")`
+
+**Not done yet?** If you weren't trying to finish, keep working or use AskUserQuestion to pause for user input.
