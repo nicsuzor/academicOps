@@ -1236,6 +1236,7 @@ def run_accountant(ctx: GateContext) -> Optional[GateResult]:
         if _is_custodiet_invocation(ctx.tool_name or "", ctx.tool_input):
             state["tool_calls_since_compliance"] = 0
             state["last_compliance_ts"] = time.time()
+            system_messages.append("[Gate] Compliance verified. Custodiet gate reset.")
 
         else:
             state["tool_calls_since_compliance"] += 1
@@ -1428,6 +1429,7 @@ def check_agent_response_listener(ctx: GateContext) -> Optional[GateResult]:
         # Inject instruction to invoke critic
         return GateResult(
             verdict=GateVerdict.ALLOW,
+            system_message="[Gate] Hydration plan detected. Gate satisfied.",
             context_injection=(
                 "<system-reminder>\n"
                 "Hydration plan detected. Next step: Invoke the critic to review this plan.\n"
@@ -1545,6 +1547,7 @@ def check_skill_activation_listener(ctx: GateContext) -> Optional[GateResult]:
     return GateResult(
         verdict=GateVerdict.ALLOW,
         metadata={"source": "skill_activation_bypass", "skill": skill_name},
+        system_message=f"[Gate] Skill '{skill_name}' activated. Hydration gate cleared.",
     )
 
 
