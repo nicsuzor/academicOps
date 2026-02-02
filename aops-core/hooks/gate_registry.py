@@ -87,7 +87,9 @@ HYDRATION_SAFE_TOOLS = SAFE_READ_TOOLS
 # Custodiet
 CUSTODIET_TEMP_CATEGORY = "compliance"
 _custodiet_threshold_raw = os.environ.get("CUSTODIET_TOOL_CALL_THRESHOLD")
-CUSTODIET_TOOL_CALL_THRESHOLD: int = int(_custodiet_threshold_raw) if _custodiet_threshold_raw else 7
+CUSTODIET_TOOL_CALL_THRESHOLD: int = (
+    int(_custodiet_threshold_raw) if _custodiet_threshold_raw else 7
+)
 CUSTODIET_CONTEXT_TEMPLATE_FILE = (
     Path(__file__).parent / "templates" / "custodiet-context.md"
 )
@@ -262,7 +264,10 @@ def check_subagent_tool_restrictions(ctx: GateContext) -> Optional[GateResult]:
     subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE", "")
 
     # prompt-hydrator should only have Read + memory tools
-    if subagent_type == "aops-core:prompt-hydrator" or "hydrator" in subagent_type.lower():
+    if (
+        subagent_type == "aops-core:prompt-hydrator"
+        or "hydrator" in subagent_type.lower()
+    ):
         if ctx.tool_name in MUTATING_TOOLS:
             return GateResult(
                 verdict=GateVerdict.DENY,
@@ -277,7 +282,10 @@ def check_subagent_tool_restrictions(ctx: GateContext) -> Optional[GateResult]:
                     "- Execution steps\n\n"
                     "Do NOT attempt to Edit, Write, or run Bash commands."
                 ),
-                metadata={"source": "subagent_tool_restriction", "blocked_tool": ctx.tool_name},
+                metadata={
+                    "source": "subagent_tool_restriction",
+                    "blocked_tool": ctx.tool_name,
+                },
             )
 
     return None
@@ -429,8 +437,14 @@ def _is_actually_destructive(tool_name: str, tool_input: Dict[str, Any]) -> bool
         True if the operation is destructive, False if read-only
     """
     # Non-Bash mutating tools are always destructive
-    if tool_name in ("Edit", "Write", "NotebookEdit", "write_to_file",
-                     "replace_file_content", "multi_replace_file_content"):
+    if tool_name in (
+        "Edit",
+        "Write",
+        "NotebookEdit",
+        "write_to_file",
+        "replace_file_content",
+        "multi_replace_file_content",
+    ):
         return True
 
     # Bash commands: check if actually destructive
@@ -698,19 +712,29 @@ def check_hydration_gate(ctx: GateContext) -> Optional[GateResult]:
 
     # DEBUG: Log to fixed file for subagent visibility
     from datetime import datetime
+
     debug_file = Path("/tmp/hydration-gate-debug.jsonl")
     try:
         with open(debug_file, "a") as f:
-            f.write(json.dumps({
-                "ts": str(datetime.now()),
-                "event": ctx.event_name,
-                "tool": ctx.tool_name,
-                "session_id": ctx.session_id,
-                "transcript_path": ctx.input_data.get("transcript_path") if ctx.input_data else None,
-                "env_agent_type": os.environ.get("CLAUDE_AGENT_TYPE"),
-                "env_subagent_type": os.environ.get("CLAUDE_SUBAGENT_TYPE"),
-                "input_keys": list(ctx.input_data.keys()) if ctx.input_data else [],
-            }) + "\n")
+            f.write(
+                json.dumps(
+                    {
+                        "ts": str(datetime.now()),
+                        "event": ctx.event_name,
+                        "tool": ctx.tool_name,
+                        "session_id": ctx.session_id,
+                        "transcript_path": ctx.input_data.get("transcript_path")
+                        if ctx.input_data
+                        else None,
+                        "env_agent_type": os.environ.get("CLAUDE_AGENT_TYPE"),
+                        "env_subagent_type": os.environ.get("CLAUDE_SUBAGENT_TYPE"),
+                        "input_keys": list(ctx.input_data.keys())
+                        if ctx.input_data
+                        else [],
+                    }
+                )
+                + "\n"
+            )
     except Exception:
         pass  # Don't fail on debug logging
     # END DEBUG
@@ -752,7 +776,9 @@ def check_hydration_gate(ctx: GateContext) -> Optional[GateResult]:
     # Bypass for safe git operations (add, commit, fetch, pull, status, etc.)
     # These are commonly needed during handover and don't corrupt history
     if ctx.tool_name in ("Bash", "run_shell_command", "run_command"):
-        command = ctx.tool_input.get("command") or ctx.tool_input.get("CommandLine") or ""
+        command = (
+            ctx.tool_input.get("command") or ctx.tool_input.get("CommandLine") or ""
+        )
         if _is_hydration_safe_bash(command):
             return None
 
@@ -912,7 +938,8 @@ def _custodiet_build_session_context(
         lines.append("**Recent Agent Responses** (full text for phrase detection):")
         # Extract only agent responses, show last 3 with more content
         agent_responses = [
-            turn for turn in conversation
+            turn
+            for turn in conversation
             if (isinstance(turn, str) and turn.startswith("[Agent]:"))
         ]
         for turn in agent_responses[-3:]:  # Last 3 agent responses
@@ -1094,7 +1121,7 @@ def _build_task_block_message(gates: Dict[str, bool]) -> str:
     # We map "plan_mode_invoked" to "hydrator_invoked" in the template
     if not gates["plan_mode_invoked"]:
         missing.append(
-            "(b) Hydrate prompt: invoke the **aops-core:prompt-hydrator** agent or skill (Claude: `activate_skill(name=\"aops-core:prompt-hydrator\", ...)` | Gemini: `activate_skill(name=\"prompt-hydrator\", ...)`) to transform your prompt into a plan."
+            '(b) Hydrate prompt: invoke the **aops-core:prompt-hydrator** agent or skill (Claude: `activate_skill(name="aops-core:prompt-hydrator", ...)` | Gemini: `activate_skill(name="prompt-hydrator", ...)`) to transform your prompt into a plan.'
         )
     if not gates["critic_invoked"]:
         missing.append(
@@ -1250,7 +1277,9 @@ def run_accountant(ctx: GateContext) -> Optional[GateResult]:
         if _is_custodiet_invocation(ctx.tool_name or "", ctx.tool_input):
             state["tool_calls_since_compliance"] = 0
             state["last_compliance_ts"] = time.time()
-            system_messages.append("🛡️ [Gate] Compliance verified. Custodiet gate reset.")
+            system_messages.append(
+                "🛡️ [Gate] Compliance verified. Custodiet gate reset."
+            )
 
         else:
             state["tool_calls_since_compliance"] += 1
@@ -1273,10 +1302,13 @@ def run_accountant(ctx: GateContext) -> Optional[GateResult]:
         # Destructive tool used - require handover before stop
         try:
             session_state.clear_handover_skill_invoked(ctx.session_id)
-            system_messages.append("⚠️ [Gate] Destructive tool used. Handover required before stop.")
+            system_messages.append(
+                "⚠️ [Gate] Destructive tool used. Handover required before stop."
+            )
         except Exception as e:
             print(
-                f"WARNING: Accountant failed to clear handover flag: {e}", file=sys.stderr
+                f"WARNING: Accountant failed to clear handover flag: {e}",
+                file=sys.stderr,
             )
 
     if system_messages:
@@ -1314,7 +1346,10 @@ def check_stop_gate(ctx: GateContext) -> Optional[GateResult]:
     subagents = state.get("subagents", {})
     current_workflow = state.get("state", {}).get("current_workflow")
 
-    is_hydrated = hydration_data.get("hydrated_intent") is not None or hydration_data.get("original_prompt") is not None
+    is_hydrated = (
+        hydration_data.get("hydrated_intent") is not None
+        or hydration_data.get("original_prompt") is not None
+    )
     has_run_subagents = len(subagents) > 0
     is_streamlined = current_workflow in ("interactive-followup", "simple-question")
 
@@ -1366,7 +1401,12 @@ def post_hydration_trigger(ctx: GateContext) -> Optional[GateResult]:
 
     # Check if this was a successful hydration
     # We re-use logic from check_hydration_gate to identify hydrator tools
-    is_hydrator_tool = ctx.tool_name in ("Task", "delegate_to_agent", "activate_skill", "Skill")
+    is_hydrator_tool = ctx.tool_name in (
+        "Task",
+        "delegate_to_agent",
+        "activate_skill",
+        "Skill",
+    )
     is_hydrator = is_hydrator_tool and _hydration_is_hydrator_task(ctx.tool_input)
     is_gemini = _hydration_is_gemini_hydration_attempt(
         ctx.tool_name or "", ctx.tool_input, ctx.input_data
@@ -1400,7 +1440,11 @@ def post_critic_trigger(ctx: GateContext) -> Optional[GateResult]:
     # Also check Task tool (Claude)
     is_task = ctx.tool_name == "Task"
     subagent_type = ctx.tool_input.get("subagent_type", "")
-    is_critic_task = is_task and (subagent_type == "critic" or subagent_type == "aops-core:critic" or "critic" in subagent_type.lower())
+    is_critic_task = is_task and (
+        subagent_type == "critic"
+        or subagent_type == "aops-core:critic"
+        or "critic" in subagent_type.lower()
+    )
 
     # Also check Skill/activate_skill
     is_skill = ctx.tool_name in ("activate_skill", "Skill")
@@ -1437,7 +1481,11 @@ def post_qa_trigger(ctx: GateContext) -> Optional[GateResult]:
     # Also check Task tool (Claude)
     is_task = ctx.tool_name == "Task"
     subagent_type = ctx.tool_input.get("subagent_type", "")
-    is_qa_task = is_task and (subagent_type == "qa" or subagent_type == "aops-core:qa" or "qa" in subagent_type.lower())
+    is_qa_task = is_task and (
+        subagent_type == "qa"
+        or subagent_type == "aops-core:qa"
+        or "qa" in subagent_type.lower()
+    )
 
     # Also check Skill/activate_skill
     is_skill = ctx.tool_name in ("activate_skill", "Skill")
@@ -1485,9 +1533,11 @@ def check_agent_response_listener(ctx: GateContext) -> Optional[GateResult]:
         session_state.update_hydration_metrics(ctx.session_id, turns_since_hydration=0)
 
         # Parse workflow ID
-        workflow_match = re.search(r"\*\*Workflow\*\*:\s*\[\[workflows/([^\]]+)\]\]", response_text)
+        workflow_match = re.search(
+            r"\*\*Workflow\*\*:\s*\[\[workflows/([^\]]+)\]\]", response_text
+        )
         workflow_id = workflow_match.group(1) if workflow_match else None
-        
+
         if workflow_id:
             state = session_state.get_or_create_session_state(ctx.session_id)
             state["state"]["current_workflow"] = workflow_id
@@ -1500,7 +1550,11 @@ def check_agent_response_listener(ctx: GateContext) -> Optional[GateResult]:
             return GateResult(
                 verdict=GateVerdict.ALLOW,
                 system_message=f"[Gate] Hydration complete (workflow: {workflow_id}). Streamlined mode enabled.",
-                metadata={"source": "post_hydration_trigger", "streamlined": True, "workflow": workflow_id},
+                metadata={
+                    "source": "post_hydration_trigger",
+                    "streamlined": True,
+                    "workflow": workflow_id,
+                },
             )
 
         # Inject instruction to invoke critic
@@ -1540,7 +1594,9 @@ def check_session_start_gate(ctx: GateContext) -> Optional[GateResult]:
     try:
         from hooks.unified_logger import get_hook_log_path
 
-        status_dir = session_paths.get_session_status_dir(ctx.session_id, ctx.input_data)
+        status_dir = session_paths.get_session_status_dir(
+            ctx.session_id, ctx.input_data
+        )
         short_hash = session_paths.get_session_short_hash(ctx.session_id)
 
         # Get hook log path for this session (full absolute path)
@@ -1639,7 +1695,10 @@ def check_qa_enforcement_gate(ctx: GateContext) -> Optional[GateResult]:
         return None
 
     # Only applies to complete_task
-    if ctx.tool_name not in ("complete_task", "mcp__plugin_aops-tools_task_manager__complete_task"):
+    if ctx.tool_name not in (
+        "complete_task",
+        "mcp__plugin_aops-tools_task_manager__complete_task",
+    ):
         return None
 
     # Check if QA is required
@@ -1753,6 +1812,7 @@ def run_user_prompt_submit(ctx: GateContext) -> Optional[GateResult]:
             )
     except Exception as e:
         import traceback
+
         print(f"WARNING: user_prompt_submit error: {e}", file=sys.stderr)
         traceback.print_exc(file=sys.stderr)
 
@@ -1924,7 +1984,10 @@ def run_generate_transcript(ctx: GateContext) -> Optional[GateResult]:
                 text=True,
             )
             if result.returncode != 0 and result.returncode != 2:
-                print(f"WARNING: Transcript generation failed: {result.stderr}", file=sys.stderr)
+                print(
+                    f"WARNING: Transcript generation failed: {result.stderr}",
+                    file=sys.stderr,
+                )
     except Exception as e:
         print(f"WARNING: generate_transcript error: {e}", file=sys.stderr)
 
