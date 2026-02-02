@@ -47,6 +47,7 @@ from lib.session_state import (
     set_session_insights,
 )
 from lib.gate_model import GateResult, GateVerdict
+from hooks.internal_models import HookLogEntry
 
 # Set up logging
 logging.basicConfig(
@@ -212,18 +213,18 @@ def log_hook_event(
 
         log_path = get_hook_log_path(session_id, input_data, date)
 
-        # Create log entry with separated input and output
-        log_entry: dict[str, Any] = {
-            "hook_event": hook_event,
-            "logged_at": datetime.now().astimezone().replace(microsecond=0).isoformat(),
-            "exit_code": exit_code,
-            "input": input_data,
-            "output": output_data,
-        }
+        # Create log entry using typed model
+        log_entry = HookLogEntry(
+            hook_event=hook_event,
+            logged_at=datetime.now().astimezone().replace(microsecond=0).isoformat(),
+            exit_code=exit_code,
+            input=input_data,
+            output=output_data,
+        )
 
         # Append to JSONL file
         with log_path.open("a") as f:
-            json.dump(log_entry, f, separators=(",", ":"), default=_json_serializer)
+            json.dump(log_entry.model_dump(), f, separators=(",", ":"), default=_json_serializer)
             f.write("\n")
 
     except Exception as e:
