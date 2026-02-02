@@ -294,6 +294,8 @@ class TaskStorage:
         Uses a .lock file to coordinate concurrent access.
         Writes to temp file first, then renames for atomicity.
         Verifies the write succeeded by checking file existence and validity.
+        
+        P#83: No-op if file content is unchanged to avoid dirtying repo.
 
         Args:
             path: Target file path
@@ -330,6 +332,13 @@ class TaskStorage:
                         f"Failed to read existing body from {path}, overwriting: {e}"
                     )
 
+            # P#83: Check for changes before writing
+            new_content = task.to_markdown()
+            if path.exists():
+                existing_content = path.read_text(encoding="utf-8")
+                if new_content == existing_content:
+                    return  # No changes, do nothing
+
             # Create parent directory if needed
             path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -342,7 +351,7 @@ class TaskStorage:
             try:
                 os.close(fd)  # Close the file descriptor from mkstemp
                 temp = Path(temp_path)
-                temp.write_text(task.to_markdown(), encoding="utf-8")
+                temp.write_text(new_content, encoding="utf-8")
                 # Atomic rename (on POSIX systems)
                 temp.rename(path)
 
