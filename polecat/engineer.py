@@ -104,8 +104,11 @@ class Engineer:
         try:
             self._run_git(repo_path, ["merge", "--squash", branch_name])
         except subprocess.CalledProcessError:
+            # Capture conflict details before abort
+            conflict_files = self._get_conflict_files(repo_path)
             self._run_git(repo_path, ["merge", "--abort"])
-            print("  Merge conflict detected. Attempting auto-rebase...")
+            print(f"  Merge conflict detected in: {', '.join(conflict_files)}")
+            print("  Attempting auto-rebase...")
 
             # Attempt auto-rebase before escalating
             rebase_result = self._attempt_rebase(repo_path, branch_name, target_branch)
@@ -114,10 +117,13 @@ class Engineer:
                 try:
                     self._run_git(repo_path, ["merge", "--squash", branch_name])
                 except subprocess.CalledProcessError:
+                    # Capture conflict details before abort
+                    conflict_files = self._get_conflict_files(repo_path)
                     self._run_git(repo_path, ["merge", "--abort"])
                     raise RuntimeError(
                         "Merge conflicts persist after rebase.\n"
                         f"Branch: {branch_name}\n"
+                        f"Conflicting files: {', '.join(conflict_files)}\n"
                         "Manual resolution required."
                     )
             else:
