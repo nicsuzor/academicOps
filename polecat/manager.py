@@ -235,6 +235,17 @@ class PolecatManager:
             # Use existing branch
             cmd = ["git", "worktree", "add", str(worktree_path), branch_name]
         else:
+            # Validate start-point exists before creating new branch
+            result = subprocess.run(
+                ["git", "rev-parse", "--verify", f"refs/heads/{default_branch}"],
+                cwd=local_repo_path,
+                capture_output=True,
+            )
+            if result.returncode != 0:
+                raise RuntimeError(
+                    f"Start-point branch '{default_branch}' does not exist in {local_repo_path}. "
+                    f"Check polecat.yaml default_branch setting."
+                )
             # Create new branch from default branch
             cmd = [
                 "git",
@@ -770,6 +781,19 @@ class PolecatManager:
             subprocess.run(["git", "worktree", "prune"], cwd=repo_path, check=False)
 
         print(f"Creating worktree at {worktree_path} from repo {repo_path}...")
+
+        # Validate start-point exists before attempting worktree creation
+        # This prevents orphan branch creation when default_branch doesn't exist
+        result = subprocess.run(
+            ["git", "rev-parse", "--verify", f"refs/heads/{default_branch}"],
+            cwd=repo_path,
+            capture_output=True,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"Start-point branch '{default_branch}' does not exist in {repo_path}. "
+                f"Check polecat.yaml default_branch setting or run 'polecat sync' to update mirrors."
+            )
 
         cmd = [
             "git",
