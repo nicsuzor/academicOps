@@ -341,6 +341,20 @@ If the worktree directory doesn't exist but branch does:
 - Proceed with branch merge and cleanup
 - This is normal for completed tasks
 
+### Failed Merge / No Branch (Review Status)
+
+If task is in `review` status but has no branch:
+- Refinery may have failed (`git fetch` error, merge conflict, etc.)
+- Check task body for "🏭 Refinery Report" section with failure details
+- **Work was never completed** - this is NOT a merge candidate
+
+**Resolution**:
+1. Reset task to `active` status
+2. Reassign to `bot` for fresh attempt
+3. Add triage note explaining the reset
+
+This commonly occurs when polecat sessions hit blocking bugs (e.g., hydration gate) and refinery couldn't process.
+
 ## Constraints
 
 - Never force-push to main
