@@ -192,7 +192,7 @@ Merge a crew branch when:
 
 ### Merge Steps
 
-For each project in the crew (e.g., `~/.aops/polecat/crew/cheryl/aops`):
+For each project in the crew (e.g., `~/.aops/crew/cheryl/aops`):
 
 0. **Create tracking task** (before starting):
    ```
@@ -206,7 +206,7 @@ For each project in the crew (e.g., `~/.aops/polecat/crew/cheryl/aops`):
 
 1. **Check status**:
    ```bash
-   cd ~/.aops/polecat/crew/<name>/<project>
+   cd ~/.aops/crew/<name>/<project>
    git status
    git log main..HEAD --oneline  # See commits to merge
    ```
