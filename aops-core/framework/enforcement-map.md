@@ -172,6 +172,15 @@ This is the **default enforcement mechanism** for instructions. Principles surfa
 
 This ensures [[enforcement-changes-require-rules-md-update]] is followed.
 
+## MCP Tool Hydration Requirements
+
+| Tool | Exempt from Hydration | Rationale |
+|------|----------------------|-----------|
+| `store_memory` | **No** | Must route through `/remember` skill to create both markdown + memory (aops-887fba77) |
+| `retrieve_memory` | Yes | Read-only, no state change |
+| `recall_memory` | Yes | Read-only, no state change |
+| Task manager tools | Yes | Establish task binding (infrastructure) |
+
 ## Soft Gate Guardrails (Prompt Hydration)
 
 These guardrails are applied by [[prompt-hydration]] based on task classification. Each maps to a heuristic and defines when/how to apply it.

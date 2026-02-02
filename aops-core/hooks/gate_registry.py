@@ -610,7 +610,8 @@ MCP_TOOLS_EXEMPT_FROM_HYDRATION = {
     "mcp__plugin_aops-core_task_manager__dedup_tasks",
     "mcp__plugin_aops-core_task_manager__delete_task",
     # Memory MCP tools (Claude format)
-    "mcp__plugin_aops-core_memory__store_memory",
+    # NOTE: store_memory is NOT exempt - must go through hydration to route to /remember skill
+    # This ensures both markdown and memory server receive the content (aops-887fba77)
     "mcp__plugin_aops-core_memory__retrieve_memory",
     "mcp__plugin_aops-core_memory__recall_memory",
     "mcp__plugin_aops-core_memory__search_by_tag",
@@ -626,7 +627,7 @@ MCP_TOOLS_EXEMPT_FROM_HYDRATION = {
     "get_task_tree",
     "get_children",
     "decompose_task",
-    "store_memory",
+    # NOTE: store_memory is NOT exempt - must go through hydration (aops-887fba77)
     "retrieve_memory",
     "recall_memory",
     "search_by_tag",
