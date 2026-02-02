@@ -333,3 +333,4 @@ dist/
 aops-tools/.mcp.json
 streamlit_log.txt
 .agent/PATHS.md
+aops-tools/.claude-plugin/.aops-version

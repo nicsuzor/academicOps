@@ -97,6 +97,9 @@ This skill integrates with daily workflow:
 
 - **ALL matches are actionable**: NEVER dismiss matches as "documentation" or "examples". HTML comments are NEVER used casually in this codebase. If the pattern matches, it's a real annotation requiring action.
 - **Examples use code blocks**: Documentation examples appear inside ` ```markdown ` code blocks, NOT as bare HTML comments. A bare `<!-- @ns: -->` in ANY file is a real annotation.
+- **Direct instructions vs questions**: Distinguish between comment types:
+  - **Questions/discussion** (e.g., "check if this applies post-DSA") → add `<!-- @claude -->` reply
+  - **Direct instructions** (e.g., "re-file this to X folder") → execute the instruction, delete the comment, summarize action in git commit message. Leave files clean.
 - **Task ID in responses**: When creating a task for an annotation, the `<!-- @claude -->` response MUST include the task ID. Format: `<!-- @claude YYYY-MM-DD: Task created: task-id. [brief description] -->`
 
 ## Boundaries
