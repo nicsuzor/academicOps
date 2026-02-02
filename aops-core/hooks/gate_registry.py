@@ -86,10 +86,17 @@ HYDRATION_SAFE_TOOLS = SAFE_READ_TOOLS
 
 # Custodiet
 CUSTODIET_TEMP_CATEGORY = "compliance"
-_custodiet_threshold_raw = os.environ.get("CUSTODIET_TOOL_CALL_THRESHOLD")
-CUSTODIET_TOOL_CALL_THRESHOLD: int = (
-    int(_custodiet_threshold_raw) if _custodiet_threshold_raw else 7
-)
+CUSTODIET_DEFAULT_THRESHOLD = 7
+
+
+def get_custodiet_threshold() -> int:
+    """Get custodiet threshold, reading from env at call time for testability."""
+    raw = os.environ.get("CUSTODIET_TOOL_CALL_THRESHOLD")
+    return int(raw) if raw else CUSTODIET_DEFAULT_THRESHOLD
+
+
+# Legacy alias for backward compatibility
+CUSTODIET_TOOL_CALL_THRESHOLD: int = CUSTODIET_DEFAULT_THRESHOLD
 CUSTODIET_CONTEXT_TEMPLATE_FILE = (
     Path(__file__).parent / "templates" / "custodiet-context.md"
 )
@@ -1074,7 +1081,8 @@ def check_custodiet_gate(ctx: GateContext) -> Optional[GateResult]:
             )
 
     # If no axiom violations, check compliance threshold
-    if tool_calls < CUSTODIET_TOOL_CALL_THRESHOLD:
+    threshold = get_custodiet_threshold()
+    if tool_calls < threshold:
         return None
 
     # At or over threshold - block mutating tool with full instruction
@@ -1935,10 +1943,10 @@ def run_session_end_commit_check(ctx: GateContext) -> Optional[GateResult]:
     # Check for uncommitted work
     try:
         check_result = check_uncommitted_work(session_id, transcript_path)
-        if check_result["should_block"]:
+        if check_result.should_block:
             return GateResult(
                 verdict=GateVerdict.DENY,
-                system_message=check_result["message"],
+                system_message=check_result.message,
             )
     except Exception as e:
         print(f"WARNING: uncommitted work check failed: {e}", file=sys.stderr)

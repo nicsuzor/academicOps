@@ -29,6 +29,7 @@ class TestOverdueThreshold:
         """Under threshold (< 7 tool calls), mutating tools allowed."""
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(state_dir))
+        monkeypatch.setenv("CUSTODIET_TOOL_CALL_THRESHOLD", "7")  # Set known threshold
         cwd = "/test/project"
         monkeypatch.setenv(
             "CLAUDE_SESSION_ID", cwd
@@ -51,6 +52,7 @@ class TestOverdueThreshold:
         """At threshold (>= 7 tool calls), mutating tools blocked."""
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(state_dir))
+        monkeypatch.setenv("CUSTODIET_TOOL_CALL_THRESHOLD", "7")  # Set known threshold
         cwd = "/test/project"
         monkeypatch.setenv("CLAUDE_SESSION_ID", cwd)  # SESSION_ID preferred over CWD
         monkeypatch.setenv("CLAUDE_CWD", cwd)
@@ -74,6 +76,7 @@ class TestOverdueThreshold:
         """Over threshold (> 7 tool calls), mutating tools blocked."""
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(state_dir))
+        monkeypatch.setenv("CUSTODIET_TOOL_CALL_THRESHOLD", "7")  # Set known threshold
         cwd = "/test/project"
         monkeypatch.setenv("CLAUDE_SESSION_ID", cwd)  # SESSION_ID preferred over CWD
         monkeypatch.setenv("CLAUDE_CWD", cwd)
@@ -101,6 +104,7 @@ class TestToolCategories:
         """Edit tool is mutating and blocked when overdue."""
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(state_dir))
+        monkeypatch.setenv("CUSTODIET_TOOL_CALL_THRESHOLD", "7")  # Set known threshold
         cwd = "/test/project"
         monkeypatch.setenv("CLAUDE_SESSION_ID", cwd)  # SESSION_ID preferred over CWD
         monkeypatch.setenv("CLAUDE_CWD", cwd)
@@ -121,6 +125,7 @@ class TestToolCategories:
         """Write tool is mutating and blocked when overdue."""
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(state_dir))
+        monkeypatch.setenv("CUSTODIET_TOOL_CALL_THRESHOLD", "7")  # Set known threshold
         cwd = "/test/project"
         monkeypatch.setenv("CLAUDE_SESSION_ID", cwd)  # SESSION_ID preferred over CWD
         monkeypatch.setenv("CLAUDE_CWD", cwd)
@@ -144,6 +149,7 @@ class TestToolCategories:
         """Bash tool is mutating and blocked when overdue."""
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(state_dir))
+        monkeypatch.setenv("CUSTODIET_TOOL_CALL_THRESHOLD", "7")  # Set known threshold
         cwd = "/test/project"
         monkeypatch.setenv("CLAUDE_SESSION_ID", cwd)  # SESSION_ID preferred over CWD
         monkeypatch.setenv("CLAUDE_CWD", cwd)
@@ -164,6 +170,7 @@ class TestToolCategories:
         """Read tool is read-only and NOT blocked when overdue."""
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(state_dir))
+        monkeypatch.setenv("CUSTODIET_TOOL_CALL_THRESHOLD", "7")  # Set known threshold
         cwd = "/test/project"
         monkeypatch.setenv("CLAUDE_SESSION_ID", cwd)  # SESSION_ID preferred over CWD
         monkeypatch.setenv("CLAUDE_CWD", cwd)
@@ -184,6 +191,7 @@ class TestToolCategories:
         """Glob tool is read-only and NOT blocked when overdue."""
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(state_dir))
+        monkeypatch.setenv("CUSTODIET_TOOL_CALL_THRESHOLD", "7")  # Set known threshold
         cwd = "/test/project"
         monkeypatch.setenv("CLAUDE_SESSION_ID", cwd)  # SESSION_ID preferred over CWD
         monkeypatch.setenv("CLAUDE_CWD", cwd)
@@ -204,6 +212,7 @@ class TestToolCategories:
         """Grep tool is read-only and NOT blocked when overdue."""
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(state_dir))
+        monkeypatch.setenv("CUSTODIET_TOOL_CALL_THRESHOLD", "7")  # Set known threshold
         cwd = "/test/project"
         monkeypatch.setenv("CLAUDE_SESSION_ID", cwd)  # SESSION_ID preferred over CWD
         monkeypatch.setenv("CLAUDE_CWD", cwd)
@@ -254,6 +263,7 @@ class TestBlockReason:
         """Block response includes reason message."""
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(state_dir))
+        monkeypatch.setenv("CUSTODIET_TOOL_CALL_THRESHOLD", "7")  # Set known threshold
         cwd = "/test/project"
         monkeypatch.setenv("CLAUDE_SESSION_ID", cwd)  # SESSION_ID preferred over CWD
         monkeypatch.setenv("CLAUDE_CWD", cwd)
@@ -279,6 +289,7 @@ class TestBlockReason:
         """Block response suggests spawning custodiet."""
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(state_dir))
+        monkeypatch.setenv("CUSTODIET_TOOL_CALL_THRESHOLD", "7")  # Set known threshold
         cwd = "/test/project"
         monkeypatch.setenv("CLAUDE_SESSION_ID", cwd)  # SESSION_ID preferred over CWD
         monkeypatch.setenv("CLAUDE_CWD", cwd)
@@ -305,6 +316,7 @@ class TestSoftReminder:
         """Read-only tools get soft reminder (not block) when overdue."""
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(state_dir))
+        monkeypatch.setenv("CUSTODIET_TOOL_CALL_THRESHOLD", "7")  # Set known threshold
         cwd = "/test/project"
         monkeypatch.setenv("CLAUDE_SESSION_ID", cwd)  # SESSION_ID preferred over CWD
         monkeypatch.setenv("CLAUDE_CWD", cwd)

@@ -608,14 +608,14 @@ def check_uncommitted_work(
     message = ""
 
     # Only trigger blocking if: (has reflection OR has test success) AND has uncommitted changes
-    if (has_reflection or has_tests) and git_status.get("has_changes"):
-        should_block = False
+    if (reflection_found or tests_passed) and git_status.has_changes:
+        should_block = True  # Default to blocking when uncommitted changes detected
 
         if git_status.staged_changes:
             message = "Staged changes detected. Attempting auto-commit..."
             # Try to auto-commit
             if attempt_auto_commit():
-                should_block = False
+                should_block = False  # Auto-commit succeeded, allow session to end
                 message = "Auto-committed. Session can proceed."
                 # Update reminder for any unpushed commits
                 if push_status.branch_ahead:
@@ -627,11 +627,13 @@ def check_uncommitted_work(
                     )
                     message += f"\nReminder: Push {push_status.commits_ahead} unpushed commit(s) on {branch_display}"
             else:
+                # Auto-commit failed, keep should_block = True
                 message = (
                     "Commit staged changes before ending session, "
                     "or use AskUserQuestion to request permission to end without committing."
                 )
         else:
+            # Unstaged or untracked changes, keep should_block = True
             message = (
                 "Uncommitted changes detected. Commit before ending session, "
                 "or use AskUserQuestion to request permission to end without committing."
