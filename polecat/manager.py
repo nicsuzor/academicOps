@@ -393,9 +393,11 @@ class PolecatManager:
                 ["git", "clone", "--bare", remote_url, str(mirror_path)],
                 check=True,
             )
-            # Configure fetch refspec to get all branches
+            # Configure fetch refspec to use remote-tracking refs
+            # This avoids "refusing to fetch into branch checked out" errors
+            # when branches are checked out in worktrees
             subprocess.run(
-                ["git", "config", "remote.origin.fetch", "+refs/heads/*:refs/heads/*"],
+                ["git", "config", "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*"],
                 cwd=mirror_path,
                 check=True,
             )
@@ -473,15 +475,15 @@ class PolecatManager:
             return False, f"Local repo not found: {local_path}"
 
         try:
-            # Get mirror's HEAD for the default branch
+            # Get mirror's HEAD for the default branch (from remote-tracking ref)
             mirror_result = subprocess.run(
-                ["git", "rev-parse", f"refs/heads/{default_branch}"],
+                ["git", "rev-parse", f"refs/remotes/origin/{default_branch}"],
                 cwd=mirror_path,
                 capture_output=True,
                 text=True,
             )
             if mirror_result.returncode != 0:
-                return False, f"Mirror missing branch {default_branch}"
+                return False, f"Mirror missing remote-tracking ref origin/{default_branch}"
             mirror_head = mirror_result.stdout.strip()
 
             # Get local repo's HEAD for the default branch
@@ -789,12 +791,20 @@ class PolecatManager:
 
         # Validate start-point exists before attempting worktree creation
         # This prevents orphan branch creation when default_branch doesn't exist
-        result = subprocess.run(
-            ["git", "rev-parse", "--verify", f"refs/heads/{default_branch}"],
-            cwd=repo_path,
-            capture_output=True,
-        )
-        if result.returncode != 0:
+        # Check remote-tracking ref first (for mirrors), fall back to local branch
+        start_point = None
+        for ref in [f"refs/remotes/origin/{default_branch}", f"refs/heads/{default_branch}"]:
+            result = subprocess.run(
+                ["git", "rev-parse", "--verify", ref],
+                cwd=repo_path,
+                capture_output=True,
+            )
+            if result.returncode == 0:
+                # Use short form for the command (origin/main or main)
+                start_point = ref.replace("refs/remotes/", "").replace("refs/heads/", "")
+                break
+
+        if start_point is None:
             raise RuntimeError(
                 f"Start-point branch '{default_branch}' does not exist in {repo_path}. "
                 f"Check polecat.yaml default_branch setting or run 'polecat sync' to update mirrors."
@@ -807,7 +817,7 @@ class PolecatManager:
             "-b",
             branch_name,
             str(worktree_path),
-            default_branch,
+            start_point,
         ]
 
         try:
