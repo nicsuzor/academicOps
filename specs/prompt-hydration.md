@@ -136,6 +136,71 @@ The hydrator gathers context to inform workflow selection and step planning:
 
 **Total budget**: ~450 tokens of context
 
+## Index Loading System
+
+The hydrator receives pre-loaded indices to enable routing decisions without runtime file reads.
+
+### Master Index
+
+[[INDEX.md]] is the authoritative source pointing to all sub-indices:
+
+| Index | Purpose | Always Loaded |
+|-------|---------|---------------|
+| [[SKILLS.md]] | Skill invocation patterns | Yes |
+| [[WORKFLOWS.md]] | Workflow decision tree | Yes |
+| [[AXIOMS.md]] | Inviolable principles (full) | Yes |
+| [[HEURISTICS.md]] | Guidelines (full) | Yes |
+| [[RULES.md]] | Quick-reference P# lookup | On demand |
+| [[indices/FILES.md]] | File discovery | On demand |
+| [[indices/PATHS.md]] | Resolved paths | On demand |
+
+### Index Schema
+
+Each index MUST have YAML frontmatter:
+
+```yaml
+---
+name: <identifier>
+title: <human title>
+type: index
+category: framework
+description: <purpose>
+---
+```
+
+### Loading Implementation
+
+The `user_prompt_submit.py` hook loads indices into the temp file context:
+
+1. **Always loaded** (every prompt):
+   - `load_workflows_index()` → WORKFLOWS.md content
+   - `load_skills_index()` → SKILLS.md content
+   - `load_axioms()` → AXIOMS.md content
+   - `load_heuristics()` → HEURISTICS.md content
+
+2. **Selectively loaded** (based on prompt keywords):
+   - `get_formatted_relevant_paths()` → FILE_INDEX entries matching keywords
+
+### Design Rationale (P#58, P#43)
+
+- **P#58 Indices Before Exploration**: Curated indices preferred over grep/fs searches
+- **P#43 Just-In-Time Context**: Hydrator surfaces relevant index content automatically
+- **P#60 Local AGENTS.md**: Each project can provide its own indices in `.agent/`
+
+### Project-Specific Indices
+
+Projects can extend the index system via `.agent/`:
+
+```
+project/
+└── .agent/
+    ├── context-map.json    # JIT context mapping
+    └── workflows/          # Project-specific workflows
+        └── TESTING.md
+```
+
+The hydrator checks for project indices and includes them when present.
+
 ## Agent Execution
 
 The main agent receives the hydrator's output and follows the plan:
@@ -244,10 +309,17 @@ Main agent follows the plan
 | `hooks/user_prompt_submit.py`                | Entry point - extracts context, writes temp file, returns short instruction |
 | `hooks/templates/prompt-hydrator-context.md` | Full context template written to temp file                                  |
 | `lib/session_reader.py`                      | `extract_router_context()` - extracts session state from transcript         |
+| `lib/file_index.py`                          | FILE_INDEX for selective path injection based on keywords                   |
 | `agents/prompt-hydrator.md`                  | Minimal routing layer (284 lines) - delegates to workflows                  |
 | `workflows/hydrate.md`                       | Main hydration decision process workflow                                    |
 | `workflows/framework-gate.md`                | Framework modification detection and routing                                |
 | `workflows/constraint-check.md`              | Plan constraint verification logic                                          |
+| `INDEX.md`                                   | Master index pointing to all sub-indices                                    |
+| `SKILLS.md`                                  | Skills index with invocation patterns                                       |
+| `WORKFLOWS.md`                               | Workflow decision tree and routing                                          |
+| `RULES.md`                                   | Quick-reference for AXIOMS and HEURISTICS                                   |
+| `indices/FILES.md`                           | Complete file tree for audits                                               |
+| `indices/PATHS.md`                           | Resolved framework paths                                                    |
 
 ---
 
