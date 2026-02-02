@@ -296,11 +296,15 @@ def check_subagent_tool_restrictions(ctx: GateContext) -> Optional[GateResult]:
     # Check if we're in a restricted subagent session
     subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE", "")
 
-    # prompt-hydrator should only have Read + memory tools
-    if (
+    # Check for hydrator session via env var OR session state for robustness
+    is_hydrator_session = (
         subagent_type == "aops-core:prompt-hydrator"
         or "hydrator" in subagent_type.lower()
-    ):
+        or session_state.is_hydrator_active(ctx.session_id)
+    )
+
+    # prompt-hydrator should only have Read + memory tools
+    if is_hydrator_session:
         if ctx.tool_name in MUTATING_TOOLS:
             return GateResult(
                 verdict=GateVerdict.DENY,
@@ -668,6 +672,9 @@ INFRASTRUCTURE_SKILLS_NO_HYDRATION_CLEAR = {
     "aops-core:session-insights",
     "hypervisor",
     "aops-core:hypervisor",
+    # Hydrator is an infrastructure skill that should not clear hydration
+    "prompt-hydrator",
+    "aops-core:prompt-hydrator",
 }
 
 
