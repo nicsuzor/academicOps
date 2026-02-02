@@ -607,11 +607,8 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
     if gemini:
         # Gemini CLI
         cmd = ["gemini"]
-        
-        # Generate deterministic UUID from task ID for persistent sessions
-        import uuid
-        session_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, task.id))
-        cmd.extend(["--session-id", session_uuid])
+        # Note: Gemini CLI doesn't support --session-id; it uses --resume for session management
+        # For now, each polecat run starts a fresh session
 
         if interactive:
             # -i starts interactive mode with initial prompt
