@@ -11,6 +11,13 @@ permalink: skills-daily
 
 Manage daily note lifecycle: morning briefing, task recommendations, and session sync.
 
+## Path Resolution
+
+**CRITICAL**: Before executing this skill, resolve environment variable paths:
+- Read `[[aops-core/indices/PATHS.md]]` for resolved absolute paths
+- `$ACA_DATA` → `/home/nic/writing/data` (or value from PATHS.md)
+- `$AOPS` → `/home/nic/writing/aops` (or value from PATHS.md)
+
 Location: `$ACA_DATA/daily/YYYYMMDD-daily.md`
 
 ## CRITICAL BOUNDARY: Planning Only
@@ -340,7 +347,7 @@ Update daily note from session JSON files. Supports continuous updating througho
 ### Step 4.1: Find Session JSONs
 
 ```bash
-ls $ACA_DATA/../summaries/YYYYMMDD*.json 2>/dev/null
+ls $ACA_DATA/../sessions/summaries/YYYYMMDD*.json 2>/dev/null
 ```
 
 **Incremental filtering**: After listing JSONs, read the current daily note's Session Log table. Extract session IDs already present. Filter the JSON list to exclude already-processed sessions. This prevents duplicate entries on repeated syncs.
@@ -633,4 +640,5 @@ AskUserQuestion(
 
 ## Daily Note Structure (SSoT)
 
-See [[references/note-template]] for the complete daily note template.
+See the note template at `aops-core/skills/daily/references/note-template.md` (relative to $AOPS)
+or `[[references/note-template]]` (Obsidian wikilink) for the complete daily note template.
