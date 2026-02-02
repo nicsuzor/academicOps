@@ -588,18 +588,61 @@ class PolecatManager:
 
         return None
 
-    def setup_worktree(self, task):
+    def setup_worktree(self, task, lock_timeout: float = 30.0):
         """Creates a git worktree in ~/.aops/polecat linked to the project repo.
 
         Before creating the worktree, performs a safe sync of the mirror (if used)
         to ensure we have the latest commits from origin. Sync failures are non-fatal
         to support offline operation.
 
+        Uses fcntl locking to prevent TOCTOU race conditions when multiple polecats
+        try to create worktrees simultaneously.
+
+        Args:
+            task: Task object with id and project attributes
+            lock_timeout: Seconds to wait for lock acquisition (default: 30)
+
         Raises:
             TaskIDValidationError: If task.id contains invalid characters
+            TimeoutError: If lock cannot be acquired within timeout
         """
         # Validate task ID before using in filesystem path and git branch name
         validate_task_id_or_raise(task.id)
+
+        return self._setup_worktree_locked(task, lock_timeout)
+
+    def _setup_worktree_locked(self, task, lock_timeout: float):
+        """Internal worktree setup with lock protection."""
+        import time
+
+        lock_path = self.polecats_dir / ".worktree_creation.lock"
+        start_time = time.monotonic()
+
+        # Ensure lock file exists
+        lock_path.touch(exist_ok=True)
+
+        with open(lock_path, "w") as lock_file:
+            # Try to acquire lock with timeout
+            while True:
+                try:
+                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    break  # Lock acquired
+                except BlockingIOError:
+                    elapsed = time.monotonic() - start_time
+                    if elapsed >= lock_timeout:
+                        raise TimeoutError(
+                            f"Could not acquire worktree creation lock within {lock_timeout}s. "
+                            f"Another polecat may be creating a worktree."
+                        )
+                    time.sleep(0.1)  # Brief sleep before retry
+
+            try:
+                return self._do_setup_worktree(task)
+            finally:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+    def _do_setup_worktree(self, task):
+        """Actual worktree creation logic (called under lock)."""
 
         project = task.project if task.project else "aops"
 
