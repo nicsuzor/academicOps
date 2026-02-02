@@ -2,7 +2,7 @@
 id: worktree-merge
 category: integration
 bases: [base-commit]
-triggers: ["merge polecat", "merge polecats", "merge worktrees"]
+triggers: ["merge polecat", "merge polecats", "merge worktrees", "merge outstanding tasks", "merge ready tasks", "merge branches"]
 ---
 
 # Worktree Merge Workflow
