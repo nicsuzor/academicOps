@@ -62,6 +62,7 @@ class TaskStatus(Enum):
     WAITING = "waiting"  # Waiting on external input
     REVIEW = "review"  # Requires human review before proceeding
     MERGE_READY = "merge_ready"  # Work complete, ready for automated merge/integration
+    MERGING = "merging"  # Currently being merged (merge slot - only one task at a time)
     DONE = "done"  # Completed
     CANCELLED = "cancelled"  # Abandoned
 

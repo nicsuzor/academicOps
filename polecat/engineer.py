@@ -22,7 +22,17 @@ class Engineer:
         self.polecat_mgr = PolecatManager()
 
     def scan_and_merge(self):
-        """Scans for tasks in MERGE_READY status and attempts to merge them."""
+        """Scans for tasks in MERGE_READY status and attempts to merge them.
+
+        Uses MERGING status as a merge slot - only one task can be merging at a time.
+        This serializes merges to prevent conflicts and ensure orderly integration.
+        """
+        # Check if another task is already merging (merge slot occupied)
+        merging_tasks = self.storage.list_tasks(status=TaskStatus.MERGING)
+        if merging_tasks:
+            print(f"Merge slot occupied by {merging_tasks[0].id}. Waiting for it to complete.")
+            return
+
         tasks = self.storage.list_tasks(status=TaskStatus.MERGE_READY)
 
         if not tasks:
@@ -38,8 +48,23 @@ class Engineer:
             except Exception as e:
                 print(f"  ❌ Merge failed: {e}")
                 self.handle_failure(task, str(e))
+            # Only process one task per scan (merge slot pattern)
+            # Next task will be picked up on subsequent scan
+            break
 
     def process_merge(self, task):
+        """Process a single task merge.
+
+        Status transitions:
+        - merge_ready → merging (claim merge slot)
+        - merging → done (on success)
+        - merging → review (on failure, via handle_failure)
+        """
+        # Claim merge slot by transitioning to MERGING
+        print(f"  Claiming merge slot...")
+        task.status = TaskStatus.MERGING
+        self.storage.save_task(task)
+
         repo_path = self.polecat_mgr.get_repo_path(task)
         branch_name = f"polecat/{task.id}"
         target_branch = "main"
