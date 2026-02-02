@@ -975,3 +975,50 @@ def clear_hydrator_active(session_id: str) -> None:
         return
     state["state"]["hydrator_active"] = False
     save_session_state(session_id, state)
+
+
+# ============================================================================
+# Stop Hook Mode API (Interactive/Relaxed Sessions)
+# ============================================================================
+
+
+def set_stop_hook_relaxed(session_id: str) -> None:
+    """Set stop_hook_relaxed flag to disable hard-blocking.
+
+    When set, the stop hook will warn instead of block. Useful for
+    interactive sessions where user is actively engaged.
+
+    Args:
+        session_id: Claude Code session ID
+    """
+    state = get_or_create_session_state(session_id)
+    state["state"]["stop_hook_relaxed"] = True
+    save_session_state(session_id, state)
+
+
+def is_stop_hook_relaxed(session_id: str) -> bool:
+    """Check if stop hook is in relaxed (warn-only) mode.
+
+    Args:
+        session_id: Claude Code session ID
+
+    Returns:
+        True if stop_hook_relaxed flag is set
+    """
+    state = load_session_state(session_id)
+    if state is None:
+        return False
+    return state.get("state", {}).get("stop_hook_relaxed", False)
+
+
+def clear_stop_hook_relaxed(session_id: str) -> None:
+    """Clear stop_hook_relaxed flag to restore hard-blocking.
+
+    Args:
+        session_id: Claude Code session ID
+    """
+    state = load_session_state(session_id)
+    if state is None:
+        return
+    state["state"]["stop_hook_relaxed"] = False
+    save_session_state(session_id, state)

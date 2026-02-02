@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import Any
 
 from lib.reflection_detector import has_reflection
-from lib.session_state import get_current_task
+from lib.session_state import get_current_task, is_stop_hook_relaxed
 from lib.session_paths import get_session_short_hash, get_session_status_dir
 from lib.insights_generator import find_existing_insights
 from lib.transcript_parser import SessionProcessor
@@ -680,15 +680,30 @@ def main():
     output_data: dict[str, Any] = {}
 
     if session_id:
+        # Check if stop hook is in relaxed mode (interactive session)
+        relaxed_mode = is_stop_hook_relaxed(session_id)
+
         # Check 1: Block if there's an active task bound to this session
         try:
             current_task = get_current_task(session_id)
             if current_task:
-                output_data = {
-                    "verdict": "allow",  # Warn only, don't block
-                    "system_message": f"⚠️ Active task: {current_task}. If quitting, invoke /handover!",
-                }
-                logger.info(f"Session end warning: active task {current_task}")
+                if relaxed_mode:
+                    output_data = {
+                        "verdict": "allow",  # Warn only in relaxed mode
+                        "system_message": f"⚠️ Active task: {current_task}. If quitting, invoke /handover!",
+                    }
+                    logger.info(f"Session end warning (relaxed): active task {current_task}")
+                else:
+                    output_data = {
+                        "verdict": "deny",  # Hard block by default
+                        "system_message": (
+                            f"Active task bound to session: {current_task}. "
+                            "Complete the task or use /handover to end cleanly."
+                        ),
+                    }
+                    logger.info(f"Session end blocked: active task {current_task}")
+                    print(json.dumps(output_data))
+                    sys.exit(0)
         except Exception as e:
             logger.warning(f"Task binding check failed: {type(e).__name__}: {e}")
 
@@ -697,12 +712,20 @@ def main():
             check_result = check_uncommitted_work(session_id, transcript_path)
 
             if check_result.should_block:
-                # Warn only - don't block session end
-                output_data = {
-                    "verdict": "allow",  # Warn only, don't block
-                    "system_message": "⚠️ Uncommitted work. If quitting, invoke /handover!",
-                }
-                logger.info(f"Session end warning: uncommitted work detected")
+                if relaxed_mode:
+                    output_data = {
+                        "verdict": "allow",  # Warn only in relaxed mode
+                        "system_message": "⚠️ Uncommitted work. If quitting, invoke /handover!",
+                    }
+                    logger.info(f"Session end warning (relaxed): uncommitted work")
+                else:
+                    output_data = {
+                        "verdict": "deny",  # Hard block by default
+                        "system_message": check_result.message,
+                    }
+                    logger.info(f"Session end blocked: {check_result.message[:80]}...")
+                    print(json.dumps(output_data))
+                    sys.exit(0)
             elif check_result.reminder_needed:
                 # Allow session to proceed, but include reminder message
                 output_data = {
