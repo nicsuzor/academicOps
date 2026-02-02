@@ -476,3 +476,21 @@ mcp__plugin_aops-tools_task_manager__get_task(id="...")
 ```
 
 **Derivation**: Empirical observation from hypervisor testing (see specs/worker-hypervisor.md "Empirical Findings"). P#8 (Fail-Fast) says we should fail on unreliable dependencies - notification-blocking supervision patterns fail silently via deadlock instead.
+
+---
+
+## LLM Orchestration Means LLM Execution (P#89)
+
+**Statement**: When user requests content "an LLM will orchestrate/execute", create content for the LLM to read and act on directly - NOT code infrastructure that parses that content.
+
+**Signs you're violating this**:
+- Creating Python runners for "LLM-orchestrated tests"
+- Building parsing/execution infrastructure for "agent-readable" documents
+- Inserting automation layer between LLM and the content it was meant to read
+
+**Corollaries**:
+- "LLM will read and act" → markdown with clear instructions for LLM
+- "Code/automation will read and act" → structured data + parsing code
+- When ambiguous about execution model, ask
+
+**Derivation**: Category error prevention. "LLM orchestration" describes WHO executes (the LLM), not HOW to build tooling around it. P#78's "code for deterministic computation" reinforces: semantic interpretation is LLM work.
