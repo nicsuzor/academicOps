@@ -2012,6 +2012,171 @@ def get_index_stats(include_projects: bool) -> dict[str, Any]:
         }
 
 
+@mcp.tool()
+def get_graph_metrics(
+    scope: str = "all",  # "all", "project", or task_id for subtree
+    scope_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """
+    Return raw graph metrics. Agent interprets health.
+    Returns:
+        - total_tasks: int
+        - tasks_by_status: dict[str, int]  # {active: 10, done: 50, ...}
+        - tasks_by_type: dict[str, int]    # {task: 30, action: 20, ...}
+        - orphan_count: int                 # tasks with no parent or dependencies
+        - root_count: int
+        - leaf_count: int
+        - max_depth: int
+        - avg_depth: float
+        - dependency_stats:
+            - total_edges: int
+            - max_in_degree: int           # most dependencies on single task
+            - max_out_degree: int          # single task blocking most others
+            - tasks_with_high_out_degree: list[{id, title, out_degree}]  # raw data
+        - readiness_stats:
+            - ready_count: int
+            - blocked_count: int
+            - in_progress_count: int
+    """
+    try:
+        index = _get_index()
+        
+        tasks = list(index._tasks.values())
+
+        if scope == "project" and scope_id:
+            tasks = [t for t in tasks if t.project == scope_id]
+        elif scope == "task_id" and scope_id:
+            root_task = index.get_task(scope_id)
+            if root_task:
+                tasks = [root_task] + index.get_descendants(scope_id)
+            else:
+                tasks = []
+
+        if not tasks:
+            return {
+                "success": True,
+                "stats": {
+                    "total_tasks": 0,
+                    "tasks_by_status": {},
+                    "tasks_by_type": {},
+                    "orphan_count": 0,
+                    "root_count": 0,
+                    "leaf_count": 0,
+                    "max_depth": 0,
+                    "avg_depth": 0.0,
+                    "dependency_stats": {
+                        "total_edges": 0,
+                        "max_in_degree": 0,
+                        "max_out_degree": 0,
+                        "tasks_with_high_out_degree": [],
+                    },
+                    "readiness_stats": {
+                        "ready_count": 0,
+                        "blocked_count": 0,
+                        "in_progress_count": 0,
+                    },
+                },
+                "message": "No tasks found in scope.",
+            }
+
+        total_tasks = len(tasks)
+        tasks_by_status = {}
+        tasks_by_type = {}
+        orphan_count = 0
+        leaf_count = 0
+        total_depth = 0
+        max_depth = 0
+        total_edges = 0
+        max_in_degree = 0
+        max_out_degree = 0
+        in_progress_count = 0
+        
+        tasks_with_high_out_degree = []
+
+        for task in tasks:
+            tasks_by_status[task.status] = tasks_by_status.get(task.status, 0) + 1
+            tasks_by_type[task.type] = tasks_by_type.get(task.type, 0) + 1
+            if not task.parent and not task.depends_on:
+                orphan_count += 1
+            if task.leaf:
+                leaf_count += 1
+            total_depth += task.depth
+            if task.depth > max_depth:
+                max_depth = task.depth
+            
+            in_degree = len(task.depends_on)
+            total_edges += in_degree
+            if in_degree > max_in_degree:
+                max_in_degree = in_degree
+            
+            out_degree = len(task.blocks)
+            if out_degree > max_out_degree:
+                max_out_degree = out_degree
+            if out_degree > 0:
+                tasks_with_high_out_degree.append({"id": task.id, "title": task.title, "out_degree": out_degree})
+
+            if task.status == "in_progress":
+                in_progress_count += 1
+        
+        # Scope-specific root count
+        task_ids_in_scope = {t.id for t in tasks}
+        root_count = sum(1 for t in tasks if not t.parent or t.parent not in task_ids_in_scope)
+        
+        # Readiness stats need to be recalculated for the current scope
+        completed_statuses = {TaskStatus.DONE.value, TaskStatus.CANCELLED.value}
+        completed_ids_in_scope = {t.id for t in tasks if t.status in completed_statuses}
+
+        ready_count = 0
+        blocked_count = 0
+        for task in tasks:
+            if task.status in completed_statuses:
+                continue
+            
+            # Check for unmet dependencies *within the scope*
+            unmet_deps = [d for d in task.depends_on if d in task_ids_in_scope and d not in completed_ids_in_scope]
+
+            if unmet_deps or task.status == TaskStatus.BLOCKED.value:
+                blocked_count += 1
+            elif task.leaf and task.status == TaskStatus.ACTIVE.value:
+                ready_count += 1
+
+        stats = {
+            "total_tasks": total_tasks,
+            "tasks_by_status": tasks_by_status,
+            "tasks_by_type": tasks_by_type,
+            "orphan_count": orphan_count,
+            "root_count": root_count,
+            "leaf_count": leaf_count,
+            "max_depth": max_depth,
+            "avg_depth": round(total_depth / total_tasks, 2) if total_tasks > 0 else 0.0,
+            "dependency_stats": {
+                "total_edges": total_edges,
+                "max_in_degree": max_in_degree,
+                "max_out_degree": max_out_degree,
+                "tasks_with_high_out_degree": sorted(tasks_with_high_out_degree, key=lambda x: x['out_degree'], reverse=True),
+            },
+            "readiness_stats": {
+                "ready_count": ready_count,
+                "blocked_count": blocked_count,
+                "in_progress_count": in_progress_count,
+            },
+        }
+
+        return {
+            "success": True,
+            "stats": stats,
+            "message": f"Calculated graph metrics for {total_tasks} tasks.",
+        }
+
+    except Exception as e:
+        logger.exception("get_graph_metrics failed")
+        return {
+            "success": False,
+            "stats": {},
+            "message": f"Failed to get graph metrics: {e}",
+        }
+
+
 # =============================================================================
 # GRAPH METRICS AND REVIEW
 # =============================================================================
