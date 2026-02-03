@@ -599,3 +599,154 @@ class TestCrossAgentCompatibility:
         # Both should be detected as hydrator invocations
         assert _hydration_is_hydrator_task(claude_ctx.tool_input)
         assert _hydration_is_hydrator_task(gemini_ctx.tool_input)
+
+
+# ============================================================================
+# Session Start Validation Tests (P#8 Fail-Fast)
+# ============================================================================
+
+
+class TestGeminiSessionStartValidation:
+    """Test that Gemini session start validates hydration infrastructure.
+
+    Per P#8 (Fail-Fast): Validate hydration temp path infrastructure at session
+    start, not later at PreToolUse. This catches state corruption early.
+
+    The error "STATE ERROR: Hydration temp path missing" should appear at
+    session start for Gemini, not wait until PreToolUse.
+    """
+
+    @patch("hooks.gate_registry.session_paths")
+    @patch("hooks.gate_registry.hook_utils")
+    @patch("hooks.gate_registry.session_state")
+    def test_gemini_session_start_validates_temp_dir_infrastructure(
+        self, mock_session_state, mock_hook_utils, mock_session_paths
+    ):
+        """SessionStart for Gemini should validate temp directory exists.
+
+        If get_hook_temp_dir fails (temp dir missing), session should be DENIED
+        immediately at start, not wait for UserPromptSubmit or PreToolUse.
+        """
+        from hooks.gate_registry import check_session_start_gate, GateVerdict
+
+        # Mock session_paths to return valid paths
+        mock_session_paths.get_session_short_hash.return_value = "abc123"
+        mock_session_paths.get_session_file_path.return_value = Path("/tmp/test-state.json")
+
+        # Mock session_state to create state successfully
+        mock_session_state.get_or_create_session_state.return_value = {"state": {}}
+        mock_session_state.save_session_state.return_value = None
+
+        # Simulate Gemini session with missing temp dir - this is the key test
+        mock_hook_utils.get_hook_temp_dir.side_effect = RuntimeError(
+            "GEMINI_CLI is set but temp root not found"
+        )
+
+        gemini_event = {
+            "hook_event_name": "SessionStart",
+            "session_id": "gemini-test-session",
+            "transcript_path": "/home/nic/.gemini/tmp/nonexistent/chats/session.json",
+            "cwd": "/home/nic/src/test-project",
+        }
+
+        ctx = GateContext(
+            session_id=gemini_event["session_id"],
+            event_name=gemini_event["hook_event_name"],
+            input_data=gemini_event,
+        )
+
+        # Make the state file "exist" for the first check
+        with patch.object(Path, "exists", return_value=True):
+            result = check_session_start_gate(ctx)
+
+        # Should DENY with clear error message about temp infrastructure
+        assert result is not None, "Session start should return result for Gemini validation"
+        assert result.verdict == GateVerdict.DENY, "Should deny when temp infrastructure missing"
+        assert "STATE ERROR" in (result.system_message or ""), \
+            "Error message should include 'STATE ERROR' for visibility"
+        assert "temp" in (result.system_message or "").lower(), \
+            "Error message should mention temp path issue"
+
+    @patch("hooks.gate_registry.session_paths")
+    @patch("hooks.gate_registry.hook_utils")
+    @patch("hooks.gate_registry.session_state")
+    def test_gemini_session_start_passes_when_temp_dir_valid(
+        self, mock_session_state, mock_hook_utils, mock_session_paths
+    ):
+        """SessionStart for Gemini should pass when temp directory is valid."""
+        from hooks.gate_registry import check_session_start_gate, GateVerdict
+
+        # Mock session_paths
+        mock_session_paths.get_session_short_hash.return_value = "abc123"
+        mock_session_paths.get_session_file_path.return_value = Path("/tmp/test-state.json")
+
+        # Mock session_state
+        mock_session_state.get_or_create_session_state.return_value = {"state": {}}
+        mock_session_state.save_session_state.return_value = None
+
+        # Simulate valid temp dir that exists
+        mock_temp_dir = MagicMock()
+        mock_temp_dir.exists.return_value = True
+        mock_hook_utils.get_hook_temp_dir.return_value = mock_temp_dir
+
+        gemini_event = {
+            "hook_event_name": "SessionStart",
+            "session_id": "gemini-test-session",
+            "transcript_path": "/home/nic/.gemini/tmp/validhash/chats/session.json",
+            "cwd": "/home/nic/src/test-project",
+        }
+
+        ctx = GateContext(
+            session_id=gemini_event["session_id"],
+            event_name=gemini_event["hook_event_name"],
+            input_data=gemini_event,
+        )
+
+        # Make the state file "exist" for the first check
+        with patch.object(Path, "exists", return_value=True):
+            result = check_session_start_gate(ctx)
+
+        # Should ALLOW when infrastructure is valid
+        assert result is not None, "Session start should return result"
+        assert result.verdict == GateVerdict.ALLOW, "Should allow when temp infrastructure valid"
+
+    @patch("hooks.gate_registry.session_paths")
+    @patch("hooks.gate_registry.session_state")
+    def test_claude_session_start_not_affected(
+        self, mock_session_state, mock_session_paths
+    ):
+        """Claude session start should not be affected by this Gemini-specific validation.
+
+        Claude uses a different temp path mechanism that doesn't require
+        the same infrastructure validation (no .gemini in transcript_path).
+        """
+        from hooks.gate_registry import check_session_start_gate, GateVerdict
+
+        # Mock session_paths
+        mock_session_paths.get_session_short_hash.return_value = "abc123"
+        mock_session_paths.get_session_file_path.return_value = Path("/tmp/test-state.json")
+
+        # Mock session_state
+        mock_session_state.get_or_create_session_state.return_value = {"state": {}}
+        mock_session_state.save_session_state.return_value = None
+
+        # Claude event - no transcript_path with .gemini
+        claude_event = {
+            "hook_event_name": "SessionStart",
+            "session_id": "claude-test-session",
+            "cwd": "/home/nic/src/test-project",
+        }
+
+        ctx = GateContext(
+            session_id=claude_event["session_id"],
+            event_name=claude_event["hook_event_name"],
+            input_data=claude_event,
+        )
+
+        # Make the state file "exist" for the check
+        with patch.object(Path, "exists", return_value=True):
+            result = check_session_start_gate(ctx)
+
+        # Claude session start should succeed (no Gemini temp validation)
+        assert result is not None
+        assert result.verdict == GateVerdict.ALLOW

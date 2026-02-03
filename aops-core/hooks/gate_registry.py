@@ -1816,6 +1816,39 @@ def check_session_start_gate(ctx: GateContext) -> Optional[GateResult]:
             metadata={"source": "session_start", "error": str(e)},
         )
 
+    # GEMINI-SPECIFIC: Validate hydration temp path infrastructure at session start
+    # Per P#8 (Fail-Fast), catch temp directory problems early, not at PreToolUse
+    transcript_path = ctx.input_data.get("transcript_path", "") if ctx.input_data else ""
+    if transcript_path and ".gemini" in str(transcript_path):
+        try:
+            # Validate hydration temp directory can be created/accessed
+            hydration_temp_dir = hook_utils.get_hook_temp_dir("hydrator", ctx.input_data)
+            if not hydration_temp_dir.exists():
+                hydration_temp_dir.mkdir(parents=True, exist_ok=True)
+        except RuntimeError as e:
+            # Loud, clear error message for Gemini temp infrastructure failure
+            return GateResult(
+                verdict=GateVerdict.DENY,
+                system_message=(
+                    f"⛔ **STATE ERROR**: Hydration temp path missing from session state.\n\n"
+                    f"This indicates framework state corruption. Cannot proceed safely.\n\n"
+                    f"Details: {e}\n\n"
+                    f"Fix: Ensure Gemini CLI has initialized the project directory.\n"
+                    f"Try running a simple Gemini command first to create ~/.gemini/tmp/{{hash}}/"
+                ),
+                metadata={"source": "session_start", "error": "gemini_temp_dir_missing"},
+            )
+        except OSError as e:
+            return GateResult(
+                verdict=GateVerdict.DENY,
+                system_message=(
+                    f"⛔ **STATE ERROR**: Cannot create hydration temp directory.\n\n"
+                    f"Error: {e}\n\n"
+                    f"Fix: Check directory permissions for ~/.gemini/tmp/"
+                ),
+                metadata={"source": "session_start", "error": "gemini_temp_dir_permission"},
+            )
+
     # Build startup message for USER display (system_message, not context_injection)
     msg_lines = [
         f"🚀 Session Started: {ctx.session_id} ({short_hash})",
