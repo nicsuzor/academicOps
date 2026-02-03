@@ -152,7 +152,20 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
     dist_dir.mkdir(parents=True)
 
     # 1. Copy content directories (not symlinks - avoids polluting canonical source)
-    for item in ["skills", "lib", "GEMINI.md"]:  # not agents right now.
+    # Include markdown files needed by hydration (SKILLS.md, AXIOMS.md, etc.)
+    for item in [
+        "skills",
+        "lib",
+        "GEMINI.md",
+        "SKILLS.md",
+        "AXIOMS.md",
+        "HEURISTICS.md",
+        "RULES.md",
+        "REMINDERS.md",
+        "INDEX.md",
+        "WORKFLOWS.md",
+        "INSTALLATION.md",
+    ]:
         src = src_dir / item
         if src.exists():
             safe_copy(src, dist_dir / item)
