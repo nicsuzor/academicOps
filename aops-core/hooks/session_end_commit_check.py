@@ -128,15 +128,21 @@ def _extract_text_from_entry(entry: Any) -> str:
     """Extract text content from an Entry object."""
     text = ""
     if entry.message:
-        content = entry.message.get("content", "")
-        if isinstance(content, str):
+        content = entry.message.get("content")
+        if content is None:
+            pass  # No content, keep text as empty string
+        elif isinstance(content, str):
             text = content
         elif isinstance(content, list):
             for block in content:
                 if isinstance(block, dict) and block.get("type") == "text":
-                    text += block.get("text", "")
+                    block_text = block.get("text")
+                    if block_text is not None:
+                        text += block_text
     elif entry.content:
-        text = str(entry.content.get("content", ""))
+        inner_content = entry.content.get("content")
+        if inner_content is not None:
+            text = str(inner_content)
     return text
 
 
@@ -668,11 +674,11 @@ def main():
     except Exception as e:
         logger.warning(f"Error reading stdin: {type(e).__name__}: {e}")
 
-    session_id = input_data.get("session_id", "")
+    session_id = input_data.get("session_id")  # Optional - may be None
     transcript_path = input_data.get("transcript_path")
-    hook_event = input_data.get("hook_event_name", "")
+    hook_event = input_data.get("hook_event_name")  # Optional - may be None
 
-    # Only process Stop events
+    # Only process Stop events (None or non-Stop events exit early)
     if hook_event != "Stop":
         print(json.dumps({}))
         sys.exit(0)
