@@ -108,6 +108,7 @@ tags: [framework, enforcement, moc]
 | [[methodology-belongs-to-researcher]]   | Methodology Belongs to Researcher      | HEURISTICS.md, prompt-hydrator guidance               | SessionStart, UserPromptSubmit |       |
 | [[preserve-pre-existing-content]]       | Preserve Pre-Existing Content          | HEURISTICS.md                                         | SessionStart              |       |
 | [[user-intent-discovery]]               | User Intent Discovery Before Implementation | HEURISTICS.md, prompt-hydrator guidance          | SessionStart, UserPromptSubmit |       |
+| [[verify-non-duplication-batch-create]] | Verify Non-Duplication Before Batch Create | HEURISTICS.md, triage-email workflow             | SessionStart, batch operations | 1a    |
 
 ## Enforcement Level Summary
 

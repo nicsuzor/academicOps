@@ -500,3 +500,17 @@ mcp__plugin_aops-tools_task_manager__get_task(id="...")
 - When ambiguous about execution model, ask
 
 **Derivation**: Category error prevention. "LLM orchestration" describes WHO executes (the LLM), not HOW to build tooling around it. P#78's "code for deterministic computation" reinforces: semantic interpretation is LLM work.
+
+---
+
+## Verify Non-Duplication Before Batch Create (P#91)
+
+**Statement**: Before creating tasks from batch input (email triage, backlog import, etc.), cross-reference against existing task titles and entry_ids to avoid duplicates.
+
+**Corollaries**:
+- Query existing tasks BEFORE processing inbox items
+- Compare email entry_ids and subject lines against existing task bodies
+- Apply workflow classification rules (Task/FYI/Skip) - not every item needs a task
+- For email triage specifically: check sent mail for existing replies first
+
+**Derivation**: Corollary of P#26 (Verify First) and P#58 (Indices Before Exploration). Batch operations without deduplication create noise and duplicate work. The task index is the authoritative source - query it first.
