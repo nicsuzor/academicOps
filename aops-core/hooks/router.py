@@ -149,6 +149,23 @@ class HookRouter:
         self._MAX_CALLS_PER_WINDOW = 15
         self._WINDOW_SECONDS = 5.0
 
+    def _extract_gemini_state_dir(self, transcript_path: str) -> Optional[str]:
+        """Extract Gemini state directory from transcript path.
+
+        Gemini transcript paths look like:
+        ~/.gemini/tmp/<hash>/chats/session-<uuid>.json
+
+        Returns the ~/.gemini/tmp/<hash>/ directory.
+        """
+        path = Path(transcript_path)
+        for parent in path.parents:
+            if parent.name in ("chats", "logs"):
+                # Parent of chats/logs is the hash directory
+                state_dir = parent.parent
+                state_dir.mkdir(parents=True, exist_ok=True)
+                return str(state_dir)
+        return None
+
     def _check_for_loops(self):
         """Detect if execute_hooks is being called in a tight loop."""
         now = time.monotonic()
@@ -207,7 +224,15 @@ class HookRouter:
 
         # 3. Transcript Path / Temp Root
         transcript_path = raw_input.get("transcript_path")
-        
+
+        # For Gemini sessions, set AOPS_SESSION_STATE_DIR from transcript_path
+        # This ensures session_state.py can find/write files to correct location
+        # Without this, Gemini state files go to wrong location or aren't created
+        if transcript_path and "/.gemini/" in transcript_path:
+            gemini_state_dir = self._extract_gemini_state_dir(transcript_path)
+            if gemini_state_dir:
+                os.environ["AOPS_SESSION_STATE_DIR"] = gemini_state_dir
+
         # Persist session data on start
         if hook_event == "SessionStart":
             persist_session_data({"session_id": session_id})

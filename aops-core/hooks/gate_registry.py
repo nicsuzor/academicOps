@@ -1764,49 +1764,68 @@ def check_agent_response_listener(ctx: GateContext) -> Optional[GateResult]:
 def check_session_start_gate(ctx: GateContext) -> Optional[GateResult]:
     """
     Handle SessionStart event.
-    Returns GateResult with startup information displayed to USER (system_message).
+    Creates the session state file and returns startup info to USER.
+
+    FAIL-FAST (P#8): If state file cannot be created, session is DENIED.
     """
     _check_imports()
 
     if ctx.event_name != "SessionStart":
         return None
 
+    from hooks.unified_logger import get_hook_log_path
+
+    short_hash = session_paths.get_session_short_hash(ctx.session_id)
+
+    # Get hook log path for this session (full absolute path)
+    hook_log_path = get_hook_log_path(ctx.session_id, ctx.input_data)
+
+    # Get actual state file path (not a glob pattern)
+    state_file_path = session_paths.get_session_file_path(
+        ctx.session_id, input_data=ctx.input_data
+    )
+
+    # FAIL-FAST: Actually create the state file, don't just report the path
+    # If this fails, the session should not proceed
     try:
-        from hooks.unified_logger import get_hook_log_path
+        state = session_state.get_or_create_session_state(ctx.session_id)
+        session_state.save_session_state(ctx.session_id, state)
 
-        status_dir = session_paths.get_session_status_dir(
-            ctx.session_id, ctx.input_data
-        )
-        short_hash = session_paths.get_session_short_hash(ctx.session_id)
-
-        # Get hook log path for this session (full absolute path)
-        hook_log_path = get_hook_log_path(ctx.session_id, ctx.input_data)
-
-        # Get actual state file path (not a glob pattern)
-        state_file_path = session_paths.get_session_file_path(
-            ctx.session_id, input_data=ctx.input_data
-        )
-
-        # Build startup message for USER display (system_message, not context_injection)
-        msg_lines = [
-            f"🚀 Session Started: {ctx.session_id} ({short_hash})",
-            f"State File: {state_file_path}",
-            f"Hooks log: {hook_log_path}",
-        ]
-
+        # Verify the file was actually written
+        if not state_file_path.exists():
+            return GateResult(
+                verdict=GateVerdict.DENY,
+                system_message=(
+                    f"FAIL-FAST: State file not created at expected path.\n"
+                    f"Expected: {state_file_path}\n"
+                    f"Check AOPS_SESSION_STATE_DIR env var and directory permissions."
+                ),
+                metadata={"source": "session_start", "error": "state_file_not_created"},
+            )
+    except OSError as e:
         return GateResult(
-            verdict=GateVerdict.ALLOW,
-            system_message="\n".join(msg_lines),
-            metadata={"source": "session_start"},
-        )
-
-    except Exception as e:
-        # Fallback if session state access fails
-        return GateResult(
-            verdict=GateVerdict.ALLOW,
-            system_message=f"Session Started: {ctx.session_id}\n(Error loading details: {e})",
+            verdict=GateVerdict.DENY,
+            system_message=(
+                f"FAIL-FAST: Cannot write session state file.\n"
+                f"Path: {state_file_path}\n"
+                f"Error: {e}\n"
+                f"Fix: Check directory permissions and disk space."
+            ),
             metadata={"source": "session_start", "error": str(e)},
         )
+
+    # Build startup message for USER display (system_message, not context_injection)
+    msg_lines = [
+        f"🚀 Session Started: {ctx.session_id} ({short_hash})",
+        f"State File: {state_file_path}",
+        f"Hooks log: {hook_log_path}",
+    ]
+
+    return GateResult(
+        verdict=GateVerdict.ALLOW,
+        system_message="\n".join(msg_lines),
+        metadata={"source": "session_start"},
+    )
 
 
 def check_skill_activation_listener(ctx: GateContext) -> Optional[GateResult]:
