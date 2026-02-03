@@ -174,6 +174,7 @@ description: Working hypotheses validated by evidence.
 - Numbered lists in parent body are sufficient for planning; tasks are for execution
 - For debugging tasks, validate the hypothesis (e.g., "working version exists at commit X") BEFORE decomposing into fix steps. An unvalidated hypothesis leads to wasted subtasks.
 - **Tests passing ≠ acceptance criteria met**. When a task specifies a methodology (e.g., "use git bisect"), follow the methodology. A passing test found by a different path doesn't satisfy "identify the breaking commit."
+- **Task bodies must be self-contained**. Tasks are long-lived; `/tmp/` is ephemeral. Never reference temporary files in task bodies - include all required details inline or persist data to `$ACA_DATA/` first.
 
 **Derivation**: Empty child tasks duplicate information without adding value. They create task sprawl and make the queue harder to navigate. Decomposition should be triggered by need (claiming work, adding detail), not by reflex.
 
