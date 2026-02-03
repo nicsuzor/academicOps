@@ -215,6 +215,7 @@ description: Working hypotheses validated by evidence.
 - Investigate root cause ONLY if user asks "why" or if minimal verification fails
 - Do NOT explain investigation reasoning ("I had to rule out X...") - just report the result
 - **When user/task specifies a methodology, EXECUTE THAT METHODOLOGY.** Do not substitute your own approach. "User says git bisect" → do git bisect. "User says X worked yesterday" → it's a regression, find when it broke.
+- **When user provides failure data and asks for tests, WRITE TESTS FIRST.** Capture the observed behavior as test fixtures immediately. Do not investigate root cause before producing the requested artifact.
 
 **Derivation**: Users have ground-truth about their own system. Over-investigation violates P#5 (Do One Thing) by wasting context on "proving" what the user already knows. Verification ≠ Investigation. One test: reproduce the bug, fix it, stop. P#5's warning applies: "I'll just [investigate a bit more]" is the exact friction the axiom exists to prevent.
 
