@@ -40,6 +40,7 @@ try:
         CanonicalHookOutput,
         ClaudeHookOutput,
         GeminiHookOutput,
+        GeminiHookSpecificOutput,
         ClaudeHookSpecificOutput,
         ClaudeGeneralHookOutput,
         ClaudeStopHookOutput
@@ -395,25 +396,38 @@ class HookRouter:
 
 
     def output_for_gemini(self, result: CanonicalHookOutput, event: str) -> GeminiHookOutput:
-        """Format for Gemini CLI."""
+        """Format for Gemini CLI.
+
+        Per Gemini CLI docs (2026):
+        - context_injection -> hookSpecificOutput.additionalContext (for prompt injection)
+        - reason is ONLY for explaining denial decisions, not context injection
+        - decision: "allow", "deny", or "block"
+        """
         out = GeminiHookOutput()
-        
+
         if result.system_message:
             out.systemMessage = result.system_message
-            
+
+        # Set decision based on verdict
         if result.verdict == "deny":
             out.decision = "deny"
+            # For denials, put context in reason (explanation for denial)
+            if result.context_injection:
+                out.reason = result.context_injection
+                if not out.systemMessage:
+                    out.systemMessage = f"Blocked: {result.context_injection}"
         else:
             out.decision = "allow"
-            
-        if result.context_injection:
-            out.reason = result.context_injection
-            if out.decision == "deny" and not out.systemMessage:
-                out.systemMessage = f"Blocked: {result.context_injection}"
-        
+            # For allows, context goes to hookSpecificOutput.additionalContext
+            if result.context_injection:
+                out.hookSpecificOutput = GeminiHookSpecificOutput(
+                    hookEventName=event,
+                    additionalContext=result.context_injection
+                )
+
         if result.updated_input:
             out.updatedInput = result.updated_input
-            
+
         out.metadata = result.metadata
         return out
 

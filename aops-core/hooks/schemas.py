@@ -72,19 +72,59 @@ ClaudeHookOutput = Union[ClaudeGeneralHookOutput, ClaudeStopHookOutput]
 
 # --- Gemini CLI Hook Schemas ---
 
+class GeminiHookSpecificOutput(BaseModel):
+    """
+    Nested output structure for Gemini CLI hooks.
+    Used for context injection and tool configuration.
+
+    Per Gemini CLI docs (2026):
+    - additionalContext: Injected into agent prompt (BeforeAgent, AfterTool)
+    - toolConfig: Override tool selection behavior (BeforeToolSelection)
+    """
+    hookEventName: Optional[str] = Field(
+        None, description="The event type triggering the hook."
+    )
+    additionalContext: Optional[str] = Field(
+        None, description="Context injected into the agent's prompt."
+    )
+    toolConfig: Optional[Dict[str, Any]] = Field(
+        None, description="Tool selection configuration (mode, allowedFunctionNames)."
+    )
+    clearContext: Optional[bool] = Field(
+        None, description="If True, clears LLM memory (AfterAgent only)."
+    )
+
+
 class GeminiHookOutput(BaseModel):
     """
     Output structure for Gemini CLI hooks.
-    Gemini uses a flatter structure compared to Claude.
+
+    Per Gemini CLI docs (2026):
+    - decision: "allow", "deny", or "block" for blocking operations
+    - reason: Explanation for denial (NOT for context injection)
+    - hookSpecificOutput: Contains additionalContext for prompt injection
+    - Exit code 2 is "emergency brake" - stderr shown to agent
     """
     systemMessage: Optional[str] = Field(
         None, description="Message to be displayed to the user."
     )
-    decision: Optional[Literal["allow", "deny"]] = Field(
-        None, description="Permission decision (allow/deny). Required for blocking events."
+    decision: Optional[Literal["allow", "deny", "block"]] = Field(
+        None, description="Permission decision. 'deny'/'block' prevents the operation."
     )
     reason: Optional[str] = Field(
-        None, description="Reason for the decision or context. Used for explanations or agent instructions."
+        None, description="Reason for denial decision. NOT for context injection."
+    )
+    hookSpecificOutput: Optional[GeminiHookSpecificOutput] = Field(
+        None, description="Event-specific output including additionalContext."
+    )
+    suppressOutput: Optional[bool] = Field(
+        None, description="If True, suppresses output display."
+    )
+    continue_: Optional[bool] = Field(
+        None, alias="continue", description="If False, halts processing."
+    )
+    stopReason: Optional[str] = Field(
+        None, description="Reason for stopping (visible to user)."
     )
     updatedInput: Optional[str] = Field(
         None, description="Modified input string. Used for command interception."
