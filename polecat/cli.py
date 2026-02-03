@@ -701,6 +701,88 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
         print(f"   To finish manually: cd {worktree_path} && polecat finish")
 
 
+@main.command("reset-stalled")
+@click.option("--project", "-p", help="Filter by project")
+@click.option("--hours", default=4.0, help="Hours since last modification (default: 4)")
+@click.option("--dry-run", is_flag=True, help="Show what would be reset without changing")
+@click.pass_context
+def reset_stalled(ctx, project, hours, dry_run):
+    """Reset stalled in_progress tasks back to active.
+
+    Finds tasks that have been in_progress for > N hours and resets them.
+    Useful for cleaning up after crashed/abandoned agents.
+    """
+    from datetime import datetime, timedelta, timezone
+    try:
+        from lib.task_model import TaskStatus
+        from lib.task_index import TaskIndex
+    except ImportError:
+        print("Error: Could not import task libraries. Ensure aops-core is available.", file=sys.stderr)
+        sys.exit(1)
+
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+
+    # Calculate cutoff time
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+
+    print(f"Checking for tasks stalled since {cutoff.isoformat()}...")
+
+    # List tasks
+    candidates = manager.storage.list_tasks(
+        status=TaskStatus.IN_PROGRESS,
+        project=project
+    )
+
+    stalled = []
+    for task in candidates:
+        # Ensure timezone awareness
+        task_mod = task.modified
+        if task_mod.tzinfo is None:
+            task_mod = task_mod.replace(tzinfo=timezone.utc)
+
+        if task_mod < cutoff:
+            stalled.append(task)
+
+    if not stalled:
+        print("No stalled tasks found.")
+        return
+
+    print(f"Found {len(stalled)} stalled tasks (modified > {hours}h ago):")
+    for t in stalled:
+        print(f"  [{t.id}] {t.title} (modified: {t.modified.isoformat()})")
+
+    if dry_run:
+        print("\nDry run: no changes made.")
+        return
+
+    if not click.confirm(f"\nReset these {len(stalled)} tasks to ACTIVE?"):
+        print("Aborted.")
+        return
+
+    reset_count = 0
+    for task in stalled:
+        try:
+            task.status = TaskStatus.ACTIVE
+            task.assignee = None
+            manager.storage.save_task(task)
+            reset_count += 1
+        except Exception as e:
+            print(f"Failed to reset {task.id}: {e}", file=sys.stderr)
+
+    # Rebuild index
+    if reset_count > 0:
+        try:
+            # Try to get data root from storage or use default
+            data_root = manager.storage.data_root
+            index = TaskIndex(data_root)
+            index.rebuild_fast()
+            print("Index rebuilt.")
+        except Exception as e:
+            print(f"Warning: Failed to rebuild index: {e}", file=sys.stderr)
+
+    print(f"\n✅ Reset {reset_count} tasks.")
+
+
 @main.command()
 @click.option("--claude", "-c", default=0, help="Number of Claude workers")
 @click.option("--gemini", "-g", default=0, help="Number of Gemini workers")
