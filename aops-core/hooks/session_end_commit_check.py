@@ -368,9 +368,10 @@ def attempt_auto_commit() -> bool:
 def generate_session_transcript(transcript_path: str) -> bool:
     """Generate transcript and insights from session JSONL file.
 
-    Invokes transcript.py to parse the session and generate:
+    Invokes transcript_push.py to parse the session and generate:
     - Markdown transcripts (full and abridged)
     - Insights JSON file (from Framework Reflection if present)
+    - Auto-commit and push to writing repository
 
     Args:
         transcript_path: Path to session.jsonl file
@@ -379,15 +380,20 @@ def generate_session_transcript(transcript_path: str) -> bool:
         True if transcript generation succeeded
     """
     try:
-        # Get path to transcript.py script
+        # Get path to transcript_push.py script
         script_dir = Path(__file__).parent.parent / "scripts"
-        transcript_script = script_dir / "transcript.py"
+        transcript_script = script_dir / "transcript_push.py"
 
         if not transcript_script.exists():
             logger.warning(f"Transcript script not found: {transcript_script}")
+            # Fallback to transcript.py if push wrapper missing
+            transcript_script = script_dir / "transcript.py"
+
+        if not transcript_script.exists():
+            logger.warning(f"Fallback transcript script not found: {transcript_script}")
             return False
 
-        # Run transcript.py with the session file
+        # Run transcript script with the session file
         result = subprocess.run(
             ["python", str(transcript_script), transcript_path],
             capture_output=True,

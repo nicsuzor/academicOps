@@ -610,7 +610,8 @@ $AOPS/
 │   │   ├── generate_framework_paths.py  # Framework paths generator
 │   │   ├── migrate_insights_filenames.py  # Insights filename migration
 │   │   ├── migrate_task_ids.py          # Task ID migration
-│   │   └── transcript.py                # Transcript processing
+│   │   ├── transcript.py                # Transcript processing
+│   │   └── transcript_push.py           # Transcript processing with auto-push
 │   │
 │   ├── skills/
 │   │   ├── .gitkeep                         # Git placeholder
