@@ -1975,12 +1975,8 @@ def run_task_binding(ctx: GateContext) -> Optional[GateResult]:
     if ctx.event_name != "PostToolUse":
         return None
 
-    try:
-        from lib.hook_utils import get_task_id_from_result
-        from lib.event_detector import detect_tool_state_changes, StateChange
-    except ImportError as e:
-        print(f"WARNING: task_binding import failed: {e}", file=sys.stderr)
-        return None
+    from lib.hook_utils import get_task_id_from_result
+    from lib.event_detector import detect_tool_state_changes, StateChange
 
     # Support both Claude (snake_case) and Gemini (camelCase) field names
     tool_name = ctx.tool_name or ctx.input_data.get("tool_name") or ctx.input_data.get("toolName", "")
@@ -1991,52 +1987,51 @@ def run_task_binding(ctx: GateContext) -> Optional[GateResult]:
         or ctx.input_data.get("tool_response", {})
     )
 
-    try:
-        changes = detect_tool_state_changes(tool_name, tool_input, tool_result)
-    except Exception as e:
-        print(f"WARNING: event_detector error: {e}", file=sys.stderr)
-        return None
+    changes = detect_tool_state_changes(tool_name, tool_input, tool_result)
 
     if StateChange.PLAN_MODE in changes:
-        try:
-            if not session_state.is_plan_mode_invoked(ctx.session_id):
-                session_state.set_plan_mode_invoked(ctx.session_id)
-                return GateResult(
-                    verdict=GateVerdict.ALLOW,
-                    system_message="🗺️ [Gate] Plan mode invoked. Gate satisfied.",
-                )
-        except Exception as e:
-            print(f"WARNING: task_binding plan_mode error: {e}", file=sys.stderr)
+        from lib.session_state import is_plan_mode_invoked, set_plan_mode_invoked
+
+        if not is_plan_mode_invoked(ctx.session_id):
+            set_plan_mode_invoked(ctx.session_id)
+            return GateResult(
+                verdict=GateVerdict.ALLOW,
+                system_message="Plan mode gate passed ✓",
+            )
+        return None
 
     if StateChange.UNBIND_TASK in changes:
-        try:
-            current = session_state.get_current_task(ctx.session_id)
-            if current:
-                session_state.clear_current_task(ctx.session_id)
-                return GateResult(
-                    verdict=GateVerdict.ALLOW,
-                    system_message=f"🔓 [Gate] Task unbound: {current}",
-                )
-        except Exception as e:
-            print(f"WARNING: task_binding unbind error: {e}", file=sys.stderr)
+        from lib.session_state import clear_current_task, get_current_task
+
+        current = get_current_task(ctx.session_id)
+        if current:
+            clear_current_task(ctx.session_id)
+            return GateResult(
+                verdict=GateVerdict.ALLOW,
+                system_message=f"Task completed and unbound from session: {current}",
+            )
+        return None
 
     if StateChange.BIND_TASK in changes:
         task_id = get_task_id_from_result(tool_result)
-        if task_id:
-            try:
-                current = session_state.get_current_task(ctx.session_id)
-                if current and current != task_id:
-                    return GateResult(
-                        verdict=GateVerdict.ALLOW,
-                        system_message=f"ℹ️ [Gate] Already bound to {current}, ignoring {task_id}",
-                    )
-                session_state.set_current_task(ctx.session_id, task_id, source="claim")
-                return GateResult(
-                    verdict=GateVerdict.ALLOW,
-                    system_message=f"📌 [Gate] Task bound: {task_id}",
-                )
-            except Exception as e:
-                print(f"WARNING: task_binding bind error: {e}", file=sys.stderr)
+        if not task_id:
+            return None
+
+        source = "claim"
+        from lib.session_state import get_current_task, set_current_task
+
+        current = get_current_task(ctx.session_id)
+        if current and current != task_id:
+            return GateResult(
+                verdict=GateVerdict.ALLOW,
+                system_message=f"Note: Session already bound to task {current}, ignoring {task_id}",
+            )
+
+        set_current_task(ctx.session_id, task_id, source=source)
+        return GateResult(
+            verdict=GateVerdict.ALLOW,
+            system_message=f"Task bound to session: {task_id}",
+        )
 
     return None
 
