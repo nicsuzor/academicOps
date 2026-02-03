@@ -33,23 +33,23 @@ This document tracks all enforcement mechanisms in the academicOps framework.
 
 | Hook | Mode | Description |
 |------|------|-------------|
-| `custodiet_gate.py` | configurable | Periodic compliance audit (every ~7 tool calls) |
-| `task_binding.py` | passive | Binds task to session on create/claim |
-| `todowrite_handover_gate.py` | passive | Sets todo_with_handover gate on TodoWrite |
-| `handover_gate.py` | passive | Clears stop gate when /handover invoked |
+| `gate_registry.py:accountant` | passive | General state tracking (hydration, custodiet, handover) |
+| `gate_registry.py:task_binding` | passive | Binds task to session on create/claim |
+| `gate_registry.py:skill_activation` | passive | Clears hydration pending on non-infrastructure skill activation |
 
-## Four-Gate Model (task_required_gate.py)
+## Three-Gate Model (task_required_gate.py)
 
-Destructive operations require ALL FOUR gates to pass:
+Destructive operations require gates to pass:
 
 1. **Task bound** - Session has an active task via update_task or create_task
-2. **Plan mode invoked** - EnterPlanMode has been called to design approach
+2. **Plan mode invoked** - Hydrator or EnterPlanMode has been called to design approach
 3. **Critic invoked** - Critic agent has reviewed the plan
-4. **Todo with handover** - TodoWrite includes a session end/handover step
 
-**Current state**: Only `task_bound` gate is enforced. Other three are tracked but not enforced (for validation).
+**Current state**: Only `task_bound` gate is enforced by default. Gates 2-3 are tracked but not enforced (for observability).
 
-**Mode control**: Set `TASK_GATE_MODE=block` to enable blocking (default: `warn`)
+**Mode control**:
+- Set `TASK_GATE_MODE=block` to enable blocking (default: `warn`)
+- Set `TASK_GATE_ENFORCE_ALL=1` to enforce all three gates
 
 ## Custodiet Compliance Audit
 

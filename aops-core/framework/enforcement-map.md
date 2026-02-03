@@ -464,7 +464,7 @@ Context injected via CORE.md at SessionStart. Guides where agents place files.
 | Deny rules       | `$AOPS/config/claude/settings.json` → `permissions.deny`                        |
 | Agent tools      | `$AOPS/aops-core/agents/*.md` → `tools:` frontmatter                            |
 | PreToolUse       | `$AOPS/aops-core/hooks/gate_registry.py` (hydration, custodiet, subagent_restrictions), `task_required_gate.py`, `policy_enforcer.py`  |
-| PostToolUse      | `$AOPS/aops-core/hooks/fail_fast_watchdog.py`, `autocommit_state.py`, `custodiet_gate.py`, `todowrite_handover_gate.py` |
+| PostToolUse      | `$AOPS/aops-core/hooks/gate_registry.py` (accountant, task_binding, post_hydration, post_critic, skill_activation) |
 | SubagentStop     | `$AOPS/aops-core/hooks/unified_logger.py` (sets `critic_invoked` flag)          |
 | UserPromptSubmit | `$AOPS/aops-core/hooks/user_prompt_submit.py`                                   |
 | SessionStart     | `$AOPS/aops-core/hooks/sessionstart_load_axioms.py`                             |
