@@ -4,10 +4,13 @@ import subprocess
 from pathlib import Path
 from datetime import datetime
 
-# Add aops-core to path
+# Add aops-core and polecat to path for imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
 REPO_ROOT = SCRIPT_DIR.parent
 sys.path.insert(0, str(REPO_ROOT / "aops-core"))
+sys.path.insert(0, str(REPO_ROOT))
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 
 try:
     from lib.task_model import TaskStatus
