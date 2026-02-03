@@ -33,35 +33,31 @@ Location: `$ACA_DATA/daily/YYYYMMDD-daily.md`
 
 ## Invocation Modes
 
-The daily skill supports multiple entry points for continuous updating throughout the day:
+The daily skill integrates sync into every run to keep the daily note current:
 
 | Mode | Trigger | Sections Run | User Approval |
 |------|---------|--------------|---------------|
-| **Morning** | `/daily` (no args, note missing) | 1 → 2 → 3 | Required (3.4) |
-| **Refresh** | `/daily` (note exists) | 2 → 3 | Required (3.4) |
-| **Sync** | `/daily sync` | 4 only | Required (4.8) |
-| **Quick Sync** | `/daily sync --quick` | 4.1-4.4 only | Skipped |
+| **Morning** | `/daily` (no args, note missing) | 1 → 2 → 3 → 4 (auto-sync) | Required (3.4) |
+| **Refresh** | `/daily` (note exists) | 2 → 3 → 4 (auto-sync) | Required (3.4) |
+| **Full Sync** | `/daily sync` | 4 only | Required (4.8) |
 
 **Mode Detection Logic:**
 
 ```
 if args contains "sync":
-    if args contains "--quick":
-        mode = "Quick Sync"
-    else:
-        mode = "Sync"
+    mode = "Full Sync"  # Explicit sync-only with approval
 elif daily_note_exists():
-    mode = "Refresh"
+    mode = "Refresh"    # Briefing update + auto-sync
 else:
-    mode = "Morning"
+    mode = "Morning"    # Full creation + auto-sync
 ```
 
-**Quick Sync Use Case**: Automated/periodic updates during the day. Adds session data to daily note without requiring user interaction. Full approval cycle runs on final sync or explicit `/daily sync`.
+**Auto-Sync Behavior**: When running Morning or Refresh modes, sync (section 4) runs automatically after section 3 completes. Auto-sync skips the approval step (4.8) to avoid interrupting the flow. Session data is processed and merged silently.
 
-**Continuous Updating Pattern**: Throughout a work day:
-1. Morning: Run `/daily` to create note, triage emails, set focus
-2. After each session: System or user runs `/daily sync --quick` to incrementally update progress
-3. End of day: Run `/daily sync` for final synthesis with user approval
+**Full Sync Use Case**: Run `/daily sync` explicitly when you want:
+- End-of-day synthesis with user approval of the narrative
+- To verify/correct auto-synced content
+- To process sessions without re-running email triage
 
 ## Section Ownership
 
@@ -365,8 +361,9 @@ After presenting recommendations, use `AskUserQuestion` to confirm priorities:
 **IMPORTANT**: User's response states their PRIORITY for the day. This goes into the daily note's Focus section. It is NOT a command to execute those tasks. After recording the priority:
 
 1. Update the Focus section with user's stated priority
-2. Output: "Daily planning complete. Use `/pull` to start work."
-3. HALT - do not proceed to task execution
+2. Run auto-sync (Section 4, steps 4.1-4.7) to update daily note with session progress
+3. Output: "Daily planning complete. Use `/pull` to start work."
+4. HALT - do not proceed to task execution
 
 ### 3.5: Present candidate tasks to archive
 
@@ -378,11 +375,13 @@ Ask: "Any of these ready to archive?"
 
 When user picks, use `mcp__plugin_aops-core_task_manager__update_task(id="<id>", status="cancelled")` to archive.
 
-### 4. Daily progress (Incremental)
+### 4. Daily progress (Sync)
 
-Update daily note from session JSON files. Supports continuous updating throughout the day.
+Update daily note from session JSON files.
 
-**Invocation**: `/daily sync` (full with approval) or `/daily sync --quick` (incremental without approval)
+**Invocation**:
+- **Auto-sync**: Runs automatically as part of Morning/Refresh modes (steps 4.1-4.7, skips 4.8 approval)
+- **Full sync**: `/daily sync` runs section 4 only with user approval (4.8)
 
 **Incremental behavior**: Each sync run is additive—it processes only NEW session JSONs since the last sync. Previously processed sessions are identified by their presence in the Session Log table.
 
@@ -614,11 +613,11 @@ Write `$ACA_DATA/dashboard/synthesis.json`:
 }
 ```
 
-### Step 4.8: User Approval of Synthesis (Conditional)
+### Step 4.8: User Approval of Synthesis (Full Sync Only)
 
-**Mode check**: Skip this step entirely if running in Quick Sync mode (`/daily sync --quick`).
+**Mode check**: Skip this step entirely when running as auto-sync (part of Morning/Refresh modes). Auto-sync processes session data silently without interrupting the flow.
 
-**For full Sync mode**: Do NOT consider daily progress sync complete without user approval.
+**For Full Sync mode** (`/daily sync`): Do NOT consider daily progress sync complete without user approval.
 
 After updating the daily note and synthesis.json, present a summary to the user for approval:
 
