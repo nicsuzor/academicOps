@@ -1476,7 +1476,7 @@ def run_accountant(ctx: GateContext) -> Optional[GateResult]:
         try:
             session_state.set_handover_skill_invoked(ctx.session_id)
             system_messages.append(
-                "🤝 [Gate] Handover tool recorded. Stop gate will once repo is clean and reflection message printed."
+                "🤝 [Gate] Handover tool recorded. Stop gate will open once repo is clean and reflection message printed."
             )
         except Exception as e:
             print(
@@ -1567,9 +1567,11 @@ def check_stop_gate(ctx: GateContext) -> Optional[GateResult]:
                 context_injection=(
                     "⛔ **BLOCKED: QA Verification Required**\n\n"
                     "This session was planned via prompt-hydrator, which mandates QA verification.\n"
-                    "You have not invoked the QA skill yet.\n\n"
-                    "**Action Required**: Run `Skill(skill='aops-core:qa')` to verify your work "
-                    "against the original request and acceptance criteria before completing handover.\n\n"
+                    "You have not invoked QA yet.\n\n"
+                    "**Action Required**: Invoke QA to verify your work against the original request "
+                    "and acceptance criteria before completing handover.\n\n"
+                    "- **Claude Code**: `Task(subagent_type='aops-core:qa', prompt='Verify...')` or `Skill(skill='qa')`\n"
+                    "- **Gemini CLI**: `delegate_to_agent(agent_name='qa', prompt='Verify...')` or `activate_skill(name='qa')`\n\n"
                     "After QA passes, invoke `/handover` again to end the session."
                 ),
                 metadata={"source": "stop_gate_qa_check"},
