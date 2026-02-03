@@ -280,35 +280,18 @@ def has_repo_changes(repo_path: Path, subdir: str | None = None) -> bool:
     Returns:
         True if uncommitted changes exist, False otherwise
     """
-    try:
-        cmd = ["git", "status", "--porcelain"]
-        if subdir:
-            cmd.append(subdir)
-        result = subprocess.run(
-            cmd,
-            cwd=repo_path,
-            capture_output=True,
-            text=True,
-            timeout=5,
-            check=False,
-        )
-        return bool(result.stdout.strip())
-    except Exception:
-        return False
-
-
-def get_plugin_root_safe() -> Path | None:
-    """Get the plugin root path safely.
-
-    Returns:
-        Path to plugin root, or None if not available
-    """
-    try:
-        from lib.paths import get_plugin_root
-
-        return get_plugin_root()
-    except Exception:
-        return None
+    cmd = ["git", "status", "--porcelain"]
+    if subdir:
+        cmd.append(subdir)
+    result = subprocess.run(
+        cmd,
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+        timeout=5,
+        check=False,
+    )
+    return bool(result.stdout.strip())
 
 
 def get_current_branch(repo_path: Path) -> str | None:
@@ -317,21 +300,18 @@ def get_current_branch(repo_path: Path) -> str | None:
     Returns:
         Branch name, or None if detached HEAD or error
     """
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-            cwd=repo_path,
-            capture_output=True,
-            text=True,
-            timeout=2,
-            check=False,
-        )
-        if result.returncode == 0:
-            branch = result.stdout.strip()
-            return None if branch == "HEAD" else branch  # HEAD means detached
-        return None
-    except Exception:
-        return None
+    result = subprocess.run(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+        timeout=2,
+        check=False,
+    )
+    if result.returncode == 0:
+        branch = result.stdout.strip()
+        return None if branch == "HEAD" else branch  # HEAD means detached
+    return None
 
 
 def is_protected_branch(branch: str | None) -> bool:
@@ -449,12 +429,7 @@ def commit_and_push_repo(
 def main() -> None:
     """Main hook entry point."""
     # Read input from stdin
-    try:
-        input_data: dict[str, Any] = json.load(sys.stdin)
-    except Exception:
-        # Can't parse input, just continue
-        print(json.dumps({}))
-        sys.exit(0)
+    input_data: dict[str, Any] = json.load(sys.stdin)
 
     # Extract tool name and input
     # Support both toolName/toolInput (old) and tool_name/tool_input (new router format)
