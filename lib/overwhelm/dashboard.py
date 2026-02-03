@@ -1382,14 +1382,43 @@ def get_where_you_left_off(hours: int = 24, limit: int = 10) -> dict:
         if not last_prompt or last_prompt in ("Idle", "New Session (Waiting for input)"):
             continue
 
-        description = last_prompt
+        # Extract rich context from TodoWrite
         todowrite = s.get("todowrite")
+        goal = None
+        now_task = None
+        next_task = None
+        progress_done = 0
+        progress_total = 0
+        session_type = "interactive"  # Default: needs attention
+
         if todowrite:
-            todos = todowrite.get("todos")
+            todos = todowrite.todos if hasattr(todowrite, "todos") else todowrite.get("todos", [])
+            counts = todowrite.counts if hasattr(todowrite, "counts") else todowrite.get("counts", {})
+
             if todos:
                 in_progress = [t for t in todos if t.get("status") == "in_progress"]
-                if in_progress and "content" in in_progress[0]:
-                    description = in_progress[0]["content"]
+                pending = [t for t in todos if t.get("status") == "pending"]
+                completed = [t for t in todos if t.get("status") == "completed"]
+
+                progress_done = len(completed)
+                progress_total = len(todos)
+
+                if in_progress:
+                    now_task = in_progress[0].get("content") or in_progress[0].get("activeForm")
+                    # If there's active TodoWrite work, it's running autonomously
+                    session_type = "running"
+
+                if pending:
+                    next_task = pending[0].get("content")
+
+                # Goal is the first item (often the main task) or in_progress task
+                if todos:
+                    goal = todos[0].get("content")
+
+        # Fallback to last_prompt if no TodoWrite context
+        if not goal:
+            goal = last_prompt
+            session_type = "interactive"  # No plan = needs attention
 
         project = s.get("project") or "unknown"
         session_short = s.get("session_short") or (s.get("session_id", "")[:7])
@@ -1399,11 +1428,18 @@ def get_where_you_left_off(hours: int = 24, limit: int = 10) -> dict:
             "bucket": "active",
             "time_display": "NOW",
             "project": project,
-            "description": description[:120] + "..." if len(description) > 120 else description,
+            "description": goal[:150] + "..." if len(goal) > 150 else goal,
             "outcome_text": "IN PROGRESS",
             "outcome_class": "active",
             "reentry_link": None,
             "session_id": session_short,
+            # Rich context for card display
+            "goal": goal[:150] + "..." if len(goal) > 150 else goal,
+            "now_task": now_task[:100] + "..." if now_task and len(now_task) > 100 else now_task,
+            "next_task": next_task[:100] + "..." if next_task and len(next_task) > 100 else next_task,
+            "progress_done": progress_done,
+            "progress_total": progress_total,
+            "session_type": session_type,
         }
 
         if _has_meaningful_context(entry):
@@ -1441,17 +1477,25 @@ def get_where_you_left_off(hours: int = 24, limit: int = 10) -> dict:
             reentry_link = f"obsidian://open?vault=writing&file=sessions/claude/{session_file}"
 
         project = s.get("project") or "unknown"
+        truncated_summary = summary[:120] + "..." if len(summary) > 120 else summary
 
         entry = {
             "is_active": False,
             "bucket": bucket,
             "time_display": s.get("time_ago"),
             "project": project,
-            "description": summary[:120] + "..." if len(summary) > 120 else summary,
+            "description": truncated_summary,
             "outcome_text": outcome_text,
             "outcome_class": outcome_class,
             "reentry_link": reentry_link,
             "session_id": s.get("session_id"),
+            # Rich context fields (completed sessions have limited context)
+            "goal": truncated_summary,
+            "now_task": None,
+            "next_task": None,
+            "progress_done": 0,
+            "progress_total": 0,
+            "session_type": "completed",
         }
 
         if _has_meaningful_context(entry):
@@ -2844,6 +2888,120 @@ st.markdown(
         margin-top: 4px;
     }
 
+    /* ==========================================================================
+     * WHERE YOU LEFT OFF - CARD-BASED LAYOUT (v2)
+     * ========================================================================== */
+    .wlo-card {
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: 6px;
+        padding: 10px 14px;
+        margin-bottom: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .wlo-card.running {
+        border-left: 3px solid #22c55e;
+        background-color: rgba(34, 197, 94, 0.06);
+    }
+
+    .wlo-card.interactive {
+        border-left: 3px solid #60a5fa;
+        background-color: rgba(96, 165, 250, 0.06);
+    }
+
+    .wlo-card.completed {
+        border-left: 3px solid var(--text-success);
+        opacity: 0.8;
+    }
+
+    .wlo-card.paused {
+        border-left: 3px solid #fbbf24;
+        opacity: 0.7;
+    }
+
+    .wlo-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .wlo-card-project {
+        color: var(--text-accent);
+        font-weight: 600;
+        font-size: 0.9em;
+        text-transform: lowercase;
+    }
+
+    .wlo-card-time {
+        color: var(--text-muted);
+        font-size: 0.8em;
+        font-family: monospace;
+    }
+
+    .wlo-card-time.now {
+        color: #22c55e;
+        font-weight: 600;
+    }
+
+    .wlo-card-goal {
+        color: var(--text-primary);
+        font-size: 0.95em;
+        font-weight: 500;
+        line-height: 1.3;
+    }
+
+    .wlo-card-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        font-size: 0.85em;
+        color: var(--text-secondary);
+    }
+
+    .wlo-card-progress {
+        color: var(--text-muted);
+    }
+
+    .wlo-card-progress .done {
+        color: #22c55e;
+    }
+
+    .wlo-card-now {
+        color: #60a5fa;
+    }
+
+    .wlo-card-next {
+        color: #a78bfa;
+    }
+
+    .wlo-card-status {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.8em;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .wlo-card-status.running {
+        background: rgba(34, 197, 94, 0.15);
+        color: #22c55e;
+    }
+
+    .wlo-card-status.interactive {
+        background: rgba(96, 165, 250, 0.15);
+        color: #60a5fa;
+    }
+
+    .wlo-card-status.done {
+        background: rgba(147, 197, 253, 0.1);
+        color: var(--text-muted);
+    }
+
 </style>
 """,
     unsafe_allow_html=True,
@@ -3931,50 +4089,78 @@ if active_sessions_wlo or paused_sessions_wlo:
     wlo_html = "<div class='where-left-off-panel'>"
     wlo_html += "<div class='where-left-off-header'>📍 WHERE YOU LEFT OFF</div>"
 
-    # Active sessions (<4h) - full display
+    # Active sessions (<4h) - card-based display with rich context
     if active_sessions_wlo:
         wlo_html += "<div class='wlo-bucket-label'>⚡ ACTIVE NOW</div>"
-        wlo_html += "<div class='where-left-off-list'>"
         for entry in active_sessions_wlo:
-            outcome_class = entry["outcome_class"]
+            session_type = entry["session_type"]
             time_display = entry["time_display"]
             time_class = "now" if entry["is_active"] else ""
 
-            wlo_html += f"<div class='where-left-off-row {outcome_class}'>"
-            wlo_html += f"<span class='wlo-time {time_class}'>{esc(time_display)}</span>"
-            wlo_html += f"<span class='wlo-project'>{esc(entry['project'])}</span>"
-            wlo_html += f"<span class='wlo-description'>{esc(entry['description'])}</span>"
-            outcome_text = entry["outcome_text"]
-            wlo_html += f"<span class='wlo-outcome {outcome_class}'>{esc(outcome_text)}</span>"
-            reentry_link = entry.get("reentry_link")
-            if reentry_link:
-                wlo_html += f"<a href='{reentry_link}' class='wlo-link' title='Open in Obsidian'>↗</a>"
-            else:
-                wlo_html += "<span class='wlo-link'></span>"
-            wlo_html += "</div>"
-        wlo_html += "</div>"
+            wlo_html += f"<div class='wlo-card {session_type}'>"
 
-    # Paused sessions (4-24h) - collapsed style
+            # Header: project + time
+            wlo_html += "<div class='wlo-card-header'>"
+            wlo_html += f"<span class='wlo-card-project'>{esc(entry['project'])}</span>"
+            wlo_html += f"<span class='wlo-card-time {time_class}'>{esc(time_display)}</span>"
+            wlo_html += "</div>"
+
+            # Goal line
+            goal = entry["goal"] or entry["description"]
+            wlo_html += f"<div class='wlo-card-goal'>{esc(goal)}</div>"
+
+            # Meta: progress, now, next
+            wlo_html += "<div class='wlo-card-meta'>"
+
+            progress_total = entry["progress_total"]
+            progress_done = entry["progress_done"]
+            if progress_total > 0:
+                wlo_html += f"<span class='wlo-card-progress'><span class='done'>{progress_done}</span>/{progress_total} steps</span>"
+
+            now_task = entry["now_task"]
+            if now_task:
+                wlo_html += f"<span class='wlo-card-now'>Now: {esc(now_task)}</span>"
+
+            next_task = entry["next_task"]
+            if next_task:
+                wlo_html += f"<span class='wlo-card-next'>Next: {esc(next_task)}</span>"
+
+            # Status badge
+            if session_type == "running":
+                wlo_html += "<span class='wlo-card-status running'>Running</span>"
+            elif session_type == "interactive":
+                wlo_html += "<span class='wlo-card-status interactive'>Needs You</span>"
+
+            wlo_html += "</div>"  # End meta
+            wlo_html += "</div>"  # End card
+
+    # Paused sessions (4-24h) - compact card style
     if paused_sessions_wlo:
         wlo_html += "<div class='wlo-bucket-label wlo-paused-label'>⏸️ PAUSED (4-24h ago)</div>"
-        wlo_html += "<div class='where-left-off-list wlo-paused-list'>"
         for entry in paused_sessions_wlo:
             outcome_class = entry["outcome_class"]
             time_display = entry["time_display"]
 
-            wlo_html += f"<div class='where-left-off-row wlo-paused {outcome_class}'>"
-            wlo_html += f"<span class='wlo-time'>{esc(time_display)}</span>"
-            wlo_html += f"<span class='wlo-project'>{esc(entry['project'])}</span>"
-            wlo_html += f"<span class='wlo-description'>{esc(entry['description'])}</span>"
-            outcome_text = entry["outcome_text"]
-            wlo_html += f"<span class='wlo-outcome {outcome_class}'>{esc(outcome_text)}</span>"
-            reentry_link = entry.get("reentry_link")
-            if reentry_link:
-                wlo_html += f"<a href='{reentry_link}' class='wlo-link' title='Open in Obsidian'>↗</a>"
-            else:
-                wlo_html += "<span class='wlo-link'></span>"
+            wlo_html += f"<div class='wlo-card paused'>"
+            wlo_html += "<div class='wlo-card-header'>"
+            wlo_html += f"<span class='wlo-card-project'>{esc(entry['project'])}</span>"
+            wlo_html += f"<span class='wlo-card-time'>{esc(time_display)}</span>"
             wlo_html += "</div>"
-        wlo_html += "</div>"
+
+            # For paused sessions, show description (usually accomplishment summary)
+            description = entry["description"]
+            wlo_html += f"<div class='wlo-card-goal'>{esc(description)}</div>"
+
+            wlo_html += "<div class='wlo-card-meta'>"
+            outcome_text = entry["outcome_text"]
+            if outcome_text:
+                wlo_html += f"<span class='wlo-card-status done'>{esc(outcome_text)}</span>"
+
+            reentry_link = entry["reentry_link"]
+            if reentry_link:
+                wlo_html += f"<a href='{reentry_link}' class='wlo-link' title='Open in Obsidian'>↗ View</a>"
+            wlo_html += "</div>"
+            wlo_html += "</div>"
 
     wlo_html += "</div>"
     st.markdown(wlo_html, unsafe_allow_html=True)
