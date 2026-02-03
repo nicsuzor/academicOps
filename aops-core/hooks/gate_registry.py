@@ -1072,8 +1072,7 @@ def check_axiom_enforcer_gate(ctx: GateContext) -> Optional[GateResult]:
 
     Blocks tool calls that contain code patterns violating framework axioms:
     - P#8: Fail-fast violations (fallbacks, silent exception handling)
-    - P#12: DRY violations (future)
-    - P#26: Verify-first violations (future)
+    - P#26: Write-without-read violations (writing to files not previously read)
 
     This gate runs BEFORE custodiet threshold checks to catch violations
     immediately, regardless of compliance counter state.
@@ -1096,7 +1095,41 @@ def check_axiom_enforcer_gate(ctx: GateContext) -> Optional[GateResult]:
     ):
         return None
 
-    # Extract code/content for analysis
+    # Extract file path for P#26 write-without-read check
+    file_path = ctx.tool_input.get("file_path") or ctx.tool_input.get("notebook_path")
+
+    # P#26: Write-without-read check
+    # Block writes to files that haven't been read first in this session.
+    # Exception: New files (Write tool creating new file) are allowed.
+    # Exception: Safe temp directories (framework-controlled).
+    if file_path:
+        # Skip P#26 check for safe temp directories
+        if not _is_safe_temp_path(file_path):
+            # Check if file exists (new files don't need to be read first)
+            from pathlib import Path
+            target_exists = Path(file_path).expanduser().exists()
+
+            if target_exists and not session_state.has_file_been_read(ctx.session_id, file_path):
+                return GateResult(
+                    verdict=GateVerdict.DENY,
+                    context_injection=(
+                        "⛔ **P#26 VIOLATION: Write-Without-Read**\n\n"
+                        f"You are attempting to write to `{file_path}` without reading it first.\n\n"
+                        "**P#26 (Verify First)**: Check actual state, never assume.\n"
+                        "- Before asserting X, demonstrate evidence for X\n"
+                        "- Reasoning is not evidence; observation is evidence\n\n"
+                        "**Action Required**: Use the Read tool to read the file first, "
+                        "then retry your Edit/Write operation."
+                    ),
+                    metadata={
+                        "source": "axiom_enforcer",
+                        "violations": [
+                            {"axiom": "P#26", "pattern": "write_without_read", "file": file_path}
+                        ],
+                    },
+                )
+
+    # Extract code/content for P#8 analysis
     code = ""
     if ctx.tool_name in ("Write", "write_to_file"):
         code = ctx.tool_input.get("content", "")
@@ -1109,7 +1142,7 @@ def check_axiom_enforcer_gate(ctx: GateContext) -> Optional[GateResult]:
     if not code:
         return None
 
-    # Detect violations
+    # Detect P#8 violations in code content
     violations = axiom_detector.detect_all_violations(code)
 
     if not violations:
@@ -1400,6 +1433,14 @@ def run_accountant(ctx: GateContext) -> Optional[GateResult]:
         if turns_since >= 0:
             hydration_state["turns_since_hydration"] = turns_since + 1
             session_state.save_session_state(ctx.session_id, sess)
+
+    # 1c. P#26 File Read Tracking
+    # Track which files have been read for write-without-read detection.
+    # This enables axiom_enforcer_gate to block writes to unread files.
+    if ctx.tool_name in ("Read", "read_file", "view_file"):
+        file_path = ctx.tool_input.get("file_path")
+        if file_path:
+            session_state.record_file_read(ctx.session_id, file_path)
 
     # 2. Update Custodiet State
     # Skip for safe read-only tools to avoid noise

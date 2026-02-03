@@ -16,7 +16,7 @@ _ENV_GET_SHORT = 'path = os.environ.get' + '("X", "/bad")'
 
 
 class TestAxiomEnforcerGate:
-    """Tests for check_axiom_enforcer_gate (P#8 enforcement)."""
+    """Tests for check_axiom_enforcer_gate (P#8 and P#26 enforcement)."""
 
     def test_blocks_env_get_with_fallback(self):
         """P#8: Block os.environ.get with hardcoded default."""
@@ -114,6 +114,122 @@ class TestAxiomEnforcerGate:
             },
         )
         result = check_axiom_enforcer_gate(ctx)
+        assert result is None
+
+
+class TestP26WriteWithoutRead:
+    """Tests for P#26 write-without-read detection."""
+
+    def test_blocks_write_to_unread_existing_file(self, tmp_path):
+        """P#26: Block write to existing file that wasn't read first."""
+        # Create a real file
+        test_file = tmp_path / "existing.py"
+        test_file.write_text("original content")
+
+        ctx = GateContext(
+            session_id="test-p26-session",
+            event_name="PreToolUse",
+            input_data={
+                "tool_name": "Edit",
+                "tool_input": {
+                    "file_path": str(test_file),
+                    "old_string": "original",
+                    "new_string": "modified",
+                },
+            },
+        )
+
+        # Mock session_state to return no files read
+        with patch("hooks.gate_registry.session_state") as mock_state:
+            mock_state.has_file_been_read.return_value = False
+            result = check_axiom_enforcer_gate(ctx)
+
+        assert result is not None
+        assert result.verdict == GateVerdict.DENY
+        assert "P#26" in result.context_injection
+        assert "Write-Without-Read" in result.context_injection
+        assert "write_without_read" in str(result.metadata)
+
+    def test_allows_write_after_read(self, tmp_path):
+        """P#26: Allow write to file that was read first."""
+        # Create a real file
+        test_file = tmp_path / "existing.py"
+        test_file.write_text("original content")
+
+        ctx = GateContext(
+            session_id="test-p26-session",
+            event_name="PreToolUse",
+            input_data={
+                "tool_name": "Edit",
+                "tool_input": {
+                    "file_path": str(test_file),
+                    "old_string": "original",
+                    "new_string": "modified",
+                },
+            },
+        )
+
+        # Mock session_state to return file was read
+        with patch("hooks.gate_registry.session_state") as mock_state:
+            mock_state.has_file_been_read.return_value = True
+            result = check_axiom_enforcer_gate(ctx)
+
+        # Should pass P#26 check (may still fail P#8 if content has violations)
+        # Since content is clean, should return None
+        assert result is None
+
+    def test_allows_write_to_new_file(self, tmp_path):
+        """P#26: Allow write to new file (doesn't exist yet)."""
+        # File path that doesn't exist
+        new_file = tmp_path / "new_file.py"
+
+        ctx = GateContext(
+            session_id="test-p26-session",
+            event_name="PreToolUse",
+            input_data={
+                "tool_name": "Write",
+                "tool_input": {
+                    "file_path": str(new_file),
+                    "content": "new content",
+                },
+            },
+        )
+
+        # Mock session_state - file not read, but that's OK for new files
+        with patch("hooks.gate_registry.session_state") as mock_state:
+            mock_state.has_file_been_read.return_value = False
+            result = check_axiom_enforcer_gate(ctx)
+
+        # New file should be allowed without read
+        assert result is None
+
+    def test_allows_write_to_safe_temp_path(self, tmp_path):
+        """P#26: Skip check for safe temp directories."""
+        from pathlib import Path
+        import os
+
+        # Use a path in the safe temp directory
+        safe_temp = Path.home() / ".claude" / "tmp" / "test.py"
+
+        ctx = GateContext(
+            session_id="test-p26-session",
+            event_name="PreToolUse",
+            input_data={
+                "tool_name": "Write",
+                "tool_input": {
+                    "file_path": str(safe_temp),
+                    "content": "temp content",
+                },
+            },
+        )
+
+        # Safe temp paths should bypass P#26 check entirely
+        with patch("hooks.gate_registry.session_state") as mock_state:
+            mock_state.has_file_been_read.return_value = False
+            # Also need to patch _is_safe_temp_path to return True
+            with patch("hooks.gate_registry._is_safe_temp_path", return_value=True):
+                result = check_axiom_enforcer_gate(ctx)
+
         assert result is None
 
 
