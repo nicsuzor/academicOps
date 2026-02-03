@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import asdict
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -1332,6 +1332,91 @@ def complete_tasks(ids: list[str]) -> dict[str, Any]:
             "failure_count": len(ids),
             "failures": [{"id": tid, "reason": str(e)} for tid in ids],
             "message": f"Failed to complete tasks: {e}",
+        }
+
+
+@mcp.tool()
+def reset_stalled_tasks(
+    hours: float = 4.0,
+    project: str | None = None,
+    assignee: str | None = None,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    """Reset stalled in_progress tasks back to active.
+
+    Finds tasks that have been in_progress for longer than the specified duration
+    without modification and resets them to active status.
+
+    Args:
+        hours: Hours since last modification to consider stalled (default: 4.0)
+        project: Filter by project (optional)
+        assignee: Filter by assignee (optional)
+        dry_run: If True, only list tasks that would be reset (default: False)
+
+    Returns:
+        Dictionary with:
+        - success: True
+        - tasks: List of reset task IDs
+        - count: Number of tasks reset
+        - message: Status message
+    """
+    try:
+        storage = _get_storage()
+        # Use timezone-aware comparison
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+
+        # List all in_progress tasks matching filters
+        candidates = storage.list_tasks(
+            status=TaskStatus.IN_PROGRESS,
+            project=project,
+            assignee=assignee,
+        )
+
+        stalled = []
+        for task in candidates:
+            # Ensure task.modified is timezone-aware or comparable
+            task_mod = task.modified
+            if task_mod.tzinfo is None:
+                 task_mod = task_mod.replace(tzinfo=timezone.utc)
+            
+            if task_mod < cutoff:
+                stalled.append(task)
+
+        if dry_run:
+            return {
+                "success": True,
+                "tasks": [t.id for t in stalled],
+                "count": len(stalled),
+                "message": f"Found {len(stalled)} stalled tasks (dry run)",
+            }
+
+        reset_ids = []
+        for task in stalled:
+            task.status = TaskStatus.ACTIVE
+            task.assignee = None  # Clear assignee
+            storage.save_task(task)
+            reset_ids.append(task.id)
+
+        # Rebuild index if any tasks changed
+        if reset_ids:
+             _get_index().rebuild_fast()
+
+        logger.info(f"reset_stalled_tasks: reset {len(reset_ids)} tasks")
+
+        return {
+            "success": True,
+            "tasks": reset_ids,
+            "count": len(reset_ids),
+            "message": f"Reset {len(reset_ids)} stalled tasks",
+        }
+
+    except Exception as e:
+        logger.exception("reset_stalled_tasks failed")
+        return {
+            "success": False,
+            "tasks": [],
+            "count": 0,
+            "message": f"Failed to reset stalled tasks: {e}",
         }
 
 
