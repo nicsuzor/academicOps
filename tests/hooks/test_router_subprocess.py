@@ -169,13 +169,13 @@ class TestRouterGeminiFormat:
 
         # Force block mode for hydration gate
         with pytest.MonkeyPatch.context() as mp:
-            mp.setenv("HYDRATION_MODE", "block")
+            mp.setenv("HYDRATION_GATE_MODE", "block")
             # We need to set this in the actual OS environ because run_router_gemini copies it
-            os.environ["HYDRATION_MODE"] = "block"
+            os.environ["HYDRATION_GATE_MODE"] = "block"
             try:
                 output, stderr = run_router_gemini(input_data, "BeforeTool")
             finally:
-                del os.environ["HYDRATION_MODE"]
+                del os.environ["HYDRATION_GATE_MODE"]
 
         # Gemini format has top-level decision
         assert "decision" in output, f"Missing decision. Output: {output}"
@@ -223,12 +223,12 @@ class TestRouterEventMapping:
 
         # Force block mode for hydration gate
         with pytest.MonkeyPatch.context() as mp:
-            mp.setenv("HYDRATION_MODE", "block")
-            os.environ["HYDRATION_MODE"] = "block"
+            mp.setenv("HYDRATION_GATE_MODE", "block")
+            os.environ["HYDRATION_GATE_MODE"] = "block"
             try:
                 output, stderr = run_router_gemini(input_data, "BeforeTool")
             finally:
-                del os.environ["HYDRATION_MODE"]
+                del os.environ["HYDRATION_GATE_MODE"]
 
         # The gate messages should reference PreToolUse behavior
         # Hydration gate blocks read operations on unhydrated sessions

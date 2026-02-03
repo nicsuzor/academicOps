@@ -74,8 +74,8 @@ if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
     if ! grep -q "export TASK_GATE_MODE=" "$CLAUDE_ENV_FILE" 2>/dev/null; then
         echo 'export TASK_GATE_MODE="${TASK_GATE_MODE:-warn}"' >> "$CLAUDE_ENV_FILE"
     fi
-    if ! grep -q "export HYDRATION_MODE=" "$CLAUDE_ENV_FILE" 2>/dev/null; then
-        echo 'export HYDRATION_MODE="${HYDRATION_MODE:-warn}"' >> "$CLAUDE_ENV_FILE"
+    if ! grep -q "export HYDRATION_GATE_MODE=" "$CLAUDE_ENV_FILE" 2>/dev/null; then
+        echo 'export HYDRATION_GATE_MODE="${HYDRATION_GATE_MODE:-warn}"' >> "$CLAUDE_ENV_FILE"
     fi
 fi
 

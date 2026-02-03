@@ -164,7 +164,7 @@ def load_environment_variables_context() -> str:
         "ACA_DATA",
         "POLECAT_HOME",
         "NTFY_TOPIC",
-        "HYDRATION_MODE",
+        "HYDRATION_GATE_MODE",
         "CUSTODIET_MODE",
         "TASK_GATE_MODE",
         "CLAUDE_SESSION_ID",
