@@ -25,6 +25,7 @@ sys.path.insert(0, str(aops_core))
 
 from lib.session_reader import find_sessions
 from lib.session_analyzer import SessionAnalyzer, extract_todowrite_from_session
+from lib.session_context import SessionContext, extract_context_from_session_state
 from lib.task_storage import TaskStorage
 from lib.task_model import Task, TaskStatus
 from collections import defaultdict
@@ -455,15 +456,20 @@ class ActiveAgent:
     task_id: str | None
     project: str | None
     started_at: str | None  # ISO format string
+    context: SessionContext | None = None  # Conversation context for display
 
 
 def get_active_agents() -> list[ActiveAgent]:
-    """Parse sessions/status/*.json files to find active sessions."""
+    """Parse sessions/status/*.json files to find active sessions.
+
+    Enhanced to include SessionContext for conversation-centric display
+    per specs/overwhelm-dashboard.md Session Context Model.
+    """
     agents = []
     # Assumes running from root where sessions/status exists, or check standard locations
     # Use CWD first as per instructions "files to modify" logic usually implies relative to root
     status_dir = Path("sessions/status")
-    
+
     # Fallback to home dir location if CWD fails (for compatibility)
     if not status_dir.exists():
         status_dir = Path.home() / "writing" / "sessions" / "status"
@@ -478,78 +484,129 @@ def get_active_agents() -> list[ActiveAgent]:
                 # Extract fields with safe fallbacks
                 main_agent = data.get("main_agent", {})
                 insights = data.get("insights") or {}
-                
+
+                # Extract conversation context from session state
+                context = extract_context_from_session_state(data)
+
+                # session_id is required in valid session state files
+                session_id = data["session_id"] if "session_id" in data else status_file.stem
                 agents.append(ActiveAgent(
-                    session_id=data.get("session_id", status_file.stem),
+                    session_id=session_id,
                     task_id=main_agent.get("current_task"),
                     project=insights.get("project"),
-                    started_at=data.get("started_at")
+                    started_at=data.get("started_at"),
+                    context=context,
                 ))
         except (json.JSONDecodeError, OSError):
             continue
-            
+
     return agents
 
 
+def _format_duration(started_at: str | None) -> str:
+    """Format session duration as human-readable string."""
+    if not started_at:
+        return "just started"
+
+    # Handle Z/timezone if present, or naive
+    start = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+    if start.tzinfo is None:
+        start = start.replace(tzinfo=timezone.utc)
+
+    now = datetime.now(timezone.utc)
+    diff = now - start
+
+    mins = int(diff.total_seconds() / 60)
+    if mins < 60:
+        return f"{mins}m ago"
+    hrs = int(mins / 60)
+    return f"{hrs}h ago"
+
+
 def render_agents_working():
-    """Render the 'AGENTS WORKING' section if any agents are active."""
+    """Render the 'AGENTS WORKING' section with conversation-centric context.
+
+    Per specs/overwhelm-dashboard.md Session Context Model:
+    - Shows initial prompt (what user asked)
+    - Shows current status or planned next step
+    - Filters out sessions without meaningful context
+    """
     agents = get_active_agents()
-    if not agents:
+
+    # Filter to agents with meaningful context per spec
+    agents_with_context = [
+        a for a in agents
+        if a.context is not None and a.context.has_meaningful_context()
+    ]
+
+    if not agents_with_context:
         return
 
     st.markdown(
-        f"<div class='agent-status-panel'><div class='agent-status-title'>🤖 AGENTS WORKING ({len(agents)} active)</div>",
+        f"<div class='agent-status-panel'><div class='agent-status-title'>🤖 SESSIONS WORKING ({len(agents_with_context)} active)</div>",
         unsafe_allow_html=True
     )
 
     all_tasks_cache = None
 
-    for agent in agents:
-        # Calculate duration
-        duration_str = "just started"
-        if agent.started_at:
-            try:
-                # Handle Z/timezone if present, or naive
-                start = datetime.fromisoformat(agent.started_at.replace("Z", "+00:00"))
-                if start.tzinfo is None:
-                    start = start.replace(tzinfo=timezone.utc)
-                
-                now = datetime.now(timezone.utc)
-                diff = now - start
-                
-                mins = int(diff.total_seconds() / 60)
-                if mins < 60:
-                    duration_str = f"started {mins}m ago"
-                else:
-                    hrs = int(mins / 60)
-                    duration_str = f"started {hrs}h ago"
-            except Exception:
-                pass
+    for agent in agents_with_context:
+        duration_str = _format_duration(agent.started_at)
 
-        project = agent.project or "unknown"
-        
-        task_display = ""
-        if agent.task_id:
-             task_display = agent.task_id
-             # Try to resolve title
-             if all_tasks_cache is None:
-                 all_tasks_cache = load_tasks_from_index()
-                 
-             t_obj = next((t for t in all_tasks_cache if t["id"] == agent.task_id), None)
-             if t_obj:
-                 task_display += f' "{t_obj.get("title", "")}"'
+        # Determine project - prefer agent.project, then context.project
+        if agent.project is not None:
+            project = agent.project
+        elif agent.context is not None and agent.context.project:
+            project = agent.context.project
         else:
-             task_display = "No specific task"
+            project = "unknown"
 
-        html = f"""
-        <div class='agent-card'>
-            <span class='agent-project'>{esc(project)}</span>: 
-            <span class='agent-task-name'>{esc(task_display)}</span>
-            <span class='agent-meta'>({esc(duration_str)})</span>
-        </div>
-        """
+        ctx = agent.context
+
+        # Build conversation-centric display per spec:
+        # Started: "initial prompt"
+        # Now: current status
+        # Next: planned next step
+
+        # Truncate initial prompt to 120 chars per spec (minimum context preservation)
+        initial = ctx.initial_prompt[:120] + "..." if len(ctx.initial_prompt) > 120 else ctx.initial_prompt
+
+        # Current status - prefer todo state, fall back to extracted status
+        now_text = ctx.current_status
+        if not now_text and agent.task_id is not None:
+            # Fall back to task info
+            if all_tasks_cache is None:
+                all_tasks_cache = load_tasks_from_index()
+            t_obj = next((t for t in all_tasks_cache if t["id"] == agent.task_id), None)
+            if t_obj is not None and "title" in t_obj:
+                now_text = f"Working on: {t_obj['title']}"
+            elif t_obj is not None:
+                now_text = f"Working on task: {agent.task_id}"
+            else:
+                now_text = f"Working on task: {agent.task_id}"
+
+        # Next step
+        next_text = ctx.planned_next_step
+
+        # Build HTML with conversation context
+        html_parts = [f"<div class='agent-card'>"]
+        html_parts.append(f"<div class='agent-header'><span class='agent-project'>{esc(project)}</span> <span class='agent-meta'>({esc(duration_str)})</span></div>")
+
+        if initial:
+            html_parts.append(f"<div class='agent-context'><span class='context-label'>Started:</span> \"{esc(initial)}\"</div>")
+
+        if now_text:
+            now_truncated = now_text[:100] + "..." if len(now_text) > 100 else now_text
+            html_parts.append(f"<div class='agent-context'><span class='context-label'>Now:</span> {esc(now_truncated)}</div>")
+
+        if next_text and next_text != now_text:
+            next_truncated = next_text[:80] + "..." if len(next_text) > 80 else next_text
+            html_parts.append(f"<div class='agent-context'><span class='context-label'>Next:</span> {esc(next_truncated)}</div>")
+
+        html_parts.append("</div>")
+        html = "\n".join(html_parts)
+
         st.markdown(html, unsafe_allow_html=True)
-        
+
     st.markdown("</div>", unsafe_allow_html=True)
 
 
@@ -2305,10 +2362,31 @@ st.markdown(
         margin-bottom: 8px;
         border-radius: 0 4px 4px 0;
     }
-    
+
+    .agent-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
     .agent-project { font-weight: 600; color: #e2e8f0; }
     .agent-task-name { color: #cbd5e1; }
     .agent-progress-text { color: #4ade80; font-weight: bold; }
+    .agent-meta { color: #64748b; font-size: 0.85em; }
+
+    /* Session context display (conversation-centric per overwhelm-dashboard.md) */
+    .agent-context {
+        color: #94a3b8;
+        font-size: 0.9em;
+        line-height: 1.4;
+        margin-top: 4px;
+    }
+    .context-label {
+        color: #64748b;
+        font-weight: 500;
+        margin-right: 4px;
+    }
 
     /* Project Grid Styles */
     .project-grid {
