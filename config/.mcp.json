@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+
+    "gemini-cli": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "gemini-mcp-tool"
+      ]
+    }
+  }
+}

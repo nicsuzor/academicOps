@@ -1854,6 +1854,7 @@ def check_session_start_gate(ctx: GateContext) -> Optional[GateResult]:
         f"🚀 Session Started: {ctx.session_id} ({short_hash})",
         f"State File: {state_file_path}",
         f"Hooks log: {hook_log_path}",
+        f"Transcript: {transcript_path}",
     ]
 
     return GateResult(
