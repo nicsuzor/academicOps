@@ -1020,6 +1020,9 @@ def fetch_session_activity(hours: int = 4) -> list[dict]:
                 if session_file.exists():
                     todowrite = extract_todowrite_from_session(session_file)
                     session_data["todowrite"] = todowrite
+                    # Fix unknown project from local directory name
+                    if session_data.get("project") in (None, "", "unknown"):
+                        session_data["project"] = _format_project_name(project_dir.name)
                     break
 
     # 2. Add local-only active sessions (not in R2)
