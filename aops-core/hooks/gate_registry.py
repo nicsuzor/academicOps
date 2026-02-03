@@ -1467,7 +1467,9 @@ def run_accountant(ctx: GateContext) -> Optional[GateResult]:
     if _is_handover_skill_invocation(ctx.tool_name or "", ctx.tool_input):
         try:
             session_state.set_handover_skill_invoked(ctx.session_id)
-            system_messages.append("🤝 [Gate] Handover recorded. Stop gate open.")
+            system_messages.append(
+                "🤝 [Gate] Handover tool recorded. Stop gate will once repo is clean and reflection message printed."
+            )
         except Exception as e:
             print(
                 f"WARNING: Accountant failed to set handover flag: {e}", file=sys.stderr

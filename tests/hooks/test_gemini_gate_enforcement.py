@@ -47,6 +47,29 @@ GEMINI_BEFORE_TOOL_RM_INPUT = {
     },
 }
 
+# Second failure case: write_file without hydration (2026-02-03 session f73fa390)
+GEMINI_BEFORE_AGENT_WRITE_INPUT = {
+    "session_id": "f73fa390-7b29-42a2-bd72-121312215092",
+    "transcript_path": "/home/nic/.gemini/tmp/02446fdfe96b1eb171c290b1b3da4c0aafff4108395fdefaac4dd1a188242b94/chats/session-2026-02-03T03-08-f73fa390.json",
+    "cwd": "/home/nic/src/academicOps",
+    "hook_event_name": "BeforeAgent",
+    "timestamp": "2026-02-03T03:08:15.173Z",
+    "prompt": "create file .ver.txt with content = '0.1'",
+}
+
+GEMINI_BEFORE_TOOL_WRITE_FILE_INPUT = {
+    "session_id": "f73fa390-7b29-42a2-bd72-121312215092",
+    "transcript_path": "/home/nic/.gemini/tmp/02446fdfe96b1eb171c290b1b3da4c0aafff4108395fdefaac4dd1a188242b94/chats/session-2026-02-03T03-08-f73fa390.json",
+    "cwd": "/home/nic/src/academicOps",
+    "hook_event_name": "BeforeTool",
+    "timestamp": "2026-02-03T03:08:23.251Z",
+    "tool_name": "write_file",
+    "tool_input": {
+        "file_path": "/home/nic/src/academicOps/.ver.txt",
+        "content": "0.1\n",
+    },
+}
+
 
 class TestGeminiHydrationGate:
     """Tests for hydration gate enforcement on Gemini BeforeTool events."""
@@ -154,6 +177,47 @@ class TestGeminiHydrationGate:
         # Skill is in HYDRATION_ALLOWED_TOOLS - should be allowed (return None)
         assert result is None, "Skill tool should bypass hydration gate"
 
+    def test_before_tool_write_file_should_be_blocked_without_hydration(
+        self, mock_session_state_no_hydration, gemini_state_dir, monkeypatch
+    ):
+        """BeforeTool with write_file MUST be blocked if hydration not completed.
+
+        Reproduces observed failure from session f73fa390-7b29-42a2-bd72-121312215092:
+        - BeforeTool event with write_file to create .ver.txt returned verdict: allow
+        - Expected: verdict: deny (hydration gate should block file writes)
+        """
+        from hooks.gate_registry import check_hydration_gate, GateContext
+
+        monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(gemini_state_dir))
+        monkeypatch.setenv("HYDRATION_GATE_MODE", "block")
+
+        session_id = GEMINI_BEFORE_TOOL_WRITE_FILE_INPUT["session_id"]
+        from lib.session_paths import get_session_short_hash
+        short_hash = get_session_short_hash(session_id)
+        state_file = gemini_state_dir / f"20260203-12-{short_hash}.json"
+
+        # Create state with hydration_pending=True for THIS session
+        state = {
+            **mock_session_state_no_hydration,
+            "session_id": session_id,
+        }
+        state_file.write_text(json.dumps(state))
+
+        ctx = GateContext(
+            session_id=session_id,
+            event_name="PreToolUse",
+            input_data=GEMINI_BEFORE_TOOL_WRITE_FILE_INPUT,
+        )
+
+        result = check_hydration_gate(ctx)
+
+        # MUST block - write_file is mutating and hydration not done
+        assert result is not None, "Hydration gate should return a result for write_file"
+        assert result.verdict.value == "deny", (
+            f"Hydration gate should DENY write_file without hydration. "
+            f"Got: {result.verdict.value}"
+        )
+
 
 class TestGeminiDestructiveOperationGates:
     """Tests for gates blocking destructive operations without proper ceremony."""
@@ -221,6 +285,196 @@ class TestGeminiDestructiveOperationGates:
             assert result.verdict.value in ("deny", "warn"), (
                 f"Task gate should block/warn for rm without task. Got: {result.verdict.value}"
             )
+
+
+class TestGeminiFullEventFlow:
+    """Tests simulating the full Gemini event sequence.
+
+    These tests catch issues where one event (e.g., BeforeAgent) modifies
+    session state in a way that affects subsequent events (e.g., BeforeTool).
+    """
+
+    def test_before_agent_then_before_tool_should_still_block(
+        self, tmp_path, monkeypatch
+    ):
+        """Full flow: BeforeAgent followed by BeforeTool should still block.
+
+        Reproduces real failure: user_prompt_submit gate for BeforeAgent may
+        clear hydration_pending, causing BeforeTool to allow through.
+        """
+        from hooks.gate_registry import (
+            check_hydration_gate,
+            run_user_prompt_submit,
+            GateContext,
+        )
+        from lib.session_state import create_session_state, save_session_state
+
+        state_dir = tmp_path / "gemini_state"
+        state_dir.mkdir()
+        monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(state_dir))
+        monkeypatch.setenv("HYDRATION_GATE_MODE", "block")
+
+        session_id = "f73fa390-7b29-42a2-bd72-121312215092"
+
+        # Step 1: Create initial session state (simulates SessionStart)
+        state = create_session_state(session_id)
+        save_session_state(session_id, state)
+
+        # Step 2: Simulate BeforeAgent (UserPromptSubmit)
+        before_agent_ctx = GateContext(
+            session_id=session_id,
+            event_name="UserPromptSubmit",
+            input_data=GEMINI_BEFORE_AGENT_WRITE_INPUT,
+        )
+        # Run user_prompt_submit gate (this is what runs for BeforeAgent)
+        run_user_prompt_submit(before_agent_ctx)
+
+        # Step 3: Now check BeforeTool - should STILL block
+        before_tool_ctx = GateContext(
+            session_id=session_id,
+            event_name="PreToolUse",
+            input_data=GEMINI_BEFORE_TOOL_WRITE_FILE_INPUT,
+        )
+        result = check_hydration_gate(before_tool_ctx)
+
+        # CRITICAL: After BeforeAgent, BeforeTool should still block
+        # If this fails, user_prompt_submit is clearing hydration_pending
+        assert result is not None, (
+            "Hydration gate should still block after BeforeAgent. "
+            "user_prompt_submit gate may be incorrectly clearing hydration_pending."
+        )
+        assert result.verdict.value == "deny", (
+            f"Expected DENY after BeforeAgent flow, got: {result.verdict.value}. "
+            "Check if should_skip_hydration() is returning True for this prompt."
+        )
+
+
+class TestGeminiHydrationGateNoStateFile:
+    """Tests for hydration gate when session state file doesn't exist.
+
+    This tests the fail-closed behavior - if state file is missing,
+    the gate should DENY (assume hydration pending).
+    """
+
+    def test_missing_state_file_should_block(self, tmp_path, monkeypatch):
+        """If session state file doesn't exist, gate should DENY (fail-closed).
+
+        This may be the actual bug: state file isn't being created/found for Gemini.
+        """
+        from hooks.gate_registry import check_hydration_gate, GateContext
+
+        # Set up empty state dir (no state file)
+        state_dir = tmp_path / "empty_state"
+        state_dir.mkdir()
+        monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(state_dir))
+        monkeypatch.setenv("HYDRATION_GATE_MODE", "block")
+
+        ctx = GateContext(
+            session_id="nonexistent-session",
+            event_name="PreToolUse",
+            input_data={
+                "tool_name": "write_file",
+                "tool_input": {"file_path": "/tmp/test.txt", "content": "test"},
+            },
+        )
+
+        result = check_hydration_gate(ctx)
+
+        # Fail-closed: missing state file should mean DENY
+        assert result is not None, (
+            "Hydration gate should DENY when state file missing (fail-closed)"
+        )
+        assert result.verdict.value == "deny", (
+            f"Expected DENY for missing state file, got: {result.verdict.value}"
+        )
+
+
+class TestGeminiHookConfiguration:
+    """Tests for Gemini hook configuration correctness.
+
+    Regression tests for bug where Gemini config was missing hook event name:
+      WRONG: "router.py --client gemini"
+      RIGHT: "router.py BeforeTool --client gemini"
+    """
+
+    def test_gemini_hook_command_includes_event_name_placeholder(self):
+        """Gemini hook command MUST include ${hookEvent} placeholder.
+
+        Regression test: Without event name, router doesn't know which gates to run,
+        causing all operations to be silently allowed.
+        """
+        import json
+        from pathlib import Path
+
+        gemini_settings = Path.home() / ".gemini" / "settings.json"
+        if not gemini_settings.exists():
+            pytest.skip("Gemini settings.json not found")
+
+        settings = json.loads(gemini_settings.read_text())
+        hooks = settings.get("hooks", {})
+
+        for hook_name, hook_config in hooks.items():
+            if not isinstance(hook_config, dict):
+                continue
+            command = hook_config.get("command", "")
+            if "router.py" in command and "--client gemini" in command:
+                assert "${hookEvent}" in command, (
+                    f"Hook '{hook_name}' missing ${{hookEvent}} placeholder.\n"
+                    f"Command: {command}\n"
+                    f"This causes gates to not run, silently allowing all operations."
+                )
+
+    def test_router_requires_gemini_event_from_stdin(self):
+        """Router should get event name from stdin hook_event_name for Gemini.
+
+        When Gemini passes hook data, it includes hook_event_name in the JSON.
+        Router must extract and use this to determine which gates to run.
+        """
+        from hooks.router import HookRouter, GEMINI_EVENT_MAP
+
+        router = HookRouter()
+
+        # Simulate Gemini BeforeTool input - event name comes from hook_event_name field
+        gemini_input = {
+            "session_id": "test-session",
+            "hook_event_name": "BeforeTool",
+            "tool_name": "write_file",
+            "tool_input": {"file_path": "/tmp/test.txt"},
+        }
+
+        ctx = router.normalize_input(gemini_input, gemini_event="BeforeTool")
+
+        # Router should map BeforeTool -> PreToolUse
+        assert ctx.hook_event == "PreToolUse", (
+            f"Router should map Gemini BeforeTool to PreToolUse. Got: {ctx.hook_event}"
+        )
+
+    def test_router_with_missing_gemini_event_uses_fallback(self):
+        """If Gemini event not provided, router should handle gracefully.
+
+        This tests the failure mode - when hook_event_name is missing,
+        what does the router do? It should NOT silently allow.
+        """
+        from hooks.router import HookRouter
+
+        router = HookRouter()
+
+        # Input WITHOUT hook_event_name - simulates misconfigured hook
+        bad_input = {
+            "session_id": "test-session",
+            "tool_name": "write_file",
+            "tool_input": {"file_path": "/tmp/test.txt"},
+        }
+
+        # When gemini_event is None/missing, router should either:
+        # 1. Raise an error, OR
+        # 2. Default to a safe behavior (not "allow all")
+        ctx = router.normalize_input(bad_input, gemini_event=None)
+
+        # At minimum, hook_event should not be None/empty
+        assert ctx.hook_event, (
+            "Router should not return empty hook_event - this causes gates to be skipped"
+        )
 
 
 class TestGeminiEventMapping:
