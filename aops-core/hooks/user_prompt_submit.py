@@ -26,6 +26,7 @@ from lib.hook_utils import (
 )
 from lib.paths import (
     get_plugin_root,
+    get_aops_root,
     get_data_root,
     get_skills_dir,
     get_hooks_dir,
@@ -95,6 +96,7 @@ def load_framework_paths() -> str:
     """
     try:
         plugin_root = get_plugin_root()
+        aops_root = get_aops_root()
         # data_root = get_data_root()  # May raise if not set, handled by catch-all
 
         # Build path table dynamically
@@ -105,6 +107,7 @@ def load_framework_paths() -> str:
             "",
             "| Path Variable | Resolved Path |",
             "|--------------|---------------|",
+            f"| $AOPS        | {aops_root} |",
             f"| $PLUGIN_ROOT | {plugin_root} |",
             f"| $ACA_DATA    | {get_data_root()} |",
             "",
@@ -134,6 +137,75 @@ def load_framework_paths() -> str:
 
     except Exception as e:
         return f"(Error gathering framework paths: {e})"
+
+
+def load_mcp_tools_context() -> str:
+    """List available MCP tools and servers."""
+    # These are the known servers in the framework
+    servers = {
+        "task_manager": "Manages the hierarchical task system (create, update, complete, decompose)",
+        "memory": "Semantic memory retrieval and recall",
+        "outlook": "Integration with Outlook calendar and messages",
+    }
+
+    lines = ["## Available MCP Servers", ""]
+    lines.append("| Server | Description |")
+    lines.append("|--------|-------------|")
+    for name, desc in servers.items():
+        lines.append(f"| {name} | {desc} |")
+
+    return "\n".join(lines)
+
+
+def load_environment_variables_context() -> str:
+    """List relevant environment variables."""
+    vars_to_check = [
+        "AOPS",
+        "ACA_DATA",
+        "POLECAT_HOME",
+        "NTFY_TOPIC",
+        "HYDRATION_MODE",
+        "CUSTODIET_MODE",
+        "TASK_GATE_MODE",
+        "CLAUDE_SESSION_ID",
+    ]
+
+    lines = ["## Environment Variables", ""]
+    lines.append("| Variable | Value |")
+    lines.append("|----------|-------|")
+    for var in vars_to_check:
+        value = os.environ.get(var, "(not set)")
+        lines.append(f"| {var} | `{value}` |")
+
+    return "\n".join(lines)
+
+
+def load_project_paths_context() -> str:
+    """Load project-specific paths from polecat.yaml."""
+    polecat_config = Path.home() / ".aops" / "polecat.yaml"
+    if not polecat_config.exists():
+        return ""
+
+    try:
+        import yaml
+        with open(polecat_config) as f:
+            config = yaml.safe_load(f)
+
+        projects = config.get("projects", {})
+        if not projects:
+            return ""
+
+        lines = ["## Project-Specific Paths", ""]
+        lines.append("| Project | Path | Default Branch |")
+        lines.append("|---------|------|----------------|")
+        for slug, proj in projects.items():
+            path = proj.get("path", "")
+            branch = proj.get("default_branch", "main")
+            lines.append(f"| {slug} | `{path}` | {branch} |")
+        return "\n".join(lines)
+    except Exception as e:
+        # Don't fail the whole hook if yaml or polecat.yaml loading fails
+        return f"<!-- Project paths skipped: {e} -->"
 
 
 def _strip_frontmatter(content: str) -> str:
@@ -502,6 +574,15 @@ def build_hydration_instruction(
     # Load framework paths from FRAMEWORK-PATHS.md (DRY - single source of truth)
     framework_paths = load_framework_paths()
 
+    # Load available MCP tools and servers
+    mcp_tools = load_mcp_tools_context()
+
+    # Load relevant environment variables
+    env_vars = load_environment_variables_context()
+
+    # Load project-specific paths
+    project_paths = load_project_paths_context()
+
     # Pre-load stable framework docs (reduces hydrator runtime I/O)
     workflows_index = load_workflows_index(prompt)
     skills_index = load_skills_index()
@@ -523,6 +604,9 @@ def build_hydration_instruction(
         prompt=prompt,
         session_context=session_context,
         framework_paths=framework_paths,
+        mcp_tools=mcp_tools,
+        env_vars=env_vars,
+        project_paths=project_paths,
         project_context_index=project_context_index,
         relevant_files=relevant_files,
         workflows_index=workflows_index,
