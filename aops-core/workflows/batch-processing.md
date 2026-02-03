@@ -36,6 +36,13 @@ For large datasets (100+ items), structure into reviewable chunks:
 - **Categorical**: By sender/type for grouped data
 - **Size-based**: Fixed chunks of 20-50 items
 
+**Each chunk = one worker.** Don't process chunks sequentially in main agent. Spawn parallel subagents:
+
+```
+Task(subagent_type="general-purpose", prompt="Process Nov 2025 emails: [criteria]", run_in_background=true)
+Task(subagent_type="general-purpose", prompt="Process Dec 2025 emails: [criteria]", run_in_background=true)
+```
+
 ### Intermediate State
 
 Store partial results in scratchpad for resilience, review, and audit:
