@@ -203,10 +203,16 @@ class HookRouter:
         """Create a normalized HookContext from raw input."""
         
         # 1. Determine Event Name
+        # Always apply GEMINI_EVENT_MAP for Gemini clients, whether event comes
+        # from command line arg or from JSON payload (hook_event_name field)
         if gemini_event:
             hook_event = GEMINI_EVENT_MAP.get(gemini_event, gemini_event)
         else:
-            hook_event = raw_input.get("hook_event_name", "Unknown")
+            # Fail-fast: hook_event_name is required in payload when not passed as arg
+            raw_event = raw_input["hook_event_name"]
+            # Apply mapping even when reading from JSON - fixes bug where
+            # BeforeTool wasn't mapped to PreToolUse, causing gates to not run
+            hook_event = GEMINI_EVENT_MAP.get(raw_event, raw_event)
 
         # 2. Determine Session ID
         session_id = raw_input.get("session_id")

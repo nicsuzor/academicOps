@@ -449,11 +449,12 @@ class TestGeminiHookConfiguration:
             f"Router should map Gemini BeforeTool to PreToolUse. Got: {ctx.hook_event}"
         )
 
-    def test_router_with_missing_gemini_event_uses_fallback(self):
-        """If Gemini event not provided, router should handle gracefully.
+    def test_router_fails_fast_when_hook_event_name_missing(self):
+        """Router should fail-fast when hook_event_name is missing from JSON.
 
-        This tests the failure mode - when hook_event_name is missing,
-        what does the router do? It should NOT silently allow.
+        Per P#8 (Fail-Fast), if the required hook_event_name field is missing,
+        the router should raise KeyError, not silently proceed with defaults.
+        This prevents misconfigured hooks from silently allowing all operations.
         """
         from hooks.router import HookRouter
 
@@ -466,14 +467,35 @@ class TestGeminiHookConfiguration:
             "tool_input": {"file_path": "/tmp/test.txt"},
         }
 
-        # When gemini_event is None/missing, router should either:
-        # 1. Raise an error, OR
-        # 2. Default to a safe behavior (not "allow all")
-        ctx = router.normalize_input(bad_input, gemini_event=None)
+        # Should raise KeyError - fail-fast, not silently allow
+        with pytest.raises(KeyError, match="hook_event_name"):
+            router.normalize_input(bad_input, gemini_event=None)
 
-        # At minimum, hook_event should not be None/empty
-        assert ctx.hook_event, (
-            "Router should not return empty hook_event - this causes gates to be skipped"
+    def test_router_maps_gemini_event_from_json_payload(self):
+        """Router should apply GEMINI_EVENT_MAP even when reading from JSON.
+
+        Regression test: Previously, BeforeTool from JSON was NOT mapped to
+        PreToolUse, causing GATE_CONFIG["PreToolUse"] gates to not run.
+        """
+        from hooks.router import HookRouter, GEMINI_EVENT_MAP
+
+        router = HookRouter()
+
+        # Gemini provides hook_event_name in JSON (no command line arg)
+        gemini_input = {
+            "session_id": "test-session",
+            "hook_event_name": "BeforeTool",  # Gemini's name
+            "tool_name": "write_file",
+            "tool_input": {"file_path": "/tmp/test.txt"},
+        }
+
+        # When gemini_event arg is None, router reads from JSON and MUST map
+        ctx = router.normalize_input(gemini_input, gemini_event=None)
+
+        # Critical: BeforeTool must be mapped to PreToolUse
+        assert ctx.hook_event == "PreToolUse", (
+            f"Router must map BeforeTool -> PreToolUse even from JSON. "
+            f"Got: {ctx.hook_event}. This causes gates to not run!"
         )
 
 
