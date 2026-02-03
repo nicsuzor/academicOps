@@ -279,6 +279,9 @@ def has_repo_changes(repo_path: Path, subdir: str | None = None) -> bool:
 
     Returns:
         True if uncommitted changes exist, False otherwise
+
+    Raises:
+        RuntimeError: If git status check fails (P#8: fail-fast)
     """
     cmd = ["git", "status", "--porcelain"]
     if subdir:
@@ -291,6 +294,10 @@ def has_repo_changes(repo_path: Path, subdir: str | None = None) -> bool:
         timeout=5,
         check=False,
     )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"git status failed in {repo_path}: {result.stderr.strip()} (P#8: fail-fast)"
+        )
     return bool(result.stdout.strip())
 
 
@@ -298,7 +305,10 @@ def get_current_branch(repo_path: Path) -> str | None:
     """Get the current branch name.
 
     Returns:
-        Branch name, or None if detached HEAD or error
+        Branch name, or None if detached HEAD
+
+    Raises:
+        RuntimeError: If git command fails (P#8: fail-fast)
     """
     result = subprocess.run(
         ["git", "rev-parse", "--abbrev-ref", "HEAD"],
@@ -308,10 +318,12 @@ def get_current_branch(repo_path: Path) -> str | None:
         timeout=2,
         check=False,
     )
-    if result.returncode == 0:
-        branch = result.stdout.strip()
-        return None if branch == "HEAD" else branch  # HEAD means detached
-    return None
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"git rev-parse failed in {repo_path}: {result.stderr.strip()} (P#8: fail-fast)"
+        )
+    branch = result.stdout.strip()
+    return None if branch == "HEAD" else branch  # HEAD means detached
 
 
 def is_protected_branch(branch: str | None) -> bool:
@@ -428,7 +440,7 @@ def commit_and_push_repo(
 
 def main() -> None:
     """Main hook entry point."""
-    # Read input from stdin
+    # Read input from stdin (P#8: fail-fast on invalid input)
     input_data: dict[str, Any] = json.load(sys.stdin)
 
     # Extract tool name and input
