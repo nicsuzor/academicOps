@@ -15,6 +15,7 @@ Related:
 """
 
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -290,7 +291,7 @@ class TestHydrationGateBehavior:
             "hook_event_name": "PreToolUse",
             "session_id": "test-session",
             "tool_name": "Bash",
-            "tool_input": {"command": "ls -la"},
+            "tool_input": {"command": "touch foo"},
         }
         ctx = GateContext(
             session_id=event["session_id"],
