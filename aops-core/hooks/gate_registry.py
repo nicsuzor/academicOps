@@ -2047,8 +2047,15 @@ def run_user_prompt_submit(ctx: GateContext) -> Optional[GateResult]:
     except Exception as e:
         import traceback
 
-        print(f"WARNING: user_prompt_submit error: {e}", file=sys.stderr)
+        error_msg = f"user_prompt_submit error: {type(e).__name__}: {e}"
+        print(f"WARNING: {error_msg}", file=sys.stderr)
         traceback.print_exc(file=sys.stderr)
+        # FAIL-FAST: Return error in metadata so it's visible in hook logs
+        return GateResult(
+            verdict=GateVerdict.ALLOW,
+            context_injection=f"⛔ **HYDRATION ERROR**: {error_msg}\n\nCannot proceed with hydration.",
+            metadata={"source": "user_prompt_submit", "error": error_msg},
+        )
 
     return None
 
