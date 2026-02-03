@@ -8,6 +8,21 @@ description: Working hypotheses validated by evidence.
 
 # Heuristics
 
+## Probabilistic Methods, Deterministic Processes (P#92)
+
+**Statement**: The framework embraces probabilistic methods (LLM agents) while requiring deterministic processes and derivable principles. Experimentation is encouraged within clear safeguards.
+
+**Corollaries**:
+- LLMs are inherently probabilistic - we don't seek deterministic *outcomes*
+- Processes (workflows, enforcement, derivation chains) must be deterministic and reproducible
+- Principles must be derivable from axioms - no ad-hoc rules
+- Feedback loops (P#45) enable controlled experimentation
+- Fail-fast (P#8, P#9) provides safeguards against runaway experiments
+
+**Derivation**: Attempting deterministic outcomes from probabilistic agents is futile. The framework achieves rigor through deterministic *processes* that channel probabilistic methods productively.
+
+---
+
 ## Skills Contain No Dynamic Content (P#19)
 
 **Statement**: Current state lives in $ACA_DATA, not in skills.
