@@ -441,6 +441,10 @@ description: Working hypotheses validated by evidence.
 
 **QA Verification Corollary**: For user-facing features, automated tests (element presence, string matching) are INSUFFICIENT. QA must examine ACTUAL CONTENT and ask: "Would a real user find this helpful?" Content showing "unknown", placeholder text, or meaningless data is a FAILURE regardless of whether UI elements exist. Output screenshots/samples and make explicit user-value judgments.
 
+**Epic Verification Corollary**: User-facing features MUST belong to an epic with a qualitative verification step. The epic acceptance criteria must include "run the actual interface and verify it addresses the original user need." Individual subtasks may pass technical QA, but epic completion requires qualitative user-value assessment.
+
+**Handover Epic Context Corollary**: When completing a task that has a parent epic, handover MUST report: (1) remaining work on the epic, (2) whether epic is now ready for qualitative verification. This ensures visibility into feature completion state, not just subtask completion.
+
 **Derivation**: P#31 (Acceptance Criteria Own Success) and P#74 (User System Expertise) establish user as authority on success. This heuristic operationalizes: verify understanding of user intent BEFORE building, not just validate technical correctness after.
 
 ---
