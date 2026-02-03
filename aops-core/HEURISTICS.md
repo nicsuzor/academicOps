@@ -420,6 +420,10 @@ description: Working hypotheses validated by evidence.
 
 **Evidence**: Session 2026-02-03 - agent built "499 agents working" dashboard feature showing `unknown: No specific task` for every entry. Feature passed planning and technical review but provided zero value to user. The spec described WHAT to display without WHY users need it.
 
+**Evidence 2**: Same session - QA acceptance test passed "Session Display 5/5" by checking element presence ("WHERE YOU LEFT OFF exists") without examining content. Actual content showed "now unknown ok" - completely useless. QA used Playwright to verify UI element existence, not whether the content answered user questions.
+
+**QA Verification Corollary**: For user-facing features, automated tests (element presence, string matching) are INSUFFICIENT. QA must examine ACTUAL CONTENT and ask: "Would a real user find this helpful?" Content showing "unknown", placeholder text, or meaningless data is a FAILURE regardless of whether UI elements exist. Output screenshots/samples and make explicit user-value judgments.
+
 **Derivation**: P#31 (Acceptance Criteria Own Success) and P#74 (User System Expertise) establish user as authority on success. This heuristic operationalizes: verify understanding of user intent BEFORE building, not just validate technical correctness after.
 
 ---
