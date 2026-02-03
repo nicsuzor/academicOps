@@ -26,6 +26,12 @@ Transform this user prompt into an execution plan with scope detection and task 
 
 **Use these prefixes in execution plans** - never use relative paths like `specs/file.md`.
 
+{mcp_tools}
+
+{env_vars}
+
+{project_paths}
+
 ## Available Project Context
 
 The following files are mapped in this project's context map. **You must decide** if any of them are relevant to the user's request. If so, read them immediately.
