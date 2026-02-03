@@ -338,18 +338,21 @@ The TASK GATE tracks three conditions for full compliance:
 
 ## Session-End Validation (Stop Hooks)
 
-Session end is blocked until requirements are met. Two-phase validation ensures proper handover.
+Session end is blocked until requirements are met. Three-phase validation ensures proper handover.
 
-### Framework Reflection Validation (Two-Stage)
+### Framework Reflection Validation (Three-Stage)
 
 **Enforcement**: `gate_registry.py` (AfterAgent → `check_agent_response_listener`) + `check_stop_gate`.
 
-The stop gate requires TWO conditions for session completion:
+The stop gate requires THREE conditions for session completion:
 
 | Condition | Gate | Set By | Check |
 |-----------|------|--------|-------|
 | (1) Hydration invoked | `hydrator_invoked` | `post_hydration_trigger` (PostToolUse) | Prompt-hydrator completed |
 | (2) Reflection validated | `handover_skill_invoked` | `check_agent_response_listener` (AfterAgent) | All required fields present |
+| (3) QA verified | `qa_invoked` | `post_qa_trigger` (PostToolUse) | QA skill/task invoked |
+
+**Note**: Condition (3) is only required when hydration occurred AND workflow is not streamlined (`interactive-followup`, `simple-question`, `direct-skill`).
 
 **Gate (2) Field Validation**: When `## Framework Reflection` is detected in agent response, all 8 required fields must be present:
 
@@ -370,16 +373,19 @@ The stop gate requires TWO conditions for session completion:
 - Context injection shows correct format
 - Agent can retry with complete reflection
 
-**Stop Gate Enforcement**: `check_stop_gate` blocks session end if `handover_skill_invoked` flag is not set.
+**Stop Gate Enforcement**: `check_stop_gate` blocks session end if any required flag is not set.
 
 **Workflow**:
 1. Agent completes work
-2. Agent outputs Framework Reflection with ALL required fields
-3. AfterAgent hook validates format and sets `handover_skill_invoked` flag
-4. Agent attempts to end session (triggers Stop event)
-5. Stop gate checks `handover_skill_invoked` flag
-6. If flag set: session ends
-7. If flag not set: blocks with instructions to output valid reflection
+2. Agent invokes QA skill to verify results against original request and acceptance criteria
+3. PostToolUse hook sets `qa_invoked` flag
+4. Agent outputs Framework Reflection with ALL required fields
+5. AfterAgent hook validates format and sets `handover_skill_invoked` flag
+6. Agent invokes `/handover` skill
+7. Agent attempts to end session (triggers Stop event)
+8. Stop gate checks all three flags (hydrator, handover, QA)
+9. If all flags set: session ends
+10. If any flag missing: blocks with instructions for the missing step
 
 ### Uncommitted Work Check
 

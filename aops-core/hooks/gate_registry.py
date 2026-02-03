@@ -1504,7 +1504,8 @@ def check_stop_gate(ctx: GateContext) -> Optional[GateResult]:
     Rules:
     0. Bypass Check: If gates_bypassed flag is set in session state, skip all checks.
     1. Critic Check: If turns_since_hydration == 0, deny stop and demand Critic.
-    2. Handover Check: If handover skill not invoked, issue warning but allow stop.
+    2. Handover Check: If handover skill not invoked (with valid reflection format), deny stop.
+    3. QA Check: If hydration occurred and not streamlined workflow, require QA verification.
     """
     _check_imports()
 
@@ -1547,6 +1548,24 @@ def check_stop_gate(ctx: GateContext) -> Optional[GateResult]:
         # Issue warning but allow stop
         msg = load_template(STOP_GATE_HANDOVER_BLOCK_TEMPLATE)
         return GateResult(verdict=GateVerdict.DENY, context_injection=msg)
+
+    # --- 3. QA Verification Check ---
+    # If hydration occurred (intent was set), require QA verification
+    # Streamlined workflows are exempt (same pattern as critic check)
+    if is_hydrated and not is_streamlined:
+        if not session_state.is_qa_invoked(ctx.session_id):
+            return GateResult(
+                verdict=GateVerdict.DENY,
+                context_injection=(
+                    "⛔ **BLOCKED: QA Verification Required**\n\n"
+                    "This session was planned via prompt-hydrator, which mandates QA verification.\n"
+                    "You have not invoked the QA skill yet.\n\n"
+                    "**Action Required**: Run `Skill(skill='aops-core:qa')` to verify your work "
+                    "against the original request and acceptance criteria before completing handover.\n\n"
+                    "After QA passes, invoke `/handover` again to end the session."
+                ),
+                metadata={"source": "stop_gate_qa_check"},
+            )
 
     return None
 
