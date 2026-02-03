@@ -200,11 +200,11 @@ description: Working hypotheses validated by evidence.
 **Statement**: The creating agent is responsible for inserting tasks onto the work graph. Every task MUST connect to the hierarchy: `action → task → epic → project → goal`. Disconnected tasks are violations.
 
 **Hierarchy definitions**:
-- **Goal**: Long-term outcome (months/years) - "Finish PhD", "Launch product"
-- **Project**: Bounded initiative with deliverables (weeks/months) - "Migrate to tasks-mcp"
-- **Epic**: Group of tasks toward a milestone (days/weeks) - "Implement batch processing"
-- **Task**: Discrete piece of work (hours/days) - "Fix hydrator bug"
-- **Action**: Single atomic step (minutes) - "Run tests"
+- **Goal**: Strategic life outcome (months/years). You have 3-5 goals total - "World-Class Academic Profile", "Get Paid", "Be Happy". If you're creating more than 5, you're misusing this type.
+- **Project**: Bounded initiative with deliverables (weeks/months) - "Reliability Paper", "v1.1 Framework Release". Projects live under goals.
+- **Epic**: Group of tasks toward a milestone (days/weeks) - "Implement batch processing". Epics live under projects.
+- **Task**: Discrete piece of work (hours/days) - "Fix hydrator bug". Tasks are files with IDs.
+- **Action**: Single atomic step (minutes) - "Run tests". Actions are bullet points in task bodies, NOT separate files.
 
 **Sequencing principle**: Work on one epic at a time when possible. Epics are the unit of focus - completing an epic before starting another reduces context-switching and makes progress visible.
 
