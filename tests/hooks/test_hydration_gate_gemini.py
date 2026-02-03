@@ -265,6 +265,7 @@ class TestHydrationGateBehavior:
         result = check_hydration_gate(ctx)
         assert result is None, "Gate should allow subagent sessions"
 
+    @patch.dict(os.environ, {"HYDRATION_GATE_MODE": "block"})
     @patch("hooks.gate_registry.session_state")
     @patch("hooks.gate_registry.hook_utils")
     @patch("hooks.gate_registry.load_template")
