@@ -2031,8 +2031,10 @@ def check_qa_enforcement_gate(ctx: GateContext) -> Optional[GateResult]:
         context_injection=(
             "⛔ **BLOCKED: QA Verification Required**\n\n"
             "This task was planned via `prompt-hydrator`, which mandates a QA step.\n"
-            "You have not invoked the QA skill yet.\n\n"
-            "**Action Required**: Run `activate_skill(name='qa')` to verify your work before completion."
+            "You have not invoked QA yet.\n\n"
+            "**Action Required**: Invoke QA to verify your work before completion.\n\n"
+            "- **Claude Code**: `Task(subagent_type='aops-core:qa', prompt='Verify...')` or `Skill(skill='qa')`\n"
+            "- **Gemini CLI**: `delegate_to_agent(agent_name='qa', prompt='Verify...')` or `activate_skill(name='qa')`"
         ),
         metadata={"source": "qa_enforcement"},
     )
