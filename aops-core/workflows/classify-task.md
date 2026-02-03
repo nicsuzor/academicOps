@@ -48,6 +48,7 @@ Classify based on execution path and scope:
 - "Build feature X" (vague scope)
 - "Improve performance" (needs analysis first)
 - Goal-level requests lacking clear path
+- **NOT** tasks with clear plans awaiting information - those are `multi-step` (e.g., "run QA tests, analyze results, decompose findings" has clear steps)
 
 **blocked-human** (TRIAGE, assign to nic):
 - "Which API should we use?"
