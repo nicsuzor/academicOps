@@ -62,6 +62,23 @@ After each chunk:
    - Proceeding to next chunk
    - Executing bulk actions (archive, create tasks)
 
+## Receipt Persistence (CRITICAL)
+
+When user requests receipts/logging of destructive batch operations:
+
+1. **Write to TASK BODY, not scratchpad** - receipts must be persistent, not ephemeral
+2. **Concurrent writes** - update task body DURING execution, not after
+3. **Each worker appends** - pass task ID to workers, workers call `update_task(body=...)` to append receipts
+4. **Failure = partial receipt** - if operation fails mid-batch, task body contains audit trail up to failure point
+
+```
+# Worker prompt must include:
+"After EACH item processed, append receipt to task [task-id]:
+mcp__plugin_aops-core_task_manager__update_task(id='[task-id]', body='- Archived: DATE | FROM | SUBJECT')"
+```
+
+**Scratchpad is for intermediate state and summaries. Task body is for user-requested receipts.**
+
 ## Key Principle
 
 **Smart subagent, dumb supervisor.** Supervisor writes ONE smart prompt; worker discovers, processes, reports.
