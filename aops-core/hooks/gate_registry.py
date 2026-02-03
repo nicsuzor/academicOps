@@ -1752,12 +1752,55 @@ def check_agent_response_listener(ctx: GateContext) -> Optional[GateResult]:
             metadata={"source": "post_hydration_trigger"},
         )
 
-    # 2. Update Handover State
+    # 2. Update Handover State - validate Framework Reflection format
     if "## Framework Reflection" in response_text:
+        # Required fields for a valid Framework Reflection (per P#65, session completion rules)
+        required_fields = [
+            r"\*\*Prompts\*\*:",
+            r"\*\*Guidance received\*\*:",
+            r"\*\*Followed\*\*:",
+            r"\*\*Outcome\*\*:",
+            r"\*\*Accomplishments\*\*:",
+            r"\*\*Friction points\*\*:",
+            r"\*\*Proposed changes\*\*:",
+            r"\*\*Next step\*\*:",
+        ]
+
+        missing_fields = []
+        for field_pattern in required_fields:
+            if not re.search(field_pattern, response_text, re.IGNORECASE):
+                # Extract field name for error message
+                field_name = field_pattern.replace(r"\*\*", "").replace(":", "")
+                missing_fields.append(field_name)
+
+        if missing_fields:
+            # Reflection present but malformed - issue warning, don't set flag
+            return GateResult(
+                verdict=GateVerdict.ALLOW,
+                system_message=f"⚠️ [Gate] Framework Reflection found but missing required fields: {', '.join(missing_fields)}. Handover gate remains closed.",
+                context_injection=(
+                    "<system-reminder>\n"
+                    "Your Framework Reflection is missing required fields. The correct format is:\n\n"
+                    "## Framework Reflection\n\n"
+                    "**Prompts**: [Original request in brief]\n"
+                    "**Guidance received**: [Hydrator advice, or \"N/A\"]\n"
+                    "**Followed**: [Yes/No/Partial - explain]\n"
+                    "**Outcome**: success | partial | failure\n"
+                    "**Accomplishments**: [What was completed]\n"
+                    "**Friction points**: [Issues encountered, or \"none\"]\n"
+                    "**Proposed changes**: [Framework improvements, or \"none\"]\n"
+                    "**Next step**: [Follow-up needed, or \"none\"]\n\n"
+                    f"Missing: {', '.join(missing_fields)}\n"
+                    "</system-reminder>"
+                ),
+                metadata={"source": "agent_response_listener", "missing_fields": missing_fields},
+            )
+
+        # All required fields present - set handover flag
         session_state.set_handover_skill_invoked(ctx.session_id)
         return GateResult(
             verdict=GateVerdict.ALLOW,
-            system_message="🧠 [Gate] Framework Reflection detected. Handover gate open.",
+            system_message="🧠 [Gate] Framework Reflection validated. Handover gate open.",
         )
 
     return None

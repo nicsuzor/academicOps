@@ -340,34 +340,46 @@ The TASK GATE tracks three conditions for full compliance:
 
 Session end is blocked until requirements are met. Two-phase validation ensures proper handover.
 
-### Framework Reflection Validation
+### Framework Reflection Validation (Two-Stage)
 
-**Enforcement**: `reflection_check.py` Stop hook using `parse_framework_reflection` from transcript_parser.py.
+**Enforcement**: `gate_registry.py` (AfterAgent → `check_agent_response_listener`) + `check_stop_gate`.
 
-| Requirement | Validation | Block Message |
-|-------------|------------|---------------|
-| `## Framework Reflection` header | Regex match | "Output ## Framework Reflection..." |
-| Parseable fields | `parse_framework_reflection()` returns non-None | Shows required format |
-| Minimum fields | `outcome` field present | Shows required format |
+The stop gate requires TWO conditions for session completion:
 
-**Required format** (parseable by transcript.py):
-```markdown
-## Framework Reflection
+| Condition | Gate | Set By | Check |
+|-----------|------|--------|-------|
+| (1) Hydration invoked | `hydrator_invoked` | `post_hydration_trigger` (PostToolUse) | Prompt-hydrator completed |
+| (2) Reflection validated | `handover_skill_invoked` | `check_agent_response_listener` (AfterAgent) | All required fields present |
 
-**Outcome**: success/partial/failure
-**Accomplishments**: what was done
-**Next step**: what to do next
-```
+**Gate (2) Field Validation**: When `## Framework Reflection` is detected in agent response, all 8 required fields must be present:
 
-**Timing constraint**: Due to transcript timing, reflection must be output BEFORE the stopping turn. The transcript file isn't updated until after the Stop hook completes, so reflection in the final message cannot be detected.
+| Required Field | Purpose |
+|----------------|---------|
+| `**Prompts**:` | Original request |
+| `**Guidance received**:` | Hydrator advice (write N/A if none) |
+| `**Followed**:` | Yes/No/Partial with explanation |
+| `**Outcome**:` | One of: success, partial, failure |
+| `**Accomplishments**:` | What was completed |
+| `**Friction points**:` | Issues encountered (write none if none) |
+| `**Proposed changes**:` | Framework improvements (write none if none) |
+| `**Next step**:` | Follow-up needed (write none if none) |
+
+**Malformed Reflection Handling**: If `## Framework Reflection` is present but missing required fields:
+- Gate remains closed (`handover_skill_invoked` NOT set)
+- Warning message lists missing fields
+- Context injection shows correct format
+- Agent can retry with complete reflection
+
+**Stop Gate Enforcement**: `check_stop_gate` blocks session end if `handover_skill_invoked` flag is not set.
 
 **Workflow**:
 1. Agent completes work
-2. Agent outputs Framework Reflection in a message
-3. Agent attempts to end session (triggers Stop event)
-4. Hook reads transcript, finds reflection in earlier message
-5. If found and parseable: session ends
-6. If not found: blocks with format instructions, agent retries
+2. Agent outputs Framework Reflection with ALL required fields
+3. AfterAgent hook validates format and sets `handover_skill_invoked` flag
+4. Agent attempts to end session (triggers Stop event)
+5. Stop gate checks `handover_skill_invoked` flag
+6. If flag set: session ends
+7. If flag not set: blocks with instructions to output valid reflection
 
 ### Uncommitted Work Check
 
