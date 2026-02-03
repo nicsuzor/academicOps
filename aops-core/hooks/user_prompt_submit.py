@@ -270,7 +270,10 @@ def _load_project_workflows(prompt: str = "") -> str:
 
     included_workflows = []
     for wf_file in workflow_files:
-        keywords = workflow_keywords.get(wf_file.name, [])
+        # Internal dict lookup - empty list for unlisted files is correct (no keywords = no match)
+        keywords = workflow_keywords.get(wf_file.name)
+        if keywords is None:
+            keywords = []
         if any(kw in prompt_lower for kw in keywords):
             try:
                 content = wf_file.read_text()
@@ -328,9 +331,15 @@ def load_project_context_index() -> str:
 
     try:
         context_map = json.loads(map_file.read_text())
-        docs = context_map.get("docs", [])
     except (json.JSONDecodeError, OSError):
         return ""
+
+    # Validate structure - docs array is required if context-map exists
+    if "docs" not in context_map:
+        return ""  # No docs key = graceful skip (optional feature)
+    docs = context_map["docs"]
+    if not isinstance(docs, list):
+        return ""  # Invalid structure = graceful skip
 
     if not docs:
         return ""
@@ -340,10 +349,23 @@ def load_project_context_index() -> str:
     # Header handled in template
 
     for doc in docs:
-        topic = doc.get("topic", "Unknown").replace("_", " ").title()
-        path = doc.get("path", "")
-        desc = doc.get("description", "")
-        keywords = ", ".join(doc.get("keywords", []))
+        # Validate required fields per doc entry
+        if not isinstance(doc, dict):
+            continue  # Skip malformed entries
+        topic = doc.get("topic")
+        if topic is None:
+            topic = "Unknown"
+        topic = topic.replace("_", " ").title()
+        path = doc.get("path")
+        if path is None:
+            path = ""
+        desc = doc.get("description")
+        if desc is None:
+            desc = ""
+        keywords_list = doc.get("keywords")
+        if keywords_list is None:
+            keywords_list = []
+        keywords = ", ".join(keywords_list)
 
         entry = f"- **{topic}** (`{path}`)"
         if desc:
@@ -479,9 +501,11 @@ def get_session_id() -> str:
     Returns CLAUDE_SESSION_ID if set, raises ValueError otherwise.
     Session ID is required for state isolation.
     """
-    session_id = os.environ.get("CLAUDE_SESSION_ID", "")
-    if not session_id:
+    session_id = os.environ.get("CLAUDE_SESSION_ID")
+    if session_id is None:
         raise ValueError("CLAUDE_SESSION_ID not set - cannot save session state")
+    if not session_id:
+        raise ValueError("CLAUDE_SESSION_ID is empty - cannot save session state")
     return session_id
 
 
@@ -762,9 +786,14 @@ def main():
         sys.exit(2)
 
     try:
-        prompt = input_data.get("prompt", "")
-        transcript_path = input_data.get("transcript_path")
-        session_id = input_data.get("session_id", "")
+        # Extract required fields with explicit validation
+        prompt = input_data.get("prompt")
+        if prompt is None:
+            prompt = ""  # Empty prompt is valid (will skip hydration)
+        transcript_path = input_data.get("transcript_path")  # Optional
+        session_id = input_data.get("session_id")
+        if session_id is None:
+            session_id = ""  # Will be caught by validation below
 
         _log_debug(f"SID={session_id} Prompt='{prompt[:50]}...'")
 
