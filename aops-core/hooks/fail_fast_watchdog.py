@@ -93,9 +93,9 @@ def main():
     # Note: The field is tool_response, not tool_result
     # For Bash: {stdout, stderr, ...}
     # For other tools: varies
-    tool_response = input_data.get("tool_response")
-    if tool_response is None:
-        tool_response = {}
+    if "tool_response" not in input_data:
+        raise ValueError("input_data requires 'tool_response' parameter for PostToolUse (P#8: fail-fast)")
+    tool_response = input_data["tool_response"]
     if "tool_name" not in input_data:
         raise ValueError("input_data requires 'tool_name' parameter (P#8: fail-fast)")
     tool_name = input_data["tool_name"]
