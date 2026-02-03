@@ -19,25 +19,23 @@ from lib.session_state import is_handover_skill_invoked
 
 def main():
     """Main hook entry point - blocks session if /handover not invoked."""
-    input_data: dict[str, Any] = {}
-    try:
-        input_data = json.load(sys.stdin)
-    except Exception:
-        pass
+    input_data: dict[str, Any] = json.load(sys.stdin)
 
     session_id = input_data.get("session_id", "") or os.environ.get(
         "CLAUDE_SESSION_ID", ""
     )
+    if not session_id:
+        raise ValueError("Missing session_id in input or CLAUDE_SESSION_ID environment variable")
+
     output_data: dict[str, Any] = {}
 
-    if session_id:
-        if not is_handover_skill_invoked(session_id):
-            output_data = {
-                "decision": "block",
-                "reason": "Invoke Skill aops-core:handover to end session. Only the handover skill clears this gate. Use AskUserQuestion if you need user input before handover.",
-            }
-        else:
-            output_data["decision"] = "approve"
+    if not is_handover_skill_invoked(session_id):
+        output_data = {
+            "decision": "block",
+            "reason": "Invoke Skill aops-core:handover to end session. Only the handover skill clears this gate. Use AskUserQuestion if you need user input before handover.",
+        }
+    else:
+        output_data["decision"] = "approve"
     # Output
 
     print(json.dumps(output_data))
