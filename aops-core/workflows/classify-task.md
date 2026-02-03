@@ -171,7 +171,10 @@ Then use `AskUserQuestion` with specific options:
 | `omcp` | Outlook MCP server |
 | `personal` | Personal infrastructure, GCP, home automation |
 | `academic` | Teaching, research admin |
+| `hdr` | HDR student supervision and administration |
 | `ns` | General/uncategorized (default fallback) |
+
+**Note**: HDR student tasks MUST use `project=hdr`. Do not use `supervision` project for student-specific tasks.
 
 **Default**: Use `ns` only if no specific project fits AND user confirmation isn't practical
 
