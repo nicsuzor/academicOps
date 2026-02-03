@@ -486,15 +486,23 @@ class ActiveAgent:
     context: SessionContext | None = None  # Conversation context for display
 
 
-def get_active_agents() -> list[ActiveAgent]:
-    """Parse sessions/status/*.json files to find active sessions.
+def get_active_agents(max_age_hours: int = 1) -> list[ActiveAgent]:
+    """Parse sessions/status/*.json files to find recent active sessions.
 
-    Enhanced to include SessionContext for conversation-centric display
-    per specs/overwhelm-dashboard.md Session Context Model.
+    Enhanced with time filtering per user feedback - only show truly recent activity.
+
+    Args:
+        max_age_hours: Only include sessions started/modified within this many hours (default: 1)
+
+    Returns:
+        List of ActiveAgent objects with meaningful context, sorted by recency.
     """
+    from datetime import timedelta
+
     agents = []
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
+
     # Assumes running from root where sessions/status exists, or check standard locations
-    # Use CWD first as per instructions "files to modify" logic usually implies relative to root
     status_dir = Path("sessions/status")
 
     # Fallback to home dir location if CWD fails (for compatibility)
@@ -506,8 +514,26 @@ def get_active_agents() -> list[ActiveAgent]:
 
     for status_file in status_dir.glob("*.json"):
         try:
+            # Check file modification time first (fast filter)
+            mtime = datetime.fromtimestamp(status_file.stat().st_mtime, tz=timezone.utc)
+            if mtime < cutoff:
+                continue  # Skip stale files
+
             data = json.loads(status_file.read_text())
             if data.get("ended_at") is None:
+                # Double-check recency from started_at
+                started_at = data.get("started_at")
+                if started_at:
+                    try:
+                        start = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+                        if start.tzinfo is None:
+                            start = start.replace(tzinfo=timezone.utc)
+                        # Only include if started within time window
+                        if start < cutoff:
+                            continue
+                    except (ValueError, TypeError):
+                        pass
+
                 # Extract fields with safe fallbacks
                 main_agent = data.get("main_agent", {})
                 insights = data.get("insights") or {}
@@ -527,6 +553,8 @@ def get_active_agents() -> list[ActiveAgent]:
         except (json.JSONDecodeError, OSError):
             continue
 
+    # Sort by recency (most recent first)
+    agents.sort(key=lambda a: a.started_at or "", reverse=True)
     return agents
 
 
@@ -551,90 +579,67 @@ def _format_duration(started_at: str | None) -> str:
 
 
 def render_agents_working():
-    """Render the 'AGENTS WORKING' section with conversation-centric context.
+    """Render compact 'CURRENT ACTIVITY' box showing last hour only.
 
-    Per specs/overwhelm-dashboard.md Session Context Model:
-    - Shows initial prompt (what user asked)
-    - Shows current status or planned next step
-    - Filters out sessions without meaningful context
+    Replaces verbose session cards with a compact single-line-per-session format.
+    Only shows sessions from last hour with meaningful context.
     """
-    agents = get_active_agents()
+    # Only fetch last hour of activity
+    agents = get_active_agents(max_age_hours=1)
 
-    # Filter to agents with meaningful context per spec
+    # Filter to agents with meaningful context
     agents_with_context = [
         a for a in agents
         if a.context is not None and a.context.has_meaningful_context()
     ]
 
-    if not agents_with_context:
+    # Also filter out "unknown" projects with no useful context
+    agents_filtered = []
+    for a in agents_with_context:
+        project = a.project or (a.context.project if a.context else None) or "unknown"
+        ctx = a.context
+        # Must have either a real project OR a meaningful initial prompt
+        if project != "unknown" or (ctx and ctx.initial_prompt and len(ctx.initial_prompt) > 20):
+            agents_filtered.append(a)
+
+    if not agents_filtered:
         return
 
-    st.markdown(
-        f"<div class='agent-status-panel'><div class='agent-status-title'>🤖 SESSIONS WORKING ({len(agents_with_context)} active)</div>",
-        unsafe_allow_html=True
-    )
+    # Compact box format
+    html = "<div class='current-activity-box'>"
+    html += f"<div class='current-activity-header'>⚡ CURRENT ACTIVITY ({len(agents_filtered)})</div>"
 
-    all_tasks_cache = None
-
-    for agent in agents_with_context:
+    for agent in agents_filtered[:5]:  # Limit to 5 max
         duration_str = _format_duration(agent.started_at)
 
-        # Determine project - prefer agent.project, then context.project
-        if agent.project is not None:
-            project = agent.project
-        elif agent.context is not None and agent.context.project:
-            project = agent.context.project
-        else:
-            project = "unknown"
+        # Determine project
+        project = agent.project or (agent.context.project if agent.context else None) or "unknown"
+        if project == "unknown":
+            project = ""  # Don't show "unknown"
 
         ctx = agent.context
 
-        # Build conversation-centric display per spec:
-        # Started: "initial prompt"
-        # Now: current status
-        # Next: planned next step
+        # Get best description: current status > initial prompt
+        description = ""
+        if ctx:
+            if ctx.current_status:
+                description = ctx.current_status
+            elif ctx.initial_prompt:
+                description = ctx.initial_prompt
 
-        # Truncate initial prompt to 120 chars per spec (minimum context preservation)
-        initial = ctx.initial_prompt[:120] + "..." if len(ctx.initial_prompt) > 120 else ctx.initial_prompt
+        # Truncate to fit compact format
+        description = description[:100] + "..." if len(description) > 100 else description
 
-        # Current status - prefer todo state, fall back to extracted status
-        now_text = ctx.current_status
-        if not now_text and agent.task_id is not None:
-            # Fall back to task info
-            if all_tasks_cache is None:
-                all_tasks_cache = load_tasks_from_index()
-            t_obj = next((t for t in all_tasks_cache if t["id"] == agent.task_id), None)
-            if t_obj is not None and "title" in t_obj:
-                now_text = f"Working on: {t_obj['title']}"
-            elif t_obj is not None:
-                now_text = f"Working on task: {agent.task_id}"
-            else:
-                now_text = f"Working on task: {agent.task_id}"
+        # Single compact row
+        project_part = f"<span class='ca-project'>{esc(project)}</span>" if project else ""
+        html += f"<div class='current-activity-row'>"
+        html += f"<span class='ca-time'>{esc(duration_str)}</span>"
+        html += project_part
+        html += f"<span class='ca-desc'>{esc(description)}</span>"
+        html += "</div>"
 
-        # Next step
-        next_text = ctx.planned_next_step
-
-        # Build HTML with conversation context
-        html_parts = [f"<div class='agent-card'>"]
-        html_parts.append(f"<div class='agent-header'><span class='agent-project'>{esc(project)}</span> <span class='agent-meta'>({esc(duration_str)})</span></div>")
-
-        if initial:
-            html_parts.append(f"<div class='agent-context'><span class='context-label'>Started:</span> \"{esc(initial)}\"</div>")
-
-        if now_text:
-            now_truncated = now_text[:100] + "..." if len(now_text) > 100 else now_text
-            html_parts.append(f"<div class='agent-context'><span class='context-label'>Now:</span> {esc(now_truncated)}</div>")
-
-        if next_text and next_text != now_text:
-            next_truncated = next_text[:80] + "..." if len(next_text) > 80 else next_text
-            html_parts.append(f"<div class='agent-context'><span class='context-label'>Next:</span> {esc(next_truncated)}</div>")
-
-        html_parts.append("</div>")
-        html = "\n".join(html_parts)
-
-        st.markdown(html, unsafe_allow_html=True)
-
-    st.markdown("</div>", unsafe_allow_html=True)
+    html += "</div>"
+    st.markdown(html, unsafe_allow_html=True)
 
 
 # Project color scheme (matching Peacock)
@@ -2472,6 +2477,57 @@ st.markdown(
         color: #64748b;
         font-weight: 500;
         margin-right: 4px;
+    }
+
+    /* Compact Current Activity Box (replaces verbose agent cards) */
+    .current-activity-box {
+        background: rgba(74, 222, 128, 0.05);
+        border: 1px solid rgba(74, 222, 128, 0.2);
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 16px;
+    }
+
+    .current-activity-header {
+        color: #4ade80;
+        font-weight: 600;
+        font-size: 0.85em;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        margin-bottom: 8px;
+    }
+
+    .current-activity-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 4px 0;
+        font-size: 0.9em;
+        border-bottom: 1px solid rgba(100, 116, 139, 0.1);
+    }
+
+    .current-activity-row:last-child {
+        border-bottom: none;
+    }
+
+    .ca-time {
+        color: #64748b;
+        font-size: 0.85em;
+        min-width: 50px;
+    }
+
+    .ca-project {
+        color: #4ade80;
+        font-weight: 500;
+        min-width: 80px;
+    }
+
+    .ca-desc {
+        color: #cbd5e1;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     /* Project Grid Styles */
