@@ -44,7 +44,8 @@ class TestRouterFormatting:
         canonical = CanonicalHookOutput(verdict="allow", context_injection="Info")
         output = self.router.output_for_gemini(canonical, "BeforeTool")
         assert output.decision == "allow"
-        assert output.reason == "Info"
+        # For allow verdicts, context goes to hookSpecificOutput.additionalContext, not reason
+        assert output.hookSpecificOutput.additionalContext == "Info"
 
     def test_format_for_claude_deny(self):
         canonical = CanonicalHookOutput(

@@ -105,9 +105,10 @@ class TestHydrationDetection(unittest.TestCase):
         # Assertions
         mock_session_state.update_hydration_metrics.assert_called_with("test-session", turns_since_hydration=0)
         mock_session_state.clear_hydration_pending.assert_called_with("test-session")
-        self.assertIsNotNone(result, "Should return GateResult with critic injection")
+        self.assertIsNotNone(result, "Should return GateResult on hydration detection")
         self.assertEqual(result.verdict, gate_registry.GateVerdict.ALLOW)
-        self.assertIn("critic", result.context_injection.lower())
+        # Hydration complete sets system_message, not context_injection
+        self.assertIn("hydration", result.system_message.lower())
 
     @patch("hooks.gate_registry.hook_utils.get_hook_temp_dir")
     @patch("hooks.gate_registry.session_state")
