@@ -8,12 +8,14 @@ from pathlib import Path
 
 import yaml
 
-from validation import TaskIDValidationError, validate_task_id_or_raise
-
-# Add aops-core to path for lib imports
+# Add aops-core and polecat to path for imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
 REPO_ROOT = SCRIPT_DIR.parent
 sys.path.insert(0, str(REPO_ROOT / "aops-core"))
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from validation import TaskIDValidationError, validate_task_id_or_raise
 
 # These imports will fail here but work when moved to academicOps
 try:

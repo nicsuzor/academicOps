@@ -88,6 +88,10 @@ def install_cron_jobs(aops_path: Path, aca_data_path: str):
     transcript_cmd = f"*/30 * * * * cd {aops_path} && ACA_DATA={aca_data_path} uv run python aops-core/scripts/transcript.py --recent >> /tmp/aops-transcripts.log 2>&1"
     new_crontab_lines.append(transcript_cmd)
 
+    new_crontab_lines.append("# aOps refinery")
+    refinery_cmd = f"*/5 * * * * cd {aops_path} && ACA_DATA={aca_data_path} uv run python scripts/refinery.py >> /tmp/aops-refinery.log 2>&1"
+    new_crontab_lines.append(refinery_cmd)
+
     new_crontab = "\n".join(new_crontab_lines) + "\n"
 
     p = subprocess.Popen(["crontab", "-"], stdin=subprocess.PIPE)
@@ -117,6 +121,8 @@ def uninstall_framework(aops_path: Path):
                 "# aOps session insights" in line
                 or "scripts/cron_session_insights.sh" in line
             ):
+                continue
+            if "# aOps refinery" in line or "scripts/refinery.py" in line:
                 continue
             new_lines.append(line)
 
@@ -195,6 +201,9 @@ def main():
     )
 
     print("\n=== Phase 2: Install ===")
+
+    # Install Cron Jobs
+    install_cron_jobs(aops_root, str(aca_data_path))
 
     generate_paths_md(aops_root)
 
