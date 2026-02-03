@@ -705,9 +705,10 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
 @click.option("--claude", "-c", default=0, help="Number of Claude workers")
 @click.option("--gemini", "-g", default=0, help="Number of Gemini workers")
 @click.option("--project", "-p", help="Project to focus on (default: all)")
+@click.option("--caller", default="bot", help="Identity claiming the tasks (default: bot)")
 @click.option("--dry-run", is_flag=True, help="Simulate execution")
 @click.pass_context
-def swarm(ctx, claude, gemini, project, dry_run):
+def swarm(ctx, claude, gemini, project, caller, dry_run):
     """Run a swarm of parallel Polecat workers.
 
     Spawns N claude and M gemini workers, managing CPU affinity.
@@ -730,7 +731,7 @@ def swarm(ctx, claude, gemini, project, dry_run):
                 sys.exit(1)
 
     home = ctx.obj.get("home")
-    run_swarm(claude, gemini, project, dry_run, str(home) if home else None)
+    run_swarm(claude, gemini, project, caller, dry_run, str(home) if home else None)
 
 
 if __name__ == "__main__":
