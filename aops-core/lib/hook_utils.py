@@ -82,10 +82,11 @@ def get_hook_temp_dir(category: str, input_data: dict[str, Any] | None = None) -
             else:
                 project_hash_dir = t_path.parent
 
-            if project_hash_dir.exists():
-                path = project_hash_dir / category
-                path.mkdir(parents=True, exist_ok=True)
-                return path
+            # Create the category dir (and parent hash dir if needed)
+            # The hash dir comes from Gemini's transcript_path, so it's authoritative
+            path = project_hash_dir / category
+            path.mkdir(parents=True, exist_ok=True)
+            return path
 
     # 4. Gemini-specific discovery logic (GEMINI_CLI env or .gemini in cwd)
     if os.environ.get("GEMINI_CLI") or (Path.cwd() / ".gemini").exists():

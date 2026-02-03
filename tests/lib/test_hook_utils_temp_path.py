@@ -138,9 +138,15 @@ class TestGeminiTempPathFromTranscript:
 class TestGeminiTempPathEdgeCases:
     """Edge cases for Gemini temp path resolution."""
 
-    def test_nonexistent_transcript_parent_falls_through(self, tmp_path):
-        """Test that nonexistent transcript parent directory falls through."""
-        # Transcript path that doesn't exist
+    def test_nonexistent_transcript_parent_creates_directory(self, tmp_path):
+        """Test that nonexistent transcript parent directory is created.
+
+        When Gemini provides a transcript_path with .gemini, that path is
+        authoritative. We should CREATE the directory, not fall back to Claude.
+        This ensures Gemini sessions use consistent paths even if the directory
+        didn't exist when the hook first ran.
+        """
+        # Transcript path that doesn't exist yet
         fake_path = tmp_path / ".gemini" / "tmp" / "nonexistent" / "chats" / "session.json"
 
         input_data = {"transcript_path": str(fake_path)}
@@ -157,8 +163,10 @@ class TestGeminiTempPathEdgeCases:
                 ):
                     result = get_hook_temp_dir("hydrator", input_data)
 
-        # Should fall through to Claude default since parent doesn't exist
-        assert ".claude" in str(result)
+        # Should create the Gemini path, not fall through to Claude
+        assert ".gemini" in str(result)
+        assert "nonexistent" in str(result)
+        assert result.exists(), "Directory should be created"
 
     def test_no_input_data_falls_through(self):
         """Test that None input_data falls through to Claude default."""
