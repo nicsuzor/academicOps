@@ -176,11 +176,19 @@ def find_active_session_states(hours: int = 4) -> list[dict]:
 
 
 def _format_project_name(project_folder: str) -> str:
-    """Convert folder name to display name.
+    """Convert Claude projects folder name to display name.
 
-    -home-nic-writing -> writing
+    Folder names encode paths with dashes replacing slashes:
+    -home-nic-src-academicOps -> academicOps
+    -home-nic-.aops-aops-008c345f -> aops (skip hash suffix, skip hidden dirs)
     -Users-suzor-src-buttermilk -> buttermilk
-    -home-nic-writing-academicOps-hooks -> academicOps
+    -home-nic-writing-academicOps-hooks -> academicOps (skip -hooks suffix)
+
+    Strategy:
+    1. Convert to path segments
+    2. Skip known non-project segments (home, Users, src, hidden dirs, hashes)
+    3. Skip suffixes like -hooks, -core
+    4. Return the last meaningful segment
     """
     # Remove common suffixes that aren't the main project name
     folder = project_folder
@@ -195,6 +203,25 @@ def _format_project_name(project_folder: str) -> str:
     if not parts or parts == [""]:
         return project_folder.strip("-").split("-")[-1]
 
+    # Filter out non-project segments
+    skip_segments = {"home", "Users", "src", "var", "tmp", "nic", "suzor", ""}
+    meaningful_parts = []
+
+    for part in parts:
+        # Skip standard path components
+        if part.lower() in skip_segments:
+            continue
+        # Skip hidden directories (start with .)
+        if part.startswith("."):
+            continue
+        # Skip hash-like suffixes (8+ hex chars or UUID-like patterns)
+        if len(part) >= 8 and all(c in "0123456789abcdef" for c in part.lower()):
+            continue
+        meaningful_parts.append(part)
+
+    # Return last meaningful part, or fallback to simple last part
+    if meaningful_parts:
+        return meaningful_parts[-1]
     return parts[-1]
 
 
@@ -1278,37 +1305,75 @@ def _classify_session_outcome(session: dict) -> tuple[str, str]:
     return "", "unknown"
 
 
-def get_where_you_left_off(hours: int = 24, limit: int = 5) -> list[dict]:
-    """Get combined active + recent sessions for context recovery.
+def _has_meaningful_context(session: dict) -> bool:
+    """Check if session has enough context to display meaningfully.
 
-    Merges active sessions (from fetch_session_activity) with recent completed
-    sessions (from get_recent_sessions), prioritizing active sessions first.
+    Per spec: "Sessions without meaningful context are hidden"
+    User must be able to answer "what was I doing?" for every displayed session.
+    """
+    project = session.get("project", "")
+    description = session.get("description", "") or session.get("last_prompt", "")
+
+    # Filter out "unknown" projects with no description
+    if project in ("unknown", "", None) and not description:
+        return False
+
+    # Filter out useless descriptions
+    useless_patterns = [
+        "No specific task",
+        "Idle",
+        "New Session",
+        "Waiting for input",
+        "ok",
+        "d...",
+    ]
+    if description:
+        for pattern in useless_patterns:
+            if description.strip().lower() == pattern.lower():
+                return False
+            if description.strip() == pattern:
+                return False
+
+    # Must have either a real project OR a meaningful description
+    return bool(project and project != "unknown") or (description and len(description) > 10)
+
+
+def get_where_you_left_off(hours: int = 24, limit: int = 10) -> dict:
+    """Get sessions organized by recency triage for context recovery.
+
+    Per spec (Session Triage):
+    - Active (<4h): Full session cards with conversation context
+    - Paused (4-24h): Collapsed cards, expandable
+    - Stale (>24h): Archive prompt, NOT in main display
 
     Args:
-        hours: Time window for recent sessions
-        limit: Maximum rows to return
+        hours: Time window for recent sessions (for completed sessions)
+        limit: Maximum rows per bucket
 
     Returns:
-        List of session dicts ready for display:
-        - is_active: True if currently running
-        - time_display: "NOW" for active, relative time for completed
-        - project: Project name
-        - description: Brief description of activity
-        - outcome_text: "→ MERGED", "→ COMPLETE", etc.
-        - outcome_class: CSS class for styling
-        - reentry_link: Obsidian link for re-entry (or None)
+        Dict with triaged sessions:
+        - active: Sessions from last 4h (full cards)
+        - paused: Sessions from 4-24h (collapsed)
+        - stale_count: Number of sessions >24h (for archive prompt)
+        - entries: Flat list of active+paused for backward compatibility
     """
-    results = []
+    from datetime import timedelta
 
-    # 1. Get active sessions first (highest priority)
-    active_sessions = fetch_session_activity(hours=4)
-    for s in active_sessions:
-        # Skip idle sessions
+    active_bucket = []  # <4h
+    paused_bucket = []  # 4-24h
+    stale_count = 0  # >24h
+
+    now = datetime.now(timezone.utc)
+    cutoff_active = now - timedelta(hours=4)
+    cutoff_paused = now - timedelta(hours=24)
+
+    # 1. Get running sessions (active by definition)
+    running_sessions = fetch_session_activity(hours=4)
+    for s in running_sessions:
         last_prompt = s.get("last_prompt")
         if not last_prompt or last_prompt in ("Idle", "New Session (Waiting for input)"):
             continue
 
-        # Build description from prompt or todowrite
         description = last_prompt
         todowrite = s.get("todowrite")
         if todowrite:
@@ -1318,65 +1383,86 @@ def get_where_you_left_off(hours: int = 24, limit: int = 5) -> list[dict]:
                 if in_progress and "content" in in_progress[0]:
                     description = in_progress[0]["content"]
 
-        project = s.get("project")
-        if not project:
-            project = "unknown"
+        project = s.get("project") or "unknown"
+        session_short = s.get("session_short") or (s.get("session_id", "")[:7])
 
-        session_short = s.get("session_short")
-        if not session_short:
-            session_id = s.get("session_id")
-            session_short = session_id[:7] if session_id else ""
-
-        results.append({
+        entry = {
             "is_active": True,
+            "bucket": "active",
             "time_display": "NOW",
             "project": project,
-            "description": description[:60] + "..." if len(description) > 60 else description,
+            "description": description[:120] + "..." if len(description) > 120 else description,
             "outcome_text": "IN PROGRESS",
             "outcome_class": "active",
-            "reentry_link": None,  # Active sessions don't need re-entry
+            "reentry_link": None,
             "session_id": session_short,
-        })
+        }
 
-    # 2. Get recent completed sessions
-    recent_sessions = get_recent_sessions(hours=hours)
+        if _has_meaningful_context(entry):
+            active_bucket.append(entry)
+
+    # 2. Get completed sessions and triage by age
+    recent_sessions = get_recent_sessions(hours=168)  # Get up to 7 days for stale counting
     for s in recent_sessions:
-        # Skip sessions without meaningful content
         summary = s.get("summary")
         if not summary or summary == "Session completed":
-            # Check if there are accomplishments to use instead
             accomplishments = s.get("accomplishments")
             if accomplishments:
                 summary = accomplishments[0]
             else:
-                continue  # Filter out empty sessions
+                continue
+
+        session_date = s.get("date")
+        if not session_date:
+            continue
+
+        # Determine bucket based on age
+        if session_date >= cutoff_active:
+            bucket = "active"
+        elif session_date >= cutoff_paused:
+            bucket = "paused"
+        else:
+            stale_count += 1
+            continue  # Don't add stale sessions to display
 
         outcome_text, outcome_class = _classify_session_outcome(s)
 
-        # Build Obsidian re-entry link
         reentry_link = None
         session_file = s.get("session_file")
         if session_file:
-            # Obsidian link format: obsidian://open?vault=writing&file=sessions/claude/{filename}
             reentry_link = f"obsidian://open?vault=writing&file=sessions/claude/{session_file}"
 
-        project = s.get("project")
-        if not project:
-            project = "unknown"
+        project = s.get("project") or "unknown"
 
-        results.append({
+        entry = {
             "is_active": False,
+            "bucket": bucket,
             "time_display": s.get("time_ago"),
             "project": project,
-            "description": summary[:60] + "..." if len(summary) > 60 else summary,
+            "description": summary[:120] + "..." if len(summary) > 120 else summary,
             "outcome_text": outcome_text,
             "outcome_class": outcome_class,
             "reentry_link": reentry_link,
             "session_id": s.get("session_id"),
-        })
+        }
 
-    # Limit total results
-    return results[:limit]
+        if _has_meaningful_context(entry):
+            if bucket == "active":
+                active_bucket.append(entry)
+            else:
+                paused_bucket.append(entry)
+
+    # Apply limits
+    active_bucket = active_bucket[:limit]
+    paused_bucket = paused_bucket[:limit]
+
+    # Return triaged results
+    return {
+        "active": active_bucket,
+        "paused": paused_bucket,
+        "stale_count": stale_count,
+        "entries": active_bucket + paused_bucket,  # Backward compatibility
+    }
 
 
 def group_sessions_by_project(sessions: list[dict]) -> dict[str, list[dict]]:
@@ -2656,6 +2742,49 @@ st.markdown(
         color: var(--text-accent);
     }
 
+    /* Session triage bucket labels */
+    .wlo-bucket-label {
+        font-size: 0.75em;
+        font-weight: 600;
+        color: #4ade80;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 8px 12px 4px;
+        margin-top: 4px;
+    }
+
+    .wlo-paused-label {
+        color: #fbbf24;
+    }
+
+    /* Paused sessions - more subdued */
+    .wlo-paused-list {
+        opacity: 0.75;
+    }
+
+    .where-left-off-row.wlo-paused {
+        font-size: 0.9em;
+        padding: 4px 12px;
+    }
+
+    /* Stale sessions prompt */
+    .stale-sessions-prompt {
+        background: rgba(251, 191, 36, 0.1);
+        border: 1px solid rgba(251, 191, 36, 0.3);
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin: 8px 0;
+        color: #fbbf24;
+        font-size: 0.9em;
+    }
+
+    .stale-hint {
+        display: block;
+        font-size: 0.85em;
+        color: #888;
+        margin-top: 4px;
+    }
+
 </style>
 """,
     unsafe_allow_html=True,
@@ -3734,44 +3863,78 @@ activity_hours = st.sidebar.selectbox(
     format_func=lambda h: f"Last {h}h",
 )
 
-where_left_off = get_where_you_left_off(hours=activity_hours, limit=5)
-if where_left_off:
+where_left_off = get_where_you_left_off(hours=activity_hours, limit=10)
+active_sessions_wlo = where_left_off.get("active", [])
+paused_sessions_wlo = where_left_off.get("paused", [])
+stale_count = where_left_off.get("stale_count", 0)
+
+if active_sessions_wlo or paused_sessions_wlo:
     wlo_html = "<div class='where-left-off-panel'>"
     wlo_html += "<div class='where-left-off-header'>📍 WHERE YOU LEFT OFF</div>"
-    wlo_html += "<div class='where-left-off-list'>"
 
-    for entry in where_left_off:
-        outcome_class = entry["outcome_class"]
-        time_display = entry["time_display"]
-        time_class = "now" if entry["is_active"] else ""
+    # Active sessions (<4h) - full display
+    if active_sessions_wlo:
+        wlo_html += "<div class='wlo-bucket-label'>⚡ ACTIVE NOW</div>"
+        wlo_html += "<div class='where-left-off-list'>"
+        for entry in active_sessions_wlo:
+            outcome_class = entry["outcome_class"]
+            time_display = entry["time_display"]
+            time_class = "now" if entry["is_active"] else ""
 
-        wlo_html += f"<div class='where-left-off-row {outcome_class}'>"
-        wlo_html += f"<span class='wlo-time {time_class}'>{esc(time_display)}</span>"
-        wlo_html += f"<span class='wlo-project'>{esc(entry['project'])}</span>"
-        wlo_html += f"<span class='wlo-description'>{esc(entry['description'])}</span>"
-
-        # Outcome text with appropriate class
-        outcome_text = entry["outcome_text"]
-        outcome_text_class = outcome_class
-        wlo_html += f"<span class='wlo-outcome {outcome_text_class}'>{esc(outcome_text)}</span>"
-
-        # Re-entry link (if available)
-        reentry_link = entry.get("reentry_link")
-        if reentry_link:
-            wlo_html += f"<a href='{reentry_link}' class='wlo-link' title='Open in Obsidian'>↗</a>"
-        else:
-            wlo_html += "<span class='wlo-link'></span>"
-
+            wlo_html += f"<div class='where-left-off-row {outcome_class}'>"
+            wlo_html += f"<span class='wlo-time {time_class}'>{esc(time_display)}</span>"
+            wlo_html += f"<span class='wlo-project'>{esc(entry['project'])}</span>"
+            wlo_html += f"<span class='wlo-description'>{esc(entry['description'])}</span>"
+            outcome_text = entry["outcome_text"]
+            wlo_html += f"<span class='wlo-outcome {outcome_class}'>{esc(outcome_text)}</span>"
+            reentry_link = entry.get("reentry_link")
+            if reentry_link:
+                wlo_html += f"<a href='{reentry_link}' class='wlo-link' title='Open in Obsidian'>↗</a>"
+            else:
+                wlo_html += "<span class='wlo-link'></span>"
+            wlo_html += "</div>"
         wlo_html += "</div>"
 
-    wlo_html += "</div></div>"
+    # Paused sessions (4-24h) - collapsed style
+    if paused_sessions_wlo:
+        wlo_html += "<div class='wlo-bucket-label wlo-paused-label'>⏸️ PAUSED (4-24h ago)</div>"
+        wlo_html += "<div class='where-left-off-list wlo-paused-list'>"
+        for entry in paused_sessions_wlo:
+            outcome_class = entry["outcome_class"]
+            time_display = entry["time_display"]
+
+            wlo_html += f"<div class='where-left-off-row wlo-paused {outcome_class}'>"
+            wlo_html += f"<span class='wlo-time'>{esc(time_display)}</span>"
+            wlo_html += f"<span class='wlo-project'>{esc(entry['project'])}</span>"
+            wlo_html += f"<span class='wlo-description'>{esc(entry['description'])}</span>"
+            outcome_text = entry["outcome_text"]
+            wlo_html += f"<span class='wlo-outcome {outcome_class}'>{esc(outcome_text)}</span>"
+            reentry_link = entry.get("reentry_link")
+            if reentry_link:
+                wlo_html += f"<a href='{reentry_link}' class='wlo-link' title='Open in Obsidian'>↗</a>"
+            else:
+                wlo_html += "<span class='wlo-link'></span>"
+            wlo_html += "</div>"
+        wlo_html += "</div>"
+
+    wlo_html += "</div>"
     st.markdown(wlo_html, unsafe_allow_html=True)
+
+# Stale sessions prompt (>24h) - not in main display per spec
+if stale_count > 0:
+    st.markdown(
+        f"""<div class='stale-sessions-prompt'>
+            📦 {stale_count} stale session{"s" if stale_count != 1 else ""} (no activity &gt;24h)
+            <span class='stale-hint'>These are hidden from the main display</span>
+        </div>""",
+        unsafe_allow_html=True,
+    )
 
 # === PROJECT-CENTRIC DASHBOARD ===
 # Fetch Data
 # Fetch Data
 
-active_sessions = fetch_session_activity(hours=168)
+active_sessions = fetch_session_activity(hours=24)  # Per spec: show only recent sessions
 sessions_by_project = defaultdict(list)
 for s in active_sessions:
     p = s.get("project", "unknown")
