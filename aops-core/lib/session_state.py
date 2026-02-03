@@ -32,6 +32,13 @@ class SessionState(TypedDict, total=False):
     started_at: str  # ISO timestamp
     ended_at: str | None
 
+    # Session type detection (polecat vs interactive)
+    # Values: "polecat" | "crew" | "interactive"
+    # - polecat: headless autonomous (strict commit behavior)
+    # - crew: interactive crew session (relaxed)
+    # - interactive: normal interactive session (relaxed)
+    session_type: str
+
     # Execution state
     state: dict[str, Any]  # custodiet_blocked, current_workflow, hydration_pending,
     # reflection_output_since_prompt
@@ -156,6 +163,26 @@ def save_session_state(session_id: str, state: SessionState) -> None:
         raise
 
 
+def _detect_session_type() -> str:
+    """Detect session type from environment.
+
+    POLECAT_SESSION_TYPE is optional - unset means interactive session.
+    This is a valid case, not an error, so we check existence explicitly.
+
+    Returns:
+        "polecat" | "crew" | "interactive"
+    """
+    if "POLECAT_SESSION_TYPE" not in os.environ:
+        return "interactive"
+    session_type = os.environ["POLECAT_SESSION_TYPE"].lower()
+    if session_type == "polecat":
+        return "polecat"
+    elif session_type == "crew":
+        return "crew"
+    else:
+        return "interactive"
+
+
 def create_session_state(session_id: str) -> SessionState:
     """Create initial session state.
 
@@ -181,6 +208,7 @@ def create_session_state(session_id: str) -> SessionState:
         date=now.isoformat(),
         started_at=now.isoformat(),
         ended_at=None,
+        session_type=_detect_session_type(),
         state={
             "custodiet_blocked": False,
             "custodiet_block_reason": None,
@@ -1099,3 +1127,60 @@ def get_files_read(session_id: str) -> list[str]:
     if state is None:
         return []
     return state.get("state", {}).get("files_read", [])
+
+
+# ============================================================================
+# Session Type API (Polecat vs Interactive Detection)
+# ============================================================================
+
+
+def get_session_type(session_id: str) -> str:
+    """Get the session type for commit behavior enforcement.
+
+    Session types:
+    - "polecat": Headless autonomous agent (strict commit behavior)
+    - "crew": Interactive crew session (relaxed)
+    - "interactive": Normal interactive session (relaxed)
+
+    Args:
+        session_id: Claude Code session ID
+
+    Returns:
+        Session type string, defaults to "interactive" if not set
+    """
+    state = load_session_state(session_id)
+    if state is None:
+        # No state yet - detect from environment
+        return _detect_session_type()
+    # Handle old session files that don't have session_type field
+    if "session_type" not in state:
+        return "interactive"
+    return state["session_type"]
+
+
+def is_polecat_session(session_id: str) -> bool:
+    """Check if this is a polecat (headless autonomous) session.
+
+    Polecat sessions require stricter commit behavior enforcement.
+
+    Args:
+        session_id: Claude Code session ID
+
+    Returns:
+        True if session_type is "polecat"
+    """
+    return get_session_type(session_id) == "polecat"
+
+
+def is_interactive_session(session_id: str) -> bool:
+    """Check if this is an interactive session (crew or normal).
+
+    Interactive sessions have relaxed commit behavior.
+
+    Args:
+        session_id: Claude Code session ID
+
+    Returns:
+        True if session_type is "crew" or "interactive"
+    """
+    return get_session_type(session_id) in ("crew", "interactive")

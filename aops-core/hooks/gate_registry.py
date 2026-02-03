@@ -2406,6 +2406,6 @@ GATE_CHECKS = {
     # Stop gates
     "stop_gate": check_stop_gate,
     # "hydration_recency": check_hydration_recency_gate,  # Disabled: too restrictive for direct questions/skills
-    # "session_end_commit": run_session_end_commit_check,  # Disabled: pending session-type architecture (polecat/crew vs interactive)
+    "session_end_commit": run_session_end_commit_check,  # Enabled: session-type detection implemented (aops-54ddc76d)
     "generate_transcript": run_generate_transcript,
 }

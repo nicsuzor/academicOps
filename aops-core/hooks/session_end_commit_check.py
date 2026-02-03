@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import Any
 
 from lib.reflection_detector import has_reflection
-from lib.session_state import get_current_task, is_stop_hook_relaxed
+from lib.session_state import get_current_task, is_stop_hook_relaxed, is_polecat_session
 from lib.session_paths import get_session_short_hash, get_session_status_dir
 from lib.insights_generator import find_existing_insights
 from lib.transcript_parser import SessionProcessor
@@ -692,8 +692,17 @@ def main():
     output_data: dict[str, Any] = {}
 
     if session_id:
-        # Check if stop hook is in relaxed mode (interactive session)
-        relaxed_mode = is_stop_hook_relaxed(session_id)
+        # Determine enforcement mode based on session type
+        # Polecat sessions: strict commit enforcement (unless explicitly relaxed)
+        # Interactive/crew sessions: relaxed by default
+        is_polecat = is_polecat_session(session_id)
+        explicitly_relaxed = is_stop_hook_relaxed(session_id)
+
+        # Relaxed mode: interactive sessions OR explicitly marked as relaxed
+        # Strict mode: polecat sessions that are NOT explicitly relaxed
+        relaxed_mode = not is_polecat or explicitly_relaxed
+
+        logger.debug(f"Session enforcement: polecat={is_polecat}, explicit_relaxed={explicitly_relaxed}, relaxed_mode={relaxed_mode}")
 
         # Check 1: Block if there's an active task bound to this session
         try:

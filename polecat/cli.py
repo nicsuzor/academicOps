@@ -476,8 +476,12 @@ def crew(ctx, project, name, gemini, resume):
             plugin_dir_tools,
         ]
 
+    # Set session type environment variable for hooks to detect
+    env = os.environ.copy()
+    env["POLECAT_SESSION_TYPE"] = "crew"
+
     try:
-        subprocess.run(cmd, cwd=crew_root)
+        subprocess.run(cmd, cwd=crew_root, env=env)
     except FileNotFoundError:
         print(f"Error: '{cli_tool}' command not found.", file=sys.stderr)
         sys.exit(1)
@@ -642,12 +646,17 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
             # Headless: use -p for print mode
             cmd.extend(["-p", prompt])
 
+    # Set session type environment variable for hooks to detect
+    env = os.environ.copy()
+    env["POLECAT_SESSION_TYPE"] = "polecat"
+
     try:
         result = subprocess.run(
             cmd,
             cwd=worktree_path,
             capture_output=True,
             text=True,
+            env=env,
         )
         exit_code = result.returncode
         # Display agent output after run
