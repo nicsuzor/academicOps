@@ -101,6 +101,7 @@ def infer_project_from_working_dir(working_dir: str | None) -> str | None:
     - /home/user/src/myproject -> myproject
     - /home/user/projects/client-work -> client-work
     - /opt/user/code -> code
+    - /home/user/.aops/polecat/aops-008c345f -> aops (polecat worktree)
 
     Args:
         working_dir: Full path to working directory
@@ -117,6 +118,19 @@ def infer_project_from_working_dir(working_dir: str | None) -> str | None:
 
     if len(parts) < 2:
         return None
+
+    # Handle polecat worktree paths: ~/.aops/polecat/{project}-{hash}
+    # The project name is before the 8-char hash suffix
+    if ".aops" in parts and "polecat" in parts:
+        project = parts[-1]
+        # Polecat worktree format: {project}-{8char-hash}
+        # e.g., "aops-008c345f" -> "aops"
+        if len(project) > 9 and project[-9] == "-":
+            # Check if suffix looks like a hash (alphanumeric)
+            suffix = project[-8:]
+            if suffix.isalnum():
+                return project[:-9]
+        return project
 
     # Get the last non-empty part
     project = parts[-1]
