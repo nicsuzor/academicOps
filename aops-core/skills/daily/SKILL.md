@@ -240,6 +240,46 @@ This provides a bird's eye view of active project hierarchy. The tree:
 
 Copy the `formatted` field from the response directly into the code block.
 
+### 3.1.7: Query Pending Decisions
+
+Count tasks awaiting user decisions (for decision queue summary):
+
+```python
+# Get waiting tasks assigned to user
+waiting_tasks = mcp__plugin_aops-core_task_manager__list_tasks(
+    status="waiting",
+    assignee="nic",
+    limit=50
+)
+
+# Get review tasks assigned to user
+review_tasks = mcp__plugin_aops-core_task_manager__list_tasks(
+    status="review",
+    assignee="nic",
+    limit=50
+)
+
+# Filter to decision-type tasks (exclude project/epic/goal)
+EXCLUDED_TYPES = ["project", "epic", "goal"]
+decisions = [
+    t for t in (waiting_tasks + review_tasks)
+    if t.type not in EXCLUDED_TYPES
+]
+
+# Get topology for blocking counts
+topology = mcp__plugin_aops-core_task_manager__get_tasks_with_topology()
+
+# Count high-priority decisions (blocking 2+ tasks)
+high_priority_count = sum(
+    1 for d in decisions
+    if get_blocking_count(d.id, topology) >= 2
+)
+
+decision_count = len(decisions)
+```
+
+This count appears in the Focus section summary.
+
 ### 3.2: Build Focus Section
 
 The Focus section combines priority dashboard AND task recommendations in ONE place.
@@ -255,6 +295,8 @@ P1 █░░░░░░░░░  12/85 → [ns-abc] [[OSB-PAO]] (-3d), [ns-def
 P2 ██████████  55/85
 P3 ██░░░░░░░░  15/85
 ```
+
+**Pending Decisions**: 4 (2 blocking other work) → `/decision-extract`
 
 🚨 **DEADLINE TODAY**: [ns-xyz] [[ARC FT26 Reviews]] - Due 23:59 AEDT (8 reviews)
 **SHOULD**: [ns-abc] [[OSB PAO 2025E Review]] - 3 days overdue
