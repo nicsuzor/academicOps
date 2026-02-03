@@ -94,6 +94,7 @@ GATE_CONFIG: Dict[str, List[str]] = {
         "accountant",
         "post_hydration",
         "post_critic",
+        "post_qa",
         "skill_activation",
     ],
     "AfterAgent": ["unified_logger", "agent_response"],
