@@ -99,7 +99,7 @@ echo "✓ Found transcript: $(basename "$TRANSCRIPT")"
 
 ### Step 2a: Generate Transcript (if missing)
 
-If transcript doesn't exist, generate it using transcript.py:
+If transcript doesn't exist, generate it using transcript_push.py:
 
 ```bash
 # Find session file in Claude Code session directory
@@ -119,7 +119,7 @@ fi
 echo "Generating transcript from: $SESSION_PATH"
 
 # Generate transcript
-cd "$AOPS" && uv run python aops-core/scripts/transcript.py "$SESSION_PATH"
+cd "$AOPS" && uv run python aops-core/scripts/transcript_push.py "$SESSION_PATH"
 
 # Transcript is now in $ACA_DATA/../sessions/claude/
 TRANSCRIPT=$(find "$ACA_DATA/../sessions/claude" -name "*-${SESSION_ID}-*.md" | head -1)
@@ -375,7 +375,7 @@ Aborted. Existing insights preserved.
 ## Tips
 
 **For Large Transcripts**: If Gemini times out, consider:
-- Using abridged transcripts (created by transcript.py - generates both full and abridged versions)
+- Using abridged transcripts (created by transcript_push.py - generates both full and abridged versions)
 - Breaking the analysis into chunks
 - Using a faster model (but may sacrifice quality)
 
@@ -400,6 +400,6 @@ Generated insights are:
 ## See Also
 
 - `/audit` skill - Framework health auditing
-- `aops-core/scripts/transcript.py` - Transcript generation + reflection extraction
+- `aops-core/scripts/transcript_push.py` - Transcript generation + reflection extraction
 - `aops-core/specs/session-insights-prompt.md` - Shared prompt template
 - `aops-core/lib/insights_generator.py` - Generation library

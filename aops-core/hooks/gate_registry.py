@@ -2111,7 +2111,11 @@ def run_generate_transcript(ctx: GateContext) -> Optional[GateResult]:
         from pathlib import Path
 
         root_dir = Path(__file__).parent.parent
-        script_path = root_dir / "scripts" / "transcript.py"
+        script_path = root_dir / "scripts" / "transcript_push.py"
+
+        if not script_path.exists():
+            # Fallback to original transcript.py
+            script_path = root_dir / "scripts" / "transcript.py"
 
         if script_path.exists():
             result = subprocess.run(

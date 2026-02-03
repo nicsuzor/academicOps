@@ -27,14 +27,18 @@ def main():
         print(json.dumps({}))
         sys.exit(0)
 
-    # Locate transcript.py
+    # Locate transcript_push.py
     # This hook is in aops-core/hooks/
-    # transcript.py is in aops-core/scripts/
+    # transcript_push.py is in aops-core/scripts/
     root_dir = Path(__file__).parent.parent
-    script_path = root_dir / "scripts" / "transcript.py"
+    script_path = root_dir / "scripts" / "transcript_push.py"
+
+    if not script_path.exists():
+        # Fallback to original transcript.py
+        script_path = root_dir / "scripts" / "transcript.py"
 
     if script_path.exists():
-        # Run transcript.py
+        # Run transcript script
         # We don't capture output because we don't want to interfere with the hook output
         # unless debug logging is needed.
         result = subprocess.run(
