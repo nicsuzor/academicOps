@@ -309,15 +309,11 @@ def check_subagent_tool_restrictions(ctx: GateContext) -> Optional[GateResult]:
         if ctx.tool_name in MUTATING_TOOLS:
             return GateResult(
                 verdict=GateVerdict.DENY,
+                system_message="⛔ **BLOCKED: prompt-hydrator cannot use mutating tools**",
                 context_injection=(
                     "⛔ **BLOCKED: prompt-hydrator cannot use mutating tools**\n\n"
                     "The hydrator agent is read-only. It must return a hydration plan, "
                     "not execute the work directly.\n\n"
-                    "**Action Required**: Return your `## HYDRATION RESULT` section with:\n"
-                    "- Intent summary\n"
-                    "- Execution path\n"
-                    "- Acceptance criteria\n"
-                    "- Execution steps\n\n"
                     "Do NOT attempt to Edit, Write, or run Bash commands."
                 ),
                 metadata={
@@ -1129,6 +1125,7 @@ def check_axiom_enforcer_gate(ctx: GateContext) -> Optional[GateResult]:
 
     return GateResult(
         verdict=GateVerdict.DENY,
+        system_message="⛔ **AXIOM ENFORCEMENT BLOCKED**",
         context_injection="\n".join(msg_lines),
         metadata={
             "source": "axiom_enforcer",
@@ -1191,17 +1188,20 @@ def check_custodiet_gate(ctx: GateContext) -> Optional[GateResult]:
         return GateResult(
             verdict=GateVerdict.DENY,
             context_injection=instruction,
+            system_message="⛔ **CUSTODIET detected violation.**",
             metadata={"source": "custodiet", "tool_calls": tool_calls},
         )
 
     except (OSError, KeyError, TypeError) as e:
         # Fail-open: if instruction generation fails, fall back to simple block
+        # <!-- NS: that's not what fail open means? Also, it contravenes FAIL FAST -->
         print(f"WARNING: Custodiet audit generation failed: {e}", file=sys.stderr)
         block_msg = load_template(
             CUSTODIET_FALLBACK_TEMPLATE, {"tool_calls": str(tool_calls)}
         )
         return GateResult(
             verdict=GateVerdict.DENY,
+            system_message="⛔ **CUSTODIET detected violation.**",
             context_injection=block_msg,
             metadata={"source": "custodiet_fallback", "error": str(e)},
         )
