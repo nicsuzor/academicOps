@@ -70,6 +70,7 @@ def get_hook_temp_dir(category: str, input_data: dict[str, Any] | None = None) -
 
     # 3. Check transcript_path for Gemini CLI detection (before cwd check)
     # This handles cases where hook runs with different cwd than Gemini CLI
+    # FAIL-FAST: If Gemini provides a transcript_path, the hash dir MUST exist
     if input_data:
         transcript_path = input_data.get("transcript_path")
         if transcript_path and ".gemini" in str(transcript_path):
@@ -82,8 +83,13 @@ def get_hook_temp_dir(category: str, input_data: dict[str, Any] | None = None) -
             else:
                 project_hash_dir = t_path.parent
 
-            # Create the category dir (and parent hash dir if needed)
-            # The hash dir comes from Gemini's transcript_path, so it's authoritative
+            if not project_hash_dir.exists():
+                # FAIL-FAST: Gemini provided transcript_path but hash dir missing
+                raise RuntimeError(
+                    f"Gemini transcript_path provided but hash directory missing: {project_hash_dir}\n"
+                    f"This indicates Gemini CLI failed to initialize the project properly.\n"
+                    f"Expected: ~/.gemini/tmp/<hash>/ to exist before hooks run."
+                )
             path = project_hash_dir / category
             path.mkdir(parents=True, exist_ok=True)
             return path

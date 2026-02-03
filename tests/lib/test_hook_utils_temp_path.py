@@ -138,15 +138,14 @@ class TestGeminiTempPathFromTranscript:
 class TestGeminiTempPathEdgeCases:
     """Edge cases for Gemini temp path resolution."""
 
-    def test_nonexistent_transcript_parent_creates_directory(self, tmp_path):
-        """Test that nonexistent transcript parent directory is created.
+    def test_nonexistent_transcript_parent_fails_fast(self, tmp_path):
+        """Test that nonexistent transcript parent directory raises RuntimeError.
 
-        When Gemini provides a transcript_path with .gemini, that path is
-        authoritative. We should CREATE the directory, not fall back to Claude.
-        This ensures Gemini sessions use consistent paths even if the directory
-        didn't exist when the hook first ran.
+        FAIL-FAST: When Gemini provides a transcript_path with .gemini,
+        the hash directory MUST exist. If it doesn't, fail immediately -
+        no fallback to Claude paths, no silent directory creation.
         """
-        # Transcript path that doesn't exist yet
+        # Transcript path where hash dir doesn't exist
         fake_path = tmp_path / ".gemini" / "tmp" / "nonexistent" / "chats" / "session.json"
 
         input_data = {"transcript_path": str(fake_path)}
@@ -156,17 +155,12 @@ class TestGeminiTempPathEdgeCases:
             os.environ.pop("TMPDIR", None)
             os.environ.pop("AOPS_GEMINI_TEMP_ROOT", None)
 
-            with patch("lib.hook_utils.Path.cwd", return_value=Path("/other")):
-                with patch(
-                    "lib.hook_utils.get_claude_project_folder",
-                    return_value="-other",
-                ):
-                    result = get_hook_temp_dir("hydrator", input_data)
+            with pytest.raises(RuntimeError) as exc_info:
+                get_hook_temp_dir("hydrator", input_data)
 
-        # Should create the Gemini path, not fall through to Claude
-        assert ".gemini" in str(result)
-        assert "nonexistent" in str(result)
-        assert result.exists(), "Directory should be created"
+        # Should fail with clear error message
+        assert "hash directory missing" in str(exc_info.value)
+        assert "nonexistent" in str(exc_info.value)
 
     def test_no_input_data_falls_through(self):
         """Test that None input_data falls through to Claude default."""
