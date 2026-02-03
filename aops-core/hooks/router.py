@@ -156,13 +156,21 @@ class HookRouter:
         ~/.gemini/tmp/<hash>/chats/session-<uuid>.json
 
         Returns the ~/.gemini/tmp/<hash>/ directory.
+
+        FAIL-FAST (P#8): Directory MUST exist. Gemini CLI creates it.
+        We do NOT auto-create - if missing, Gemini CLI failed to initialize.
         """
         path = Path(transcript_path)
         for parent in path.parents:
             if parent.name in ("chats", "logs"):
                 # Parent of chats/logs is the hash directory
                 state_dir = parent.parent
-                state_dir.mkdir(parents=True, exist_ok=True)
+                if not state_dir.exists():
+                    raise RuntimeError(
+                        f"Gemini state directory missing: {state_dir}\n"
+                        f"Gemini CLI must create ~/.gemini/tmp/<hash>/ before hooks run.\n"
+                        f"This indicates Gemini CLI failed to initialize the project."
+                    )
                 return str(state_dir)
         return None
 
