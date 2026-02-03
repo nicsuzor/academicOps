@@ -671,6 +671,68 @@ def update_task(
 
 
 @mcp.tool()
+def claim_next_task(
+    caller: str = "bot",
+    project: Optional[str] = None,
+) -> dict[str, Any]:
+    """Atomically claim the next ready task by priority.
+
+    Finds highest priority ready task (leaf, no blockers, status inbox/active)
+    and atomically claims it (sets status="in_progress", assignee=caller).
+    Uses file locking to prevent race conditions.
+
+    Args:
+        caller: Who is claiming the task (default: "bot")
+        project: Optional project filter
+
+    Returns:
+        Dictionary with:
+        - success: True if task claimed
+        - task: Claimed task data
+        - message: Status message
+    """
+    try:
+        storage = _get_storage()
+        index = _get_index()
+
+        # Get candidates from index
+        # This respects assignee filters (only unassigned or assigned to caller)
+        # and excludes human-tagged tasks if caller is 'bot'
+        candidates = index.get_ready_tasks(project=project, caller=caller)
+
+        # Try to claim candidates in order
+        for candidate in candidates:
+            # Atomically attempt to claim
+            claimed_task = storage.claim_task(candidate.id, caller)
+            if claimed_task:
+                # Rebuild index to reflect change
+                # Use fast rebuild if available as this is a high-frequency op
+                if not index.rebuild_fast():
+                    index.rebuild()
+
+                logger.info(f"claim_next_task: {caller} claimed {claimed_task.id}")
+                return {
+                    "success": True,
+                    "task": _task_to_dict(claimed_task),
+                    "message": f"Claimed task: {claimed_task.title}",
+                }
+
+        return {
+            "success": False,
+            "task": None,
+            "message": "No ready tasks available to claim",
+        }
+
+    except Exception as e:
+        logger.exception("claim_next_task failed")
+        return {
+            "success": False,
+            "task": None,
+            "message": f"Failed to claim task: {e}",
+        }
+
+
+@mcp.tool()
 def complete_task(id: str) -> dict[str, Any]:
     """Mark a task as done.
 

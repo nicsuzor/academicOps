@@ -208,6 +208,67 @@ class TaskStorage:
             complexity=complexity,
         )
 
+    def claim_task(self, task_id: str, assignee: str) -> Task | None:
+        """Atomically claim a task if it is active.
+
+        Args:
+            task_id: Task ID to claim
+            assignee: Agent/user claiming the task
+
+        Returns:
+            Updated Task if successfully claimed, None if already claimed or not found
+        """
+        import os
+
+        path = self._find_task_path(task_id)
+        if path is None:
+            return None
+
+        lock_path = path.with_suffix(path.suffix + ".lock")
+        lock = FileLock(lock_path, timeout=10)
+
+        with lock:
+            # Reload task from disk to ensure freshness
+            try:
+                task = Task.from_file(path)
+            except Exception:
+                return None
+
+            # Check if available
+            if task.status != TaskStatus.ACTIVE:
+                return None
+
+            # Claim it
+            task.status = TaskStatus.IN_PROGRESS
+            task.assignee = assignee
+            task.modified = task.modified.__class__.now(task.modified.tzinfo)
+
+            # Write logic (duplicated from _atomic_write to avoid double-lock)
+            # We are inside the lock, so we can write safely.
+            new_content = task.to_markdown()
+
+            # Create parent directory if needed
+            path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Write to temp file
+            fd, temp_path = tempfile.mkstemp(
+                suffix=".tmp",
+                prefix=path.stem + "_",
+                dir=path.parent,
+            )
+            try:
+                os.close(fd)
+                temp = Path(temp_path)
+                temp.write_text(new_content, encoding="utf-8")
+                temp.rename(path)
+            except Exception:
+                Path(temp_path).unlink(missing_ok=True)
+                raise
+
+            # Populate relationships for response
+            self._populate_inverse_relationships(task)
+            return task
+
     def save_task(self, task: Task, *, update_body: bool = True) -> Path:
         """Save task to file with file locking and atomic writes.
 
