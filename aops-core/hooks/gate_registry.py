@@ -252,9 +252,8 @@ TASK_GATE_WARN_TEMPLATE = Path(__file__).parent / "templates" / "task-gate-warn.
 DEFAULT_TASK_GATE_MODE = "warn"
 DEFAULT_CUSTODIET_GATE_MODE = "warn"
 
-# Hydration gate mode: "block" (default) or "warn"
 HYDRATION_WARN_TEMPLATE = Path(__file__).parent / "templates" / "hydration-gate-warn.md"
-DEFAULT_HYDRATION_GATE_MODE = "warn"
+
 # --- Stop Gate Constants ---
 
 STOP_GATE_CRITIC_TEMPLATE = Path(__file__).parent / "templates" / "stop-gate-critic.md"
@@ -272,7 +271,13 @@ class GateContext:
         self.input_data = input_data
         # Support both Claude (snake_case) and Gemini (camelCase) field names
         self.tool_name = input_data.get("tool_name") or input_data.get("toolName")
-        self.tool_input = input_data.get("tool_input") or input_data.get("toolInput", {})
+        
+        self.tool_input = input_data.get("tool_input")
+        if self.tool_input is None:
+            self.tool_input = input_data.get("toolInput")
+        if self.tool_input is None:
+            self.tool_input = {}
+            
         self.transcript_path = input_data.get("transcript_path")
 
 
@@ -295,12 +300,13 @@ def check_subagent_tool_restrictions(ctx: GateContext) -> Optional[GateResult]:
         return None
 
     # Check if we're in a restricted subagent session
-    subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE", "")
+    subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE")
 
     # Check for hydrator session via env var OR session state for robustness
+    is_hydrator_in_type = subagent_type and "hydrator" in subagent_type.lower()
     is_hydrator_session = (
         subagent_type == "aops-core:prompt-hydrator"
-        or "hydrator" in subagent_type.lower()
+        or is_hydrator_in_type
         or session_state.is_hydrator_active(ctx.session_id)
     )
 
@@ -762,35 +768,6 @@ def check_hydration_gate(ctx: GateContext) -> Optional[GateResult]:
     """
     _check_imports()  # Fail fast if imports unavailable
 
-    # DEBUG: Log to fixed file for subagent visibility
-    from datetime import datetime
-
-    debug_file = Path("/tmp/hydration-gate-debug.jsonl")
-    try:
-        with open(debug_file, "a") as f:
-            f.write(
-                json.dumps(
-                    {
-                        "ts": str(datetime.now()),
-                        "event": ctx.event_name,
-                        "tool": ctx.tool_name,
-                        "session_id": ctx.session_id,
-                        "transcript_path": ctx.input_data.get("transcript_path")
-                        if ctx.input_data
-                        else None,
-                        "env_agent_type": os.environ.get("CLAUDE_AGENT_TYPE"),
-                        "env_subagent_type": os.environ.get("CLAUDE_SUBAGENT_TYPE"),
-                        "input_keys": list(ctx.input_data.keys())
-                        if ctx.input_data
-                        else [],
-                    }
-                )
-                + "\n"
-            )
-    except Exception:
-        pass  # Don't fail on debug logging
-    # END DEBUG
-
     # Only applies to PreToolUse
     if ctx.event_name != "PreToolUse":
         return None
@@ -801,14 +778,14 @@ def check_hydration_gate(ctx: GateContext) -> Optional[GateResult]:
 
     # BELT & SUSPENDERS: Additional detection for hydrator subagent
     # Check env var that might be set for subagent processes
-    subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE", "")
+    subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE")
     if subagent_type and "hydrator" in subagent_type.lower():
         return None
 
     # Also check transcript path directly (redundant but catches edge cases)
     if ctx.input_data:
-        transcript_path = str(ctx.input_data.get("transcript_path", ""))
-        if "/subagents/" in transcript_path or "/agent-" in transcript_path:
+        transcript_path = ctx.input_data.get("transcript_path")
+        if transcript_path and ("/subagents/" in str(transcript_path) or "/agent-" in str(transcript_path)):
             return None
 
     # STATEFUL BYPASS: Check if hydrator is currently active (set when Task(hydrator) starts)
@@ -828,10 +805,11 @@ def check_hydration_gate(ctx: GateContext) -> Optional[GateResult]:
     # Bypass for safe git operations (add, commit, fetch, pull, status, etc.)
     # These are commonly needed during handover and don't corrupt history
     if ctx.tool_name in ("Bash", "run_shell_command", "run_command"):
-        command = (
-            ctx.tool_input.get("command") or ctx.tool_input.get("CommandLine") or ""
-        )
-        if _is_hydration_safe_bash(command):
+        command = ctx.tool_input.get("command")
+        if command is None:
+            command = ctx.tool_input.get("CommandLine")
+            
+        if command and _is_hydration_safe_bash(str(command)):
             return None
 
     # Check if a skill is being activated (allow ANY skill to bypass hydration check)
@@ -839,8 +817,10 @@ def check_hydration_gate(ctx: GateContext) -> Optional[GateResult]:
     is_skill_activation = ctx.tool_name in ("activate_skill", "Skill")
     # Legacy: prompt-hydrator specific check (kept for robust detection context)
     is_hydrator_tool_or_agent = _hydration_is_hydrator_task(ctx.tool_input)
+    
+    tool_name = ctx.tool_name if ctx.tool_name is not None else ""
     is_gemini = _hydration_is_gemini_hydration_attempt(
-        ctx.tool_name or "", ctx.tool_input, ctx.input_data
+        tool_name, ctx.tool_input, ctx.input_data
     )
 
     if is_skill_activation or is_hydrator_tool_or_agent or is_gemini:
@@ -860,13 +840,28 @@ def check_hydration_gate(ctx: GateContext) -> Optional[GateResult]:
         return None
 
     # If we reach here, hydration is pending and not bypassed.
-    # Check mode: "block" (default) or "warn"
-    hydration_mode = os.environ.get("HYDRATION_MODE", DEFAULT_HYDRATION_GATE_MODE)
+
+    # Fail-fast: Demand explicit configuration (P#8)
+    hydration_mode = os.environ.get("HYDRATION_GATE_MODE")
+    if not hydration_mode:
+        return GateResult(
+            verdict=GateVerdict.DENY,
+            context_injection="⛔ **CONFIGURATION ERROR**: `HYDRATION_GATE_MODE` environment variable is missing.\n\n"
+                              "Per Axiom P#8 (Fail-Fast), no defaults are allowed. "
+                              "Please set this variable to 'block' or 'warn'.",
+            metadata={"source": "hydration_gate", "error": "missing_config"}
+        )
 
     # Get temp_path from session state to include in message
     temp_path = session_state.get_hydration_temp_path(ctx.session_id)
     if not temp_path:
-        temp_path = "(temp file not found - check session state)"
+        # Fail-fast: Missing state is an error, not a fallback case
+        return GateResult(
+            verdict=GateVerdict.DENY,
+            context_injection="⛔ **STATE ERROR**: Hydration temp path missing from session state.\n\n"
+                              "This indicates framework state corruption. Cannot proceed safely.",
+            metadata={"source": "hydration_gate", "error": "missing_temp_path"}
+        )
 
     if hydration_mode == "warn":
         # Warn mode: allow but inject warning context

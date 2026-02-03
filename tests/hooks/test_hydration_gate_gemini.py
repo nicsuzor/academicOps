@@ -15,6 +15,7 @@ Related:
 """
 
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -264,6 +265,7 @@ class TestHydrationGateBehavior:
         result = check_hydration_gate(ctx)
         assert result is None, "Gate should allow subagent sessions"
 
+    @patch.dict(os.environ, {"HYDRATION_GATE_MODE": "block"})
     @patch("hooks.gate_registry.session_state")
     @patch("hooks.gate_registry.hook_utils")
     @patch("hooks.gate_registry.load_template")
@@ -290,7 +292,7 @@ class TestHydrationGateBehavior:
             "hook_event_name": "PreToolUse",
             "session_id": "test-session",
             "tool_name": "Bash",
-            "tool_input": {"command": "ls -la"},
+            "tool_input": {"command": "touch foo"},
         }
         ctx = GateContext(
             session_id=event["session_id"],
