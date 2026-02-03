@@ -855,7 +855,15 @@ def check_hydration_gate(ctx: GateContext) -> Optional[GateResult]:
     # Get temp_path from session state to include in message
     temp_path = session_state.get_hydration_temp_path(ctx.session_id)
     if not temp_path:
-        # Fail-fast: Missing state is an error, not a fallback case
+        # Check if this is a fresh session (no state file) vs corruption (state exists but no temp_path)
+        state = session_state.load_session_state(ctx.session_id)
+        if state is None:
+            # Fresh session - UserPromptSubmit hasn't run yet to set state.
+            # is_hydration_pending returns True (fail-closed) for fresh sessions,
+            # but we can't block here because there's no hydration file to point to.
+            # Allow the tool call; UserPromptSubmit will set state on next prompt.
+            return None
+        # State exists but temp_path missing - real corruption
         return GateResult(
             verdict=GateVerdict.DENY,
             context_injection="⛔ **STATE ERROR**: Hydration temp path missing from session state.\n\n"
