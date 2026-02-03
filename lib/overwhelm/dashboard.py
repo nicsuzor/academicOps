@@ -3422,12 +3422,111 @@ def render_graph_section():
         )
 
 
+def render_session_summary():
+    """Render summary of today's and yesterday's sessions."""
+    from datetime import timedelta
+
+    st.header("📝 Daily Session Summary")
+
+    summaries_dir = Path.home() / "writing" / "sessions" / "summaries"
+    if not summaries_dir.exists():
+        st.info("No summaries directory found.")
+        return
+
+    # Dates
+    now = datetime.now()
+    today_str = now.strftime("%Y%m%d")
+    yesterday_str = (now - timedelta(days=1)).strftime("%Y%m%d")
+    
+    # Find files
+    files = list(summaries_dir.glob("*.json"))
+    
+    today_sessions = []
+    yesterday_sessions = []
+    
+    for f in files:
+        if f.name.startswith(today_str):
+            today_sessions.append(f)
+        elif f.name.startswith(yesterday_str):
+            yesterday_sessions.append(f)
+            
+    # Format helper
+    def fmt_tok(n):
+        if n >= 1_000_000: return f"{n/1_000_000:.1f}M"
+        if n >= 1_000: return f"{n/1_000:.1f}K"
+        return str(n)
+
+    # Render function for a list of files
+    def render_day(title, file_list):
+        st.subheader(f"{title} ({len(file_list)} sessions)")
+        if not file_list:
+            st.caption("No sessions found.")
+            return
+
+        # Sort by filename (newest first)
+        file_list.sort(key=lambda x: x.name, reverse=True)
+
+        for f in file_list:
+            try:
+                data = json.loads(f.read_text())
+                
+                # Extract Data
+                project = data.get("project", "unknown")
+                sid = data.get("session_id", "unknown")[:8]
+                summary = data.get("summary", "No summary")
+                outcome = data.get("outcome", "unknown")
+                
+                # Metrics
+                metrics = data.get("token_metrics", {})
+                efficiency = metrics.get("efficiency", {})
+                duration = efficiency.get("session_duration_minutes", 0)
+                
+                totals = metrics.get("totals", {})
+                input_tok = totals.get("input_tokens", 0)
+                output_tok = totals.get("output_tokens", 0)
+                cache_read = totals.get("cache_read_tokens", 0)
+                total_tok = input_tok + output_tok + cache_read
+                
+                # Friction
+                friction = data.get("friction_points", [])
+                
+                # Status Color
+                status_color = "green" if outcome == "success" else "orange" if outcome == "partial" else "red"
+                
+                # Render Card
+                with st.expander(f"**{project}** | {sid} | {duration:.1f}m | :{status_color}[{outcome.upper()}]", expanded=False):
+                    st.markdown(f"**Summary:** {summary}")
+                    
+                    if friction:
+                        st.markdown("**🛑 Problems:**")
+                        for p in friction:
+                            st.markdown(f"- {p}")
+                            
+                    st.markdown("**📊 Metrics:**")
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("Duration", f"{duration:.1f}m")
+                    c2.metric("Tokens", fmt_tok(total_tok))
+                    c3.metric("Outcome", outcome)
+                    
+                    if data.get("accomplishments"):
+                        st.markdown("**✅ Accomplishments:**")
+                        for a in data["accomplishments"]:
+                            st.markdown(f"- {a}")
+
+            except Exception as e:
+                st.error(f"Error reading {f.name}: {e}")
+
+    render_day("Today", today_sessions)
+    st.markdown("---")
+    render_day("Yesterday", yesterday_sessions)
+
+
 # ============================================================================
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
 # Navigation
-page = st.sidebar.radio("View Mode", ["Dashboard", "Manage Tasks"], index=0)
+page = st.sidebar.radio("View Mode", ["Dashboard", "Manage Tasks", "Session Summary"], index=0)
 
 # Time range filter for "Completed Today" section
 completed_time_range = st.sidebar.selectbox(
@@ -3442,6 +3541,10 @@ completed_hours = COMPLETED_HOURS_MAP.get(completed_time_range, 24)
 
 if page == "Manage Tasks":
     render_task_manager()
+    st.stop()
+
+if page == "Session Summary":
+    render_session_summary()
     st.stop()
 
 # Graph section with tabs
