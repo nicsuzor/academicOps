@@ -71,17 +71,36 @@ jobs:
           path: gemini-extension-dist.zip
           retention-days: 7
 
-      - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            dist/aops-core-gemini.tar.gz
-            dist/aops-tools-gemini.tar.gz
-            dist/aops-antigravity.zip
-            dist/aops-core-claude.tar.gz
-            dist/aops-tools-claude.tar.gz
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            - name: Create Release
+
+              if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+
+              uses: softprops/action-gh-release@v2
+
+              with:
+
+                tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'latest' }}
+
+                files: |
+
+                  dist/aops-core-gemini.tar.gz
+
+                  dist/aops-tools-gemini.tar.gz
+
+                  dist/aops-antigravity.zip
+
+                  dist/aops-core-claude.tar.gz
+
+                  dist/aops-tools-claude.tar.gz
+
+                draft: false
+
+                prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+                make_latest: ${{ startsWith(github.ref, 'refs/tags/') }}
+
+              env:
+
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      

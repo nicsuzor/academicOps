@@ -334,6 +334,8 @@ dist/*
 !dist/aops-tools-claude/
 !dist/aops-core-gemini/
 !dist/aops-tools-gemini/
+!dist/*.tar.gz
+!dist/*.zip
 aops-tools/.mcp.json
 streamlit_log.txt
 .agent/PATHS.md
