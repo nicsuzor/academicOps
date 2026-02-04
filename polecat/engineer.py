@@ -173,6 +173,7 @@ class Engineer:
         print("  ↪ Kickback: Setting status to REVIEW.")
 
         task.status = TaskStatus.REVIEW
+        task.assignee = "bot"
 
         # Append report
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
