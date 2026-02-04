@@ -40,7 +40,7 @@ References below to calls in Claude Code format (e.g. mcp__memory__xyz()) should
 
 2. **Gather context** (Follow the **Knowledge Retrieval Hierarchy**):
    - **Tier 1: Memory Server** (PRIMARY) - Use `mcp__memory__retrieve_memory(query="[key terms]", limit=5)` for semantic search.
-   - **Tier 2: Exploration** - Only if Tier 1 yields nothing. Use `read_file` or `search_file_content` sparingly.
+   - **Tier 2: Exploration** - Only if Tier 1 yields nothing. Use `Read` or `Grep` sparingly.
 
 3. **Match Workflow**:
    - TDD Cycle: Bug fix with reproduction test.

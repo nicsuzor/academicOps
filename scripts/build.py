@@ -137,14 +137,78 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
     print(f"  ✓ Generated Gemini hooks.json with {len(gemini_hooks)} events")
 
 
-def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
-    """Build the aops-core extension."""
-    print("Building aops-core...")
+def translate_tool_calls(text: str, platform: str) -> str:
+    """Translate abstract tool calls to platform-specific names."""
+    # 1. Platform-specific mappings
+    # We map call notation, descriptive notation, and backticked notation
+    mappings = {
+        "gemini": {
+            "Read(": "read_file(",
+            "Write(": "write_file(",
+            "Edit(": "replace(",
+            "ls(": "list_directory(",
+            "Glob(": "glob(",
+            "Grep(": "search_file_content(",
+            "Read tool": "read_file tool",
+            "Write tool": "write_file tool",
+            "Edit tool": "replace tool",
+            "`Read`": "`read_file`",
+            "`Write`": "`write_file`",
+            "`Edit`": "`replace`",
+            "`ls`": "`list_directory`",
+            "`Glob`": "`glob`",
+            "`Grep`": "`search_file_content`",
+            "Read or Grep": "read_file or search_file_content",
+        },
+        "claude": {
+            "Read(": "read_file(",
+            "Write(": "write_file(",
+            "Edit(": "replace(",
+            "ls(": "list_directory(",
+            "Glob(": "glob(",
+            "Grep(": "grep(",
+            "Read tool": "read_file tool",
+            "Write tool": "write_file tool",
+            "Edit tool": "replace tool",
+            "`Read`": "`read_file`",
+            "`Write`": "`write_file`",
+            "`Edit`": "`replace`",
+            "`ls`": "`list_directory`",
+            "`Glob`": "`glob`",
+            "`Grep`": "`grep`",
+            "Read or Grep": "read_file or grep",
+        },
+    }
+
+    platform_map = mappings.get(platform, mappings["gemini"])
+    for abstract, concrete in platform_map.items():
+        text = text.replace(abstract, concrete)
+
+    # 2. Dynamic replacement for Gemini/Claude compatibility (Task/Skill)
+    if platform == "gemini":
+        # Task(subagent_type=...) -> activate_skill(name=...)
+        text = text.replace("Task(subagent_type=", "activate_skill(name=")
+        # Skill(skill=...) -> activate_skill(name=...)
+        text = text.replace("Skill(skill=", "activate_skill(name=")
+        # Update descriptive text references
+        text = text.replace("Task() tool", "activate_skill() tool")
+        text = text.replace("`Task(`", "`activate_skill(`")
+        text = text.replace("`Skill(`", "`activate_skill(`")
+    
+    return text
+
+
+def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str, platform: str = "gemini"):
+    """Build the aops-core extension for a specific platform."""
+    print(f"Building aops-core for {platform}...")
     plugin_name = "aops-core"
     src_dir = aops_root / plugin_name
-    dist_dir = dist_root / plugin_name
+    
+    # Platform-specific dist dir
+    suffix = f"-{platform}" if platform != "gemini" else ""
+    dist_dir = dist_root / f"{plugin_name}{suffix}"
 
-    # Write version info for tracking
+    # Write version info for tracking (always to source)
     commit_sha = get_git_commit_sha(aops_root)
     if commit_sha:
         write_plugin_version(src_dir, commit_sha)
@@ -153,13 +217,11 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
         shutil.rmtree(dist_dir)
     dist_dir.mkdir(parents=True)
 
-    # 1. Copy content directories (not symlinks - avoids polluting canonical source)
-    # Include markdown files needed by hydration (SKILLS.md, AXIOMS.md, etc.)
-    for item in [
+    # 1. Copy content directories
+    items_to_copy = [
         "skills",
         "agents",
         "lib",
-        "GEMINI.md",
         "SKILLS.md",
         "AXIOMS.md",
         "HEURISTICS.md",
@@ -168,18 +230,32 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
         "INDEX.md",
         "WORKFLOWS.md",
         "INSTALLATION.md",
-    ]:
+    ]
+    
+    # Gemini-only items
+    if platform == "gemini":
+        items_to_copy.extend(["GEMINI.md"])
+
+    for item in items_to_copy:
         src = src_dir / item
         if src.exists():
-            safe_copy(src, dist_dir / item)
+            if item == "agents" and src.is_dir():
+                # Special handling for agents: translate tool calls
+                dst = dist_dir / item
+                dst.mkdir(parents=True, exist_ok=True)
+                for agent_file in src.glob("*.md"):
+                    content = agent_file.read_text()
+                    translated = translate_tool_calls(content, platform)
+                    (dst / agent_file.name).write_text(translated)
+                print(f"  ✓ Translated and copied agents -> {dst}")
+            else:
+                safe_copy(src, dist_dir / item)
 
-    # 1b. Copy root-level scripts needed by skills (e.g., audit skill)
-    # These scripts are at $AOPS/scripts/ and referenced by SKILL.md files
+    # 1b. Copy root-level scripts
     scripts_src = aops_root / "scripts"
     scripts_dst = dist_dir / "scripts"
     if scripts_src.exists():
         scripts_dst.mkdir(parents=True, exist_ok=True)
-        # Copy specific scripts needed by skills
         for script_name in [
             "audit_framework_health.py",
             "check_skill_line_count.py",
@@ -189,217 +265,132 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
             if src.exists():
                 safe_copy(src, scripts_dst / script_name)
 
-    # 2. Hooks (Selective copy - not symlinks to avoid source pollution)
+    # 2. Hooks
     hooks_src = src_dir / "hooks"
     hooks_dst = dist_dir / "hooks"
     hooks_dst.mkdir(parents=True)
     if hooks_src.exists():
         for item in hooks_src.iterdir():
-            if item.name == "hooks.json":
-                # Handle hooks.json separately - transform for Gemini
+            if item.name == "hooks.json" and platform == "gemini":
+                # Handle hooks.json separately for Gemini
                 continue
             if item.name == "gemini":
-                # Don't copy gemini/ subdirectory - we use unified router.py now
+                # Don't copy gemini/ subdirectory
                 continue
             safe_copy(item, hooks_dst / item.name)
 
-    # Copy the Unified router directly
-    router_src = hooks_src / "router.py"
-    if router_src.exists():
-        safe_copy(router_src, hooks_dst / "router.py")
-
     # Generate Gemini-compatible hooks.json
-    # Gemini CLI looks for hooks/hooks.json with different event names
-    hooks_json_src = hooks_src / "hooks.json"
-    if hooks_json_src.exists():
-        _generate_gemini_hooks_json(hooks_json_src, hooks_dst / "hooks.json")
+    if platform == "gemini":
+        hooks_json_src = hooks_src / "hooks.json"
+        if hooks_json_src.exists():
+            _generate_gemini_hooks_json(hooks_json_src, hooks_dst / "hooks.json")
 
-    # 3. Generate Hooks Config / Extension Manifest
-    # If a source gemini-extension.json exists, we use it as a template and perform substitution.
-    # Otherwise, we generate from hooks.json (legacy/fallback).
+    # 3. Extension Manifest (Gemini only)
+    if platform == "gemini":
+        src_extension_json = src_dir / "gemini-extension.json"
+        dist_extension_json = dist_dir / "gemini-extension.json"
 
-    src_extension_json = src_dir / "gemini-extension.json"
-    dist_extension_json = dist_dir / "gemini-extension.json"
-
-    if src_extension_json.exists():
-        print(f"Generating extension manifest from {src_extension_json.name}...")
-        try:
-            content = src_extension_json.read_text()
-
-            # We NO LONGER perform substitution here for ${AOPS} and ${ACA_DATA}
-            # Gemini CLI handles these natively in the manifest.
-
-            # Write JSON to dist
-            with open(dist_extension_json, "w") as f:
-                f.write(content)
-
-            # We also need to write a dummy hooks.json or rely on the extension manifest entirely?
-            # Gemini reads extension manifest. hooks.json is for older separate hook config?
-            # If the manifest has "hooks", we are good.
-
-        except Exception as e:
-            print(f"Error processing extension template: {e}", file=sys.stderr)
-            raise
-    else:
-        print(
-            f"Error: {src_extension_json} not found. This file is required for the build.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+        if src_extension_json.exists():
+            print(f"Generating extension manifest from {src_extension_json.name}...")
+            try:
+                content = src_extension_json.read_text()
+                with open(dist_extension_json, "w") as f:
+                    f.write(content)
+            except Exception as e:
+                print(f"Error processing extension template: {e}", file=sys.stderr)
+                raise
+        else:
+            print(f"Error: {src_extension_json} not found.", file=sys.stderr)
+            sys.exit(1)
 
     # 4. Generate MCP Config from Template
     template_path = src_dir / "mcp.json.template"
-    mcp_config = {}
+    gemini_mcps = {}
 
     if template_path.exists():
         print(f"Generating MCP config from {template_path.name}...")
         try:
             content = template_path.read_text()
-
-            # We NO LONGER perform substitution here for ${AOPS}, ${ACA_DATA}, etc.
-            # These should remain as placeholders in the generated .mcp.json
-
             mcp_config = json.loads(content)
 
             # Write back to source .mcp.json for Claude
             mcp_json_path = src_dir / ".mcp.json"
             with open(mcp_json_path, "w") as f:
                 json.dump(mcp_config, f, indent=2)
-            print(f"✓ Updated {mcp_json_path}")
-
-            # Prepare for Gemini Extension (convert to gemini format if needed)
-            # The template is in Standard MCP format ("mcpServers": {...})
-            # convert_mcp_to_gemini handles the "mcpServers" key wrapper or direct dict.
-            servers_config = mcp_config.get("mcpServers", mcp_config)
             
-            # Transform for Gemini: replace ${CLAUDE_PLUGIN_ROOT} with ${extensionPath}
-            gemini_servers_config = json.loads(
-                json.dumps(servers_config).replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
-            )
-            
-            gemini_mcps = convert_mcp_to_gemini(gemini_servers_config)
+            # If Claude dist, copy .mcp.json
+            if platform == "claude":
+                safe_copy(mcp_json_path, dist_dir / ".mcp.json")
 
-            # Update extension manifest with generated MCPs
-            if dist_extension_json.exists():
-                try:
+            # Prepare for Gemini Extension
+            if platform == "gemini":
+                servers_config = mcp_config.get("mcpServers", mcp_config)
+                gemini_servers_config = json.loads(
+                    json.dumps(servers_config).replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
+                )
+                gemini_mcps = convert_mcp_to_gemini(gemini_servers_config)
+
+                if dist_extension_json.exists():
                     with open(dist_extension_json, "r") as f:
                         manifest = json.load(f)
-
-                    # Merge MCPs (template takes precedence or just add missing?)
-                    # Let's override/update with template values as they are the source of truth for MCPs
                     current_mcps = manifest.get("mcpServers", {})
-                    # We want to preserve existing ones if they aren't in template?
-                    # No, user wants template to be source of truth.
-                    # But the source gemini-extension.json has task_manager placeholders too.
-                    # Let's just merge, with template overwriting.
                     manifest["mcpServers"] = {**current_mcps, **gemini_mcps}
-
                     with open(dist_extension_json, "w") as f:
                         json.dump(manifest, f, indent=2)
                     print(f"✓ Updated {dist_extension_json} with MCP config")
-                except Exception as e:
-                    print(f"Error updating manifest with MCPs: {e}", file=sys.stderr)
 
         except Exception as e:
             print(f"Error processing template {template_path}: {e}", file=sys.stderr)
-            # Fallback to empty if failed? Or exit?
-            # Better to show error but maybe not crash build if it's partial?
-            # Let's re-raise to fail build if strict
             raise
-    else:
-        print(f"Warning: Template {template_path} not found. Skipping MCP generation.")
 
-    # Inject hooks into gemini-extension.json manifest
-    # This is handled by discovery of hooks/hooks.json by Gemini CLI
-    pass
+    # 5. Build Sub-Agents (Skills)
+    if platform == "gemini":
+        agents_dir = src_dir / "agents"
+        if agents_dir.exists():
+            for agent_file in agents_dir.glob("*.md"):
+                try:
+                    content = agent_file.read_text()
+                    parts = content.split("---", 2)
+                    if len(parts) >= 3:
+                        import yaml
+                        frontmatter = yaml.safe_load(parts[1])
+                        if "name" in frontmatter:
+                            agent_name = frontmatter["name"]
+                            skill_dir = dist_dir / "skills" / agent_name
+                            skill_dir.mkdir(parents=True, exist_ok=True)
 
-    # Validation/Fallback: If task_manager was not in template, we might be missing it.
-    # But the user said "we should read from ... template", implying template is source of truth.
-    # So we don't manually inject it anymore.
+                            text = agent_file.read_text()
+                            text = translate_tool_calls(text, "gemini")
 
-    # 4b. Load Manifest Base (plugin.json)
-    plugin_json_path = src_dir / ".claude-plugin" / "plugin.json"
-    manifest_base = {}
-    if plugin_json_path.exists():
-        try:
-            with open(plugin_json_path) as f:
-                manifest_base = json.load(f)
-        except json.JSONDecodeError:
-            print(f"Warning: Invalid JSON in {plugin_json_path}")
+                            with open(skill_dir / "SKILL.md", "w") as f:
+                                f.write(text)
+                except Exception as e:
+                    print(f"Warning: Failed to parse agent {agent_file}: {e}")
 
-    # 5. Build Sub-Agents from agents/ directory
-    # They are also automatically discovered by Gemini CLI from agents/ directory
-    agents_dir = src_dir / "agents"
-    if agents_dir.exists():
-        for agent_file in agents_dir.glob("*.md"):
-            try:
-                # ALSO create a Skill for this agent (auto-generated)
-                # This allows invoke via activate_skill(name="agent-name")
-                
-                # Parse frontmatter to get name
-                content = agent_file.read_text()
-                parts = content.split("---", 2)
-                if len(parts) >= 3:
-                    import yaml
-                    frontmatter = yaml.safe_load(parts[1])
-                    if "name" in frontmatter:
-                        agent_name = frontmatter["name"]
-                        skill_dir = dist_dir / "skills" / agent_name
-                        skill_dir.mkdir(parents=True, exist_ok=True)
+    # 6. Commands (Gemini only for now as they use .toml)
+    if platform == "gemini":
+        commands_dist = dist_dir / "commands"
+        convert_script = aops_root / "scripts" / "convert_commands_to_toml.py"
+        if convert_script.exists():
+            subprocess.run(
+                [sys.executable, str(convert_script), "--output-dir", str(commands_dist)],
+                env={**os.environ, "AOPS": str(aops_root)},
+                check=False,
+            )
 
-                        # Read content
-                        text = agent_file.read_text()
-
-                        # Dynamic replacement for Gemini compatibility
-                        # 1. Task(subagent_type=...) -> activate_skill(name=...)
-                        text = text.replace(
-                            "Task(subagent_type=", "activate_skill(name="
-                        )
-
-                        # 2. Skill(skill=...) -> activate_skill(name=...)
-                        text = text.replace("Skill(skill=", "activate_skill(name=")
-
-                        # 3. Update descriptive text references
-                        text = text.replace("Task() tool", "activate_skill() tool")
-                        text = text.replace("`Task(`", "`activate_skill(`")
-                        text = text.replace("`Skill(`", "`activate_skill(`")
-
-                        # 4. Tool calls (Gemini CLI format)
-                        text = text.replace("Read(", "read_file(")
-                        text = text.replace("Write(", "write_file(")
-                        text = text.replace("Edit(", "replace(")
-                        text = text.replace("ls(", "list_directory(")
-                        text = text.replace("Glob(", "glob(")
-                        text = text.replace("grep(", "search_file_content(")
-
-                        # Write modified content
-                        with open(skill_dir / "SKILL.md", "w") as f:
-                            f.write(text)
-            except Exception as e:
-                print(f"Warning: Failed to parse agent {agent_file}: {e}")
-
-    # Manifest already generated in step 3.
-
-    # 6. Commands
-    commands_dist = dist_dir / "commands"
-    convert_script = aops_root / "scripts" / "convert_commands_to_toml.py"
-    if convert_script.exists():
-        subprocess.run(
-            [sys.executable, str(convert_script), "--output-dir", str(commands_dist)],
-            env={**os.environ, "AOPS": str(aops_root)},
-            check=False,
-        )
-
-    print(f"✓ Built {plugin_name}")
-    return gemini_mcps  # Return for aggregation
+    print(f"✓ Built {plugin_name} ({platform})")
+    return gemini_mcps
 
 
-def build_aops_tools(aops_root: Path, dist_root: Path, aca_data_path: str):
+def build_aops_tools(aops_root: Path, dist_root: Path, aca_data_path: str, platform: str = "gemini"):
     """Build the aops-tools extension."""
-    print("Building aops-tools...")
+    print(f"Building aops-tools for {platform}...")
     plugin_name = "aops-tools"
     src_dir = aops_root / plugin_name
-    dist_dir = dist_root / plugin_name
+    
+    # Platform-specific dist dir
+    suffix = f"-{platform}" if platform != "gemini" else ""
+    dist_dir = dist_root / f"{plugin_name}{suffix}"
 
     # Write version info for tracking
     commit_sha = get_git_commit_sha(aops_root)
@@ -410,35 +401,32 @@ def build_aops_tools(aops_root: Path, dist_root: Path, aca_data_path: str):
         shutil.rmtree(dist_dir)
     dist_dir.mkdir(parents=True)
 
-    # 1. Copy content directories (not symlinks - avoids polluting canonical source)
+    # 1. Copy content directories
     for item in ["skills"]:
         src = src_dir / item
         if src.exists():
             safe_copy(src, dist_dir / item)
 
-    # 1.5 Generate MCP Config from Template (Added to fix bug)
+    # 1.5 Generate MCP Config from Template
     template_path = src_dir / "mcp.json.template"
     if template_path.exists():
         print(f"Generating MCP config from {template_path.name}...")
         try:
             content = template_path.read_text()
-
-            # We NO LONGER perform substitution here for ${AOPS}, etc.
-            # These should remain as placeholders in the generated .mcp.json
-
             mcp_config = json.loads(content)
 
             # Write back to source .mcp.json for Claude
             mcp_json_path = src_dir / ".mcp.json"
             with open(mcp_json_path, "w") as f:
                 json.dump(mcp_config, f, indent=2)
-            print(f"✓ Updated {mcp_json_path}")
+            
+            # If Claude dist, copy .mcp.json
+            if platform == "claude":
+                safe_copy(mcp_json_path, dist_dir / ".mcp.json")
 
         except Exception as e:
             print(f"Error processing template {template_path}: {e}", file=sys.stderr)
             raise
-    else:
-        print(f"Warning: Template {template_path} not found. Skipping MCP generation.")
 
     # 2. Load Manifest and MCPs
     plugin_json_path = src_dir / ".claude-plugin" / "plugin.json"
@@ -452,39 +440,39 @@ def build_aops_tools(aops_root: Path, dist_root: Path, aca_data_path: str):
         except json.JSONDecodeError:
             print(f"Warning: Invalid JSON in {plugin_json_path}")
 
-    # Resolve MCP Servers
-    mcp_ref = manifest_base.get("mcpServers")
-    if isinstance(mcp_ref, str):
-        mcp_path = src_dir / mcp_ref
-    else:
-        mcp_path = src_dir / ".mcp.json"
+    # Resolve MCP Servers (Gemini only)
+    if platform == "gemini":
+        mcp_ref = manifest_base.get("mcpServers")
+        if isinstance(mcp_ref, str):
+            mcp_path = src_dir / mcp_ref
+        else:
+            mcp_path = src_dir / ".mcp.json"
 
-    if mcp_path.exists():
-        try:
-            with open(mcp_path) as f:
-                data = json.load(f)
-                servers_config = data.get("mcpServers", data)
-                gemini_mcps = convert_mcp_to_gemini(servers_config)
-        except json.JSONDecodeError:
-            print(f"Warning: Invalid JSON in {mcp_path}")
+        if mcp_path.exists():
+            try:
+                with open(mcp_path) as f:
+                    data = json.load(f)
+                    servers_config = data.get("mcpServers", data)
+                    gemini_mcps = convert_mcp_to_gemini(servers_config)
+            except json.JSONDecodeError:
+                print(f"Warning: Invalid JSON in {mcp_path}")
 
-    # Remove task_manager if present (core handles it)
-    if "task_manager" in gemini_mcps:
-        del gemini_mcps["task_manager"]
+        # Remove task_manager if present (core handles it)
+        if "task_manager" in gemini_mcps:
+            del gemini_mcps["task_manager"]
 
-    # 3. Build Final Manifest
-    manifest = {
-        "name": manifest_base.get("name", "aops-tools"),
-        "version": manifest_base.get("version", "0.1.0"),
-        "description": manifest_base.get("description", "AcademicOps Tools"),
-        "mcpServers": gemini_mcps,
-    }
-    with open(dist_dir / "gemini-extension.json", "w") as f:
-        json.dump(manifest, f, indent=2)
+        # 3. Build Final Manifest
+        manifest = {
+            "name": manifest_base.get("name", "aops-tools"),
+            "version": manifest_base.get("version", "0.1.0"),
+            "description": manifest_base.get("description", "AcademicOps Tools"),
+            "mcpServers": gemini_mcps,
+        }
+        with open(dist_dir / "gemini-extension.json", "w") as f:
+            json.dump(manifest, f, indent=2)
 
-    print(f"✓ Built {plugin_name}")
+    print(f"✓ Built {plugin_name} ({platform})")
     return gemini_mcps
-
 
 def build_antigravity(aops_root: Path, dist_root: Path, all_mcps: dict):
     """Build the antigravity distribution."""
@@ -557,16 +545,17 @@ def main():
     if not dist_root.exists():
         dist_root.mkdir()
 
-    # Build components
-    core_mcps = build_aops_core(aops_root, dist_root, aca_data_path)
-    tools_mcps = build_aops_tools(aops_root, dist_root, aca_data_path)
+    # Build components (Gemini)
+    core_mcps_gemini = build_aops_core(aops_root, dist_root, aca_data_path, "gemini")
+    tools_mcps_gemini = build_aops_tools(aops_root, dist_root, aca_data_path, "gemini")
+
+    # Build components (Claude)
+    build_aops_core(aops_root, dist_root, aca_data_path, "claude")
+    build_aops_tools(aops_root, dist_root, aca_data_path, "claude")
 
     # Aggregate MCPs for Antigravity (global config if needed)
-    # Note: Antigravity usually uses project-specific mcp, but we can generate a global one too
-    # setup.sh generated ~/.gemini/antigravity/mcp_config.json
-    all_mcps = {**core_mcps, **tools_mcps}
-
-    build_antigravity(aops_root, dist_root, all_mcps)
+    all_mcps_gemini = {**core_mcps_gemini, **tools_mcps_gemini}
+    build_antigravity(aops_root, dist_root, all_mcps_gemini)
 
     package_artifacts(aops_root, dist_root)
 
@@ -615,16 +604,16 @@ def package_artifacts(aops_root: Path, dist_root: Path):
             return None
         return tarinfo
 
-    # 4. aops-core-claude.tar.gz (from source)
+    # 4. aops-core-claude.tar.gz (from built dist)
     core_claude_path = dist_root / "aops-core-claude.tar.gz"
     with tarfile.open(core_claude_path, "w:gz") as tar:
-        tar.add(aops_root / "aops-core", arcname="aops-core", filter=_source_filter)
+        tar.add(dist_root / "aops-core-claude", arcname="aops-core", filter=_source_filter)
     print(f"  ✓ Packaged {core_claude_path.name}")
 
-    # 5. aops-tools-claude.tar.gz (from source)
+    # 5. aops-tools-claude.tar.gz (from built dist)
     tools_claude_path = dist_root / "aops-tools-claude.tar.gz"
     with tarfile.open(tools_claude_path, "w:gz") as tar:
-        tar.add(aops_root / "aops-tools", arcname="aops-tools", filter=_source_filter)
+        tar.add(dist_root / "aops-tools-claude", arcname="aops-tools", filter=_source_filter)
     print(f"  ✓ Packaged {tools_claude_path.name}")
 
 

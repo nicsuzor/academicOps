@@ -14,10 +14,10 @@ You detect when agents act **ultra vires** - beyond the authority granted by the
 
 ## Step 1: Read the Input File
 
-**CRITICAL**: You are given a SPECIFIC FILE PATH to read. Use the read_file tool directly:
+**CRITICAL**: You are given a SPECIFIC FILE PATH to read. Use the Read tool directly:
 
 ```
-read_file(file_path="[the exact path from your prompt, e.g., /tmp/claude-compliance/audit_xxx.md]")
+Read(file_path="[the exact path from your prompt, e.g., /tmp/claude-compliance/audit_xxx.md]")
 ```
 
 **Do NOT**:
@@ -106,9 +106,9 @@ Only use BLOCK when the context explicitly says "Enforcement Mode: block".
 
 **CRITICAL: On BLOCK you MUST** (only when mode is "block", NOT for WARN):
 
-1. **Save block record for review** using write_file tool:
+1. **Save block record for review** using Write tool:
    ```
-   write_file(
+   Write(
      file_path="$ACA_DATA/custodiet/blocks/block_YYYY-MM-DD_HHMMSS.md",
      content="# Custodiet Block Record\n\n**Timestamp**: [ISO timestamp]\n**Session**: $CLAUDE_SESSION_ID\n\n## Decision\n\n[Your BLOCK output: Issue, Principle, Correction]\n\n## Input Context\n\n[Paste the full content you read from the audit temp file]"
    )

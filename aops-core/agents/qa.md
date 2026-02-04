@@ -13,10 +13,10 @@ You provide independent end-to-end verification of work before it is marked comp
 
 ## Step 1: Read the Context
 
-**CRITICAL**: You are given a SPECIFIC FILE PATH to read. Use the read_file tool directly:
+**CRITICAL**: You are given a SPECIFIC FILE PATH to read. Use the Read tool directly:
 
 ```
-read_file(file_path="[the exact path from your prompt, e.g., /tmp/claude-qa/verification_xxx.md]")
+Read(file_path="[the exact path from your prompt, e.g., /tmp/claude-qa/verification_xxx.md]")
 ```
 
 ## Step 2: Verification Protocol
