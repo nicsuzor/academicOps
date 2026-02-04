@@ -151,6 +151,10 @@ Before editing ANY framework file, output this exact format:
 - Level: [1a | 1b | 1c | 1d | 2 | 3a | 3b | 4 | 5 | 6 | 7]
 - Change: [exact content, max 3 sentences]
 
+**Generality Check** (STOP if answer is "no"):
+- Does this fix address the GENERAL pattern, not just the specific instance?
+- If fix contains task-specific keywords (e.g., "test", "commit", "email"), is that specificity actually necessary?
+
 **Minimality**:
 - Why not lower level: [explanation]
 - Why not narrower scope: [explanation]
