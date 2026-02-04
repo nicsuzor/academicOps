@@ -13,6 +13,7 @@ Exit codes:
 import json
 import re
 import sys
+from pathlib import Path
 from typing import Any
 
 
@@ -107,6 +108,46 @@ def validate_safe_git_usage(
     return None
 
 
+def validate_protect_artifacts(
+    tool_name: str, args: dict[str, Any]
+) -> dict[str, Any] | None:
+    """Block modification of protected files (H#94)."""
+    if tool_name not in ["Write", "Edit", "replace"]:
+        return None
+
+    # Handle both Claude Code (file_path) and Gemini CLI (file_path)
+    file_path = args.get("file_path")
+    if not file_path:
+        return None
+
+    # Load protected paths from project-local config
+    protected_paths = []
+    local_config = Path(".agent/rules/protected_paths.txt")
+    if local_config.exists():
+        try:
+            protected_paths = [
+                line.strip() 
+                for line in local_config.read_text().splitlines() 
+                if line.strip() and not line.startswith("#")
+            ]
+        except Exception as e:
+            print(f"WARNING: Failed to read {local_config}: {e}", file=sys.stderr)
+
+    # Check if file_path matches any protected path
+    for protected in protected_paths:
+        if file_path.startswith(protected) or f"/{protected}" in file_path:
+            return {
+                "continue": False,
+                "systemMessage": (
+                    f"BLOCKED: Modification of protected path '{file_path}'.\n"
+                    f"This path is protected by project-local rule (see .agent/rules/protected_paths.txt).\n"
+                    "Modify source files instead and run build scripts if necessary."
+                ),
+            }
+
+    return None
+
+
 def main():
     """Main hook entry point - validates and returns result."""
     input_data: dict[str, Any] = {}
@@ -130,6 +171,8 @@ def main():
     result = validate_minimal_documentation(tool_name, args)
     if result is None:
         result = validate_safe_git_usage(tool_name, args)
+    if result is None:
+        result = validate_protect_artifacts(tool_name, args)
 
     # If blocking, use JSON permissionDecision:deny with exit 0
     # Exit 0 ensures Claude Code processes the JSON output (exit 2 ignores stdout)

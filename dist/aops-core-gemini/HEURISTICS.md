@@ -544,3 +544,5 @@ mcp__plugin_aops-tools_task_manager__get_task(id="...")
 **Statement**: Always use `uv run python` (or `uv run pytest`) to execute Python code. Never use `python`, `python3`, or `pip` directly.
 
 **Derivation**: `uv` manages the virtual environment and dependencies. System python lacks the project context. `uv run` guarantees the correct environment is active without manual activation steps.
+
+
