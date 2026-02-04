@@ -27,24 +27,25 @@ Prompt Hydration bridges this gap automatically on every prompt, outputting a co
 The hydrator follows a **composition-based architecture** where routing logic is defined in reusable workflows:
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                   prompt-hydrator.md                         │
-│            (Minimal agent - 284 lines)                       │
-│                                                              │
-│  Responsibilities:                                           │
-│  - Read input file                                           │
-│  - Gather context from memory                                │
-│  - Output formatted plans                                    │
-│                                                              │
-│  Delegates to workflows for decision logic:                  │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
-│  │ [[hydrate]]     │  │ [[framework-    │  │ [[constraint-│ │
-│  │ Main decision   │  │    gate]]       │  │    check]]   │ │
-│  │ process         │  │ Framework       │  │ Plan         │ │
-│  │                 │  │ detection       │  │ verification │ │
-│  └─────────────────┘  └─────────────────┘  └──────────────┘ │
-└─────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────┐
+│                       prompt-hydrator.md                              │
+│                (Minimal agent - 284 lines)                            │
+│                                                                       │
+│  Responsibilities:                                                    │
+│  - Read input file                                                    │
+│  - Gather context from memory                                         │
+│  - Output formatted plans                                             │
+│                                                                       │
+│  Delegates to workflows for decision logic:                           │
+│  ┌───────────────────┐  ┌───────────────────┐  ┌───────────────────┐ │
+│  │ hydrate           │  │ framework-gate    │  │ constraint-check  │ │
+│  │ Main decision     │  │ Framework         │  │ Plan              │ │
+│  │ process           │  │ detection         │  │ verification      │ │
+│  └───────────────────┘  └───────────────────┘  └───────────────────┘ │
+└───────────────────────────────────────────────────────────────────────┘
 ```
+
+Workflows referenced: hydrate, framework-gate, constraint-check (see `workflows/` directory)
 
 ### Key Workflows
 
