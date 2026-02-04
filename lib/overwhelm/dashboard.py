@@ -628,7 +628,7 @@ def render_agents_working():
                 description = ctx.initial_prompt
 
         # Truncate to fit compact format
-        description = description[:100] + "..." if len(description) > 100 else description
+        description = description[:120] + "..." if len(description) > 120 else description
 
         # Single compact row
         project_part = f"<span class='ca-project'>{esc(project)}</span>" if project else ""
@@ -3124,7 +3124,7 @@ def clean_activity_text(raw_text: str) -> str:
         raw_text: Raw prompt text potentially containing markdown headers and formatting.
 
     Returns:
-        Cleaned text, max 60 characters, with "..." suffix if truncated.
+        Cleaned text, max 120 characters, with "..." suffix if truncated.
     """
     if not raw_text:
         return "Working..."
