@@ -839,6 +839,17 @@ def check_hydration_gate(ctx: GateContext) -> Optional[GateResult]:
     if not session_state.is_hydration_pending(ctx.session_id):
         return None
 
+    # Bypass if session was already hydrated this turn (turns_since_hydration == 0)
+    # This allows subsequent tool calls in the same response after hydration completes,
+    # even if hydration_pending hasn't been cleared yet due to timing/ordering.
+    state = session_state.load_session_state(ctx.session_id)
+    if state is not None:
+        hydration_data = state.get("hydration")
+        if hydration_data is not None:
+            turns_since = hydration_data.get("turns_since_hydration")
+            if turns_since is not None and turns_since == 0:
+                return None
+
     # If we reach here, hydration is pending and not bypassed.
 
     # Fail-fast: Demand explicit configuration (P#8)

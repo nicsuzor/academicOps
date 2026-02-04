@@ -121,3 +121,76 @@ def test_fresh_session_no_state_allows_tools(
         assert "STATE ERROR" not in str(result.context_injection), \
             "Fresh session should not get STATE ERROR"
         # It's okay to block/warn for other reasons, just not STATE ERROR
+
+
+@patch("hooks.gate_registry._hydration_is_subagent_session")
+@patch("hooks.gate_registry.session_state.is_hydrator_active")
+@patch("hooks.gate_registry.session_state.is_hydration_pending")
+@patch("hooks.gate_registry.session_state.load_session_state")
+def test_hydration_bypass_when_turns_since_hydration_zero(
+    mock_load_state, mock_is_pending, mock_is_hydrator_active, mock_is_subagent
+):
+    """Bypass hydration gate if turns_since_hydration == 0.
+
+    When the hydrator has just completed (turns_since_hydration == 0),
+    subsequent tool calls in the same turn should be allowed even if
+    hydration_pending hasn't been cleared yet due to timing/ordering.
+
+    This addresses UX friction where multiple tool calls after hydration
+    were blocked unnecessarily.
+
+    Related: aops-bb33a3b3
+    """
+    mock_is_pending.return_value = True  # hydration_pending is still True
+    mock_is_hydrator_active.return_value = False
+    mock_is_subagent.return_value = False
+    # Session state indicates hydration just completed (turns_since_hydration == 0)
+    mock_load_state.return_value = {
+        "hydration": {"turns_since_hydration": 0}
+    }
+
+    ctx = GateContext(
+        "s1",
+        "PreToolUse",
+        {"tool_name": "Read", "tool_input": {"file_path": "/some/file.py"}},
+    )
+    result = check_hydration_gate(ctx)
+
+    # Should bypass gate (return None) because hydration just completed
+    assert result is None, "Should bypass gate when turns_since_hydration == 0"
+
+
+@patch("hooks.gate_registry._hydration_is_subagent_session")
+@patch("hooks.gate_registry.session_state.is_hydrator_active")
+@patch("hooks.gate_registry.session_state.is_hydration_pending")
+@patch("hooks.gate_registry.session_state.load_session_state")
+@patch.dict("os.environ", {"HYDRATION_GATE_MODE": "block"})
+def test_hydration_blocks_when_turns_since_hydration_negative(
+    mock_load_state, mock_is_pending, mock_is_hydrator_active, mock_is_subagent
+):
+    """Block hydration gate if turns_since_hydration == -1 (never hydrated).
+
+    When the session has never been hydrated (turns_since_hydration == -1),
+    the gate should still block tool calls that require hydration.
+
+    Related: aops-bb33a3b3
+    """
+    mock_is_pending.return_value = True
+    mock_is_hydrator_active.return_value = False
+    mock_is_subagent.return_value = False
+    # Session state indicates never hydrated
+    mock_load_state.return_value = {
+        "hydration": {"turns_since_hydration": -1},
+        "state": {"hydration_pending": True}
+    }
+
+    ctx = GateContext(
+        "s1",
+        "PreToolUse",
+        {"tool_name": "Read", "tool_input": {"file_path": "/some/file.py"}},
+    )
+    result = check_hydration_gate(ctx)
+
+    # Should block because hydration hasn't happened yet
+    assert result is not None, "Should block when turns_since_hydration == -1"
+    assert result.verdict == GateVerdict.DENY
