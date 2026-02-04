@@ -150,7 +150,9 @@ MUTATING_TOOLS = {
     "NotebookEdit",
     # Gemini
     "write_to_file",
+    "write_file",
     "replace_file_content",
+    "replace",
     "multi_replace_file_content",
     "run_command",
     "run_shell_command",
@@ -454,7 +456,9 @@ def _should_require_task(tool_name: str, tool_input: Dict[str, Any]) -> bool:
         "Edit",
         "NotebookEdit",
         "write_to_file",
+        "write_file",
         "replace_file_content",
+        "replace",
         "multi_replace_file_content",
     ):
         # Check if target path is in safe temp directory (framework-controlled)
@@ -501,7 +505,9 @@ def _is_actually_destructive(tool_name: str, tool_input: Dict[str, Any]) -> bool
         "Write",
         "NotebookEdit",
         "write_to_file",
+        "write_file",
         "replace_file_content",
+        "replace",
         "multi_replace_file_content",
     ):
         return True
@@ -1114,7 +1120,9 @@ def check_axiom_enforcer_gate(ctx: GateContext) -> Optional[GateResult]:
         "Write",
         "Edit",
         "write_to_file",
+        "write_file",
         "replace_file_content",
+        "replace",
         "multi_replace_file_content",
     ):
         return None
@@ -1155,9 +1163,9 @@ def check_axiom_enforcer_gate(ctx: GateContext) -> Optional[GateResult]:
 
     # Extract code/content for P#8 analysis
     code = ""
-    if ctx.tool_name in ("Write", "write_to_file"):
+    if ctx.tool_name in ("Write", "write_to_file", "write_file"):
         code = ctx.tool_input.get("content", "")
-    elif ctx.tool_name in ("Edit", "replace_file_content"):
+    elif ctx.tool_name in ("Edit", "replace_file_content", "replace"):
         code = ctx.tool_input.get("new_string", "")
     elif ctx.tool_name == "multi_replace_file_content":
         replacements = ctx.tool_input.get("replacements", [])
