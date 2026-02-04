@@ -267,6 +267,7 @@ class TestHydrationGateBehavior:
     @patch("hooks.gate_registry.session_state")
     @patch("hooks.gate_registry.hook_utils")
     @patch("hooks.gate_registry.load_template")
+    @patch.dict("os.environ", {"HYDRATION_MODE": "block"})
     def test_gate_blocks_general_tool_when_hydration_pending(
         self,
         mock_load_template,
@@ -290,7 +291,7 @@ class TestHydrationGateBehavior:
             "hook_event_name": "PreToolUse",
             "session_id": "test-session",
             "tool_name": "Bash",
-            "tool_input": {"command": "ls -la"},
+            "tool_input": {"command": "touch /tmp/should_block"},
         }
         ctx = GateContext(
             session_id=event["session_id"],

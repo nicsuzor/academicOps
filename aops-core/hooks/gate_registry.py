@@ -1559,6 +1559,7 @@ def post_hydration_trigger(ctx: GateContext) -> Optional[GateResult]:
         return GateResult(
             verdict=GateVerdict.ALLOW,
             system_message="💧 [Gate] Hydration complete.",
+            context_injection="Hydration complete. You may now invoke the critic or proceed with your task.",
         )
 
     return None

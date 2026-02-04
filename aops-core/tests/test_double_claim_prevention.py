@@ -51,7 +51,8 @@ class TestDoubleClaimPrevention:
         # Import the server module and patch its data root
         from mcp_servers import tasks_server
 
-        with patch.object(tasks_server, "_get_storage", return_value=storage):
+        with patch.object(tasks_server, "_get_storage", return_value=storage), \
+             patch("mcp_servers.tasks_server.get_data_root", return_value=tmp_path):
             # User B tries to claim the task
             # Access .fn to call underlying function (FastMCP wraps in FunctionTool)
             result = tasks_server.update_task.fn(
@@ -71,7 +72,8 @@ class TestDoubleClaimPrevention:
         """Error message should include assignee and timestamp."""
         from mcp_servers import tasks_server
 
-        with patch.object(tasks_server, "_get_storage", return_value=storage):
+        with patch.object(tasks_server, "_get_storage", return_value=storage), \
+             patch("mcp_servers.tasks_server.get_data_root", return_value=tmp_path):
             result = tasks_server.update_task.fn(
                 id=claimed_task.id,
                 status="in_progress",
@@ -97,7 +99,8 @@ class TestDoubleClaimPrevention:
         original_assignee = claimed_task.assignee
         original_status = claimed_task.status
 
-        with patch.object(tasks_server, "_get_storage", return_value=storage):
+        with patch.object(tasks_server, "_get_storage", return_value=storage), \
+             patch("mcp_servers.tasks_server.get_data_root", return_value=tmp_path):
             # User B tries to claim
             tasks_server.update_task.fn(
                 id=claimed_task.id,
@@ -116,7 +119,8 @@ class TestDoubleClaimPrevention:
         """Same assignee can update their own claimed task (idempotent)."""
         from mcp_servers import tasks_server
 
-        with patch.object(tasks_server, "_get_storage", return_value=storage):
+        with patch.object(tasks_server, "_get_storage", return_value=storage), \
+             patch("mcp_servers.tasks_server.get_data_root", return_value=tmp_path):
             # User A updates their own claimed task
             result = tasks_server.update_task.fn(
                 id=claimed_task.id,
@@ -142,7 +146,8 @@ class TestDoubleClaimPrevention:
         task.assignee = None
         storage.save_task(task)
 
-        with patch.object(tasks_server, "_get_storage", return_value=storage):
+        with patch.object(tasks_server, "_get_storage", return_value=storage), \
+             patch("mcp_servers.tasks_server.get_data_root", return_value=tmp_path):
             result = tasks_server.update_task.fn(
                 id=task.id,
                 status="in_progress",
@@ -168,7 +173,8 @@ class TestDoubleClaimPrevention:
         task.assignee = None  # No assignee
         storage.save_task(task)
 
-        with patch.object(tasks_server, "_get_storage", return_value=storage):
+        with patch.object(tasks_server, "_get_storage", return_value=storage), \
+             patch("mcp_servers.tasks_server.get_data_root", return_value=tmp_path):
             result = tasks_server.update_task.fn(
                 id=task.id,
                 status="in_progress",
@@ -185,7 +191,8 @@ class TestDoubleClaimPrevention:
         """When claiming without assignee param, use task's existing assignee for comparison."""
         from mcp_servers import tasks_server
 
-        with patch.object(tasks_server, "_get_storage", return_value=storage):
+        with patch.object(tasks_server, "_get_storage", return_value=storage), \
+             patch("mcp_servers.tasks_server.get_data_root", return_value=tmp_path):
             # Just set status without specifying assignee
             result = tasks_server.update_task.fn(
                 id=claimed_task.id,
@@ -202,7 +209,8 @@ class TestDoubleClaimPrevention:
         """Rejected claim should still return the current task data for visibility."""
         from mcp_servers import tasks_server
 
-        with patch.object(tasks_server, "_get_storage", return_value=storage):
+        with patch.object(tasks_server, "_get_storage", return_value=storage), \
+             patch("mcp_servers.tasks_server.get_data_root", return_value=tmp_path):
             result = tasks_server.update_task.fn(
                 id=claimed_task.id,
                 status="in_progress",
@@ -224,7 +232,8 @@ class TestClaimWithStatusAlias:
         """Using 'in-progress' (hyphenated) should also prevent double-claim."""
         from mcp_servers import tasks_server
 
-        with patch.object(tasks_server, "_get_storage", return_value=storage):
+        with patch.object(tasks_server, "_get_storage", return_value=storage), \
+             patch("mcp_servers.tasks_server.get_data_root", return_value=tmp_path):
             result = tasks_server.update_task.fn(
                 id=claimed_task.id,
                 status="in-progress",  # Hyphenated alias
