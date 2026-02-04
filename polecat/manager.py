@@ -644,8 +644,24 @@ class PolecatManager:
         return results
 
     def claim_next_task(self, caller: str, project: str = None):
-        """Finds and claims the highest priority ready task."""
-        tasks = self.storage.get_ready_tasks(project=project)
+        """Finds and claims the highest priority ready task.
+        
+        Prioritizes:
+        1. REVIEW tasks assigned to 'caller' (fix failures first)
+        2. ACTIVE tasks (new work)
+        """
+        # 1. Find review tasks assigned to this caller (highest priority)
+        review_tasks = self.storage.list_tasks(
+            status=TaskStatus.REVIEW, 
+            assignee=caller, 
+            project=project
+        )
+        
+        # 2. Find normal ready tasks
+        ready_tasks = self.storage.get_ready_tasks(project=project)
+        
+        # Combine lists
+        tasks = review_tasks + ready_tasks
 
         if not tasks:
             return None
@@ -666,9 +682,20 @@ class PolecatManager:
 
                     try:
                         fresh_task = self.storage.get_task(task.id)
-                        if fresh_task is None or fresh_task.status != TaskStatus.ACTIVE:
+                        if fresh_task is None:
                             continue
-                        if fresh_task.assignee and fresh_task.assignee != caller:
+                            
+                        # Valid states to claim:
+                        # 1. ACTIVE (standard claim)
+                        # 2. REVIEW (if assigned to caller)
+                        is_active = fresh_task.status == TaskStatus.ACTIVE
+                        is_review = (fresh_task.status == TaskStatus.REVIEW and 
+                                   fresh_task.assignee == caller)
+                                   
+                        if not (is_active or is_review):
+                            continue
+                            
+                        if is_active and fresh_task.assignee and fresh_task.assignee != caller:
                             continue
 
                         fresh_task.status = TaskStatus.IN_PROGRESS
