@@ -326,12 +326,8 @@ reference-graph.csv
 # Plugin-specific MCP configs (generated from templates)
 aops-core/.mcp.json
 
-# Include built dist/ for releases
-!dist/aops-core-claude/
-!dist/aops-core-gemini/
-!dist/antigravity/
-!dist/*.tar.gz
-!dist/*.zip
+# Distribution artifacts - built by CI, stored in aops-dist repo
+dist/
 
 streamlit_log.txt
 .agent/PATHS.md

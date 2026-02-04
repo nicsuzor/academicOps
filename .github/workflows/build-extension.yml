@@ -1,35 +1,53 @@
-name: Release Plugins
+name: Build and Deploy
 
 on:
   push:
-    branches:
-      - main
-    tags:
-      - 'v*'
+    branches: [main]
+    tags: ['v*']
   workflow_dispatch:
 
 jobs:
-  release:
-    name: Release Plugins
+  build-and-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
     steps:
-      - name: Checkout repository
+      - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Create Release
-        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
-        uses: softprops/action-gh-release@v2
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'latest' }}
-          files: |
-            dist/aops-core-gemini.tar.gz
-            dist/aops-antigravity.zip
-            dist/aops-core-claude.tar.gz
-          draft: false
-          prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
-          make_latest: ${{ startsWith(github.ref, 'refs/tags/') }}
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Build distributions
+        run: uv run python scripts/build.py
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACA_DATA: ${{ github.workspace }}
+
+      - name: Setup SSH for dist repo
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.AOPS_DIST_DEPLOY_KEY }}
+
+      - name: Push to dist repo
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          git clone git@github.com:nicsuzor/aops-dist.git ../aops-dist
+
+          # Clear old artifacts
+          rm -rf ../aops-dist/aops-core-* ../aops-dist/antigravity ../aops-dist/*.tar.gz ../aops-dist/*.zip
+
+          # Copy new build
+          cp -r dist/* ../aops-dist/
+
+          cd ../aops-dist
+          git add -A
+          git commit -m "Build from academicOps@${{ github.sha }}" || echo "No changes to commit"
+          git push
