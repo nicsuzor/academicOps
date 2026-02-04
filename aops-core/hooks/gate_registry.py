@@ -869,11 +869,20 @@ def check_hydration_gate(ctx: GateContext) -> Optional[GateResult]:
         # Check if this is a fresh session (no state file) vs corruption (state exists but no temp_path)
         state = session_state.load_session_state(ctx.session_id)
         if state is None:
-            # Fresh session - UserPromptSubmit hasn't run yet to set state.
-            # is_hydration_pending returns True (fail-closed) for fresh sessions,
-            # but we can't block here because there's no hydration file to point to.
-            # Allow the tool call; UserPromptSubmit will set state on next prompt.
-            return None
+            # FAIL-CLOSED (P#8): Fresh session without state file MUST block.
+            # is_hydration_pending returns True for missing state, so we should
+            # honor that and block here. The session needs proper initialization
+            # via SessionStart or UserPromptSubmit before tool calls are allowed.
+            return GateResult(
+                verdict=GateVerdict.DENY,
+                context_injection="⛔ **SESSION NOT INITIALIZED**: No session state file found.\n\n"
+                                  "This session has not been properly initialized. Per P#8 (Fail-Fast), "
+                                  "destructive operations are blocked until the session is set up via "
+                                  "SessionStart or UserPromptSubmit hooks.\n\n"
+                                  "If you're seeing this in a new Gemini CLI session, ensure hooks are "
+                                  "configured correctly in ~/.gemini/settings.json.",
+                metadata={"source": "hydration_gate", "error": "missing_session_state"}
+            )
         # State exists but temp_path missing - real corruption
         return GateResult(
             verdict=GateVerdict.DENY,
