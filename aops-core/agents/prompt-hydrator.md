@@ -340,6 +340,37 @@ The acceptance criteria you generate are DERIVED interpretations - verify they m
 2. **Reuse current task**: Set Task Routing to "Existing task found" with the bound task ID
 3. **Skip Critic**: Omit the `Invoke CRITIC` step from the execution plan
 
+### Progress Update Detection
+
+**Trigger patterns** (case-insensitive):
+- "progress update", "status update", "update:"
+- "I just ran...", "just completed...", "finished..."
+- "dry run succeeded", "tests passed", "build complete"
+- Pipeline/batch output logs shared by user
+
+**When detected**:
+1. **Identify the project**: Extract project name from context (e.g., "buttermilk", "prosocial")
+2. **Surface related tasks**: Query for active tasks in that project and include in Relevant Context
+3. **Route to remember workflow**: Include `Skill(skill="remember")` in execution plan
+4. **Include daily note update**: Add step to update daily note with progress
+5. **Recommend task update**: If an existing task is clearly related, recommend updating its body
+
+**Output additions**:
+```markdown
+### Related Project Tasks
+
+Active tasks in [project]:
+- `[task-id]`: [title] (status)
+
+### Execution Plan
+
+1. Update task `[related-task-id]` with progress observation
+2. Invoke `Skill(skill="remember")` to persist to memory
+3. Update daily note with progress summary
+```
+
+**Critical**: Progress updates are NOT "simple-question" - they contain valuable episodic data that should be captured. The user sharing progress implies intent to record it.
+
 ### Insight Capture Advice
 
 When task involves discovery/learning, add:
