@@ -2888,6 +2888,102 @@ st.markdown(
         margin-top: 4px;
     }
 
+    .stale-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+    }
+
+    .stale-action-btn {
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 0.85em;
+        font-weight: 500;
+        cursor: pointer;
+        border: none;
+        transition: opacity 0.2s;
+    }
+
+    .stale-action-btn:hover {
+        opacity: 0.8;
+    }
+
+    .stale-action-btn.archive {
+        background: rgba(251, 191, 36, 0.3);
+        color: #fbbf24;
+    }
+
+    .stale-action-btn.review {
+        background: rgba(96, 165, 250, 0.3);
+        color: #60a5fa;
+    }
+
+    .stale-action-btn.dismiss {
+        background: rgba(128, 128, 128, 0.3);
+        color: #888;
+    }
+
+    /* Collapsible paused bucket */
+    .wlo-paused-collapsible {
+        border: 1px solid rgba(251, 191, 36, 0.2);
+        border-radius: 6px;
+        margin-top: 8px;
+    }
+
+    .wlo-paused-collapsible summary {
+        cursor: pointer;
+        padding: 10px 14px;
+        background: rgba(251, 191, 36, 0.08);
+        border-radius: 6px;
+        list-style: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .wlo-paused-collapsible summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .wlo-paused-collapsible summary::before {
+        content: '▶';
+        font-size: 0.7em;
+        color: #fbbf24;
+        transition: transform 0.2s;
+    }
+
+    .wlo-paused-collapsible[open] summary::before {
+        transform: rotate(90deg);
+    }
+
+    .wlo-paused-collapsible summary .wlo-bucket-label {
+        margin: 0;
+        padding: 0;
+    }
+
+    .wlo-paused-content {
+        padding: 8px;
+    }
+
+    /* Project grouping within buckets */
+    .wlo-project-group {
+        margin-bottom: 12px;
+    }
+
+    .wlo-project-group:last-child {
+        margin-bottom: 0;
+    }
+
+    .wlo-project-group-label {
+        font-size: 0.75em;
+        font-weight: 600;
+        color: var(--text-accent);
+        text-transform: lowercase;
+        padding: 4px 0;
+        margin-bottom: 4px;
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
     /* ==========================================================================
      * WHERE YOU LEFT OFF - CARD-BASED LAYOUT (v2)
      * ========================================================================== */
@@ -4089,88 +4185,136 @@ if active_sessions_wlo or paused_sessions_wlo:
     wlo_html = "<div class='where-left-off-panel'>"
     wlo_html += "<div class='where-left-off-header'>📍 WHERE YOU LEFT OFF</div>"
 
-    # Active sessions (<4h) - card-based display with rich context
+    # Active sessions (<4h) - card-based display with rich context, grouped by project
     if active_sessions_wlo:
         wlo_html += "<div class='wlo-bucket-label'>⚡ ACTIVE NOW</div>"
+
+        # Group active sessions by project per spec
+        active_by_project: dict[str, list] = {}
         for entry in active_sessions_wlo:
-            session_type = entry["session_type"]
-            time_display = entry["time_display"]
-            time_class = "now" if entry["is_active"] else ""
+            proj = entry["project"]
+            if proj not in active_by_project:
+                active_by_project[proj] = []
+            active_by_project[proj].append(entry)
 
-            wlo_html += f"<div class='wlo-card {session_type}'>"
+        for project, entries in sorted(active_by_project.items()):
+            if len(active_by_project) > 1:
+                wlo_html += f"<div class='wlo-project-group'>"
+                wlo_html += f"<div class='wlo-project-group-label'>{esc(project)}</div>"
 
-            # Header: project + time
-            wlo_html += "<div class='wlo-card-header'>"
-            wlo_html += f"<span class='wlo-card-project'>{esc(entry['project'])}</span>"
-            wlo_html += f"<span class='wlo-card-time {time_class}'>{esc(time_display)}</span>"
-            wlo_html += "</div>"
+            for entry in entries:
+                session_type = entry["session_type"]
+                time_display = entry["time_display"]
+                time_class = "now" if entry["is_active"] else ""
 
-            # Goal line
-            goal = entry["goal"] or entry["description"]
-            wlo_html += f"<div class='wlo-card-goal'>{esc(goal)}</div>"
+                wlo_html += f"<div class='wlo-card {session_type}'>"
 
-            # Meta: progress, now, next
-            wlo_html += "<div class='wlo-card-meta'>"
+                # Header: project (only if single project) + time
+                wlo_html += "<div class='wlo-card-header'>"
+                if len(active_by_project) == 1:
+                    wlo_html += f"<span class='wlo-card-project'>{esc(entry['project'])}</span>"
+                wlo_html += f"<span class='wlo-card-time {time_class}'>{esc(time_display)}</span>"
+                wlo_html += "</div>"
 
-            progress_total = entry["progress_total"]
-            progress_done = entry["progress_done"]
-            if progress_total > 0:
-                wlo_html += f"<span class='wlo-card-progress'><span class='done'>{progress_done}</span>/{progress_total} steps</span>"
+                # Goal line
+                goal = entry["goal"] or entry["description"]
+                wlo_html += f"<div class='wlo-card-goal'>{esc(goal)}</div>"
 
-            now_task = entry["now_task"]
-            if now_task:
-                wlo_html += f"<span class='wlo-card-now'>Now: {esc(now_task)}</span>"
+                # Meta: progress, now, next
+                wlo_html += "<div class='wlo-card-meta'>"
 
-            next_task = entry["next_task"]
-            if next_task:
-                wlo_html += f"<span class='wlo-card-next'>Next: {esc(next_task)}</span>"
+                progress_total = entry["progress_total"]
+                progress_done = entry["progress_done"]
+                if progress_total > 0:
+                    wlo_html += f"<span class='wlo-card-progress'><span class='done'>{progress_done}</span>/{progress_total} steps</span>"
 
-            # Status badge
-            if session_type == "running":
-                wlo_html += "<span class='wlo-card-status running'>Running</span>"
-            elif session_type == "interactive":
-                wlo_html += "<span class='wlo-card-status interactive'>Needs You</span>"
+                now_task = entry["now_task"]
+                if now_task:
+                    wlo_html += f"<span class='wlo-card-now'>Now: {esc(now_task)}</span>"
 
-            wlo_html += "</div>"  # End meta
-            wlo_html += "</div>"  # End card
+                next_task = entry["next_task"]
+                if next_task:
+                    wlo_html += f"<span class='wlo-card-next'>Next: {esc(next_task)}</span>"
 
-    # Paused sessions (4-24h) - compact card style
+                # Status badge
+                if session_type == "running":
+                    wlo_html += "<span class='wlo-card-status running'>Running</span>"
+                elif session_type == "interactive":
+                    wlo_html += "<span class='wlo-card-status interactive'>Needs You</span>"
+
+                wlo_html += "</div>"  # End meta
+                wlo_html += "</div>"  # End card
+
+            if len(active_by_project) > 1:
+                wlo_html += "</div>"  # End project group
+
+    # Paused sessions (4-24h) - collapsible per spec
     if paused_sessions_wlo:
-        wlo_html += "<div class='wlo-bucket-label wlo-paused-label'>⏸️ PAUSED (4-24h ago)</div>"
+        paused_count = len(paused_sessions_wlo)
+        wlo_html += "<details class='wlo-paused-collapsible'>"
+        wlo_html += f"<summary><span class='wlo-bucket-label wlo-paused-label'>⏸️ PAUSED ({paused_count} session{'s' if paused_count != 1 else ''}, 4-24h ago)</span></summary>"
+        wlo_html += "<div class='wlo-paused-content'>"
+
+        # Group paused sessions by project
+        paused_by_project: dict[str, list] = {}
         for entry in paused_sessions_wlo:
-            outcome_class = entry["outcome_class"]
-            time_display = entry["time_display"]
+            proj = entry["project"]
+            if proj not in paused_by_project:
+                paused_by_project[proj] = []
+            paused_by_project[proj].append(entry)
 
-            wlo_html += f"<div class='wlo-card paused'>"
-            wlo_html += "<div class='wlo-card-header'>"
-            wlo_html += f"<span class='wlo-card-project'>{esc(entry['project'])}</span>"
-            wlo_html += f"<span class='wlo-card-time'>{esc(time_display)}</span>"
-            wlo_html += "</div>"
+        for project, entries in sorted(paused_by_project.items()):
+            if len(paused_by_project) > 1:
+                wlo_html += f"<div class='wlo-project-group'>"
+                wlo_html += f"<div class='wlo-project-group-label'>{esc(project)}</div>"
 
-            # For paused sessions, show description (usually accomplishment summary)
-            description = entry["description"]
-            wlo_html += f"<div class='wlo-card-goal'>{esc(description)}</div>"
+            for entry in entries:
+                time_display = entry["time_display"]
 
-            wlo_html += "<div class='wlo-card-meta'>"
-            outcome_text = entry["outcome_text"]
-            if outcome_text:
-                wlo_html += f"<span class='wlo-card-status done'>{esc(outcome_text)}</span>"
+                wlo_html += f"<div class='wlo-card paused'>"
+                wlo_html += "<div class='wlo-card-header'>"
+                # Only show project in header if not already grouped
+                if len(paused_by_project) == 1:
+                    wlo_html += f"<span class='wlo-card-project'>{esc(entry['project'])}</span>"
+                wlo_html += f"<span class='wlo-card-time'>{esc(time_display)}</span>"
+                wlo_html += "</div>"
 
-            reentry_link = entry["reentry_link"]
-            if reentry_link:
-                wlo_html += f"<a href='{reentry_link}' class='wlo-link' title='Open in Obsidian'>↗ View</a>"
-            wlo_html += "</div>"
-            wlo_html += "</div>"
+                # For paused sessions, show description (usually accomplishment summary)
+                description = entry["description"]
+                wlo_html += f"<div class='wlo-card-goal'>{esc(description)}</div>"
+
+                wlo_html += "<div class='wlo-card-meta'>"
+                outcome_text = entry["outcome_text"]
+                if outcome_text:
+                    wlo_html += f"<span class='wlo-card-status done'>{esc(outcome_text)}</span>"
+
+                reentry_link = entry["reentry_link"]
+                if reentry_link:
+                    wlo_html += f"<a href='{reentry_link}' class='wlo-link' title='Open in Obsidian'>↗ View</a>"
+                wlo_html += "</div>"
+                wlo_html += "</div>"
+
+            if len(paused_by_project) > 1:
+                wlo_html += "</div>"  # End project group
+
+        wlo_html += "</div>"  # End paused content
+        wlo_html += "</details>"
 
     wlo_html += "</div>"
     st.markdown(wlo_html, unsafe_allow_html=True)
 
 # Stale sessions prompt (>24h) - not in main display per spec
+# Per spec: show archive prompt with action buttons
 if stale_count > 0:
     st.markdown(
         f"""<div class='stale-sessions-prompt'>
             📦 {stale_count} stale session{"s" if stale_count != 1 else ""} (no activity &gt;24h)
             <span class='stale-hint'>These are hidden from the main display</span>
+            <div class='stale-actions'>
+                <span class='stale-action-btn archive' title='Move to archive folder'>Archive All</span>
+                <span class='stale-action-btn review' title='Expand to review'>Review &amp; Select</span>
+                <span class='stale-action-btn dismiss' title='Hide until next load'>Dismiss</span>
+            </div>
         </div>""",
         unsafe_allow_html=True,
     )
