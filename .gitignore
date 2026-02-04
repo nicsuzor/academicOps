@@ -329,7 +329,11 @@ aops-tools/config/gemini/mcp-servers.json
 
 # Plugin-specific MCP configs (generated from templates by setup.sh)
 aops-core/.mcp.json
-dist/
+dist/*
+!dist/aops-core-claude/
+!dist/aops-tools-claude/
+!dist/aops-core-gemini/
+!dist/aops-tools-gemini/
 aops-tools/.mcp.json
 streamlit_log.txt
 .agent/PATHS.md

@@ -5,6 +5,10 @@ model: haiku
 tools:
   - read_file
   - mcp__memory__retrieve_memory
+  - mcp__task_manager__create_task
+  - mcp__task_manager__get_task
+  - mcp__task_manager__update_task
+  - mcp__task_manager__list_tasks
   - activate_skill
 ---
 

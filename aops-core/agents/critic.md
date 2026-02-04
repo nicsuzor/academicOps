@@ -2,7 +2,8 @@
 name: critic
 description: Second-opinion review of plans and conclusions
 model: opus
-tools: []
+tools:
+  - read_file
 ---
 
 # Critic Agent
