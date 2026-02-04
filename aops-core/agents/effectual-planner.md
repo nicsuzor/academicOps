@@ -3,6 +3,7 @@ name: effectual-planner
 description: Strategic planning under uncertainty (goals, projects, knowledge-building).
   NOT for implementation plans.
 model: opus
+tools: []
 ---
 
 # Effectual Planning Agent

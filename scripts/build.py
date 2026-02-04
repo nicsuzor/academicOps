@@ -364,6 +364,14 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
                         text = text.replace("`Task(`", "`activate_skill(`")
                         text = text.replace("`Skill(`", "`activate_skill(`")
 
+                        # 4. Tool calls (Gemini CLI format)
+                        text = text.replace("Read(", "read_file(")
+                        text = text.replace("Write(", "write_file(")
+                        text = text.replace("Edit(", "replace(")
+                        text = text.replace("ls(", "list_directory(")
+                        text = text.replace("Glob(", "glob(")
+                        text = text.replace("grep(", "search_file_content(")
+
                         # Write modified content
                         with open(skill_dir / "SKILL.md", "w") as f:
                             f.write(text)
