@@ -38,6 +38,8 @@ The following files are mapped in this project's context map. **You must decide*
 
 {project_context_index}
 
+**MANDATORY**: If the project has `.agent/rules/` directory, READ ALL FILES in it. These are project-wide conventions that apply to ALL work in this project (test patterns, code style, architectural constraints). Include their key rules in Applicable Principles.
+
 ## Relevant Files (Selective Injection)
 
 Based on prompt keywords, these specific files may be relevant:
@@ -219,6 +221,7 @@ These scripts exist but aren't user-invocable skills. Provide exact invocation w
 - **Interactive Follow-ups**: If prompt is a bounded continuation of session work (e.g. "save that to X", "fix the typo I just made"), route to `[[workflows/interactive-followup]]`. This workflow skips redundant task creation and the CRITIC step.
 - **Scope detection**: Multi-session = goal-level, uncertain path, spans days+. Single-session = bounded, known steps.
 - **Prefer existing tasks**: Search task state before creating new tasks.
+- **Polecat Terminology**: When user mentions "polecat" + "ready" or "merge", they mean tasks with `status: merge_ready` that need to be merged via `polecat merge`. When they say "needs review", they mean tasks with `status: review`. Do NOT interpret this as unstaged git changes - polecat work lives in worktrees and branches, not local modifications.
 - **CRITIC MANDATORY**: Every plan (except simple-question) needs CRITIC verification step.
 - **Deferred work**: Only for multi-session. Captures what can't be done now without losing it.
 - **Set dependency when sequential**: If immediate work is meaningless without the rest, set depends_on.
