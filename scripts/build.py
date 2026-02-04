@@ -54,6 +54,25 @@ CLAUDE_TO_GEMINI_EVENTS = {
 }
 
 
+def get_project_version(aops_root: Path) -> str:
+    """Extract the version from pyproject.toml."""
+    pyproject_path = aops_root / "pyproject.toml"
+    if pyproject_path.exists():
+        try:
+            import tomllib
+            with open(pyproject_path, "rb") as f:
+                data = tomllib.load(f)
+                return data.get("project", {}).get("version", "0.1.0")
+        except (ImportError, Exception):
+            # Fallback regex if tomllib is missing or fails
+            import re
+            content = pyproject_path.read_text()
+            match = re.search(r'version\s*=\s*"([^"]+)"', content)
+            if match:
+                return match.group(1)
+    return "0.1.0"
+
+
 def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
     """Transform hooks.json from Claude Code format to Gemini CLI format.
 
@@ -198,9 +217,11 @@ def translate_tool_calls(text: str, platform: str) -> str:
     return text
 
 
-def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str, platform: str = "gemini"):
+def build_aops_core(
+    aops_root: Path, dist_root: Path, aca_data_path: str, platform: str = "gemini", version: str = "0.1.0"
+):
     """Build the aops-core extension for a specific platform."""
-    print(f"Building aops-core for {platform}...")
+    print(f"Building aops-core for {platform} (v{version})...")
     plugin_name = "aops-core"
     src_dir = aops_root / plugin_name
     
@@ -284,7 +305,7 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str, platfo
         if hooks_json_src.exists():
             _generate_gemini_hooks_json(hooks_json_src, hooks_dst / "hooks.json")
 
-    # 3. Extension Manifest (Gemini only)
+    # 3. Extension Manifest / Plugin Info
     if platform == "gemini":
         src_extension_json = src_dir / "gemini-extension.json"
         dist_extension_json = dist_dir / "gemini-extension.json"
@@ -292,12 +313,29 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str, platfo
         if src_extension_json.exists():
             print(f"Generating extension manifest from {src_extension_json.name}...")
             try:
-                content = src_extension_json.read_text()
+                manifest = json.loads(src_extension_json.read_text())
+                manifest["version"] = version
                 with open(dist_extension_json, "w") as f:
-                    f.write(content)
+                    json.dump(manifest, f, indent=2)
             except Exception as e:
-                print(f"Error processing extension template: {e}", file=sys.stderr)
+                print(f"Error processing extension manifest: {e}", file=sys.stderr)
                 raise
+        else:
+            print(f"Error: {src_extension_json} not found.", file=sys.stderr)
+            sys.exit(1)
+    
+    if platform == "claude":
+        src_plugin_json = src_dir / ".claude-plugin" / "plugin.json"
+        dist_plugin_json = dist_dir / "plugin.json"
+        if src_plugin_json.exists():
+            try:
+                manifest = json.loads(src_plugin_json.read_text())
+                manifest["version"] = version
+                with open(dist_plugin_json, "w") as f:
+                    json.dump(manifest, f, indent=2)
+                print(f"  ✓ Updated and copied plugin.json -> {dist_plugin_json}")
+            except Exception as e:
+                print(f"Error processing plugin.json: {e}", file=sys.stderr)
         else:
             print(f"Error: {src_extension_json} not found.", file=sys.stderr)
             sys.exit(1)
@@ -381,9 +419,11 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str, platfo
     return gemini_mcps
 
 
-def build_aops_tools(aops_root: Path, dist_root: Path, aca_data_path: str, platform: str = "gemini"):
+def build_aops_tools(
+    aops_root: Path, dist_root: Path, aca_data_path: str, platform: str = "gemini", version: str = "0.1.0"
+):
     """Build the aops-tools extension."""
-    print(f"Building aops-tools for {platform}...")
+    print(f"Building aops-tools for {platform} (v{version})...")
     plugin_name = "aops-tools"
     src_dir = aops_root / plugin_name
     
@@ -435,6 +475,17 @@ def build_aops_tools(aops_root: Path, dist_root: Path, aca_data_path: str, platf
         try:
             with open(plugin_json_path) as f:
                 manifest_base = json.load(f)
+            
+            # Update version in manifest
+            manifest_base["version"] = version
+
+            # If Claude, copy to root
+            if platform == "claude":
+                dist_plugin_json = dist_dir / "plugin.json"
+                with open(dist_plugin_json, "w") as f:
+                    json.dump(manifest_base, f, indent=2)
+                print(f"  ✓ Updated and copied plugin.json -> {dist_plugin_json}")
+
         except json.JSONDecodeError:
             print(f"Warning: Invalid JSON in {plugin_json_path}")
 
@@ -462,7 +513,7 @@ def build_aops_tools(aops_root: Path, dist_root: Path, aca_data_path: str, platf
         # 3. Build Final Manifest
         manifest = {
             "name": manifest_base.get("name", "aops-tools"),
-            "version": manifest_base.get("version", "0.1.0"),
+            "version": version,
             "description": manifest_base.get("description", "AcademicOps Tools"),
             "mcpServers": gemini_mcps,
         }
@@ -539,17 +590,21 @@ def main():
     aops_root = Path(aops_path_str).resolve()
     dist_root = aops_root / "dist"
 
+    # Get version from pyproject.toml
+    version = get_project_version(aops_root)
+    print(f"Building AcademicOps v{version}...")
+
     # Clean/Create dist
     if not dist_root.exists():
         dist_root.mkdir()
 
     # Build components (Gemini)
-    core_mcps_gemini = build_aops_core(aops_root, dist_root, aca_data_path, "gemini")
-    tools_mcps_gemini = build_aops_tools(aops_root, dist_root, aca_data_path, "gemini")
+    core_mcps_gemini = build_aops_core(aops_root, dist_root, aca_data_path, "gemini", version)
+    tools_mcps_gemini = build_aops_tools(aops_root, dist_root, aca_data_path, "gemini", version)
 
     # Build components (Claude)
-    build_aops_core(aops_root, dist_root, aca_data_path, "claude")
-    build_aops_tools(aops_root, dist_root, aca_data_path, "claude")
+    build_aops_core(aops_root, dist_root, aca_data_path, "claude", version)
+    build_aops_tools(aops_root, dist_root, aca_data_path, "claude", version)
 
     # Aggregate MCPs for Antigravity (global config if needed)
     all_mcps_gemini = {**core_mcps_gemini, **tools_mcps_gemini}

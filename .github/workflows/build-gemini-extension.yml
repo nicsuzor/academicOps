@@ -41,22 +41,27 @@ jobs:
       - name: Create temporary ACA_DATA
         run: mkdir -p /tmp/aca-data
 
+      - name: Bump Version
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          uv run python scripts/bump_version.py
+
       - name: Run Build Script
         env:
           MCP_MEMORY_API_KEY: ${{ secrets.MCP_MEMORY_API_KEY }}
         run: |
           uv run python scripts/build.py
 
-      - name: Commit and Push built distributions
+      - name: Commit and Push changes
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add dist/
+          git add dist/ pyproject.toml
           if git diff --staged --quiet; then
-            echo "No changes to built distributions."
+            echo "No changes to commit."
           else
-            git commit -m "chore: update built distributions [skip ci]"
+            git commit -m "chore: bump version and update built distributions [skip ci]"
             git push origin HEAD:main
           fi
 
@@ -71,36 +76,21 @@ jobs:
           path: gemini-extension-dist.zip
           retention-days: 7
 
-            - name: Create Release
-
-              if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
-
-              uses: softprops/action-gh-release@v2
-
-              with:
-
-                tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'latest' }}
-
-                files: |
-
-                  dist/aops-core-gemini.tar.gz
-
-                  dist/aops-tools-gemini.tar.gz
-
-                  dist/aops-antigravity.zip
-
-                  dist/aops-core-claude.tar.gz
-
-                  dist/aops-tools-claude.tar.gz
-
-                draft: false
-
-                prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
-
-                make_latest: ${{ startsWith(github.ref, 'refs/tags/') }}
-
-              env:
-
-                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create Release
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'latest' }}
+          files: |
+            dist/aops-core-gemini.tar.gz
+            dist/aops-tools-gemini.tar.gz
+            dist/aops-antigravity.zip
+            dist/aops-core-claude.tar.gz
+            dist/aops-tools-claude.tar.gz
+          draft: false
+          prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          make_latest: ${{ startsWith(github.ref, 'refs/tags/') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       
