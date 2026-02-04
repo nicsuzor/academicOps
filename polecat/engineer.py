@@ -29,7 +29,12 @@ class Engineer:
 
         Uses MERGING status as a merge slot - only one task can be merging at a time.
         This serializes merges to prevent conflicts and ensure orderly integration.
+
+        Also reconciles orphaned MERGING tasks (from manual merges or interrupted processes).
         """
+        # First, reconcile any orphaned MERGING tasks
+        self._reconcile_merging_tasks()
+
         # Check if another task is already merging (merge slot occupied)
         merging_tasks = self.storage.list_tasks(status=TaskStatus.MERGING)
         if merging_tasks:
@@ -277,3 +282,61 @@ class Engineer:
         if res.returncode == 0 and res.stdout:
             return res.stdout.decode().strip().split("\n")
         return ["(unable to determine conflicting files)"]
+
+    def _reconcile_merging_tasks(self):
+        """Reconcile tasks stuck in MERGING status.
+
+        This handles cases where:
+        1. Manual git merge was performed (bypassing refinery)
+        2. Process was interrupted after merge but before status update
+        3. Branch was deleted but task status wasn't updated
+
+        For each MERGING task:
+        - If branch doesn't exist → mark DONE (merge happened externally)
+        - If branch exists and is merged → mark DONE + delete branch
+        - If branch exists and not merged → leave as MERGING (needs investigation)
+        """
+        merging_tasks = self.storage.list_tasks(status=TaskStatus.MERGING)
+        if not merging_tasks:
+            return
+
+        print(f"Reconciling {len(merging_tasks)} task(s) in MERGING status...")
+
+        for task in merging_tasks:
+            branch_name = f"polecat/{task.id}"
+            try:
+                repo_path = self.polecat_mgr.get_repo_path(task)
+            except Exception:
+                repo_path = REPO_ROOT
+
+            # Fetch latest to ensure accurate branch state
+            self._run_git(repo_path, ["fetch", "origin"], check=False)
+
+            local_exists = self._branch_exists(repo_path, branch_name)
+            remote_exists = self._branch_exists(repo_path, f"origin/{branch_name}")
+
+            if not local_exists and not remote_exists:
+                # Branch is gone - assume merge happened externally
+                print(f"  {task.id}: Branch gone → marking DONE")
+                task.status = TaskStatus.DONE
+                task.body += f"\n\n## Reconciled ({datetime.now().strftime('%Y-%m-%d %H:%M')})\nBranch deleted externally. Marked done by reconciliation."
+                self.storage.save_task(task)
+                self.polecat_mgr.nuke_worktree(task.id, force=True)
+                continue
+
+            # Branch exists - check if it's merged (use whichever ref exists)
+            check_ref = branch_name if local_exists else f"origin/{branch_name}"
+            is_merged = self.polecat_mgr._is_branch_merged(repo_path, check_ref, target="main")
+
+            if is_merged:
+                # Branch is merged but cleanup didn't happen
+                print(f"  {task.id}: Branch merged → cleaning up + marking DONE")
+                self._run_git(repo_path, ["branch", "-D", branch_name], check=False)
+                self._run_git(repo_path, ["push", "origin", "--delete", branch_name], check=False)
+                task.status = TaskStatus.DONE
+                task.body += f"\n\n## Reconciled ({datetime.now().strftime('%Y-%m-%d %H:%M')})\nBranch was merged but cleanup incomplete. Completed by reconciliation."
+                self.storage.save_task(task)
+                self.polecat_mgr.nuke_worktree(task.id, force=True)
+            else:
+                # Branch exists but not merged - something is wrong
+                print(f"  {task.id}: Branch exists but NOT merged → leaving for investigation")
