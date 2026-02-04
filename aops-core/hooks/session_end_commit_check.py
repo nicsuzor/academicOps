@@ -715,12 +715,14 @@ def main():
                     }
                     logger.info(f"Session end warning (relaxed): active task {current_task}")
                 else:
+                    msg = (
+                        f"Active task bound to session: {current_task}. "
+                        "Complete the task or use /handover to end cleanly."
+                    )
                     output_data = {
                         "verdict": "deny",  # Hard block by default
-                        "system_message": (
-                            f"Active task bound to session: {current_task}. "
-                            "Complete the task or use /handover to end cleanly."
-                        ),
+                        "system_message": msg,
+                        "context_injection": msg,
                     }
                     logger.info(f"Session end blocked: active task {current_task}")
                     print(json.dumps(output_data))
@@ -743,6 +745,7 @@ def main():
                     output_data = {
                         "verdict": "deny",  # Hard block by default
                         "system_message": check_result.message,
+                        "context_injection": check_result.message,
                     }
                     logger.info(f"Session end blocked: {check_result.message[:80]}...")
                     print(json.dumps(output_data))
