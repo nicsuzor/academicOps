@@ -81,9 +81,21 @@ description: Working hypotheses validated by evidence.
 
 ## Internal Records Before External APIs (P#61)
 
+
+
 **Statement**: When user asks "do we have a record" or "what do we know about X", search bd and memory FIRST before querying external APIs.
 
+
+
+**Corollaries**:
+
+- NEVER use web_fetch or google_web_search for framework-internal debugging, documentation retrieval, or governance tasks. Use read_file and semantic memory search instead.
+
+
+
 **Derivation**: "Do we have" implies checking our knowledge stores, not fetching new data. Internal-first respects the question's scope and avoids unnecessary API calls.
+
+
 
 ---
 
@@ -537,3 +549,11 @@ mcp__plugin_aops-tools_task_manager__get_task(id="...")
 - For email triage specifically: check sent mail for existing replies first
 
 **Derivation**: Corollary of P#26 (Verify First) and P#58 (Indices Before Exploration). Batch operations without deduplication create noise and duplicate work. The task index is the authoritative source - query it first.
+
+---
+
+## Run Python via uv (P#93)
+
+**Statement**: Always use `uv run python` (or `uv run pytest`) to execute Python code. Never use `python`, `python3`, or `pip` directly.
+
+**Derivation**: `uv` manages the virtual environment and dependencies. System python lacks the project context. `uv run` guarantees the correct environment is active without manual activation steps.

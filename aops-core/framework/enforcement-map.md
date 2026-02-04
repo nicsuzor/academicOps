@@ -111,6 +111,7 @@ tags: [framework, enforcement, moc]
 | [[preserve-pre-existing-content]]       | Preserve Pre-Existing Content          | HEURISTICS.md                                         | SessionStart              |       |
 | [[user-intent-discovery]]               | User Intent Discovery Before Implementation | HEURISTICS.md, prompt-hydrator guidance          | SessionStart, UserPromptSubmit |       |
 | [[verify-non-duplication-batch-create]] | Verify Non-Duplication Before Batch Create | HEURISTICS.md, triage-email workflow             | SessionStart, batch operations | 1a    |
+| [[run-python-via-uv]]                   | Run Python via uv                          | HEURISTICS.md                                    | SessionStart                   | 1a    |
 
 ## Enforcement Level Summary
 
