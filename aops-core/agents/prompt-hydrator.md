@@ -269,6 +269,19 @@ This gate ensures the epic scope and framing are correct before investment in de
 
 **Critical**: Discovering a bug during verification does NOT complete the verification task. The bug is a separate issue. Verification requires confirming the procedure succeeds end-to-end.
 
+### Ambiguous Task Scoping (P#88 Application)
+
+When user references "my X tasks" where X is a category (email, admin, project, etc.):
+
+1. **Do NOT derive scope from tags** - "email tasks" ≠ tasks tagged `email-triage`
+2. **Ask clarifying question** via CRITICAL GATE output if scope is ambiguous
+3. **User intent examples**:
+   - "my email tasks" might mean: tasks requiring email replies, emails awaiting response, tasks from colleagues
+   - "my admin tasks" might mean: administrative tasks, or tasks in admin project
+4. **Signal ambiguity**: Output `**CRITICAL GATE**: Clarify task scope before proceeding`
+
+The acceptance criteria you generate are DERIVED interpretations - verify they match user's ACTUAL intent.
+
 ### Task Rules
 
 1. **Always route to task** for file-modifying work (except simple-question)
