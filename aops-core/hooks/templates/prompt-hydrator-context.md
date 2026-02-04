@@ -81,12 +81,17 @@ Based on prompt keywords, these specific files may be relevant:
 ## Your Task
 
 1. **Understand intent** - What does the user actually want?
-2. **Assess scope** - Single-session (bounded, path known) or multi-session (goal-level, uncertain path)?
-3. **Determine execution path** - Should this be `direct` or `enqueue`?
-4. **Route to task** - Match to existing task or specify new task creation
-5. **Select workflows** - Use the pre-loaded Workflow Index above to select the appropriate workflows
-6. **Compose workflows** - Read workflow files in `$AOPS/aops-core/workflows/` (and any [[referenced workflows]]) to construct a single ordered list of required steps
-7. **Capture deferred work** - For multi-session scope, create decomposition task for future work
+2. **Gather context** - Use the **Knowledge Retrieval Hierarchy**:
+   - **Tier 1: Memory Server** (PRIMARY) - Semantic search for related knowledge.
+   - **Tier 2: Framework Specs** (SECONDARY) - AXIOMS, HEURISTICS, and pre-loaded indices (Skills, Workflows, Task State).
+   - **Tier 3: External Search** (TERTIARY) - Suggested in your execution plan ONLY if internal sources are insufficient.
+   - **Tier 4: Source Transcripts** (LAST RESORT) - Suggested ONLY for very recent context not yet synthesized into memory or specs.
+3. **Assess scope** - Single-session (bounded, path known) or multi-session (goal-level, uncertain path)?
+4. **Determine execution path** - Should this be `direct` or `enqueue`?
+5. **Route to task** - Match to existing task or specify new task creation
+6. **Select workflows** - Use the pre-loaded Workflow Index above to select the appropriate workflows
+7. **Compose workflows** - Read workflow files in `$AOPS/aops-core/workflows/` (and any [[referenced workflows]]) to construct a single ordered list of required steps
+8. **Capture deferred work** - For multi-session scope, create decomposition task for future work
 
 Note: DO NOT plan the actual work. Your ONLY job is to provide background information and enumerate the required workflow steps the agent must follow. Working out HOW to achieve each step is the agent's responsibility.
 

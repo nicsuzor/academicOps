@@ -126,15 +126,16 @@ The hydrator reads WORKFLOWS.md to select the appropriate workflow based on user
 
 ## Context Gathering
 
-The hydrator gathers context to inform workflow selection and step planning:
+The hydrator follows the **Knowledge Retrieval Hierarchy** to inform workflow selection and step planning:
 
-| Source        | What                                  | Token Budget |
-| ------------- | ------------------------------------- | ------------ |
-| Memory server | Semantic search for related knowledge | ~200         |
-| Codebase      | Files relevant to the prompt          | ~150         |
-| Session       | Last 3-5 prompts, session state       | ~100         |
+| Tier | Source | What |
+|------|--------|------|
+| **1** | **Memory Server** | PRIMARY: Semantic search for related knowledge (mcp__memory) |
+| **2** | **Framework Specs** | SECONDARY: AXIOMS, HEURISTICS, and pre-loaded indices |
+| **3** | **External Search** | TERTIARY: GitHub or Web search when internal sources are insufficient |
+| **4** | **Transcripts** | LAST RESORT: Raw session logs for very recent context |
 
-**Total budget**: ~450 tokens of context
+**Total budget**: ~450 tokens of context for the hydrator itself (Tier 1 & 2). Tier 3 & 4 are suggested as execution steps for the main agent.
 
 ## Index Loading System
 

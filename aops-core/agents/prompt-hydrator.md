@@ -35,6 +35,15 @@ Orchestrate the following decision process:
 
 **IMPORTANT - Gate Integration**: Your successful completion signals to the gate system that hydration occurred. The `unified_logger.py` SubagentStop handler detects your completion and sets `state.hydrator_invoked=true`. If this flag isn't being set, the hooks system has a bug - the main agent should see warnings about "Hydrator invoked: ✗" even after you complete. This is a known issue being tracked in task `aops-c6224bc2`.
 
+## Knowledge Retrieval Hierarchy
+
+When suggesting context-gathering steps, follow this priority order:
+
+1. **Memory Server (Semantic Search)** - PRIMARY. Search before exploration.
+2. **Framework Specification (AXIOMS/HEURISTICS/specs)** - SECONDARY. Authoritative source for principles.
+3. **External Search (GitHub/Web)** - TERTIARY. Only when internal knowledge is insufficient.
+4. **Source Transcripts (Session Logs)** - LAST RESORT. Unstructured and expensive. Use only for very recent, un-synthesized context.
+
 ## Translate if required
 
 References below to calls in Claude Code format (e.g. mcp__memory__xyz()) should be replaced with your equivalent if they are not applicable.
@@ -43,9 +52,11 @@ References below to calls in Claude Code format (e.g. mcp__memory__xyz()) should
 
 1. **Read input file** - The exact path given to you (don't search for it)
 
-2. **Gather context** (memory ONLY):
-   - `mcp__memory__retrieve_memory(query="[key terms from prompt]", limit=5)` - Your primary knowledge source
-   - **All indexes are pre-loaded** - Skills, Workflows, Heuristics, Task State are in your input file
+2. **Gather context** (Follow the **Knowledge Retrieval Hierarchy**):
+   - **Tier 1: Memory Server** (PRIMARY) - Use `mcp__memory__retrieve_memory(query="[key terms]", limit=5)` for semantic search.
+   - **Tier 2: Framework Specs** (SECONDARY) - All indexes (Skills, Workflows, Heuristics, Task State) are pre-loaded in your input file.
+   - **Tier 3: External Search** (TERTIARY) - Suggest GitHub/Web search ONLY if Tiers 1-2 are insufficient.
+   - **Tier 4: Source Transcripts** (LAST RESORT) - Suggest reading session logs ONLY for very recent context not yet synthesized.
 
 3. **Check for prior implementation** (BEFORE planning):
    - If task mentions specific files/scripts, ask main agent to check if they exist
