@@ -232,7 +232,8 @@ The custodiet hook (`hooks/custodiet_gate.py`) provides periodic semantic compli
 | ---------------------- | ---------------------------------- | ---------------------------------------- |
 | `TOOL_CALL_THRESHOLD`  | 7 (2 for debug)                    | Full compliance check every N tool calls |
 | `REMINDER_PROBABILITY` | 0.3                                | 30% chance of reminder between checks    |
-| Skip tools             | Read, Glob, Grep, memory retrieval | Don't count passive reads                |
+| Counted tools          | ALL tool calls                     | Counter increments for every tool (Read, Edit, etc.) |
+| Blocked tools          | MUTATING_TOOLS only                | Only Edit/Write/Bash blocked at threshold |
 
 ### Compliance Check (Threshold)
 
