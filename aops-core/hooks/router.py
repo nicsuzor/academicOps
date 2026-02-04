@@ -84,7 +84,6 @@ GATE_CONFIG: Dict[str, List[str]] = {
         "subagent_restrictions",
         "hydration",
         "task_required",
-        "axiom_enforcer",
         "custodiet",
         "qa_enforcement",
     ],

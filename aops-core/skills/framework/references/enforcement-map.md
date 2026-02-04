@@ -26,6 +26,7 @@ This document tracks all enforcement mechanisms in the academicOps framework.
 |------|------|-------------|
 | `hydration_gate.py` | warn/block | Blocks until prompt-hydrator invoked |
 | `task_required_gate.py` | configurable | Four-gate check for destructive operations |
+| `axiom_enforcer` | **DISABLED** | Real-time detection of P#8 (Fail-Fast) and P#26 (Write-Without-Read) |
 | `command_intercept.py` | transform | Transforms tool inputs (e.g., Glob excludes) |
 | `overdue_enforcement.py` | warn | Injects reminders for overdue tasks |
 
@@ -59,6 +60,17 @@ Custodiet runs periodically (every ~7 tool calls) to check for:
 - Scope creep (work expanding beyond original request)
 - Infrastructure failure workarounds (violates P#9, P#25)
 - SSOT violations
+
+## Axiom Enforcement (axiom_enforcer)
+
+**Status**: **DISABLED** (as of 2026-02-04)
+
+The `axiom_enforcer` gate provided real-time detection of axiom violations during `Edit`/`Write` operations:
+
+- **P#8 (Fail-Fast)**: Detected code patterns like `except: pass`, `os.environ.get(..., default)`, and other silent fallbacks.
+- **P#26 (Verify First)**: Detected "Write-Without-Read" violations, blocking writes to files that hadn't been read in the current session.
+
+**Rationale for Disabling**: Delegated responsibility for these checks to the agent software (Gemini CLI / Claude Code) to reduce framework overhead and friction during interactive sessions.
 
 ### Output Formats
 
