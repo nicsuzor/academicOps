@@ -1307,6 +1307,10 @@ def check_stop_gate(ctx: GateContext) -> Optional[GateResult]:
     if not state:
         return None
 
+    # Check if gates are bypassed (. prefix) - user is in interactive mode
+    if state.get("state", {}).get("gates_bypassed"):
+        return None
+
     # --- 1. Critic Check (turns_since_hydration == 0) ---
     # We estimate turns since hydration by checking if hydrated_intent is set
     # but no subagents have been recorded yet.
