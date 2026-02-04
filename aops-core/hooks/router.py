@@ -456,6 +456,9 @@ class HookRouter:
                 out.reason = result.context_injection
                 if not out.systemMessage:
                     out.systemMessage = f"Blocked: {result.context_injection}"
+            elif out.systemMessage:
+                # Fallback: use systemMessage as reason if context_injection missing
+                out.reason = out.systemMessage
         else:
             out.decision = "allow"
             # For allows, context goes to hookSpecificOutput.additionalContext
