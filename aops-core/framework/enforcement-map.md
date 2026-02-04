@@ -26,6 +26,7 @@ tags: [framework, enforcement, moc]
 | [[project-independence]]                    | Project Independence            | AXIOMS.md                                       | SessionStart         |       |
 | [[fail-fast-code]]                          | Fail-Fast (Code)                | policy_enforcer.py blocks destructive git       | PreToolUse           |       |
 | [[fail-fast-code]]                          | Fail-Fast (Code) - No Fallbacks | check_no_fallbacks.py AST visitor detects `.get(..., "")`, `.get(..., [])`, `or ""` patterns | Pre-commit (active)  |       |
+| [[fail-fast-code]]                          | Fail-Fast (Code) Analysis       | axiom_enforcer (DISABLED)                       | PreToolUse           |       |
 | [[fail-fast-agents]]                        | Fail-Fast (Agents)              | fail_fast_watchdog.py injects reminder          | PostToolUse          |       |
 | [[self-documenting]]                        | Self-Documenting                | policy_enforcer.py blocks *-GUIDE.md            | PreToolUse           |       |
 | [[single-purpose-files]]                    | Single-Purpose Files            | policy_enforcer.py 200-line limit               | PreToolUse           |       |
@@ -36,6 +37,7 @@ tags: [framework, enforcement, moc]
 | [[trust-version-control]]                   | Trust Version Control           | policy_enforcer.py blocks backup patterns       | PreToolUse           |       |
 | [[no-workarounds]]                          | No Workarounds                  | fail_fast_watchdog.py                           | PostToolUse          |       |
 | [[verify-first]]                            | Verify First                    | TodoWrite checkpoint                            | During execution     |       |
+| [[verify-first]]                            | Write-Without-Read Check        | axiom_enforcer (DISABLED)                       | PreToolUse           |       |
 | [[no-excuses]]                              | No Excuses                      | AXIOMS.md                                       | SessionStart         |       |
 | [[write-for-long-term]]                     | Write for Long Term             | AXIOMS.md                                       | SessionStart         |       |
 | [[maintain-relational-integrity]]           | Relational Integrity            | wikilink conventions                            | Pre-commit (planned) |       |
