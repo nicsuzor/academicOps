@@ -157,6 +157,7 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
     # Include markdown files needed by hydration (SKILLS.md, AXIOMS.md, etc.)
     for item in [
         "skills",
+        "agents",
         "lib",
         "GEMINI.md",
         "SKILLS.md",
@@ -333,25 +334,8 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
         print(f"Warning: Template {template_path} not found. Skipping MCP generation.")
 
     # Inject hooks into gemini-extension.json manifest
-    # This ensures the CLI definitely loads them, as reliance on side-by-side file can be flaky
-    gemini_hooks_file = hooks_dst / "hooks.json"
-    if gemini_hooks_file.exists() and dist_extension_json.exists():
-        try:
-            with open(gemini_hooks_file) as f:
-                hooks_data = json.load(f)
-            
-            with open(dist_extension_json, "r") as f:
-                manifest = json.load(f)
-            
-            # Merge hooks (if any)
-            if "hooks" in hooks_data:
-                manifest["hooks"] = hooks_data["hooks"]
-                
-                with open(dist_extension_json, "w") as f:
-                    json.dump(manifest, f, indent=2)
-                print(f"  ✓ Injected hooks into gemini-extension.json")
-        except Exception as e:
-            print(f"Error injecting hooks into manifest: {e}", file=sys.stderr)
+    # This is handled by discovery of hooks/hooks.json by Gemini CLI
+    pass
 
     # Validation/Fallback: If task_manager was not in template, we might be missing it.
     # But the user said "we should read from ... template", implying template is source of truth.
@@ -368,35 +352,22 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
             print(f"Warning: Invalid JSON in {plugin_json_path}")
 
     # 5. Build Sub-Agents from agents/ directory
-    # Format: https://geminicli.com/docs/extensions/reference/#sub-agents
-    sub_agents = []
+    # They are also automatically discovered by Gemini CLI from agents/ directory
     agents_dir = src_dir / "agents"
     if agents_dir.exists():
         for agent_file in agents_dir.glob("*.md"):
             try:
-                # Parse frontmatter to get name, description
+                # ALSO create a Skill for this agent (auto-generated)
+                # This allows invoke via activate_skill(name="agent-name")
+                
+                # Parse frontmatter to get name
                 content = agent_file.read_text()
                 parts = content.split("---", 2)
                 if len(parts) >= 3:
                     import yaml
-
                     frontmatter = yaml.safe_load(parts[1])
                     if "name" in frontmatter:
                         agent_name = frontmatter["name"]
-                        sub_agents.append(
-                            {
-                                "name": agent_name,
-                                "description": frontmatter.get(
-                                    "description", f"Agent {agent_name}"
-                                ),
-                                "uri": f"file://${{extensionPath}}/agents/{agent_file.name}",
-                                # Pass through other fields if needed, e.g. model
-                                "model": frontmatter.get("model"),
-                            }
-                        )
-
-                        # ALSO create a Skill for this agent (auto-generated)
-                        # This allows invoke via activate_skill(name="agent-name")
                         skill_dir = dist_dir / "skills" / agent_name
                         skill_dir.mkdir(parents=True, exist_ok=True)
 
@@ -408,12 +379,8 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
                         text = text.replace(
                             "Task(subagent_type=", "activate_skill(name="
                         )
-                        text = text.replace(
-                            "Task(subagent_type=", "activate_skill(name="
-                        )
 
                         # 2. Skill(skill=...) -> activate_skill(name=...)
-                        text = text.replace("Skill(skill=", "activate_skill(name=")
                         text = text.replace("Skill(skill=", "activate_skill(name=")
 
                         # 3. Update descriptive text references
@@ -426,20 +393,6 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
                             f.write(text)
             except Exception as e:
                 print(f"Warning: Failed to parse agent {agent_file}: {e}")
-
-    # Inject sub-agents into manifest
-    if sub_agents and dist_extension_json.exists():
-        try:
-            with open(dist_extension_json, "r") as f:
-                manifest = json.load(f)
-
-            manifest["subAgents"] = sub_agents
-
-            with open(dist_extension_json, "w") as f:
-                json.dump(manifest, f, indent=2)
-            print(f"  ✓ Injected {len(sub_agents)} sub-agents into gemini-extension.json")
-        except Exception as e:
-            print(f"Error injecting sub-agents into manifest: {e}", file=sys.stderr)
 
     # Manifest already generated in step 3.
 
