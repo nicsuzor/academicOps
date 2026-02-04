@@ -228,7 +228,8 @@ def main():
     print("Installing Skills...")
     global_skills = ag_dir / "global_skills"
     global_skills.mkdir(exist_ok=True)
-    skills_src = aops_root / "aops-core" / "skills"
+    # Link from dist to ensure auto-generated agent skills are included
+    skills_src = aops_root / "dist" / "aops-core" / "skills"
     if skills_src.exists():
         for item in skills_src.iterdir():
             if item.is_dir() and not item.name.startswith("."):

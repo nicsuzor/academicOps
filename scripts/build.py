@@ -425,6 +425,20 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
             except Exception as e:
                 print(f"Warning: Failed to parse agent {agent_file}: {e}")
 
+    # Inject sub-agents into manifest
+    if sub_agents and dist_extension_json.exists():
+        try:
+            with open(dist_extension_json, "r") as f:
+                manifest = json.load(f)
+
+            manifest["subAgents"] = sub_agents
+
+            with open(dist_extension_json, "w") as f:
+                json.dump(manifest, f, indent=2)
+            print(f"  ✓ Injected {len(sub_agents)} sub-agents into gemini-extension.json")
+        except Exception as e:
+            print(f"Error injecting sub-agents into manifest: {e}", file=sys.stderr)
+
     # Manifest already generated in step 3.
 
     # 6. Commands

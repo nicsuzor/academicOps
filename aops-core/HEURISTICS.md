@@ -81,21 +81,8 @@ description: Working hypotheses validated by evidence.
 
 ## Internal Records Before External APIs (P#61)
 
-
-
 **Statement**: When user asks "do we have a record" or "what do we know about X", search bd and memory FIRST before querying external APIs.
-
-
-
-**Corollaries**:
-
-- NEVER use web_fetch or google_web_search for framework-internal debugging, documentation retrieval, or governance tasks. Use read_file and semantic memory search instead.
-
-
-
 **Derivation**: "Do we have" implies checking our knowledge stores, not fetching new data. Internal-first respects the question's scope and avoids unnecessary API calls.
-
-
 
 ---
 
