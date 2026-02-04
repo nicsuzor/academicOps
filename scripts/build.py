@@ -205,8 +205,7 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str, platfo
     src_dir = aops_root / plugin_name
     
     # Platform-specific dist dir
-    suffix = f"-{platform}" if platform != "gemini" else ""
-    dist_dir = dist_root / f"{plugin_name}{suffix}"
+    dist_dir = dist_root / f"{plugin_name}-{platform}"
 
     # Write version info for tracking (always to source)
     commit_sha = get_git_commit_sha(aops_root)
@@ -389,8 +388,7 @@ def build_aops_tools(aops_root: Path, dist_root: Path, aca_data_path: str, platf
     src_dir = aops_root / plugin_name
     
     # Platform-specific dist dir
-    suffix = f"-{platform}" if platform != "gemini" else ""
-    dist_dir = dist_root / f"{plugin_name}{suffix}"
+    dist_dir = dist_root / f"{plugin_name}-{platform}"
 
     # Write version info for tracking
     commit_sha = get_git_commit_sha(aops_root)
@@ -569,13 +567,13 @@ def package_artifacts(aops_root: Path, dist_root: Path):
     # 1. aops-core-gemini.tar.gz
     core_gemini_path = dist_root / "aops-core-gemini.tar.gz"
     with tarfile.open(core_gemini_path, "w:gz") as tar:
-        tar.add(dist_root / "aops-core", arcname=".")
+        tar.add(dist_root / "aops-core-gemini", arcname=".")
     print(f"  ✓ Packaged {core_gemini_path.name}")
 
     # 2. aops-tools-gemini.tar.gz
     tools_gemini_path = dist_root / "aops-tools-gemini.tar.gz"
     with tarfile.open(tools_gemini_path, "w:gz") as tar:
-        tar.add(dist_root / "aops-tools", arcname=".")
+        tar.add(dist_root / "aops-tools-gemini", arcname=".")
     print(f"  ✓ Packaged {tools_gemini_path.name}")
 
     # 3. aops-antigravity.zip
