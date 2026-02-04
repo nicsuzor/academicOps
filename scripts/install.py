@@ -212,11 +212,8 @@ def main():
 
     src_gemini_md = aops_root / "aops-core" / "GEMINI.md"
     if src_gemini_md.exists():
-        content = src_gemini_md.read_text()
-        content = content.replace("${AOPS}", str(aops_root))
-        content = content.replace("${ACA_DATA}", str(aca_data_path))
-        (gemini_dir / "GEMINI.md").write_text(content)
-        print("✓ Generated ~/.gemini/GEMINI.md")
+        shutil.copy2(src_gemini_md, gemini_dir / "GEMINI.md")
+        print("✓ Copied GEMINI.md to ~/.gemini/GEMINI.md")
 
     ag_dir = gemini_dir / "antigravity"
     ag_dir.mkdir(parents=True, exist_ok=True)

@@ -226,25 +226,12 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
         try:
             content = src_extension_json.read_text()
 
-            # Substitutions
-            # ${AOPS} -> aops_root (but for installed extension, this must be absolute path)
-            # The installed extension runs in the user's environment.
-            # We assume aops_root here IS the path where it will be valid (dev/install mode).
+            # We NO LONGER perform substitution here for ${AOPS} and ${ACA_DATA}
+            # Gemini CLI handles these natively in the manifest.
 
-            # Note: For strict distribution to others, these logic paths might need to be dynamic on install.
-            # But currently `install.py` effectively "installs" to current directory structure.
-
-            subs = {
-                "${AOPS}": str(aops_root),
-                "${ACA_DATA}": aca_data_path,
-            }
-
-            for key, val in subs.items():
-                content = content.replace(key, val)
-
-            # Write processed JSON to dist
+            # Write JSON to dist
             with open(dist_extension_json, "w") as f:
-                f.write(content)  # format is already JSON string
+                f.write(content)
 
             # We also need to write a dummy hooks.json or rely on the extension manifest entirely?
             # Gemini reads extension manifest. hooks.json is for older separate hook config?
@@ -269,25 +256,8 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
         try:
             content = template_path.read_text()
 
-            # Variables to substitute
-            # CLAUDE_PLUGIN_ROOT: Absolute path to the plugin root (source for .mcp.json, but dist for extension really?
-            # Actually for Claude Desktop it points to the source usually if dev, or installed location.
-            # But here we are generating .mcp.json in SOURCE. So it should point to SOURCE src_dir.
-            # For Gemini, the tasks server expects absolute paths too.
-            # Let's use the src_dir (absolute) for now as that's where the python code lives for Claude to run.
-            # If we are distributing, we might need to adjust this for the distributed location?
-            # But the build script is running typically in a dev context or CI.
-            # The user request implies we want parity.
-
-            subs = {
-                "${CLAUDE_PLUGIN_ROOT}": str(src_dir.resolve()),
-                "${AOPS}": str(aops_root),
-                "${MCP_MEMORY_API_KEY}": os.environ.get("MCP_MEMORY_API_KEY", ""),
-                "${ACA_DATA}": aca_data_path,
-            }
-
-            for key, val in subs.items():
-                content = content.replace(key, val)
+            # We NO LONGER perform substitution here for ${AOPS}, ${ACA_DATA}, etc.
+            # These should remain as placeholders in the generated .mcp.json
 
             mcp_config = json.loads(content)
 
@@ -301,7 +271,13 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
             # The template is in Standard MCP format ("mcpServers": {...})
             # convert_mcp_to_gemini handles the "mcpServers" key wrapper or direct dict.
             servers_config = mcp_config.get("mcpServers", mcp_config)
-            gemini_mcps = convert_mcp_to_gemini(servers_config)
+            
+            # Transform for Gemini: replace ${CLAUDE_PLUGIN_ROOT} with ${extensionPath}
+            gemini_servers_config = json.loads(
+                json.dumps(servers_config).replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
+            )
+            
+            gemini_mcps = convert_mcp_to_gemini(gemini_servers_config)
 
             # Update extension manifest with generated MCPs
             if dist_extension_json.exists():
@@ -438,15 +414,9 @@ def build_aops_tools(aops_root: Path, dist_root: Path, aca_data_path: str):
         print(f"Generating MCP config from {template_path.name}...")
         try:
             content = template_path.read_text()
-            subs = {
-                "${CLAUDE_PLUGIN_ROOT}": str(src_dir.resolve()),
-                "${AOPS}": str(aops_root),
-                "${MCP_MEMORY_API_KEY}": os.environ.get("MCP_MEMORY_API_KEY", ""),
-                "${ACA_DATA}": aca_data_path,
-            }
 
-            for key, val in subs.items():
-                content = content.replace(key, val)
+            # We NO LONGER perform substitution here for ${AOPS}, etc.
+            # These should remain as placeholders in the generated .mcp.json
 
             mcp_config = json.loads(content)
 
@@ -630,6 +600,8 @@ def package_artifacts(aops_root: Path, dist_root: Path):
             ".mypy_cache",
             ".ruff_cache",
             ".git",
+            "gemini-extension.json",
+            "GEMINI.md",
         ]
         if any(x in tarinfo.name for x in exclude):
             return None

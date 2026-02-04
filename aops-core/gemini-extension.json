@@ -2,6 +2,14 @@
   "name": "aops-core",
   "version": "0.1.0",
   "description": "AcademicOps Core Framework Extension for Gemini CLI",
+  "settings": [
+    {
+      "name": "Memory Server API Key",
+      "description": "API Key for the semantic memory server",
+      "envVar": "MCP_MEMORY_API_KEY",
+      "sensitive": true
+    }
+  ],
   "mcpServers": {
     "task_manager": {
       "command": "uv",
