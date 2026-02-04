@@ -1,67 +1,86 @@
 ---
 name: framework-paths
-title: Framework Paths (Generated)
+title: Framework Paths (Plugin Architecture)
 category: reference
 type: reference
-description: Resolved absolute paths for this framework instance (generated from paths.py)
+description: Path conventions for plugin-only architecture
 audience: agents
-generated: 2026-01-24T01:47:41.796000+00:00
 permalink: framework-paths
 tags:
   - framework
   - paths
-  - generated
+  - plugin
 ---
 
 # Framework Paths
 
-**⚠️ GENERATED FILE - DO NOT EDIT MANUALLY**
+## Plugin Architecture
 
-Generated: 2026-01-24 01:47:41 UTC
-Source: `aops-core/lib/paths.py`
+In the plugin-only architecture, the framework consists of plugins managed by Claude/Gemini.
+Paths are resolved relative to the plugin root, not a monorepo location.
 
-This file provides resolved absolute paths for agent use during sessions.
-All paths are expanded to absolute values at generation time.
+## Environment Variables
 
-## Resolved Paths
+| Variable | Purpose | Required |
+|----------|---------|----------|
+| `$CLAUDE_PLUGIN_ROOT` | Root of the aops-core plugin (set by Claude) | Yes (for Claude) |
+| `$ACA_DATA` | User data directory | Yes |
 
-These are the concrete absolute paths for this framework instance:
+**Note**: `$AOPS` is no longer used. Use `$CLAUDE_PLUGIN_ROOT` for plugin-relative paths.
 
-| Path Variable | Resolved Path |
-|--------------|---------------|
-| $AOPS        | /home/nic/writing/aops   |
-| $ACA_DATA    | /home/nic/writing/data   |
+## Plugin Directories
 
-## Framework Directories
+Relative to `$CLAUDE_PLUGIN_ROOT` (aops-core plugin):
 
-Framework component directories within $AOPS:
-
-| Directory | Absolute Path |
+| Directory | Relative Path |
 |-----------|---------------|
-| Specs     | /home/nic/writing/aops/specs   |
-| Workflows | /home/nic/writing/aops/aops-core/workflows |
-| Skills    | /home/nic/writing/aops/aops-core/skills  |
-| Hooks     | /home/nic/writing/aops/aops-core/hooks   |
-| Commands  | /home/nic/writing/aops/aops-core/commands |
-| Agents    | /home/nic/writing/aops/aops-core/agents  |
-| Tests     | /home/nic/writing/aops/tests   |
-| Config    | /home/nic/writing/aops/config  |
+| Skills    | `skills/` |
+| Commands  | `commands/` |
+| Hooks     | `hooks/` |
+| Agents    | `agents/` |
+| Workflows | `workflows/` |
+| Indices   | `indices/` |
+| Lib       | `lib/` |
 
 ## Data Directories
 
-User data directories within $ACA_DATA:
+Relative to `$ACA_DATA`:
 
-| Directory | Absolute Path |
+| Directory | Relative Path |
 |-----------|---------------|
-| Sessions  | /home/nic/writing/sessions |
-| Projects  | /home/nic/writing/data/projects |
-| Logs      | /home/nic/writing/data/logs     |
-| Context   | /home/nic/writing/data/context  |
-| Goals     | /home/nic/writing/data/goals    |
+| Daily     | `daily/` |
+| Projects  | `projects/` |
+| Tasks     | `tasks/` |
+| Logs      | `logs/` |
+| Context   | `context/` |
+| Goals     | `goals/` |
+| HDR       | `hdr/` |
 
----
+## Sessions Directory
 
-**Generation Command**: `python3 aops-core/scripts/generate_framework_paths.py`
+Sessions are stored at `$ACA_DATA/../sessions/` (sibling of data directory).
 
-Run this script after changing $AOPS or $ACA_DATA environment variables,
-or after modifying the framework directory structure.
+## Path Resolution in Code
+
+For Python code within the plugin, use relative paths from `__file__`:
+
+```python
+from pathlib import Path
+
+# Get plugin root from this file's location
+PLUGIN_ROOT = Path(__file__).resolve().parent.parent  # Adjust .parent count as needed
+
+# Access plugin resources
+skills_dir = PLUGIN_ROOT / "skills"
+hooks_dir = PLUGIN_ROOT / "hooks"
+```
+
+For data access, use the environment variable:
+
+```python
+import os
+from pathlib import Path
+
+data_root = Path(os.environ["ACA_DATA"])
+daily_dir = data_root / "daily"
+```

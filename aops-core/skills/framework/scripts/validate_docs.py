@@ -17,17 +17,11 @@ from typing import Optional
 import os
 import argparse
 
-# Get repo root from AOPS env var (Authoritative)
-if "AOPS" not in os.environ:
-    print(
-        "Error: AOPS environment variable not set. Run via 'uv run' in $AOPS.",
-        file=sys.stderr,
-    )
-    sys.exit(1)
-
-REPO_ROOT = Path(os.environ["AOPS"])
-# BOTS_DIR logic was legacy - in new layout, root IS the content dir (mostly)
-# Adapting to check files relative to AOPS root
+# Get plugin root from this file's location
+# This file is at aops-core/skills/framework/scripts/validate_docs.py
+# Plugin root is 4 levels up
+PLUGIN_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+REPO_ROOT = PLUGIN_ROOT  # For plugin-only architecture, plugin IS the repo
 BOTS_DIR = REPO_ROOT
 README_PATH = REPO_ROOT / "README.md"
 

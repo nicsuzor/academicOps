@@ -16,10 +16,10 @@ In interactive sessions where the user is actively engaged, the stop hook's hard
 
 ## Execution
 
-Run this Python snippet to set the relaxed flag:
+Run this Python snippet to set the relaxed flag (uses CLAUDE_PLUGIN_ROOT for plugin location):
 
 ```bash
-cd /home/nic/src/academicOps && PYTHONPATH=aops-core uv run python -c "
+PYTHONPATH=${CLAUDE_PLUGIN_ROOT} uv run python -c "
 from lib.session_state import set_stop_hook_relaxed
 import os
 session_id = os.environ['CLAUDE_SESSION_ID']
@@ -39,7 +39,7 @@ Stop hook set to warn-only mode for this session.
 If user wants to re-enable hard-blocking:
 
 ```bash
-cd /home/nic/src/academicOps && PYTHONPATH=aops-core uv run python -c "
+PYTHONPATH=${CLAUDE_PLUGIN_ROOT} uv run python -c "
 from lib.session_state import clear_stop_hook_relaxed
 import os
 session_id = os.environ['CLAUDE_SESSION_ID']

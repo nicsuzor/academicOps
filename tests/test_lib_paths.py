@@ -22,25 +22,26 @@ class TestPathResolution:
         result = paths.get_aops_root()
         assert result == paths.get_plugin_root()
 
-    def test_get_aops_root_uses_valid_aops_if_set(self, monkeypatch, tmp_path):
-        """Test that get_aops_root respects valid AOPS env var."""
+    def test_get_aops_root_ignores_aops_env_var(self, monkeypatch, tmp_path):
+        """Test that get_aops_root ignores $AOPS env var (plugin-only architecture)."""
         test_dir = tmp_path / "aops"
         test_dir.mkdir()
-        (test_dir / "aops-core").mkdir()  # v1.0: validation checks for aops-core/
         monkeypatch.setenv("AOPS", str(test_dir))
 
         result = paths.get_aops_root()
 
+        # Should return plugin root, not the $AOPS env var value
         assert isinstance(result, Path)
-        assert result == test_dir.resolve()
+        assert result == paths.get_plugin_root()
+        assert result != test_dir.resolve()
 
-    def test_get_aops_root_returns_path_even_if_invalid(self, monkeypatch, tmp_path):
-        """Test that get_aops_root returns path even if invalid (no validation)."""
-        nonexistent = tmp_path / "nonexistent"
-        monkeypatch.setenv("AOPS", str(nonexistent))
+    def test_get_aops_root_is_alias_for_plugin_root(self, monkeypatch):
+        """Test that get_aops_root always returns plugin root."""
+        # Even with AOPS env var set to something else
+        monkeypatch.setenv("AOPS", "/some/other/path")
 
         result = paths.get_aops_root()
-        assert result == nonexistent.resolve()
+        assert result == paths.get_plugin_root()
 
     def test_get_data_root_requires_env_var(self, monkeypatch):
         """Test that get_data_root fails without ACA_DATA env var."""

@@ -37,10 +37,11 @@ def get_plugin_root() -> Path:
 
 def get_aops_root() -> Path:
     """
-    Get the AOPS root directory (alias for plugin root in this context, or $AOPS).
+    Get the AOPS root directory (alias for plugin root).
+
+    In plugin-only architecture, this is always the plugin root.
+    The $AOPS environment variable is no longer used.
     """
-    if os.environ.get("AOPS"):
-        return Path(os.environ["AOPS"]).resolve()
     return get_plugin_root()
 
 def get_bots_dir() -> Path:

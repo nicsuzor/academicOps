@@ -62,16 +62,25 @@ INSTRUCTION_TEMPLATE_FILE = HOOK_DIR / "templates" / "prompt-hydration-instructi
 # Temp directory category (matches hydration_gate.py)
 TEMP_CATEGORY = "hydrator"
 
-DEBUG_LOG_FILE = Path("/home/nic/gemini_hook_debug.log")
+# Debug log - opt-in via AOPS_DEBUG_LOG environment variable
+# If not set, debug logging is disabled (no-op)
+_DEBUG_LOG_PATH: Path | None = None
+if "AOPS_DEBUG_LOG" in os.environ:
+    _DEBUG_LOG_PATH = Path(os.environ["AOPS_DEBUG_LOG"])
 
 
 def _log_debug(msg: str) -> None:
+    """Log debug message to file if AOPS_DEBUG_LOG is set."""
+    if _DEBUG_LOG_PATH is None:
+        return
     try:
-        with open(DEBUG_LOG_FILE, "a") as f:
+        with open(_DEBUG_LOG_PATH, "a") as f:
             ts = datetime.now().isoformat()
             f.write(f"[{ts}] {msg}\n")
-    except Exception:
-        pass
+    except OSError as e:
+        # Debug logging failure is non-fatal but we log to stderr for visibility
+        import sys
+        print(f"Debug log write failed: {e}", file=sys.stderr)
 
 
 FILE_PREFIX = "hydrate_"

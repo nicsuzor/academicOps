@@ -705,7 +705,7 @@ def load_skill_scope(skill_name: str) -> str | None:
     """
     import os
 
-    aops_root = Path(os.environ.get("AOPS", "")) or Path(__file__).parent.parent.parent
+    aops_root = Path(__file__).parent.parent.parent
 
     # Search locations for skill/command definitions
     search_paths = [

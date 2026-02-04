@@ -13,10 +13,8 @@ Manage daily note lifecycle: morning briefing, task recommendations, and session
 
 ## Path Resolution
 
-**CRITICAL**: Before executing this skill, resolve environment variable paths:
-- Read `[[aops-core/indices/PATHS.md]]` for resolved absolute paths
-- `$ACA_DATA` → `/home/nic/writing/data` (or value from PATHS.md)
-- `$AOPS` → `/home/nic/writing/aops` (or value from PATHS.md)
+**CRITICAL**: This skill requires the `$ACA_DATA` environment variable to be set.
+- `$ACA_DATA` points to the user's data directory (contains daily notes, tasks, etc.)
 
 Location: `$ACA_DATA/daily/YYYYMMDD-daily.md`
 
