@@ -1,6 +1,6 @@
 {
   "name": "aops-tools",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Generic document and visualization tools - PDF generation, Excalidraw diagrams, Mermaid flowcharts, and document conversion",
   "author": {
     "name": "Nicolas Suzor"
