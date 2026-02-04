@@ -107,6 +107,32 @@ def validate_safe_git_usage(
     return None
 
 
+def validate_protect_artifacts(
+    tool_name: str, args: dict[str, Any]
+) -> dict[str, Any] | None:
+    """Block modification of files in dist/ directory (H#94)."""
+    if tool_name not in ["Write", "Edit", "replace"]:
+        return None
+
+    # Handle both Claude Code (file_path) and Gemini CLI (file_path)
+    file_path = args.get("file_path")
+    if not file_path:
+        return None
+
+    # Block any path starting with dist/ or containing /dist/
+    if file_path.startswith("dist/") or "/dist/" in file_path:
+        return {
+            "continue": False,
+            "systemMessage": (
+                f"BLOCKED: Modification of build artifact '{file_path}'.\n"
+                "NEVER edit files in dist/ directly (H#94).\n"
+                "Modify source files in aops-core/ and run build script instead."
+            ),
+        }
+
+    return None
+
+
 def main():
     """Main hook entry point - validates and returns result."""
     input_data: dict[str, Any] = {}
@@ -130,6 +156,8 @@ def main():
     result = validate_minimal_documentation(tool_name, args)
     if result is None:
         result = validate_safe_git_usage(tool_name, args)
+    if result is None:
+        result = validate_protect_artifacts(tool_name, args)
 
     # If blocking, use JSON permissionDecision:deny with exit 0
     # Exit 0 ensures Claude Code processes the JSON output (exit 2 ignores stdout)
