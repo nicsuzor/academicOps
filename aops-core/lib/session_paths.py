@@ -14,7 +14,11 @@ from pathlib import Path
 
 
 def get_claude_project_folder() -> str:
-    """Get Claude Code project folder name from cwd.
+    """Get Claude Code project folder name from project directory.
+
+    Uses CLAUDE_PROJECT_DIR env var if set (available during hook execution),
+    otherwise falls back to cwd. This is critical for plugin-based hooks that
+    run from the plugin cache directory rather than the project directory.
 
     Converts absolute path to sanitized folder name:
     /home/user/project -> -home-user-project
@@ -22,9 +26,16 @@ def get_claude_project_folder() -> str:
     Returns:
         Project folder name with leading dash and all slashes replaced
     """
-    cwd = Path.cwd().resolve()
+    # CLAUDE_PROJECT_DIR is set by Claude Code during hook execution
+    # and contains the absolute path to the project root
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR")
+    if project_dir:
+        project_path = Path(project_dir).resolve()
+    else:
+        # Fallback for non-hook contexts (e.g., direct script execution)
+        project_path = Path.cwd().resolve()
     # Replace leading / with -, then all / with -
-    return "-" + str(cwd).replace("/", "-")[1:]
+    return "-" + str(project_path).replace("/", "-")[1:]
 
 
 def get_session_short_hash(session_id: str) -> str:

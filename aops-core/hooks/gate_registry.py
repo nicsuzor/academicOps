@@ -1907,7 +1907,7 @@ def check_session_start_gate(ctx: GateContext) -> Optional[GateResult]:
                 system_message=(
                     f"FAIL-FAST: State file not created at expected path.\n"
                     f"Expected: {state_file_path}\n"
-                    f"Check AOPS_SESSION_STATE_DIR env var and directory permissions."
+                    f"Check AOPS_SESSION_STATE_DIR env var and directory permissions.\n\n"
                 ),
                 metadata={"source": "session_start", "error": "state_file_not_created"},
             )
