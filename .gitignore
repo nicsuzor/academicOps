@@ -323,19 +323,15 @@ data/views/today-priorities-*.md
 reference-graph.json
 reference-graph.csv
 
-# Generated MCP config (built from fragments by setup.sh)
-aops-tools/config/claude/mcp.json
-aops-tools/config/gemini/mcp-servers.json
-
-# Plugin-specific MCP configs (generated from templates by setup.sh)
+# Plugin-specific MCP configs (generated from templates)
 aops-core/.mcp.json
+
+# Include built dist/ for releases
 !dist/aops-core-claude/
-!dist/aops-tools-claude/
 !dist/aops-core-gemini/
-!dist/aops-tools-gemini/
+!dist/antigravity/
 !dist/*.tar.gz
 !dist/*.zip
-aops-tools/.mcp.json
+
 streamlit_log.txt
 .agent/PATHS.md
-aops-tools/.claude-plugin/.aops-version

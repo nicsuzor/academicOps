@@ -156,6 +156,41 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
     print(f"  ✓ Generated Gemini hooks.json with {len(gemini_hooks)} events")
 
 
+def transform_agent_for_platform(content: str, platform: str) -> str:
+    """Transform agent markdown for a specific platform.
+
+    For Gemini: filters out mcp__* tools from frontmatter since they're Claude-specific.
+    """
+    if platform != "gemini":
+        return content
+
+    # Split frontmatter from body
+    parts = content.split("---", 2)
+    if len(parts) < 3:
+        return content
+
+    import yaml
+    try:
+        frontmatter = yaml.safe_load(parts[1])
+    except yaml.YAMLError:
+        return content
+
+    if not frontmatter or "tools" not in frontmatter:
+        return content
+
+    # Filter out mcp__* tools (Claude-specific MCP tool names)
+    original_tools = frontmatter.get("tools", [])
+    filtered_tools = [t for t in original_tools if not t.startswith("mcp__")]
+
+    if filtered_tools != original_tools:
+        frontmatter["tools"] = filtered_tools
+        # Rebuild the content
+        new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
+        return f"---\n{new_frontmatter}---{parts[2]}"
+
+    return content
+
+
 def translate_tool_calls(text: str, platform: str) -> str:
     """Translate abstract tool calls to platform-specific names."""
     # 1. Platform-specific mappings
@@ -260,13 +295,16 @@ def build_aops_core(
         src = src_dir / item
         if src.exists():
             if item == "agents" and src.is_dir():
-                # Special handling for agents: translate tool calls
+                # Special handling for agents: transform frontmatter and translate tool calls
                 dst = dist_dir / item
                 dst.mkdir(parents=True, exist_ok=True)
                 for agent_file in src.glob("*.md"):
                     content = agent_file.read_text()
-                    translated = translate_tool_calls(content, platform)
-                    (dst / agent_file.name).write_text(translated)
+                    # Transform frontmatter (filter mcp__ tools for Gemini)
+                    content = transform_agent_for_platform(content, platform)
+                    # Translate tool calls in body text
+                    content = translate_tool_calls(content, platform)
+                    (dst / agent_file.name).write_text(content)
                 print(f"  ✓ Translated and copied agents -> {dst}")
             else:
                 safe_copy(src, dist_dir / item)

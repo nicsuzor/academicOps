@@ -4,14 +4,9 @@ description: Strategic planning under uncertainty (goals, projects, knowledge-bu
   NOT for implementation plans.
 model: opus
 tools:
-  - read_file
-  - write_file
-  - glob
-  - mcp__task_manager__create_task
-  - mcp__task_manager__get_task
-  - mcp__task_manager__update_task
-  - mcp__task_manager__list_tasks
-  - mcp__task_manager__search_tasks
+- read_file
+- write_file
+- glob
 ---
 
 # Effectual Planning Agent

@@ -1,4 +1,4 @@
-name: Build Plugins
+name: Release Plugins
 
 on:
   push:
@@ -8,13 +8,9 @@ on:
       - 'v*'
   workflow_dispatch:
 
-env:
-  AOPS: ${{ github.workspace }}
-  ACA_DATA: /tmp/aca-data
-
 jobs:
-  build:
-    name: Build Plugins
+  release:
+    name: Release Plugins
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -22,45 +18,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          version: "latest"
-
-      - name: Install dependencies
-        run: uv sync --frozen
-
-      - name: Run Build Script
-        run: |
-          # This creates the files in dist/, but we will NOT commit them to git
-          uv run python scripts/build.py
-
-      # This zips the dist/ folder sitting in the runner's workspace
-      - name: Archive dist directory
-        run: |
-          zip -r aops-plugins-dist.zip dist/
-
-      # This uploads the zip so you can download it from the Actions UI
-      - name: Upload dist artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: aops-plugins
-          path: aops-plugins.zip
-          retention-days: 5
 
       - name: Create Release
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
         uses: softprops/action-gh-release@v2
         with:
-          # This will update the 'latest' release on main, or a specific tag release
           tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'latest' }}
           files: |
             dist/aops-core-gemini.tar.gz
@@ -68,6 +30,6 @@ jobs:
             dist/aops-core-claude.tar.gz
           draft: false
           prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
-          make_latest: ${{ startsWith(github.ref, 'tags/') }}
+          make_latest: ${{ startsWith(github.ref, 'refs/tags/') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
