@@ -3696,8 +3696,47 @@ def render_v11_progress():
     st.markdown(html, unsafe_allow_html=True)
 
 
+def _get_graph_node_count() -> int:
+    """Get the number of nodes in the task graph for collapse threshold."""
+    graph = load_graph_data("graph.json")
+    if graph:
+        return len(graph.get("nodes", []))
+    return 0
+
+
 def render_graph_section():
-    """Render the task/knowledge graph with tabs."""
+    """Render the task/knowledge graph with tabs, collapsible by default if >50 nodes."""
+    # Determine default expanded state based on node count
+    node_count = _get_graph_node_count()
+    default_expanded = node_count <= 50
+
+    # Check query params for persisted state
+    query_params = st.query_params
+    if "graph" in query_params:
+        # User has explicitly set preference via toggle
+        is_expanded = query_params.get("graph") == "1"
+    else:
+        # Use default based on node count
+        is_expanded = default_expanded
+
+    # Header with toggle button
+    col_title, col_toggle = st.columns([0.85, 0.15])
+    with col_title:
+        status_text = f"({node_count} nodes)" if node_count > 0 else ""
+        st.markdown(f"### 📊 Task Graph {status_text}")
+    with col_toggle:
+        # Toggle button - when clicked, flip state and persist via query param
+        toggle_label = "▼ Hide" if is_expanded else "▶ Show"
+        if st.button(toggle_label, key="graph_toggle", use_container_width=True):
+            new_state = "0" if is_expanded else "1"
+            st.query_params["graph"] = new_state
+            st.rerun()
+
+    # Only render graph content if expanded
+    if not is_expanded:
+        st.caption("Click 'Show' to expand the task graph visualization.")
+        return
+
     tab_svg, tab_interactive = st.tabs(["📊 SVG Graph", "⚛️ Interactive Graph"])
 
     with tab_svg:
