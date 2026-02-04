@@ -170,6 +170,22 @@ def build_aops_core(aops_root: Path, dist_root: Path, aca_data_path: str):
         if src.exists():
             safe_copy(src, dist_dir / item)
 
+    # 1b. Copy root-level scripts needed by skills (e.g., audit skill)
+    # These scripts are at $AOPS/scripts/ and referenced by SKILL.md files
+    scripts_src = aops_root / "scripts"
+    scripts_dst = dist_dir / "scripts"
+    if scripts_src.exists():
+        scripts_dst.mkdir(parents=True, exist_ok=True)
+        # Copy specific scripts needed by skills
+        for script_name in [
+            "audit_framework_health.py",
+            "check_skill_line_count.py",
+            "check_orphan_files.py",
+        ]:
+            src = scripts_src / script_name
+            if src.exists():
+                safe_copy(src, scripts_dst / script_name)
+
     # 2. Hooks (Selective copy - not symlinks to avoid source pollution)
     hooks_src = src_dir / "hooks"
     hooks_dst = dist_dir / "hooks"
