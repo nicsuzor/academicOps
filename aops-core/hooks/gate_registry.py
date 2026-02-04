@@ -1528,10 +1528,8 @@ def check_stop_gate(ctx: GateContext) -> Optional[GateResult]:
     if not state:
         return None
 
-    # --- 0. Bypass Check ---
-    # If gates_bypassed is set (e.g., via '.' prefix), skip all stop gate checks
-    state_dict = state.get("state")
-    if state_dict is not None and state_dict.get("gates_bypassed"):
+    # Check if gates are bypassed (. prefix) - user is in interactive mode
+    if state.get("state", {}).get("gates_bypassed"):
         return None
 
     # --- 1. Critic Check (turns_since_hydration == 0) ---

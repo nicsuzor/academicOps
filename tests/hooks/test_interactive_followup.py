@@ -118,5 +118,81 @@ class TestInteractiveFollowup:
             # It should be the critic reminder
             # (Note: it might fail on handover first if not mocked)
             
+class TestStopGateBypass:
+    """Test that stop gate respects gates_bypassed flag (. prefix)."""
+
+    @patch("lib.session_state.load_session_state")
+    def test_stop_gate_allows_when_gates_bypassed(self, mock_load):
+        """Test that Stop gate allows exit when gates_bypassed=True (user used . prefix)."""
+        session_id = "test-session"
+
+        # Mock state: hydrated, NO subagents, NO handover, but gates_bypassed=True
+        # Without the bypass, this would fail both critic and handover checks
+        mock_load.return_value = {
+            "state": {
+                "current_workflow": "design",
+                "gates_bypassed": True  # User sent . prefix
+            },
+            "hydration": {
+                "hydrated_intent": "build feature"
+            },
+            "subagents": {}
+        }
+
+        ctx = GateContext(session_id, "Stop", {})
+        result = check_stop_gate(ctx)
+
+        # Should be allowed due to gates_bypassed
+        assert result is None
+
+    @patch("lib.session_state.load_session_state")
+    def test_stop_gate_blocks_when_gates_not_bypassed(self, mock_load):
+        """Test that Stop gate blocks when gates_bypassed=False (normal mode)."""
+        session_id = "test-session"
+
+        # Mock state: hydrated, NO subagents, gates_bypassed=False
+        mock_load.return_value = {
+            "state": {
+                "current_workflow": "design",
+                "gates_bypassed": False
+            },
+            "hydration": {
+                "hydrated_intent": "build feature"
+            },
+            "subagents": {}
+        }
+
+        ctx = GateContext(session_id, "Stop", {})
+        result = check_stop_gate(ctx)
+
+        # Should be blocked (critic check fails)
+        assert result is not None
+        assert result.verdict.value == "deny"
+
+    @patch("lib.session_state.load_session_state")
+    def test_stop_gate_blocks_when_gates_bypassed_not_set(self, mock_load):
+        """Test that Stop gate blocks when gates_bypassed key is missing."""
+        session_id = "test-session"
+
+        # Mock state: hydrated, NO subagents, no gates_bypassed key at all
+        mock_load.return_value = {
+            "state": {
+                "current_workflow": "design"
+                # No gates_bypassed key
+            },
+            "hydration": {
+                "hydrated_intent": "build feature"
+            },
+            "subagents": {}
+        }
+
+        ctx = GateContext(session_id, "Stop", {})
+        result = check_stop_gate(ctx)
+
+        # Should be blocked (critic check fails)
+        assert result is not None
+        assert result.verdict.value == "deny"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
