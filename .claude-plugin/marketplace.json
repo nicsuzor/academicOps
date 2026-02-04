@@ -10,21 +10,21 @@
     {
       "name": "aops-core",
       "description": "Core academicOps framework - skills, agents, and hooks for research workflow automation",
-      "version": "0.1.0",
+      "version": "0.1.2",
       "author": {
         "name": "Nicolas Suzor"
       },
-      "source": "../dist/aops-core-claude",
+      "source": "dist/aops-core-claude",
       "category": "productivity"
     },
     {
       "name": "aops-tools",
       "description": "Generic document and visualization tools - PDF generation, Excalidraw diagrams, Mermaid flowcharts, and document conversion",
-      "version": "0.1.0",
+      "version": "0.1.2",
       "author": {
         "name": "Nicolas Suzor"
       },
-      "source": "../dist/aops-tools-claude",
+      "source": "dist/aops-tools-claude",
       "category": "productivity"
     }
   ]
