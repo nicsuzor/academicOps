@@ -23,7 +23,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Needed for get_git_commit_sha to find HEAD
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -41,45 +41,29 @@ jobs:
       - name: Create temporary ACA_DATA
         run: mkdir -p /tmp/aca-data
 
-      - name: Bump Version
-        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
-        run: |
-          uv run python scripts/bump_version.py
-
       - name: Run Build Script
-        env:
-          MCP_MEMORY_API_KEY: ${{ secrets.MCP_MEMORY_API_KEY }}
         run: |
+          # This creates the files in dist/, but we will NOT commit them to git
           uv run python scripts/build.py
 
-      - name: Commit and Push changes
-        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add dist/ pyproject.toml
-          if git diff --staged --quiet; then
-            echo "No changes to commit."
-          else
-            git commit -m "chore: bump version and update built distributions [skip ci]"
-            git push origin HEAD:main
-          fi
-
+      # This zips the dist/ folder sitting in the runner's workspace
       - name: Archive dist directory
         run: |
-          zip -r gemini-extension-dist.zip dist/
+          zip -r aops-plugins-dist.zip dist/
 
+      # This uploads the zip so you can download it from the Actions UI
       - name: Upload dist artifact
         uses: actions/upload-artifact@v4
         with:
-          name: gemini-extension-dist
-          path: gemini-extension-dist.zip
-          retention-days: 7
+          name: aops-plugins
+          path: aops-plugins.zip
+          retention-days: 5
 
       - name: Create Release
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
         uses: softprops/action-gh-release@v2
         with:
+          # This will update the 'latest' release on main, or a specific tag release
           tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'latest' }}
           files: |
             dist/aops-core-gemini.tar.gz
@@ -92,5 +76,3 @@ jobs:
           make_latest: ${{ startsWith(github.ref, 'tags/') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      
