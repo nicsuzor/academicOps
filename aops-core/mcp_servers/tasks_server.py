@@ -304,6 +304,23 @@ def create_task(
     try:
         storage = _get_storage()
 
+        # Validate title
+        title_stripped = task_title.strip() if task_title else ""
+        if not title_stripped:
+            return {
+                "success": False,
+                "message": "Task title is required and cannot be empty or whitespace-only",
+            }
+
+        # Check slugified title has minimum length
+        slug = Task.slugify_title(title_stripped)
+        if len(slug) < 3:
+            return {
+                "success": False,
+                "message": f"Task title must produce a slug of at least 3 characters. "
+                f"Title '{title_stripped}' produces slug '{slug}' which is too short.",
+            }
+
         # Parse task type
         try:
             task_type = TaskType(type)
@@ -1280,6 +1297,26 @@ def decompose_task(id: str, children: list[dict]) -> dict[str, Any]:
                     "tasks": [],
                     "count": 0,
                     "message": f"Child {i} missing required 'title' field",
+                }
+
+            # Validate child title
+            child_title = child["title"].strip() if child["title"] else ""
+            if not child_title:
+                return {
+                    "success": False,
+                    "tasks": [],
+                    "count": 0,
+                    "message": f"Child {i} title is empty or whitespace-only",
+                }
+
+            child_slug = Task.slugify_title(child_title)
+            if len(child_slug) < 3:
+                return {
+                    "success": False,
+                    "tasks": [],
+                    "count": 0,
+                    "message": f"Child {i} title '{child_title}' produces slug '{child_slug}' "
+                    f"which is too short (minimum 3 characters)",
                 }
 
         # Decompose

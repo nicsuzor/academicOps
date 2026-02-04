@@ -214,8 +214,8 @@ class Task:
             Slugified title for use in filenames
         """
         slug = title.lower()
-        slug = re.sub(r"[^\\w\\s-]", "", slug)  # Remove non-word chars
-        slug = re.sub(r"[\\s_]+", "-", slug)  # Replace spaces/underscores
+        slug = re.sub(r"[^\w\s-]", "", slug)  # Remove non-word chars
+        slug = re.sub(r"[\s_]+", "-", slug)  # Replace spaces/underscores
         slug = re.sub(r"-+", "-", slug)  # Collapse multiple dashes
         slug = slug.strip("-")[:max_length]
         return slug
@@ -461,10 +461,10 @@ class Task:
         """
         # Match ## Relationships followed by content until next ## or end
         # Use lookahead to preserve the next section's newlines
-        pattern = r"\\n*## Relationships\\n[\\s\\S]*?(?=\\n\\n## |\\Z)"
+        pattern = r"\n*## Relationships\n[\s\S]*?(?=\n\n## |\Z)"
         result = re.sub(pattern, "", body)
         # Normalize multiple newlines and strip trailing whitespace
-        result = re.sub(r"\\n{3,}", "\\n\\n", result)
+        result = re.sub(r"\n{3,}", "\n\n", result)
         return result.rstrip()
 
     @classmethod
