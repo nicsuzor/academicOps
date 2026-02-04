@@ -8,14 +8,13 @@ from pathlib import Path
 
 import yaml
 
-# Add aops-core and polecat to path for imports
+from validation import TaskIDValidationError, validate_task_id_or_raise
+from observability import metrics
+
+# Add aops-core to path for lib imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
 REPO_ROOT = SCRIPT_DIR.parent
 sys.path.insert(0, str(REPO_ROOT / "aops-core"))
-if str(SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_DIR))
-
-from validation import TaskIDValidationError, validate_task_id_or_raise
 
 # These imports will fail here but work when moved to academicOps
 try:
@@ -237,17 +236,6 @@ class PolecatManager:
             # Use existing branch
             cmd = ["git", "worktree", "add", str(worktree_path), branch_name]
         else:
-            # Validate start-point exists before creating new branch
-            result = subprocess.run(
-                ["git", "rev-parse", "--verify", f"refs/heads/{default_branch}"],
-                cwd=local_repo_path,
-                capture_output=True,
-            )
-            if result.returncode != 0:
-                raise RuntimeError(
-                    f"Start-point branch '{default_branch}' does not exist in {local_repo_path}. "
-                    f"Check polecat.yaml default_branch setting."
-                )
             # Create new branch from default branch
             cmd = [
                 "git",
@@ -289,14 +277,9 @@ class PolecatManager:
                 if repo_path.exists():
                     # Safety check
                     if not force and self._branch_exists(repo_path, branch_name):
-                        default_branch = self.projects.get(project, {}).get(
-                            "default_branch", "main"
-                        )
-                        if not self._is_branch_merged(
-                            repo_path, branch_name, target=default_branch
-                        ):
+                        if not self._is_branch_merged(repo_path, branch_name):
                             raise RuntimeError(
-                                f"Branch {branch_name} has unmerged commits into {default_branch}. "
+                                f"Branch {branch_name} has unmerged commits. "
                                 f"Use --force to delete anyway."
                             )
 
@@ -395,11 +378,9 @@ class PolecatManager:
                 ["git", "clone", "--bare", remote_url, str(mirror_path)],
                 check=True,
             )
-            # Configure fetch refspec to use remote-tracking refs
-            # This avoids "refusing to fetch into branch checked out" errors
-            # when branches are checked out in worktrees
+            # Configure fetch refspec to get all branches
             subprocess.run(
-                ["git", "config", "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*"],
+                ["git", "config", "remote.origin.fetch", "+refs/heads/*:refs/heads/*"],
                 cwd=mirror_path,
                 check=True,
             )
@@ -427,20 +408,13 @@ class PolecatManager:
 
         try:
             print(f"Syncing {project} mirror (safe mode)...")
-            # Prune stale worktree refs first - prevents "refusing to fetch into
-            # branch checked out" errors when worktree dirs were deleted externally
-            subprocess.run(
-                ["git", "worktree", "prune"],
-                cwd=mirror_path,
-                check=True,
-                capture_output=True,
-            )
-            subprocess.run(
-                ["git", "fetch", "--all"],  # NO --prune flag
-                cwd=mirror_path,
-                check=True,
-                capture_output=True,
-            )
+            with metrics.time_operation("sync", project=project, mode="safe"):
+                subprocess.run(
+                    ["git", "fetch", "--all"],  # NO --prune flag
+                    cwd=mirror_path,
+                    check=True,
+                    capture_output=True,
+                )
             return True
         except subprocess.CalledProcessError as e:
             print(f"⚠ Mirror sync failed for {project}: {e}", file=sys.stderr)
@@ -477,15 +451,15 @@ class PolecatManager:
             return False, f"Local repo not found: {local_path}"
 
         try:
-            # Get mirror's HEAD for the default branch (from remote-tracking ref)
+            # Get mirror's HEAD for the default branch
             mirror_result = subprocess.run(
-                ["git", "rev-parse", f"refs/remotes/origin/{default_branch}"],
+                ["git", "rev-parse", f"refs/heads/{default_branch}"],
                 cwd=mirror_path,
                 capture_output=True,
                 text=True,
             )
             if mirror_result.returncode != 0:
-                return False, f"Mirror missing remote-tracking ref origin/{default_branch}"
+                return False, f"Mirror missing branch {default_branch}"
             mirror_head = mirror_result.stdout.strip()
 
             # Get local repo's HEAD for the default branch
@@ -582,13 +556,7 @@ class PolecatManager:
             return True, f"Mirror fast-forwarded to {local_head[:8]}"
 
         except subprocess.CalledProcessError as e:
-            msg = f"git error: {e}"
-            if e.stderr:
-                try:
-                    msg += f" (stderr: {e.stderr.decode().strip()})"
-                except Exception:
-                    pass
-            return False, msg
+            return False, f"git error: {e}"
         except Exception as e:
             return False, str(e)
 
@@ -622,20 +590,13 @@ class PolecatManager:
                 results[project] = False
                 continue
             try:
-                # Prune stale worktree refs first - prevents "refusing to fetch into
-                # branch checked out" errors when worktree dirs were deleted externally
-                subprocess.run(
-                    ["git", "worktree", "prune"],
-                    cwd=mirror_path,
-                    check=True,
-                    capture_output=True,
-                )
-                subprocess.run(
-                    ["git", "fetch", "--all", "--prune"],
-                    cwd=mirror_path,
-                    check=True,
-                    capture_output=True,
-                )
+                with metrics.time_operation("sync", project=project, mode="full"):
+                    subprocess.run(
+                        ["git", "fetch", "--all", "--prune"],
+                        cwd=mirror_path,
+                        check=True,
+                        capture_output=True,
+                    )
                 print(f"✓ {project}")
                 results[project] = True
             except subprocess.CalledProcessError as e:
@@ -644,24 +605,11 @@ class PolecatManager:
         return results
 
     def claim_next_task(self, caller: str, project: str = None):
-        """Finds and claims the highest priority ready task.
-        
-        Prioritizes:
-        1. REVIEW tasks assigned to 'caller' (fix failures first)
-        2. ACTIVE tasks (new work)
-        """
-        # 1. Find review tasks assigned to this caller (highest priority)
-        review_tasks = self.storage.list_tasks(
-            status=TaskStatus.REVIEW, 
-            assignee=caller, 
-            project=project
-        )
-        
-        # 2. Find normal ready tasks
-        ready_tasks = self.storage.get_ready_tasks(project=project)
-        
-        # Combine lists
-        tasks = review_tasks + ready_tasks
+        """Finds and claims the highest priority ready task."""
+        tasks = self.storage.get_ready_tasks(project=project)
+
+        # Record queue depth of ready tasks
+        metrics.record_queue_depth("ready", count=len(tasks), project=project)
 
         if not tasks:
             return None
@@ -678,24 +626,20 @@ class PolecatManager:
                     try:
                         fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
                     except BlockingIOError:
+                        # Lock contention - another worker has this task
+                        metrics.record_lock_wait(
+                            "task_claim",
+                            wait_time_ms=0,  # Non-blocking, so no wait
+                            acquired=False,
+                            caller=caller,
+                        )
                         continue
 
                     try:
                         fresh_task = self.storage.get_task(task.id)
-                        if fresh_task is None:
+                        if fresh_task is None or fresh_task.status != TaskStatus.ACTIVE:
                             continue
-                            
-                        # Valid states to claim:
-                        # 1. ACTIVE (standard claim)
-                        # 2. REVIEW (if assigned to caller)
-                        is_active = fresh_task.status == TaskStatus.ACTIVE
-                        is_review = (fresh_task.status == TaskStatus.REVIEW and 
-                                   fresh_task.assignee == caller)
-                                   
-                        if not (is_active or is_review):
-                            continue
-                            
-                        if is_active and fresh_task.assignee and fresh_task.assignee != caller:
+                        if fresh_task.assignee and fresh_task.assignee != caller:
                             continue
 
                         fresh_task.status = TaskStatus.IN_PROGRESS
@@ -706,13 +650,14 @@ class PolecatManager:
                     finally:
                         fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
-            except Exception as e:
+            except (OSError, IOError) as e:
                 print(f"Warning: Failed to claim {task.id}: {e}", file=sys.stderr)
                 continue
             finally:
                 try:
                     lock_path.unlink(missing_ok=True)
-                except Exception:
+                except OSError:
+                    # Lock file cleanup is best-effort; may fail if already removed
                     pass
 
         return None
@@ -759,11 +704,27 @@ class PolecatManager:
                 except BlockingIOError:
                     elapsed = time.monotonic() - start_time
                     if elapsed >= lock_timeout:
+                        # Record lock timeout metric
+                        metrics.record_lock_timeout(
+                            "worktree_creation",
+                            timeout_seconds=lock_timeout,
+                            caller=task.id,
+                        )
                         raise TimeoutError(
                             f"Could not acquire worktree creation lock within {lock_timeout}s. "
                             f"Another polecat may be creating a worktree."
                         )
                     time.sleep(0.1)  # Brief sleep before retry
+
+            # Record lock wait time (time from start to acquisition)
+            wait_time_ms = (time.monotonic() - start_time) * 1000
+            if wait_time_ms > 10:  # Only record if there was meaningful contention
+                metrics.record_lock_wait(
+                    "worktree_creation",
+                    wait_time_ms=wait_time_ms,
+                    acquired=True,
+                    caller=task.id,
+                )
 
             try:
                 return self._do_setup_worktree(task)
@@ -824,27 +785,6 @@ class PolecatManager:
 
         print(f"Creating worktree at {worktree_path} from repo {repo_path}...")
 
-        # Validate start-point exists before attempting worktree creation
-        # This prevents orphan branch creation when default_branch doesn't exist
-        # Check remote-tracking ref first (for mirrors), fall back to local branch
-        start_point = None
-        for ref in [f"refs/remotes/origin/{default_branch}", f"refs/heads/{default_branch}"]:
-            result = subprocess.run(
-                ["git", "rev-parse", "--verify", ref],
-                cwd=repo_path,
-                capture_output=True,
-            )
-            if result.returncode == 0:
-                # Use short form for the command (origin/main or main)
-                start_point = ref.replace("refs/remotes/", "").replace("refs/heads/", "")
-                break
-
-        if start_point is None:
-            raise RuntimeError(
-                f"Start-point branch '{default_branch}' does not exist in {repo_path}. "
-                f"Check polecat.yaml default_branch setting or run 'polecat sync' to update mirrors."
-            )
-
         cmd = [
             "git",
             "worktree",
@@ -852,7 +792,7 @@ class PolecatManager:
             "-b",
             branch_name,
             str(worktree_path),
-            start_point,
+            default_branch,
         ]
 
         try:
@@ -980,23 +920,18 @@ class PolecatManager:
         task = self.storage.get_task(task_id)
         if task:
             repo_path = self.get_repo_path(task)
-            project_slug = task.project or "aops"
         else:
             # Fallback: assume academicOps if task deleted
             repo_path = REPO_ROOT
-            project_slug = "aops"
 
         worktree_path = self.polecats_dir / task_id
         branch_name = f"polecat/{task_id}"
-        default_branch = self.projects.get(project_slug, {}).get(
-            "default_branch", "main"
-        )
 
         # Safety check: verify branch is merged before deletion
         if not force and self._branch_exists(repo_path, branch_name):
-            if not self._is_branch_merged(repo_path, branch_name, target=default_branch):
+            if not self._is_branch_merged(repo_path, branch_name):
                 raise RuntimeError(
-                    f"Branch {branch_name} has unmerged commits into {default_branch}. "
+                    f"Branch {branch_name} has unmerged commits. "
                     f"Use --force to delete anyway, or merge first with 'polecat merge'."
                 )
 
@@ -1031,54 +966,3 @@ class PolecatManager:
             subprocess.run(
                 ["git", "branch", "-D", branch_name], cwd=repo_path, check=False
             )
-
-    def analyze_transcript(self, task, stdout: str, stderr: str):
-        """Analyzes agent transcript for hook failures and flags the task if found.
-
-        Args:
-            task: The task object being worked on.
-            stdout: The stdout from the agent subprocess.
-            stderr: The stderr from the agent subprocess.
-        """
-        # Combine stdout and stderr for a complete transcript analysis
-        transcript = f"{stdout}\n{stderr}"
-        
-        failure_indicators = [
-            "HOOK ERROR",
-            "GATE FAILURE",
-            "PolicyEnforcer",
-            "hydration_gate.py",
-        ]
-
-        found_failures = []
-        for indicator in failure_indicators:
-            if indicator in transcript:
-                found_failures.append(indicator)
-
-        if found_failures:
-            print("\n" + "="*20, file=sys.stderr)
-            print("🚨 HOOK FAILURE DETECTED!", file=sys.stderr)
-            print(f"   Indicators found: {', '.join(found_failures)}", file=sys.stderr)
-            print(f"   Task: {task.id}", file=sys.stderr)
-            print("="*20 + "\n", file=sys.stderr)
-
-            # Update the task to flag it for review
-            try:
-                from lib.task_model import TaskStatus
-
-                task.status = TaskStatus.REVIEW
-                # Prepend a note to the body
-                note = (
-                    f"## 🚨 Hook Failure Detected\n\n"
-                    f"Polecat manager detected a potential hook failure during execution.\n"
-                    f"**Indicators**: {', '.join(found_failures)}\n"
-                    f"Task has been moved to 'review' for manual verification.\n\n"
-                    f"---\n\n"
-                )
-                task.body = note + (task.body or "")
-                self.storage.save_task(task)
-                print(f"✅ Task '{task.id}' moved to 'review' for manual inspection.")
-            except ImportError:
-                print("⚠️ Could not update task status (lib.task_model not available)", file=sys.stderr)
-            except Exception as e:
-                print(f"⚠️ Failed to update task '{task.id}': {e}", file=sys.stderr)
