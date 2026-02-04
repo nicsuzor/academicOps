@@ -123,6 +123,9 @@ description: Working hypotheses validated by evidence.
 
 **Statement**: Never present information that is not necessary to the task at hand.
 
+**Corollaries**:
+- When hydrator provides specific guidance (e.g., "look for tests", "verify interactively"), follow that guidance rather than investigating from first principles. The hydrator has already done the context analysis.
+
 **Derivation**: Cognitive load degrades performance. Context should be loaded on-demand when relevant, not front-loaded speculatively. This enables focused work and supports the hydrator's JIT context loading pattern.
 
 ---
