@@ -13,6 +13,7 @@ Exit codes:
 import json
 import re
 import sys
+from pathlib import Path
 from typing import Any
 
 
@@ -110,7 +111,7 @@ def validate_safe_git_usage(
 def validate_protect_artifacts(
     tool_name: str, args: dict[str, Any]
 ) -> dict[str, Any] | None:
-    """Block modification of files in dist/ directory (H#94)."""
+    """Block modification of protected files (H#94)."""
     if tool_name not in ["Write", "Edit", "replace"]:
         return None
 
@@ -119,16 +120,30 @@ def validate_protect_artifacts(
     if not file_path:
         return None
 
-    # Block any path starting with dist/ or containing /dist/
-    if file_path.startswith("dist/") or "/dist/" in file_path:
-        return {
-            "continue": False,
-            "systemMessage": (
-                f"BLOCKED: Modification of build artifact '{file_path}'.\n"
-                "NEVER edit files in dist/ directly (H#94).\n"
-                "Modify source files in aops-core/ and run build script instead."
-            ),
-        }
+    # Load protected paths from project-local config
+    protected_paths = []
+    local_config = Path(".agent/rules/protected_paths.txt")
+    if local_config.exists():
+        try:
+            protected_paths = [
+                line.strip() 
+                for line in local_config.read_text().splitlines() 
+                if line.strip() and not line.startswith("#")
+            ]
+        except Exception as e:
+            print(f"WARNING: Failed to read {local_config}: {e}", file=sys.stderr)
+
+    # Check if file_path matches any protected path
+    for protected in protected_paths:
+        if file_path.startswith(protected) or f"/{protected}" in file_path:
+            return {
+                "continue": False,
+                "systemMessage": (
+                    f"BLOCKED: Modification of protected path '{file_path}'.\n"
+                    f"This path is protected by project-local rule (see .agent/rules/protected_paths.txt).\n"
+                    "Modify source files instead and run build scripts if necessary."
+                ),
+            }
 
     return None
 

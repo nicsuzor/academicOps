@@ -24,7 +24,7 @@ def test_block_dist_write():
     }
     result = run_enforcer(input_data)
     assert result["hookSpecificOutput"]["permissionDecision"] == "deny"
-    assert "NEVER edit files in dist/ directly" in result["hookSpecificOutput"]["additionalContext"]
+    assert "protected by project-local rule" in result["hookSpecificOutput"]["additionalContext"]
 
 def test_block_dist_edit():
     input_data = {

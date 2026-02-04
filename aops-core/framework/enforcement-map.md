@@ -112,7 +112,7 @@ tags: [framework, enforcement, moc]
 | [[user-intent-discovery]]               | User Intent Discovery Before Implementation | HEURISTICS.md, prompt-hydrator guidance          | SessionStart, UserPromptSubmit |       |
 | [[verify-non-duplication-batch-create]] | Verify Non-Duplication Before Batch Create | HEURISTICS.md, triage-email workflow             | SessionStart, batch operations | 1a    |
 | [[run-python-via-uv]]                   | Run Python via uv                          | HEURISTICS.md                                    | SessionStart                   | 1a    |
-| [[protect-dist-directory]]              | Protect dist/ Directory                    | HEURISTICS.md, policy_enforcer.py                | SessionStart, PreToolUse       | 1a    |
+| [[protect-dist-directory]]              | Protect dist/ Directory                    | .agent/rules/HEURISTICS.md, policy_enforcer.py | SessionStart, PreToolUse       | 1a    |
 
 ## Enforcement Level Summary
 
