@@ -302,12 +302,17 @@ def check_subagent_tool_restrictions(ctx: GateContext) -> Optional[GateResult]:
     # Check if we're in a restricted subagent session
     subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE")
 
-    # Check for hydrator session via env var OR session state for robustness
+    # Check for hydrator session via env var ONLY
+    # NOTE: Do NOT use session_state.is_hydrator_active() here!
+    # hydrator_active is a session-level flag indicating "a hydrator Task is running"
+    # but it does NOT mean "this process is the hydrator". The env var is the only
+    # reliable way to detect subagent identity - it's set by Claude Code when spawning.
+    # Using is_hydrator_active() here caused bug aops-6aad9acc: main agent was blocked
+    # from Edit after hydrator completed because hydrator_active flag was stale.
     is_hydrator_in_type = subagent_type and "hydrator" in subagent_type.lower()
     is_hydrator_session = (
         subagent_type == "aops-core:prompt-hydrator"
         or is_hydrator_in_type
-        or session_state.is_hydrator_active(ctx.session_id)
     )
 
     # prompt-hydrator should only have Read + memory tools
