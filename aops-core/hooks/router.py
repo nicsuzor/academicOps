@@ -317,6 +317,7 @@ class HookRouter:
                 "context_injection": merged_result.context_injection,
                 "metadata": merged_result.metadata,
                 "argv": sys.argv,  # Debug: log how hook was invoked
+                "gate_input": gate_input,  # Debug: log original input
             }
             log_hook_event(
                 ctx.session_id, ctx.hook_event, gate_input, output_data=output_data
