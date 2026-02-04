@@ -144,11 +144,29 @@ def _validate_framework_reflections(reflections: list[dict[str, Any]]) -> None:
                     f"got '{reflection['outcome']}'"
                 )
 
-        # Validate followed as boolean if present
+        # Validate and coerce followed to boolean if present
+        # Accept: bool, int (0/1), strings ("true"/"false", "yes"/"no", "1"/"0")
         if "followed" in reflection and reflection["followed"] is not None:
-            if not isinstance(reflection["followed"], bool):
+            val = reflection["followed"]
+            if isinstance(val, bool):
+                pass  # Already valid
+            elif isinstance(val, int):
+                reflection["followed"] = bool(val)
+            elif isinstance(val, str):
+                lower_val = val.lower().strip()
+                if lower_val in ("true", "yes", "1", "y"):
+                    reflection["followed"] = True
+                elif lower_val in ("false", "no", "0", "n", ""):
+                    reflection["followed"] = False
+                else:
+                    raise InsightsValidationError(
+                        f"Field 'framework_reflections[{i}].followed' cannot be coerced "
+                        f"to boolean from string '{val}'"
+                    )
+            else:
                 raise InsightsValidationError(
-                    f"Field 'framework_reflections[{i}].followed' must be a boolean"
+                    f"Field 'framework_reflections[{i}].followed' must be a boolean "
+                    f"or coercible value, got {type(val).__name__}"
                 )
 
         # Validate list fields

@@ -588,3 +588,125 @@ class TestTokenMetricsValidation:
             }
         )
         validate_insights_schema(insights)  # Should not raise
+
+
+class TestFrameworkReflectionsValidation:
+    """Test framework_reflections field validation, especially 'followed' coercion."""
+
+    def _minimal_insights(self, **extra):
+        """Create minimal valid insights with optional extra fields."""
+        base = {
+            "session_id": "a1b2c3d4",
+            "date": "2026-01-13",
+            "project": "test",
+            "summary": "Test session",
+            "outcome": "success",
+            "accomplishments": [],
+        }
+        base.update(extra)
+        return base
+
+    def test_followed_accepts_bool_true(self):
+        """Test that followed accepts boolean True."""
+        insights = self._minimal_insights(
+            framework_reflections=[{"followed": True}]
+        )
+        validate_insights_schema(insights)  # Should not raise
+
+    def test_followed_accepts_bool_false(self):
+        """Test that followed accepts boolean False."""
+        insights = self._minimal_insights(
+            framework_reflections=[{"followed": False}]
+        )
+        validate_insights_schema(insights)  # Should not raise
+
+    def test_followed_coerces_int_1_to_true(self):
+        """Test that followed coerces integer 1 to True."""
+        insights = self._minimal_insights(
+            framework_reflections=[{"followed": 1}]
+        )
+        validate_insights_schema(insights)  # Should not raise
+        assert insights["framework_reflections"][0]["followed"] is True
+
+    def test_followed_coerces_int_0_to_false(self):
+        """Test that followed coerces integer 0 to False."""
+        insights = self._minimal_insights(
+            framework_reflections=[{"followed": 0}]
+        )
+        validate_insights_schema(insights)  # Should not raise
+        assert insights["framework_reflections"][0]["followed"] is False
+
+    def test_followed_coerces_string_true(self):
+        """Test that followed coerces string 'true' to True."""
+        insights = self._minimal_insights(
+            framework_reflections=[{"followed": "true"}]
+        )
+        validate_insights_schema(insights)  # Should not raise
+        assert insights["framework_reflections"][0]["followed"] is True
+
+    def test_followed_coerces_string_false(self):
+        """Test that followed coerces string 'false' to False."""
+        insights = self._minimal_insights(
+            framework_reflections=[{"followed": "false"}]
+        )
+        validate_insights_schema(insights)  # Should not raise
+        assert insights["framework_reflections"][0]["followed"] is False
+
+    def test_followed_coerces_string_yes(self):
+        """Test that followed coerces string 'yes' to True."""
+        insights = self._minimal_insights(
+            framework_reflections=[{"followed": "yes"}]
+        )
+        validate_insights_schema(insights)  # Should not raise
+        assert insights["framework_reflections"][0]["followed"] is True
+
+    def test_followed_coerces_string_no(self):
+        """Test that followed coerces string 'no' to False."""
+        insights = self._minimal_insights(
+            framework_reflections=[{"followed": "no"}]
+        )
+        validate_insights_schema(insights)  # Should not raise
+        assert insights["framework_reflections"][0]["followed"] is False
+
+    def test_followed_coerces_string_case_insensitive(self):
+        """Test that followed string coercion is case-insensitive."""
+        for val in ["TRUE", "True", "YES", "Yes", "Y", "1"]:
+            insights = self._minimal_insights(
+                framework_reflections=[{"followed": val}]
+            )
+            validate_insights_schema(insights)
+            assert insights["framework_reflections"][0]["followed"] is True
+
+        for val in ["FALSE", "False", "NO", "No", "N", "0", ""]:
+            insights = self._minimal_insights(
+                framework_reflections=[{"followed": val}]
+            )
+            validate_insights_schema(insights)
+            assert insights["framework_reflections"][0]["followed"] is False
+
+    def test_followed_rejects_invalid_string(self):
+        """Test that followed rejects unrecognized string values."""
+        insights = self._minimal_insights(
+            framework_reflections=[{"followed": "maybe"}]
+        )
+        with pytest.raises(
+            InsightsValidationError, match="cannot be coerced to boolean"
+        ):
+            validate_insights_schema(insights)
+
+    def test_followed_rejects_invalid_type(self):
+        """Test that followed rejects non-coercible types like lists."""
+        insights = self._minimal_insights(
+            framework_reflections=[{"followed": [True]}]
+        )
+        with pytest.raises(
+            InsightsValidationError, match="must be a boolean or coercible value"
+        ):
+            validate_insights_schema(insights)
+
+    def test_followed_accepts_null(self):
+        """Test that followed accepts None/null."""
+        insights = self._minimal_insights(
+            framework_reflections=[{"followed": None}]
+        )
+        validate_insights_schema(insights)  # Should not raise
