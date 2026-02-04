@@ -40,6 +40,7 @@ from lib.session_paths import (
 )
 from lib.session_state import (
     clear_hydration_pending,
+    clear_hydrator_active,
     get_or_create_session_state,
     record_subagent_invocation,
     set_critic_invoked,
@@ -358,6 +359,9 @@ def handle_subagent_stop(session_id: str, input_data: dict[str, Any]) -> None:
     # Clear hydration_pending when hydrator completes with valid output
     # This is the ONLY place hydration_pending should be cleared for hydrator
     if "hydrator" in subagent_type.lower():
+        # Always clear active flag when hydrator stops (fix for P#82 stuck state)
+        clear_hydrator_active(session_id)
+
         result_text = ""
         if isinstance(subagent_result, dict):
             result_text = subagent_result.get("output", "")
