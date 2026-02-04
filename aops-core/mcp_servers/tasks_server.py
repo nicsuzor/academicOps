@@ -788,14 +788,14 @@ def complete_task(id: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def get_blocked_tasks(project: str, limit: int = 10) -> dict[str, Any]:
+def get_blocked_tasks(project: str, limit: int = 5) -> dict[str, Any]:
     """Get tasks blocked by dependencies.
 
     Returns tasks that have unmet dependencies or status "blocked".
 
     Args:
         project: Filter by project slug, or empty string "" for all projects
-        limit: Maximum number of tasks to return (default: 10, use 0 for unlimited)
+        limit: Maximum number of tasks to return (default: 5, use 0 for unlimited)
 
     Returns:
         Dictionary with:
@@ -841,7 +841,7 @@ def get_blocked_tasks(project: str, limit: int = 10) -> dict[str, Any]:
 
 
 @mcp.tool()
-def get_review_tasks(project: str = "", limit: int = 10) -> dict[str, Any]:
+def get_review_tasks(project: str = "", limit: int = 5) -> dict[str, Any]:
     """Get tasks awaiting human review.
 
     Returns tasks with status "review" that are waiting for human verification
@@ -849,7 +849,7 @@ def get_review_tasks(project: str = "", limit: int = 10) -> dict[str, Any]:
 
     Args:
         project: Filter by project slug, or empty string "" for all projects
-        limit: Maximum number of tasks to return (default: 10, use 0 for unlimited)
+        limit: Maximum number of tasks to return (default: 5, use 0 for unlimited)
 
     Returns:
         Dictionary with:
@@ -1560,7 +1560,7 @@ def list_tasks(
     priority: Optional[int] = None,
     priority_max: Optional[int] = None,
     assignee: Optional[str] = None,
-    limit: int = 10,
+    limit: int = 5,
 ) -> dict[str, Any]:
     """List tasks with optional filters.
 
@@ -1571,7 +1571,7 @@ def list_tasks(
         priority: Filter by exact priority (0-4)
         priority_max: Filter by priority <= N (e.g. 1 for P0 and P1)
         assignee: Filter by assignee - typically "bot" (agent) or "nic" (human)
-        limit: Maximum number of tasks to return (default: 10, use 0 for unlimited)
+        limit: Maximum number of tasks to return (default: 5, use 0 for unlimited)
 
     Returns:
         Dictionary with:
@@ -1699,7 +1699,7 @@ def delete_task(id: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def search_tasks(query: str, limit: int = 20) -> dict[str, Any]:
+def search_tasks(query: str, limit: int = 10) -> dict[str, Any]:
     """Search tasks by text query.
 
     Searches task titles and body content for matching text.
@@ -1707,7 +1707,7 @@ def search_tasks(query: str, limit: int = 20) -> dict[str, Any]:
 
     Args:
         query: Search text to match
-        limit: Maximum number of results (default: 20, use 0 for unlimited)
+        limit: Maximum number of results (default: 10, use 0 for unlimited)
 
     Returns:
         Dictionary with:
