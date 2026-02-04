@@ -385,3 +385,170 @@ def load_pipeline_metrics() -> dict[str, Any] | None:
             print(f"Warning: Could not load metrics file: {e}")
             return None
     return None
+
+
+# Alert threshold definitions
+# See specs/session-insights-metrics-schema.md for documentation
+ALERT_THRESHOLDS = {
+    "consecutive_failures": {
+        "warning": 3,
+        "critical": 5,
+    },
+    "uptime_24h": {
+        "warning": 0.8,  # Below this is warning
+        "critical": 0.5,  # Below this is critical
+    },
+    "task_match_rate": {
+        "warning": 0.5,  # Below this is warning
+    },
+    "hours_since_success": {
+        "warning": 24,
+        "critical": 48,
+    },
+}
+
+
+AlertSeverity = Literal["info", "warning", "critical"]
+
+
+def check_alerts(metrics: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    """Check metrics against alert thresholds.
+
+    Args:
+        metrics: Metrics dict to check, or None to load from file
+
+    Returns:
+        List of alert dicts with keys: condition, threshold, actual, severity, message
+    """
+    if metrics is None:
+        metrics = load_pipeline_metrics()
+    if metrics is None:
+        return []
+
+    alerts: list[dict[str, Any]] = []
+    health = metrics["health"]
+    current_run = metrics["current_run"]
+
+    # Check consecutive failures
+    consecutive = health["consecutive_failures"]
+    if consecutive >= ALERT_THRESHOLDS["consecutive_failures"]["critical"]:
+        alerts.append({
+            "condition": "consecutive_failures",
+            "threshold": ALERT_THRESHOLDS["consecutive_failures"]["critical"],
+            "actual": consecutive,
+            "severity": "critical",
+            "message": f"Pipeline has failed {consecutive} times consecutively",
+        })
+    elif consecutive >= ALERT_THRESHOLDS["consecutive_failures"]["warning"]:
+        alerts.append({
+            "condition": "consecutive_failures",
+            "threshold": ALERT_THRESHOLDS["consecutive_failures"]["warning"],
+            "actual": consecutive,
+            "severity": "warning",
+            "message": f"Pipeline has failed {consecutive} times consecutively",
+        })
+
+    # Check uptime
+    uptime = health["uptime_24h"]
+    if uptime < ALERT_THRESHOLDS["uptime_24h"]["critical"]:
+        alerts.append({
+            "condition": "uptime_24h",
+            "threshold": ALERT_THRESHOLDS["uptime_24h"]["critical"],
+            "actual": uptime,
+            "severity": "critical",
+            "message": f"24h uptime is {uptime:.0%}, below critical threshold",
+        })
+    elif uptime < ALERT_THRESHOLDS["uptime_24h"]["warning"]:
+        alerts.append({
+            "condition": "uptime_24h",
+            "threshold": ALERT_THRESHOLDS["uptime_24h"]["warning"],
+            "actual": uptime,
+            "severity": "warning",
+            "message": f"24h uptime is {uptime:.0%}, below warning threshold",
+        })
+
+    # Check hours since last success
+    last_success = health["last_successful_run"]
+    if last_success:
+        last_success_dt = datetime.fromisoformat(last_success)
+        hours_since = (datetime.now(timezone.utc) - last_success_dt).total_seconds() / 3600
+        if hours_since >= ALERT_THRESHOLDS["hours_since_success"]["critical"]:
+            alerts.append({
+                "condition": "hours_since_success",
+                "threshold": ALERT_THRESHOLDS["hours_since_success"]["critical"],
+                "actual": hours_since,
+                "severity": "critical",
+                "message": f"No successful run in {hours_since:.1f} hours",
+            })
+        elif hours_since >= ALERT_THRESHOLDS["hours_since_success"]["warning"]:
+            alerts.append({
+                "condition": "hours_since_success",
+                "threshold": ALERT_THRESHOLDS["hours_since_success"]["warning"],
+                "actual": hours_since,
+                "severity": "warning",
+                "message": f"No successful run in {hours_since:.1f} hours",
+            })
+
+    # Check task match rate (from current run if available)
+    if current_run:
+        total_matched = current_run["sessions_with_task_match"]
+        total_unmatched = current_run["sessions_no_task_match"]
+        total = total_matched + total_unmatched
+        if total > 0:
+            match_rate = total_matched / total
+            if match_rate < ALERT_THRESHOLDS["task_match_rate"]["warning"]:
+                alerts.append({
+                    "condition": "task_match_rate",
+                    "threshold": ALERT_THRESHOLDS["task_match_rate"]["warning"],
+                    "actual": match_rate,
+                    "severity": "warning",
+                    "message": f"Task match rate is {match_rate:.0%}, below threshold",
+                })
+
+        # Check for validation errors (info level)
+        if current_run["validation_errors"] > 0:
+            alerts.append({
+                "condition": "validation_errors",
+                "threshold": 0,
+                "actual": current_run["validation_errors"],
+                "severity": "info",
+                "message": f"{current_run['validation_errors']} validation errors in last run",
+            })
+
+        # Check for malformed JSON (warning level)
+        if current_run["malformed_json"] > 0:
+            alerts.append({
+                "condition": "malformed_json",
+                "threshold": 0,
+                "actual": current_run["malformed_json"],
+                "severity": "warning",
+                "message": f"{current_run['malformed_json']} malformed JSON responses in last run",
+            })
+
+    return alerts
+
+
+def format_alerts(alerts: list[dict[str, Any]]) -> str:
+    """Format alerts for human-readable output.
+
+    Args:
+        alerts: List of alert dicts from check_alerts()
+
+    Returns:
+        Formatted string with alerts
+    """
+    if not alerts:
+        return "No alerts - pipeline healthy"
+
+    severity_icons = {
+        "info": "ℹ️",
+        "warning": "⚠️",
+        "critical": "🚨",
+    }
+
+    lines = []
+    for alert in sorted(alerts, key=lambda a: {"critical": 0, "warning": 1, "info": 2}[a["severity"]]):
+        icon = severity_icons[alert["severity"]]
+        lines.append(f"{icon} [{alert['severity'].upper()}] {alert['message']}")
+
+    return "\n".join(lines)

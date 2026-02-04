@@ -8,7 +8,10 @@ from unittest.mock import patch
 import pytest
 
 from lib.pipeline_metrics import (
+    ALERT_THRESHOLDS,
     PipelineMetrics,
+    check_alerts,
+    format_alerts,
     get_metrics,
     get_metrics_dir,
     load_pipeline_metrics,
@@ -301,3 +304,150 @@ class TestModuleFunctions:
 
         assert metrics_dir.exists()
         assert metrics_dir.name == ".metrics"
+
+
+class TestAlertThresholds:
+    """Test alert threshold checking."""
+
+    def test_alert_thresholds_defined(self):
+        """Test that alert thresholds are properly defined."""
+        assert "consecutive_failures" in ALERT_THRESHOLDS
+        assert "warning" in ALERT_THRESHOLDS["consecutive_failures"]
+        assert "critical" in ALERT_THRESHOLDS["consecutive_failures"]
+
+    def test_check_alerts_no_metrics(self):
+        """Test check_alerts with no metrics returns empty list."""
+        alerts = check_alerts(None)
+        assert alerts == []
+
+    def test_check_alerts_healthy_metrics(self):
+        """Test check_alerts with healthy metrics."""
+        from datetime import datetime, timezone
+
+        metrics = {
+            "health": {
+                "consecutive_failures": 0,
+                "uptime_24h": 1.0,
+                "last_successful_run": datetime.now(timezone.utc).isoformat(),
+            },
+            "current_run": {
+                "sessions_with_task_match": 3,
+                "sessions_no_task_match": 1,
+                "validation_errors": 0,
+                "malformed_json": 0,
+            },
+        }
+        alerts = check_alerts(metrics)
+        assert len(alerts) == 0
+
+    def test_check_alerts_consecutive_failures_warning(self):
+        """Test warning alert for consecutive failures."""
+        from datetime import datetime, timezone
+
+        metrics = {
+            "health": {
+                "consecutive_failures": 3,
+                "uptime_24h": 0.9,
+                "last_successful_run": datetime.now(timezone.utc).isoformat(),
+            },
+            "current_run": None,
+        }
+        alerts = check_alerts(metrics)
+        failure_alerts = [a for a in alerts if a["condition"] == "consecutive_failures"]
+        assert len(failure_alerts) == 1
+        assert failure_alerts[0]["severity"] == "warning"
+
+    def test_check_alerts_consecutive_failures_critical(self):
+        """Test critical alert for consecutive failures."""
+        from datetime import datetime, timezone
+
+        metrics = {
+            "health": {
+                "consecutive_failures": 5,
+                "uptime_24h": 0.9,
+                "last_successful_run": datetime.now(timezone.utc).isoformat(),
+            },
+            "current_run": None,
+        }
+        alerts = check_alerts(metrics)
+        failure_alerts = [a for a in alerts if a["condition"] == "consecutive_failures"]
+        assert len(failure_alerts) == 1
+        assert failure_alerts[0]["severity"] == "critical"
+
+    def test_check_alerts_low_uptime(self):
+        """Test alert for low uptime."""
+        from datetime import datetime, timezone
+
+        metrics = {
+            "health": {
+                "consecutive_failures": 0,
+                "uptime_24h": 0.4,
+                "last_successful_run": datetime.now(timezone.utc).isoformat(),
+            },
+            "current_run": None,
+        }
+        alerts = check_alerts(metrics)
+        uptime_alerts = [a for a in alerts if a["condition"] == "uptime_24h"]
+        assert len(uptime_alerts) == 1
+        assert uptime_alerts[0]["severity"] == "critical"
+
+    def test_check_alerts_low_task_match_rate(self):
+        """Test alert for low task match rate."""
+        from datetime import datetime, timezone
+
+        metrics = {
+            "health": {
+                "consecutive_failures": 0,
+                "uptime_24h": 1.0,
+                "last_successful_run": datetime.now(timezone.utc).isoformat(),
+            },
+            "current_run": {
+                "sessions_with_task_match": 1,
+                "sessions_no_task_match": 9,
+                "validation_errors": 0,
+                "malformed_json": 0,
+            },
+        }
+        alerts = check_alerts(metrics)
+        match_alerts = [a for a in alerts if a["condition"] == "task_match_rate"]
+        assert len(match_alerts) == 1
+        assert match_alerts[0]["severity"] == "warning"
+
+    def test_check_alerts_validation_errors(self):
+        """Test info alert for validation errors."""
+        from datetime import datetime, timezone
+
+        metrics = {
+            "health": {
+                "consecutive_failures": 0,
+                "uptime_24h": 1.0,
+                "last_successful_run": datetime.now(timezone.utc).isoformat(),
+            },
+            "current_run": {
+                "sessions_with_task_match": 5,
+                "sessions_no_task_match": 0,
+                "validation_errors": 2,
+                "malformed_json": 0,
+            },
+        }
+        alerts = check_alerts(metrics)
+        validation_alerts = [a for a in alerts if a["condition"] == "validation_errors"]
+        assert len(validation_alerts) == 1
+        assert validation_alerts[0]["severity"] == "info"
+
+    def test_format_alerts_empty(self):
+        """Test formatting empty alerts."""
+        result = format_alerts([])
+        assert result == "No alerts - pipeline healthy"
+
+    def test_format_alerts_with_alerts(self):
+        """Test formatting alerts."""
+        alerts = [
+            {"condition": "test", "severity": "warning", "message": "Test warning"},
+            {"condition": "test2", "severity": "critical", "message": "Test critical"},
+        ]
+        result = format_alerts(alerts)
+        assert "CRITICAL" in result
+        assert "WARNING" in result
+        # Critical should come first
+        assert result.index("CRITICAL") < result.index("WARNING")
