@@ -183,9 +183,10 @@ def _attempt_auto_merge(task, manager):
             eng.process_merge(task)
             print("  ✅ Auto-merge succeeded!")
         except Exception as e:
-            # Merge failed - task stays at merge_ready for manual retry
+            # Merge failed - kickback to review
             print(f"  ⚠ Auto-merge failed: {e}")
-            print("  Task remains 'merge_ready' - run 'polecat merge' to retry manually")
+            eng.handle_failure(task, str(e))
+            print("  Task moved to 'review' - engineer (bot) will attempt to fix")
 
     except ImportError as e:
         print(f"  ⚠ Auto-merge skipped: {e}")
