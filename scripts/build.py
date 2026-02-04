@@ -285,6 +285,8 @@ def build_aops_core(
         "INDEX.md",
         "WORKFLOWS.md",
         "INSTALLATION.md",
+        "pyproject.toml",
+        "uv.lock",
     ]
     
     # Gemini-only items
@@ -375,7 +377,7 @@ def build_aops_core(
             except Exception as e:
                 print(f"Error processing plugin.json: {e}", file=sys.stderr)
         else:
-            print(f"Error: {src_extension_json} not found.", file=sys.stderr)
+            print(f"Error: {src_plugin_json} not found.", file=sys.stderr)
             sys.exit(1)
 
     # 4. Generate MCP Config from Template

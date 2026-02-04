@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --directory ${extensionPath} python ${extensionPath}/hooks/router.py --client gemini",
+            "command": "uv run --directory ${extensionPath} python hooks/router.py --client gemini",
             "timeout": 15000
           }
         ]
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --directory ${extensionPath} python ${extensionPath}/hooks/router.py --client gemini",
+            "command": "uv run --directory ${extensionPath} python hooks/router.py --client gemini",
             "timeout": 5000
           }
         ]
@@ -27,7 +27,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --directory ${extensionPath} python ${extensionPath}/hooks/router.py --client gemini",
+            "command": "uv run --directory ${extensionPath} python hooks/router.py --client gemini",
             "timeout": 5000
           }
         ]
@@ -38,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --directory ${extensionPath} python ${extensionPath}/hooks/router.py --client gemini",
+            "command": "uv run --directory ${extensionPath} python hooks/router.py --client gemini",
             "timeout": 5000
           }
         ]
@@ -49,7 +49,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --directory ${extensionPath} python ${extensionPath}/hooks/router.py --client gemini",
+            "command": "uv run --directory ${extensionPath} python hooks/router.py --client gemini",
             "timeout": 10000
           }
         ]
