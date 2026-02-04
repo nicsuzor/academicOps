@@ -173,6 +173,7 @@ class TestMarkdownTranscript:
 
     def test_process_empty_session_skips(self) -> None:
         """Processing a file with no meaningful content should return exit code 2."""
+        import os
         with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
             f.write("# Existing Transcript\n\nContent here")
             temp_path = f.name
@@ -183,6 +184,7 @@ class TestMarkdownTranscript:
                 capture_output=True,
                 text=True,
                 timeout=10,
+                env=os.environ,
             )
             # Exit code 2 means skipped (no meaningful content)
             # This is expected behavior for non-JSONL files
@@ -198,6 +200,7 @@ class TestOutputPathHandling:
 
     def test_output_directory_generates_filename(self) -> None:
         """When -o is a directory, should auto-generate filename in that directory."""
+        import os
         # Create a minimal valid JSONL session
         session_content = """{"type":"user","message":{"content":"Hello world"}}
 {"type":"assistant","message":{"content":"Hi there! How can I help?"}}
@@ -217,6 +220,7 @@ class TestOutputPathHandling:
                     capture_output=True,
                     text=True,
                     timeout=30,
+                    env=os.environ,
                 )
 
                 # Should succeed

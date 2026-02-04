@@ -14,6 +14,7 @@ from lib.gate_model import GateResult, GateVerdict
 @patch("hooks.gate_registry.session_state.is_hydrator_active")
 @patch("hooks.gate_registry.session_state.is_hydration_pending")
 @patch("hooks.gate_registry.hook_utils.get_hook_temp_dir")
+@patch.dict("os.environ", {"HYDRATION_MODE": "block"})
 def test_strict_hydration(mock_get_temp_dir, mock_is_pending, mock_is_hydrator_active, mock_is_subagent):
     """Verify hydration block behavior."""
     mock_get_temp_dir.return_value = "/tmp/hydrator"

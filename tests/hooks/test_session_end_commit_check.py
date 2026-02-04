@@ -577,8 +577,10 @@ class TestCheckUncommittedWork:
     @patch("session_end_commit_check.has_framework_reflection")
     @patch("session_end_commit_check.has_test_success")
     @patch("session_end_commit_check.get_git_status")
+    @patch("session_end_commit_check.attempt_auto_commit")
     def test_staged_changes_with_reflection(
         self,
+        mock_auto_commit,
         mock_git_status,
         mock_test_success,
         mock_reflection,
@@ -595,6 +597,7 @@ class TestCheckUncommittedWork:
             untracked_files=False,
             status_output="M file.txt",
         )
+        mock_auto_commit.return_value = False
 
         result = check_uncommitted_work("session123", "/tmp/transcript.jsonl")
         assert result.should_block is True

@@ -18,6 +18,31 @@ def _is_xdist_worker() -> bool:
 
 
 @pytest.fixture(autouse=True)
+def ensure_test_environment(monkeypatch, tmp_path):
+    """Ensure ACA_DATA is set and directories exist for all tests.
+    
+    This provides a fallback test environment if ACA_DATA is not set externally.
+    """
+    if not os.environ.get("ACA_DATA"):
+        # Use a stable temp dir for the session if possible, or tmp_path
+        # But tmp_path is unique per test.
+        # Ideally we want a shared one for the session, but per-test is safer for isolation.
+        data_dir = tmp_path / "aca_data"
+        monkeypatch.setenv("ACA_DATA", str(data_dir))
+    else:
+        data_dir = Path(os.environ["ACA_DATA"])
+    
+    # Ensure required structure exists
+    (data_dir / "tasks").mkdir(parents=True, exist_ok=True)
+    (data_dir / "projects").mkdir(parents=True, exist_ok=True)
+    (data_dir / "logs").mkdir(parents=True, exist_ok=True)
+    (data_dir / "goals").mkdir(parents=True, exist_ok=True)
+    (data_dir / "context").mkdir(parents=True, exist_ok=True)
+    # Sessions is sibling of data_root
+    (data_dir.parent / "sessions").mkdir(parents=True, exist_ok=True)
+
+
+@pytest.fixture(autouse=True)
 def skip_demo_in_xdist(request):
     """Skip demo tests when running in xdist workers.
 
