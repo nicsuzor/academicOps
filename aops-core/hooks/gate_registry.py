@@ -1471,27 +1471,27 @@ def run_accountant(ctx: GateContext) -> Optional[GateResult]:
             session_state.record_file_read(ctx.session_id, file_path)
 
     # 2. Update Custodiet State
-    # Skip for safe read-only tools to avoid noise
-    if ctx.tool_name not in SAFE_READ_TOOLS:
-        sess = session_state.get_or_create_session_state(ctx.session_id)
-        state = sess.setdefault("state", {})
+    # Count ALL tool calls (not just mutating) for visibility into total session activity.
+    # Blocking is still gated on MUTATING_TOOLS in check_custodiet_gate.
+    sess = session_state.get_or_create_session_state(ctx.session_id)
+    state = sess.setdefault("state", {})
 
-        # Initialize fields
-        state.setdefault("tool_calls_since_compliance", 0)
-        state.setdefault("last_compliance_ts", 0.0)
+    # Initialize fields
+    state.setdefault("tool_calls_since_compliance", 0)
+    state.setdefault("last_compliance_ts", 0.0)
 
-        # Check for reset (custodiet invoked) or increment
-        if _is_custodiet_invocation(ctx.tool_name or "", ctx.tool_input):
-            state["tool_calls_since_compliance"] = 0
-            state["last_compliance_ts"] = time.time()
-            system_messages.append(
-                "🛡️ [Gate] Compliance verified. Custodiet gate reset."
-            )
+    # Check for reset (custodiet invoked) or increment
+    if _is_custodiet_invocation(ctx.tool_name or "", ctx.tool_input):
+        state["tool_calls_since_compliance"] = 0
+        state["last_compliance_ts"] = time.time()
+        system_messages.append(
+            "🛡️ [Gate] Compliance verified. Custodiet gate reset."
+        )
 
-        else:
-            state["tool_calls_since_compliance"] += 1
+    else:
+        state["tool_calls_since_compliance"] += 1
 
-        session_state.save_session_state(ctx.session_id, sess)
+    session_state.save_session_state(ctx.session_id, sess)
 
     # 3. Update Handover State
     # Handover gate starts OPEN (handover_skill_invoked=True).
