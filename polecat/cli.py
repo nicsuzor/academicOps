@@ -316,6 +316,72 @@ def finish(ctx, no_push, do_nuke):
             print(f"Error pushing to origin: {e}", file=sys.stderr)
             sys.exit(1)
 
+    # --- GitHub PR Integration ---
+    try:
+        # Import locally to avoid potential circular dependencies
+        try:
+            from github import generate_pr_body, check_gh_installed
+        except ImportError:
+            # Fallback if running as module
+            from .github import generate_pr_body, check_gh_installed
+
+        if check_gh_installed():
+            print("  🐙 GitHub CLI detected. Updating Pull Request...")
+            pr_body = generate_pr_body(task)
+
+            # Create a temp file for the body to handle multiline content safely
+            import tempfile
+            import json
+
+            with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
+                f.write(pr_body)
+                body_file = f.name
+
+            try:
+                # Check if PR exists
+                pr_check = subprocess.run(
+                    ["gh", "pr", "list", "--head", branch_name, "--json", "number", "--state", "open"],
+                    capture_output=True, text=True, check=False
+                )
+
+                prs = []
+                if pr_check.returncode == 0 and pr_check.stdout.strip():
+                    try:
+                        prs = json.loads(pr_check.stdout)
+                    except json.JSONDecodeError:
+                        pass
+
+                if prs:
+                    # Update existing PR
+                    pr_number = prs[0]['number']
+                    subprocess.run(
+                        ["gh", "pr", "edit", str(pr_number), "--body-file", body_file],
+                        check=True, capture_output=True
+                    )
+                    print(f"  ✅ Updated PR #{pr_number}")
+                else:
+                    # Create new PR
+                    subprocess.run(
+                        ["gh", "pr", "create", "--title", task.title, "--body-file", body_file, "--head", branch_name, "--base", "main"],
+                        check=True, capture_output=True
+                    )
+                    print(f"  ✅ Created new PR")
+
+            except subprocess.CalledProcessError as e:
+                # Don't fail the whole finish command if PR creation fails
+                err_msg = e.stderr.decode().strip() if e.stderr else str(e)
+                print(f"  ⚠️  Failed to manage PR: {err_msg}")
+            except Exception as e:
+                print(f"  ⚠️  Error in PR integration: {e}")
+            finally:
+                if os.path.exists(body_file):
+                    os.unlink(body_file)
+
+    except ImportError:
+        print("  ⚠️  Could not import github module for PR integration.")
+    except Exception as e:
+        print(f"  ⚠️  Unexpected error in PR integration: {e}")
+
     # Update task status to merge_ready
     try:
         from lib.task_model import TaskStatus

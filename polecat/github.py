@@ -30,7 +30,7 @@ def generate_pr_body(task: Task) -> str:
 
     # Remove Title Header if present (usually the first line)
     # Match "# Title" at start of string
-    title_pattern = re.compile(f"^# {re.escape(task.title)}\s*\n", re.MULTILINE)
+    title_pattern = re.compile(f"^# {re.escape(task.title)}\\s*\n", re.MULTILINE)
     body = title_pattern.sub("", body)
 
     # Logic to find Acceptance Criteria
