@@ -1484,11 +1484,14 @@ def run_accountant(ctx: GateContext) -> Optional[GateResult]:
             )
     elif _is_actually_destructive(ctx.tool_name or "", ctx.tool_input):
         # Destructive tool used - require handover before stop
+        # Only show warning on status change (gate was open, now closing)
         try:
+            was_open = session_state.is_handover_skill_invoked(ctx.session_id)
             session_state.clear_handover_skill_invoked(ctx.session_id)
-            system_messages.append(
-                "⚠️ [Gate] Destructive tool used. Handover required before stop."
-            )
+            if was_open:
+                system_messages.append(
+                    "⚠️ [Gate] Destructive tool used. Handover required before stop."
+                )
         except Exception as e:
             print(
                 f"WARNING: Accountant failed to clear handover flag: {e}",
