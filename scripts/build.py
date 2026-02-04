@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Build script for AcademicOps Gemini extensions.
-Generates dist/aops-core, dist/aops-tools, and dist/antigravity.
+Generates dist/aops-core and dist/antigravity.
 """
 
 import os
@@ -307,7 +307,7 @@ def build_aops_core(
 
     # 3. Extension Manifest / Plugin Info
     if platform == "gemini":
-        src_extension_json = src_dir / "gemini-extension.json"
+        src_extension_json = aops_root / "gemini-extension.json"
         dist_extension_json = dist_dir / "gemini-extension.json"
 
         if src_extension_json.exists():
@@ -419,110 +419,6 @@ def build_aops_core(
     return gemini_mcps
 
 
-def build_aops_tools(
-    aops_root: Path, dist_root: Path, aca_data_path: str, platform: str = "gemini", version: str = "0.1.0"
-):
-    """Build the aops-tools extension."""
-    print(f"Building aops-tools for {platform} (v{version})...")
-    plugin_name = "aops-tools"
-    src_dir = aops_root / plugin_name
-    
-    # Platform-specific dist dir
-    dist_dir = dist_root / f"{plugin_name}-{platform}"
-
-    # Write version info for tracking
-    commit_sha = get_git_commit_sha(aops_root)
-    if commit_sha:
-        write_plugin_version(src_dir, commit_sha)
-
-    if dist_dir.exists():
-        shutil.rmtree(dist_dir)
-    dist_dir.mkdir(parents=True)
-
-    # 1. Copy content directories
-    for item in ["skills"]:
-        src = src_dir / item
-        if src.exists():
-            safe_copy(src, dist_dir / item)
-
-    # 1.5 Generate MCP Config from Template
-    template_path = src_dir / "mcp.json.template"
-    if template_path.exists():
-        print(f"Generating MCP config from {template_path.name}...")
-        try:
-            content = template_path.read_text()
-            mcp_config = json.loads(content)
-
-            # Write back to source .mcp.json for Claude
-            mcp_json_path = src_dir / ".mcp.json"
-            with open(mcp_json_path, "w") as f:
-                json.dump(mcp_config, f, indent=2)
-            
-            # If Claude dist, copy .mcp.json
-            if platform == "claude":
-                safe_copy(mcp_json_path, dist_dir / ".mcp.json")
-
-        except Exception as e:
-            print(f"Error processing template {template_path}: {e}", file=sys.stderr)
-            raise
-
-    # 2. Load Manifest and MCPs
-    plugin_json_path = src_dir / ".claude-plugin" / "plugin.json"
-    manifest_base = {}
-    gemini_mcps = {}
-
-    if plugin_json_path.exists():
-        try:
-            with open(plugin_json_path) as f:
-                manifest_base = json.load(f)
-            
-            # Update version in manifest
-            manifest_base["version"] = version
-
-            # If Claude, copy to root
-            if platform == "claude":
-                dist_plugin_json = dist_dir / "plugin.json"
-                with open(dist_plugin_json, "w") as f:
-                    json.dump(manifest_base, f, indent=2)
-                print(f"  ✓ Updated and copied plugin.json -> {dist_plugin_json}")
-
-        except json.JSONDecodeError:
-            print(f"Warning: Invalid JSON in {plugin_json_path}")
-
-    # Resolve MCP Servers (Gemini only)
-    if platform == "gemini":
-        mcp_ref = manifest_base.get("mcpServers")
-        if isinstance(mcp_ref, str):
-            mcp_path = src_dir / mcp_ref
-        else:
-            mcp_path = src_dir / ".mcp.json"
-
-        if mcp_path.exists():
-            try:
-                with open(mcp_path) as f:
-                    data = json.load(f)
-                    servers_config = data.get("mcpServers", data)
-                    gemini_mcps = convert_mcp_to_gemini(servers_config)
-            except json.JSONDecodeError:
-                print(f"Warning: Invalid JSON in {mcp_path}")
-
-        # Remove task_manager if present (core handles it)
-        if "task_manager" in gemini_mcps:
-            del gemini_mcps["task_manager"]
-
-        # 3. Build Final Manifest
-        manifest = {
-            "name": manifest_base.get("name", "aops-tools"),
-            "version": version,
-            "description": manifest_base.get("description", "AcademicOps Tools"),
-            "mcpServers": gemini_mcps,
-        }
-        with open(dist_dir / "gemini-extension.json", "w") as f:
-            json.dump(manifest, f, indent=2)
-
-    print(f"✓ Built {plugin_name} ({platform})")
-    return gemini_mcps
-
 def build_antigravity(aops_root: Path, dist_root: Path, all_mcps: dict):
     """Build the antigravity distribution."""
     print("Building antigravity...")
@@ -600,15 +496,12 @@ def main():
 
     # Build components (Gemini)
     core_mcps_gemini = build_aops_core(aops_root, dist_root, aca_data_path, "gemini", version)
-    tools_mcps_gemini = build_aops_tools(aops_root, dist_root, aca_data_path, "gemini", version)
 
     # Build components (Claude)
     build_aops_core(aops_root, dist_root, aca_data_path, "claude", version)
-    build_aops_tools(aops_root, dist_root, aca_data_path, "claude", version)
 
-    # Aggregate MCPs for Antigravity (global config if needed)
-    all_mcps_gemini = {**core_mcps_gemini, **tools_mcps_gemini}
-    build_antigravity(aops_root, dist_root, all_mcps_gemini)
+    # Build Antigravity (global config if needed)
+    build_antigravity(aops_root, dist_root, core_mcps_gemini)
 
     package_artifacts(aops_root, dist_root)
 
@@ -625,13 +518,7 @@ def package_artifacts(aops_root: Path, dist_root: Path):
         tar.add(dist_root / "aops-core-gemini", arcname=".")
     print(f"  ✓ Packaged {core_gemini_path.name}")
 
-    # 2. aops-tools-gemini.tar.gz
-    tools_gemini_path = dist_root / "aops-tools-gemini.tar.gz"
-    with tarfile.open(tools_gemini_path, "w:gz") as tar:
-        tar.add(dist_root / "aops-tools-gemini", arcname=".")
-    print(f"  ✓ Packaged {tools_gemini_path.name}")
-
-    # 3. aops-antigravity.zip
+    # 2. aops-antigravity.zip
     antigravity_zip_path = dist_root / "aops-antigravity.zip"
     with zipfile.ZipFile(antigravity_zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
         ag_src = dist_root / "antigravity"
@@ -657,17 +544,11 @@ def package_artifacts(aops_root: Path, dist_root: Path):
             return None
         return tarinfo
 
-    # 4. aops-core-claude.tar.gz (from built dist)
+    # 3. aops-core-claude.tar.gz (from built dist)
     core_claude_path = dist_root / "aops-core-claude.tar.gz"
     with tarfile.open(core_claude_path, "w:gz") as tar:
         tar.add(dist_root / "aops-core-claude", arcname="aops-core", filter=_source_filter)
     print(f"  ✓ Packaged {core_claude_path.name}")
-
-    # 5. aops-tools-claude.tar.gz (from built dist)
-    tools_claude_path = dist_root / "aops-tools-claude.tar.gz"
-    with tarfile.open(tools_claude_path, "w:gz") as tar:
-        tar.add(dist_root / "aops-tools-claude", arcname="aops-tools", filter=_source_filter)
-    print(f"  ✓ Packaged {tools_claude_path.name}")
 
 
 if __name__ == "__main__":

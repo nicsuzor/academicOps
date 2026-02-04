@@ -1,0 +1,223 @@
+---
+name: pull
+category: instruction
+description: Pull a task from queue, claim it (mark active), and mark complete when done
+allowed-tools: Task, Bash, Read, Grep, Skill, AskUserQuestion
+permalink: commands/pull
+---
+
+# /pull - Pull, Claim, and Complete a Task
+
+**Purpose**: Get a task from the ready queue, claim it (mark status active), and mark it complete when finished.
+
+## Workflow
+
+### Step 1: Get and Claim a Task
+
+1.  **List ready tasks**: Call `mcp__plugin_aops-tools_task_manager__list_tasks(status="active", limit=10)` to find ready tasks.
+2.  **Select task**: Review the list and select the highest priority task (lowest priority number, e.g., P0).
+3.  **Claim task**: Call `mcp__plugin_aops-tools_task_manager__update_task(id="<task-id>", status="in_progress", assignee="bot")` to claim it.
+
+**If a specific task ID is provided** (`/pull <task-id>`):
+1.  Call `mcp__plugin_aops-tools_task_manager__get_task(id="<task-id>")` to load it.
+2.  If the task has children (leaf=false), navigate to the first ready leaf subtask instead.
+3.  Claim with `mcp__plugin_aops-tools_task_manager__update_task(id="<task-id>", status="in_progress", assignee="bot")`.
+
+**If no tasks are ready**:
+- Check active/inbox tasks for any that can be worked on.
+- If none exist, report and halt.
+
+### Step 1.5: Inject Soft Dependency Context (Advisory)
+
+After claiming, check if the task has `soft_depends_on` relationships:
+
+1. Read the task's `soft_depends_on` array
+2. For each soft dependency ID:
+   - Call `mcp__plugin_aops-tools_task_manager__get_task(id="<soft-dep-id>")`
+   - If status is `done`, extract the task body for context
+   - If status is NOT done, log: "Soft dependency <id> not yet complete - proceeding without context"
+3. Present completed soft dependency context before execution:
+
+```markdown
+## Soft Dependency Context (Advisory)
+
+The following completed tasks provide informational context for this task:
+
+### [<soft-dep-id>] <title>
+<body excerpt or summary>
+
+---
+```
+
+**Important**: Soft dependencies are ADVISORY only:
+- Reading them is recommended but not mandatory
+- Missing/incomplete soft deps do NOT block task execution
+- Context injection helps but agent can proceed without it
+
+### Step 2: Assess Task Path - EXECUTE or TRIAGE
+
+After claiming, determine whether to execute immediately or triage first.
+
+#### EXECUTE Path (all must be true)
+
+Proceed with execution when:
+
+- **What**: Task describes specific deliverable(s)
+- **Where**: Target files/systems are known or locatable within 5 minutes
+- **Why**: Context is sufficient for implementation decisions
+- **How**: Steps are known or determinable from codebase/docs
+- **Scope**: Estimated completion within current session
+- **Blockers**: No external dependencies (human approval, external input, waiting)
+
+→ Proceed to Step 3: Execute
+
+#### TRIAGE Path (any is true)
+
+Triage instead of executing when:
+
+- Task requires human judgment/approval
+- Task has unknowns requiring exploration beyond this session
+- Task is too vague to determine deliverables
+- Task depends on external input not yet available
+- Task exceeds session scope
+
+→ Proceed to Step 3: Triage
+
+### Step 3A: Execute (EXECUTE Path)
+
+Follow the task's workflow or use standard execution pattern:
+
+1. Read task body for context and acceptance criteria
+2. Implement the changes
+3. Verify against acceptance criteria
+4. Run tests if applicable
+5. Commit changes
+6. Complete task (see Step 4)
+
+### Step 3A.1: Execute Spike/Learn Tasks
+
+For tasks with `type: learn`:
+
+1. **Investigate** per task instructions
+2. **Write findings to task body** - Use `update_task(id, body=...)` to append findings
+3. **Summarize in parent epic** - Read parent, append to "## Findings from Spikes"
+4. **Decompose actionable items** - Create subtasks for each fix/recommendation:
+   ```
+   mcp__plugin_aops-tools_task_manager__decompose_task(
+     id="<spike-id>",
+     children=[
+       {"title": "[Fix] Issue 1", "type": "task", "body": "Context from spike..."},
+       {"title": "[Fix] Issue 2", "type": "task", "body": "Context from spike..."}
+     ]
+   )
+   ```
+5. **Complete the spike** - Decomposition IS completion for learn tasks (per P#71, P#81)
+
+### Step 3A.2: Commit Before Completion
+
+Before marking task complete, verify work is committed:
+
+1. Run `git status` - should show no uncommitted changes to tracked files
+2. If uncommitted changes exist:
+   - Stage relevant files: `git add <files>`
+   - Commit with task context: `git commit -m "feat(<area>): <task summary>"`
+3. Only after commit succeeds, proceed to Step 4
+
+**Enforcement**: Do NOT call `complete_task()` until commit is verified.
+
+### Step 3B: Triage (TRIAGE Path)
+
+Take appropriate action based on what's needed:
+
+#### Option A: Assign to Role
+
+If task needs specific expertise or human judgment:
+
+```
+mcp__task_manager__update_task(
+  id="<task-id>",
+  assignee="<role>"  # e.g., "nic", "bot"
+)
+```
+
+**Role assignment logic:**
+- `assignee="nic"` - Requires human judgment, strategic decisions, or external context
+- `assignee="bot"` - Can be automated but needs clarification on scope/approach
+- Leave unassigned if role unclear
+
+Note: Use `mcp__task_manager__update_task` (not `mcp__plugin_aops-core_tasks`) for assignee support. Don't set status to "blocked" - just assign.
+
+#### Option B: Decompose into Subtasks
+
+If task is too large but scope is clear:
+
+```
+mcp__plugin_aops-tools_task_manager__decompose_task(
+  id="<parent-id>",
+  children=[
+    {"title": "Subtask 1: [specific action]", "type": "action", "order": 0},
+    {"title": "Subtask 2: [specific action]", "type": "action", "order": 1},
+    {"title": "Subtask 3: [specific action]", "type": "action", "order": 2}
+  ]
+)
+```
+
+**Subtask explosion heuristics:**
+- Each subtask should pass EXECUTE criteria (15-60 min, clear deliverable)
+- Break by natural boundaries: files, features, or dependencies
+- Order subtasks logically (dependencies first)
+- Don't over-decompose: 3-7 subtasks is ideal
+- If > 7 subtasks needed, create intermediate grouping tasks
+
+#### Option C: Block for Clarification
+
+If task is fundamentally unclear:
+
+```
+mcp__plugin_aops-tools_task_manager__update_task(
+  id="<task-id>",
+  status="blocked",
+  body="Blocked: [specific questions]. Context: [what's known so far]."
+)
+```
+
+After triaging, **HALT** - do not proceed to execution. The task is now either assigned, decomposed, or blocked.
+
+### Step 4: Finish and Mark Ready for Merge
+
+After successful execution (EXECUTE path only), finalize the task:
+
+#### If in a Polecat Worktree
+
+Detect via: current directory is under `~/.aops/polecat/` or `$POLECAT_HOME/polecat/`
+
+Run `polecat finish` via Bash:
+```bash
+polecat finish
+```
+
+This command:
+1. Auto-commits any uncommitted changes (safeguard)
+2. Pushes the branch to origin
+3. Sets task status to `merge_ready`
+4. Attempts auto-merge if no blockers
+
+#### If NOT in a Polecat Worktree
+
+For tasks executed outside the polecat worktree system (e.g., direct `/pull` in a normal repo), use:
+```
+mcp__plugin_aops-tools_task_manager__complete_task(id="<task-id>")
+```
+
+This directly marks the task as `done` since there's no branch to merge.
+
+**Note**: TRIAGE path should halt before reaching Step 4. Only EXECUTE path tasks should be finished.
+
+## Arguments
+
+- `/pull` - Get highest priority ready task and claim it
+- `/pull <task-id>` - Claim a specific task (or its first ready leaf if it has children)
+
+## Implementation Note
+
+How you execute the task, how you verify it, how you commit/push—those are agent responsibilities, not `/pull` responsibilities. This skill just manages the queue state: get, claim, complete.

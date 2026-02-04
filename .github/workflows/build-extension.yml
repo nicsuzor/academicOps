@@ -38,9 +38,6 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
-      - name: Create temporary ACA_DATA
-        run: mkdir -p /tmp/aca-data
-
       - name: Run Build Script
         run: |
           # This creates the files in dist/, but we will NOT commit them to git
@@ -67,10 +64,8 @@ jobs:
           tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'latest' }}
           files: |
             dist/aops-core-gemini.tar.gz
-            dist/aops-tools-gemini.tar.gz
             dist/aops-antigravity.zip
             dist/aops-core-claude.tar.gz
-            dist/aops-tools-claude.tar.gz
           draft: false
           prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
           make_latest: ${{ startsWith(github.ref, 'tags/') }}

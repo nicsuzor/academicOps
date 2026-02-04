@@ -135,8 +135,7 @@ def uninstall_framework(aops_path: Path):
 
     # 2. Gemini Extensions
     if shutil.which("gemini"):
-        for ext in ["aops-core", "aops-tools"]:
-            run_command(["gemini", "extensions", "uninstall", ext], check=False)
+        run_command(["gemini", "extensions", "uninstall", "aops-core"], check=False)
         print("✓ Gemini extensions uninstalled")
 
     # 3. Cleanup Files
@@ -267,28 +266,24 @@ def main():
     print("\n=== Version Check ===")
     source_commit = get_git_commit_sha(aops_root)
     if source_commit:
-        for plugin_name in ["aops-core", "aops-tools"]:
-            matches, installed_commit = check_installed_plugin_version(
-                plugin_name, source_commit
+        matches, installed_commit = check_installed_plugin_version(
+            "aops-core", source_commit
+        )
+        if not matches and installed_commit:
+            emit_version_mismatch_warning(
+                "aops-core", source_commit, installed_commit
             )
-            if not matches and installed_commit:
-                emit_version_mismatch_warning(
-                    plugin_name, source_commit, installed_commit
-                )
-        if all(
-            check_installed_plugin_version(p, source_commit)[0]
-            for p in ["aops-core", "aops-tools"]
-        ):
-            print(f"✓ Source commit {source_commit} matches installed plugins")
+        if matches:
+            print(f"✓ Source commit {source_commit} matches installed plugin")
     else:
         print("⚠️  Could not determine source commit (not a git repo?)")
 
     print("\n=== Phase 3: Link Extensions ===")
     if shutil.which("gemini"):
-        # Link aops-core
-        dist_core = aops_root / "dist" / "aops-core"
-        if dist_core.exists():
-            print(f"Installing extension: {dist_core}")
+        # Link aops-core (Gemini build)
+        dist_core_gemini = aops_root / "dist" / "aops-core-gemini"
+        if dist_core_gemini.exists():
+            print(f"Installing extension: {dist_core_gemini}")
             # Uninstall first to avoid "already installed" error
             run_command(["gemini", "extensions", "uninstall", "aops-core"], check=False)
             run_command(
@@ -296,34 +291,13 @@ def main():
                     "gemini",
                     "extensions",
                     "link",
-                    str(dist_core),
+                    str(dist_core_gemini),
                     "--consent",
-                    # "--pre-release",
                 ],
                 check=False,
             )
         else:
-            print(f"Warning: {dist_core} not found. Skipping link.")
-
-        # Link aops-tools
-        dist_tools = aops_root / "dist" / "aops-tools"
-        if dist_tools.exists():
-            print(f"Installing extension: {dist_tools}")
-            # Uninstall first to avoid "already installed" error
-            run_command(
-                ["gemini", "extensions", "uninstall", "aops-tools"], check=False
-            )
-            run_command(
-                [
-                    "gemini",
-                    "extensions",
-                    "link",
-                    str(dist_tools),
-                    "--consent",
-                    # "--pre-release",
-                ],
-                check=False,
-            )
+            print(f"Warning: {dist_core_gemini} not found. Skipping link.")
     else:
         print("Warning: 'gemini' executable not found. Skipping extension linking.")
 
