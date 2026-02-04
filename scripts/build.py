@@ -9,6 +9,8 @@ import sys
 import shutil
 import json
 import subprocess
+import tarfile
+import zipfile
 from pathlib import Path
 
 # Add shared lib to path (assuming scripts/lib exists)
@@ -635,7 +637,62 @@ def main():
 
     build_antigravity(aops_root, dist_root, all_mcps)
 
+    package_artifacts(aops_root, dist_root)
+
     print("\nBuild complete. Dist artifacts in dist/")
+
+
+def package_artifacts(aops_root: Path, dist_root: Path):
+    """Package the built components into archives for release."""
+    print("\nPackaging artifacts for release...")
+
+    # 1. aops-core-gemini.tar.gz
+    core_gemini_path = dist_root / "aops-core-gemini.tar.gz"
+    with tarfile.open(core_gemini_path, "w:gz") as tar:
+        tar.add(dist_root / "aops-core", arcname=".")
+    print(f"  ✓ Packaged {core_gemini_path.name}")
+
+    # 2. aops-tools-gemini.tar.gz
+    tools_gemini_path = dist_root / "aops-tools-gemini.tar.gz"
+    with tarfile.open(tools_gemini_path, "w:gz") as tar:
+        tar.add(dist_root / "aops-tools", arcname=".")
+    print(f"  ✓ Packaged {tools_gemini_path.name}")
+
+    # 3. aops-antigravity.zip
+    antigravity_zip_path = dist_root / "aops-antigravity.zip"
+    with zipfile.ZipFile(antigravity_zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+        ag_src = dist_root / "antigravity"
+        for root, _, files in os.walk(ag_src):
+            for file in files:
+                file_path = Path(root) / file
+                zipf.write(file_path, file_path.relative_to(ag_src))
+    print(f"  ✓ Packaged {antigravity_zip_path.name}")
+
+    # Filter for source packaging to exclude noise
+    def _source_filter(tarinfo):
+        exclude = [
+            ".venv",
+            "__pycache__",
+            ".pytest_cache",
+            ".mypy_cache",
+            ".ruff_cache",
+            ".git",
+        ]
+        if any(x in tarinfo.name for x in exclude):
+            return None
+        return tarinfo
+
+    # 4. aops-core-claude.tar.gz (from source)
+    core_claude_path = dist_root / "aops-core-claude.tar.gz"
+    with tarfile.open(core_claude_path, "w:gz") as tar:
+        tar.add(aops_root / "aops-core", arcname="aops-core", filter=_source_filter)
+    print(f"  ✓ Packaged {core_claude_path.name}")
+
+    # 5. aops-tools-claude.tar.gz (from source)
+    tools_claude_path = dist_root / "aops-tools-claude.tar.gz"
+    with tarfile.open(tools_claude_path, "w:gz") as tar:
+        tar.add(aops_root / "aops-tools", arcname="aops-tools", filter=_source_filter)
+    print(f"  ✓ Packaged {tools_claude_path.name}")
 
 
 if __name__ == "__main__":
