@@ -8,7 +8,7 @@ resolution-markers = [
 
 [[package]]
 name = "academicops"
-version = "0.1.14"
+version = "0.1.17"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
