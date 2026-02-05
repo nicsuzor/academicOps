@@ -530,76 +530,65 @@ def _is_actually_destructive(tool_name: str, tool_input: Dict[str, Any]) -> bool
     return False
 
 
-def _is_handover_skill_invocation(tool_name: str, tool_input: Dict[str, Any]) -> bool:
-    """Check if this is a handover skill invocation.
+def _is_skill_invocation(
+    tool_name: str, tool_input: Dict[str, Any], skill_names: tuple[str, ...]
+) -> bool:
+    """Check if this is an invocation of a specific skill/agent.
+
+    Handles all invocation patterns:
+    - Direct MCP tool invocation (Gemini): tool_name matches skill name
+    - Claude Skill tool: tool_input["skill"] matches
+    - Gemini activate_skill: tool_input["name"] matches
+    - Gemini delegate_to_agent: tool_input["agent_name"] matches
+    - Claude Task tool: tool_input["subagent_type"] matches
 
     Args:
         tool_name: Name of the tool being invoked
         tool_input: Tool input parameters
+        skill_names: Tuple of valid skill names (e.g., ("custodiet", "aops-core:custodiet"))
 
     Returns:
-        True if this is a handover skill invocation
+        True if this is an invocation of one of the skill_names
     """
-    # Claude Skill tool
-    if tool_name == "Skill":
-        skill_name = tool_input.get("skill", "")
-        if skill_name in ("handover", "aops-core:handover"):
-            return True
-
-    # Gemini activate_skill tool
-    if tool_name == "activate_skill":
-        name = tool_input.get("name", "")
-        if name in ("handover", "aops-core:handover"):
-            return True
-
-    # Gemini delegate_to_agent (unlikely for handover, but supported)
-    if tool_name == "delegate_to_agent":
-        agent_name = tool_input.get("agent_name", "")
-        if agent_name in ("handover", "aops-core:handover"):
-            return True
-
-    # Direct tool name
-    if tool_name == "handover":
+    # Direct MCP tool invocation (Gemini MCP pattern)
+    if tool_name in skill_names:
         return True
 
-    return False
-
-
-def _is_custodiet_invocation(tool_name: str, tool_input: Dict[str, Any]) -> bool:
-    """Check if this is a custodiet skill invocation.
-
-    Args:
-        tool_name: Name of the tool being invoked
-        tool_input: Tool input parameters
-
-    Returns:
-        True if this is a custodiet invocation
-    """
     # Claude Skill tool
     if tool_name == "Skill":
         skill_name = tool_input.get("skill", "")
-        if skill_name in ("custodiet", "aops-core:custodiet"):
+        if skill_name in skill_names:
             return True
 
     # Gemini activate_skill tool
     if tool_name == "activate_skill":
         name = tool_input.get("name", "")
-        if name in ("custodiet", "aops-core:custodiet"):
+        if name in skill_names:
             return True
 
     # Gemini delegate_to_agent
     if tool_name == "delegate_to_agent":
         agent_name = tool_input.get("agent_name", "")
-        if agent_name in ("custodiet", "aops-core:custodiet"):
+        if agent_name in skill_names:
             return True
 
     # Claude Task tool with subagent_type
     if tool_name == "Task":
         subagent_type = tool_input.get("subagent_type", "")
-        if subagent_type in ("custodiet", "aops-core:custodiet"):
+        if subagent_type in skill_names:
             return True
 
     return False
+
+
+def _is_handover_skill_invocation(tool_name: str, tool_input: Dict[str, Any]) -> bool:
+    """Check if this is a handover skill invocation."""
+    return _is_skill_invocation(tool_name, tool_input, ("handover", "aops-core:handover"))
+
+
+def _is_custodiet_invocation(tool_name: str, tool_input: Dict[str, Any]) -> bool:
+    """Check if this is a custodiet skill invocation."""
+    return _is_skill_invocation(tool_name, tool_input, ("custodiet", "aops-core:custodiet"))
 
 
 # --- Hydration Logic ---
