@@ -86,6 +86,32 @@ jobs:
           cp -r ${{ github.workspace }}/dist/aops-core-gemini .
           cp -r ${{ github.workspace }}/dist/antigravity .
 
+          # Copy gemini-extension.json to repo root and adjust paths
+          cp ${{ github.workspace }}/dist/aops-core-gemini/gemini-extension.json .
+          python3 << EOF
+          import json
+          import os
+          version = os.environ.get('VERSION', '0.1.0')
+          with open('gemini-extension.json', 'r') as f:
+              data = json.load(f)
+          # Update version
+          data['version'] = version
+          # Adjust paths to point to aops-core-gemini subdirectory
+          if 'mcpServers' in data:
+              for name, server in data['mcpServers'].items():
+                  if 'args' in server:
+                      server['args'] = [arg.replace('\${extensionPath}', './aops-core-gemini') for arg in server['args']]
+          if 'hooks' in data:
+              for event, hook_list in data['hooks'].items():
+                  for entry in hook_list:
+                      if 'hooks' in entry:
+                          for hook in entry['hooks']:
+                              if 'command' in hook:
+                                  hook['command'] = hook['command'].replace('\${extensionPath}', './aops-core-gemini')
+          with open('gemini-extension.json', 'w') as f:
+              json.dump(data, f, indent=2)
+          EOF
+
           # Copy marketplace definition
           mkdir -p .claude-plugin
           cp ${{ github.workspace }}/.claude-plugin/marketplace.json .claude-plugin/
