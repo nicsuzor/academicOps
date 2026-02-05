@@ -418,8 +418,9 @@ def build_aops_core(
     plugin_name = "aops-core"
     src_dir = aops_root / plugin_name
 
-    # Platform-specific dist dir
-    dist_dir = dist_root / f"{plugin_name}-{platform}"
+    # Platform-specific dist dir. New naming: use 'aops-{platform}' as the dist folder
+    # so consumers see 'aops-gemini' / 'aops-claude' instead of 'aops-core-gemini'.
+    dist_dir = dist_root / f"aops-{platform}"
 
     # Content goes directly into dist_dir (no nested subfolder)
     content_dir = dist_dir
@@ -789,14 +790,15 @@ def package_artifacts(aops_root: Path, dist_root: Path, version: str):
     # 1. aops-gemini-v{version}.tar.gz
     gemini_archive = dist_root / f"aops-gemini-v{version}.tar.gz"
     with tarfile.open(gemini_archive, "w:gz") as tar:
-        tar.add(dist_root / "aops-core-gemini", arcname=".", filter=_source_filter)
+        # Ensure the archive has the dist directory as the top-level root
+        tar.add(dist_root / "aops-gemini", arcname="aops-gemini", filter=_source_filter)
     print(f"  ✓ Packaged {gemini_archive.name}")
     safe_symlink(gemini_archive, dist_root / "aops-gemini-latest.tar.gz")
 
     # 2. aops-claude-v{version}.tar.gz
     claude_archive = dist_root / f"aops-claude-v{version}.tar.gz"
     with tarfile.open(claude_archive, "w:gz") as tar:
-        tar.add(dist_root / "aops-core-claude", arcname=".", filter=_source_filter)
+        tar.add(dist_root / "aops-claude", arcname="aops-claude", filter=_source_filter)
     print(f"  ✓ Packaged {claude_archive.name}")
     safe_symlink(claude_archive, dist_root / "aops-claude-latest.tar.gz")
 

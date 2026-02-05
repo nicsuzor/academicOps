@@ -227,12 +227,22 @@ def main():
     print("Installing Skills...")
     global_skills = ag_dir / "global_skills"
     global_skills.mkdir(exist_ok=True)
-    # Link from dist to ensure auto-generated agent skills are included
-    skills_src = aops_root / "dist" / "aops-core" / "skills"
-    if skills_src.exists():
-        for item in skills_src.iterdir():
-            if item.is_dir() and not item.name.startswith("."):
-                safe_symlink(item, global_skills / item.name)
+    # Link from dist to ensure auto-generated agent skills are included.
+    # New build naming uses 'aops-...' (aops-claude, aops-gemini, aops-antigravity)
+    # Fall back to legacy 'aops-core' layout if present.
+    candidate_skill_dirs = [
+        aops_root / "dist" / "aops" / "skills",
+        aops_root / "dist" / "aops-core" / "skills",
+        aops_root / "dist" / "aops-claude" / "skills",
+        aops_root / "dist" / "aops-gemini" / "skills",
+        aops_root / "dist" / "aops-antigravity" / "skills",
+    ]
+    for skills_src in candidate_skill_dirs:
+        if skills_src.exists() and skills_src.is_dir():
+            for item in skills_src.iterdir():
+                if item.is_dir() and not item.name.startswith("."):
+                    safe_symlink(item, global_skills / item.name)
+            break
 
     # Install Workflows
     print("Installing Workflows...")
@@ -261,9 +271,11 @@ def main():
             if item.is_file() and not item.name.startswith("."):
                 safe_symlink(item, global_commands / item.name)
 
-    dist_mcp_config = aops_root / "dist" / "antigravity" / "mcp_config.json"
-    if dist_mcp_config.exists():
-        safe_symlink(dist_mcp_config, ag_dir / "mcp_config.json")
+    # mcp_config may be under dist/antigravity or dist/aops-antigravity depending on build
+    for candidate in (aops_root / "dist" / "antigravity" / "mcp_config.json", aops_root / "dist" / "aops-antigravity" / "mcp_config.json"):
+        if candidate.exists():
+            safe_symlink(candidate, ag_dir / "mcp_config.json")
+            break
 
     # Check for version mismatches with installed Claude plugins
     print("\n=== Version Check ===")
@@ -281,11 +293,17 @@ def main():
 
     print("\n=== Phase 3: Link Extensions ===")
     if shutil.which("gemini"):
-        # Link aops-core (Gemini build)
-        dist_core_gemini = aops_root / "dist" / "aops-core-gemini"
-        if dist_core_gemini.exists():
+        # Link Gemini extension. New builds name the directory 'aops-gemini'
+        dist_core_gemini = None
+        for name in ("aops-core-gemini", "aops-gemini"):
+            candidate = aops_root / "dist" / name
+            if candidate.exists():
+                dist_core_gemini = candidate
+                break
+
+        if dist_core_gemini:
             print(f"Installing Gemini extension from: {dist_core_gemini}")
-            print("This sets aops-core-gemini/ as the extension root.")
+            print(f"This sets {dist_core_gemini.name}/ as the extension root.")
             # Uninstall first to avoid "already installed" error
             run_command(["gemini", "extensions", "uninstall", "aops-core"], check=False)
             run_command(
@@ -299,7 +317,7 @@ def main():
                 check=False,
             )
         else:
-            print(f"Warning: {dist_core_gemini} not found. Skipping link.")
+            print("Warning: Gemini extension dist not found. Skipping link.")
     else:
         print("Warning: 'gemini' executable not found. Skipping extension linking.")
 
