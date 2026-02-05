@@ -53,57 +53,57 @@ command gemini extensions install git@github.com:nicsuzor/aops-dist.git --consen
 flowchart TD
     subgraph "Session Initialization"
         A[Session Start] --> B[SessionStart Hook]
-        B --> C[Create Session File<br>/tmp/aops-DATE-ID.json]
-        C --> D[Set $AOPS, $PYTHONPATH]
-        D --> E[Inject AGENTS.md + Plugin Context]
+        B --> C[Universal Router: router.py]
+        C --> D[Load AXIOMS & HEURISTICS]
+        D --> E[Set Environment & Paths]
     end
 
-    subgraph "Prompt Processing"
-        E --> F[User Prompt]
-        F --> G[UserPromptSubmit Hook]
+    subgraph "Prompt Processing & Hydration"
+        F[User Prompt] --> G[UserPromptSubmit Hook]
         G --> H{Skip Hydration?}
         H -->|Yes: /, ., notifications| I[Direct Execution]
         H -->|No| J[Write Context to Temp File]
-        J --> K[prompt-hydrator Agent<br>haiku]
+        J --> K[prompt-hydrator Subagent<br>haiku]
+        K --> L[Select Workflow &<br>Generate TodoWrite Plan]
     end
 
-    subgraph "Plan Generation & Review"
-        K --> L[Gather Context:<br>bd state + vector memory]
-        L --> L1[Read WORKFLOWS.md Index]
-        L1 --> M[Select Workflow]
-        M --> M1[Read Workflow File<br>workflows/workflow-id.md]
-        M1 --> N[Generate TodoWrite Plan<br>from workflow steps]
-        N --> O[critic Agent<br>opus]
-        O --> P{Critic Verdict}
-        P -->|PROCEED| Q[Main Agent Receives Plan]
-        P -->|REVISE| N
-        P -->|HALT| R[Stop - Present Issues]
+    subgraph "Plan Review"
+        L --> M[critic Subagent<br>opus]
+        M --> N{Plan Approved?}
+        N -->|REVISE| L
+        N -->|PROCEED| O[Main Agent Receives Plan]
     end
 
-    subgraph "Execution"
-        Q --> S[Execute Plan via TodoWrite]
-        S --> T{Random Audit?}
-        T -->|Yes ~14%| U[custodiet Agent<br>haiku]
-        T -->|No| V[Continue Work]
-        U --> W{Custodiet Check}
-        W -->|OK| V
-        W -->|BLOCK| X[HALT - Set Block Flag<br>All Hooks Fail]
-        V --> Y[Mark Todos Complete]
+    subgraph "Execution & Enforcement"
+        O --> P[Execute Step via TodoWrite]
+        P --> Q[PreToolUse Hook]
+        Q --> R{Pass Gates?}
+        R -->|NO| S[Block / Warn]
+        R -->|YES| T[Execute Tool]
+        T --> U[PostToolUse Hook]
+        U --> V[The Accountant:<br>Update State & Binding]
+        V --> W[Mark Step Complete]
+        W -->|More Steps| P
     end
 
-    subgraph "Verification & Close"
-        Y --> Z[qa Agent<br>opus - INDEPENDENT]
-        Z --> AA{Verified?}
-        AA -->|VERIFIED| AB[framework Agent<br>sonnet]
-        AA -->|ISSUES| AC[Fix Issues]
-        AC --> Y
-        AB --> AD[Generate Reflection]
-        AD --> AE[Store in bd Issues]
-        AE --> AF[Write Session Insights]
-        AF --> AG[Session Close:<br>format + commit + PUSH]
+    subgraph "Verification & Handoff"
+        W -->|Done| X[qa Subagent<br>opus]
+        X --> Y{Work Verified?}
+        Y -->|NO| Z[Fix Issues]
+        Z --> P
+        Y -->|YES| AA[Output Framework Reflection]
+        AA --> AB[AfterAgent Hook:<br>Validate Reflection]
+        AB --> AC[Invoke /handover Skill]
     end
 
-    style X fill:#ff6666
+    subgraph "Session Closure"
+        AC --> AD[Stop Hook]
+        AD --> AE{Repo Clean?}
+        AE -->|NO| AF[Commit Changes]
+        AE -->|YES| AG[Generate Transcript & Close]
+    end
+
+    style S fill:#ff6666
     style AG fill:#66ff66
 ```
 
@@ -224,10 +224,10 @@ $ACA_DATA is a **current state machine**—always up to date, always perfect. Th
 
 | Category    | Components                                                                               |
 | ----------- | ---------------------------------------------------------------------------------------- |
-| Skills (6)  | remember, framework, audit, session-insights, garden, hypervisor                         |
-| Agents (5)  | prompt-hydrator, critic, custodiet, qa, framework                                        |
-| Hooks (13)  | router.py (dispatcher), unified_logger.py, user_prompt_submit.py, session_env_setup.sh, hydration_gate.py, task_required_gate.py, policy_enforcer.py, overdue_enforcement.py, fail_fast_watchdog.py, custodiet_gate.py, task_binding.py, memory_sync_closed_issues.py, reflection_check.py, session_end_commit_check.py |
-| Governance  | 7 enforced axioms, 4 enforced heuristics (with mechanical checks)                        |
+| Skills (24) | remember, analyst, audit, session-insights, garden, hypervisor, task-viz, etc.           |
+| Agents (5)  | prompt-hydrator, critic, custodiet, qa, effectual-planner                                |
+| Hooks (19)  | router.py (Universal Hook Router), unified_logger.py, user_prompt_submit.py, session_env_setup.py, gate_registry.py (hydration, task_required, custodiet, stop_gate, etc.) |
+| Governance  | 30+ axioms and heuristics with mechanical and instructional enforcement                  |
 
 ### Key Agents
 
@@ -243,24 +243,31 @@ The **framework agent** embodies the self-reflexive principle—it both executes
 
 ## Commands
 
-| Command              | Purpose                                                                                      |
-| -------------------- | -------------------------------------------------------------------------------------------- |
-| /aops                | Show framework capabilities                                                                  |
-| /audit-framework     | Comprehensive framework governance audit                                                     |
-| /diag                | Quick diagnostic of what's loaded in session                                                 |
-| /email               | Extract action items from emails → tasks                                                     |
-| /learn               | Make minimal framework tweaks with tracking                                                  |
-| /log                 | Log agent patterns to thematic learning files                                                |
-| /meta                | Strategic brain + executor for framework work                                                |
-| /pull                | Get and run a task from the queue                                                            |
-| /q                   | Queue task for later (→ bd issues)                                                           |
-| /qa                  | Verify outcomes against acceptance criteria                                                  |
-| /reflect             | Self-audit process compliance; see also `/session-insights current` for automated reflection |
-| /remind              | Queue agent work for later (→ bd issues)                                                     |
-| /review-training-cmd | Process review/source pair for training data                                                 |
-| /strategy            | Strategic thinking partner (no execution)                                                    |
-| /task-next           | Get 2-3 task recommendations (should/enjoy/quick)                                            |
-| /task-viz            | Task graph visualization (Excalidraw)                                                        |
-| /ttd                 | TDD workflow (alias for /supervise tdd)                                                      |
-| /work                | Collaborative task execution (human-led)                                                     |
+| Command | Purpose |
+|---------|---------|
+| /aops | Show framework capabilities and help |
+| /diag | Quick diagnostic of what's loaded in session |
+| /pull | Pull a task from the queue and claim it |
+| /q | Quick-queue a task for later |
+| /learn | Make minimal framework tweaks with experiment tracking |
+| /work | Collaborative task execution |
+| /log | Log framework observations for continuous improvement |
+| /dump | Emergency work handover and session exit |
+| /bump | Increment framework version |
+| /acceptance_test | Run automated acceptance tests for a feature |
+
+## Key Skills
+
+| Skill | Purpose |
+|-------|---------|
+| /analyst | Academic research data analysis (dbt, Streamlit) |
+| /audit | Comprehensive framework governance audit |
+| /daily | Daily note lifecycle, morning briefing, and sync |
+| /remember | Persist knowledge to markdown and memory server |
+| /session-insights | Generate structured insights from session transcripts |
+| /task-viz | Generate network graph of tasks and notes |
+| /convert-to-md | Batch convert documents to markdown |
+| /pdf | Generate professionally formatted academic PDFs |
+| /hypervisor | Parallel batch task processing |
+| /excalidraw | Create hand-drawn style diagrams and mind maps |
 
