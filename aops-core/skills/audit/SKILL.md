@@ -298,20 +298,26 @@ Regenerate the core loop flowchart section in README.md from hook architecture s
 3. Parse `hooks/*.py` for hook implementations and "Enforces:" declarations
 4. Generate Mermaid flowchart following **Flowchart Design Principles**:
    - **Shapes match Roles**: 
-     - Process/Dispatcher → Rectangle
+     - Process/Dispatcher/Hook → Rectangle
      - Decision/Hard Gate → Diamond
-     - Subagent/Skill → Stadium
-     - State/Data → Parallelogram or Cylindrical
-   - **Semantic Coloring**:
-     - Hooks/Dispatch → Blue (`#e1f5fe`)
-     - Gates/Blocks → Red (`#ffebee`)
-     - Agents/Subagents → Purple (`#f3e5f5`)
-     - Success/Exit → Green (`#e8f5e9`)
+     - Subagent/Skill → Stadium (`[[name]]`)
+     - State/Data/File → Parallelogram (`[/name/]`) or Cylinder (`[(name)]`)
+   - **Cross-Theme Semantic Coloring**:
+     - Use high-contrast fills with white text (`color:#fff`) for light/dark compatibility.
+     - **Hooks/Dispatch**: Blue (`#0277bd`)
+     - **Gates/Blocks**: Red (`#c62828`)
+     - **Agents/Subagents**: Purple (`#6a1b9a`)
+     - **State/Plan**: Orange (`#ef6c00`)
+     - **Events**: Dark Grey (`#424242`)
+   - **Horizontal Detail Branches**:
+     - For major gates and agents, add a horizontal branch (`---`) to a boxed explanation node (`[Description]`).
+     - Explanation nodes should use `classDef explain fill:none,stroke:#888,font-style:italic` to avoid visual weight.
+     - Content must be specific: "Fetches X, Y, Z" or "Validates field A", not generic summaries.
    - **Readability**:
-     - Use `style <subgraph> fill:none` to avoid cluttered backgrounds.
+     - Use `style <subgraph> fill:none,stroke:#888,stroke-dasharray: 5 5` for clean backgrounds.
      - Group logic by execution phase (Init, Hydration, Execution, Termination).
-     - Label edges clearly with conditions (Yes/No, PROCEED/REVISE).
-   - **Accuracy**: Ensure every "Hardware Gate" (PreToolUse) and "Logic Check" (Stop Gate) defined in `gate_registry.py` is represented.
+     - Label edges clearly with conditions (Yes/No, PROCEED/REVISE, percentage thresholds).
+   - **Accuracy**: Every "Hardware Gate" (PreToolUse) and "Logic Check" (Stop Gate) in `gate_registry.py` must be represented.
 
 **Structure**:
 

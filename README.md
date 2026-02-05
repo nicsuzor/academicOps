@@ -59,6 +59,7 @@ flowchart TD
         Router1 -.-> Setup[session_env_setup.py]
         Router1 -.-> StartGate[session_start gate]
         StartGate --> State[(Create State File)]
+        StartGate --- InitExpl[Loads environment paths,<br/>AXIOMS, and HEURISTICS]
     end
 
     subgraph Hydration [2. Hydration & Review]
@@ -67,9 +68,13 @@ flowchart TD
         SkipCheck -- No --> Context[Context -> Temp File]
         Context --> Hydrator[[prompt-hydrator Subagent]]
         Hydrator --> Plan[/Hydration Plan/]
+        
+        Hydrator --- HydrateExpl[Fetches: Task queue, memory server,<br/>WORKFLOWS index, and relevant files]
+        
         Plan --> Critic[[critic Subagent]]
         Critic --> CriticCheck{Plan Approved?}
         CriticCheck -- REVISE --> Plan
+        Critic --- CriticExpl[Evaluates plan for assumptions,<br/>safety gaps, and logic errors]
     end
 
     subgraph Execution [3. Execution & Hard Gates]
@@ -77,9 +82,16 @@ flowchart TD
         
         Router3 -.-> GateH[Hydration Gate]
         GateH --> GateT[Task Gate]
-        GateT --> GateC[Custodiet Gate]
         
-        GateC --> Tool[[Execute Tool]]
+        GateH --- HExpl[Blocks mutating tools until<br/>an execution plan is generated]
+        GateT --- TExpl[Enforces work tracking by requiring<br/>an active task for destructive actions]
+        
+        GateT --> ProbCheck{Audit Threshold?}
+        ProbCheck -- Yes ~14% --> GateC[Custodiet Gate]
+        ProbCheck -- No --> Tool[[Execute Tool]]
+        
+        GateC --- CExpl[Reviews session history for<br/>principle violations and scope drift]
+        GateC --> Tool
         
         Tool --> PostTool[PostToolUse Event]
         PostTool --> Router4{Universal Router}
@@ -89,11 +101,14 @@ flowchart TD
     subgraph Termination [4. Reflection & Close]
         AfterAgent[AfterAgent Event] --> Router5{Universal Router}
         Router5 -.-> RefCheck[Validate Reflection]
+        RefCheck --- RefExpl[Ensures Framework Reflection includes<br/>all 8 required metadata fields]
         
         RefCheck --> Stop[Stop Event]
         Stop --> Router6{Universal Router}
-        Router6 -.-> StopGate[Stop Gate: Handover + QA]
+        Router6 -.-> StopGate[Stop Gate]
         StopGate --> Commit[Commit & Close]
+        
+        StopGate --- StopExpl[Final gate: Mandates independent<br/>QA passage and clean git state]
     end
 
     %% Flow Connections
@@ -104,24 +119,26 @@ flowchart TD
     Accountant --> AfterAgent
     Commit --> End([Session End])
 
-    %% Styling
-    classDef hook fill:#e1f5fe,stroke:#01579b,stroke-width:2px
-    classDef gate fill:#ffebee,stroke:#c62828,stroke-width:2px,shape:diamond
-    classDef agent fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,shape:stadium
-    classDef state fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
-    classDef event fill:#f5f5f5,stroke:#424242,stroke-dasharray: 5 5
+    %% Styling (Light & Dark Theme Compatible)
+    classDef hook fill:#0277bd,stroke:#01579b,stroke-width:2px,color:#fff
+    classDef gate fill:#c62828,stroke:#b71c1c,stroke-width:2px,color:#fff
+    classDef agent fill:#6a1b9a,stroke:#4a148c,stroke-width:2px,color:#fff
+    classDef state fill:#ef6c00,stroke:#e65100,stroke-width:2px,color:#fff
+    classDef event fill:#424242,stroke:#212121,stroke-width:2px,color:#fff
+    classDef explain fill:none,stroke:#888,stroke-width:1px,color:#888,font-style:italic
 
     class Router1,Router2,Router3,Router4,Router5,Router6,Setup,Accountant,Commit hook
-    class StartGate,SkipCheck,GateH,GateT,GateC,CriticCheck,RefCheck,StopGate gate
+    class StartGate,SkipCheck,GateH,GateT,GateC,CriticCheck,RefCheck,StopGate,ProbCheck gate
     class Hydrator,Critic agent
     class State,Plan,Context state
     class SStart,UPS,PreTool,PostTool,AfterAgent,Stop event
+    class InitExpl,HydrateExpl,CriticExpl,HExpl,TExpl,CExpl,RefExpl,StopExpl explain
 
-    %% Subgraph Styling (Clean background)
-    style Initialization fill:none,stroke:#ddd
-    style Hydration fill:none,stroke:#ddd
-    style Execution fill:none,stroke:#ddd
-    style Termination fill:none,stroke:#ddd
+    %% Subgraph Styling
+    style Initialization fill:none,stroke:#888,stroke-dasharray: 5 5
+    style Hydration fill:none,stroke:#888,stroke-dasharray: 5 5
+    style Execution fill:none,stroke:#888,stroke-dasharray: 5 5
+    style Termination fill:none,stroke:#888,stroke-dasharray: 5 5
 ```
 
 ## Core Concepts
