@@ -1,14 +1,3 @@
----
-name: readme
-category: spec
-title: academicOps Framework
-type: reference
-description: Human feature guide - capabilities, workflows, and how things fit together.
-permalink: readme
-audience: humans
-tags: [framework, overview, features]
----
-
 # academicOps: A constitutional automation framework for academic work
 
 * Enforces a logical system: every rule derivable from [AXIOMS.md] with [HEURISTICS.md] supported by evidence.

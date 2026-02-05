@@ -96,14 +96,17 @@ jobs:
           # Update VERSION file
           echo "$VERSION" > VERSION
 
-          # Update marketplace.json source paths for dist repo
-          python3 << 'EOF'
+          # Update marketplace.json source paths and version for dist repo
+          python3 << EOF
           import json
+          import os
+          version = os.environ.get('VERSION', '0.1.0')
           with open('.claude-plugin/marketplace.json', 'r') as f:
               data = json.load(f)
           for plugin in data.get('plugins', []):
               if plugin.get('name') == 'aops-core':
                   plugin['source'] = './aops-core-claude'
+                  plugin['version'] = version
           with open('.claude-plugin/marketplace.json', 'w') as f:
               json.dump(data, f, indent=2)
           EOF
