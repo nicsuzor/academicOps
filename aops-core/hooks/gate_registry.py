@@ -835,13 +835,16 @@ def check_hydration_gate(ctx: HookContext) -> Optional[GateResult]:
     is_skill_activation = ctx.tool_name in ("activate_skill", "Skill")
     # Legacy: prompt-hydrator specific check (kept for robust detection context)
     is_hydrator_tool_or_agent = _hydration_is_hydrator_task(ctx.tool_input)
-    
+
     tool_name = ctx.tool_name if ctx.tool_name is not None else ""
     is_gemini = _hydration_is_gemini_hydration_attempt(
         tool_name, ctx.tool_input, ctx.raw_input
     )
 
-    if is_skill_activation or is_hydrator_tool_or_agent or is_gemini:
+    # Gemini MCP tool invocation: tool_name is directly "prompt-hydrator"
+    is_gemini_mcp_hydrator = tool_name == "prompt-hydrator"
+
+    if is_skill_activation or is_hydrator_tool_or_agent or is_gemini or is_gemini_mcp_hydrator:
         # Allow hydrator invocation but DO NOT clear hydration_pending here.
         # hydration_pending is cleared by SubagentStop handler when hydrator
         # completes with a valid ## HYDRATION RESULT output.
@@ -1664,8 +1667,10 @@ def post_hydration_trigger(ctx: HookContext) -> Optional[GateResult]:
     is_gemini = _hydration_is_gemini_hydration_attempt(
         ctx.tool_name or "", ctx.tool_input, ctx.raw_input
     )
+    # Gemini MCP tool invocation: tool_name is directly "prompt-hydrator"
+    is_gemini_mcp_hydrator = ctx.tool_name == "prompt-hydrator"
 
-    if is_hydrator or is_gemini:
+    if is_hydrator or is_gemini or is_gemini_mcp_hydrator:
         # Reset trackers
         session_state.update_hydration_metrics(ctx.session_id, turns_since_hydration=0)
         session_state.clear_hydration_pending(ctx.session_id)

@@ -29,24 +29,49 @@ DEFAULT_STATE = {
 }
 
 
+class SessionStateMocks:
+    """Container for session state mocks to enable call tracking."""
+
+    def __init__(self, cfg: dict):
+        self.cfg = cfg
+        gates = {**DEFAULT_STATE["gates"], **cfg.get("gates", {})}
+        state = {"state": {}, "hydration": {"temp_path": "/tmp/hydrator"}}
+
+        self.is_hydration_pending = MagicMock(return_value=cfg["is_hydration_pending"])
+        self.check_all_gates = MagicMock(return_value=gates)
+        self.is_hydrator_active = MagicMock(return_value=cfg["is_hydrator_active"])
+        self.get_hydration_temp_path = MagicMock(return_value="/tmp/hydrator")
+        self.load_session_state = MagicMock(return_value=state)
+        self.get_or_create_session_state = MagicMock(return_value=state)
+        self.save_session_state = MagicMock(return_value=None)
+        self.clear_reflection_output = MagicMock(return_value=None)
+        self.has_file_been_read = MagicMock(return_value=cfg["has_file_been_read"])
+        self.clear_hydration_pending = MagicMock(return_value=None)
+        self.set_hydrator_active = MagicMock(return_value=None)
+        self.update_hydration_metrics = MagicMock(return_value=None)
+
+    def patch_context(self):
+        return patch.multiple(
+            "lib.session_state",
+            is_hydration_pending=self.is_hydration_pending,
+            check_all_gates=self.check_all_gates,
+            is_hydrator_active=self.is_hydrator_active,
+            get_hydration_temp_path=self.get_hydration_temp_path,
+            load_session_state=self.load_session_state,
+            get_or_create_session_state=self.get_or_create_session_state,
+            save_session_state=self.save_session_state,
+            clear_reflection_output=self.clear_reflection_output,
+            has_file_been_read=self.has_file_been_read,
+            clear_hydration_pending=self.clear_hydration_pending,
+            set_hydrator_active=self.set_hydrator_active,
+            update_hydration_metrics=self.update_hydration_metrics,
+        )
+
+
 def mock_session_state(overrides=None):
     """Minimal mocks to allow hooks to run. Accepts per-test overrides."""
     cfg = {**DEFAULT_STATE, **(overrides or {})}
-    gates = {**DEFAULT_STATE["gates"], **cfg.get("gates", {})}
-
-    state = {"state": {}, "hydration": {"temp_path": "/tmp/hydrator"}}
-    return patch.multiple(
-        "lib.session_state",
-        is_hydration_pending=MagicMock(return_value=cfg["is_hydration_pending"]),
-        check_all_gates=MagicMock(return_value=gates),
-        is_hydrator_active=MagicMock(return_value=cfg["is_hydrator_active"]),
-        get_hydration_temp_path=MagicMock(return_value="/tmp/hydrator"),
-        load_session_state=MagicMock(return_value=state),
-        get_or_create_session_state=MagicMock(return_value=state),
-        save_session_state=MagicMock(return_value=None),
-        clear_reflection_output=MagicMock(return_value=None),
-        has_file_been_read=MagicMock(return_value=cfg["has_file_been_read"]),
-    )
+    return SessionStateMocks(cfg)
 
 
 # --- Test Data ---
@@ -145,11 +170,13 @@ def test_hook_json_io(case):
     raw_input = case["input"]
     expected_decision = case["expected_decision"]
     state_overrides = case.get("state_overrides", {})
+    description = case.get("description", case["name"])
 
     router = HookRouter()
+    mocks = mock_session_state(state_overrides)
 
     with (
-        mock_session_state(state_overrides),
+        mocks.patch_context(),
         patch("pathlib.Path.exists", return_value=True),
         patch("pathlib.Path.read_text", return_value="# Mock Content"),
         patch("pathlib.Path.mkdir"),
@@ -170,23 +197,39 @@ def test_hook_json_io(case):
         if client == "gemini":
             output = router.output_for_gemini(result, ctx.hook_event)
             output_dict = json.loads(output.model_dump_json(exclude_none=True))
-            assert output_dict.get("decision") == expected_decision
+            actual_decision = output_dict.get("decision")
+            assert actual_decision == expected_decision, description
         else:
             output = router.output_for_claude(result, ctx.hook_event)
             output_dict = json.loads(output.model_dump_json(exclude_none=True))
             # Claude PreToolUse puts decision in hookSpecificOutput
             if "hookSpecificOutput" in output_dict:
-                assert (
-                    output_dict["hookSpecificOutput"].get("permissionDecision")
-                    == expected_decision
-                )
+                actual_decision = output_dict["hookSpecificOutput"].get("permissionDecision")
+                assert actual_decision == expected_decision, description
             else:
                 # Stop event
-                assert output_dict.get("decision") in ("approve", "block")
+                assert output_dict.get("decision") in ("approve", "block"), description
                 if expected_decision == "allow":
-                    assert output_dict.get("decision") == "approve"
+                    assert output_dict.get("decision") == "approve", description
                 else:
-                    assert output_dict.get("decision") == "block"
+                    assert output_dict.get("decision") == "block", description
+
+        # --- Verify expected_status (session state changes) ---
+        if "expected_status" in case:
+            expected_status = case["expected_status"]
+            if "is_hydration_pending" in expected_status:
+                if expected_status["is_hydration_pending"] is False:
+                    # Expect clear_hydration_pending was called
+                    assert mocks.clear_hydration_pending.called, (
+                        f"{description}: expected is_hydration_pending=False but "
+                        "clear_hydration_pending was not called"
+                    )
+                else:
+                    # Expect clear_hydration_pending was NOT called
+                    assert not mocks.clear_hydration_pending.called, (
+                        f"{description}: expected is_hydration_pending=True but "
+                        "clear_hydration_pending was called"
+                    )
 
         # --- Additional assertions for system_message and injection ---
         # Key presence matters: absent = skip, present = check (even if None)
