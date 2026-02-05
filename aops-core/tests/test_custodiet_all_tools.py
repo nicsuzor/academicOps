@@ -16,11 +16,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from hooks.gate_registry import (
     run_accountant,
     check_custodiet_gate,
-    GateContext,
     GateVerdict,
     MUTATING_TOOLS,
     SAFE_READ_TOOLS,
 )
+from hooks.schemas import HookContext
 
 
 class MockSessionState:
@@ -42,14 +42,16 @@ class MockSessionState:
 
 
 def make_context(tool_name: str, event_name: str = "PostToolUse", session_id: str = "test-session"):
-    """Create a GateContext for testing."""
-    return GateContext(
+    """Create a HookContext for testing."""
+    return HookContext(
         session_id=session_id,
-        event_name=event_name,
-        input_data={
+        hook_event=event_name,
+        raw_input={
             "tool_name": tool_name,
             "tool_input": {},
         },
+        tool_name=tool_name,
+        tool_input={},
     )
 
 

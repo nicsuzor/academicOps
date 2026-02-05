@@ -24,7 +24,6 @@ from unified_logger import (
     handle_stop,
     handle_subagent_stop,
     log_event_to_session,
-    main,
 )
 
 
@@ -302,73 +301,6 @@ class TestStopEvent:
         assert "critic" in insights["subagents_invoked"]
         assert "qa-verifier" in insights["subagents_invoked"]
         assert "custodiet" in insights["subagents_invoked"]
-
-
-class TestMainHookEntry:
-    """Test main() hook entry point."""
-
-    def test_main_handles_valid_input(self, temp_session_dir, monkeypatch, capsys):
-        """Test that main() processes valid hook input."""
-        session_id = "test-main-valid"
-        input_data = {
-            "session_id": session_id,
-            "hook_event_name": "SessionStart",
-        }
-
-        # Mock stdin with JSON input
-        import io
-
-        monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(input_data)))
-
-        # Run main
-        with pytest.raises(SystemExit) as exc_info:
-            main()
-
-        # Should exit with 0 (success)
-        assert exc_info.value.code == 0
-
-        # unified_logger returns {} for SessionStart (actual output is from gate_registry)
-        captured = capsys.readouterr()
-        output = json.loads(captured.out)
-        # Should output empty dict (gate result is now handled elsewhere)
-        assert isinstance(output, dict)
-
-        # Verify session file was created
-        from lib.session_paths import get_session_file_path
-
-        session_file = get_session_file_path(session_id)
-        assert session_file.exists()
-
-    def test_main_handles_invalid_json(self, temp_session_dir, monkeypatch, capsys):
-        """Test that main() gracefully handles invalid JSON input."""
-        import io
-
-        monkeypatch.setattr("sys.stdin", io.StringIO("not valid json"))
-
-        # Should not crash - gracefully continue
-        with pytest.raises(SystemExit) as exc_info:
-            main()
-
-        assert exc_info.value.code == 0
-        captured = capsys.readouterr()
-        assert "{}" in captured.out
-
-    def test_main_handles_missing_session_id(
-        self, temp_session_dir, monkeypatch, capsys
-    ):
-        """Test that main() handles missing session_id gracefully."""
-        import io
-
-        input_data = {"hook_event_name": "SessionStart"}  # No session_id
-        monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(input_data)))
-
-        # Should not crash
-        with pytest.raises(SystemExit) as exc_info:
-            main()
-
-        assert exc_info.value.code == 0
-        captured = capsys.readouterr()
-        assert "{}" in captured.out
 
 
 if __name__ == "__main__":

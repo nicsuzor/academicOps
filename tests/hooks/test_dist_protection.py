@@ -1,18 +1,31 @@
-import json
-import subprocess
-import pytest
+import sys
 from pathlib import Path
 
+# Add aops-core to path for imports
+aops_core_dir = Path(__file__).parent.parent.parent
+if str(aops_core_dir) not in sys.path:
+    sys.path.insert(0, str(aops_core_dir))
+
+from hooks.policy_enforcer import (
+    validate_minimal_documentation,
+    validate_safe_git_usage,
+    validate_protect_artifacts
+)
+
 def run_enforcer(input_data):
-    process = subprocess.Popen(
-        ["python3", "aops-core/hooks/policy_enforcer.py"],
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True
-    )
-    stdout, stderr = process.communicate(input=json.dumps(input_data))
-    return json.loads(stdout)
+    tool_name = input_data["tool_name"]
+    args = input_data["tool_input"]
+    
+    result = validate_minimal_documentation(tool_name, args)
+    if result: return result
+    
+    result = validate_safe_git_usage(tool_name, args)
+    if result: return result
+    
+    result = validate_protect_artifacts(tool_name, args)
+    if result: return result
+    
+    return {}
 
 def test_block_dist_write():
     input_data = {
@@ -23,8 +36,9 @@ def test_block_dist_write():
         }
     }
     result = run_enforcer(input_data)
-    assert result["hookSpecificOutput"]["permissionDecision"] == "deny"
-    assert "protected by project-local rule" in result["hookSpecificOutput"]["additionalContext"]
+    # The functions return a dict with 'continue' and 'systemMessage'
+    assert result["continue"] is False
+    assert "BLOCKED" in result["systemMessage"]
 
 def test_block_dist_edit():
     input_data = {
@@ -36,7 +50,7 @@ def test_block_dist_edit():
         }
     }
     result = run_enforcer(input_data)
-    assert result["hookSpecificOutput"]["permissionDecision"] == "deny"
+    assert result["continue"] is False
 
 def test_allow_source_write():
     input_data = {
@@ -47,19 +61,4 @@ def test_allow_source_write():
         }
     }
     result = run_enforcer(input_data)
-    # result should be empty or contain allow
-    assert "hookSpecificOutput" not in result or result["hookSpecificOutput"]["permissionDecision"] != "deny"
-
-if __name__ == "__main__":
-    # Simple manual run
-    try:
-        test_block_dist_write()
-        print("test_block_dist_write passed")
-        test_block_dist_edit()
-        print("test_block_dist_edit passed")
-        test_allow_source_write()
-        print("test_allow_source_write passed")
-    except Exception as e:
-        print(f"Test failed: {e}")
-        import traceback
-        traceback.print_exc()
+    assert result == {}

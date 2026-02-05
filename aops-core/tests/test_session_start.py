@@ -4,7 +4,8 @@ import json
 import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-from hooks.gate_registry import check_session_start_gate, GateContext
+from hooks.gate_registry import check_session_start_gate
+from hooks.schemas import HookContext
 from lib.gate_model import GateResult, GateVerdict
 
 
@@ -31,10 +32,10 @@ def test_session_start_message_generation(
     mock_get_or_create.return_value = {"session_id": "session-123", "state": {}}
     mock_save_state.return_value = None
 
-    ctx = GateContext(
+    ctx = HookContext(
         session_id="session-123",
-        event_name="SessionStart",
-        input_data={"session_id": "session-123"},
+        hook_event="SessionStart",
+        raw_input={"session_id": "session-123"},
     )
 
     result = check_session_start_gate(ctx)
@@ -56,7 +57,7 @@ def test_session_start_message_generation(
 
 def test_session_start_ignored_for_other_events():
     """Verify gate ignores non-SessionStart events."""
-    ctx = GateContext(session_id="session-123", event_name="PreToolUse", input_data={})
+    ctx = HookContext(session_id="session-123", hook_event="PreToolUse", raw_input={})
 
     result = check_session_start_gate(ctx)
     assert result is None
@@ -78,10 +79,10 @@ def test_session_start_fails_fast_on_write_error(
     # Simulate OSError when trying to create state
     mock_get_or_create.side_effect = OSError("Permission denied")
 
-    ctx = GateContext(
+    ctx = HookContext(
         session_id="session-123",
-        event_name="SessionStart",
-        input_data={"session_id": "session-123"},
+        hook_event="SessionStart",
+        raw_input={"session_id": "session-123"},
     )
 
     result = check_session_start_gate(ctx)
@@ -110,10 +111,10 @@ def test_session_start_fails_fast_when_file_not_created(
     mock_get_or_create.return_value = {"session_id": "session-123", "state": {}}
     mock_save_state.return_value = None
 
-    ctx = GateContext(
+    ctx = HookContext(
         session_id="session-123",
-        event_name="SessionStart",
-        input_data={"session_id": "session-123"},
+        hook_event="SessionStart",
+        raw_input={"session_id": "session-123"},
     )
 
     result = check_session_start_gate(ctx)

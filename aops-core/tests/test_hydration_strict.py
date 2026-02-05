@@ -4,9 +4,9 @@ import pytest
 from unittest.mock import MagicMock, patch
 from hooks.gate_registry import (
     check_hydration_gate,
-    GateContext,
     HYDRATION_TEMP_CATEGORY,
 )
+from hooks.schemas import HookContext
 from lib.gate_model import GateResult, GateVerdict
 
 
@@ -23,54 +23,64 @@ def test_strict_hydration(mock_get_temp_dir, mock_is_pending, mock_is_hydrator_a
     mock_is_subagent.return_value = False
 
     # 1. Block ReadFile (previously allowed)
-    ctx = GateContext(
-        "s1",
-        "PreToolUse",
-        {"tool_name": "read_file", "tool_input": {"file_path": "/etc/hosts"}},
+    ctx = HookContext(
+        session_id="s1",
+        hook_event="PreToolUse",
+        raw_input={"tool_name": "read_file", "tool_input": {"file_path": "/etc/hosts"}},
+        tool_name="read_file",
+        tool_input={"file_path": "/etc/hosts"},
     )
     result = check_hydration_gate(ctx)
     assert result is not None
     assert result.verdict == GateVerdict.DENY  # Should block now
 
     # 2. Block ListDir
-    ctx = GateContext(
-        "s1",
-        "PreToolUse",
-        {"tool_name": "list_dir", "tool_input": {"DirectoryPath": "/"}},
+    ctx = HookContext(
+        session_id="s1",
+        hook_event="PreToolUse",
+        raw_input={"tool_name": "list_dir", "tool_input": {"DirectoryPath": "/"}},
+        tool_name="list_dir",
+        tool_input={"DirectoryPath": "/"},
     )
     result = check_hydration_gate(ctx)
     assert result is not None
     assert result.verdict == GateVerdict.DENY
 
     # 3. Allow Hydrator Activation (activate_skill)
-    ctx = GateContext(
-        "s1",
-        "PreToolUse",
-        {"tool_name": "activate_skill", "tool_input": {"name": "prompt-hydrator"}},
+    ctx = HookContext(
+        session_id="s1",
+        hook_event="PreToolUse",
+        raw_input={"tool_name": "activate_skill", "tool_input": {"name": "prompt-hydrator"}},
+        tool_name="activate_skill",
+        tool_input={"name": "prompt-hydrator"},
     )
     result = check_hydration_gate(ctx)
     assert result is None  # Allowed
 
     # 4. Allow Writing to Hydration Temp File (Manual creation)
-    ctx = GateContext(
-        "s1",
-        "PreToolUse",
-        {
+    ctx = HookContext(
+        session_id="s1",
+        hook_event="PreToolUse",
+        raw_input={
             "tool_name": "write_to_file",
             "tool_input": {"TargetFile": "/tmp/hydrator/plan.md", "CodeContent": "foo"},
         },
+        tool_name="write_to_file",
+        tool_input={"TargetFile": "/tmp/hydrator/plan.md", "CodeContent": "foo"},
     )
     result = check_hydration_gate(ctx)
     assert result is None  # Allowed (Permitted write)
 
     # 5. Allow Reading from Hydration Temp File (Gemini hydration attempt)
-    ctx = GateContext(
-        "s1",
-        "PreToolUse",
-        {
+    ctx = HookContext(
+        session_id="s1",
+        hook_event="PreToolUse",
+        raw_input={
             "tool_name": "read_file",
             "tool_input": {"file_path": "/tmp/hydrator/plan.md"},
         },
+        tool_name="read_file",
+        tool_input={"file_path": "/tmp/hydrator/plan.md"},
     )
     result = check_hydration_gate(ctx)
     assert result is None  # Allowed
@@ -85,7 +95,7 @@ def test_hydration_bypass_when_not_pending(mock_get_temp_dir, mock_is_pending, m
     mock_is_pending.return_value = False
     mock_is_hydrator_active.return_value = False
     mock_is_subagent.return_value = False
-    ctx = GateContext("s1", "PreToolUse", {"tool_name": "read_file"})
+    ctx = HookContext(session_id="s1", hook_event="PreToolUse", raw_input={"tool_name": "read_file"}, tool_name="read_file")
     result = check_hydration_gate(ctx)
     assert result is None
 
@@ -110,10 +120,12 @@ def test_fresh_session_no_state_allows_tools(
     mock_is_hydrator_active.return_value = False
     mock_is_subagent.return_value = False
 
-    ctx = GateContext(
-        "fresh-session-123",
-        "PreToolUse",
-        {"tool_name": "Read", "tool_input": {"file_path": "/some/file.py"}},
+    ctx = HookContext(
+        session_id="fresh-session-123",
+        hook_event="PreToolUse",
+        raw_input={"tool_name": "Read", "tool_input": {"file_path": "/some/file.py"}},
+        tool_name="Read",
+        tool_input={"file_path": "/some/file.py"},
     )
     result = check_hydration_gate(ctx)
 
@@ -150,10 +162,12 @@ def test_hydration_bypass_when_turns_since_hydration_zero(
         "hydration": {"turns_since_hydration": 0}
     }
 
-    ctx = GateContext(
-        "s1",
-        "PreToolUse",
-        {"tool_name": "Read", "tool_input": {"file_path": "/some/file.py"}},
+    ctx = HookContext(
+        session_id="s1",
+        hook_event="PreToolUse",
+        raw_input={"tool_name": "Read", "tool_input": {"file_path": "/some/file.py"}},
+        tool_name="Read",
+        tool_input={"file_path": "/some/file.py"},
     )
     result = check_hydration_gate(ctx)
 
@@ -185,10 +199,12 @@ def test_hydration_blocks_when_turns_since_hydration_negative(
         "state": {"hydration_pending": True}
     }
 
-    ctx = GateContext(
-        "s1",
-        "PreToolUse",
-        {"tool_name": "Read", "tool_input": {"file_path": "/some/file.py"}},
+    ctx = HookContext(
+        session_id="s1",
+        hook_event="PreToolUse",
+        raw_input={"tool_name": "Read", "tool_input": {"file_path": "/some/file.py"}},
+        tool_name="Read",
+        tool_input={"file_path": "/some/file.py"},
     )
     result = check_hydration_gate(ctx)
 

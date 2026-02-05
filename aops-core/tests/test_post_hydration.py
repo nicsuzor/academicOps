@@ -1,68 +1,71 @@
-"""Test Post-Hydration Critic injection."""
+"""Test Post-Hydration logic."""
 
 import pytest
 from unittest.mock import MagicMock, patch
-from hooks.gate_registry import check_agent_response_listener, GateContext
-from lib.gate_model import GateResult, GateVerdict
+from hooks.gate_registry import check_agent_response_listener
+from hooks.schemas import HookContext
+from lib.gate_model import GateVerdict
 
 
 @patch("hooks.gate_registry.session_state")
 def test_post_hydration_critic_injection(mock_session_state):
     """Verify that detecting HYDRATION RESULT injects a critic reminder."""
-    ctx = GateContext(
+    ctx = HookContext(
         session_id="session-123",
-        event_name="AfterAgent",
-        input_data={
+        hook_event="AfterAgent",
+        raw_input={
             "prompt_response": "Here is the plan:\n\n## HYDRATION RESULT\n\nPlan details..."
         },
     )
 
+    # Mock workflow ID extraction
+    mock_session_state.get_or_create_session_state.return_value = {"state": {}}
+
     result = check_agent_response_listener(ctx)
 
     assert result is not None
-    assert isinstance(result, GateResult)
     assert result.verdict == GateVerdict.ALLOW
+    assert "Next step: Invoke the critic" in result.context_injection
+    assert "activate_skill(name='critic'" in result.context_injection
 
-    # Check injection content
-    msg = result.context_injection
-    assert "Invoke the critic" in msg or "activate_skill" in msg
-    assert "critic" in msg
-
-    # Verify state update
-    mock_session_state.clear_hydration_pending.assert_called_with("session-123")
+    # Verify hydration_pending was cleared
+    mock_session_state.clear_hydration_pending.assert_called_once_with("session-123")
 
 
 @patch("hooks.gate_registry.session_state")
 def test_normal_response_no_injection(mock_session_state):
     """Verify normal responses don't trigger injection."""
-    ctx = GateContext(
+    ctx = HookContext(
         session_id="session-123",
-        event_name="AfterAgent",
-        input_data={"prompt_response": "Just a normal response."},
+        hook_event="AfterAgent",
+        raw_input={"prompt_response": "Just a normal response."},
     )
 
     result = check_agent_response_listener(ctx)
+
     assert result is None
+    mock_session_state.clear_hydration_pending.assert_not_called()
 
 
 @patch("hooks.gate_registry.session_state")
 def test_hydration_result_loose_matching(mock_session_state):
     """Verify loose matching for HYDRATION RESULT (e.g. bold or plain)."""
     # Case 1: Bold
-    ctx = GateContext(
+    ctx = HookContext(
         session_id="s1",
-        event_name="AfterAgent",
-        input_data={"prompt_response": "**HYDRATION RESULT**\nIntent: foo"},
+        hook_event="AfterAgent",
+        raw_input={"prompt_response": "**HYDRATION RESULT**\nIntent: foo"},
     )
     result = check_agent_response_listener(ctx)
     assert result is not None
     mock_session_state.clear_hydration_pending.assert_called_with("s1")
 
     # Case 2: Plain text with leading newline
-    ctx2 = GateContext(
+    ctx2 = HookContext(
         session_id="s2",
-        event_name="AfterAgent",
-        input_data={"prompt_response": "\nHYDRATION RESULT\nIntent: bar"},
+        hook_event="AfterAgent",
+        raw_input={"prompt_response": "\nHYDRATION RESULT\nIntent: bar"},
     )
+
     check_agent_response_listener(ctx2)
     mock_session_state.clear_hydration_pending.assert_called_with("s2")

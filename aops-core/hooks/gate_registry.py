@@ -264,29 +264,36 @@ STOP_GATE_HANDOVER_BLOCK_TEMPLATE = (
 )
 
 
-class GateContext:
-    """Context passed to gate evaluators."""
+from hooks.schemas import HookContext
 
+
+class GateContext(HookContext):
+    """
+    Backward-compatible wrapper for HookContext.
+    Allows tests using the old (session_id, event_name, input_data) constructor to pass.
+    """
     def __init__(self, session_id: str, event_name: str, input_data: Dict[str, Any]):
-        self.session_id = session_id
-        self.event_name = event_name
-        self.input_data = input_data
-        # Support both Claude (snake_case) and Gemini (camelCase) field names
-        self.tool_name = input_data.get("tool_name") or input_data.get("toolName")
+        # Map old field names to new ones
+        tool_name = input_data.get("tool_name") or input_data.get("toolName")
+        tool_input = input_data.get("tool_input") or input_data.get("toolInput") or {}
+        transcript_path = input_data.get("transcript_path")
+        cwd = input_data.get("cwd")
         
-        self.tool_input = input_data.get("tool_input")
-        if self.tool_input is None:
-            self.tool_input = input_data.get("toolInput")
-        if self.tool_input is None:
-            self.tool_input = {}
-            
-        self.transcript_path = input_data.get("transcript_path")
+        super().__init__(
+            session_id=session_id,
+            hook_event=event_name,
+            raw_input=input_data,
+            tool_name=tool_name,
+            tool_input=tool_input,
+            transcript_path=transcript_path,
+            cwd=cwd
+        )
 
 
 # --- Subagent Tool Restrictions ---
 
 
-def check_subagent_tool_restrictions(ctx: GateContext) -> Optional[GateResult]:
+def check_subagent_tool_restrictions(ctx: HookContext) -> Optional[GateResult]:
     """Block mutating tools for restricted subagents like prompt-hydrator.
 
     The prompt-hydrator agent should ONLY return a plan, never execute work.
@@ -298,7 +305,7 @@ def check_subagent_tool_restrictions(ctx: GateContext) -> Optional[GateResult]:
     Returns:
         GateResult with DENY if blocked, None if allowed
     """
-    if ctx.event_name != "PreToolUse":
+    if ctx.hook_event != "PreToolUse":
         return None
 
     # Check if we're in a restricted subagent session
@@ -772,7 +779,7 @@ def _hydration_is_gemini_hydration_attempt(
     return False
 
 
-def check_hydration_gate(ctx: GateContext) -> Optional[GateResult]:
+def check_hydration_gate(ctx: HookContext) -> Optional[GateResult]:
     """
     Check if hydration is required (Pre-Tool Enforcement).
     Returns None if allowed, or GateResult if blocked.
@@ -780,11 +787,11 @@ def check_hydration_gate(ctx: GateContext) -> Optional[GateResult]:
     _check_imports()  # Fail fast if imports unavailable
 
     # Only applies to PreToolUse
-    if ctx.event_name != "PreToolUse":
+    if ctx.hook_event != "PreToolUse":
         return None
 
     # Bypass for subagent sessions
-    if _hydration_is_subagent_session(ctx.input_data):
+    if _hydration_is_subagent_session(ctx.raw_input):
         return None
 
     # BELT & SUSPENDERS: Additional detection for hydrator subagent
@@ -794,8 +801,8 @@ def check_hydration_gate(ctx: GateContext) -> Optional[GateResult]:
         return None
 
     # Also check transcript path directly (redundant but catches edge cases)
-    if ctx.input_data:
-        transcript_path = ctx.input_data.get("transcript_path")
+    if ctx.raw_input:
+        transcript_path = ctx.raw_input.get("transcript_path")
         if transcript_path and ("/subagents/" in str(transcript_path) or "/agent-" in str(transcript_path)):
             return None
 
@@ -831,7 +838,7 @@ def check_hydration_gate(ctx: GateContext) -> Optional[GateResult]:
     
     tool_name = ctx.tool_name if ctx.tool_name is not None else ""
     is_gemini = _hydration_is_gemini_hydration_attempt(
-        tool_name, ctx.tool_input, ctx.input_data
+        tool_name, ctx.tool_input, ctx.raw_input
     )
 
     if is_skill_activation or is_hydrator_tool_or_agent or is_gemini:
@@ -1096,7 +1103,7 @@ def _custodiet_build_audit_instruction(
 # --- Axiom Enforcer Logic ---
 
 
-def check_axiom_enforcer_gate(ctx: GateContext) -> Optional[GateResult]:
+def check_axiom_enforcer_gate(ctx: HookContext) -> Optional[GateResult]:
     """
     Real-time axiom violation detection for Edit/Write operations.
 
@@ -1112,7 +1119,7 @@ def check_axiom_enforcer_gate(ctx: GateContext) -> Optional[GateResult]:
     _check_imports()
 
     # Only applies to PreToolUse
-    if ctx.event_name != "PreToolUse":
+    if ctx.hook_event != "PreToolUse":
         return None
 
     # Only check code-modifying tools
@@ -1206,7 +1213,7 @@ def check_axiom_enforcer_gate(ctx: GateContext) -> Optional[GateResult]:
     )
 
 
-def check_custodiet_gate(ctx: GateContext) -> Optional[GateResult]:
+def check_custodiet_gate(ctx: HookContext) -> Optional[GateResult]:
     """
     Check if compliance is overdue (The Bouncer).
     Returns None if allowed, or GateResult if blocked.
@@ -1217,7 +1224,7 @@ def check_custodiet_gate(ctx: GateContext) -> Optional[GateResult]:
     _check_imports()
 
     # Only applies to PreToolUse
-    if ctx.event_name != "PreToolUse":
+    if ctx.hook_event != "PreToolUse":
         return None
 
     # Only block mutating tools (DRY: use shared definition)
@@ -1343,7 +1350,7 @@ def _is_full_gate_enforcement_enabled() -> bool:
     return os.environ["TASK_GATE_ENFORCE_ALL"].lower() in ("1", "true", "yes")
 
 
-def check_task_required_gate(ctx: GateContext) -> Optional[GateResult]:
+def check_task_required_gate(ctx: HookContext) -> Optional[GateResult]:
     """
     TASK GATE: Unified enforcement for destructive operations.
     Returns None if allowed, or GateResult if blocked/warned.
@@ -1359,11 +1366,11 @@ def check_task_required_gate(ctx: GateContext) -> Optional[GateResult]:
     _check_imports()
 
     # Only applies to PreToolUse
-    if ctx.event_name != "PreToolUse":
+    if ctx.hook_event != "PreToolUse":
         return None
 
     # Bypass for subagent sessions
-    if hook_utils.is_subagent_session(ctx.input_data):
+    if hook_utils.is_subagent_session(ctx.raw_input):
         return None
 
     # Bypass for handover skill invocation (needs to run git/etc for closure)
@@ -1410,7 +1417,7 @@ def check_task_required_gate(ctx: GateContext) -> Optional[GateResult]:
 # --- Accountant Logic (Post-Tool State Updates) ---
 
 
-def run_accountant(ctx: GateContext) -> Optional[GateResult]:
+def run_accountant(ctx: HookContext) -> Optional[GateResult]:
     """
     The Accountant: General state tracking for all components.
     Runs on PostToolUse. Never blocks, only updates state.
@@ -1423,7 +1430,7 @@ def run_accountant(ctx: GateContext) -> Optional[GateResult]:
     _check_imports()
 
     # Only applies to PostToolUse
-    if ctx.event_name != "PostToolUse":
+    if ctx.hook_event != "PostToolUse":
         return None
 
     system_messages: list[str] = []
@@ -1540,7 +1547,7 @@ def run_accountant(ctx: GateContext) -> Optional[GateResult]:
     return None
 
 
-def check_stop_gate(ctx: GateContext) -> Optional[GateResult]:
+def check_stop_gate(ctx: HookContext) -> Optional[GateResult]:
     """
     Check if the agent is allowed to stop (Stop / AfterAgent Enforcement).
     Returns None if allowed, or GateResult if blocked/warned.
@@ -1554,7 +1561,7 @@ def check_stop_gate(ctx: GateContext) -> Optional[GateResult]:
     _check_imports()
 
     # Only applies to Stop event
-    if ctx.event_name != "Stop":
+    if ctx.hook_event != "Stop":
         return None
 
     state = session_state.load_session_state(ctx.session_id)
@@ -1614,7 +1621,7 @@ def check_stop_gate(ctx: GateContext) -> Optional[GateResult]:
     return None
 
 
-def check_hydration_recency_gate(ctx: GateContext) -> Optional[GateResult]:
+def check_hydration_recency_gate(ctx: HookContext) -> Optional[GateResult]:
     """
     Stop hook: Block exit if turns since hydration == 0.
     This ensures the agent doesn't hydrate then immediately exit.
@@ -1639,7 +1646,7 @@ def check_hydration_recency_gate(ctx: GateContext) -> Optional[GateResult]:
     return None
 
 
-def post_hydration_trigger(ctx: GateContext) -> Optional[GateResult]:
+def post_hydration_trigger(ctx: HookContext) -> Optional[GateResult]:
     """
     PostToolUse: Detect successful hydration and inject next step.
     """
@@ -1655,7 +1662,7 @@ def post_hydration_trigger(ctx: GateContext) -> Optional[GateResult]:
     )
     is_hydrator = is_hydrator_tool and _hydration_is_hydrator_task(ctx.tool_input)
     is_gemini = _hydration_is_gemini_hydration_attempt(
-        ctx.tool_name or "", ctx.tool_input, ctx.input_data
+        ctx.tool_name or "", ctx.tool_input, ctx.raw_input
     )
 
     if is_hydrator or is_gemini:
@@ -1673,7 +1680,7 @@ def post_hydration_trigger(ctx: GateContext) -> Optional[GateResult]:
     return None
 
 
-def post_critic_trigger(ctx: GateContext) -> Optional[GateResult]:
+def post_critic_trigger(ctx: HookContext) -> Optional[GateResult]:
     """
     PostToolUse: Detect successful critic invocation and update state.
     """
@@ -1714,7 +1721,7 @@ def post_critic_trigger(ctx: GateContext) -> Optional[GateResult]:
     return None
 
 
-def post_qa_trigger(ctx: GateContext) -> Optional[GateResult]:
+def post_qa_trigger(ctx: HookContext) -> Optional[GateResult]:
     """
     PostToolUse: Detect successful QA invocation and update state.
     """
@@ -1752,7 +1759,7 @@ def post_qa_trigger(ctx: GateContext) -> Optional[GateResult]:
     return None
 
 
-def check_agent_response_listener(ctx: GateContext) -> Optional[GateResult]:
+def check_agent_response_listener(ctx: HookContext) -> Optional[GateResult]:
     """
     AfterAgent: Listen to agent response for state updates and optional enforcement.
 
@@ -1762,10 +1769,10 @@ def check_agent_response_listener(ctx: GateContext) -> Optional[GateResult]:
     """
     _check_imports()
 
-    if ctx.event_name != "AfterAgent":
+    if ctx.hook_event != "AfterAgent":
         return None
 
-    response_text = ctx.input_data.get("prompt_response", "")
+    response_text = ctx.raw_input.get("prompt_response", "")
 
     # 1. Update Hydration State
     # Check for "HYDRATION RESULT" or "Execution Plan" (agent may vary format)
@@ -1870,7 +1877,7 @@ def check_agent_response_listener(ctx: GateContext) -> Optional[GateResult]:
     return None
 
 
-def check_session_start_gate(ctx: GateContext) -> Optional[GateResult]:
+def check_session_start_gate(ctx: HookContext) -> Optional[GateResult]:
     """
     Handle SessionStart event.
     Creates the session state file and returns startup info to USER.
@@ -1879,7 +1886,7 @@ def check_session_start_gate(ctx: GateContext) -> Optional[GateResult]:
     """
     _check_imports()
 
-    if ctx.event_name != "SessionStart":
+    if ctx.hook_event != "SessionStart":
         return None
 
     from hooks.unified_logger import get_hook_log_path
@@ -1887,11 +1894,11 @@ def check_session_start_gate(ctx: GateContext) -> Optional[GateResult]:
     short_hash = session_paths.get_session_short_hash(ctx.session_id)
 
     # Get hook log path for this session (full absolute path)
-    hook_log_path = get_hook_log_path(ctx.session_id, ctx.input_data)
+    hook_log_path = get_hook_log_path(ctx.session_id, ctx.raw_input)
 
     # Get actual state file path (not a glob pattern)
     state_file_path = session_paths.get_session_file_path(
-        ctx.session_id, input_data=ctx.input_data
+        ctx.session_id, input_data=ctx.raw_input
     )
 
     # FAIL-FAST: Actually create the state file, don't just report the path
@@ -1925,11 +1932,11 @@ def check_session_start_gate(ctx: GateContext) -> Optional[GateResult]:
 
     # GEMINI-SPECIFIC: Validate hydration temp path infrastructure at session start
     # Per P#8 (Fail-Fast), catch temp directory problems early, not at PreToolUse
-    transcript_path = ctx.input_data.get("transcript_path", "") if ctx.input_data else ""
+    transcript_path = ctx.raw_input.get("transcript_path", "") if ctx.raw_input else ""
     if transcript_path and ".gemini" in str(transcript_path):
         try:
             # Validate hydration temp directory can be created/accessed
-            hydration_temp_dir = hook_utils.get_hook_temp_dir("hydrator", ctx.input_data)
+            hydration_temp_dir = hook_utils.get_hook_temp_dir("hydrator", ctx.raw_input)
             if not hydration_temp_dir.exists():
                 hydration_temp_dir.mkdir(parents=True, exist_ok=True)
         except RuntimeError as e:
@@ -1971,7 +1978,7 @@ def check_session_start_gate(ctx: GateContext) -> Optional[GateResult]:
     )
 
 
-def check_skill_activation_listener(ctx: GateContext) -> Optional[GateResult]:
+def check_skill_activation_listener(ctx: HookContext) -> Optional[GateResult]:
     """
     Listener: Clear hydration pending if a non-infrastructure skill was activated.
 
@@ -1981,7 +1988,7 @@ def check_skill_activation_listener(ctx: GateContext) -> Optional[GateResult]:
     """
     _check_imports()
 
-    if ctx.event_name != "PostToolUse":
+    if ctx.hook_event != "PostToolUse":
         return None
 
     # Handle both Claude Code (Skill) and Gemini (activate_skill) tool names
@@ -2026,14 +2033,14 @@ def check_skill_activation_listener(ctx: GateContext) -> Optional[GateResult]:
     )
 
 
-def check_qa_enforcement_gate(ctx: GateContext) -> Optional[GateResult]:
+def check_qa_enforcement_gate(ctx: HookContext) -> Optional[GateResult]:
     """
     Check if QA verification is required before task completion.
     """
     _check_imports()
 
     # Only applies to PreToolUse
-    if ctx.event_name != "PreToolUse":
+    if ctx.hook_event != "PreToolUse":
         return None
 
     # Only applies to complete_task
@@ -2078,7 +2085,7 @@ def check_qa_enforcement_gate(ctx: GateContext) -> Optional[GateResult]:
 # --- Unified Logger Gate (formerly unified_logger.py) ---
 
 
-def run_unified_logger(ctx: GateContext) -> Optional[GateResult]:
+def run_unified_logger(ctx: HookContext) -> Optional[GateResult]:
     """
     Log hook events to session file and handle SubagentStop/Stop state updates.
     Never blocks, only updates state and returns context for SessionStart.
@@ -2093,7 +2100,7 @@ def run_unified_logger(ctx: GateContext) -> Optional[GateResult]:
 
     try:
         # log_event_to_session now returns GateResult directly (no dict conversion)
-        return log_event_to_session(ctx.session_id, ctx.event_name, ctx.input_data)
+        return log_event_to_session(ctx.session_id, ctx.hook_event, ctx.raw_input)
     except Exception as e:
         print(f"WARNING: unified_logger error: {e}", file=sys.stderr)
 
@@ -2103,13 +2110,13 @@ def run_unified_logger(ctx: GateContext) -> Optional[GateResult]:
 # --- User Prompt Submit Gate (formerly user_prompt_submit.py) ---
 
 
-def run_user_prompt_submit(ctx: GateContext) -> Optional[GateResult]:
+def run_user_prompt_submit(ctx: HookContext) -> Optional[GateResult]:
     """
     UserPromptSubmit: Build hydration context and return instruction.
     """
     _check_imports()
 
-    if ctx.event_name != "UserPromptSubmit":
+    if ctx.hook_event != "UserPromptSubmit":
         return None
 
     try:
@@ -2128,8 +2135,8 @@ def run_user_prompt_submit(ctx: GateContext) -> Optional[GateResult]:
         print(f"WARNING: user_prompt_submit import failed: {e}", file=sys.stderr)
         return None
 
-    prompt = ctx.input_data.get("prompt", "")
-    transcript_path = ctx.input_data.get("transcript_path")
+    prompt = ctx.raw_input.get("prompt", "")
+    transcript_path = ctx.raw_input.get("transcript_path")
     session_id = ctx.session_id
 
     if not session_id:
@@ -2173,25 +2180,25 @@ def run_user_prompt_submit(ctx: GateContext) -> Optional[GateResult]:
 # --- Task Binding Gate (formerly task_binding.py) ---
 
 
-def run_task_binding(ctx: GateContext) -> Optional[GateResult]:
+def run_task_binding(ctx: HookContext) -> Optional[GateResult]:
     """
     PostToolUse: Bind/unbind task to session when task MCP operations occur.
     """
     _check_imports()
 
-    if ctx.event_name != "PostToolUse":
+    if ctx.hook_event != "PostToolUse":
         return None
 
     from lib.hook_utils import get_task_id_from_result
     from lib.event_detector import detect_tool_state_changes, StateChange
 
     # Support both Claude (snake_case) and Gemini (camelCase) field names
-    tool_name = ctx.tool_name or ctx.input_data.get("tool_name") or ctx.input_data.get("toolName", "")
-    tool_input = ctx.tool_input or ctx.input_data.get("tool_input") or ctx.input_data.get("toolInput", {})
+    tool_name = ctx.tool_name or ctx.raw_input.get("tool_name") or ctx.raw_input.get("toolName", "")
+    tool_input = ctx.tool_input or ctx.raw_input.get("tool_input") or ctx.raw_input.get("toolInput", {})
     tool_result = (
-        ctx.input_data.get("tool_result")
-        or ctx.input_data.get("toolResult")
-        or ctx.input_data.get("tool_response", {})
+        ctx.raw_input.get("tool_result")
+        or ctx.raw_input.get("toolResult")
+        or ctx.raw_input.get("tool_response", {})
     )
 
     changes = detect_tool_state_changes(tool_name, tool_input, tool_result)
@@ -2246,13 +2253,13 @@ def run_task_binding(ctx: GateContext) -> Optional[GateResult]:
 # --- Session End Commit Check Gate (formerly session_end_commit_check.py) ---
 
 
-def run_session_end_commit_check(ctx: GateContext) -> Optional[GateResult]:
+def run_session_end_commit_check(ctx: HookContext) -> Optional[GateResult]:
     """
     Stop: Check for uncommitted work and perform session cleanup.
     """
     _check_imports()
 
-    if ctx.event_name != "Stop":
+    if ctx.hook_event != "Stop":
         return None
 
     try:
@@ -2265,7 +2272,7 @@ def run_session_end_commit_check(ctx: GateContext) -> Optional[GateResult]:
         return None
 
     session_id = ctx.session_id
-    transcript_path = ctx.input_data.get("transcript_path")
+    transcript_path = ctx.raw_input.get("transcript_path")
 
     # Check for active task
     try:
@@ -2304,14 +2311,14 @@ def run_session_end_commit_check(ctx: GateContext) -> Optional[GateResult]:
 # --- Generate Transcript Gate (formerly generate_transcript.py) ---
 
 
-def run_generate_transcript(ctx: GateContext) -> Optional[GateResult]:
+def run_generate_transcript(ctx: HookContext) -> Optional[GateResult]:
     """
     Stop: Run transcript.py on session end.
     """
-    if ctx.event_name != "Stop":
+    if ctx.hook_event != "Stop":
         return None
 
-    transcript_path = ctx.input_data.get("transcript_path")
+    transcript_path = ctx.raw_input.get("transcript_path")
     if not transcript_path:
         return None
 
@@ -2347,7 +2354,7 @@ def run_generate_transcript(ctx: GateContext) -> Optional[GateResult]:
 # --- ntfy Push Notification Gate ---
 
 
-def run_ntfy_notifier(ctx: GateContext) -> Optional[GateResult]:
+def run_ntfy_notifier(ctx: HookContext) -> Optional[GateResult]:
     """
     Send push notifications for key session events via ntfy.
 
@@ -2384,12 +2391,12 @@ def run_ntfy_notifier(ctx: GateContext) -> Optional[GateResult]:
         return None
 
     # SessionStart notification
-    if ctx.event_name == "SessionStart":
+    if ctx.hook_event == "SessionStart":
         notify_session_start(config, ctx.session_id)
         return None
 
     # Stop notification
-    if ctx.event_name == "Stop":
+    if ctx.hook_event == "Stop":
         # Get current task if any
         try:
             current_task = session_state.get_current_task(ctx.session_id)
@@ -2399,7 +2406,7 @@ def run_ntfy_notifier(ctx: GateContext) -> Optional[GateResult]:
         return None
 
     # PostToolUse: task binding and subagent completion
-    if ctx.event_name == "PostToolUse":
+    if ctx.hook_event == "PostToolUse":
         # Check for task binding
         if ctx.tool_name in TASK_BINDING_TOOLS:
             tool_input = ctx.tool_input
@@ -2424,8 +2431,8 @@ def run_ntfy_notifier(ctx: GateContext) -> Optional[GateResult]:
 
             # Try to extract verdict from tool result
             verdict = None
-            if "tool_result" in ctx.input_data:
-                tool_result = ctx.input_data["tool_result"]
+            if "tool_result" in ctx.raw_input:
+                tool_result = ctx.raw_input["tool_result"]
                 if isinstance(tool_result, dict) and "verdict" in tool_result:
                     verdict = tool_result["verdict"]
                 elif isinstance(tool_result, str):
@@ -2435,8 +2442,8 @@ def run_ntfy_notifier(ctx: GateContext) -> Optional[GateResult]:
                             verdict = parsed["verdict"]
                     except (json.JSONDecodeError, AttributeError):
                         pass
-            elif "toolResult" in ctx.input_data:
-                tool_result = ctx.input_data["toolResult"]
+            elif "toolResult" in ctx.raw_input:
+                tool_result = ctx.raw_input["toolResult"]
                 if isinstance(tool_result, dict) and "verdict" in tool_result:
                     verdict = tool_result["verdict"]
 
@@ -2445,11 +2452,27 @@ def run_ntfy_notifier(ctx: GateContext) -> Optional[GateResult]:
     return None
 
 
+def run_session_env_setup(ctx: HookContext) -> Optional[GateResult]:
+    """
+    Persist environment variables for Claude Code sessions.
+    """
+    _check_imports()
+
+    try:
+        from hooks.session_env_setup import run_session_env_setup as setup_func
+    except ImportError as e:
+        print(f"WARNING: session_env_setup import failed: {e}", file=sys.stderr)
+        return None
+
+    return setup_func(ctx)
+
+
 # Registry of available gate checks
 GATE_CHECKS = {
     # Universal gates
     "unified_logger": run_unified_logger,
     "ntfy_notifier": run_ntfy_notifier,
+    "session_env_setup": run_session_env_setup,
     # UserPromptSubmit
     "user_prompt_submit": run_user_prompt_submit,
     # PreToolUse gates (order matters)

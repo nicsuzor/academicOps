@@ -16,7 +16,7 @@ AOPS_CORE_DIR = HOOK_DIR.parent
 if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
-from hooks.gate_registry import GATE_CHECKS, GateContext
+from hooks.gate_registry import GATE_CHECKS
 from lib.hook_utils import make_empty_output, get_session_id
 
 # Gate configuration: Maps events to ordered list of gate checks
@@ -64,54 +64,3 @@ ACTIVE_GATES = [
     # --- SessionEnd (Post-Stop cleanup) ---
     {"name": "unified_logger_end", "check": "unified_logger", "events": ["SessionEnd"]},
 ]
-
-
-def main():
-    try:
-        input_data = json.load(sys.stdin)
-    except json.JSONDecodeError as e:
-        # JSON parse error - log and fail open (gates shouldn't block on malformed input)
-        print(f"WARNING: gates.py JSON parse failed: {e}", file=sys.stderr)
-        print(json.dumps(make_empty_output()))
-        sys.exit(0)
-    except Exception as e:
-        # Unexpected error - log and fail open
-        print(f"ERROR: gates.py stdin read failed: {type(e).__name__}: {e}", file=sys.stderr)
-        print(json.dumps(make_empty_output()))
-        sys.exit(0)
-
-    event_name = input_data.get("hook_event_name")
-    if not event_name:
-        # No event name - can't evaluate gates. Fail open with debug log.
-        print("DEBUG: gates.py - no hook_event_name, skipping", file=sys.stderr)
-        print(json.dumps(make_empty_output()))
-        sys.exit(0)
-
-    session_id = get_session_id(input_data, require=False)
-    if not session_id:
-        # No session ID - can't evaluate session-scoped gates. Fail open with debug log.
-        print("DEBUG: gates.py - no session_id, skipping", file=sys.stderr)
-        print(json.dumps(make_empty_output()))
-        sys.exit(0)
-
-    ctx = GateContext(session_id, event_name, input_data)
-
-    # Run applicable gates
-    for gate_config in ACTIVE_GATES:
-        if event_name in gate_config["events"]:
-            check_func = GATE_CHECKS.get(gate_config["check"])
-            if check_func:
-                result = check_func(ctx)
-                if result:
-                    # Gate triggered! Return the result immediately.
-                    #<!-- NS: ensure we use our typed classes internally all the way up to here and only convert to in the required client-specific format json at the last step.  -->
-                    print(json.dumps(result.to_json()))
-                    sys.exit(0)
-
-    # No gates triggered
-    print(json.dumps({}))
-    sys.exit(0)
-
-
-if __name__ == "__main__":
-    main()

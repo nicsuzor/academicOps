@@ -16,26 +16,36 @@ from hooks.router import HookRouter
 # --- Simplified Mocking ---
 
 
-def mock_session_state():
-    """Minimal mocks to allow hooks to run."""
+# Default session state values (can be overridden per test case)
+DEFAULT_STATE = {
+    "is_hydration_pending": False,
+    "is_hydrator_active": False,
+    "has_file_been_read": True,
+    "gates": {
+        "task_bound": True,
+        "plan_mode_invoked": True,
+        "critic_invoked": True,
+    },
+}
+
+
+def mock_session_state(overrides=None):
+    """Minimal mocks to allow hooks to run. Accepts per-test overrides."""
+    cfg = {**DEFAULT_STATE, **(overrides or {})}
+    gates = {**DEFAULT_STATE["gates"], **cfg.get("gates", {})}
+
     state = {"state": {}, "hydration": {"temp_path": "/tmp/hydrator"}}
     return patch.multiple(
         "lib.session_state",
-        is_hydration_pending=MagicMock(return_value=False),
-        check_all_gates=MagicMock(
-            return_value={
-                "task_bound": True,
-                "plan_mode_invoked": True,
-                "critic_invoked": True,
-            }
-        ),
-        is_hydrator_active=MagicMock(return_value=False),
+        is_hydration_pending=MagicMock(return_value=cfg["is_hydration_pending"]),
+        check_all_gates=MagicMock(return_value=gates),
+        is_hydrator_active=MagicMock(return_value=cfg["is_hydrator_active"]),
         get_hydration_temp_path=MagicMock(return_value="/tmp/hydrator"),
         load_session_state=MagicMock(return_value=state),
         get_or_create_session_state=MagicMock(return_value=state),
         save_session_state=MagicMock(return_value=None),
         clear_reflection_output=MagicMock(return_value=None),
-        has_file_been_read=MagicMock(return_value=True),
+        has_file_been_read=MagicMock(return_value=cfg["has_file_been_read"]),
     )
 
 
@@ -91,6 +101,7 @@ TEST_CASES = [
             prompt="@prompt-hydrator read and comment on `/tmp/file.md`\n<system_note>\nThe user has explicitly selected the following agent(s): prompt-hydrator. Please use the 'delegate_to_agent' tool to delegate the task to the selected agent(s).\n</system_note>\n",
         ),
         "expected_decision": "allow",
+        "state_overrides": {"is_hydration_pending": True},
     },
     {
         "name": "PreToolUse invoke subagent (Gemini)",
@@ -99,7 +110,12 @@ TEST_CASES = [
             tool_name="prompt-hydrator",
             tool_input={"query": "Read and comment on /tmp/file.md"},
         ),
+        # For this case, we want to allow the tool call, because this
+        # is the hydrator being invoked as a subagent in Gemini.
+        # The subagent invocation should be allowed to proceed so
+        # that the hydrator can do its job.
         "expected_decision": "allow",
+        "state_overrides": {"is_hydration_pending": True},
     },
 ]
 
@@ -113,11 +129,12 @@ def test_hook_json_io(case):
     """
     raw_input = case["input"]
     expected_decision = case["expected_decision"]
+    state_overrides = case.get("state_overrides", {})
 
     router = HookRouter()
 
     with (
-        mock_session_state(),
+        mock_session_state(state_overrides),
         patch("pathlib.Path.exists", return_value=True),
         patch("pathlib.Path.read_text", return_value="# Mock Content"),
         patch("pathlib.Path.mkdir"),
