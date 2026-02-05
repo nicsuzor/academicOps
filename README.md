@@ -1,8 +1,8 @@
 # academicOps: A constitutional automation framework for academic work
 
-* Enforces a logical system: every rule derivable from [AXIOMS.md] with [HEURISTICS.md] supported by evidence.
+* Enforces a logical system: every rule derivable from AXIOMS.md with HEURISTICS.md supported by evidence.
 * Reflexive, self-improving agents must follow a CATEGORICAL IMPERATIVE: every action must be supported by a general rule.
-* Graduated approach to enforcement: [enforcement-map.md] sets out a full map of rules to enforcement mechanism, from gentle reminders to hard blocks.
+* Graduated approach to enforcement: enforcement-map.md sets out a full map of rules to enforcement mechanism, from gentle reminders to hard blocks.
 * Agent autonomy is limited to the authority they were granted: live ultra vires detection loop
 * Direct integration with beads for task memomory, memory mcp for vector search
 * Full personal knowledge base with gardening and continuous remembering skills
