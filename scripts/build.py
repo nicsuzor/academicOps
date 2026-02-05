@@ -681,7 +681,7 @@ def build_aops_core(
 def build_antigravity(aops_root: Path, dist_root: Path, all_mcps: dict):
     """Build the antigravity distribution."""
     print("Building antigravity...")
-    ag_dist = dist_root / "antigravity"
+    ag_dist = dist_root / "aops-antigravity"
     if ag_dist.exists():
         shutil.rmtree(ag_dist)
     ag_dist.mkdir(parents=True)
@@ -808,7 +808,7 @@ def package_artifacts(aops_root: Path, dist_root: Path, version: str):
     # 3. aops-antigravity-v{version}.tar.gz
     antigravity_archive = dist_root / f"aops-antigravity-v{version}.tar.gz"
     with tarfile.open(antigravity_archive, "w:gz") as tar:
-        tar.add(dist_root / "antigravity", arcname=".", filter=_source_filter)
+        tar.add(dist_root / "aops-antigravity", arcname=".", filter=_source_filter)
     print(f"  ✓ Packaged {antigravity_archive.name}")
     safe_symlink(antigravity_archive, dist_root / "aops-antigravity-latest.tar.gz")
 
