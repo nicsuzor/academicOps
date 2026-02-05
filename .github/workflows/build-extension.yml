@@ -90,6 +90,9 @@ jobs:
           mkdir -p .claude-plugin
           cp ${{ github.workspace }}/.claude-plugin/marketplace.json .claude-plugin/
 
+          # Copy README from source repo
+          cp ${{ github.workspace }}/README.md .
+
           # Update VERSION file
           echo "$VERSION" > VERSION
 
