@@ -8,7 +8,7 @@ resolution-markers = [
 
 [[package]]
 name = "academicops"
-version = "0.1.11"
+version = "0.1.14"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
@@ -20,6 +20,7 @@ dependencies = [
     { name = "python-ntfy" },
     { name = "pyyaml" },
     { name = "rich" },
+    { name = "streamlit" },
 ]
 
 [package.optional-dependencies]
@@ -59,6 +60,7 @@ requires-dist = [
     { name = "python-ntfy", specifier = ">=0.1.0" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "rich", specifier = ">=13.0.0" },
+    { name = "streamlit", specifier = ">=1.54.0" },
     { name = "streamlit", marker = "extra == 'viz'", specifier = ">=1.28.0" },
     { name = "streamlit-agraph", marker = "extra == 'viz'", specifier = ">=0.0.45" },
 ]
