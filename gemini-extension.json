@@ -2,6 +2,7 @@
   "name": "aops-core",
   "version": "0.1.10",
   "description": "AcademicOps Framework Extension for Gemini CLI - skills, agents, hooks, and tools for research workflow automation",
+  "contextFileName": "GEMINI.md",
   "settings": [
     {
       "name": "Memory Server API Key",
@@ -18,7 +19,7 @@
         "--directory",
         "${extensionPath}",
         "python",
-        "mcp_servers/tasks_server.py"
+        "mcp_servers${/}tasks_server.py"
       ],
       "env": {
         "ACA_DATA": "${ACA_DATA}"

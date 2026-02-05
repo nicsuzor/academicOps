@@ -39,7 +39,7 @@
           "--directory",
           "${extensionPath}",
           "python",
-          "mcp_servers/tasks_server.py"
+          "mcp_servers${/}tasks_server.py"
         ],
         "env": {
           "ACA_DATA": "${ACA_DATA}"
