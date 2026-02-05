@@ -11,7 +11,7 @@ All gate configuration should live here, not scattered across router.py,
 gate_registry.py, or gates.py.
 """
 
-from typing import Dict, List, Set
+from typing import Any, Dict, List, Set
 
 # =============================================================================
 # TOOL CATEGORIES
@@ -219,6 +219,94 @@ GATE_MODE_ENV_VARS: Dict[str, str] = {
 
 
 # =============================================================================
+# GATE LIFECYCLE: INITIAL STATE
+# =============================================================================
+# What state does each gate start in at SessionStart?
+# "closed" = gate check will fail, tool blocked
+# "open" = gate check will pass, tool allowed
+
+GATE_INITIAL_STATE: Dict[str, str] = {
+    "hydration": "closed",  # Must hydrate before any work
+    "task": "closed",       # Must bind a task before writes
+    "critic": "closed",     # Must get approval before writes
+    "qa": "closed",         # Must verify before stop
+    "handover": "open",     # Starts open; closes on uncommitted changes
+}
+
+
+# =============================================================================
+# GATE LIFECYCLE: OPENING CONDITIONS
+# =============================================================================
+# What triggers each gate to transition from closed → open?
+# Each gate has an event type and conditions that must be met.
+
+GATE_OPENING_CONDITIONS: Dict[str, Dict[str, Any]] = {
+    "hydration": {
+        "event": "PostToolUse",
+        "tool_pattern": r"^Task$",
+        "subagent_type": "aops-core:prompt-hydrator",
+        "output_contains": "HYDRATION RESULT",
+        "description": "Opens when hydrator agent completes successfully",
+    },
+    "task": {
+        "event": "PostToolUse",
+        "tool_pattern": r"mcp.*task_manager.*(create|claim|update)_task",
+        "result_key": "success",
+        "result_value": True,
+        "description": "Opens when a task is created, claimed, or updated",
+    },
+    "critic": {
+        "event": "PostToolUse",
+        "tool_pattern": r"^Task$",
+        "subagent_type": "aops-core:critic",
+        "output_contains": "APPROVED",
+        "description": "Opens when critic agent approves the plan",
+    },
+    "qa": {
+        "event": "PostToolUse",
+        "tool_pattern": r"^Task$|^Skill$",
+        "subagent_or_skill": ["aops-core:qa", "qa"],
+        "description": "Opens when QA verification completes",
+    },
+    "handover": {
+        "event": "PostToolUse",
+        "tool_pattern": r"^Skill$",
+        "skill_name": "aops-core:handover",
+        "description": "Opens when handover skill is invoked with clean repo",
+    },
+}
+
+
+# =============================================================================
+# GATE LIFECYCLE: CLOSURE TRIGGERS
+# =============================================================================
+# What causes gates to re-close (transition from open → closed) mid-session?
+# This enforces re-approval workflows, e.g., "critic must approve each batch".
+# Gates not listed here stay open once opened.
+
+GATE_CLOSURE_TRIGGERS: Dict[str, List[Dict[str, Any]]] = {
+    "critic": [
+        {
+            "event": "PostToolUse",
+            "tool_category": "write",
+            "description": "Re-close after write tools to require fresh approval",
+        },
+    ],
+    "handover": [
+        {
+            "event": "PostToolUse",
+            "tool_category": "write",
+            "condition": "git_dirty",
+            "description": "Re-close when repo has uncommitted changes",
+        },
+    ],
+    # hydration: Does not re-close (once hydrated, stays hydrated for session)
+    # task: Does not re-close (task binding persists for session)
+    # qa: Does not re-close (verified once is sufficient)
+}
+
+
+# =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
 
@@ -246,3 +334,62 @@ def get_gates_for_event(event: str) -> List[str]:
 def is_main_agent_only(gate_name: str) -> bool:
     """Check if a gate should only run for the main agent."""
     return gate_name in MAIN_AGENT_ONLY_GATES
+
+
+def get_gate_initial_state(gate_name: str) -> str:
+    """Get the initial state of a gate at SessionStart.
+
+    Returns 'closed' or 'open'. Defaults to 'closed' for unknown gates.
+    """
+    return GATE_INITIAL_STATE.get(gate_name, "closed")
+
+
+def get_gate_opening_condition(gate_name: str) -> Dict[str, Any]:
+    """Get the conditions that open a gate.
+
+    Returns dict with event type and conditions, or empty dict if not configured.
+    """
+    return GATE_OPENING_CONDITIONS.get(gate_name, {})
+
+
+def get_gate_closure_triggers(gate_name: str) -> List[Dict[str, Any]]:
+    """Get the triggers that re-close a gate.
+
+    Returns list of trigger definitions, or empty list if gate doesn't re-close.
+    """
+    return GATE_CLOSURE_TRIGGERS.get(gate_name, [])
+
+
+def should_gate_close_on_tool(gate_name: str, tool_name: str, event: str) -> bool:
+    """Check if a gate should close based on a tool use.
+
+    Args:
+        gate_name: Name of the gate to check
+        tool_name: Name of the tool that was used
+        event: Event type (e.g., 'PostToolUse')
+
+    Returns:
+        True if the gate should transition from open to closed.
+    """
+    triggers = get_gate_closure_triggers(gate_name)
+    if not triggers:
+        return False
+
+    tool_category = get_tool_category(tool_name)
+
+    for trigger in triggers:
+        if trigger.get("event") != event:
+            continue
+
+        # Check tool category match
+        if "tool_category" in trigger:
+            if trigger["tool_category"] == tool_category:
+                return True
+
+        # Check tool pattern match (if specified)
+        if "tool_pattern" in trigger:
+            import re
+            if re.match(trigger["tool_pattern"], tool_name):
+                return True
+
+    return False
