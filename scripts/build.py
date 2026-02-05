@@ -507,9 +507,11 @@ def build_aops_core(
             # Prepare for Gemini Extension
             if platform == "gemini":
                 servers_config = mcp_config.get("mcpServers", mcp_config)
-                gemini_servers_config = json.loads(
-                    json.dumps(servers_config).replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
-                )
+                # Replace variables for Gemini
+                gemini_servers_json = json.dumps(servers_config)
+                gemini_servers_json = gemini_servers_json.replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
+                
+                gemini_servers_config = json.loads(gemini_servers_json)
                 gemini_mcps = convert_mcp_to_gemini(gemini_servers_config)
 
                 if dist_extension_json.exists():
@@ -556,7 +558,7 @@ def build_aops_core(
         if convert_script.exists():
             subprocess.run(
                 [sys.executable, str(convert_script), "--output-dir", str(commands_dist)],
-                env={**os.environ, "AOPS": str(aops_root)},
+                env=os.environ,
                 check=False,
             )
 
@@ -615,20 +617,15 @@ def build_antigravity(aops_root: Path, dist_root: Path, all_mcps: dict):
 
 
 def main():
-    aops_path_str = os.environ.get("AOPS")
     aca_data_path = os.environ.get("ACA_DATA")
 
-    if not aops_path_str or not aca_data_path:
-        # Try to infer AOPS if not set
-        if not aops_path_str:
-            aops_path_str = str(Path(__file__).parent.parent.resolve())
-            print(f"Isnfo: AOPS not set, inferred to {aops_path_str}")
+    if not aca_data_path:
+        print("Error: ACA_DATA environment variable must be set.")
+        sys.exit(1)
 
-        if not aca_data_path:
-            print("Error: ACA_DATA environment variable must be set.")
-            sys.exit(1)
-
-    aops_root = Path(aops_path_str).resolve()
+    # Infer aops_root from script location
+    aops_root = Path(__file__).parent.parent.resolve()
+    print(f"Info: aops_root inferred to {aops_root}")
     dist_root = aops_root / "dist"
 
     # Get version from pyproject.toml
@@ -662,6 +659,9 @@ def package_artifacts(aops_root: Path, dist_root: Path):
     with tarfile.open(core_gemini_path, "w:gz") as tar:
         tar.add(dist_root / "aops-core-gemini", arcname=".")
     print(f"  ✓ Packaged {core_gemini_path.name}")
+    
+    # Create 'latest' symlink for Gemini
+    safe_symlink(core_gemini_path, dist_root / "aops-core-gemini-latest.tar.gz")
 
     # 2. aops-antigravity.zip
     antigravity_zip_path = dist_root / "aops-antigravity.zip"
@@ -672,6 +672,9 @@ def package_artifacts(aops_root: Path, dist_root: Path):
                 file_path = Path(root) / file
                 zipf.write(file_path, file_path.relative_to(ag_src))
     print(f"  ✓ Packaged {antigravity_zip_path.name}")
+    
+    # Create 'latest' symlink for Antigravity
+    safe_symlink(antigravity_zip_path, dist_root / "aops-antigravity-latest.zip")
 
     # Filter for source packaging to exclude noise
     def _source_filter(tarinfo):
@@ -694,6 +697,9 @@ def package_artifacts(aops_root: Path, dist_root: Path):
     with tarfile.open(core_claude_path, "w:gz") as tar:
         tar.add(dist_root / "aops-core-claude", arcname="aops-core", filter=_source_filter)
     print(f"  ✓ Packaged {core_claude_path.name}")
+    
+    # Create 'latest' symlink for Claude
+    safe_symlink(core_claude_path, dist_root / "aops-core-claude-latest.tar.gz")
 
 
 if __name__ == "__main__":

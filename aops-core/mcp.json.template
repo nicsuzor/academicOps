@@ -18,7 +18,6 @@
         "mcp_servers/tasks_server.py"
       ],
       "env": {
-        "AOPS": "${AOPS}",
         "ACA_DATA": "${ACA_DATA}"
       }
     }
