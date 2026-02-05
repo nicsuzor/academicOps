@@ -55,11 +55,12 @@ def make_input(**overrides):
     return {**DEFAULT_INPUT, **overrides}
 
 
-# Expected field semantics:
-#   None = don't check this field
-#   value = check exact match (for expected_system_message)
-#   True/False = check existence (for expected_injection_exists)
-#   string = check substring (for *_contains fields)
+# Expected field semantics (key presence matters):
+#   key absent = don't check this field
+#   key=None = assert actual is None
+#   key=value = assert exact match (for expected_system_message)
+#   key=True/False = check existence (for expected_injection_exists)
+#   key=string = check substring (for *_contains fields)
 
 TEST_CASES = [
     {
@@ -70,24 +71,18 @@ TEST_CASES = [
             prompt="test",
         ),
         "expected_decision": "allow",
-        "expected_system_message": None,
-        "expected_system_message_contains": None,
-        "expected_injection_exists": None,
-        "expected_injection_contains": None,
+        # No expected_* keys = don't check system_message or injection
     },
     {
         "name": "PreToolUse Example (Claude)",
         "input": make_input(
+            client="claude",
             session_id="claude-test",
             hook_event_name="PreToolUse",
             tool_name="Read",
             tool_input={"file_path": "test.txt"},
         ),
         "expected_decision": "allow",
-        "expected_system_message": None,
-        "expected_system_message_contains": None,
-        "expected_injection_exists": None,
-        "expected_injection_contains": None,
     },
     {
         "name": "UserPromptSubmit invoke subagent (Gemini)",
@@ -96,10 +91,6 @@ TEST_CASES = [
             prompt="@prompt-hydrator read and comment on `/tmp/file.md`\n<system_note>\nThe user has explicitly selected the following agent(s): prompt-hydrator. Please use the 'delegate_to_agent' tool to delegate the task to the selected agent(s).\n</system_note>\n",
         ),
         "expected_decision": "allow",
-        "expected_system_message": None,
-        "expected_system_message_contains": None,
-        "expected_injection_exists": None,
-        "expected_injection_contains": None,
     },
     {
         "name": "PreToolUse invoke subagent (Gemini)",
@@ -109,10 +100,6 @@ TEST_CASES = [
             tool_input={"query": "Read and comment on /tmp/file.md"},
         ),
         "expected_decision": "allow",
-        "expected_system_message": None,
-        "expected_system_message_contains": None,
-        "expected_injection_exists": None,
-        "expected_injection_contains": None,
     },
 ]
 
@@ -146,10 +133,9 @@ def test_hook_json_io(case):
         ctx = router.normalize_input(raw_input)
         result = router.execute_hooks(ctx)
 
-        # Format output
-        if raw_input.get("session_id", "").startswith("gemini-") or "gemini" in str(
-            raw_input.get("transcript_path", "")
-        ):
+        # Format output based on client type
+        client = raw_input.get("client", "claude")
+        if client == "gemini":
             output = router.output_for_gemini(result, ctx.hook_event)
             output_dict = json.loads(output.model_dump_json(exclude_none=True))
             assert output_dict.get("decision") == expected_decision
@@ -171,34 +157,44 @@ def test_hook_json_io(case):
                     assert output_dict.get("decision") == "block"
 
         # --- Additional assertions for system_message and injection ---
+        # Key presence matters: absent = skip, present = check (even if None)
         system_message = output_dict.get("systemMessage")
         injection = None
         if "hookSpecificOutput" in output_dict:
             injection = output_dict["hookSpecificOutput"].get("additionalContext")
 
-        # Check expected_system_message (exact match)
-        if case.get("expected_system_message") is not None:
+        # Check expected_system_message (exact match, None = assert actual is None)
+        if "expected_system_message" in case:
             assert system_message == case["expected_system_message"], (
                 f"Expected systemMessage={case['expected_system_message']!r}, got {system_message!r}"
             )
 
         # Check expected_system_message_contains (substring)
-        if case.get("expected_system_message_contains") is not None:
-            assert system_message is not None, "Expected systemMessage but got None"
-            assert case["expected_system_message_contains"] in system_message, (
-                f"Expected systemMessage to contain {case['expected_system_message_contains']!r}, got {system_message!r}"
-            )
+        if "expected_system_message_contains" in case:
+            expected = case["expected_system_message_contains"]
+            if expected is None:
+                assert system_message is None, f"Expected no systemMessage but got {system_message!r}"
+            else:
+                assert system_message is not None, "Expected systemMessage but got None"
+                assert expected in system_message, (
+                    f"Expected systemMessage to contain {expected!r}, got {system_message!r}"
+                )
 
-        # Check expected_injection_exists (True = must exist, False = must not exist)
-        if case.get("expected_injection_exists") is not None:
-            if case["expected_injection_exists"]:
+        # Check expected_injection_exists (True = must exist, False/None = must not exist)
+        if "expected_injection_exists" in case:
+            expected = case["expected_injection_exists"]
+            if expected:
                 assert injection is not None, "Expected injection to exist but got None"
             else:
                 assert injection is None, f"Expected no injection but got {injection!r}"
 
         # Check expected_injection_contains (substring)
-        if case.get("expected_injection_contains") is not None:
-            assert injection is not None, "Expected injection but got None"
-            assert case["expected_injection_contains"] in injection, (
-                f"Expected injection to contain {case['expected_injection_contains']!r}, got {injection!r}"
-            )
+        if "expected_injection_contains" in case:
+            expected = case["expected_injection_contains"]
+            if expected is None:
+                assert injection is None, f"Expected no injection but got {injection!r}"
+            else:
+                assert injection is not None, "Expected injection but got None"
+                assert expected in injection, (
+                    f"Expected injection to contain {expected!r}, got {injection!r}"
+                )
