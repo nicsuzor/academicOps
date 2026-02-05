@@ -14,7 +14,10 @@ metrics to the temporary session state file.
 
 import json
 import logging
+import os
+import psutil
 import sys
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -58,19 +61,6 @@ def log_hook_event(
 ) -> None:
     """
     Log a hook event to the per-session hooks log file.
-
-    Writes to (auto-detected based on session type):
-    - Claude: ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
-    - Gemini: ~/.gemini/tmp/<hash>/logs/<date>-<shorthash>-hooks.jsonl
-
-    Per-session hook logs are stored alongside transcripts for easy correlation.
-    Combines input and output data into a single JSONL entry with timestamp.
-    If session_id is missing or empty, silently returns (fail-safe for logging).
-
-    Args:
-        ctx: HookContext containing session_id, hook_event, and input data.
-        output: Optional CanonicalHookOutput from the hook (results/side effects)
-        exit_code: Exit code of the hook (0 = success, non-zero = failure)
     """
     session_id = ctx.session_id
     # Fail-safe: empty session_id = skip (don't crash hook)
@@ -86,19 +76,37 @@ def log_hook_event(
 
         log_path = get_hook_log_path(session_id, input_data, date)
 
+        # Gather process metrics for debugging (aops-runaway-fix)
+        process = psutil.Process(os.getpid())
+        mem_info = process.memory_info()
+        
         # Create log entry using typed model
         log_entry = HookLogEntry(
             hook_event=ctx.hook_event,
             logged_at=datetime.now().astimezone().replace(microsecond=0).isoformat(),
             exit_code=exit_code,
+            agent_id=ctx.agent_id,
+            slug=ctx.slug,
+            is_sidechain=ctx.is_sidechain,
             input=input_data,
             output=output.model_dump() if output else None,
         )
+        
+        # Add debug metrics to metadata
+        log_dict = log_entry.model_dump()
+        log_dict["debug"] = {
+            "pid": os.getpid(),
+            "ppid": os.getppid(),
+            "mem_rss_mb": mem_info.rss / (1024 * 1024),
+            "mem_vms_mb": mem_info.vms / (1024 * 1024),
+            "process_uptime": time.time() - process.create_time(),
+            "subagent_type": os.environ.get("CLAUDE_SUBAGENT_TYPE"),
+        }
 
         # Append to JSONL file
         with log_path.open("a") as f:
             json.dump(
-                log_entry.model_dump(),
+                log_dict,
                 f,
                 separators=(",", ":"),
                 default=_json_serializer,
@@ -169,12 +177,19 @@ def handle_subagent_stop(session_id: str, input_data: dict[str, Any]) -> None:
     subagent_result = input_data["subagent_result"]
 
     # Handle both string and dict results
+    # TRUNCATE: Never store more than 1KB of subagent output in the session state file.
+    # The full output is already logged to the per-session hooks.jsonl audit trail.
+    # Storing large strings in the shared state file causes memory-bloat in hooks.
     if isinstance(subagent_result, str):
-        result_data = {"output": subagent_result}
+        result_data = {"output": subagent_result[:1000] + "... [TRUNCATED]"}
     elif isinstance(subagent_result, dict):
-        result_data = subagent_result
+        # Strip large fields but preserve keys for gate logic (verdict, etc.)
+        result_data = {
+            k: (v[:1000] + "... [TRUNCATED]") if isinstance(v, str) and len(v) > 1000 else v
+            for k, v in subagent_result.items()
+        }
     else:
-        result_data = {"raw": str(subagent_result)}
+        result_data = {"raw": str(subagent_result)[:1000]}
 
     result_data["stopped_at"] = (
         datetime.now().astimezone().replace(microsecond=0).isoformat()

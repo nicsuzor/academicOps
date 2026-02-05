@@ -103,6 +103,28 @@ GATE_CONFIG: Dict[str, List[str]] = {
     "SessionEnd": ["unified_logger"],
 }
 
+# Gates that should only run for the main agent (bypass for subagents)
+# This prevents recursive loops (e.g., hydrator triggering hydration)
+# and reduces overhead/log-bloat in subagent tool calls.
+MAIN_AGENT_ONLY_GATES = {
+    "hydration",
+    "task_required",
+    "custodiet",
+    "qa_enforcement",
+    "axiom_enforcer",
+    "user_prompt_submit",
+    "post_hydration",
+    "post_critic",
+    "post_qa",
+    "skill_activation",
+    "task_binding",
+    "stop_gate",
+    "session_end_commit",
+    "session_start",
+    "agent_response",
+}
+
+
 # --- Session Management ---
 
 
@@ -149,43 +171,68 @@ class HookRouter:
         self._WINDOW_SECONDS = 5.0
 
     def _check_for_loops(self, session_id: str):
-        """Detect if execute_hooks is being called in a tight loop."""
-        now = time.monotonic()
-        self._execution_timestamps.append(now)
-
-        if len(self._execution_timestamps) < self._MAX_CALLS_PER_WINDOW:
+        """Detect if execute_hooks is being called in a tight loop across processes."""
+        # Use a dedicated heartbeat file in the session status directory
+        status_dir_env = os.environ.get("AOPS_SESSION_STATE_DIR")
+        if not status_dir_env:
             return
-
-        # Check if the last N calls happened within the time window
-        window_start_time = self._execution_timestamps[0]
-        if (now - window_start_time) < self._WINDOW_SECONDS:
-            # Loop detected
-            error_msg = (
-                f"CRITICAL: Infinite loop detected in hook router. "
-                f"Over {self._MAX_CALLS_PER_WINDOW} hook calls in {self._WINDOW_SECONDS:.1f} seconds. "
-                f"Terminating process {os.getpid()}."
-            )
-            print(error_msg, file=sys.stderr)
-
-            # Log to unified logger if possible
+            
+        heartbeat_file = Path(status_dir_env) / "hook-heartbeat.json"
+        now = time.time()
+        
+        try:
+            # Read previous heartbeats
+            heartbeats = []
+            if heartbeat_file.exists():
+                try:
+                    heartbeats = json.loads(heartbeat_file.read_text())
+                except (json.JSONDecodeError, OSError):
+                    pass
+            
+            # Add current heartbeat and prune old ones (older than window)
+            heartbeats.append(now)
+            heartbeats = [t for t in heartbeats if (now - t) < self._WINDOW_SECONDS]
+            
+            # Atomically write back
+            fd, temp_path = tempfile.mkstemp(dir=str(heartbeat_file.parent), text=True)
             try:
-                # Create a minimal context for logging the loop
-                loop_ctx = HookContext(
-                    session_id=session_id,
-                    hook_event="RouterLoop",
-                    raw_input={"error": error_msg},
-                )
-                log_hook_event(
-                    loop_ctx,
-                    output=CanonicalHookOutput(
-                        verdict="deny", system_message="Infinite loop detected."
-                    ),
-                )
-            except Exception as e:
-                print(f"WARNING: Failed to log loop detection: {e}", file=sys.stderr)
+                with os.fdopen(fd, "w") as f:
+                    json.dump(heartbeats, f)
+                Path(temp_path).rename(heartbeat_file)
+            except Exception:
+                Path(temp_path).unlink(missing_ok=True)
 
-            # Terminate the current process forcefully.
-            os.kill(os.getpid(), signal.SIGKILL)
+            if len(heartbeats) >= self._MAX_CALLS_PER_WINDOW:
+                # Loop detected
+                error_msg = (
+                    f"CRITICAL: Infinite loop detected in hook router. "
+                    f"Over {len(heartbeats)} hook calls in {self._WINDOW_SECONDS:.1f} seconds across processes. "
+                    f"Terminating process {os.getpid()} to protect system RAM."
+                )
+                print(error_msg, file=sys.stderr)
+
+                # Log to unified logger if possible
+                try:
+                    loop_ctx = HookContext(
+                        session_id=session_id,
+                        hook_event="RouterLoop",
+                        raw_input={"error": error_msg, "heartbeats": heartbeats},
+                    )
+                    log_hook_event(
+                        loop_ctx,
+                        output=CanonicalHookOutput(
+                            verdict="deny", system_message="Infinite loop detected."
+                        ),
+                    )
+                except Exception as e:
+                    print(f"WARNING: Failed to log loop detection: {e}", file=sys.stderr)
+
+                # Terminate the current process forcefully.
+                os.kill(os.getpid(), signal.SIGKILL)
+                
+        except Exception as e:
+            # Don't let loop detection failure block the hook
+            print(f"WARNING: Loop detection failed: {e}", file=sys.stderr)
 
     def normalize_input(
         self, raw_input: Dict[str, Any], gemini_event: Optional[str] = None
@@ -229,6 +276,9 @@ class HookRouter:
         return HookContext(
             session_id=session_id,
             hook_event=hook_event,
+            agent_id=raw_input.get("agentId"),
+            slug=raw_input.get("slug"),
+            is_sidechain=raw_input.get("isSidechain"),
             tool_name=raw_input.get("tool_name"),
             tool_input=raw_input.get("tool_input", {}),
             transcript_path=transcript_path,
@@ -249,6 +299,12 @@ class HookRouter:
         # Execute gate functions directly (no subprocess)
         gate_names = GATE_CONFIG.get(ctx.hook_event, [])
 
+        # Filter: Certain gates ONLY run for the main agent to prevent recursion
+        # and unnecessary overhead in subagent tool calls.
+        subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE")
+        if subagent_type:
+            gate_names = [g for g in gate_names if g not in MAIN_AGENT_ONLY_GATES]
+
         for gate_name in gate_names:
             check_func = GATE_CHECKS.get(gate_name)
             if not check_func:
@@ -257,8 +313,12 @@ class HookRouter:
                 )
                 continue
 
+            start_time = time.monotonic()
             try:
                 result = check_func(ctx)
+                duration = time.monotonic() - start_time
+                merged_result.metadata.setdefault("gate_times", {})[gate_name] = duration
+                
                 if result:
                     hook_output = self._gate_result_to_canonical(result)
                     self._merge_result(merged_result, hook_output)

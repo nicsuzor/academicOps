@@ -1,6 +1,6 @@
 [project]
 name = "academicops"
-version = "0.1.10"
+version = "0.1.11"
 description = "Academic Operations Framework"
 requires-python = ">=3.11"
 dependencies = [
@@ -11,6 +11,7 @@ dependencies = [
   "filelock>=3.13.0",
   "click>=8.1.0",
   "rich>=13.0.0",
+  "psutil>=5.9.0",
   # Skills dependencies
   "pdfminer-six>=20260107",
   "python-ntfy>=0.1.0",

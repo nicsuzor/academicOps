@@ -153,6 +153,9 @@ class HookLogEntry(BaseModel):
         hook_event: Name of the hook event (e.g., UserPromptSubmit)
         logged_at: ISO timestamp when event was logged
         exit_code: Exit code of the hook (0 = success)
+        agent_id: The unique ID for the specific agent instance
+        slug: The human-readable slug for the session/agent
+        is_sidechain: Whether this is a subagent session
         input: Input data passed to the hook
         output: Output data from the hook (may be None)
     """
@@ -160,6 +163,9 @@ class HookLogEntry(BaseModel):
     hook_event: str
     logged_at: str
     exit_code: int = 0
+    agent_id: str | None = None
+    slug: str | None = None
+    is_sidechain: bool | None = None
     input: dict = Field(default_factory=dict)
     output: dict | None = None
 

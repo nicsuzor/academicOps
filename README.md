@@ -51,60 +51,77 @@ command gemini extensions install git@github.com:nicsuzor/aops-dist.git --consen
 
 ```mermaid
 flowchart TD
-    subgraph "Session Initialization"
-        A[Session Start] --> B[SessionStart Hook]
-        B --> C[Universal Router: router.py]
-        C --> D[Load AXIOMS & HEURISTICS]
-        D --> E[Set Environment & Paths]
+    %% Node Definitions
+    Start([Session Start])
+    
+    subgraph Initialization [1. Initialization]
+        SStart[SessionStart Event] --> Router1{Universal Router}
+        Router1 -.-> Setup[session_env_setup.py]
+        Router1 -.-> StartGate[session_start gate]
+        StartGate --> State[(Create State File)]
     end
 
-    subgraph "Prompt Processing & Hydration"
-        F[User Prompt] --> G[UserPromptSubmit Hook]
-        G --> H{Skip Hydration?}
-        H -->|Yes: /, ., notifications| I[Direct Execution]
-        H -->|No| J[Write Context to Temp File]
-        J --> K[prompt-hydrator Subagent<br>haiku]
-        K --> L[Select Workflow &<br>Generate TodoWrite Plan]
+    subgraph Hydration [2. Hydration & Review]
+        UPS[UserPromptSubmit Event] --> Router2{Universal Router}
+        Router2 -.-> SkipCheck{Skip Hydration?}
+        SkipCheck -- No --> Context[Context -> Temp File]
+        Context --> Hydrator[[prompt-hydrator Subagent]]
+        Hydrator --> Plan[/Hydration Plan/]
+        Plan --> Critic[[critic Subagent]]
+        Critic --> CriticCheck{Plan Approved?}
+        CriticCheck -- REVISE --> Plan
     end
 
-    subgraph "Plan Review"
-        L --> M[critic Subagent<br>opus]
-        M --> N{Plan Approved?}
-        N -->|REVISE| L
-        N -->|PROCEED| O[Main Agent Receives Plan]
+    subgraph Execution [3. Execution & Hard Gates]
+        PreTool[PreToolUse Event] --> Router3{Universal Router}
+        
+        Router3 -.-> GateH[Hydration Gate]
+        GateH --> GateT[Task Gate]
+        GateT --> GateC[Custodiet Gate]
+        
+        GateC --> Tool[[Execute Tool]]
+        
+        Tool --> PostTool[PostToolUse Event]
+        PostTool --> Router4{Universal Router}
+        Router4 -.-> Accountant[Accountant: Update Counters]
     end
 
-    subgraph "Execution & Enforcement"
-        O --> P[Execute Step via TodoWrite]
-        P --> Q[PreToolUse Hook]
-        Q --> R{Pass Gates?}
-        R -->|NO| S[Block / Warn]
-        R -->|YES| T[Execute Tool]
-        T --> U[PostToolUse Hook]
-        U --> V[The Accountant:<br>Update State & Binding]
-        V --> W[Mark Step Complete]
-        W -->|More Steps| P
+    subgraph Termination [4. Reflection & Close]
+        AfterAgent[AfterAgent Event] --> Router5{Universal Router}
+        Router5 -.-> RefCheck[Validate Reflection]
+        
+        RefCheck --> Stop[Stop Event]
+        Stop --> Router6{Universal Router}
+        Router6 -.-> StopGate[Stop Gate: Handover + QA]
+        StopGate --> Commit[Commit & Close]
     end
 
-    subgraph "Verification & Handoff"
-        W -->|Done| X[qa Subagent<br>opus]
-        X --> Y{Work Verified?}
-        Y -->|NO| Z[Fix Issues]
-        Z --> P
-        Y -->|YES| AA[Output Framework Reflection]
-        AA --> AB[AfterAgent Hook:<br>Validate Reflection]
-        AB --> AC[Invoke /handover Skill]
-    end
+    %% Flow Connections
+    Start --> SStart
+    State --> UPS
+    SkipCheck -- Yes --> PreTool
+    CriticCheck -- PROCEED --> PreTool
+    Accountant --> AfterAgent
+    Commit --> End([Session End])
 
-    subgraph "Session Closure"
-        AC --> AD[Stop Hook]
-        AD --> AE{Repo Clean?}
-        AE -->|NO| AF[Commit Changes]
-        AE -->|YES| AG[Generate Transcript & Close]
-    end
+    %% Styling
+    classDef hook fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef gate fill:#ffebee,stroke:#c62828,stroke-width:2px,shape:diamond
+    classDef agent fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,shape:stadium
+    classDef state fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
+    classDef event fill:#f5f5f5,stroke:#424242,stroke-dasharray: 5 5
 
-    style S fill:#ff6666
-    style AG fill:#66ff66
+    class Router1,Router2,Router3,Router4,Router5,Router6,Setup,Accountant,Commit hook
+    class StartGate,SkipCheck,GateH,GateT,GateC,CriticCheck,RefCheck,StopGate gate
+    class Hydrator,Critic agent
+    class State,Plan,Context state
+    class SStart,UPS,PreTool,PostTool,AfterAgent,Stop event
+
+    %% Subgraph Styling (Clean background)
+    style Initialization fill:none,stroke:#ddd
+    style Hydration fill:none,stroke:#ddd
+    style Execution fill:none,stroke:#ddd
+    style Termination fill:none,stroke:#ddd
 ```
 
 ## Core Concepts

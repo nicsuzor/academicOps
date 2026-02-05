@@ -14,6 +14,9 @@ class HookContext(BaseModel):
     hook_event: str = Field(
         ..., description="The normalized event name (e.g., SessionStart, PreToolUse)."
     )
+    agent_id: Optional[str] = Field(None, description="The unique ID for the specific agent instance.")
+    slug: Optional[str] = Field(None, description="The human-readable slug for the session/agent.")
+    is_sidechain: Optional[bool] = Field(None, description="Whether this is a subagent (sidechain) session.")
 
     # Event Data
     tool_name: Optional[str] = None

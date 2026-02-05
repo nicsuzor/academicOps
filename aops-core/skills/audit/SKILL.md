@@ -296,11 +296,22 @@ Regenerate the core loop flowchart section in README.md from hook architecture s
 1. Parse `hooks/router.py` for dispatch mappings (event→handler)
 2. Parse `config/claude/settings.json` for hook event registrations
 3. Parse `hooks/*.py` for hook implementations and "Enforces:" declarations
-4. Generate Mermaid flowchart following flowchart skill conventions:
-   - Use decision diamonds for conditional logic
-   - Apply classDef for semantic coloring (hooks, skills, tools, outcomes)
-   - Group by execution phase (SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop)
-   - Label edges with event types and conditions
+4. Generate Mermaid flowchart following **Flowchart Design Principles**:
+   - **Shapes match Roles**: 
+     - Process/Dispatcher → Rectangle
+     - Decision/Hard Gate → Diamond
+     - Subagent/Skill → Stadium
+     - State/Data → Parallelogram or Cylindrical
+   - **Semantic Coloring**:
+     - Hooks/Dispatch → Blue (`#e1f5fe`)
+     - Gates/Blocks → Red (`#ffebee`)
+     - Agents/Subagents → Purple (`#f3e5f5`)
+     - Success/Exit → Green (`#e8f5e9`)
+   - **Readability**:
+     - Use `style <subgraph> fill:none` to avoid cluttered backgrounds.
+     - Group logic by execution phase (Init, Hydration, Execution, Termination).
+     - Label edges clearly with conditions (Yes/No, PROCEED/REVISE).
+   - **Accuracy**: Ensure every "Hardware Gate" (PreToolUse) and "Logic Check" (Stop Gate) defined in `gate_registry.py` is represented.
 
 **Structure**:
 
