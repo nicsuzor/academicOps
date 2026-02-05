@@ -317,7 +317,7 @@ This should invoke the decision extraction logic and present results conversatio
 
 ## Related Work
 
-- [[effectual-planning-agent]] - Strategic planning under uncertainty
+- [[effectual-planner]] - Strategic planning under uncertainty
 - [[work-management]] - Task system documentation
-- [[daily-skill]] - Daily briefing integration point
+- [[daily]] - Daily briefing integration point
 - [[collaborate-workflow]] - Human-agent collaboration patterns

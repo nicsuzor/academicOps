@@ -524,6 +524,17 @@ def build_aops_core(
             try:
                 manifest = json.loads(src_extension_json.read_text())
                 manifest["version"] = version
+
+                # Fix up task_manager path if it was using the repo-root format
+                # (where aops-core is a subdirectory, but in dist it is the root)
+                if "mcpServers" in manifest and "task_manager" in manifest["mcpServers"]:
+                    args = manifest["mcpServers"]["task_manager"].get("args", [])
+                    new_args = [
+                        a.replace("${extensionPath}/aops-core", "${extensionPath}")
+                        for a in args
+                    ]
+                    manifest["mcpServers"]["task_manager"]["args"] = new_args
+
                 with open(dist_extension_json, "w") as f:
                     json.dump(manifest, f, indent=2)
             except Exception as e:

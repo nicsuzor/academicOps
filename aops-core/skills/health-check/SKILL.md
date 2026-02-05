@@ -244,8 +244,8 @@ The skill produces:
 
 ## See Also
 
-- [[skills/audit/SKILL]] - Structural framework audit
-- [[skills/audit/workflows/session-effectiveness]] - Single session evaluation
-- [[agents/qa]] - QA agent being evaluated
-- [[agents/custodiet]] - Custodiet agent being evaluated
-- [[agents/prompt-hydrator]] - Hydrator agent being evaluated
+- [[../audit/SKILL.md|audit skill]] - Structural framework audit
+- [[../audit/workflows/session-effectiveness.md|session effectiveness]] - Single session evaluation
+- [[../../agents/qa.md|qa agent]] - QA agent being evaluated
+- [[../../agents/custodiet.md|custodiet agent]] - Custodiet agent being evaluated
+- [[../../agents/prompt-hydrator.md|hydrator agent]] - Hydrator agent being evaluated

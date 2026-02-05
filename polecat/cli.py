@@ -760,22 +760,34 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
     env["POLECAT_SESSION_TYPE"] = "polecat"
 
     try:
-        result = subprocess.run(
-            cmd,
-            cwd=worktree_path,
-            capture_output=True,
-            text=True,
-            env=env,
-        )
-        exit_code = result.returncode
-        # Display agent output after run
-        if result.stdout:
-            print(result.stdout)
-        if result.stderr:
-            print(result.stderr, file=sys.stderr)
+        if interactive:
+            # In interactive mode, we MUST NOT capture output or it will hang
+            # and we want the user to see/interact with the CLI
+            result = subprocess.run(
+                cmd,
+                cwd=worktree_path,
+                env=env,
+            )
+            exit_code = result.returncode
+            # No transcript to analyze in interactive mode (currently)
+        else:
+            result = subprocess.run(
+                cmd,
+                cwd=worktree_path,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            exit_code = result.returncode
+            # Display agent output after run
+            if result.stdout:
+                print(result.stdout)
+            if result.stderr:
+                print(result.stderr, file=sys.stderr)
 
-        # Analyze the transcript for failures
-        manager.analyze_transcript(task, result.stdout, result.stderr)
+            # Analyze the transcript for failures
+            if hasattr(manager, "analyze_transcript"):
+                manager.analyze_transcript(task, result.stdout, result.stderr)
 
     except FileNotFoundError:
         print(f"Error: '{cli_tool}' command not found.", file=sys.stderr)

@@ -484,7 +484,7 @@ If the daily note contains a goals section (e.g., "## Things I want to achieve t
 
 Match session accomplishments to related tasks using semantic search.
 
-**Per spec** ([[session-sync-user-story]]): The agent receives accomplishments + candidate task files and decides which tasks match. Agent-driven matching, NOT algorithmic.
+**Per spec** ([[archived/specs/session-sync-user-story.md|session-sync-user-story]]): The agent receives accomplishments + candidate task files and decides which tasks match. Agent-driven matching, NOT algorithmic.
 
 **4.5.1: Search for Candidate Tasks**
 

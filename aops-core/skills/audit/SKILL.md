@@ -65,7 +65,7 @@ uv run python scripts/check_orphan_files.py
 Run comprehensive health audit first:
 
 ```bash
-cd $AOPS && uv run python scripts/audit_framework_health.py \
+uv run python scripts/audit_framework_health.py \
   --output /tmp/health-$(date +%Y%m%d).json
 ```
 
@@ -82,7 +82,7 @@ This generates:
 
 Compare filesystem to documentation:
 
-1. **Scan filesystem**: `find $AOPS -type f -not -path "*/.git/*" -not -path "*/__pycache__/*" | sort`
+1. **Scan filesystem**: `find . -type f -not -path "*/.git/*" -not -path "*/__pycache__/*" | sort`
 2. **Compare to INDEX.md**: Flag missing or extra entries
 3. **Check cross-references**: Verify `→` references point to existing files
 4. **Find broken wikilinks**: Grep for `[[...]]` patterns, validate targets exist
@@ -94,17 +94,14 @@ Compare filesystem to documentation:
 Then build reference graph and check linking conventions:
 
 ```bash
-cd $AOPS
+# Generate graph for aops-core
+uv run python aops-core/skills/audit/scripts/build_reference_map.py --root aops-core --output data/aops/reference-graph-core.json
 
-# Generate graph
-uv run python skills/audit/scripts/build_reference_map.py
-
-# Find orphans and violations
-uv run python skills/audit/scripts/find_orphans.py
+# Find orphans in aops-core
+uv run python aops-core/skills/audit/scripts/find_orphans.py --graph data/aops/reference-graph-core.json
 
 # Or use the health script for wikilink/orphan checks
-uv run python scripts/check_broken_wikilinks.py
-uv run python scripts/check_orphan_files.py
+uv run python scripts/audit_framework_health.py -m
 ```
 
 **Linking rules to enforce** (from framework skill):

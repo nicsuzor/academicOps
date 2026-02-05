@@ -284,7 +284,8 @@ def main():
         # Link aops-core (Gemini build)
         dist_core_gemini = aops_root / "dist" / "aops-core-gemini"
         if dist_core_gemini.exists():
-            print(f"Installing extension: {dist_core_gemini}")
+            print(f"Installing Gemini extension from: {dist_core_gemini}")
+            print("This sets aops-core-gemini/ as the extension root.")
             # Uninstall first to avoid "already installed" error
             run_command(["gemini", "extensions", "uninstall", "aops-core"], check=False)
             run_command(

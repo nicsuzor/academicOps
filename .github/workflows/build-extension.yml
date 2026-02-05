@@ -86,7 +86,7 @@ jobs:
           cp -r ${{ github.workspace }}/dist/aops-core-gemini .
           cp -r ${{ github.workspace }}/dist/antigravity .
 
-          # Copy gemini-extension.json to repo root and adjust paths
+          # Copy gemini-extension.json to repo root (keeping it as a fallback)
           cp ${{ github.workspace }}/dist/aops-core-gemini/gemini-extension.json .
           python3 << EOF
           import json
@@ -96,18 +96,8 @@ jobs:
               data = json.load(f)
           # Update version
           data['version'] = version
-          # Adjust paths to point to aops-core-gemini subdirectory
-          if 'mcpServers' in data:
-              for name, server in data['mcpServers'].items():
-                  if 'args' in server:
-                      server['args'] = [arg.replace('\${extensionPath}', './aops-core-gemini') for arg in server['args']]
-          if 'hooks' in data:
-              for event, hook_list in data['hooks'].items():
-                  for entry in hook_list:
-                      if 'hooks' in entry:
-                          for hook in entry['hooks']:
-                              if 'command' in hook:
-                                  hook['command'] = hook['command'].replace('\${extensionPath}', './aops-core-gemini')
+          # DO NOT adjust paths to point to aops-core-gemini subdirectory
+          # We want users to link/install aops-core-gemini directly
           with open('gemini-extension.json', 'w') as f:
               json.dump(data, f, indent=2)
           EOF
