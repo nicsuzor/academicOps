@@ -227,10 +227,10 @@ GATE_MODE_ENV_VARS: Dict[str, str] = {
 
 GATE_INITIAL_STATE: Dict[str, str] = {
     "hydration": "closed",  # Must hydrate before any work
-    "task": "closed",       # Must bind a task before writes
-    "critic": "closed",     # Must get approval before writes
-    "qa": "closed",         # Must verify before stop
-    "handover": "open",     # Starts open; closes on uncommitted changes
+    "task": "open",  # Must bind a task before writes, but allow planning and answers first
+    "critic": "open",  # Must get approval before writes, but allow planning and answers first
+    "qa": "closed",  # Must verify before stop
+    "handover": "open",  # Starts open; closes on uncommitted changes
 }
 
 
@@ -285,11 +285,32 @@ GATE_OPENING_CONDITIONS: Dict[str, Dict[str, Any]] = {
 # Gates not listed here stay open once opened.
 
 GATE_CLOSURE_TRIGGERS: Dict[str, List[Dict[str, Any]]] = {
-    "critic": [
+    "hydration": [
+        {
+            "event": "UserPromptSubmit",
+            "description": "Re-close on new user prompt to require fresh hydration",
+        },
+    ],
+    "task": [
         {
             "event": "PostToolUse",
-            "tool_category": "write",
-            "description": "Re-close after write tools to require fresh approval",
+            "tool_pattern": r"mcp.*task_manager.*complete_task",
+            "result_key": "success",
+            "result_value": True,
+            "description": "Re-close when task is completed/released",
+        },
+    ],
+    "critic": [
+        {
+            "event": "UserPromptSubmit",
+            "description": "Re-close on new user prompt (new intent = new approval)",
+        },
+        {
+            "event": "PostToolUse",
+            "tool_pattern": r"mcp.*task_manager.*complete_task",
+            "result_key": "success",
+            "result_value": True,
+            "description": "Re-close on task change (completed = need new approval)",
         },
     ],
     "handover": [
@@ -300,9 +321,7 @@ GATE_CLOSURE_TRIGGERS: Dict[str, List[Dict[str, Any]]] = {
             "description": "Re-close when repo has uncommitted changes",
         },
     ],
-    # hydration: Does not re-close (once hydrated, stays hydrated for session)
-    # task: Does not re-close (task binding persists for session)
-    # qa: Does not re-close (verified once is sufficient)
+    # qa: Does not re-close (verified once is sufficient for session)
 }
 
 
