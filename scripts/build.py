@@ -210,7 +210,7 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
                             # Replace Claude variable with Gemini variable
                             cmd = new_hook["command"]
                             cmd = cmd.replace(
-                                "${CLAUDE_PLUGIN_ROOT}", "${extensionPath}/aops-core-gemini"
+                                "${CLAUDE_PLUGIN_ROOT}", "${extensionPath}"
                             )
 
                             # Ensure we use the correct client flag for Gemini
@@ -220,8 +220,8 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
                             if "PYTHONPATH=" in cmd and "${extensionPath}" in cmd:
                                 # Simplify: use uv run --directory which handles PYTHONPATH
                                 cmd = cmd.replace(
-                                    "PYTHONPATH=${extensionPath}/aops-core-gemini uv run python",
-                                    "uv run --directory ${extensionPath}/aops-core-gemini python",
+                                    "PYTHONPATH=${extensionPath} uv run python",
+                                    "uv run --directory ${extensionPath} python",
                                 )
                             new_hook["command"] = cmd
                         new_hooks.append(new_hook)
@@ -421,10 +421,8 @@ def build_aops_core(
     # Platform-specific dist dir
     dist_dir = dist_root / f"{plugin_name}-{platform}"
 
-    # Content subdirectory for Gemini (as requested)
+    # Content goes directly into dist_dir (no nested subfolder)
     content_dir = dist_dir
-    if platform == "gemini":
-        content_dir = dist_dir / "aops-core-gemini"
 
     # Write version info for tracking (always to source)
     commit_sha = get_git_commit_sha(aops_root)
@@ -434,8 +432,6 @@ def build_aops_core(
     if dist_dir.exists():
         shutil.rmtree(dist_dir)
     dist_dir.mkdir(parents=True)
-    if platform == "gemini":
-        content_dir.mkdir(parents=True)
 
     # 1. Copy content directories
     # Note: pyproject.toml is generated, not copied (version from root)
@@ -542,7 +538,7 @@ def build_aops_core(
                     new_args = [
                         a.replace(
                             "${extensionPath}/aops-core",
-                            "${extensionPath}/aops-core-gemini",
+                            "${extensionPath}",
                         )
                         for a in args
                     ]
@@ -618,8 +614,8 @@ def build_aops_core(
                     current_mcps = manifest.get("mcpServers", {})
                     manifest["mcpServers"] = {**current_mcps, **gemini_mcps}
 
-                    # MCP server arguments from mcp.json.template are already correct
-                    # because the template uses ${extensionPath}/aops-core-gemini
+                    # MCP server arguments from mcp.json.template use ${extensionPath}
+                    # which is correct since plugin content is at the root
 
                     with open(dist_extension_json, "w") as f:
                         json.dump(manifest, f, indent=2)
@@ -756,38 +752,27 @@ def main():
     # Build Antigravity (global config if needed)
     build_antigravity(aops_root, dist_root, core_mcps_gemini)
 
-    package_artifacts(aops_root, dist_root)
+    package_artifacts(aops_root, dist_root, version)
+
+    # Create git tags for release
+    create_git_tags(aops_root, version)
 
     print("\nBuild complete. Dist artifacts in dist/")
 
 
-def package_artifacts(aops_root: Path, dist_root: Path):
-    """Package the built components into archives for release."""
+def package_artifacts(aops_root: Path, dist_root: Path, version: str):
+    """Package the built components into archives for release.
+
+    Creates three archives:
+    - aops-gemini-v{version}.tar.gz
+    - aops-claude-v{version}.tar.gz
+    - aops-antigravity-v{version}.tar.gz
+
+    Plus 'latest' symlinks for each.
+    """
     print("\nPackaging artifacts for release...")
 
-    # 1. aops-core-gemini.tar.gz
-    core_gemini_path = dist_root / "aops-core-gemini.tar.gz"
-    with tarfile.open(core_gemini_path, "w:gz") as tar:
-        tar.add(dist_root / "aops-core-gemini", arcname=".")
-    print(f"  ✓ Packaged {core_gemini_path.name}")
-
-    # Create 'latest' symlink for Gemini
-    safe_symlink(core_gemini_path, dist_root / "aops-core-gemini-latest.tar.gz")
-
-    # 2. aops-antigravity.zip
-    antigravity_zip_path = dist_root / "aops-antigravity.zip"
-    with zipfile.ZipFile(antigravity_zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
-        ag_src = dist_root / "antigravity"
-        for root, _, files in os.walk(ag_src):
-            for file in files:
-                file_path = Path(root) / file
-                zipf.write(file_path, file_path.relative_to(ag_src))
-    print(f"  ✓ Packaged {antigravity_zip_path.name}")
-
-    # Create 'latest' symlink for Antigravity
-    safe_symlink(antigravity_zip_path, dist_root / "aops-antigravity-latest.zip")
-
-    # Filter for source packaging to exclude noise
+    # Filter for packaging to exclude noise
     def _source_filter(tarinfo):
         exclude = [
             ".venv",
@@ -796,23 +781,68 @@ def package_artifacts(aops_root: Path, dist_root: Path):
             ".mypy_cache",
             ".ruff_cache",
             ".git",
-            "gemini-extension.json",
-            "GEMINI.md",
         ]
         if any(x in tarinfo.name for x in exclude):
             return None
         return tarinfo
 
-    # 3. aops-core-claude.tar.gz (from built dist)
-    core_claude_path = dist_root / "aops-core-claude.tar.gz"
-    with tarfile.open(core_claude_path, "w:gz") as tar:
-        tar.add(
-            dist_root / "aops-core-claude", arcname="aops-core", filter=_source_filter
-        )
-    print(f"  ✓ Packaged {core_claude_path.name}")
+    # 1. aops-gemini-v{version}.tar.gz
+    gemini_archive = dist_root / f"aops-gemini-v{version}.tar.gz"
+    with tarfile.open(gemini_archive, "w:gz") as tar:
+        tar.add(dist_root / "aops-core-gemini", arcname=".", filter=_source_filter)
+    print(f"  ✓ Packaged {gemini_archive.name}")
+    safe_symlink(gemini_archive, dist_root / "aops-gemini-latest.tar.gz")
 
-    # Create 'latest' symlink for Claude
-    safe_symlink(core_claude_path, dist_root / "aops-core-claude-latest.tar.gz")
+    # 2. aops-claude-v{version}.tar.gz
+    claude_archive = dist_root / f"aops-claude-v{version}.tar.gz"
+    with tarfile.open(claude_archive, "w:gz") as tar:
+        tar.add(dist_root / "aops-core-claude", arcname=".", filter=_source_filter)
+    print(f"  ✓ Packaged {claude_archive.name}")
+    safe_symlink(claude_archive, dist_root / "aops-claude-latest.tar.gz")
+
+    # 3. aops-antigravity-v{version}.tar.gz
+    antigravity_archive = dist_root / f"aops-antigravity-v{version}.tar.gz"
+    with tarfile.open(antigravity_archive, "w:gz") as tar:
+        tar.add(dist_root / "antigravity", arcname=".", filter=_source_filter)
+    print(f"  ✓ Packaged {antigravity_archive.name}")
+    safe_symlink(antigravity_archive, dist_root / "aops-antigravity-latest.tar.gz")
+
+
+def create_git_tags(aops_root: Path, version: str):
+    """Create git tags for release: v{version} and latest.
+
+    Tags are created pointing to HEAD. If tags already exist, they are updated.
+    Note: Tags are local only - push with `git push origin v{version} latest` to publish.
+    """
+    print("\nCreating git tags...")
+
+    version_tag = f"v{version}"
+
+    # Create/update version tag
+    result = subprocess.run(
+        ["git", "tag", "-f", version_tag],
+        cwd=aops_root,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0:
+        print(f"  ✓ Created tag: {version_tag}")
+    else:
+        print(f"  ✗ Failed to create tag {version_tag}: {result.stderr}")
+
+    # Create/update 'latest' tag
+    result = subprocess.run(
+        ["git", "tag", "-f", "latest"],
+        cwd=aops_root,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0:
+        print(f"  ✓ Created tag: latest")
+    else:
+        print(f"  ✗ Failed to create tag latest: {result.stderr}")
+
+    print("  Note: Push tags with: git push origin --tags")
 
 
 if __name__ == "__main__":

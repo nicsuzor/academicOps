@@ -16,7 +16,7 @@
       "args": [
         "run",
         "--directory",
-        "${extensionPath}/aops-core",
+        "${extensionPath}",
         "python",
         "mcp_servers/tasks_server.py"
       ],
