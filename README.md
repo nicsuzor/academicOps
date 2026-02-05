@@ -26,214 +26,29 @@ tags: [framework, overview, features]
 
 ## Installation
 
-### Prerequisites
+### Link your data repository / knowledge base
 
 - **Environment variables** in `~/.bashrc` or `~/.zshrc`:
-  ```bash
-  export AOPS="$HOME/src/academicOps"      # Framework code (this repo)
-  export ACA_DATA="$HOME/writing/data"     # Your data (NOT in git)
-  ```
-- **jq** installed (`sudo apt install jq` or `brew install jq`)
-- Optional: `gemini` CLI for Gemini support, Docker/Podman for container-based MCP servers
+```bash
+export ACA_DATA="$HOME/writing/data"     # Your data (NOT in git)
+```
 
-### Running Setup
+### Install plugin for Claude Code & Gemini CLI
+
+Distribution repository: https://github.com/nicsuzor/aops-dist
+
+Claude Code
 
 ```bash
-./setup.sh
+command claude plugin marketplace add nicsuzor/aops-dist
+command claude plugin marketplace update aops
+command claude plugin install aops-core@aops
 ```
 
-### What Gets Installed
-
-The script configures three tools with distinct scoping:
-
-| Tool | Scope | Configuration Location |
-|------|-------|----------------------|
-| **Claude Code** | User | `~/.claude/`, `~/.claude.json` |
-| **Gemini CLI** | User | `~/.gemini/` |
-| **Antigravity** | User + Project | `~/.gemini/antigravity/` + `$AOPS/.agent/rules/` |
-
-#### Claude Code (User-scoped)
-
-Install plugins:
-- aops-core
-- aops-tools
-
-#### Gemini CLI (User-scoped)
-
-Creates symlinks in `~/.gemini/`:
-
+Gemini CLI (warning: auto accept flag below, remove --consent if you're concerned)
+```bash
+command gemini extensions install git@github.com:nicsuzor/aops-dist.git --consent --auto-update --pre-release 
 ```
-~/.gemini/
-├── hooks             → $AOPS/config/gemini/hooks
-├── commands          → $AOPS/config/gemini/commands
-├── GEMINI.md            (generated - paths injected from env vars)
-└── settings.json        (merged - hooks + MCP servers added)
-```
-
-Commands are converted to TOML format. MCP servers are converted from Claude format to Gemini format.
-
-#### Antigravity (User + Project-scoped)
-
-**User-scoped** (`~/.gemini/antigravity/`):
-```
-~/.gemini/antigravity/
-├── global_workflows/    (skills linked as /<skill_name>.md)
-│   ├── remember.md   → $AOPS/aops-core/skills/remember/SKILL.md
-│   ├── framework.md  → $AOPS/aops-core/skills/framework/SKILL.md
-│   └── ...
-├── mcp_config.json      (generated - MCP servers for Antigravity)
-└── GEMINI.md         → ~/.gemini/GEMINI.md
-```
-
-**Project-scoped** (`$AOPS/.agent/rules/`):
-```
-$AOPS/.agent/rules/
-├── axioms.md         → $AOPS/AXIOMS.md
-├── heuristics.md     → $AOPS/HEURISTICS.md
-└── core.md           → $AOPS/config/antigravity/rules/core.md
-```
-
-#### Additional Setup
-
-- **Memory server**: Configures `~/.memory/config.json` with project 'main' pointing to `$ACA_DATA`
-- **Cron jobs**: Task index regeneration (5 min), session insights (30 min)
-
-### Key Paths Summary
-
-| Path | Purpose | Scope |
-|------|---------|-------|
-| `$AOPS` | Framework code (this repo) | Shared |
-| `$ACA_DATA` | User data, notes, tasks | User |
-| `~/.claude/` | Claude Code symlinks & settings | User |
-| `~/.claude.json` | Claude Code MCP servers | User |
-| `~/.gemini/` | Gemini CLI config | User |
-| `~/.gemini/antigravity/` | Antigravity global workflows | User |
-| `$AOPS/.agent/rules/` | Antigravity project rules | Project |
-
-**Core docs** (injected at session start):
-
-- [AXIOMS.md](AXIOMS.md) - Inviolable principles
-- [HEURISTICS.md](HEURISTICS.md) - Empirically validated rules
-- [enforcement-map.md](indices/enforcement-map.md) - Enforcement mechanisms mapping rules to controls
-- [PATHS.md](.agent/PATHS.md) - Paths and configuration (generated)
-
-## Core Concepts
-
-### The Logical Derivation System
-
-academicOps is built as a **validated logical system**. Every rule traces back to first principles:
-
-| Level | Document | Contains | Status |
-|-------|----------|----------|--------|
-| 1 | **AXIOMS.md** | Inviolable principles | Cannot be violated |
-| 2 | **HEURISTICS.md** | Empirically validated rules | Can be revised with evidence |
-| 3 | **enforcement-map.md** | Enforcement mechanisms | Maps rules to technical controls |
-
-**The derivation rule**: Every convention MUST trace to an axiom. If it can't be derived, the convention is invalid.
-
-Each axiom and heuristic is stored as an individual file in `aops-core/axioms/` and `aops-core/heuristics/`. These files contain:
-
-- **Statement**: The rule itself
-- **Derivation**: Why it exists (traced to first principles)
-- **Evidence**: Links to bd issues showing violations and corrections
-- **Enforcement**: How it's mechanically enforced
-
-### Axioms vs Heuristics
-
-**Axioms** are inviolable—they define what the system IS:
-- "Fail-Fast": No defaults, no fallbacks, no silent failures
-- "Skills Are Read-Only": No dynamic data in skills
-- "Research Data Is Immutable": Never modify source datasets
-
-**Heuristics** are working hypotheses validated by evidence:
-- "Semantic Link Density": Related files MUST link to each other
-- "Skills Contain No Dynamic Content": Current state lives in $ACA_DATA
-
-The difference: axioms cannot be violated; heuristics can be revised when evidence shows they're wrong.
-
-### Skills vs Workflows
-
-The framework distinguishes between **what** to do and **how** to do it:
-
-| | Skills | Workflows |
-|---|--------|-----------|
-| **Answer** | "How do I do X?" | "What should I do?" |
-| **Nature** | Fungible instructions | Composable chains of steps |
-| **Examples** | Create a PDF, generate a mindmap | Feature development, TDD cycle |
-
-**Skills** are interchangeable recipes—any skill that creates a PDF can substitute for another. They're the building blocks.
-
-**Workflows** orchestrate those building blocks into coherent processes. A workflow defines the sequence (spec review → implementation → QA), while skills handle each step's mechanics.
-
-For full specification, see [[aops-core/specs/workflow-system-spec]].
-
-### Enforcement Levels
-
-Rules aren't just documented—they're enforced at multiple levels:
-
-| Level | Mechanism | Example |
-|-------|-----------|---------|
-| **Hard Gate** | Blocks action entirely | PreToolUse hooks block `git reset --hard` |
-| **Soft Gate** | Injects guidance, agent can proceed | prompt-hydrator suggests skills |
-| **Prompt** | Instructional (AXIOMS.md at session start) | "Verify First" reminder |
-| **Detection** | Logs for analysis | custodiet compliance checks |
-| **Pre-commit** | Blocks commits | Orphan file detection |
-
-### The Self-Reflexive Framework Agent
-
-This framework treats itself as a hypothesis. Agents are **co-developers**, not just executors:
-
-```
-When you encounter friction—something that doesn't fit, a question
-the schema can't answer, a pattern that needs a name—do this:
-
-1. Log it.
-2. Propose an amendment if you see one.
-3. Don't force it. If something doesn't fit, that's data.
-```
-
-The framework **evolves through use**. When agents hit friction:
-- Violations are logged as bd issues (operational observations)
-- Patterns that emerge get named and proposed as new heuristics
-- Heuristics that prove themselves get promoted or consolidated
-- Rules that don't work get revised
-
-This creates a feedback loop: the framework improves based on real usage, not theoretical design.
-
-### How the Framework Improves Itself
-
-The self-improvement cycle has three phases:
-
-**1. Observe** - Every session generates observables:
-- **Framework Reflections**: Agent self-reports at session end (outcome, friction, proposals)
-- **Token metrics**: Usage by model, agent, and tool (cache efficiency, throughput)
-- **Skill compliance**: Which suggested skills were actually invoked
-- **Learning observations**: Mistakes and corrections with root cause categories
-
-These are processed into **insights JSON** files for human review. See [[specs/framework-observability]].
-
-**2. Analyze** - Humans identify patterns:
-- Recurring friction points → systemic problems
-- Low skill compliance → discovery or routing issues
-- Token inefficiency → optimize hydration or caching
-
-**3. Intervene** - Apply graduated fixes via `/learn`:
-- Start at lowest effective level (corollary, then heuristic, then hook)
-- Document root cause and intervention in a task
-- Verify improvement in subsequent sessions
-
-See [[specs/feedback-loops]] for the complete improvement workflow.
-
-### Memory Architecture
-
-The framework distinguishes between two types of knowledge:
-
-| Type | Storage | Example |
-|------|---------|---------|
-| **Episodic** | bd issues | "I tried X and it failed" (time-stamped observations) |
-| **Semantic** | $ACA_DATA markdown | "X doesn't work because Y" (timeless truths) |
-
-$ACA_DATA is a **current state machine**—always up to date, always perfect. The memory server (accessed via `mcp__memory__retrieve_memory`) is a semantic search index derived from this markdown.
 
 ## Core Loop
 
@@ -303,12 +118,118 @@ flowchart TD
     style AG fill:#66ff66
 ```
 
+## Core Concepts
+
+### The Logical Derivation System
+
+academicOps is built as a **validated logical system**. Every rule traces back to first principles:
+
+| Level | Document | Contains | Status |
+|-------|----------|----------|--------|
+| 1 | **AXIOMS.md** | Inviolable principles | Cannot be violated |
+| 2 | **HEURISTICS.md** | Empirically validated rules | Can be revised with evidence |
+| 3 | **enforcement-map.md** | Enforcement mechanisms | Maps rules to technical controls |
+
+**The derivation rule**: Every convention MUST trace to an axiom. If it can't be derived, the convention is invalid.
+
+### Axioms vs Heuristics
+
+**Axioms** are inviolable—they define what the system IS:
+- "Fail-Fast": No defaults, no fallbacks, no silent failures
+- "Skills Are Read-Only": No dynamic data in skills
+- "Research Data Is Immutable": Never modify source datasets
+
+**Heuristics** are working hypotheses validated by evidence:
+- "Semantic Link Density": Related files MUST link to each other
+- "Skills Contain No Dynamic Content": Current state lives in $ACA_DATA
+
+The difference: axioms cannot be violated; heuristics can and _should be_ be revised when evidence shows they're wrong.
+
+### Skills vs Workflows
+
+The framework distinguishes between **what** to do and **how** to do it:
+
+| | Skills | Workflows |
+|---|--------|-----------|
+| **Answer** | "How do I do X?" | "What should I do?" |
+| **Nature** | Fungible instructions | Composable chains of steps |
+| **Examples** | Create a PDF, generate a mindmap | Feature development, TDD cycle |
+
+**Skills** are interchangeable recipes—any skill that creates a PDF can substitute for another. They're the building blocks.
+
+**Workflows** orchestrate those building blocks into coherent processes. A workflow defines the sequence (spec review → implementation → QA), while skills handle each step's mechanics.
+
+For full specification, see [[aops-core/specs/workflow-system-spec]].
+
+### Enforcement Levels
+
+Rules aren't just documented—they're enforced at multiple levels:
+
+| Level | Mechanism | Example |
+|-------|-----------|---------|
+| **Hard Gate** | Blocks action entirely | PreToolUse hooks block `git reset --hard` |
+| **Soft Gate** | Injects guidance, agent can proceed | prompt-hydrator suggests skills |
+| **Prompt** | Instructional (AXIOMS.md at session start) | "Verify First" reminder |
+| **Detection** | Logs for analysis | custodiet compliance checks |
+| **Pre-commit** | Blocks commits | Orphan file detection |
+
+### The Self-Reflexive Framework Agent
+
+This framework treats itself as a hypothesis. Agents are **co-developers**, not just executors:
+
+```
+When you encounter friction—something that doesn't fit, a question
+the schema can't answer, a pattern that needs a name—do this:
+
+1. Log it.
+2. Propose an amendment if you see one.
+3. Don't force it. If something doesn't fit, that's data.
+```
+
+The framework **evolves through use**. When agents hit friction:
+- Violations are logged as bd issues (operational observations)
+- Patterns that emerge get named and proposed as new heuristics
+- Heuristics that prove themselves get promoted or consolidated
+- Rules that don't work get revised
+
+This creates a feedback loop: the framework improves based on real usage, not theoretical design.
+
+### How the Framework Improves Itself
+
+The self-improvement cycle has three phases:
+
+**1. Observe** - Every session generates observables:
+- **Framework Reflections**: Agent self-reports at session end (outcome, friction, proposals)
+- **Token metrics**: Usage by model, agent, and tool (cache efficiency, throughput)
+- **Skill compliance**: Which suggested skills were actually invoked
+- **Learning observations**: Mistakes and corrections with root cause categories
+
+See [[specs/framework-observability]] for details
+
+**2. Analyze** - Humans identify patterns:
+- Recurring friction points → systemic problems
+- Low skill compliance → discovery or routing issues
+- Token inefficiency → optimize hydration or caching
+
+**3. Intervene** - Apply graduated fixes via `/learn`:
+- Start at lowest effective level (corollary, then heuristic, then hook)
+- Document root cause and intervention in a task
+- Verify improvement in subsequent sessions
+
+See [[specs/feedback-loops]] for the complete improvement workflow.
+
+### Memory Architecture
+
+The framework distinguishes between two types of knowledge:
+
+| Type | Storage | Example |
+|------|---------|---------|
+| **Episodic** | task+git issues | "I tried X and it failed" (time-stamped observations) |
+| **Semantic** | $ACA_DATA markdown | "X doesn't work because Y" (timeless truths) |
+
+$ACA_DATA is a **current state machine**—always up to date, always perfect. The memory server (accessed via `mcp__memory__retrieve_memory`) is a semantic search index derived from this markdown.
+
 ## Architecture
-
-The framework uses a **core + archived** structure:
-
-- **Core plugin** (`aops-core/`): Minimal proven components with mechanical enforcement
-- **Archived** (`archived/`): Non-core components preserved for reference
 
 ### Core Components
 
@@ -354,17 +275,3 @@ The **framework agent** embodies the self-reflexive principle—it both executes
 | /ttd                 | TDD workflow (alias for /supervise tdd)                                                      |
 | /work                | Collaborative task execution (human-led)                                                     |
 
-
-## Infrastructure
-
-- **Hooks**: Event-driven context injection (`hooks/`)
-- **Skills**: Workflow instructions (`skills/`) - invoke via `Skill` tool
-- **Memory**: `mcp__memory__*` tools for knowledge persistence
-- **Plugin**: Core components bundled in `plugins/aops-core/`
-- **Agents**: Purpose-built subagents in (`agents/`)
-
-## Details
-
-- [[aops-core/framework/enforcement-map]] for mapping of rules to enforcement measures
-- [[WORKFLOWS]] all supported workflows
-- Framework [[VISION]].
