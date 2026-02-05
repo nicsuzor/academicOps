@@ -10,6 +10,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 .aops-version
+# Generated during build from root pyproject.toml
+aops-core/pyproject.toml
 
 # C extensions
 *.so

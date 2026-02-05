@@ -73,6 +73,39 @@ def get_project_version(aops_root: Path) -> str:
     return "0.1.0"
 
 
+# Template for aops-core pyproject.toml - version is injected at build time
+AOPS_CORE_PYPROJECT_TEMPLATE = '''\
+[project]
+name = "aops-core"
+version = "{version}"
+description = "Core academicOps framework - skills, agents, and hooks for research workflow automation"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [
+  {{ name = "Nicolas Suzor" }}
+]
+keywords = ["academicOps", "research", "framework", "workflow", "mcp"]
+dependencies = [
+  "pyyaml>=6.0",
+  "pydantic>=2.0",
+  "filelock>=3.13.0",
+  "fastmcp>=2.13.1,<3.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["lib", "hooks", "mcp_servers"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+'''
+
+
+def generate_aops_core_pyproject(version: str) -> str:
+    """Generate the aops-core pyproject.toml content with the given version."""
+    return AOPS_CORE_PYPROJECT_TEMPLATE.format(version=version)
+
+
 def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
     """Transform hooks.json from Claude Code format to Gemini CLI format.
 
@@ -273,6 +306,7 @@ def build_aops_core(
     dist_dir.mkdir(parents=True)
 
     # 1. Copy content directories
+    # Note: pyproject.toml is generated, not copied (version from root)
     items_to_copy = [
         "skills",
         "agents",
@@ -285,7 +319,6 @@ def build_aops_core(
         "INDEX.md",
         "WORKFLOWS.md",
         "INSTALLATION.md",
-        "pyproject.toml",
         "uv.lock",
     ]
     
@@ -310,6 +343,12 @@ def build_aops_core(
                 print(f"  ✓ Translated and copied agents -> {dst}")
             else:
                 safe_copy(src, dist_dir / item)
+
+    # 1a. Generate pyproject.toml with version from root
+    pyproject_content = generate_aops_core_pyproject(version)
+    pyproject_path = dist_dir / "pyproject.toml"
+    pyproject_path.write_text(pyproject_content)
+    print(f"  ✓ Generated pyproject.toml (v{version})")
 
     # 1b. Copy root-level scripts
     scripts_src = aops_root / "scripts"
