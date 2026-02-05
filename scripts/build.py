@@ -106,6 +106,52 @@ def generate_aops_core_pyproject(version: str) -> str:
     return AOPS_CORE_PYPROJECT_TEMPLATE.format(version=version)
 
 
+def generate_files_md(dist_dir: Path, platform: str) -> None:
+    """Generate FILES.md listing all files in the distribution.
+
+    Creates a simple file listing for the plugin distribution,
+    using relative paths from the plugin root.
+    """
+    files_md = dist_dir / "indices" / "FILES.md"
+    files_md.parent.mkdir(parents=True, exist_ok=True)
+
+    # Collect all files recursively
+    all_files = sorted(
+        p.relative_to(dist_dir)
+        for p in dist_dir.rglob("*")
+        if p.is_file() and not p.name.startswith(".")
+    )
+
+    # Build the content
+    content = f"""---
+name: files-index
+title: Plugin Files Index ({platform})
+category: reference
+type: generated
+description: Auto-generated file listing for {platform} plugin distribution
+---
+
+# Plugin Files Index
+
+Auto-generated during build. Lists all files in this plugin distribution.
+
+## File Count
+
+Total files: {len(all_files)}
+
+## File Tree
+
+```
+"""
+    for f in all_files:
+        content += f"{f}\n"
+
+    content += "```\n"
+
+    files_md.write_text(content)
+    print(f"  ✓ Generated FILES.md ({len(all_files)} files)")
+
+
 def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
     """Transform hooks.json from Claude Code format to Gemini CLI format.
 
@@ -371,12 +417,16 @@ def build_aops_core(
 
     # 1. Copy content directories
     # Note: pyproject.toml is generated, not copied (version from root)
+    # Note: hooks/ is handled separately in section 2 (Gemini hooks.json transform)
+    # Note: indices/ excluded - FILES.md is generated dynamically, PATHS.md is user config
     items_to_copy = [
         "skills",
         "agents",
         "commands",
         "lib",
         "mcp_servers",
+        "workflows",
+        "framework",
         "SKILLS.md",
         "AXIOMS.md",
         "HEURISTICS.md",
@@ -561,6 +611,13 @@ def build_aops_core(
                 env=os.environ,
                 check=False,
             )
+        # Remove .md command files for Gemini (uses TOML format)
+        for md_file in commands_dist.glob("*.md"):
+            md_file.unlink()
+            print(f"  - Removed {md_file.name} (Gemini uses TOML)")
+
+    # 7. Generate FILES.md dynamically
+    generate_files_md(dist_dir, platform)
 
     print(f"✓ Built {plugin_name} ({platform})")
     return gemini_mcps
