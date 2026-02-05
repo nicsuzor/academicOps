@@ -35,9 +35,6 @@ class MockSessionState:
     def save_session_state(self, session_id, state):
         self.sessions[session_id] = state
 
-    def record_file_read(self, session_id, file_path):
-        pass  # Not relevant for these tests
-
 
 def make_context(
     tool_name: str, event_name: str = "PostToolUse", session_id: str = "test-session"

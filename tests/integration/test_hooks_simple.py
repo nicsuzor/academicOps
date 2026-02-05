@@ -20,7 +20,6 @@ from hooks.router import HookRouter
 DEFAULT_STATE = {
     "is_hydration_pending": False,
     "is_hydrator_active": False,
-    "has_file_been_read": True,
     "gates": {
         "task_bound": True,
         "plan_mode_invoked": True,
@@ -45,7 +44,6 @@ class SessionStateMocks:
         self.get_or_create_session_state = MagicMock(return_value=state)
         self.save_session_state = MagicMock(return_value=None)
         self.clear_reflection_output = MagicMock(return_value=None)
-        self.has_file_been_read = MagicMock(return_value=cfg["has_file_been_read"])
         self.clear_hydration_pending = MagicMock(return_value=None)
         self.set_hydrator_active = MagicMock(return_value=None)
         self.update_hydration_metrics = MagicMock(return_value=None)
@@ -61,7 +59,6 @@ class SessionStateMocks:
             get_or_create_session_state=self.get_or_create_session_state,
             save_session_state=self.save_session_state,
             clear_reflection_output=self.clear_reflection_output,
-            has_file_been_read=self.has_file_been_read,
             clear_hydration_pending=self.clear_hydration_pending,
             set_hydrator_active=self.set_hydrator_active,
             update_hydration_metrics=self.update_hydration_metrics,

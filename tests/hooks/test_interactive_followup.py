@@ -18,12 +18,13 @@ from gate_registry import check_agent_response_listener, check_stop_gate, GateCo
 class TestInteractiveFollowup:
     """Test interactive-followup streamlined workflow."""
 
+    @patch("lib.session_state.is_interactive_session", return_value=False)
     @patch("lib.session_state.get_or_create_session_state")
     @patch("lib.session_state.clear_hydration_pending")
     @patch("lib.session_state.update_hydration_metrics")
     @patch("lib.session_state.save_session_state")
     def test_response_listener_detects_streamlined(
-        self, mock_save, mock_metrics, mock_clear, mock_get_state
+        self, mock_save, mock_metrics, mock_clear, mock_get_state, mock_interactive
     ):
         """Test that AfterAgent listener detects streamlined workflow."""
         session_id = "test-session"
@@ -48,8 +49,9 @@ class TestInteractiveFollowup:
         assert "Streamlined mode enabled" in result.system_message
         assert result.context_injection is None
 
+    @patch("lib.session_state.is_interactive_session", return_value=False)
     @patch("lib.session_state.load_session_state")
-    def test_stop_gate_allows_streamlined_without_subagents(self, mock_load):
+    def test_stop_gate_allows_streamlined_without_subagents(self, mock_load, mock_interactive):
         """Test that Stop gate allows streamlined workflow without critic/subagents."""
         session_id = "test-session"
 
@@ -72,8 +74,9 @@ class TestInteractiveFollowup:
             result = check_stop_gate(ctx)
             assert result is None
 
+    @patch("lib.session_state.is_interactive_session", return_value=False)
     @patch("lib.session_state.load_session_state")
-    def test_stop_gate_allows_simple_question_without_subagents(self, mock_load):
+    def test_stop_gate_allows_simple_question_without_subagents(self, mock_load, mock_interactive):
         """Test that Stop gate allows simple-question workflow without critic/subagents."""
         session_id = "test-session"
 
@@ -90,8 +93,9 @@ class TestInteractiveFollowup:
             result = check_stop_gate(ctx)
             assert result is None
 
+    @patch("lib.session_state.is_interactive_session", return_value=False)
     @patch("lib.session_state.get_or_create_session_state")
-    def test_stop_gate_blocks_regular_without_subagents(self, mock_get_state):
+    def test_stop_gate_blocks_regular_without_subagents(self, mock_get_state, mock_interactive):
         """Test that Stop gate still blocks regular workflows without critic."""
         session_id = "test-session"
 
@@ -118,8 +122,9 @@ class TestInteractiveFollowup:
 class TestStopGateBypass:
     """Test that stop gate respects gates_bypassed flag (. prefix)."""
 
+    @patch("lib.session_state.is_interactive_session", return_value=False)
     @patch("lib.session_state.load_session_state")
-    def test_stop_gate_allows_when_gates_bypassed(self, mock_load):
+    def test_stop_gate_allows_when_gates_bypassed(self, mock_load, mock_interactive):
         """Test that Stop gate allows exit when gates_bypassed=True (user used . prefix)."""
         session_id = "test-session"
 
@@ -140,8 +145,9 @@ class TestStopGateBypass:
         # Should be allowed due to gates_bypassed
         assert result is None
 
+    @patch("lib.session_state.is_interactive_session", return_value=False)
     @patch("lib.session_state.load_session_state")
-    def test_stop_gate_blocks_when_gates_not_bypassed(self, mock_load):
+    def test_stop_gate_blocks_when_gates_not_bypassed(self, mock_load, mock_interactive):
         """Test that Stop gate blocks when gates_bypassed=False (normal mode)."""
         session_id = "test-session"
 
@@ -159,8 +165,9 @@ class TestStopGateBypass:
         assert result is not None
         assert result.verdict.value == "deny"
 
+    @patch("lib.session_state.is_interactive_session", return_value=False)
     @patch("lib.session_state.load_session_state")
-    def test_stop_gate_blocks_when_gates_bypassed_not_set(self, mock_load):
+    def test_stop_gate_blocks_when_gates_bypassed_not_set(self, mock_load, mock_interactive):
         """Test that Stop gate blocks when gates_bypassed key is missing."""
         session_id = "test-session"
 
@@ -180,6 +187,21 @@ class TestStopGateBypass:
         # Should be blocked (critic check fails)
         assert result is not None
         assert result.verdict.value == "deny"
+
+
+class TestStopGateAutoBypass:
+    """Test that stop gate automatically bypasses for interactive/crew sessions."""
+
+    @patch("lib.session_state.is_interactive_session", return_value=True)
+    def test_stop_gate_allows_when_interactive(self, mock_interactive):
+        """Test that Stop gate allows exit when session is interactive."""
+        session_id = "test-session"
+        ctx = GateContext(session_id, "Stop", {})
+        
+        # Should be allowed even if state says gates_bypassed=False
+        with patch("lib.session_state.load_session_state", return_value={"state": {"gates_bypassed": False}}):
+            result = check_stop_gate(ctx)
+            assert result is None
 
 
 if __name__ == "__main__":

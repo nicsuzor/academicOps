@@ -623,14 +623,19 @@ def set_gates_bypassed(session_id: str, bypassed: bool = True) -> None:
 def is_gates_bypassed(session_id: str) -> bool:
     """Check if gates are bypassed for this session.
 
-    Returns True when user has used '.' prefix for emergency/trivial operations.
+    Returns True if:
+    1. Explicit gates_bypassed flag is set (via '.' prefix or /relax skill)
+    2. Session type is 'interactive' or 'crew' (auto-relaxed)
 
     Args:
         session_id: Claude Code session ID
 
     Returns:
-        True if gates_bypassed flag is set
+        True if gates are bypassed/relaxed
     """
+    if is_interactive_session(session_id):
+        return True
+
     state = load_session_state(session_id)
     if state is None:
         return False
@@ -1012,124 +1017,6 @@ def clear_hydrator_active(session_id: str) -> None:
 # Stop Hook Mode API (Interactive/Relaxed Sessions)
 # ============================================================================
 
-
-def set_stop_hook_relaxed(session_id: str) -> None:
-    """Set stop_hook_relaxed flag to disable hard-blocking.
-
-    When set, the stop hook will warn instead of block. Useful for
-    interactive sessions where user is actively engaged.
-
-    Args:
-        session_id: Claude Code session ID
-    """
-    state = get_or_create_session_state(session_id)
-    state["state"]["stop_hook_relaxed"] = True
-    save_session_state(session_id, state)
-
-
-def is_stop_hook_relaxed(session_id: str) -> bool:
-    """Check if stop hook is in relaxed (warn-only) mode.
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        True if stop_hook_relaxed flag is set
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        return False
-    return state.get("state", {}).get("stop_hook_relaxed", False)
-
-
-def clear_stop_hook_relaxed(session_id: str) -> None:
-    """Clear stop_hook_relaxed flag to restore hard-blocking.
-
-    Args:
-        session_id: Claude Code session ID
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        return
-    state["state"]["stop_hook_relaxed"] = False
-    save_session_state(session_id, state)
-
-
-# ============================================================================
-# P#26 File Read Tracking API (Write-Without-Read Detection)
-# ============================================================================
-
-
-def record_file_read(session_id: str, file_path: str) -> None:
-    """Record that a file was read in this session.
-
-    Called by PostToolUse accountant when Read/Glob/Grep tools complete.
-    Enables P#26 write-without-read detection in axiom_enforcer_gate.
-
-    Args:
-        session_id: Claude Code session ID
-        file_path: Absolute path to the file that was read
-    """
-    from pathlib import Path
-
-    state = get_or_create_session_state(session_id)
-    files_read = state.setdefault("state", {}).setdefault("files_read", [])
-
-    # Normalize path to handle symlinks and relative paths consistently
-    try:
-        normalized = str(Path(file_path).resolve())
-    except (OSError, ValueError):
-        # If path resolution fails, use original
-        normalized = file_path
-
-    # Only add if not already tracked (avoid duplicates)
-    if normalized not in files_read:
-        files_read.append(normalized)
-        save_session_state(session_id, state)
-
-
-def has_file_been_read(session_id: str, file_path: str) -> bool:
-    """Check if a file has been read in this session.
-
-    Used by axiom_enforcer_gate to detect P#26 write-without-read violations.
-
-    Args:
-        session_id: Claude Code session ID
-        file_path: Absolute path to check
-
-    Returns:
-        True if file was previously read, False otherwise
-    """
-    from pathlib import Path
-
-    state = load_session_state(session_id)
-    if state is None:
-        return False
-
-    files_read = state.get("state", {}).get("files_read", [])
-
-    # Normalize path for comparison
-    try:
-        normalized = str(Path(file_path).resolve())
-    except (OSError, ValueError):
-        normalized = file_path
-
-    return normalized in files_read
-
-
-def get_files_read(session_id: str) -> list[str]:
-    """Get list of all files read in this session.
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        List of file paths that have been read
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        return []
-    return state.get("state", {}).get("files_read", [])
 
 
 # ============================================================================

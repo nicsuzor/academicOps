@@ -34,7 +34,6 @@ def mock_session_state(
     hydrator_active: bool = False,
     hydration_temp_path: str = "/tmp/hydrator/test",
     gates_bypassed: bool = False,
-    has_file_been_read: bool = True,
 ):
     """
     Returns a context manager that patches all relevant session_state functions.
@@ -54,7 +53,6 @@ def mock_session_state(
         is_hydrator_active=MagicMock(return_value=hydrator_active),
         get_hydration_temp_path=MagicMock(return_value=hydration_temp_path),
         load_session_state=MagicMock(return_value=state),
-        has_file_been_read=MagicMock(return_value=has_file_been_read),
     )
 
 
@@ -176,19 +174,6 @@ def _simulate_tool_call(agent: str, instruction: str) -> Dict[str, Any]:
             {"task_bound": True, "plan_mode_invoked": False, "critic_invoked": False},
             "allowed",
         ),  # Default is task-only
-        # Axiom Enforcer Gate Tests (P#26: Write-without-read)
-        (
-            "axiom_enforcer",
-            "write_file test.txt",
-            {"has_file_been_read": False},
-            "blocked",
-        ),
-        (
-            "axiom_enforcer",
-            "write_file test.txt",
-            {"has_file_been_read": True},
-            "allowed",
-        ),
         # Axiom Enforcer Gate Tests (P#8: Fail-fast / No workarounds)
         (
             "axiom_enforcer",
