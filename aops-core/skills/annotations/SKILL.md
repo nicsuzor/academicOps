@@ -1,7 +1,7 @@
 ---
 name: annotations
 category: instruction
-description: Scan and process inline HTML comments for human-agent collaboration. Finds <!-- @nic: --> or <!-- @ns: --> comments and responds with dated <!-- @claude: --> replies.
+description: "Scan and process inline HTML comments for human-agent collaboration. Finds <!-- @nic: --> or <!-- @ns: --> comments and responds with dated <!-- @claude: --> replies."
 allowed-tools: Read,Grep,Glob,Edit
 version: 1.0.0
 permalink: skills-annotations

@@ -375,6 +375,7 @@ def build_aops_core(
         "skills",
         "agents",
         "lib",
+        "mcp_servers",
         "SKILLS.md",
         "AXIOMS.md",
         "HEURISTICS.md",
