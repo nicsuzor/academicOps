@@ -79,28 +79,28 @@ jobs:
           cd ../aops-dist
 
           # Clear old plugin directories (keep README, VERSION)
-          rm -rf aops-core-claude aops-core-gemini antigravity .claude-plugin
+          rm -rf aops-core-claude aops-core-gemini antigravity .claude-plugin aops aops-claude aops-gemini aops-antigravity
 
           # Copy plugin directories (not archives)
-          cp -r ${{ github.workspace }}/dist/aops-core-claude .
-          cp -r ${{ github.workspace }}/dist/aops-core-gemini .
-          cp -r ${{ github.workspace }}/dist/antigravity .
+          cp -r ${{ github.workspace }}/dist/aops-claude .
+          cp -r ${{ github.workspace }}/dist/aops-gemini .
+          cp -r ${{ github.workspace }}/dist/aops-antigravity .
 
-          # Copy gemini-extension.json to repo root (keeping it as a fallback)
-          cp ${{ github.workspace }}/dist/aops-core-gemini/gemini-extension.json .
-          python3 << EOF
-          import json
-          import os
-          version = os.environ['VERSION']
-          with open('gemini-extension.json', 'r') as f:
-              data = json.load(f)
-          # Update version
-          data['version'] = version
-          # DO NOT adjust paths to point to aops-core-gemini subdirectory
-          # We want users to link/install aops-core-gemini directly
-          with open('gemini-extension.json', 'w') as f:
-              json.dump(data, f, indent=2)
-          EOF
+          # # Copy gemini-extension.json to repo root (keeping it as a fallback)
+          # cp ${{ github.workspace }}/dist/aops-gemini/gemini-extension.json .
+          # python3 << EOF
+          # import json
+          # import os
+          # version = os.environ['VERSION']
+          # with open('gemini-extension.json', 'r') as f:
+          #     data = json.load(f)
+          # # Update version
+          # data['version'] = version
+          # # DO NOT adjust paths to point to aops-gemini subdirectory
+          # # We want users to link/install aops-gemini directly
+          # with open('gemini-extension.json', 'w') as f:
+          #     json.dump(data, f, indent=2)
+          # EOF
 
           # Copy marketplace definition
           mkdir -p .claude-plugin
@@ -120,22 +120,22 @@ jobs:
           with open('.claude-plugin/marketplace.json', 'r') as f:
               data = json.load(f)
           for plugin in data.get('plugins', []):
-              if plugin.get('name') == 'aops-core':
-                  plugin['source'] = './aops-core-claude'
+              if plugin.get('name') == 'aops':
+                  plugin['source'] = './aops-claude'
                   plugin['version'] = version
           with open('.claude-plugin/marketplace.json', 'w') as f:
               json.dump(data, f, indent=2)
           EOF
 
-          # Update aops-core-claude/plugin.json version
+          # Update aops-claude/plugin.json version
           python3 << EOF
           import json
           import os
           version = os.environ['VERSION']
-          with open('aops-core-claude/plugin.json', 'r') as f:
+          with open('aops-claude/plugin.json', 'r') as f:
               data = json.load(f)
           data['version'] = version
-          with open('aops-core-claude/plugin.json', 'w') as f:
+          with open('aops-claude/plugin.json', 'w') as f:
               json.dump(data, f, indent=2)
           EOF
 
