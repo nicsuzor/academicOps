@@ -96,15 +96,18 @@ TEST_CASES = [
     },
     {
         "name": "UserPromptSubmit invoke subagent (Gemini)",
+        "description": "Hydrator subagent should not be blocked by hydration gate on UserPromptSubmit because user explicitly invoked it",
         "input": make_input(
             hook_event_name="UserPromptSubmit",
             prompt="@prompt-hydrator read and comment on `/tmp/file.md`\n<system_note>\nThe user has explicitly selected the following agent(s): prompt-hydrator. Please use the 'delegate_to_agent' tool to delegate the task to the selected agent(s).\n</system_note>\n",
         ),
         "expected_decision": "allow",
         "state_overrides": {"is_hydration_pending": True},
+        "expected_status": {"is_hydration_pending": True},
     },
     {
         "name": "PreToolUse invoke subagent (Gemini)",
+        "description": "Hydrator subagent should not be blocked by hydration gate",
         "input": make_input(
             hook_event_name="PreToolUse",
             tool_name="prompt-hydrator",
@@ -116,6 +119,18 @@ TEST_CASES = [
         # that the hydrator can do its job.
         "expected_decision": "allow",
         "state_overrides": {"is_hydration_pending": True},
+    },
+    {
+        "name": "PostToolUse recognise hydator subagent (Gemini)",
+        "description": "Hydrator subagent should clear hydration status after execution",
+        "input": make_input(
+            hook_event_name="PostToolUse",
+            tool_name="prompt-hydrator",
+            tool_input={"query": "Read and comment on /tmp/file.md"},
+        ),
+        "expected_decision": "allow",
+        "state_overrides": {"is_hydration_pending": True},
+        "expected_status": {"is_hydration_pending": False},
     },
 ]
 
