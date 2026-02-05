@@ -787,13 +787,16 @@ def package_artifacts(aops_root: Path, dist_root: Path, version: str):
             return None
         return tarinfo
 
-    # 1. aops-gemini-v{version}.tar.gz
-    gemini_archive = dist_root / f"aops-gemini-v{version}.tar.gz"
+    # 1. aops-gemini.tar.gz (single generic archive for Gemini CLI)
+    # Per gemini-packaging-guide.md: gemini-extension.json must be at archive root
+    # Using arcname="." puts content at root, not nested in a subdirectory
+    gemini_archive = dist_root / "aops-gemini.tar.gz"
     with tarfile.open(gemini_archive, "w:gz") as tar:
-        # Ensure the archive has the dist directory as the top-level root
-        tar.add(dist_root / "aops-gemini", arcname="aops-gemini", filter=_source_filter)
+        tar.add(dist_root / "aops-gemini", arcname=".", filter=_source_filter)
     print(f"  ✓ Packaged {gemini_archive.name}")
-    safe_symlink(gemini_archive, dist_root / "aops-gemini-latest.tar.gz")
+    # Also create versioned copy for reference
+    versioned_gemini = dist_root / f"aops-gemini-v{version}.tar.gz"
+    shutil.copy(gemini_archive, versioned_gemini)
 
     # 2. aops-claude-v{version}.tar.gz
     claude_archive = dist_root / f"aops-claude-v{version}.tar.gz"

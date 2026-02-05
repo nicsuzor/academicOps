@@ -151,10 +151,12 @@ jobs:
           GH_TOKEN: ${{ secrets.AOPS_DIST_PAT }}
         run: |
           # Create release using GitHub CLI with PAT that has repo access
+          # Per gemini-packaging-guide.md: upload ONLY the Gemini tarball as a single
+          # generic asset. With exactly one .tar.gz, the installer auto-selects it.
+          # Claude Code uses different installation (not GitHub releases).
           gh release create "v$VERSION" \
             --repo nicsuzor/aops-dist \
             --title "v$VERSION" \
             --notes "Built from academicOps@${{ github.sha }}" \
-            ${{ github.workspace }}/dist/*.tar.gz \
-            ${{ github.workspace }}/dist/*.zip \
+            ${{ github.workspace }}/dist/aops-gemini.tar.gz \
             || echo "Release v$VERSION may already exist"
