@@ -595,6 +595,28 @@ def _is_custodiet_invocation(tool_name: str, tool_input: Dict[str, Any]) -> bool
     )
 
 
+def _check_git_dirty() -> bool:
+    """Check if git working directory has uncommitted changes.
+
+    Returns True if there are staged or unstaged changes that would be lost
+    if the session ends without commit.
+    """
+    import subprocess
+
+    try:
+        result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        # Any output means there are changes
+        return bool(result.stdout.strip())
+    except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
+        # If git fails, assume no changes (fail-open for this check)
+        return False
+
+
 # --- Hydration Logic ---
 
 # MCP tools that should bypass hydration gate (infrastructure operations)
@@ -1560,10 +1582,18 @@ def check_stop_gate(ctx: HookContext) -> Optional[GateResult]:
         return GateResult(verdict=GateVerdict.DENY, context_injection=msg)
 
     # --- 2. Handover Check ---
+    # Only enforce handover if there's work at risk (uncommitted changes or active task)
+    # Otherwise, allow stop - don't block normal conversation turns
     if not session_state.is_handover_skill_invoked(ctx.session_id):
-        # Issue warning but allow stop
-        msg = load_template(STOP_GATE_HANDOVER_BLOCK_TEMPLATE)
-        return GateResult(verdict=GateVerdict.DENY, context_injection=msg)
+        # Check if there's work at risk
+        has_uncommitted = _check_git_dirty()
+        current_task = session_state.get_current_task(ctx.session_id)
+
+        if has_uncommitted or current_task:
+            # Work at risk - block stop until handover
+            msg = load_template(STOP_GATE_HANDOVER_BLOCK_TEMPLATE)
+            return GateResult(verdict=GateVerdict.DENY, context_injection=msg)
+        # No work at risk - allow stop without handover
 
     # --- 3. QA Verification Check ---
     # If hydration occurred (intent was set), require QA verification
