@@ -91,7 +91,7 @@ jobs:
           python3 << EOF
           import json
           import os
-          version = os.environ.get('VERSION', '0.1.0')
+          version = os.environ['VERSION']
           with open('gemini-extension.json', 'r') as f:
               data = json.load(f)
           # Update version
@@ -126,7 +126,7 @@ jobs:
           python3 << EOF
           import json
           import os
-          version = os.environ.get('VERSION', '0.1.0')
+          version = os.environ['VERSION']
           with open('.claude-plugin/marketplace.json', 'r') as f:
               data = json.load(f)
           for plugin in data.get('plugins', []):
@@ -141,7 +141,7 @@ jobs:
           python3 << EOF
           import json
           import os
-          version = os.environ.get('VERSION', '0.1.0')
+          version = os.environ['VERSION']
           with open('aops-core-claude/plugin.json', 'r') as f:
               data = json.load(f)
           data['version'] = version
