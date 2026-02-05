@@ -82,9 +82,9 @@ def test_custodiet_temp_file_created_on_threshold(claude_headless) -> None:
     # Verify file has content
     newest_file = max(new_files, key=lambda f: f.stat().st_mtime)
     content = newest_file.read_text()
-    assert (
-        len(content) > 1000
-    ), f"Audit file should contain substantial context. Got {len(content)} chars"
+    assert len(content) > 1000, (
+        f"Audit file should contain substantial context. Got {len(content)} chars"
+    )
     assert "AXIOMS" in content, "Audit file should contain AXIOMS section"
 
 

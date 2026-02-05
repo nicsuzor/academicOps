@@ -16,6 +16,7 @@ Success criteria:
 
 import sys
 
+
 def test_log_skill_accepts_observation():
     """Test that /log skill accepts observation parameter."""
     observation = "Router suggested framework skill but agent ignored it"
@@ -65,7 +66,9 @@ def test_log_skill_spawns_framework_agent():
 def test_log_skill_passes_observation_to_agent():
     """Test that observation is correctly passed to framework agent."""
     observation = "Agent behavior pattern not matching documented behavior"
-    prompt_template = "Process this observation and create a task if warranted: {observation}"
+    prompt_template = (
+        "Process this observation and create a task if warranted: {observation}"
+    )
 
     prompt = prompt_template.format(observation=observation)
     assert observation in prompt, "Observation must be in agent prompt"

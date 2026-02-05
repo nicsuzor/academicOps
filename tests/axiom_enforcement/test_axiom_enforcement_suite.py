@@ -56,7 +56,9 @@ _B64_OR_FALLBACK_DOUBLE = "bmFtZSA9IHVzZXJfbmFtZSBvciAiQW5vbnltb3VzIg=="
 _B64_OR_FALLBACK_SINGLE = "cGF0aCA9IGN1c3RvbV9wYXRoIG9yICcvdG1wJw=="
 
 # multiple patterns
-_B64_MULTIPLE_SAME_LINE = "YSA9IG9zLmdldGVudigiWCIsICIvYmFkIik7IGIgPSBjb25mLmdldCgieSIsIDk5KQ=="
+_B64_MULTIPLE_SAME_LINE = (
+    "YSA9IG9zLmdldGVudigiWCIsICIvYmFkIik7IGIgPSBjb25mLmdldCgieSIsIDk5KQ=="
+)
 
 # clean code
 _B64_CLEAN_ENV = "dmFsdWUgPSBvcy5lbnZpcm9uWyJSRVFVSVJFRF9WQVIiXSAgIyBmYWlsLWZhc3Q="
@@ -233,7 +235,9 @@ class TestP8DetectorEdgeCases:
         code = f"line1\nline2\n{env_pattern}\nline4\n"
         violations = self.detector.detect(code)
         assert len(violations) >= 1
-        env_violation = [v for v in violations if v.pattern_name == "env_get_default"][0]
+        env_violation = [v for v in violations if v.pattern_name == "env_get_default"][
+            0
+        ]
         assert env_violation.line_number == 3
 
     def test_multiple_patterns_same_line(self) -> None:
@@ -256,9 +260,7 @@ class TestDetectAllViolations:
     def test_returns_empty_for_clean_code(self) -> None:
         """Returns empty list for clean code."""
         code = (
-            "def clean_function():\n"
-            f"    {_decode(_B64_CLEAN_ENV)}\n"
-            "    return value\n"
+            f"def clean_function():\n    {_decode(_B64_CLEAN_ENV)}\n    return value\n"
         )
         violations = detect_all_violations(code)
         assert violations == []
@@ -318,8 +320,7 @@ class TestAxiomEnforcerGateP8:
                 "tool_input": {
                     "file_path": "/tmp/test.py",
                     "content": (
-                        "def get_config():\n"
-                        '    return os.environ["REQUIRED_VAR"]\n'
+                        'def get_config():\n    return os.environ["REQUIRED_VAR"]\n'
                     ),
                 },
             },

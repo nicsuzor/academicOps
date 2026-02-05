@@ -26,7 +26,7 @@ from typing import Any, Dict, List, Optional
 
 
 # --- Path Setup ---
-HOOK_DIR = Path(__file__).parent # aops-core/hooks
+HOOK_DIR = Path(__file__).parent  # aops-core/hooks
 AOPS_CORE_DIR = HOOK_DIR.parent  # aops-core
 
 # Add aops-core to path for imports
@@ -42,15 +42,12 @@ try:
         GeminiHookSpecificOutput,
         ClaudeHookSpecificOutput,
         ClaudeGeneralHookOutput,
-        ClaudeStopHookOutput
+        ClaudeStopHookOutput,
     )
     from hooks.gate_registry import GATE_CHECKS
     from hooks.unified_logger import log_hook_event
     from lib.gate_model import GateResult
-    from lib.session_paths import (
-        get_pid_session_map_path,
-        get_session_status_dir
-    )
+    from lib.session_paths import get_pid_session_map_path, get_session_status_dir
 except ImportError as e:
     # Fail fast if schemas missing
     print(f"CRITICAL: Failed to import: {e}", file=sys.stderr)
@@ -64,9 +61,9 @@ GEMINI_EVENT_MAP = {
     "SessionStart": "SessionStart",
     "BeforeTool": "PreToolUse",
     "AfterTool": "PostToolUse",
-    "BeforeAgent": "UserPromptSubmit", # Mapped to UPS for unified handling
+    "BeforeAgent": "UserPromptSubmit",  # Mapped to UPS for unified handling
     "AfterAgent": "AfterAgent",
-    "SessionEnd": "Stop", # Map SessionEnd to Stop to trigger stop gates
+    "SessionEnd": "Stop",  # Map SessionEnd to Stop to trigger stop gates
     "Notification": "Notification",
     "PreCompress": "PreCompact",
 }
@@ -108,6 +105,7 @@ GATE_CONFIG: Dict[str, List[str]] = {
 
 # --- Session Management ---
 
+
 def get_session_data() -> Dict[str, Any]:
     """Read session metadata."""
     try:
@@ -118,17 +116,18 @@ def get_session_data() -> Dict[str, Any]:
         print(f"WARNING: Failed to read session data: {e}", file=sys.stderr)
     return {}
 
+
 def persist_session_data(data: Dict[str, Any]) -> None:
     """Write session metadata atomically."""
     try:
         session_file = get_pid_session_map_path()
         existing = get_session_data()
         existing.update(data)
-        
+
         # Atomic write
         fd, temp_path = tempfile.mkstemp(dir=str(session_file.parent), text=True)
         try:
-            with os.fdopen(fd, 'w') as f:
+            with os.fdopen(fd, "w") as f:
                 json.dump(existing, f)
             Path(temp_path).rename(session_file)
         except Exception as e:
@@ -140,6 +139,7 @@ def persist_session_data(data: Dict[str, Any]) -> None:
 
 
 # --- Router Logic ---
+
 
 class HookRouter:
     def __init__(self):
@@ -166,18 +166,20 @@ class HookRouter:
                 f"Terminating process {os.getpid()}."
             )
             print(error_msg, file=sys.stderr)
-            
+
             # Log to unified logger if possible
             try:
                 # Create a minimal context for logging the loop
                 loop_ctx = HookContext(
                     session_id=session_id,
                     hook_event="RouterLoop",
-                    raw_input={"error": error_msg}
+                    raw_input={"error": error_msg},
                 )
                 log_hook_event(
                     loop_ctx,
-                    output=CanonicalHookOutput(verdict="deny", system_message="Infinite loop detected.")
+                    output=CanonicalHookOutput(
+                        verdict="deny", system_message="Infinite loop detected."
+                    ),
                 )
             except Exception as e:
                 print(f"WARNING: Failed to log loop detection: {e}", file=sys.stderr)
@@ -185,9 +187,11 @@ class HookRouter:
             # Terminate the current process forcefully.
             os.kill(os.getpid(), signal.SIGKILL)
 
-    def normalize_input(self, raw_input: Dict[str, Any], gemini_event: Optional[str] = None) -> HookContext:
+    def normalize_input(
+        self, raw_input: Dict[str, Any], gemini_event: Optional[str] = None
+    ) -> HookContext:
         """Create a normalized HookContext from raw input."""
-        
+
         # 1. Determine Event Name
         if gemini_event:
             hook_event = GEMINI_EVENT_MAP.get(gemini_event, gemini_event)
@@ -202,12 +206,12 @@ class HookRouter:
         session_id = raw_input.get("session_id")
         if not session_id:
             session_id = self.session_data.get("session_id")
-        
+
         if not session_id and hook_event == "SessionStart":
             timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
             short_uuid = str(uuid.uuid4())[:8]
             session_id = f"gemini-{timestamp}-{short_uuid}"
-            
+
         if not session_id:
             session_id = f"unknown-{str(uuid.uuid4())[:8]}"
 
@@ -229,7 +233,7 @@ class HookRouter:
             tool_input=raw_input.get("tool_input", {}),
             transcript_path=transcript_path,
             cwd=raw_input.get("cwd"),
-            raw_input=raw_input
+            raw_input=raw_input,
         )
 
     def execute_hooks(self, ctx: HookContext) -> CanonicalHookOutput:
@@ -248,7 +252,9 @@ class HookRouter:
         for gate_name in gate_names:
             check_func = GATE_CHECKS.get(gate_name)
             if not check_func:
-                merged_result.metadata.setdefault("warnings", []).append(f"Gate '{gate_name}' not found")
+                merged_result.metadata.setdefault("warnings", []).append(
+                    f"Gate '{gate_name}' not found"
+                )
                 continue
 
             try:
@@ -262,9 +268,12 @@ class HookRouter:
 
             except Exception as e:
                 import traceback
+
                 error_msg = f"Gate '{gate_name}' failed: {e}"
                 merged_result.metadata.setdefault("errors", []).append(error_msg)
-                merged_result.metadata.setdefault("tracebacks", []).append(traceback.format_exc())
+                merged_result.metadata.setdefault("tracebacks", []).append(
+                    traceback.format_exc()
+                )
 
         # Log hook event with output AFTER all gates complete
         # We already have a normalized context 'ctx' and result 'merged_result'
@@ -289,12 +298,12 @@ class HookRouter:
         """Convert raw dictionary to CanonicalHookOutput."""
         if "verdict" in raw:
             return CanonicalHookOutput(**raw)
-        
+
         canonical = CanonicalHookOutput()
-        
+
         if "systemMessage" in raw:
             canonical.system_message = raw["systemMessage"]
-            
+
         hso = raw.get("hookSpecificOutput", {})
         if hso:
             decision = hso.get("permissionDecision")
@@ -302,18 +311,18 @@ class HookRouter:
                 canonical.verdict = "deny"
             elif decision == "ask":
                 canonical.verdict = "ask"
-            
+
             if "additionalContext" in hso:
                 canonical.context_injection = hso["additionalContext"]
-                
+
             if "updatedInput" in hso:
                 canonical.updated_input = hso["updatedInput"]
-                
+
         if raw.get("decision") == "block":
             canonical.verdict = "deny"
             if raw.get("reason"):
                 canonical.context_injection = raw["reason"]
-        
+
         return canonical
 
     def _merge_result(self, target: CanonicalHookOutput, source: CanonicalHookOutput):
@@ -323,21 +332,30 @@ class HookRouter:
         elif source.verdict == "ask" and target.verdict != "deny":
             target.verdict = "ask"
         elif source.verdict == "warn" and target.verdict == "allow":
-             target.verdict = "warn"
-             
+            target.verdict = "warn"
+
         if source.system_message:
-            target.system_message = f"{target.system_message}\n{source.system_message}" if target.system_message else source.system_message
-            
+            target.system_message = (
+                f"{target.system_message}\n{source.system_message}"
+                if target.system_message
+                else source.system_message
+            )
+
         if source.context_injection:
-             target.context_injection = f"{target.context_injection}\n\n{source.context_injection}" if target.context_injection else source.context_injection
-             
+            target.context_injection = (
+                f"{target.context_injection}\n\n{source.context_injection}"
+                if target.context_injection
+                else source.context_injection
+            )
+
         if source.updated_input:
             target.updated_input = source.updated_input
-            
+
         target.metadata.update(source.metadata)
 
-
-    def output_for_gemini(self, result: CanonicalHookOutput, event: str) -> GeminiHookOutput:
+    def output_for_gemini(
+        self, result: CanonicalHookOutput, event: str
+    ) -> GeminiHookOutput:
         """Format for Gemini CLI."""
         out = GeminiHookOutput()
 
@@ -357,8 +375,7 @@ class HookRouter:
             out.decision = "allow"
             if result.context_injection:
                 out.hookSpecificOutput = GeminiHookSpecificOutput(
-                    hookEventName=event,
-                    additionalContext=result.context_injection
+                    hookEventName=event, additionalContext=result.context_injection
                 )
 
         if result.updated_input:
@@ -367,7 +384,9 @@ class HookRouter:
         out.metadata = result.metadata
         return out
 
-    def output_for_claude(self, result: CanonicalHookOutput, event: str) -> ClaudeHookOutput:
+    def output_for_claude(
+        self, result: CanonicalHookOutput, event: str
+    ) -> ClaudeHookOutput:
         """Format for Claude Code."""
         if event == "Stop" or event == "SessionEnd":
             output = ClaudeStopHookOutput()
@@ -375,23 +394,23 @@ class HookRouter:
                 output.decision = "block"
             else:
                 output.decision = "approve"
-                
+
             if result.context_injection:
                 output.reason = result.context_injection
-            
+
             if result.system_message:
                 output.stopReason = result.system_message
                 output.systemMessage = result.system_message
-            
+
             return output
 
         output = ClaudeGeneralHookOutput()
         if result.system_message:
             output.systemMessage = result.system_message
-            
+
         hso = ClaudeHookSpecificOutput(hookEventName=event)
         has_hso = False
-        
+
         if result.verdict:
             if result.verdict == "deny":
                 hso.permissionDecision = "deny"
@@ -403,36 +422,42 @@ class HookRouter:
                 hso.permissionDecision = "allow"
                 has_hso = True
             else:
-                 hso.permissionDecision = "allow"
-                 has_hso = True
+                hso.permissionDecision = "allow"
+                has_hso = True
 
         if result.context_injection:
             hso.additionalContext = result.context_injection
             has_hso = True
-            
+
         if result.updated_input:
             hso.updatedInput = result.updated_input
             has_hso = True
-            
+
         if has_hso:
             output.hookSpecificOutput = hso
-            
+
         return output
+
 
 # --- Main Entry Point ---
 
+
 def main():
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="Universal Hook Router")
-    parser.add_argument("--client", choices=["gemini", "claude"], help="Client type (gemini or claude)")
-    parser.add_argument("event", nargs="?", help="Event name (required for Gemini if not in payload)")
-    
+    parser.add_argument(
+        "--client", choices=["gemini", "claude"], help="Client type (gemini or claude)"
+    )
+    parser.add_argument(
+        "event", nargs="?", help="Event name (required for Gemini if not in payload)"
+    )
+
     # Parse known args to avoid issues if extra flags are passed
     args, unknown = parser.parse_known_args()
-    
+
     router = HookRouter()
-    
+
     # Read Input First (needed for detection)
     raw_input = {}
     try:
@@ -443,22 +468,24 @@ def main():
     except Exception as e:
         print(f"WARNING: Failed to read stdin: {e}", file=sys.stderr)
 
-    # Detect Invocation Mode, relying on explicit --client flag    
+    # Detect Invocation Mode, relying on explicit --client flag
     if args.client:
         client_type = args.client
         gemini_event = args.event
     else:
         # Emergency fallback for missing flag - try to detect from input
-        if raw_input.get("session_id", "").startswith("gemini-") or "/.gemini/" in str(raw_input.get("transcript_path", "")):
+        if raw_input.get("session_id", "").startswith("gemini-") or "/.gemini/" in str(
+            raw_input.get("transcript_path", "")
+        ):
             client_type = "gemini"
             gemini_event = args.event
         else:
             raise OSError("No --client flag provided on hook invocation.")
-        
+
     # Pipeline
     ctx = router.normalize_input(raw_input, gemini_event)
     result = router.execute_hooks(ctx)
-    
+
     # Output (JSON conversion happens only here)
     if client_type == "gemini":
         output = router.output_for_gemini(result, ctx.hook_event)
@@ -466,6 +493,7 @@ def main():
     else:
         output = router.output_for_claude(result, ctx.hook_event)
         print(output.model_dump_json(exclude_none=True))
+
 
 if __name__ == "__main__":
     main()

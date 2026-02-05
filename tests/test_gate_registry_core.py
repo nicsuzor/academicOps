@@ -10,6 +10,7 @@ from pathlib import Path
 
 # Import the module under test
 import sys
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from hooks.gate_registry import (
@@ -126,10 +127,14 @@ class TestShouldRequireTask:
             assert _should_require_task(tool, {}) is False
 
     def test_write_requires_task(self):
-        assert _should_require_task("Write", {"file_path": "/home/user/file.txt"}) is True
+        assert (
+            _should_require_task("Write", {"file_path": "/home/user/file.txt"}) is True
+        )
 
     def test_edit_requires_task(self):
-        assert _should_require_task("Edit", {"file_path": "/home/user/file.txt"}) is True
+        assert (
+            _should_require_task("Edit", {"file_path": "/home/user/file.txt"}) is True
+        )
 
     def test_write_to_safe_temp_doesnt_require_task(self):
         safe_path = str(Path.home() / ".claude" / "tmp" / "test.txt")
@@ -161,21 +166,39 @@ class TestIsHandoverSkillInvocation:
 
     def test_skill_tool_with_handover(self):
         assert _is_handover_skill_invocation("Skill", {"skill": "handover"}) is True
-        assert _is_handover_skill_invocation("Skill", {"skill": "aops-core:handover"}) is True
+        assert (
+            _is_handover_skill_invocation("Skill", {"skill": "aops-core:handover"})
+            is True
+        )
 
     def test_skill_tool_with_other_skill(self):
         assert _is_handover_skill_invocation("Skill", {"skill": "commit"}) is False
         assert _is_handover_skill_invocation("Skill", {"skill": "pdf"}) is False
 
     def test_activate_skill_with_handover(self):
-        assert _is_handover_skill_invocation("activate_skill", {"name": "handover"}) is True
-        assert _is_handover_skill_invocation("activate_skill", {"name": "aops-core:handover"}) is True
+        assert (
+            _is_handover_skill_invocation("activate_skill", {"name": "handover"})
+            is True
+        )
+        assert (
+            _is_handover_skill_invocation(
+                "activate_skill", {"name": "aops-core:handover"}
+            )
+            is True
+        )
 
     def test_activate_skill_with_other(self):
-        assert _is_handover_skill_invocation("activate_skill", {"name": "other"}) is False
+        assert (
+            _is_handover_skill_invocation("activate_skill", {"name": "other"}) is False
+        )
 
     def test_delegate_to_agent_with_handover(self):
-        assert _is_handover_skill_invocation("delegate_to_agent", {"agent_name": "handover"}) is True
+        assert (
+            _is_handover_skill_invocation(
+                "delegate_to_agent", {"agent_name": "handover"}
+            )
+            is True
+        )
 
     def test_direct_handover_tool(self):
         assert _is_handover_skill_invocation("handover", {}) is True
@@ -236,7 +259,12 @@ class TestIsHydrationSafeBash:
     # Read-only file operations (aops-2bbce5b0)
     def test_cat_is_safe(self):
         assert _is_hydration_safe_bash("cat file.txt") is True
-        assert _is_hydration_safe_bash("cat /home/user/.claude/projects/foo/tool-results/bar.txt") is True
+        assert (
+            _is_hydration_safe_bash(
+                "cat /home/user/.claude/projects/foo/tool-results/bar.txt"
+            )
+            is True
+        )
 
     def test_cat_with_jq_pipe_is_safe(self):
         """The specific use case from the task - reading tool results with jq."""

@@ -49,7 +49,9 @@ class TestComputeGraphMetrics:
         storage = TaskStorage(tmp_path)
 
         # Create tasks with different statuses
-        for i, status in enumerate([TaskStatus.ACTIVE, TaskStatus.ACTIVE, TaskStatus.DONE]):
+        for i, status in enumerate(
+            [TaskStatus.ACTIVE, TaskStatus.ACTIVE, TaskStatus.DONE]
+        ):
             task = storage.create_task(
                 title=f"Task {i}",
                 type=TaskType.TASK,
@@ -118,12 +120,15 @@ class TestGetReviewSnapshot:
     def _get_snapshot_fn(self):
         """Get the raw function from the MCP tool wrapper."""
         from mcp_servers.tasks_server import get_review_snapshot
+
         # FastMCP tools have a .fn attribute for the raw function
-        if hasattr(get_review_snapshot, 'fn'):
+        if hasattr(get_review_snapshot, "fn"):
             return get_review_snapshot.fn
         return get_review_snapshot
 
-    def test_snapshot_returns_success_and_timestamp(self, tmp_path: Path, monkeypatch) -> None:
+    def test_snapshot_returns_success_and_timestamp(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
         """Snapshot should return success=True and current timestamp."""
         monkeypatch.setenv("ACA_DATA", str(tmp_path))
 

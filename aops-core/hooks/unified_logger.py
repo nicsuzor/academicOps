@@ -97,7 +97,12 @@ def log_hook_event(
 
         # Append to JSONL file
         with log_path.open("a") as f:
-            json.dump(log_entry.model_dump(), f, separators=(",", ":"), default=_json_serializer)
+            json.dump(
+                log_entry.model_dump(),
+                f,
+                separators=(",", ":"),
+                default=_json_serializer,
+            )
             f.write("\n")
 
     except Exception as e:
@@ -231,13 +236,19 @@ def handle_stop(session_id: str, input_data: dict[str, Any]) -> None:
     subagents = state["subagents"]
 
     operational_metrics = {
-        "workflows_used": [state_section["current_workflow"]] if "current_workflow" in state_section else [],
+        "workflows_used": [state_section["current_workflow"]]
+        if "current_workflow" in state_section
+        else [],
         "subagents_invoked": list(subagents.keys()),
         "subagent_count": len(subagents),
         "custodiet_blocks": 1 if state_section.get("custodiet_blocked") else 0,
         "stop_reason": input_data["stop_reason"],
-        "critic_verdict": hydration["critic_verdict"] if "critic_verdict" in hydration else None,
-        "acceptance_criteria_count": len(hydration["acceptance_criteria"]) if "acceptance_criteria" in hydration else 0,
+        "critic_verdict": hydration["critic_verdict"]
+        if "critic_verdict" in hydration
+        else None,
+        "acceptance_criteria_count": len(hydration["acceptance_criteria"])
+        if "acceptance_criteria" in hydration
+        else 0,
     }
 
     insights = generate_fallback_insights(metadata, operational_metrics)

@@ -287,8 +287,12 @@ def finish(ctx, no_push, do_nuke):
                         "   Run 'git reset --soft FETCH_HEAD' to recover if this is accidental."
                     )
                     if not is_interactive():
-                        print("   🚫 Non-interactive mode: refusing to push large changeset without confirmation.")
-                        print("   Re-run interactively or manually push if this is intentional.")
+                        print(
+                            "   🚫 Non-interactive mode: refusing to push large changeset without confirmation."
+                        )
+                        print(
+                            "   Re-run interactively or manually push if this is intentional."
+                        )
                         sys.exit(1)
                     if not click.confirm("Are you SURE you want to push this?"):
                         sys.exit(1)
@@ -340,8 +344,20 @@ def finish(ctx, no_push, do_nuke):
             try:
                 # Check if PR exists
                 pr_check = subprocess.run(
-                    ["gh", "pr", "list", "--head", branch_name, "--json", "number", "--state", "open"],
-                    capture_output=True, text=True, check=False
+                    [
+                        "gh",
+                        "pr",
+                        "list",
+                        "--head",
+                        branch_name,
+                        "--json",
+                        "number",
+                        "--state",
+                        "open",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=False,
                 )
 
                 prs = []
@@ -353,17 +369,31 @@ def finish(ctx, no_push, do_nuke):
 
                 if prs:
                     # Update existing PR
-                    pr_number = prs[0]['number']
+                    pr_number = prs[0]["number"]
                     subprocess.run(
                         ["gh", "pr", "edit", str(pr_number), "--body-file", body_file],
-                        check=True, capture_output=True
+                        check=True,
+                        capture_output=True,
                     )
                     print(f"  ✅ Updated PR #{pr_number}")
                 else:
                     # Create new PR
                     subprocess.run(
-                        ["gh", "pr", "create", "--title", task.title, "--body-file", body_file, "--head", branch_name, "--base", "main"],
-                        check=True, capture_output=True
+                        [
+                            "gh",
+                            "pr",
+                            "create",
+                            "--title",
+                            task.title,
+                            "--body-file",
+                            body_file,
+                            "--head",
+                            branch_name,
+                            "--base",
+                            "main",
+                        ],
+                        check=True,
+                        capture_output=True,
                     )
                     print("  ✅ Created new PR")
 
@@ -743,7 +773,7 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
             print(result.stdout)
         if result.stderr:
             print(result.stderr, file=sys.stderr)
-        
+
         # Analyze the transcript for failures
         manager.analyze_transcript(task, result.stdout, result.stderr)
 
@@ -792,7 +822,9 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
 @main.command("reset-stalled")
 @click.option("--project", "-p", help="Filter by project")
 @click.option("--hours", default=4.0, help="Hours since last modification (default: 4)")
-@click.option("--dry-run", is_flag=True, help="Show what would be reset without changing")
+@click.option(
+    "--dry-run", is_flag=True, help="Show what would be reset without changing"
+)
 @click.pass_context
 def reset_stalled(ctx, project, hours, dry_run):
     """Reset stalled in_progress tasks back to active.
@@ -801,11 +833,15 @@ def reset_stalled(ctx, project, hours, dry_run):
     Useful for cleaning up after crashed/abandoned agents.
     """
     from datetime import datetime, timedelta, timezone
+
     try:
         from lib.task_model import TaskStatus
         from lib.task_index import TaskIndex
     except ImportError:
-        print("Error: Could not import task libraries. Ensure aops-core is available.", file=sys.stderr)
+        print(
+            "Error: Could not import task libraries. Ensure aops-core is available.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
@@ -817,8 +853,7 @@ def reset_stalled(ctx, project, hours, dry_run):
 
     # List tasks
     candidates = manager.storage.list_tasks(
-        status=TaskStatus.IN_PROGRESS,
-        project=project
+        status=TaskStatus.IN_PROGRESS, project=project
     )
 
     stalled = []
@@ -875,7 +910,9 @@ def reset_stalled(ctx, project, hours, dry_run):
 @click.option("--claude", "-c", default=0, help="Number of Claude workers")
 @click.option("--gemini", "-g", default=0, help="Number of Gemini workers")
 @click.option("--project", "-p", help="Project to focus on (default: all)")
-@click.option("--caller", default="bot", help="Identity claiming the tasks (default: bot)")
+@click.option(
+    "--caller", default="bot", help="Identity claiming the tasks (default: bot)"
+)
 @click.option("--dry-run", is_flag=True, help="Simulate execution")
 @click.pass_context
 def swarm(ctx, claude, gemini, project, caller, dry_run):

@@ -23,11 +23,10 @@ except ImportError:
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    level=logging.INFO, format="%(asctime)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
 )
 logger = logging.getLogger(__name__)
+
 
 class IncomingHandler(FileSystemEventHandler):
     def on_created(self, event):
@@ -39,9 +38,15 @@ class IncomingHandler(FileSystemEventHandler):
     def process_file(self, file_path):
         process_incoming_file(file_path)
 
+
 def main():
     parser = argparse.ArgumentParser(description="Monitor ~/incoming for new files.")
-    parser.add_argument("--dir", type=Path, default=Path.home() / "incoming", help="Directory to monitor")
+    parser.add_argument(
+        "--dir",
+        type=Path,
+        default=Path.home() / "incoming",
+        help="Directory to monitor",
+    )
     args = parser.parse_args()
 
     watch_dir = args.dir
@@ -61,6 +66,7 @@ def main():
     except KeyboardInterrupt:
         observer.stop()
     observer.join()
+
 
 if __name__ == "__main__":
     main()

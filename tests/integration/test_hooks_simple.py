@@ -204,7 +204,9 @@ def test_hook_json_io(case):
             output_dict = json.loads(output.model_dump_json(exclude_none=True))
             # Claude PreToolUse puts decision in hookSpecificOutput
             if "hookSpecificOutput" in output_dict:
-                actual_decision = output_dict["hookSpecificOutput"].get("permissionDecision")
+                actual_decision = output_dict["hookSpecificOutput"].get(
+                    "permissionDecision"
+                )
                 assert actual_decision == expected_decision, description
             else:
                 # Stop event
@@ -248,7 +250,9 @@ def test_hook_json_io(case):
         if "expected_system_message_contains" in case:
             expected = case["expected_system_message_contains"]
             if expected is None:
-                assert system_message is None, f"Expected no systemMessage but got {system_message!r}"
+                assert system_message is None, (
+                    f"Expected no systemMessage but got {system_message!r}"
+                )
             else:
                 assert system_message is not None, "Expected systemMessage but got None"
                 assert expected in system_message, (

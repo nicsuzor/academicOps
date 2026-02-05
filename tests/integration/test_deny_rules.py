@@ -16,7 +16,9 @@ import pytest
 pytestmark = [pytest.mark.integration, pytest.mark.slow]
 
 
-@pytest.mark.skip(reason="Test design issue: SessionStart hook injects context containing 'sessionstart', 'pretooluse' etc. which triggers false positive. See GitHub Issue for redesign. The deny rules themselves work - this test's assertion logic is flawed.")
+@pytest.mark.skip(
+    reason="Test design issue: SessionStart hook injects context containing 'sessionstart', 'pretooluse' etc. which triggers false positive. See GitHub Issue for redesign. The deny rules themselves work - this test's assertion logic is flawed."
+)
 def test_deny_rules_block_claude_dir_read(claude_headless):
     """Verify deny rules prevent reading settings.json from .claude directory.
 

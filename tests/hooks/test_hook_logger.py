@@ -172,8 +172,12 @@ class TestLogHookEvent:
 
     def test_different_sessions_different_files(self, temp_claude_projects):
         """Test that different session IDs create different log files."""
-        log_hook_event(HookContext(session_id="session-aaa", hook_event="Test", raw_input={}))
-        log_hook_event(HookContext(session_id="session-bbb", hook_event="Test", raw_input={}))
+        log_hook_event(
+            HookContext(session_id="session-aaa", hook_event="Test", raw_input={})
+        )
+        log_hook_event(
+            HookContext(session_id="session-bbb", hook_event="Test", raw_input={})
+        )
 
         projects_dir = Path(temp_claude_projects) / ".claude" / "projects"
         log_files = list(projects_dir.rglob("*-hooks.jsonl"))

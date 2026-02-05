@@ -4,6 +4,7 @@ import sys
 import shutil
 import subprocess
 
+
 # Helper to convert MCP server config (simplified from convert_mcp_to_gemini.py)
 def convert_mcp_config(claude_servers):
     gemini_servers = {}
@@ -22,28 +23,29 @@ def convert_mcp_config(claude_servers):
                     converted["args"] = config["args"]
                 if "env" in config:
                     converted["env"] = config["env"]
-        
+
         if converted:
             gemini_servers[name] = converted
     return gemini_servers
 
+
 def main():
     aops_path = os.environ.get("AOPS")
     aca_data_path = os.environ.get("ACA_DATA")
-    
+
     if not aops_path or not aca_data_path:
         print("Error: AOPS and ACA_DATA environment variables must be set.")
         sys.exit(1)
 
     plugin_root = os.path.join(aops_path, "aops-core")
     dist_root = os.path.join(aops_path, "dist")
-    
+
     # ---------------------------------------------------------
     # 1. Setup Dist Directories
     # ---------------------------------------------------------
     core_dist = os.path.join(dist_root, "aops-core")
     tools_dist = os.path.join(dist_root, "aops-tools")
-    
+
     # Clean up old root files if they exist to avoid confusion
     for item in os.listdir(dist_root):
         item_path = os.path.join(dist_root, item)
@@ -54,7 +56,7 @@ def main():
                 shutil.rmtree(item_path)
             else:
                 os.remove(item_path)
-    
+
     for d in [core_dist, tools_dist]:
         if os.path.exists(d):
             shutil.rmtree(d)
@@ -64,7 +66,7 @@ def main():
     # 2. Build aops-core
     # ---------------------------------------------------------
     print("Building aops-core...")
-    
+
     # Symlinks
     for item in ["skills", "GEMINI.md"]:
         src = os.path.join(plugin_root, item)
@@ -96,27 +98,33 @@ def main():
         "UserPromptSubmit": ["BeforeAgent"],
         "Stop": ["SessionEnd", "AfterAgent"],
         "Notification": ["Notification"],
-        "PreCompact": ["PreCompress"]
+        "PreCompact": ["PreCompress"],
     }
     MATCHERS = {"SessionStart": "startup", "SessionEnd": "exit|logout"}
 
     gemini_hooks = {}
     for c_event, g_events in CLAUDE_TO_GEMINI.items():
         if c_event in claude_hooks:
-            timeout = claude_hooks[c_event][0].get("hooks", [{}])[0].get("timeout", 5000)
+            timeout = (
+                claude_hooks[c_event][0].get("hooks", [{}])[0].get("timeout", 5000)
+            )
             for g_event in g_events:
                 matcher = MATCHERS.get(g_event, "*")
                 if g_event not in gemini_hooks:
                     gemini_hooks[g_event] = []
-                gemini_hooks[g_event].append({
-                    "matcher": matcher,
-                    "hooks": [{
-                        "name": "aops-router",
-                        "type": "command",
-                        "command": f"AOPS={aops_path} AOPS_SESSIONS={aops_path}/.gemini/sessions python3 {core_dist}/hooks/router.py --client gemini {g_event}",
-                        "timeout": timeout
-                    }]
-                })
+                gemini_hooks[g_event].append(
+                    {
+                        "matcher": matcher,
+                        "hooks": [
+                            {
+                                "name": "aops-router",
+                                "type": "command",
+                                "command": f"AOPS={aops_path} AOPS_SESSIONS={aops_path}/.gemini/sessions python3 {core_dist}/hooks/router.py --client gemini {g_event}",
+                                "timeout": timeout,
+                            }
+                        ],
+                    }
+                )
 
     # MCP Servers for Core
     core_mcp_path = os.path.join(plugin_root, ".mcp.json")
@@ -124,41 +132,52 @@ def main():
     if os.path.exists(core_mcp_path):
         with open(core_mcp_path) as f:
             core_mcps = convert_mcp_config(json.load(f).get("mcpServers", {}))
-    
+
     # Ensure task_manager is present and correct
     core_mcps["task_manager"] = {
         "command": "uv",
-        "args": ["run", "--directory", plugin_root, "python", "mcp_servers/tasks_server.py"],
-        "env": {"AOPS": aops_path, "ACA_DATA": aca_data_path}
+        "args": [
+            "run",
+            "--directory",
+            plugin_root,
+            "python",
+            "mcp_servers/tasks_server.py",
+        ],
+        "env": {"AOPS": aops_path, "ACA_DATA": aca_data_path},
     }
 
     # Manifest Core
     with open(os.path.join(core_dist, "gemini-extension.json"), "w") as f:
-        json.dump({
-            "name": "aops-core",
-            "version": "0.1.0",
-            "description": "AcademicOps Core Framework",
-            "mcpServers": core_mcps
-        }, f, indent=2)
+        json.dump(
+            {
+                "name": "aops-core",
+                "version": "0.1.0",
+                "description": "AcademicOps Core Framework",
+                "mcpServers": core_mcps,
+            },
+            f,
+            indent=2,
+        )
 
     # Write hooks to hooks/hooks.json
     with open(os.path.join(hooks_dst, "hooks.json"), "w") as f:
-        json.dump({
-            "hooks": gemini_hooks
-        }, f, indent=2)
+        json.dump({"hooks": gemini_hooks}, f, indent=2)
 
     # Commands (All go to core)
     commands_dist = os.path.join(core_dist, "commands")
     convert_script = os.path.join(aops_path, "scripts", "convert_commands_to_toml.py")
     if os.path.exists(convert_script):
-        subprocess.run([sys.executable, convert_script, "--output-dir", commands_dist], env={**os.environ, "AOPS": aops_path})
+        subprocess.run(
+            [sys.executable, convert_script, "--output-dir", commands_dist],
+            env={**os.environ, "AOPS": aops_path},
+        )
 
     # ---------------------------------------------------------
     # 3. Build aops-tools
     # ---------------------------------------------------------
     print("Building aops-tools...")
     tools_src_root = os.path.join(aops_path, "aops-tools")
-    
+
     # Symlinks
     for item in ["skills"]:
         src = os.path.join(tools_src_root, item)
@@ -179,14 +198,19 @@ def main():
 
     # Manifest Tools
     with open(os.path.join(tools_dist, "gemini-extension.json"), "w") as f:
-        json.dump({
-            "name": "aops-tools",
-            "version": "0.1.0",
-            "description": "AcademicOps Tools",
-            "mcpServers": tools_mcps
-        }, f, indent=2)
+        json.dump(
+            {
+                "name": "aops-tools",
+                "version": "0.1.0",
+                "description": "AcademicOps Tools",
+                "mcpServers": tools_mcps,
+            },
+            f,
+            indent=2,
+        )
 
     print("✓ Extensions created in dist/aops-core and dist/aops-tools")
+
 
 if __name__ == "__main__":
     main()

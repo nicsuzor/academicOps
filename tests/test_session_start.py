@@ -13,8 +13,11 @@ from lib.gate_model import GateResult, GateVerdict
 @patch("hooks.gate_registry.session_paths.get_session_status_dir")
 @patch("hooks.gate_registry.session_paths.get_session_short_hash")
 def test_session_start_message_generation(
-    mock_get_hash, mock_get_status_dir, mock_get_file_path,
-    mock_get_or_create, mock_save_state
+    mock_get_hash,
+    mock_get_status_dir,
+    mock_get_file_path,
+    mock_get_or_create,
+    mock_save_state,
 ):
     """Verify SessionStart gate generates the correct info message."""
     mock_get_hash.return_value = "abc12345"

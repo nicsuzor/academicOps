@@ -174,6 +174,7 @@ class TestMarkdownTranscript:
     def test_process_empty_session_skips(self) -> None:
         """Processing a file with no meaningful content should return exit code 2."""
         import os
+
         with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
             f.write("# Existing Transcript\n\nContent here")
             temp_path = f.name
@@ -201,6 +202,7 @@ class TestOutputPathHandling:
     def test_output_directory_generates_filename(self) -> None:
         """When -o is a directory, should auto-generate filename in that directory."""
         import os
+
         # Create a minimal valid JSONL session
         session_content = """{"type":"user","message":{"content":"Hello world"}}
 {"type":"assistant","message":{"content":"Hi there! How can I help?"}}
@@ -257,6 +259,7 @@ class TestReflectionExtraction:
         sys.path.insert(0, str(framework_root))
         sys.path.insert(0, str(aops_core_root))
         from lib import transcript_parser
+
         return transcript_parser
 
     def test_parse_framework_reflection_basic(self, parser_module) -> None:
@@ -306,7 +309,9 @@ class TestReflectionExtraction:
         assert len(result.get("friction_points", [])) == 2
         assert "Completed task A" in result["accomplishments"]
 
-    def test_parse_framework_reflection_missing_returns_none(self, parser_module) -> None:
+    def test_parse_framework_reflection_missing_returns_none(
+        self, parser_module
+    ) -> None:
         """parse_framework_reflection returns None for text without reflection."""
         text = """
 # Regular Session Content
@@ -348,7 +353,10 @@ More content here.
             for md_file in sessions_dir.glob("*-full.md"):
                 try:
                     content = md_file.read_text(encoding="utf-8")
-                    if "## Framework Reflection" in content or "## framework reflection" in content.lower():
+                    if (
+                        "## Framework Reflection" in content
+                        or "## framework reflection" in content.lower()
+                    ):
                         reflection_files.append(md_file)
                         if len(reflection_files) >= 3:
                             break
@@ -379,7 +387,9 @@ More content here.
             "failed to extract any reflections. Parser may be broken."
         )
         # Log what we found for visibility
-        print(f"\n✅ Successfully extracted reflections from {successful_extractions} live logs:")
+        print(
+            f"\n✅ Successfully extracted reflections from {successful_extractions} live logs:"
+        )
         for detail in extraction_details:
             print(f"   {detail}")
 
@@ -400,6 +410,7 @@ class TestReflectionToInsights:
         sys.path.insert(0, str(framework_root))
         sys.path.insert(0, str(aops_core_root))
         from lib import transcript_parser
+
         return transcript_parser
 
     @pytest.fixture
@@ -410,6 +421,7 @@ class TestReflectionToInsights:
         sys.path.insert(0, str(framework_root))
         sys.path.insert(0, str(aops_core_root))
         from lib import insights_generator
+
         return insights_generator
 
     def test_reflection_to_insights_has_required_fields(self, parser_module) -> None:
@@ -437,7 +449,9 @@ class TestReflectionToInsights:
         assert "outcome" in result
         assert "accomplishments" in result
 
-    def test_reflection_to_insights_framework_reflections_nested(self, parser_module) -> None:
+    def test_reflection_to_insights_framework_reflections_nested(
+        self, parser_module
+    ) -> None:
         """Framework Reflection data is nested in framework_reflections array."""
         reflection = {
             "prompts": "Implement feature X",
@@ -475,7 +489,9 @@ class TestReflectionToInsights:
         assert nested["proposed_changes"] == ["Add build cache"]
         assert nested["next_step"] == "Continue tomorrow"
 
-    def test_reflection_to_insights_no_top_level_reflection_fields(self, parser_module) -> None:
+    def test_reflection_to_insights_no_top_level_reflection_fields(
+        self, parser_module
+    ) -> None:
         """Top-level should NOT have reflection-specific fields."""
         reflection = {
             "prompts": "Test prompt",

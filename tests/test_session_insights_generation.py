@@ -164,7 +164,8 @@ class TestInsightsFromFrameworkReflection:
             else [],
             "friction_points": [],
             "proposed_changes": [reflection["proposed_change"]]
-            if reflection["proposed_change"] and reflection["proposed_change"] != "None needed"
+            if reflection["proposed_change"]
+            and reflection["proposed_change"] != "None needed"
             else [],
         }
 

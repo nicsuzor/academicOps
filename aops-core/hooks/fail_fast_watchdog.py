@@ -54,6 +54,7 @@ ERROR_INDICATORS = [
     "Cannot access",
 ]
 
+
 def load_fail_fast_reminder() -> str:
     """Load the fail-fast reminder message from template."""
     return load_template(FAIL_FAST_TEMPLATE)

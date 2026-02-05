@@ -115,6 +115,7 @@ class TestGeminiHydrationGate:
         # Write session state file
         session_id = GEMINI_BEFORE_TOOL_RM_INPUT["session_id"]
         from lib.session_paths import get_session_short_hash
+
         short_hash = get_session_short_hash(session_id)
         state_file = gemini_state_dir / f"20260203-12-{short_hash}.json"
         state_file.write_text(json.dumps(mock_session_state_no_hydration))
@@ -133,7 +134,9 @@ class TestGeminiHydrationGate:
         result = check_hydration_gate(ctx)
 
         # MUST block - rm is destructive and hydration not done
-        assert result is not None, "Hydration gate should return a result for rm command"
+        assert result is not None, (
+            "Hydration gate should return a result for rm command"
+        )
         assert result.verdict.value == "deny", (
             f"Hydration gate should DENY rm command without hydration. "
             f"Got: {result.verdict.value}"
@@ -146,19 +149,26 @@ class TestGeminiHydrationGate:
 
         Skill tool is in HYDRATION_ALLOWED_TOOLS to allow skill activation.
         """
-        from hooks.gate_registry import check_hydration_gate, GateContext, HYDRATION_ALLOWED_TOOLS
+        from hooks.gate_registry import (
+            check_hydration_gate,
+            GateContext,
+            HYDRATION_ALLOWED_TOOLS,
+        )
 
         monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(gemini_state_dir))
         monkeypatch.setenv("HYDRATION_GATE_MODE", "block")
 
         session_id = GEMINI_BEFORE_TOOL_RM_INPUT["session_id"]
         from lib.session_paths import get_session_short_hash
+
         short_hash = get_session_short_hash(session_id)
         state_file = gemini_state_dir / f"20260203-12-{short_hash}.json"
         state_file.write_text(json.dumps(mock_session_state_no_hydration))
 
         # Verify Skill IS in allowed tools
-        assert "Skill" in HYDRATION_ALLOWED_TOOLS, "Skill should be in HYDRATION_ALLOWED_TOOLS"
+        assert "Skill" in HYDRATION_ALLOWED_TOOLS, (
+            "Skill should be in HYDRATION_ALLOWED_TOOLS"
+        )
 
         ctx = GateContext(
             session_id=session_id,
@@ -191,6 +201,7 @@ class TestGeminiHydrationGate:
 
         session_id = GEMINI_BEFORE_TOOL_WRITE_FILE_INPUT["session_id"]
         from lib.session_paths import get_session_short_hash
+
         short_hash = get_session_short_hash(session_id)
         state_file = gemini_state_dir / f"20260203-12-{short_hash}.json"
 
@@ -210,7 +221,9 @@ class TestGeminiHydrationGate:
         result = check_hydration_gate(ctx)
 
         # MUST block - write_file is mutating and hydration not done
-        assert result is not None, "Hydration gate should return a result for write_file"
+        assert result is not None, (
+            "Hydration gate should return a result for write_file"
+        )
         assert result.verdict.value == "deny", (
             f"Hydration gate should DENY write_file without hydration. "
             f"Got: {result.verdict.value}"
@@ -260,6 +273,7 @@ class TestGeminiDestructiveOperationGates:
 
         session_id = fresh_session_state["session_id"]
         from lib.session_paths import get_session_short_hash
+
         short_hash = get_session_short_hash(session_id)
         state_file = state_dir / f"20260203-12-{short_hash}.json"
         state_file.write_text(json.dumps(fresh_session_state))
@@ -562,7 +576,11 @@ class TestGeminiSessionStateResolution:
 
     def test_load_session_state_finds_gemini_file(self, tmp_path, monkeypatch):
         """load_session_state should find state file in Gemini state dir."""
-        from lib.session_state import load_session_state, save_session_state, create_session_state
+        from lib.session_state import (
+            load_session_state,
+            save_session_state,
+            create_session_state,
+        )
 
         state_dir = tmp_path / "gemini_state"
         state_dir.mkdir()
@@ -605,7 +623,11 @@ class TestHydrationGateModeEnforcement:
         # Create state with hydration pending
         state = {
             "session_id": session_id,
-            "state": {"hydration_pending": True, "hydrator_active": False, "gates_bypassed": False},
+            "state": {
+                "hydration_pending": True,
+                "hydrator_active": False,
+                "gates_bypassed": False,
+            },
             "hydration": {"temp_path": str(tmp_path / "hydrate.md")},
         }
         state_file = state_dir / f"20260203-12-{short_hash}.json"
@@ -624,8 +646,12 @@ class TestHydrationGateModeEnforcement:
         result = check_hydration_gate(ctx)
 
         # Should deny due to missing config
-        assert result is not None, "Should return result when HYDRATION_GATE_MODE missing"
-        assert result.verdict.value == "deny", "Should deny when config missing (fail-fast)"
+        assert result is not None, (
+            "Should return result when HYDRATION_GATE_MODE missing"
+        )
+        assert result.verdict.value == "deny", (
+            "Should deny when config missing (fail-fast)"
+        )
         assert "CONFIGURATION ERROR" in (result.context_injection or ""), (
             "Should indicate configuration error"
         )

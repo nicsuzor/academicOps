@@ -289,9 +289,7 @@ class TestHydrationContext:
                     "Preview: {prompt_preview}\nFile: {temp_path}",
                 ]
 
-                build_hydration_instruction(
-                    session_id, prompt, transcript_path
-                )
+                build_hydration_instruction(session_id, prompt, transcript_path)
 
                 # Verify context was included in temp file
                 temp_files = list(temp_hydrator_dir.glob("hydrate_*.md"))
@@ -329,9 +327,7 @@ class TestHydrationContext:
             ]
 
             # Should not raise - graceful degradation
-            build_hydration_instruction(
-                session_id, prompt, "/fake/transcript"
-            )
+            build_hydration_instruction(session_id, prompt, "/fake/transcript")
 
             # Should still create temp file and instruction
             assert len(list(temp_hydrator_dir.glob("hydrate_*.md"))) == 1

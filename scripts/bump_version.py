@@ -7,6 +7,7 @@ import re
 import sys
 from pathlib import Path
 
+
 def bump_version(aops_root: Path):
     pyproject_path = aops_root / "pyproject.toml"
     if not pyproject_path.exists():
@@ -28,12 +29,15 @@ def bump_version(aops_root: Path):
     # Bump patch version
     major, minor, patch = parts
     new_version = f"{major}.{minor}.{int(patch) + 1}"
-    
-    new_content = content.replace(f'version = "{old_version}"', f'version = "{new_version}"')
+
+    new_content = content.replace(
+        f'version = "{old_version}"', f'version = "{new_version}"'
+    )
     pyproject_path.write_text(new_content)
-    
+
     print(f"Bumped version from {old_version} to {new_version}")
     return new_version
+
 
 if __name__ == "__main__":
     aops_root = Path(__file__).parent.parent.resolve()

@@ -44,6 +44,7 @@ def get_aops_root() -> Path:
     """
     return get_plugin_root()
 
+
 def get_bots_dir() -> Path:
     """Alias for get_aops_root."""
     return get_aops_root()

@@ -194,9 +194,21 @@ class TestExtractSessionContext:
             _create_assistant_entry("I'll fix the bugs.", offset=1),
             _create_todowrite_entry(
                 [
-                    {"content": "Fix bug 1", "status": "completed", "activeForm": "Fixing bug 1"},
-                    {"content": "Fix bug 2", "status": "in_progress", "activeForm": "Fixing bug 2"},
-                    {"content": "Fix bug 3", "status": "pending", "activeForm": "Fixing bug 3"},
+                    {
+                        "content": "Fix bug 1",
+                        "status": "completed",
+                        "activeForm": "Fixing bug 1",
+                    },
+                    {
+                        "content": "Fix bug 2",
+                        "status": "in_progress",
+                        "activeForm": "Fixing bug 2",
+                    },
+                    {
+                        "content": "Fix bug 3",
+                        "status": "pending",
+                        "activeForm": "Fixing bug 3",
+                    },
                 ],
                 offset=100,
             ),
@@ -215,7 +227,9 @@ class TestExtractSessionContext:
         entries = [
             _create_user_entry("Do the thing", offset=0),
             _create_assistant_entry("Doing the thing.", offset=1),
-            _create_user_entry("<system-reminder>This is injected</system-reminder>", offset=100),
+            _create_user_entry(
+                "<system-reminder>This is injected</system-reminder>", offset=100
+            ),
             _create_user_entry("Actually do this instead", offset=200),
         ]
 

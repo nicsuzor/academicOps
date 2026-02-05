@@ -55,7 +55,16 @@ class TestTaskTypeValidation:
 
     def test_valid_types_are_accepted(self):
         """from_frontmatter accepts all valid TaskType values."""
-        valid_types = ["goal", "project", "epic", "task", "action", "bug", "feature", "learn"]
+        valid_types = [
+            "goal",
+            "project",
+            "epic",
+            "task",
+            "action",
+            "bug",
+            "feature",
+            "learn",
+        ]
         for task_type in valid_types:
             fm = {"id": f"test-{task_type}", "title": "Test", "type": task_type}
             task = Task.from_frontmatter(fm)

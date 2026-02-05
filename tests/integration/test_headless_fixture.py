@@ -46,9 +46,9 @@ def test_claude_headless_simple_prompt(claude_headless) -> None:
     assert isinstance(output_data, (dict, list)), "Output should be parseable as JSON"
     # For dict format, check for result field; for list, check non-empty
     if isinstance(output_data, dict):
-        assert (
-            "result" in output_data or "type" in output_data
-        ), "Dict output should have result or type"
+        assert "result" in output_data or "type" in output_data, (
+            "Dict output should have result or type"
+        )
     else:
         assert len(output_data) > 0, "List output should contain at least one event"
 
@@ -124,17 +124,18 @@ def test_claude_headless_json_output(claude_headless) -> None:
 
     if isinstance(output_data, dict):
         # Current format: {"type": "result", "result": "...", ...}
-        assert (
-            output_data.get("type") == "result"
-        ), "Dict output should have type=result"
+        assert output_data.get("type") == "result", (
+            "Dict output should have type=result"
+        )
         assert "result" in output_data, "Dict output should have result field"
     else:
         # Legacy format: list of events
         event_types = [e.get("type") for e in output_data if isinstance(e, dict)]
-        assert (
-            any(t in event_types for t in ["assistant", "result"])
-            or any("hook_event" in e for e in output_data if isinstance(e, dict))
-        ), f"Should have assistant/result message or hook events. Found types: {event_types}"
+        assert any(t in event_types for t in ["assistant", "result"]) or any(
+            "hook_event" in e for e in output_data if isinstance(e, dict)
+        ), (
+            f"Should have assistant/result message or hook events. Found types: {event_types}"
+        )
 
 
 @pytest.mark.slow
@@ -181,5 +182,3 @@ def test_run_claude_headless_direct(data_dir) -> None:
     assert "success" in result, "Result should have success key"
     assert "output" in result, "Result should have output key"
     assert "result" in result, "Result should have result key"
-
-

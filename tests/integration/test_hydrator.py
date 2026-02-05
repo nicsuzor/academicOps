@@ -403,9 +403,13 @@ def test_hydrator_does_not_answer_user_questions(
     for indicator in bug_indicators:
         # Check if indicator appears in the hydrator's section of output
         # (after Task call, before main agent resumes)
-        if 'subagent_type":"aops-core:prompt-hydrator"' in output or 'subagent_type":"prompt-hydrator"' in output:
+        if (
+            'subagent_type":"aops-core:prompt-hydrator"' in output
+            or 'subagent_type":"prompt-hydrator"' in output
+        ):
             # Find hydrator result section
             import re
+
             hydrator_result_pattern = r'"type":"tool_result".*?"content":"(.*?)"'
             matches = re.findall(hydrator_result_pattern, output, re.DOTALL)
             for match in matches:
@@ -473,32 +477,36 @@ def test_hydrator_does_not_search_for_skills_or_workflows(
     # instead of using pre-loaded indexes
     bug_indicators = [
         # Filesystem discovery commands
-        'find -name',
-        'find . -name',
-        'ls -la',
-        'ls -l ',
+        "find -name",
+        "find . -name",
+        "ls -la",
+        "ls -l ",
         # Evidence of searching for skills/workflows
         'name "*daily*"',
-        '*daily*',
+        "*daily*",
         # Searching skill directories
-        '/skills/',
-        '/workflows/',
+        "/skills/",
+        "/workflows/",
     ]
 
     # Look for these patterns within hydrator's execution context
     # The hydrator output appears after Task(prompt-hydrator) and before main agent resumes
-    hydrator_section_start = output.find('prompt-hydrator')
+    hydrator_section_start = output.find("prompt-hydrator")
     if hydrator_section_start > 0:
         # Find the tool result that contains hydrator's work
-        hydrator_context = output[hydrator_section_start:hydrator_section_start + 10000]
+        hydrator_context = output[
+            hydrator_section_start : hydrator_section_start + 10000
+        ]
 
         for indicator in bug_indicators:
             if indicator in hydrator_context:
                 # Check if this is actual hydrator behavior, not just context
                 # (the indicator might appear in the prompt itself)
-                if f'command":"{indicator}' in hydrator_context or \
-                   f"command': '{indicator}" in hydrator_context or \
-                   f'Bash(command="{indicator}' in hydrator_context:
+                if (
+                    f'command":"{indicator}' in hydrator_context
+                    or f"command': '{indicator}" in hydrator_context
+                    or f'Bash(command="{indicator}' in hydrator_context
+                ):
                     pytest.fail(
                         f"Hydrator used filesystem discovery: found '{indicator}' command.\n"
                         f"The hydrator should use pre-loaded Skills Index and Workflows Index,\n"
@@ -507,7 +515,8 @@ def test_hydrator_does_not_search_for_skills_or_workflows(
 
     # Verify hydrator WAS called
     hydrator_calls = [
-        c for c in tool_calls
+        c
+        for c in tool_calls
         if c["name"] == "Task"
         and "prompt-hydrator" in str(c.get("input", {}).get("subagent_type", ""))
     ]
@@ -636,9 +645,9 @@ def test_hydrator_temp_file_contains_real_prompt(claude_headless) -> None:
         if "HYDRATOR_TEST_MARKER" in content:
             marker_found = True
             # Verify the COMPLETE prompt is there, not truncated
-            assert (
-                "session-insights skill documentation" in content
-            ), "Full prompt should be in temp file - got truncated content"
+            assert "session-insights skill documentation" in content, (
+                "Full prompt should be in temp file - got truncated content"
+            )
             # Verify hydrator template structure
             assert "## User Prompt" in content, "Missing User Prompt section"
             assert "## Your Task" in content, "Missing Your Task section"
@@ -800,9 +809,7 @@ def test_short_confirmation_preserves_context() -> None:
     ]
 
     # Write to temp file
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".jsonl", delete=False
-    ) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
         for entry in session_entries:
             f.write(json.dumps(entry) + "\n")
         temp_path = Path(f.name)

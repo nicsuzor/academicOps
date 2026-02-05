@@ -21,6 +21,7 @@ except ImportError as e:
     # but are required for actual operation
     raise ImportError(f"Required task management modules not found: {e}") from e
 
+
 class Engineer:
     def __init__(self):
         self.storage = TaskStorage()
@@ -35,7 +36,9 @@ class Engineer:
         # Check if another task is already merging (merge slot occupied)
         merging_tasks = self.storage.list_tasks(status=TaskStatus.MERGING)
         if merging_tasks:
-            print(f"Merge slot occupied by {merging_tasks[0].id}. Waiting for it to complete.")
+            print(
+                f"Merge slot occupied by {merging_tasks[0].id}. Waiting for it to complete."
+            )
             metrics.record_queue_depth("merging", count=len(merging_tasks))
             return
 
@@ -128,8 +131,10 @@ class Engineer:
             )
 
         remote_branch = f"origin/{branch_name}"
-        if not self._branch_exists(repo_path, remote_branch) and not self._branch_exists(repo_path, branch_name):
-             raise ValueError(f"Branch {branch_name} not found locally or on origin")
+        if not self._branch_exists(
+            repo_path, remote_branch
+        ) and not self._branch_exists(repo_path, branch_name):
+            raise ValueError(f"Branch {branch_name} not found locally or on origin")
 
         # 2. Checkout Target
         print(f"  Updating {target_branch}...")
@@ -158,7 +163,9 @@ class Engineer:
         except subprocess.CalledProcessError as e:
             self._run_git(repo_path, ["reset", "--hard", "HEAD"])
             # Include stdout/stderr in error message
-            raise RuntimeError(f"Tests failed:\n{e.stdout.decode()}\n{e.stderr.decode()}")
+            raise RuntimeError(
+                f"Tests failed:\n{e.stdout.decode()}\n{e.stderr.decode()}"
+            )
 
         # 5. Commit & Push
         print("  Committing and Pushing...")
@@ -169,13 +176,15 @@ class Engineer:
         # 6. Cleanup Branches
         print("  Cleaning up branch...")
         self._run_git(repo_path, ["branch", "-D", branch_name], check=False)
-        self._run_git(repo_path, ["push", "origin", "--delete", branch_name], check=False)
+        self._run_git(
+            repo_path, ["push", "origin", "--delete", branch_name], check=False
+        )
 
         # 7. Update Task (Success)
         print("  Marking task as DONE...")
         task.status = TaskStatus.DONE
         self.storage.save_task(task)
-        
+
         # 8. Nuke Worktree
         self.polecat_mgr.nuke_worktree(task.id)
         print("  ✅ Merge Complete.")
@@ -211,7 +220,9 @@ class Engineer:
 
     def _get_unpushed_count(self, cwd, branch="main"):
         """Count commits ahead of origin."""
-        res = self._run_git(cwd, ["rev-list", "--count", f"origin/{branch}..{branch}"], check=False)
+        res = self._run_git(
+            cwd, ["rev-list", "--count", f"origin/{branch}..{branch}"], check=False
+        )
         if res.returncode == 0:
             return int(res.stdout.decode().strip())
         return 0

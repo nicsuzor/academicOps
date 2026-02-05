@@ -12,6 +12,7 @@ sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
 try:
     from polecat.engineer import Engineer
+
     print("🚀 Starting Refinery Scan...")
     eng = Engineer()
     eng.scan_and_merge()
@@ -19,5 +20,6 @@ try:
 except Exception as e:
     print(f"❌ Refinery Error: {e}", file=sys.stderr)
     import traceback
+
     traceback.print_exc()
     sys.exit(1)

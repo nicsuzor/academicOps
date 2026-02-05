@@ -76,7 +76,7 @@ class TestWorkflowFiles:
         for workflow_file in workflow_files:
             content = workflow_file.read_text()
             # We don't enforce frontmatter anymore, just check content
-            
+
             # Skip very short files or placeholders
             if len(content.splitlines()) < 5:
                 continue
@@ -141,7 +141,7 @@ class TestWorkflowFiles:
             pytest.skip(f"Workflow {workflow_id}.md does not exist")
 
         content = workflow_path.read_text()
-        
+
         # Verify markdown headers presence
         # Relaxed check: Just ensure it has content and headers
         assert len(content) > 0

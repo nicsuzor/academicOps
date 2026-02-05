@@ -174,7 +174,7 @@ def _extract_questions_from_text(text: str) -> list[str]:
     questions = []
     # Look for text ending with ? - capture the full sentence leading up to it
     # Using regex to find sentence-like patterns ending with ?
-    pattern = r'[^.!?\n]*\?'
+    pattern = r"[^.!?\n]*\?"
     matches = re.findall(pattern, text)
 
     for match in matches:
@@ -202,15 +202,19 @@ def _extract_and_expand_prompts(turns: list, max_turns: int) -> list[str]:
 
         if not text or _is_system_injected_context(text):
             continue
-        
+
         command_name = None
         args = ""
 
         # Case 1: XML-wrapped command
-        command_name_match = re.search(r"<command-name>(.*?)</command-name>", text, re.DOTALL)
+        command_name_match = re.search(
+            r"<command-name>(.*?)</command-name>", text, re.DOTALL
+        )
         if command_name_match:
             command_name = command_name_match.group(1).strip()
-            args_match = re.search(r"<command-args>(.*?)</command-args>", text, re.DOTALL)
+            args_match = re.search(
+                r"<command-args>(.*?)</command-args>", text, re.DOTALL
+            )
             if args_match:
                 args = f" {args_match.group(1).strip()}"
         # Case 2: Simple command prefix
@@ -390,7 +394,7 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
         for i, question in enumerate(agent_questions, 1):
             # Ensure question ends with ? for clarity
             q = question if question.endswith("?") else question + "?"
-            lines.append(f'{i}. {q}')
+            lines.append(f"{i}. {q}")
         lines.append("")
 
     if agent_responses:
@@ -716,7 +720,7 @@ def _extract_skill_scope_from_file(path: Path) -> str | None:
             frontmatter = parts[1]
             for line in frontmatter.split("\n"):
                 if line.startswith("description:"):
-                    desc = line[len("description:") :].strip().strip('"\'')
+                    desc = line[len("description:") :].strip().strip("\"'")
                     lines.append(f"**Purpose**: {desc}")
                     break
 
@@ -1005,8 +1009,7 @@ def find_sessions(
 
                 # Get modification time from most recently modified .md file
                 mtime = max(
-                    datetime.fromtimestamp(f.stat().st_mtime, tz=UTC)
-                    for f in md_files
+                    datetime.fromtimestamp(f.stat().st_mtime, tz=UTC) for f in md_files
                 )
 
                 # Filter by time if specified

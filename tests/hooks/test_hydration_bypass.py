@@ -39,7 +39,9 @@ class TestHydrationBypass:
 
     def test_agent_notification_bypasses_hydration(self):
         """Agent notifications should bypass hydration."""
-        assert should_skip_hydration("<agent-notification>task complete</agent-notification>")
+        assert should_skip_hydration(
+            "<agent-notification>task complete</agent-notification>"
+        )
         assert should_skip_hydration("<task-notification>result</task-notification>")
 
     def test_normal_prompts_do_not_bypass(self):

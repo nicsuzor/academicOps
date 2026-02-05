@@ -1341,9 +1341,9 @@ class SessionProcessor:
                 entries.extend(hook_entries)
                 # Sort by timestamp to maintain chronological order
                 entries.sort(
-                    key=lambda e: e.timestamp
-                    if e.timestamp
-                    else datetime.min.replace(tzinfo=UTC)
+                    key=lambda e: (
+                        e.timestamp if e.timestamp else datetime.min.replace(tzinfo=UTC)
+                    )
                 )
 
         return session_summary, entries, agent_entries
@@ -1989,7 +1989,7 @@ class SessionProcessor:
                 shown = list(sorted(files_modified))[:3]
                 files_str = ", ".join(f"`{f}`" for f in shown)
                 summary_parts.append(
-                    f"**Files Modified**: {files_str} (+{len(files_modified)-3} more)"
+                    f"**Files Modified**: {files_str} (+{len(files_modified) - 3} more)"
                 )
 
         if agent_entries and len(agent_entries) > 0:
@@ -2008,7 +2008,9 @@ class SessionProcessor:
                     total = stats["input"] + stats["output"]
                     if total > 0:
                         # Shorten model names for display
-                        short_name = model.replace("claude-", "").replace("-20251001", "")
+                        short_name = model.replace("claude-", "").replace(
+                            "-20251001", ""
+                        )
                         model_parts.append(f"{short_name}: {total:,}")
                 if model_parts:
                     summary_parts.append(f"**By Model**: {', '.join(model_parts)}")
@@ -2048,9 +2050,7 @@ class SessionProcessor:
             if entry.timestamp:
                 first_timestamp = entry.timestamp
                 break
-        date_str = (
-            first_timestamp.isoformat() if first_timestamp else "unknown"
-        )
+        date_str = first_timestamp.isoformat() if first_timestamp else "unknown"
 
         full_mode = variant == "full"
         turns = self.group_entries_into_turns(
@@ -3093,7 +3093,7 @@ session_id: {session_uuid}
                 tool_input = block.get("input", {})
                 pattern = tool_input.get("pattern", "")
                 if pattern:
-                    patterns.append(f'`{pattern}`')
+                    patterns.append(f"`{pattern}`")
             if patterns:
                 return f"- Glob: {', '.join(patterns)}\n"
 
@@ -3105,7 +3105,7 @@ session_id: {session_uuid}
                 if pattern:
                     if len(pattern) > 30:
                         pattern = pattern[:27] + "..."
-                    patterns.append(f'`{pattern}`')
+                    patterns.append(f"`{pattern}`")
             if patterns:
                 return f"- Grep: {', '.join(patterns)}\n"
 

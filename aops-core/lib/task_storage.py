@@ -46,16 +46,18 @@ from lib.task_model import Task, TaskComplexity, TaskStatus, TaskType
 
 # Directories to exclude from recursive task scanning
 # These contain non-task data that shouldn't be indexed
-EXCLUDED_DIRS = frozenset({
-    "archive",      # Historical data, not active tasks
-    "sessions",     # Session transcripts
-    "contacts",     # Contact information
-    "assets",       # Media files
-    "diagrams",     # Diagram files
-    "dotfiles",     # Configuration files
-    "metrics",      # Metrics data
-    "qa",           # QA test data
-})
+EXCLUDED_DIRS = frozenset(
+    {
+        "archive",  # Historical data, not active tasks
+        "sessions",  # Session transcripts
+        "contacts",  # Contact information
+        "assets",  # Media files
+        "diagrams",  # Diagram files
+        "dotfiles",  # Configuration files
+        "metrics",  # Metrics data
+        "qa",  # QA test data
+    }
+)
 
 
 class TaskStorage:
@@ -116,7 +118,9 @@ class TaskStorage:
         tasks_dir = self.data_root / "tasks"
         if tasks_dir.exists():
             for path in tasks_dir.glob(f"{task_id}*.md"):
-                if path.is_file() and (path.stem == task_id or path.stem.startswith(f"{task_id}-")):
+                if path.is_file() and (
+                    path.stem == task_id or path.stem.startswith(f"{task_id}-")
+                ):
                     return path
 
         # Search inbox
@@ -355,7 +359,7 @@ class TaskStorage:
         Uses a .lock file to coordinate concurrent access.
         Writes to temp file first, then renames for atomicity.
         Verifies the write succeeded by checking file existence and validity.
-        
+
         P#83: No-op if file content is unchanged to avoid dirtying repo.
 
         Args:
@@ -389,6 +393,7 @@ class TaskStorage:
                 except Exception as e:
                     # Log warning but proceed with overwrite if read fails
                     import logging
+
                     logging.getLogger(__name__).warning(
                         f"Failed to read existing body from {path}, overwriting: {e}"
                     )
@@ -424,7 +429,9 @@ class TaskStorage:
                 try:
                     Task.from_file(path)
                 except Exception as e:
-                    raise IOError(f"Write verification failed: {path} is not valid: {e}")
+                    raise IOError(
+                        f"Write verification failed: {path} is not valid: {e}"
+                    )
 
             except Exception:
                 # Clean up temp file on error
@@ -545,8 +552,7 @@ class TaskStorage:
         for root, dirs, files in self.data_root.walk():
             # Filter out excluded and hidden directories (in-place modification)
             dirs[:] = [
-                d for d in dirs
-                if not d.startswith(".") and d not in EXCLUDED_DIRS
+                d for d in dirs if not d.startswith(".") and d not in EXCLUDED_DIRS
             ]
 
             for filename in files:

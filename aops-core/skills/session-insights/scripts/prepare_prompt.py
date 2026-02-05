@@ -138,7 +138,9 @@ def main():
     except FileNotFoundError as e:
         print(f"ERROR: Could not load prompt template: {e}", file=sys.stderr)
         print("", file=sys.stderr)
-        print("Ensure aops-core/specs/session-insights-prompt.md exists", file=sys.stderr)
+        print(
+            "Ensure aops-core/specs/session-insights-prompt.md exists", file=sys.stderr
+        )
         sys.exit(1)
 
     # Substitute variables

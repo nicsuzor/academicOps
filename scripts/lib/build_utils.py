@@ -183,7 +183,9 @@ def check_installed_plugin_version(
         If plugin not installed, returns (True, None) - no mismatch to report.
     """
     if installed_plugins_path is None:
-        installed_plugins_path = Path.home() / ".claude" / "plugins" / "installed_plugins.json"
+        installed_plugins_path = (
+            Path.home() / ".claude" / "plugins" / "installed_plugins.json"
+        )
 
     if not installed_plugins_path.exists():
         return (True, None)  # No installed plugins file, nothing to compare
@@ -208,7 +210,9 @@ def check_installed_plugin_version(
 
         # Compare: installed commit should start with source commit (or vice versa)
         # since one might be short and one long
-        if installed_commit.startswith(source_commit) or source_commit.startswith(installed_commit[:8]):
+        if installed_commit.startswith(source_commit) or source_commit.startswith(
+            installed_commit[:8]
+        ):
             return (True, installed_commit)
 
         return (False, installed_commit)

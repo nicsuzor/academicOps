@@ -2,13 +2,14 @@ import re
 import yaml
 from pathlib import Path
 
+
 def fix_agent_definition(file_path):
     print(f"Processing {file_path}...")
-    with open(file_path, 'r') as f:
+    with open(file_path, "r") as f:
         content = f.read()
 
     # Split frontmatter
-    match = re.match(r'^---\n(.*?)\n---\n(.*)', content, re.DOTALL)
+    match = re.match(r"^---\n(.*?)\n---\n(.*)", content, re.DOTALL)
     if not match:
         print(f"  Skipping {file_path}: No frontmatter found")
         return
@@ -18,16 +19,16 @@ def fix_agent_definition(file_path):
 
     try:
         # Sanitize hanging list items before loading
-        lines = frontmatter_raw.split('\n')
+        lines = frontmatter_raw.split("\n")
         reconstructed_yaml = ""
         for line in lines:
             stripped = line.strip()
             if not stripped:
                 continue
 
-            if re.match(r'^\w+:', line):
+            if re.match(r"^\w+:", line):
                 reconstructed_yaml += line + "\n"
-            elif stripped.startswith('- '):
+            elif stripped.startswith("- "):
                 # We drop ALL list items unless we are sure.
                 # Since we are dropping 'tools' anyway, we don't need to preserve list items for tools.
                 # And we are dropping 'tags' etc.
@@ -46,21 +47,23 @@ def fix_agent_definition(file_path):
         return
 
     # Remove invalid keys
-    for key in ['category', 'permalink', 'type', 'tags', 'tools']: # Removed tools!
+    for key in ["category", "permalink", "type", "tags", "tools"]:  # Removed tools!
         if key in data:
             del data[key]
 
     # Dump
     new_frontmatter = yaml.dump(data, default_flow_style=False, sort_keys=False).strip()
-    
-    with open(file_path, 'w') as f:
+
+    with open(file_path, "w") as f:
         f.write(f"---\n{new_frontmatter}\n---\n{body}")
     print(f"  Fixed {file_path} (Removed tools)")
+
 
 def main():
     agents_dir = Path("aops-core/agents")
     for file_path in agents_dir.glob("*.md"):
         fix_agent_definition(file_path)
+
 
 if __name__ == "__main__":
     main()

@@ -162,9 +162,7 @@ class TestNtfyNotifierFunctions(unittest.TestCase):
     def test_notify_subagent_stop_with_verdict(self, mock_send):
         """notify_subagent_stop includes verdict in message."""
         mock_send.return_value = True
-        ntfy_notifier.notify_subagent_stop(
-            self.config, "session123", "critic", "PASS"
-        )
+        ntfy_notifier.notify_subagent_stop(self.config, "session123", "critic", "PASS")
 
         call_args = mock_send.call_args
         self.assertIn("PASS", call_args[1]["message"])

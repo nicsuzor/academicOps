@@ -140,6 +140,7 @@ def save_session_state(session_id: str, state: SessionState) -> None:
     # Path uses the full ISO date (including hour) to ensure consistent file naming
     # across session lifetime - prevents creating new files when hour changes
     from lib.session_paths import get_session_file_path
+
     path = get_session_file_path(session_id, state["date"])
 
     # Ensure directory exists
@@ -459,7 +460,7 @@ def get_hydration_data(session_id: str) -> dict[str, Any] | None:
 def update_hydration_metrics(
     session_id: str,
     turns_since_hydration: int | None = None,
-    turns_since_critic: int | None = None
+    turns_since_critic: int | None = None,
 ) -> None:
     """Update hydration tracking metrics.
 
@@ -793,7 +794,9 @@ def is_qa_invoked(session_id: str) -> bool:
 # ============================================================================
 
 
-def set_todo_with_handover(session_id: str, handover_content: str | None = None) -> None:
+def set_todo_with_handover(
+    session_id: str, handover_content: str | None = None
+) -> None:
     """Set todo_with_handover flag when todo list includes handover step.
 
     Part of the three-gate requirement for destructive operations:

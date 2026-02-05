@@ -182,9 +182,9 @@ class TestSessionDiscoveryDemo:
                 print(f"    - {p}...")
 
         # All checked paths should exist
-        assert (
-            paths_valid == paths_checked
-        ), f"Some session paths don't exist: {paths_missing}"
+        assert paths_valid == paths_checked, (
+            f"Some session paths don't exist: {paths_missing}"
+        )
 
         # === STEP 5: Show Session Details ===
         print("\n--- STEP 5: Session Details ---")

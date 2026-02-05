@@ -237,7 +237,10 @@ def main():
         "--project", "-p", type=str, help="Project to focus on (default: all)"
     )
     parser.add_argument(
-        "--caller", type=str, default="bot", help="Identity claiming the tasks (default: bot)"
+        "--caller",
+        type=str,
+        default="bot",
+        help="Identity claiming the tasks (default: bot)",
     )
     parser.add_argument(
         "--dry-run",
@@ -251,7 +254,9 @@ def main():
     )
 
     args = parser.parse_args()
-    run_swarm(args.claude, args.gemini, args.project, args.caller, args.dry_run, args.home)
+    run_swarm(
+        args.claude, args.gemini, args.project, args.caller, args.dry_run, args.home
+    )
 
 
 if __name__ == "__main__":

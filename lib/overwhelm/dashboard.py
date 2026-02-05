@@ -525,7 +525,9 @@ def get_active_agents(max_age_hours: int = 1) -> list[ActiveAgent]:
                 started_at = data.get("started_at")
                 if started_at:
                     try:
-                        start = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+                        start = datetime.fromisoformat(
+                            started_at.replace("Z", "+00:00")
+                        )
                         if start.tzinfo is None:
                             start = start.replace(tzinfo=timezone.utc)
                         # Only include if started within time window
@@ -542,14 +544,18 @@ def get_active_agents(max_age_hours: int = 1) -> list[ActiveAgent]:
                 context = extract_context_from_session_state(data)
 
                 # session_id is required in valid session state files
-                session_id = data["session_id"] if "session_id" in data else status_file.stem
-                agents.append(ActiveAgent(
-                    session_id=session_id,
-                    task_id=main_agent.get("current_task"),
-                    project=insights.get("project"),
-                    started_at=data.get("started_at"),
-                    context=context,
-                ))
+                session_id = (
+                    data["session_id"] if "session_id" in data else status_file.stem
+                )
+                agents.append(
+                    ActiveAgent(
+                        session_id=session_id,
+                        task_id=main_agent.get("current_task"),
+                        project=insights.get("project"),
+                        started_at=data.get("started_at"),
+                        context=context,
+                    )
+                )
         except (json.JSONDecodeError, OSError):
             continue
 
@@ -589,7 +595,8 @@ def render_agents_working():
 
     # Filter to agents with meaningful context
     agents_with_context = [
-        a for a in agents
+        a
+        for a in agents
         if a.context is not None and a.context.has_meaningful_context()
     ]
 
@@ -599,7 +606,9 @@ def render_agents_working():
         project = a.project or (a.context.project if a.context else None) or "unknown"
         ctx = a.context
         # Must have either a real project OR a meaningful initial prompt
-        if project != "unknown" or (ctx and ctx.initial_prompt and len(ctx.initial_prompt) > 20):
+        if project != "unknown" or (
+            ctx and ctx.initial_prompt and len(ctx.initial_prompt) > 20
+        ):
             agents_filtered.append(a)
 
     if not agents_filtered:
@@ -613,7 +622,11 @@ def render_agents_working():
         duration_str = _format_duration(agent.started_at)
 
         # Determine project
-        project = agent.project or (agent.context.project if agent.context else None) or "unknown"
+        project = (
+            agent.project
+            or (agent.context.project if agent.context else None)
+            or "unknown"
+        )
         if project == "unknown":
             project = ""  # Don't show "unknown"
 
@@ -628,10 +641,14 @@ def render_agents_working():
                 description = ctx.initial_prompt
 
         # Truncate to fit compact format
-        description = description[:120] + "..." if len(description) > 120 else description
+        description = (
+            description[:120] + "..." if len(description) > 120 else description
+        )
 
         # Single compact row
-        project_part = f"<span class='ca-project'>{esc(project)}</span>" if project else ""
+        project_part = (
+            f"<span class='ca-project'>{esc(project)}</span>" if project else ""
+        )
         html += "<div class='current-activity-row'>"
         html += f"<span class='ca-time'>{esc(duration_str)}</span>"
         html += project_part
@@ -1343,7 +1360,9 @@ def _has_meaningful_context(session: dict) -> bool:
                 return False
 
     # Must have either a real project OR a meaningful description
-    return bool(project and project != "unknown") or (description and len(description) > 10)
+    return bool(project and project != "unknown") or (
+        description and len(description) > 10
+    )
 
 
 def get_where_you_left_off(hours: int = 24, limit: int = 10) -> dict:
@@ -1379,7 +1398,10 @@ def get_where_you_left_off(hours: int = 24, limit: int = 10) -> dict:
     running_sessions = fetch_session_activity(hours=4)
     for s in running_sessions:
         last_prompt = s.get("last_prompt")
-        if not last_prompt or last_prompt in ("Idle", "New Session (Waiting for input)"):
+        if not last_prompt or last_prompt in (
+            "Idle",
+            "New Session (Waiting for input)",
+        ):
             continue
 
         # Extract rich context from TodoWrite
@@ -1392,7 +1414,11 @@ def get_where_you_left_off(hours: int = 24, limit: int = 10) -> dict:
         session_type = "interactive"  # Default: needs attention
 
         if todowrite:
-            todos = todowrite.todos if hasattr(todowrite, "todos") else todowrite.get("todos", [])
+            todos = (
+                todowrite.todos
+                if hasattr(todowrite, "todos")
+                else todowrite.get("todos", [])
+            )
 
             if todos:
                 in_progress = [t for t in todos if t.get("status") == "in_progress"]
@@ -1403,7 +1429,9 @@ def get_where_you_left_off(hours: int = 24, limit: int = 10) -> dict:
                 progress_total = len(todos)
 
                 if in_progress:
-                    now_task = in_progress[0].get("content") or in_progress[0].get("activeForm")
+                    now_task = in_progress[0].get("content") or in_progress[0].get(
+                        "activeForm"
+                    )
                     # If there's active TodoWrite work, it's running autonomously
                     session_type = "running"
 
@@ -1434,8 +1462,12 @@ def get_where_you_left_off(hours: int = 24, limit: int = 10) -> dict:
             "session_id": session_short,
             # Rich context for card display
             "goal": goal[:150] + "..." if len(goal) > 150 else goal,
-            "now_task": now_task[:100] + "..." if now_task and len(now_task) > 100 else now_task,
-            "next_task": next_task[:100] + "..." if next_task and len(next_task) > 100 else next_task,
+            "now_task": now_task[:100] + "..."
+            if now_task and len(now_task) > 100
+            else now_task,
+            "next_task": next_task[:100] + "..."
+            if next_task and len(next_task) > 100
+            else next_task,
             "progress_done": progress_done,
             "progress_total": progress_total,
             "session_type": session_type,
@@ -1445,7 +1477,9 @@ def get_where_you_left_off(hours: int = 24, limit: int = 10) -> dict:
             active_bucket.append(entry)
 
     # 2. Get completed sessions and triage by age
-    recent_sessions = get_recent_sessions(hours=168)  # Get up to 7 days for stale counting
+    recent_sessions = get_recent_sessions(
+        hours=168
+    )  # Get up to 7 days for stale counting
     for s in recent_sessions:
         summary = s.get("summary")
         if not summary or summary == "Session completed":
@@ -1473,7 +1507,9 @@ def get_where_you_left_off(hours: int = 24, limit: int = 10) -> dict:
         reentry_link = None
         session_file = s.get("session_file")
         if session_file:
-            reentry_link = f"obsidian://open?vault=writing&file=sessions/claude/{session_file}"
+            reentry_link = (
+                f"obsidian://open?vault=writing&file=sessions/claude/{session_file}"
+            )
 
         project = s.get("project") or "unknown"
         truncated_summary = summary[:120] + "..." if len(summary) > 120 else summary
@@ -3917,25 +3953,25 @@ def render_session_summary():
     now = datetime.now()
     today_str = now.strftime("%Y%m%d")
     yesterday_str = (now - timedelta(days=1)).strftime("%Y%m%d")
-    
+
     # Find files
     files = list(summaries_dir.glob("*.json"))
-    
+
     today_sessions = []
     yesterday_sessions = []
-    
+
     for f in files:
         if f.name.startswith(today_str):
             today_sessions.append(f)
         elif f.name.startswith(yesterday_str):
             yesterday_sessions.append(f)
-            
+
     # Format helper
     def fmt_tok(n):
         if n >= 1_000_000:
-            return f"{n/1_000_000:.1f}M"
+            return f"{n / 1_000_000:.1f}M"
         if n >= 1_000:
-            return f"{n/1_000:.1f}K"
+            return f"{n / 1_000:.1f}K"
         return str(n)
 
     # Render function for a list of files
@@ -3951,45 +3987,54 @@ def render_session_summary():
         for f in file_list:
             try:
                 data = json.loads(f.read_text())
-                
+
                 # Extract Data
                 project = data.get("project", "unknown")
                 sid = data.get("session_id", "unknown")[:8]
                 summary = data.get("summary", "No summary")
                 outcome = data.get("outcome", "unknown")
-                
+
                 # Metrics
                 metrics = data.get("token_metrics", {})
                 efficiency = metrics.get("efficiency", {})
                 duration = efficiency.get("session_duration_minutes", 0)
-                
+
                 totals = metrics.get("totals", {})
                 input_tok = totals.get("input_tokens", 0)
                 output_tok = totals.get("output_tokens", 0)
                 cache_read = totals.get("cache_read_tokens", 0)
                 total_tok = input_tok + output_tok + cache_read
-                
+
                 # Friction
                 friction = data.get("friction_points", [])
-                
+
                 # Status Color
-                status_color = "green" if outcome == "success" else "orange" if outcome == "partial" else "red"
-                
+                status_color = (
+                    "green"
+                    if outcome == "success"
+                    else "orange"
+                    if outcome == "partial"
+                    else "red"
+                )
+
                 # Render Card
-                with st.expander(f"**{project}** | {sid} | {duration:.1f}m | :{status_color}[{outcome.upper()}]", expanded=False):
+                with st.expander(
+                    f"**{project}** | {sid} | {duration:.1f}m | :{status_color}[{outcome.upper()}]",
+                    expanded=False,
+                ):
                     st.markdown(f"**Summary:** {summary}")
-                    
+
                     if friction:
                         st.markdown("**🛑 Problems:**")
                         for p in friction:
                             st.markdown(f"- {p}")
-                            
+
                     st.markdown("**📊 Metrics:**")
                     c1, c2, c3 = st.columns(3)
                     c1.metric("Duration", f"{duration:.1f}m")
                     c2.metric("Tokens", fmt_tok(total_tok))
                     c3.metric("Outcome", outcome)
-                    
+
                     if data.get("accomplishments"):
                         st.markdown("**✅ Accomplishments:**")
                         for a in data["accomplishments"]:
@@ -4008,7 +4053,9 @@ def render_session_summary():
 # ============================================================================
 
 # Navigation
-page = st.sidebar.radio("View Mode", ["Dashboard", "Manage Tasks", "Session Summary"], index=0)
+page = st.sidebar.radio(
+    "View Mode", ["Dashboard", "Manage Tasks", "Session Summary"], index=0
+)
 
 # Time range filter for "Completed Today" section
 completed_time_range = st.sidebar.selectbox(
@@ -4252,7 +4299,9 @@ if active_sessions_wlo or paused_sessions_wlo:
                 # Header: project (only if single project) + time
                 wlo_html += "<div class='wlo-card-header'>"
                 if len(active_by_project) == 1:
-                    wlo_html += f"<span class='wlo-card-project'>{esc(entry['project'])}</span>"
+                    wlo_html += (
+                        f"<span class='wlo-card-project'>{esc(entry['project'])}</span>"
+                    )
                 wlo_html += f"<span class='wlo-card-time {time_class}'>{esc(time_display)}</span>"
                 wlo_html += "</div>"
 
@@ -4270,17 +4319,23 @@ if active_sessions_wlo or paused_sessions_wlo:
 
                 now_task = entry["now_task"]
                 if now_task:
-                    wlo_html += f"<span class='wlo-card-now'>Now: {esc(now_task)}</span>"
+                    wlo_html += (
+                        f"<span class='wlo-card-now'>Now: {esc(now_task)}</span>"
+                    )
 
                 next_task = entry["next_task"]
                 if next_task:
-                    wlo_html += f"<span class='wlo-card-next'>Next: {esc(next_task)}</span>"
+                    wlo_html += (
+                        f"<span class='wlo-card-next'>Next: {esc(next_task)}</span>"
+                    )
 
                 # Status badge
                 if session_type == "running":
                     wlo_html += "<span class='wlo-card-status running'>Running</span>"
                 elif session_type == "interactive":
-                    wlo_html += "<span class='wlo-card-status interactive'>Needs You</span>"
+                    wlo_html += (
+                        "<span class='wlo-card-status interactive'>Needs You</span>"
+                    )
 
                 wlo_html += "</div>"  # End meta
                 wlo_html += "</div>"  # End card
@@ -4315,7 +4370,9 @@ if active_sessions_wlo or paused_sessions_wlo:
                 wlo_html += "<div class='wlo-card-header'>"
                 # Only show project in header if not already grouped
                 if len(paused_by_project) == 1:
-                    wlo_html += f"<span class='wlo-card-project'>{esc(entry['project'])}</span>"
+                    wlo_html += (
+                        f"<span class='wlo-card-project'>{esc(entry['project'])}</span>"
+                    )
                 wlo_html += f"<span class='wlo-card-time'>{esc(time_display)}</span>"
                 wlo_html += "</div>"
 
@@ -4326,7 +4383,9 @@ if active_sessions_wlo or paused_sessions_wlo:
                 wlo_html += "<div class='wlo-card-meta'>"
                 outcome_text = entry["outcome_text"]
                 if outcome_text:
-                    wlo_html += f"<span class='wlo-card-status done'>{esc(outcome_text)}</span>"
+                    wlo_html += (
+                        f"<span class='wlo-card-status done'>{esc(outcome_text)}</span>"
+                    )
 
                 reentry_link = entry["reentry_link"]
                 if reentry_link:
@@ -4363,7 +4422,9 @@ if stale_count > 0:
 # Fetch Data
 # Fetch Data
 
-active_sessions = fetch_session_activity(hours=24)  # Per spec: show only recent sessions
+active_sessions = fetch_session_activity(
+    hours=24
+)  # Per spec: show only recent sessions
 sessions_by_project = defaultdict(list)
 for s in active_sessions:
     p = s.get("project", "unknown")
@@ -4558,7 +4619,9 @@ try:
         completed_tasks = get_recently_completed(project=proj, hours=completed_hours)
         if completed_tasks:
             time_label = completed_time_range.upper()
-            card_parts.append(f"<div class='p-section-title'>✅ COMPLETED ({time_label})</div>")
+            card_parts.append(
+                f"<div class='p-section-title'>✅ COMPLETED ({time_label})</div>"
+            )
             for t in completed_tasks[:3]:
                 title = t.get("title", "")
                 modified_dt = t["_modified_dt"]

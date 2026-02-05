@@ -1,4 +1,3 @@
-
 import sys
 import os
 
@@ -6,6 +5,7 @@ import os
 sys.path.append(os.getcwd())
 
 from lib.overwhelm.dashboard import clean_activity_text
+
 
 def test_clean_activity_text():
     # Test docstring
@@ -15,12 +15,13 @@ def test_clean_activity_text():
     # Test functionality
     long_text = "a" * 150
     cleaned = clean_activity_text(long_text)
-    
+
     # It should be 120 chars long (117 chars + "...")
     assert len(cleaned) == 120
     assert cleaned.endswith("...")
     assert cleaned.startswith("a" * 117)
     print("Functionality verification passed.")
+
 
 if __name__ == "__main__":
     test_clean_activity_text()

@@ -75,6 +75,7 @@ def _log_debug(msg: str) -> None:
     except OSError as e:
         # Debug logging failure is non-fatal but we log to stderr for visibility
         import sys
+
         print(f"Debug log write failed: {e}", file=sys.stderr)
 
 
@@ -192,6 +193,7 @@ def load_project_paths_context() -> str:
 
     try:
         import yaml
+
         with open(polecat_config) as f:
             config = yaml.safe_load(f)
 
@@ -721,15 +723,31 @@ def is_followup_prompt(session_id: str, prompt: str) -> bool:
     # Continuation markers indicating same-context work
     continuation_markers = [
         # Pronouns referring to prior context
-        "this", "that", "those", "these", "it",
+        "this",
+        "that",
+        "those",
+        "these",
+        "it",
         # Additive markers
-        "also", "too", "as well", "while you're at it",
+        "also",
+        "too",
+        "as well",
+        "while you're at it",
         # Repetition markers
-        "same", "again", "another",
+        "same",
+        "again",
+        "another",
         # Action verbs for quick tasks
-        "save", "add", "put", "update", "log", "note",
+        "save",
+        "add",
+        "put",
+        "update",
+        "log",
+        "note",
         # Continuation phrases
-        "one more", "quick", "before you go",
+        "one more",
+        "quick",
+        "before you go",
     ]
     prompt_lower = prompt.lower()
     has_continuation = any(marker in prompt_lower for marker in continuation_markers)

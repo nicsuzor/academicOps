@@ -12,7 +12,9 @@ to $AOPS/config/gemini/commands/ (or specified output directory).
 import re
 import sys
 from pathlib import Path
-#<!-- @NS: This seems to violate DRY -- I think we already have this script. merge them -->
+
+
+# <!-- @NS: This seems to violate DRY -- I think we already have this script. merge them -->
 def extract_frontmatter(content: str) -> tuple[dict, str]:
     """
     Extract YAML frontmatter and body from markdown content.
@@ -49,7 +51,7 @@ def extract_frontmatter(content: str) -> tuple[dict, str]:
 def escape_toml_string(s: str) -> str:
     """Escape a string for TOML multiline literal."""
     # For multiline literal strings ('''), we just need to handle '''
-    return s.replace("'''", "'\\\'\'\''")
+    return s.replace("'''", "'\\''''")
 
 
 def escape_toml_basic_string(s: str) -> str:
@@ -93,7 +95,7 @@ def main():
     """Main entry point."""
     # Determine paths
     aops = Path(__file__).parent.parent
-    
+
     # Default output directory
     output_dir = aops / "config" / "gemini" / "commands"
 
@@ -113,7 +115,7 @@ def main():
 
     # Find all commands directories in aops-* plugins
     command_dirs = list(aops.glob("aops-*/commands"))
-    
+
     # Also check top-level commands (legacy/fallback)
     if (aops / "commands").exists():
         command_dirs.append(aops / "commands")
@@ -124,9 +126,9 @@ def main():
     for cmd_dir in command_dirs:
         if not cmd_dir.is_dir():
             continue
-            
+
         print(f"Scanning {cmd_dir.relative_to(aops)}...", file=sys.stderr)
-        
+
         for md_file in sorted(cmd_dir.glob("*.md")):
             try:
                 toml_content = convert_command(md_file)

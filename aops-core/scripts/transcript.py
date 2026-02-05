@@ -544,9 +544,9 @@ Examples:
         # Process newest sessions first (reverse chronological)
         sessions = sorted(
             sessions,
-            key=lambda s: s.path.stat().st_mtime
-            if hasattr(s, "path") and s.path.exists()
-            else 0,
+            key=lambda s: (
+                s.path.stat().st_mtime if hasattr(s, "path") and s.path.exists() else 0
+            ),
             reverse=True,
         )
 

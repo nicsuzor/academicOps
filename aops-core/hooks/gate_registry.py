@@ -272,13 +272,14 @@ class GateContext(HookContext):
     Backward-compatible wrapper for HookContext.
     Allows tests using the old (session_id, event_name, input_data) constructor to pass.
     """
+
     def __init__(self, session_id: str, event_name: str, input_data: Dict[str, Any]):
         # Map old field names to new ones
         tool_name = input_data.get("tool_name") or input_data.get("toolName")
         tool_input = input_data.get("tool_input") or input_data.get("toolInput") or {}
         transcript_path = input_data.get("transcript_path")
         cwd = input_data.get("cwd")
-        
+
         super().__init__(
             session_id=session_id,
             hook_event=event_name,
@@ -286,7 +287,7 @@ class GateContext(HookContext):
             tool_name=tool_name,
             tool_input=tool_input,
             transcript_path=transcript_path,
-            cwd=cwd
+            cwd=cwd,
         )
 
 
@@ -320,8 +321,7 @@ def check_subagent_tool_restrictions(ctx: HookContext) -> Optional[GateResult]:
     # from Edit after hydrator completed because hydrator_active flag was stale.
     is_hydrator_in_type = subagent_type and "hydrator" in subagent_type.lower()
     is_hydrator_session = (
-        subagent_type == "aops-core:prompt-hydrator"
-        or is_hydrator_in_type
+        subagent_type == "aops-core:prompt-hydrator" or is_hydrator_in_type
     )
 
     # prompt-hydrator should only have Read + memory tools
@@ -583,12 +583,16 @@ def _is_skill_invocation(
 
 def _is_handover_skill_invocation(tool_name: str, tool_input: Dict[str, Any]) -> bool:
     """Check if this is a handover skill invocation."""
-    return _is_skill_invocation(tool_name, tool_input, ("handover", "aops-core:handover"))
+    return _is_skill_invocation(
+        tool_name, tool_input, ("handover", "aops-core:handover")
+    )
 
 
 def _is_custodiet_invocation(tool_name: str, tool_input: Dict[str, Any]) -> bool:
     """Check if this is a custodiet skill invocation."""
-    return _is_skill_invocation(tool_name, tool_input, ("custodiet", "aops-core:custodiet"))
+    return _is_skill_invocation(
+        tool_name, tool_input, ("custodiet", "aops-core:custodiet")
+    )
 
 
 # --- Hydration Logic ---
@@ -792,7 +796,9 @@ def check_hydration_gate(ctx: HookContext) -> Optional[GateResult]:
     # Also check transcript path directly (redundant but catches edge cases)
     if ctx.raw_input:
         transcript_path = ctx.raw_input.get("transcript_path")
-        if transcript_path and ("/subagents/" in str(transcript_path) or "/agent-" in str(transcript_path)):
+        if transcript_path and (
+            "/subagents/" in str(transcript_path) or "/agent-" in str(transcript_path)
+        ):
             return None
 
     # STATEFUL BYPASS: Check if hydrator is currently active (set when Task(hydrator) starts)
@@ -815,7 +821,7 @@ def check_hydration_gate(ctx: HookContext) -> Optional[GateResult]:
         command = ctx.tool_input.get("command")
         if command is None:
             command = ctx.tool_input.get("CommandLine")
-            
+
         if command and _is_hydration_safe_bash(str(command)):
             return None
 
@@ -833,7 +839,12 @@ def check_hydration_gate(ctx: HookContext) -> Optional[GateResult]:
     # Gemini MCP tool invocation: tool_name is directly "prompt-hydrator"
     is_gemini_mcp_hydrator = tool_name == "prompt-hydrator"
 
-    if is_skill_activation or is_hydrator_tool_or_agent or is_gemini or is_gemini_mcp_hydrator:
+    if (
+        is_skill_activation
+        or is_hydrator_tool_or_agent
+        or is_gemini
+        or is_gemini_mcp_hydrator
+    ):
         # Allow hydrator invocation but DO NOT clear hydration_pending here.
         # hydration_pending is cleared by SubagentStop handler when hydrator
         # completes with a valid ## HYDRATION RESULT output.
@@ -868,9 +879,9 @@ def check_hydration_gate(ctx: HookContext) -> Optional[GateResult]:
         return GateResult(
             verdict=GateVerdict.DENY,
             context_injection="⛔ **CONFIGURATION ERROR**: `HYDRATION_GATE_MODE` environment variable is missing.\n\n"
-                              "Per Axiom P#8 (Fail-Fast), no defaults are allowed. "
-                              "Please set this variable to 'block' or 'warn'.",
-            metadata={"source": "hydration_gate", "error": "missing_config"}
+            "Per Axiom P#8 (Fail-Fast), no defaults are allowed. "
+            "Please set this variable to 'block' or 'warn'.",
+            metadata={"source": "hydration_gate", "error": "missing_config"},
         )
 
     # Get temp_path from session state to include in message
@@ -886,19 +897,19 @@ def check_hydration_gate(ctx: HookContext) -> Optional[GateResult]:
             return GateResult(
                 verdict=GateVerdict.DENY,
                 context_injection="⛔ **SESSION NOT INITIALIZED**: No session state file found.\n\n"
-                                  "This session has not been properly initialized. Per P#8 (Fail-Fast), "
-                                  "destructive operations are blocked until the session is set up via "
-                                  "SessionStart or UserPromptSubmit hooks.\n\n"
-                                  "If you're seeing this in a new Gemini CLI session, ensure hooks are "
-                                  "configured correctly in ~/.gemini/settings.json.",
-                metadata={"source": "hydration_gate", "error": "missing_session_state"}
+                "This session has not been properly initialized. Per P#8 (Fail-Fast), "
+                "destructive operations are blocked until the session is set up via "
+                "SessionStart or UserPromptSubmit hooks.\n\n"
+                "If you're seeing this in a new Gemini CLI session, ensure hooks are "
+                "configured correctly in ~/.gemini/settings.json.",
+                metadata={"source": "hydration_gate", "error": "missing_session_state"},
             )
         # State exists but temp_path missing - real corruption
         return GateResult(
             verdict=GateVerdict.DENY,
             context_injection="⛔ **STATE ERROR**: Hydration temp path missing from session state.\n\n"
-                              "This indicates framework state corruption. Cannot proceed safely.",
-            metadata={"source": "hydration_gate", "error": "missing_temp_path"}
+            "This indicates framework state corruption. Cannot proceed safely.",
+            metadata={"source": "hydration_gate", "error": "missing_temp_path"},
         )
 
     if hydration_mode == "warn":
@@ -1138,9 +1149,12 @@ def check_axiom_enforcer_gate(ctx: HookContext) -> Optional[GateResult]:
         if not _is_safe_temp_path(file_path):
             # Check if file exists (new files don't need to be read first)
             from pathlib import Path
+
             target_exists = Path(file_path).expanduser().exists()
 
-            if target_exists and not session_state.has_file_been_read(ctx.session_id, file_path):
+            if target_exists and not session_state.has_file_been_read(
+                ctx.session_id, file_path
+            ):
                 return GateResult(
                     verdict=GateVerdict.DENY,
                     context_injection=(
@@ -1155,7 +1169,11 @@ def check_axiom_enforcer_gate(ctx: HookContext) -> Optional[GateResult]:
                     metadata={
                         "source": "axiom_enforcer",
                         "violations": [
-                            {"axiom": "P#26", "pattern": "write_without_read", "file": file_path}
+                            {
+                                "axiom": "P#26",
+                                "pattern": "write_without_read",
+                                "file": file_path,
+                            }
                         ],
                     },
                 )
@@ -1388,7 +1406,11 @@ def check_task_required_gate(ctx: HookContext) -> Optional[GateResult]:
     # enforcement is configurable via TASK_GATE_ENFORCE_ALL env var
     if _is_full_gate_enforcement_enabled():
         # Full three-gate enforcement
-        if gates["task_bound"] and gates["plan_mode_invoked"] and gates["critic_invoked"]:
+        if (
+            gates["task_bound"]
+            and gates["plan_mode_invoked"]
+            and gates["critic_invoked"]
+        ):
             return None
     else:
         # Default: only enforce task_bound (other gates for observability)
@@ -1491,9 +1513,7 @@ def run_accountant(ctx: HookContext) -> Optional[GateResult]:
     if _is_custodiet_invocation(ctx.tool_name or "", ctx.tool_input):
         state["tool_calls_since_compliance"] = 0
         state["last_compliance_ts"] = time.time()
-        system_messages.append(
-            "🛡️ [Gate] Compliance verified. Custodiet gate reset."
-        )
+        system_messages.append("🛡️ [Gate] Compliance verified. Custodiet gate reset.")
 
     else:
         state["tool_calls_since_compliance"] += 1
@@ -1576,7 +1596,11 @@ def check_stop_gate(ctx: HookContext) -> Optional[GateResult]:
         or hydration_data.get("original_prompt") is not None
     )
     has_run_subagents = len(subagents) > 0
-    is_streamlined = current_workflow in ("interactive-followup", "simple-question", "direct-skill")
+    is_streamlined = current_workflow in (
+        "interactive-followup",
+        "simple-question",
+        "direct-skill",
+    )
 
     if is_hydrated and not has_run_subagents and not is_streamlined:
         # User explicitly asked for turns_since_hydration == 0 logic
@@ -1627,7 +1651,11 @@ def check_hydration_recency_gate(ctx: HookContext) -> Optional[GateResult]:
 
     turns_since = hydration_state.get("turns_since_hydration")
     current_workflow = state.get("state", {}).get("current_workflow")
-    is_streamlined = current_workflow in ("interactive-followup", "simple-question", "direct-skill")
+    is_streamlined = current_workflow in (
+        "interactive-followup",
+        "simple-question",
+        "direct-skill",
+    )
 
     if turns_since == 0 and not is_streamlined:
         return GateResult(
@@ -1791,7 +1819,11 @@ def check_agent_response_listener(ctx: HookContext) -> Optional[GateResult]:
             session_state.save_session_state(ctx.session_id, state)
 
         # Detect streamlined workflows that skip critic
-        is_streamlined = workflow_id in ("interactive-followup", "simple-question", "direct-skill")
+        is_streamlined = workflow_id in (
+            "interactive-followup",
+            "simple-question",
+            "direct-skill",
+        )
 
         if is_streamlined:
             return GateResult(
@@ -1848,17 +1880,20 @@ def check_agent_response_listener(ctx: HookContext) -> Optional[GateResult]:
                     "Your Framework Reflection is missing required fields. The correct format is:\n\n"
                     "## Framework Reflection\n\n"
                     "**Prompts**: [Original request in brief]\n"
-                    "**Guidance received**: [Hydrator advice, or \"N/A\"]\n"
+                    '**Guidance received**: [Hydrator advice, or "N/A"]\n'
                     "**Followed**: [Yes/No/Partial - explain]\n"
                     "**Outcome**: success | partial | failure\n"
                     "**Accomplishments**: [What was completed]\n"
-                    "**Friction points**: [Issues encountered, or \"none\"]\n"
-                    "**Proposed changes**: [Framework improvements, or \"none\"]\n"
-                    "**Next step**: [Follow-up needed, or \"none\"]\n\n"
+                    '**Friction points**: [Issues encountered, or "none"]\n'
+                    '**Proposed changes**: [Framework improvements, or "none"]\n'
+                    '**Next step**: [Follow-up needed, or "none"]\n\n'
                     f"Missing: {', '.join(missing_fields)}\n"
                     "</system-reminder>"
                 ),
-                metadata={"source": "agent_response_listener", "missing_fields": missing_fields},
+                metadata={
+                    "source": "agent_response_listener",
+                    "missing_fields": missing_fields,
+                },
             )
 
         # All required fields present - set handover flag
@@ -1944,7 +1979,10 @@ def check_session_start_gate(ctx: HookContext) -> Optional[GateResult]:
                     f"Fix: Ensure Gemini CLI has initialized the project directory.\n"
                     f"Try running a simple Gemini command first to create ~/.gemini/tmp/{{hash}}/"
                 ),
-                metadata={"source": "session_start", "error": "gemini_temp_dir_missing"},
+                metadata={
+                    "source": "session_start",
+                    "error": "gemini_temp_dir_missing",
+                },
             )
         except OSError as e:
             return GateResult(
@@ -1954,7 +1992,10 @@ def check_session_start_gate(ctx: HookContext) -> Optional[GateResult]:
                     f"Error: {e}\n\n"
                     f"Fix: Check directory permissions for ~/.gemini/tmp/"
                 ),
-                metadata={"source": "session_start", "error": "gemini_temp_dir_permission"},
+                metadata={
+                    "source": "session_start",
+                    "error": "gemini_temp_dir_permission",
+                },
             )
 
     # Build startup message for USER display (system_message, not context_injection)
@@ -2185,8 +2226,16 @@ def run_task_binding(ctx: HookContext) -> Optional[GateResult]:
     from lib.event_detector import detect_tool_state_changes, StateChange
 
     # Support both Claude (snake_case) and Gemini (camelCase) field names
-    tool_name = ctx.tool_name or ctx.raw_input.get("tool_name") or ctx.raw_input.get("toolName", "")
-    tool_input = ctx.tool_input or ctx.raw_input.get("tool_input") or ctx.raw_input.get("toolInput", {})
+    tool_name = (
+        ctx.tool_name
+        or ctx.raw_input.get("tool_name")
+        or ctx.raw_input.get("toolName", "")
+    )
+    tool_input = (
+        ctx.tool_input
+        or ctx.raw_input.get("tool_input")
+        or ctx.raw_input.get("toolInput", {})
+    )
     tool_result = (
         ctx.raw_input.get("tool_result")
         or ctx.raw_input.get("toolResult")

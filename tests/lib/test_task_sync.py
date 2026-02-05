@@ -107,7 +107,9 @@ Some notes about the feature.
         )
         assert added is True
         assert "## Progress" in sample_task.body
-        assert "2026-01-24: Completed unit tests (session: abc12345)" in sample_task.body
+        assert (
+            "2026-01-24: Completed unit tests (session: abc12345)" in sample_task.body
+        )
 
     def test_add_progress_entry_existing_section(self, service, sample_task):
         """Test adding progress entry to existing section."""

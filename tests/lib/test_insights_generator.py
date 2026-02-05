@@ -255,32 +255,44 @@ class TestInsightsFilePath:
 
     def test_file_path_format_with_project(self):
         """Test that file path includes project name when provided."""
-        path = get_insights_file_path("2026-01-13", "a1b2c3d4", project="writing", hour="14")
+        path = get_insights_file_path(
+            "2026-01-13", "a1b2c3d4", project="writing", hour="14"
+        )
         # With project: YYYYMMDD-HH-project-session_id.json
         assert path.name == "20260113-14-writing-a1b2c3d4.json"
-        assert str(path).endswith("sessions/summaries/20260113-14-writing-a1b2c3d4.json")
+        assert str(path).endswith(
+            "sessions/summaries/20260113-14-writing-a1b2c3d4.json"
+        )
 
     def test_file_path_format_with_project_and_slug(self):
         """Test that file path includes project and slug."""
-        path = get_insights_file_path("2026-01-13", "a1b2c3d4", slug="review", project="aops", hour="17")
+        path = get_insights_file_path(
+            "2026-01-13", "a1b2c3d4", slug="review", project="aops", hour="17"
+        )
         # With project and slug: YYYYMMDD-HH-project-session_id-slug.json
         assert path.name == "20260113-17-aops-a1b2c3d4-review.json"
 
     def test_file_path_sanitizes_project_name(self):
         """Test that project name is sanitized for filesystem safety."""
-        path = get_insights_file_path("2026-01-13", "a1b2c3d4", project="My Project!", hour="23")
+        path = get_insights_file_path(
+            "2026-01-13", "a1b2c3d4", project="My Project!", hour="23"
+        )
         # Special chars removed, lowercase
         assert path.name == "20260113-23-my-project-a1b2c3d4.json"
 
     def test_file_path_uses_centralized_location(self):
         """Test that file path uses centralized ~/writing/sessions/summaries/ location."""
-        path = get_insights_file_path("2026-01-13", "a1b2c3d4", project="test", hour="08")
+        path = get_insights_file_path(
+            "2026-01-13", "a1b2c3d4", project="test", hour="08"
+        )
         # Centralized location, no env var dependency
         assert "writing/sessions/summaries" in str(path)
 
     def test_file_path_extracts_hour_from_iso8601(self):
         """Test that hour is extracted from ISO 8601 date format."""
-        path = get_insights_file_path("2026-01-13T15:30:00+10:00", "a1b2c3d4", project="test")
+        path = get_insights_file_path(
+            "2026-01-13T15:30:00+10:00", "a1b2c3d4", project="test"
+        )
         # Hour extracted from ISO 8601 timestamp
         assert path.name == "20260113-15-test-a1b2c3d4.json"
 
@@ -347,14 +359,22 @@ class TestFallbackInsights:
     def test_fallback_has_required_fields(self):
         """Test that fallback insights have all required fields."""
         metadata = {"session_id": "abc", "date": "2026-01-13", "project": "test"}
-        operational = {"workflows_used": [], "subagents_invoked": [], "subagent_count": 0}
+        operational = {
+            "workflows_used": [],
+            "subagents_invoked": [],
+            "subagent_count": 0,
+        }
         fallback = generate_fallback_insights(metadata, operational)
 
         validate_insights_schema(fallback)  # Should not raise
 
     def test_fallback_includes_metadata(self):
         """Test that fallback includes provided metadata."""
-        metadata = {"session_id": "abc123", "date": "2026-01-13", "project": "myproject"}
+        metadata = {
+            "session_id": "abc123",
+            "date": "2026-01-13",
+            "project": "myproject",
+        }
         operational = {}
         fallback = generate_fallback_insights(metadata, operational)
 
@@ -494,13 +514,16 @@ class TestTokenMetricsValidation:
             token_metrics={"totals": {"input_tokens": "not a number"}}
         )
         with pytest.raises(
-            InsightsValidationError, match="token_metrics.totals.input_tokens.*must be numeric"
+            InsightsValidationError,
+            match="token_metrics.totals.input_tokens.*must be numeric",
         ):
             validate_insights_schema(insights)
 
     def test_token_metrics_by_model_must_be_dict(self):
         """Test that token_metrics.by_model must be a dict."""
-        insights = self._minimal_insights(token_metrics={"by_model": ["list", "not", "dict"]})
+        insights = self._minimal_insights(
+            token_metrics={"by_model": ["list", "not", "dict"]}
+        )
         with pytest.raises(
             InsightsValidationError, match="token_metrics.by_model.*must be a dict"
         ):
@@ -512,7 +535,8 @@ class TestTokenMetricsValidation:
             token_metrics={"by_model": {"claude-opus": "not a dict"}}
         )
         with pytest.raises(
-            InsightsValidationError, match="token_metrics.by_model.claude-opus.*must be a dict"
+            InsightsValidationError,
+            match="token_metrics.by_model.claude-opus.*must be a dict",
         ):
             validate_insights_schema(insights)
 
@@ -548,7 +572,8 @@ class TestTokenMetricsValidation:
             token_metrics={"efficiency": {"tokens_per_minute": "fast"}}
         )
         with pytest.raises(
-            InsightsValidationError, match="token_metrics.efficiency.tokens_per_minute.*must be numeric"
+            InsightsValidationError,
+            match="token_metrics.efficiency.tokens_per_minute.*must be numeric",
         ):
             validate_insights_schema(insights)
 
@@ -605,87 +630,65 @@ class TestFrameworkReflectionsValidation:
 
     def test_followed_accepts_bool_true(self):
         """Test that followed accepts boolean True."""
-        insights = self._minimal_insights(
-            framework_reflections=[{"followed": True}]
-        )
+        insights = self._minimal_insights(framework_reflections=[{"followed": True}])
         validate_insights_schema(insights)  # Should not raise
 
     def test_followed_accepts_bool_false(self):
         """Test that followed accepts boolean False."""
-        insights = self._minimal_insights(
-            framework_reflections=[{"followed": False}]
-        )
+        insights = self._minimal_insights(framework_reflections=[{"followed": False}])
         validate_insights_schema(insights)  # Should not raise
 
     def test_followed_coerces_int_1_to_true(self):
         """Test that followed coerces integer 1 to True."""
-        insights = self._minimal_insights(
-            framework_reflections=[{"followed": 1}]
-        )
+        insights = self._minimal_insights(framework_reflections=[{"followed": 1}])
         validate_insights_schema(insights)  # Should not raise
         assert insights["framework_reflections"][0]["followed"] is True
 
     def test_followed_coerces_int_0_to_false(self):
         """Test that followed coerces integer 0 to False."""
-        insights = self._minimal_insights(
-            framework_reflections=[{"followed": 0}]
-        )
+        insights = self._minimal_insights(framework_reflections=[{"followed": 0}])
         validate_insights_schema(insights)  # Should not raise
         assert insights["framework_reflections"][0]["followed"] is False
 
     def test_followed_coerces_string_true(self):
         """Test that followed coerces string 'true' to True."""
-        insights = self._minimal_insights(
-            framework_reflections=[{"followed": "true"}]
-        )
+        insights = self._minimal_insights(framework_reflections=[{"followed": "true"}])
         validate_insights_schema(insights)  # Should not raise
         assert insights["framework_reflections"][0]["followed"] is True
 
     def test_followed_coerces_string_false(self):
         """Test that followed coerces string 'false' to False."""
-        insights = self._minimal_insights(
-            framework_reflections=[{"followed": "false"}]
-        )
+        insights = self._minimal_insights(framework_reflections=[{"followed": "false"}])
         validate_insights_schema(insights)  # Should not raise
         assert insights["framework_reflections"][0]["followed"] is False
 
     def test_followed_coerces_string_yes(self):
         """Test that followed coerces string 'yes' to True."""
-        insights = self._minimal_insights(
-            framework_reflections=[{"followed": "yes"}]
-        )
+        insights = self._minimal_insights(framework_reflections=[{"followed": "yes"}])
         validate_insights_schema(insights)  # Should not raise
         assert insights["framework_reflections"][0]["followed"] is True
 
     def test_followed_coerces_string_no(self):
         """Test that followed coerces string 'no' to False."""
-        insights = self._minimal_insights(
-            framework_reflections=[{"followed": "no"}]
-        )
+        insights = self._minimal_insights(framework_reflections=[{"followed": "no"}])
         validate_insights_schema(insights)  # Should not raise
         assert insights["framework_reflections"][0]["followed"] is False
 
     def test_followed_coerces_string_case_insensitive(self):
         """Test that followed string coercion is case-insensitive."""
         for val in ["TRUE", "True", "YES", "Yes", "Y", "1"]:
-            insights = self._minimal_insights(
-                framework_reflections=[{"followed": val}]
-            )
+            insights = self._minimal_insights(framework_reflections=[{"followed": val}])
             validate_insights_schema(insights)
             assert insights["framework_reflections"][0]["followed"] is True
 
         for val in ["FALSE", "False", "NO", "No", "N", "0", ""]:
-            insights = self._minimal_insights(
-                framework_reflections=[{"followed": val}]
-            )
+            insights = self._minimal_insights(framework_reflections=[{"followed": val}])
             validate_insights_schema(insights)
             assert insights["framework_reflections"][0]["followed"] is False
 
     def test_followed_rejects_invalid_string(self):
         """Test that followed rejects unrecognized string values."""
-        insights = self._minimal_insights(
-            framework_reflections=[{"followed": "maybe"}]
-        )
+        insights = self._minimal_insights(framework_reflections=[{"followed": "maybe"}])
         with pytest.raises(
             InsightsValidationError, match="cannot be coerced to boolean"
         ):
@@ -693,9 +696,7 @@ class TestFrameworkReflectionsValidation:
 
     def test_followed_rejects_invalid_type(self):
         """Test that followed rejects non-coercible types like lists."""
-        insights = self._minimal_insights(
-            framework_reflections=[{"followed": [True]}]
-        )
+        insights = self._minimal_insights(framework_reflections=[{"followed": [True]}])
         with pytest.raises(
             InsightsValidationError, match="must be a boolean or coercible value"
         ):
@@ -703,7 +704,5 @@ class TestFrameworkReflectionsValidation:
 
     def test_followed_accepts_null(self):
         """Test that followed accepts None/null."""
-        insights = self._minimal_insights(
-            framework_reflections=[{"followed": None}]
-        )
+        insights = self._minimal_insights(framework_reflections=[{"followed": None}])
         validate_insights_schema(insights)  # Should not raise

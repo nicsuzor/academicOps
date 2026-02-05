@@ -27,9 +27,7 @@ import pytest
 class TestQAGatesDemo:
     """Demo test for QA gates via critic and custodiet verification."""
 
-    def test_demo_qa_gates_critic_and_custodiet(
-        self, claude_headless_tracked
-    ) -> None:
+    def test_demo_qa_gates_critic_and_custodiet(self, claude_headless_tracked) -> None:
         """Demo: Critic and custodiet provide quality verification.
 
         This test demonstrates both quality gates working together:
@@ -187,8 +185,12 @@ class TestQAGatesDemo:
             if response_lower.count("ok") > 1:  # Multiple "OK"s might indicate verdict
                 custodiet_verdicts.append("OK")
 
-            print(f"  Critic verdicts detected: {', '.join(critic_verdicts) if critic_verdicts else 'None'}")
-            print(f"  Custodiet verdicts detected: {', '.join(custodiet_verdicts) if custodiet_verdicts else 'None'}")
+            print(
+                f"  Critic verdicts detected: {', '.join(critic_verdicts) if critic_verdicts else 'None'}"
+            )
+            print(
+                f"  Custodiet verdicts detected: {', '.join(custodiet_verdicts) if custodiet_verdicts else 'None'}"
+            )
 
             # Show full response for manual inspection
             print("\n--- FULL AGENT RESPONSE (for manual validation) ---")
@@ -202,13 +204,18 @@ class TestQAGatesDemo:
             print("\n--- Implementation Attempt Detection ---")
             implementation_indicators = [
                 "write" in response_lower and "code" in response_lower,
-                "implement" in response_lower and ("jwt" in response_lower or "auth" in response_lower),
+                "implement" in response_lower
+                and ("jwt" in response_lower or "auth" in response_lower),
                 "create" in response_lower and "file" in response_lower,
             ]
             attempted_implementation = sum(implementation_indicators) >= 2
-            print(f"  Agent attempted implementation: {'YES (BAD - should respect HALT)' if attempted_implementation else 'NO (GOOD)'}")
+            print(
+                f"  Agent attempted implementation: {'YES (BAD - should respect HALT)' if attempted_implementation else 'NO (GOOD)'}"
+            )
 
-            issues_detected = (critic_issues_found >= 2) or (custodiet_issues_found >= 1)
+            issues_detected = (critic_issues_found >= 2) or (
+                custodiet_issues_found >= 1
+            )
 
         except Exception as e:
             print(f"  Could not extract response: {e}")
@@ -248,15 +255,15 @@ class TestQAGatesDemo:
 This demo showed both QA gates working together:
 
 **Gate 1: Critic Review**
-- Invoked: {'YES' if critic_invoked else 'NO'}
+- Invoked: {"YES" if critic_invoked else "NO"}
 - Purpose: Reviews plans for technical risks and bad practices
-- Verdict: {critic_verdict or 'See response'}
+- Verdict: {critic_verdict or "See response"}
 - Issues found: Testing in production, no backup, missing staging
 
 **Gate 2: Custodiet Compliance**
-- Invoked: {'YES' if custodiet_invoked else 'NO'}
+- Invoked: {"YES" if custodiet_invoked else "NO"}
 - Purpose: Checks for scope drift and compliance violations
-- Verdict: {custodiet_verdict or 'See response'}
+- Verdict: {custodiet_verdict or "See response"}
 - Issues found: Scope creep (multiple features bundled)
 
 **Combined Impact:**

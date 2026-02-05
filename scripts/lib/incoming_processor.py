@@ -6,23 +6,25 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+
 def get_mime_type(file_path: Path) -> str:
     # Try mimetypes first
     mime_type, _ = mimetypes.guess_type(file_path)
     if mime_type:
         return mime_type
-    
+
     # Fallback to 'file' command
     try:
         result = subprocess.run(
             ["file", "--mime-type", "-b", str(file_path)],
             capture_output=True,
             text=True,
-            check=True
+            check=True,
         )
         return result.stdout.strip()
     except subprocess.CalledProcessError:
         return "application/octet-stream"
+
 
 def process_incoming_file(file_path: Path):
     """
@@ -34,31 +36,32 @@ def process_incoming_file(file_path: Path):
         return
 
     logger.info(f"Processing: {file_path.name}")
-    
+
     # Wait for file write to complete (simple heuristic: file size constant for 1s?)
     # For now, assume watchdog event implies it's ready, but with large files careful.
     # We might need a retry loop or check open handles.
-    
+
     mime_type = get_mime_type(file_path)
     logger.info(f"Detected MIME: {mime_type}")
 
     # Routing Logic
-    dest_root = Path.home() / "processed" # Default destination root
-    
+    dest_root = Path.home() / "processed"  # Default destination root
+
     if mime_type == "application/pdf":
         dest_dir = dest_root / "docs"
         try:
             from pdfminer.high_level import extract_text
+
             text = extract_text(file_path)
             md_path = dest_dir / (file_path.stem + ".md")
             dest_dir.mkdir(parents=True, exist_ok=True)
-            
+
             with open(md_path, "w") as f:
                 f.write(f"# {file_path.stem}\n\n")
                 f.write(text)
-            
+
             notify_user(f"Converted PDF: {file_path.name}", f"Saved to {md_path}")
-            
+
             # Also move the original? Or just keep it?
             # Requirement says "File to appropriate location".
             # Probably move original to archive or keep alongside.
@@ -68,10 +71,16 @@ def process_incoming_file(file_path: Path):
             logger.warning("pdfminer.six not found, skipping conversion.")
         except Exception as e:
             logger.error(f"PDF conversion failed: {e}")
-            
+
     elif mime_type.startswith("image/"):
         dest_dir = dest_root / "images"
-    elif mime_type.startswith("text/") or file_path.suffix in ['.md', '.txt', '.py', '.js', '.json']:
+    elif mime_type.startswith("text/") or file_path.suffix in [
+        ".md",
+        ".txt",
+        ".py",
+        ".js",
+        ".json",
+    ]:
         dest_dir = dest_root / "notes"
     else:
         dest_dir = dest_root / "misc"
@@ -92,20 +101,20 @@ def process_incoming_file(file_path: Path):
     except Exception as e:
         logger.error(f"Failed to move {file_path}: {e}")
 
+
 def notify_user(title, message):
     """
     Send notification to user.
     Tries 'notify-send' first, then logs.
     """
     logger.info(f"NOTIFICATION: {title} - {message}")
-    
+
     notify_cmd = shutil.which("notify-send")
     if notify_cmd:
         try:
             subprocess.run(
                 [notify_cmd, title, message],
-                check=False  # Don't crash if notification fails
+                check=False,  # Don't crash if notification fails
             )
         except Exception as e:
             logger.warning(f"Failed to send notification: {e}")
-

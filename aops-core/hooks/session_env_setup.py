@@ -47,7 +47,7 @@ def persist_env_var(name: str, value: str) -> None:
 def run_session_env_setup(ctx: HookContext) -> Optional[GateResult]:
     """
     Logic from session_env_setup.sh migrated to Python.
-    
+
     Sets:
     - CLAUDE_SESSION_ID
     - PYTHONPATH (includes aops-core)
@@ -93,6 +93,5 @@ def run_session_env_setup(ctx: HookContext) -> Optional[GateResult]:
         persist_env_var("PATH", f"{current_path}:./node_modules/.bin")
 
     return GateResult(
-        verdict=GateVerdict.ALLOW,
-        metadata={"source": "session_env_setup"}
+        verdict=GateVerdict.ALLOW, metadata={"source": "session_env_setup"}
     )

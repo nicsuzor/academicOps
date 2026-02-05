@@ -7,7 +7,13 @@ AOPS_CORE_DIR = Path(__file__).parent.parent.parent / "aops-core"
 if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
-from hooks.router import HookRouter, CanonicalHookOutput, ClaudeStopHookOutput, ClaudeGeneralHookOutput
+from hooks.router import (
+    HookRouter,
+    CanonicalHookOutput,
+    ClaudeStopHookOutput,
+    ClaudeGeneralHookOutput,
+)
+
 
 class TestSessionEndSchema:
     @pytest.fixture
@@ -17,8 +23,7 @@ class TestSessionEndSchema:
     def test_session_end_uses_stop_schema(self, router_instance):
         """Verify SessionEnd event uses ClaudeStopHookOutput schema, not hookSpecificOutput."""
         canonical_output = CanonicalHookOutput(
-            verdict="allow",
-            system_message="Session ending."
+            verdict="allow", system_message="Session ending."
         )
         event_name = "SessionEnd"
 
@@ -27,10 +32,10 @@ class TestSessionEndSchema:
         # It must be a ClaudeStopHookOutput
         assert isinstance(result, ClaudeStopHookOutput)
         assert not isinstance(result, ClaudeGeneralHookOutput)
-        
+
         # It must NOT have hookSpecificOutput
         assert not hasattr(result, "hookSpecificOutput")
-        
+
         # Check expected fields
         assert result.decision == "approve"
         assert result.stopReason == "Session ending."
@@ -40,7 +45,7 @@ class TestSessionEndSchema:
         canonical_output = CanonicalHookOutput(
             verdict="deny",
             system_message="Blocked for reason.",
-            context_injection="Reason details"
+            context_injection="Reason details",
         )
         event_name = "SessionEnd"
 

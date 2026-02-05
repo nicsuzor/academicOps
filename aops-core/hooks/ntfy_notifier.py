@@ -130,9 +130,7 @@ def notify_subagent_stop(
     )
 
 
-def notify_task_bound(
-    config: dict[str, Any], session_id: str, task_id: str
-) -> bool:
+def notify_task_bound(config: dict[str, Any], session_id: str, task_id: str) -> bool:
     """Send notification when task is bound to session."""
     short_id = session_id[:8] if len(session_id) > 8 else session_id
     return send_notification(

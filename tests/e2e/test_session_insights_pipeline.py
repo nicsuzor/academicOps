@@ -188,9 +188,7 @@ class TestScenario2_NoMatch:
             "project": "framework",
             "summary": "Referenced missing task",
             "outcome": "partial",
-            "accomplishments": [
-                "Fixed bug in [[nonexistent-12345678]] module"
-            ],
+            "accomplishments": ["Fixed bug in [[nonexistent-12345678]] module"],
             "friction_points": [],
             "proposed_changes": [],
         }
@@ -278,9 +276,7 @@ Configuration update needed for new environment.
             "project": "framework",
             "summary": "Worked on something else",
             "outcome": "success",
-            "accomplishments": [
-                f"Fixed completely unrelated bug [[{sample_task.id}]]"
-            ],
+            "accomplishments": [f"Fixed completely unrelated bug [[{sample_task.id}]]"],
             "friction_points": [],
             "proposed_changes": [],
         }
@@ -328,9 +324,7 @@ class TestScenario4_TaskFormatError:
             "project": "framework",
             "summary": "Tried to update malformed task",
             "outcome": "partial",
-            "accomplishments": [
-                f"Worked on [[{fake_task_id}]] issue"
-            ],
+            "accomplishments": [f"Worked on [[{fake_task_id}]] issue"],
             "friction_points": [],
             "proposed_changes": [],
         }
@@ -393,7 +387,10 @@ class TestScenario5_MemoryServerUnavailable:
             "summary": "Completed task without semantic search",
             "outcome": "success",
             "accomplishments": [
-                {"task_id": sample_task.id, "text": "Completed task without semantic search"}
+                {
+                    "task_id": sample_task.id,
+                    "text": "Completed task without semantic search",
+                }
             ],
             "friction_points": [],
             "proposed_changes": [],
@@ -461,9 +458,7 @@ Testing backfill without duplication.
             "project": "test",
             "summary": "First session work",
             "outcome": "success",
-            "accomplishments": [
-                f"Completed initial work [[{sample_task.id}]]"
-            ],
+            "accomplishments": [f"Completed initial work [[{sample_task.id}]]"],
             "friction_points": [],
             "proposed_changes": [],
         }
@@ -475,9 +470,7 @@ Testing backfill without duplication.
             "project": "test",
             "summary": "Second session work",
             "outcome": "success",
-            "accomplishments": [
-                f"Completed follow-up work [[{sample_task.id}]]"
-            ],
+            "accomplishments": [f"Completed follow-up work [[{sample_task.id}]]"],
             "friction_points": [],
             "proposed_changes": [],
         }
@@ -489,9 +482,7 @@ Testing backfill without duplication.
             "project": "test",
             "summary": "Third session work",
             "outcome": "success",
-            "accomplishments": [
-                f"Completed initial work [[{sample_task.id}]]"
-            ],
+            "accomplishments": [f"Completed initial work [[{sample_task.id}]]"],
             "friction_points": [],
             "proposed_changes": [],
         }
@@ -539,9 +530,7 @@ Testing backfill without duplication.
             "project": "test",
             "summary": "Work",
             "outcome": "success",
-            "accomplishments": [
-                f"Completed initial work [[{sample_task.id}]]"
-            ],
+            "accomplishments": [f"Completed initial work [[{sample_task.id}]]"],
             "friction_points": [],
             "proposed_changes": [],
         }

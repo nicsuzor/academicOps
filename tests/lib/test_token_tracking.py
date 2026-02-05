@@ -1,7 +1,5 @@
 """Tests for token tracking in transcript parser."""
 
-
-
 from lib.transcript_parser import Entry, TimingInfo, ConversationTurn
 
 
@@ -12,12 +10,7 @@ class TestTokenExtraction:
         """Test extracting input_tokens from message.usage."""
         data = {
             "type": "assistant",
-            "message": {
-                "usage": {
-                    "input_tokens": 1250,
-                    "output_tokens": 820
-                }
-            }
+            "message": {"usage": {"input_tokens": 1250, "output_tokens": 820}},
         }
         entry = Entry.from_dict(data)
         assert entry.input_tokens == 1250
@@ -27,12 +20,7 @@ class TestTokenExtraction:
         """Test extracting output_tokens from message.usage."""
         data = {
             "type": "assistant",
-            "message": {
-                "usage": {
-                    "input_tokens": 500,
-                    "output_tokens": 1200
-                }
-            }
+            "message": {"usage": {"input_tokens": 500, "output_tokens": 1200}},
         }
         entry = Entry.from_dict(data)
         assert entry.input_tokens == 500
@@ -40,10 +28,7 @@ class TestTokenExtraction:
 
     def test_missing_usage_defaults_to_none(self):
         """Test that missing usage dict defaults tokens to None."""
-        data = {
-            "type": "assistant",
-            "message": {}
-        }
+        data = {"type": "assistant", "message": {}}
         entry = Entry.from_dict(data)
         assert entry.input_tokens is None
         assert entry.output_tokens is None
@@ -59,14 +44,7 @@ class TestTokenExtraction:
 
     def test_partial_usage_data(self):
         """Test that partial usage data is handled correctly."""
-        data = {
-            "type": "assistant",
-            "message": {
-                "usage": {
-                    "input_tokens": 1000
-                }
-            }
-        }
+        data = {"type": "assistant", "message": {"usage": {"input_tokens": 1000}}}
         entry = Entry.from_dict(data)
         assert entry.input_tokens == 1000
         assert entry.output_tokens is None
@@ -75,12 +53,7 @@ class TestTokenExtraction:
         """Test that zero token values are preserved."""
         data = {
             "type": "assistant",
-            "message": {
-                "usage": {
-                    "input_tokens": 0,
-                    "output_tokens": 0
-                }
-            }
+            "message": {"usage": {"input_tokens": 0, "output_tokens": 0}},
         }
         entry = Entry.from_dict(data)
         assert entry.input_tokens == 0
@@ -90,12 +63,7 @@ class TestTokenExtraction:
         """Test handling large token counts."""
         data = {
             "type": "assistant",
-            "message": {
-                "usage": {
-                    "input_tokens": 100000,
-                    "output_tokens": 50000
-                }
-            }
+            "message": {"usage": {"input_tokens": 100000, "output_tokens": 50000}},
         }
         entry = Entry.from_dict(data)
         assert entry.input_tokens == 100000
@@ -137,7 +105,7 @@ class TestConversationTurnTokenFields:
         """Test populating tool_timings dict."""
         tool_timings = {
             "Read": {"duration": 0.5, "count": 1},
-            "Bash": {"duration": 1.2, "count": 1}
+            "Bash": {"duration": 1.2, "count": 1},
         }
         turn = ConversationTurn(tool_timings=tool_timings)
         assert turn.tool_timings == tool_timings
@@ -166,7 +134,7 @@ class TestBackwardsCompatibility:
         legacy_data = {
             "type": "user",
             "uuid": "abc-123",
-            "message": {"content": "Hello"}
+            "message": {"content": "Hello"},
         }
         entry = Entry.from_dict(legacy_data)
         assert entry.type == "user"
@@ -176,11 +144,7 @@ class TestBackwardsCompatibility:
 
     def test_timing_info_legacy_initialization(self):
         """Test that legacy TimingInfo creation still works."""
-        timing = TimingInfo(
-            is_first=True,
-            offset_from_start="+00:30",
-            duration="30s"
-        )
+        timing = TimingInfo(is_first=True, offset_from_start="+00:30", duration="30s")
         assert timing.is_first is True
         assert timing.offset_from_start == "+00:30"
         assert timing.duration == "30s"
@@ -188,10 +152,7 @@ class TestBackwardsCompatibility:
 
     def test_conversation_turn_legacy_fields(self):
         """Test that legacy ConversationTurn fields still work."""
-        turn = ConversationTurn(
-            user_message="Test",
-            timing_info=TimingInfo()
-        )
+        turn = ConversationTurn(user_message="Test", timing_info=TimingInfo())
         assert turn.user_message == "Test"
         assert turn.timing_info is not None
         assert turn.tool_timings == {}
@@ -384,7 +345,9 @@ class TestPerTurnTokensInTranscript:
                 "uuid": "assistant-1",
                 "timestamp": "2026-01-15T10:00:05Z",
                 "message": {
-                    "content": [{"type": "tool_use", "id": "t1", "name": "Read", "input": {}}],
+                    "content": [
+                        {"type": "tool_use", "id": "t1", "name": "Read", "input": {}}
+                    ],
                     "usage": {"input_tokens": 500, "output_tokens": 100},
                 },
             },
@@ -393,7 +356,13 @@ class TestPerTurnTokensInTranscript:
                 "uuid": "tool-result-1",
                 "timestamp": "2026-01-15T10:00:06Z",
                 "message": {
-                    "content": [{"type": "tool_result", "tool_use_id": "t1", "content": "result"}]
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": "t1",
+                            "content": "result",
+                        }
+                    ]
                 },
             },
             {

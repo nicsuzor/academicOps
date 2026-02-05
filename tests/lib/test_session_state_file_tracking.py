@@ -6,7 +6,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 
-
 class TestFileReadTracking:
     """Tests for P#26 file read tracking API."""
 
@@ -83,6 +82,7 @@ class TestFileReadTracking:
             files = session_state.get_files_read(session_id)
             # Count occurrences of the normalized path
             from pathlib import Path as P
+
             try:
                 normalized = str(P(test_file).resolve())
             except (OSError, ValueError):

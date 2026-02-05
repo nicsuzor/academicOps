@@ -13,7 +13,9 @@ from lib.gate_model import GateVerdict
 @patch("hooks.gate_registry.session_state.is_hydration_pending")
 @patch("hooks.gate_registry.hook_utils.get_hook_temp_dir")
 @patch.dict("os.environ", {"HYDRATION_MODE": "block"})
-def test_strict_hydration(mock_get_temp_dir, mock_is_pending, mock_is_hydrator_active, mock_is_subagent):
+def test_strict_hydration(
+    mock_get_temp_dir, mock_is_pending, mock_is_hydrator_active, mock_is_subagent
+):
     """Verify hydration block behavior."""
     mock_get_temp_dir.return_value = "/tmp/hydrator"
     mock_is_pending.return_value = True
@@ -48,7 +50,10 @@ def test_strict_hydration(mock_get_temp_dir, mock_is_pending, mock_is_hydrator_a
     ctx = HookContext(
         session_id="s1",
         hook_event="PreToolUse",
-        raw_input={"tool_name": "activate_skill", "tool_input": {"name": "prompt-hydrator"}},
+        raw_input={
+            "tool_name": "activate_skill",
+            "tool_input": {"name": "prompt-hydrator"},
+        },
         tool_name="activate_skill",
         tool_input={"name": "prompt-hydrator"},
     )
@@ -88,12 +93,19 @@ def test_strict_hydration(mock_get_temp_dir, mock_is_pending, mock_is_hydrator_a
 @patch("hooks.gate_registry.session_state.is_hydrator_active")
 @patch("hooks.gate_registry.session_state.is_hydration_pending")
 @patch("hooks.gate_registry.hook_utils.get_hook_temp_dir")
-def test_hydration_bypass_when_not_pending(mock_get_temp_dir, mock_is_pending, mock_is_hydrator_active, mock_is_subagent):
+def test_hydration_bypass_when_not_pending(
+    mock_get_temp_dir, mock_is_pending, mock_is_hydrator_active, mock_is_subagent
+):
     mock_get_temp_dir.return_value = "/tmp/hydrator"
     mock_is_pending.return_value = False
     mock_is_hydrator_active.return_value = False
     mock_is_subagent.return_value = False
-    ctx = HookContext(session_id="s1", hook_event="PreToolUse", raw_input={"tool_name": "read_file"}, tool_name="read_file")
+    ctx = HookContext(
+        session_id="s1",
+        hook_event="PreToolUse",
+        raw_input={"tool_name": "read_file"},
+        tool_name="read_file",
+    )
     result = check_hydration_gate(ctx)
     assert result is None
 
@@ -129,8 +141,9 @@ def test_fresh_session_no_state_allows_tools(
 
     # Should NOT return a STATE ERROR
     if result is not None:
-        assert "STATE ERROR" not in str(result.context_injection), \
+        assert "STATE ERROR" not in str(result.context_injection), (
             "Fresh session should not get STATE ERROR"
+        )
         # It's okay to block/warn for other reasons, just not STATE ERROR
 
 
@@ -156,9 +169,7 @@ def test_hydration_bypass_when_turns_since_hydration_zero(
     mock_is_hydrator_active.return_value = False
     mock_is_subagent.return_value = False
     # Session state indicates hydration just completed (turns_since_hydration == 0)
-    mock_load_state.return_value = {
-        "hydration": {"turns_since_hydration": 0}
-    }
+    mock_load_state.return_value = {"hydration": {"turns_since_hydration": 0}}
 
     ctx = HookContext(
         session_id="s1",
@@ -194,7 +205,7 @@ def test_hydration_blocks_when_turns_since_hydration_negative(
     # Session state indicates never hydrated
     mock_load_state.return_value = {
         "hydration": {"turns_since_hydration": -1},
-        "state": {"hydration_pending": True}
+        "state": {"hydration_pending": True},
     }
 
     ctx = HookContext(

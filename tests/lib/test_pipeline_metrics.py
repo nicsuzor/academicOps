@@ -281,6 +281,7 @@ class TestModuleFunctions:
         """Test get_metrics returns singleton instance."""
         # Reset singleton
         import lib.pipeline_metrics as pm
+
         pm._metrics_instance = None
 
         m1 = get_metrics()

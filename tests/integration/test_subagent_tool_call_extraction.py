@@ -5,7 +5,6 @@ Tests the extract_subagent_tool_calls() function from conftest.py
 to ensure clean test assertions for subagent behavior.
 """
 
-
 from tests.conftest import extract_subagent_tool_calls
 
 

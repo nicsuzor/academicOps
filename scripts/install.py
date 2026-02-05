@@ -114,7 +114,11 @@ def uninstall_framework(aops_path: Path):
                 or "scripts/regenerate_task_index.py" in line
             ):
                 continue
-            if "# aOps transcripts" in line or "scripts/transcript_push.py" in line or "scripts/transcript.py" in line:
+            if (
+                "# aOps transcripts" in line
+                or "scripts/transcript_push.py" in line
+                or "scripts/transcript.py" in line
+            ):
                 continue
             if (
                 "# aOps session insights" in line
@@ -269,9 +273,7 @@ def main():
             "aops-core", source_commit
         )
         if not matches and installed_commit:
-            emit_version_mismatch_warning(
-                "aops-core", source_commit, installed_commit
-            )
+            emit_version_mismatch_warning("aops-core", source_commit, installed_commit)
         if matches:
             print(f"✓ Source commit {source_commit} matches installed plugin")
     else:

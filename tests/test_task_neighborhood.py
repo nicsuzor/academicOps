@@ -155,7 +155,9 @@ class TestGetTaskNeighborhood:
         assert result["task"] is None
         assert "not found" in result["message"].lower()
 
-    def test_returns_task_data(self, tmp_path: Path, storage_with_tasks: TaskStorage) -> None:
+    def test_returns_task_data(
+        self, tmp_path: Path, storage_with_tasks: TaskStorage
+    ) -> None:
         """Returns full task data for the requested task."""
         from mcp_servers import tasks_server
 
@@ -164,7 +166,9 @@ class TestGetTaskNeighborhood:
 
         target_id = storage_with_tasks._test_ids["target"]
 
-        with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
+        with patch.object(
+            tasks_server, "_get_storage", return_value=storage_with_tasks
+        ):
             with patch.object(tasks_server, "_get_index", return_value=index):
                 result = tasks_server.get_task_neighborhood.fn(target_id)
 
@@ -174,7 +178,9 @@ class TestGetTaskNeighborhood:
         assert result["task"]["title"] == "Target Task"
         assert result["task"]["type"] == "task"
 
-    def test_returns_parent_relationship(self, tmp_path: Path, storage_with_tasks: TaskStorage) -> None:
+    def test_returns_parent_relationship(
+        self, tmp_path: Path, storage_with_tasks: TaskStorage
+    ) -> None:
         """Returns parent task in existing_relationships."""
         from mcp_servers import tasks_server
 
@@ -184,7 +190,9 @@ class TestGetTaskNeighborhood:
         target_id = storage_with_tasks._test_ids["target"]
         parent_id = storage_with_tasks._test_ids["parent"]
 
-        with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
+        with patch.object(
+            tasks_server, "_get_storage", return_value=storage_with_tasks
+        ):
             with patch.object(tasks_server, "_get_index", return_value=index):
                 result = tasks_server.get_task_neighborhood.fn(target_id)
 
@@ -194,7 +202,9 @@ class TestGetTaskNeighborhood:
         assert parent["id"] == parent_id
         assert parent["title"] == "Parent Goal"
 
-    def test_returns_children_relationship(self, tmp_path: Path, storage_with_tasks: TaskStorage) -> None:
+    def test_returns_children_relationship(
+        self, tmp_path: Path, storage_with_tasks: TaskStorage
+    ) -> None:
         """Returns child tasks in existing_relationships."""
         from mcp_servers import tasks_server
 
@@ -204,7 +214,9 @@ class TestGetTaskNeighborhood:
         target_id = storage_with_tasks._test_ids["target"]
         child_id = storage_with_tasks._test_ids["child"]
 
-        with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
+        with patch.object(
+            tasks_server, "_get_storage", return_value=storage_with_tasks
+        ):
             with patch.object(tasks_server, "_get_index", return_value=index):
                 result = tasks_server.get_task_neighborhood.fn(target_id)
 
@@ -214,7 +226,9 @@ class TestGetTaskNeighborhood:
         assert children[0]["id"] == child_id
         assert children[0]["title"] == "Child Action"
 
-    def test_returns_depends_on_relationship(self, tmp_path: Path, storage_with_tasks: TaskStorage) -> None:
+    def test_returns_depends_on_relationship(
+        self, tmp_path: Path, storage_with_tasks: TaskStorage
+    ) -> None:
         """Returns dependency tasks in existing_relationships."""
         from mcp_servers import tasks_server
 
@@ -224,7 +238,9 @@ class TestGetTaskNeighborhood:
         target_id = storage_with_tasks._test_ids["target"]
         dependency_id = storage_with_tasks._test_ids["dependency"]
 
-        with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
+        with patch.object(
+            tasks_server, "_get_storage", return_value=storage_with_tasks
+        ):
             with patch.object(tasks_server, "_get_index", return_value=index):
                 result = tasks_server.get_task_neighborhood.fn(target_id)
 
@@ -234,7 +250,9 @@ class TestGetTaskNeighborhood:
         assert depends_on[0]["id"] == dependency_id
         assert depends_on[0]["title"] == "Dependency Task"
 
-    def test_returns_blocks_relationship(self, tmp_path: Path, storage_with_tasks: TaskStorage) -> None:
+    def test_returns_blocks_relationship(
+        self, tmp_path: Path, storage_with_tasks: TaskStorage
+    ) -> None:
         """Returns tasks that depend on this task in existing_relationships."""
         from mcp_servers import tasks_server
 
@@ -244,7 +262,9 @@ class TestGetTaskNeighborhood:
         target_id = storage_with_tasks._test_ids["target"]
         dependent_id = storage_with_tasks._test_ids["dependent"]
 
-        with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
+        with patch.object(
+            tasks_server, "_get_storage", return_value=storage_with_tasks
+        ):
             with patch.object(tasks_server, "_get_index", return_value=index):
                 result = tasks_server.get_task_neighborhood.fn(target_id)
 
@@ -254,7 +274,9 @@ class TestGetTaskNeighborhood:
         assert blocks[0]["id"] == dependent_id
         assert blocks[0]["title"] == "Dependent Task"
 
-    def test_returns_soft_blocks_relationship(self, tmp_path: Path, storage_with_tasks: TaskStorage) -> None:
+    def test_returns_soft_blocks_relationship(
+        self, tmp_path: Path, storage_with_tasks: TaskStorage
+    ) -> None:
         """Returns tasks that soft-depend on this task in existing_relationships."""
         from mcp_servers import tasks_server
 
@@ -264,7 +286,9 @@ class TestGetTaskNeighborhood:
         target_id = storage_with_tasks._test_ids["target"]
         soft_dependent_id = storage_with_tasks._test_ids["soft_dependent"]
 
-        with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
+        with patch.object(
+            tasks_server, "_get_storage", return_value=storage_with_tasks
+        ):
             with patch.object(tasks_server, "_get_index", return_value=index):
                 result = tasks_server.get_task_neighborhood.fn(target_id)
 
@@ -274,7 +298,9 @@ class TestGetTaskNeighborhood:
         assert soft_blocks[0]["id"] == soft_dependent_id
         assert soft_blocks[0]["title"] == "Soft Dependent Task"
 
-    def test_returns_same_project_tasks(self, tmp_path: Path, storage_with_tasks: TaskStorage) -> None:
+    def test_returns_same_project_tasks(
+        self, tmp_path: Path, storage_with_tasks: TaskStorage
+    ) -> None:
         """Returns all tasks in the same project (excluding self)."""
         from mcp_servers import tasks_server
 
@@ -283,7 +309,9 @@ class TestGetTaskNeighborhood:
 
         target_id = storage_with_tasks._test_ids["target"]
 
-        with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
+        with patch.object(
+            tasks_server, "_get_storage", return_value=storage_with_tasks
+        ):
             with patch.object(tasks_server, "_get_index", return_value=index):
                 result = tasks_server.get_task_neighborhood.fn(target_id)
 
@@ -299,10 +327,20 @@ class TestGetTaskNeighborhood:
         assert target_id not in task_ids
 
         # All others should be present
-        for key in ["parent", "child", "dependent", "dependency", "soft_dependent", "orphan", "sibling"]:
+        for key in [
+            "parent",
+            "child",
+            "dependent",
+            "dependency",
+            "soft_dependent",
+            "orphan",
+            "sibling",
+        ]:
             assert storage_with_tasks._test_ids[key] in task_ids
 
-    def test_returns_orphan_tasks(self, tmp_path: Path, storage_with_tasks: TaskStorage) -> None:
+    def test_returns_orphan_tasks(
+        self, tmp_path: Path, storage_with_tasks: TaskStorage
+    ) -> None:
         """Returns tasks with no parent AND no dependencies."""
         from mcp_servers import tasks_server
 
@@ -312,7 +350,9 @@ class TestGetTaskNeighborhood:
         target_id = storage_with_tasks._test_ids["target"]
         orphan_id = storage_with_tasks._test_ids["orphan"]
 
-        with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
+        with patch.object(
+            tasks_server, "_get_storage", return_value=storage_with_tasks
+        ):
             with patch.object(tasks_server, "_get_index", return_value=index):
                 result = tasks_server.get_task_neighborhood.fn(target_id)
 
@@ -326,7 +366,9 @@ class TestGetTaskNeighborhood:
         # Target should NOT be in orphans (even if it has no parent in some cases)
         assert target_id not in orphan_ids
 
-    def test_no_similarity_scoring(self, tmp_path: Path, storage_with_tasks: TaskStorage) -> None:
+    def test_no_similarity_scoring(
+        self, tmp_path: Path, storage_with_tasks: TaskStorage
+    ) -> None:
         """Verify no similarity scores are returned (P#78 compliance)."""
         from mcp_servers import tasks_server
 
@@ -335,7 +377,9 @@ class TestGetTaskNeighborhood:
 
         target_id = storage_with_tasks._test_ids["target"]
 
-        with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
+        with patch.object(
+            tasks_server, "_get_storage", return_value=storage_with_tasks
+        ):
             with patch.object(tasks_server, "_get_index", return_value=index):
                 result = tasks_server.get_task_neighborhood.fn(target_id)
 

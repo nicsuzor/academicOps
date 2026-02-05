@@ -9,6 +9,7 @@ if str(AOPS_CORE_DIR) not in sys.path:
 
 from hooks.router import HookRouter, CanonicalHookOutput
 
+
 class TestRouterFormatting:
     @pytest.fixture
     def router_instance(self):
@@ -19,12 +20,12 @@ class TestRouterFormatting:
         canonical_output = CanonicalHookOutput(
             verdict="deny",
             context_injection="Please create a framework reflection.",
-            system_message="Session blocked: Reflection required."
+            system_message="Session blocked: Reflection required.",
         )
         event_name = "Stop"
 
         result = router_instance.output_for_claude(canonical_output, event_name)
-        
+
         assert result.decision == "block"
         assert result.reason == "Please create a framework reflection."
         assert result.stopReason == "Session blocked: Reflection required."
@@ -32,8 +33,7 @@ class TestRouterFormatting:
     def test_format_for_claude_stop_event_allow(self, router_instance):
         """Verify Stop hook allow verdict maps to 'approve' decision."""
         canonical_output = CanonicalHookOutput(
-            verdict="allow",
-            system_message="Session ending normally."
+            verdict="allow", system_message="Session ending normally."
         )
         event_name = "Stop"
 
@@ -47,7 +47,7 @@ class TestRouterFormatting:
         canonical_output = CanonicalHookOutput(
             verdict="deny",
             context_injection="Access denied.",
-            system_message="Blocked."
+            system_message="Blocked.",
         )
         event_name = "PreToolUse"
 

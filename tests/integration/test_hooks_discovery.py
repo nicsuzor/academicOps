@@ -213,9 +213,7 @@ class TestCrossplatformHooksDiscovery:
 
         result = runner(prompt, timeout_seconds=120)
 
-        assert result["success"], (
-            f"{platform} headless failed: {result.get('error')}"
-        )
+        assert result["success"], f"{platform} headless failed: {result.get('error')}"
 
         # Extract text based on platform
         if platform == "claude":

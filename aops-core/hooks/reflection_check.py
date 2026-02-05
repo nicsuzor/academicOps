@@ -8,5 +8,3 @@ The handover_gate.py PostToolUse hook sets the flag when skill is invoked.
 Exit codes:
     0: Success (JSON output with decision field handles blocking)
 """
-
-

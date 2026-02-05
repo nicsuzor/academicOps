@@ -94,7 +94,7 @@ def _get_gemini_status_dir(input_data: dict | None) -> Path | None:
     transcript_path = input_data.get("transcript_path")
     if transcript_path is None:
         return None
-    
+
     path = Path(transcript_path)
 
     # Walk up to find the hash directory (parent of chats/logs)
@@ -106,13 +106,13 @@ def _get_gemini_status_dir(input_data: dict | None) -> Path | None:
     # Check if we are already in the hash directory
     if "/.gemini/tmp/" in str(path):
         # If path is ~/.gemini/tmp/<hash>, return it
-        # Otherwise, if it's deeper, we might need more logic, 
+        # Otherwise, if it's deeper, we might need more logic,
         # but usually Gemini passes transcript_path in chats/ or logs/
         parts = path.parts
         try:
             tmp_idx = parts.index("tmp")
-            if len(parts) > tmp_idx + 2 and parts[tmp_idx-1] == ".gemini":
-                return Path(*parts[:tmp_idx+2])
+            if len(parts) > tmp_idx + 2 and parts[tmp_idx - 1] == ".gemini":
+                return Path(*parts[: tmp_idx + 2])
         except ValueError:
             pass
 
@@ -121,7 +121,7 @@ def _get_gemini_status_dir(input_data: dict | None) -> Path | None:
 
 def get_gemini_logs_dir(input_data: dict | None) -> Path | None:
     """Get Gemini logs directory from transcript_path.
-    
+
     Returns the logs/ folder within the Gemini state directory.
     """
     state_dir = _get_gemini_status_dir(input_data)
@@ -151,6 +151,7 @@ def get_hook_log_path(
     """
     if date is None:
         from datetime import datetime, timezone
+
         date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     short_hash = get_session_short_hash(session_id)
@@ -256,7 +257,10 @@ def get_session_file_path(
 
     short_hash = get_session_short_hash(session_id)
 
-    return get_session_status_dir(session_id, input_data) / f"{date_compact}-{hour}-{short_hash}.json"
+    return (
+        get_session_status_dir(session_id, input_data)
+        / f"{date_compact}-{hour}-{short_hash}.json"
+    )
 
 
 def get_session_directory(

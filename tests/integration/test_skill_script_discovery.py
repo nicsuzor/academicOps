@@ -43,9 +43,9 @@ def test_task_skill_scripts_discoverable(claude_headless, data_dir):
     )
 
     # Basic success check
-    assert result[
-        "success"
-    ], f"Claude execution failed: {result.get('error', 'Unknown error')}"
+    assert result["success"], (
+        f"Claude execution failed: {result.get('error', 'Unknown error')}"
+    )
 
     # Get the full response text
     output = result["output"]
@@ -78,9 +78,9 @@ def test_skill_scripts_exist_via_symlink():
     # Check symlink exists
     skills_path = Path.home() / ".claude" / "skills"
     assert skills_path.exists(), "~/.claude/skills/ should exist"
-    assert (
-        skills_path.is_symlink() or skills_path.is_dir()
-    ), "~/.claude/skills/ should be symlink or directory"
+    assert skills_path.is_symlink() or skills_path.is_dir(), (
+        "~/.claude/skills/ should be symlink or directory"
+    )
 
     # Check task skill exists
     task_skill_path = skills_path / "tasks"
@@ -94,9 +94,9 @@ def test_skill_scripts_exist_via_symlink():
     required_scripts = ["task_view.py", "task_add.py", "task_archive.py"]
     for script_name in required_scripts:
         script_path = scripts_path / script_name
-        assert (
-            script_path.exists()
-        ), f"Script {script_name} should exist at {script_path}"
+        assert script_path.exists(), (
+            f"Script {script_name} should exist at {script_path}"
+        )
 
 
 @pytest.mark.integration
@@ -150,7 +150,9 @@ def test_task_script_runs_from_writing_repo(data_dir):
 
 @pytest.mark.integration
 @pytest.mark.slow
-@pytest.mark.skip(reason="Flaky test - depends on Claude's response format which varies. Core path functionality tested by test_skill_self_contained_architecture.")
+@pytest.mark.skip(
+    reason="Flaky test - depends on Claude's response format which varies. Core path functionality tested by test_skill_self_contained_architecture."
+)
 def test_claude_finds_scripts_without_search(claude_headless, data_dir):
     """Test that Claude doesn't waste time searching for scripts in CWD.
 
@@ -177,9 +179,9 @@ def test_claude_finds_scripts_without_search(claude_headless, data_dir):
         permission_mode="plan",
     )
 
-    assert result[
-        "success"
-    ], f"Claude execution failed: {result.get('error', 'Unknown error')}"
+    assert result["success"], (
+        f"Claude execution failed: {result.get('error', 'Unknown error')}"
+    )
 
     # Parse response
     output = result["output"]

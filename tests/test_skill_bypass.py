@@ -75,7 +75,10 @@ def test_infrastructure_skill_with_prefix_does_not_clear_hydration(mock_session_
     ctx_bump = HookContext(
         session_id="s3",
         hook_event="PostToolUse",
-        raw_input={"tool_name": "activate_skill", "tool_input": {"name": "aops-core:bump"}},
+        raw_input={
+            "tool_name": "activate_skill",
+            "tool_input": {"name": "aops-core:bump"},
+        },
         tool_name="activate_skill",
         tool_input={"name": "aops-core:bump"},
     )
@@ -129,7 +132,14 @@ def test_claude_skill_tool_does_not_clear_for_infrastructure(mock_session_state)
 @patch("hooks.gate_registry.session_state")
 def test_multiple_infrastructure_skills(mock_session_state):
     """Verify multiple infrastructure skills are correctly identified."""
-    infrastructure_samples = ["bump", "diag", "log", "q", "aops-core:dump", "aops-core:email"]
+    infrastructure_samples = [
+        "bump",
+        "diag",
+        "log",
+        "q",
+        "aops-core:dump",
+        "aops-core:email",
+    ]
 
     for skill_name in infrastructure_samples:
         mock_session_state.reset_mock()
@@ -145,7 +155,9 @@ def test_multiple_infrastructure_skills(mock_session_state):
 
         assert result is not None, f"Failed for {skill_name}"
         assert result.verdict == GateVerdict.ALLOW, f"Failed for {skill_name}"
-        assert result.metadata.get("source") == "skill_activation_infrastructure", f"Failed for {skill_name}"
+        assert result.metadata.get("source") == "skill_activation_infrastructure", (
+            f"Failed for {skill_name}"
+        )
         mock_session_state.clear_hydration_pending.assert_not_called()
 
 

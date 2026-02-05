@@ -45,7 +45,7 @@ CLAUDE_TO_GEMINI_EVENTS = {
     "SessionEnd": "SessionEnd",
     "SubagentStop": "AfterTool",  # Subagents are tools in Gemini, so map stop to AfterTool
     "PreCompact": "BeforeAgent",  # Map to BeforeAgent as a safe fallback
-    "Notification": "BeforeAgent", # Map to BeforeAgent as a safe fallback
+    "Notification": "BeforeAgent",  # Map to BeforeAgent as a safe fallback
     # Gemini-specific (keep as-is if present)
     "BeforeTool": "BeforeTool",
     "AfterTool": "AfterTool",
@@ -59,12 +59,14 @@ def get_project_version(aops_root: Path) -> str:
     if pyproject_path.exists():
         try:
             import tomllib
+
             with open(pyproject_path, "rb") as f:
                 data = tomllib.load(f)
                 return data.get("project", {}).get("version", "0.1.0")
         except (ImportError, Exception):
             # Fallback regex if tomllib is missing or fails
             import re
+
             content = pyproject_path.read_text()
             match = re.search(r'version\s*=\s*"([^"]+)"', content)
             if match:
@@ -73,7 +75,7 @@ def get_project_version(aops_root: Path) -> str:
 
 
 # Template for aops-core pyproject.toml - version is injected at build time
-AOPS_CORE_PYPROJECT_TEMPLATE = '''\
+AOPS_CORE_PYPROJECT_TEMPLATE = """\
 [project]
 name = "aops-core"
 version = "{version}"
@@ -97,7 +99,7 @@ packages = ["lib", "hooks", "mcp_servers"]
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-'''
+"""
 
 
 def generate_aops_core_pyproject(version: str) -> str:
@@ -206,7 +208,9 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
                         if "command" in new_hook:
                             # Replace Claude variable with Gemini variable
                             cmd = new_hook["command"]
-                            cmd = cmd.replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
+                            cmd = cmd.replace(
+                                "${CLAUDE_PLUGIN_ROOT}", "${extensionPath}"
+                            )
 
                             # Ensure we use the correct client flag for Gemini
                             cmd = cmd.replace("--client claude", "--client gemini")
@@ -216,7 +220,7 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
                                 # Simplify: use uv run --directory which handles PYTHONPATH
                                 cmd = cmd.replace(
                                     "PYTHONPATH=${extensionPath} uv run python",
-                                    "uv run --directory ${extensionPath} python"
+                                    "uv run --directory ${extensionPath} python",
                                 )
                             new_hook["command"] = cmd
                         new_hooks.append(new_hook)
@@ -246,6 +250,7 @@ def transform_agent_for_platform(content: str, platform: str) -> str:
         return content
 
     import yaml
+
     try:
         frontmatter = yaml.safe_load(parts[1])
     except yaml.YAMLError:
@@ -264,7 +269,9 @@ def transform_agent_for_platform(content: str, platform: str) -> str:
             filtered = [t for t in tools_list if not t.startswith("mcp__")]
             if filtered != tools_list:
                 frontmatter["tools"] = ", ".join(filtered)
-                new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
+                new_frontmatter = yaml.dump(
+                    frontmatter, default_flow_style=False, sort_keys=False
+                )
                 return f"---\n{new_frontmatter}---{parts[2]}"
         return content
 
@@ -273,7 +280,9 @@ def transform_agent_for_platform(content: str, platform: str) -> str:
         filtered_tools = [t for t in original_tools if not t.startswith("mcp__")]
         if filtered_tools != original_tools:
             frontmatter["tools"] = filtered_tools
-            new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
+            new_frontmatter = yaml.dump(
+                frontmatter, default_flow_style=False, sort_keys=False
+            )
             return f"---\n{new_frontmatter}---{parts[2]}"
         return content
 
@@ -327,7 +336,9 @@ def transform_agent_for_platform(content: str, platform: str) -> str:
         frontmatter["tools"] = tools_string
 
         # Rebuild the content with the new frontmatter
-        new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
+        new_frontmatter = yaml.dump(
+            frontmatter, default_flow_style=False, sort_keys=False
+        )
         return f"---\n{new_frontmatter}---{parts[2]}"
 
     return content
@@ -390,18 +401,22 @@ def translate_tool_calls(text: str, platform: str) -> str:
         text = text.replace("Task() tool", "activate_skill() tool")
         text = text.replace("`Task(`", "`activate_skill(`")
         text = text.replace("`Skill(`", "`activate_skill(`")
-    
+
     return text
 
 
 def build_aops_core(
-    aops_root: Path, dist_root: Path, aca_data_path: str, platform: str = "gemini", version: str = "0.1.0"
+    aops_root: Path,
+    dist_root: Path,
+    aca_data_path: str,
+    platform: str = "gemini",
+    version: str = "0.1.0",
 ):
     """Build the aops-core extension for a specific platform."""
     print(f"Building aops-core for {platform} (v{version})...")
     plugin_name = "aops-core"
     src_dir = aops_root / plugin_name
-    
+
     # Platform-specific dist dir
     dist_dir = dist_root / f"{plugin_name}-{platform}"
 
@@ -436,7 +451,7 @@ def build_aops_core(
         "INSTALLATION.md",
         "uv.lock",
     ]
-    
+
     # Gemini-only items
     if platform == "gemini":
         items_to_copy.extend(["GEMINI.md"])
@@ -517,7 +532,7 @@ def build_aops_core(
         else:
             print(f"Error: {src_extension_json} not found.", file=sys.stderr)
             sys.exit(1)
-    
+
     if platform == "claude":
         src_plugin_json = src_dir / ".claude-plugin" / "plugin.json"
         dist_plugin_json = dist_dir / "plugin.json"
@@ -548,7 +563,7 @@ def build_aops_core(
             mcp_json_path = src_dir / ".mcp.json"
             with open(mcp_json_path, "w") as f:
                 json.dump(mcp_config, f, indent=2)
-            
+
             # If Claude dist, copy .mcp.json
             if platform == "claude":
                 safe_copy(mcp_json_path, dist_dir / ".mcp.json")
@@ -558,8 +573,10 @@ def build_aops_core(
                 servers_config = mcp_config.get("mcpServers", mcp_config)
                 # Replace variables for Gemini
                 gemini_servers_json = json.dumps(servers_config)
-                gemini_servers_json = gemini_servers_json.replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
-                
+                gemini_servers_json = gemini_servers_json.replace(
+                    "${CLAUDE_PLUGIN_ROOT}", "${extensionPath}"
+                )
+
                 gemini_servers_config = json.loads(gemini_servers_json)
                 gemini_mcps = convert_mcp_to_gemini(gemini_servers_config)
 
@@ -586,6 +603,7 @@ def build_aops_core(
                     parts = content.split("---", 2)
                     if len(parts) >= 3:
                         import yaml
+
                         frontmatter = yaml.safe_load(parts[1])
                         if "name" in frontmatter:
                             agent_name = frontmatter["name"]
@@ -606,7 +624,12 @@ def build_aops_core(
         convert_script = aops_root / "scripts" / "convert_commands_to_toml.py"
         if convert_script.exists():
             subprocess.run(
-                [sys.executable, str(convert_script), "--output-dir", str(commands_dist)],
+                [
+                    sys.executable,
+                    str(convert_script),
+                    "--output-dir",
+                    str(commands_dist),
+                ],
                 env=os.environ,
                 check=False,
             )
@@ -687,7 +710,9 @@ def main():
         dist_root.mkdir()
 
     # Build components (Gemini)
-    core_mcps_gemini = build_aops_core(aops_root, dist_root, aca_data_path, "gemini", version)
+    core_mcps_gemini = build_aops_core(
+        aops_root, dist_root, aca_data_path, "gemini", version
+    )
 
     # Build components (Claude)
     build_aops_core(aops_root, dist_root, aca_data_path, "claude", version)
@@ -709,7 +734,7 @@ def package_artifacts(aops_root: Path, dist_root: Path):
     with tarfile.open(core_gemini_path, "w:gz") as tar:
         tar.add(dist_root / "aops-core-gemini", arcname=".")
     print(f"  ✓ Packaged {core_gemini_path.name}")
-    
+
     # Create 'latest' symlink for Gemini
     safe_symlink(core_gemini_path, dist_root / "aops-core-gemini-latest.tar.gz")
 
@@ -722,7 +747,7 @@ def package_artifacts(aops_root: Path, dist_root: Path):
                 file_path = Path(root) / file
                 zipf.write(file_path, file_path.relative_to(ag_src))
     print(f"  ✓ Packaged {antigravity_zip_path.name}")
-    
+
     # Create 'latest' symlink for Antigravity
     safe_symlink(antigravity_zip_path, dist_root / "aops-antigravity-latest.zip")
 
@@ -745,9 +770,11 @@ def package_artifacts(aops_root: Path, dist_root: Path):
     # 3. aops-core-claude.tar.gz (from built dist)
     core_claude_path = dist_root / "aops-core-claude.tar.gz"
     with tarfile.open(core_claude_path, "w:gz") as tar:
-        tar.add(dist_root / "aops-core-claude", arcname="aops-core", filter=_source_filter)
+        tar.add(
+            dist_root / "aops-core-claude", arcname="aops-core", filter=_source_filter
+        )
     print(f"  ✓ Packaged {core_claude_path.name}")
-    
+
     # Create 'latest' symlink for Claude
     safe_symlink(core_claude_path, dist_root / "aops-core-claude-latest.tar.gz")
 

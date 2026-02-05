@@ -51,7 +51,7 @@ class TestGetWritingRoot:
 
         # Act
         result = get_writing_root()
-        
+
         # Assert
         assert result == Path("/nonexistent/path").resolve()
 
@@ -194,9 +194,9 @@ class TestPathsUsePathlib:
         hook_script_result = get_hook_script("test_hook.py")
 
         # Assert
-        assert isinstance(
-            writing_root_result, Path
-        ), "get_writing_root must return Path"
+        assert isinstance(writing_root_result, Path), (
+            "get_writing_root must return Path"
+        )
         assert isinstance(bots_dir_result, Path), "get_bots_dir must return Path"
         assert isinstance(data_dir_result, Path), "get_data_dir must return Path"
         assert isinstance(hooks_dir_result, Path), "get_hooks_dir must return Path"

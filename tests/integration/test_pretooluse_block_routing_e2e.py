@@ -150,7 +150,9 @@ class TestRouterBlockOutputFormat:
             pytest.skip("AOPS environment variable not set")
         return Path(aops) / "aops-core" / "hooks" / "router.py"
 
-    def test_router_stdout_is_valid_json_on_block(self, router_path: Path, tmp_path: Path):
+    def test_router_stdout_is_valid_json_on_block(
+        self, router_path: Path, tmp_path: Path
+    ):
         """Even on exit 2, router stdout should be valid JSON.
 
         Claude Code spec says exit 2 = only stderr read, but the router
@@ -208,7 +210,9 @@ class TestRouterBlockOutputFormat:
                 parsed = json.loads(result.stdout)
                 assert isinstance(parsed, dict), "Router output should be a JSON object"
             except json.JSONDecodeError as e:
-                pytest.fail(f"Router stdout is not valid JSON: {e}. Got: {result.stdout!r}")
+                pytest.fail(
+                    f"Router stdout is not valid JSON: {e}. Got: {result.stdout!r}"
+                )
 
 
 # --- Full Claude Code E2E tests ---

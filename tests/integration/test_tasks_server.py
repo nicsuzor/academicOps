@@ -22,6 +22,7 @@ from mcp_servers.tasks_server import (
     update_task,
 )
 
+
 @pytest.fixture(scope="module")
 def task_server_setup(tmp_path_factory):
     """
@@ -33,24 +34,34 @@ def task_server_setup(tmp_path_factory):
 
     # --- Create Test Data ---
     # Call the underlying function on the tool object
-    p_a_root_res = create_task.fn(task_title="Project A Root", project="proj-a", type="project")
+    p_a_root_res = create_task.fn(
+        task_title="Project A Root", project="proj-a", type="project"
+    )
     assert p_a_root_res["success"]
     p_a_root_id = p_a_root_res["task"]["id"]
 
-    p_a_child1_res = create_task.fn(task_title="Child 1 (A)", project="proj-a", parent=p_a_root_id)
+    p_a_child1_res = create_task.fn(
+        task_title="Child 1 (A)", project="proj-a", parent=p_a_root_id
+    )
     assert p_a_child1_res["success"]
     p_a_child1_id = p_a_child1_res["task"]["id"]
 
-    blocker_res = create_task.fn(task_title="Blocker Task", project="proj-a", status="active")
+    blocker_res = create_task.fn(
+        task_title="Blocker Task", project="proj-a", status="active"
+    )
     assert blocker_res["success"]
     blocker_id = blocker_res["task"]["id"]
     update_task.fn(id=p_a_child1_id, depends_on=[blocker_id])
 
-    p_b_root_res = create_task.fn(task_title="Project B Root", project="proj-b", type="project")
+    p_b_root_res = create_task.fn(
+        task_title="Project B Root", project="proj-b", type="project"
+    )
     assert p_b_root_res["success"]
     p_b_root_id = p_b_root_res["task"]["id"]
 
-    hub_res = create_task.fn(task_title="Hub Task", project="proj-b", type="task", parent=p_b_root_id)
+    hub_res = create_task.fn(
+        task_title="Hub Task", project="proj-b", type="task", parent=p_b_root_id
+    )
     assert hub_res["success"]
     hub_id = hub_res["task"]["id"]
 
@@ -59,10 +70,12 @@ def task_server_setup(tmp_path_factory):
 
     parent_id = p_b_root_id
     for i in range(5):
-        res = create_task.fn(task_title=f"Deep Task {i+1}", project="proj-b", parent=parent_id)
+        res = create_task.fn(
+            task_title=f"Deep Task {i + 1}", project="proj-b", parent=parent_id
+        )
         assert res["success"]
         parent_id = res["task"]["id"]
-    
+
     create_task.fn(task_title="A done task", project="proj-a", status="done")
     create_task.fn(task_title="Ready Task", project="proj-a", status="active")
 
@@ -127,14 +140,16 @@ class TestGetTasksWithTopology:
         assert hub_task is not None
 
         assert hub_task["depth"] == 1
-        assert hub_task["is_leaf"] is True # It has no children, so it is a leaf
+        assert hub_task["is_leaf"] is True  # It has no children, so it is a leaf
         assert hub_task["child_count"] == 0
-        assert hub_task["blocking_count"] == 2 # Blocks 2 spokes
-        assert hub_task["blocked_by_count"] == 0 # Depends on nothing
+        assert hub_task["blocking_count"] == 2  # Blocks 2 spokes
+        assert hub_task["blocked_by_count"] == 0  # Depends on nothing
 
         p_a_child1_id = task_ids["p_a_child1_id"]
         result_a = get_tasks_with_topology.fn(project="proj-a")
-        child1_task = next((t for t in result_a["tasks"] if t["id"] == p_a_child1_id), None)
+        child1_task = next(
+            (t for t in result_a["tasks"] if t["id"] == p_a_child1_id), None
+        )
         assert child1_task is not None
 
         assert child1_task["is_leaf"] is True
@@ -145,8 +160,10 @@ class TestGetTasksWithTopology:
         """Test that ready_days is calculated for active tasks."""
         result = get_tasks_with_topology.fn(status="active")
         assert result["success"]
-        
-        ready_task = next((t for t in result["tasks"] if t["title"] == "Ready Task"), None)
+
+        ready_task = next(
+            (t for t in result["tasks"] if t["title"] == "Ready Task"), None
+        )
         assert ready_task is not None
         assert "ready_days" in ready_task
         assert ready_task["ready_days"] is not None

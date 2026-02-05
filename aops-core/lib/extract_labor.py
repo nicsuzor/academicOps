@@ -31,12 +31,20 @@ class WorkUnit:
     unit_type: str  # "delegation", "subagent_output", "main_agent_work", "skill_invocation", "tool_call"
     actor: str  # "main_agent", "subagent:{id}", "skill:{name}", "tool:{name}"
     description: str
-    delegation_prompt: str | None = None  # For delegations: the prompt parameter from Task()
+    delegation_prompt: str | None = (
+        None  # For delegations: the prompt parameter from Task()
+    )
     output: str | None = None  # For subagent_output: the section content
     tool_name: str | None = None  # For tool_calls: the specific tool name
-    tool_params: dict[str, Any] | None = None  # For tool_calls: extracted parameters (at least file_path if present)
-    skills_invoked: list[str] = field(default_factory=list)  # Skills triggered in this unit
-    commands_invoked: list[str] = field(default_factory=list)  # Slash commands (/skill, etc)
+    tool_params: dict[str, Any] | None = (
+        None  # For tool_calls: extracted parameters (at least file_path if present)
+    )
+    skills_invoked: list[str] = field(
+        default_factory=list
+    )  # Skills triggered in this unit
+    commands_invoked: list[str] = field(
+        default_factory=list
+    )  # Slash commands (/skill, etc)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -108,7 +116,11 @@ class LaborExtractor:
             session_id = session_path.stem[:8]
         if not project:
             # Infer from parent directory
-            project = session_path.parent.name.split("-")[-1] if session_path.parent.name else "unknown"
+            project = (
+                session_path.parent.name.split("-")[-1]
+                if session_path.parent.name
+                else "unknown"
+            )
 
         # Get timestamp from first entry
         timestamp = None
@@ -137,7 +149,9 @@ class LaborExtractor:
             for agent_id, agent_entry_list in agent_entries.items():
                 subagent_ids.add(agent_id)
                 for entry in agent_entry_list:
-                    self._process_entry(entry, labor_data, subagent_ids, agent_id=agent_id)
+                    self._process_entry(
+                        entry, labor_data, subagent_ids, agent_id=agent_id
+                    )
 
         # Set metadata
         labor_data.subagent_ids = sorted(list(subagent_ids))
@@ -229,7 +243,13 @@ class LaborExtractor:
 
         if tool_calls:
             # Create work unit for each tool call
-            for tool_name, tool_params, tool_description, is_delegation, delegation_prompt in tool_calls:
+            for (
+                tool_name,
+                tool_params,
+                tool_description,
+                is_delegation,
+                delegation_prompt,
+            ) in tool_calls:
                 if is_delegation:
                     # Create delegation work unit with prompt captured
                     unit = WorkUnit(
@@ -262,14 +282,19 @@ class LaborExtractor:
             if subagent_output:
                 # Summarize the output for the description
                 first_line = subagent_output.split("\n")[0][:100]
-                description = f"Subagent produced: {first_line}" if first_line else "Subagent execution result"
+                description = (
+                    f"Subagent produced: {first_line}"
+                    if first_line
+                    else "Subagent execution result"
+                )
                 unit = WorkUnit(
                     line_number=self.line_counter,
                     timestamp=entry.timestamp,
                     unit_type="subagent_output",
                     actor=f"subagent:{agent_id}",
                     description=description,
-                    output=subagent_output[:2000] + ("..." if len(subagent_output) > 2000 else ""),
+                    output=subagent_output[:2000]
+                    + ("..." if len(subagent_output) > 2000 else ""),
                 )
                 labor_data.work_units.append(unit)
 
@@ -300,7 +325,8 @@ class LaborExtractor:
                     unit_type="main_agent_work",
                     actor=actor,
                     description=f"Agent response: {first_line}{'...' if len(first_line) >= 100 else ''}",
-                    output=stripped_text[:1000] + ("..." if len(stripped_text) > 1000 else ""),
+                    output=stripped_text[:1000]
+                    + ("..." if len(stripped_text) > 1000 else ""),
                 )
                 labor_data.work_units.append(unit)
 
@@ -337,7 +363,7 @@ class LaborExtractor:
         # Pattern: Task(...prompt=([^,)]+)...) or Task(...prompt="..."...)
         patterns = [
             r'Task\s*\(\s*[^)]*prompt\s*=\s*["\']([^"\']+)["\']',  # prompt="..." or prompt='...'
-            r'Task\s*\(\s*[^)]*prompt\s*=\s*([^,\)]+)',  # prompt=value (without quotes)
+            r"Task\s*\(\s*[^)]*prompt\s*=\s*([^,\)]+)",  # prompt=value (without quotes)
         ]
 
         for pattern in patterns:
@@ -347,7 +373,9 @@ class LaborExtractor:
 
         return None
 
-    def _extract_tool_calls(self, entry: Entry) -> list[tuple[str, dict[str, Any], str, bool, str | None]]:
+    def _extract_tool_calls(
+        self, entry: Entry
+    ) -> list[tuple[str, dict[str, Any], str, bool, str | None]]:
         """
         Extract tool calls from an entry.
 
@@ -369,7 +397,11 @@ class LaborExtractor:
                 if subagent_type is None:
                     subagent_type = "unspecified"
                 task_desc = entry.tool_input.get("description", "")
-                description = f"Delegated to {subagent_type}: {task_desc}" if task_desc else f"Delegated to {subagent_type}"
+                description = (
+                    f"Delegated to {subagent_type}: {task_desc}"
+                    if task_desc
+                    else f"Delegated to {subagent_type}"
+                )
                 tool_params["prompt"] = delegation_prompt
                 tool_params["subagent_type"] = subagent_type
             else:
@@ -377,7 +409,15 @@ class LaborExtractor:
                 if "file_path" in tool_params:
                     description += f": {tool_params['file_path']}"
 
-            tool_calls.append((entry.tool_name, tool_params, description, is_delegation, delegation_prompt))
+            tool_calls.append(
+                (
+                    entry.tool_name,
+                    tool_params,
+                    description,
+                    is_delegation,
+                    delegation_prompt,
+                )
+            )
 
         # Parse tool use blocks from message content
         if entry.message:
@@ -402,7 +442,11 @@ class LaborExtractor:
                                 if subagent_type is None:
                                     subagent_type = "unspecified"
                                 task_desc = tool_input.get("description", "")
-                                description = f"Delegated to {subagent_type}: {task_desc}" if task_desc else f"Delegated to {subagent_type}"
+                                description = (
+                                    f"Delegated to {subagent_type}: {task_desc}"
+                                    if task_desc
+                                    else f"Delegated to {subagent_type}"
+                                )
                                 tool_params["prompt"] = delegation_prompt
                                 tool_params["subagent_type"] = subagent_type
                             else:
@@ -412,7 +456,15 @@ class LaborExtractor:
                                 elif "path" in tool_params:
                                     description += f": {tool_params['path']}"
 
-                            tool_calls.append((tool_name, tool_params, description, is_delegation, delegation_prompt))
+                            tool_calls.append(
+                                (
+                                    tool_name,
+                                    tool_params,
+                                    description,
+                                    is_delegation,
+                                    delegation_prompt,
+                                )
+                            )
 
         return tool_calls
 
@@ -470,11 +522,15 @@ class LaborExtractor:
 
         # Match /skill_name patterns at start of line or after whitespace
         # Excludes file paths like /home/user or /src/main.py
-        skill_calls = re.findall(r"(?:^|(?<=\s))/([a-z][a-z0-9]*(?:-[a-z0-9]+)*)", text, re.MULTILINE)
+        skill_calls = re.findall(
+            r"(?:^|(?<=\s))/([a-z][a-z0-9]*(?:-[a-z0-9]+)*)", text, re.MULTILINE
+        )
         skills.extend(skill_calls)
 
         # Match Skill(skill="...") patterns
-        skill_patterns = re.findall(r'Skill\s*\(\s*skill\s*=\s*["\']([^"\']+)["\']', text, re.IGNORECASE)
+        skill_patterns = re.findall(
+            r'Skill\s*\(\s*skill\s*=\s*["\']([^"\']+)["\']', text, re.IGNORECASE
+        )
         skills.extend(skill_patterns)
 
         return list(set(skills))  # Deduplicate
@@ -483,7 +539,9 @@ class LaborExtractor:
         """Extract slash commands like /pull, /commit, etc."""
         # Match /command patterns at start of line or after whitespace
         # Excludes file paths
-        commands = re.findall(r"(?:^|(?<=\s))/([a-z][a-z0-9]*(?:-[a-z0-9]+)*)", text, re.MULTILINE)
+        commands = re.findall(
+            r"(?:^|(?<=\s))/([a-z][a-z0-9]*(?:-[a-z0-9]+)*)", text, re.MULTILINE
+        )
         return list(set(commands))  # Deduplicate
 
 

@@ -119,7 +119,9 @@ def determine_complexity(
     word_count = len(body.split())
     has_checklist = "- [ ]" in body or "- [x]" in body
     has_file_paths = bool(re.search(r"[/\\][\w.-]+\.(py|ts|js|md|yaml|json)", body))
-    has_acceptance = "## acceptance" in body_lower or "acceptance criteria" in body_lower
+    has_acceptance = (
+        "## acceptance" in body_lower or "acceptance criteria" in body_lower
+    )
 
     # Already set - respect existing value
     if fm.get("complexity"):

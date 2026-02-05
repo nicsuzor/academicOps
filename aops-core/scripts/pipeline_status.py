@@ -85,7 +85,10 @@ def display_dashboard(metrics: dict) -> None:
     print("  CUMULATIVE STATISTICS")
     print("-" * 60)
     print(f"  Total Runs: {cumulative['total_runs']}")
-    print(f"  Success Rate: {cumulative['total_success']}/{cumulative['total_runs']} ", end="")
+    print(
+        f"  Success Rate: {cumulative['total_success']}/{cumulative['total_runs']} ",
+        end="",
+    )
     if cumulative["total_runs"] > 0:
         rate = cumulative["total_success"] / cumulative["total_runs"]
         print(f"({rate:.0%})")
@@ -115,11 +118,22 @@ def display_dashboard(metrics: dict) -> None:
         print(f"  Status: {current_run['run_status']}")
         print(f"  Trigger: {current_run['run_trigger']}")
         print(f"  Duration: {current_run['run_duration_ms']}ms")
-        print(f"  Sessions: {current_run['sessions_processed']} processed, {current_run['sessions_failed']} failed")
-        if current_run["sessions_with_task_match"] + current_run["sessions_no_task_match"] > 0:
-            total = current_run["sessions_with_task_match"] + current_run["sessions_no_task_match"]
+        print(
+            f"  Sessions: {current_run['sessions_processed']} processed, {current_run['sessions_failed']} failed"
+        )
+        if (
+            current_run["sessions_with_task_match"]
+            + current_run["sessions_no_task_match"]
+            > 0
+        ):
+            total = (
+                current_run["sessions_with_task_match"]
+                + current_run["sessions_no_task_match"]
+            )
             rate = current_run["sessions_with_task_match"] / total
-            print(f"  Task Match: {current_run['sessions_with_task_match']}/{total} ({rate:.0%})")
+            print(
+                f"  Task Match: {current_run['sessions_with_task_match']}/{total} ({rate:.0%})"
+            )
         print()
 
     # Alerts

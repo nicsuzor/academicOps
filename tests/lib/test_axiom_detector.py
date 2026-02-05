@@ -65,4 +65,3 @@ def setup():
     assert "env_get_default" in patterns
     assert "except_pass" in patterns
     assert "or_fallback" in patterns
-    

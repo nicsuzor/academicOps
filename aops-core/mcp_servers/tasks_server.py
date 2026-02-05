@@ -879,7 +879,8 @@ def get_review_tasks(project: str = "", limit: int = 5) -> dict[str, Any]:
 
         # Get all tasks in review status
         review_tasks = [
-            entry for entry in index._tasks.values()
+            entry
+            for entry in index._tasks.values()
             if entry.status == TaskStatus.REVIEW.value
         ]
 
@@ -954,7 +955,9 @@ def get_task_tree(
                 return False
             return True
 
-        def build_tree(entry: TaskIndexEntry, depth: int = 0) -> Optional[dict[str, Any]]:
+        def build_tree(
+            entry: TaskIndexEntry, depth: int = 0
+        ) -> Optional[dict[str, Any]]:
             """Recursively build tree structure with filtering."""
             if not should_include(entry):
                 return None
@@ -1184,7 +1187,10 @@ def get_tasks_with_topology(
                 continue
             if min_depth is not None and entry.depth < min_depth:
                 continue
-            if min_blocking_count is not None and len(entry.blocks) < min_blocking_count:
+            if (
+                min_blocking_count is not None
+                and len(entry.blocks) < min_blocking_count
+            ):
                 continue
             filtered_entries.append(entry)
 
@@ -1194,7 +1200,7 @@ def get_tasks_with_topology(
             # The index doesn't store timestamps, so we need to load the full task
             full_task = storage.get_task(entry.id)
             if not full_task:
-                continue # Skip if task file was deleted but index not rebuilt
+                continue  # Skip if task file was deleted but index not rebuilt
 
             ready_days = None
             if entry.status == "active":
@@ -1473,8 +1479,8 @@ def reset_stalled_tasks(
             # Ensure task.modified is timezone-aware or comparable
             task_mod = task.modified
             if task_mod.tzinfo is None:
-                 task_mod = task_mod.replace(tzinfo=timezone.utc)
-            
+                task_mod = task_mod.replace(tzinfo=timezone.utc)
+
             if task_mod < cutoff:
                 stalled.append(task)
 
@@ -1495,7 +1501,7 @@ def reset_stalled_tasks(
 
         # Rebuild index if any tasks changed
         if reset_ids:
-             _get_index().rebuild_fast()
+            _get_index().rebuild_fast()
 
         logger.info(f"reset_stalled_tasks: reset {len(reset_ids)} tasks")
 
@@ -1830,8 +1836,7 @@ def dedup_tasks(delete: bool = False) -> dict[str, Any]:
         # Find ID duplicates (same ID in frontmatter, different files)
         # These are MORE serious - they indicate data corruption
         id_duplicates = {
-            task_id: tasks for task_id, tasks in by_id.items()
-            if len(tasks) > 1
+            task_id: tasks for task_id, tasks in by_id.items() if len(tasks) > 1
         }
 
         # Merge: ID duplicates take precedence (use ID as key)
@@ -1867,25 +1872,29 @@ def dedup_tasks(delete: bool = False) -> dict[str, Any]:
 
         for key, task_path_pairs in sorted(duplicates.items()):
             # Sort: done status first, then by modified date (newest first)
-            task_path_pairs.sort(key=lambda tp: (
-                0 if tp[0].status.value == "done" else 1,
-                -tp[0].modified.timestamp()
-            ))
+            task_path_pairs.sort(
+                key=lambda tp: (
+                    0 if tp[0].status.value == "done" else 1,
+                    -tp[0].modified.timestamp(),
+                )
+            )
 
             keep_task, keep_path = task_path_pairs[0]
             remove_pairs = task_path_pairs[1:]
             to_delete.extend(remove_pairs)
 
-            result_groups.append({
-                "title": key,
-                "keep": keep_task.id,
-                "keep_path": str(keep_path),
-                "keep_status": keep_task.status.value,
-                "remove": [
-                    {"id": t.id, "path": str(p), "title": t.title}
-                    for t, p in remove_pairs
-                ],
-            })
+            result_groups.append(
+                {
+                    "title": key,
+                    "keep": keep_task.id,
+                    "keep_path": str(keep_path),
+                    "keep_status": keep_task.status.value,
+                    "remove": [
+                        {"id": t.id, "path": str(p), "title": t.title}
+                        for t, p in remove_pairs
+                    ],
+                }
+            )
 
         deleted_ids = []
         deleted_paths = []
@@ -1922,7 +1931,11 @@ def dedup_tasks(delete: bool = False) -> dict[str, Any]:
             "deleted_ids": deleted_ids,
             "deleted_paths": deleted_paths if delete else [],
             "message": f"Found {' and '.join(msg_parts)} ({total_dups} files to remove)"
-            + (f", deleted {len(deleted_ids)}" if delete else ", use delete=True to remove"),
+            + (
+                f", deleted {len(deleted_ids)}"
+                if delete
+                else ", use delete=True to remove"
+            ),
         }
 
     except Exception as e:
@@ -2221,7 +2234,7 @@ def get_graph_metrics(
     """
     try:
         index = _get_index()
-        
+
         tasks = list(index._tasks.values())
 
         if scope == "project" and scope_id:
@@ -2271,7 +2284,7 @@ def get_graph_metrics(
         max_in_degree = 0
         max_out_degree = 0
         in_progress_count = 0
-        
+
         tasks_with_high_out_degree = []
 
         for task in tasks:
@@ -2284,25 +2297,29 @@ def get_graph_metrics(
             total_depth += task.depth
             if task.depth > max_depth:
                 max_depth = task.depth
-            
+
             in_degree = len(task.depends_on)
             total_edges += in_degree
             if in_degree > max_in_degree:
                 max_in_degree = in_degree
-            
+
             out_degree = len(task.blocks)
             if out_degree > max_out_degree:
                 max_out_degree = out_degree
             if out_degree > 0:
-                tasks_with_high_out_degree.append({"id": task.id, "title": task.title, "out_degree": out_degree})
+                tasks_with_high_out_degree.append(
+                    {"id": task.id, "title": task.title, "out_degree": out_degree}
+                )
 
             if task.status == "in_progress":
                 in_progress_count += 1
-        
+
         # Scope-specific root count
         task_ids_in_scope = {t.id for t in tasks}
-        root_count = sum(1 for t in tasks if not t.parent or t.parent not in task_ids_in_scope)
-        
+        root_count = sum(
+            1 for t in tasks if not t.parent or t.parent not in task_ids_in_scope
+        )
+
         # Readiness stats need to be recalculated for the current scope
         completed_statuses = {TaskStatus.DONE.value, TaskStatus.CANCELLED.value}
         completed_ids_in_scope = {t.id for t in tasks if t.status in completed_statuses}
@@ -2312,9 +2329,13 @@ def get_graph_metrics(
         for task in tasks:
             if task.status in completed_statuses:
                 continue
-            
+
             # Check for unmet dependencies *within the scope*
-            unmet_deps = [d for d in task.depends_on if d in task_ids_in_scope and d not in completed_ids_in_scope]
+            unmet_deps = [
+                d
+                for d in task.depends_on
+                if d in task_ids_in_scope and d not in completed_ids_in_scope
+            ]
 
             if unmet_deps or task.status == TaskStatus.BLOCKED.value:
                 blocked_count += 1
@@ -2329,12 +2350,18 @@ def get_graph_metrics(
             "root_count": root_count,
             "leaf_count": leaf_count,
             "max_depth": max_depth,
-            "avg_depth": round(total_depth / total_tasks, 2) if total_tasks > 0 else 0.0,
+            "avg_depth": round(total_depth / total_tasks, 2)
+            if total_tasks > 0
+            else 0.0,
             "dependency_stats": {
                 "total_edges": total_edges,
                 "max_in_degree": max_in_degree,
                 "max_out_degree": max_out_degree,
-                "tasks_with_high_out_degree": sorted(tasks_with_high_out_degree, key=lambda x: x['out_degree'], reverse=True),
+                "tasks_with_high_out_degree": sorted(
+                    tasks_with_high_out_degree,
+                    key=lambda x: x["out_degree"],
+                    reverse=True,
+                ),
             },
             "readiness_stats": {
                 "ready_count": ready_count,
@@ -2447,9 +2474,7 @@ def _compute_graph_metrics(
             in_progress_count += 1
 
     # Root count (tasks with no parent within scope)
-    root_count = sum(
-        1 for e in entries if not e.parent or e.parent not in entry_ids
-    )
+    root_count = sum(1 for e in entries if not e.parent or e.parent not in entry_ids)
 
     # Depth stats
     max_depth = max(depths) if depths else 0
@@ -2501,7 +2526,9 @@ def _compute_graph_metrics(
             "total_edges": total_edges,
             "max_in_degree": max_in_degree,
             "max_out_degree": max_out_degree,
-            "tasks_with_high_out_degree": tasks_with_high_out_degree[:20],  # Limit output
+            "tasks_with_high_out_degree": tasks_with_high_out_degree[
+                :20
+            ],  # Limit output
         },
         "readiness_stats": {
             "ready_count": ready_count,

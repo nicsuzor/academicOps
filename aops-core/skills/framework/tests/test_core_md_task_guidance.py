@@ -29,9 +29,9 @@ def test_core_md_references_task_skill():
 
     # Assert: Verify task-related guidance exists
     # Look for a section about tasks/task operations
-    assert (
-        "## Task" in core_content or "task" in core_content.lower()
-    ), "CORE.md should mention tasks to guide agents on task operations"
+    assert "## Task" in core_content or "task" in core_content.lower(), (
+        "CORE.md should mention tasks to guide agents on task operations"
+    )
 
     # Verify it references the skills system for task operations
     assert "skills/README.md" in core_content or "task skill" in core_content.lower(), (

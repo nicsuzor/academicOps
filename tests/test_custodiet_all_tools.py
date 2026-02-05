@@ -39,7 +39,9 @@ class MockSessionState:
         pass  # Not relevant for these tests
 
 
-def make_context(tool_name: str, event_name: str = "PostToolUse", session_id: str = "test-session"):
+def make_context(
+    tool_name: str, event_name: str = "PostToolUse", session_id: str = "test-session"
+):
     """Create a HookContext for testing."""
     return HookContext(
         session_id=session_id,
@@ -152,7 +154,10 @@ class TestCheckCustodietGateOnlyBlocksMutating:
     def test_edit_tool_blocked_over_threshold(self, mock_session_state_over_threshold):
         """Edit (mutating) tool should be blocked when counter is over threshold."""
         # Need to mock the template loading for the block message
-        with patch("hooks.gate_registry._custodiet_build_audit_instruction", return_value="blocked"):
+        with patch(
+            "hooks.gate_registry._custodiet_build_audit_instruction",
+            return_value="blocked",
+        ):
             ctx = make_context("Edit", "PreToolUse")
             result = check_custodiet_gate(ctx)
             assert result is not None
@@ -160,7 +165,10 @@ class TestCheckCustodietGateOnlyBlocksMutating:
 
     def test_write_tool_blocked_over_threshold(self, mock_session_state_over_threshold):
         """Write (mutating) tool should be blocked when counter is over threshold."""
-        with patch("hooks.gate_registry._custodiet_build_audit_instruction", return_value="blocked"):
+        with patch(
+            "hooks.gate_registry._custodiet_build_audit_instruction",
+            return_value="blocked",
+        ):
             ctx = make_context("Write", "PreToolUse")
             result = check_custodiet_gate(ctx)
             assert result is not None
@@ -193,7 +201,9 @@ class TestReadOnlySessionScenario:
         result = check_custodiet_gate(ctx)
         assert result is None  # Allowed
 
-    def test_read_only_session_blocks_first_edit_after_threshold(self, mock_session_state):
+    def test_read_only_session_blocks_first_edit_after_threshold(
+        self, mock_session_state
+    ):
         """After 20 reads, the FIRST Edit should be blocked."""
         # Simulate 20 Read calls
         for _ in range(20):
@@ -204,7 +214,10 @@ class TestReadOnlySessionScenario:
         assert state["tool_calls_since_compliance"] == 20
 
         # Now an Edit should be blocked
-        with patch("hooks.gate_registry._custodiet_build_audit_instruction", return_value="blocked"):
+        with patch(
+            "hooks.gate_registry._custodiet_build_audit_instruction",
+            return_value="blocked",
+        ):
             ctx = make_context("Edit", "PreToolUse")
             result = check_custodiet_gate(ctx)
             assert result is not None

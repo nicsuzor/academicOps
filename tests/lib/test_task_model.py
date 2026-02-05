@@ -27,9 +27,10 @@ def test_task_planned_field_serialization_deserialization():
     assert rehydrated_task.planned.hour == planned_date.hour
     assert rehydrated_task.planned.minute == planned_date.minute
     # Comparing seconds can be flaky, so we check the other components
-    
+
     # Check that it's in the frontmatter
     assert "planned:" in markdown_content
+
 
 def test_task_planned_field_is_optional():
     """Verify that a task can be created without a 'planned' date."""

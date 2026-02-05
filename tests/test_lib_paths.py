@@ -83,7 +83,7 @@ class TestPathResolution:
         data_dir = tmp_path / "data"
         data_dir.mkdir()
         monkeypatch.setenv("ACA_DATA", str(data_dir))
-        
+
         test_plugin_root = tmp_path / "aops-core"
         monkeypatch.setattr("lib.paths.get_plugin_root", lambda: test_plugin_root)
 

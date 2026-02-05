@@ -64,7 +64,7 @@ def retry_flaky_e2e(test_func, max_attempts: int = 3):
             else:
                 # All attempts failed
                 raise AssertionError(
-                    f"Test failed after {max_attempts} attempts. " f"Last error: {e}"
+                    f"Test failed after {max_attempts} attempts. Last error: {e}"
                 ) from last_error
     # This should never be reached, but satisfies type checker
     raise AssertionError("Retry logic error")

@@ -1,15 +1,13 @@
 from unittest.mock import patch
 from hooks.router import HookRouter
 
+
 @patch("hooks.user_prompt_submit.build_hydration_instruction")
 @patch("hooks.user_prompt_submit.write_initial_hydrator_state")
 @patch("hooks.user_prompt_submit.should_skip_hydration")
 @patch("hooks.gate_registry.session_state")
 def test_hydrator_hook_with_specific_input(
-    mock_session_state,
-    mock_should_skip,
-    mock_write_state,
-    mock_build_instruction
+    mock_session_state, mock_should_skip, mock_write_state, mock_build_instruction
 ):
     """
     Test that the hydrator hook handles the specific UserPromptSubmit input correctly.
@@ -17,8 +15,10 @@ def test_hydrator_hook_with_specific_input(
     """
     # Setup mocks
     mock_should_skip.return_value = False
-    mock_build_instruction.return_value = "Run prompt-hydrator with /tmp/hydrator/instruction.md"
-    
+    mock_build_instruction.return_value = (
+        "Run prompt-hydrator with /tmp/hydrator/instruction.md"
+    )
+
     # Specific input from request
     raw_input = {
         "session_id": "da2ab2cf-0d89-4876-8ad7-62c2e2d066d7",
@@ -26,29 +26,32 @@ def test_hydrator_hook_with_specific_input(
         "cwd": "/home/nic/.aops/crew/stormé",
         "hook_event_name": "BeforeAgent",
         "timestamp": "2026-02-01T22:44:04.922Z",
-        "prompt": "fix the stop hook for claude -- it shouldn\'t output hookSpecificOutput. \n```  ⎿  Stop says: ✓ handover verified\nSessionEnd hook ...```"
+        "prompt": "fix the stop hook for claude -- it shouldn't output hookSpecificOutput. \n```  ⎿  Stop says: ✓ handover verified\nSessionEnd hook ...```",
     }
 
     # Initialize Router
     router = HookRouter()
-    
+
     # Normalize (Gemini event mapping)
     # Note: router.normalize_input handles the mapping from BeforeAgent -> UserPromptSubmit
     ctx = router.normalize_input(raw_input, gemini_event="BeforeAgent")
-    
+
     assert ctx.hook_event == "UserPromptSubmit"
-    
+
     # Execute
     result = router.execute_hooks(ctx)
 
     # Assertions
     # The gate logic returns ALLOW with context_injection
-    assert result.verdict == "allow" 
-    assert result.context_injection == "Run prompt-hydrator with /tmp/hydrator/instruction.md"
-    
+    assert result.verdict == "allow"
+    assert (
+        result.context_injection
+        == "Run prompt-hydrator with /tmp/hydrator/instruction.md"
+    )
+
     # Verify build_hydration_instruction was called with correct args
     mock_build_instruction.assert_called_with(
         "da2ab2cf-0d89-4876-8ad7-62c2e2d066d7",
         raw_input["prompt"],
-        raw_input["transcript_path"]
+        raw_input["transcript_path"],
     )

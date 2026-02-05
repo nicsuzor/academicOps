@@ -11,12 +11,12 @@ sys.path.insert(0, str(AOPS_CORE_DIR))
 
 from lib import session_paths
 
+
 class TestSessionPaths(unittest.TestCase):
-    
     @patch.dict(os.environ, {"AOPS_SESSION_STATE_DIR": "/custom/path"})
     def test_get_session_status_dir_env_var(self):
         # Should respect env var
-        with patch("pathlib.Path.mkdir"): # prevent actual mkdir
+        with patch("pathlib.Path.mkdir"):  # prevent actual mkdir
             path = session_paths.get_session_status_dir()
             self.assertEqual(str(path), "/custom/path")
 
@@ -29,13 +29,16 @@ class TestSessionPaths(unittest.TestCase):
             # Create a fake gemini tmp structure
             project_root = Path(tmpdir) / "project"
             project_root.mkdir(parents=True, exist_ok=True)
-            project_hash = hashlib.sha256(str(project_root.resolve()).encode()).hexdigest()
+            project_hash = hashlib.sha256(
+                str(project_root.resolve()).encode()
+            ).hexdigest()
             gemini_tmp = Path(tmpdir) / ".gemini" / "tmp" / project_hash
 
             # Patch Path.home() and Path.cwd() - cwd must return a real path for resolve()
-            with patch.object(Path, "home", return_value=Path(tmpdir)), \
-                 patch.object(Path, "cwd", return_value=project_root):
-
+            with (
+                patch.object(Path, "home", return_value=Path(tmpdir)),
+                patch.object(Path, "cwd", return_value=project_root),
+            ):
                 # Pass gemini- prefixed session_id to trigger gemini path
                 result = session_paths.get_session_status_dir("gemini-test-session")
                 self.assertEqual(result, gemini_tmp)
@@ -54,9 +57,10 @@ class TestSessionPaths(unittest.TestCase):
             expected_path = Path(tmpdir) / ".claude" / "projects" / expected_folder
 
             # Patch Path.home() and Path.cwd() - cwd must return a real path for resolve()
-            with patch.object(Path, "home", return_value=Path(tmpdir)), \
-                 patch.object(Path, "cwd", return_value=project_root):
-
+            with (
+                patch.object(Path, "home", return_value=Path(tmpdir)),
+                patch.object(Path, "cwd", return_value=project_root),
+            ):
                 # Pass UUID-style session_id to trigger claude path
                 result = session_paths.get_session_status_dir("abc123-def456-ghi789")
                 self.assertEqual(result, expected_path)
@@ -68,13 +72,17 @@ class TestSessionPaths(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create a fake gemini tmp structure with chats subdirectory
-            gemini_hash = "02446fdfe96b1eb171c290b1b3da4c0aafff4108395fdefaac4dd1a188242b94"
+            gemini_hash = (
+                "02446fdfe96b1eb171c290b1b3da4c0aafff4108395fdefaac4dd1a188242b94"
+            )
             gemini_base = Path(tmpdir) / ".gemini" / "tmp" / gemini_hash
             gemini_chats = gemini_base / "chats"
             gemini_chats.mkdir(parents=True, exist_ok=True)
 
             # Transcript path as Gemini CLI would provide it
-            transcript_path = str(gemini_chats / "session-07328230-44d4-414b-9fec-191a6eec0948.json")
+            transcript_path = str(
+                gemini_chats / "session-07328230-44d4-414b-9fec-191a6eec0948.json"
+            )
 
             # Patch Path.home()
             with patch.object(Path, "home", return_value=Path(tmpdir)):
@@ -91,7 +99,7 @@ class TestSessionPaths(unittest.TestCase):
         # UUID session_id (no gemini- prefix) with Gemini transcript_path
         result = session_paths._is_gemini_session(
             "07328230-44d4-414b-9fec-191a6eec0948",
-            {"transcript_path": "/home/user/.gemini/tmp/hash/chats/session.json"}
+            {"transcript_path": "/home/user/.gemini/tmp/hash/chats/session.json"},
         )
         self.assertTrue(result)
 
@@ -104,9 +112,10 @@ class TestSessionPaths(unittest.TestCase):
         """_is_gemini_session returns False for Claude sessions."""
         result = session_paths._is_gemini_session(
             "abc123-def456-ghi789",
-            {"transcript_path": "/home/user/.claude/projects/foo/bar.json"}
+            {"transcript_path": "/home/user/.claude/projects/foo/bar.json"},
         )
         self.assertFalse(result)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -27,6 +27,7 @@ except ImportError:
     # Fallback if lib is not in path
     def get_data_root():
         import os
+
         data = os.environ.get("ACA_DATA")
         if not data:
             raise RuntimeError("ACA_DATA environment variable not set")
@@ -57,9 +58,7 @@ def git_sync():
 
         # Check if there are staged changes to commit
         status = subprocess.run(
-            ["git", "diff", "--cached", "--quiet"],
-            cwd=str(writing_root),
-            check=False
+            ["git", "diff", "--cached", "--quiet"], cwd=str(writing_root), check=False
         ).returncode
 
         if status == 0:
@@ -67,12 +66,16 @@ def git_sync():
             return
 
         commit_msg = "Auto-commit: session transcripts and insights updated"
-        subprocess.run(["git", "commit", "-m", commit_msg], cwd=str(writing_root), check=True)
+        subprocess.run(
+            ["git", "commit", "-m", commit_msg], cwd=str(writing_root), check=True
+        )
         print("✅ Committed changes.")
 
         # Try to push
         print("📤 Attempting push...")
-        push_result = subprocess.run(["git", "push"], cwd=str(writing_root), capture_output=True, text=True)
+        push_result = subprocess.run(
+            ["git", "push"], cwd=str(writing_root), capture_output=True, text=True
+        )
 
         if push_result.returncode == 0:
             print("🚀 Push successful.")

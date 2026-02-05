@@ -101,7 +101,9 @@ class TestRouterClaudeFormat:
         output, stderr = run_router_claude(input_data)
 
         # Claude SessionStart should have hookSpecificOutput structure
-        assert "hookSpecificOutput" in output, f"Missing hookSpecificOutput. Output: {output}"
+        assert "hookSpecificOutput" in output, (
+            f"Missing hookSpecificOutput. Output: {output}"
+        )
         hso = output["hookSpecificOutput"]
         assert hso["hookEventName"] == "SessionStart"
         assert "permissionDecision" in hso
@@ -119,12 +121,12 @@ class TestRouterClaudeFormat:
 
         # Debug output for failure case
         if not output:
-            pytest.fail(
-                f"Empty output from router. stderr: {stderr}"
-            )
+            pytest.fail(f"Empty output from router. stderr: {stderr}")
 
         # Claude PreToolUse should have hookSpecificOutput structure
-        assert "hookSpecificOutput" in output, f"Missing hookSpecificOutput. Output: {output}, stderr: {stderr}"
+        assert "hookSpecificOutput" in output, (
+            f"Missing hookSpecificOutput. Output: {output}, stderr: {stderr}"
+        )
         hso = output["hookSpecificOutput"]
         assert hso["hookEventName"] == "PreToolUse"
         # Should have permissionDecision (allow or deny)
@@ -181,7 +183,9 @@ class TestRouterGeminiFormat:
         assert "decision" in output, f"Missing decision. Output: {output}"
         assert output["decision"] in ["allow", "deny"]
         # Should be denied due to hydration gate
-        assert output["decision"] == "deny", f"Expected deny due to hydration gate. Output: {output}, Stderr: {stderr}"
+        assert output["decision"] == "deny", (
+            f"Expected deny due to hydration gate. Output: {output}, Stderr: {stderr}"
+        )
         assert "reason" in output, "Should have reason for deny"
 
     def test_after_tool_output_format(self) -> None:
@@ -232,7 +236,9 @@ class TestRouterEventMapping:
 
         # The gate messages should reference PreToolUse behavior
         # Hydration gate blocks read operations on unhydrated sessions
-        assert output["decision"] == "deny", f"Expected deny. Output: {output}, Stderr: {stderr}"
+        assert output["decision"] == "deny", (
+            f"Expected deny. Output: {output}, Stderr: {stderr}"
+        )
 
     def test_session_end_maps_to_stop(self) -> None:
         """Gemini SessionEnd maps to internal Stop event."""

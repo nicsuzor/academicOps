@@ -16,12 +16,15 @@ from lib.gate_model import GateVerdict
 
 # --- Fixtures ---
 
+
 @pytest.fixture(params=["gemini", "claude"])
 def cli_agent(request) -> str:
     """Fixture that parameterizes across both supported agent types."""
     return request.param
 
+
 # --- Mocking Helpers ---
+
 
 def mock_session_state(
     is_hydration_pending: bool = False,
@@ -41,12 +44,8 @@ def mock_session_state(
         "plan_mode_invoked": plan_mode_invoked,
         "critic_invoked": critic_invoked,
     }
-    
-    state = {
-        "state": {
-            "gates_bypassed": gates_bypassed
-        }
-    }
+
+    state = {"state": {"gates_bypassed": gates_bypassed}}
 
     return patch.multiple(
         "lib.session_state",
@@ -58,7 +57,9 @@ def mock_session_state(
         has_file_been_read=MagicMock(return_value=has_file_been_read),
     )
 
+
 # --- Tool Call Simulation ---
+
 
 def _simulate_tool_call(agent: str, instruction: str) -> Dict[str, Any]:
     """
@@ -71,13 +72,13 @@ def _simulate_tool_call(agent: str, instruction: str) -> Dict[str, Any]:
             return {"toolName": "read_file", "toolInput": {"file_path": path}}
         else:
             return {"tool_name": "Read", "tool_input": {"file_path": path}}
-            
+
     if "list_prompts" in instruction:
         if agent == "gemini":
             return {"toolName": "list_prompts", "toolInput": {}}
         else:
             return {"tool_name": "list_prompts", "tool_input": {}}
-        
+
     if "activate_skill" in instruction:
         skill = instruction.split(" ")[-1]
         if agent == "gemini":
@@ -90,18 +91,27 @@ def _simulate_tool_call(agent: str, instruction: str) -> Dict[str, Any]:
         content = "hello"
         if "with_content" in instruction:
             content = instruction.split("with_content ")[-1]
-            
+
         if agent == "gemini":
-            return {"toolName": "write_to_file", "toolInput": {"file_path": path, "content": content}}
+            return {
+                "toolName": "write_to_file",
+                "toolInput": {"file_path": path, "content": content},
+            }
         else:
-            return {"tool_name": "Write", "tool_input": {"file_path": path, "content": content}}
+            return {
+                "tool_name": "Write",
+                "tool_input": {"file_path": path, "content": content},
+            }
 
     if "create_task" in instruction:
         if agent == "gemini":
             return {"toolName": "create_task", "toolInput": {"title": "test"}}
         else:
-            return {"tool_name": "mcp__plugin_aops-core_task_manager__create_task", "tool_input": {"title": "test"}}
-        
+            return {
+                "tool_name": "mcp__plugin_aops-core_task_manager__create_task",
+                "tool_input": {"title": "test"},
+            }
+
     if "bash" in instruction:
         cmd = instruction.split("bash ")[-1]
         if agent == "gemini":
@@ -111,57 +121,110 @@ def _simulate_tool_call(agent: str, instruction: str) -> Dict[str, Any]:
 
     return {}
 
+
 # --- Tests ---
 
-@pytest.mark.parametrize("gate, instruction, session_state_args, expected_result", [
-    # Hydration Gate Tests
-    ("hydration", "read file /etc/hosts", {"is_hydration_pending": True}, "blocked"),
-    ("hydration", "read file /etc/hosts", {"is_hydration_pending": False}, "allowed"),
-    ("hydration", "list_prompts", {"is_hydration_pending": True}, "allowed"), # Hydration-safe tool
-    ("hydration", "activate_skill prompt-hydrator", {"is_hydration_pending": True}, "allowed"), # Hydration bypass
-    
-    # Task Required Gate Tests (Destructive tools)
-    ("task_required", "write_file test.txt", {"task_bound": False}, "blocked"),
-    ("task_required", "write_file test.txt", {"task_bound": True}, "allowed"),
-    ("task_required", "create_task title='Test'", {"task_bound": False}, "allowed"), # Task binding tools allowed
-    ("task_required", "bash ls", {"task_bound": False}, "allowed"), # Safe bash
-    ("task_required", "bash rm -rf /", {"task_bound": False}, "blocked"), # Destructive bash
-    
-    # Task Required with Full Enforcement (Hydrator/Critic check)
-    ("task_required", "write_file test.txt", 
-     {"task_bound": True, "plan_mode_invoked": False, "critic_invoked": False}, "allowed"), # Default is task-only
 
-    # Axiom Enforcer Gate Tests (P#26: Write-without-read)
-    ("axiom_enforcer", "write_file test.txt", {"has_file_been_read": False}, "blocked"),
-    ("axiom_enforcer", "write_file test.txt", {"has_file_been_read": True}, "allowed"),
-    
-    # Axiom Enforcer Gate Tests (P#8: Fail-fast / No workarounds)
-    ("axiom_enforcer", "write_file_with_content try: pass except: pass", {}, "blocked"),
-])
-def test_gate_enforcement_logic(cli_agent, gate, instruction, session_state_args, expected_result):
+@pytest.mark.parametrize(
+    "gate, instruction, session_state_args, expected_result",
+    [
+        # Hydration Gate Tests
+        (
+            "hydration",
+            "read file /etc/hosts",
+            {"is_hydration_pending": True},
+            "blocked",
+        ),
+        (
+            "hydration",
+            "read file /etc/hosts",
+            {"is_hydration_pending": False},
+            "allowed",
+        ),
+        (
+            "hydration",
+            "list_prompts",
+            {"is_hydration_pending": True},
+            "allowed",
+        ),  # Hydration-safe tool
+        (
+            "hydration",
+            "activate_skill prompt-hydrator",
+            {"is_hydration_pending": True},
+            "allowed",
+        ),  # Hydration bypass
+        # Task Required Gate Tests (Destructive tools)
+        ("task_required", "write_file test.txt", {"task_bound": False}, "blocked"),
+        ("task_required", "write_file test.txt", {"task_bound": True}, "allowed"),
+        (
+            "task_required",
+            "create_task title='Test'",
+            {"task_bound": False},
+            "allowed",
+        ),  # Task binding tools allowed
+        ("task_required", "bash ls", {"task_bound": False}, "allowed"),  # Safe bash
+        (
+            "task_required",
+            "bash rm -rf /",
+            {"task_bound": False},
+            "blocked",
+        ),  # Destructive bash
+        # Task Required with Full Enforcement (Hydrator/Critic check)
+        (
+            "task_required",
+            "write_file test.txt",
+            {"task_bound": True, "plan_mode_invoked": False, "critic_invoked": False},
+            "allowed",
+        ),  # Default is task-only
+        # Axiom Enforcer Gate Tests (P#26: Write-without-read)
+        (
+            "axiom_enforcer",
+            "write_file test.txt",
+            {"has_file_been_read": False},
+            "blocked",
+        ),
+        (
+            "axiom_enforcer",
+            "write_file test.txt",
+            {"has_file_been_read": True},
+            "allowed",
+        ),
+        # Axiom Enforcer Gate Tests (P#8: Fail-fast / No workarounds)
+        (
+            "axiom_enforcer",
+            "write_file_with_content try: pass except: pass",
+            {},
+            "blocked",
+        ),
+    ],
+)
+def test_gate_enforcement_logic(
+    cli_agent, gate, instruction, session_state_args, expected_result
+):
     """
-    Test that specific gates enforce rules correctly across both agents by 
+    Test that specific gates enforce rules correctly across both agents by
     mocking the session state and simulating raw provider input.
     """
     # 1. Prepare Input
     raw_input = _simulate_tool_call(cli_agent, instruction)
-    
+
     # 2. Map gate key to check function
     check_func = GATE_CHECKS.get(gate)
     if not check_func:
         raise ValueError(f"Unknown gate: {gate}")
 
     # 3. Execute with mocked environment
-    with mock_session_state(**session_state_args), \
-         patch("pathlib.Path.exists", return_value=True), \
-         patch.dict(os.environ, {"HYDRATION_GATE_MODE": "block", "TASK_GATE_MODE": "block"}):
-        
+    with (
+        mock_session_state(**session_state_args),
+        patch("pathlib.Path.exists", return_value=True),
+        patch.dict(
+            os.environ, {"HYDRATION_GATE_MODE": "block", "TASK_GATE_MODE": "block"}
+        ),
+    ):
         ctx = GateContext(
-            session_id="test-session-123",
-            event_name="PreToolUse", 
-            input_data=raw_input
+            session_id="test-session-123", event_name="PreToolUse", input_data=raw_input
         )
-        
+
         result = check_func(ctx)
 
     # 4. Verify Verdict
@@ -171,6 +234,7 @@ def test_gate_enforcement_logic(cli_agent, gate, instruction, session_state_args
     elif expected_result == "allowed":
         assert result is None or result.verdict == GateVerdict.ALLOW
 
+
 def test_full_gate_enforcement(cli_agent):
     """Verify that full three-gate enforcement works when enabled via environment."""
     instruction = "write_file test.txt"
@@ -178,23 +242,32 @@ def test_full_gate_enforcement(cli_agent):
     check_func = GATE_CHECKS.get("task_required")
 
     # Scenario: Task bound, but hydrator and critic NOT invoked
-    state_args = {"task_bound": True, "plan_mode_invoked": False, "critic_invoked": False}
+    state_args = {
+        "task_bound": True,
+        "plan_mode_invoked": False,
+        "critic_invoked": False,
+    }
 
-    with mock_session_state(**state_args), \
-         patch.dict(os.environ, {
-             "TASK_GATE_MODE": "block", 
-             "TASK_GATE_ENFORCE_ALL": "true" # Enable full enforcement
-         }):
-        
+    with (
+        mock_session_state(**state_args),
+        patch.dict(
+            os.environ,
+            {
+                "TASK_GATE_MODE": "block",
+                "TASK_GATE_ENFORCE_ALL": "true",  # Enable full enforcement
+            },
+        ),
+    ):
         ctx = GateContext(
-            session_id="test-session-123",
-            event_name="PreToolUse", 
-            input_data=raw_input
+            session_id="test-session-123", event_name="PreToolUse", input_data=raw_input
         )
-        
+
         result = check_func(ctx)
-        
+
         # Should be blocked because TASK_GATE_ENFORCE_ALL is true
         assert result is not None
         assert result.verdict == GateVerdict.DENY
-        assert "Critic" in result.context_injection or "Hydrate" in result.context_injection
+        assert (
+            "Critic" in result.context_injection
+            or "Hydrate" in result.context_injection
+        )

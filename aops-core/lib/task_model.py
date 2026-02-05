@@ -140,8 +140,12 @@ class Task:
 
     # Graph relationships (stored in frontmatter)
     parent: str | None = None  # Parent task ID (null = root)
-    depends_on: list[str] = field(default_factory=list)  # Must complete first (blocking)
-    soft_depends_on: list[str] = field(default_factory=list)  # Context hints (non-blocking)
+    depends_on: list[str] = field(
+        default_factory=list
+    )  # Must complete first (blocking)
+    soft_depends_on: list[str] = field(
+        default_factory=list
+    )  # Context hints (non-blocking)
 
     # Decomposition metadata
     depth: int = 0  # Distance from root (0 = root goal)
@@ -180,9 +184,7 @@ class Task:
         # - Legacy format: YYYYMMDD-slug (e.g., 20260119-my-task)
         # - Simple slug for permalinks (e.g., my-task-id)
         if not re.match(r"^[\w-]+$", self.id):
-            raise ValueError(
-                f"Task id must be slug format: {self.id}"
-            )
+            raise ValueError(f"Task id must be slug format: {self.id}")
         if not 0 <= self.priority <= 4:
             raise ValueError(f"Priority must be 0-4, got {self.priority}")
         if self.depth < 0:
@@ -197,7 +199,7 @@ class Task:
             project: Project slug (defaults to 'ns' for no-project)
 
         Returns:
-            ID in format <project>-<uuid[:8]> """
+            ID in format <project>-<uuid[:8]>"""
         prefix = project if project else "ns"
         hash_part = uuid.uuid4().hex[:8]
         return f"{prefix}-{hash_part}"
@@ -496,7 +498,9 @@ class Task:
             raise ValueError("Empty frontmatter")
         # Accept id, task_id, or permalink as the ID field
         if "id" not in fm and "task_id" not in fm and "permalink" not in fm:
-            raise ValueError("Task frontmatter missing required field: id, task_id, or permalink")
+            raise ValueError(
+                "Task frontmatter missing required field: id, task_id, or permalink"
+            )
         if "title" not in fm:
             raise ValueError("Task frontmatter missing required field: title")
 

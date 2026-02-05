@@ -104,9 +104,9 @@ def test_e2e_blocks_long_markdown_file(claude_test) -> None:
 
         if target_file.exists():
             line_count = len(target_file.read_text().split("\n"))
-            assert (
-                line_count <= 200
-            ), f"File has {line_count} lines but hook should block > 200. "
+            assert line_count <= 200, (
+                f"File has {line_count} lines but hook should block > 200. "
+            )
 
 
 @pytest.mark.slow
@@ -134,9 +134,9 @@ def test_e2e_allows_normal_markdown_file(claude_test) -> None:
         # pass - those confirm the hook works. Here we just verify no error.
         if target_file.exists():
             content = target_file.read_text()
-            assert (
-                "Test" in content or "#" in content
-            ), "File should have expected content"
+            assert "Test" in content or "#" in content, (
+                "File should have expected content"
+            )
 
 
 @pytest.mark.slow

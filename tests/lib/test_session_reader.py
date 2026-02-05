@@ -539,7 +539,9 @@ class TestExtractQuestionsFromAgentResponse:
         """Extract questions from text with multiple questions."""
         from lib.session_reader import _extract_questions_from_text
 
-        text = "Which task should I add? Did you want me to use all of them? Or just some?"
+        text = (
+            "Which task should I add? Did you want me to use all of them? Or just some?"
+        )
         questions = _extract_questions_from_text(text)
 
         assert len(questions) == 3
@@ -575,7 +577,9 @@ class TestExtractQuestionsFromAgentResponse:
         assert questions[0] == "What is this?"
         assert questions[1] == "How about this?"
 
-    def test_extract_router_context_includes_agent_questions(self, tmp_path: Path) -> None:
+    def test_extract_router_context_includes_agent_questions(
+        self, tmp_path: Path
+    ) -> None:
         """Router context includes extracted agent questions."""
         from lib.session_reader import extract_router_context
 
@@ -653,7 +657,9 @@ def _create_hook_entry(
     }
 
 
-def _create_entry_with_timestamp(entry_type: str, timestamp_str: str | None, uuid: str) -> dict:
+def _create_entry_with_timestamp(
+    entry_type: str, timestamp_str: str | None, uuid: str
+) -> dict:
     """Create an entry with a specific timestamp string (or None)."""
     entry: dict = {
         "type": entry_type,
@@ -696,7 +702,9 @@ class TestSessionBoundaryValidation:
         # Simulate a polluted session: null-timestamp summaries mixed with real entries
         entries_data = [
             # Memory summaries from previous sessions (null timestamps)
-            _create_summary_entry_null_timestamp("Previous session context about user preferences"),
+            _create_summary_entry_null_timestamp(
+                "Previous session context about user preferences"
+            ),
             _create_summary_entry_null_timestamp("Another memory from earlier session"),
             # Current session content (valid timestamps)
             _create_user_entry("Hello, start new task", 0),
@@ -714,8 +722,7 @@ class TestSessionBoundaryValidation:
 
         # Collect all summary turns (these are dicts, not ConversationTurn objects)
         summary_turns = [
-            t for t in turns
-            if isinstance(t, dict) and t.get("type") == "summary"
+            t for t in turns if isinstance(t, dict) and t.get("type") == "summary"
         ]
 
         # Summary turns with null timestamps should either:
@@ -751,7 +758,9 @@ class TestSessionBoundaryValidation:
             _create_hook_entry("PreToolUse", agent_id="agent-abc123", offset=1),
             _create_assistant_entry(2),
             # Hook referencing an agent from a DIFFERENT session (pollution)
-            _create_hook_entry("PostToolUse", agent_id="agent-xyz789-old-session", offset=3),
+            _create_hook_entry(
+                "PostToolUse", agent_id="agent-xyz789-old-session", offset=3
+            ),
             _create_user_entry("Continue", 10),
             _create_assistant_entry(11),
         ]
@@ -763,8 +772,7 @@ class TestSessionBoundaryValidation:
 
         # Find hook_context turns (these are dicts)
         hook_turns = [
-            t for t in turns
-            if isinstance(t, dict) and t.get("type") == "hook_context"
+            t for t in turns if isinstance(t, dict) and t.get("type") == "hook_context"
         ]
 
         # Verify that agent_id is preserved so consumers can filter by session membership
@@ -788,7 +796,9 @@ class TestSessionBoundaryValidation:
         # Simulate pollution pattern: old summaries at start, then real conversation
         entries_data = [
             # --- POLLUTION: Content from before session started ---
-            _create_summary_entry_null_timestamp("Memory: User asked about Python best practices"),
+            _create_summary_entry_null_timestamp(
+                "Memory: User asked about Python best practices"
+            ),
             {
                 "type": "summary",
                 "uuid": "summary-old-1",
@@ -799,7 +809,9 @@ class TestSessionBoundaryValidation:
             _create_user_entry("Help me with the framework tests", 0),
             _create_assistant_entry(1),
             # More pollution injected mid-session
-            _create_summary_entry_null_timestamp("Ancient context about unrelated project"),
+            _create_summary_entry_null_timestamp(
+                "Ancient context about unrelated project"
+            ),
             _create_user_entry("Add validation tests", 10),
             _create_assistant_entry(11),
         ]
@@ -811,9 +823,9 @@ class TestSessionBoundaryValidation:
 
         # Count actual conversation turns (ConversationTurn objects, not summary dicts)
         conversation_turns = [
-            t for t in turns
-            if isinstance(t, ConversationTurn)
-            and t.user_message is not None
+            t
+            for t in turns
+            if isinstance(t, ConversationTurn) and t.user_message is not None
         ]
 
         # We should have exactly 2 conversation turns from the real session
@@ -843,7 +855,9 @@ class TestSessionBoundaryValidation:
                 "type": "user",
                 "uuid": "user-old",
                 "timestamp": "2025-01-15T06:00:00Z",  # 4 hours before session
-                "message": {"content": [{"type": "text", "text": "Old question from earlier"}]},
+                "message": {
+                    "content": [{"type": "text", "text": "Old question from earlier"}]
+                },
             },
             # Actual session content
             _create_user_entry("Current session question", 100),
@@ -866,14 +880,16 @@ class TestSessionBoundaryValidation:
 
         # Get conversation turns (ConversationTurn objects)
         conversation_turns = [
-            t for t in turns
-            if isinstance(t, ConversationTurn)
-            and t.user_message is not None
+            t
+            for t in turns
+            if isinstance(t, ConversationTurn) and t.user_message is not None
         ]
 
         # All conversation turns should have start_time information for filtering
         for turn in conversation_turns:
-            assert turn.start_time is not None, "Turn must have start_time for boundary validation"
+            assert turn.start_time is not None, (
+                "Turn must have start_time for boundary validation"
+            )
 
         # Consumers can use start_time to filter out-of-range entries
         # The processor should preserve timestamps so filtering is possible

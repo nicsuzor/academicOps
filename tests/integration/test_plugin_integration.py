@@ -28,7 +28,9 @@ class TestPluginDiscovery:
         """Plugin symlink must exist at ~/.claude/plugins/aops-core."""
         symlink = Path.home() / ".claude" / "plugins" / "aops-core"
         if not symlink.exists():
-            pytest.skip("Plugin symlink not installed (expected for CI/fresh environments)")
+            pytest.skip(
+                "Plugin symlink not installed (expected for CI/fresh environments)"
+            )
         assert symlink.is_symlink(), f"Not a symlink: {symlink}"
 
     @pytest.mark.integration
@@ -36,7 +38,9 @@ class TestPluginDiscovery:
         """Plugin symlink must point to valid directory."""
         symlink = Path.home() / ".claude" / "plugins" / "aops-core"
         if not symlink.exists():
-            pytest.skip("Plugin symlink not installed (expected for CI/fresh environments)")
+            pytest.skip(
+                "Plugin symlink not installed (expected for CI/fresh environments)"
+            )
         target = symlink.resolve()
         assert target.is_dir(), f"Symlink target not a directory: {target}"
         assert (target / ".claude-plugin" / "plugin.json").exists(), (
