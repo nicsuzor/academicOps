@@ -46,6 +46,7 @@ DEFAULT_INPUT = {
     "transcript_path": "/home/nic/.gemini/tmp/session.json",
     "cwd": "/home/nic/writing",
     "timestamp": "2026-02-05T01:59:58.304Z",
+    "client": "gemini",
 }
 
 
@@ -53,6 +54,12 @@ def make_input(**overrides):
     """Merge overrides with DEFAULT_INPUT."""
     return {**DEFAULT_INPUT, **overrides}
 
+
+# Expected field semantics:
+#   None = don't check this field
+#   value = check exact match (for expected_system_message)
+#   True/False = check existence (for expected_injection_exists)
+#   string = check substring (for *_contains fields)
 
 TEST_CASES = [
     {
@@ -63,6 +70,10 @@ TEST_CASES = [
             prompt="test",
         ),
         "expected_decision": "allow",
+        "expected_system_message": None,
+        "expected_system_message_contains": None,
+        "expected_injection_exists": None,
+        "expected_injection_contains": None,
     },
     {
         "name": "PreToolUse Example (Claude)",
@@ -73,30 +84,35 @@ TEST_CASES = [
             tool_input={"file_path": "test.txt"},
         ),
         "expected_decision": "allow",
+        "expected_system_message": None,
+        "expected_system_message_contains": None,
+        "expected_injection_exists": None,
+        "expected_injection_contains": None,
     },
     {
         "name": "UserPromptSubmit invoke subagent (Gemini)",
         "input": make_input(
-            client="gemini",
-            session_id="claude-test",
-            timestamp="2026-02-05T01:59:46.799Z",
             hook_event_name="UserPromptSubmit",
-            prompt="@prompt-hydrator read and comment on `/home/nic/.gemini/tmp/97325aa96d9b1e6dce1905b0cdf4f54194df9929d37e09f04fcc3b3b50ca9e84/hydrator/hydrate_gwwqthue.md`\n<system_note>\nThe user has explicitly selected the following agent(s): prompt-hydrator. Please use the 'delegate_to_agent' tool to delegate the task to the selected agent(s).\n</system_note>\n",
+            prompt="@prompt-hydrator read and comment on `/tmp/file.md`\n<system_note>\nThe user has explicitly selected the following agent(s): prompt-hydrator. Please use the 'delegate_to_agent' tool to delegate the task to the selected agent(s).\n</system_note>\n",
         ),
         "expected_decision": "allow",
+        "expected_system_message": None,
+        "expected_system_message_contains": None,
+        "expected_injection_exists": None,
+        "expected_injection_contains": None,
     },
     {
         "name": "PreToolUse invoke subagent (Gemini)",
         "input": make_input(
-            session_id="a4038255-8fdc-4514-a010-f90d969a31f3",
-            transcript_path="/home/nic/.gemini/tmp/97325aa96d9b1e6dce1905b0cdf4f54194df9929d37e09f04fcc3b3b50ca9e84/chats/session-2026-02-05T01-50-a4038255.json",
             hook_event_name="PreToolUse",
             tool_name="prompt-hydrator",
-            tool_input={
-                "query": "Read and comment on /home/nic/.gemini/tmp/97325aa96d9b1e6dce1905b0cdf4f54194df9929d37e09f04fcc3b3b50ca9e84/hydrator/hydrate_gwwqthue.md"
-            },
+            tool_input={"query": "Read and comment on /tmp/file.md"},
         ),
         "expected_decision": "allow",
+        "expected_system_message": None,
+        "expected_system_message_contains": None,
+        "expected_injection_exists": None,
+        "expected_injection_contains": None,
     },
 ]
 
@@ -153,3 +169,36 @@ def test_hook_json_io(case):
                     assert output_dict.get("decision") == "approve"
                 else:
                     assert output_dict.get("decision") == "block"
+
+        # --- Additional assertions for system_message and injection ---
+        system_message = output_dict.get("systemMessage")
+        injection = None
+        if "hookSpecificOutput" in output_dict:
+            injection = output_dict["hookSpecificOutput"].get("additionalContext")
+
+        # Check expected_system_message (exact match)
+        if case.get("expected_system_message") is not None:
+            assert system_message == case["expected_system_message"], (
+                f"Expected systemMessage={case['expected_system_message']!r}, got {system_message!r}"
+            )
+
+        # Check expected_system_message_contains (substring)
+        if case.get("expected_system_message_contains") is not None:
+            assert system_message is not None, "Expected systemMessage but got None"
+            assert case["expected_system_message_contains"] in system_message, (
+                f"Expected systemMessage to contain {case['expected_system_message_contains']!r}, got {system_message!r}"
+            )
+
+        # Check expected_injection_exists (True = must exist, False = must not exist)
+        if case.get("expected_injection_exists") is not None:
+            if case["expected_injection_exists"]:
+                assert injection is not None, "Expected injection to exist but got None"
+            else:
+                assert injection is None, f"Expected no injection but got {injection!r}"
+
+        # Check expected_injection_contains (substring)
+        if case.get("expected_injection_contains") is not None:
+            assert injection is not None, "Expected injection but got None"
+            assert case["expected_injection_contains"] in injection, (
+                f"Expected injection to contain {case['expected_injection_contains']!r}, got {injection!r}"
+            )
