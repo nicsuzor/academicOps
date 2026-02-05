@@ -374,6 +374,7 @@ def build_aops_core(
     items_to_copy = [
         "skills",
         "agents",
+        "commands",
         "lib",
         "mcp_servers",
         "SKILLS.md",
