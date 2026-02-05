@@ -8,7 +8,7 @@ from pathlib import Path
 
 import yaml
 
-from validation import TaskIDValidationError, validate_task_id_or_raise
+from validation import validate_task_id_or_raise
 from observability import metrics
 
 # Add aops-core to path for lib imports
@@ -18,7 +18,7 @@ sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
 # These imports will fail here but work when moved to academicOps
 try:
-    from lib.task_model import TaskStatus, TaskType
+    from lib.task_model import TaskStatus
     from lib.task_storage import TaskStorage
 except ImportError:
     pass
@@ -840,7 +840,7 @@ class PolecatManager:
                 ["git", "branch", "-D", branch_name], cwd=repo_path, check=False
             )
             raise RuntimeError(
-                f"Failed to create valid worktree - orphan branch detected"
+                "Failed to create valid worktree - orphan branch detected"
             )
 
         # Configure git identity if specified in config

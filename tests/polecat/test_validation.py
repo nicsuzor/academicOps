@@ -20,7 +20,6 @@ from validation import (
     validate_task_id,
     validate_task_id_or_raise,
     MAX_TASK_ID_LENGTH,
-    MIN_TASK_ID_LENGTH,
 )
 
 

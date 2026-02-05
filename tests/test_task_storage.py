@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 
-import pytest
 
-from lib.task_model import Task, TaskStatus, TaskType
+from lib.task_model import TaskStatus, TaskType
 from lib.task_storage import TaskStorage
 
 
@@ -65,7 +63,7 @@ Original body content.
         loaded_task.status = TaskStatus.IN_PROGRESS
 
         # Save the task - THIS IS THE BUG: should update global file, not create project file
-        returned_path = storage.save_task(loaded_task)
+        storage.save_task(loaded_task)
 
         # Verify: the ORIGINAL file was updated (not a new file created elsewhere)
         # Read raw file content to verify disk state

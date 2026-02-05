@@ -1,5 +1,4 @@
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from hooks import gate_registry
 from hooks.gate_registry import GateContext, check_axiom_enforcer_gate
 from lib.gate_model import GateVerdict
@@ -206,7 +205,6 @@ class TestP26WriteWithoutRead:
     def test_allows_write_to_safe_temp_path(self, tmp_path):
         """P#26: Skip check for safe temp directories."""
         from pathlib import Path
-        import os
 
         # Use a path in the safe temp directory
         safe_temp = Path.home() / ".claude" / "tmp" / "test.py"

@@ -16,10 +16,8 @@ Exit codes:
     0: Success (always continues, may inject reminder)
 """
 
-import json
 import sys
 from pathlib import Path
-from typing import Any
 
 # Add framework lib to path for template_loader
 HOOK_DIR = Path(__file__).parent

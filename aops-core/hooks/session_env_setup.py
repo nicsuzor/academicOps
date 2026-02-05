@@ -9,7 +9,7 @@ persisted for the duration of the Claude Code session using CLAUDE_ENV_FILE.
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Optional
 
 # Ensure aops-core is in path for imports
 HOOK_DIR = Path(__file__).parent

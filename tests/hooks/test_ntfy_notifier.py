@@ -142,7 +142,7 @@ class TestNtfyNotifierFunctions(unittest.TestCase):
     def test_notify_session_start(self, mock_send):
         """notify_session_start sends correct notification."""
         mock_send.return_value = True
-        result = ntfy_notifier.notify_session_start(self.config, "abc123def456")
+        ntfy_notifier.notify_session_start(self.config, "abc123def456")
 
         mock_send.assert_called_once()
         call_args = mock_send.call_args

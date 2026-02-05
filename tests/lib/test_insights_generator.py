@@ -1,15 +1,12 @@
 """Tests for session insights generator library."""
 
 import json
-import tempfile
-from pathlib import Path
 
 import pytest
 
 from lib.insights_generator import (
     InsightsValidationError,
     extract_json_from_response,
-    extract_project_name,
     extract_short_hash,
     generate_fallback_insights,
     get_insights_file_path,

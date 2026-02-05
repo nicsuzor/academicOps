@@ -1,7 +1,5 @@
 import pytest
-import uuid
 import json
-from pathlib import Path
 
 # NOTE: These tests use the `cli_headless` fixture from tests/conftest.py
 # which supports both 'claude' and 'gemini' params.

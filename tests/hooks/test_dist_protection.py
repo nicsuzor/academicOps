@@ -17,14 +17,17 @@ def run_enforcer(input_data):
     args = input_data["tool_input"]
     
     result = validate_minimal_documentation(tool_name, args)
-    if result: return result
-    
+    if result:
+        return result
+
     result = validate_safe_git_usage(tool_name, args)
-    if result: return result
-    
+    if result:
+        return result
+
     result = validate_protect_artifacts(tool_name, args)
-    if result: return result
-    
+    if result:
+        return result
+
     return {}
 
 def test_block_dist_write():

@@ -27,7 +27,7 @@ from lib.session_reader import find_sessions
 from lib.session_analyzer import SessionAnalyzer, extract_todowrite_from_session
 from lib.session_context import SessionContext, extract_context_from_session_state
 from lib.task_storage import TaskStorage
-from lib.task_model import Task, TaskStatus
+from lib.task_model import Task
 from collections import defaultdict
 
 # Add local directory to path for sibling imports
@@ -632,7 +632,7 @@ def render_agents_working():
 
         # Single compact row
         project_part = f"<span class='ca-project'>{esc(project)}</span>" if project else ""
-        html += f"<div class='current-activity-row'>"
+        html += "<div class='current-activity-row'>"
         html += f"<span class='ca-time'>{esc(duration_str)}</span>"
         html += project_part
         html += f"<span class='ca-desc'>{esc(description)}</span>"
@@ -1152,7 +1152,7 @@ def fetch_session_activity(hours: int = 4) -> list[dict]:
                 # Based on viewed file: top level "started_at", "ended_at"
 
                 ts_str = state.get("started_at", "")
-                timestamp = ts_str
+                _ = ts_str  # Keep for potential future use
 
                 # Check for recent activity based on file mtime or content
                 mtime = status_file.stat().st_mtime
@@ -1393,7 +1393,6 @@ def get_where_you_left_off(hours: int = 24, limit: int = 10) -> dict:
 
         if todowrite:
             todos = todowrite.todos if hasattr(todowrite, "todos") else todowrite.get("todos", [])
-            counts = todowrite.counts if hasattr(todowrite, "counts") else todowrite.get("counts", {})
 
             if todos:
                 in_progress = [t for t in todos if t.get("status") == "in_progress"]
@@ -3933,8 +3932,10 @@ def render_session_summary():
             
     # Format helper
     def fmt_tok(n):
-        if n >= 1_000_000: return f"{n/1_000_000:.1f}M"
-        if n >= 1_000: return f"{n/1_000:.1f}K"
+        if n >= 1_000_000:
+            return f"{n/1_000_000:.1f}M"
+        if n >= 1_000:
+            return f"{n/1_000:.1f}K"
         return str(n)
 
     # Render function for a list of files
@@ -4238,7 +4239,7 @@ if active_sessions_wlo or paused_sessions_wlo:
 
         for project, entries in sorted(active_by_project.items()):
             if len(active_by_project) > 1:
-                wlo_html += f"<div class='wlo-project-group'>"
+                wlo_html += "<div class='wlo-project-group'>"
                 wlo_html += f"<div class='wlo-project-group-label'>{esc(project)}</div>"
 
             for entry in entries:
@@ -4304,13 +4305,13 @@ if active_sessions_wlo or paused_sessions_wlo:
 
         for project, entries in sorted(paused_by_project.items()):
             if len(paused_by_project) > 1:
-                wlo_html += f"<div class='wlo-project-group'>"
+                wlo_html += "<div class='wlo-project-group'>"
                 wlo_html += f"<div class='wlo-project-group-label'>{esc(project)}</div>"
 
             for entry in entries:
                 time_display = entry["time_display"]
 
-                wlo_html += f"<div class='wlo-card paused'>"
+                wlo_html += "<div class='wlo-card paused'>"
                 wlo_html += "<div class='wlo-card-header'>"
                 # Only show project in header if not already grouped
                 if len(paused_by_project) == 1:
@@ -4577,7 +4578,7 @@ try:
             t for t in p_tasks if t.get("status") not in ("done", "closed")
         ]
         if incomplete_tasks:
-            card_parts.append(f"<div class='p-section-title'>📌 UP NEXT</div>")
+            card_parts.append("<div class='p-section-title'>📌 UP NEXT</div>")
             for t in incomplete_tasks[:3]:
                 prio = t.get("priority", 2)
                 prio_cls = f"p{prio}" if prio <= 1 else "p2"

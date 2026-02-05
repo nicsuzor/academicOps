@@ -7,7 +7,6 @@ Replaces setup.sh logic.
 import os
 import sys
 import shutil
-import json
 import subprocess
 import argparse
 from pathlib import Path

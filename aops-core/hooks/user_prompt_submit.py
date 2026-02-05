@@ -14,7 +14,6 @@ Exit codes:
 import json
 import os
 import subprocess
-import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -47,10 +46,6 @@ from lib.session_state import (
     set_hydration_pending,
     set_hydration_temp_path,
     clear_hydration_pending,
-    set_gates_bypassed,
-    clear_reflection_output,
-    get_or_create_session_state,
-    save_session_state,
 )
 from lib.template_loader import load_template
 

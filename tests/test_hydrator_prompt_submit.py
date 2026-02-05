@@ -1,5 +1,4 @@
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from hooks.router import HookRouter
 
 @patch("hooks.user_prompt_submit.build_hydration_instruction")

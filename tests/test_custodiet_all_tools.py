@@ -7,7 +7,7 @@ Tests that:
 """
 
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from pathlib import Path
 import sys
 
@@ -17,8 +17,6 @@ from hooks.gate_registry import (
     run_accountant,
     check_custodiet_gate,
     GateVerdict,
-    MUTATING_TOOLS,
-    SAFE_READ_TOOLS,
 )
 from hooks.schemas import HookContext
 

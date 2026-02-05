@@ -2059,7 +2059,6 @@ class SessionProcessor:
 
         markdown = ""
         turn_number = 0
-        context_summary_started = False
         rendered_agent_ids: set[str] = set()
 
         for turn in turns:

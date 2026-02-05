@@ -22,7 +22,7 @@ import uuid
 from collections import deque
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 
 # --- Path Setup ---
@@ -46,7 +46,7 @@ try:
     )
     from hooks.gate_registry import GATE_CHECKS
     from hooks.unified_logger import log_hook_event
-    from lib.gate_model import GateResult, GateVerdict
+    from lib.gate_model import GateResult
     from lib.session_paths import (
         get_pid_session_map_path,
         get_session_status_dir

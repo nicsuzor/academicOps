@@ -5,12 +5,11 @@ Tests the session-end enforcement hook that detects uncommitted work
 after Framework Reflection or passing tests, and enforces auto-commit.
 """
 
-import json
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -19,7 +18,6 @@ HOOKS_DIR = Path(__file__).parent.parent.parent / "hooks"
 sys.path.insert(0, str(HOOKS_DIR))
 
 from session_end_commit_check import (
-    extract_recent_messages,
     has_framework_reflection,
     has_test_success,
     get_git_status,
@@ -658,7 +656,7 @@ class TestHookIntegration:
 
     def test_no_transcript_path(self) -> None:
         """Should handle missing transcript path gracefully."""
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory():
             result = check_uncommitted_work("session123", None)
             assert result.should_block is False
             assert result.has_reflection is False

@@ -5,12 +5,10 @@ Tests that log_hook_event correctly writes to per-session JSONL files.
 """
 
 import json
-import os
 import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 

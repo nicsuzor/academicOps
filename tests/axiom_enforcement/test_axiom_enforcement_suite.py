@@ -14,7 +14,6 @@ when this file is written. The _decode() function decodes them at runtime.
 from __future__ import annotations
 
 import base64
-import pytest
 from pathlib import Path
 from unittest.mock import patch
 

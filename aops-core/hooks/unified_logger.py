@@ -16,7 +16,6 @@ import json
 import logging
 import sys
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 from lib.insights_generator import (
@@ -26,7 +25,6 @@ from lib.insights_generator import (
 )
 from lib.session_paths import (
     get_hook_log_path,
-    get_session_short_hash,
 )
 from lib.session_state import (
     clear_hydration_pending,
@@ -36,7 +34,6 @@ from lib.session_state import (
     set_critic_invoked,
     set_qa_invoked,
     set_session_insights,
-    save_session_state,
 )
 from lib.gate_model import GateResult
 from hooks.internal_models import HookLogEntry

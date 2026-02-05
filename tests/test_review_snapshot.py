@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import os
 import sys
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-import pytest
 
 from lib.task_index import TaskIndex
-from lib.task_model import Task, TaskStatus, TaskType
+from lib.task_model import TaskStatus, TaskType
 from lib.task_storage import TaskStorage
 
 # Import the internal helper and raw function directly

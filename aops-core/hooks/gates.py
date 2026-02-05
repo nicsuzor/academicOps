@@ -6,7 +6,6 @@ This script is invoked by the router for generic gate enforcement.
 It loads active gates from configuration and executes them.
 """
 
-import json
 import sys
 from pathlib import Path
 
@@ -16,8 +15,6 @@ AOPS_CORE_DIR = HOOK_DIR.parent
 if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
-from hooks.gate_registry import GATE_CHECKS
-from lib.hook_utils import make_empty_output, get_session_id
 
 # Gate configuration: Maps events to ordered list of gate checks
 # Order matters - gates run in sequence, first deny wins

@@ -1,12 +1,10 @@
 """Test Skill Activation Bypass for Hydration."""
 
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from hooks.gate_registry import (
     check_hydration_gate,
     check_skill_activation_listener,
     GateVerdict,
-    INFRASTRUCTURE_SKILLS_NO_HYDRATION_CLEAR,
 )
 from hooks.schemas import HookContext
 

@@ -1,7 +1,6 @@
 """Tests for pipeline metrics collection library."""
 
 import json
-import tempfile
 from pathlib import Path
 from unittest.mock import patch
 

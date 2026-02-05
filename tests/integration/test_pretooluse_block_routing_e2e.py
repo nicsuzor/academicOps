@@ -20,9 +20,7 @@ import json
 import os
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -306,7 +304,6 @@ class TestClaudeCodeBlockEnforcement:
 
         if hydrator_calls:
             # Hydrator was called - verify Bash worked after
-            bash_calls = [c for c in tool_calls if c["name"] == "Bash"]
             if result["success"]:
                 # Session succeeded with hydrator - Bash should have been allowed
                 # (Though agent might choose not to use Bash at all)
@@ -324,14 +321,14 @@ class TestClaudeCodeBlockEnforcement:
         )
 
         # With bypass, no hydrator should be needed
-        hydrator_calls = [
+        bypass_hydrator_calls = [
             c
             for c in tool_calls
             if c["name"] == "Task"
             and c.get("input", {}).get("subagent_type") == "prompt-hydrator"
         ]
 
-        if result["success"]:
+        if result["success"] and not bypass_hydrator_calls:
             # Success with bypass - either Bash worked or wasn't needed
             pass  # Just verify session succeeded without hydrator being required
         else:

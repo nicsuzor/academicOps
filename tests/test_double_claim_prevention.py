@@ -16,7 +16,6 @@ import re
 import pytest
 from pathlib import Path
 from unittest.mock import patch
-from datetime import datetime, UTC
 
 from lib.task_storage import TaskStorage
 from lib.task_model import Task, TaskStatus, TaskType

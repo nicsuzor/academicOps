@@ -15,7 +15,7 @@ import sys
 import time
 import shutil
 import signal
-from typing import List, Optional
+from typing import Optional
 
 # Global event to signal workers to drain
 STOP_EVENT = multiprocessing.Event()

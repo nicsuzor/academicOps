@@ -20,9 +20,7 @@ Exit codes:
     Non-zero: Hook error (logged, does not block)
 """
 
-import json
 import subprocess
-import sys
 from pathlib import Path
 from typing import Any
 

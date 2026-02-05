@@ -4,11 +4,10 @@
 import pytest
 import tempfile
 from pathlib import Path
-from datetime import datetime, UTC
 
 from lib.task_sync import TaskSyncService, SyncResult, sync_task_from_session
 from lib.task_storage import TaskStorage
-from lib.task_model import Task, TaskType, TaskStatus
+from lib.task_model import TaskType
 
 
 class TestTaskSyncService:
@@ -91,7 +90,6 @@ Some notes about the feature.
 
     def test_mark_checklist_items_no_match(self, service, sample_task):
         """Test no items marked when no match."""
-        original_body = sample_task.body
         marked = service._mark_checklist_items(
             sample_task, "Something completely unrelated"
         )

@@ -1,6 +1,5 @@
 """Tests for centralized event detection module."""
 
-import pytest
 from lib.event_detector import detect_tool_state_changes, StateChange
 
 

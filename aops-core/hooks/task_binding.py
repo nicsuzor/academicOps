@@ -18,10 +18,5 @@ Exit codes:
     0: Success (always - this hook doesn't block)
 """
 
-import json
-import os
-import sys
-from typing import Any
 
 # Re-export from hook_utils for backwards compatibility
-from lib.hook_utils import get_task_id_from_result

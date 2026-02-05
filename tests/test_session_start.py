@@ -1,7 +1,5 @@
 """Test SessionStart gate functionality."""
 
-import json
-import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 from hooks.gate_registry import check_session_start_gate

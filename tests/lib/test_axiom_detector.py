@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from lib.axiom_detector import P8FallbackDetector, AxiomViolation
+from lib.axiom_detector import P8FallbackDetector
 
 
 def test_p8_env_get_default():

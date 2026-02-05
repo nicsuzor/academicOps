@@ -1,4 +1,3 @@
-import os
 import re
 import yaml
 from pathlib import Path
@@ -21,14 +20,12 @@ def fix_agent_definition(file_path):
         # Sanitize hanging list items before loading
         lines = frontmatter_raw.split('\n')
         reconstructed_yaml = ""
-        current_key = None
-        
         for line in lines:
             stripped = line.strip()
-            if not stripped: continue
-            
+            if not stripped:
+                continue
+
             if re.match(r'^\w+:', line):
-                current_key = line.split(':')[0]
                 reconstructed_yaml += line + "\n"
             elif stripped.startswith('- '):
                 # We drop ALL list items unless we are sure.

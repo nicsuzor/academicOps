@@ -18,9 +18,7 @@ Exit codes:
     0: Success (transformation applied or pass-through)
 """
 
-import json
 import os
-import sys
 from pathlib import Path
 from typing import Any
 

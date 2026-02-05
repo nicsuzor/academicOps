@@ -12,7 +12,6 @@ sys.path.insert(0, str(FRAMEWORK_ROOT))
 sys.path.insert(0, str(FRAMEWORK_ROOT / "aops-core")) 
 
 from mcp_servers import tasks_server
-from lib.task_model import TaskStatus
 
 @pytest.fixture
 def mock_task_index():

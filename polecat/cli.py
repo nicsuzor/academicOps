@@ -62,7 +62,7 @@ def init(ctx, project):
         if failures:
             print(f"\n⚠️  Failed: {', '.join(failures)}")
             sys.exit(1)
-        print(f"\n✓ All mirrors ready")
+        print("\n✓ All mirrors ready")
 
 
 @main.command()
@@ -365,7 +365,7 @@ def finish(ctx, no_push, do_nuke):
                         ["gh", "pr", "create", "--title", task.title, "--body-file", body_file, "--head", branch_name, "--base", "main"],
                         check=True, capture_output=True
                     )
-                    print(f"  ✅ Created new PR")
+                    print("  ✅ Created new PR")
 
             except subprocess.CalledProcessError as e:
                 # Don't fail the whole finish command if PR creation fails
@@ -388,7 +388,7 @@ def finish(ctx, no_push, do_nuke):
 
         task.status = TaskStatus.MERGE_READY
         manager.storage.save_task(task)
-        print(f"✅ Task marked as 'merge_ready'")
+        print("✅ Task marked as 'merge_ready'")
 
         # Auto-merge hook: attempt to merge immediately if no blockers
         _attempt_auto_merge(task, manager)
@@ -401,7 +401,7 @@ def finish(ctx, no_push, do_nuke):
         print("Nuking worktree...")
         os.chdir(Path.home())  # Move out of worktree before nuking
         manager.nuke_worktree(task_id, force=False)
-        print(f"Worktree removed")
+        print("Worktree removed")
     else:
         print(f"\nTo clean up later: polecat nuke {task_id}")
 
@@ -758,18 +758,18 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
 
     # Step 5: Auto-finish on success (unless disabled)
     if exit_code == 0:
-        print(f"\n✅ Agent completed successfully.")
+        print("\n✅ Agent completed successfully.")
         if not no_auto_finish:
-            print(f"🔄 Running auto-finish...")
+            print("🔄 Running auto-finish...")
             # Change to worktree directory and invoke finish directly
             original_cwd = os.getcwd()
             try:
                 os.chdir(worktree_path)
                 ctx.invoke(finish, no_push=False, do_nuke=False)
-                print(f"✅ Auto-finish completed.")
+                print("✅ Auto-finish completed.")
             except SystemExit as e:
                 if e.code != 0:
-                    print(f"⚠️  Auto-finish failed.")
+                    print("⚠️  Auto-finish failed.")
                     print(
                         f"   You can retry manually: cd {worktree_path} && polecat finish"
                     )
@@ -781,7 +781,7 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
             finally:
                 os.chdir(original_cwd)
         else:
-            print(f"📝 Auto-finish disabled. Run `polecat finish` when ready.")
+            print("📝 Auto-finish disabled. Run `polecat finish` when ready.")
             print(f"   Worktree: {worktree_path}")
     else:
         print(f"\n⚠️  Agent exited with code {exit_code}. Skipping auto-finish.")

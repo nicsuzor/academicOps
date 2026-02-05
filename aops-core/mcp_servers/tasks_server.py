@@ -18,7 +18,6 @@ Usage:
 from __future__ import annotations
 
 import logging
-from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -26,7 +25,6 @@ from typing import Any, Optional
 from fastmcp import FastMCP
 
 import sys
-from pathlib import Path
 
 # Add framework roots to path for lib imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -877,7 +875,6 @@ def get_review_tasks(project: str = "", limit: int = 5) -> dict[str, Any]:
         - message: Status message
     """
     try:
-        storage = _get_storage()
         index = _get_index()
 
         # Get all tasks in review status

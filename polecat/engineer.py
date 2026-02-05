@@ -98,7 +98,7 @@ class Engineer:
         - merging → review (on failure, via handle_failure)
         """
         # Claim merge slot by transitioning to MERGING
-        print(f"  Claiming merge slot...")
+        print("  Claiming merge slot...")
         task.status = TaskStatus.MERGING
         self.storage.save_task(task)
 
@@ -189,7 +189,7 @@ class Engineer:
         # Append report
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
         report = f"\n\n## 🏭 Refinery Report ({timestamp})\n"
-        report += f"**❌ Merge Failed**\n\n"
+        report += "**❌ Merge Failed**\n\n"
         report += f"```\n{error_msg}\n```\n"
         report += "Status set to `review` for manual intervention."
 

@@ -4,12 +4,11 @@
 Tests hydration triggering logic, skip conditions, temp file creation, and context structure.
 """
 
-import json
 import os
 import tempfile
 import time
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -290,7 +289,7 @@ class TestHydrationContext:
                     "Preview: {prompt_preview}\nFile: {temp_path}",
                 ]
 
-                instruction = build_hydration_instruction(
+                build_hydration_instruction(
                     session_id, prompt, transcript_path
                 )
 
@@ -330,7 +329,7 @@ class TestHydrationContext:
             ]
 
             # Should not raise - graceful degradation
-            instruction = build_hydration_instruction(
+            build_hydration_instruction(
                 session_id, prompt, "/fake/transcript"
             )
 

@@ -23,7 +23,6 @@ try:
         convert_gemini_to_antigravity,
         safe_symlink,
         safe_copy,
-        format_path_for_json,
         get_git_commit_sha,
         write_plugin_version,
     )
@@ -661,14 +660,8 @@ def build_antigravity(aops_root: Path, dist_root: Path, all_mcps: dict):
         json.dump({"mcpServers": ag_mcps}, f, indent=2)
 
     # 3. Rules (AXIOMS, HEURISTICS, core.md)
-    rules_dist = (
-        ag_dist / "rules"
-    )  # Antigravity doesn't use this directly yet, usually it's .agent/rules in project
-    # But maybe we want to distribute them? The setup.sh linked them to .agent/rules.
-    # We will just prepare them here if we want to support a global install later,
-    # but strictly speaking setup.sh links from source to project .agent/rules.
-    # Let's keep them in dist for completeness so install.py can use them from dist or source.
-    # We'll stick to source for now to match setup.sh logic, but maybe put a copy here.
+    # NOTE: Antigravity doesn't use rules directly yet - setup.sh links from source to .agent/rules.
+    # Keeping this comment for future reference if we want to distribute rules from dist.
 
     print("✓ Built antigravity dist")
 

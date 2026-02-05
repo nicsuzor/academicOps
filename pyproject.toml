@@ -58,6 +58,17 @@ dev = [
 # Exclude archived files from linting - they are legacy code kept for reference
 exclude = ["archived/**"]
 
+[tool.ruff.lint.per-file-ignores]
+# E402: Module level import not at top of file
+# These files need sys.path manipulation before imports for the hook system
+"aops-core/hooks/*.py" = ["E402"]
+"aops-core/mcp_servers/*.py" = ["E402"]
+"aops-core/scripts/*.py" = ["E402"]
+"tests/**/*.py" = ["E402"]
+"scripts/*.py" = ["E402"]
+"polecat/*.py" = ["E402"]
+"lib/overwhelm/*.py" = ["E402"]
+
 [tool.mypy]
 # Exclude archived files from type checking - they are legacy code kept for reference
 exclude = ["archived/"]

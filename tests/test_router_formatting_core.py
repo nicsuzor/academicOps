@@ -1,6 +1,5 @@
 """Tests for GateResult model and HookRouter formatting logic."""
 
-import pytest
 from lib.gate_model import GateResult, GateVerdict
 from hooks.router import HookRouter
 from hooks.schemas import CanonicalHookOutput

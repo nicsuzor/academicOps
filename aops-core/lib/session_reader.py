@@ -15,13 +15,12 @@ Used by:
 from __future__ import annotations
 
 import glob
-import json
 import re
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from lib.transcript_parser import (
-    Entry,
     SessionInfo,
     SessionProcessor,
     SessionState,
@@ -522,32 +521,6 @@ def _extract_gate_context_impl(
     if "conversation" in include:
         # Generate unified conversation log (ns-52v)
         # Returns list of strings [User]: ..., [Agent]: ...
-        log_lines: list[str] = []
-
-        # Use reversed turns to efficiently get last N
-        count = 0
-        for turn in reversed(turns):
-            if count >= max_turns:
-                break
-
-            turn_lines = []
-
-            # Assistant part (happens after user message in turn)
-            assistant_sequence = (
-                turn.get("assistant_sequence")
-                if isinstance(turn, dict)
-                else turn.assistant_sequence
-            )
-            if assistant_sequence:
-                for item in reversed(
-                    assistant_sequence
-                ):  # Reversed again to push to front of turn lines? No.
-                    # We want chronological order within the turn.
-                    pass
-
-            # Actually easier to process chronological turns and then slice.
-            pass
-
         # Linear pass chronological
         chronological_lines = []
         for turn in turns:
@@ -703,7 +676,6 @@ def load_skill_scope(skill_name: str) -> str | None:
     Returns:
         Brief description of what the skill authorizes, or None if not found.
     """
-    import os
 
     aops_root = Path(__file__).parent.parent.parent
 

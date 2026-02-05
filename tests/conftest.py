@@ -606,7 +606,6 @@ def run_gemini_headless(
             # Fallback: look for JSON object boundaries
             # We want the LAST valid JSON object, as that's likely the CLI response
             # (Hooks log earlier)
-            import re
             
             # Simple heuristic: Look for { ... } that parse successfully
             candidates = []

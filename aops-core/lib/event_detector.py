@@ -5,8 +5,7 @@ from hook events (Tool Use, User Propmt, etc.).
 """
 
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
-import re
+from typing import Any, Dict, List, Optional
 import json
 
 

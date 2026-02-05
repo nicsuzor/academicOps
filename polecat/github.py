@@ -3,7 +3,7 @@ import sys
 import re
 import subprocess
 from pathlib import Path
-from typing import Optional
+from typing import Any
 
 # Add aops-core to path
 SCRIPT_DIR = Path(__file__).parent.resolve()

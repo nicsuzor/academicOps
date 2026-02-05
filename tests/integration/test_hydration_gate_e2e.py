@@ -14,8 +14,6 @@ Related:
 - Spec: aops-core/specs/enforcement.md
 """
 
-import json
-from pathlib import Path
 
 import pytest
 
@@ -91,8 +89,6 @@ class TestHydrationGateBlocking:
         # If hydrator was invoked, subsequent Bash should be allowed
         if hydrator_calls:
             # After hydrator, Bash should work
-            bash_calls = [c for c in tool_calls if c["name"] == "Bash"]
-            # Bash should have been attempted after hydrator
             # (exact behavior depends on the hydrator's decision)
 
             # Get indices
@@ -120,8 +116,8 @@ class TestHydrationGateBlocking:
         )
 
         # With '.' prefix, Bash should be allowed without hydrator
-        # Check that we didn't need hydrator
-        hydrator_calls = [
+        # Check that we didn't need hydrator (hydrator_calls computed earlier in test)
+        _ = [
             c
             for c in tool_calls
             if c["name"] == "Task"

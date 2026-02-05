@@ -1,6 +1,5 @@
 import sys
 from pathlib import Path
-import pytest
 
 # Ensure we can import from scripts
 root_dir = Path(__file__).parent.parent

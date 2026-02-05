@@ -8,7 +8,6 @@ Task: aops-dbe06e8c
 """
 
 import os
-import pytest
 from unittest.mock import patch
 
 from hooks.gate_registry import (

@@ -10,7 +10,6 @@ import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-import pytest
 
 from lib.session_context import (
     SessionContext,

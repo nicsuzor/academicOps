@@ -12,15 +12,13 @@ Test scenarios:
 Run with: pytest tests/e2e/test_session_insights_pipeline.py -v
 """
 
-import json
 import pytest
 import tempfile
-from datetime import date
 from pathlib import Path
 
-from lib.task_sync import TaskSyncService, SyncResult, TaskSyncReport
+from lib.task_sync import TaskSyncService
 from lib.task_storage import TaskStorage
-from lib.task_model import Task, TaskType, TaskStatus
+from lib.task_model import TaskType
 from lib.insights_generator import validate_insights_schema, InsightsValidationError
 
 

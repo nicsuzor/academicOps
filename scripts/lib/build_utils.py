@@ -229,8 +229,8 @@ def emit_version_mismatch_warning(
     print(f"\n⚠️  VERSION MISMATCH: {plugin_name}", file=sys.stderr)
     print(f"   Source commit:    {source_commit}", file=sys.stderr)
     print(f"   Installed commit: {installed_commit[:8]}...", file=sys.stderr)
-    print(f"   The installed Claude plugin may be outdated.", file=sys.stderr)
-    print(f"   Consider reinstalling the plugin in Claude Desktop.", file=sys.stderr)
+    print("   The installed Claude plugin may be outdated.", file=sys.stderr)
+    print("   Consider reinstalling the plugin in Claude Desktop.", file=sys.stderr)
     print("", file=sys.stderr)
 
 

@@ -7,7 +7,6 @@ Tests hard-blocking of mutating tools when compliance check is overdue.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 
 def setup_custodiet_state(

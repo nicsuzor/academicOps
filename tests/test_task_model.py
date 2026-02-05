@@ -2,7 +2,7 @@
 
 import pytest
 
-from lib.task_model import Task, TaskStatus, TaskType
+from lib.task_model import Task, TaskStatus
 
 
 class TestTaskStatusInbox:

@@ -338,7 +338,6 @@ More content here.
         This test finds recent session logs that contain reflections and
         verifies the extraction pipeline works end-to-end.
         """
-        import glob
         from pathlib import Path
 
         # Find session transcripts with Framework Reflections

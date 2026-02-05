@@ -1,8 +1,7 @@
-import json
 import os
 import sys
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from pathlib import Path
 
 # Add aops-core to path

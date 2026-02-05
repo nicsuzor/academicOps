@@ -7,11 +7,9 @@ Tests environment variable setup logic for SessionStart hook:
 - Default enforcement modes
 """
 
-import os
 import sys
-import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 

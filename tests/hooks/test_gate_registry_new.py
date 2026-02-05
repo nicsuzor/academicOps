@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Tests for new gate registry logic."""
 
-import json
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -14,7 +13,6 @@ if str(HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(HOOKS_DIR))
 
 from gate_registry import (
-    check_custodiet_gate,
     check_hydration_recency_gate,
     post_hydration_trigger,
     post_critic_trigger,

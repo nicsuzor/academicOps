@@ -1,7 +1,6 @@
 import sys
 from pathlib import Path
 from types import SimpleNamespace
-import pytest
 
 # Add repo root to path so we can import polecat
 REPO_ROOT = Path(__file__).parents[2].resolve()

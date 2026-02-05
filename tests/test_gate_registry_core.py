@@ -6,8 +6,6 @@ Tests the helper functions and gate check functions ported from:
 - handover_gate.py
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
 from pathlib import Path
 
 # Import the module under test
@@ -20,7 +18,6 @@ from hooks.gate_registry import (
     _is_hydration_safe_bash,
     _should_require_task,
     _is_handover_skill_invocation,
-    SAFE_TEMP_PREFIXES,
     TASK_BINDING_TOOLS,
     MUTATING_TOOLS,
 )

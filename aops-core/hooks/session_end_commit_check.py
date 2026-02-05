@@ -22,15 +22,12 @@ Output format (for Stop hooks):
 - Exit code 0 required for JSON processing (exit 2 ignores JSON!)
 """
 
-import json
 import logging
 import subprocess
-import sys
 from pathlib import Path
 from typing import Any
 
 from lib.reflection_detector import has_reflection
-from lib.session_state import get_current_task, is_stop_hook_relaxed, is_polecat_session
 from lib.session_paths import get_session_short_hash, get_session_status_dir
 from lib.insights_generator import find_existing_insights
 from lib.transcript_parser import SessionProcessor

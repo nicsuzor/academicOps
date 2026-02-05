@@ -126,7 +126,7 @@ def main():
         sys.exit(1)
 
     if args.debug:
-        print(f"Extracted metadata:", file=sys.stderr)
+        print("Extracted metadata:", file=sys.stderr)
         print(f"  session_id: {metadata['session_id']}", file=sys.stderr)
         print(f"  date: {metadata['date']}", file=sys.stderr)
         print(f"  project: {metadata['project']}", file=sys.stderr)

@@ -10,7 +10,6 @@ Exit codes:
     0: Always (JSON output determines allow/deny via permissionDecision field)
 """
 
-import json
 import re
 import sys
 from pathlib import Path

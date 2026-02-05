@@ -7,7 +7,6 @@ Specifically tests that Gemini CLI temp paths are correctly resolved when:
 """
 
 import os
-import tempfile
 from pathlib import Path
 from unittest.mock import patch
 

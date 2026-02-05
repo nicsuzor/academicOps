@@ -1,8 +1,6 @@
 """Tests for token tracking in transcript parser."""
 
-from datetime import datetime
 
-import pytest
 
 from lib.transcript_parser import Entry, TimingInfo, ConversationTurn
 

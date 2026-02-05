@@ -2120,8 +2120,6 @@ def run_user_prompt_submit(ctx: HookContext) -> Optional[GateResult]:
             write_initial_hydrator_state,
         )
         from lib.session_state import (
-            get_or_create_session_state,
-            save_session_state,
             set_gates_bypassed,
             clear_reflection_output,
         )

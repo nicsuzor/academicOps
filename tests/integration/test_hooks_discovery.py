@@ -11,8 +11,6 @@ import pytest
 
 from tests.conftest import (
     extract_response_text,
-    run_claude_headless,
-    run_gemini_headless,
 )
 
 

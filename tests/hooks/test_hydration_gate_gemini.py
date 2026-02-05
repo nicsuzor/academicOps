@@ -14,7 +14,6 @@ Related:
 - Task: Implement hydration gate for Gemini - test cases from real events
 """
 
-import json
 import os
 import sys
 from pathlib import Path

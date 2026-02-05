@@ -10,10 +10,8 @@ Based on observed failure case from 2026-02-03:
 """
 
 import json
-import os
 import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 # Test fixtures from actual Gemini hook log
 GEMINI_SESSION_START_INPUT = {
@@ -404,7 +402,6 @@ class TestGeminiHookConfiguration:
         causing all operations to be silently allowed.
         """
         import json
-        from pathlib import Path
 
         gemini_settings = Path.home() / ".gemini" / "settings.json"
         if not gemini_settings.exists():
@@ -430,7 +427,7 @@ class TestGeminiHookConfiguration:
         When Gemini passes hook data, it includes hook_event_name in the JSON.
         Router must extract and use this to determine which gates to run.
         """
-        from hooks.router import HookRouter, GEMINI_EVENT_MAP
+        from hooks.router import HookRouter
 
         router = HookRouter()
 
@@ -477,7 +474,7 @@ class TestGeminiHookConfiguration:
         Regression test: Previously, BeforeTool from JSON was NOT mapped to
         PreToolUse, causing GATE_CONFIG["PreToolUse"] gates to not run.
         """
-        from hooks.router import HookRouter, GEMINI_EVENT_MAP
+        from hooks.router import HookRouter
 
         router = HookRouter()
 
@@ -566,7 +563,6 @@ class TestGeminiSessionStateResolution:
     def test_load_session_state_finds_gemini_file(self, tmp_path, monkeypatch):
         """load_session_state should find state file in Gemini state dir."""
         from lib.session_state import load_session_state, save_session_state, create_session_state
-        from lib.session_paths import get_session_short_hash
 
         state_dir = tmp_path / "gemini_state"
         state_dir.mkdir()

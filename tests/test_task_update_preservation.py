@@ -1,7 +1,5 @@
-import pytest
-from pathlib import Path
 from lib.task_storage import TaskStorage
-from lib.task_model import TaskStatus, TaskType
+from lib.task_model import TaskStatus
 
 def test_save_task_preserves_user_edits(tmp_path):
     """Test that save_task with update_body=False preserves manual edits to the file."""

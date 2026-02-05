@@ -114,7 +114,6 @@ def filter_completed_smart(nodes: list[dict], edges: list[dict]) -> tuple[list[d
     done_statuses = {"done", "completed"}
 
     # Build node lookup and identify completed nodes
-    node_by_id = {n["id"]: n for n in nodes}
     completed_ids = {n["id"] for n in nodes if n.get("status", "").lower() in done_statuses}
     active_ids = {n["id"] for n in nodes if n.get("status", "").lower() not in done_statuses}
 
@@ -171,7 +170,6 @@ def filter_rollup(nodes: list[dict], edges: list[dict]) -> tuple[list[dict], set
     # Build lookups
     node_by_id = {n["id"]: n for n in nodes}
     unfinished_ids = {n["id"] for n in nodes if n.get("status", "").lower() not in done_statuses}
-    finished_ids = {n["id"] for n in nodes if n.get("status", "").lower() in done_statuses}
 
     # Build parent→children mapping from node.parent field
     # (more reliable than parsing edges since nodes directly declare their parent)

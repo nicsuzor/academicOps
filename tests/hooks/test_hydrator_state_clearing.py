@@ -1,13 +1,9 @@
 
-import os
-import pytest
-from unittest.mock import patch, MagicMock
 
 from hooks.gate_registry import (
     GateContext,
     check_hydration_gate,
     run_accountant,
-    _hydration_is_hydrator_task,
 )
 from hooks.unified_logger import handle_subagent_stop
 from lib import session_state

@@ -3,7 +3,6 @@ import os
 import sys
 import shutil
 import subprocess
-from pathlib import Path
 
 # Helper to convert MCP server config (simplified from convert_mcp_to_gemini.py)
 def convert_mcp_config(claude_servers):
@@ -79,7 +78,8 @@ def main():
     os.makedirs(hooks_dst, exist_ok=True)
     if os.path.exists(hooks_src):
         for item in os.listdir(hooks_src):
-            if item == "hooks.json": continue
+            if item == "hooks.json":
+                continue
             os.symlink(os.path.join(hooks_src, item), os.path.join(hooks_dst, item))
 
     # Hooks Config Generation
@@ -106,7 +106,8 @@ def main():
             timeout = claude_hooks[c_event][0].get("hooks", [{}])[0].get("timeout", 5000)
             for g_event in g_events:
                 matcher = MATCHERS.get(g_event, "*")
-                if g_event not in gemini_hooks: gemini_hooks[g_event] = []
+                if g_event not in gemini_hooks:
+                    gemini_hooks[g_event] = []
                 gemini_hooks[g_event].append({
                     "matcher": matcher,
                     "hooks": [{

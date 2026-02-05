@@ -1,13 +1,11 @@
 """Test Strict Hydration Gate functionality."""
 
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from hooks.gate_registry import (
     check_hydration_gate,
-    HYDRATION_TEMP_CATEGORY,
 )
 from hooks.schemas import HookContext
-from lib.gate_model import GateResult, GateVerdict
+from lib.gate_model import GateVerdict
 
 
 @patch("hooks.gate_registry._hydration_is_subagent_session")

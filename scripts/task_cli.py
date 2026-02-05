@@ -127,7 +127,7 @@ def build_task_tree(
         label.append(f"{icon} ", style=style)
         label.append(f"{type_icon} ", style="dim")
         label.append(child.title, style=style if child.status in ("done", "cancelled") else "white")
-        label.append(f"  ", style="dim")
+        label.append("  ", style="dim")
         label.append(pri_label, style=pri_style)
 
         if child.assignee:
@@ -276,7 +276,7 @@ def tree(project: str | None, show_all: bool, roots_only: bool):
         label.append(f"{icon} ", style=style)
         label.append(f"{type_icon} ", style="dim")
         label.append(root.title, style="bold" if root.type in ("goal", "project") else "white")
-        label.append(f"  ", style="dim")
+        label.append("  ", style="dim")
         label.append(pri_label, style=pri_style)
 
         if root.assignee:

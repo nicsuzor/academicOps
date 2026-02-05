@@ -5,11 +5,9 @@ Tests SessionStart session file creation, SubagentStop recording, and Stop event
 """
 
 import json
-import os
 import tempfile
-from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 

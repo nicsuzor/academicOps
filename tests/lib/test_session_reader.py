@@ -691,7 +691,7 @@ class TestSessionBoundaryValidation:
 
         These represent memory context from previous sessions, not current session content.
         """
-        from lib.transcript_parser import ConversationTurn, Entry, SessionProcessor
+        from lib.transcript_parser import Entry, SessionProcessor
 
         # Simulate a polluted session: null-timestamp summaries mixed with real entries
         entries_data = [

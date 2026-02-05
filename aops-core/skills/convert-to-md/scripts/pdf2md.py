@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-import argparse, os, shutil, subprocess, tempfile, sys
+import argparse
+import os
+import shutil
+import subprocess
+import tempfile
+import sys
 
 
 def have(cmd):
