@@ -794,6 +794,70 @@ def is_qa_invoked(session_id: str) -> bool:
     return state.get("state", {}).get("qa_invoked", False)
 
 
+def is_handover_invoked(session_id: str) -> bool:
+    """Check if handover skill has been invoked for this session.
+
+    Args:
+        session_id: Claude Code session ID
+
+    Returns:
+        True if handover_skill_invoked flag is set
+    """
+    state = load_session_state(session_id)
+    if state is None:
+        return False
+    return state.get("state", {}).get("handover_skill_invoked", False)
+
+
+def get_passed_gates(session_id: str) -> set[str]:
+    """Get the set of gates that have passed for this session.
+
+    Used by the unified tool_gate to check tool permissions.
+
+    Gate states:
+    - hydration: True if hydrated_intent is set
+    - task: True if current_task is set
+    - critic: True if critic_invoked is set
+    - qa: True if qa_invoked is set
+    - handover: True if handover_skill_invoked is set
+
+    Args:
+        session_id: Claude Code session ID
+
+    Returns:
+        Set of gate names that have passed
+    """
+    state = load_session_state(session_id)
+    if state is None:
+        return set()
+
+    passed = set()
+
+    # Hydration gate: passed if hydrated_intent is set
+    hydration = state.get("hydration", {})
+    if hydration.get("hydrated_intent"):
+        passed.add("hydration")
+
+    # Task gate: passed if current_task is set
+    state_data = state.get("state", {})
+    if state_data.get("current_task"):
+        passed.add("task")
+
+    # Critic gate: passed if critic_invoked is set
+    if state_data.get("critic_invoked"):
+        passed.add("critic")
+
+    # QA gate: passed if qa_invoked is set
+    if state_data.get("qa_invoked"):
+        passed.add("qa")
+
+    # Handover gate: passed if handover_skill_invoked is set
+    if state_data.get("handover_skill_invoked"):
+        passed.add("handover")
+
+    return passed
+
+
 # ============================================================================
 # Todo Handover Validation API
 # ============================================================================

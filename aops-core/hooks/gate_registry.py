@@ -2459,6 +2459,84 @@ def run_session_env_setup(ctx: HookContext) -> Optional[GateResult]:
     return setup_func(ctx)
 
 
+# =============================================================================
+# Unified Tool Gate
+# =============================================================================
+
+
+def check_tool_gate(ctx: "HookContext") -> GateResult:
+    """Unified gate that checks tool permissions based on passed gates.
+
+    This gate replaces the separate hydration, task_required, custodiet, and
+    qa_enforcement gates with a single check that:
+    1. Categorizes the tool (read_only, write, meta)
+    2. Looks up required gates for that category
+    3. Blocks if required gates haven't passed
+
+    Tool categories and requirements are defined in gate_config.py.
+    """
+    _check_imports()
+
+    from hooks.gate_config import (
+        get_tool_category,
+        get_required_gates,
+        GATE_MODE_ENV_VARS,
+        GATE_MODE_DEFAULTS,
+    )
+
+    # Skip for non-tool events
+    if ctx.hook_event != "PreToolUse":
+        return GateResult.allow()
+
+    tool_name = ctx.tool_name or ""
+
+    # Always allow the hydrator itself to run (prevents deadlock)
+    if session_state.is_hydrator_active(ctx.session_id):
+        return GateResult.allow()
+
+    # Get tool category and required gates
+    category = get_tool_category(tool_name)
+    required_gates = get_required_gates(tool_name)
+
+    # Get passed gates for this session
+    passed_gates = session_state.get_passed_gates(ctx.session_id)
+
+    # Check if all required gates have passed
+    missing_gates = [g for g in required_gates if g not in passed_gates]
+
+    if not missing_gates:
+        return GateResult.allow()
+
+    # Some gates haven't passed - check enforcement mode
+    # Use the mode of the first missing gate
+    first_missing = missing_gates[0]
+    mode_env_var = GATE_MODE_ENV_VARS.get(first_missing, "")
+    mode = os.environ.get(mode_env_var, GATE_MODE_DEFAULTS.get(first_missing, "warn"))
+
+    # Build status indicators
+    gate_status = []
+    for gate in required_gates:
+        status = "✓" if gate in passed_gates else "✗"
+        gate_status.append(f"- {gate.title()}: {status}")
+
+    context_msg = f"""⚠️ **TOOL GATE ({mode})**: Tool `{tool_name}` requires gates that haven't passed.
+
+**Tool category**: {category}
+**Required gates**: {', '.join(required_gates)}
+**Missing gates**: {', '.join(missing_gates)}
+
+**Gate status**:
+{chr(10).join(gate_status)}
+
+**Next step**: Satisfy the `{first_missing}` gate to proceed."""
+
+    if mode == "block":
+        return GateResult.deny(context_injection=context_msg)
+    else:
+        # Warn mode - allow but inject context
+        return GateResult.allow(context_injection=context_msg)
+
+
 # Registry of available gate checks
 GATE_CHECKS = {
     # Universal gates
@@ -2470,6 +2548,8 @@ GATE_CHECKS = {
     # PreToolUse gates (order matters)
     "subagent_restrictions": check_subagent_tool_restrictions,
     "session_start": check_session_start_gate,
+    "tool_gate": check_tool_gate,  # NEW: unified tool gating
+    # Legacy gates (kept for backwards compatibility, can be removed)
     "hydration": check_hydration_gate,
     "task_required": check_task_required_gate,
     "axiom_enforcer": check_axiom_enforcer_gate,

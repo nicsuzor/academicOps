@@ -45,6 +45,10 @@ try:
         ClaudeStopHookOutput,
     )
     from hooks.gate_registry import GATE_CHECKS
+    from hooks.gate_config import (
+        GATE_EXECUTION_ORDER,
+        MAIN_AGENT_ONLY_GATES,
+    )
     from hooks.unified_logger import log_hook_event
     from lib.gate_model import GateResult
     from lib.session_paths import get_pid_session_map_path, get_session_status_dir
@@ -68,61 +72,8 @@ GEMINI_EVENT_MAP = {
     "PreCompress": "PreCompact",
 }
 
-# Gate configuration: Maps events to ordered list of gate function names
-# Gates are called directly from gate_registry.GATE_CHECKS - no subprocess
-GATE_CONFIG: Dict[str, List[str]] = {
-    "SessionStart": ["session_env_setup", "unified_logger", "session_start"],
-    "UserPromptSubmit": ["user_prompt_submit", "unified_logger"],
-    "PreToolUse": [
-        "unified_logger",
-        "subagent_restrictions",
-        "hydration",
-        "task_required",
-        # "axiom_enforcer",
-        "custodiet",
-        "qa_enforcement",
-    ],
-    "PostToolUse": [
-        "unified_logger",
-        "task_binding",
-        "accountant",
-        "post_hydration",
-        "post_critic",
-        "post_qa",
-        "skill_activation",
-    ],
-    "AfterAgent": ["unified_logger", "agent_response"],
-    "SubagentStop": ["unified_logger"],
-    "Stop": [
-        "unified_logger",
-        "stop_gate",
-        # "hydration_recency",
-        "generate_transcript",
-        "session_end_commit",
-    ],
-    "SessionEnd": ["unified_logger"],
-}
-
-# Gates that should only run for the main agent (bypass for subagents)
-# This prevents recursive loops (e.g., hydrator triggering hydration)
-# and reduces overhead/log-bloat in subagent tool calls.
-MAIN_AGENT_ONLY_GATES = {
-    "hydration",
-    "task_required",
-    "custodiet",
-    "qa_enforcement",
-    "axiom_enforcer",
-    "user_prompt_submit",
-    "post_hydration",
-    "post_critic",
-    "post_qa",
-    "skill_activation",
-    "task_binding",
-    "stop_gate",
-    "session_end_commit",
-    "session_start",
-    "agent_response",
-}
+# Gate configuration is now in gate_config.py
+# GATE_EXECUTION_ORDER and MAIN_AGENT_ONLY_GATES imported from there
 
 
 # --- Session Management ---
@@ -297,7 +248,7 @@ class HookRouter:
         gate_input["session_id"] = ctx.session_id
 
         # Execute gate functions directly (no subprocess)
-        gate_names = GATE_CONFIG.get(ctx.hook_event, [])
+        gate_names = GATE_EXECUTION_ORDER.get(ctx.hook_event, [])
 
         # Filter: Certain gates ONLY run for the main agent to prevent recursion
         # and unnecessary overhead in subagent tool calls.
