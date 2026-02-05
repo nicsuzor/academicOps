@@ -193,10 +193,8 @@ def transform_agent_for_platform(content: str, platform: str) -> str:
     """Transform agent markdown for a specific platform.
 
     For Gemini: filters out mcp__* tools from frontmatter since they're Claude-specific.
+    For Claude: converts YAML array tools to comma-separated string with PascalCase names.
     """
-    if platform != "gemini":
-        return content
-
     # Split frontmatter from body
     parts = content.split("---", 2)
     if len(parts) < 3:
@@ -211,13 +209,79 @@ def transform_agent_for_platform(content: str, platform: str) -> str:
     if not frontmatter or "tools" not in frontmatter:
         return content
 
-    # Filter out mcp__* tools (Claude-specific MCP tool names)
     original_tools = frontmatter.get("tools", [])
-    filtered_tools = [t for t in original_tools if not t.startswith("mcp__")]
 
-    if filtered_tools != original_tools:
-        frontmatter["tools"] = filtered_tools
-        # Rebuild the content
+    # Handle case where tools is already a string (no transformation needed for format)
+    if isinstance(original_tools, str):
+        if platform == "gemini":
+            # Filter mcp__ tools from comma-separated string
+            tools_list = [t.strip() for t in original_tools.split(",")]
+            filtered = [t for t in tools_list if not t.startswith("mcp__")]
+            if filtered != tools_list:
+                frontmatter["tools"] = ", ".join(filtered)
+                new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
+                return f"---\n{new_frontmatter}---{parts[2]}"
+        return content
+
+    if platform == "gemini":
+        # Filter out mcp__* tools (Claude-specific MCP tool names)
+        filtered_tools = [t for t in original_tools if not t.startswith("mcp__")]
+        if filtered_tools != original_tools:
+            frontmatter["tools"] = filtered_tools
+            new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
+            return f"---\n{new_frontmatter}---{parts[2]}"
+        return content
+
+    elif platform == "claude":
+        # Claude Code requires:
+        # 1. Comma-separated string (not YAML array)
+        # 2. PascalCase tool names for built-in tools
+
+        # Tool name mapping: generic/Gemini -> Claude Code
+        TOOL_NAME_MAP = {
+            "read_file": "Read",
+            "write_file": "Write",
+            "replace": "Edit",
+            "list_directory": "Glob",
+            "glob": "Glob",
+            "grep": "Grep",
+            "search_file_content": "Grep",
+            "bash": "Bash",
+            "run_shell_command": "Bash",
+            "activate_skill": "Skill",
+            "web_fetch": "WebFetch",
+            "web_search": "WebSearch",
+            # Already correct names (passthrough)
+            "Read": "Read",
+            "Write": "Write",
+            "Edit": "Edit",
+            "Glob": "Glob",
+            "Grep": "Grep",
+            "Bash": "Bash",
+            "Skill": "Skill",
+            "Task": "Task",
+            "WebFetch": "WebFetch",
+            "WebSearch": "WebSearch",
+            "TodoWrite": "TodoWrite",
+            "AskUserQuestion": "AskUserQuestion",
+            "NotebookEdit": "NotebookEdit",
+        }
+
+        # Transform each tool name
+        transformed_tools = []
+        for tool in original_tools:
+            if tool.startswith("mcp__"):
+                # MCP tools keep their full name
+                transformed_tools.append(tool)
+            else:
+                # Map to Claude Code name, or keep original if not in map
+                transformed_tools.append(TOOL_NAME_MAP.get(tool, tool))
+
+        # Convert to comma-separated string
+        tools_string = ", ".join(transformed_tools)
+        frontmatter["tools"] = tools_string
+
+        # Rebuild the content with the new frontmatter
         new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
         return f"---\n{new_frontmatter}---{parts[2]}"
 
