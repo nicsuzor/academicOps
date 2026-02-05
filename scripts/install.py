@@ -272,7 +272,10 @@ def main():
                 safe_symlink(item, global_commands / item.name)
 
     # mcp_config may be under dist/antigravity or dist/aops-antigravity depending on build
-    for candidate in (aops_root / "dist" / "antigravity" / "mcp_config.json", aops_root / "dist" / "aops-antigravity" / "mcp_config.json"):
+    for candidate in (
+        aops_root / "dist" / "antigravity" / "mcp_config.json",
+        aops_root / "dist" / "aops-antigravity" / "mcp_config.json",
+    ):
         if candidate.exists():
             safe_symlink(candidate, ag_dir / "mcp_config.json")
             break
