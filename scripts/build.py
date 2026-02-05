@@ -91,6 +91,7 @@ dependencies = [
   "pydantic>=2.0",
   "filelock>=3.13.0",
   "fastmcp>=2.13.1,<3.0",
+  "psutil>=5.9.0",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -209,7 +210,7 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
                             # Replace Claude variable with Gemini variable
                             cmd = new_hook["command"]
                             cmd = cmd.replace(
-                                "${CLAUDE_PLUGIN_ROOT}", "${extensionPath}"
+                                "${CLAUDE_PLUGIN_ROOT}", "${extensionPath}/aops-core-gemini"
                             )
 
                             # Ensure we use the correct client flag for Gemini
@@ -219,8 +220,8 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
                             if "PYTHONPATH=" in cmd and "${extensionPath}" in cmd:
                                 # Simplify: use uv run --directory which handles PYTHONPATH
                                 cmd = cmd.replace(
-                                    "PYTHONPATH=${extensionPath} uv run python",
-                                    "uv run --directory ${extensionPath} python",
+                                    "PYTHONPATH=${extensionPath}/aops-core-gemini uv run python",
+                                    "uv run --directory ${extensionPath}/aops-core-gemini python",
                                 )
                             new_hook["command"] = cmd
                         new_hooks.append(new_hook)
@@ -420,6 +421,11 @@ def build_aops_core(
     # Platform-specific dist dir
     dist_dir = dist_root / f"{plugin_name}-{platform}"
 
+    # Content subdirectory for Gemini (as requested)
+    content_dir = dist_dir
+    if platform == "gemini":
+        content_dir = dist_dir / "aops-core-gemini"
+
     # Write version info for tracking (always to source)
     commit_sha = get_git_commit_sha(aops_root)
     if commit_sha:
@@ -428,6 +434,8 @@ def build_aops_core(
     if dist_dir.exists():
         shutil.rmtree(dist_dir)
     dist_dir.mkdir(parents=True)
+    if platform == "gemini":
+        content_dir.mkdir(parents=True)
 
     # 1. Copy content directories
     # Note: pyproject.toml is generated, not copied (version from root)
@@ -461,7 +469,7 @@ def build_aops_core(
         if src.exists():
             if item == "agents" and src.is_dir():
                 # Special handling for agents: transform frontmatter and translate tool calls
-                dst = dist_dir / item
+                dst = content_dir / item
                 dst.mkdir(parents=True, exist_ok=True)
                 for agent_file in src.glob("*.md"):
                     content = agent_file.read_text()
@@ -472,17 +480,17 @@ def build_aops_core(
                     (dst / agent_file.name).write_text(content)
                 print(f"  ✓ Translated and copied agents -> {dst}")
             else:
-                safe_copy(src, dist_dir / item)
+                safe_copy(src, content_dir / item)
 
     # 1a. Generate pyproject.toml with version from root
     pyproject_content = generate_aops_core_pyproject(version)
-    pyproject_path = dist_dir / "pyproject.toml"
+    pyproject_path = content_dir / "pyproject.toml"
     pyproject_path.write_text(pyproject_content)
     print(f"  ✓ Generated pyproject.toml (v{version})")
 
     # 1b. Copy root-level scripts
     scripts_src = aops_root / "scripts"
-    scripts_dst = dist_dir / "scripts"
+    scripts_dst = content_dir / "scripts"
     if scripts_src.exists():
         scripts_dst.mkdir(parents=True, exist_ok=True)
         for script_name in [
@@ -506,9 +514,11 @@ def build_aops_core(
             if item.name == "gemini":
                 # Don't copy gemini/ subdirectory
                 continue
-            safe_copy(item, hooks_dst / item.name)
+            # Hooks also go into content_dir for execution, but Gemini discovery
+            # might need them in dist_dir/hooks/hooks.json
+            safe_copy(item, content_dir / "hooks" / item.name)
 
-    # Generate Gemini-compatible hooks.json
+    # Generate Gemini-compatible hooks.json in dist_dir/hooks/ for discovery
     if platform == "gemini":
         hooks_json_src = hooks_src / "hooks.json"
         if hooks_json_src.exists():
@@ -530,7 +540,10 @@ def build_aops_core(
                 if "mcpServers" in manifest and "task_manager" in manifest["mcpServers"]:
                     args = manifest["mcpServers"]["task_manager"].get("args", [])
                     new_args = [
-                        a.replace("${extensionPath}/aops-core", "${extensionPath}")
+                        a.replace(
+                            "${extensionPath}/aops-core",
+                            "${extensionPath}/aops-core-gemini",
+                        )
                         for a in args
                     ]
                     manifest["mcpServers"]["task_manager"]["args"] = new_args
@@ -568,12 +581,20 @@ def build_aops_core(
         print(f"Generating MCP config from {template_path.name}...")
         try:
             content = template_path.read_text()
-            mcp_config = json.loads(content)
+            mcp_template = json.loads(content)
+
+            # Select platform-specific config if available
+            if platform in mcp_template:
+                mcp_config = mcp_template[platform]
+            else:
+                mcp_config = mcp_template
 
             # Write back to source .mcp.json for Claude
+            # This ensures dev-mode Claude has a valid config
             mcp_json_path = src_dir / ".mcp.json"
+            claude_mcp_config = mcp_template.get("claude", mcp_template)
             with open(mcp_json_path, "w") as f:
-                json.dump(mcp_config, f, indent=2)
+                json.dump(claude_mcp_config, f, indent=2)
 
             # If Claude dist, copy .mcp.json
             if platform == "claude":
@@ -582,7 +603,7 @@ def build_aops_core(
             # Prepare for Gemini Extension
             if platform == "gemini":
                 servers_config = mcp_config.get("mcpServers", mcp_config)
-                # Replace variables for Gemini
+                # Replace variables for Gemini if they came from a Claude-style template
                 gemini_servers_json = json.dumps(servers_config)
                 gemini_servers_json = gemini_servers_json.replace(
                     "${CLAUDE_PLUGIN_ROOT}", "${extensionPath}"
@@ -596,6 +617,10 @@ def build_aops_core(
                         manifest = json.load(f)
                     current_mcps = manifest.get("mcpServers", {})
                     manifest["mcpServers"] = {**current_mcps, **gemini_mcps}
+
+                    # MCP server arguments from mcp.json.template are already correct
+                    # because the template uses ${extensionPath}/aops-core-gemini
+
                     with open(dist_extension_json, "w") as f:
                         json.dump(manifest, f, indent=2)
                     print(f"✓ Updated {dist_extension_json} with MCP config")
@@ -618,7 +643,7 @@ def build_aops_core(
                         frontmatter = yaml.safe_load(parts[1])
                         if "name" in frontmatter:
                             agent_name = frontmatter["name"]
-                            skill_dir = dist_dir / "skills" / agent_name
+                            skill_dir = content_dir / "skills" / agent_name
                             skill_dir.mkdir(parents=True, exist_ok=True)
 
                             text = agent_file.read_text()
@@ -631,7 +656,7 @@ def build_aops_core(
 
     # 6. Commands (Gemini only for now as they use .toml)
     if platform == "gemini":
-        commands_dist = dist_dir / "commands"
+        commands_dist = content_dir / "commands"
         convert_script = aops_root / "scripts" / "convert_commands_to_toml.py"
         if convert_script.exists():
             subprocess.run(
