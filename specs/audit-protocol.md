@@ -11,6 +11,14 @@ tags: [audit, governance, validation, framework-health]
 
 **Purpose**: Defines what constitutes a "complete audit" of the aops-core framework and the standards for audit execution and reporting.
 
+## Giving Effect
+
+- [[skills/audit/SKILL.md]] - Audit skill with structure and justification checking
+- [[skills/audit/workflows/session-effectiveness.md]] - Session effectiveness audit workflow
+- [[skills/audit/references/report-format.md]] - Audit report format template
+- [[skills/audit/references/output-targets.md]] - Output targets for audit results
+- [[workflows/audit.md]] - Audit workflow in workflow system
+
 ## Audit Scope
 
 A complete framework audit validates three dimensions:

@@ -9,6 +9,12 @@ related: [[framework-observability]], [[session-insights-prompt]]
 
 # Session Insights Pipeline Metrics Schema
 
+## Giving Effect
+
+- [[skills/session-insights/SKILL.md]] - Skill that generates insights conforming to this schema
+- [[specs/session-insights-prompt.md]] - Prompt template that references this schema
+- [[specs/framework-observability.md]] - Observability architecture consuming these metrics
+
 ## Overview
 
 This document defines the metrics schema for monitoring the session insights pipeline. These metrics enable observability of pipeline health, performance, and quality.

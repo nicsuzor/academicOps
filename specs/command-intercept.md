@@ -6,6 +6,14 @@ status: draft
 created: 2026-01-25
 ---
 
+# Command Intercept
+
+## Giving Effect
+
+- [[hooks/command_intercept.py]] - PreToolUse hook that intercepts and transforms tool calls
+- [[hooks/gate_registry.py]] - Registry for tool-specific intercept behaviors
+- [[hooks/gate_config.py]] - Configuration for intercept rules
+
 ## Purpose
 
 A modular PreToolUse hook that intercepts and transforms tool calls before execution. Designed to be a **no-op by default** with configurable behaviors registered per tool.

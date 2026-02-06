@@ -12,6 +12,15 @@ tags: [verification, enforcement, architecture, infrastructure]
 **Status**: Design Decision (2026-01-15)
 **Priority**: P1 Infrastructure Gap
 
+## Giving Effect
+
+- [[agents/custodiet.md]] - Periodic compliance checking (Layer 2.5)
+- [[AXIOMS.md]] - P#26 Verify First principle definition (Layer 1)
+- [[HEURISTICS.md]] - H3 Verification heuristic
+- [[specs/enforcement.md]] - Enforcement architecture defining evidence types
+
+*Note: This is a design spec. Phase 1 (Advocate Agent) not yet implemented.*
+
 ## Problem Statement
 
 Agents frequently violate **P#26 (Verify First)** by claiming success without verification. This is the **top failure pattern** in the framework:

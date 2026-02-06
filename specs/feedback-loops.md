@@ -9,6 +9,14 @@ related: [[framework-observability]], [[enforcement]], [[workflow-system-spec]]
 
 # Framework Feedback Loops
 
+## Giving Effect
+
+- [[commands/learn.md]] - `/learn` command for graduated framework improvement
+- [[commands/log.md]] - `/log` command for logging observations
+- [[skills/audit/SKILL.md]] - Audit skill for framework governance validation
+- [[specs/framework-observability.md]] - Observability pipeline feeding this loop
+- [[HEURISTICS.md]] - Target for graduated learning updates (H#)
+
 ## Overview
 
 The framework improves through structured feedback loops that connect observations to changes. This document describes how observations flow through analysis and become framework improvements.

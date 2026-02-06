@@ -10,6 +10,10 @@ description: Index of all framework specifications.
 
 Index of specifications for framework features and workflows.
 
+## Spec Format
+
+Each spec includes a **"Giving Effect"** section near the top that links to implementation files. This makes it easy to navigate from spec to implementation.
+
 ## Core Framework Specs
 
 - [[specs/prompt-hydration.md]]: Architecture of the hydration system.

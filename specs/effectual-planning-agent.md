@@ -6,6 +6,14 @@ category: spec
 
 # Effectual Planning Agent
 
+## Giving Effect
+
+- [[agents/effectual-planner.md]] - Agent definition with strategic planning capabilities
+- [[mcp__plugin_aops-core_task_manager__get_task_tree]] - Task tree for strategic planning context
+- [[mcp__plugin_aops-core_task_manager__get_graph_metrics]] - Graph metrics for network analysis
+- [[mcp__plugin_aops-core_task_manager__get_task_neighborhood]] - Task relationships for context discovery
+- [[workflows/strategy.md]] - Strategy workflow for goal decomposition
+
 The Effectual Planning Agent is an AI agent that serves as a strategic planning assistant for academic research and knowledge work under conditions of genuine uncertainty. It receives fragments of information incrementally, organises them into a semantic web of goals, projects, and tasks, surfaces hidden structure, and proposes high-value next steps.
 
 The agent is designed for work where many ideas fail, where you don't know what you don't know, and where the plan must evolve as understanding deepens.

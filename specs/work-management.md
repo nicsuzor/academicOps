@@ -1,5 +1,15 @@
 # Work Management: Tasks MCP
 
+## Giving Effect
+
+- [[aops-tools/tasks_server.py]] - MCP server implementing task CRUD operations
+- [[mcp__plugin_aops-core_task_manager__create_task]] - Create task
+- [[mcp__plugin_aops-core_task_manager__update_task]] - Update task (status, assignment)
+- [[mcp__plugin_aops-core_task_manager__list_tasks]] - List tasks with filters
+- [[mcp__plugin_aops-core_task_manager__complete_task]] - Mark task done
+- [[mcp__plugin_aops-core_task_manager__get_blocked_tasks]] - Get tasks with unmet dependencies
+- [[commands/pull.md]] - `/pull` command for claiming and executing tasks
+
 Tasks MCP is the primary work management system for multi-session tracking, dependencies, and strategic work.
 
 ```mermaid

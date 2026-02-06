@@ -8,6 +8,14 @@ created: 2026-01-21
 
 # Overwhelm Dashboard
 
+## Giving Effect
+
+- [[aops-tools/fast_indexer/]] - Rust binary for fast task indexing
+- [[skills/task-viz/SKILL.md]] - Task visualization skill (JSON, GraphML, DOT output)
+- [[skills/dashboard/SKILL.md]] - Cognitive Load Dashboard skill
+- [[mcp__plugin_aops-core_task_manager__get_graph_metrics]] - Graph metrics for dashboard
+- [[mcp__plugin_aops-core_task_manager__rebuild_index]] - Index rebuild using fast-indexer
+
 Single system for task visibility and cognitive load management.
 
 ## Architecture

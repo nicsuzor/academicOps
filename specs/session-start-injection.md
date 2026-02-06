@@ -11,6 +11,15 @@ updated: 2026-01-22
 
 # Context Loading Specification
 
+## Giving Effect
+
+- [[hooks/session_env_setup.py]] - SessionStart hook: Tier 1 context loading
+- [[hooks/user_prompt_submit.py]] - UserPromptSubmit hook: Tier 3 JIT injection
+- [[agents/prompt-hydrator.md]] - Hydrator that surfaces relevant context
+- [[AXIOMS.md]], [[HEURISTICS.md]] - Tier 1 framework core
+- [[.agent/]] - Tier 2 project context (when present)
+- [[lib/file_index.py]] - FILE_INDEX for JIT path injection
+
 ## Purpose
 
 Define what information agents receive and when. This spec governs the **three-tier loading architecture** that balances minimal startup cost with just-in-time context availability.

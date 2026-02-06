@@ -7,6 +7,16 @@ status: DRAFT - PENDING APPROVAL (v2)
 
 # v1.0 Core Loop
 
+## Giving Effect
+
+- [[hooks/session_env_setup.py]] - SessionStart hook: creates session file, sets environment
+- [[hooks/user_prompt_submit.py]] - UserPromptSubmit hook: triggers hydration
+- [[agents/prompt-hydrator.md]] - Prompt hydration agent
+- [[agents/qa.md]] - QA verification agent
+- [[hooks/session_end_commit_check.py]] - Stop hook: uncommitted work check
+- [[WORKFLOWS.md]] - Workflow catalog
+- [[workflows/]] - Workflow definitions
+
 **Goal**: The minimal viable framework with ONE complete, working loop.
 
 **Philosophy**: Users don't have to use aops. But if they do, it's slow and thorough. The full workflow is MANDATORY.

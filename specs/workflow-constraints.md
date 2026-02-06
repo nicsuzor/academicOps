@@ -9,6 +9,13 @@ related: [workflow-system-spec, prompt-hydration, enforcement]
 
 # Workflow Constraints Specification
 
+## Giving Effect
+
+- [[workflows/constraint-check.md]] - Constraint checking workflow in hydrator
+- [[specs/constraint-checking-tests.md]] - Test spec for constraint validation
+- [[specs/predicate-registry.md]] - Registry of available predicates
+- [[commands/pull.md]] - Dispositor pattern: `/pull` executes enqueued work
+
 ## Purpose
 
 This spec defines two architectural changes:

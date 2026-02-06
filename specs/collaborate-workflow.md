@@ -1,5 +1,12 @@
 # Workflow: Collaborate
 
+## Giving Effect
+
+- [[workflows/collaborate.md]] - Workflow definition for interactive collaboration
+- [[skills/session-insights/SKILL.md]] - Skill for generating structured summaries from transcripts
+- [[specs/session-insights-prompt.md]] - Prompt template for session analysis
+- [[specs/session-insights-metrics-schema.md]] - Schema for collaboration metrics
+
 ## User Story
 
 As a researcher or developer, I want to have open-ended, interactive collaboration sessions with an AI agent to explore complex problems, brainstorm ideas, or debug issues, so that I can gain clarity and solutions without the constraints of a rigid task workflow.

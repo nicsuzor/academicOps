@@ -7,6 +7,15 @@ description: Component assignments and boundaries for academicOps plugins
 
 # Plugin Architecture
 
+## Giving Effect
+
+- [[aops-core/.mcp.json]] - Core plugin MCP server definitions (gemini, memory, task_manager)
+- [[aops-core/hooks/hooks.json]] - Core plugin hook registrations
+- [[aops-core/skills/]] - Core skills directory (audit, framework, remember, etc.)
+- [[aops-core/agents/]] - Core agents directory (critic, custodiet, prompt-hydrator, qa)
+- [[aops-tools/.mcp.json]] - Tools plugin MCP server definitions (context7, outlook, playwright)
+- [[aops-tools/skills/]] - Tools skills directory (analyst, daily, excalidraw, pdf, etc.)
+
 This document defines the component assignments for the academicOps plugin ecosystem.
 
 ## Design Principles
