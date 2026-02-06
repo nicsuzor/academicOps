@@ -637,10 +637,13 @@ class TaskStorage:
             return ancestors[-1]
         return task
 
+    # Task types that can be claimed by workers (actionable work items)
+    CLAIMABLE_TYPES = {TaskType.TASK, TaskType.ACTION, TaskType.BUG, TaskType.FEATURE}
+
     def get_ready_tasks(self, project: str | None = None) -> list[Task]:
         """Get tasks ready to work on.
 
-        Ready = leaf + no unmet dependencies + active/inbox status.
+        Ready = leaf + claimable type + no unmet dependencies + active status.
 
         Args:
             project: Filter by project
@@ -662,6 +665,10 @@ class TaskStorage:
 
             # Must be a leaf
             if not task.leaf:
+                continue
+
+            # Must be a claimable type (not project/goal/epic/learn)
+            if task.type not in self.CLAIMABLE_TYPES:
                 continue
 
             # Must be active (ready to claim)
