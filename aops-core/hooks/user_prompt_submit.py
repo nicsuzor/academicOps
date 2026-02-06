@@ -144,22 +144,36 @@ def load_framework_paths() -> str:
         return f"(Error gathering framework paths: {e})"
 
 
+def load_tools_index() -> str:
+    """Load TOOLS.md for hydrator context.
+
+    Pre-loads curated tool reference so hydrator can route work effectively.
+    Returns content after frontmatter separator.
+    """
+    plugin_root = get_plugin_root()
+    tools_path = plugin_root / "TOOLS.md"
+
+    if not tools_path.exists():
+        return "(TOOLS.md not found)"
+
+    content = tools_path.read_text()
+
+    # Skip frontmatter if present
+    if content.startswith("---"):
+        parts = content.split("---", 2)
+        if len(parts) >= 3:
+            return parts[2].strip()
+
+    return content.strip()
+
+
+# Alias for backwards compatibility with template placeholder name
 def load_mcp_tools_context() -> str:
-    """List available MCP tools and servers."""
-    # These are the known servers in the framework
-    servers = {
-        "task_manager": "Manages the hierarchical task system (create, update, complete, decompose)",
-        "memory": "Semantic memory retrieval and recall",
-        "outlook": "Integration with Outlook calendar and messages",
-    }
+    """Load tools index (alias for load_tools_index).
 
-    lines = ["## Available MCP Servers", ""]
-    lines.append("| Server | Description |")
-    lines.append("|--------|-------------|")
-    for name, desc in servers.items():
-        lines.append(f"| {name} | {desc} |")
-
-    return "\n".join(lines)
+    Kept for backwards compatibility with existing template placeholder.
+    """
+    return load_tools_index()
 
 
 def load_environment_variables_context() -> str:

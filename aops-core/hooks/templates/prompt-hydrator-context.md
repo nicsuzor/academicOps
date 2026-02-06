@@ -28,6 +28,8 @@ Transform this user prompt into an execution plan with scope detection and task 
 
 {mcp_tools}
 
+**Note**: This is a curated reference. The main agent may have additional tools not listed here. Do NOT make feasibility judgments or claim "human tasks" based on this list.
+
 {env_vars}
 
 {project_paths}
