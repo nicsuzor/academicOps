@@ -316,6 +316,23 @@ This gate ensures the epic scope and framing are correct before investment in de
 2. **Reuse current task**: Set Task Routing to "Existing task found" with the bound task ID
 3. **Skip Critic**: Omit the `Invoke CRITIC` step from the execution plan
 
+### Handling Terse Follow-up Prompts
+
+For short or ambiguous prompts (< 15 words), **check session context FIRST** before triaging as vague:
+
+1. **What task was just completed or worked on?** - Look for recent `/pull`, task completions, or skill invocations in session context
+2. **What was the parent goal of that work?** - The completed task likely belongs to a larger project
+3. **Assume the follow-up relates to recent work** unless the prompt is clearly unrelated
+
+**Example**: If session shows `/pull aops-2ab3a384` (research frontmatter tool) just completed, and user says "i wanted a cli option", interpret as: user wants a CLI tool for the parent project (frontmatter editing), not an unrelated request.
+
+**Key principle**: Don't TRIAGE with "prompt too vague" when session context provides sufficient information to interpret intent. Short prompts after task completion are almost always follow-ups to that work.
+
+**When detected**:
+1. Connect the prompt to the recently completed task's parent or related work
+2. Route appropriately based on inferred intent
+3. If truly ambiguous even with context, request clarification with specific options
+
 ### Insight Capture Advice
 
 When task involves discovery/learning, add:
