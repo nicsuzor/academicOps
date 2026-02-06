@@ -120,7 +120,7 @@ jobs:
           with open('.claude-plugin/marketplace.json', 'r') as f:
               data = json.load(f)
           for plugin in data.get('plugins', []):
-              if plugin.get('name') == 'aops':
+              if plugin.get('name') == 'aops-core':
                   plugin['source'] = './aops-claude'
                   plugin['version'] = version
           with open('.claude-plugin/marketplace.json', 'w') as f:
