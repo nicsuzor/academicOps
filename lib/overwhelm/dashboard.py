@@ -4054,9 +4054,17 @@ def render_network_analysis():
     st.header("🕸️ Network Analysis")
 
     # Load tasks
-    tasks = load_tasks_from_index()
-    if not tasks:
+    all_tasks = load_tasks_from_index()
+    if not all_tasks:
         st.warning("No tasks found in index.")
+        return
+
+    # Filter out completed/cancelled tasks for network analysis
+    # Historically completed work skews centrality metrics
+    tasks = [t for t in all_tasks if t.get("status") not in ("done", "cancelled")]
+
+    if not tasks:
+        st.info("No active tasks to analyze.")
         return
 
     # Build NetworkX DiGraph
