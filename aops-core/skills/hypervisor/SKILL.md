@@ -1,19 +1,23 @@
 ---
 name: hypervisor
-description: Batch parallel task processing with atomic locking. Spawns multiple worker agents that pull from shared queue without duplication.
+description: Atomic locking patterns for batch operations. For parallel task processing, use swarm-supervisor instead.
 triggers:
-  - "batch tasks"
-  - "parallel processing"
-  - "process queue in parallel"
-  - "polecat swarm"
-  - "polecat herd"
-  - "spawn polecat"
-  - "run polecats"
+  - "atomic locking"
+  - "batch file processing"
+  - "file queue processing"
 ---
 
-# Hypervisor - Batch Parallel Processing
+# Hypervisor - Atomic Locking Patterns
 
-Coordinate multiple parallel agents working on a shared queue with atomic locking to prevent duplicate processing.
+> **DEPRECATION NOTICE** (2026-02-06): For parallel task processing, use `/swarm-supervisor` and `polecat swarm` instead. The polecat swarm provides:
+> - **Worktree isolation** (no merge conflicts)
+> - **API-based atomic claiming** (no file locks)
+> - **Auto-restart on success**
+> - **Graceful drain mode**
+>
+> This skill is retained only for the **atomic locking pattern** which remains useful for non-task batch operations (e.g., processing a queue of files).
+
+Coordinate batch operations with atomic locking to prevent duplicate processing.
 
 ## Pattern
 
@@ -89,11 +93,17 @@ uv run python $AOPS/aops-tools/skills/hypervisor/scripts/batch_worker.py --batch
 - Operations where duplicate processing would cause problems
 - Batch operations that benefit from parallelism
 
-## Polecat Herd Management (Parallel Execution)
+## DEPRECATED: Polecat Herd Management
 
-For executing multiple framework tasks in parallel using the `polecat` CLI. This replaces the deprecated `Task` subagent pattern which failed to provide worktree isolation.
+> **Use `polecat swarm` instead** - see `/swarm-supervisor` skill.
+>
+> The patterns below are outdated and cause merge conflicts due to shared worktrees.
+> The new `polecat swarm` command provides isolated worktrees per task.
 
-### 1. Spawn a Herd
+<details>
+<summary>Legacy documentation (click to expand)</summary>
+
+### 1. Spawn a Herd (DEPRECATED)
 
 Use `polecat run` to spawn autonomous agents. Each process handles its own lifecycle, git operations, and completion.
 
@@ -115,7 +125,7 @@ for i in {1..5}; do
 done
 ```
 
-### 2. Monitor Status
+### 2. Monitor Status (DEPRECATED)
 
 Check the status of the herd and the worktree:
 
@@ -129,7 +139,7 @@ git status
 
 **Note on Isolation**: Polecats run in the *same worktree*. They rely on atomic task claiming (via lockfiles or API) to avoid collisions. If two polecats edit the same file, git merge conflicts may occur.
 
-### 3. Handle Failures
+### 3. Handle Failures (DEPRECATED)
 
 If a polecat gets stuck or crashes:
 
@@ -137,10 +147,16 @@ If a polecat gets stuck or crashes:
 2. Kill it (`kill <pid>`)
 3. Check for stale lockfiles in `/tmp/hypervisor/locks/` or the task status.
 
+</details>
 
-## Gemini CLI Task Offloading
+## DEPRECATED: Gemini CLI Task Offloading
 
-Use Gemini CLI to process mechanical tasks from the queue with YOLO mode (auto-approve all tools).
+> **Use `polecat swarm -g N` instead** - spawns N Gemini workers with proper isolation.
+>
+> The manual Gemini CLI patterns below are superseded by swarm integration.
+
+<details>
+<summary>Legacy documentation (click to expand)</summary>
 
 ### Configuration
 
@@ -197,42 +213,4 @@ mcp__plugin_aops-tools_task_manager__get_index_stats --include_projects true
 5. **AfterTool hook errors**: custodiet_gate.py has compatibility issues with Gemini's tool format (non-blocking)
 6. **Workspace sandbox**: File access restricted to cwd and .gemini/tmp - run from `$AOPS` root
 
-### Design Improvements (from parallel experiments)
-
-**1. Structured completion summary**
-
-Hypervisor should return aggregated results, not require manual TaskOutput polling:
-
-```json
-{
-  "workers": [
-    {"task_id": "aops-f7458c85", "status": "success", "outcome": "verified complete"},
-    {"task_id": "aops-45528fa7", "status": "blocked", "reason": "lock file"},
-    {"task_id": "aops-2fff499a", "status": "success", "commit": "caecab8b"}
-  ],
-  "runtime_seconds": 427,
-  "total_tokens": 156000
-}
-```
-
-**2. Pre-flight task validation**
-
-Check task state before spawning workers to avoid wasted tokens:
-- Skip tasks already `done` or `cancelled`
-- Check for existing lock files
-- Report "N tasks skipped (already complete)" upfront
-
-**3. Atomic claiming**
-
-Prevent duplicate work if multiple hypervisors run simultaneously:
-
-```python
-def claim_task(task_id: str) -> bool:
-    """Returns True if claimed, False if already claimed by another worker."""
-    lock_path = Path(f"/tmp/hypervisor/locks/{task_id}.lock")
-    try:
-        lock_path.touch(exist_ok=False)
-        return True
-    except FileExistsError:
-        return False
-```
+</details>
