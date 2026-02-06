@@ -1396,7 +1396,7 @@ def watch(ctx, interval, stall_threshold, project):
 @click.option("--gemini", "-g", default=0, help="Number of Gemini workers")
 @click.option("--project", "-p", help="Project to focus on (default: all)")
 @click.option(
-    "--caller", default="bot", help="Identity claiming the tasks (default: bot)"
+    "--caller", default="polecat", help="Identity claiming the tasks (default: bot)"
 )
 @click.option("--dry-run", is_flag=True, help="Simulate execution")
 @click.pass_context

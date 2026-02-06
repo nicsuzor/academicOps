@@ -77,7 +77,7 @@ Your output MUST be valid Markdown following this structure:
 
 **Existing task found**: `[task-id]` - [Title]
 - Verify first: `get_task(id="[task-id]")`
-- Claim with: `update_task(id="[task-id]", status="active", assignee="bot")`
+- Claim with: `update_task(id="[task-id]", status="active", assignee="polecat")`
 
 **OR New task needed**:
 - Create with: `create_task(task_title="...", type="...", project="...", priority=2)`

@@ -468,7 +468,7 @@ Context injected via CORE.md at SessionStart.
 
 | Assignment | Tag | Purpose |
 |------------|-----|---------|
-| Bot/agent work | `tags: ["bot"]` | Automated tasks for agent execution |
+| Bot/agent work | `tags: ["polecat"]` | Automated tasks for agent execution |
 | Human/user work | `tags: ["human"]` | Manual tasks requiring user action |
 
 **Rule**: Use tags for task assignment, not the `context` field.

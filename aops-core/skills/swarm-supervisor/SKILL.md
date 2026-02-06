@@ -173,7 +173,7 @@ polecat watch &  # Background notifications for new PRs
 ### Commission Don't Debug
 When functionality is missing:
 1. **Don't write code** - create a task with `/q`
-2. Assign to `bot` with clear acceptance criteria
+2. Assign to `polecat` with clear acceptance criteria
 3. Let swarm implement and file PR
 4. Merge and use
 

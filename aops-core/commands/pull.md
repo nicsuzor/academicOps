@@ -16,12 +16,12 @@ permalink: commands/pull
 
 1.  **List ready tasks**: Call `mcp__plugin_aops-tools_task_manager__list_tasks(status="active", limit=10)` to find ready tasks.
 2.  **Select task**: Review the list and select the highest priority task (lowest priority number, e.g., P0).
-3.  **Claim task**: Call `mcp__plugin_aops-tools_task_manager__update_task(id="<task-id>", status="in_progress", assignee="bot")` to claim it.
+3.  **Claim task**: Call `mcp__plugin_aops-tools_task_manager__update_task(id="<task-id>", status="in_progress", assignee="polecat")` to claim it.
 
 **If a specific task ID is provided** (`/pull <task-id>`):
 1.  Call `mcp__plugin_aops-tools_task_manager__get_task(id="<task-id>")` to load it.
 2.  If the task has children (leaf=false), navigate to the first ready leaf subtask instead.
-3.  Claim with `mcp__plugin_aops-tools_task_manager__update_task(id="<task-id>", status="in_progress", assignee="bot")`.
+3.  Claim with `mcp__plugin_aops-tools_task_manager__update_task(id="<task-id>", status="in_progress", assignee="polecat")`.
 
 **If no tasks are ready**:
 - Check active/inbox tasks for any that can be worked on.
@@ -136,13 +136,13 @@ If task needs specific expertise or human judgment:
 ```
 mcp__task_manager__update_task(
   id="<task-id>",
-  assignee="<role>"  # e.g., "nic", "bot"
+  assignee="<role>"  # e.g., "nic", "polecat"
 )
 ```
 
 **Role assignment logic:**
 - `assignee="nic"` - Requires human judgment, strategic decisions, or external context
-- `assignee="bot"` - Can be automated but needs clarification on scope/approach
+- `assignee="polecat"` - Can be automated but needs clarification on scope/approach
 - Leave unassigned if role unclear
 
 Note: Use `mcp__task_manager__update_task` (not `mcp__plugin_aops-core_tasks`) for assignee support. Don't set status to "blocked" - just assign.

@@ -25,7 +25,7 @@ The polecat swarm executes tasks autonomously. Supervision handles:
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                     TASK QUEUE (MCP)                            │
-│  Ready tasks: leaf, status=active, assignee=bot                 │
+│  Ready tasks: leaf, status=active, assignee=polecat                 │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼ claim_next_task()
@@ -73,7 +73,7 @@ create_task(
     type="task",  # bug, feature, learn
     project="aops",
     priority=1,  # P0=blocking, P1=high, P2=normal
-    assignee="bot",
+    assignee="polecat",
     tags=["polecat", "<domain>"],
     body="""# <Title>
 

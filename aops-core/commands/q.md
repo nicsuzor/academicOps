@@ -36,7 +36,7 @@ If a related task exists with status != "done":
 ### Step 2: Route and Create Task
 
 **Determine assignee**:
-- `bot`: Mechanical work, code changes, documentation (swarm-claimable)
+- `polecat`: Mechanical work, code changes, documentation (swarm-claimable)
 - `nic`: Requires human judgment, external communication, decisions
 
 **Determine priority**:
@@ -53,7 +53,7 @@ mcp__plugin_aops-tools_task_manager__create_task(
   type="task",  # or: bug, feature, learn
   project="<infer from context>",
   priority=2,
-  assignee="bot",  # or "nic" for human tasks
+  assignee="polecat",  # or "nic" for human tasks
   tags=["<relevant>", "<tags>"],
   body="""# <Title>
 
@@ -75,9 +75,9 @@ mcp__plugin_aops-tools_task_manager__create_task(
 
 ### Step 3: Confirm and HALT
 
-Report: "Queued: [task-id] - [title] (assignee: bot, P2)"
+Report: "Queued: [task-id] - [title] (assignee: polecat, P2)"
 
-The task is queued. Swarm will claim if assignee=bot.
+The task is queued. Swarm will claim if assignee=polecat.
 
 ## Task Body Template
 
@@ -110,7 +110,7 @@ Good task bodies help workers succeed:
 
 When you encounter missing functionality:
 1. **Don't debug manually** - create a task
-2. Assign to `bot` with clear acceptance criteria
+2. Assign to `polecat` with clear acceptance criteria
 3. Let swarm implement, file PR
 4. Merge PR and use new feature
 

@@ -19,7 +19,7 @@ permalink: commands/work
     *   **If no ID**: Call `mcp__plugin_aops-tools_task_manager__list_tasks(assignee="nic", status="active", limit=1)` to find the user's top priority task.
         *   If none found, fall back to `list_tasks(status="active", limit=1)` (highest priority global task).
 2.  **Claim**: Call `mcp__plugin_aops-tools_task_manager__update_task(id="<task-id>", status="in_progress")`.
-    *   **Crucial**: Do NOT change the assignee to `bot`. If unassigned, you may optionally assign to `nic` if the user confirms, but otherwise leave the assignee field alone to indicate human ownership.
+    *   **Crucial**: Do NOT change the assignee to `polecat`. If unassigned, you may optionally assign to `nic` if the user confirms, but otherwise leave the assignee field alone to indicate human ownership.
 
 ### Step 2: Context Injection
 

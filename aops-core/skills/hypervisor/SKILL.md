@@ -78,7 +78,7 @@ def claim_task(task_id: str) -> bool:
 The `batch_worker.py` script includes task triage logic:
 
 - **Closure detection**: Tasks with `## Close Reason` or `status: done`
-- **Assignee allocation**: `nic` for judgment tasks, `bot` for automatable
+- **Assignee allocation**: `nic` for judgment tasks, `polecat` for automatable
 - **Wikilink injection**: Adds `[[project]]` links based on frontmatter
 
 ```bash

@@ -25,7 +25,7 @@ Workers MUST use MCP tools directly, NOT Skills:
 ```
 Pull and complete a task. Use MCP task tools directly:
 1. mcp__plugin_aops-tools_task_manager__list_tasks(status="active")
-2. mcp__plugin_aops-tools_task_manager__update_task(id="...", status="in_progress", assignee="bot")
+2. mcp__plugin_aops-tools_task_manager__update_task(id="...", status="in_progress", assignee="polecat")
 3. Execute the claimed task
 4. mcp__plugin_aops-tools_task_manager__complete_task(id="...")
 ```

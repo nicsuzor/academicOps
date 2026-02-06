@@ -537,7 +537,7 @@ class TaskIndex:
             return ancestors[-1]
         return self._tasks.get(task_id)
 
-    # Tags that indicate human-assigned tasks (excluded when caller is 'bot')
+    # Tags that indicate human-assigned tasks (excluded when caller is 'polecat')
     HUMAN_TAGS = {"nic", "human"}
 
     def get_ready_tasks(
@@ -549,7 +549,7 @@ class TaskIndex:
             project: Filter by project
             caller: Filter by assignee - returns tasks where assignee is None
                     or assignee matches caller. If caller is None, returns all.
-                    When caller is 'bot', also excludes tasks with human tags
+                    When caller is 'polecat', also excludes tasks with human tags
                     ('nic', 'human') in their tags list.
 
         Returns:
@@ -564,8 +564,8 @@ class TaskIndex:
         if caller is not None:
             entries = [e for e in entries if e.assignee is None or e.assignee == caller]
 
-            # When caller is 'bot', also exclude tasks with human tags
-            if caller == "bot":
+            # When caller is 'polecat', also exclude tasks with human tags
+            if caller == "polecat":
                 entries = [e for e in entries if not (set(e.tags) & self.HUMAN_TAGS)]
 
         # Sort by priority (lower is higher priority), then order, then title

@@ -279,7 +279,7 @@ def create_task(
         due: Due date in ISO format (YYYY-MM-DDTHH:MM:SSZ)
         tags: List of tags for categorization
         body: Markdown body content
-        assignee: Task owner - typically 'nic' (human) or 'bot' (agent)
+        assignee: Task owner - typically 'nic' (human) or 'polecat' (agent)
         complexity: Task complexity for routing - "mechanical", "requires-judgment",
             "multi-step", "needs-decomposition", or "blocked-human" (default: None)
 
@@ -494,7 +494,7 @@ def update_task(
         context: New context (or "" to clear)
         body: Body content to append (default) or replace. Appended with double newline separator.
         replace_body: If True, replace body instead of appending (default: False)
-        assignee: Task owner - 'nic' or 'bot' (or "" to clear)
+        assignee: Task owner - 'nic' or 'polecat' (or "" to clear)
         complexity: Task complexity - "mechanical", "requires-judgment", "multi-step",
             "needs-decomposition", or "blocked-human" (or "" to clear)
 
@@ -687,7 +687,7 @@ def update_task(
 
 @mcp.tool()
 def claim_next_task(
-    caller: str = "bot",
+    caller: str = "polecat",
     project: Optional[str] = None,
 ) -> dict[str, Any]:
     """Atomically claim the next ready task by priority.
@@ -697,7 +697,7 @@ def claim_next_task(
     Uses file locking to prevent race conditions.
 
     Args:
-        caller: Who is claiming the task (default: "bot")
+        caller: Who is claiming the task (default: "polecat")
         project: Optional project filter
 
     Returns:
@@ -712,7 +712,7 @@ def claim_next_task(
 
         # Get candidates from index
         # This respects assignee filters (only unassigned or assigned to caller)
-        # and excludes human-tagged tasks if caller is 'bot'
+        # and excludes human-tagged tasks if caller is 'polecat'
         candidates = index.get_ready_tasks(project=project, caller=caller)
 
         # Try to claim candidates in order
@@ -1610,7 +1610,7 @@ def list_tasks(
         type: Filter by type - "goal", "project", "epic", "task", "action", "bug", "feature", or "learn"
         priority: Filter by exact priority (0-4)
         priority_max: Filter by priority <= N (e.g. 1 for P0 and P1)
-        assignee: Filter by assignee - typically "bot" (agent) or "nic" (human)
+        assignee: Filter by assignee - typically "polecat" (agent) or "nic" (human)
         limit: Maximum number of tasks to return (default: 5, use 0 for unlimited)
 
     Returns:

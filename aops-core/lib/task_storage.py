@@ -178,7 +178,7 @@ class TaskStorage:
             due: Optional due date
             tags: Optional tags
             body: Markdown body content
-            assignee: Task owner - typically 'nic' (human) or 'bot' (agent)
+            assignee: Task owner - typically 'nic' (human) or 'polecat' (agent)
             complexity: Task complexity for routing decisions (set by hydrator)
 
         Returns:
@@ -484,7 +484,7 @@ class TaskStorage:
             type: Filter by type
             priority: Filter by exact priority
             priority_max: Filter by priority <= max
-            assignee: Filter by assignee (e.g., 'bot', 'nic')
+            assignee: Filter by assignee (e.g., 'polecat', 'nic')
 
         Returns:
             List of matching tasks

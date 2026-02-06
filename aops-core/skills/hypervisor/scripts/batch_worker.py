@@ -208,7 +208,7 @@ def determine_assignee(body: str, fm: dict[str, Any], title: str) -> str:
 
     # Bot-friendly patterns (clear, automatable)
     if "bot-assigned" in tags:
-        return "bot"
+        return "polecat"
 
     bot_patterns = [
         r"\bimplement\b.*\b(function|method|class|script)\b",
@@ -220,11 +220,11 @@ def determine_assignee(body: str, fm: dict[str, Any], title: str) -> str:
     ]
     for pattern in bot_patterns:
         if re.search(pattern, combined_text):
-            return "bot"
+            return "polecat"
 
     # Default: if task has clear structure, assign to bot
     if "## acceptance" in body_lower or "- [ ]" in body:
-        return "bot"
+        return "polecat"
 
     return "nic"
 
@@ -283,7 +283,7 @@ def process_task(task_path: str, has_children: bool = False) -> dict[str, Any]:
         if complexity == "blocked-human":
             assignee = "nic"
         elif complexity == "mechanical":
-            assignee = "bot"
+            assignee = "polecat"
         else:
             assignee = determine_assignee(body, fm, title)
 

@@ -151,7 +151,7 @@ def run_swarm(
     claude_count: int,
     gemini_count: int,
     project: Optional[str] = None,
-    caller: str = "bot",
+    caller: str = "polecat",
     dry_run: bool = False,
     home_dir: Optional[str] = None,
 ):
@@ -246,7 +246,7 @@ def main():
     parser.add_argument(
         "--caller",
         type=str,
-        default="bot",
+        default="polecat",
         help="Identity claiming the tasks (default: bot)",
     )
     parser.add_argument(

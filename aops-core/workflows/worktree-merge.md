@@ -292,7 +292,7 @@ mcp__plugin_aops-core_task_manager__search_tasks(query="polecat")
 2. Simple/mechanical tasks: agent approves and marks done
 3. Complex/judgment tasks: agent asks user for resolution before proceeding
 
-**Note**: Task assignees use `nic` (human) or `bot` (agent), not "engineer".
+**Note**: Task assignees use `nic` (human) or `polecat` (agent), not "engineer".
 
 ## Edge Cases
 
@@ -350,7 +350,7 @@ If task is in `review` status but has no branch:
 
 **Resolution**:
 1. Reset task to `active` status
-2. Reassign to `bot` for fresh attempt
+2. Reassign to `polecat` for fresh attempt
 3. Add triage note explaining the reset
 
 This commonly occurs when polecat sessions hit blocking bugs (e.g., hydration gate) and refinery couldn't process.

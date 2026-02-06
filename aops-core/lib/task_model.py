@@ -158,7 +158,7 @@ class Task:
     tags: list[str] = field(default_factory=list)
     effort: str | None = None  # Estimated effort
     context: str | None = None  # @home, @computer, etc.
-    assignee: str | None = None  # Task owner: 'nic' or 'bot'
+    assignee: str | None = None  # Task owner: 'nic' or 'polecat'
     complexity: TaskComplexity | None = None  # Routing classification (set by hydrator)
 
     # Body content (markdown below frontmatter)
