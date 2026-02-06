@@ -251,8 +251,8 @@ HYDRATION_SAFE_READ_PATTERNS = [
 # Template paths for task gate messages
 TASK_GATE_BLOCK_TEMPLATE = Path(__file__).parent / "templates" / "task-gate-block.md"
 TASK_GATE_WARN_TEMPLATE = Path(__file__).parent / "templates" / "task-gate-warn.md"
-DEFAULT_TASK_GATE_MODE = "warn"
-DEFAULT_CUSTODIET_GATE_MODE = "warn"
+DEFAULT_TASK_GATE_MODE = "block"
+DEFAULT_CUSTODIET_GATE_MODE = "block"
 
 HYDRATION_WARN_TEMPLATE = Path(__file__).parent / "templates" / "hydration-gate-warn.md"
 
