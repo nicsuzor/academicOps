@@ -183,35 +183,20 @@ mcp__plugin_aops-tools_task_manager__update_task(
 
 After triaging, **HALT** - do not proceed to execution. The task is now either assigned, decomposed, or blocked.
 
-### Step 4: Finish and Mark Ready for Merge
+### Step 4: Finish and Complete Task
 
 After successful execution (EXECUTE path only), finalize the task:
 
-#### If in a Polecat Worktree
-
-Detect via: current directory is under `~/.aops/polecat/` or `$POLECAT_HOME/polecat/`
-
-Run `polecat finish` via Bash:
-```bash
-polecat finish
-```
-
-This command:
-1. Auto-commits any uncommitted changes (safeguard)
-2. Pushes the branch to origin
-3. Sets task status to `merge_ready`
-4. Attempts auto-merge if no blockers
-
-#### If NOT in a Polecat Worktree
-
-For tasks executed outside the polecat worktree system (e.g., direct `/pull` in a normal repo), use:
+1. Verify git status is clean (Step 3A.2 should have committed already)
+2. Push branch to origin: `git push -u origin <branch-name>`
+3. Mark task complete:
 ```
 mcp__plugin_aops-tools_task_manager__complete_task(id="<task-id>")
 ```
 
-This directly marks the task as `done` since there's no branch to merge.
-
 **Note**: TRIAGE path should halt before reaching Step 4. Only EXECUTE path tasks should be finished.
+
+**Note**: Do NOT call `polecat finish` or any polecat CLI commands. Agents are workers, not orchestrators. The polecat orchestrator (which spawned this session) handles merge_ready status, PR creation, and auto-merge externally after the agent exits.
 
 ## Arguments
 
