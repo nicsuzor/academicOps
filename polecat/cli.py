@@ -352,12 +352,69 @@ def finish(ctx, no_push, do_nuke):
             print("🚨 SAFEGUARD: Refusing to push 'main' branch via polecat.")
             sys.exit(1)
 
+        # --- REBASE BEFORE PUSH ---
+        # Fetch and rebase onto latest main to prevent orphan commits and merge conflicts
+        print("🔄 Syncing with latest main before push...")
+        try:
+            # Fetch latest from origin
+            subprocess.run(
+                ["git", "fetch", "origin", "main"],
+                check=True,
+                capture_output=True,
+            )
+
+            # Check if we need to rebase (are we behind origin/main?)
+            merge_base = subprocess.run(
+                ["git", "merge-base", "HEAD", "origin/main"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            origin_main = subprocess.run(
+                ["git", "rev-parse", "origin/main"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+
+            if merge_base.stdout.strip() != origin_main.stdout.strip():
+                # We're behind, need to rebase
+                print("  📥 Branch is behind origin/main, rebasing...")
+                rebase_result = subprocess.run(
+                    ["git", "rebase", "origin/main"],
+                    capture_output=True,
+                    text=True,
+                )
+                if rebase_result.returncode != 0:
+                    # Rebase failed - abort and report
+                    subprocess.run(["git", "rebase", "--abort"], check=False)
+                    print("  ❌ Rebase failed due to conflicts.", file=sys.stderr)
+                    print(f"  {rebase_result.stderr}", file=sys.stderr)
+                    print("  Task will be marked for review.", file=sys.stderr)
+                    # Don't exit - let it fall through to mark as review
+                    try:
+                        from lib.task_model import TaskStatus
+
+                        task.status = TaskStatus.REVIEW
+                        task.body += f"\n\n## ⚠️ Rebase Failed\nConflicts detected during rebase onto main.\n"
+                        manager.storage.save_task(task)
+                    except ImportError:
+                        pass
+                    sys.exit(1)
+                print("  ✅ Rebase successful")
+            else:
+                print("  ✅ Already up-to-date with main")
+
+        except subprocess.CalledProcessError as e:
+            print(f"  ⚠️ Sync failed: {e}", file=sys.stderr)
+            # Continue anyway - the push might still work
+
         print(f"Pushing {branch_name} to origin...")
         try:
-            # Explicitly push local branch to remote branch of same name
-            # This avoids issues where tracking upstream is set to main
+            # Use --force-with-lease for safe force push after rebase
+            # This is safe because we just rebased and no one else should be pushing to this branch
             subprocess.run(
-                ["git", "push", "-u", "origin", f"{branch_name}:{branch_name}"],
+                ["git", "push", "--force-with-lease", "-u", "origin", f"{branch_name}:{branch_name}"],
                 check=True,
             )
         except subprocess.CalledProcessError as e:

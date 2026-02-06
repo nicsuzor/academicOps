@@ -823,19 +823,28 @@ class PolecatManager:
                 fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
     def _do_setup_worktree(self, task):
-        """Actual worktree creation logic (called under lock)."""
+        """Actual worktree creation logic (called under lock).
+
+        Containerization-aware: Assumes fresh clone/worktree each time.
+        Always syncs before work to handle stateless environments.
+        """
 
         project = task.project if task.project else "aops"
 
-        # Safe sync before worktree creation (non-fatal for offline operation)
+        # --- SYNC BEFORE WORK ---
+        # Critical for containerized/stateless environments where workers start fresh.
+        # Even for persistent environments, ensures we have latest code.
         mirror_path = self.repos_dir / f"{project}.git"
         if mirror_path.exists():
+            print(f"🔄 Syncing {project} mirror before worktree setup...")
             self.safe_sync_mirror(project)
 
             # Check freshness and warn if stale
             is_fresh, message = self.check_mirror_freshness(project)
             if not is_fresh:
                 print(f"⚠ {message}", file=sys.stderr)
+            else:
+                print(f"  ✅ Mirror is fresh")
 
         repo_path = self.get_repo_path(task)
         if not repo_path.exists():
@@ -953,7 +962,80 @@ class PolecatManager:
                     check=True,
                 )
 
+        # --- WORKTREE VERIFICATION ---
+        # Verify the worktree is correctly set up for PR workflow
+        self._verify_worktree_setup(worktree_path, branch_name, default_branch)
+
         return worktree_path
+
+    def _verify_worktree_setup(
+        self, worktree_path: Path, branch_name: str, default_branch: str
+    ):
+        """Verify worktree is correctly set up for the PR workflow.
+
+        Checks:
+        1. Branch exists and has valid history
+        2. Branch is based on current main (not stale)
+        3. Remote tracking is configured correctly
+
+        Args:
+            worktree_path: Path to the worktree
+            branch_name: Expected branch name (e.g., 'polecat/task-id')
+            default_branch: The main branch name (e.g., 'main')
+        """
+        # 1. Verify branch name
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=worktree_path,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0 or result.stdout.strip() != branch_name:
+            print(
+                f"⚠ Branch verification: expected {branch_name}, "
+                f"got {result.stdout.strip() if result.returncode == 0 else 'error'}",
+                file=sys.stderr,
+            )
+
+        # 2. Verify branch is based on recent main
+        # Get the merge-base between our branch and origin/main (if available)
+        merge_base_result = subprocess.run(
+            ["git", "merge-base", "HEAD", f"origin/{default_branch}"],
+            cwd=worktree_path,
+            capture_output=True,
+            text=True,
+        )
+        if merge_base_result.returncode == 0:
+            # Check how many commits behind origin/main we are
+            commits_behind = subprocess.run(
+                [
+                    "git",
+                    "rev-list",
+                    "--count",
+                    f"{merge_base_result.stdout.strip()}..origin/{default_branch}",
+                ],
+                cwd=worktree_path,
+                capture_output=True,
+                text=True,
+            )
+            if (
+                commits_behind.returncode == 0
+                and int(commits_behind.stdout.strip()) > 10
+            ):
+                print(
+                    f"⚠ Worktree is {commits_behind.stdout.strip()} commits behind "
+                    f"origin/{default_branch}. Consider rebasing.",
+                    file=sys.stderr,
+                )
+
+        # 3. Configure upstream tracking to origin (not local mirror)
+        # This ensures 'git push' works correctly
+        subprocess.run(
+            ["git", "remote", "set-url", "origin", "--push", "origin"],
+            cwd=worktree_path,
+            capture_output=True,
+            check=False,  # Non-fatal if fails
+        )
 
     def _branch_exists(self, repo_path, branch_name):
         res = subprocess.run(
