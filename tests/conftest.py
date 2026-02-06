@@ -809,9 +809,9 @@ def _skill_was_invoked(tool_calls: list[dict], skill_name: str) -> bool:
 def extract_subagent_tool_calls(tool_calls: list[dict]) -> list[dict]:
     """Extract subagent tool calls from a list of main agent tool calls.
 
-    When a main agent invokes a Skill tool, that skill may itself invoke tools
-    (subagent tool calls). This helper extracts information about subagent
-    invocations for cleaner test assertions.
+    Extracts both Task tool and Skill tool invocations. The Task tool spawns
+    actual subagents (separate processes), while Skill tool invokes skills
+    within the current agent context.
 
     Args:
         tool_calls: List of parsed tool calls from main agent session
@@ -819,52 +819,153 @@ def extract_subagent_tool_calls(tool_calls: list[dict]) -> list[dict]:
 
     Returns:
         List of subagent tool call information dicts with keys:
-        - skill: Name of the skill that was invoked
-        - args: Arguments passed to the Skill tool (may include nested skill names)
-        - input: Raw input dict from the Skill tool call
+        - type: "task" or "skill" indicating invocation type
+        - name: Subagent type (for Task) or skill name (for Skill)
+        - prompt: Task prompt (Task only)
+        - args: Arguments (Skill only, may include nested skill names)
+        - model: Model used (Task only, if specified)
+        - run_in_background: Whether Task runs in background (Task only)
+        - input: Raw input dict from the tool call
         - index: Position in the main agent's tool call sequence
 
     Example:
         # In a test:
         result, session_id, tool_calls = claude_headless_tracked(
-            "Use the framework skill to do something"
+            "Use the Explore agent to find Python files"
         )
         subagent_calls = extract_subagent_tool_calls(tool_calls)
 
-        # Check that a specific skill was invoked
-        assert any(call["skill"] == "framework" for call in subagent_calls)
+        # Check for Task subagent spawns
+        task_calls = [c for c in subagent_calls if c["type"] == "task"]
+        assert any(c["name"] == "Explore" for c in task_calls)
 
-        # Check skill arguments
-        framework_calls = [c for c in subagent_calls if c["skill"] == "framework"]
-        assert all("args" in c for c in framework_calls)
+        # Check for Skill invocations
+        skill_calls = [c for c in subagent_calls if c["type"] == "skill"]
+        assert any(c["name"] == "framework" for c in skill_calls)
     """
     subagent_calls = []
 
     for index, call in enumerate(tool_calls):
-        # Only Skill tool invocations represent subagent calls
-        if call["name"] != "Skill":
+        call_name = call.get("name", "")
+        input_data = call.get("input", {})
+
+        if call_name == "Task":
+            # Task tool spawns actual subagents
+            subagent_type = input_data.get("subagent_type", "")
+            if not subagent_type:
+                continue
+
+            subagent_calls.append(
+                {
+                    "type": "task",
+                    "name": subagent_type,
+                    "prompt": input_data.get("prompt", ""),
+                    "model": input_data.get("model"),
+                    "run_in_background": input_data.get("run_in_background", False),
+                    "input": input_data,
+                    "index": index,
+                }
+            )
+
+        elif call_name == "Skill":
+            # Skill tool invokes skills within current context
+            skill_name = input_data.get("skill", "")
+            if not skill_name:
+                continue
+
+            subagent_calls.append(
+                {
+                    "type": "skill",
+                    "name": skill_name,
+                    "args": input_data.get("args", ""),
+                    "input": input_data,
+                    "index": index,
+                }
+            )
+
+    return subagent_calls
+
+
+def extract_task_calls(tool_calls: list[dict]) -> list[dict]:
+    """Extract Task tool invocations (subagent spawns) from tool calls.
+
+    This is a convenience helper for tests that only care about Task tool
+    invocations, not Skill invocations.
+
+    Args:
+        tool_calls: List of parsed tool calls from main agent session
+
+    Returns:
+        List of Task invocation dicts with keys:
+        - subagent_type: Type of subagent spawned
+        - prompt: Task prompt
+        - model: Model used (if specified)
+        - run_in_background: Whether running in background
+        - input: Raw input dict
+        - index: Position in tool call sequence
+
+    Example:
+        task_calls = extract_task_calls(tool_calls)
+        assert any(c["subagent_type"] == "Explore" for c in task_calls)
+    """
+    task_calls = []
+
+    for index, call in enumerate(tool_calls):
+        if call.get("name") != "Task":
             continue
 
         input_data = call.get("input", {})
-        skill_name = input_data.get("skill", "")
+        subagent_type = input_data.get("subagent_type", "")
 
-        if not skill_name:
-            # Malformed Skill invocation - skip it
+        if not subagent_type:
             continue
 
-        # Extract arguments if present (args key contains additional parameters)
-        args = input_data.get("args", "")
-
-        subagent_calls.append(
+        task_calls.append(
             {
-                "skill": skill_name,
-                "args": args,
+                "subagent_type": subagent_type,
+                "prompt": input_data.get("prompt", ""),
+                "model": input_data.get("model"),
+                "run_in_background": input_data.get("run_in_background", False),
                 "input": input_data,
                 "index": index,
             }
         )
 
-    return subagent_calls
+    return task_calls
+
+
+def task_tool_with_type(tool_calls: list[dict], subagent_type: str) -> bool:
+    """Check if Task tool was used with a specific subagent type.
+
+    Args:
+        tool_calls: List of parsed tool calls from session
+        subagent_type: Expected subagent_type value (e.g., "Explore", "critic")
+
+    Returns:
+        True if Task tool was called with matching subagent_type
+
+    Example:
+        assert task_tool_with_type(tool_calls, "Explore")
+        assert task_tool_with_type(tool_calls, "general-purpose")
+    """
+    task_calls = extract_task_calls(tool_calls)
+    return any(c["subagent_type"] == subagent_type for c in task_calls)
+
+
+def count_task_calls(tool_calls: list[dict]) -> int:
+    """Count number of Task tool invocations.
+
+    Args:
+        tool_calls: List of parsed tool calls from session
+
+    Returns:
+        Number of Task tool calls
+
+    Example:
+        # Verify parallel agent spawn
+        assert count_task_calls(tool_calls) >= 2
+    """
+    return len(extract_task_calls(tool_calls))
 
 
 @pytest.fixture
@@ -887,23 +988,69 @@ def extract_subagent_calls():
     """Pytest fixture providing subagent tool call extractor.
 
     Returns:
-        Callable that extracts subagent tool calls from main agent tool calls.
+        Callable that extracts subagent tool calls (both Task and Skill) from
+        main agent tool calls.
 
     Example:
-        def test_skill_invocation(claude_headless_tracked, extract_subagent_calls):
+        def test_subagent_invocation(claude_headless_tracked, extract_subagent_calls):
             result, _, tool_calls = claude_headless_tracked("prompt")
             subagent_calls = extract_subagent_calls(tool_calls)
 
-            # Check if a specific skill was invoked as subagent
-            framework_calls = [c for c in subagent_calls if c["skill"] == "framework"]
-            assert len(framework_calls) > 0
+            # Check for Task subagent spawns
+            task_calls = [c for c in subagent_calls if c["type"] == "task"]
+            assert any(c["name"] == "Explore" for c in task_calls)
 
-            # Check skill arguments
-            for call in framework_calls:
-                assert "input" in call
-                assert "args" in call
+            # Check for Skill invocations
+            skill_calls = [c for c in subagent_calls if c["type"] == "skill"]
+            assert any(c["name"] == "framework" for c in skill_calls)
     """
     return extract_subagent_tool_calls
+
+
+@pytest.fixture
+def get_task_calls():
+    """Pytest fixture providing Task tool call extractor.
+
+    Returns:
+        Callable that extracts Task tool invocations from tool calls.
+
+    Example:
+        def test_explore_agent(claude_headless_tracked, get_task_calls):
+            result, _, tool_calls = claude_headless_tracked("prompt")
+            task_calls = get_task_calls(tool_calls)
+            assert any(c["subagent_type"] == "Explore" for c in task_calls)
+    """
+    return extract_task_calls
+
+
+@pytest.fixture
+def check_task_type():
+    """Pytest fixture for checking if Task tool was used with specific subagent type.
+
+    Returns:
+        Callable that checks if Task tool was called with matching subagent_type.
+
+    Example:
+        def test_explore_agent(claude_headless_tracked, check_task_type):
+            result, _, tool_calls = claude_headless_tracked("Use Explore agent")
+            assert check_task_type(tool_calls, "Explore")
+    """
+    return task_tool_with_type
+
+
+@pytest.fixture
+def get_task_count():
+    """Pytest fixture for counting Task tool invocations.
+
+    Returns:
+        Callable that returns number of Task tool calls.
+
+    Example:
+        def test_parallel_spawn(claude_headless_tracked, get_task_count):
+            result, _, tool_calls = claude_headless_tracked("Spawn 2 agents")
+            assert get_task_count(tool_calls) >= 2
+    """
+    return count_task_calls
 
 
 @pytest.fixture
