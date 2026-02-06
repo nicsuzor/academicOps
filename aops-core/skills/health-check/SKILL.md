@@ -125,7 +125,9 @@ Key assessment areas:
 
 ### Step 4: Aggregate Report
 
-Combine component assessments into a unified health report:
+See [[output/aggregation]] for detailed aggregation instructions.
+
+Combine component assessments into a unified health report following this structure:
 
 ```markdown
 # Framework Health Check Report
@@ -163,18 +165,27 @@ Combine component assessments into a unified health report:
 
 ## Prioritized Recommendations
 
-1. [Highest impact recommendation]
-2. [...]
+1. [P0] **Critical**: [recommendation]
+2. [P1] **High**: [recommendation]
+3. [P2] **Medium**: [recommendation]
 
-## Raw Evidence
+## Evidence Summary
 
-### Transcript References
-- [transcript-id]: [relevant excerpt]
+| Session | Component | Finding | Severity |
+|---------|-----------|---------|----------|
+| [id] | [name] | [brief] | [H/M/L] |
 ```
+
+Key aggregation rules:
+- **Overall Health**: All Healthy = Healthy; 2+ Needs Attention or 1 Critical = Needs Attention; 2+ Critical = Critical
+- **Prioritization**: P0 (Critical), P1 (High), P2 (Medium) - limit to top 5-7 recommendations
+- **Cross-Component**: Look for patterns spanning multiple components, handoff issues, common root causes
 
 ### Step 5: Persist Report
 
-Save the report to the audit directory:
+See [[output/aggregation#Persistence]] for detailed persistence instructions.
+
+Save the report to the health-checks directory:
 
 ```bash
 REPORT_PATH="$ACA_DATA/projects/aops/health-checks/$(date +%Y-%m-%d)-health-check.md"
@@ -189,24 +200,39 @@ Store executive summary and critical findings in memory server:
 
 ```python
 mcp__plugin_aops-core_memory__store_memory(
-    content=f"Health check {date}: {executive_summary}. Critical: {critical_findings}",
-    tags=["health-check", "framework-assessment"],
-    metadata={"date": date, "components": ["hydrator", "gates", "custodiet", "qa"]}
+    content=f"Health check {date}: {executive_summary}. Critical findings: {critical_list}",
+    tags=["health-check", "framework-assessment", date],
+    metadata={
+        "date": date,
+        "components": ["hydrator", "gates", "custodiet", "qa"],
+        "overall_health": overall_rating,
+        "report_path": report_path
+    }
 )
 ```
 
 ### Step 7: Create Tasks for Critical Findings
 
-For findings rated "Critical" or "Needs Attention", create tasks:
+For P0 (Critical) and P1 (High) recommendations, create tasks:
 
 ```python
 mcp__plugin_aops-core_task_manager__create_task(
-    task_title=f"[Health Check] {finding_summary}",
+    task_title=f"[Health Check] {recommendation_summary}",
     type="task",
     project="aops",
-    priority=2,  # P1 for Critical, P2 for Needs Attention
-    tags=["health-check", component_name],
-    body=f"From health check on {date}:\n\n{finding_details}\n\nEvidence: {transcript_refs}"
+    priority=1,  # P1 for Critical, P2 for High
+    tags=["health-check", component_name, date],
+    body=f"""From health check on {date}:
+
+## Finding
+{finding_details}
+
+## Evidence
+{transcript_references}
+
+## Recommendation
+{actionable_recommendation}
+"""
 )
 ```
 
