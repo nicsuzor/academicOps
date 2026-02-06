@@ -110,3 +110,69 @@ class TestUniversalRouter:
 
         assert out.hookSpecificOutput.permissionDecision == "deny"
         assert out.hookSpecificOutput.additionalContext == "Context"
+
+
+class TestToolInputNormalization:
+    """Tests for JSON string normalization in router.py."""
+
+    @pytest.fixture
+    def router_instance(self):
+        return HookRouter()
+
+    def test_normalize_json_field_string(self, router_instance):
+        """JSON string is parsed to dict."""
+        value = '{"key": "value"}'
+        result = router_instance._normalize_json_field(value)
+        assert result == {"key": "value"}
+
+    def test_normalize_json_field_dict(self, router_instance):
+        """Dict passes through unchanged."""
+        value = {"key": "value"}
+        result = router_instance._normalize_json_field(value)
+        assert result == {"key": "value"}
+
+    def test_normalize_json_field_invalid_json(self, router_instance):
+        """Invalid JSON string passes through unchanged."""
+        value = "not valid json"
+        result = router_instance._normalize_json_field(value)
+        assert result == "not valid json"
+
+    def test_normalize_json_field_list(self, router_instance):
+        """JSON array string is parsed to list."""
+        value = '["a", "b", "c"]'
+        result = router_instance._normalize_json_field(value)
+        assert result == ["a", "b", "c"]
+
+    def test_normalize_input_tool_input_json_string(self, router_instance):
+        """tool_input as JSON string is normalized to dict."""
+        raw = {
+            "tool_name": "read_file",
+            "tool_input": '{"path": "/tmp/test.txt"}',
+            "hook_event_name": "PreToolUse",
+            "session_id": "test-123",
+        }
+        ctx = router_instance.normalize_input(raw)
+        assert ctx.tool_input == {"path": "/tmp/test.txt"}
+        assert isinstance(ctx.tool_input, dict)
+
+    def test_normalize_input_tool_result_json_string(self, router_instance):
+        """tool_result as JSON string is normalized in raw_input."""
+        raw = {
+            "hook_event_name": "PostToolUse",
+            "session_id": "test-123",
+            "tool_result": '{"verdict": "PROCEED"}',
+        }
+        ctx = router_instance.normalize_input(raw)
+        assert ctx.raw_input["tool_result"] == {"verdict": "PROCEED"}
+        assert isinstance(ctx.raw_input["tool_result"], dict)
+
+    def test_normalize_input_subagent_result_json_string(self, router_instance):
+        """subagent_result as JSON string is normalized in raw_input."""
+        raw = {
+            "hook_event_name": "SubagentStop",
+            "session_id": "test-123",
+            "subagent_result": '{"output": "done", "status": "ok"}',
+        }
+        ctx = router_instance.normalize_input(raw)
+        assert ctx.raw_input["subagent_result"] == {"output": "done", "status": "ok"}
+        assert isinstance(ctx.raw_input["subagent_result"], dict)

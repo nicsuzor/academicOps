@@ -720,15 +720,11 @@ def _hydration_is_subagent_session(input_data: dict[str, Any] | None = None) -> 
     return hook_utils.is_subagent_session(input_data)
 
 
-def _hydration_is_hydrator_task(tool_input: dict[str, Any] | str) -> bool:
-    """Check if Task/delegate_to_agent/activate_skill invocation is spawning prompt-hydrator."""
-    # Ensure tool_input is a dictionary before calling .get()
-    if isinstance(tool_input, str):
-        try:
-            tool_input = json.loads(tool_input)
-        except json.JSONDecodeError:
-            return False
+def _hydration_is_hydrator_task(tool_input: dict[str, Any]) -> bool:
+    """Check if Task/delegate_to_agent/activate_skill invocation is spawning prompt-hydrator.
 
+    Note: tool_input is pre-normalized by router.py (JSON strings parsed to dicts).
+    """
     if not isinstance(tool_input, dict):
         return False
 
@@ -753,16 +749,12 @@ def _hydration_is_hydrator_task(tool_input: dict[str, Any] | str) -> bool:
 
 
 def _hydration_is_gemini_hydration_attempt(
-    tool_name: str, tool_input: dict[str, Any] | str, input_data: dict[str, Any]
+    tool_name: str, tool_input: dict[str, Any], input_data: dict[str, Any]
 ) -> bool:
-    """Check if Gemini is attempting to read hydration context."""
-    # Ensure tool_input is a dictionary before calling .get()
-    if isinstance(tool_input, str):
-        try:
-            tool_input = json.loads(tool_input)
-        except json.JSONDecodeError:
-            return False
+    """Check if Gemini is attempting to read hydration context.
 
+    Note: tool_input is pre-normalized by router.py (JSON strings parsed to dicts).
+    """
     if not isinstance(tool_input, dict):
         return False
 
@@ -2013,12 +2005,8 @@ def check_skill_activation_listener(ctx: HookContext) -> Optional[GateResult]:
 
     # Extract skill name from tool input
     # Claude Skill tool uses 'skill', Gemini activate_skill uses 'name'
+    # Note: tool_input is pre-normalized by router.py (JSON strings parsed to dicts)
     tool_input = ctx.tool_input or {}
-    if isinstance(tool_input, str):
-        try:
-            tool_input = json.loads(tool_input)
-        except json.JSONDecodeError:
-            tool_input = {}
 
     skill_name = tool_input.get("skill") or tool_input.get("name") or ""
 
@@ -2456,18 +2444,12 @@ def run_ntfy_notifier(ctx: HookContext) -> Optional[GateResult]:
                 agent_type = ctx.tool_input["agent_name"]
 
             # Try to extract verdict from tool result
+            # Note: tool_result/toolResult are pre-normalized by router.py
             verdict = None
             if "tool_result" in ctx.raw_input:
                 tool_result = ctx.raw_input["tool_result"]
                 if isinstance(tool_result, dict) and "verdict" in tool_result:
                     verdict = tool_result["verdict"]
-                elif isinstance(tool_result, str):
-                    try:
-                        parsed = json.loads(tool_result)
-                        if isinstance(parsed, dict) and "verdict" in parsed:
-                            verdict = parsed["verdict"]
-                    except (json.JSONDecodeError, AttributeError):
-                        pass
             elif "toolResult" in ctx.raw_input:
                 tool_result = ctx.raw_input["toolResult"]
                 if isinstance(tool_result, dict) and "verdict" in tool_result:
