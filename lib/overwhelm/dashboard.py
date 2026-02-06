@@ -3693,12 +3693,16 @@ def render_v11_progress():
     children_ids = epic.get("children", [])
     children = [tasks_by_id.get(cid) for cid in children_ids if cid in tasks_by_id]
 
-    status_counts = {"done": 0, "active": 0, "blocked": 0}
+    status_counts = {"done": 0, "in_progress": 0, "blocked": 0}
     for child in children:
         if child:
             status = child.get("status", "active")
-            if status in status_counts:
-                status_counts[status] += 1
+            if status in ("done", "closed"):
+                status_counts["done"] += 1
+            elif status == "blocked":
+                status_counts["blocked"] += 1
+            else:
+                status_counts["in_progress"] += 1
 
     total = len(children)
     done_pct = (status_counts["done"] / total * 100) if total > 0 else 0
@@ -3720,7 +3724,7 @@ def render_v11_progress():
             </div>
             <div class="synthesis-card context">
                 <div class="synthesis-card-title">🔄 In Progress</div>
-                <div class="synthesis-card-content" style="font-size: 1.5em; font-weight: 700;">{status_counts["active"]}</div>
+                <div class="synthesis-card-content" style="font-size: 1.5em; font-weight: 700;">{status_counts["in_progress"]}</div>
             </div>
             <div class="synthesis-card waiting">
                 <div class="synthesis-card-title">🚫 Blocked</div>
@@ -3744,7 +3748,7 @@ def render_graph_section():
     """Render the task/knowledge graph with tabs, collapsible by default if >50 nodes."""
     # Determine default expanded state based on node count
     node_count = _get_graph_node_count()
-    default_expanded = node_count <= 50
+    default_expanded = True
 
     # Check query params for persisted state
     query_params = st.query_params
@@ -4275,6 +4279,8 @@ if page == "Session Summary":
 if page == "Network Analysis":
     render_network_analysis()
     st.stop()
+
+render_v11_progress()
 
 # Graph section with tabs
 render_graph_section()
