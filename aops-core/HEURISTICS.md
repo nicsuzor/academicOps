@@ -447,6 +447,8 @@ description: Working hypotheses validated by evidence.
 
 **Handover Epic Context Corollary**: When completing a task that has a parent epic, handover MUST report: (1) remaining work on the epic, (2) whether epic is now ready for qualitative verification. This ensures visibility into feature completion state, not just subtask completion.
 
+**Monitoring Task Corollary**: For tasks involving monitoring or observation ("assess", "observe", "watch", "evaluate how X is going"), acceptance criteria must include OUTCOME verification, not just INITIATION verification. Starting a process ≠ evaluating its results. Criteria must include: observed completions, measured performance, or evaluated quality—not just "process started successfully."
+
 **Derivation**: P#31 (Acceptance Criteria Own Success) and P#74 (User System Expertise) establish user as authority on success. This heuristic operationalizes: verify understanding of user intent BEFORE building, not just validate technical correctness after.
 
 ---
