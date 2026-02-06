@@ -10,6 +10,7 @@ Alerts and stops workers that fail (non-zero exit code).
 import argparse
 import multiprocessing
 import os
+import random
 import subprocess
 import sys
 import time
@@ -76,6 +77,12 @@ def worker_loop(
         worker_name += f" (CPU {cpu_id})"
 
     print(f"[{worker_name}] 🚀 Started.")
+
+    # Random startup delay to stagger workers and prevent race conditions
+    # when multiple workers try to claim the same task simultaneously
+    startup_delay = random.uniform(0.5, 3.0)
+    print(f"[{worker_name}] ⏳ Waiting {startup_delay:.1f}s before first claim...")
+    time.sleep(startup_delay)
 
     aops_path = os.environ.get("AOPS")
     if not aops_path and not dry_run:
