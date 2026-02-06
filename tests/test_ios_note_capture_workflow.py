@@ -11,16 +11,16 @@ import yaml
 
 
 @pytest.fixture
-def workflow_path(bots_dir: Path) -> Path:
+def workflow_path(repo_root: Path) -> Path:
     """Path to iOS note capture workflow file.
 
     Args:
-        bots_dir: Path to framework root from fixture.
+        repo_root: Path to repository root from fixture.
 
     Returns:
         Path to workflow YAML file.
     """
-    return bots_dir / ".github/workflows/ios-note-capture.yml"
+    return repo_root / ".github/workflows/ios-note-capture.yml"
 
 
 @pytest.fixture

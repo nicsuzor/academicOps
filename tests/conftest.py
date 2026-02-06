@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from .paths import get_bots_dir, get_data_dir, get_hooks_dir, get_writing_root
+from .paths import get_bots_dir, get_data_dir, get_hooks_dir, get_repo_root, get_writing_root
 
 
 def _is_xdist_worker() -> bool:
@@ -97,6 +97,18 @@ def writing_root() -> Path:
         Path: Absolute path to framework root ($AOPS)
     """
     return get_writing_root()
+
+
+@pytest.fixture
+def repo_root() -> Path:
+    """Return Path to repository root (parent of aops-core plugin).
+
+    GitHub workflows and other repo-level files live here, not in the plugin.
+
+    Returns:
+        Path: Absolute path to repository root
+    """
+    return get_repo_root()
 
 
 @pytest.fixture
