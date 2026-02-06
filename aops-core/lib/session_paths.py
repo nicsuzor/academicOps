@@ -14,14 +14,39 @@ from pathlib import Path
 
 
 def get_claude_project_folder() -> str:
-    """Get Claude Code project folder name from cwd.
+    """Get Claude Code project folder name.
 
-    Converts absolute path to sanitized folder name:
-    /home/user/project -> -home-user-project
+    Resolution order:
+    1. AOPS_SESSION_STATE_DIR env var - extract folder name from path
+    2. CLAUDE_PROJECT_DIR env var - derive folder from project path
+    3. Fallback: derive from current working directory
+
+    The env var approach is necessary when hooks run from plugin cache
+    directories (e.g., ~/.claude/plugins/cache/...) rather than the
+    actual project directory.
 
     Returns:
         Project folder name with leading dash and all slashes replaced
+        (e.g., "-home-user-project")
     """
+    # 1. AOPS_SESSION_STATE_DIR contains full path like:
+    #    ~/.claude/projects/-home-user-project/
+    #    Extract the folder name directly
+    state_dir = os.environ.get("AOPS_SESSION_STATE_DIR")
+    if state_dir:
+        # Extract project folder from path: /home/nic/.claude/projects/-home-nic-project
+        state_path = Path(state_dir)
+        # The project folder is the last component
+        if state_path.parent.name == "projects":
+            return state_path.name
+
+    # 2. CLAUDE_PROJECT_DIR is the actual project path (set by Claude Code)
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR")
+    if project_dir:
+        # Convert /home/user/project -> -home-user-project
+        return "-" + project_dir.replace("/", "-")[1:]
+
+    # 3. Fallback: derive from cwd (original behavior)
     cwd = Path.cwd().resolve()
     # Replace leading / with -, then all / with -
     return "-" + str(cwd).replace("/", "-")[1:]
