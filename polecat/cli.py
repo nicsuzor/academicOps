@@ -10,6 +10,11 @@ from validation import TaskIDValidationError, validate_task_id_or_raise
 from lib.paths import get_aops_root
 
 
+def is_interactive() -> bool:
+    """Check if we're running in an interactive terminal."""
+    return sys.stdin.isatty()
+
+
 @click.group()
 @click.option(
     "--home",
@@ -249,6 +254,9 @@ def finish(ctx, no_push, do_nuke):
             print("  ✅ Changes saved.")
         except subprocess.CalledProcessError as e:
             print(f"  ❌ Failed to auto-commit: {e}")
+            if not is_interactive():
+                print("  🚫 Non-interactive mode: refusing to continue without saving.")
+                sys.exit(1)
             if not click.confirm("Continue without saving? (Risk of data loss)"):
                 sys.exit(1)
 
@@ -277,6 +285,14 @@ def finish(ctx, no_push, do_nuke):
                     print(
                         "   Run 'git reset --soft FETCH_HEAD' to recover if this is accidental."
                     )
+                    if not is_interactive():
+                        print(
+                            "   🚫 Non-interactive mode: refusing to push large changeset without confirmation."
+                        )
+                        print(
+                            "   Re-run interactively or manually push if this is intentional."
+                        )
+                        sys.exit(1)
                     if not click.confirm("Are you SURE you want to push this?"):
                         sys.exit(1)
     except Exception as e:
