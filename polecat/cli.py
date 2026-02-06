@@ -568,21 +568,19 @@ def crew(ctx, project, name, gemini, resume):
     print("-" * 50)
 
     if gemini:
-        cmd = ["gemini"]
+        cmd = ["gemini", "--approval-mode", "yolo"]
     else:
         # Get aops-core plugin directory
-        aops_root = get_aops_root()
-        plugin_dir_core = aops_root / "aops-core"
-        plugin_dir_tools = aops_root / "aops-tools"
+        # aops_root = get_aops_root()
+        # plugin_dir_core = aops_root / "aops-core"
         cmd = [
+            "command",
             "claude",
             "--permission-mode=plan",
             "--dangerously-skip-permissions",
             "--setting-sources=user",
-            "--plugin-dir",
-            plugin_dir_core,
-            "--plugin-dir",
-            plugin_dir_tools,
+            # "--plugin-dir",
+            # plugin_dir_core,
         ]
 
     # Set session type environment variable for hooks to detect
@@ -719,7 +717,12 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
     # Build command - gemini and claude have different CLI interfaces
     if gemini:
         # Gemini CLI
-        cmd = ["gemini"]
+        cmd = [
+            "command",
+            "gemini",
+            "--approval-mode",
+            "yolo",
+        ]
         # Note: Gemini CLI doesn't support --session-id; it uses --resume for session management
         # For now, each polecat run starts a fresh session
 
@@ -728,26 +731,16 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
             cmd.extend(["-i", prompt])
         else:
             # Headless mode with auto-approve
-            cmd.extend(["--approval-mode", "yolo", "-p", prompt])
+            cmd.extend(["-p", prompt])
     else:
         # Claude CLI
-        cmd = ["claude"]
-        # Get aops-core plugin directory
-        aops_root = get_aops_root()
-        plugin_dir_core = aops_root / "aops-core"
-        plugin_dir_tools = aops_root / "aops-tools"
-        cmd.extend(
-            [
-                "--dangerously-skip-permissions",
-                "--permission-mode",
-                "plan",
-                "--setting-sources=user",
-                "--plugin-dir",
-                plugin_dir_core,
-                "--plugin-dir",
-                plugin_dir_tools,
-            ]
-        )
+        cmd = [
+            "command",
+            "claude",
+            "--dangerously-skip-permissions",
+            "--setting-sources=user",
+        ]
+
         if interactive:
             # Interactive: just append the prompt as positional arg
             cmd.append(prompt)

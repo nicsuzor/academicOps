@@ -16,6 +16,7 @@ dependencies = [
   "pdfminer-six>=20260107",
   "python-ntfy>=0.1.0",
   "streamlit>=1.54.0",
+  "scipy>=1.17.0",
 ]
 
 [project.optional-dependencies]
