@@ -80,3 +80,28 @@ If hooks aren't firing for an MCP tool:
 1. Check which plugin defines the MCP server (`.mcp.json`)
 2. Check which plugin defines the hooks (`hooks/hooks.json`)
 3. Ensure they're the **same plugin**
+
+## Gate Block Feedback (Claude vs Gemini)
+
+When gates block tool execution, the feedback mechanism differs by client:
+
+### Claude Code
+
+- Uses JSON output with `decision: "block"` and `reason` field
+- Exit code 0 is standard
+- Agent receives `reason` directly in the hook result
+
+### Gemini CLI
+
+- **KNOWN GAP**: Gemini ignores JSON `reason` field when exit code is 0
+- Per `specs/enforcement.md` line 113: Block mode requires **exit code 2**
+- Agent only sees stderr output when exit code is 2
+- Current behavior: Router exits 0, agent sees generic "Tool execution denied by policy"
+
+### Required Fix (task aops-ee4bbecc)
+
+When `verdict == "deny"` and `client == "gemini"`:
+1. Write `context_injection` to **stderr**
+2. Exit with **code 2**
+
+This ensures agents know WHICH gate blocked them and HOW to proceed.
