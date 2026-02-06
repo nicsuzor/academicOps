@@ -13,8 +13,11 @@
   ],
   "mcpServers": {
     "task_manager": {
-      "command": "uv",
+      "command": "env",
       "args": [
+        "-u",
+        "VIRTUAL_ENV",
+        "uv",
         "run",
         "--directory",
         "${extensionPath}",

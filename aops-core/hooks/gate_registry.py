@@ -1259,7 +1259,7 @@ def check_custodiet_gate(ctx: HookContext) -> Optional[GateResult]:
             metadata={"source": "custodiet", "tool_calls": tool_calls},
         )
 
-    except (OSError, KeyError, TypeError) as e:
+    except Exception as e:
         # Fail-open: if instruction generation fails, fall back to simple block
         # <!-- NS: that's not what fail open means? Also, it contravenes FAIL FAST -->
         print(f"WARNING: Custodiet audit generation failed: {e}", file=sys.stderr)
