@@ -526,21 +526,41 @@ class TestGeminiEventMapping:
         assert GEMINI_EVENT_MAP.get("BeforeAgent") == "UserPromptSubmit"
 
     def test_pretooluse_has_hydration_gate(self):
-        """PreToolUse event MUST have hydration gate in config."""
-        from hooks.router import GATE_CONFIG
+        """PreToolUse event MUST have tool_gate that enforces hydration.
 
-        gates = GATE_CONFIG.get("PreToolUse", [])
-        assert "hydration" in gates, (
-            f"PreToolUse must include 'hydration' gate. Has: {gates}"
+        Note: Architecture changed from separate hydration/task_required gates
+        to unified tool_gate that checks TOOL_GATE_REQUIREMENTS.
+        """
+        from hooks.gate_config import GATE_EXECUTION_ORDER, TOOL_GATE_REQUIREMENTS
+
+        gates = GATE_EXECUTION_ORDER.get("PreToolUse", [])
+        assert "tool_gate" in gates, (
+            f"PreToolUse must include 'tool_gate'. Has: {gates}"
+        )
+
+        # Verify hydration is in the requirements for write tools
+        write_requirements = TOOL_GATE_REQUIREMENTS.get("write", [])
+        assert "hydration" in write_requirements, (
+            f"Write tools must require 'hydration' gate. Has: {write_requirements}"
         )
 
     def test_pretooluse_has_task_required_gate(self):
-        """PreToolUse event MUST have task_required gate in config."""
-        from hooks.router import GATE_CONFIG
+        """PreToolUse event MUST enforce task requirement via tool_gate.
 
-        gates = GATE_CONFIG.get("PreToolUse", [])
-        assert "task_required" in gates, (
-            f"PreToolUse must include 'task_required' gate. Has: {gates}"
+        Note: Architecture changed from separate task_required gate to unified
+        tool_gate that checks TOOL_GATE_REQUIREMENTS which includes 'task'.
+        """
+        from hooks.gate_config import GATE_EXECUTION_ORDER, TOOL_GATE_REQUIREMENTS
+
+        gates = GATE_EXECUTION_ORDER.get("PreToolUse", [])
+        assert "tool_gate" in gates, (
+            f"PreToolUse must include 'tool_gate'. Has: {gates}"
+        )
+
+        # Verify task is in the requirements for write tools
+        write_requirements = TOOL_GATE_REQUIREMENTS.get("write", [])
+        assert "task" in write_requirements, (
+            f"Write tools must require 'task' gate. Has: {write_requirements}"
         )
 
 

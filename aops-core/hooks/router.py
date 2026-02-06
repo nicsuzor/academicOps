@@ -164,7 +164,7 @@ class HookRouter:
     def __init__(self):
         self.session_data = get_session_data()
         self._execution_timestamps = deque(maxlen=20)  # Store last 20 timestamps
-        self._MAX_CALLS_PER_WINDOW = 25
+        self._MAX_CALLS_PER_WINDOW = 35
         self._WINDOW_SECONDS = 5.0
 
     def _check_for_loops(self, session_id: str):

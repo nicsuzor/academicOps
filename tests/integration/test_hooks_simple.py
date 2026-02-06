@@ -34,7 +34,24 @@ class SessionStateMocks:
     def __init__(self, cfg: dict):
         self.cfg = cfg
         gates = {**DEFAULT_STATE["gates"], **cfg.get("gates", {})}
-        state = {"state": {}, "hydration": {"temp_path": "/tmp/hydrator"}}
+        # Session state must include gates in the expected structure for tool_gate
+        state = {
+            "state": {
+                "gates": {
+                    "hydration": "open",
+                    "task": "open",
+                    "critic": "open",
+                    "qa": "open",
+                    "handover": "open",
+                },
+                "hydration_pending": cfg["is_hydration_pending"],
+            },
+            "hydration": {"temp_path": "/tmp/hydrator"},
+            "main_agent": {"current_task": "test-task-123"},
+        }
+
+        # Passed gates for tool_gate check
+        passed_gates = {"hydration", "task", "critic", "qa", "handover"}
 
         self.is_hydration_pending = MagicMock(return_value=cfg["is_hydration_pending"])
         self.check_all_gates = MagicMock(return_value=gates)
@@ -47,6 +64,7 @@ class SessionStateMocks:
         self.clear_hydration_pending = MagicMock(return_value=None)
         self.set_hydrator_active = MagicMock(return_value=None)
         self.update_hydration_metrics = MagicMock(return_value=None)
+        self.get_passed_gates = MagicMock(return_value=passed_gates)
 
     def patch_context(self):
         return patch.multiple(
@@ -62,6 +80,7 @@ class SessionStateMocks:
             clear_hydration_pending=self.clear_hydration_pending,
             set_hydrator_active=self.set_hydrator_active,
             update_hydration_metrics=self.update_hydration_metrics,
+            get_passed_gates=self.get_passed_gates,
         )
 
 

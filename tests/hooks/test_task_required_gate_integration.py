@@ -26,7 +26,12 @@ class TestTaskRequiredGateIntegration:
             yield
 
     def test_safe_bash_allowed_without_task(self, mock_env):
-        """Safe Bash command (ls) should be allowed even without a task."""
+        """Safe Bash command (ls) should be allowed when gates are satisfied.
+
+        Note: Architecture changed - all Bash commands are now 'write' category and
+        require hydration, task, and critic gates. To test that safe bash works when
+        gates are satisfied, we mock the gate status.
+        """
         input_data = {
             "hook_event_name": "PreToolUse",
             "tool_name": "Bash",
@@ -34,17 +39,34 @@ class TestTaskRequiredGateIntegration:
             "session_id": "sess-1",
         }
 
-        # Mock hydration gate to bypass (we're testing task-required, not hydration)
+        # Mock session state to indicate gates are satisfied
         with patch("hooks.gate_registry.session_state") as mock_session_state:
+            # Gate status: all required gates passed
+            mock_session_state.load_session_state.return_value = {
+                "state": {
+                    "gates": {
+                        "hydration": "open",
+                        "task": "open",
+                        "critic": "open",
+                    }
+                }
+            }
             mock_session_state.is_hydration_pending.return_value = False
             mock_session_state.is_hydrator_active.return_value = False
+            mock_session_state.check_all_gates.return_value = {
+                "task_bound": True,
+                "plan_mode_invoked": True,
+                "critic_invoked": True,
+            }
+            # Passed gates for tool_gate check
+            mock_session_state.get_passed_gates.return_value = {
+                "hydration", "task", "critic", "qa", "handover"
+            }
 
-            # We rely on default session state (None/empty) which means task_bound=False
-            # Safe bash should bypass task requirement
             r = router.HookRouter()
             output = r.execute_hooks(r.normalize_input(input_data))
 
-            # Check output verdict
+            # Check output verdict - should allow when gates are satisfied
             assert output.verdict != "deny"
 
     def test_destructive_bash_blocked_without_task(self, mock_env):

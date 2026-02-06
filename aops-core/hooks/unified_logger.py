@@ -180,16 +180,21 @@ def handle_subagent_stop(session_id: str, input_data: dict[str, Any]) -> None:
     # TRUNCATE: Never store more than 1KB of subagent output in the session state file.
     # The full output is already logged to the per-session hooks.jsonl audit trail.
     # Storing large strings in the shared state file causes memory-bloat in hooks.
+    max_len = 1000
     if isinstance(subagent_result, str):
-        result_data = {"output": subagent_result[:1000] + "... [TRUNCATED]"}
+        if len(subagent_result) > max_len:
+            result_data = {"output": subagent_result[:max_len] + "... [TRUNCATED]"}
+        else:
+            result_data = {"output": subagent_result}
     elif isinstance(subagent_result, dict):
         # Strip large fields but preserve keys for gate logic (verdict, etc.)
         result_data = {
-            k: (v[:1000] + "... [TRUNCATED]") if isinstance(v, str) and len(v) > 1000 else v
+            k: (v[:max_len] + "... [TRUNCATED]") if isinstance(v, str) and len(v) > max_len else v
             for k, v in subagent_result.items()
         }
     else:
-        result_data = {"raw": str(subagent_result)[:1000]}
+        raw = str(subagent_result)
+        result_data = {"raw": raw[:max_len] + "... [TRUNCATED]" if len(raw) > max_len else raw}
 
     result_data["stopped_at"] = (
         datetime.now().astimezone().replace(microsecond=0).isoformat()

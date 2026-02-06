@@ -496,18 +496,25 @@ class TestPostToolUseHydrationCompletion:
     """
 
     def test_hydration_gates_registered_for_pre_and_post_events(self):
-        """Verify hydration and post_hydration gates cover both events."""
-        from hooks.gates import ACTIVE_GATES
+        """Verify hydration-related gates cover both PreToolUse and PostToolUse.
 
-        # Hydration gate handles PreToolUse (blocking)
-        hydration_gate = next(g for g in ACTIVE_GATES if g["name"] == "hydration")
-        assert "PreToolUse" in hydration_gate["events"]
+        Note: Architecture changed from ACTIVE_GATES to GATE_EXECUTION_ORDER.
+        The tool_gate handles hydration checking on PreToolUse.
+        The post_hydration gate handles clearing pending on PostToolUse.
+        """
+        from hooks.gate_config import GATE_EXECUTION_ORDER
 
-        # Post-hydration gate handles PostToolUse (clearing pending)
-        post_hydration_gate = next(
-            g for g in ACTIVE_GATES if g["name"] == "post_hydration"
+        # PreToolUse should have tool_gate (which includes hydration checks)
+        pretool_gates = GATE_EXECUTION_ORDER.get("PreToolUse", [])
+        assert "tool_gate" in pretool_gates, (
+            f"PreToolUse should include tool_gate for hydration checking. Has: {pretool_gates}"
         )
-        assert "PostToolUse" in post_hydration_gate["events"]
+
+        # PostToolUse should have post_hydration (clearing pending)
+        posttool_gates = GATE_EXECUTION_ORDER.get("PostToolUse", [])
+        assert "post_hydration" in posttool_gates, (
+            f"PostToolUse should include post_hydration gate. Has: {posttool_gates}"
+        )
 
     @patch("hooks.gate_registry.session_state")
     @patch("hooks.gate_registry.hook_utils")

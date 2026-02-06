@@ -65,22 +65,23 @@ def create_mock_mining_json(
     os.utime(mining_path, (mtime.timestamp(), mtime.timestamp()))
     return mining_path
 
-    @pytest.fixture
-    def mock_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-        """Set up mock environment for discovery."""
-        claude_projects = tmp_path / "claude_projects"
-        aca_data = tmp_path / "aca_data"
 
-        claude_projects.mkdir(exist_ok=True)
-        aca_data.mkdir(exist_ok=True)
+@pytest.fixture
+def mock_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Set up mock environment for discovery."""
+    claude_projects = tmp_path / "claude_projects"
+    aca_data = tmp_path / "aca_data"
 
-        monkeypatch.setenv("ACA_DATA", str(aca_data))
-        # Mock get_sessions_dir to point to our claude_projects
+    claude_projects.mkdir(exist_ok=True)
+    aca_data.mkdir(exist_ok=True)
 
-        return {
-            "projects": claude_projects,
-            "aca_data": aca_data,
-        }
+    monkeypatch.setenv("ACA_DATA", str(aca_data))
+    # Mock get_sessions_dir to point to our claude_projects
+
+    return {
+        "projects": claude_projects,
+        "aca_data": aca_data,
+    }
 
 
 def test_identify_unprocessed_missing_transcript(mock_env):

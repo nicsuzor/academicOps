@@ -317,7 +317,9 @@ class TestAlertThresholds:
 
     def test_check_alerts_no_metrics(self):
         """Test check_alerts with no metrics returns empty list."""
-        alerts = check_alerts(None)
+        # Mock load_pipeline_metrics to return None (no metrics file)
+        with patch("lib.pipeline_metrics.load_pipeline_metrics", return_value=None):
+            alerts = check_alerts(None)
         assert alerts == []
 
     def test_check_alerts_healthy_metrics(self):
