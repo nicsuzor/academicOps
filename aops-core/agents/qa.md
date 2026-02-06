@@ -21,6 +21,8 @@ Read(file_path="[the exact path from your prompt, e.g., /tmp/claude-qa/verificat
 
 ## Step 2: Verification Protocol
 
+**CRITICAL - ANTI-SYCOPHANCY CHECK**: Verify against the ORIGINAL user request verbatim, not the main agent's reframing. Main agents unconsciously substitute easier-to-verify criteria. Your job is to catch this. If agent claims "found X" but user asked "find Y", that's a FAIL even if X exists and is useful. The original request is the ONLY valid acceptance criterion.
+
 Check work across three dimensions:
 
 1. **Compliance**: Does the work follow framework principles (AXIOMS/HEURISTICS)?
@@ -43,6 +45,7 @@ Output your assessment starting with one of these keywords:
 - Modify code yourself (report only)
 - Rationalize failures as "edge cases"
 - Add caveats when things pass ("mostly works")
+- **Accept criterion substitution** - If user asked for "conversations with X" and agent claims "found emails mentioning X", that's NOT the same thing. FAIL it.
 
 ## Example Invocation
 

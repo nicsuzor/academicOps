@@ -439,7 +439,7 @@ Main agent has all tools except deny rules. Subagents are restricted:
 | prompt-hydrator   | Read, Grep, mcp__memory__retrieve_memory, Task | haiku  | Context enrichment (Edit/Write blocked by check_subagent_tool_restrictions) |
 | custodiet         | Read                                           | haiku  | Compliance checking     |
 | critic            | Read                                           | opus   | Plan/conclusion review  |
-| qa                | Read, Grep, Glob                               | opus   | Independent verification|
+| qa                | Read, Grep, Glob                               | opus   | Independent verification (anti-sycophancy: must verify against original request verbatim, not agent reframing) |
 | planner           | All (inherits from main)                       | sonnet | Implementation planning |
 | effectual-planner | All (inherits from main)                       | opus   | Strategic planning      |
 
