@@ -1008,6 +1008,7 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
 
     # Find orphans (files with no incoming references)
     # Exclude expected orphans (entry points, commands, utility files, etc.)
+    # Include both root paths and aops-core/ prefixed paths
     expected_orphan_prefixes = [
         "commands/",  # Commands are invoked, not linked
         "agents/",  # Agents are invoked, not linked
@@ -1016,6 +1017,18 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "tests/",  # Tests are run, not linked
         "lib/",  # Lib modules are imported, not linked
         ".claude/",  # Config files
+        "aops-core/commands/",  # Commands in plugin
+        "aops-core/agents/",  # Agents in plugin
+        "aops-core/hooks/",  # Hooks in plugin
+        "aops-core/scripts/",  # Scripts in plugin
+        "aops-core/tests/",  # Tests in plugin
+        "aops-core/workflows/",  # Root-level workflows are entry points
+        "aops-core/indices/",  # Index files are entry points
+        "aops-core/framework/",  # Framework files
+        "specs/",  # Specs are reference docs, don't need linking
+        "docs/",  # Docs are reference docs
+        "example/",  # Example files
+        "data/",  # Data files
     ]
     # Skill subdirectories are linked via relative paths from their SKILL.md
     # The reference counter doesn't resolve these properly yet (TODO: fix)
@@ -1027,6 +1040,8 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "/scripts/",
         "/tests/",
         "/resources/",  # Additional skill internal dirs
+        "/checks/",  # Health check subdirs
+        "/prompts/",  # Prompt templates
     ]
     expected_orphan_names = [
         "README.md",
@@ -1041,6 +1056,17 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "SKILL.md",
         "SKILL",
         "README",  # Skill entry points
+        "INSTALL.md",
+        "INSTALLATION.md",
+        "METHODOLOGY.md",
+        "skill.md",  # Alternate skill entry point name
+        "SPEC-TEMPLATE.md",  # Skill-level templates
+        "conventions-summary.md",  # Reference summaries
+    ]
+    # Root-level files that are expected orphans
+    expected_orphan_files = [
+        "agents.md",
+        "coverage_report_v1.1.md",
     ]
 
     for file_path, ref_count in incoming_refs.items():
@@ -1053,8 +1079,11 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
                     break
             if Path(file_path).name in expected_orphan_names:
                 is_expected = True
+            if file_path in expected_orphan_files:
+                is_expected = True
             # Check if it's a skill subdirectory file (linked via relative paths)
-            if file_path.startswith("skills/"):
+            # Match both "skills/" and "aops-core/skills/"
+            if "/skills/" in file_path or file_path.startswith("skills/"):
                 for subdir in expected_orphan_skill_subdirs:
                     if subdir in file_path:
                         is_expected = True
