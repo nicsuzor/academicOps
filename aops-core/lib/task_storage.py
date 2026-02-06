@@ -105,8 +105,14 @@ class TaskStorage:
     def _find_task_path(self, task_id: str) -> Path | None:
         """Find existing task file by ID.
 
-        Searches all project directories and inbox for task file.
-        Supports both new format (<id>-<slug>.md) and legacy format (<id>.md).
+        Searches all markdown files in $ACA_DATA for a task with matching ID.
+        The ID is matched against the 'id' field in the YAML frontmatter.
+
+        This uses the same scanning approach as _iter_all_tasks to ensure
+        consistency - any task that list_tasks returns can be found by get_task.
+
+        For performance on repeated lookups, consider using TaskIndex which
+        maintains a cached mapping of task IDs to file paths.
 
         Args:
             task_id: Task ID to find
@@ -114,36 +120,42 @@ class TaskStorage:
         Returns:
             Path if found, None otherwise
         """
-        # Search top-level tasks/ directory (legacy location)
-        tasks_dir = self.data_root / "tasks"
-        if tasks_dir.exists():
-            for path in tasks_dir.glob(f"{task_id}*.md"):
-                if path.is_file() and (
-                    path.stem == task_id or path.stem.startswith(f"{task_id}-")
-                ):
-                    return path
+        # First, try fast path: check common locations by filename pattern
+        # This handles the common case where filename starts with task_id
+        fast_paths = [
+            self.data_root / "tasks",  # Legacy top-level
+            self.data_root / "tasks" / "inbox",  # Inbox
+        ]
 
-        # Search inbox
-        inbox_dir = self.data_root / "tasks" / "inbox"
-        if inbox_dir.exists():
-            for path in inbox_dir.glob(f"{task_id}*.md"):
-                if path.stem == task_id or path.stem.startswith(f"{task_id}-"):
-                    return path
-
-        # Search all project directories
+        # Add project task directories
         for project_dir in self.data_root.iterdir():
-            if not project_dir.is_dir():
-                continue
-            if project_dir.name.startswith("."):
-                continue
-            if project_dir.name == "tasks":
-                continue  # Skip global tasks dir
+            if project_dir.is_dir() and not project_dir.name.startswith("."):
+                if project_dir.name != "tasks":
+                    tasks_dir = project_dir / "tasks"
+                    if tasks_dir.exists():
+                        fast_paths.append(tasks_dir)
 
-            tasks_dir = project_dir / "tasks"
-            if tasks_dir.exists():
-                for path in tasks_dir.glob(f"{task_id}*.md"):
-                    if path.stem == task_id or path.stem.startswith(f"{task_id}-"):
+        # Check fast paths first (filename-based lookup)
+        for search_dir in fast_paths:
+            if search_dir.exists():
+                for path in search_dir.glob(f"{task_id}*.md"):
+                    if path.is_file() and (
+                        path.stem == task_id or path.stem.startswith(f"{task_id}-")
+                    ):
                         return path
+
+        # Slow path: scan all markdown files and check frontmatter ID
+        # This catches tasks where:
+        # - Stored in non-standard locations (goals/, projects/, etc.)
+        # - Filename doesn't match the frontmatter ID (e.g., legacy files)
+        for md_file in self._iter_markdown_files():
+            try:
+                task = Task.from_file(md_file)
+                if task.id == task_id:
+                    return md_file
+            except (ValueError, OSError, KeyError):
+                # Skip files that aren't valid tasks
+                continue
 
         return None
 
