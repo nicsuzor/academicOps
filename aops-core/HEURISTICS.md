@@ -547,4 +547,44 @@ mcp__plugin_aops-tools_task_manager__get_task(id="...")
 
 **Derivation**: `uv` manages the virtual environment and dependencies. System python lacks the project context. `uv run` guarantees the correct environment is active without manual activation steps.
 
+---
+
+## Batch Completion Requires Worker Completion (P#94)
+
+**Statement**: A batch task is not complete until all spawned workers have finished. "Fire-and-forget" means don't BLOCK waiting; it does NOT mean "declare complete after spawning."
+
+**Corollaries**:
+- Spawning workers is the START of batch work, not completion
+- Before completing a batch task, poll worker status via MCP `get_task` calls
+- If session must end with workers still running: set task status to `waiting`, not `done`
+- Handover with active workers requires `outcome: partial` and explicit "delegated work in progress" note
+- Workers updating task status to `done` is the signal for batch completion, not spawn confirmation
+
+**Signs you're violating this**:
+- Completing batch task immediately after spawning workers
+- Using "fire-and-forget" as justification for marking work complete
+- Handover claiming completion while background agents still running
+
+**Example (correct pattern)**:
+```python
+# Spawn workers (don't block)
+for task in batch:
+    Task(subagent_type="worker", prompt=task, run_in_background=True)
+
+# Continue other work while workers run...
+
+# Before completing batch task, check worker status
+for worker_task_id in spawned_ids:
+    status = mcp__task_manager__get_task(id=worker_task_id)
+    if status["task"]["status"] != "done":
+        # Workers still running - cannot complete batch
+        mcp__task_manager__update_task(id=batch_task_id, status="waiting")
+        return  # Don't mark complete
+
+# All workers done - NOW complete the batch task
+mcp__task_manager__complete_task(id=batch_task_id)
+```
+
+**Derivation**: P#86 (Background Notifications Unreliable) correctly recommends not blocking on notifications. But "don't block" was over-applied to mean "declare done immediately." The correct interpretation: continue other work while monitoring, but verify completion before declaring the batch task done. Premature completion violates P#31 (Acceptance Criteria Own Success) - the batch task's success criteria is "all work processed," not "all work delegated."
+
 
