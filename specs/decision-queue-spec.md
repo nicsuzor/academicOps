@@ -5,6 +5,10 @@
 **Author**: Claude (Audre)
 **Date**: 2026-02-03
 
+## User Story
+
+As a **busy user**, I want all my pending decisions (task approvals, meeting RSVPs, email replies) extracted into a single prioritized list, so that I can batch-process decisions efficiently without context-switching between systems.
+
 ## Problem Statement
 
 Not all blocked tasks require substantive work. Many are waiting for a simple decision:
@@ -314,6 +318,21 @@ This should invoke the decision extraction logic and present results conversatio
 3. Running `/decision-apply` unblocks dependent tasks automatically
 4. Daily note surfaces decision count without running full extraction
 5. Decision backlog trends downward over time (measurable)
+
+## Acceptance Criteria
+
+### Success Criteria
+- `/decision-extract` produces prioritized list within 30 seconds
+- Decision annotation takes <1 minute per decision (checkboxes/short notes)
+- `/decision-apply` updates source systems and unblocks dependent tasks
+- Daily note shows decision count without requiring full extraction
+- Decisions correctly classified by source type and priority
+
+### Failure Modes
+- Extraction misses pending decisions → user still context-switches
+- Apply fails silently → user thinks action taken but nothing changed
+- Priority ordering wrong → user handles low-priority items first
+- Source system update fails → inconsistent state across systems
 
 ## Related Work
 

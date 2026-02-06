@@ -9,6 +9,10 @@ related: [[workflow-system-spec]], [[enforcement]], [[session-insights-prompt]]
 
 # Framework Observability Architecture
 
+## User Story
+
+As a **framework maintainer**, I want to observe session artifacts (transcripts, reflections, token metrics, skill compliance) through a structured pipeline, so that I can identify patterns, analyze efficiency, and feed observations into framework improvements.
+
 ## Overview
 
 The framework is **self-reflexive**: it observes its own execution, extracts patterns, and feeds those observations back into improvement processes. This document describes the observability pipeline that makes self-improvement possible.
@@ -254,6 +258,21 @@ Insights JSON uses consistent schemas so tooling can:
 - Trend over time
 - Filter by project/outcome/compliance
 - Feed into dashboards or reports
+
+## Acceptance Criteria
+
+### Success Criteria
+- Session transcripts parsed into structured Entry data
+- Token metrics computed with by_model, by_agent, by_tool breakdowns
+- Framework Reflections extracted and converted to insights JSON
+- Skill compliance tracked (suggested vs invoked with rate)
+- Insights files written to standard location with consistent schema
+
+### Failure Modes
+- Transcript parsing fails → no observables generated
+- Token metrics missing → can't analyze efficiency trends
+- Reflection extraction fails → learning not captured
+- Schema validation fails → insights files inconsistent
 
 ## Related Documents
 

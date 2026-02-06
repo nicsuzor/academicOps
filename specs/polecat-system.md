@@ -1,5 +1,9 @@
 # Polecat System: Ephemeral Agent Workspaces
 
+## User Story
+
+As a **framework user**, I want agents to work in isolated git worktrees per task, so that multiple agents can work concurrently without file conflicts and changes are cleanly separated by task.
+
 The Polecat System is a mechanism for highly concurrent, isolated agent work using **git worktrees**. It allows multiple agents to work on different tasks simultaneously without interfering with each other or the main repository.
 
 This system is inspired by the "Gas Town" architecture but adapted for the `academicOps` environment using the existing `task` infrastructure.
@@ -298,3 +302,19 @@ If a merge fails (due to conflicts or failing tests), the Refinery implements a 
 1.  **Status Change**: The task status is set to `review`.
 2.  **Annotation**: A `🏭 Refinery Report` is appended to the task body, containing the error log and timestamp.
 3.  **Manual/LLM Intervention**: An interactive agent picks up `review` tasks, fixes the code, and sets status back to `merge_ready` to retry.
+
+## Acceptance Criteria
+
+### Success Criteria
+- `polecat start` creates isolated worktree at `~/.aops/polecat/<task-id>`
+- `polecat finish` pushes branch and transitions task to `merge_ready`
+- `polecat merge` squash-merges passing branches to main
+- Worktrees use bare mirror repos (not active development repos)
+- Multi-project crews supported with per-project worktrees
+
+### Failure Modes
+- Worktree creation fails → task stuck in `in_progress`
+- Mirror sync fails → stale code used (warning logged)
+- Merge conflicts → task set to `review` for manual intervention
+- Tests fail after merge → kickback with error report
+- Nuke fails → orphaned worktree directory

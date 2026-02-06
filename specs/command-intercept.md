@@ -6,6 +6,10 @@ status: draft
 created: 2026-01-25
 ---
 
+## User Story
+
+As a **framework user**, I want tool calls automatically transformed to exclude noisy results (like .venv, node_modules), so that search results are relevant without me having to remember exclusion patterns.
+
 ## Purpose
 
 A modular PreToolUse hook that intercepts and transforms tool calls before execution. Designed to be a **no-op by default** with configurable behaviors registered per tool.
@@ -283,6 +287,19 @@ def test_glob_excludes_venv_in_real_session():
 - [ ] Measure effectiveness of advisory approach
 - [ ] If insufficient, implement tool substitution (option 4)
 - [ ] Add Grep transformer if needed
+
+## Acceptance Criteria
+
+### Success Criteria
+- Hook passes through unchanged when no config exists (no-op default)
+- Hook passes through unchanged for tools without registered transformers
+- When transformer enabled, tool input is modified appropriately
+- Transformed input includes `additionalContext` explaining what changed
+
+### Failure Modes
+- Config file malformed → hook crashes, tool call blocked
+- Transformer raises exception → fall back to pass-through
+- `updatedInput` format incorrect → tool receives invalid parameters
 
 ## Related
 

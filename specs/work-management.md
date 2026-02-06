@@ -1,4 +1,15 @@
+---
+title: Work Management
+type: spec
+category: architecture
+status: implemented
+---
+
 # Work Management: Tasks MCP
+
+## User Story
+
+As a **framework user**, I want a task management system with MCP integration for multi-session tracking and dependencies, so that strategic work persists across sessions and I can track what's blocked and what's ready.
 
 Tasks MCP is the primary work management system for multi-session tracking, dependencies, and strategic work.
 
@@ -172,3 +183,20 @@ mcp__plugin_aops-core_task_manager__list_tasks(project="aops", assignee="nic")
 Tasks are stored as markdown files in `data/tasks/`:
 - `data/tasks/inbox/` - New tasks
 - `data/tasks/index.json` - Task index for fast queries
+
+## Acceptance Criteria
+
+### Success Criteria
+- Tasks persist across sessions via MCP task_manager tools
+- `create_task` creates task with proper graph connections
+- `list_tasks` filters by project, status, assignee, priority
+- `get_blocked_tasks` returns tasks with unmet dependencies
+- `complete_task` marks task done and updates index
+- Tasks link to parent epics via `depends_on` or wikilinks
+- Assignee field distinguishes human (`nic`) from agent (`bot`) tasks
+
+### Failure Modes
+- Orphaned task (no parent link) → invisible to prioritization
+- Missing index rebuild → stale query results
+- Concurrent modification → last-write-wins (no locking)
+- Invalid status transition → task stuck in wrong state

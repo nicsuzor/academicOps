@@ -4,6 +4,10 @@ title: Hook Router
 category: spec
 ---
 
+## User Story
+
+As a **framework maintainer**, I want all hooks dispatched through a single router per event type that consolidates outputs, so that agents see one clean response instead of multiple "hook success" messages.
+
 ## Router Architecture
 
 All hooks are dispatched through a single [[router.py|hooks/router.py]] per event type. This consolidates multiple hook outputs into a single response.
@@ -72,3 +76,17 @@ If hooks aren't firing for an MCP tool:
 1. Check which plugin defines the MCP server (`.mcp.json`)
 2. Check which plugin defines the hooks (`hooks/hooks.json`)
 3. Ensure they're the **same plugin**
+
+## Acceptance Criteria
+
+### Success Criteria
+- Single router script handles all hooks per event type
+- Outputs consolidated: additionalContext concatenated, permissions aggregated
+- Worst exit code returned (any failure = overall failure)
+- Agent sees single response per event instead of multiple messages
+
+### Failure Modes
+- Router crashes → all hooks for that event fail
+- Sub-hook exception not caught → router returns error
+- Plugin scope mismatch → hooks don't fire for MCP tools
+- Merge strategy wrong → critical hook output lost or overwritten

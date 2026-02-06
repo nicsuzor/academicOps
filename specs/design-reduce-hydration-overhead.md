@@ -4,6 +4,10 @@
 **Task**: aops-3f9f7d5d
 **Date**: 2026-02-04
 
+## User Story
+
+As a **framework user**, I want prompt hydration to complete faster with less investigation overhead, so that I can start working on tasks without noticeable delays.
+
 ## Problem Analysis
 
 The `prompt-hydrator` system introduces latency ("investigation overhead") in two phases:
@@ -60,4 +64,17 @@ The `prompt-hydrator` system introduces latency ("investigation overhead") in tw
 
 -   Approve removal of "Step 3" verification from Hydrator agent?
 -   Approve "Fail-fast execution" philosophy over "Verified planning"?
+
+## Acceptance Criteria
+
+### Success Criteria
+- Hydration latency reduced to <5 seconds for typical prompts
+- No subprocess calls during hook execution phase
+- Task routing index available for deterministic routing
+- Agents can fail fast at execution time without pre-verification overhead
+
+### Failure Modes
+- Routing index stale → incorrect task routing decisions
+- Removal of verification → increased execution-time failures
+- Index too large → token budget exceeded in hydrator context
 

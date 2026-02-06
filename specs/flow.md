@@ -7,6 +7,10 @@ status: DRAFT - PENDING APPROVAL (v2)
 
 # v1.0 Core Loop
 
+## User Story
+
+As a **framework user**, I want a complete, mandatory execution loop (hydration → critic review → execution → custodiet audit → QA → reflection), so that every session follows a thorough workflow with quality gates at each stage.
+
 **Goal**: The minimal viable framework with ONE complete, working loop.
 
 **Philosophy**: Users don't have to use aops. But if they do, it's slow and thorough. The full workflow is MANDATORY.
@@ -372,6 +376,22 @@ User invokes `/session-insights` skill to analyze transcripts with Gemini:
 /session-insights batch        # Process multiple
 ```
 
+
+## Acceptance Criteria
+
+### Success Criteria
+- Every session passes through all 5 agents (hydrator, critic, main, custodiet, qa, framework)
+- Custodiet BLOCK triggers immediate HALT with progress written up
+- QA verification runs before session completion
+- Framework Reflection emitted at session end
+- Session insights written to session file
+
+### Failure Modes
+- Agent bypasses hydration → no workflow selection, missing context
+- Critic skipped → flawed plans executed without review
+- Custodiet disabled → scope drift undetected
+- QA skipped → unverified work marked complete
+- Reflection omitted → no learning captured from session
 
 ## Hook Event Flow
 

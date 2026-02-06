@@ -9,6 +9,10 @@ tags: [verification, enforcement, architecture, infrastructure]
 
 # Verification System Architecture
 
+## User Story
+
+As a **framework user**, I want agents to verify their claims by checking actual state (config files, runtime output) rather than assuming success, so that I can trust agent conclusions without manual verification.
+
 **Status**: Design Decision (2026-01-15)
 **Priority**: P1 Infrastructure Gap
 
@@ -200,6 +204,21 @@ Automate verification review.
 - [[AXIOMS.md]] - P#26 Verify First
 - [[RULES]] - verification-before-assertion enforcement
 - [[critic]] - Existing review agent (plan review, not state verification)
+
+## Acceptance Criteria
+
+### Success Criteria
+- Advocate agent can verify claims by checking actual state
+- Layer 4 hook detects obvious "success" claims without verification tools
+- Verification todo suggested for qa-proof workflows
+- Unverified claims rate decreases (tracked via custodiet)
+- Advocate VERIFIED rate > 80% for verified conclusions
+
+### Failure Modes
+- Advocate too expensive → not invoked, claims unverified
+- Detection hook false positives → reminder fatigue
+- Detection hook false negatives → obvious violations missed
+- No verification tools used → claims based on assumptions
 
 ## Revision History
 

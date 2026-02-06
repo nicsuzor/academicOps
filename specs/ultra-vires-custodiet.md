@@ -18,6 +18,10 @@ created: 2025-12-30
 **Current**: Custodiet agent available for manual invocation via `agents/custodiet.md`
 **Archived**: Automated PostToolUse gate (`custodiet_gate.py`) moved to `archived/hooks/`
 
+## User Story
+
+As a **framework user**, I want agents automatically monitored for scope drift and unauthorized actions, so that I don't have to constantly watch for agents doing work I didn't request.
+
 ## Purpose
 
 Detect when agents act **ultra vires** - beyond the authority granted by the user's request.

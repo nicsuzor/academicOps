@@ -12,6 +12,10 @@ related: [[framework-observability]], [[feedback-loops]], [[workflow-system-spec
 
 **Status**: Implemented (core concepts active)
 
+## User Story
+
+As a **framework maintainer**, I want a layered enforcement architecture that influences agent behavior through prompts, hydration, observable checkpoints, detection hooks, and review, so that compliance is encouraged at multiple levels even though we cannot force agent behavior.
+
 ## Enforcement Model
 
 ```mermaid
@@ -261,3 +265,17 @@ When analyzing a failure:
 7. **Should pre-commit have caught?** Check .pre-commit-config.yaml
 
 If all components met their responsibilities but failure still occurred: **Gap** - create new enforcement at appropriate level.
+
+## Acceptance Criteria
+
+### Success Criteria
+- Each layer documented with clear responsibility and verification method
+- Root cause analysis protocol identifies framework component failures (not just agent mistakes)
+- Defense-in-depth: multiple layers catch violations before reaching user
+- Hydration gate mechanically enforces hydration before work begins
+
+### Failure Modes
+- Single layer failure → violation reaches user uncaught
+- Root cause misattributed to agent → no framework improvement
+- Overly aggressive enforcement → false positives block legitimate work
+- Detection hooks miss violations → compliance assumed but not verified

@@ -7,6 +7,10 @@ status: DRAFT
 
 # Polecat Swarms & Engineer Review
 
+## User Story
+
+As a **framework user**, I want multiple agents to work on tasks in parallel in isolated worktrees, with an automated merge queue and engineer review for complex changes, so that development throughput scales while maintaining code quality.
+
 **Goal**: Scale development throughput by enabling multiple concurrent "polecat" workers to execute tasks in parallel, while maintaining high code quality through an automated "Refinery" and an intelligent "Engineer" review gate.
 
 ## 1. Swarm Architecture
@@ -114,3 +118,19 @@ Existing: `active` -> `in_progress` -> `merge_ready` -> `done`
 ## 5. Future Work
 *   **Speculative Merging**: Run tests on "virtual" merges of queued tasks to predict conflicts early.
 *   **Reviewer Personas**: Different "Engineer" profiles (Security, Perf, Style).
+
+## Acceptance Criteria
+
+### Success Criteria
+- Multiple workers can claim and work on different tasks simultaneously
+- Atomic task claiming prevents double-assignment
+- Auto-merge proceeds for mechanical/passing tasks
+- Engineer review triggered for complex/risky changes
+- Merge conflicts handled gracefully with kickback to worker
+
+### Failure Modes
+- Race condition in claiming → two workers on same task
+- Auto-merge without tests → broken main branch
+- Engineer review skipped → quality regression
+- Merge conflict not detected → corrupted merge
+- Rollback fails → stuck broken state

@@ -11,6 +11,10 @@ tags: [audit, governance, validation, framework-health]
 
 **Purpose**: Defines what constitutes a "complete audit" of the aops-core framework and the standards for audit execution and reporting.
 
+## User Story
+
+As a **framework maintainer**, I want a standardized audit protocol with clear phases, validation criteria, and reporting requirements, so that framework health can be assessed consistently and issues can be tracked systematically.
+
 ## Audit Scope
 
 A complete framework audit validates three dimensions:
@@ -156,6 +160,21 @@ Audits follow the phased workflow defined in `skills/audit/SKILL.md`:
 - [ ] All automated fixes committed
 - [ ] bd issues created for findings requiring action
 - [ ] Summary stats in report match actual findings
+
+## Acceptance Criteria
+
+### Success Criteria
+- Audit produces markdown report with YAML frontmatter and all required sections
+- All cross-references resolve without broken links
+- Generated indices include proper headers
+- Issues created in task system for findings requiring action
+- Report saved to `$ACA_DATA/projects/aops/audit/` with correct naming
+
+### Failure Modes
+- Missing report file → audit incomplete regardless of other work done
+- Broken cross-references not detected → false positive audit pass
+- Orphan files not flagged → technical debt accumulates
+- Indices not regenerated → documentation drift
 
 ## Related Specifications
 

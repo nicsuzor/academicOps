@@ -9,6 +9,10 @@ related: [workflow-constraints, prompt-hydrator]
 
 # Predicate Registry
 
+## User Story
+
+As a **workflow designer**, I want a standard registry of predicate definitions with planning-time and runtime checks, so that workflow constraints can be consistently verified across all workflows.
+
 Standard predicate definitions for workflow constraint checking. Used by the prompt-hydrator to verify execution plans satisfy workflow constraints.
 
 ## Purpose
@@ -137,6 +141,20 @@ When adding a predicate to a workflow:
 2. **Categorize it** (test, approval, task state, content, file/code, workflow state, or heuristic)
 3. **Specify composition rules** if it combines with other predicates
 4. **Update the hydrator** if new check logic is needed
+
+## Acceptance Criteria
+
+### Success Criteria
+- Each predicate has clear meaning, planning check, and runtime check defined
+- Predicates categorized (test, approval, task state, content, file/code, workflow state, heuristic)
+- Composition rules documented for combining predicates with AND/OR
+- Heuristic predicates flagged as "requires human review" rather than auto-blocking
+
+### Failure Modes
+- Planning check undefined → hydrator can't verify plan
+- Runtime check undefined → executor can't enforce constraint
+- Heuristic predicate auto-blocks → false positives
+- Missing predicate → workflow constraint can't be expressed
 
 ## Related Documents
 

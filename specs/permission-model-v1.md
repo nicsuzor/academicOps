@@ -10,6 +10,10 @@ created: 2026-01-21
 
 # Task-Gated Permission Model v1.0
 
+## User Story
+
+As a **framework user**, I want destructive operations (Write, Edit, git commit) blocked unless there's an active task binding, so that all work is tracked and agents cannot modify files without task accountability.
+
 ## Problem Statement
 
 Currently, main agents have unrestricted access to file modification tools (Write, Edit, etc.). This creates observability and control problems:
@@ -249,6 +253,22 @@ This ensures all work is tracked. For emergency/trivial fixes, user can prefix p
 5. Subagent session → ALLOWED (bypass)
 6. `Bash(ls)` without task → ALLOWED (read-only)
 7. `Bash(rm file)` without task → BLOCKED (destructive)
+
+## Acceptance Criteria
+
+### Success Criteria
+- `Write`/`Edit` without active task → BLOCKED with clear error message
+- `Write`/`Edit` with active task → ALLOWED
+- Read-only tools (Read, Glob, Grep) → ALLOWED without task
+- User bypass prefix `.` → ALLOWED (gates bypassed)
+- Subagent sessions → ALLOWED (inherit parent context)
+- Task create/update tools → ALLOWED (establishes binding)
+
+### Failure Modes
+- Gate blocks legitimate subagent work → false positive, breaks workflows
+- Destructive Bash commands not detected → bypass via command line
+- Gates bypassed becomes default → no tracking benefit
+- Session state not found → block all operations (fail-closed)
 
 ## Open Questions
 

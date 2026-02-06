@@ -11,6 +11,10 @@ updated: 2026-01-22
 
 # Context Loading Specification
 
+## User Story
+
+As a **framework user**, I want agents to receive minimal context at session start with additional context loaded just-in-time, so that sessions start quickly while still having access to relevant information when needed.
+
 ## Purpose
 
 Define what information agents receive and when. This spec governs the **three-tier loading architecture** that balances minimal startup cost with just-in-time context availability.

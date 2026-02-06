@@ -7,6 +7,10 @@ description: Schema for CORE.md files that provide project-specific context to w
 
 # Project Context Schema v1
 
+## User Story
+
+As a **worker agent**, I want project-specific context (domain vocabulary, debugging commands, key files) loaded into my context, so that I can execute tasks efficiently without wasting tokens on broad exploration.
+
 **Goal**: Define a schema for project `CORE.md` files that give worker agents (~16K token budget) the project-specific context they need to execute single tasks without wasting tokens on exploration.
 
 ## Problem Statement
@@ -272,9 +276,18 @@ CORE.md complements but does not replace CLAUDE.md. They serve different purpose
 - **CLAUDE.md**: User preferences, global rules, session configuration
 - **CORE.md**: Project facts, domain vocabulary, debugging commands
 
-## Success Criteria
+## Acceptance Criteria
 
-1. Worker agents receiving CORE.md context can execute tasks without broad exploration
-2. CORE.md fits within 2-3K token budget consistently
-3. Schema is simple enough to create manually in 10 minutes
-4. Schema supports monorepo projects (multiple CORE.md files in subdirectories)
+### Success Criteria
+- Worker agents receiving CORE.md context can execute tasks without broad exploration
+- CORE.md fits within 2-3K token budget consistently
+- Schema is simple enough to create manually in 10 minutes
+- Schema supports monorepo projects (multiple CORE.md files in subdirectories)
+- All required sections present: Summary, Domain Concepts, Architecture, Debugging, Key Files
+
+### Failure Modes
+- CORE.md too large → exceeds token budget, wastes context space
+- Missing domain concepts → agent doesn't understand task terminology
+- Wrong debugging commands → agent can't troubleshoot issues
+- Key files outdated → agent navigates to wrong locations
+- Schema too complex → projects don't create CORE.md files

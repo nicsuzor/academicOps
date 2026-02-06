@@ -1,5 +1,9 @@
 # MCP Decomposition Tools v2: Data Access Layer Specification
 
+## User Story
+
+As an **agent developer**, I want MCP tools that return raw data structures and metrics without embedded judgment, so that LLM agents can reason over the data and make decisions themselves.
+
 ## Architectural Principle
 
 **Dumb Server, Smart Agent**
@@ -357,3 +361,18 @@ These 6 P0 tasks need body updates to reflect the new conception:
 - [x] No "candidate selection" - raw lists returned
 - [x] No "similarity" computation - agent uses LLM
 - [x] Deterministic only: counts, depths, degrees, timestamps
+
+## Acceptance Criteria
+
+### Success Criteria
+- All 6 tools return raw data structures without recommendations
+- Server computes only deterministic metrics (counts, depths, degrees)
+- Agent performs all judgment (similarity, thresholds, scoring)
+- Tools follow P#78 "Dumb Server, Smart Agent" principle
+- Existing helpers reused (_get_index, _get_storage, _task_to_dict)
+
+### Failure Modes
+- Server embeds judgment → inflexible, can't adapt to context
+- Hardcoded thresholds → wrong for different projects/workflows
+- NLP in server → inconsistent with LLM reasoning
+- Candidate pre-filtering → agent misses relevant data

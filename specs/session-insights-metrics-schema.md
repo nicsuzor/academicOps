@@ -9,6 +9,10 @@ related: [[framework-observability]], [[session-insights-prompt]]
 
 # Session Insights Pipeline Metrics Schema
 
+## User Story
+
+As a **framework maintainer**, I want a standardized metrics schema for the session insights pipeline, so that I can monitor pipeline health, track processing success rates, and detect quality issues.
+
 ## Overview
 
 This document defines the metrics schema for monitoring the session insights pipeline. These metrics enable observability of pipeline health, performance, and quality.
@@ -195,6 +199,22 @@ The runs.jsonl file should be rotated monthly or at 10MB, whichever comes first.
 ### Initialization
 
 If metrics files don't exist, create with zero values and current timestamp.
+
+## Acceptance Criteria
+
+### Success Criteria
+- Metrics file updated atomically (no corruption from concurrent access)
+- All 5 metric categories collected (execution, processing, quality, task sync, health)
+- Derived metrics computable from raw metrics
+- Alert thresholds defined for warning and critical conditions
+- JSONL rotation at 10MB or monthly, whichever comes first
+
+### Failure Modes
+- Concurrent write corruption → invalid metrics file
+- Missing collection point → incomplete metrics
+- Alert threshold too sensitive → false alarms
+- Rotation not triggered → unbounded file growth
+- Health status incorrect → missed outages
 
 ## Related Documents
 

@@ -9,6 +9,10 @@ related: [[framework-observability]], [[enforcement]], [[workflow-system-spec]]
 
 # Framework Feedback Loops
 
+## User Story
+
+As a **framework maintainer**, I want a structured improvement cycle connecting observations to analysis to interventions, so that the framework learns from failures and improves systematically over time.
+
 ## Overview
 
 The framework improves through structured feedback loops that connect observations to changes. This document describes how observations flow through analysis and become framework improvements.
@@ -275,6 +279,20 @@ Track these to measure framework health:
 | Custodiet false positive rate | insights.custodiet_blocks | < 0.1 |
 | Learning observation frequency | count of learn-type tasks | Stable or decreasing |
 | Time to root cause | task creation → fix | < 24 hours for recurring issues |
+
+## Acceptance Criteria
+
+### Success Criteria
+- Improvement cycle has clear observe → analyze → diagnose → intervene → document → verify phases
+- Escalation rules define when to move from soft prompts to harder enforcement
+- Human approval required for deny rules and structural changes
+- All changes tracked in tasks with structured justification
+
+### Failure Modes
+- Analysis skipped → fixes address symptoms not root causes
+- Escalation too aggressive → enforcement friction before evidence gathered
+- Documentation omitted → changes have no audit trail
+- Verification skipped → changes become permanent without validation
 
 ## Related Documents
 

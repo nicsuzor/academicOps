@@ -11,6 +11,10 @@ tags: [enforcement, hydration, optimization]
 
 Replace full-file instruction loading with per-task selective injection via prompt hydration.
 
+## User Story
+
+As a **framework maintainer**, I want the hydrator to select only relevant axioms and heuristics for each task instead of loading full files, so that main agent token costs are reduced and instructions are contextually targeted.
+
 ## Problem Statement
 
 **Current state**: The UserPromptSubmit hook loads the ENTIRE `HEURISTICS.md` file (~254 lines, ~6KB) into the hydrator temp file. Every prompt pays this token cost regardless of relevance.

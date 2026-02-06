@@ -6,6 +6,10 @@ category: spec
 
 # Effectual Planning Agent
 
+## User Story
+
+As an **academic researcher**, I want an AI planning assistant that organizes my half-formed ideas into a queryable semantic web showing goals, projects, assumptions, and dependencies, so that I can see what I know, what I'm betting on, and what's most worth finding out next.
+
 The Effectual Planning Agent is an AI agent that serves as a strategic planning assistant for academic research and knowledge work under conditions of genuine uncertainty. It receives fragments of information incrementally, organises them into a semantic web of goals, projects, and tasks, surfaces hidden structure, and proposes high-value next steps.
 
 The agent is designed for work where many ideas fail, where you don't know what you don't know, and where the plan must evolve as understanding deepens.
@@ -234,3 +238,19 @@ Things we don't know yet and are planning to find out:
 6. **Agent boundaries.** When should this agent hand off to others? What context needs to transfer?
 
 These are the assumptions we're testing by building and using the system.
+
+## Acceptance Criteria
+
+### Success Criteria
+- Fragments land gracefully without demanding premature specification
+- Structure emerges revealing relationships the user didn't explicitly state
+- Load-bearing assumptions get identified and tracked
+- Next step proposals genuinely improve understanding, not just list urgent tasks
+- Framework evolves through logged friction patterns and amendments
+
+### Failure Modes
+- User avoids logging things because format too rigid → low adoption
+- Agent asks clarifying questions instead of making reasonable placements → friction
+- Assumptions accumulate without review or testing → hidden technical debt
+- Web grows but no structure emerges → just a pile of disconnected files
+- Agent spec grows unboundedly → not learning, just accumulating

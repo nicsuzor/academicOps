@@ -7,6 +7,10 @@ description: Component assignments and boundaries for academicOps plugins
 
 # Plugin Architecture
 
+## User Story
+
+As a **framework developer**, I want clear component assignments between aops-core (infrastructure) and aops-tools (domain utilities), so that dependencies are explicit and the core framework can be used independently.
+
 This document defines the component assignments for the academicOps plugin ecosystem.
 
 ## Design Principles
@@ -106,3 +110,18 @@ When adding new components:
 2. **Check dependencies**: Component should only depend on its own plugin or aops-core
 3. **MCP servers**: Assign to plugin that uses them; prefer stdio over HTTP for security
 4. **Document here**: Update this spec when adding components
+
+## Acceptance Criteria
+
+### Success Criteria
+- Each component belongs to exactly one plugin
+- aops-core has no dependencies on aops-tools
+- aops-tools can depend on aops-core
+- MCP servers assigned to plugin that uses them
+- All components documented in this spec
+
+### Failure Modes
+- Component in wrong plugin → misaligned dependencies
+- Cross-plugin circular dependency → build/load failures
+- MCP server in wrong plugin → hooks don't fire for that server
+- Undocumented component → architecture drift

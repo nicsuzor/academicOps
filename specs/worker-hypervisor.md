@@ -7,6 +7,10 @@ status: DRAFT
 
 # Worker-Hypervisor Architecture
 
+## User Story
+
+As a **framework user**, I want multiple worker agents executing tasks in parallel coordinated by a hypervisor, so that batch operations complete faster and the system can handle complex projects with many independent subtasks efficiently.
+
 **Goal**: Enable parallel task execution where multiple worker agents independently pull and complete tasks from bd, coordinated by a hypervisor that maintains a pool of active workers.
 
 ## Problem Statement
@@ -382,3 +386,21 @@ Tested parallel worker spawning with 5 haiku workers on aops framework tasks:
 - Wire hypervisor to batch-processing workflow
 - Add to prompt-hydrator routing
 - End-to-end testing with real bd tasks
+
+## Acceptance Criteria
+
+### Success Criteria
+- Workers can independently complete bd tasks without supervision
+- Hypervisor maintains 4-8 concurrent workers
+- Git operations don't conflict (single push point)
+- Failures are handled gracefully (retry, log, continue)
+- Combined test suite passes before push
+- bd state accurately reflects work state
+- Worker context injection provides complete task information
+
+### Failure Modes
+- Worker scope drift → custodiet catches violation, worker halted
+- Git conflicts → hypervisor detects, retries with rebase
+- Worker timeout → hypervisor marks task blocked, spawns replacement
+- Missing context → worker fails fast, reports to hypervisor
+- Pool exhaustion → hypervisor reports partial completion with summary

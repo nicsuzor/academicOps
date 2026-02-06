@@ -179,3 +179,20 @@ A task is skill-sized when:
 - Clear input/output boundaries
 - Can be verified independently
 - No decision points requiring human input mid-task
+
+## Acceptance Criteria
+
+### Success Criteria
+- Tasks link to projects via `project:<slug>` label matching markdown filename
+- ASCII task tree generated with correct status symbols (○●◐⊘)
+- Decomposition creates skill-sized tasks with clear ownership (@bot/@nic)
+- Discovery tasks created when decomposition path unclear
+- `task ready` shows actionable items (skill-sized, no blockers, assigned)
+- Markdown task views are read-only and generated from task (one-way sync)
+
+### Failure Modes
+- Bidirectional sync attempted → data corruption, sync conflicts
+- Missing project label → task not visible in project tree
+- Over-decomposition → too many tiny tasks, coordination overhead
+- Under-decomposition → tasks too large for single skill execution
+- Discovery task not assigned → blocks progress indefinitely

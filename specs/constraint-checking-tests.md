@@ -9,6 +9,10 @@ related: [workflow-constraints, prompt-hydrator, predicate-registry]
 
 # Constraint Checking Test Cases
 
+## User Story
+
+As a **framework developer**, I want comprehensive test cases for workflow constraint checking, so that I can verify the constraint system correctly identifies valid plans and catches violations.
+
 Test cases demonstrating constraint checking for the three pilot workflows: feature-dev, decompose, and tdd-cycle.
 
 ## Test Case Format
@@ -363,3 +367,16 @@ These test cases validate that the constraint checking system can:
 3. ❌ Detect missing steps (required predicates)
 4. ❌ Detect prohibited patterns (NEVER constraints)
 5. 📝 Provide specific remediation guidance
+
+## Acceptance Criteria
+
+### Success Criteria
+- All valid plans (Tests 1, 4, 6) pass constraint checking
+- All invalid plans (Tests 2, 3, 5, 7, 8) fail with correct violations identified
+- Each violation includes specific remediation guidance
+- Constraint checking covers all rule types (BEFORE, AFTER, ALWAYS, NEVER, TRIGGER)
+
+### Failure Modes
+- False positives: valid plan rejected → workflow blocked unnecessarily
+- False negatives: invalid plan accepted → violations occur during execution
+- Missing remediation: violation detected but no actionable fix suggested

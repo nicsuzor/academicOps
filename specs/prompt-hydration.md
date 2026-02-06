@@ -11,6 +11,10 @@ tags: [framework, routing, context]
 
 Transform a raw user prompt into a complete execution plan with workflow selection and quality gates.
 
+## User Story
+
+As a **framework user**, I want my terse prompts automatically expanded into complete execution plans with workflow selection and quality gates, so that agents can follow structured steps without me having to spell out every detail.
+
 ## Purpose
 
 Users type terse prompts. Agents need:
