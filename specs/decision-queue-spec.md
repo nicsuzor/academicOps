@@ -5,6 +5,12 @@
 **Author**: Claude (Audre)
 **Date**: 2026-02-03
 
+## Giving Effect
+
+- [[skills/decision-extract/SKILL.md]] - Skill for extracting pending decisions to daily note
+- [[skills/decision-apply/SKILL.md]] - Skill for applying annotated decisions back to sources
+- [[agents/effectual-planner.md]] - Agent that orchestrates decision queue workflow
+
 ## Problem Statement
 
 Not all blocked tasks require substantive work. Many are waiting for a simple decision:

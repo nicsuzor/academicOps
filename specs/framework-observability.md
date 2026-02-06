@@ -9,6 +9,15 @@ related: [[workflow-system-spec]], [[enforcement]], [[session-insights-prompt]]
 
 # Framework Observability Architecture
 
+## Giving Effect
+
+- [[skills/session-insights/SKILL.md]] - Skill for generating session insights from transcripts
+- [[specs/session-insights-prompt.md]] - Prompt template for session analysis
+- [[specs/session-insights-metrics-schema.md]] - Schema for metrics extraction
+- [[hooks/unified_logger.py]] - Centralized logging for observability
+- [[polecat/observability.py]] - Polecat-specific observability
+- [[commands/log.md]] - `/log` command for logging observations
+
 ## Overview
 
 The framework is **self-reflexive**: it observes its own execution, extracts patterns, and feeds those observations back into improvement processes. This document describes the observability pipeline that makes self-improvement possible.

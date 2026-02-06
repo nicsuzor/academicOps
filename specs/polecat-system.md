@@ -1,5 +1,15 @@
 # Polecat System: Ephemeral Agent Workspaces
 
+## Giving Effect
+
+- [[polecat/cli.py]] - CLI tool (`polecat start`, `polecat finish`, `polecat merge`, etc.)
+- [[polecat/manager.py]] - Core library for worktree lifecycle (`claim_next_task`, `setup_worktree`, `nuke_worktree`)
+- [[polecat/engineer.py]] - Refinery: merge queue processing and test validation
+- [[polecat/validation.py]] - Pre-merge validation checks
+- [[polecat/github.py]] - GitHub integration for branch/PR management
+- [[polecat/observability.py]] - Metrics and logging for polecat operations
+- [[commands/pull.md]] - `/pull` command that claims and executes tasks in polecat worktrees
+
 The Polecat System is a mechanism for highly concurrent, isolated agent work using **git worktrees**. It allows multiple agents to work on different tasks simultaneously without interfering with each other or the main repository.
 
 This system is inspired by the "Gas Town" architecture but adapted for the `academicOps` environment using the existing `task` infrastructure.

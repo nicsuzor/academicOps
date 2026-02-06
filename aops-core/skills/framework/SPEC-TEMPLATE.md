@@ -11,6 +11,14 @@ tags:
 
 # [Feature Name]
 
+## Giving Effect
+
+*Add this section once implementation exists. List [[wikilinks]] to files that implement this spec.*
+
+- [[path/to/implementation.py]] - Brief description of what this file does
+- [[path/to/agent.md]] - Brief description of agent role
+- [[path/to/workflow.md]] - Brief description of workflow
+
 ## User Story
 
 **As** an academic with ADHD managing research workflows,

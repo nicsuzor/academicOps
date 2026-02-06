@@ -7,6 +7,13 @@ description: Schema for CORE.md files that provide project-specific context to w
 
 # Project Context Schema v1
 
+## Giving Effect
+
+- [[.agent/CORE.md]] - Project-specific context file (when present)
+- [[hooks/user_prompt_submit.py]] - Hook that injects CORE.md via Tier 2 loading
+- [[specs/session-start-injection.md]] - Three-tier architecture this fits into
+- [[agents/prompt-hydrator.md]] - Hydrator that uses CORE.md for project context
+
 **Goal**: Define a schema for project `CORE.md` files that give worker agents (~16K token budget) the project-specific context they need to execute single tasks without wasting tokens on exploration.
 
 ## Problem Statement

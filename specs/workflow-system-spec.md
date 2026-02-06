@@ -10,6 +10,16 @@ related: [[framework-observability]], [[feedback-loops]], [[enforcement]]
 
 # Composable Workflow System Specification
 
+## Giving Effect
+
+- [[WORKFLOWS.md]] - Master workflow index with decision tree and routing
+- [[workflows/]] - Directory containing all workflow definitions:
+  - [[workflows/feature-dev.md]], [[workflows/design.md]], [[workflows/debugging.md]], etc.
+  - [[workflows/base-task-tracking.md]], [[workflows/base-tdd.md]] - Composable base patterns
+- [[agents/prompt-hydrator.md]] - LLM-native compositor that reads and composes workflows
+- [[AXIOMS.md]] - Immutable principles (P# references)
+- [[HEURISTICS.md]] - Practical patterns (H# references)
+
 ## User Story
 
 **As a** framework developer

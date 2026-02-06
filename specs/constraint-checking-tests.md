@@ -9,6 +9,14 @@ related: [workflow-constraints, prompt-hydrator, predicate-registry]
 
 # Constraint Checking Test Cases
 
+## Giving Effect
+
+- [[specs/workflow-constraints.md]] - Constraint system this tests
+- [[specs/predicate-registry.md]] - Predicates used in test cases
+- [[workflows/feature-dev.md]] - Feature-dev workflow tested
+- [[workflows/decompose.md]] - Decompose workflow tested
+- [[workflows/tdd-cycle.md]] - TDD cycle workflow tested
+
 Test cases demonstrating constraint checking for the three pilot workflows: feature-dev, decompose, and tdd-cycle.
 
 ## Test Case Format

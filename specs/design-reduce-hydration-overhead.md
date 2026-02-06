@@ -1,5 +1,14 @@
 # Design: Reduce Hydration Investigation Overhead
 
+## Giving Effect
+
+- [[hooks/user_prompt_submit.py]] - Hook with context loading (optimization target)
+- [[agents/prompt-hydrator.md]] - Hydrator agent (investigation overhead source)
+- [[aops-tools/tasks_server.py]] - Task server (subprocess call target)
+- [[specs/prompt-hydration.md]] - System being optimized
+
+*Note: This is a design document proposing optimizations - not yet implemented.*
+
 **Status**: Draft
 **Task**: aops-3f9f7d5d
 **Date**: 2026-02-04

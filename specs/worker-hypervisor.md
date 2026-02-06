@@ -7,6 +7,14 @@ status: DRAFT
 
 # Worker-Hypervisor Architecture
 
+## Giving Effect
+
+- [[skills/hypervisor/SKILL.md]] - Hypervisor skill for batch parallel processing with atomic locking
+- [[polecat/swarm.py]] - Swarm orchestration for parallel workers
+- [[mcp__plugin_aops-core_task_manager__claim_next_task]] - Atomic task claiming to prevent race conditions
+- [[commands/pull.md]] - `/pull` command that workers execute
+- [[specs/polecat-swarms.md]] - Swarm architecture built on polecat worktrees
+
 **Goal**: Enable parallel task execution where multiple worker agents independently pull and complete tasks from bd, coordinated by a hypervisor that maintains a pool of active workers.
 
 ## Problem Statement

@@ -4,6 +4,14 @@ title: Hook Router
 category: spec
 ---
 
+# Hook Router
+
+## Giving Effect
+
+- [[hooks/router.py]] - Single entry point that dispatches to registered sub-hooks
+- [[hooks/hooks.json]] - Hook registration configuration
+- [[hooks/gate_registry.py]] - Gate registration and configuration
+
 ## Router Architecture
 
 All hooks are dispatched through a single [[router.py|hooks/router.py]] per event type. This consolidates multiple hook outputs into a single response.

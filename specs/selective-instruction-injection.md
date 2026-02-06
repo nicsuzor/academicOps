@@ -9,6 +9,16 @@ tags: [enforcement, hydration, optimization]
 
 # Selective Instruction Injection
 
+## Giving Effect
+
+- [[hooks/user_prompt_submit.py]] - Hook that loads context (current: full file loading)
+- [[agents/prompt-hydrator.md]] - Hydrator that selects relevant principles
+- [[hooks/templates/prompt-hydrator-context.md]] - Template with `{heuristics}` variable
+- [[AXIOMS.md]] - Source of universal principles
+- [[HEURISTICS.md]] - Source of practical patterns (~254 lines, target for selective injection)
+
+*Note: This spec proposes optimization of existing injection - not yet implemented.*
+
 Replace full-file instruction loading with per-task selective injection via prompt hydration.
 
 ## Problem Statement

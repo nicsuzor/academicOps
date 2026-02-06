@@ -12,6 +12,18 @@ related: [[framework-observability]], [[feedback-loops]], [[workflow-system-spec
 
 **Status**: Implemented (core concepts active)
 
+## Giving Effect
+
+- [[AXIOMS.md]] - Layer 1: Immutable principles loaded at session start
+- [[hooks/user_prompt_submit.py]] - Layer 2: Prompt hydration and intent routing
+- [[hooks/hydration_gate.py]] - Layer 2: Blocks/warns if agent skips hydration
+- [[hooks/overdue_enforcement.py]] - Layer 2.5: Periodic compliance audit via custodiet
+- [[agents/custodiet.md]] - Layer 2.5: Drift detection and axiom violation checking
+- [[hooks/policy_enforcer.py]] - Layer 4: PostToolUse detection hooks
+- [[hooks/gate_registry.py]] - Layer 4: Gate registration and configuration
+- [[agents/critic.md]] - Layer 5: Post-hoc review agent
+- [[framework/enforcement-map.md]] - Registry of all active enforcement mechanisms
+
 ## Enforcement Model
 
 ```mermaid

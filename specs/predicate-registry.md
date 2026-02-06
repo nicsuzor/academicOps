@@ -9,6 +9,13 @@ related: [workflow-constraints, prompt-hydrator]
 
 # Predicate Registry
 
+## Giving Effect
+
+- [[workflows/constraint-check.md]] - Workflow that uses predicates for constraint verification
+- [[agents/prompt-hydrator.md]] - Hydrator that checks constraints using predicates
+- [[specs/workflow-constraints.md]] - Constraint specification referencing this registry
+- [[specs/constraint-checking-tests.md]] - Test specification for predicate validation
+
 Standard predicate definitions for workflow constraint checking. Used by the prompt-hydrator to verify execution plans satisfy workflow constraints.
 
 ## Purpose

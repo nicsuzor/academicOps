@@ -7,6 +7,14 @@ status: DRAFT
 
 # Polecat Swarms & Engineer Review
 
+## Giving Effect
+
+- [[polecat/swarm.py]] - Swarm orchestration: parallel worker management
+- [[polecat/engineer.py]] - Refinery and Engineer agent for merge queue processing
+- [[polecat/manager.py]] - Worktree management (`claim_next_task` with atomic locking)
+- [[skills/hypervisor/SKILL.md]] - Hypervisor skill for batch parallel processing
+- [[specs/polecat-system.md]] - Foundation system this builds upon
+
 **Goal**: Scale development throughput by enabling multiple concurrent "polecat" workers to execute tasks in parallel, while maintaining high code quality through an automated "Refinery" and an intelligent "Engineer" review gate.
 
 ## 1. Swarm Architecture

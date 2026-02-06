@@ -11,6 +11,20 @@ tags: [framework, routing, context]
 
 Transform a raw user prompt into a complete execution plan with workflow selection and quality gates.
 
+## Giving Effect
+
+- [[hooks/user_prompt_submit.py]] - Entry point: extracts context, writes temp file, returns short instruction
+- [[hooks/templates/prompt-hydrator-context.md]] - Full context template written to temp file
+- [[agents/prompt-hydrator.md]] - Minimal routing agent (~284 lines) that delegates to workflows
+- [[workflows/hydrate.md]] - Main hydration decision process workflow
+- [[workflows/framework-gate.md]] - Framework modification detection and routing
+- [[workflows/constraint-check.md]] - Plan constraint verification logic
+- [[lib/session_reader.py]] - `extract_router_context()` for session state extraction
+- [[lib/file_index.py]] - FILE_INDEX for selective path injection based on keywords
+- [[INDEX.md]] - Master index pointing to all sub-indices
+- [[SKILLS.md]] - Skills index with invocation patterns
+- [[WORKFLOWS.md]] - Workflow decision tree and routing
+
 ## Purpose
 
 Users type terse prompts. Agents need:

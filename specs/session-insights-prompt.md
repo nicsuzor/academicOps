@@ -1,5 +1,14 @@
 # Session Insights Generation Prompt
 
+## Giving Effect
+
+- [[skills/session-insights/SKILL.md]] - Session insights skill that uses this prompt
+- [[mcp__gemini__*]] - Gemini MCP tools for transcript analysis
+- [[specs/session-insights-metrics-schema.md]] - Schema for extracted metrics
+- [[specs/framework-observability.md]] - Observability architecture this feeds into
+
+---
+
 Analyze this session and extract structured insights. Output ONLY valid JSON (no markdown code fences, no commentary).
 
 ## Session Metadata

@@ -10,6 +10,14 @@ created: 2026-01-21
 
 # Task-Gated Permission Model v1.0
 
+## Giving Effect
+
+- [[hooks/task_binding.py]] - PreToolUse hook that blocks Write/Edit if no current task
+- [[hooks/user_prompt_submit.py]] - Sets `gates_bypassed` flag on `.` prefix
+- [[lib/session_state.py]] - Session state management including `current_task` tracking
+
+*Note: Spec is in draft status. Implementation is in WARN mode (Phase 1).*
+
 ## Problem Statement
 
 Currently, main agents have unrestricted access to file modification tools (Write, Edit, etc.). This creates observability and control problems:
