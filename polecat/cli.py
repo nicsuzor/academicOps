@@ -865,6 +865,197 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
         print(f"   To finish manually: cd {worktree_path} && polecat finish")
 
 
+@main.command()
+@click.argument("task_id")
+@click.option("--transcript-lines", "-n", default=20, help="Number of transcript lines to show")
+@click.pass_context
+def analyze(ctx, task_id, transcript_lines):
+    """Diagnose a stalled or failed task.
+
+    Shows task metadata, worktree status, transcript tail, and suggested
+    remediation actions for tasks that are stuck in_progress.
+
+    Examples:
+        polecat analyze aops-abc12345     # Full diagnostic
+        polecat analyze aops-abc12345 -n 50  # Show more transcript
+    """
+    from datetime import datetime, timezone
+
+    # Validate task ID
+    try:
+        validate_task_id_or_raise(task_id)
+    except TaskIDValidationError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+
+    # Load task
+    task = manager.storage.get_task(task_id)
+    if not task:
+        print(f"❌ Task not found: {task_id}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"🔍 Analyzing task: {task_id}")
+    print("=" * 60)
+
+    # --- Section 1: Task Metadata ---
+    print("\n📋 TASK METADATA")
+    print(f"   Title:    {task.title}")
+    print(f"   Status:   {task.status.value if hasattr(task.status, 'value') else task.status}")
+    print(f"   Assignee: {task.assignee or '(none)'}")
+    print(f"   Project:  {task.project or 'aops'}")
+    print(f"   Priority: P{task.priority}")
+
+    # Calculate staleness
+    if task.modified:
+        now = datetime.now(timezone.utc)
+        modified = task.modified
+        if modified.tzinfo is None:
+            modified = modified.replace(tzinfo=timezone.utc)
+        age = now - modified
+        hours = age.total_seconds() / 3600
+        print(f"   Modified: {modified.isoformat()} ({hours:.1f}h ago)")
+
+        # Flag staleness
+        if hours > 4:
+            print(f"   ⚠️  STALE: No activity for {hours:.1f} hours")
+
+    # --- Section 2: Worktree Status ---
+    print("\n📁 WORKTREE STATUS")
+    worktree_path = manager.polecats_dir / task_id
+
+    if not worktree_path.exists():
+        print(f"   ❌ Worktree not found at {worktree_path}")
+        print("   💡 Suggestion: Task may not have been started, or worktree was nuked")
+    else:
+        print(f"   ✓ Worktree exists at {worktree_path}")
+
+        # Check git status
+        import subprocess
+        git_status = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=worktree_path,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        if git_status.returncode == 0:
+            if git_status.stdout.strip():
+                changes = git_status.stdout.strip().split("\n")
+                print(f"   ⚠️  Uncommitted changes ({len(changes)} files):")
+                for line in changes[:5]:
+                    print(f"      {line}")
+                if len(changes) > 5:
+                    print(f"      ... and {len(changes) - 5} more")
+            else:
+                print("   ✓ Working tree clean")
+        else:
+            print(f"   ❌ Git status failed: {git_status.stderr.strip()}")
+
+        # Check branch and commits
+        branch_result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=worktree_path,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if branch_result.returncode == 0:
+            branch = branch_result.stdout.strip()
+            print(f"   Branch: {branch}")
+
+            # Check commits ahead of main
+            commits_result = subprocess.run(
+                ["git", "log", "--oneline", "origin/main..HEAD"],
+                cwd=worktree_path,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if commits_result.returncode == 0 and commits_result.stdout.strip():
+                commits = commits_result.stdout.strip().split("\n")
+                print(f"   Commits ahead of main ({len(commits)}):")
+                for commit in commits[:3]:
+                    print(f"      {commit}")
+                if len(commits) > 3:
+                    print(f"      ... and {len(commits) - 3} more")
+            else:
+                print("   No commits ahead of main")
+
+    # --- Section 3: Transcript (if available) ---
+    print("\n📜 TRANSCRIPT")
+    transcript_path = manager.home_dir / "transcripts" / f"{task_id}.jsonl"
+
+    if not transcript_path.exists():
+        print(f"   (No transcript found at {transcript_path})")
+        print("   💡 Transcript capture may not be enabled yet")
+    else:
+        import json
+        try:
+            # Read last N lines
+            with open(transcript_path, "r") as f:
+                lines = f.readlines()
+
+            if not lines:
+                print("   (Transcript file is empty)")
+            else:
+                print(f"   Showing last {min(transcript_lines, len(lines))} of {len(lines)} entries:")
+                print()
+                for line in lines[-transcript_lines:]:
+                    try:
+                        entry = json.loads(line)
+                        # Format depends on transcript structure
+                        if "type" in entry:
+                            print(f"   [{entry.get('type', '?')}] {entry.get('message', entry.get('content', str(entry)[:80]))}")
+                        else:
+                            print(f"   {str(entry)[:100]}")
+                    except json.JSONDecodeError:
+                        print(f"   {line.strip()[:100]}")
+        except Exception as e:
+            print(f"   ❌ Failed to read transcript: {e}")
+
+    # --- Section 4: Suggested Remediation ---
+    print("\n💡 SUGGESTED ACTIONS")
+
+    status_str = task.status.value if hasattr(task.status, 'value') else str(task.status)
+
+    if status_str == "in_progress":
+        if not worktree_path.exists():
+            print("   1. Task claimed but no worktree - may have crashed during setup")
+            print(f"      → Reset: polecat reset-stalled --hours 0 --project {task.project or 'aops'}")
+            print("      → Or retry: polecat run -t {task_id}")
+        elif hours > 4:
+            print("   1. Task appears stalled (no activity > 4h)")
+            print("      → Check if agent is still running")
+            print(f"      → Reset if abandoned: polecat reset-stalled")
+            print(f"      → Or manually finish: cd {worktree_path} && polecat finish")
+        else:
+            print("   1. Task is in progress and appears active")
+            print("      → Wait for agent to complete, or check logs")
+    elif status_str == "merge_ready":
+        print("   1. Task ready to merge")
+        print("      → Run: polecat merge")
+    elif status_str == "review":
+        print("   1. Task needs human review before merging")
+        print(f"      → Review changes: cd {worktree_path}")
+        print("      → Then set status to merge_ready or fix issues")
+    elif status_str == "blocked":
+        print("   1. Task is blocked")
+        print("      → Check task body for blocker details")
+        if task.depends_on:
+            print(f"      → Depends on: {', '.join(task.depends_on)}")
+    elif status_str == "done":
+        print("   1. Task is already complete ✓")
+        if worktree_path.exists():
+            print(f"      → Consider cleanup: polecat nuke {task_id}")
+    else:
+        print(f"   Status is '{status_str}' - no specific suggestions")
+
+    print()
+
+
 @main.command("reset-stalled")
 @click.option("--project", "-p", help="Filter by project")
 @click.option("--hours", default=4.0, help="Hours since last modification (default: 4)")
