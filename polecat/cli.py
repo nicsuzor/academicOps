@@ -574,7 +574,6 @@ def crew(ctx, project, name, gemini, resume):
         # aops_root = get_aops_root()
         # plugin_dir_core = aops_root / "aops-core"
         cmd = [
-            "command",
             "claude",
             "--permission-mode=plan",
             "--dangerously-skip-permissions",
@@ -718,7 +717,6 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
     if gemini:
         # Gemini CLI
         cmd = [
-            "command",
             "gemini",
             "--approval-mode",
             "yolo",
@@ -735,7 +733,6 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
     else:
         # Claude CLI
         cmd = [
-            "command",
             "claude",
             "--dangerously-skip-permissions",
             "--setting-sources=user",
