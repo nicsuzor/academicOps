@@ -84,42 +84,37 @@ def format_gate_status_icons(session_id: str) -> str:
     """Format current gate statuses as a compact icon line.
 
     Returns a short, non-intrusive string showing gate states:
-    - checkmark = gate passed
-    - X = gate not passed
-
-    Gates displayed: Task, Hydration, Handover
+    📌 = Task, 💧 = Hydration, 🤝 = Handover
+    ✓ = passed, ✗ = not passed
 
     Args:
         session_id: Session ID to check gates for
 
     Returns:
-        Formatted status line like "[Task:ok Hydration:ok Handover:X]"
-        Empty string if session state unavailable
+        Formatted status line like "[📌✓ 💧✓ 🤝✗]"
+
+    Raises:
+        ValueError: If session state cannot be loaded (fail fast)
     """
-    try:
-        state = session_state.load_session_state(session_id)
-        if not state:
-            return ""
+    state = session_state.load_session_state(session_id)
+    if not state:
+        raise ValueError(f"Cannot load session state for {session_id}")
 
-        state_data = state.get("state", {})
+    state_data = state.get("state", {})
 
-        # Task bound status
-        task_bound = state.get("main_agent", {}).get("current_task") is not None
-        task_icon = "ok" if task_bound else "X"
+    # Task bound status
+    task_bound = state.get("main_agent", {}).get("current_task") is not None
+    task_icon = "✓" if task_bound else "✗"
 
-        # Hydration status (not pending = passed)
-        hydration_pending = state_data.get("hydration_pending", True)
-        hydration_icon = "ok" if not hydration_pending else "X"
+    # Hydration status (not pending = passed)
+    hydration_pending = state_data.get("hydration_pending", True)
+    hydration_icon = "✓" if not hydration_pending else "✗"
 
-        # Handover status
-        handover_ok = state_data.get("handover_skill_invoked", True)
-        handover_icon = "ok" if handover_ok else "X"
+    # Handover status (default False = conservative assumption if key missing)
+    handover_ok = state_data.get("handover_skill_invoked", False)
+    handover_icon = "✓" if handover_ok else "✗"
 
-        return f"[Task:{task_icon} Hydration:{hydration_icon} Handover:{handover_icon}]"
-
-    except Exception:
-        # Silent failure - don't disrupt hook flow
-        return ""
+    return f"[📌{task_icon} 💧{hydration_icon} 🤝{handover_icon}]"
 
 
 # --- Session Management ---
@@ -375,12 +370,15 @@ class HookRouter:
                 )
 
         # Append gate status icons to system message (non-intrusive display)
-        gate_status = format_gate_status_icons(ctx.session_id)
-        if gate_status:
+        # Function raises on failure (fail fast), but we catch here to avoid blocking hooks
+        try:
+            gate_status = format_gate_status_icons(ctx.session_id)
             if merged_result.system_message:
                 merged_result.system_message = f"{merged_result.system_message} {gate_status}"
             else:
                 merged_result.system_message = gate_status
+        except Exception as e:
+            print(f"WARNING: Gate status icons failed: {e}", file=sys.stderr)
 
         # Log hook event with output AFTER all gates complete
         # We already have a normalized context 'ctx' and result 'merged_result'
