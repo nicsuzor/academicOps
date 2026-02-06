@@ -300,6 +300,7 @@ def transform_agent_for_platform(content: str, platform: str) -> str:
 
         # Tool name mapping: generic/Gemini -> Claude Code
         TOOL_NAME_MAP = {
+            # File operations
             "read_file": "Read",
             "write_file": "Write",
             "replace": "Edit",
@@ -307,9 +308,12 @@ def transform_agent_for_platform(content: str, platform: str) -> str:
             "glob": "Glob",
             "grep": "Grep",
             "search_file_content": "Grep",
+            # Shell execution
             "bash": "Bash",
             "run_shell_command": "Bash",
+            # Skills/Agents
             "activate_skill": "Skill",
+            # Web operations
             "web_fetch": "WebFetch",
             "web_search": "WebSearch",
             # Already correct names (passthrough)
