@@ -390,6 +390,87 @@ def get_recent_sessions(hours: int = 24) -> list[dict]:
     return sessions
 
 
+def get_recent_prompts(days: int = 7) -> list[dict]:
+    """Get recent session prompts for quick context recovery.
+
+    Scans ~/writing/sessions/summaries/ for files within the time range.
+
+    Args:
+        days: Only include sessions from the last N days (default: 7)
+
+    Returns:
+        List of session dicts with prompts, sorted by date (most recent first):
+        - session_id: Short session ID
+        - date: Session datetime
+        - project: Project name
+        - prompts: List of prompt strings
+        - time_ago: Human-readable relative time
+    """
+    from datetime import timedelta
+
+    summaries_dir = Path.home() / "writing" / "sessions" / "summaries"
+    if not summaries_dir.exists():
+        return []
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    sessions = []
+
+    for json_file in summaries_dir.glob("*.json"):
+        try:
+            data = json.loads(json_file.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+
+        date_str = data.get("date")
+        if not date_str:
+            continue
+
+        # Parse date
+        session_date = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+        if session_date.tzinfo is None:
+            session_date = session_date.replace(tzinfo=timezone.utc)
+
+        if session_date < cutoff:
+            continue
+
+        # Parse prompts field - can be null, JSON string array, or plain string
+        prompts_raw = data.get("prompts")
+        if prompts_raw is None:
+            continue  # Skip sessions with no prompts
+
+        prompts = []
+        if isinstance(prompts_raw, str):
+            # Try to parse as JSON array
+            try:
+                parsed = json.loads(prompts_raw)
+                if isinstance(parsed, list):
+                    prompts = parsed
+                else:
+                    prompts = [prompts_raw]
+            except json.JSONDecodeError:
+                # Plain string, wrap in array
+                prompts = [prompts_raw]
+        elif isinstance(prompts_raw, list):
+            prompts = prompts_raw
+
+        if not prompts:
+            continue
+
+        sessions.append(
+            {
+                "session_id": data.get("session_id", "unknown"),
+                "date": session_date,
+                "project": data.get("project", "unknown"),
+                "prompts": prompts,
+                "time_ago": _format_time_ago(session_date),
+            }
+        )
+
+    # Sort by date, newest first
+    sessions.sort(key=lambda s: s["date"], reverse=True)
+    return sessions
+
+
 def get_waiting_tasks() -> list[dict]:
     """Get tasks with blocked status from bd."""
     return load_bd_issues(priority_max=4, status="blocked", limit=50)
@@ -3943,6 +4024,38 @@ def render_graph_section():
         )
 
 
+def render_recent_prompts():
+    """Render Recent Prompts section for quick context recovery.
+
+    Displays user prompts from session summaries in reverse chronological order,
+    grouped by session. Uses st.expander for collapsible display and st.code()
+    blocks for copy functionality.
+    """
+    sessions = get_recent_prompts(days=7)
+
+    if not sessions:
+        return  # No prompts to display
+
+    with st.expander("💬 Recent Prompts (last 7 days)", expanded=False):
+        for session in sessions:
+            project = session["project"]
+            session_id = session["session_id"][:8]
+            time_ago = session["time_ago"]
+            prompts = session["prompts"]
+
+            # Session header with project badge
+            st.markdown(
+                f"**{project}** · `{session_id}` · {time_ago}",
+                unsafe_allow_html=False,
+            )
+
+            # Display each prompt with copy-able code block
+            for prompt in prompts:
+                st.code(prompt, language=None)
+
+            st.markdown("---")
+
+
 def render_session_summary():
     """Render summary of today's and yesterday's sessions."""
     from datetime import timedelta
@@ -4623,6 +4736,9 @@ if stale_count > 0:
         </div>""",
         unsafe_allow_html=True,
     )
+
+# === RECENT PROMPTS SECTION ===
+render_recent_prompts()
 
 # === PROJECT-CENTRIC DASHBOARD ===
 # Fetch Data

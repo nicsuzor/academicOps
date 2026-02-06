@@ -211,6 +211,31 @@ Interactive force-directed graph at the top of the page.
 - Yellow: waiting
 - Purple: review
 
+### Recent Prompts Section
+
+Displays user prompts from session summaries for quick context recovery.
+
+**Data Source**: `~/writing/sessions/summaries/*.json` - `prompts` field
+
+**Placement**: After "Where You Left Off" section, before Project Boxes.
+
+**Display**:
+- Reverse chronological by session date
+- Grouped by session ID
+- Each session shows: project badge, session ID, date, prompts list
+- `st.expander` for collapsible display
+- `st.code()` blocks for copy functionality (built-in copyable behavior)
+
+**Prompts field parsing**:
+- `null` → skip session (no prompts captured)
+- `"[\"prompt1\", \"prompt2\"]"` → `json.loads()` to get array
+- Plain string → wrap in array
+
+**Function**: `get_recent_prompts(days: int = 7) -> list[dict]`
+- Scans session summary files
+- Parses prompts field (handles null, JSON string, plain string)
+- Returns list of session dicts with prompts, sorted by date descending
+
 ### Project Boxes
 
 Grid of project cards below the graph. Each box contains:
