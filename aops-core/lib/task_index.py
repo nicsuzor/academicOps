@@ -47,7 +47,7 @@ from pathlib import Path
 from typing import Any
 
 from lib.paths import get_data_root
-from lib.task_model import Task, TaskStatus
+from lib.task_model import Task, TaskStatus, TaskType
 from lib.task_storage import TaskStorage
 
 logger = logging.getLogger(__name__)
@@ -214,6 +214,14 @@ class TaskIndex:
 
     VERSION = 2
 
+    # Task types that can be claimed by workers (actionable work items)
+    CLAIMABLE_TYPES = {
+        TaskType.TASK.value,
+        TaskType.ACTION.value,
+        TaskType.BUG.value,
+        TaskType.FEATURE.value,
+    }
+
     def __init__(self, data_root: Path | None = None):
         """Initialize task index.
 
@@ -311,7 +319,11 @@ class TaskIndex:
             unmet_deps = [d for d in entry.depends_on if d not in completed_ids]
             if unmet_deps or entry.status == TaskStatus.BLOCKED.value:
                 self._blocked.append(task_id)
-            elif entry.leaf and entry.status == TaskStatus.ACTIVE.value:
+            elif (
+                entry.leaf
+                and entry.status == TaskStatus.ACTIVE.value
+                and entry.type in self.CLAIMABLE_TYPES
+            ):
                 self._ready.append(task_id)
 
         # Sort ready by priority
