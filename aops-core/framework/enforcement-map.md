@@ -260,17 +260,23 @@ Uses passive `additionalContext` format - agent may proceed without addressing.
 
 ## Path Protection (Deny Rules)
 
-| Category         | Pattern                                       | Blocked Tools           | Purpose                    | Axiom                        |
-| ---------------- | --------------------------------------------- | ----------------------- | -------------------------- | ---------------------------- |
-| Claude config    | `~/.claude/*.json`                            | Read, Write, Edit, Bash | Protect secrets            | [[data-boundaries]]          |
-| Claude runtime   | `~/.claude/{hooks,skills,commands,agents}/**` | Write, Edit, Bash       | Force edits via `$AOPS/`   | [[skills-are-read-only]]     |
-| Research records | `**/tja/records/**`, `**/tox/records/**`      | Write, Edit, Bash       | Research data immutable    | [[research-data-immutable]]  |
-| Session state    | `/tmp/claude-session/**`                      | Write, Edit, Bash       | Hydration gate enforcement | Mechanical trigger integrity |
-| Task indices     | `**/data/tasks/*.json`                        | Read, Bash              | Enforce MCP server usage   | [[just-in-time-context]]     |
+| Category          | Pattern                                       | Blocked Tools           | Purpose                         | Axiom                        |
+| ----------------- | --------------------------------------------- | ----------------------- | ------------------------------- | ---------------------------- |
+| Claude config     | `~/.claude/*.json`                            | Read, Write, Edit, Bash | Protect secrets                 | [[data-boundaries]]          |
+| Claude runtime    | `~/.claude/{hooks,skills,commands,agents}/**` | Write, Edit, Bash       | Force edits via `$AOPS/`        | [[skills-are-read-only]]     |
+| Claude plugins    | `~/.claude/plugins/**`                        | Write, Edit             | Protect installed plugins       | [[skills-are-read-only]]     |
+| Gemini extensions | `~/.gemini/extensions/**`                     | Write, Edit             | Protect installed extensions    | [[skills-are-read-only]]     |
+| Research records  | `**/tja/records/**`, `**/tox/records/**`      | Write, Edit, Bash       | Research data immutable         | [[research-data-immutable]]  |
+| Session state     | `/tmp/claude-session/**`                      | Write, Edit, Bash       | Hydration gate enforcement      | Mechanical trigger integrity |
+| Task indices      | `**/data/tasks/*.json`                        | Read, Bash              | Enforce MCP server usage        | [[just-in-time-context]]     |
 
 **Note**: Reading `~/.claude/hooks/**` etc IS allowed (skill invocation needs it).
 
 **Note**: Task JSON files (index.json, id_mapping.json) must be queried via tasks MCP server (list_tasks, search_tasks, get_task_tree, etc.) to prevent token bloat from reading large files directly.
+
+**Note**: Claude plugins and Gemini extensions protection enforced via:
+- Claude: `~/.claude/settings.json` → `permissions.deny`
+- Gemini: `~/.gemini/policies/deny-extension-writes.toml` (policy engine)
 
 ## API Validation (Tasks MCP Server)
 
