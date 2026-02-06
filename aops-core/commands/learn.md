@@ -23,6 +23,109 @@ permalink: commands/learn
 
 ## Workflow
 
+### -1. Capture Failure Context (MANDATORY)
+
+**Before any root cause analysis, capture the evidence.**
+
+This step is REQUIRED for failures in the current session. Skip ONLY if analyzing a past incident retrospectively (where transcript already exists).
+
+#### -1a. Generate Session Transcript
+
+Invoke `transcript.py` to capture the current session:
+
+```bash
+# Find current session JSONL (most recently modified in last hour)
+SESSION_FILE=$(find ~/.claude/projects -name "*.jsonl" -mmin -60 -type f 2>/dev/null | xargs ls -t 2>/dev/null | head -1)
+
+# Generate transcript (creates both -full.md and -abridged.md in ~/writing/sessions/claude/)
+uv run --directory ${AOPS} python aops-core/scripts/transcript.py "$SESSION_FILE"
+```
+
+Note the output path for the abridged transcript.
+
+#### -1b. Review Abridged Transcript
+
+Load and read the abridged transcript:
+
+```bash
+ABRIDGED=$(ls -t ~/writing/sessions/claude/*-abridged.md 2>/dev/null | head -1)
+```
+
+Identify from the transcript:
+1. **Failure point**: Where did the error/mistake occur?
+2. **Trigger**: What user prompt or context led to the mistake?
+3. **Consequence**: How was the error manifested?
+
+#### -1c. Extract Minimal Bug Reproduction
+
+From the abridged transcript, extract the MINIMUM turns to demonstrate the bug.
+
+**INCLUDE**:
+- The turn establishing the task/intent
+- Critical context that led to the decision
+- The turn where the wrong action was taken
+- User corrections or error messages
+- Direct consequences of the error
+
+**EXCLUDE**:
+- Routine file reads after context established
+- Successful tool uses unrelated to failure
+- System-injected context (`<agent-notification>`, `<ide_selection>`)
+- Repetitive or redundant turns
+
+**Target**: 5 turns maximum. Expand to 10 only if essential context would be lost.
+
+#### -1d. Create Fails Report
+
+Save the minimal reproduction to `$ACA_DATA/aops/fails/`:
+
+```bash
+DATE=$(date +%Y%m%d)
+SLUG="[brief-descriptive-slug]"  # e.g., "cache-deletion-breaks-hooks"
+```
+
+Write to `$ACA_DATA/aops/fails/$DATE-$SLUG.md`:
+
+```markdown
+# [YYYYMMDD] [Brief Slug]
+
+## Failure Summary
+[One sentence: what went wrong?]
+
+## Root Cause Category
+[To be filled in Step 1: Clarity | Context | Blocking | Detection | Gap]
+
+## Minimal Bug Reproduction
+
+### Context
+[1-2 sentences establishing the situation]
+
+### Failure Sequence
+\```
+1. User: [prompt that triggered the issue]
+2. Agent: [action taken - what was done wrong]
+3. [Consequence or user correction]
+\```
+
+### Expected vs Actual
+- **Expected**: [What should have happened]
+- **Actual**: [What actually happened]
+
+## Session Reference
+- Session ID: [8-char ID from transcript filename]
+- Transcript: [full path to -full.md transcript]
+```
+
+#### -1e. Verification Checklist
+
+Before proceeding to Step 0:
+- [ ] Transcript generated and saved to usual location
+- [ ] Abridged transcript reviewed
+- [ ] Minimal reproduction extracted (no more than 10 turns)
+- [ ] Fails report created at `$ACA_DATA/aops/fails/[DATE]-[slug].md`
+
+**You CANNOT proceed without completing this investigation phase.**
+
 ### 0. Load Governance Context (MANDATORY)
 
 **Before any framework change, read these files:**
@@ -45,7 +148,7 @@ mcp__plugin_aops-core_task_manager__create_task(
   type="task",
   project="aops",
   priority=2,
-  body="1. Observation: ...\n2. Root cause category: ...\n3. Proposed fix: ...\n4. Success metric: ..."
+  body="1. Observation: ...\n2. Root cause category: ...\n3. Proposed fix: ...\n4. Success metric: ...\n5. Fails report: $ACA_DATA/aops/fails/[DATE]-[slug].md"
 )
 ```
 
@@ -62,10 +165,13 @@ The task MUST contain:
 2. **Root cause category**: Clarity/Context/Blocking/Detection/Gap
 3. **Proposed fix**: What you will change (file path, enforcement level)
 4. **Success metric**: How we know the fix worked (measurable)
+5. **Fails report**: Path to the minimal bug reproduction (from Step -1)
 
 **You do NOT need user permission** to make the fix if it's documented in the task. The task IS the approval - it creates accountability and traceability.
 
 ### 1. Identify Root Cause (Not Proximate Cause)
+
+**Using the minimal bug reproduction from Step -1**, review the failure sequence and ask:
 
 **We don't control agents** - they're probabilistic. Find the **framework component failure**, not the agent mistake.
 
