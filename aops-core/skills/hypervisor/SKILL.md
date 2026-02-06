@@ -5,6 +5,10 @@ triggers:
   - "batch tasks"
   - "parallel processing"
   - "process queue in parallel"
+  - "polecat swarm"
+  - "polecat herd"
+  - "spawn polecat"
+  - "run polecats"
 ---
 
 # Hypervisor - Batch Parallel Processing
