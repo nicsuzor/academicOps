@@ -327,6 +327,54 @@ Regenerate the core loop flowchart section in README.md from hook architecture s
 
 **Location**: Replace the "Core Loop" section in README.md (after the Quick Start section)
 
+#### README.md (Polecat Supervision Quick Start)
+
+Add a "Polecat Supervision" section to README.md after the Core Loop flowchart. This provides users quick instructions for the task execution & merge workflow.
+
+**Content to include:**
+
+```markdown
+## Polecat Supervision (Task Execution & Merge)
+
+For running polecat swarm and merging results:
+
+### Quick Start
+
+```bash
+# Start swarm (3 Claude + 3 Gemini workers)
+polecat swarm -c 3 -g 3
+
+# Start watchdog for PR notifications
+polecat watch &
+
+# When notified, merge clean PRs:
+gh pr merge <N> --squash --delete-branch && polecat sync
+```
+
+### Commission New Features
+
+Instead of coding manually, create tasks for the swarm:
+
+```bash
+/q bot P1 Add feature X to polecat
+```
+
+The swarm will implement, file a PR, and you merge.
+
+### Monitoring Commands
+
+| Command | Purpose |
+|---------|---------|
+| `polecat summary` | Digest of recent work |
+| `polecat analyze <id>` | Diagnose stalled task |
+| `polecat watch` | Background PR notifications |
+| `polecat reset-stalled` | Reset hung tasks |
+
+See [[specs/polecat-supervision.md]] for full specification.
+```
+
+**Location**: After "Core Loop" section, before "Skills" section
+
 #### docs/ENFORCEMENT.md
 
 Derive practical enforcement guide from:
