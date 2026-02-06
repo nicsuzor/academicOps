@@ -261,6 +261,50 @@ def finish(ctx, no_push, do_nuke):
             if not click.confirm("Continue without saving? (Risk of data loss)"):
                 sys.exit(1)
 
+    # --- NO-CHANGES DETECTION ---
+    # If the agent made no changes, skip the entire test/merge pipeline
+    try:
+        # First, fetch to ensure we have latest origin/main
+        subprocess.run(
+            ["git", "fetch", "origin", "main"],
+            capture_output=True,
+            check=False,
+        )
+        # Check if there are any commits on this branch vs origin/main
+        diff_check = subprocess.run(
+            ["git", "diff", "--quiet", "origin/main", "HEAD"],
+            capture_output=True,
+            check=False,
+        )
+        # git diff --quiet returns 0 if no changes, 1 if changes exist
+        if diff_check.returncode == 0:
+            print("📭 No changes detected. Skipping test/merge pipeline.")
+            # Mark task as done directly
+            try:
+                from lib.task_model import TaskStatus
+
+                task.status = TaskStatus.DONE
+                manager.storage.save_task(task)
+                print("✅ Task marked as 'done' (no changes to merge)")
+            except ImportError:
+                print(
+                    "Warning: Could not update task status (lib.task_model not available)"
+                )
+
+            # Optionally nuke
+            if do_nuke:
+                print("Nuking worktree...")
+                os.chdir(Path.home())  # Move out of worktree before nuking
+                manager.nuke_worktree(task_id, force=False)
+                print("Worktree removed")
+            else:
+                print(f"\nTo clean up later: polecat nuke {task_id}")
+            return  # Exit early, skip rest of finish flow
+
+    except Exception as e:
+        print(f"Warning: Could not check for changes: {e}")
+        # Continue with normal flow if check fails
+
     # --- SAFEGUARD 2: Repo-Nuke Protection ---
     # Check if we are unexpectedly rewriting the whole repo
     # This prevents the "orphan branch" issue where an agent commits 1000+ files as new
