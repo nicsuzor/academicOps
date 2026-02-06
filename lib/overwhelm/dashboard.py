@@ -29,6 +29,7 @@ from lib.session_context import SessionContext, extract_context_from_session_sta
 from lib.task_storage import TaskStorage
 from lib.task_model import Task
 from collections import defaultdict
+import networkx as nx
 
 # Add local directory to path for sibling imports
 sys.path.append(str(Path(__file__).parent))
@@ -4048,13 +4049,200 @@ def render_session_summary():
     render_day("Yesterday", yesterday_sessions)
 
 
+def render_network_analysis():
+    """Render network science metrics for the task graph."""
+    st.header("🕸️ Network Analysis")
+
+    # Load tasks
+    tasks = load_tasks_from_index()
+    if not tasks:
+        st.warning("No tasks found in index.")
+        return
+
+    # Build NetworkX DiGraph
+    G = nx.DiGraph()
+
+    # Add nodes with attributes
+    for t in tasks:
+        G.add_node(
+            t["id"],
+            title=t.get("title", ""),
+            status=t.get("status", ""),
+            priority=t.get("priority", 2),
+            project=t.get("project", ""),
+            depth=t.get("depth", 0),
+            leaf=t.get("leaf", True),
+        )
+
+    # Add edges
+    for t in tasks:
+        task_id = t["id"]
+        # Hard dependencies (depends_on)
+        for dep in t.get("depends_on", []):
+            if dep in G:
+                G.add_edge(dep, task_id, edge_type="depends_on")
+        # Soft dependencies
+        for dep in t.get("soft_depends_on", []):
+            if dep in G:
+                G.add_edge(dep, task_id, edge_type="soft_depends_on")
+        # Parent relationship
+        parent = t.get("parent")
+        if parent and parent in G:
+            G.add_edge(parent, task_id, edge_type="parent")
+
+    # === Basic Stats ===
+    st.subheader("📊 Graph Statistics")
+    col1, col2, col3, col4 = st.columns(4)
+
+    col1.metric("Nodes", G.number_of_nodes())
+    col2.metric("Edges", G.number_of_edges())
+
+    # Connected components (treating as undirected for this)
+    undirected = G.to_undirected()
+    num_components = nx.number_connected_components(undirected)
+    col3.metric("Components", num_components)
+
+    # Density
+    density = nx.density(G)
+    col4.metric("Density", f"{density:.4f}")
+
+    # Additional stats row
+    col5, col6, col7, col8 = st.columns(4)
+
+    # Isolates (nodes with no edges)
+    isolates = list(nx.isolates(G))
+    col5.metric("Isolates", len(isolates))
+
+    # Leaf nodes (out-degree 0 in depends_on sense)
+    leaf_count = sum(1 for t in tasks if t.get("leaf", True))
+    col6.metric("Leaf Tasks", leaf_count)
+
+    # Average degree
+    if G.number_of_nodes() > 0:
+        avg_degree = sum(d for n, d in G.degree()) / G.number_of_nodes()
+        col7.metric("Avg Degree", f"{avg_degree:.2f}")
+    else:
+        col7.metric("Avg Degree", "0")
+
+    # Tasks by status
+    status_counts = {}
+    for t in tasks:
+        s = t.get("status", "unknown")
+        status_counts[s] = status_counts.get(s, 0) + 1
+    active_count = status_counts.get("active", 0) + status_counts.get("in_progress", 0)
+    col8.metric("Active Tasks", active_count)
+
+    st.markdown("---")
+
+    # === Centrality Metrics ===
+    st.subheader("🎯 Centrality Analysis")
+
+    # Only compute if graph is not empty
+    if G.number_of_nodes() == 0:
+        st.info("No nodes to analyze.")
+        return
+
+    # Betweenness centrality (bottleneck tasks)
+    col_left, col_right = st.columns(2)
+
+    with col_left:
+        st.markdown("**🔀 Betweenness Centrality (Bottlenecks)**")
+        st.caption("Tasks that many paths pass through - potential bottlenecks")
+
+        try:
+            betweenness = nx.betweenness_centrality(G)
+            top_betweenness = sorted(betweenness.items(), key=lambda x: x[1], reverse=True)[:10]
+
+            if top_betweenness and top_betweenness[0][1] > 0:
+                for task_id, score in top_betweenness:
+                    if score > 0:
+                        node_data = G.nodes[task_id]
+                        title = node_data.get("title", task_id)[:50]
+                        status = node_data.get("status", "")
+                        st.markdown(f"- **{score:.4f}** | `{task_id[:20]}` | {title} ({status})")
+            else:
+                st.caption("No significant betweenness (sparse graph)")
+        except Exception as e:
+            st.error(f"Betweenness calculation error: {e}")
+
+    with col_right:
+        st.markdown("**📈 PageRank (Importance)**")
+        st.caption("Tasks that are important by link structure")
+
+        try:
+            pagerank = nx.pagerank(G, alpha=0.85)
+            top_pagerank = sorted(pagerank.items(), key=lambda x: x[1], reverse=True)[:10]
+
+            for task_id, score in top_pagerank:
+                node_data = G.nodes[task_id]
+                title = node_data.get("title", task_id)[:50]
+                status = node_data.get("status", "")
+                st.markdown(f"- **{score:.4f}** | `{task_id[:20]}` | {title} ({status})")
+        except Exception as e:
+            st.error(f"PageRank calculation error: {e}")
+
+    st.markdown("---")
+
+    # === Actionable Insights ===
+    st.subheader("💡 Actionable Insights")
+
+    col_a, col_b = st.columns(2)
+
+    with col_a:
+        st.markdown("**🚧 High Out-Degree (Blockers)**")
+        st.caption("Tasks blocking many others")
+
+        out_degrees = [(n, G.out_degree(n)) for n in G.nodes()]
+        top_out = sorted(out_degrees, key=lambda x: x[1], reverse=True)[:10]
+
+        for task_id, degree in top_out:
+            if degree > 0:
+                node_data = G.nodes[task_id]
+                title = node_data.get("title", task_id)[:40]
+                status = node_data.get("status", "")
+                st.markdown(f"- **{degree}** deps | `{task_id[:15]}` | {title} ({status})")
+
+    with col_b:
+        st.markdown("**📦 High In-Degree (Dependent)**")
+        st.caption("Tasks with many dependencies")
+
+        in_degrees = [(n, G.in_degree(n)) for n in G.nodes()]
+        top_in = sorted(in_degrees, key=lambda x: x[1], reverse=True)[:10]
+
+        for task_id, degree in top_in:
+            if degree > 0:
+                node_data = G.nodes[task_id]
+                title = node_data.get("title", task_id)[:40]
+                status = node_data.get("status", "")
+                st.markdown(f"- **{degree}** deps | `{task_id[:15]}` | {title} ({status})")
+
+    # Project distribution
+    st.markdown("---")
+    st.subheader("📁 Project Distribution")
+
+    project_counts = {}
+    for t in tasks:
+        proj = t.get("project", "unassigned") or "unassigned"
+        project_counts[proj] = project_counts.get(proj, 0) + 1
+
+    sorted_projects = sorted(project_counts.items(), key=lambda x: x[1], reverse=True)[:15]
+
+    if sorted_projects:
+        # Simple bar display
+        max_count = sorted_projects[0][1] if sorted_projects else 1
+        for proj, count in sorted_projects:
+            bar_width = int((count / max_count) * 20)
+            bar = "█" * bar_width
+            st.markdown(f"`{proj:20}` {bar} {count}")
+
+
 # ============================================================================
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
 # Navigation
 page = st.sidebar.radio(
-    "View Mode", ["Dashboard", "Manage Tasks", "Session Summary"], index=0
+    "View Mode", ["Dashboard", "Manage Tasks", "Session Summary", "Network Analysis"], index=0
 )
 
 # Time range filter for "Completed Today" section
@@ -4074,6 +4262,10 @@ if page == "Manage Tasks":
 
 if page == "Session Summary":
     render_session_summary()
+    st.stop()
+
+if page == "Network Analysis":
+    render_network_analysis()
     st.stop()
 
 # Graph section with tabs
