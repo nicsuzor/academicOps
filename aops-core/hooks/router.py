@@ -52,6 +52,7 @@ try:
     from hooks.unified_logger import log_hook_event
     from lib.gate_model import GateResult
     from lib.session_paths import get_pid_session_map_path, get_session_status_dir
+    from lib import session_state
 except ImportError as e:
     # Fail fast if schemas missing
     print(f"CRITICAL: Failed to import: {e}", file=sys.stderr)
@@ -74,6 +75,51 @@ GEMINI_EVENT_MAP = {
 
 # Gate configuration is now in gate_config.py
 # GATE_EXECUTION_ORDER and MAIN_AGENT_ONLY_GATES imported from there
+
+
+# --- Gate Status Display ---
+
+
+def format_gate_status_icons(session_id: str) -> str:
+    """Format current gate statuses as a compact icon line.
+
+    Returns a short, non-intrusive string showing gate states:
+    - checkmark = gate passed
+    - X = gate not passed
+
+    Gates displayed: Task, Hydration, Handover
+
+    Args:
+        session_id: Session ID to check gates for
+
+    Returns:
+        Formatted status line like "[Task:ok Hydration:ok Handover:X]"
+        Empty string if session state unavailable
+    """
+    try:
+        state = session_state.load_session_state(session_id)
+        if not state:
+            return ""
+
+        state_data = state.get("state", {})
+
+        # Task bound status
+        task_bound = state.get("main_agent", {}).get("current_task") is not None
+        task_icon = "ok" if task_bound else "X"
+
+        # Hydration status (not pending = passed)
+        hydration_pending = state_data.get("hydration_pending", True)
+        hydration_icon = "ok" if not hydration_pending else "X"
+
+        # Handover status
+        handover_ok = state_data.get("handover_skill_invoked", True)
+        handover_icon = "ok" if handover_ok else "X"
+
+        return f"[Task:{task_icon} Hydration:{hydration_icon} Handover:{handover_icon}]"
+
+    except Exception:
+        # Silent failure - don't disrupt hook flow
+        return ""
 
 
 # --- Session Management ---
@@ -285,6 +331,14 @@ class HookRouter:
                 merged_result.metadata.setdefault("tracebacks", []).append(
                     traceback.format_exc()
                 )
+
+        # Append gate status icons to system message (non-intrusive display)
+        gate_status = format_gate_status_icons(ctx.session_id)
+        if gate_status:
+            if merged_result.system_message:
+                merged_result.system_message = f"{merged_result.system_message} {gate_status}"
+            else:
+                merged_result.system_message = gate_status
 
         # Log hook event with output AFTER all gates complete
         # We already have a normalized context 'ctx' and result 'merged_result'
