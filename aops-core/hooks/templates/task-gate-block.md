@@ -6,7 +6,7 @@ description: |
   Block message when destructive operation attempted without gate compliance.
   Variables:
     {task_bound_status} - Gate status indicator (✓ or ✗)
-    {hydrator_invoked_status} - Gate status indicator (✓ or ✗)
+    {hydrator_invoked_status} - Gate status indicator (checks plan_mode_invoked)
     {critic_invoked_status} - Gate status indicator (✓ or ✗)
     {missing_gates} - Newline-separated list of missing gate instructions
 ---

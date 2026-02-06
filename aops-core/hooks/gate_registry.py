@@ -690,8 +690,8 @@ INFRASTRUCTURE_SKILLS_NO_HYDRATION_CLEAR = {
     "aops-core:email",
     "learn",
     "aops-core:learn",
-    "pull",
-    "aops-core:pull",
+    # NOTE: "pull" removed - it DOES provide task context and satisfies planning intent
+    # by binding a task with full context to the session
     # Infrastructure skills (don't complete hydration)
     "task-viz",
     "aops-core:task-viz",
@@ -2041,11 +2041,15 @@ def check_skill_activation_listener(ctx: HookContext) -> Optional[GateResult]:
     # Non-infrastructure skill activated - clear hydration pending
     # The user intent "run this skill" with a substantive skill satisfies hydration.
     session_state.clear_hydration_pending(ctx.session_id)
+    # Also set plan_mode_invoked since substantive skills provide context/planning
+    # This fixes the Task Gate false positive where skills were clearing hydration
+    # but not satisfying the plan_mode check (which Task Gate displays as "Hydrator invoked")
+    session_state.set_plan_mode_invoked(ctx.session_id)
 
     return GateResult(
         verdict=GateVerdict.ALLOW,
         metadata={"source": "skill_activation_bypass", "skill": skill_name},
-        system_message=f"⚡ [Gate] Skill '{skill_name}' activated. Hydration gate cleared.",
+        system_message=f"⚡ [Gate] Skill '{skill_name}' activated. Hydration and plan mode gates cleared.",
     )
 
 

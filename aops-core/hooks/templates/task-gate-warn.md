@@ -6,7 +6,7 @@ description: |
   Warning message when in warn-only mode without full gate compliance.
   Variables:
     {task_bound_status} - Gate status indicator (✓ or ✗)
-    {hydrator_invoked_status} - Gate status indicator (✓ or ✗)
+    {hydrator_invoked_status} - Gate status indicator (checks plan_mode_invoked)
     {critic_invoked_status} - Gate status indicator (✓ or ✗)
 ---
 ⚠️ **TASK GATE (warn)**: Missing gate compliance.
