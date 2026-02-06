@@ -465,7 +465,7 @@ class TestGroupEntriesIntoTurns:
         - summary entry (was breaking the turn)
         - assistant entry (should attach to the turn)
         """
-        from lib.session_reader import Entry, SessionProcessor
+        from lib.transcript_parser import Entry, SessionProcessor
 
         # Create entries matching the bug pattern from session 138295b6
         entries_data = [
