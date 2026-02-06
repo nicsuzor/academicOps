@@ -952,6 +952,197 @@ def reset_stalled(ctx, project, hours, dry_run):
     print(f"\n✅ Reset {reset_count} tasks.")
 
 
+def _send_notification(title: str, message: str, urgency: str = "normal"):
+    """Send a desktop notification via notify-send if available.
+
+    Args:
+        title: Notification title
+        message: Notification body
+        urgency: low, normal, or critical
+    """
+    import shutil
+
+    print(f"[{urgency.upper()}] {title}: {message}")
+
+    if shutil.which("notify-send"):
+        try:
+            import subprocess
+
+            subprocess.run(
+                ["notify-send", "-u", urgency, title, message],
+                check=False,
+                capture_output=True,
+            )
+        except Exception:
+            pass
+
+
+@main.command()
+@click.option(
+    "--interval",
+    "-i",
+    default=300,
+    help="Polling interval in seconds (default: 300 = 5 min)",
+)
+@click.option(
+    "--stall-threshold",
+    "-s",
+    default=30,
+    help="Minutes without progress before stall alert (default: 30)",
+)
+@click.option("--project", "-p", help="Project to monitor (default: all)")
+@click.pass_context
+def watch(ctx, interval, stall_threshold, project):
+    """Monitor swarm activity and send desktop notifications.
+
+    Runs as a background process that:
+    - Polls for new PRs and merge_ready tasks
+    - Sends notification when a new PR is filed
+    - Alerts if swarm stalls (no progress in threshold minutes)
+
+    Examples:
+        polecat watch              # Default: poll every 5min, stall at 30min
+        polecat watch -i 60        # Poll every 60 seconds
+        polecat watch -s 60        # Alert after 60min of no progress
+        polecat watch &            # Run in background
+    """
+    import signal
+    import time
+    from datetime import datetime, timedelta, timezone
+
+    try:
+        from lib.task_model import TaskStatus
+    except ImportError:
+        print("Error: Could not import task libraries.", file=sys.stderr)
+        sys.exit(1)
+
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+
+    # Track seen PRs and last activity time
+    seen_merge_ready = set()
+    seen_review = set()
+    last_activity = datetime.now(timezone.utc)
+
+    # Graceful shutdown
+    stop_requested = False
+
+    def handle_signal(signum, frame):
+        nonlocal stop_requested
+        print("\nShutting down watch...")
+        stop_requested = True
+
+    signal.signal(signal.SIGINT, handle_signal)
+    signal.signal(signal.SIGTERM, handle_signal)
+
+    print(f"Starting polecat watch...")
+    print(f"  Polling interval: {interval}s")
+    print(f"  Stall threshold: {stall_threshold}min")
+    print(f"  Project filter: {project or 'all'}")
+    print("  Press Ctrl+C to stop.\n")
+
+    # Initial scan to populate seen sets (don't alert on startup)
+    try:
+        merge_ready_tasks = manager.storage.list_tasks(
+            status=TaskStatus.MERGE_READY, project=project
+        )
+        for task in merge_ready_tasks:
+            seen_merge_ready.add(task.id)
+
+        review_tasks = manager.storage.list_tasks(
+            status=TaskStatus.REVIEW, project=project
+        )
+        for task in review_tasks:
+            seen_review.add(task.id)
+
+        print(f"Initial state: {len(seen_merge_ready)} merge_ready, {len(seen_review)} review")
+    except Exception as e:
+        print(f"Warning: Initial scan failed: {e}")
+
+    while not stop_requested:
+        try:
+            now = datetime.now(timezone.utc)
+
+            # Check for new merge_ready tasks (new PRs filed)
+            merge_ready_tasks = manager.storage.list_tasks(
+                status=TaskStatus.MERGE_READY, project=project
+            )
+            for task in merge_ready_tasks:
+                if task.id not in seen_merge_ready:
+                    seen_merge_ready.add(task.id)
+                    last_activity = now
+                    _send_notification(
+                        "PR Filed",
+                        f"{task.id}: {task.title}",
+                        urgency="normal",
+                    )
+
+            # Check for new review tasks (merge failures)
+            review_tasks = manager.storage.list_tasks(
+                status=TaskStatus.REVIEW, project=project
+            )
+            for task in review_tasks:
+                if task.id not in seen_review:
+                    seen_review.add(task.id)
+                    last_activity = now
+                    _send_notification(
+                        "Review Needed",
+                        f"{task.id}: {task.title}",
+                        urgency="critical",
+                    )
+
+            # Check for completed tasks (mark as activity)
+            done_tasks = manager.storage.list_tasks(
+                status=TaskStatus.DONE, project=project
+            )
+            # We don't track done tasks, but finding new ones means progress
+            # This is a simplification - in production you'd track these too
+
+            # Check for in_progress tasks (active work)
+            in_progress = manager.storage.list_tasks(
+                status=TaskStatus.IN_PROGRESS, project=project
+            )
+            if in_progress:
+                # Check if any were modified recently
+                for task in in_progress:
+                    task_mod = task.modified
+                    if task_mod.tzinfo is None:
+                        task_mod = task_mod.replace(tzinfo=timezone.utc)
+                    if task_mod > last_activity:
+                        last_activity = task_mod
+
+            # Check for stall
+            stall_cutoff = now - timedelta(minutes=stall_threshold)
+            if last_activity < stall_cutoff:
+                minutes_stalled = int((now - last_activity).total_seconds() / 60)
+                _send_notification(
+                    "Swarm Stalled",
+                    f"No progress in {minutes_stalled} minutes",
+                    urgency="critical",
+                )
+                # Reset to avoid spamming alerts
+                last_activity = now
+
+            # Status line
+            active_count = len(in_progress)
+            ready_count = len(merge_ready_tasks)
+            review_count = len(review_tasks)
+            timestamp = now.strftime("%H:%M:%S")
+            print(
+                f"[{timestamp}] active={active_count} merge_ready={ready_count} review={review_count}"
+            )
+
+        except Exception as e:
+            print(f"Error during poll: {e}")
+
+        # Sleep in small chunks to allow interrupt
+        for _ in range(interval):
+            if stop_requested:
+                break
+            time.sleep(1)
+
+    print("Watch stopped.")
+
+
 @main.command()
 @click.option("--claude", "-c", default=0, help="Number of Claude workers")
 @click.option("--gemini", "-g", default=0, help="Number of Gemini workers")
