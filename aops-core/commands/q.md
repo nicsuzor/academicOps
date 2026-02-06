@@ -9,13 +9,14 @@ triggers: ["queue task", "save for later", "add to backlog", "new task:"]
 
 # /q - Quick Queue (No Hydration)
 
-**Purpose**: Capture a task for later execution with minimal overhead. Bypasses full hydration workflow.
+**Purpose**: Capture a task for later execution with minimal overhead. Bypasses full hydration workflow. Tasks queued here can be claimed by polecat swarm workers.
 
 ## When to Use
 
 * User says "new task: X" or "/q X"
 * Quick capture of work that should NOT be executed now
 * Backlog management without execution planning
+* **Commission functionality**: Create task for swarm to implement instead of coding manually
 
 ## Workflow
 
@@ -32,26 +33,85 @@ If a related task exists with status != "done":
 * If add: use `update_task` to append to body or decompose
 * If new: proceed to Step 2
 
-### Step 2: Create Task
+### Step 2: Route and Create Task
+
+**Determine assignee**:
+- `bot`: Mechanical work, code changes, documentation (swarm-claimable)
+- `nic`: Requires human judgment, external communication, decisions
+
+**Determine priority**:
+- P0: Blocking current work, critical bug
+- P1: Workflow improvement, high-value feature
+- P2: Normal backlog (default)
+- P3: Nice-to-have, someday
+
+**Create with context for workers**:
 
 ```
 mcp__plugin_aops-tools_task_manager__create_task(
-  task_title="<extracted title>",
-  type="task",
-  project="<infer from context or ask>",
+  task_title="<clear, actionable title>",
+  type="task",  # or: bug, feature, learn
+  project="<infer from context>",
   priority=2,
-  complexity="<infer: mechanical | requires-judgment>",
-  body="<any additional context from user prompt>"
+  assignee="bot",  # or "nic" for human tasks
+  tags=["<relevant>", "<tags>"],
+  body="""# <Title>
+
+## Problem
+<What's wrong or missing>
+
+## Solution
+<What needs to happen>
+
+## Files to Update
+- `path/to/file.py` (if known)
+
+## Acceptance Criteria
+- [ ] Criterion 1
+- [ ] Criterion 2
+"""
 )
 ```
 
 ### Step 3: Confirm and HALT
 
-Report: "Queued: [task-id] - [title]"
+Report: "Queued: [task-id] - [title] (assignee: bot, P2)"
 
-The task is queued. That's it.
+The task is queued. Swarm will claim if assignee=bot.
+
+## Task Body Template
+
+Good task bodies help workers succeed:
+
+```markdown
+# <Title>
+
+## Problem
+<1-2 sentences on what's wrong>
+
+## Solution
+<How to fix it>
+
+## Files to Update
+- `path/to/relevant/file.py`
+
+## Acceptance Criteria
+- [ ] Testable criterion
+```
 
 ## Arguments
 
 * `/q <description>` - Create task with description as title
 * `/q` (no args) - Prompt user for task details
+* `/q P0 <description>` - Create high-priority task
+* `/q bot <description>` - Explicitly assign to swarm
+
+## Meta-Workflow: Commission Don't Code
+
+When you encounter missing functionality:
+1. **Don't debug manually** - create a task
+2. Assign to `bot` with clear acceptance criteria
+3. Let swarm implement, file PR
+4. Merge PR and use new feature
+
+This keeps supervisor sessions lean and lets workers do implementation.

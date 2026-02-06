@@ -152,9 +152,59 @@ Shouldn't happen with worktree isolation. If it does:
 2. Add `depends_on` relationships between them
 3. Or process sequentially instead of in parallel
 
+## Supervisor Session Efficiency
+
+Supervisor sessions consume context quickly. Minimize by:
+
+### Use Batch Commands
+```bash
+# Check status in one command
+polecat summary
+
+# Merge all clean PRs at once (when available)
+gh pr list --json number -q '.[].number' | xargs -I{} gh pr merge {} --squash --delete-branch && polecat sync
+```
+
+### Use Watchdog Instead of Polling
+```bash
+polecat watch &  # Background notifications for new PRs
+```
+
+### Commission Don't Debug
+When functionality is missing:
+1. **Don't write code** - create a task with `/q`
+2. Assign to `bot` with clear acceptance criteria
+3. Let swarm implement and file PR
+4. Merge and use
+
+This keeps supervisor sessions lean.
+
+### Available Monitoring Commands
+```bash
+polecat summary              # Digest of recent work
+polecat analyze <task-id>    # Diagnose stalled tasks
+polecat watch                # Background PR notifications
+polecat reset-stalled        # Reset hung in_progress tasks
+```
+
+## Refinery Workflow
+
+The "refinery" handles PR review and merge:
+
+### Local Refinery (default)
+- Manual merge via `gh pr merge --squash`
+- Handle conflicts, complex PRs
+- Works for all repos
+
+### GitHub Actions Refinery (aops only)
+- Auto-merge clean PRs (pure additions, tests pass)
+- Label `polecat` triggers workflow
+- Failed checks → stays open for review
+
 ## Related
 
 - `/pull` - Single task workflow (what each worker runs internally)
 - `polecat run` - Single autonomous polecat (no swarm)
 - `polecat crew` - Interactive, persistent workers
 - `hypervisor` - Deprecated; atomic lock pattern still useful for non-task batches
+- `/q` - Quick-queue tasks for swarm to implement
