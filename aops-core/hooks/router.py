@@ -231,6 +231,27 @@ class HookRouter:
             # Don't let loop detection failure block the hook
             print(f"WARNING: Loop detection failed: {e}", file=sys.stderr)
 
+    @staticmethod
+    def _normalize_json_field(value: Any) -> Any:
+        """Normalize a field that may be a JSON string to its parsed form.
+
+        Gemini CLI sometimes passes tool_input and tool_result as JSON strings
+        instead of dicts. This centralizes parsing so downstream gates don't need
+        defensive json.loads calls.
+
+        Args:
+            value: Value that may be a JSON string or already-parsed dict/list
+
+        Returns:
+            Parsed value if it was a JSON string, otherwise unchanged
+        """
+        if isinstance(value, str):
+            try:
+                return json.loads(value)
+            except json.JSONDecodeError:
+                return value
+        return value
+
     def normalize_input(
         self, raw_input: Dict[str, Any], gemini_event: Optional[str] = None
     ) -> HookContext:
@@ -270,6 +291,27 @@ class HookRouter:
         if hook_event == "SessionStart":
             persist_session_data({"session_id": session_id})
 
+        # 4. Normalize JSON string fields from Gemini
+        # Gemini sometimes passes tool_input/tool_result as JSON strings
+        tool_input = self._normalize_json_field(raw_input.get("tool_input", {}))
+        if not isinstance(tool_input, dict):
+            tool_input = {}
+
+        # Normalize tool_result and toolResult in raw_input (for PostToolUse/SubagentStop)
+        normalized_raw = raw_input.copy()
+        if "tool_result" in normalized_raw:
+            normalized_raw["tool_result"] = self._normalize_json_field(
+                normalized_raw["tool_result"]
+            )
+        if "toolResult" in normalized_raw:
+            normalized_raw["toolResult"] = self._normalize_json_field(
+                normalized_raw["toolResult"]
+            )
+        if "subagent_result" in normalized_raw:
+            normalized_raw["subagent_result"] = self._normalize_json_field(
+                normalized_raw["subagent_result"]
+            )
+
         return HookContext(
             session_id=session_id,
             hook_event=hook_event,
@@ -277,10 +319,10 @@ class HookRouter:
             slug=raw_input.get("slug"),
             is_sidechain=raw_input.get("isSidechain"),
             tool_name=raw_input.get("tool_name"),
-            tool_input=raw_input.get("tool_input", {}),
+            tool_input=tool_input,
             transcript_path=transcript_path,
             cwd=raw_input.get("cwd"),
-            raw_input=raw_input,
+            raw_input=normalized_raw,
         )
 
     def execute_hooks(self, ctx: HookContext) -> CanonicalHookOutput:
