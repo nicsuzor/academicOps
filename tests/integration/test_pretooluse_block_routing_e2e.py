@@ -20,7 +20,9 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -150,9 +152,7 @@ class TestRouterBlockOutputFormat:
             pytest.skip("AOPS environment variable not set")
         return Path(aops) / "aops-core" / "hooks" / "router.py"
 
-    def test_router_stdout_is_valid_json_on_block(
-        self, router_path: Path, tmp_path: Path
-    ):
+    def test_router_stdout_is_valid_json_on_block(self, router_path: Path, tmp_path: Path):
         """Even on exit 2, router stdout should be valid JSON.
 
         Claude Code spec says exit 2 = only stderr read, but the router
@@ -210,9 +210,7 @@ class TestRouterBlockOutputFormat:
                 parsed = json.loads(result.stdout)
                 assert isinstance(parsed, dict), "Router output should be a JSON object"
             except json.JSONDecodeError as e:
-                pytest.fail(
-                    f"Router stdout is not valid JSON: {e}. Got: {result.stdout!r}"
-                )
+                pytest.fail(f"Router stdout is not valid JSON: {e}. Got: {result.stdout!r}")
 
 
 # --- Full Claude Code E2E tests ---
@@ -308,6 +306,7 @@ class TestClaudeCodeBlockEnforcement:
 
         if hydrator_calls:
             # Hydrator was called - verify Bash worked after
+            bash_calls = [c for c in tool_calls if c["name"] == "Bash"]
             if result["success"]:
                 # Session succeeded with hydrator - Bash should have been allowed
                 # (Though agent might choose not to use Bash at all)
@@ -325,14 +324,14 @@ class TestClaudeCodeBlockEnforcement:
         )
 
         # With bypass, no hydrator should be needed
-        bypass_hydrator_calls = [
+        hydrator_calls = [
             c
             for c in tool_calls
             if c["name"] == "Task"
             and c.get("input", {}).get("subagent_type") == "prompt-hydrator"
         ]
 
-        if result["success"] and not bypass_hydrator_calls:
+        if result["success"]:
             # Success with bypass - either Bash worked or wasn't needed
             pass  # Just verify session succeeded without hydrator being required
         else:

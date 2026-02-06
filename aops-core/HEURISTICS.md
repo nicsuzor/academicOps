@@ -8,21 +8,6 @@ description: Working hypotheses validated by evidence.
 
 # Heuristics
 
-## Probabilistic Methods, Deterministic Processes (P#92)
-
-**Statement**: The framework embraces probabilistic methods (LLM agents) while requiring deterministic processes and derivable principles. Experimentation is encouraged within clear safeguards.
-
-**Corollaries**:
-- LLMs are inherently probabilistic - we don't seek deterministic *outcomes*
-- Processes (workflows, enforcement, derivation chains) must be deterministic and reproducible
-- Principles must be derivable from axioms - no ad-hoc rules
-- Feedback loops (P#45) enable controlled experimentation
-- Fail-fast (P#8, P#9) provides safeguards against runaway experiments
-
-**Derivation**: Attempting deterministic outcomes from probabilistic agents is futile. The framework achieves rigor through deterministic *processes* that channel probabilistic methods productively.
-
----
-
 ## Skills Contain No Dynamic Content (P#19)
 
 **Statement**: Current state lives in $ACA_DATA, not in skills.
@@ -82,6 +67,7 @@ description: Working hypotheses validated by evidence.
 ## Internal Records Before External APIs (P#61)
 
 **Statement**: When user asks "do we have a record" or "what do we know about X", search bd and memory FIRST before querying external APIs.
+
 **Derivation**: "Do we have" implies checking our knowledge stores, not fetching new data. Internal-first respects the question's scope and avoids unnecessary API calls.
 
 ---
@@ -121,9 +107,6 @@ description: Working hypotheses validated by evidence.
 ## Just-In-Time Information (P#66)
 
 **Statement**: Never present information that is not necessary to the task at hand.
-
-**Corollaries**:
-- When hydrator provides specific guidance (e.g., "look for tests", "verify interactively"), follow that guidance rather than investigating from first principles. The hydrator has already done the context analysis.
 
 **Derivation**: Cognitive load degrades performance. Context should be loaded on-demand when relevant, not front-loaded speculatively. This enables focused work and supports the hydrator's JIT context loading pattern.
 
@@ -191,7 +174,6 @@ description: Working hypotheses validated by evidence.
 - Numbered lists in parent body are sufficient for planning; tasks are for execution
 - For debugging tasks, validate the hypothesis (e.g., "working version exists at commit X") BEFORE decomposing into fix steps. An unvalidated hypothesis leads to wasted subtasks.
 - **Tests passing ≠ acceptance criteria met**. When a task specifies a methodology (e.g., "use git bisect"), follow the methodology. A passing test found by a different path doesn't satisfy "identify the breaking commit."
-- **Task bodies must be self-contained**. Tasks are long-lived; `/tmp/` is ephemeral. Never reference temporary files in task bodies - include all required details inline or persist data to `$ACA_DATA/` first.
 
 **Derivation**: Empty child tasks duplicate information without adding value. They create task sprawl and make the queue harder to navigate. Decomposition should be triggered by need (claiming work, adding detail), not by reflex.
 
@@ -202,11 +184,11 @@ description: Working hypotheses validated by evidence.
 **Statement**: The creating agent is responsible for inserting tasks onto the work graph. Every task MUST connect to the hierarchy: `action → task → epic → project → goal`. Disconnected tasks are violations.
 
 **Hierarchy definitions**:
-- **Goal**: Strategic life outcome (months/years). You have 3-5 goals total - "World-Class Academic Profile", "Get Paid", "Be Happy". If you're creating more than 5, you're misusing this type.
-- **Project**: Bounded initiative with deliverables (weeks/months) - "Reliability Paper", "v1.1 Framework Release". Projects live under goals.
-- **Epic**: Group of tasks toward a milestone (days/weeks) - "Implement batch processing". Epics live under projects.
-- **Task**: Discrete piece of work (hours/days) - "Fix hydrator bug". Tasks are files with IDs.
-- **Action**: Single atomic step (minutes) - "Run tests". Actions are bullet points in task bodies, NOT separate files.
+- **Goal**: Long-term outcome (months/years) - "Finish PhD", "Launch product"
+- **Project**: Bounded initiative with deliverables (weeks/months) - "Migrate to tasks-mcp"
+- **Epic**: Group of tasks toward a milestone (days/weeks) - "Implement batch processing"
+- **Task**: Discrete piece of work (hours/days) - "Fix hydrator bug"
+- **Action**: Single atomic step (minutes) - "Run tests"
 
 **Sequencing principle**: Work on one epic at a time when possible. Epics are the unit of focus - completing an epic before starting another reduces context-switching and makes progress visible.
 
@@ -233,7 +215,6 @@ description: Working hypotheses validated by evidence.
 - Investigate root cause ONLY if user asks "why" or if minimal verification fails
 - Do NOT explain investigation reasoning ("I had to rule out X...") - just report the result
 - **When user/task specifies a methodology, EXECUTE THAT METHODOLOGY.** Do not substitute your own approach. "User says git bisect" → do git bisect. "User says X worked yesterday" → it's a regression, find when it broke.
-- **When user provides failure data and asks for tests, WRITE TESTS FIRST.** Capture the observed behavior as test fixtures immediately. Do not investigate root cause before producing the requested artifact.
 
 **Derivation**: Users have ground-truth about their own system. Over-investigation violates P#5 (Do One Thing) by wasting context on "proving" what the user already knows. Verification ≠ Investigation. One test: reproduce the bug, fix it, stop. P#5's warning applies: "I'll just [investigate a bit more]" is the exact friction the axiom exists to prevent.
 
@@ -276,7 +257,7 @@ description: Working hypotheses validated by evidence.
 **Statement**: CLI commands and MCP tools exposing the same functionality MUST have identical default behavior. Users should get the same result whether using CLI or MCP.
 
 **Corollaries**:
-- Same function, same defaults: If MCP `list_tasks` defaults to `limit=10`, CLI `task list` must too
+- Same function, same defaults: If MCP `get_ready_tasks` defaults to `limit=1`, CLI `task ready` must too
 - CLI may offer convenience flags (`--all`) but defaults must match MCP
 - When adding features to one interface, update the other
 
@@ -351,7 +332,7 @@ description: Working hypotheses validated by evidence.
 
 ---
 
-## Match Planning Abstraction (P#90)
+## Match Planning Abstraction (P#82)
 
 **Statement**: When user is deconstructing/planning, match their level of abstraction. Don't fill in blanks until they signal readiness for specifics.
 
@@ -421,38 +402,6 @@ description: Working hypotheses validated by evidence.
 
 ---
 
-## User Intent Discovery Before Implementation (P#88)
-
-**Statement**: Before implementing user-facing features, verify understanding of user intent, not just technical requirements. Ask "what question will this answer for the user?" before building.
-
-**Signs you're skipping intent discovery**:
-- Building from spec without asking "who uses this and what pain point does it solve?"
-- Acceptance criteria describe code behavior ("displays X") without user outcome ("user can determine Y")
-- Feature passes technical review but user says "this isn't useful"
-
-**Practice**:
-- Document user workflow in epic body: who uses this, what pain points, what success looks like
-- Include user-centric litmus tests: "Can user answer [specific question]?" not just "Does code run?"
-- When unclear about user value, ASK rather than assume and build
-- Validation checks user value, not just technical correctness
-- Before completion, QA must verify deliverables against ORIGINAL user prompt, not derived acceptance criteria
-
-**Evidence**: Session 2026-02-03 - agent built "499 agents working" dashboard feature showing `unknown: No specific task` for every entry. Feature passed planning and technical review but provided zero value to user. The spec described WHAT to display without WHY users need it.
-
-**Evidence 2**: Same session - QA acceptance test passed "Session Display 5/5" by checking element presence ("WHERE YOU LEFT OFF exists") without examining content. Actual content showed "now unknown ok" - completely useless. QA used Playwright to verify UI element existence, not whether the content answered user questions.
-
-**QA Verification Corollary**: For user-facing features, automated tests (element presence, string matching) are INSUFFICIENT. QA must examine ACTUAL CONTENT and ask: "Would a real user find this helpful?" Content showing "unknown", placeholder text, or meaningless data is a FAILURE regardless of whether UI elements exist. Output screenshots/samples and make explicit user-value judgments.
-
-**Epic Verification Corollary**: User-facing features MUST belong to an epic with a qualitative verification step. The epic acceptance criteria must include "run the actual interface and verify it addresses the original user need." Individual subtasks may pass technical QA, but epic completion requires qualitative user-value assessment.
-
-**Handover Epic Context Corollary**: When completing a task that has a parent epic, handover MUST report: (1) remaining work on the epic, (2) whether epic is now ready for qualitative verification. This ensures visibility into feature completion state, not just subtask completion.
-
-**Monitoring Task Corollary**: For tasks involving monitoring or observation ("assess", "observe", "watch", "evaluate how X is going"), acceptance criteria must include OUTCOME verification, not just INITIATION verification. Starting a process ≠ evaluating its results. Criteria must include: observed completions, measured performance, or evaluated quality—not just "process started successfully."
-
-**Derivation**: P#31 (Acceptance Criteria Own Success) and P#74 (User System Expertise) establish user as authority on success. This heuristic operationalizes: verify understanding of user intent BEFORE building, not just validate technical correctness after.
-
----
-
 ## Error Recovery Returns to Reference (P#85)
 
 **Statement**: When implementation fails and a reference example exists, re-read the reference before inventing alternatives.
@@ -506,45 +455,3 @@ mcp__plugin_aops-tools_task_manager__get_task(id="...")
 ```
 
 **Derivation**: Empirical observation from hypervisor testing (see specs/worker-hypervisor.md "Empirical Findings"). P#8 (Fail-Fast) says we should fail on unreliable dependencies - notification-blocking supervision patterns fail silently via deadlock instead.
-
----
-
-## LLM Orchestration Means LLM Execution (P#89)
-
-**Statement**: When user requests content "an LLM will orchestrate/execute", create content for the LLM to read and act on directly - NOT code infrastructure that parses that content.
-
-**Signs you're violating this**:
-- Creating Python runners for "LLM-orchestrated tests"
-- Building parsing/execution infrastructure for "agent-readable" documents
-- Inserting automation layer between LLM and the content it was meant to read
-
-**Corollaries**:
-- "LLM will read and act" → markdown with clear instructions for LLM
-- "Code/automation will read and act" → structured data + parsing code
-- When ambiguous about execution model, ask
-
-**Derivation**: Category error prevention. "LLM orchestration" describes WHO executes (the LLM), not HOW to build tooling around it. P#78's "code for deterministic computation" reinforces: semantic interpretation is LLM work.
-
----
-
-## Verify Non-Duplication Before Batch Create (P#91)
-
-**Statement**: Before creating tasks from batch input (email triage, backlog import, etc.), cross-reference against existing task titles and entry_ids to avoid duplicates.
-
-**Corollaries**:
-- Query existing tasks BEFORE processing inbox items
-- Compare email entry_ids and subject lines against existing task bodies
-- Apply workflow classification rules (Task/FYI/Skip) - not every item needs a task
-- For email triage specifically: check sent mail for existing replies first
-
-**Derivation**: Corollary of P#26 (Verify First) and P#58 (Indices Before Exploration). Batch operations without deduplication create noise and duplicate work. The task index is the authoritative source - query it first.
-
----
-
-## Run Python via uv (P#93)
-
-**Statement**: Always use `uv run python` (or `uv run pytest`) to execute Python code. Never use `python`, `python3`, or `pip` directly.
-
-**Derivation**: `uv` manages the virtual environment and dependencies. System python lacks the project context. `uv run` guarantees the correct environment is active without manual activation steps.
-
-

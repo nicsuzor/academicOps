@@ -10,11 +10,6 @@ from validation import TaskIDValidationError, validate_task_id_or_raise
 from lib.paths import get_aops_root
 
 
-def is_interactive() -> bool:
-    """Check if we're running in an interactive terminal."""
-    return sys.stdin.isatty()
-
-
 @click.group()
 @click.option(
     "--home",
@@ -62,7 +57,7 @@ def init(ctx, project):
         if failures:
             print(f"\n⚠️  Failed: {', '.join(failures)}")
             sys.exit(1)
-        print("\n✓ All mirrors ready")
+        print(f"\n✓ All mirrors ready")
 
 
 @main.command()
@@ -188,10 +183,9 @@ def _attempt_auto_merge(task, manager):
             eng.process_merge(task)
             print("  ✅ Auto-merge succeeded!")
         except Exception as e:
-            # Merge failed - kickback to review
+            # Merge failed - task stays at merge_ready for manual retry
             print(f"  ⚠ Auto-merge failed: {e}")
-            eng.handle_failure(task, str(e))
-            print("  Task moved to 'review' - engineer (bot) will attempt to fix")
+            print("  Task remains 'merge_ready' - run 'polecat merge' to retry manually")
 
     except ImportError as e:
         print(f"  ⚠ Auto-merge skipped: {e}")
@@ -255,9 +249,6 @@ def finish(ctx, no_push, do_nuke):
             print("  ✅ Changes saved.")
         except subprocess.CalledProcessError as e:
             print(f"  ❌ Failed to auto-commit: {e}")
-            if not is_interactive():
-                print("  🚫 Non-interactive mode: refusing to continue without saving.")
-                sys.exit(1)
             if not click.confirm("Continue without saving? (Risk of data loss)"):
                 sys.exit(1)
 
@@ -286,14 +277,6 @@ def finish(ctx, no_push, do_nuke):
                     print(
                         "   Run 'git reset --soft FETCH_HEAD' to recover if this is accidental."
                     )
-                    if not is_interactive():
-                        print(
-                            "   🚫 Non-interactive mode: refusing to push large changeset without confirmation."
-                        )
-                        print(
-                            "   Re-run interactively or manually push if this is intentional."
-                        )
-                        sys.exit(1)
                     if not click.confirm("Are you SURE you want to push this?"):
                         sys.exit(1)
     except Exception as e:
@@ -320,105 +303,13 @@ def finish(ctx, no_push, do_nuke):
             print(f"Error pushing to origin: {e}", file=sys.stderr)
             sys.exit(1)
 
-    # --- GitHub PR Integration ---
-    try:
-        # Import locally to avoid potential circular dependencies
-        try:
-            from github import generate_pr_body, check_gh_installed
-        except ImportError:
-            # Fallback if running as module
-            from .github import generate_pr_body, check_gh_installed
-
-        if check_gh_installed():
-            print("  🐙 GitHub CLI detected. Updating Pull Request...")
-            pr_body = generate_pr_body(task)
-
-            # Create a temp file for the body to handle multiline content safely
-            import tempfile
-            import json
-
-            with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
-                f.write(pr_body)
-                body_file = f.name
-
-            try:
-                # Check if PR exists
-                pr_check = subprocess.run(
-                    [
-                        "gh",
-                        "pr",
-                        "list",
-                        "--head",
-                        branch_name,
-                        "--json",
-                        "number",
-                        "--state",
-                        "open",
-                    ],
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                )
-
-                prs = []
-                if pr_check.returncode == 0 and pr_check.stdout.strip():
-                    try:
-                        prs = json.loads(pr_check.stdout)
-                    except json.JSONDecodeError:
-                        pass
-
-                if prs:
-                    # Update existing PR
-                    pr_number = prs[0]["number"]
-                    subprocess.run(
-                        ["gh", "pr", "edit", str(pr_number), "--body-file", body_file],
-                        check=True,
-                        capture_output=True,
-                    )
-                    print(f"  ✅ Updated PR #{pr_number}")
-                else:
-                    # Create new PR
-                    subprocess.run(
-                        [
-                            "gh",
-                            "pr",
-                            "create",
-                            "--title",
-                            task.title,
-                            "--body-file",
-                            body_file,
-                            "--head",
-                            branch_name,
-                            "--base",
-                            "main",
-                        ],
-                        check=True,
-                        capture_output=True,
-                    )
-                    print("  ✅ Created new PR")
-
-            except subprocess.CalledProcessError as e:
-                # Don't fail the whole finish command if PR creation fails
-                err_msg = e.stderr.decode().strip() if e.stderr else str(e)
-                print(f"  ⚠️  Failed to manage PR: {err_msg}")
-            except Exception as e:
-                print(f"  ⚠️  Error in PR integration: {e}")
-            finally:
-                if os.path.exists(body_file):
-                    os.unlink(body_file)
-
-    except ImportError:
-        print("  ⚠️  Could not import github module for PR integration.")
-    except Exception as e:
-        print(f"  ⚠️  Unexpected error in PR integration: {e}")
-
     # Update task status to merge_ready
     try:
         from lib.task_model import TaskStatus
 
         task.status = TaskStatus.MERGE_READY
         manager.storage.save_task(task)
-        print("✅ Task marked as 'merge_ready'")
+        print(f"✅ Task marked as 'merge_ready'")
 
         # Auto-merge hook: attempt to merge immediately if no blockers
         _attempt_auto_merge(task, manager)
@@ -431,7 +322,7 @@ def finish(ctx, no_push, do_nuke):
         print("Nuking worktree...")
         os.chdir(Path.home())  # Move out of worktree before nuking
         manager.nuke_worktree(task_id, force=False)
-        print("Worktree removed")
+        print(f"Worktree removed")
     else:
         print(f"\nTo clean up later: polecat nuke {task_id}")
 
@@ -585,12 +476,8 @@ def crew(ctx, project, name, gemini, resume):
             plugin_dir_tools,
         ]
 
-    # Set session type environment variable for hooks to detect
-    env = os.environ.copy()
-    env["POLECAT_SESSION_TYPE"] = "crew"
-
     try:
-        subprocess.run(cmd, cwd=crew_root, env=env)
+        subprocess.run(cmd, cwd=crew_root)
     except FileNotFoundError:
         print(f"Error: '{cli_tool}' command not found.", file=sys.stderr)
         sys.exit(1)
@@ -720,9 +607,6 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
     if gemini:
         # Gemini CLI
         cmd = ["gemini"]
-        # Note: Gemini CLI doesn't support --session-id; it uses --resume for session management
-        # For now, each polecat run starts a fresh session
-
         if interactive:
             # -i starts interactive mode with initial prompt
             cmd.extend(["-i", prompt])
@@ -755,40 +639,12 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
             # Headless: use -p for print mode
             cmd.extend(["-p", prompt])
 
-    # Set session type environment variable for hooks to detect
-    env = os.environ.copy()
-    env["POLECAT_SESSION_TYPE"] = "polecat"
-
     try:
-        if interactive:
-            # In interactive mode, we MUST NOT capture output or it will hang
-            # and we want the user to see/interact with the CLI
-            result = subprocess.run(
-                cmd,
-                cwd=worktree_path,
-                env=env,
-            )
-            exit_code = result.returncode
-            # No transcript to analyze in interactive mode (currently)
-        else:
-            result = subprocess.run(
-                cmd,
-                cwd=worktree_path,
-                capture_output=True,
-                text=True,
-                env=env,
-            )
-            exit_code = result.returncode
-            # Display agent output after run
-            if result.stdout:
-                print(result.stdout)
-            if result.stderr:
-                print(result.stderr, file=sys.stderr)
-
-            # Analyze the transcript for failures
-            if hasattr(manager, "analyze_transcript"):
-                manager.analyze_transcript(task, result.stdout, result.stderr)
-
+        result = subprocess.run(
+            cmd,
+            cwd=worktree_path,
+        )
+        exit_code = result.returncode
     except FileNotFoundError:
         print(f"Error: '{cli_tool}' command not found.", file=sys.stderr)
         sys.exit(1)
@@ -800,18 +656,18 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
 
     # Step 5: Auto-finish on success (unless disabled)
     if exit_code == 0:
-        print("\n✅ Agent completed successfully.")
+        print(f"\n✅ Agent completed successfully.")
         if not no_auto_finish:
-            print("🔄 Running auto-finish...")
+            print(f"🔄 Running auto-finish...")
             # Change to worktree directory and invoke finish directly
             original_cwd = os.getcwd()
             try:
                 os.chdir(worktree_path)
                 ctx.invoke(finish, no_push=False, do_nuke=False)
-                print("✅ Auto-finish completed.")
+                print(f"✅ Auto-finish completed.")
             except SystemExit as e:
                 if e.code != 0:
-                    print("⚠️  Auto-finish failed.")
+                    print(f"⚠️  Auto-finish failed.")
                     print(
                         f"   You can retry manually: cd {worktree_path} && polecat finish"
                     )
@@ -823,7 +679,7 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
             finally:
                 os.chdir(original_cwd)
         else:
-            print("📝 Auto-finish disabled. Run `polecat finish` when ready.")
+            print(f"📝 Auto-finish disabled. Run `polecat finish` when ready.")
             print(f"   Worktree: {worktree_path}")
     else:
         print(f"\n⚠️  Agent exited with code {exit_code}. Skipping auto-finish.")
@@ -831,103 +687,13 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
         print(f"   To finish manually: cd {worktree_path} && polecat finish")
 
 
-@main.command("reset-stalled")
-@click.option("--project", "-p", help="Filter by project")
-@click.option("--hours", default=4.0, help="Hours since last modification (default: 4)")
-@click.option(
-    "--dry-run", is_flag=True, help="Show what would be reset without changing"
-)
-@click.pass_context
-def reset_stalled(ctx, project, hours, dry_run):
-    """Reset stalled in_progress tasks back to active.
-
-    Finds tasks that have been in_progress for > N hours and resets them.
-    Useful for cleaning up after crashed/abandoned agents.
-    """
-    from datetime import datetime, timedelta, timezone
-
-    try:
-        from lib.task_model import TaskStatus
-        from lib.task_index import TaskIndex
-    except ImportError:
-        print(
-            "Error: Could not import task libraries. Ensure aops-core is available.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    manager = PolecatManager(home_dir=ctx.obj.get("home"))
-
-    # Calculate cutoff time
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
-
-    print(f"Checking for tasks stalled since {cutoff.isoformat()}...")
-
-    # List tasks
-    candidates = manager.storage.list_tasks(
-        status=TaskStatus.IN_PROGRESS, project=project
-    )
-
-    stalled = []
-    for task in candidates:
-        # Ensure timezone awareness
-        task_mod = task.modified
-        if task_mod.tzinfo is None:
-            task_mod = task_mod.replace(tzinfo=timezone.utc)
-
-        if task_mod < cutoff:
-            stalled.append(task)
-
-    if not stalled:
-        print("No stalled tasks found.")
-        return
-
-    print(f"Found {len(stalled)} stalled tasks (modified > {hours}h ago):")
-    for t in stalled:
-        print(f"  [{t.id}] {t.title} (modified: {t.modified.isoformat()})")
-
-    if dry_run:
-        print("\nDry run: no changes made.")
-        return
-
-    if not click.confirm(f"\nReset these {len(stalled)} tasks to ACTIVE?"):
-        print("Aborted.")
-        return
-
-    reset_count = 0
-    for task in stalled:
-        try:
-            task.status = TaskStatus.ACTIVE
-            task.assignee = None
-            manager.storage.save_task(task)
-            reset_count += 1
-        except Exception as e:
-            print(f"Failed to reset {task.id}: {e}", file=sys.stderr)
-
-    # Rebuild index
-    if reset_count > 0:
-        try:
-            # Try to get data root from storage or use default
-            data_root = manager.storage.data_root
-            index = TaskIndex(data_root)
-            index.rebuild_fast()
-            print("Index rebuilt.")
-        except Exception as e:
-            print(f"Warning: Failed to rebuild index: {e}", file=sys.stderr)
-
-    print(f"\n✅ Reset {reset_count} tasks.")
-
-
 @main.command()
 @click.option("--claude", "-c", default=0, help="Number of Claude workers")
 @click.option("--gemini", "-g", default=0, help="Number of Gemini workers")
 @click.option("--project", "-p", help="Project to focus on (default: all)")
-@click.option(
-    "--caller", default="bot", help="Identity claiming the tasks (default: bot)"
-)
 @click.option("--dry-run", is_flag=True, help="Simulate execution")
 @click.pass_context
-def swarm(ctx, claude, gemini, project, caller, dry_run):
+def swarm(ctx, claude, gemini, project, dry_run):
     """Run a swarm of parallel Polecat workers.
 
     Spawns N claude and M gemini workers, managing CPU affinity.
@@ -950,7 +716,7 @@ def swarm(ctx, claude, gemini, project, caller, dry_run):
                 sys.exit(1)
 
     home = ctx.obj.get("home")
-    run_swarm(claude, gemini, project, caller, dry_run, str(home) if home else None)
+    run_swarm(claude, gemini, project, dry_run, str(home) if home else None)
 
 
 if __name__ == "__main__":

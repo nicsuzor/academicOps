@@ -37,13 +37,11 @@ def get_plugin_root() -> Path:
 
 def get_aops_root() -> Path:
     """
-    Get the AOPS root directory (alias for plugin root).
-
-    In plugin-only architecture, this is always the plugin root.
-    The $AOPS environment variable is no longer used.
+    Get the AOPS root directory (alias for plugin root in this context, or $AOPS).
     """
+    if os.environ.get("AOPS"):
+        return Path(os.environ["AOPS"]).resolve()
     return get_plugin_root()
-
 
 def get_bots_dir() -> Path:
     """Alias for get_aops_root."""
@@ -220,64 +218,6 @@ def resolve_binary(name: str) -> Path | None:
 
     logger.debug(f"Binary '{name}' resolved to: {resolved}")
     return resolved
-
-
-def get_ntfy_config() -> dict[str, str | bool | int] | None:
-    """
-    Get ntfy notification configuration from environment variables.
-
-    Configuration is entirely through environment variables (fail-fast pattern).
-    If NTFY_TOPIC is not set, returns None (notifications disabled).
-
-    Required env vars (all must be set if notifications are desired):
-    - NTFY_TOPIC: The ntfy topic to publish to (e.g., "aops-alerts")
-    - NTFY_SERVER: Server URL (e.g., "https://ntfy.sh")
-    - NTFY_PRIORITY: Priority 1-5 (e.g., "3")
-    - NTFY_TAGS: Comma-separated tags (e.g., "robot,aops")
-
-    Returns:
-        dict with config if NTFY_TOPIC is set, None if not set
-
-    Raises:
-        RuntimeError: If NTFY_TOPIC is set but other required vars are missing
-    """
-    topic = os.environ.get("NTFY_TOPIC")
-    if not topic:
-        # Notifications disabled - this is the opt-in check
-        return None
-
-    # Once opted in via NTFY_TOPIC, all other config is required (fail-fast)
-    server = os.environ.get("NTFY_SERVER")
-    if not server:
-        raise RuntimeError(
-            "NTFY_TOPIC is set but NTFY_SERVER is missing.\n"
-            "Add to environment:\n"
-            "  export NTFY_SERVER='https://ntfy.sh'"
-        )
-
-    priority_str = os.environ.get("NTFY_PRIORITY")
-    if not priority_str:
-        raise RuntimeError(
-            "NTFY_TOPIC is set but NTFY_PRIORITY is missing.\n"
-            "Add to environment:\n"
-            "  export NTFY_PRIORITY='3'"
-        )
-
-    tags = os.environ.get("NTFY_TAGS")
-    if not tags:
-        raise RuntimeError(
-            "NTFY_TOPIC is set but NTFY_TAGS is missing.\n"
-            "Add to environment:\n"
-            "  export NTFY_TAGS='robot,aops'"
-        )
-
-    return {
-        "enabled": True,
-        "topic": topic,
-        "server": server,
-        "priority": int(priority_str),
-        "tags": tags,
-    }
 
 
 if __name__ == "__main__":

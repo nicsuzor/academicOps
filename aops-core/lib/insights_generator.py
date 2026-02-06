@@ -100,6 +100,38 @@ def extract_recent_context(session_id: str, max_turns: int = 20) -> str:
     return f"[Recent context for session {session_id} - max {max_turns} turns]"
 
 
+def call_claude_for_insights(
+    prompt: str,
+    transcript: str,
+    operational_metrics: dict[str, Any],
+    model: str = "claude-3-5-haiku-20241022",
+) -> str:
+    """Call Claude API to generate insights JSON.
+
+    Args:
+        prompt: Prepared prompt with metadata substituted
+        transcript: Recent session transcript or context
+        operational_metrics: Dict with workflows_used, subagents_invoked, etc.
+        model: Claude model to use (default: haiku for speed/cost)
+
+    Returns:
+        JSON string from Claude response
+
+    Raises:
+        Exception: If API call fails or times out
+
+    Note:
+        This is a placeholder. Actual implementation needs Claude API integration.
+        Consider using existing framework infrastructure if available.
+    """
+    # TODO: Implement actual Claude API call
+    # For now, return mock response for testing
+    raise NotImplementedError(
+        "Claude API integration not yet implemented. "
+        "This function needs to call Claude API with prompt + transcript + metrics."
+    )
+
+
 def _validate_framework_reflections(reflections: list[dict[str, Any]]) -> None:
     """Validate framework_reflections array structure.
 
@@ -144,29 +176,11 @@ def _validate_framework_reflections(reflections: list[dict[str, Any]]) -> None:
                     f"got '{reflection['outcome']}'"
                 )
 
-        # Validate and coerce followed to boolean if present
-        # Accept: bool, int (0/1), strings ("true"/"false", "yes"/"no", "1"/"0")
+        # Validate followed as boolean if present
         if "followed" in reflection and reflection["followed"] is not None:
-            val = reflection["followed"]
-            if isinstance(val, bool):
-                pass  # Already valid
-            elif isinstance(val, int):
-                reflection["followed"] = bool(val)
-            elif isinstance(val, str):
-                lower_val = val.lower().strip()
-                if lower_val in ("true", "yes", "1", "y"):
-                    reflection["followed"] = True
-                elif lower_val in ("false", "no", "0", "n", ""):
-                    reflection["followed"] = False
-                else:
-                    raise InsightsValidationError(
-                        f"Field 'framework_reflections[{i}].followed' cannot be coerced "
-                        f"to boolean from string '{val}'"
-                    )
-            else:
+            if not isinstance(reflection["followed"], bool):
                 raise InsightsValidationError(
-                    f"Field 'framework_reflections[{i}].followed' must be a boolean "
-                    f"or coercible value, got {type(val).__name__}"
+                    f"Field 'framework_reflections[{i}].followed' must be a boolean"
                 )
 
         # Validate list fields

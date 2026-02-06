@@ -8,8 +8,7 @@ from pathlib import Path
 
 import yaml
 
-from validation import validate_task_id_or_raise
-from observability import metrics
+from validation import TaskIDValidationError, validate_task_id_or_raise
 
 # Add aops-core to path for lib imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -18,7 +17,7 @@ sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
 # These imports will fail here but work when moved to academicOps
 try:
-    from lib.task_model import TaskStatus
+    from lib.task_model import TaskStatus, TaskType
     from lib.task_storage import TaskStorage
 except ImportError:
     pass
@@ -393,6 +392,9 @@ class PolecatManager:
         Unlike ensure_repo_mirror() which uses --prune, this method only fetches
         new commits. Safe to run while worktrees are active.
 
+        Fetches from both origin (remote) and local repo to ensure mirror has
+        all commits, including unpushed local changes.
+
         Args:
             project: Project slug
 
@@ -406,15 +408,43 @@ class PolecatManager:
             print(f"⚠ No mirror for {project} - skipping sync")
             return False
 
+        if project not in self.projects:
+            print(f"⚠ Unknown project {project} - skipping sync")
+            return False
+
+        local_path = self.projects[project]["path"]
+
         try:
             print(f"Syncing {project} mirror (safe mode)...")
-            with metrics.time_operation("sync", project=project, mode="safe"):
-                subprocess.run(
-                    ["git", "fetch", "--all"],  # NO --prune flag
-                    cwd=mirror_path,
-                    check=True,
-                    capture_output=True,
-                )
+            # Prune stale worktree refs first - prevents "refusing to fetch into
+            # branch checked out" errors when worktree dirs were deleted externally
+            subprocess.run(
+                ["git", "worktree", "prune"],
+                cwd=mirror_path,
+                check=True,
+                capture_output=True,
+            )
+
+            # Ensure 'local' remote exists pointing to local repo
+            # This allows fetching unpushed commits from local working copy
+            self._ensure_local_remote(mirror_path, local_path)
+
+            # Fetch from origin (may fail if offline - that's OK)
+            origin_result = subprocess.run(
+                ["git", "fetch", "origin"],
+                cwd=mirror_path,
+                capture_output=True,
+            )
+            if origin_result.returncode != 0:
+                print(f"  ⚠ Origin fetch failed (offline?) - continuing with local")
+
+            # Fetch from local repo (should always succeed)
+            subprocess.run(
+                ["git", "fetch", "local"],
+                cwd=mirror_path,
+                check=True,
+                capture_output=True,
+            )
             return True
         except subprocess.CalledProcessError as e:
             print(f"⚠ Mirror sync failed for {project}: {e}", file=sys.stderr)
@@ -423,6 +453,56 @@ class PolecatManager:
             # Network errors, etc - non-fatal for offline operation
             print(f"⚠ Mirror sync failed for {project}: {e}", file=sys.stderr)
             return False
+
+    def _ensure_local_remote(self, mirror_path: Path, local_path: Path) -> None:
+        """Ensure mirror has a 'local' remote pointing to local repo.
+
+        This allows the mirror to fetch unpushed commits from the local working copy,
+        ensuring worktrees are created from the latest local state.
+
+        Args:
+            mirror_path: Path to bare mirror repo
+            local_path: Path to local repo
+        """
+        # Check if 'local' remote already exists
+        result = subprocess.run(
+            ["git", "remote", "get-url", "local"],
+            cwd=mirror_path,
+            capture_output=True,
+            text=True,
+        )
+
+        if result.returncode == 0:
+            # Remote exists - check if URL matches
+            current_url = result.stdout.strip()
+            if current_url != str(local_path):
+                # URL changed - update it
+                subprocess.run(
+                    ["git", "remote", "set-url", "local", str(local_path)],
+                    cwd=mirror_path,
+                    check=True,
+                    capture_output=True,
+                )
+        else:
+            # Remote doesn't exist - add it
+            subprocess.run(
+                ["git", "remote", "add", "local", str(local_path)],
+                cwd=mirror_path,
+                check=True,
+                capture_output=True,
+            )
+            # Configure fetch refspec to get all branches from local
+            subprocess.run(
+                [
+                    "git",
+                    "config",
+                    "remote.local.fetch",
+                    "+refs/heads/*:refs/remotes/local/*",
+                ],
+                cwd=mirror_path,
+                check=True,
+                capture_output=True,
+            )
 
     def check_mirror_freshness(self, project: str) -> tuple[bool, str]:
         """Checks if mirror is up-to-date with local repo, attempting fast-forward if stale.
@@ -516,15 +596,16 @@ class PolecatManager:
         mirror_head: str,
         local_head: str,
     ) -> tuple[bool, str]:
-        """Attempt to fast-forward mirror's branch to match local repo.
+        """Update mirror's branch to match local repo.
 
-        This allows the mirror to stay current with local commits without
-        requiring a network fetch from origin.
+        Prefers fast-forward when possible, but force-updates if histories have
+        diverged. Local repo is always treated as source of truth - polecat workers
+        should work on the same code the user has locally.
 
         Args:
             mirror_path: Path to bare mirror repo
             local_path: Path to local repo
-            branch: Branch name to fast-forward
+            branch: Branch name to update
             mirror_head: Current mirror HEAD SHA
             local_head: Target local HEAD SHA
 
@@ -539,13 +620,18 @@ class PolecatManager:
                 capture_output=True,
             )
 
-            if merge_base_result.returncode != 0:
-                # Not a fast-forward - histories have diverged
-                return False, "divergent history"
+            is_fast_forward = merge_base_result.returncode == 0
 
-            # Fast-forward is possible - update mirror's branch ref
-            # In a bare repo, we update the ref directly
-            print(f"  Fast-forwarding mirror {branch} to {local_head[:8]}...")
+            if is_fast_forward:
+                print(f"  Fast-forwarding mirror {branch} to {local_head[:8]}...")
+            else:
+                # Histories diverged - force update to match local
+                # This is safe: local is source of truth, mirror is just a cache
+                print(
+                    f"  Force-updating mirror {branch} to {local_head[:8]} (diverged from {mirror_head[:8]})..."
+                )
+
+            # Update mirror's branch ref to match local
             subprocess.run(
                 ["git", "update-ref", f"refs/heads/{branch}", local_head],
                 cwd=mirror_path,
@@ -553,7 +639,10 @@ class PolecatManager:
                 capture_output=True,
             )
 
-            return True, f"Mirror fast-forwarded to {local_head[:8]}"
+            if is_fast_forward:
+                return True, f"Mirror fast-forwarded to {local_head[:8]}"
+            else:
+                return True, f"Mirror force-updated to {local_head[:8]} (was diverged)"
 
         except subprocess.CalledProcessError as e:
             return False, f"git error: {e}"
@@ -577,7 +666,10 @@ class PolecatManager:
         return results
 
     def sync_all_mirrors(self) -> dict[str, bool]:
-        """Fetch latest from origin for all existing mirrors.
+        """Fetch latest from origin and local for all existing mirrors.
+
+        Fetches from both origin (remote) and local repo to ensure mirrors have
+        all commits, including unpushed local changes.
 
         Returns:
             Dict mapping project slug to success status
@@ -589,15 +681,42 @@ class PolecatManager:
                 print(f"⊘ {project}: no mirror (run 'polecat init' first)")
                 results[project] = False
                 continue
+
+            local_path = self.projects[project]["path"]
+
             try:
-                with metrics.time_operation("sync", project=project, mode="full"):
-                    subprocess.run(
-                        ["git", "fetch", "--all", "--prune"],
-                        cwd=mirror_path,
-                        check=True,
-                        capture_output=True,
-                    )
-                print(f"✓ {project}")
+                # Prune stale worktree refs first - prevents "refusing to fetch into
+                # branch checked out" errors when worktree dirs were deleted externally
+                subprocess.run(
+                    ["git", "worktree", "prune"],
+                    cwd=mirror_path,
+                    check=True,
+                    capture_output=True,
+                )
+
+                # Ensure 'local' remote exists pointing to local repo
+                self._ensure_local_remote(mirror_path, local_path)
+
+                # Fetch from origin (may fail if offline)
+                origin_result = subprocess.run(
+                    ["git", "fetch", "origin", "--prune"],
+                    cwd=mirror_path,
+                    capture_output=True,
+                )
+                origin_ok = origin_result.returncode == 0
+
+                # Fetch from local repo (should always succeed)
+                subprocess.run(
+                    ["git", "fetch", "local"],
+                    cwd=mirror_path,
+                    check=True,
+                    capture_output=True,
+                )
+
+                if origin_ok:
+                    print(f"✓ {project}")
+                else:
+                    print(f"✓ {project} (local only - origin fetch failed)")
                 results[project] = True
             except subprocess.CalledProcessError as e:
                 print(f"✗ {project}: {e}")
@@ -607,9 +726,6 @@ class PolecatManager:
     def claim_next_task(self, caller: str, project: str = None):
         """Finds and claims the highest priority ready task."""
         tasks = self.storage.get_ready_tasks(project=project)
-
-        # Record queue depth of ready tasks
-        metrics.record_queue_depth("ready", count=len(tasks), project=project)
 
         if not tasks:
             return None
@@ -626,13 +742,6 @@ class PolecatManager:
                     try:
                         fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
                     except BlockingIOError:
-                        # Lock contention - another worker has this task
-                        metrics.record_lock_wait(
-                            "task_claim",
-                            wait_time_ms=0,  # Non-blocking, so no wait
-                            acquired=False,
-                            caller=caller,
-                        )
                         continue
 
                     try:
@@ -650,14 +759,13 @@ class PolecatManager:
                     finally:
                         fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
-            except (OSError, IOError) as e:
+            except Exception as e:
                 print(f"Warning: Failed to claim {task.id}: {e}", file=sys.stderr)
                 continue
             finally:
                 try:
                     lock_path.unlink(missing_ok=True)
-                except OSError:
-                    # Lock file cleanup is best-effort; may fail if already removed
+                except Exception:
                     pass
 
         return None
@@ -704,27 +812,11 @@ class PolecatManager:
                 except BlockingIOError:
                     elapsed = time.monotonic() - start_time
                     if elapsed >= lock_timeout:
-                        # Record lock timeout metric
-                        metrics.record_lock_timeout(
-                            "worktree_creation",
-                            timeout_seconds=lock_timeout,
-                            caller=task.id,
-                        )
                         raise TimeoutError(
                             f"Could not acquire worktree creation lock within {lock_timeout}s. "
                             f"Another polecat may be creating a worktree."
                         )
                     time.sleep(0.1)  # Brief sleep before retry
-
-            # Record lock wait time (time from start to acquisition)
-            wait_time_ms = (time.monotonic() - start_time) * 1000
-            if wait_time_ms > 10:  # Only record if there was meaningful contention
-                metrics.record_lock_wait(
-                    "worktree_creation",
-                    wait_time_ms=wait_time_ms,
-                    acquired=True,
-                    caller=task.id,
-                )
 
             try:
                 return self._do_setup_worktree(task)
@@ -840,7 +932,7 @@ class PolecatManager:
                 ["git", "branch", "-D", branch_name], cwd=repo_path, check=False
             )
             raise RuntimeError(
-                "Failed to create valid worktree - orphan branch detected"
+                f"Failed to create valid worktree - orphan branch detected"
             )
 
         # Configure git identity if specified in config

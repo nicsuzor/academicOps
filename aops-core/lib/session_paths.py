@@ -14,11 +14,7 @@ from pathlib import Path
 
 
 def get_claude_project_folder() -> str:
-    """Get Claude Code project folder name from project directory.
-
-    Uses CLAUDE_PROJECT_DIR env var if set (available during hook execution),
-    otherwise falls back to cwd. This is critical for plugin-based hooks that
-    run from the plugin cache directory rather than the project directory.
+    """Get Claude Code project folder name from cwd.
 
     Converts absolute path to sanitized folder name:
     /home/user/project -> -home-user-project
@@ -26,16 +22,9 @@ def get_claude_project_folder() -> str:
     Returns:
         Project folder name with leading dash and all slashes replaced
     """
-    # CLAUDE_PROJECT_DIR is set by Claude Code during hook execution
-    # and contains the absolute path to the project root
-    project_dir = os.environ.get("CLAUDE_PROJECT_DIR")
-    if project_dir:
-        project_path = Path(project_dir).resolve()
-    else:
-        # Fallback for non-hook contexts (e.g., direct script execution)
-        project_path = Path.cwd().resolve()
+    cwd = Path.cwd().resolve()
     # Replace leading / with -, then all / with -
-    return "-" + str(project_path).replace("/", "-")[1:]
+    return "-" + str(cwd).replace("/", "-")[1:]
 
 
 def get_session_short_hash(session_id: str) -> str:
@@ -83,8 +72,6 @@ def _get_gemini_status_dir(input_data: dict | None) -> Path | None:
 
     Gemini transcript paths look like:
     ~/.gemini/tmp/<hash>/chats/session-<uuid>.json
-    or
-    ~/.gemini/tmp/<hash>/logs/session-<uuid>.jsonl
 
     Returns the ~/.gemini/tmp/<hash>/ directory or None if not detectable.
     """
@@ -94,7 +81,10 @@ def _get_gemini_status_dir(input_data: dict | None) -> Path | None:
     transcript_path = input_data.get("transcript_path")
     if transcript_path is None:
         return None
+    if "/.gemini/" not in transcript_path:
+        return None
 
+    # Extract the base directory (before /chats/ or /logs/)
     path = Path(transcript_path)
 
     # Walk up to find the hash directory (parent of chats/logs)
@@ -103,75 +93,7 @@ def _get_gemini_status_dir(input_data: dict | None) -> Path | None:
             # Parent of chats/logs is the hash directory
             return parent.parent
 
-    # Check if we are already in the hash directory
-    if "/.gemini/tmp/" in str(path):
-        # If path is ~/.gemini/tmp/<hash>, return it
-        # Otherwise, if it's deeper, we might need more logic,
-        # but usually Gemini passes transcript_path in chats/ or logs/
-        parts = path.parts
-        try:
-            tmp_idx = parts.index("tmp")
-            if len(parts) > tmp_idx + 2 and parts[tmp_idx - 1] == ".gemini":
-                return Path(*parts[: tmp_idx + 2])
-        except ValueError:
-            pass
-
     return None
-
-
-def get_gemini_logs_dir(input_data: dict | None) -> Path | None:
-    """Get Gemini logs directory from transcript_path.
-
-    Returns the logs/ folder within the Gemini state directory.
-    """
-    state_dir = _get_gemini_status_dir(input_data)
-    if state_dir:
-        logs_dir = state_dir / "logs"
-        logs_dir.mkdir(parents=True, exist_ok=True)
-        return logs_dir
-    return None
-
-
-def get_hook_log_path(
-    session_id: str, input_data: dict | None = None, date: str | None = None
-) -> Path:
-    """Get the path for the per-session hook log file.
-
-    Logs to:
-    - Claude: ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
-    - Gemini: ~/.gemini/tmp/<hash>/logs/<date>-<shorthash>-hooks.jsonl
-
-    Args:
-        session_id: Session ID from Claude Code or Gemini CLI
-        input_data: Optional input data dict (may contain transcript_path for Gemini)
-        date: Optional date in YYYY-MM-DD format (defaults to today)
-
-    Returns:
-        Path to the hook log file
-    """
-    if date is None:
-        from datetime import datetime, timezone
-
-        date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-
-    short_hash = get_session_short_hash(session_id)
-    date_compact = date.replace("-", "")  # YYYY-MM-DD -> YYYYMMDD
-
-    # Determine log directory based on session type
-    if _is_gemini_session(session_id, input_data):
-        # Gemini: write to logs/ directory in state dir
-        logs_dir = get_gemini_logs_dir(input_data)
-        if logs_dir is None:
-            # Fallback: use ~/.gemini/tmp/hooks/ if state dir not detectable
-            logs_dir = Path.home() / ".gemini" / "tmp" / "hooks"
-            logs_dir.mkdir(parents=True, exist_ok=True)
-        return logs_dir / f"{date_compact}-{short_hash}-hooks.jsonl"
-    else:
-        # Claude: ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
-        project_folder = get_claude_project_folder()
-        claude_projects_dir = Path.home() / ".claude" / "projects" / project_folder
-        claude_projects_dir.mkdir(parents=True, exist_ok=True)
-        return claude_projects_dir / f"{date_compact}-{short_hash}-hooks.jsonl"
 
 
 def get_session_status_dir(
@@ -257,10 +179,7 @@ def get_session_file_path(
 
     short_hash = get_session_short_hash(session_id)
 
-    return (
-        get_session_status_dir(session_id, input_data)
-        / f"{date_compact}-{hour}-{short_hash}.json"
-    )
+    return get_session_status_dir(session_id, input_data) / f"{date_compact}-{hour}-{short_hash}.json"
 
 
 def get_session_directory(

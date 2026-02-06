@@ -11,26 +11,9 @@ tags:
 ---
 
 <!-- NS: make this a 'base' workflow and require just about EVERY task to go through the session end process. MANDATORY. also add git commit and cleanup. -->
-# Landing the Plane (Session Completion)
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds and you output a framework reflection in the required form.
+# Task end handover workflow
 
-## MANDATORY WORKFLOW
-
-1. **Complete all file changes** - Finish any pending edits, writes, or code modifications
-2. **Run quality gates** - If code was changed, run tests and verify they pass
-3. **Update task status** - Mark tasks complete or update progress as appropriate
-4. **Invoke `/handover`** - Use the Skill tool with `skill="aops-core:handover"`
-5. **Commit and PUSH** - The handover skill will guide you, but ensure `git push` succeeds
-6. **Verify** - All changes committed AND pushed to remote
-7. **Output Framework Reflection** - Provide context for the next session
-
-## CRITICAL RULES
-
-- Work is **NOT complete** until `git push` succeeds
-- **NEVER stop** before pushing to remote
-- If push fails, resolve and retry until it succeeds
-- Using mutating tools (Edit, Write, Bash, git) after handover will reset the gate
-
+Graceful session handover when work must stop immediately.
 
 ## Quick Exit: No Work Done
 
@@ -38,9 +21,7 @@ If the session only involved answering user questions with no code changes, task
 
 ```markdown
 ## Framework Reflection
-User asked: "<brief summary of question/topic>"
-Answer: "<summary of answer>"
-Next steps: "<what the user or agent should do next, including task ID if applicable>"
+Answered user's question: "<brief summary of question/topic>"
 ```
 
 Then **stop** - skip all other steps.
@@ -78,18 +59,18 @@ git push  # Push to remote
 
 ### Polecat Worktree: Signal Ready for Merge
 
-If you're working in a **polecat worktree**, the work isn't complete until the Refinery merges it. Instead of marking the task `done`, signal it's ready for merge:
+If you're working in a **polecat worktree** (path under `~/polecats/`), the work isn't complete until the Refinery merges it. Instead of marking the task `done`, signal it's ready for merge:
 
 1. **Push the feature branch**:
 ```bash
 git push -u origin polecat/<task-id>
 ```
 
-2. **Set task status to `merge_ready`**:
+2. **Set task status to `review`** (ready for merge):
 ```
 mcp__plugin_aops-tools_task_manager__update_task(
   id="<task-id>",
-  status="merge_ready"
+  status="review"
 )
 ```
 
@@ -97,9 +78,11 @@ mcp__plugin_aops-tools_task_manager__update_task(
 
 The task lifecycle in polecat workflow:
 ```
-active → in_progress → merge_ready → done
-         (claimed)    (you)     (refinery)
+active → in_progress → review → done
+         (claimed)    (you)    (refinery)
 ```
+
+**CLI alternative**: If running interactively, use `polecat finish` which does steps 1-2 atomically.
 
 ## Step 3: File Follow-up Tasks
 
@@ -144,10 +127,10 @@ Output the reflection in **exact AGENTS.md format**:
 **Friction points**: [What caused the dump, or "user interrupt"]
 **Root cause** (if not success): [Why work couldn't complete]
 **Proposed changes**: [Framework improvements identified, or "none"]
-**Next step**: [Exact context for next session to resume, including Task ID]
+**Next step**: [Exact context for next session to resume]
 ```
 
-**Critical**: `Outcome` must be `partial` for emergency handover (work incomplete).
+**Critical**: `Outcome` must be `partial` for dumps (work incomplete).
 
 ## Step 6: Halt
 

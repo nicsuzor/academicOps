@@ -18,31 +18,6 @@ def _is_xdist_worker() -> bool:
 
 
 @pytest.fixture(autouse=True)
-def ensure_test_environment(monkeypatch, tmp_path):
-    """Ensure ACA_DATA is set and directories exist for all tests.
-
-    This provides a fallback test environment if ACA_DATA is not set externally.
-    """
-    if not os.environ.get("ACA_DATA"):
-        # Use a stable temp dir for the session if possible, or tmp_path
-        # But tmp_path is unique per test.
-        # Ideally we want a shared one for the session, but per-test is safer for isolation.
-        data_dir = tmp_path / "aca_data"
-        monkeypatch.setenv("ACA_DATA", str(data_dir))
-    else:
-        data_dir = Path(os.environ["ACA_DATA"])
-
-    # Ensure required structure exists
-    (data_dir / "tasks").mkdir(parents=True, exist_ok=True)
-    (data_dir / "projects").mkdir(parents=True, exist_ok=True)
-    (data_dir / "logs").mkdir(parents=True, exist_ok=True)
-    (data_dir / "goals").mkdir(parents=True, exist_ok=True)
-    (data_dir / "context").mkdir(parents=True, exist_ok=True)
-    # Sessions is sibling of data_root
-    (data_dir.parent / "sessions").mkdir(parents=True, exist_ok=True)
-
-
-@pytest.fixture(autouse=True)
 def skip_demo_in_xdist(request):
     """Skip demo tests when running in xdist workers.
 
@@ -180,8 +155,6 @@ This is a sample task created by the test fixture.
 
 """
     filepath.write_text(content, encoding="utf-8")
-
-
 #!/usr/bin/env python3
 """Integration test configuration and fixtures.
 
@@ -573,7 +546,7 @@ def run_gemini_headless(
             "result": {},
             "error": "AOPS environment variable not set - required for tests",
         }
-
+    
     # Ensure CLAUDE_PLUGIN_ROOT is set for hooks.json variable expansion
     if "CLAUDE_PLUGIN_ROOT" not in env:
         # aops-core is the plugin root
@@ -608,14 +581,15 @@ def run_gemini_headless(
             # Fallback: look for JSON object boundaries
             # We want the LAST valid JSON object, as that's likely the CLI response
             # (Hooks log earlier)
-
+            import re
+            
             # Simple heuristic: Look for { ... } that parse successfully
             candidates = []
             # This regex matches balanced braces is hard, so we'll try a simpler approach:
             # Find all start braces '{'
             output = result.stdout
             for i, char in enumerate(output):
-                if char == "{":
+                if char == '{':
                     # Try to parse from here to end, then backtrack if needed
                     # Actually, better to just try parsing substring starting at i
                     try:
@@ -623,7 +597,7 @@ def run_gemini_headless(
                         candidates.append((i + end_idx, obj))
                     except json.JSONDecodeError:
                         continue
-
+            
             if candidates:
                 # Use the last successfully parsed object
                 _, parsed_output = max(candidates, key=lambda x: x[0])

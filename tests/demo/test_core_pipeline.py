@@ -103,7 +103,7 @@ class TestCorePipelineDemo:
             print(f"    Plan items: {len(todos)}")
             for i, todo in enumerate(todos[:3]):  # Show first 3
                 content = todo.get("content", "")[:60]
-                print(f"    [{i + 1}] {content}...")
+                print(f"    [{i+1}] {content}...")
         todowrite_used = len(todowrite_calls) >= 1
 
         # Stage 3: Skill invocation (python-dev or framework)

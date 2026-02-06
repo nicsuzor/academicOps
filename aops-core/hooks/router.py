@@ -14,19 +14,16 @@ Architecture:
 
 import json
 import os
-import signal
 import sys
+import subprocess
 import tempfile
-import time
 import uuid
-from collections import deque
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-
+from typing import Any, Dict, List, Optional, Tuple
 
 # --- Path Setup ---
-HOOK_DIR = Path(__file__).parent  # aops-core/hooks
+HOOK_DIR = Path(__file__).parent # aops-core/hooks
 AOPS_CORE_DIR = HOOK_DIR.parent  # aops-core
 
 # Add aops-core to path for imports
@@ -39,19 +36,14 @@ try:
         CanonicalHookOutput,
         ClaudeHookOutput,
         GeminiHookOutput,
-        GeminiHookSpecificOutput,
         ClaudeHookSpecificOutput,
         ClaudeGeneralHookOutput,
-        ClaudeStopHookOutput,
+        ClaudeStopHookOutput
     )
-    from hooks.gate_registry import GATE_CHECKS
-    from hooks.gate_config import (
-        GATE_EXECUTION_ORDER,
-        MAIN_AGENT_ONLY_GATES,
-    )
+    from hooks.gate_registry import GATE_CHECKS, GateContext
     from hooks.unified_logger import log_hook_event
-    from lib.gate_model import GateResult
-    from lib.session_paths import get_pid_session_map_path, get_session_status_dir
+    from lib.gate_model import GateResult, GateVerdict
+    from lib.session_paths import get_pid_session_map_path
 except ImportError as e:
     # Fail fast if schemas missing
     print(f"CRITICAL: Failed to import: {e}", file=sys.stderr)
@@ -65,19 +57,52 @@ GEMINI_EVENT_MAP = {
     "SessionStart": "SessionStart",
     "BeforeTool": "PreToolUse",
     "AfterTool": "PostToolUse",
-    "BeforeAgent": "UserPromptSubmit",  # Mapped to UPS for unified handling
+    "BeforeAgent": "UserPromptSubmit", # Mapped to UPS for unified handling
     "AfterAgent": "AfterAgent",
-    "SessionEnd": "Stop",  # Map SessionEnd to Stop to trigger stop gates
+    "SessionEnd": "Stop", # Map SessionEnd to Stop to trigger stop gates
     "Notification": "Notification",
     "PreCompress": "PreCompact",
 }
 
-# Gate configuration is now in gate_config.py
-# GATE_EXECUTION_ORDER and MAIN_AGENT_ONLY_GATES imported from there
+# Shell scripts that must run via subprocess (can't be Python functions)
+SHELL_SCRIPTS: Dict[str, List[str]] = {
+    "SessionStart": ["session_env_setup.sh"],
+}
 
+# Gate configuration: Maps events to ordered list of gate function names
+# Gates are called directly from gate_registry.GATE_CHECKS - no subprocess
+GATE_CONFIG: Dict[str, List[str]] = {
+    "SessionStart": ["unified_logger", "session_start"],
+    "UserPromptSubmit": ["user_prompt_submit", "unified_logger"],
+    "PreToolUse": [
+        "unified_logger",
+        "subagent_restrictions",
+        "hydration",
+        "task_required",
+        "custodiet",
+        "qa_enforcement",
+    ],
+    "PostToolUse": [
+        "unified_logger",
+        "task_binding",
+        "accountant",
+        "post_hydration",
+        "post_critic",
+        "skill_activation",
+    ],
+    "AfterAgent": ["unified_logger", "agent_response"],
+    "SubagentStop": ["unified_logger"],
+    "Stop": [
+        "unified_logger",
+        "stop_gate",
+        "hydration_recency",
+        "generate_transcript",
+        "session_end_commit",
+    ],
+    "SessionEnd": ["unified_logger"],
+}
 
 # --- Session Management ---
-
 
 def get_session_data() -> Dict[str, Any]:
     """Read session metadata."""
@@ -85,10 +110,9 @@ def get_session_data() -> Dict[str, Any]:
         session_file = get_pid_session_map_path()
         if session_file.exists():
             return json.loads(session_file.read_text().strip())
-    except (OSError, json.JSONDecodeError) as e:
-        print(f"WARNING: Failed to read session data: {e}", file=sys.stderr)
+    except (OSError, json.JSONDecodeError):
+        pass
     return {}
-
 
 def persist_session_data(data: Dict[str, Any]) -> None:
     """Write session metadata atomically."""
@@ -96,150 +120,74 @@ def persist_session_data(data: Dict[str, Any]) -> None:
         session_file = get_pid_session_map_path()
         existing = get_session_data()
         existing.update(data)
-
+        
         # Atomic write
         fd, temp_path = tempfile.mkstemp(dir=str(session_file.parent), text=True)
         try:
-            with os.fdopen(fd, "w") as f:
+            with os.fdopen(fd, 'w') as f:
                 json.dump(existing, f)
             Path(temp_path).rename(session_file)
-        except Exception as e:
+        except Exception:
             Path(temp_path).unlink(missing_ok=True)
-            print(f"CRITICAL: Failed to persist session data: {e}", file=sys.stderr)
             raise
-    except OSError as e:
-        print(f"WARNING: OSError in persist_session_data: {e}", file=sys.stderr)
+    except OSError:
+        pass # Silent failure to avoid protocol noise
 
 
 # --- Router Logic ---
 
-
 class HookRouter:
     def __init__(self):
         self.session_data = get_session_data()
-        self._execution_timestamps = deque(maxlen=20)  # Store last 20 timestamps
-        self._MAX_CALLS_PER_WINDOW = 15
-        self._WINDOW_SECONDS = 5.0
 
-    def _check_for_loops(self, session_id: str):
-        """Detect if execute_hooks is being called in a tight loop across processes."""
-        # Use a dedicated heartbeat file in the session status directory
-        status_dir_env = os.environ.get("AOPS_SESSION_STATE_DIR")
-        if not status_dir_env:
-            return
-            
-        heartbeat_file = Path(status_dir_env) / "hook-heartbeat.json"
-        now = time.time()
-        
-        try:
-            # Read previous heartbeats
-            heartbeats = []
-            if heartbeat_file.exists():
-                try:
-                    heartbeats = json.loads(heartbeat_file.read_text())
-                except (json.JSONDecodeError, OSError):
-                    pass
-            
-            # Add current heartbeat and prune old ones (older than window)
-            heartbeats.append(now)
-            heartbeats = [t for t in heartbeats if (now - t) < self._WINDOW_SECONDS]
-            
-            # Atomically write back
-            fd, temp_path = tempfile.mkstemp(dir=str(heartbeat_file.parent), text=True)
-            try:
-                with os.fdopen(fd, "w") as f:
-                    json.dump(heartbeats, f)
-                Path(temp_path).rename(heartbeat_file)
-            except Exception:
-                Path(temp_path).unlink(missing_ok=True)
-
-            if len(heartbeats) >= self._MAX_CALLS_PER_WINDOW:
-                # Loop detected
-                error_msg = (
-                    f"CRITICAL: Infinite loop detected in hook router. "
-                    f"Over {len(heartbeats)} hook calls in {self._WINDOW_SECONDS:.1f} seconds across processes. "
-                    f"Terminating process {os.getpid()} to protect system RAM."
-                )
-                print(error_msg, file=sys.stderr)
-
-                # Log to unified logger if possible
-                try:
-                    loop_ctx = HookContext(
-                        session_id=session_id,
-                        hook_event="RouterLoop",
-                        raw_input={"error": error_msg, "heartbeats": heartbeats},
-                    )
-                    log_hook_event(
-                        loop_ctx,
-                        output=CanonicalHookOutput(
-                            verdict="deny", system_message="Infinite loop detected."
-                        ),
-                    )
-                except Exception as e:
-                    print(f"WARNING: Failed to log loop detection: {e}", file=sys.stderr)
-
-                # Terminate the current process forcefully.
-                os.kill(os.getpid(), signal.SIGKILL)
-                
-        except Exception as e:
-            # Don't let loop detection failure block the hook
-            print(f"WARNING: Loop detection failed: {e}", file=sys.stderr)
-
-    def normalize_input(
-        self, raw_input: Dict[str, Any], gemini_event: Optional[str] = None
-    ) -> HookContext:
+    def normalize_input(self, raw_input: Dict[str, Any], gemini_event: Optional[str] = None) -> HookContext:
         """Create a normalized HookContext from raw input."""
-
+        
         # 1. Determine Event Name
         if gemini_event:
             hook_event = GEMINI_EVENT_MAP.get(gemini_event, gemini_event)
         else:
-            raw_event = raw_input.get("hook_event_name")
-            if not raw_event:
-                # Raise KeyError for backward compatibility with tests
-                raise KeyError("hook_event_name")
-            hook_event = GEMINI_EVENT_MAP.get(raw_event, raw_event)
+            hook_event = raw_input.get("hook_event_name", "Unknown")
 
         # 2. Determine Session ID
         session_id = raw_input.get("session_id")
         if not session_id:
             session_id = self.session_data.get("session_id")
-
+        
         if not session_id and hook_event == "SessionStart":
+            # Generate new ID for Gemini if missing
             timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
             short_uuid = str(uuid.uuid4())[:8]
             session_id = f"gemini-{timestamp}-{short_uuid}"
-
+            
         if not session_id:
             session_id = f"unknown-{str(uuid.uuid4())[:8]}"
 
         # 3. Transcript Path / Temp Root
         transcript_path = raw_input.get("transcript_path")
-
-        # Set AOPS_SESSION_STATE_DIR via centralized session_paths
-        status_dir = get_session_status_dir(session_id, raw_input)
-        os.environ["AOPS_SESSION_STATE_DIR"] = str(status_dir)
-
+        
         # Persist session data on start
         if hook_event == "SessionStart":
             persist_session_data({"session_id": session_id})
+            if transcript_path:
+                 pass 
 
         return HookContext(
             session_id=session_id,
             hook_event=hook_event,
-            agent_id=raw_input.get("agentId"),
-            slug=raw_input.get("slug"),
-            is_sidechain=raw_input.get("isSidechain"),
             tool_name=raw_input.get("tool_name"),
             tool_input=raw_input.get("tool_input", {}),
             transcript_path=transcript_path,
             cwd=raw_input.get("cwd"),
-            raw_input=raw_input,
+            raw_input=raw_input
         )
 
     def execute_hooks(self, ctx: HookContext) -> CanonicalHookOutput:
-        """Run all configured gates for the event and merge results."""
-        self._check_for_loops(ctx.session_id)
+        """Run all configured gates for the event and merge results.
+
+        Gates are called directly as Python functions (no subprocess).
+        Shell scripts are still executed via subprocess.
+        """
         merged_result = CanonicalHookOutput()
 
         # Build input dict for gate context
@@ -247,29 +195,25 @@ class HookRouter:
         gate_input["hook_event_name"] = ctx.hook_event
         gate_input["session_id"] = ctx.session_id
 
-        # Execute gate functions directly (no subprocess)
-        gate_names = GATE_EXECUTION_ORDER.get(ctx.hook_event, [])
+        # 1. Execute shell scripts first (only SessionStart has them)
+        shell_scripts = SHELL_SCRIPTS.get(ctx.hook_event, [])
+        for script_name in shell_scripts:
+            self._execute_shell_script(script_name, ctx, merged_result)
+            if merged_result.verdict == "deny":
+                return merged_result
 
-        # Filter: Certain gates ONLY run for the main agent to prevent recursion
-        # and unnecessary overhead in subagent tool calls.
-        subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE")
-        if subagent_type:
-            gate_names = [g for g in gate_names if g not in MAIN_AGENT_ONLY_GATES]
+        # 2. Execute gate functions directly (no subprocess)
+        gate_names = GATE_CONFIG.get(ctx.hook_event, [])
+        gate_ctx = GateContext(ctx.session_id, ctx.hook_event, gate_input)
 
         for gate_name in gate_names:
             check_func = GATE_CHECKS.get(gate_name)
             if not check_func:
-                merged_result.metadata.setdefault("warnings", []).append(
-                    f"Gate '{gate_name}' not found"
-                )
+                merged_result.metadata.setdefault("warnings", []).append(f"Gate '{gate_name}' not found")
                 continue
 
-            start_time = time.monotonic()
             try:
-                result = check_func(ctx)
-                duration = time.monotonic() - start_time
-                merged_result.metadata.setdefault("gate_times", {})[gate_name] = duration
-                
+                result = check_func(gate_ctx)
                 if result:
                     hook_output = self._gate_result_to_canonical(result)
                     self._merge_result(merged_result, hook_output)
@@ -279,22 +223,73 @@ class HookRouter:
 
             except Exception as e:
                 import traceback
-
                 error_msg = f"Gate '{gate_name}' failed: {e}"
                 merged_result.metadata.setdefault("errors", []).append(error_msg)
-                merged_result.metadata.setdefault("tracebacks", []).append(
-                    traceback.format_exc()
-                )
+                merged_result.metadata.setdefault("tracebacks", []).append(traceback.format_exc())
 
         # Log hook event with output AFTER all gates complete
-        # We already have a normalized context 'ctx' and result 'merged_result'
-        # Pass them directly to the logger (no JSON conversion here)
         try:
-            log_hook_event(ctx, output=merged_result)
-        except Exception as e:
-            print(f"WARNING: Failed to log hook event: {e}", file=sys.stderr)
+            output_data = {
+                "verdict": merged_result.verdict,
+                "system_message": merged_result.system_message,
+                "context_injection": merged_result.context_injection,
+                "metadata": merged_result.metadata,
+                "argv": sys.argv,  # Debug: log how hook was invoked
+            }
+            log_hook_event(
+                ctx.session_id, ctx.hook_event, gate_input, output_data=output_data
+            )
+        except Exception:
+            pass # Silent failure for logging to avoid protocol issues
 
         return merged_result
+
+    def _execute_shell_script(
+        self, script_name: str, ctx: HookContext, merged_result: CanonicalHookOutput
+    ) -> None:
+        """Execute a shell script via subprocess."""
+        script_path = HOOK_DIR / script_name
+        if not script_path.exists():
+            merged_result.metadata.setdefault("warnings", []).append(f"Shell script not found: {script_path}")
+            return
+
+        env = os.environ.copy()
+        current_pp = env.get("PYTHONPATH", "")
+        if str(AOPS_CORE_DIR) not in current_pp:
+            env["PYTHONPATH"] = f"{AOPS_CORE_DIR}{os.pathsep}{current_pp}" if current_pp else str(AOPS_CORE_DIR)
+
+        subprocess_input = ctx.raw_input.copy()
+        subprocess_input["hook_event_name"] = ctx.hook_event
+        subprocess_input["session_id"] = ctx.session_id
+        json_input = json.dumps(subprocess_input)
+
+        try:
+            result = subprocess.run(
+                ["bash", str(script_path)],
+                input=json_input,
+                capture_output=True,
+                text=True,
+                timeout=30,
+                env=env,
+                cwd=HOOK_DIR
+            )
+
+            if result.stderr:
+                merged_result.metadata.setdefault("shell_stderr", {}).update({script_name: result.stderr})
+
+            if result.returncode == 0 and result.stdout.strip():
+                try:
+                    raw_output = json.loads(result.stdout)
+                    hook_output = self._normalize_hook_output(raw_output)
+                    self._merge_result(merged_result, hook_output)
+                except json.JSONDecodeError:
+                    merged_result.metadata.setdefault("warnings", []).append(f"Invalid JSON from {script_name}")
+
+            elif result.returncode != 0:
+                 merged_result.metadata.setdefault("errors", []).append(f"{script_name} failed with code {result.returncode}")
+
+        except Exception as e:
+            merged_result.metadata.setdefault("errors", []).append(f"Executing {script_name}: {e}")
 
     def _gate_result_to_canonical(self, result: GateResult) -> CanonicalHookOutput:
         """Convert GateResult to CanonicalHookOutput."""
@@ -309,12 +304,12 @@ class HookRouter:
         """Convert raw dictionary to CanonicalHookOutput."""
         if "verdict" in raw:
             return CanonicalHookOutput(**raw)
-
+        
         canonical = CanonicalHookOutput()
-
+        
         if "systemMessage" in raw:
             canonical.system_message = raw["systemMessage"]
-
+            
         hso = raw.get("hookSpecificOutput", {})
         if hso:
             decision = hso.get("permissionDecision")
@@ -322,18 +317,18 @@ class HookRouter:
                 canonical.verdict = "deny"
             elif decision == "ask":
                 canonical.verdict = "ask"
-
+            
             if "additionalContext" in hso:
                 canonical.context_injection = hso["additionalContext"]
-
+                
             if "updatedInput" in hso:
                 canonical.updated_input = hso["updatedInput"]
-
+                
         if raw.get("decision") == "block":
             canonical.verdict = "deny"
             if raw.get("reason"):
                 canonical.context_injection = raw["reason"]
-
+        
         return canonical
 
     def _merge_result(self, target: CanonicalHookOutput, source: CanonicalHookOutput):
@@ -343,61 +338,44 @@ class HookRouter:
         elif source.verdict == "ask" and target.verdict != "deny":
             target.verdict = "ask"
         elif source.verdict == "warn" and target.verdict == "allow":
-            target.verdict = "warn"
-
+             target.verdict = "warn"
+             
         if source.system_message:
-            target.system_message = (
-                f"{target.system_message}\n{source.system_message}"
-                if target.system_message
-                else source.system_message
-            )
-
+            target.system_message = f"{target.system_message}\n{source.system_message}" if target.system_message else source.system_message
+            
         if source.context_injection:
-            target.context_injection = (
-                f"{target.context_injection}\n\n{source.context_injection}"
-                if target.context_injection
-                else source.context_injection
-            )
-
+             target.context_injection = f"{target.context_injection}\n\n{source.context_injection}" if target.context_injection else source.context_injection
+             
         if source.updated_input:
             target.updated_input = source.updated_input
-
+            
         target.metadata.update(source.metadata)
 
-    def output_for_gemini(
-        self, result: CanonicalHookOutput, event: str
-    ) -> GeminiHookOutput:
+
+    def output_for_gemini(self, result: CanonicalHookOutput, event: str) -> GeminiHookOutput:
         """Format for Gemini CLI."""
         out = GeminiHookOutput()
-
+        
         if result.system_message:
             out.systemMessage = result.system_message
-
-        # Set decision based on verdict
+            
         if result.verdict == "deny":
             out.decision = "deny"
-            if result.context_injection:
-                out.reason = result.context_injection
-                if not out.systemMessage:
-                    out.systemMessage = f"Blocked: {result.context_injection}"
-            elif out.systemMessage:
-                out.reason = out.systemMessage
         else:
             out.decision = "allow"
-            if result.context_injection:
-                out.hookSpecificOutput = GeminiHookSpecificOutput(
-                    hookEventName=event, additionalContext=result.context_injection
-                )
-
+            
+        if result.context_injection:
+            out.reason = result.context_injection
+            if out.decision == "deny" and not out.systemMessage:
+                out.systemMessage = f"Blocked: {result.context_injection}"
+        
         if result.updated_input:
             out.updatedInput = result.updated_input
-
+            
         out.metadata = result.metadata
         return out
 
-    def output_for_claude(
-        self, result: CanonicalHookOutput, event: str
-    ) -> ClaudeHookOutput:
+    def output_for_claude(self, result: CanonicalHookOutput, event: str) -> ClaudeHookOutput:
         """Format for Claude Code."""
         if event == "Stop" or event == "SessionEnd":
             output = ClaudeStopHookOutput()
@@ -405,23 +383,23 @@ class HookRouter:
                 output.decision = "block"
             else:
                 output.decision = "approve"
-
+                
             if result.context_injection:
                 output.reason = result.context_injection
-
+            
             if result.system_message:
                 output.stopReason = result.system_message
                 output.systemMessage = result.system_message
-
+            
             return output
 
         output = ClaudeGeneralHookOutput()
         if result.system_message:
             output.systemMessage = result.system_message
-
+            
         hso = ClaudeHookSpecificOutput(hookEventName=event)
         has_hso = False
-
+        
         if result.verdict:
             if result.verdict == "deny":
                 hso.permissionDecision = "deny"
@@ -433,78 +411,72 @@ class HookRouter:
                 hso.permissionDecision = "allow"
                 has_hso = True
             else:
-                hso.permissionDecision = "allow"
-                has_hso = True
+                 hso.permissionDecision = "allow"
+                 has_hso = True
 
         if result.context_injection:
             hso.additionalContext = result.context_injection
             has_hso = True
-
+            
         if result.updated_input:
             hso.updatedInput = result.updated_input
             has_hso = True
-
+            
         if has_hso:
             output.hookSpecificOutput = hso
-
+            
         return output
-
 
 # --- Main Entry Point ---
 
-
 def main():
     import argparse
-
+    
     parser = argparse.ArgumentParser(description="Universal Hook Router")
-    parser.add_argument(
-        "--client", choices=["gemini", "claude"], help="Client type (gemini or claude)"
-    )
-    parser.add_argument(
-        "event", nargs="?", help="Event name (required for Gemini if not in payload)"
-    )
-
+    parser.add_argument("--client", choices=["gemini", "claude"], help="Client type (gemini or claude)")
+    parser.add_argument("event", nargs="?", help="Event name (required for Gemini if not in payload)")
+    
     # Parse known args to avoid issues if extra flags are passed
     args, unknown = parser.parse_known_args()
-
+    
     router = HookRouter()
-
+    
     # Read Input First (needed for detection)
-    raw_input = {}
     try:
         if not sys.stdin.isatty():
+            # Check if stdin has content
             input_data = sys.stdin.read()
             if input_data.strip():
                 raw_input = json.loads(input_data)
-    except Exception as e:
-        print(f"WARNING: Failed to read stdin: {e}", file=sys.stderr)
+            else:
+                raw_input = {}
+        else:
+            raw_input = {}
+    except Exception:
+        raw_input = {}
 
-    # Detect Invocation Mode, relying on explicit --client flag
+    # Detect Invocation Mode, relying on explicit --client flag    
     if args.client:
         client_type = args.client
         gemini_event = args.event
-    else:
-        # Emergency fallback for missing flag - try to detect from input
-        if raw_input.get("session_id", "").startswith("gemini-") or "/.gemini/" in str(
-            raw_input.get("transcript_path", "")
-        ):
-            client_type = "gemini"
-            gemini_event = args.event
-        else:
-            raise OSError("No --client flag provided on hook invocation.")
 
+    else:
+        raise OSError("No --client flag provided on hook invocation.")
+        
     # Pipeline
     ctx = router.normalize_input(raw_input, gemini_event)
     result = router.execute_hooks(ctx)
-
-    # Output (JSON conversion happens only here)
+    
+    # Output
     if client_type == "gemini":
+        # Gemini typically passes event as argument, but we normalize in ctx
         output = router.output_for_gemini(result, ctx.hook_event)
         print(output.model_dump_json(exclude_none=True))
+        sys.exit(0)
     else:
         output = router.output_for_claude(result, ctx.hook_event)
         print(output.model_dump_json(exclude_none=True))
-
+        sys.exit(0)
 
 if __name__ == "__main__":
     main()

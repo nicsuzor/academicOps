@@ -16,7 +16,7 @@ This document tracks all enforcement mechanisms in the academicOps framework.
 |----------|---------|--------|-------------|
 | `TASK_GATE_MODE` | `warn` | `warn`, `block` | Controls four-gate enforcement in task_required_gate.py |
 | `CUSTODIET_MODE` | `warn` | `warn`, `block` | Controls custodiet compliance audit enforcement |
-`HYDRATION_GATE_MODE` ...
+`HYDRATION_MODE` ...
 `HANDOVER_MODE` ...
 ## Enforcement Hooks
 
@@ -26,7 +26,6 @@ This document tracks all enforcement mechanisms in the academicOps framework.
 |------|------|-------------|
 | `hydration_gate.py` | warn/block | Blocks until prompt-hydrator invoked |
 | `task_required_gate.py` | configurable | Four-gate check for destructive operations |
-| `axiom_enforcer` | **DISABLED** | Real-time detection of P#8 (Fail-Fast) and P#26 (Write-Without-Read) |
 | `command_intercept.py` | transform | Transforms tool inputs (e.g., Glob excludes) |
 | `overdue_enforcement.py` | warn | Injects reminders for overdue tasks |
 
@@ -34,23 +33,23 @@ This document tracks all enforcement mechanisms in the academicOps framework.
 
 | Hook | Mode | Description |
 |------|------|-------------|
-| `gate_registry.py:accountant` | passive | General state tracking (hydration, custodiet, handover) |
-| `gate_registry.py:task_binding` | passive | Binds task to session on create/claim |
-| `gate_registry.py:skill_activation` | passive | Clears hydration pending on non-infrastructure skill activation |
+| `custodiet_gate.py` | configurable | Periodic compliance audit (every ~7 tool calls) |
+| `task_binding.py` | passive | Binds task to session on create/claim |
+| `todowrite_handover_gate.py` | passive | Sets todo_with_handover gate on TodoWrite |
+| `handover_gate.py` | passive | Clears stop gate when /handover invoked |
 
-## Three-Gate Model (task_required_gate.py)
+## Four-Gate Model (task_required_gate.py)
 
-Destructive operations require gates to pass:
+Destructive operations require ALL FOUR gates to pass:
 
 1. **Task bound** - Session has an active task via update_task or create_task
-2. **Plan mode invoked** - Hydrator or EnterPlanMode has been called to design approach
+2. **Plan mode invoked** - EnterPlanMode has been called to design approach
 3. **Critic invoked** - Critic agent has reviewed the plan
+4. **Todo with handover** - TodoWrite includes a session end/handover step
 
-**Current state**: Only `task_bound` gate is enforced by default. Gates 2-3 are tracked but not enforced (for observability).
+**Current state**: Only `task_bound` gate is enforced. Other three are tracked but not enforced (for validation).
 
-**Mode control**:
-- Set `TASK_GATE_MODE=block` to enable blocking (default: `warn`)
-- Set `TASK_GATE_ENFORCE_ALL=1` to enforce all three gates
+**Mode control**: Set `TASK_GATE_MODE=block` to enable blocking (default: `warn`)
 
 ## Custodiet Compliance Audit
 
@@ -60,17 +59,6 @@ Custodiet runs periodically (every ~7 tool calls) to check for:
 - Scope creep (work expanding beyond original request)
 - Infrastructure failure workarounds (violates P#9, P#25)
 - SSOT violations
-
-## Axiom Enforcement (axiom_enforcer)
-
-**Status**: **DISABLED** (as of 2026-02-04)
-
-The `axiom_enforcer` gate provided real-time detection of axiom violations during `Edit`/`Write` operations:
-
-- **P#8 (Fail-Fast)**: Detected code patterns like `except: pass`, `os.environ.get(..., default)`, and other silent fallbacks.
-- **P#26 (Verify First)**: Detected "Write-Without-Read" violations, blocking writes to files that hadn't been read in the current session.
-
-**Rationale for Disabling**: Delegated responsibility for these checks to the agent software (Gemini CLI / Claude Code) to reduce framework overhead and friction during interactive sessions.
 
 ### Output Formats
 

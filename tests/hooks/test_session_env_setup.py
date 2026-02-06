@@ -1,85 +1,112 @@
 #!/usr/bin/env python3
-"""Tests for session_env_setup.py hook.
+"""Tests for session_env_setup.sh hook.
 
 Tests environment variable setup logic for SessionStart hook:
+- AOPS already set scenario
+- AOPS derived from CLAUDE_PROJECT_DIR
+- AOPS derived from script location (fallback)
 - PYTHONPATH addition to CLAUDE_ENV_FILE
-- AOPS_SESSION_STATE_DIR persistence
-- Default enforcement modes
 """
 
-import sys
+import os
+import subprocess
+import tempfile
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
-# Add aops-core to path for imports
-aops_core_dir = Path(__file__).parent.parent.parent / "aops-core"
-if str(aops_core_dir) not in sys.path:
-    sys.path.insert(0, str(aops_core_dir))
-
-from hooks.session_env_setup import run_session_env_setup, persist_env_var
-from hooks.schemas import HookContext
+# Path to the hook script
+HOOK_SCRIPT = (
+    Path(__file__).parent.parent.parent / "aops-core" / "hooks" / "session_env_setup.sh"
+)
 
 
 class TestSessionEnvSetup:
     """Test environment setup logic."""
 
-    @pytest.fixture
-    def temp_env_file(self, tmp_path):
-        """Create a temporary CLAUDE_ENV_FILE."""
+    def test_pythonpath_derived_from_script_loc(self, tmp_path: Path) -> None:
+        """Script should derive local aops-core path and export PYTHONPATH."""
+        # Create mock structure
+        # hooks/session_env_setup.sh
+        # lib/hook_utils.py
+
+        # We use the real script, but we need to ensure it finds lib/hook_utils.py relative to it
+        # Since we run the real script in-place, it points to real aops-core.
+
         env_file = tmp_path / "claude_env"
         env_file.touch()
-        with patch.dict("os.environ", {"CLAUDE_ENV_FILE": str(env_file)}):
-            yield env_file
 
-    def test_persist_env_var(self, temp_env_file):
-        """Test that persist_env_var writes to CLAUDE_ENV_FILE."""
-        persist_env_var("TEST_VAR", "test_value")
-        content = temp_env_file.read_text()
-        assert 'export TEST_VAR="test_value"' in content
+        env = {
+            k: v for k, v in os.environ.items() if k not in ("AOPS", "CLAUDE_ENV_FILE")
+        }
+        env["CLAUDE_ENV_FILE"] = str(env_file)
 
-    def test_run_session_env_setup_persists_variables(self, temp_env_file):
-        """Test that run_session_env_setup persists required variables."""
-        ctx = HookContext(
-            session_id="test-session-123", hook_event="SessionStart", raw_input={}
+        result = subprocess.run(
+            ["bash", str(HOOK_SCRIPT)],
+            capture_output=True,
+            text=True,
+            env=env,
         )
 
-        # We need to mock get_session_status_dir to return a consistent path
-        with patch(
-            "hooks.session_env_setup.get_session_status_dir",
-            return_value="/tmp/aops/sessions",
-        ):
-            run_session_env_setup(ctx)
+        assert result.returncode == 0
+        env_content = env_file.read_text()
 
-        content = temp_env_file.read_text()
+        # Verify PYTHONPATH export
+        # Should contain "aops-core" path
+        assert "export PYTHONPATH=" in env_content
+        assert "/aops-core" in env_content
 
-        # Verify Session ID
-        assert 'export CLAUDE_SESSION_ID="test-session-123"' in content
+        # Verify AOPS is NOT exported
+        assert "export AOPS=" not in env_content
 
-        # Verify PYTHONPATH
-        assert 'export PYTHONPATH="' in content
-        assert "aops-core" in content
 
-        # Verify AOPS_SESSION_STATE_DIR
-        assert 'export AOPS_SESSION_STATE_DIR="/tmp/aops/sessions"' in content
 
-        # Verify enforcement modes
-        assert "export CUSTODIET_MODE=" in content
-        assert "export TASK_GATE_MODE=" in content
-        assert "export HYDRATION_GATE_MODE=" in content
+class TestJsonOutput:
+    """Test JSON output format."""
 
-    def test_run_session_env_setup_ignored_for_other_events(self, temp_env_file):
-        """Verify setup is ignored for non-SessionStart events."""
-        ctx = HookContext(
-            session_id="test-session-123", hook_event="PreToolUse", raw_input={}
+    def test_outputs_continue_true_json(self, tmp_path: Path) -> None:
+        """Hook should output {"continue": true} JSON to stdout."""
+        mock_project = tmp_path / "project"
+        mock_project.mkdir()
+        (mock_project / "AXIOMS.md").touch()
+
+        env = {k: v for k, v in os.environ.items() if k != "AOPS"}
+        env["CLAUDE_PROJECT_DIR"] = str(mock_project)
+
+        result = subprocess.run(
+            ["bash", str(HOOK_SCRIPT)],
+            capture_output=True,
+            text=True,
+            env=env,
         )
 
-        result = run_session_env_setup(ctx)
-        assert result is None
+        assert result.returncode == 0
+        # Output should be valid JSON on a single line
+        import json
 
-        content = temp_env_file.read_text()
-        assert content == ""
+        stdout_lines = [line for line in result.stdout.strip().split("\n") if line]
+        assert len(stdout_lines) == 1
+        output = json.loads(stdout_lines[0])
+        assert output == {"continue": True}
+
+
+class TestScriptExecutability:
+    """Test script file properties."""
+
+    def test_script_exists(self) -> None:
+        """Hook script file must exist."""
+        assert HOOK_SCRIPT.exists(), f"Hook script not found: {HOOK_SCRIPT}"
+
+    def test_script_is_executable(self) -> None:
+        """Hook script must be executable."""
+        assert os.access(HOOK_SCRIPT, os.X_OK), (
+            f"Hook script not executable: {HOOK_SCRIPT}"
+        )
+
+    def test_script_has_shebang(self) -> None:
+        """Hook script must have bash shebang."""
+        content = HOOK_SCRIPT.read_text()
+        assert content.startswith("#!/bin/bash"), "Script must have bash shebang"
 
 
 if __name__ == "__main__":

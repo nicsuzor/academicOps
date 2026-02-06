@@ -26,19 +26,11 @@ Transform this user prompt into an execution plan with scope detection and task 
 
 **Use these prefixes in execution plans** - never use relative paths like `specs/file.md`.
 
-{mcp_tools}
-
-{env_vars}
-
-{project_paths}
-
 ## Available Project Context
 
 The following files are mapped in this project's context map. **You must decide** if any of them are relevant to the user's request. If so, read them immediately.
 
 {project_context_index}
-
-**MANDATORY**: If the project has `.agent/rules/` directory, READ ALL FILES in it. These are project-wide conventions that apply to ALL work in this project (test patterns, code style, architectural constraints). Include their key rules in Applicable Principles.
 
 ## Relevant Files (Selective Injection)
 
@@ -83,17 +75,12 @@ Based on prompt keywords, these specific files may be relevant:
 ## Your Task
 
 1. **Understand intent** - What does the user actually want?
-2. **Gather context** - Use the **Knowledge Retrieval Hierarchy**:
-   - **Tier 1: Memory Server** (PRIMARY) - Semantic search for related knowledge.
-   - **Tier 2: Framework Specs** (SECONDARY) - AXIOMS, HEURISTICS, and pre-loaded indices (Skills, Workflows, Task State).
-   - **Tier 3: External Search** (TERTIARY) - Suggested in your execution plan ONLY if internal sources are insufficient.
-   - **Tier 4: Source Transcripts** (LAST RESORT) - Suggested ONLY for very recent context not yet synthesized into memory or specs.
-3. **Assess scope** - Single-session (bounded, path known) or multi-session (goal-level, uncertain path)?
-4. **Determine execution path** - Should this be `direct` or `enqueue`?
-5. **Route to task** - Match to existing task or specify new task creation
-6. **Select workflows** - Use the pre-loaded Workflow Index above to select the appropriate workflows
-7. **Compose workflows** - Read workflow files in `$AOPS/aops-core/workflows/` (and any [[referenced workflows]]) to construct a single ordered list of required steps
-8. **Capture deferred work** - For multi-session scope, create decomposition task for future work
+2. **Assess scope** - Single-session (bounded, path known) or multi-session (goal-level, uncertain path)?
+3. **Determine execution path** - Should this be `direct` or `enqueue`?
+4. **Route to task** - Match to existing task or specify new task creation
+5. **Select workflows** - Use the pre-loaded Workflow Index above to select the appropriate workflows
+6. **Compose workflows** - Read workflow files in `$AOPS/aops-core/workflows/` (and any [[referenced workflows]]) to construct a single ordered list of required steps
+7. **Capture deferred work** - For multi-session scope, create decomposition task for future work
 
 Note: DO NOT plan the actual work. Your ONLY job is to provide background information and enumerate the required workflow steps the agent must follow. Working out HOW to achieve each step is the agent's responsibility.
 
@@ -112,8 +99,6 @@ Note: DO NOT plan the actual work. Your ONLY job is to provide background inform
 - Work has dependencies or verification requirements
 
 **Detection heuristic**: Starts with `/` → direct. No file changes → direct. Everything else → enqueue.
-
-**Regression risk**: If the fix involves REMOVING code/functionality/arguments, classify as `enqueue` and include CRITIC review step. Removals carry regression risk - the removed code may serve a purpose not obvious from the error message. P#80 (Fixes Preserve Spec Behavior).
 
 ## Return Format
 
@@ -209,7 +194,6 @@ These scripts exist but aren't user-invocable skills. Provide exact invocation w
 ## The AcademicOps Framework (AOPS)
 <!-- Nic: we should clarify here the distinction between working on the AOPS framework and USING the AOPS framework when working on another project. -->
 - **Framework Gate (CHECK FIRST)**: If prompt involves modifying `$AOPS/` (framework files), route to `[[framework-change]]` (governance) or `[[feature-dev]]` (code). NEVER route framework work to `[[simple-question]]`. Include Framework Change Context in output.
-- **Internal Framework Development**: When work is ON the framework (not just using it) - modifying hooks, skills, workflows, agents, session logs, or debugging/fixing any of those - include `Skill(skill="framework")` in the execution plan. The framework skill has specialized workflows (e.g., `02-debug-framework-issue`) for this work. Distinguish: "using the framework to solve a user problem" vs "developing/debugging the framework itself".
 
 ## Key Rules
 <!-- Nic: Rules are duplicated -- we should just have them in one place. We should also separate out the rules for working on AOPS from the universal rules. -->
@@ -221,7 +205,6 @@ These scripts exist but aren't user-invocable skills. Provide exact invocation w
 - **Interactive Follow-ups**: If prompt is a bounded continuation of session work (e.g. "save that to X", "fix the typo I just made"), route to `[[workflows/interactive-followup]]`. This workflow skips redundant task creation and the CRITIC step.
 - **Scope detection**: Multi-session = goal-level, uncertain path, spans days+. Single-session = bounded, known steps.
 - **Prefer existing tasks**: Search task state before creating new tasks.
-- **Polecat Terminology**: When user mentions "polecat" + "ready" or "merge", they mean tasks with `status: merge_ready` that need to be merged via `polecat merge`. When they say "needs review", they mean tasks with `status: review`. Do NOT interpret this as unstaged git changes - polecat work lives in worktrees and branches, not local modifications.
 - **CRITIC MANDATORY**: Every plan (except simple-question) needs CRITIC verification step.
 - **Deferred work**: Only for multi-session. Captures what can't be done now without losing it.
 - **Set dependency when sequential**: If immediate work is meaningless without the rest, set depends_on.

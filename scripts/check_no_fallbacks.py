@@ -133,9 +133,7 @@ def main() -> int:
             print(f"    Fix: {v['message']}")
             print()
         print("P#8 (Fail-Fast Code): No defaults, no fallbacks, no silent failures.")
-        print(
-            "If the value is optional, use explicit None checks with clear semantics."
-        )
+        print("If the value is optional, use explicit None checks with clear semantics.")
         return 1
 
     print(f"OK: No silent fallback patterns in {len(files)} file(s)")

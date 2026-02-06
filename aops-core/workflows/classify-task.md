@@ -48,7 +48,6 @@ Classify based on execution path and scope:
 - "Build feature X" (vague scope)
 - "Improve performance" (needs analysis first)
 - Goal-level requests lacking clear path
-- **NOT** tasks with clear plans awaiting information - those are `multi-step` (e.g., "run QA tests, analyze results, decompose findings" has clear steps)
 
 **blocked-human** (TRIAGE, assign to nic):
 - "Which API should we use?"
@@ -172,10 +171,7 @@ Then use `AskUserQuestion` with specific options:
 | `omcp` | Outlook MCP server |
 | `personal` | Personal infrastructure, GCP, home automation |
 | `academic` | Teaching, research admin |
-| `hdr` | HDR student supervision and administration |
 | `ns` | General/uncategorized (default fallback) |
-
-**Note**: HDR student tasks MUST use `project=hdr`. Do not use `supervision` project for student-specific tasks.
 
 **Default**: Use `ns` only if no specific project fits AND user confirmation isn't practical
 

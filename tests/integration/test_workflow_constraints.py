@@ -327,7 +327,11 @@ TDD_CYCLE_TEST_CASES = [
 
 def get_all_test_cases():
     """Combine all test cases from all workflows."""
-    return FEATURE_DEV_TEST_CASES + DECOMPOSE_TEST_CASES + TDD_CYCLE_TEST_CASES
+    return (
+        FEATURE_DEV_TEST_CASES
+        + DECOMPOSE_TEST_CASES
+        + TDD_CYCLE_TEST_CASES
+    )
 
 
 @pytest.mark.parametrize(
@@ -350,9 +354,7 @@ def test_constraint_test_case_structure(test_case):
     ]
 
     for field in required_fields:
-        assert field in test_case, (
-            f"Test case {test_case.get('id', 'unknown')} missing field: {field}"
-        )
+        assert field in test_case, f"Test case {test_case.get('id', 'unknown')} missing field: {field}"
 
     # Consistency check
     if test_case["expected_pass"]:
@@ -381,9 +383,9 @@ def test_feature_dev_has_coverage():
 
     for pattern in key_patterns:
         found = any(pattern in c for c in constraints_tested)
-        assert found or any(
-            pattern in tc["scenario"].lower() for tc in FEATURE_DEV_TEST_CASES
-        ), f"Feature-dev test cases missing coverage for: {pattern}"
+        assert found or any(pattern in tc["scenario"].lower() for tc in FEATURE_DEV_TEST_CASES), (
+            f"Feature-dev test cases missing coverage for: {pattern}"
+        )
 
 
 def test_decompose_has_coverage():
@@ -401,9 +403,9 @@ def test_decompose_has_coverage():
 
     for pattern in key_patterns:
         found = any(pattern in c for c in constraints_tested)
-        assert found or any(
-            pattern in tc["scenario"].lower() for tc in DECOMPOSE_TEST_CASES
-        ), f"Decompose test cases missing coverage for: {pattern}"
+        assert found or any(pattern in tc["scenario"].lower() for tc in DECOMPOSE_TEST_CASES), (
+            f"Decompose test cases missing coverage for: {pattern}"
+        )
 
 
 def test_tdd_cycle_has_coverage():
@@ -421,9 +423,9 @@ def test_tdd_cycle_has_coverage():
 
     for pattern in key_patterns:
         found = any(pattern in c for c in constraints_tested)
-        assert found or any(
-            pattern in tc["scenario"].lower() for tc in TDD_CYCLE_TEST_CASES
-        ), f"TDD-cycle test cases missing coverage for: {pattern}"
+        assert found or any(pattern in tc["scenario"].lower() for tc in TDD_CYCLE_TEST_CASES), (
+            f"TDD-cycle test cases missing coverage for: {pattern}"
+        )
 
 
 # ============================================================================
@@ -457,13 +459,14 @@ def test_constraint_violation_reported_in_hydration(claude_headless_tracked):
 
     # Look for hydrator spawning
     hydrator_calls = [
-        c
-        for c in tool_calls
+        c for c in tool_calls
         if c["name"] == "Task"
         and "prompt-hydrator" in str(c.get("input", {}).get("subagent_type", ""))
     ]
 
-    assert len(hydrator_calls) > 0, f"Hydrator should be spawned. Session: {session_id}"
+    assert len(hydrator_calls) > 0, (
+        f"Hydrator should be spawned. Session: {session_id}"
+    )
 
     # Check for constraint-related content in output
     # The hydrator should either:
@@ -480,7 +483,8 @@ def test_constraint_violation_reported_in_hydration(claude_headless_tracked):
     ]
 
     found_indicator = any(
-        indicator in output.lower() for indicator in constraint_indicators
+        indicator in output.lower()
+        for indicator in constraint_indicators
     )
 
     # This is a soft assertion - the hydrator might handle this different ways
@@ -517,13 +521,14 @@ def test_valid_plan_passes_constraint_check(claude_headless_tracked):
 
     # Look for hydrator spawning
     hydrator_calls = [
-        c
-        for c in tool_calls
+        c for c in tool_calls
         if c["name"] == "Task"
         and "prompt-hydrator" in str(c.get("input", {}).get("subagent_type", ""))
     ]
 
-    assert len(hydrator_calls) > 0, f"Hydrator should be spawned. Session: {session_id}"
+    assert len(hydrator_calls) > 0, (
+        f"Hydrator should be spawned. Session: {session_id}"
+    )
 
     # Check that no violations were reported
     violation_indicators = [
@@ -534,7 +539,8 @@ def test_valid_plan_passes_constraint_check(claude_headless_tracked):
     ]
 
     found_violation = any(
-        indicator in output.lower() for indicator in violation_indicators
+        indicator in output.lower()
+        for indicator in violation_indicators
     )
 
     if found_violation:

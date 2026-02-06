@@ -20,7 +20,9 @@ Exit codes:
     Non-zero: Hook error (logged, does not block)
 """
 
+import json
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -277,51 +279,59 @@ def has_repo_changes(repo_path: Path, subdir: str | None = None) -> bool:
 
     Returns:
         True if uncommitted changes exist, False otherwise
-
-    Raises:
-        RuntimeError: If git status check fails (P#8: fail-fast)
     """
-    cmd = ["git", "status", "--porcelain"]
-    if subdir:
-        cmd.append(subdir)
-    result = subprocess.run(
-        cmd,
-        cwd=repo_path,
-        capture_output=True,
-        text=True,
-        timeout=5,
-        check=False,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"git status failed in {repo_path}: {result.stderr.strip()} (P#8: fail-fast)"
+    try:
+        cmd = ["git", "status", "--porcelain"]
+        if subdir:
+            cmd.append(subdir)
+        result = subprocess.run(
+            cmd,
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
         )
-    return bool(result.stdout.strip())
+        return bool(result.stdout.strip())
+    except Exception:
+        return False
+
+
+def get_plugin_root_safe() -> Path | None:
+    """Get the plugin root path safely.
+
+    Returns:
+        Path to plugin root, or None if not available
+    """
+    try:
+        from lib.paths import get_plugin_root
+
+        return get_plugin_root()
+    except Exception:
+        return None
 
 
 def get_current_branch(repo_path: Path) -> str | None:
     """Get the current branch name.
 
     Returns:
-        Branch name, or None if detached HEAD
-
-    Raises:
-        RuntimeError: If git command fails (P#8: fail-fast)
+        Branch name, or None if detached HEAD or error
     """
-    result = subprocess.run(
-        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-        cwd=repo_path,
-        capture_output=True,
-        text=True,
-        timeout=2,
-        check=False,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"git rev-parse failed in {repo_path}: {result.stderr.strip()} (P#8: fail-fast)"
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
         )
-    branch = result.stdout.strip()
-    return None if branch == "HEAD" else branch  # HEAD means detached
+        if result.returncode == 0:
+            branch = result.stdout.strip()
+            return None if branch == "HEAD" else branch  # HEAD means detached
+        return None
+    except Exception:
+        return None
 
 
 def is_protected_branch(branch: str | None) -> bool:
@@ -434,3 +444,96 @@ def commit_and_push_repo(
         return False, "Git operation timed out"
     except Exception as e:
         return False, f"Unexpected error: {e}"
+
+
+def main() -> None:
+    """Main hook entry point."""
+    # Read input from stdin
+    try:
+        input_data: dict[str, Any] = json.load(sys.stdin)
+    except Exception:
+        # Can't parse input, just continue
+        print(json.dumps({}))
+        sys.exit(0)
+
+    # Extract tool name and input
+    # Support both toolName/toolInput (old) and tool_name/tool_input (new router format)
+    tool_name = input_data.get("tool_name")
+    if tool_name is None:
+        tool_name = input_data.get("toolName")
+    if tool_name is None:
+        raise ValueError(
+            "input_data requires 'tool_name' or 'toolName' parameter (P#8: fail-fast)"
+        )
+
+    tool_input = input_data.get("tool_input")
+    if tool_input is None:
+        tool_input = input_data.get("toolInput")
+    if tool_input is None:
+        raise ValueError(
+            "input_data requires 'tool_input' or 'toolInput' parameter (P#8: fail-fast)"
+        )
+
+    # Check which repos were modified
+    modified_repos = get_modified_repos(tool_name, tool_input)
+    if not modified_repos:
+        # Not a state operation, continue normally
+        print(json.dumps({}))
+        sys.exit(0)
+
+    messages = []
+
+    # Handle data/ repo (writing repo)
+    if "data" in modified_repos:
+        try:
+            from lib.paths import get_data_root
+
+            data_root = get_data_root()
+
+            # Find git root containing data directory
+            data_repo = data_root
+            while data_repo != data_repo.parent:
+                if (data_repo / ".git").exists():
+                    break
+                data_repo = data_repo.parent
+
+            if has_repo_changes(data_repo, "data/"):
+                success, message = commit_and_push_repo(
+                    data_repo, "data/", "update(data)"
+                )
+                if success:
+                    messages.append("data: committed")
+                else:
+                    messages.append(f"data: {message}")
+        except Exception as e:
+            messages.append(f"data: error - {e}")
+
+    # AOPS framework auto-commit disabled - only sync data/ content
+    # if "aops" in modified_repos:
+    #     aops_root = get_aops_root()
+    #     ...
+
+    # Build output message
+    if not messages:
+        print(json.dumps({}))
+        sys.exit(0)
+
+    combined = "; ".join(messages)
+    success = all("committed" in m for m in messages)
+
+    if success:
+        # Notify user of automatic commit
+        if "push failed" in combined.lower():
+            output = {"systemMessage": f"✓ Changes committed locally. ⚠ {combined}"}
+        else:
+            output = {"systemMessage": f"✓ Auto-committed: {combined}"}
+    else:
+        # Log error but continue (don't block workflow)
+        output = {"systemMessage": f"⚠ Auto-commit issue: {combined}"}
+
+    print(json.dumps(output))
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()

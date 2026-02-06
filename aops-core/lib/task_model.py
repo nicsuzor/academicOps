@@ -140,12 +140,8 @@ class Task:
 
     # Graph relationships (stored in frontmatter)
     parent: str | None = None  # Parent task ID (null = root)
-    depends_on: list[str] = field(
-        default_factory=list
-    )  # Must complete first (blocking)
-    soft_depends_on: list[str] = field(
-        default_factory=list
-    )  # Context hints (non-blocking)
+    depends_on: list[str] = field(default_factory=list)  # Must complete first (blocking)
+    soft_depends_on: list[str] = field(default_factory=list)  # Context hints (non-blocking)
 
     # Decomposition metadata
     depth: int = 0  # Distance from root (0 = root goal)
@@ -153,7 +149,6 @@ class Task:
 
     # Optional fields
     due: datetime | None = None
-    planned: datetime | None = None
     project: str | None = None  # Project slug
     tags: list[str] = field(default_factory=list)
     effort: str | None = None  # Estimated effort
@@ -184,7 +179,9 @@ class Task:
         # - Legacy format: YYYYMMDD-slug (e.g., 20260119-my-task)
         # - Simple slug for permalinks (e.g., my-task-id)
         if not re.match(r"^[\w-]+$", self.id):
-            raise ValueError(f"Task id must be slug format: {self.id}")
+            raise ValueError(
+                f"Task id must be slug format: {self.id}"
+            )
         if not 0 <= self.priority <= 4:
             raise ValueError(f"Priority must be 0-4, got {self.priority}")
         if self.depth < 0:
@@ -199,7 +196,8 @@ class Task:
             project: Project slug (defaults to 'ns' for no-project)
 
         Returns:
-            ID in format <project>-<uuid[:8]>"""
+            ID in format <project>-<uuid[:8]>
+        """
         prefix = project if project else "ns"
         hash_part = uuid.uuid4().hex[:8]
         return f"{prefix}-{hash_part}"
@@ -256,8 +254,6 @@ class Task:
         # Optional fields (only include if set)
         if self.due:
             fm["due"] = self.due.isoformat()
-        if self.planned:
-            fm["planned"] = self.planned.isoformat()
         if self.project:
             fm["project"] = self.project
         if self.tags:
@@ -311,10 +307,6 @@ class Task:
         due = fm.get("due")
         if isinstance(due, str):
             due = datetime.fromisoformat(due)
-
-        planned = fm.get("planned")
-        if isinstance(planned, str):
-            planned = datetime.fromisoformat(planned)
 
         # Parse type - require explicit type field (skip non-task files)
         task_type_str = fm.get("type")
@@ -376,7 +368,6 @@ class Task:
             depth=depth,
             leaf=fm.get("leaf", True),
             due=due,
-            planned=planned,
             project=fm.get("project"),
             tags=fm.get("tags", []),
             effort=fm.get("effort"),
@@ -498,9 +489,7 @@ class Task:
             raise ValueError("Empty frontmatter")
         # Accept id, task_id, or permalink as the ID field
         if "id" not in fm and "task_id" not in fm and "permalink" not in fm:
-            raise ValueError(
-                "Task frontmatter missing required field: id, task_id, or permalink"
-            )
+            raise ValueError("Task frontmatter missing required field: id, task_id, or permalink")
         if "title" not in fm:
             raise ValueError("Task frontmatter missing required field: title")
 

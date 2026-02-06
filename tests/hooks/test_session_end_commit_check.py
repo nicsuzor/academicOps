@@ -5,11 +5,12 @@ Tests the session-end enforcement hook that detects uncommitted work
 after Framework Reflection or passing tests, and enforces auto-commit.
 """
 
+import json
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -18,13 +19,13 @@ HOOKS_DIR = Path(__file__).parent.parent.parent / "hooks"
 sys.path.insert(0, str(HOOKS_DIR))
 
 from session_end_commit_check import (
+    extract_recent_messages,
     has_framework_reflection,
     has_test_success,
     get_git_status,
     get_git_push_status,
     check_uncommitted_work,
 )
-from hooks.internal_models import GitStatus, GitPushStatus
 
 
 class TestHasFrameworkReflection:
@@ -180,9 +181,9 @@ class TestGetGitStatus:
             )
 
             status = get_git_status(tmpdir)
-            assert status.has_changes is False
-            assert status.staged_changes is False
-            assert status.unstaged_changes is False
+            assert status["has_changes"] is False
+            assert status["staged_changes"] is False
+            assert status["unstaged_changes"] is False
 
     def test_staged_changes(self) -> None:
         """Should detect staged changes."""
@@ -233,8 +234,8 @@ class TestGetGitStatus:
             )
 
             status = get_git_status(tmpdir)
-            assert status.has_changes is True
-            assert status.staged_changes is True
+            assert status["has_changes"] is True
+            assert status["staged_changes"] is True
 
     def test_unstaged_changes(self) -> None:
         """Should detect unstaged changes."""
@@ -279,8 +280,8 @@ class TestGetGitStatus:
             test_file.write_text("modified")
 
             status = get_git_status(tmpdir)
-            assert status.has_changes is True
-            assert status.unstaged_changes is True
+            assert status["has_changes"] is True
+            assert status["unstaged_changes"] is True
 
     def test_untracked_files(self) -> None:
         """Should detect untracked files."""
@@ -310,15 +311,15 @@ class TestGetGitStatus:
             test_file.write_text("content")
 
             status = get_git_status(tmpdir)
-            assert status.has_changes is True
-            assert status.untracked_files is True
+            assert status["has_changes"] is True
+            assert status["untracked_files"] is True
 
     def test_not_a_git_repo(self) -> None:
         """Should handle non-git directories gracefully."""
         with tempfile.TemporaryDirectory() as tmpdir:
             status = get_git_status(tmpdir)
-            assert status.has_changes is False
-            assert status.staged_changes is False
+            assert status["has_changes"] is False
+            assert status["staged_changes"] is False
 
 
 class TestGetGitPushStatus:
@@ -365,9 +366,9 @@ class TestGetGitPushStatus:
 
             # No remote tracking branch configured yet
             status = get_git_push_status(tmpdir)
-            assert status.branch_ahead is False
-            assert status.commits_ahead == 0
-            assert status.current_branch  # Should have current branch name
+            assert status["branch_ahead"] is False
+            assert status["commits_ahead"] == 0
+            assert status["current_branch"]  # Should have current branch name
 
     def test_commits_ahead_of_remote(self) -> None:
         """Should detect commits ahead of remote tracking branch."""
@@ -457,8 +458,8 @@ class TestGetGitPushStatus:
 
                 # Check push status - should show 1 commit ahead
                 status = get_git_push_status(tmpdir)
-                assert status.branch_ahead is True
-                assert status.commits_ahead == 1
+                assert status["branch_ahead"] is True
+                assert status["commits_ahead"] == 1
 
 
 class TestCheckUncommittedWork:
@@ -479,18 +480,18 @@ class TestCheckUncommittedWork:
         mock_extract.return_value = ["message"]
         mock_reflection.return_value = True
         mock_test_success.return_value = False
-        mock_git_status.return_value = GitStatus(
-            has_changes=True,
-            staged_changes=False,
-            unstaged_changes=True,
-            untracked_files=False,
-            status_output="M file.txt",
-        )
+        mock_git_status.return_value = {
+            "has_changes": True,
+            "staged_changes": False,
+            "unstaged_changes": True,
+            "untracked_files": False,
+            "status_output": "M file.txt",
+        }
 
         result = check_uncommitted_work("session123", "/tmp/transcript.jsonl")
-        assert result.should_block is True
-        assert result.has_reflection is True
-        assert "uncommitted changes" in result.message.lower()
+        assert result["should_block"] is True
+        assert result["has_reflection"] is True
+        assert "uncommitted changes" in result["message"].lower()
 
     @patch("session_end_commit_check.extract_recent_messages")
     @patch("session_end_commit_check.has_framework_reflection")
@@ -507,17 +508,17 @@ class TestCheckUncommittedWork:
         mock_extract.return_value = ["message"]
         mock_reflection.return_value = False
         mock_test_success.return_value = True
-        mock_git_status.return_value = GitStatus(
-            has_changes=True,
-            staged_changes=False,
-            unstaged_changes=True,
-            untracked_files=False,
-            status_output="M lib.py",
-        )
+        mock_git_status.return_value = {
+            "has_changes": True,
+            "staged_changes": False,
+            "unstaged_changes": True,
+            "untracked_files": False,
+            "status_output": "M lib.py",
+        }
 
         result = check_uncommitted_work("session123", "/tmp/transcript.jsonl")
-        assert result.should_block is True
-        assert result.has_test_success is True
+        assert result["should_block"] is True
+        assert result["has_test_success"] is True
 
     @patch("session_end_commit_check.extract_recent_messages")
     @patch("session_end_commit_check.has_framework_reflection")
@@ -534,16 +535,16 @@ class TestCheckUncommittedWork:
         mock_extract.return_value = ["message"]
         mock_reflection.return_value = True
         mock_test_success.return_value = True
-        mock_git_status.return_value = GitStatus(
-            has_changes=False,
-            staged_changes=False,
-            unstaged_changes=False,
-            untracked_files=False,
-            status_output="",
-        )
+        mock_git_status.return_value = {
+            "has_changes": False,
+            "staged_changes": False,
+            "unstaged_changes": False,
+            "untracked_files": False,
+            "status_output": "",
+        }
 
         result = check_uncommitted_work("session123", "/tmp/transcript.jsonl")
-        assert result.should_block is False
+        assert result["should_block"] is False
 
     @patch("session_end_commit_check.extract_recent_messages")
     @patch("session_end_commit_check.has_framework_reflection")
@@ -560,25 +561,23 @@ class TestCheckUncommittedWork:
         mock_extract.return_value = ["message"]
         mock_reflection.return_value = False
         mock_test_success.return_value = False
-        mock_git_status.return_value = GitStatus(
-            has_changes=True,
-            staged_changes=False,
-            unstaged_changes=True,
-            untracked_files=False,
-            status_output="M file.txt",
-        )
+        mock_git_status.return_value = {
+            "has_changes": True,
+            "staged_changes": False,
+            "unstaged_changes": True,
+            "untracked_files": False,
+            "status_output": "M file.txt",
+        }
 
         result = check_uncommitted_work("session123", "/tmp/transcript.jsonl")
-        assert result.should_block is False
+        assert result["should_block"] is False
 
     @patch("session_end_commit_check.extract_recent_messages")
     @patch("session_end_commit_check.has_framework_reflection")
     @patch("session_end_commit_check.has_test_success")
     @patch("session_end_commit_check.get_git_status")
-    @patch("session_end_commit_check.attempt_auto_commit")
     def test_staged_changes_with_reflection(
         self,
-        mock_auto_commit,
         mock_git_status,
         mock_test_success,
         mock_reflection,
@@ -588,18 +587,17 @@ class TestCheckUncommittedWork:
         mock_extract.return_value = ["message"]
         mock_reflection.return_value = True
         mock_test_success.return_value = False
-        mock_git_status.return_value = GitStatus(
-            has_changes=True,
-            staged_changes=True,
-            unstaged_changes=False,
-            untracked_files=False,
-            status_output="M file.txt",
-        )
-        mock_auto_commit.return_value = False
+        mock_git_status.return_value = {
+            "has_changes": True,
+            "staged_changes": True,
+            "unstaged_changes": False,
+            "untracked_files": False,
+            "status_output": "M file.txt",
+        }
 
         result = check_uncommitted_work("session123", "/tmp/transcript.jsonl")
-        assert result.should_block is True
-        assert "staged" in result.message.lower()
+        assert result["should_block"] is True
+        assert "staged" in result["message"].lower()
 
     @patch("session_end_commit_check.extract_recent_messages")
     @patch("session_end_commit_check.has_framework_reflection")
@@ -618,25 +616,25 @@ class TestCheckUncommittedWork:
         mock_extract.return_value = ["message"]
         mock_reflection.return_value = False
         mock_test_success.return_value = False
-        mock_git_status.return_value = GitStatus(
-            has_changes=False,
-            staged_changes=False,
-            unstaged_changes=False,
-            untracked_files=False,
-            status_output="",
-        )
-        mock_push_status.return_value = GitPushStatus(
-            branch_ahead=True,
-            commits_ahead=2,
-            current_branch="main",
-            tracking_branch="origin/main",
-        )
+        mock_git_status.return_value = {
+            "has_changes": False,
+            "staged_changes": False,
+            "unstaged_changes": False,
+            "untracked_files": False,
+            "status_output": "",
+        }
+        mock_push_status.return_value = {
+            "branch_ahead": True,
+            "commits_ahead": 2,
+            "current_branch": "main",
+            "tracking_branch": "origin/main",
+        }
 
         result = check_uncommitted_work("session123", "/tmp/transcript.jsonl")
-        assert result.should_block is False
-        assert result.reminder_needed is True
-        assert "unpushed" in result.message.lower()
-        assert "2" in result.message
+        assert result["should_block"] is False
+        assert result["reminder_needed"] is True
+        assert "unpushed" in result["message"].lower()
+        assert "2" in result["message"]
 
 
 class TestHookIntegration:
@@ -656,15 +654,15 @@ class TestHookIntegration:
 
     def test_no_transcript_path(self) -> None:
         """Should handle missing transcript path gracefully."""
-        with tempfile.TemporaryDirectory():
+        with tempfile.TemporaryDirectory() as tmpdir:
             result = check_uncommitted_work("session123", None)
-            assert result.should_block is False
-            assert result.has_reflection is False
+            assert result["should_block"] is False
+            assert result["has_reflection"] is False
 
     def test_nonexistent_transcript_file(self) -> None:
         """Should handle nonexistent transcript file."""
         result = check_uncommitted_work("session123", "/tmp/nonexistent.jsonl")
-        assert result.should_block is False
+        assert result["should_block"] is False
 
 
 if __name__ == "__main__":

@@ -15,7 +15,7 @@ import sys
 import time
 import shutil
 import signal
-from typing import Optional
+from typing import List, Optional
 
 # Global event to signal workers to drain
 STOP_EVENT = multiprocessing.Event()
@@ -48,7 +48,6 @@ def worker_loop(
     agent_type: str,
     cpu_id: Optional[int],
     project: Optional[str],
-    caller: str,
     dry_run: bool,
     home_dir: Optional[str] = None,
 ):
@@ -103,9 +102,6 @@ def worker_loop(
 
             cmd.append("run")
 
-            # Claim tasks with the specified caller identity
-            cmd.extend(["-c", caller])
-
             if agent_type == "gemini":
                 cmd.append("-g")
 
@@ -144,7 +140,6 @@ def run_swarm(
     claude_count: int,
     gemini_count: int,
     project: Optional[str] = None,
-    caller: str = "bot",
     dry_run: bool = False,
     home_dir: Optional[str] = None,
 ):
@@ -154,7 +149,6 @@ def run_swarm(
         claude_count: Number of Claude workers to spawn.
         gemini_count: Number of Gemini workers to spawn.
         project: Optional project filter.
-        caller: Identity claiming the tasks (default: bot).
         dry_run: If True, simulate execution.
         home_dir: Optional polecat home directory override.
     """
@@ -193,7 +187,7 @@ def run_swarm(
     for _ in range(claude_count):
         cpu = available_cpus[cpu_idx % len(available_cpus)]
         p = multiprocessing.Process(
-            target=worker_loop, args=("claude", cpu, project, caller, dry_run, home_dir)
+            target=worker_loop, args=("claude", cpu, project, dry_run, home_dir)
         )
         p.start()
         processes.append(p)
@@ -203,7 +197,7 @@ def run_swarm(
     for _ in range(gemini_count):
         cpu = available_cpus[cpu_idx % len(available_cpus)]
         p = multiprocessing.Process(
-            target=worker_loop, args=("gemini", cpu, project, caller, dry_run, home_dir)
+            target=worker_loop, args=("gemini", cpu, project, dry_run, home_dir)
         )
         p.start()
         processes.append(p)
@@ -237,12 +231,6 @@ def main():
         "--project", "-p", type=str, help="Project to focus on (default: all)"
     )
     parser.add_argument(
-        "--caller",
-        type=str,
-        default="bot",
-        help="Identity claiming the tasks (default: bot)",
-    )
-    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Simulate execution without running actual agents",
@@ -254,9 +242,7 @@ def main():
     )
 
     args = parser.parse_args()
-    run_swarm(
-        args.claude, args.gemini, args.project, args.caller, args.dry_run, args.home
-    )
+    run_swarm(args.claude, args.gemini, args.project, args.dry_run, args.home)
 
 
 if __name__ == "__main__":

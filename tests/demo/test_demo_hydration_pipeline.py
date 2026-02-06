@@ -96,7 +96,7 @@ class TestHydrationPipelineDemo:
             # Show hydrator invocation details
             for i, call in enumerate(hydrator_calls[:1]):  # Show first one
                 desc = call.get("input", {}).get("description", "N/A")
-                print(f"  [{i + 1}] Description: {desc}")
+                print(f"  [{i+1}] Description: {desc}")
 
         hydrator_invoked = len(hydrator_calls) >= 1
 
@@ -131,11 +131,7 @@ class TestHydrationPipelineDemo:
             # Check for evidence of completing the task (creating function)
             quality_indicators = [
                 ("function" in response_lower or "add" in response_lower),
-                (
-                    "created" in response_lower
-                    or "done" in response_lower
-                    or "file" in response_lower
-                ),
+                ("created" in response_lower or "done" in response_lower or "file" in response_lower),
                 len(response_text) > 50,  # Substantial response
                 ("python" in response_lower or ".py" in response_lower),
             ]
@@ -161,15 +157,14 @@ class TestHydrationPipelineDemo:
                     for i, todo in enumerate(todos[:7]):  # Show first 7
                         content = todo.get("content", "")
                         status = todo.get("status", "")
-                        print(f"    [{i + 1}] {content[:60]}... ({status})")
+                        print(f"    [{i+1}] {content[:60]}... ({status})")
             else:
                 print("  TodoWrite called: NO")
 
             # Check for workflow indicators in response
             print("\n--- Workflow Selection Evidence ---")
             workflow_indicators = {
-                "question": "question" in response_lower
-                and "workflow" in response_lower,
+                "question": "question" in response_lower and "workflow" in response_lower,
                 "design": "design" in response_lower,
                 "tdd": "tdd" in response_lower or "test-driven" in response_lower,
                 "debug": "debug" in response_lower,
@@ -177,12 +172,8 @@ class TestHydrationPipelineDemo:
                 "qa-proof": "qa" in response_lower or "verify" in response_lower,
                 "plan-mode": "plan" in response_lower and "mode" in response_lower,
             }
-            detected_workflows = [
-                wf for wf, present in workflow_indicators.items() if present
-            ]
-            print(
-                f"  Workflow indicators: {', '.join(detected_workflows) if detected_workflows else 'None explicitly mentioned'}"
-            )
+            detected_workflows = [wf for wf, present in workflow_indicators.items() if present]
+            print(f"  Workflow indicators: {', '.join(detected_workflows) if detected_workflows else 'None explicitly mentioned'}")
 
             # Show full response for manual inspection
             print("\n--- FULL AGENT RESPONSE (for manual validation) ---")

@@ -70,12 +70,8 @@ class TaskIndexEntry:
     children: list[str]  # Computed: inverse of parent
     depends_on: list[str]
     blocks: list[str]  # Computed: inverse of depends_on
-    soft_depends_on: list[str] = field(
-        default_factory=list
-    )  # Non-blocking context hints
-    soft_blocks: list[str] = field(
-        default_factory=list
-    )  # Computed: inverse of soft_depends_on
+    soft_depends_on: list[str] = field(default_factory=list)  # Non-blocking context hints
+    soft_blocks: list[str] = field(default_factory=list)  # Computed: inverse of soft_depends_on
     depth: int = 0
     leaf: bool = True
     project: str | None = None
@@ -291,8 +287,7 @@ class TaskIndex:
         # Identify roots (no parent OR parent doesn't exist in index)
         # Orphan tasks (with non-existent parents) are treated as roots
         self._roots = [
-            tid
-            for tid, e in self._tasks.items()
+            tid for tid, e in self._tasks.items()
             if e.parent is None or e.parent not in self._tasks
         ]
 
@@ -554,7 +549,9 @@ class TaskIndex:
 
             # When caller is 'bot', also exclude tasks with human tags
             if caller == "bot":
-                entries = [e for e in entries if not (set(e.tags) & self.HUMAN_TAGS)]
+                entries = [
+                    e for e in entries if not (set(e.tags) & self.HUMAN_TAGS)
+                ]
 
         # Sort by priority (lower is higher priority), then order, then title
         entries.sort(key=lambda e: (e.priority, e.order, e.title))

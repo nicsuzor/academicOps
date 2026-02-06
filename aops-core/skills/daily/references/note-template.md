@@ -18,8 +18,6 @@ P2 ██████████  55/85
 P3 ██░░░░░░░░  15/85
 ```
 
-**Pending Decisions**: 0 (0 blocking other work) → `/decision-extract`
-
 **SHOULD**: [ns-abc] [[OSB PAO 2025E Review]] - 3 days overdue
 **DEEP**: [ns-ghi] [[Write TJA paper]] - Advances ARC Future Fellowship research goals
 **ENJOY**: [ns-jkl] [[Internet Histories article]] - [[Jeff Lazarus]] invitation

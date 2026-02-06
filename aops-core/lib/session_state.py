@@ -32,13 +32,6 @@ class SessionState(TypedDict, total=False):
     started_at: str  # ISO timestamp
     ended_at: str | None
 
-    # Session type detection (polecat vs interactive)
-    # Values: "polecat" | "crew" | "interactive"
-    # - polecat: headless autonomous (strict commit behavior)
-    # - crew: interactive crew session (relaxed)
-    # - interactive: normal interactive session (relaxed)
-    session_type: str
-
     # Execution state
     state: dict[str, Any]  # custodiet_blocked, current_workflow, hydration_pending,
     # reflection_output_since_prompt
@@ -140,7 +133,6 @@ def save_session_state(session_id: str, state: SessionState) -> None:
     # Path uses the full ISO date (including hour) to ensure consistent file naming
     # across session lifetime - prevents creating new files when hour changes
     from lib.session_paths import get_session_file_path
-
     path = get_session_file_path(session_id, state["date"])
 
     # Ensure directory exists
@@ -162,26 +154,6 @@ def save_session_state(session_id: str, state: SessionState) -> None:
             pass
         temp_path.unlink(missing_ok=True)
         raise
-
-
-def _detect_session_type() -> str:
-    """Detect session type from environment.
-
-    POLECAT_SESSION_TYPE is optional - unset means interactive session.
-    This is a valid case, not an error, so we check existence explicitly.
-
-    Returns:
-        "polecat" | "crew" | "interactive"
-    """
-    if "POLECAT_SESSION_TYPE" not in os.environ:
-        return "interactive"
-    session_type = os.environ["POLECAT_SESSION_TYPE"].lower()
-    if session_type == "polecat":
-        return "polecat"
-    elif session_type == "crew":
-        return "crew"
-    else:
-        return "interactive"
 
 
 def create_session_state(session_id: str) -> SessionState:
@@ -209,7 +181,6 @@ def create_session_state(session_id: str) -> SessionState:
         date=now.isoformat(),
         started_at=now.isoformat(),
         ended_at=None,
-        session_type=_detect_session_type(),
         state={
             "custodiet_blocked": False,
             "custodiet_block_reason": None,
@@ -460,7 +431,7 @@ def get_hydration_data(session_id: str) -> dict[str, Any] | None:
 def update_hydration_metrics(
     session_id: str,
     turns_since_hydration: int | None = None,
-    turns_since_critic: int | None = None,
+    turns_since_critic: int | None = None
 ) -> None:
     """Update hydration tracking metrics.
 
@@ -623,19 +594,14 @@ def set_gates_bypassed(session_id: str, bypassed: bool = True) -> None:
 def is_gates_bypassed(session_id: str) -> bool:
     """Check if gates are bypassed for this session.
 
-    Returns True if:
-    1. Explicit gates_bypassed flag is set (via '.' prefix or /relax skill)
-    2. Session type is 'interactive' or 'crew' (auto-relaxed)
+    Returns True when user has used '.' prefix for emergency/trivial operations.
 
     Args:
         session_id: Claude Code session ID
 
     Returns:
-        True if gates are bypassed/relaxed
+        True if gates_bypassed flag is set
     """
-    if is_interactive_session(session_id):
-        return True
-
     state = load_session_state(session_id)
     if state is None:
         return False
@@ -794,78 +760,12 @@ def is_qa_invoked(session_id: str) -> bool:
     return state.get("state", {}).get("qa_invoked", False)
 
 
-def is_handover_invoked(session_id: str) -> bool:
-    """Check if handover skill has been invoked for this session.
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        True if handover_skill_invoked flag is set
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        return False
-    return state.get("state", {}).get("handover_skill_invoked", False)
-
-
-def get_passed_gates(session_id: str) -> set[str]:
-    """Get the set of gates that have passed for this session.
-
-    Used by the unified tool_gate to check tool permissions.
-
-    Gate states:
-    - hydration: True if hydrated_intent is set
-    - task: True if current_task is set
-    - critic: True if critic_invoked is set
-    - qa: True if qa_invoked is set
-    - handover: True if handover_skill_invoked is set
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        Set of gate names that have passed
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        return set()
-
-    passed = set()
-
-    # Hydration gate: passed if hydrated_intent is set
-    hydration = state.get("hydration", {})
-    if hydration.get("hydrated_intent"):
-        passed.add("hydration")
-
-    # Task gate: passed if current_task is set
-    state_data = state.get("state", {})
-    if state_data.get("current_task"):
-        passed.add("task")
-
-    # Critic gate: passed if critic_invoked is set
-    if state_data.get("critic_invoked"):
-        passed.add("critic")
-
-    # QA gate: passed if qa_invoked is set
-    if state_data.get("qa_invoked"):
-        passed.add("qa")
-
-    # Handover gate: passed if handover_skill_invoked is set
-    if state_data.get("handover_skill_invoked"):
-        passed.add("handover")
-
-    return passed
-
-
 # ============================================================================
 # Todo Handover Validation API
 # ============================================================================
 
 
-def set_todo_with_handover(
-    session_id: str, handover_content: str | None = None
-) -> None:
+def set_todo_with_handover(session_id: str, handover_content: str | None = None) -> None:
     """Set todo_with_handover flag when todo list includes handover step.
 
     Part of the three-gate requirement for destructive operations:
@@ -1075,66 +975,3 @@ def clear_hydrator_active(session_id: str) -> None:
         return
     state["state"]["hydrator_active"] = False
     save_session_state(session_id, state)
-
-
-# ============================================================================
-# Stop Hook Mode API (Interactive/Relaxed Sessions)
-# ============================================================================
-
-
-
-# ============================================================================
-# Session Type API (Polecat vs Interactive Detection)
-# ============================================================================
-
-
-def get_session_type(session_id: str) -> str:
-    """Get the session type for commit behavior enforcement.
-
-    Session types:
-    - "polecat": Headless autonomous agent (strict commit behavior)
-    - "crew": Interactive crew session (relaxed)
-    - "interactive": Normal interactive session (relaxed)
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        Session type string, defaults to "interactive" if not set
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        # No state yet - detect from environment
-        return _detect_session_type()
-    # Handle old session files that don't have session_type field
-    if "session_type" not in state:
-        return "interactive"
-    return state["session_type"]
-
-
-def is_polecat_session(session_id: str) -> bool:
-    """Check if this is a polecat (headless autonomous) session.
-
-    Polecat sessions require stricter commit behavior enforcement.
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        True if session_type is "polecat"
-    """
-    return get_session_type(session_id) == "polecat"
-
-
-def is_interactive_session(session_id: str) -> bool:
-    """Check if this is an interactive session (crew or normal).
-
-    Interactive sessions have relaxed commit behavior.
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        True if session_type is "crew" or "interactive"
-    """
-    return get_session_type(session_id) in ("crew", "interactive")

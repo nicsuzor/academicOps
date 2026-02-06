@@ -81,7 +81,14 @@ tags:
 
 # Document Title
 
-Content with [[wikilinks]] to related concepts.
+## Context
+
+1-3 sentences explaining what this is about.
+
+## Observations
+
+- [fact] Key fact about the topic #tag
+- [decision] Choice made and why #tag
 
 ## Relations
 

@@ -13,7 +13,6 @@ import json
 import time
 
 from lib.gate_model import GateResult, GateVerdict
-from lib.paths import get_ntfy_config
 
 # Adjust imports to work within the aops-core environment
 # These imports are REQUIRED for gate functionality - fail explicitly if missing
@@ -81,26 +80,14 @@ HYDRATION_ALLOWED_TOOLS = {
     # Handover needs to run even if hydration blocked (to save/exit safely)
     "handover",
     "aops-core:handover",
-    # Skill tool needed for subagent hydration bypass (prevents deadlock when
-    # is_hydrator_active() fails to detect subagent context correctly)
-    "Skill",
 }
 # Alias for backward compatibility (Deprecated usage in Hydration Gate)
 HYDRATION_SAFE_TOOLS = SAFE_READ_TOOLS
 
 # Custodiet
 CUSTODIET_TEMP_CATEGORY = "compliance"
-CUSTODIET_DEFAULT_THRESHOLD = 7
-
-
-def get_custodiet_threshold() -> int:
-    """Get custodiet threshold, reading from env at call time for testability."""
-    raw = os.environ.get("CUSTODIET_TOOL_CALL_THRESHOLD")
-    return int(raw) if raw else CUSTODIET_DEFAULT_THRESHOLD
-
-
-# Legacy alias for backward compatibility
-CUSTODIET_TOOL_CALL_THRESHOLD: int = CUSTODIET_DEFAULT_THRESHOLD
+_custodiet_threshold_raw = os.environ.get("CUSTODIET_TOOL_CALL_THRESHOLD")
+CUSTODIET_TOOL_CALL_THRESHOLD: int = int(_custodiet_threshold_raw) if _custodiet_threshold_raw else 7
 CUSTODIET_CONTEXT_TEMPLATE_FILE = (
     Path(__file__).parent / "templates" / "custodiet-context.md"
 )
@@ -150,9 +137,7 @@ MUTATING_TOOLS = {
     "NotebookEdit",
     # Gemini
     "write_to_file",
-    "write_file",
     "replace_file_content",
-    "replace",
     "multi_replace_file_content",
     "run_command",
     "run_shell_command",
@@ -225,37 +210,15 @@ HYDRATION_SAFE_GIT_PATTERNS = [
     r"^\s*git\s+cherry\b",  # Check cherry-pick status
 ]
 
-# Read-only file operations safe to allow through hydration gate
-# These enable agents to re-read tool results and other cached data
-# without requiring full hydration (aops-2bbce5b0)
-HYDRATION_SAFE_READ_PATTERNS = [
-    r"^\s*cat\s",  # Read file contents
-    r"^\s*head\s",  # Read first N lines
-    r"^\s*tail\s",  # Read last N lines
-    r"^\s*less\s",  # View file (pager)
-    r"^\s*more\s",  # View file (pager)
-    r"^\s*jq\s",  # JSON query (read-only)
-    r"^\s*wc\s",  # Word/line count
-    r"^\s*file\s",  # File type detection
-    r"^\s*stat\s",  # File stats
-    r"^\s*ls\b",  # List directory
-    r"^\s*find\s",  # Find files
-    r"^\s*grep\s",  # Search file contents
-    r"^\s*rg\s",  # Ripgrep search
-    r"^\s*pwd\b",  # Print working directory
-    r"^\s*which\s",  # Locate command
-    r"^\s*type\s",  # Command type
-    r"^\s*echo\s",  # Echo (no redirect)
-]
-
 # Template paths for task gate messages
 TASK_GATE_BLOCK_TEMPLATE = Path(__file__).parent / "templates" / "task-gate-block.md"
 TASK_GATE_WARN_TEMPLATE = Path(__file__).parent / "templates" / "task-gate-warn.md"
 DEFAULT_TASK_GATE_MODE = "warn"
 DEFAULT_CUSTODIET_GATE_MODE = "warn"
 
+# Hydration gate mode: "block" (default) or "warn"
 HYDRATION_WARN_TEMPLATE = Path(__file__).parent / "templates" / "hydration-gate-warn.md"
-
+DEFAULT_HYDRATION_GATE_MODE = "warn"
 # --- Stop Gate Constants ---
 
 STOP_GATE_CRITIC_TEMPLATE = Path(__file__).parent / "templates" / "stop-gate-critic.md"
@@ -264,37 +227,23 @@ STOP_GATE_HANDOVER_BLOCK_TEMPLATE = (
 )
 
 
-from hooks.schemas import HookContext
-
-
-class GateContext(HookContext):
-    """
-    Backward-compatible wrapper for HookContext.
-    Allows tests using the old (session_id, event_name, input_data) constructor to pass.
-    """
+class GateContext:
+    """Context passed to gate evaluators."""
 
     def __init__(self, session_id: str, event_name: str, input_data: Dict[str, Any]):
-        # Map old field names to new ones
-        tool_name = input_data.get("tool_name") or input_data.get("toolName")
-        tool_input = input_data.get("tool_input") or input_data.get("toolInput") or {}
-        transcript_path = input_data.get("transcript_path")
-        cwd = input_data.get("cwd")
-
-        super().__init__(
-            session_id=session_id,
-            hook_event=event_name,
-            raw_input=input_data,
-            tool_name=tool_name,
-            tool_input=tool_input,
-            transcript_path=transcript_path,
-            cwd=cwd,
-        )
+        self.session_id = session_id
+        self.event_name = event_name
+        self.input_data = input_data
+        # Support both Claude (snake_case) and Gemini (camelCase) field names
+        self.tool_name = input_data.get("tool_name") or input_data.get("toolName")
+        self.tool_input = input_data.get("tool_input") or input_data.get("toolInput", {})
+        self.transcript_path = input_data.get("transcript_path")
 
 
 # --- Subagent Tool Restrictions ---
 
 
-def check_subagent_tool_restrictions(ctx: HookContext) -> Optional[GateResult]:
+def check_subagent_tool_restrictions(ctx: GateContext) -> Optional[GateResult]:
     """Block mutating tools for restricted subagents like prompt-hydrator.
 
     The prompt-hydrator agent should ONLY return a plan, never execute work.
@@ -306,40 +255,29 @@ def check_subagent_tool_restrictions(ctx: HookContext) -> Optional[GateResult]:
     Returns:
         GateResult with DENY if blocked, None if allowed
     """
-    if ctx.hook_event != "PreToolUse":
+    if ctx.event_name != "PreToolUse":
         return None
 
     # Check if we're in a restricted subagent session
-    subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE")
-
-    # Check for hydrator session via env var ONLY
-    # NOTE: Do NOT use session_state.is_hydrator_active() here!
-    # hydrator_active is a session-level flag indicating "a hydrator Task is running"
-    # but it does NOT mean "this process is the hydrator". The env var is the only
-    # reliable way to detect subagent identity - it's set by Claude Code when spawning.
-    # Using is_hydrator_active() here caused bug aops-6aad9acc: main agent was blocked
-    # from Edit after hydrator completed because hydrator_active flag was stale.
-    is_hydrator_in_type = subagent_type and "hydrator" in subagent_type.lower()
-    is_hydrator_session = (
-        subagent_type == "aops-core:prompt-hydrator" or is_hydrator_in_type
-    )
+    subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE", "")
 
     # prompt-hydrator should only have Read + memory tools
-    if is_hydrator_session:
+    if subagent_type == "aops-core:prompt-hydrator" or "hydrator" in subagent_type.lower():
         if ctx.tool_name in MUTATING_TOOLS:
             return GateResult(
                 verdict=GateVerdict.DENY,
-                system_message="⛔ **BLOCKED: prompt-hydrator cannot use mutating tools**",
                 context_injection=(
                     "⛔ **BLOCKED: prompt-hydrator cannot use mutating tools**\n\n"
                     "The hydrator agent is read-only. It must return a hydration plan, "
                     "not execute the work directly.\n\n"
+                    "**Action Required**: Return your `## HYDRATION RESULT` section with:\n"
+                    "- Intent summary\n"
+                    "- Execution path\n"
+                    "- Acceptance criteria\n"
+                    "- Execution steps\n\n"
                     "Do NOT attempt to Edit, Write, or run Bash commands."
                 ),
-                metadata={
-                    "source": "subagent_tool_restriction",
-                    "blocked_tool": ctx.tool_name,
-                },
+                metadata={"source": "subagent_tool_restriction", "blocked_tool": ctx.tool_name},
             )
 
     return None
@@ -381,11 +319,8 @@ def _is_safe_temp_path(file_path: str | None) -> bool:
 def _is_hydration_safe_bash(command: str) -> bool:
     """Check if a Bash command is safe to allow through hydration gate.
 
-    Safe commands include:
-    - Git operations that don't corrupt history or affect other branches
-    - Read-only file operations (cat, jq, head, tail, etc.)
-
-    These are commonly needed during handover and for re-reading cached data.
+    Safe commands are git operations that don't corrupt history or
+    affect other branches. These are commonly needed during handover.
 
     Args:
         command: The Bash command string
@@ -394,20 +329,9 @@ def _is_hydration_safe_bash(command: str) -> bool:
         True if command is safe for hydration bypass, False otherwise
     """
     cmd = command.strip()
-
-    # Check git patterns
     for pattern in HYDRATION_SAFE_GIT_PATTERNS:
         if re.search(pattern, cmd, re.IGNORECASE):
             return True
-
-    # Check read-only file patterns (but not if they redirect to files)
-    # A redirect like "cat foo > bar" or "cat foo >> bar" makes it destructive
-    has_redirect = re.search(r">\s*[^&]|>>\s*", cmd)
-    if not has_redirect:
-        for pattern in HYDRATION_SAFE_READ_PATTERNS:
-            if re.search(pattern, cmd, re.IGNORECASE):
-                return True
-
     return False
 
 
@@ -463,9 +387,7 @@ def _should_require_task(tool_name: str, tool_input: Dict[str, Any]) -> bool:
         "Edit",
         "NotebookEdit",
         "write_to_file",
-        "write_file",
         "replace_file_content",
-        "replace",
         "multi_replace_file_content",
     ):
         # Check if target path is in safe temp directory (framework-controlled)
@@ -507,16 +429,8 @@ def _is_actually_destructive(tool_name: str, tool_input: Dict[str, Any]) -> bool
         True if the operation is destructive, False if read-only
     """
     # Non-Bash mutating tools are always destructive
-    if tool_name in (
-        "Edit",
-        "Write",
-        "NotebookEdit",
-        "write_to_file",
-        "write_file",
-        "replace_file_content",
-        "replace",
-        "multi_replace_file_content",
-    ):
+    if tool_name in ("Edit", "Write", "NotebookEdit", "write_to_file",
+                     "replace_file_content", "multi_replace_file_content"):
         return True
 
     # Bash commands: check if actually destructive
@@ -530,91 +444,76 @@ def _is_actually_destructive(tool_name: str, tool_input: Dict[str, Any]) -> bool
     return False
 
 
-def _is_skill_invocation(
-    tool_name: str, tool_input: Dict[str, Any], skill_names: tuple[str, ...]
-) -> bool:
-    """Check if this is an invocation of a specific skill/agent.
-
-    Handles all invocation patterns:
-    - Direct MCP tool invocation (Gemini): tool_name matches skill name
-    - Claude Skill tool: tool_input["skill"] matches
-    - Gemini activate_skill: tool_input["name"] matches
-    - Gemini delegate_to_agent: tool_input["agent_name"] matches
-    - Claude Task tool: tool_input["subagent_type"] matches
+def _is_handover_skill_invocation(tool_name: str, tool_input: Dict[str, Any]) -> bool:
+    """Check if this is a handover skill invocation.
 
     Args:
         tool_name: Name of the tool being invoked
         tool_input: Tool input parameters
-        skill_names: Tuple of valid skill names (e.g., ("custodiet", "aops-core:custodiet"))
 
     Returns:
-        True if this is an invocation of one of the skill_names
+        True if this is a handover skill invocation
     """
-    # Direct MCP tool invocation (Gemini MCP pattern)
-    if tool_name in skill_names:
-        return True
-
     # Claude Skill tool
     if tool_name == "Skill":
         skill_name = tool_input.get("skill", "")
-        if skill_name in skill_names:
+        if skill_name in ("handover", "aops-core:handover"):
             return True
 
     # Gemini activate_skill tool
     if tool_name == "activate_skill":
         name = tool_input.get("name", "")
-        if name in skill_names:
+        if name in ("handover", "aops-core:handover"):
+            return True
+
+    # Gemini delegate_to_agent (unlikely for handover, but supported)
+    if tool_name == "delegate_to_agent":
+        agent_name = tool_input.get("agent_name", "")
+        if agent_name in ("handover", "aops-core:handover"):
+            return True
+
+    # Direct tool name
+    if tool_name == "handover":
+        return True
+
+    return False
+
+
+def _is_custodiet_invocation(tool_name: str, tool_input: Dict[str, Any]) -> bool:
+    """Check if this is a custodiet skill invocation.
+
+    Args:
+        tool_name: Name of the tool being invoked
+        tool_input: Tool input parameters
+
+    Returns:
+        True if this is a custodiet invocation
+    """
+    # Claude Skill tool
+    if tool_name == "Skill":
+        skill_name = tool_input.get("skill", "")
+        if skill_name in ("custodiet", "aops-core:custodiet"):
+            return True
+
+    # Gemini activate_skill tool
+    if tool_name == "activate_skill":
+        name = tool_input.get("name", "")
+        if name in ("custodiet", "aops-core:custodiet"):
             return True
 
     # Gemini delegate_to_agent
     if tool_name == "delegate_to_agent":
         agent_name = tool_input.get("agent_name", "")
-        if agent_name in skill_names:
+        if agent_name in ("custodiet", "aops-core:custodiet"):
             return True
 
     # Claude Task tool with subagent_type
     if tool_name == "Task":
         subagent_type = tool_input.get("subagent_type", "")
-        if subagent_type in skill_names:
+        if subagent_type in ("custodiet", "aops-core:custodiet"):
             return True
 
     return False
-
-
-def _is_handover_skill_invocation(tool_name: str, tool_input: Dict[str, Any]) -> bool:
-    """Check if this is a handover skill invocation."""
-    return _is_skill_invocation(
-        tool_name, tool_input, ("handover", "aops-core:handover")
-    )
-
-
-def _is_custodiet_invocation(tool_name: str, tool_input: Dict[str, Any]) -> bool:
-    """Check if this is a custodiet skill invocation."""
-    return _is_skill_invocation(
-        tool_name, tool_input, ("custodiet", "aops-core:custodiet")
-    )
-
-
-def _check_git_dirty() -> bool:
-    """Check if git working directory has uncommitted changes.
-
-    Returns True if there are staged or unstaged changes that would be lost
-    if the session ends without commit.
-    """
-    import subprocess
-
-    try:
-        result = subprocess.run(
-            ["git", "status", "--porcelain"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-        # Any output means there are changes
-        return bool(result.stdout.strip())
-    except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
-        # If git fails, assume no changes (fail-open for this check)
-        return False
 
 
 # --- Hydration Logic ---
@@ -645,8 +544,7 @@ MCP_TOOLS_EXEMPT_FROM_HYDRATION = {
     "mcp__plugin_aops-core_task_manager__dedup_tasks",
     "mcp__plugin_aops-core_task_manager__delete_task",
     # Memory MCP tools (Claude format)
-    # NOTE: store_memory is NOT exempt - must go through hydration to route to /remember skill
-    # This ensures both markdown and memory server receive the content (aops-887fba77)
+    "mcp__plugin_aops-core_memory__store_memory",
     "mcp__plugin_aops-core_memory__retrieve_memory",
     "mcp__plugin_aops-core_memory__recall_memory",
     "mcp__plugin_aops-core_memory__search_by_tag",
@@ -662,7 +560,7 @@ MCP_TOOLS_EXEMPT_FROM_HYDRATION = {
     "get_task_tree",
     "get_children",
     "decompose_task",
-    # NOTE: store_memory is NOT exempt - must go through hydration (aops-887fba77)
+    "store_memory",
     "retrieve_memory",
     "recall_memory",
     "search_by_tag",
@@ -709,9 +607,6 @@ INFRASTRUCTURE_SKILLS_NO_HYDRATION_CLEAR = {
     "aops-core:session-insights",
     "hypervisor",
     "aops-core:hypervisor",
-    # Hydrator is an infrastructure skill that should not clear hydration
-    "prompt-hydrator",
-    "aops-core:prompt-hydrator",
 }
 
 
@@ -794,33 +689,50 @@ def _hydration_is_gemini_hydration_attempt(
     return False
 
 
-def check_hydration_gate(ctx: HookContext) -> Optional[GateResult]:
+def check_hydration_gate(ctx: GateContext) -> Optional[GateResult]:
     """
     Check if hydration is required (Pre-Tool Enforcement).
     Returns None if allowed, or GateResult if blocked.
     """
     _check_imports()  # Fail fast if imports unavailable
 
+    # DEBUG: Log to fixed file for subagent visibility
+    from datetime import datetime
+    debug_file = Path("/tmp/hydration-gate-debug.jsonl")
+    try:
+        with open(debug_file, "a") as f:
+            f.write(json.dumps({
+                "ts": str(datetime.now()),
+                "event": ctx.event_name,
+                "tool": ctx.tool_name,
+                "session_id": ctx.session_id,
+                "transcript_path": ctx.input_data.get("transcript_path") if ctx.input_data else None,
+                "env_agent_type": os.environ.get("CLAUDE_AGENT_TYPE"),
+                "env_subagent_type": os.environ.get("CLAUDE_SUBAGENT_TYPE"),
+                "input_keys": list(ctx.input_data.keys()) if ctx.input_data else [],
+            }) + "\n")
+    except Exception:
+        pass  # Don't fail on debug logging
+    # END DEBUG
+
     # Only applies to PreToolUse
-    if ctx.hook_event != "PreToolUse":
+    if ctx.event_name != "PreToolUse":
         return None
 
     # Bypass for subagent sessions
-    if _hydration_is_subagent_session(ctx.raw_input):
+    if _hydration_is_subagent_session(ctx.input_data):
         return None
 
     # BELT & SUSPENDERS: Additional detection for hydrator subagent
     # Check env var that might be set for subagent processes
-    subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE")
+    subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE", "")
     if subagent_type and "hydrator" in subagent_type.lower():
         return None
 
     # Also check transcript path directly (redundant but catches edge cases)
-    if ctx.raw_input:
-        transcript_path = ctx.raw_input.get("transcript_path")
-        if transcript_path and (
-            "/subagents/" in str(transcript_path) or "/agent-" in str(transcript_path)
-        ):
+    if ctx.input_data:
+        transcript_path = str(ctx.input_data.get("transcript_path", ""))
+        if "/subagents/" in transcript_path or "/agent-" in transcript_path:
             return None
 
     # STATEFUL BYPASS: Check if hydrator is currently active (set when Task(hydrator) starts)
@@ -840,11 +752,8 @@ def check_hydration_gate(ctx: HookContext) -> Optional[GateResult]:
     # Bypass for safe git operations (add, commit, fetch, pull, status, etc.)
     # These are commonly needed during handover and don't corrupt history
     if ctx.tool_name in ("Bash", "run_shell_command", "run_command"):
-        command = ctx.tool_input.get("command")
-        if command is None:
-            command = ctx.tool_input.get("CommandLine")
-
-        if command and _is_hydration_safe_bash(str(command)):
+        command = ctx.tool_input.get("command") or ctx.tool_input.get("CommandLine") or ""
+        if _is_hydration_safe_bash(command):
             return None
 
     # Check if a skill is being activated (allow ANY skill to bypass hydration check)
@@ -852,21 +761,11 @@ def check_hydration_gate(ctx: HookContext) -> Optional[GateResult]:
     is_skill_activation = ctx.tool_name in ("activate_skill", "Skill")
     # Legacy: prompt-hydrator specific check (kept for robust detection context)
     is_hydrator_tool_or_agent = _hydration_is_hydrator_task(ctx.tool_input)
-
-    tool_name = ctx.tool_name if ctx.tool_name is not None else ""
     is_gemini = _hydration_is_gemini_hydration_attempt(
-        tool_name, ctx.tool_input, ctx.raw_input
+        ctx.tool_name or "", ctx.tool_input, ctx.input_data
     )
 
-    # Gemini MCP tool invocation: tool_name is directly "prompt-hydrator"
-    is_gemini_mcp_hydrator = tool_name == "prompt-hydrator"
-
-    if (
-        is_skill_activation
-        or is_hydrator_tool_or_agent
-        or is_gemini
-        or is_gemini_mcp_hydrator
-    ):
+    if is_skill_activation or is_hydrator_tool_or_agent or is_gemini:
         # Allow hydrator invocation but DO NOT clear hydration_pending here.
         # hydration_pending is cleared by SubagentStop handler when hydrator
         # completes with a valid ## HYDRATION RESULT output.
@@ -882,57 +781,14 @@ def check_hydration_gate(ctx: HookContext) -> Optional[GateResult]:
     if not session_state.is_hydration_pending(ctx.session_id):
         return None
 
-    # Bypass if session was already hydrated this turn (turns_since_hydration == 0)
-    # This allows subsequent tool calls in the same response after hydration completes,
-    # even if hydration_pending hasn't been cleared yet due to timing/ordering.
-    state = session_state.load_session_state(ctx.session_id)
-    if state is not None:
-        hydration_data = state.get("hydration")
-        if hydration_data is not None:
-            turns_since = hydration_data.get("turns_since_hydration")
-            if turns_since is not None and turns_since == 0:
-                return None
-
     # If we reach here, hydration is pending and not bypassed.
-
-    # Fail-fast: Demand explicit configuration (P#8)
-    hydration_mode = os.environ.get("HYDRATION_GATE_MODE")
-    if not hydration_mode:
-        return GateResult(
-            verdict=GateVerdict.DENY,
-            context_injection="⛔ **CONFIGURATION ERROR**: `HYDRATION_GATE_MODE` environment variable is missing.\n\n"
-            "Per Axiom P#8 (Fail-Fast), no defaults are allowed. "
-            "Please set this variable to 'block' or 'warn'.",
-            metadata={"source": "hydration_gate", "error": "missing_config"},
-        )
+    # Check mode: "block" (default) or "warn"
+    hydration_mode = os.environ.get("HYDRATION_MODE", DEFAULT_HYDRATION_GATE_MODE)
 
     # Get temp_path from session state to include in message
     temp_path = session_state.get_hydration_temp_path(ctx.session_id)
     if not temp_path:
-        # Check if this is a fresh session (no state file) vs corruption (state exists but no temp_path)
-        state = session_state.load_session_state(ctx.session_id)
-        if state is None:
-            # FAIL-CLOSED (P#8): Fresh session without state file MUST block.
-            # is_hydration_pending returns True for missing state, so we should
-            # honor that and block here. The session needs proper initialization
-            # via SessionStart or UserPromptSubmit before tool calls are allowed.
-            return GateResult(
-                verdict=GateVerdict.DENY,
-                context_injection="⛔ **SESSION NOT INITIALIZED**: No session state file found.\n\n"
-                "This session has not been properly initialized. Per P#8 (Fail-Fast), "
-                "destructive operations are blocked until the session is set up via "
-                "SessionStart or UserPromptSubmit hooks.\n\n"
-                "If you're seeing this in a new Gemini CLI session, ensure hooks are "
-                "configured correctly in ~/.gemini/settings.json.",
-                metadata={"source": "hydration_gate", "error": "missing_session_state"},
-            )
-        # State exists but temp_path missing - real corruption
-        return GateResult(
-            verdict=GateVerdict.DENY,
-            context_injection="⛔ **STATE ERROR**: Hydration temp path missing from session state.\n\n"
-            "This indicates framework state corruption. Cannot proceed safely.",
-            metadata={"source": "hydration_gate", "error": "missing_temp_path"},
-        )
+        temp_path = "(temp file not found - check session state)"
 
     if hydration_mode == "warn":
         # Warn mode: allow but inject warning context
@@ -1056,8 +912,7 @@ def _custodiet_build_session_context(
         lines.append("**Recent Agent Responses** (full text for phrase detection):")
         # Extract only agent responses, show last 3 with more content
         agent_responses = [
-            turn
-            for turn in conversation
+            turn for turn in conversation
             if (isinstance(turn, str) and turn.startswith("[Agent]:"))
         ]
         for turn in agent_responses[-3:]:  # Last 3 agent responses
@@ -1125,86 +980,7 @@ def _custodiet_build_audit_instruction(
     return instruction_template.format(temp_path=str(temp_path))
 
 
-# --- Axiom Enforcer Logic ---
-
-
-def check_axiom_enforcer_gate(ctx: HookContext) -> Optional[GateResult]:
-    """
-    Real-time axiom violation detection for Edit/Write operations.
-
-    Blocks tool calls that contain code patterns violating framework axioms:
-    - P#8: Fail-fast violations (fallbacks, silent exception handling)
-    - P#26: Write-without-read violations (writing to files not previously read)
-
-    This gate runs BEFORE custodiet threshold checks to catch violations
-    immediately, regardless of compliance counter state.
-
-    Returns None if allowed, or GateResult with DENY if violation detected.
-    """
-    _check_imports()
-
-    # Only applies to PreToolUse
-    if ctx.hook_event != "PreToolUse":
-        return None
-
-    # Only check code-modifying tools
-    if ctx.tool_name not in (
-        "Write",
-        "Edit",
-        "write_to_file",
-        "write_file",
-        "replace_file_content",
-        "replace",
-        "multi_replace_file_content",
-    ):
-        return None
-
-    # Extract code/content for P#8 analysis
-    code = ""
-    if ctx.tool_name in ("Write", "write_to_file", "write_file"):
-        code = ctx.tool_input.get("content", "")
-    elif ctx.tool_name in ("Edit", "replace_file_content", "replace"):
-        code = ctx.tool_input.get("new_string", "")
-    elif ctx.tool_name == "multi_replace_file_content":
-        replacements = ctx.tool_input.get("replacements", [])
-        code = "\n".join([r.get("new_string", "") for r in replacements])
-
-    if not code:
-        return None
-
-    # Detect P#8 violations in code content
-    violations = axiom_detector.detect_all_violations(code)
-
-    if not violations:
-        return None
-
-    # Format violation messages
-    msg_lines = ["⛔ **AXIOM ENFORCEMENT BLOCKED**", ""]
-    for v in violations:
-        msg_lines.append(f"- **{v.axiom}**: {v.message}")
-        if v.line_number:
-            msg_lines.append(f"  Line {v.line_number}: `{v.context}`")
-
-    msg_lines.append("")
-    msg_lines.append(
-        "Please fix these violations before submitting. No fallbacks, no workarounds."
-    )
-
-    return GateResult(
-        verdict=GateVerdict.DENY,
-        system_message="⛔ **AXIOM ENFORCEMENT BLOCKED**",
-        context_injection="\n".join(msg_lines),
-        metadata={
-            "source": "axiom_enforcer",
-            "violations": [
-                {"axiom": v.axiom, "pattern": v.pattern_name, "line": v.line_number}
-                for v in violations
-            ],
-        },
-    )
-
-
-def check_custodiet_gate(ctx: HookContext) -> Optional[GateResult]:
+def check_custodiet_gate(ctx: GateContext) -> Optional[GateResult]:
     """
     Check if compliance is overdue (The Bouncer).
     Returns None if allowed, or GateResult if blocked.
@@ -1215,7 +991,7 @@ def check_custodiet_gate(ctx: HookContext) -> Optional[GateResult]:
     _check_imports()
 
     # Only applies to PreToolUse
-    if ctx.hook_event != "PreToolUse":
+    if ctx.event_name != "PreToolUse":
         return None
 
     # Only block mutating tools (DRY: use shared definition)
@@ -1235,12 +1011,43 @@ def check_custodiet_gate(ctx: HookContext) -> Optional[GateResult]:
     # We only READ the counter here to check if we should block
     tool_calls = state["tool_calls_since_compliance"]
 
-    # NOTE: Axiom enforcement is now handled by dedicated check_axiom_enforcer_gate
-    # which runs before custodiet in the PreToolUse gate chain.
+    # Under threshold - allow everything (unless axiom violation)
+    # BUT first, check for Axiom Violations (Real-time Enforcement)
+    # This logic was migrated from check_axiom_enforcer_gate
 
-    # Check compliance threshold
-    threshold = get_custodiet_threshold()
-    if tool_calls < threshold:
+    # Extract code/content for analysis
+    code = ""
+    if ctx.tool_name in ("Write", "write_to_file"):
+        code = ctx.tool_input.get("content", "")
+    elif ctx.tool_name in ("Edit", "replace_file_content"):
+        code = ctx.tool_input.get("new_string", "")
+    elif ctx.tool_name == "multi_replace_file_content":
+        replacements = ctx.tool_input.get("replacements", [])
+        code = "\n".join([r.get("new_string", "") for r in replacements])
+
+    if code:
+        # Detect violations
+        violations = axiom_detector.detect_all_violations(code)
+
+        if violations:
+            # Format violation messages
+            msg_lines = ["⛔ **AXIOM ENFORCEMENT BLOCKED**", ""]
+            for v in violations:
+                msg_lines.append(f"- **{v.axiom}**: {v.message}")
+                if v.line_number:
+                    msg_lines.append(f"  Line {v.line_number}: `{v.context}`")
+
+            msg_lines.append("")
+            msg_lines.append(
+                "Please fix these violations before submitting. No fallbacks, no workarounds."
+            )
+
+            return GateResult(
+                verdict=GateVerdict.DENY, context_injection="\n".join(msg_lines)
+            )
+
+    # If no axiom violations, check compliance threshold
+    if tool_calls < CUSTODIET_TOOL_CALL_THRESHOLD:
         return None
 
     # At or over threshold - block mutating tool with full instruction
@@ -1255,20 +1062,17 @@ def check_custodiet_gate(ctx: HookContext) -> Optional[GateResult]:
         return GateResult(
             verdict=GateVerdict.DENY,
             context_injection=instruction,
-            system_message="⛔ **CUSTODIET detected violation.**",
             metadata={"source": "custodiet", "tool_calls": tool_calls},
         )
 
     except (OSError, KeyError, TypeError) as e:
         # Fail-open: if instruction generation fails, fall back to simple block
-        # <!-- NS: that's not what fail open means? Also, it contravenes FAIL FAST -->
         print(f"WARNING: Custodiet audit generation failed: {e}", file=sys.stderr)
         block_msg = load_template(
             CUSTODIET_FALLBACK_TEMPLATE, {"tool_calls": str(tool_calls)}
         )
         return GateResult(
             verdict=GateVerdict.DENY,
-            system_message="⛔ **CUSTODIET detected violation.**",
             context_injection=block_msg,
             metadata={"source": "custodiet_fallback", "error": str(e)},
         )
@@ -1284,13 +1088,13 @@ def _build_task_block_message(gates: Dict[str, bool]) -> str:
     missing = []
     if not gates["task_bound"]:
         missing.append(
-            '(a) Claim a task: `mcp__plugin_aops-core_task_manager__update_task(id="...", status="in_progress")`'
+            '(a) Claim a task: `mcp__plugin_aops-tools_task_manager__update_task(id="...", status="active")`'
         )
     # Check for hydration (using hydrated_intent or hydrator_invoked equivalent)
     # We map "plan_mode_invoked" to "hydrator_invoked" in the template
     if not gates["plan_mode_invoked"]:
         missing.append(
-            '(b) Hydrate prompt: invoke the **aops-core:prompt-hydrator** agent or skill (Claude: `activate_skill(name="aops-core:prompt-hydrator", ...)` | Gemini: `activate_skill(name="prompt-hydrator", ...)`) to transform your prompt into a plan.'
+            "(b) Hydrate prompt: invoke the **aops-core:prompt-hydrator** agent or skill (Claude: `activate_skill(name=\"aops-core:prompt-hydrator\", ...)` | Gemini: `activate_skill(name=\"prompt-hydrator\", ...)`) to transform your prompt into a plan."
         )
     if not gates["critic_invoked"]:
         missing.append(
@@ -1320,86 +1124,46 @@ def _build_task_warn_message(gates: Dict[str, bool]) -> str:
     )
 
 
-def _get_task_gate_mode() -> str:
-    """Get TASK_GATE_MODE from environment, defaulting to warn mode.
-
-    Uses explicit check for env var presence to comply with fail-fast axiom
-    while still providing a sensible default for optional configuration.
+def check_task_required_gate(ctx: GateContext) -> Optional[GateResult]:
     """
-    if "TASK_GATE_MODE" in os.environ:
-        return os.environ["TASK_GATE_MODE"].lower()
-    return DEFAULT_TASK_GATE_MODE
-
-
-def _is_full_gate_enforcement_enabled() -> bool:
-    """Check if full three-gate enforcement is enabled.
-
-    Returns True if TASK_GATE_ENFORCE_ALL is set to a truthy value.
-    """
-    if "TASK_GATE_ENFORCE_ALL" not in os.environ:
-        return False
-    return os.environ["TASK_GATE_ENFORCE_ALL"].lower() in ("1", "true", "yes")
-
-
-def check_task_required_gate(ctx: HookContext) -> Optional[GateResult]:
-    """
-    TASK GATE: Unified enforcement for destructive operations.
+    Check if task binding is required for this operation.
     Returns None if allowed, or GateResult if blocked/warned.
 
-    Only runs on PreToolUse events. Enforces three-gate requirement:
-    (a) Task bound - session has an active task claimed
-    (b) Hydrator invoked - prompt-hydrator or plan mode completed
-    (c) Critic invoked - critic agent reviewed the plan
-
-    This gate consolidates the former separate hydration and task-required gates
-    into a single enforcement point for all destructive operations.
+    Only runs on PreToolUse events. Enforces task-gated permissions model
+    where destructive operations require task binding.
     """
     _check_imports()
 
     # Only applies to PreToolUse
-    if ctx.hook_event != "PreToolUse":
+    if ctx.event_name != "PreToolUse":
         return None
 
     # Bypass for subagent sessions
-    if hook_utils.is_subagent_session(ctx.raw_input):
+    if hook_utils.is_subagent_session(ctx.input_data):
         return None
 
     # Bypass for handover skill invocation (needs to run git/etc for closure)
     if _is_handover_skill_invocation(ctx.tool_name or "", ctx.tool_input):
         return None
 
-    # Check if operation requires task binding (destructive operations only)
+    # Check if operation requires task binding
     if not _should_require_task(ctx.tool_name or "", ctx.tool_input):
         return None
 
     # Check if gates are bypassed (. prefix)
     state = session_state.load_session_state(ctx.session_id)
-    if state is not None:
-        state_dict = state.get("state")
-        if state_dict is not None and state_dict.get("gates_bypassed"):
-            return None
+    if state and state.get("state", {}).get("gates_bypassed"):
+        return None
 
-    # Check all gate statuses
+    # Check gate status
     gates = session_state.check_all_gates(ctx.session_id)
 
-    # Enforce task_bound gate (the primary gate for destructive operations)
-    # The other gates (plan_mode_invoked, critic_invoked) are tracked but
-    # enforcement is configurable via TASK_GATE_ENFORCE_ALL env var
-    if _is_full_gate_enforcement_enabled():
-        # Full three-gate enforcement
-        if (
-            gates["task_bound"]
-            and gates["plan_mode_invoked"]
-            and gates["critic_invoked"]
-        ):
-            return None
-    else:
-        # Default: only enforce task_bound (other gates for observability)
-        if gates["task_bound"]:
-            return None
+    # Currently only enforce task_bound gate (others disabled for validation)
+    if gates["task_bound"]:
+        return None
 
     # Gates not passed - enforce based on mode
-    gate_mode = _get_task_gate_mode()
+    gate_mode = os.environ.get("TASK_GATE_MODE", DEFAULT_TASK_GATE_MODE).lower()
     if gate_mode == "block":
         block_msg = _build_task_block_message(gates)
         return GateResult(verdict=GateVerdict.DENY, context_injection=block_msg)
@@ -1412,7 +1176,7 @@ def check_task_required_gate(ctx: HookContext) -> Optional[GateResult]:
 # --- Accountant Logic (Post-Tool State Updates) ---
 
 
-def run_accountant(ctx: HookContext) -> Optional[GateResult]:
+def run_accountant(ctx: GateContext) -> Optional[GateResult]:
     """
     The Accountant: General state tracking for all components.
     Runs on PostToolUse. Never blocks, only updates state.
@@ -1425,7 +1189,7 @@ def run_accountant(ctx: HookContext) -> Optional[GateResult]:
     _check_imports()
 
     # Only applies to PostToolUse
-    if ctx.hook_event != "PostToolUse":
+    if ctx.event_name != "PostToolUse":
         return None
 
     system_messages: list[str] = []
@@ -1473,25 +1237,25 @@ def run_accountant(ctx: HookContext) -> Optional[GateResult]:
             session_state.save_session_state(ctx.session_id, sess)
 
     # 2. Update Custodiet State
-    # Count ALL tool calls (not just mutating) for visibility into total session activity.
-    # Blocking is still gated on MUTATING_TOOLS in check_custodiet_gate.
-    sess = session_state.get_or_create_session_state(ctx.session_id)
-    state = sess.setdefault("state", {})
+    # Skip for safe read-only tools to avoid noise
+    if ctx.tool_name not in SAFE_READ_TOOLS:
+        sess = session_state.get_or_create_session_state(ctx.session_id)
+        state = sess.setdefault("state", {})
 
-    # Initialize fields
-    state.setdefault("tool_calls_since_compliance", 0)
-    state.setdefault("last_compliance_ts", 0.0)
+        # Initialize fields
+        state.setdefault("tool_calls_since_compliance", 0)
+        state.setdefault("last_compliance_ts", 0.0)
 
-    # Check for reset (custodiet invoked) or increment
-    if _is_custodiet_invocation(ctx.tool_name or "", ctx.tool_input):
-        state["tool_calls_since_compliance"] = 0
-        state["last_compliance_ts"] = time.time()
-        system_messages.append("🛡️ [Gate] Compliance verified. Custodiet gate reset.")
+        # Check for reset (custodiet invoked) or increment
+        if _is_custodiet_invocation(ctx.tool_name or "", ctx.tool_input):
+            state["tool_calls_since_compliance"] = 0
+            state["last_compliance_ts"] = time.time()
+            system_messages.append("🛡️ [Gate] Compliance verified. Custodiet gate reset.")
 
-    else:
-        state["tool_calls_since_compliance"] += 1
+        else:
+            state["tool_calls_since_compliance"] += 1
 
-    session_state.save_session_state(ctx.session_id, sess)
+        session_state.save_session_state(ctx.session_id, sess)
 
     # 3. Update Handover State
     # Handover gate starts OPEN (handover_skill_invoked=True).
@@ -1500,27 +1264,19 @@ def run_accountant(ctx: HookContext) -> Optional[GateResult]:
     if _is_handover_skill_invocation(ctx.tool_name or "", ctx.tool_input):
         try:
             session_state.set_handover_skill_invoked(ctx.session_id)
-            system_messages.append(
-                "🤝 [Gate] Handover tool recorded. Stop gate will open once repo is clean and reflection message printed."
-            )
+            system_messages.append("🤝 [Gate] Handover recorded. Stop gate open.")
         except Exception as e:
             print(
                 f"WARNING: Accountant failed to set handover flag: {e}", file=sys.stderr
             )
     elif _is_actually_destructive(ctx.tool_name or "", ctx.tool_input):
         # Destructive tool used - require handover before stop
-        # Only show warning on status change (gate was open, now closing)
         try:
-            was_open = session_state.is_handover_skill_invoked(ctx.session_id)
             session_state.clear_handover_skill_invoked(ctx.session_id)
-            if was_open:
-                system_messages.append(
-                    "⚠️ [Gate] Destructive tool used. Handover required before stop."
-                )
+            system_messages.append("⚠️ [Gate] Destructive tool used. Handover required before stop.")
         except Exception as e:
             print(
-                f"WARNING: Accountant failed to clear handover flag: {e}",
-                file=sys.stderr,
+                f"WARNING: Accountant failed to clear handover flag: {e}", file=sys.stderr
             )
 
     if system_messages:
@@ -1532,29 +1288,23 @@ def run_accountant(ctx: HookContext) -> Optional[GateResult]:
     return None
 
 
-def check_stop_gate(ctx: HookContext) -> Optional[GateResult]:
+def check_stop_gate(ctx: GateContext) -> Optional[GateResult]:
     """
     Check if the agent is allowed to stop (Stop / AfterAgent Enforcement).
     Returns None if allowed, or GateResult if blocked/warned.
 
     Rules:
-    0. Bypass Check: If gates_bypassed flag is set in session state, skip all checks.
     1. Critic Check: If turns_since_hydration == 0, deny stop and demand Critic.
-    2. Handover Check: If handover skill not invoked (with valid reflection format), deny stop.
-    3. QA Check: If hydration occurred and not streamlined workflow, require QA verification.
+    2. Handover Check: If handover skill not invoked, issue warning but allow stop.
     """
     _check_imports()
 
     # Only applies to Stop event
-    if ctx.hook_event != "Stop":
+    if ctx.event_name != "Stop":
         return None
 
     state = session_state.load_session_state(ctx.session_id)
     if not state:
-        return None
-
-    # Check if gates are bypassed (. prefix) - user is in interactive mode
-    if state.get("state", {}).get("gates_bypassed"):
         return None
 
     # --- 1. Critic Check (turns_since_hydration == 0) ---
@@ -1564,16 +1314,9 @@ def check_stop_gate(ctx: HookContext) -> Optional[GateResult]:
     subagents = state.get("subagents", {})
     current_workflow = state.get("state", {}).get("current_workflow")
 
-    is_hydrated = (
-        hydration_data.get("hydrated_intent") is not None
-        or hydration_data.get("original_prompt") is not None
-    )
+    is_hydrated = hydration_data.get("hydrated_intent") is not None or hydration_data.get("original_prompt") is not None
     has_run_subagents = len(subagents) > 0
-    is_streamlined = current_workflow in (
-        "interactive-followup",
-        "simple-question",
-        "direct-skill",
-    )
+    is_streamlined = current_workflow in ("interactive-followup", "simple-question")
 
     if is_hydrated and not has_run_subagents and not is_streamlined:
         # User explicitly asked for turns_since_hydration == 0 logic
@@ -1582,43 +1325,15 @@ def check_stop_gate(ctx: HookContext) -> Optional[GateResult]:
         return GateResult(verdict=GateVerdict.DENY, context_injection=msg)
 
     # --- 2. Handover Check ---
-    # Only enforce handover if there's work at risk (uncommitted changes or active task)
-    # Otherwise, allow stop - don't block normal conversation turns
     if not session_state.is_handover_skill_invoked(ctx.session_id):
-        # Check if there's work at risk
-        has_uncommitted = _check_git_dirty()
-        current_task = session_state.get_current_task(ctx.session_id)
-
-        if has_uncommitted or current_task:
-            # Work at risk - block stop until handover
-            msg = load_template(STOP_GATE_HANDOVER_BLOCK_TEMPLATE)
-            return GateResult(verdict=GateVerdict.DENY, context_injection=msg)
-        # No work at risk - allow stop without handover
-
-    # --- 3. QA Verification Check ---
-    # If hydration occurred (intent was set), require QA verification
-    # Streamlined workflows are exempt (same pattern as critic check)
-    if is_hydrated and not is_streamlined:
-        if not session_state.is_qa_invoked(ctx.session_id):
-            return GateResult(
-                verdict=GateVerdict.DENY,
-                context_injection=(
-                    "⛔ **BLOCKED: QA Verification Required**\n\n"
-                    "This session was planned via prompt-hydrator, which mandates QA verification.\n"
-                    "You have not invoked QA yet.\n\n"
-                    "**Action Required**: Invoke QA to verify your work against the original request "
-                    "and acceptance criteria before completing handover.\n\n"
-                    "- **Claude Code**: `Task(subagent_type='aops-core:qa', prompt='Verify...')` or `Skill(skill='qa')`\n"
-                    "- **Gemini CLI**: `delegate_to_agent(agent_name='qa', prompt='Verify...')` or `activate_skill(name='qa')`\n\n"
-                    "After QA passes, invoke `/handover` again to end the session."
-                ),
-                metadata={"source": "stop_gate_qa_check"},
-            )
+        # Issue warning but allow stop
+        msg = load_template(STOP_GATE_HANDOVER_BLOCK_TEMPLATE)
+        return GateResult(verdict=GateVerdict.DENY, context_injection=msg)
 
     return None
 
 
-def check_hydration_recency_gate(ctx: HookContext) -> Optional[GateResult]:
+def check_hydration_recency_gate(ctx: GateContext) -> Optional[GateResult]:
     """
     Stop hook: Block exit if turns since hydration == 0.
     This ensures the agent doesn't hydrate then immediately exit.
@@ -1632,11 +1347,7 @@ def check_hydration_recency_gate(ctx: HookContext) -> Optional[GateResult]:
 
     turns_since = hydration_state.get("turns_since_hydration")
     current_workflow = state.get("state", {}).get("current_workflow")
-    is_streamlined = current_workflow in (
-        "interactive-followup",
-        "simple-question",
-        "direct-skill",
-    )
+    is_streamlined = current_workflow in ("interactive-followup", "simple-question")
 
     if turns_since == 0 and not is_streamlined:
         return GateResult(
@@ -1647,7 +1358,7 @@ def check_hydration_recency_gate(ctx: HookContext) -> Optional[GateResult]:
     return None
 
 
-def post_hydration_trigger(ctx: HookContext) -> Optional[GateResult]:
+def post_hydration_trigger(ctx: GateContext) -> Optional[GateResult]:
     """
     PostToolUse: Detect successful hydration and inject next step.
     """
@@ -1655,20 +1366,13 @@ def post_hydration_trigger(ctx: HookContext) -> Optional[GateResult]:
 
     # Check if this was a successful hydration
     # We re-use logic from check_hydration_gate to identify hydrator tools
-    is_hydrator_tool = ctx.tool_name in (
-        "Task",
-        "delegate_to_agent",
-        "activate_skill",
-        "Skill",
-    )
+    is_hydrator_tool = ctx.tool_name in ("Task", "delegate_to_agent", "activate_skill", "Skill")
     is_hydrator = is_hydrator_tool and _hydration_is_hydrator_task(ctx.tool_input)
     is_gemini = _hydration_is_gemini_hydration_attempt(
-        ctx.tool_name or "", ctx.tool_input, ctx.raw_input
+        ctx.tool_name or "", ctx.tool_input, ctx.input_data
     )
-    # Gemini MCP tool invocation: tool_name is directly "prompt-hydrator"
-    is_gemini_mcp_hydrator = ctx.tool_name == "prompt-hydrator"
 
-    if is_hydrator or is_gemini or is_gemini_mcp_hydrator:
+    if is_hydrator or is_gemini:
         # Reset trackers
         session_state.update_hydration_metrics(ctx.session_id, turns_since_hydration=0)
         session_state.clear_hydration_pending(ctx.session_id)
@@ -1676,14 +1380,14 @@ def post_hydration_trigger(ctx: HookContext) -> Optional[GateResult]:
         # User-facing output + agent context injection
         return GateResult(
             verdict=GateVerdict.ALLOW,
-            system_message="💧 [Gate] Hydration complete.",
-            context_injection="Hydration complete. You may now invoke the critic or proceed with your task.",
+            system_message="💧 [Gate] Hydration complete. Critic required next.",
+            context_injection="<system-reminder>\nNext, invoke the critic and revise your plan.\n</system-reminder>",
         )
 
     return None
 
 
-def post_critic_trigger(ctx: HookContext) -> Optional[GateResult]:
+def post_critic_trigger(ctx: GateContext) -> Optional[GateResult]:
     """
     PostToolUse: Detect successful critic invocation and update state.
     """
@@ -1696,11 +1400,7 @@ def post_critic_trigger(ctx: HookContext) -> Optional[GateResult]:
     # Also check Task tool (Claude)
     is_task = ctx.tool_name == "Task"
     subagent_type = ctx.tool_input.get("subagent_type", "")
-    is_critic_task = is_task and (
-        subagent_type == "critic"
-        or subagent_type == "aops-core:critic"
-        or "critic" in subagent_type.lower()
-    )
+    is_critic_task = is_task and (subagent_type == "critic" or subagent_type == "aops-core:critic" or "critic" in subagent_type.lower())
 
     # Also check Skill/activate_skill
     is_skill = ctx.tool_name in ("activate_skill", "Skill")
@@ -1724,7 +1424,7 @@ def post_critic_trigger(ctx: HookContext) -> Optional[GateResult]:
     return None
 
 
-def post_qa_trigger(ctx: HookContext) -> Optional[GateResult]:
+def post_qa_trigger(ctx: GateContext) -> Optional[GateResult]:
     """
     PostToolUse: Detect successful QA invocation and update state.
     """
@@ -1737,11 +1437,7 @@ def post_qa_trigger(ctx: HookContext) -> Optional[GateResult]:
     # Also check Task tool (Claude)
     is_task = ctx.tool_name == "Task"
     subagent_type = ctx.tool_input.get("subagent_type", "")
-    is_qa_task = is_task and (
-        subagent_type == "qa"
-        or subagent_type == "aops-core:qa"
-        or "qa" in subagent_type.lower()
-    )
+    is_qa_task = is_task and (subagent_type == "qa" or subagent_type == "aops-core:qa" or "qa" in subagent_type.lower())
 
     # Also check Skill/activate_skill
     is_skill = ctx.tool_name in ("activate_skill", "Skill")
@@ -1762,7 +1458,7 @@ def post_qa_trigger(ctx: HookContext) -> Optional[GateResult]:
     return None
 
 
-def check_agent_response_listener(ctx: HookContext) -> Optional[GateResult]:
+def check_agent_response_listener(ctx: GateContext) -> Optional[GateResult]:
     """
     AfterAgent: Listen to agent response for state updates and optional enforcement.
 
@@ -1772,10 +1468,10 @@ def check_agent_response_listener(ctx: HookContext) -> Optional[GateResult]:
     """
     _check_imports()
 
-    if ctx.hook_event != "AfterAgent":
+    if ctx.event_name != "AfterAgent":
         return None
 
-    response_text = ctx.raw_input.get("prompt_response", "")
+    response_text = ctx.input_data.get("prompt_response", "")
 
     # 1. Update Hydration State
     # Check for "HYDRATION RESULT" or "Execution Plan" (agent may vary format)
@@ -1789,32 +1485,22 @@ def check_agent_response_listener(ctx: HookContext) -> Optional[GateResult]:
         session_state.update_hydration_metrics(ctx.session_id, turns_since_hydration=0)
 
         # Parse workflow ID
-        workflow_match = re.search(
-            r"\*\*Workflow\*\*:\s*\[\[workflows/([^\]]+)\]\]", response_text
-        )
+        workflow_match = re.search(r"\*\*Workflow\*\*:\s*\[\[workflows/([^\]]+)\]\]", response_text)
         workflow_id = workflow_match.group(1) if workflow_match else None
-
+        
         if workflow_id:
             state = session_state.get_or_create_session_state(ctx.session_id)
             state["state"]["current_workflow"] = workflow_id
             session_state.save_session_state(ctx.session_id, state)
 
         # Detect streamlined workflows that skip critic
-        is_streamlined = workflow_id in (
-            "interactive-followup",
-            "simple-question",
-            "direct-skill",
-        )
+        is_streamlined = workflow_id in ("interactive-followup", "simple-question")
 
         if is_streamlined:
             return GateResult(
                 verdict=GateVerdict.ALLOW,
                 system_message=f"[Gate] Hydration complete (workflow: {workflow_id}). Streamlined mode enabled.",
-                metadata={
-                    "source": "post_hydration_trigger",
-                    "streamlined": True,
-                    "workflow": workflow_id,
-                },
+                metadata={"source": "post_hydration_trigger", "streamlined": True, "workflow": workflow_id},
             )
 
         # Inject instruction to invoke critic
@@ -1830,171 +1516,64 @@ def check_agent_response_listener(ctx: HookContext) -> Optional[GateResult]:
             metadata={"source": "post_hydration_trigger"},
         )
 
-    # 2. Update Handover State - validate Framework Reflection format
+    # 2. Update Handover State
     if "## Framework Reflection" in response_text:
-        # Required fields for a valid Framework Reflection (per P#65, session completion rules)
-        required_fields = [
-            r"\*\*Prompts\*\*:",
-            r"\*\*Guidance received\*\*:",
-            r"\*\*Followed\*\*:",
-            r"\*\*Outcome\*\*:",
-            r"\*\*Accomplishments\*\*:",
-            r"\*\*Friction points\*\*:",
-            r"\*\*Proposed changes\*\*:",
-            r"\*\*Next step\*\*:",
-        ]
-
-        missing_fields = []
-        for field_pattern in required_fields:
-            if not re.search(field_pattern, response_text, re.IGNORECASE):
-                # Extract field name for error message
-                field_name = field_pattern.replace(r"\*\*", "").replace(":", "")
-                missing_fields.append(field_name)
-
-        if missing_fields:
-            # Reflection present but malformed - issue warning, don't set flag
-            return GateResult(
-                verdict=GateVerdict.ALLOW,
-                system_message=f"⚠️ [Gate] Framework Reflection found but missing required fields: {', '.join(missing_fields)}. Handover gate remains closed.",
-                context_injection=(
-                    "<system-reminder>\n"
-                    "Your Framework Reflection is missing required fields. The correct format is:\n\n"
-                    "## Framework Reflection\n\n"
-                    "**Prompts**: [Original request in brief]\n"
-                    '**Guidance received**: [Hydrator advice, or "N/A"]\n'
-                    "**Followed**: [Yes/No/Partial - explain]\n"
-                    "**Outcome**: success | partial | failure\n"
-                    "**Accomplishments**: [What was completed]\n"
-                    '**Friction points**: [Issues encountered, or "none"]\n'
-                    '**Proposed changes**: [Framework improvements, or "none"]\n'
-                    '**Next step**: [Follow-up needed, or "none"]\n\n'
-                    f"Missing: {', '.join(missing_fields)}\n"
-                    "</system-reminder>"
-                ),
-                metadata={
-                    "source": "agent_response_listener",
-                    "missing_fields": missing_fields,
-                },
-            )
-
-        # All required fields present - set handover flag
         session_state.set_handover_skill_invoked(ctx.session_id)
         return GateResult(
             verdict=GateVerdict.ALLOW,
-            system_message="🧠 [Gate] Framework Reflection validated. Handover gate open.",
+            system_message="🧠 [Gate] Framework Reflection detected. Handover gate open.",
         )
 
     return None
 
 
-def check_session_start_gate(ctx: HookContext) -> Optional[GateResult]:
+def check_session_start_gate(ctx: GateContext) -> Optional[GateResult]:
     """
     Handle SessionStart event.
-    Creates the session state file and returns startup info to USER.
-
-    FAIL-FAST (P#8): If state file cannot be created, session is DENIED.
+    Returns GateResult with startup information displayed to USER (system_message).
     """
     _check_imports()
 
-    if ctx.hook_event != "SessionStart":
+    if ctx.event_name != "SessionStart":
         return None
 
-    from hooks.unified_logger import get_hook_log_path
-
-    short_hash = session_paths.get_session_short_hash(ctx.session_id)
-
-    # Get hook log path for this session (full absolute path)
-    hook_log_path = get_hook_log_path(ctx.session_id, ctx.raw_input)
-
-    # Get actual state file path (not a glob pattern)
-    state_file_path = session_paths.get_session_file_path(
-        ctx.session_id, input_data=ctx.raw_input
-    )
-
-    # FAIL-FAST: Actually create the state file, don't just report the path
-    # If this fails, the session should not proceed
     try:
-        state = session_state.get_or_create_session_state(ctx.session_id)
-        session_state.save_session_state(ctx.session_id, state)
+        from hooks.unified_logger import get_hook_log_path
 
-        # Verify the file was actually written
-        if not state_file_path.exists():
-            return GateResult(
-                verdict=GateVerdict.DENY,
-                system_message=(
-                    f"FAIL-FAST: State file not created at expected path.\n"
-                    f"Expected: {state_file_path}\n"
-                    f"Check AOPS_SESSION_STATE_DIR env var and directory permissions.\n\n"
-                ),
-                metadata={"source": "session_start", "error": "state_file_not_created"},
-            )
-    except OSError as e:
+        status_dir = session_paths.get_session_status_dir(ctx.session_id, ctx.input_data)
+        short_hash = session_paths.get_session_short_hash(ctx.session_id)
+
+        # Get hook log path for this session (full absolute path)
+        hook_log_path = get_hook_log_path(ctx.session_id, ctx.input_data)
+
+        # Get actual state file path (not a glob pattern)
+        state_file_path = session_paths.get_session_file_path(
+            ctx.session_id, input_data=ctx.input_data
+        )
+
+        # Build startup message for USER display (system_message, not context_injection)
+        msg_lines = [
+            f"🚀 Session Started: {ctx.session_id} ({short_hash})",
+            f"State File: {state_file_path}",
+            f"Hooks log: {hook_log_path}",
+        ]
+
         return GateResult(
-            verdict=GateVerdict.DENY,
-            system_message=(
-                f"FAIL-FAST: Cannot write session state file.\n"
-                f"Path: {state_file_path}\n"
-                f"Error: {e}\n"
-                f"Fix: Check directory permissions and disk space."
-            ),
+            verdict=GateVerdict.ALLOW,
+            system_message="\n".join(msg_lines),
+            metadata={"source": "session_start"},
+        )
+
+    except Exception as e:
+        # Fallback if session state access fails
+        return GateResult(
+            verdict=GateVerdict.ALLOW,
+            system_message=f"Session Started: {ctx.session_id}\n(Error loading details: {e})",
             metadata={"source": "session_start", "error": str(e)},
         )
 
-    # GEMINI-SPECIFIC: Validate hydration temp path infrastructure at session start
-    # Per P#8 (Fail-Fast), catch temp directory problems early, not at PreToolUse
-    transcript_path = ctx.raw_input.get("transcript_path", "") if ctx.raw_input else ""
-    if transcript_path and ".gemini" in str(transcript_path):
-        try:
-            # Validate hydration temp directory can be created/accessed
-            hydration_temp_dir = hook_utils.get_hook_temp_dir("hydrator", ctx.raw_input)
-            if not hydration_temp_dir.exists():
-                hydration_temp_dir.mkdir(parents=True, exist_ok=True)
-        except RuntimeError as e:
-            # Loud, clear error message for Gemini temp infrastructure failure
-            return GateResult(
-                verdict=GateVerdict.DENY,
-                system_message=(
-                    f"⛔ **STATE ERROR**: Hydration temp path missing from session state.\n\n"
-                    f"This indicates framework state corruption. Cannot proceed safely.\n\n"
-                    f"Details: {e}\n\n"
-                    f"Fix: Ensure Gemini CLI has initialized the project directory.\n"
-                    f"Try running a simple Gemini command first to create ~/.gemini/tmp/{{hash}}/"
-                ),
-                metadata={
-                    "source": "session_start",
-                    "error": "gemini_temp_dir_missing",
-                },
-            )
-        except OSError as e:
-            return GateResult(
-                verdict=GateVerdict.DENY,
-                system_message=(
-                    f"⛔ **STATE ERROR**: Cannot create hydration temp directory.\n\n"
-                    f"Error: {e}\n\n"
-                    f"Fix: Check directory permissions for ~/.gemini/tmp/"
-                ),
-                metadata={
-                    "source": "session_start",
-                    "error": "gemini_temp_dir_permission",
-                },
-            )
 
-    # Build startup message for USER display (system_message, not context_injection)
-    msg_lines = [
-        f"🚀 Session Started: {ctx.session_id} ({short_hash})",
-        f"State File: {state_file_path}",
-        f"Hooks log: {hook_log_path}",
-        f"Transcript: {transcript_path}",
-    ]
-
-    return GateResult(
-        verdict=GateVerdict.ALLOW,
-        system_message="\n".join(msg_lines),
-        metadata={"source": "session_start"},
-    )
-
-
-def check_skill_activation_listener(ctx: HookContext) -> Optional[GateResult]:
+def check_skill_activation_listener(ctx: GateContext) -> Optional[GateResult]:
     """
     Listener: Clear hydration pending if a non-infrastructure skill was activated.
 
@@ -2004,7 +1583,7 @@ def check_skill_activation_listener(ctx: HookContext) -> Optional[GateResult]:
     """
     _check_imports()
 
-    if ctx.hook_event != "PostToolUse":
+    if ctx.event_name != "PostToolUse":
         return None
 
     # Handle both Claude Code (Skill) and Gemini (activate_skill) tool names
@@ -2049,21 +1628,18 @@ def check_skill_activation_listener(ctx: HookContext) -> Optional[GateResult]:
     )
 
 
-def check_qa_enforcement_gate(ctx: HookContext) -> Optional[GateResult]:
+def check_qa_enforcement_gate(ctx: GateContext) -> Optional[GateResult]:
     """
     Check if QA verification is required before task completion.
     """
     _check_imports()
 
     # Only applies to PreToolUse
-    if ctx.hook_event != "PreToolUse":
+    if ctx.event_name != "PreToolUse":
         return None
 
     # Only applies to complete_task
-    if ctx.tool_name not in (
-        "complete_task",
-        "mcp__plugin_aops-core_task_manager__complete_task",
-    ):
+    if ctx.tool_name not in ("complete_task", "mcp__plugin_aops-tools_task_manager__complete_task"):
         return None
 
     # Check if QA is required
@@ -2089,10 +1665,8 @@ def check_qa_enforcement_gate(ctx: HookContext) -> Optional[GateResult]:
         context_injection=(
             "⛔ **BLOCKED: QA Verification Required**\n\n"
             "This task was planned via `prompt-hydrator`, which mandates a QA step.\n"
-            "You have not invoked QA yet.\n\n"
-            "**Action Required**: Invoke QA to verify your work before completion.\n\n"
-            "- **Claude Code**: `Task(subagent_type='aops-core:qa', prompt='Verify...')` or `Skill(skill='qa')`\n"
-            "- **Gemini CLI**: `delegate_to_agent(agent_name='qa', prompt='Verify...')` or `activate_skill(name='qa')`"
+            "You have not invoked the QA skill yet.\n\n"
+            "**Action Required**: Run `activate_skill(name='qa')` to verify your work before completion."
         ),
         metadata={"source": "qa_enforcement"},
     )
@@ -2101,7 +1675,7 @@ def check_qa_enforcement_gate(ctx: HookContext) -> Optional[GateResult]:
 # --- Unified Logger Gate (formerly unified_logger.py) ---
 
 
-def run_unified_logger(ctx: HookContext) -> Optional[GateResult]:
+def run_unified_logger(ctx: GateContext) -> Optional[GateResult]:
     """
     Log hook events to session file and handle SubagentStop/Stop state updates.
     Never blocks, only updates state and returns context for SessionStart.
@@ -2116,7 +1690,7 @@ def run_unified_logger(ctx: HookContext) -> Optional[GateResult]:
 
     try:
         # log_event_to_session now returns GateResult directly (no dict conversion)
-        return log_event_to_session(ctx.session_id, ctx.hook_event, ctx.raw_input)
+        return log_event_to_session(ctx.session_id, ctx.event_name, ctx.input_data)
     except Exception as e:
         print(f"WARNING: unified_logger error: {e}", file=sys.stderr)
 
@@ -2126,13 +1700,13 @@ def run_unified_logger(ctx: HookContext) -> Optional[GateResult]:
 # --- User Prompt Submit Gate (formerly user_prompt_submit.py) ---
 
 
-def run_user_prompt_submit(ctx: HookContext) -> Optional[GateResult]:
+def run_user_prompt_submit(ctx: GateContext) -> Optional[GateResult]:
     """
     UserPromptSubmit: Build hydration context and return instruction.
     """
     _check_imports()
 
-    if ctx.hook_event != "UserPromptSubmit":
+    if ctx.event_name != "UserPromptSubmit":
         return None
 
     try:
@@ -2142,6 +1716,8 @@ def run_user_prompt_submit(ctx: HookContext) -> Optional[GateResult]:
             write_initial_hydrator_state,
         )
         from lib.session_state import (
+            get_or_create_session_state,
+            save_session_state,
             set_gates_bypassed,
             clear_reflection_output,
         )
@@ -2149,8 +1725,8 @@ def run_user_prompt_submit(ctx: HookContext) -> Optional[GateResult]:
         print(f"WARNING: user_prompt_submit import failed: {e}", file=sys.stderr)
         return None
 
-    prompt = ctx.raw_input.get("prompt", "")
-    transcript_path = ctx.raw_input.get("transcript_path")
+    prompt = ctx.input_data.get("prompt", "")
+    transcript_path = ctx.input_data.get("transcript_path")
     session_id = ctx.session_id
 
     if not session_id:
@@ -2177,16 +1753,8 @@ def run_user_prompt_submit(ctx: HookContext) -> Optional[GateResult]:
             )
     except Exception as e:
         import traceback
-
-        error_msg = f"user_prompt_submit error: {type(e).__name__}: {e}"
-        print(f"WARNING: {error_msg}", file=sys.stderr)
+        print(f"WARNING: user_prompt_submit error: {e}", file=sys.stderr)
         traceback.print_exc(file=sys.stderr)
-        # FAIL-FAST: Return error in metadata so it's visible in hook logs
-        return GateResult(
-            verdict=GateVerdict.ALLOW,
-            context_injection=f"⛔ **HYDRATION ERROR**: {error_msg}\n\nCannot proceed with hydration.",
-            metadata={"source": "user_prompt_submit", "error": error_msg},
-        )
 
     return None
 
@@ -2194,80 +1762,77 @@ def run_user_prompt_submit(ctx: HookContext) -> Optional[GateResult]:
 # --- Task Binding Gate (formerly task_binding.py) ---
 
 
-def run_task_binding(ctx: HookContext) -> Optional[GateResult]:
+def run_task_binding(ctx: GateContext) -> Optional[GateResult]:
     """
     PostToolUse: Bind/unbind task to session when task MCP operations occur.
     """
     _check_imports()
 
-    if ctx.hook_event != "PostToolUse":
+    if ctx.event_name != "PostToolUse":
         return None
 
-    from lib.hook_utils import get_task_id_from_result
-    from lib.event_detector import detect_tool_state_changes, StateChange
+    try:
+        from hooks.task_binding import get_task_id_from_result
+        from lib.event_detector import detect_tool_state_changes, StateChange
+    except ImportError as e:
+        print(f"WARNING: task_binding import failed: {e}", file=sys.stderr)
+        return None
 
     # Support both Claude (snake_case) and Gemini (camelCase) field names
-    tool_name = (
-        ctx.tool_name
-        or ctx.raw_input.get("tool_name")
-        or ctx.raw_input.get("toolName", "")
-    )
-    tool_input = (
-        ctx.tool_input
-        or ctx.raw_input.get("tool_input")
-        or ctx.raw_input.get("toolInput", {})
-    )
+    tool_name = ctx.tool_name or ctx.input_data.get("tool_name") or ctx.input_data.get("toolName", "")
+    tool_input = ctx.tool_input or ctx.input_data.get("tool_input") or ctx.input_data.get("toolInput", {})
     tool_result = (
-        ctx.raw_input.get("tool_result")
-        or ctx.raw_input.get("toolResult")
-        or ctx.raw_input.get("tool_response", {})
+        ctx.input_data.get("tool_result")
+        or ctx.input_data.get("toolResult")
+        or ctx.input_data.get("tool_response", {})
     )
 
-    changes = detect_tool_state_changes(tool_name, tool_input, tool_result)
+    try:
+        changes = detect_tool_state_changes(tool_name, tool_input, tool_result)
+    except Exception as e:
+        print(f"WARNING: event_detector error: {e}", file=sys.stderr)
+        return None
 
     if StateChange.PLAN_MODE in changes:
-        from lib.session_state import is_plan_mode_invoked, set_plan_mode_invoked
-
-        if not is_plan_mode_invoked(ctx.session_id):
-            set_plan_mode_invoked(ctx.session_id)
-            return GateResult(
-                verdict=GateVerdict.ALLOW,
-                system_message="Plan mode gate passed ✓",
-            )
-        return None
+        try:
+            if not session_state.is_plan_mode_invoked(ctx.session_id):
+                session_state.set_plan_mode_invoked(ctx.session_id)
+                return GateResult(
+                    verdict=GateVerdict.ALLOW,
+                    system_message="🗺️ [Gate] Plan mode invoked. Gate satisfied.",
+                )
+        except Exception as e:
+            print(f"WARNING: task_binding plan_mode error: {e}", file=sys.stderr)
 
     if StateChange.UNBIND_TASK in changes:
-        from lib.session_state import clear_current_task, get_current_task
-
-        current = get_current_task(ctx.session_id)
-        if current:
-            clear_current_task(ctx.session_id)
-            return GateResult(
-                verdict=GateVerdict.ALLOW,
-                system_message=f"Task completed and unbound from session: {current}",
-            )
-        return None
+        try:
+            current = session_state.get_current_task(ctx.session_id)
+            if current:
+                session_state.clear_current_task(ctx.session_id)
+                return GateResult(
+                    verdict=GateVerdict.ALLOW,
+                    system_message=f"🔓 [Gate] Task unbound: {current}",
+                )
+        except Exception as e:
+            print(f"WARNING: task_binding unbind error: {e}", file=sys.stderr)
 
     if StateChange.BIND_TASK in changes:
         task_id = get_task_id_from_result(tool_result)
-        if not task_id:
-            return None
-
-        source = "claim"
-        from lib.session_state import get_current_task, set_current_task
-
-        current = get_current_task(ctx.session_id)
-        if current and current != task_id:
-            return GateResult(
-                verdict=GateVerdict.ALLOW,
-                system_message=f"Note: Session already bound to task {current}, ignoring {task_id}",
-            )
-
-        set_current_task(ctx.session_id, task_id, source=source)
-        return GateResult(
-            verdict=GateVerdict.ALLOW,
-            system_message=f"Task bound to session: {task_id}",
-        )
+        if task_id:
+            try:
+                current = session_state.get_current_task(ctx.session_id)
+                if current and current != task_id:
+                    return GateResult(
+                        verdict=GateVerdict.ALLOW,
+                        system_message=f"ℹ️ [Gate] Already bound to {current}, ignoring {task_id}",
+                    )
+                session_state.set_current_task(ctx.session_id, task_id, source="claim")
+                return GateResult(
+                    verdict=GateVerdict.ALLOW,
+                    system_message=f"📌 [Gate] Task bound: {task_id}",
+                )
+            except Exception as e:
+                print(f"WARNING: task_binding bind error: {e}", file=sys.stderr)
 
     return None
 
@@ -2275,13 +1840,13 @@ def run_task_binding(ctx: HookContext) -> Optional[GateResult]:
 # --- Session End Commit Check Gate (formerly session_end_commit_check.py) ---
 
 
-def run_session_end_commit_check(ctx: HookContext) -> Optional[GateResult]:
+def run_session_end_commit_check(ctx: GateContext) -> Optional[GateResult]:
     """
     Stop: Check for uncommitted work and perform session cleanup.
     """
     _check_imports()
 
-    if ctx.hook_event != "Stop":
+    if ctx.event_name != "Stop":
         return None
 
     try:
@@ -2294,7 +1859,7 @@ def run_session_end_commit_check(ctx: HookContext) -> Optional[GateResult]:
         return None
 
     session_id = ctx.session_id
-    transcript_path = ctx.raw_input.get("transcript_path")
+    transcript_path = ctx.input_data.get("transcript_path")
 
     # Check for active task
     try:
@@ -2310,10 +1875,10 @@ def run_session_end_commit_check(ctx: HookContext) -> Optional[GateResult]:
     # Check for uncommitted work
     try:
         check_result = check_uncommitted_work(session_id, transcript_path)
-        if check_result.should_block:
+        if check_result["should_block"]:
             return GateResult(
                 verdict=GateVerdict.DENY,
-                system_message=check_result.message,
+                system_message=check_result["message"],
             )
     except Exception as e:
         print(f"WARNING: uncommitted work check failed: {e}", file=sys.stderr)
@@ -2333,14 +1898,14 @@ def run_session_end_commit_check(ctx: HookContext) -> Optional[GateResult]:
 # --- Generate Transcript Gate (formerly generate_transcript.py) ---
 
 
-def run_generate_transcript(ctx: HookContext) -> Optional[GateResult]:
+def run_generate_transcript(ctx: GateContext) -> Optional[GateResult]:
     """
     Stop: Run transcript.py on session end.
     """
-    if ctx.hook_event != "Stop":
+    if ctx.event_name != "Stop":
         return None
 
-    transcript_path = ctx.raw_input.get("transcript_path")
+    transcript_path = ctx.input_data.get("transcript_path")
     if not transcript_path:
         return None
 
@@ -2349,11 +1914,7 @@ def run_generate_transcript(ctx: HookContext) -> Optional[GateResult]:
         from pathlib import Path
 
         root_dir = Path(__file__).parent.parent
-        script_path = root_dir / "scripts" / "transcript_push.py"
-
-        if not script_path.exists():
-            # Fallback to original transcript.py
-            script_path = root_dir / "scripts" / "transcript.py"
+        script_path = root_dir / "scripts" / "transcript.py"
 
         if script_path.exists():
             result = subprocess.run(
@@ -2363,226 +1924,24 @@ def run_generate_transcript(ctx: HookContext) -> Optional[GateResult]:
                 text=True,
             )
             if result.returncode != 0 and result.returncode != 2:
-                print(
-                    f"WARNING: Transcript generation failed: {result.stderr}",
-                    file=sys.stderr,
-                )
+                print(f"WARNING: Transcript generation failed: {result.stderr}", file=sys.stderr)
     except Exception as e:
         print(f"WARNING: generate_transcript error: {e}", file=sys.stderr)
 
     return None
 
 
-# --- ntfy Push Notification Gate ---
-
-
-def run_ntfy_notifier(ctx: HookContext) -> Optional[GateResult]:
-    """
-    Send push notifications for key session events via ntfy.
-
-    Non-blocking: notification failures are logged but don't affect execution.
-    Only runs if ntfy is configured (NTFY_TOPIC env var set).
-
-    Events:
-    - SessionStart: Notify session began
-    - Stop: Notify session ended
-    - PostToolUse: Notify task bind/unbind, subagent completion
-    """
-    # Check if ntfy is configured (returns None if disabled)
-    try:
-        config = get_ntfy_config()
-    except RuntimeError as e:
-        # Configuration error - log and continue (don't block)
-        print(f"WARNING: ntfy config error: {e}", file=sys.stderr)
-        return None
-
-    if not config:
-        # ntfy not configured - silently skip
-        return None
-
-    try:
-        from hooks.ntfy_notifier import (
-            notify_session_start,
-            notify_session_stop,
-            notify_subagent_stop,
-            notify_task_bound,
-            notify_task_completed,
-        )
-    except ImportError as e:
-        print(f"WARNING: ntfy_notifier import failed: {e}", file=sys.stderr)
-        return None
-
-    # SessionStart notification
-    if ctx.hook_event == "SessionStart":
-        notify_session_start(config, ctx.session_id)
-        return None
-
-    # Stop notification
-    if ctx.hook_event == "Stop":
-        # Get current task if any
-        try:
-            current_task = session_state.get_current_task(ctx.session_id)
-        except Exception:
-            current_task = None
-        notify_session_stop(config, ctx.session_id, current_task)
-        return None
-
-    # PostToolUse: task binding and subagent completion
-    if ctx.hook_event == "PostToolUse":
-        # Check for task binding
-        if ctx.tool_name in TASK_BINDING_TOOLS:
-            tool_input = ctx.tool_input
-            # Use 'in' check instead of .get() for fail-fast compliance
-            if "status" in tool_input and "id" in tool_input:
-                status = tool_input["status"]
-                task_id = tool_input["id"]
-
-                if status == "in_progress":
-                    notify_task_bound(config, ctx.session_id, task_id)
-                elif status == "done":
-                    notify_task_completed(config, ctx.session_id, task_id)
-
-        # Check for subagent completion (Task tool)
-        if ctx.tool_name in ("Task", "delegate_to_agent"):
-            # Extract agent type - try both field names
-            agent_type = "unknown"
-            if "subagent_type" in ctx.tool_input:
-                agent_type = ctx.tool_input["subagent_type"]
-            elif "agent_name" in ctx.tool_input:
-                agent_type = ctx.tool_input["agent_name"]
-
-            # Try to extract verdict from tool result
-            verdict = None
-            if "tool_result" in ctx.raw_input:
-                tool_result = ctx.raw_input["tool_result"]
-                if isinstance(tool_result, dict) and "verdict" in tool_result:
-                    verdict = tool_result["verdict"]
-                elif isinstance(tool_result, str):
-                    try:
-                        parsed = json.loads(tool_result)
-                        if isinstance(parsed, dict) and "verdict" in parsed:
-                            verdict = parsed["verdict"]
-                    except (json.JSONDecodeError, AttributeError):
-                        pass
-            elif "toolResult" in ctx.raw_input:
-                tool_result = ctx.raw_input["toolResult"]
-                if isinstance(tool_result, dict) and "verdict" in tool_result:
-                    verdict = tool_result["verdict"]
-
-            notify_subagent_stop(config, ctx.session_id, agent_type, verdict)
-
-    return None
-
-
-def run_session_env_setup(ctx: HookContext) -> Optional[GateResult]:
-    """
-    Persist environment variables for Claude Code sessions.
-    """
-    _check_imports()
-
-    try:
-        from hooks.session_env_setup import run_session_env_setup as setup_func
-    except ImportError as e:
-        print(f"WARNING: session_env_setup import failed: {e}", file=sys.stderr)
-        return None
-
-    return setup_func(ctx)
-
-
-# =============================================================================
-# Unified Tool Gate
-# =============================================================================
-
-
-def check_tool_gate(ctx: "HookContext") -> GateResult:
-    """Unified gate that checks tool permissions based on passed gates.
-
-    This gate replaces the separate hydration, task_required, custodiet, and
-    qa_enforcement gates with a single check that:
-    1. Categorizes the tool (read_only, write, meta)
-    2. Looks up required gates for that category
-    3. Blocks if required gates haven't passed
-
-    Tool categories and requirements are defined in gate_config.py.
-    """
-    _check_imports()
-
-    from hooks.gate_config import (
-        get_tool_category,
-        get_required_gates,
-        GATE_MODE_ENV_VARS,
-        GATE_MODE_DEFAULTS,
-    )
-
-    # Skip for non-tool events
-    if ctx.hook_event != "PreToolUse":
-        return GateResult.allow()
-
-    tool_name = ctx.tool_name or ""
-
-    # Always allow the hydrator itself to run (prevents deadlock)
-    if session_state.is_hydrator_active(ctx.session_id):
-        return GateResult.allow()
-
-    # Get tool category and required gates
-    category = get_tool_category(tool_name)
-    required_gates = get_required_gates(tool_name)
-
-    # Get passed gates for this session
-    passed_gates = session_state.get_passed_gates(ctx.session_id)
-
-    # Check if all required gates have passed
-    missing_gates = [g for g in required_gates if g not in passed_gates]
-
-    if not missing_gates:
-        return GateResult.allow()
-
-    # Some gates haven't passed - check enforcement mode
-    # Use the mode of the first missing gate
-    first_missing = missing_gates[0]
-    mode_env_var = GATE_MODE_ENV_VARS.get(first_missing, "")
-    mode = os.environ.get(mode_env_var, GATE_MODE_DEFAULTS.get(first_missing, "warn"))
-
-    # Build status indicators
-    gate_status = []
-    for gate in required_gates:
-        status = "✓" if gate in passed_gates else "✗"
-        gate_status.append(f"- {gate.title()}: {status}")
-
-    context_msg = f"""⚠️ **TOOL GATE ({mode})**: Tool `{tool_name}` requires gates that haven't passed.
-
-**Tool category**: {category}
-**Required gates**: {', '.join(required_gates)}
-**Missing gates**: {', '.join(missing_gates)}
-
-**Gate status**:
-{chr(10).join(gate_status)}
-
-**Next step**: Satisfy the `{first_missing}` gate to proceed."""
-
-    if mode == "block":
-        return GateResult.deny(context_injection=context_msg)
-    else:
-        # Warn mode - allow but inject context
-        return GateResult.allow(context_injection=context_msg)
-
-
 # Registry of available gate checks
 GATE_CHECKS = {
     # Universal gates
     "unified_logger": run_unified_logger,
-    "ntfy_notifier": run_ntfy_notifier,
-    "session_env_setup": run_session_env_setup,
     # UserPromptSubmit
     "user_prompt_submit": run_user_prompt_submit,
     # PreToolUse gates (order matters)
     "subagent_restrictions": check_subagent_tool_restrictions,
     "session_start": check_session_start_gate,
-    "tool_gate": check_tool_gate,  # NEW: unified tool gating
-    # Legacy gates (kept for backwards compatibility, can be removed)
     "hydration": check_hydration_gate,
     "task_required": check_task_required_gate,
-    "axiom_enforcer": check_axiom_enforcer_gate,
     "custodiet": check_custodiet_gate,
     "qa_enforcement": check_qa_enforcement_gate,
     # PostToolUse gates
@@ -2596,7 +1955,7 @@ GATE_CHECKS = {
     "agent_response": check_agent_response_listener,
     # Stop gates
     "stop_gate": check_stop_gate,
-    # "hydration_recency": check_hydration_recency_gate,  # Disabled: too restrictive for direct questions/skills
-    "session_end_commit": run_session_end_commit_check,  # Enabled: session-type detection implemented (aops-54ddc76d)
+    "hydration_recency": check_hydration_recency_gate,
+    "session_end_commit": run_session_end_commit_check,
     "generate_transcript": run_generate_transcript,
 }

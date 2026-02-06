@@ -251,9 +251,7 @@ class TaskSyncService:
                 item_text = match.group(2)
 
                 # Check for match
-                if self._items_match(
-                    item_text, accomplishment_text, accomplishment_words
-                ):
+                if self._items_match(item_text, accomplishment_text, accomplishment_words):
                     # Mark as complete
                     updated_lines.append(f"{indent}- [x] {item_text}")
                     marked_items.append(item_text)

@@ -193,7 +193,7 @@ class TestTranscriptGenerationDemo:
         print("\nFile sizes:")
         print(f"  Full: {full_size:,} bytes")
         print(f"  Abridged: {abridged_size:,} bytes")
-        print(f"  Compression ratio: {abridged_size / full_size * 100:.1f}%")
+        print(f"  Compression ratio: {abridged_size/full_size*100:.1f}%")
 
         assert full_size > 0, "Full transcript is empty"
         assert abridged_size > 0, "Abridged transcript is empty"
@@ -226,7 +226,7 @@ class TestTranscriptGenerationDemo:
 
         print("\n📊 Content Statistics:")
         print(f"  {'Metric':<20} {'Full':>10} {'Abridged':>10}")
-        print(f"  {'-' * 20} {'-' * 10} {'-' * 10}")
+        print(f"  {'-'*20} {'-'*10} {'-'*10}")
         print(
             f"  {'Lines':<20} {full_stats['total_lines']:>10,} {abridged_stats['total_lines']:>10,}"
         )
@@ -272,7 +272,7 @@ This demo showed the complete transcript generation pipeline:
 
 The transcript pipeline produces:
 - Full transcript ({full_size:,} bytes): Complete conversation details
-- Abridged transcript ({abridged_size:,} bytes): {abridged_size / full_size * 100:.1f}% of full
+- Abridged transcript ({abridged_size:,} bytes): {abridged_size/full_size*100:.1f}% of full
 
 These transcripts are used for:
 - Human review of agent sessions

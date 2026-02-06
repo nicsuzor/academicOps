@@ -287,11 +287,6 @@ mcp__plugin_aops-core_task_manager__search_tasks(query="polecat")
   - Merge if acceptable (update status to done after merge)
   - Reject with feedback (create follow-up task, assign back to polecat)
 
-**User intent clarification**: When user says "merge ready tasks in", they typically mean "process `review` status tasks with oversight". The workflow is:
-1. Agent reviews each `review` task
-2. Simple/mechanical tasks: agent approves and marks done
-3. Complex/judgment tasks: agent asks user for resolution before proceeding
-
 **Note**: Task assignees use `nic` (human) or `bot` (agent), not "engineer".
 
 ## Edge Cases
@@ -340,20 +335,6 @@ If the worktree directory doesn't exist but branch does:
 - Worktree was already removed
 - Proceed with branch merge and cleanup
 - This is normal for completed tasks
-
-### Failed Merge / No Branch (Review Status)
-
-If task is in `review` status but has no branch:
-- Refinery may have failed (`git fetch` error, merge conflict, etc.)
-- Check task body for "🏭 Refinery Report" section with failure details
-- **Work was never completed** - this is NOT a merge candidate
-
-**Resolution**:
-1. Reset task to `active` status
-2. Reassign to `bot` for fresh attempt
-3. Add triage note explaining the reset
-
-This commonly occurs when polecat sessions hit blocking bugs (e.g., hydration gate) and refinery couldn't process.
 
 ## Constraints
 

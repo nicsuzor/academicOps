@@ -35,8 +35,6 @@ Quick reference for routing user requests to skills/commands. When a request mat
 | `/audit` | "framework audit", "check structure" | Comprehensive framework governance audit - structure checking, justification checking, and index file updates. |
 | `/convert-to-md` | "convert document", DOCX/PDF/XLSX conversion | Batch convert documents (DOCX, PDF, XLSX, TXT, PPTX, MSG, DOC) to markdown, preserving tracked changes and comments. |
 | `/daily` | "daily list", "daily note", "morning briefing", "update daily", "daily update" | Daily note lifecycle - morning briefing, task recommendations, session sync. SSoT for daily note structure. |
-| `/decision-extract` | "pending decisions", "what decisions", "decision queue", "decisions blocking" | Extract pending decisions from task queue, prioritize by blocking count, output to daily note for batch processing. |
-| `/decision-apply` | "apply decisions", "process decisions", "execute decisions" | Process annotated decisions from daily note, update task statuses, and unblock dependent tasks. |
 | `/excalidraw` | "draw diagram", "mind map", "visual diagram" | Creating visually compelling, hand-drawn diagrams with organic mind-map layouts and accessibility-focused design. |
 | `/flowchart` | "create flowchart", "mermaid diagram", process flow | Creating clear, readable, and attractive Mermaid flowcharts with best practices for accessibility, layout, and maintainability. |
 | `/framework` | framework development, hooks, agents | Framework development workflows - routing to specific procedures for hooks, skills, experiments, debugging, and specs |

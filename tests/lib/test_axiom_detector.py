@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from lib.axiom_detector import P8FallbackDetector
+from lib.axiom_detector import P8FallbackDetector, AxiomViolation
 
 
 def test_p8_env_get_default():
@@ -65,3 +65,4 @@ def setup():
     assert "env_get_default" in patterns
     assert "except_pass" in patterns
     assert "or_fallback" in patterns
+    

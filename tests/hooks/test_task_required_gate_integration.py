@@ -1,7 +1,8 @@
+import json
 import os
 import sys
 import pytest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from pathlib import Path
 
 # Add aops-core to path
@@ -64,6 +65,7 @@ class TestTaskRequiredGateIntegration:
         assert output.verdict == "deny"
 
 
+
 class TestSafeTempPaths:
     """Test safe temp directory allowlist for writes without task binding."""
 
@@ -78,9 +80,7 @@ class TestSafeTempPaths:
         """Writes to ~/.claude/projects/ should be allowed without task."""
         from hooks.gate_registry import _is_safe_temp_path
 
-        claude_projects = str(
-            Path.home() / ".claude" / "projects" / "abc" / "state.json"
-        )
+        claude_projects = str(Path.home() / ".claude" / "projects" / "abc" / "state.json")
         assert _is_safe_temp_path(claude_projects), "~/.claude/projects/ should be safe"
 
     def test_is_safe_temp_path_gemini_tmp(self):
@@ -109,27 +109,21 @@ class TestSafeTempPaths:
         from hooks.gate_registry import _is_safe_temp_path
 
         settings = str(Path.home() / ".claude" / "settings.json")
-        assert not _is_safe_temp_path(settings), (
-            "~/.claude/settings.json should not be safe"
-        )
+        assert not _is_safe_temp_path(settings), "~/.claude/settings.json should not be safe"
 
     def test_should_require_task_write_to_temp_allowed(self):
         """Write to temp dir should NOT require task."""
         from hooks.gate_registry import _should_require_task
 
         tool_input = {"file_path": str(Path.home() / ".claude" / "tmp" / "test.md")}
-        assert not _should_require_task("Write", tool_input), (
-            "Write to temp should not require task"
-        )
+        assert not _should_require_task("Write", tool_input), "Write to temp should not require task"
 
     def test_should_require_task_write_to_user_file_required(self):
         """Write to user file SHOULD require task."""
         from hooks.gate_registry import _should_require_task
 
         tool_input = {"file_path": "/home/user/src/main.py"}
-        assert _should_require_task("Write", tool_input), (
-            "Write to user file should require task"
-        )
+        assert _should_require_task("Write", tool_input), "Write to user file should require task"
 
 
 class TestGateRegistry:
@@ -139,9 +133,7 @@ class TestGateRegistry:
     def gate_context_factory(self):
         from hooks.gate_registry import GateContext
 
-        def _make_context(
-            tool_name, tool_input, session_id="sess-1", event_name="PreToolUse"
-        ):
+        def _make_context(tool_name, tool_input, session_id="sess-1", event_name="PreToolUse"):
             return GateContext(
                 session_id=session_id,
                 event_name=event_name,
@@ -163,14 +155,11 @@ class TestGateRegistry:
         ctx = gate_context_factory("Bash", {"command": "rm -rf /"})
 
         with patch("lib.session_state.load_session_state", return_value={}):
-            with patch(
-                "lib.session_state.check_all_gates",
-                return_value={
-                    "task_bound": False,
-                    "plan_mode_invoked": False,
-                    "critic_invoked": False,
-                },
-            ):
+            with patch("lib.session_state.check_all_gates", return_value={
+                "task_bound": False,
+                "plan_mode_invoked": False,
+                "critic_invoked": False,
+            }):
                 with patch("os.environ", {"TASK_GATE_MODE": "block"}):
                     result = check_task_required_gate(ctx)
 
@@ -184,14 +173,11 @@ class TestGateRegistry:
         ctx = gate_context_factory("Bash", {"command": "rm -rf /"})
 
         with patch("lib.session_state.load_session_state", return_value={}):
-            with patch(
-                "lib.session_state.check_all_gates",
-                return_value={
-                    "task_bound": True,
-                    "plan_mode_invoked": True,
-                    "critic_invoked": True,
-                },
-            ):
+            with patch("lib.session_state.check_all_gates", return_value={
+                "task_bound": True,
+                "plan_mode_invoked": True,
+                "critic_invoked": True,
+            }):
                 result = check_task_required_gate(ctx)
 
         assert result is None
@@ -204,14 +190,11 @@ class TestGateRegistry:
         ctx = gate_context_factory("Bash", {"command": "rm -rf /"})
 
         with patch("lib.session_state.load_session_state", return_value={}):
-            with patch(
-                "lib.session_state.check_all_gates",
-                return_value={
-                    "task_bound": False,
-                    "plan_mode_invoked": False,
-                    "critic_invoked": False,
-                },
-            ):
+            with patch("lib.session_state.check_all_gates", return_value={
+                "task_bound": False,
+                "plan_mode_invoked": False,
+                "critic_invoked": False,
+            }):
                 with patch("os.environ", {"TASK_GATE_MODE": "warn"}):
                     result = check_task_required_gate(ctx)
 
@@ -225,13 +208,13 @@ class TestGateRegistry:
         # This implies it might return ALLOW with context.
         # But let's check `gate_registry.py` logic if possible.
         # If I can't check, I'll assert result.verdict != GateVerdict.DENY.
-
+        
         # If the gate returns result, it's not None.
         if result.verdict == GateVerdict.WARN:
-            pass
+             pass
         else:
-            # If it returns ALLOW, that's also fine for warn mode
-            assert (
-                result.verdict == GateVerdict.ALLOW
-                or result.verdict == GateVerdict.WARN
-            )
+             # If it returns ALLOW, that's also fine for warn mode
+             assert result.verdict == GateVerdict.ALLOW or result.verdict == GateVerdict.WARN
+
+
+

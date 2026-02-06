@@ -72,11 +72,11 @@ The hydrator receives the user prompt along with session history and memory cont
 | Research data analysis     | [[archived/specs/analyst-skill.md\|analyst]] skill        | analyst skill        |
 | Citation management        | zotmcp + Zotero                                 | MCP tools            |
 | Task capture from email    | [[archived/specs/tasks-skill.md\|tasks]] skill + /email   | tasks skill + /email |
-| Task visualization         | [[aops-core/skills/excalidraw/SKILL.md\|excalidraw]] skill | excalidraw skill     |
+| Task visualization         | [[aops-tools/skills/excalidraw/SKILL.md\|excalidraw]] skill | excalidraw skill     |
 | Writing style enforcement  | Style guides                                    | Agents follow guides |
 | Knowledge capture          | [[archived/specs/remember-skill.md\|remember]] skill      | remember skill       |
 | Session transcripts        | [[archived/specs/transcript-skill.md\|transcript]] skill  | transcript skill     |
-| Markdown to PDF generation | [[aops-core/skills/pdf/SKILL.md\|pdf]] skill             | pdf skill            |
+| Markdown to PDF generation | [[aops-tools/skills/pdf/SKILL.md\|pdf]] skill             | pdf skill            |
 
 ### Enforcement Mechanisms
 

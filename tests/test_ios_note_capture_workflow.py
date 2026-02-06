@@ -89,17 +89,17 @@ def test_ios_note_capture_workflow_triggers(workflow_yaml: dict) -> None:
 
     # Must support repository_dispatch for iOS webhook
     assert "repository_dispatch" in triggers, "Must have repository_dispatch trigger"
-    assert "types" in triggers["repository_dispatch"], (
-        "repository_dispatch must specify types"
-    )
-    assert "capture-note" in triggers["repository_dispatch"]["types"], (
-        "Must handle 'capture-note' event type"
-    )
+    assert (
+        "types" in triggers["repository_dispatch"]
+    ), "repository_dispatch must specify types"
+    assert (
+        "capture-note" in triggers["repository_dispatch"]["types"]
+    ), "Must handle 'capture-note' event type"
 
     # Should also support manual trigger for testing
-    assert "workflow_dispatch" in triggers, (
-        "Should have workflow_dispatch for manual testing"
-    )
+    assert (
+        "workflow_dispatch" in triggers
+    ), "Should have workflow_dispatch for manual testing"
 
 
 def test_ios_note_capture_workflow_uses_claude_code_action(workflow_yaml: dict) -> None:
@@ -172,9 +172,9 @@ def test_ios_note_capture_workflow_persists_data(workflow_yaml: dict) -> None:
                 persistence_found = True
                 break
 
-    assert persistence_found, (
-        "Workflow must persist data (git commit/push or memory server)"
-    )
+    assert (
+        persistence_found
+    ), "Workflow must persist data (git commit/push or memory server)"
 
 
 def test_ios_note_capture_workflow_has_reasonable_timeout(workflow_yaml: dict) -> None:

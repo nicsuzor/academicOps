@@ -69,10 +69,7 @@ def convert_mcp_server(name: str, config: dict[str, Any]) -> dict[str, Any] | No
     elif server_type == "stdio":
         # Stdio server - copy command, args, env
         if "command" not in config:
-            print(
-                f"  ⚠️  {name}: stdio server missing 'command', skipping",
-                file=sys.stderr,
-            )
+            print(f"  ⚠️  {name}: stdio server missing 'command', skipping", file=sys.stderr)
             return None
         result["command"] = config["command"]
         if "args" in config:
@@ -80,10 +77,7 @@ def convert_mcp_server(name: str, config: dict[str, Any]) -> dict[str, Any] | No
         if "env" in config and config["env"]:
             result["env"] = config["env"]
     else:
-        print(
-            f"  ⚠️  {name}: Unknown server type '{server_type}', skipping",
-            file=sys.stderr,
-        )
+        print(f"  ⚠️  {name}: Unknown server type '{server_type}', skipping", file=sys.stderr)
         return None
 
     return result
@@ -114,10 +108,7 @@ def aggregate_plugin_mcps(aops_path: Path) -> dict[str, Any]:
         if mcp_file.exists():
             plugin_servers = load_mcp_config(mcp_file)
             servers.update(plugin_servers)
-            print(
-                f"  ✓ Loaded {len(plugin_servers)} servers from {plugin_dir.name}",
-                file=sys.stderr,
-            )
+            print(f"  ✓ Loaded {len(plugin_servers)} servers from {plugin_dir.name}", file=sys.stderr)
 
     return servers
 
@@ -153,10 +144,7 @@ def main() -> int:
         output_path = Path(sys.argv[2])
 
         if not global_mcp_path.exists():
-            print(
-                f"Warning: Global MCP file not found: {global_mcp_path}",
-                file=sys.stderr,
-            )
+            print(f"Warning: Global MCP file not found: {global_mcp_path}", file=sys.stderr)
             global_servers = {}
         else:
             print(f"Loading global MCP from {global_mcp_path}...", file=sys.stderr)
@@ -169,9 +157,7 @@ def main() -> int:
     # Merge: plugins take precedence over global
     all_servers = {**global_servers, **plugin_servers}
 
-    print(
-        f"\nConverting {len(all_servers)} servers to Gemini format...", file=sys.stderr
-    )
+    print(f"\nConverting {len(all_servers)} servers to Gemini format...", file=sys.stderr)
     gemini_config = convert_mcp_config(all_servers)
 
     # Output

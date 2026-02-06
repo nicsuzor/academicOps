@@ -4,17 +4,12 @@
 Reads JSON from fast-indexer and applies color coding based on
 status, priority, and type. Generates SVG using Graphviz sfdp.
 
-By default, generates two SVG variants:
-  - {output}.svg         : Smart-filtered (active work focus)
-  - {output}-rollup.svg  : Pruned tree (unfinished nodes + structural ancestors)
-
 Usage:
-    python task_graph.py INPUT.json [-o OUTPUT] [--single]
+    python task_graph.py INPUT.json [-o OUTPUT]
 
 Examples:
     fast-indexer ./data -o graph -f json -t task,project,goal
-    python task_graph.py graph.json -o task-map          # Generates 2 SVGs
-    python task_graph.py graph.json -o task-map --single  # Single output only
+    python task_graph.py graph.json -o tasks
 """
 
 import argparse
@@ -26,23 +21,23 @@ from pathlib import Path
 
 # Color schemes
 ASSIGNEE_COLORS = {
-    "bot": "#17a2b8",  # cyan/teal - AI agent
+    "bot": "#17a2b8",     # cyan/teal - AI agent
     "claude": "#17a2b8",  # same as bot
     "worker": "#fd7e14",  # orange - background worker
-    "nic": "#6f42c1",  # purple - human
+    "nic": "#6f42c1",     # purple - human
 }
 ASSIGNEE_DEFAULT = "#6c757d"  # gray for unassigned
 
 STATUS_COLORS = {
-    "done": "#d4edda",  # green
+    "done": "#d4edda",      # green
     "completed": "#d4edda",
-    "cancelled": "#e9ecef",  # gray
-    "active": "#cce5ff",  # blue
+    "cancelled": "#e9ecef", # gray
+    "active": "#cce5ff",    # blue
     "in_progress": "#cce5ff",
-    "blocked": "#f8d7da",  # red
-    "waiting": "#fff3cd",  # yellow
-    "inbox": "#ffffff",  # white
-    "todo": "#ffffff",  # white
+    "blocked": "#f8d7da",   # red
+    "waiting": "#fff3cd",   # yellow
+    "inbox": "#ffffff",     # white
+    "todo": "#ffffff",      # white
 }
 
 PRIORITY_BORDERS = {
@@ -56,19 +51,19 @@ PRIORITY_BORDERS = {
 TYPE_SHAPES = {
     "goal": "ellipse",
     "project": "box3d",
-    "epic": "octagon",  # Milestone grouping
+    "epic": "octagon",      # Milestone grouping
     "task": "box",
     "action": "note",
-    "bug": "diamond",  # Defect to fix
-    "feature": "hexagon",  # New functionality
-    "learn": "tab",  # Observational tracking
+    "bug": "diamond",       # Defect to fix
+    "feature": "hexagon",   # New functionality
+    "learn": "tab",         # Observational tracking
 }
 
 EDGE_STYLES = {
-    "parent": {"color": "#6c757d", "style": "solid"},  # gray - hierarchy
-    "depends_on": {"color": "#dc3545", "style": "bold"},  # red - blocking
-    "soft_depends_on": {"color": "#17a2b8", "style": "dashed"},  # teal - advisory
-    "wikilink": {"color": "#adb5bd", "style": "dotted"},  # light gray - generic
+    "parent": {"color": "#6c757d", "style": "solid"},           # gray - hierarchy
+    "depends_on": {"color": "#dc3545", "style": "bold"},        # red - blocking
+    "soft_depends_on": {"color": "#17a2b8", "style": "dashed"}, # teal - advisory
+    "wikilink": {"color": "#adb5bd", "style": "dotted"},        # light gray - generic
 }
 
 # Structural completed nodes (completed parents with active children)
@@ -79,15 +74,7 @@ STRUCTURAL_STYLE = {
 }
 
 # Statuses considered incomplete (assignee coloring applies)
-INCOMPLETE_STATUSES = {
-    "inbox",
-    "active",
-    "in_progress",
-    "blocked",
-    "waiting",
-    "todo",
-    "pending",
-}
+INCOMPLETE_STATUSES = {"inbox", "active", "in_progress", "blocked", "waiting", "todo", "pending"}
 
 
 def extract_assignee(file_path: str) -> str | None:
@@ -112,9 +99,7 @@ def extract_assignee(file_path: str) -> str | None:
     return None
 
 
-def filter_completed_smart(
-    nodes: list[dict], edges: list[dict]
-) -> tuple[list[dict], set[str]]:
+def filter_completed_smart(nodes: list[dict], edges: list[dict]) -> tuple[list[dict], set[str]]:
     """Filter completed tasks, keeping structural parents with active descendants.
 
     Returns:
@@ -124,12 +109,9 @@ def filter_completed_smart(
     done_statuses = {"done", "completed"}
 
     # Build node lookup and identify completed nodes
-    completed_ids = {
-        n["id"] for n in nodes if n.get("status", "").lower() in done_statuses
-    }
-    active_ids = {
-        n["id"] for n in nodes if n.get("status", "").lower() not in done_statuses
-    }
+    node_by_id = {n["id"]: n for n in nodes}
+    completed_ids = {n["id"] for n in nodes if n.get("status", "").lower() in done_statuses}
+    active_ids = {n["id"] for n in nodes if n.get("status", "").lower() not in done_statuses}
 
     # Build adjacency: for each node, find its neighbors (bidirectional for wikilinks)
     neighbors = {n["id"]: set() for n in nodes}
@@ -168,73 +150,6 @@ def filter_completed_smart(
     return filtered_nodes, structural_ids
 
 
-def filter_rollup(nodes: list[dict], edges: list[dict]) -> tuple[list[dict], set[str]]:
-    """Filter to show only unfinished nodes and ancestors with unfinished descendants.
-
-    This creates a "rollup" view showing the pruned tree of incomplete work.
-    Completed leaf nodes are removed, but completed structural nodes (those with
-    incomplete descendants) are preserved to maintain hierarchy context.
-
-    Returns:
-        (filtered_nodes, structural_ids) where structural_ids are completed nodes
-        kept because they have unfinished descendants (displayed differently).
-    """
-    done_statuses = {"done", "completed"}
-
-    # Build lookups
-    node_by_id = {n["id"]: n for n in nodes}
-    unfinished_ids = {
-        n["id"] for n in nodes if n.get("status", "").lower() not in done_statuses
-    }
-
-    # Build parent→children mapping from node.parent field
-    # (more reliable than parsing edges since nodes directly declare their parent)
-    children_of: dict[str, list[str]] = {n["id"]: [] for n in nodes}
-    for node in nodes:
-        parent_id = node.get("parent")
-        if parent_id and parent_id in children_of:
-            children_of[parent_id].append(node["id"])
-
-    # Memoized check: does this node have any unfinished descendant?
-    memo: dict[str, bool] = {}
-
-    def has_unfinished_descendant(node_id: str, visited: set[str]) -> bool:
-        """Check if node has any unfinished node in its subtree (children, grandchildren, etc.)."""
-        if node_id in memo:
-            return memo[node_id]
-        if node_id in visited:  # Cycle detection
-            return False
-        visited.add(node_id)
-
-        for child_id in children_of.get(node_id, []):
-            if child_id in unfinished_ids:
-                memo[node_id] = True
-                return True
-            if has_unfinished_descendant(child_id, visited):
-                memo[node_id] = True
-                return True
-
-        memo[node_id] = False
-        return False
-
-    # Determine which nodes to keep
-    keep_ids: set[str] = set()
-    structural_ids: set[str] = set()
-
-    for node_id in node_by_id:
-        if node_id in unfinished_ids:
-            # Always keep unfinished nodes
-            keep_ids.add(node_id)
-        elif has_unfinished_descendant(node_id, set()):
-            # Keep finished nodes that have unfinished descendants (structural)
-            keep_ids.add(node_id)
-            structural_ids.add(node_id)
-        # Otherwise: finished node with no unfinished descendants → prune
-
-    filtered_nodes = [n for n in nodes if n["id"] in keep_ids]
-    return filtered_nodes, structural_ids
-
-
 def classify_edge(source_id: str, target_id: str, node_by_id: dict) -> str:
     """Determine edge type from node relationships."""
     source = node_by_id.get(source_id, {})
@@ -247,13 +162,9 @@ def classify_edge(source_id: str, target_id: str, node_by_id: dict) -> str:
     return "wikilink"
 
 
-def generate_dot(
-    nodes: list[dict],
-    edges: list[dict],
-    include_orphans: bool = False,
-    structural_ids: set[str] | None = None,
-    stats: dict | None = None,
-) -> str:
+def generate_dot(nodes: list[dict], edges: list[dict], include_orphans: bool = False,
+                 structural_ids: set[str] | None = None,
+                 stats: dict | None = None) -> str:
     """Generate DOT format graph with styling.
 
     Args:
@@ -279,56 +190,56 @@ def generate_dot(
     lines = [
         "digraph TaskGraph {",
         "    rankdir=TB;",
-        '    node [style=filled, fontname="Helvetica"];',
-        '    edge [color="#6c757d"];',
+        "    node [style=filled, fontname=\"Helvetica\"];",
+        "    edge [color=\"#6c757d\"];",
         "",
         "    // Legend - Task Types",
         "    subgraph cluster_legend_types {",
-        '        label="Task Types";',
+        "        label=\"Task Types\";",
         "        style=dashed;",
-        '        legend_goal [label="Goal" shape=ellipse fillcolor="#cce5ff"];',
-        '        legend_project [label="Project" shape=box3d fillcolor="#cce5ff"];',
-        '        legend_epic [label="Epic" shape=octagon fillcolor="#cce5ff"];',
-        '        legend_task [label="Task" shape=box fillcolor="#cce5ff"];',
-        '        legend_action [label="Action" shape=note fillcolor="#cce5ff"];',
-        '        legend_bug [label="Bug" shape=diamond fillcolor="#cce5ff"];',
-        '        legend_feature [label="Feature" shape=hexagon fillcolor="#cce5ff"];',
-        '        legend_learn [label="Learn" shape=tab fillcolor="#cce5ff"];',
+        "        legend_goal [label=\"Goal\" shape=ellipse fillcolor=\"#cce5ff\"];",
+        "        legend_project [label=\"Project\" shape=box3d fillcolor=\"#cce5ff\"];",
+        "        legend_epic [label=\"Epic\" shape=octagon fillcolor=\"#cce5ff\"];",
+        "        legend_task [label=\"Task\" shape=box fillcolor=\"#cce5ff\"];",
+        "        legend_action [label=\"Action\" shape=note fillcolor=\"#cce5ff\"];",
+        "        legend_bug [label=\"Bug\" shape=diamond fillcolor=\"#cce5ff\"];",
+        "        legend_feature [label=\"Feature\" shape=hexagon fillcolor=\"#cce5ff\"];",
+        "        legend_learn [label=\"Learn\" shape=tab fillcolor=\"#cce5ff\"];",
         "    }",
         "",
         "    // Legend - Status",
         "    subgraph cluster_legend_status {",
-        '        label="Status";',
+        "        label=\"Status\";",
         "        style=dashed;",
-        '        legend_active [label="Active" shape=box fillcolor="#cce5ff"];',
-        '        legend_done [label="Done" shape=box fillcolor="#d4edda"];',
-        '        legend_structural [label="Done (structural)" shape=box3d style="filled,dashed" fillcolor="#c3e6cb"];',
-        '        legend_blocked [label="Blocked" shape=box fillcolor="#f8d7da"];',
-        '        legend_waiting [label="Waiting" shape=box fillcolor="#fff3cd"];',
+        "        legend_active [label=\"Active\" shape=box fillcolor=\"#cce5ff\"];",
+        "        legend_done [label=\"Done\" shape=box fillcolor=\"#d4edda\"];",
+        "        legend_structural [label=\"Done (structural)\" shape=box3d style=\"filled,dashed\" fillcolor=\"#c3e6cb\"];",
+        "        legend_blocked [label=\"Blocked\" shape=box fillcolor=\"#f8d7da\"];",
+        "        legend_waiting [label=\"Waiting\" shape=box fillcolor=\"#fff3cd\"];",
         "    }",
         "",
         "    // Legend - Assignee",
         "    subgraph cluster_legend_assignee {",
-        '        label="Assignee";',
+        "        label=\"Assignee\";",
         "        style=dashed;",
-        '        legend_bot [label="@bot" shape=box fillcolor="#ffffff" color="#17a2b8" penwidth=3];',
-        '        legend_nic [label="@nic" shape=box fillcolor="#ffffff" color="#6f42c1" penwidth=3];',
-        '        legend_worker [label="@worker" shape=box fillcolor="#ffffff" color="#fd7e14" penwidth=3];',
+        "        legend_bot [label=\"@bot\" shape=box fillcolor=\"#ffffff\" color=\"#17a2b8\" penwidth=3];",
+        "        legend_nic [label=\"@nic\" shape=box fillcolor=\"#ffffff\" color=\"#6f42c1\" penwidth=3];",
+        "        legend_worker [label=\"@worker\" shape=box fillcolor=\"#ffffff\" color=\"#fd7e14\" penwidth=3];",
         "    }",
         "",
         "    // Legend - Edge Types",
         "    subgraph cluster_legend_edges {",
-        '        label="Edge Types";',
+        "        label=\"Edge Types\";",
         "        style=dashed;",
-        '        legend_e1 [label="" shape=point width=0.1];',
-        '        legend_e2 [label="" shape=point width=0.1];',
-        '        legend_e3 [label="" shape=point width=0.1];',
-        '        legend_e4 [label="" shape=point width=0.1];',
-        '        legend_e5 [label="" shape=point width=0.1];',
-        '        legend_e6 [label="" shape=point width=0.1];',
-        '        legend_e1 -> legend_e2 [label="parent" color="#6c757d" style=solid];',
-        '        legend_e3 -> legend_e4 [label="depends_on" color="#dc3545" style=bold];',
-        '        legend_e5 -> legend_e6 [label="soft_depends" color="#17a2b8" style=dashed];',
+        "        legend_e1 [label=\"\" shape=point width=0.1];",
+        "        legend_e2 [label=\"\" shape=point width=0.1];",
+        "        legend_e3 [label=\"\" shape=point width=0.1];",
+        "        legend_e4 [label=\"\" shape=point width=0.1];",
+        "        legend_e5 [label=\"\" shape=point width=0.1];",
+        "        legend_e6 [label=\"\" shape=point width=0.1];",
+        "        legend_e1 -> legend_e2 [label=\"parent\" color=\"#6c757d\" style=solid];",
+        "        legend_e3 -> legend_e4 [label=\"depends_on\" color=\"#dc3545\" style=bold];",
+        "        legend_e5 -> legend_e6 [label=\"soft_depends\" color=\"#17a2b8\" style=dashed];",
         "    }",
         "",
     ]
@@ -341,17 +252,13 @@ def generate_dot(
         by_status = stats.get("by_status", {})
 
         # Build type breakdown string
-        type_parts = [
-            f"{v} {k}" for k, v in sorted(by_type.items(), key=lambda x: -x[1])
-        ]
+        type_parts = [f"{v} {k}" for k, v in sorted(by_type.items(), key=lambda x: -x[1])]
         type_str = ", ".join(type_parts[:5])  # Top 5 types
         if len(type_parts) > 5:
             type_str += f", +{len(type_parts) - 5} more"
 
         # Build status breakdown string
-        status_parts = [
-            f"{v} {k}" for k, v in sorted(by_status.items(), key=lambda x: -x[1])
-        ]
+        status_parts = [f"{v} {k}" for k, v in sorted(by_status.items(), key=lambda x: -x[1])]
         status_str = ", ".join(status_parts[:5])  # Top 5 statuses
         if len(status_parts) > 5:
             status_str += f", +{len(status_parts) - 5} more"
@@ -367,18 +274,16 @@ def generate_dot(
             f"By Status:\\n{status_str}"
         )
 
-        lines.extend(
-            [
-                "    // Statistics",
-                "    subgraph cluster_stats {",
-                '        label="";',
-                "        style=filled;",
-                '        fillcolor="#f8f9fa";',
-                f'        stats_box [label="{stats_label}" shape=note fillcolor="#ffffff" fontsize=10];',
-                "    }",
-                "",
-            ]
-        )
+        lines.extend([
+            "    // Statistics",
+            "    subgraph cluster_stats {",
+            "        label=\"\";",
+            "        style=filled;",
+            "        fillcolor=\"#f8f9fa\";",
+            f'        stats_box [label=\"{stats_label}\" shape=note fillcolor=\"#ffffff\" fontsize=10];',
+            "    }",
+            "",
+        ])
 
     # Add nodes
     for node in nodes:
@@ -419,12 +324,12 @@ def generate_dot(
         lines.append(
             f'    "{node_id}" ['
             f'label="{label}" '
-            f"shape={shape} "
+            f'shape={shape} '
             f'style="{style}" '
             f'fillcolor="{fillcolor}" '
             f'color="{pencolor}" '
-            f"penwidth={penwidth}"
-            f"];"
+            f'penwidth={penwidth}'
+            f'];'
         )
 
     lines.append("")
@@ -444,81 +349,15 @@ def generate_dot(
     return "\n".join(lines)
 
 
-def generate_svg(
-    dot_content: str, output_base: str, layout: str, keep_dot: bool = False
-) -> bool:
-    """Generate SVG from DOT content using Graphviz.
-
-    Args:
-        dot_content: The DOT format graph content
-        output_base: Base path for output (without extension)
-        layout: Graphviz layout engine to use
-        keep_dot: If True, keep the .dot file; otherwise delete after SVG generation
-
-    Returns:
-        True if SVG was successfully generated
-    """
-    dot_path = f"{output_base}.dot"
-    svg_path = f"{output_base}.svg"
-
-    Path(dot_path).write_text(dot_content)
-
-    layout_opts = {
-        "sfdp": ["-Goverlap=prism", "-Gsplines=true"],
-        "neato": ["-Goverlap=prism", "-Gsplines=true"],
-        "fdp": ["-Goverlap=prism", "-Gsplines=true"],
-        "dot": [],
-        "circo": [],
-        "twopi": [],
-    }
-
-    try:
-        cmd = (
-            [layout, "-Tsvg"] + layout_opts.get(layout, []) + [dot_path, "-o", svg_path]
-        )
-        subprocess.run(cmd, check=True, capture_output=True)
-        print(f"  Written {svg_path}")
-        success = True
-    except FileNotFoundError:
-        print(f"  Warning: {layout} not found, skipping SVG generation")
-        success = False
-    except subprocess.CalledProcessError as e:
-        print(f"  Warning: {layout} failed: {e.stderr.decode()}")
-        success = False
-
-    if not keep_dot and Path(dot_path).exists():
-        Path(dot_path).unlink()
-    elif keep_dot:
-        print(f"  Written {dot_path}")
-
-    return success
-
-
 def main():
-    parser = argparse.ArgumentParser(
-        description="Generate styled task graph from fast-indexer JSON"
-    )
+    parser = argparse.ArgumentParser(description="Generate styled task graph from fast-indexer JSON")
     parser.add_argument("input", help="Input JSON file from fast-indexer")
     parser.add_argument("-o", "--output", default="tasks", help="Output base name")
-    parser.add_argument(
-        "--include-orphans", action="store_true", help="Include unconnected nodes"
-    )
-    parser.add_argument(
-        "--no-filter",
-        action="store_true",
-        help="Disable smart filtering (show all tasks including completed)",
-    )
-    parser.add_argument(
-        "--layout",
-        default="sfdp",
-        choices=["dot", "neato", "sfdp", "fdp", "circo", "twopi"],
-        help="Graphviz layout engine (default: sfdp)",
-    )
-    parser.add_argument(
-        "--single",
-        action="store_true",
-        help="Generate only single output (default generates multiple variants)",
-    )
+    parser.add_argument("--include-orphans", action="store_true", help="Include unconnected nodes")
+    parser.add_argument("--no-filter", action="store_true",
+                        help="Disable smart filtering (show all tasks including completed)")
+    parser.add_argument("--layout", default="sfdp", choices=["dot", "neato", "sfdp", "fdp", "circo", "twopi"],
+                        help="Graphviz layout engine (default: sfdp)")
     args = parser.parse_args()
 
     input_path = Path(args.input)
@@ -530,83 +369,63 @@ def main():
     with open(input_path) as f:
         data = json.load(f)
 
-    all_nodes = data["nodes"]
-    all_edges = data["edges"]
+    nodes = data.get("nodes", [])
+    edges = data.get("edges", [])
 
-    print(f"Loaded {len(all_nodes)} nodes, {len(all_edges)} edges from {input_path}")
+    print(f"Loaded {len(nodes)} nodes, {len(edges)} edges from {input_path}")
 
-    # Define variants to generate
-    # Each variant: (suffix, filter_type, include_orphans, description)
-    # filter_type: "smart" = active work focus, "rollup" = pruned tree, None = no filter
-    if args.single:
-        # Single mode: respect --no-filter and --include-orphans flags
-        variants = [
-            (
-                "",
-                None if args.no_filter else "smart",
-                args.include_orphans,
-                "single output",
-            ),
-        ]
-    else:
-        # Multi mode (default): generate both variants
-        variants = [
-            ("", "smart", False, "smart-filtered (active work)"),
-            (
-                "-rollup",
-                "rollup",
-                False,
-                "pruned tree (unfinished + structural ancestors)",
-            ),
-        ]
-
-    for suffix, filter_type, include_orphans, description in variants:
-        output_base = f"{args.output}{suffix}"
-        print(f"\nGenerating {output_base}.svg: {description}")
-
-        # Start with fresh copy of all nodes
-        nodes = list(all_nodes)
-        edges = list(all_edges)
-
-        # Apply filter based on type
-        structural_ids = set()
+    # Smart filter by default: remove completed leaves, keep structural parents
+    structural_ids = set()
+    if not args.no_filter:
         original_count = len(nodes)
-        if filter_type == "smart":
-            nodes, structural_ids = filter_completed_smart(nodes, edges)
-        elif filter_type == "rollup":
-            nodes, structural_ids = filter_rollup(nodes, edges)
-        # filter_type == None means no filtering
+        nodes, structural_ids = filter_completed_smart(nodes, edges)
+        excluded_leaves = original_count - len(nodes)
+        if excluded_leaves > 0 or structural_ids:
+            print(f"  Filtered: {excluded_leaves} completed leaves removed, {len(structural_ids)} structural kept")
 
-        excluded_count = original_count - len(nodes)
-        if excluded_count > 0 or structural_ids:
-            print(
-                f"  Filtered: {excluded_count} nodes removed, {len(structural_ids)} structural kept"
-            )
+    # Count by type and status
+    by_type = {}
+    by_status = {}
+    for n in nodes:
+        t = n.get("node_type", "unknown")
+        s = n.get("status", "unknown")
+        by_type[t] = by_type.get(t, 0) + 1
+        by_status[s] = by_status.get(s, 0) + 1
+    print(f"  Types: {by_type}")
+    print(f"  Status: {by_status}")
 
-        # Count by type and status for this variant
-        # Note: Some linked nodes (non-tasks) may lack status/type fields
-        by_type: dict[str, int] = {}
-        by_status: dict[str, int] = {}
-        for n in nodes:
-            t = n.get("node_type") or "unknown"
-            s = n.get("status") or "unknown"
-            by_type[t] = by_type.get(t, 0) + 1
-            by_status[s] = by_status.get(s, 0) + 1
-        print(f"  Types: {by_type}")
-        print(f"  Status: {by_status}")
+    # Build stats dict for legend
+    stats = {
+        "total_nodes": len(nodes),
+        "total_edges": len(edges),
+        "by_type": by_type,
+        "by_status": by_status,
+    }
 
-        # Build stats dict for legend
-        stats = {
-            "total_nodes": len(nodes),
-            "total_edges": len(edges),
-            "by_type": by_type,
-            "by_status": by_status,
-        }
+    # Generate DOT
+    dot_content = generate_dot(nodes, edges, args.include_orphans, structural_ids, stats)
+    dot_path = f"{args.output}.dot"
+    Path(dot_path).write_text(dot_content)
+    print(f"  Written {dot_path}")
 
-        # Generate DOT and SVG
-        dot_content = generate_dot(nodes, edges, include_orphans, structural_ids, stats)
-        # Keep .dot file only for primary output (no suffix)
-        generate_svg(dot_content, output_base, args.layout, keep_dot=(suffix == ""))
+    # Generate SVG
+    svg_path = f"{args.output}.svg"
+    layout_opts = {
+        "sfdp": ["-Goverlap=prism", "-Gsplines=true"],
+        "neato": ["-Goverlap=prism", "-Gsplines=true"],
+        "fdp": ["-Goverlap=prism", "-Gsplines=true"],
+        "dot": [],
+        "circo": [],
+        "twopi": [],
+    }
+    try:
+        cmd = [args.layout, "-Tsvg"] + layout_opts.get(args.layout, []) + [dot_path, "-o", svg_path]
+        subprocess.run(cmd, check=True, capture_output=True)
+        print(f"  Written {svg_path}")
+    except FileNotFoundError:
+        print(f"  Warning: {args.layout} not found, skipping SVG generation")
+    except subprocess.CalledProcessError as e:
+        print(f"  Warning: {args.layout} failed: {e.stderr.decode()}")
 
     return 0
 

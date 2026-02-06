@@ -85,9 +85,6 @@ class TestFirstPromptHydration:
             "prompt": "test user prompt",
             "session_context": "",
             "framework_paths": "## Resolved Paths\n| Path | Value |",
-            "mcp_tools": "",
-            "env_vars": "",
-            "project_paths": "",
             "project_context_index": "",
             "workflows_index": "workflow content",
             "skills_index": "skills content",
@@ -124,9 +121,6 @@ class TestFirstPromptHydration:
             "prompt": "test",
             "session_context": "",
             "framework_paths": "",
-            "mcp_tools": "",
-            "env_vars": "",
-            "project_paths": "",
             "project_context_index": "",
             "workflows_index": "",
             "skills_index": "",
@@ -141,9 +135,7 @@ class TestFirstPromptHydration:
         # Template should preserve key sections
         assert "## User Prompt" in result, "Template should contain User Prompt section"
         assert "## Your Task" in result, "Template should contain Your Task section"
-        assert "## Return Format" in result, (
-            "Template should contain Return Format section"
-        )
+        assert "## Return Format" in result, "Template should contain Return Format section"
 
     def test_hook_does_not_silently_fail(self):
         """Verify hook infrastructure errors propagate, not silently return empty.
@@ -296,31 +288,15 @@ name: Skills Index
         with (
             patch("hooks.user_prompt_submit.get_plugin_root") as mock_root,
             patch("hooks.user_prompt_submit.set_hydration_pending"),
-            patch(
-                "hooks.user_prompt_submit.get_hydration_temp_dir", return_value=tmp_path
-            ),
-            patch(
-                "hooks.user_prompt_submit.load_skills_index",
-                return_value="/daily - Daily note",
-            ),
+            patch("hooks.user_prompt_submit.get_hydration_temp_dir", return_value=tmp_path),
+            patch("hooks.user_prompt_submit.load_skills_index", return_value="/daily - Daily note"),
             patch("hooks.user_prompt_submit.load_axioms", return_value="# Axioms"),
-            patch(
-                "hooks.user_prompt_submit.load_heuristics", return_value="# Heuristics"
-            ),
-            patch(
-                "hooks.user_prompt_submit.load_workflows_index",
-                return_value="# Workflows",
-            ),
-            patch(
-                "hooks.user_prompt_submit.load_framework_paths", return_value="# Paths"
-            ),
+            patch("hooks.user_prompt_submit.load_heuristics", return_value="# Heuristics"),
+            patch("hooks.user_prompt_submit.load_workflows_index", return_value="# Workflows"),
+            patch("hooks.user_prompt_submit.load_framework_paths", return_value="# Paths"),
             patch("hooks.user_prompt_submit.get_task_work_state", return_value=""),
-            patch(
-                "hooks.user_prompt_submit.get_formatted_relevant_paths", return_value=""
-            ),
-            patch(
-                "hooks.user_prompt_submit.load_project_context_index", return_value=""
-            ),
+            patch("hooks.user_prompt_submit.get_formatted_relevant_paths", return_value=""),
+            patch("hooks.user_prompt_submit.load_project_context_index", return_value=""),
         ):
             mock_root.return_value = tmp_path
 

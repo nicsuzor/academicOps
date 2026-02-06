@@ -74,7 +74,6 @@ User request
 
 | Workflow | When to Use | Bases |
 |----------|-------------|-------|
-| [[collaborate]] | Interactive exploration/brainstorming | task-tracking |
 | [[tdd-cycle]] | Any testable code change | tdd |
 | [[debugging]] | Cause unknown, investigating | task-tracking, verification |
 

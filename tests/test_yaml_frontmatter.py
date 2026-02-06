@@ -4,6 +4,7 @@ Tests validate that YAML parsing correctly handles titles and values
 containing special characters like colons, which require proper quoting.
 """
 
+
 import pytest
 import yaml
 

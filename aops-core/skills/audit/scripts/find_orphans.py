@@ -10,7 +10,6 @@ Identifies:
 
 from __future__ import annotations
 
-import argparse
 import json
 import sys
 from collections import defaultdict
@@ -23,7 +22,6 @@ EXPECTED_ORPHAN_PATTERNS = [
     "CLAUDE.md",
     "GEMINI.md",
     "README.md",
-    "INDEX.md",
 ]
 
 
@@ -50,9 +48,9 @@ def is_expected_orphan(path: str) -> bool:
     if path.startswith("scripts/") and path.endswith(".py"):
         return True
     # Config files
-    if path.endswith(".json") or path.endswith(".yaml") or path.endswith(".lock"):
+    if path.endswith(".json"):
         return True
-    return Path(path).name in EXPECTED_ORPHAN_PATTERNS
+    return path in EXPECTED_ORPHAN_PATTERNS
 
 
 def find_components(nodes: set[str], adj: dict[str, set[str]]) -> list[set[str]]:
@@ -80,29 +78,10 @@ def find_components(nodes: set[str], adj: dict[str, set[str]]) -> list[set[str]]
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Find orphaned and disconnected files in the reference graph"
-    )
-    parser.add_argument(
-        "--graph",
-        "-g",
-        type=Path,
-        default=None,
-        help="Path to reference-graph.json",
-    )
-    args = parser.parse_args()
-
-    # Determine graph path
-    if args.graph:
-        graph_path = args.graph
-    else:
-        # Default to plugin root (4 levels up from this script)
-        plugin_root = Path(__file__).resolve().parent.parent.parent.parent
-        graph_path = plugin_root / "reference-graph.json"
-
+    graph_path = Path("reference-graph.json")
     if not graph_path.exists():
         print(
-            f"Error: {graph_path} not found. Run reference-map first.",
+            "Error: reference-graph.json not found. Run reference-map first.",
             file=sys.stderr,
         )
         return 1

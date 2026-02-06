@@ -101,7 +101,6 @@ def infer_project_from_working_dir(working_dir: str | None) -> str | None:
     - /home/user/src/myproject -> myproject
     - /home/user/projects/client-work -> client-work
     - /opt/user/code -> code
-    - /home/user/.aops/polecat/aops-008c345f -> aops (polecat worktree)
 
     Args:
         working_dir: Full path to working directory
@@ -118,19 +117,6 @@ def infer_project_from_working_dir(working_dir: str | None) -> str | None:
 
     if len(parts) < 2:
         return None
-
-    # Handle polecat worktree paths: ~/.aops/polecat/{project}-{hash}
-    # The project name is before the 8-char hash suffix
-    if ".aops" in parts and "polecat" in parts:
-        project = parts[-1]
-        # Polecat worktree format: {project}-{8char-hash}
-        # e.g., "aops-008c345f" -> "aops"
-        if len(project) > 9 and project[-9] == "-":
-            # Check if suffix looks like a hash (alphanumeric)
-            suffix = project[-8:]
-            if suffix.isalnum():
-                return project[:-9]
-        return project
 
     # Get the last non-empty part
     project = parts[-1]
@@ -459,31 +445,21 @@ def reflection_to_insights(
     if usage_stats and usage_stats.has_data():
         token_metrics = usage_stats.to_token_metrics(session_duration_minutes)
 
-    # Build framework_reflections array with single reflection entry
-    # This matches the schema in specs/session-insights-prompt.md
-    framework_reflection_entry = {
-        "prompts": reflection.get("prompts"),
-        "guidance_received": reflection.get("guidance_received"),
-        "followed": reflection.get("followed"),
-        "outcome": outcome,
-        "accomplishments": reflection.get("accomplishments", []),
-        "friction_points": reflection.get("friction_points", []),
-        "root_cause": reflection.get("root_cause"),
-        "proposed_changes": reflection.get("proposed_changes", []),
-        "next_step": reflection.get("next_step"),
-    }
-
     return {
         "session_id": session_id,
         "date": date_iso,
         "project": project,
         "summary": summary,
+        "prompts": reflection.get("prompts"),  # verbatim user prompts (separate field)
         "outcome": outcome,
         "accomplishments": reflection.get("accomplishments", []),
         "friction_points": reflection.get("friction_points", []),
         "proposed_changes": reflection.get("proposed_changes", []),
-        # Framework reflections as array (schema-compliant)
-        "framework_reflections": [framework_reflection_entry],
+        # Additional fields from reflection
+        "guidance_received": reflection.get("guidance_received"),
+        "followed": reflection.get("followed"),
+        "root_cause": reflection.get("root_cause"),
+        "next_step": reflection.get("next_step"),
         # Token usage metrics (optional)
         "token_metrics": token_metrics,
     }
@@ -1341,9 +1317,9 @@ class SessionProcessor:
                 entries.extend(hook_entries)
                 # Sort by timestamp to maintain chronological order
                 entries.sort(
-                    key=lambda e: (
-                        e.timestamp if e.timestamp else datetime.min.replace(tzinfo=UTC)
-                    )
+                    key=lambda e: e.timestamp
+                    if e.timestamp
+                    else datetime.min.replace(tzinfo=UTC)
                 )
 
         return session_summary, entries, agent_entries
@@ -1989,7 +1965,7 @@ class SessionProcessor:
                 shown = list(sorted(files_modified))[:3]
                 files_str = ", ".join(f"`{f}`" for f in shown)
                 summary_parts.append(
-                    f"**Files Modified**: {files_str} (+{len(files_modified) - 3} more)"
+                    f"**Files Modified**: {files_str} (+{len(files_modified)-3} more)"
                 )
 
         if agent_entries and len(agent_entries) > 0:
@@ -2008,9 +1984,7 @@ class SessionProcessor:
                     total = stats["input"] + stats["output"]
                     if total > 0:
                         # Shorten model names for display
-                        short_name = model.replace("claude-", "").replace(
-                            "-20251001", ""
-                        )
+                        short_name = model.replace("claude-", "").replace("-20251001", "")
                         model_parts.append(f"{short_name}: {total:,}")
                 if model_parts:
                     summary_parts.append(f"**By Model**: {', '.join(model_parts)}")
@@ -2050,7 +2024,9 @@ class SessionProcessor:
             if entry.timestamp:
                 first_timestamp = entry.timestamp
                 break
-        date_str = first_timestamp.isoformat() if first_timestamp else "unknown"
+        date_str = (
+            first_timestamp.isoformat() if first_timestamp else "unknown"
+        )
 
         full_mode = variant == "full"
         turns = self.group_entries_into_turns(
@@ -2059,6 +2035,7 @@ class SessionProcessor:
 
         markdown = ""
         turn_number = 0
+        context_summary_started = False
         rendered_agent_ids: set[str] = set()
 
         for turn in turns:
@@ -3093,7 +3070,7 @@ session_id: {session_uuid}
                 tool_input = block.get("input", {})
                 pattern = tool_input.get("pattern", "")
                 if pattern:
-                    patterns.append(f"`{pattern}`")
+                    patterns.append(f'`{pattern}`')
             if patterns:
                 return f"- Glob: {', '.join(patterns)}\n"
 
@@ -3105,7 +3082,7 @@ session_id: {session_uuid}
                 if pattern:
                     if len(pattern) > 30:
                         pattern = pattern[:27] + "..."
-                    patterns.append(f"`{pattern}`")
+                    patterns.append(f'`{pattern}`')
             if patterns:
                 return f"- Grep: {', '.join(patterns)}\n"
 

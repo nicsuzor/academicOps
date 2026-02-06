@@ -173,8 +173,6 @@ class TestMarkdownTranscript:
 
     def test_process_empty_session_skips(self) -> None:
         """Processing a file with no meaningful content should return exit code 2."""
-        import os
-
         with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
             f.write("# Existing Transcript\n\nContent here")
             temp_path = f.name
@@ -185,7 +183,6 @@ class TestMarkdownTranscript:
                 capture_output=True,
                 text=True,
                 timeout=10,
-                env=os.environ,
             )
             # Exit code 2 means skipped (no meaningful content)
             # This is expected behavior for non-JSONL files
@@ -201,8 +198,6 @@ class TestOutputPathHandling:
 
     def test_output_directory_generates_filename(self) -> None:
         """When -o is a directory, should auto-generate filename in that directory."""
-        import os
-
         # Create a minimal valid JSONL session
         session_content = """{"type":"user","message":{"content":"Hello world"}}
 {"type":"assistant","message":{"content":"Hi there! How can I help?"}}
@@ -222,7 +217,6 @@ class TestOutputPathHandling:
                     capture_output=True,
                     text=True,
                     timeout=30,
-                    env=os.environ,
                 )
 
                 # Should succeed
@@ -259,7 +253,6 @@ class TestReflectionExtraction:
         sys.path.insert(0, str(framework_root))
         sys.path.insert(0, str(aops_core_root))
         from lib import transcript_parser
-
         return transcript_parser
 
     def test_parse_framework_reflection_basic(self, parser_module) -> None:
@@ -309,9 +302,7 @@ class TestReflectionExtraction:
         assert len(result.get("friction_points", [])) == 2
         assert "Completed task A" in result["accomplishments"]
 
-    def test_parse_framework_reflection_missing_returns_none(
-        self, parser_module
-    ) -> None:
+    def test_parse_framework_reflection_missing_returns_none(self, parser_module) -> None:
         """parse_framework_reflection returns None for text without reflection."""
         text = """
 # Regular Session Content
@@ -343,6 +334,7 @@ More content here.
         This test finds recent session logs that contain reflections and
         verifies the extraction pipeline works end-to-end.
         """
+        import glob
         from pathlib import Path
 
         # Find session transcripts with Framework Reflections
@@ -353,10 +345,7 @@ More content here.
             for md_file in sessions_dir.glob("*-full.md"):
                 try:
                     content = md_file.read_text(encoding="utf-8")
-                    if (
-                        "## Framework Reflection" in content
-                        or "## framework reflection" in content.lower()
-                    ):
+                    if "## Framework Reflection" in content or "## framework reflection" in content.lower():
                         reflection_files.append(md_file)
                         if len(reflection_files) >= 3:
                             break
@@ -387,161 +376,9 @@ More content here.
             "failed to extract any reflections. Parser may be broken."
         )
         # Log what we found for visibility
-        print(
-            f"\n✅ Successfully extracted reflections from {successful_extractions} live logs:"
-        )
+        print(f"\n✅ Successfully extracted reflections from {successful_extractions} live logs:")
         for detail in extraction_details:
             print(f"   {detail}")
-
-
-class TestReflectionToInsights:
-    """Test reflection_to_insights produces schema-compliant output.
-
-    Verifies that the output matches specs/session-insights-prompt.md schema:
-    - Required fields: session_id, date, project, summary, outcome, accomplishments
-    - Framework Reflection data nested in framework_reflections array
-    """
-
-    @pytest.fixture
-    def parser_module(self):
-        """Import transcript_parser module."""
-        framework_root = SCRIPT_PATH.parent.parent.parent
-        aops_core_root = SCRIPT_PATH.parent.parent
-        sys.path.insert(0, str(framework_root))
-        sys.path.insert(0, str(aops_core_root))
-        from lib import transcript_parser
-
-        return transcript_parser
-
-    @pytest.fixture
-    def insights_module(self):
-        """Import insights_generator module."""
-        framework_root = SCRIPT_PATH.parent.parent.parent
-        aops_core_root = SCRIPT_PATH.parent.parent
-        sys.path.insert(0, str(framework_root))
-        sys.path.insert(0, str(aops_core_root))
-        from lib import insights_generator
-
-        return insights_generator
-
-    def test_reflection_to_insights_has_required_fields(self, parser_module) -> None:
-        """reflection_to_insights output has all required fields."""
-        reflection = {
-            "prompts": "Fix authentication bug",
-            "outcome": "success",
-            "accomplishments": ["Fixed the bug", "Added tests"],
-            "friction_points": ["API was slow"],
-            "proposed_changes": ["Add caching"],
-        }
-
-        result = parser_module.reflection_to_insights(
-            reflection,
-            session_id="abc12345",
-            date="2026-01-30",
-            project="test-project",
-        )
-
-        # Required fields
-        assert "session_id" in result
-        assert "date" in result
-        assert "project" in result
-        assert "summary" in result
-        assert "outcome" in result
-        assert "accomplishments" in result
-
-    def test_reflection_to_insights_framework_reflections_nested(
-        self, parser_module
-    ) -> None:
-        """Framework Reflection data is nested in framework_reflections array."""
-        reflection = {
-            "prompts": "Implement feature X",
-            "guidance_received": "Use TDD workflow",
-            "followed": True,
-            "outcome": "partial",
-            "accomplishments": ["Created tests"],
-            "friction_points": ["Build was slow"],
-            "root_cause": "Missing dependency",
-            "proposed_changes": ["Add build cache"],
-            "next_step": "Continue tomorrow",
-        }
-
-        result = parser_module.reflection_to_insights(
-            reflection,
-            session_id="def67890",
-            date="2026-01-31",
-            project="feature-project",
-        )
-
-        # Must have framework_reflections as array
-        assert "framework_reflections" in result
-        assert isinstance(result["framework_reflections"], list)
-        assert len(result["framework_reflections"]) == 1
-
-        # Check nested reflection content
-        nested = result["framework_reflections"][0]
-        assert nested["prompts"] == "Implement feature X"
-        assert nested["guidance_received"] == "Use TDD workflow"
-        assert nested["followed"] is True
-        assert nested["outcome"] == "partial"
-        assert nested["accomplishments"] == ["Created tests"]
-        assert nested["friction_points"] == ["Build was slow"]
-        assert nested["root_cause"] == "Missing dependency"
-        assert nested["proposed_changes"] == ["Add build cache"]
-        assert nested["next_step"] == "Continue tomorrow"
-
-    def test_reflection_to_insights_no_top_level_reflection_fields(
-        self, parser_module
-    ) -> None:
-        """Top-level should NOT have reflection-specific fields."""
-        reflection = {
-            "prompts": "Test prompt",
-            "guidance_received": "Some guidance",
-            "followed": True,
-            "outcome": "success",
-            "accomplishments": ["Done"],
-            "root_cause": None,
-            "next_step": "Nothing",
-        }
-
-        result = parser_module.reflection_to_insights(
-            reflection,
-            session_id="ghi11111",
-            date="2026-02-01",
-            project="clean-project",
-        )
-
-        # These should NOT be at top level (only in framework_reflections)
-        assert "prompts" not in result
-        assert "guidance_received" not in result
-        assert "followed" not in result
-        assert "root_cause" not in result
-        assert "next_step" not in result
-
-    def test_reflection_to_insights_validates_against_schema(
-        self, parser_module, insights_module
-    ) -> None:
-        """reflection_to_insights output passes schema validation."""
-        reflection = {
-            "prompts": "Full workflow test",
-            "guidance_received": "Hydrator suggested audit",
-            "followed": True,
-            "outcome": "success",
-            "accomplishments": ["Implemented feature", "Ran tests"],
-            "friction_points": [],
-            "proposed_changes": [],
-            "root_cause": None,
-            "next_step": None,
-        }
-
-        result = parser_module.reflection_to_insights(
-            reflection,
-            session_id="jkl22222",
-            date="2026-02-02",
-            project="validated-project",
-        )
-
-        # This should NOT raise InsightsValidationError
-        insights_module.validate_insights_schema(result)
 
 
 class TestExitCodeExtraction:

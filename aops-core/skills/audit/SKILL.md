@@ -65,7 +65,7 @@ uv run python scripts/check_orphan_files.py
 Run comprehensive health audit first:
 
 ```bash
-uv run python scripts/audit_framework_health.py \
+cd $AOPS && uv run python scripts/audit_framework_health.py \
   --output /tmp/health-$(date +%Y%m%d).json
 ```
 
@@ -82,7 +82,7 @@ This generates:
 
 Compare filesystem to documentation:
 
-1. **Scan filesystem**: `find . -type f -not -path "*/.git/*" -not -path "*/__pycache__/*" | sort`
+1. **Scan filesystem**: `find $AOPS -type f -not -path "*/.git/*" -not -path "*/__pycache__/*" | sort`
 2. **Compare to INDEX.md**: Flag missing or extra entries
 3. **Check cross-references**: Verify `→` references point to existing files
 4. **Find broken wikilinks**: Grep for `[[...]]` patterns, validate targets exist
@@ -94,14 +94,17 @@ Compare filesystem to documentation:
 Then build reference graph and check linking conventions:
 
 ```bash
-# Generate graph for aops-core
-uv run python aops-core/skills/audit/scripts/build_reference_map.py --root aops-core --output data/aops/reference-graph-core.json
+cd $AOPS
 
-# Find orphans in aops-core
-uv run python aops-core/skills/audit/scripts/find_orphans.py --graph data/aops/reference-graph-core.json
+# Generate graph
+uv run python skills/audit/scripts/build_reference_map.py
+
+# Find orphans and violations
+uv run python skills/audit/scripts/find_orphans.py
 
 # Or use the health script for wikilink/orphan checks
-uv run python scripts/audit_framework_health.py -m
+uv run python scripts/check_broken_wikilinks.py
+uv run python scripts/check_orphan_files.py
 ```
 
 **Linking rules to enforce** (from framework skill):
@@ -142,7 +145,7 @@ Unjustified instructions are bloat - they cost tokens and create confusion about
 **Sources to scan** (files injected at SessionStart or via hooks):
 
 - `FRAMEWORK-PATHS.md` - core instructions
-- `AXIOMS.md`, `HEURISTICS.md` - principle statements
+- `framework/AXIOMS.md`, `framework/HEURISTICS.md` - principle statements
 - `skills/*/SKILL.md` - skill-specific instructions
 - `commands/*.md` - command instructions
 - `agents/*.md` - agent instructions
@@ -296,28 +299,11 @@ Regenerate the core loop flowchart section in README.md from hook architecture s
 1. Parse `hooks/router.py` for dispatch mappings (event→handler)
 2. Parse `config/claude/settings.json` for hook event registrations
 3. Parse `hooks/*.py` for hook implementations and "Enforces:" declarations
-4. Generate Mermaid flowchart following **Flowchart Design Principles**:
-   - **Shapes match Roles**: 
-     - Process/Dispatcher/Hook → Rectangle
-     - Decision/Hard Gate → Diamond
-     - Subagent/Skill → Stadium (`[[name]]`)
-     - State/Data/File → Parallelogram (`[/name/]`) or Cylinder (`[(name)]`)
-   - **Cross-Theme Semantic Coloring**:
-     - Use high-contrast fills with white text (`color:#fff`) for light/dark compatibility.
-     - **Hooks/Dispatch**: Blue (`#0277bd`)
-     - **Gates/Blocks**: Red (`#c62828`)
-     - **Agents/Subagents**: Purple (`#6a1b9a`)
-     - **State/Plan**: Orange (`#ef6c00`)
-     - **Events**: Dark Grey (`#424242`)
-   - **Horizontal Detail Branches**:
-     - For major gates and agents, add a horizontal branch (`---`) to a boxed explanation node (`[Description]`).
-     - Explanation nodes should use `classDef explain fill:none,stroke:#888,font-style:italic` to avoid visual weight.
-     - Content must be specific: "Fetches X, Y, Z" or "Validates field A", not generic summaries.
-   - **Readability**:
-     - Use `style <subgraph> fill:none,stroke:#888,stroke-dasharray: 5 5` for clean backgrounds.
-     - Group logic by execution phase (Init, Hydration, Execution, Termination).
-     - Label edges clearly with conditions (Yes/No, PROCEED/REVISE, percentage thresholds).
-   - **Accuracy**: Every "Hardware Gate" (PreToolUse) and "Logic Check" (Stop Gate) in `gate_registry.py` must be represented.
+4. Generate Mermaid flowchart following flowchart skill conventions:
+   - Use decision diamonds for conditional logic
+   - Apply classDef for semantic coloring (hooks, skills, tools, outcomes)
+   - Group by execution phase (SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop)
+   - Label edges with event types and conditions
 
 **Structure**:
 

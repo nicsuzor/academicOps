@@ -46,7 +46,9 @@ class TestSessionSummaryPaths:
         sid = "abc12345-uuid-here"
         h = hashlib.sha256(sid.encode()).hexdigest()[:8]
         result = get_task_contributions_path(sid)
-        assert result == Path(f"/home/test/data/dashboard/sessions/{h}.tasks.json")
+        assert result == Path(
+            f"/home/test/data/dashboard/sessions/{h}-tasks.json"
+        )
 
     def test_get_session_summary_path(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Session summary file uses session_id as key."""
@@ -57,7 +59,9 @@ class TestSessionSummaryPaths:
         sid = "abc12345-uuid-here"
         h = hashlib.sha256(sid.encode()).hexdigest()[:8]
         result = get_session_summary_path(sid)
-        assert result == Path(f"/home/test/data/dashboard/sessions/{h}.summary.json")
+        assert result == Path(
+            f"/home/test/data/dashboard/sessions/{h}.json"
+        )
 
 
 class TestTaskContributions:
@@ -89,7 +93,9 @@ class TestTaskContributions:
         append_task_contribution(sid, task_data)
 
         # Verify file was created
-        tasks_file = temp_aca_data / "dashboard" / "sessions" / f"{h}.tasks.json"
+        tasks_file = (
+            temp_aca_data / "dashboard" / "sessions" / f"{h}-tasks.json"
+        )
         assert tasks_file.exists()
 
         # Verify content
@@ -126,7 +132,9 @@ class TestTaskContributions:
         )
 
         # Verify both tasks present
-        tasks_file = temp_aca_data / "dashboard" / "sessions" / f"{h}.tasks.json"
+        tasks_file = (
+            temp_aca_data / "dashboard" / "sessions" / f"{h}-tasks.json"
+        )
         data = json.loads(tasks_file.read_text())
         assert len(data["tasks"]) == 2
         assert data["tasks"][0]["request"] == "Task 1"
@@ -142,7 +150,9 @@ class TestTaskContributions:
         h = hashlib.sha256(sid.encode()).hexdigest()[:8]
         append_task_contribution(sid, {"request": "Test"})
 
-        tasks_file = temp_aca_data / "dashboard" / "sessions" / f"{h}.tasks.json"
+        tasks_file = (
+            temp_aca_data / "dashboard" / "sessions" / f"{h}-tasks.json"
+        )
         data = json.loads(tasks_file.read_text())
 
         assert "updated_at" in data

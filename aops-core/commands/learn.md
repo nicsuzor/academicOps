@@ -1,4 +1,4 @@
---- 
+---
 name: learn
 category: instruction
 description: Make minimal, graduated framework tweaks with experiment tracking
@@ -28,8 +28,8 @@ permalink: commands/learn
 **Before any framework change, read these files:**
 
 ```
-Read aops-core/AXIOMS.md
-Read aops-core/HEURISTICS.md
+Read aops-core/framework/AXIOMS.md
+Read aops-core/framework/HEURISTICS.md
 Read aops-core/framework/enforcement-map.md
 ```
 
@@ -122,8 +122,8 @@ See @docs/ENFORCEMENT.md for mechanism details.
 
 | Fix Type | File | When to Use |
 |----------|------|-------------|
-| Hard rule, never violate | AXIOMS.md | Principles that apply universally |
-| Soft guidance, exceptions exist | HEURISTICS.md | Rules of thumb, "prefer X over Y" |
+| Hard rule, never violate | framework/AXIOMS.md | Principles that apply universally |
+| Soft guidance, exceptions exist | framework/HEURISTICS.md | Rules of thumb, "prefer X over Y" |
 | Enforcement wiring | framework/enforcement-map.md | Document how rule is enforced |
 | Session context | CORE.md | Paths, environment, "what exists" |
 
@@ -134,11 +134,11 @@ Before editing ANY framework file, output this exact format:
 ```yaml
 ## Rule Change Justification
 
-**Scope**: [AXIOMS.md | HEURISTICS.md | framework/enforcement-map.md | hooks/*.py | settings.json]
+**Scope**: [framework/AXIOMS.md | framework/HEURISTICS.md | framework/enforcement-map.md | hooks/*.py | settings.json]
 
 **Rules Loaded**:
-- AXIOMS.md: [P#X, P#Y - or "not relevant"]
-- HEURISTICS.md: [H#X, H#Y - or "not relevant"]
+- framework/AXIOMS.md: [P#X, P#Y - or "not relevant"]
+- framework/HEURISTICS.md: [H#X, H#Y - or "not relevant"]
 - framework/enforcement-map.md: [enforcement entry name - or "not relevant"]
 
 **Prior Art**:
@@ -150,10 +150,6 @@ Before editing ANY framework file, output this exact format:
 - Type: [corollary to P#X | new axiom | new heuristic | enforcement hook | deny rule]
 - Level: [1a | 1b | 1c | 1d | 2 | 3a | 3b | 4 | 5 | 6 | 7]
 - Change: [exact content, max 3 sentences]
-
-**Generality Check** (STOP if answer is "no"):
-- Does this fix address the GENERAL pattern, not just the specific instance?
-- If fix contains task-specific keywords (e.g., "test", "commit", "email"), is that specificity actually necessary?
 
 **Minimality**:
 - Why not lower level: [explanation]
@@ -196,7 +192,7 @@ mcp__plugin_aops-core_task_manager__update_task(
 After fixing the immediate issue, ask: **What general class of error is this?**
 
 1. **Name the pattern** - e.g., "user data in framework files", "scope creep", "missing validation"
-2. **Check existing rules** - Does an axiom/heuristic already cover this? (Search AXIOMS.md, HEURISTICS.md, framework/enforcement-map.md)
+2. **Check existing rules** - Does an axiom/heuristic already cover this? (Search framework/AXIOMS.md, framework/HEURISTICS.md, framework/enforcement-map.md)
 3. **If rule exists but wasn't followed** - Strengthen enforcement (add to task notes)
 4. **If novel pattern** - Log it in the task body for future tracking
 
@@ -206,18 +202,18 @@ The immediate fix handles THIS instance. The pattern recognition prevents FUTURE
 
 Tests verify the fix works and prevent regressions. **But only when the fix is testable.**
 
-**When to create a test**:
+**When to create a test:**
 - Fix modifies code (hooks, scripts, libraries) → YES, create test
 - Fix modifies hook behavior with deterministic input/output → YES, create test
 - Fix modifies prompts/instructions for LLM behavior → NO test possible, skip with justification
 
-**For testable fixes**:
+**For testable fixes:**
 1. **Capture the failure case as a fixture** - Extract the exact input that caused the failure
 2. **Write a failing test first** - The test should FAIL with the old behavior
 3. **Verify test passes after fix** - Run the test to confirm the intervention works
 4. **Use slow tests for live interfaces** - Mark with `@pytest.mark.slow` if testing against live Claude/APIs
 
-**For prompt/instruction fixes (not testable)**:
+**For prompt/instruction fixes (not testable):**
 - Document the expected behavior change in the task
 - The fix itself (clearer instructions) IS the intervention
 - Do NOT create placeholder tests that pass unconditionally - that's worse than no test
@@ -258,7 +254,6 @@ Output in the standard Framework Reflection format so session-insights can parse
 **Outcome**: success
 **Accomplishments**: [Task created: X], [Fix applied: file:line], [Test added: file]
 **Friction points**: [Any difficulties encountered, or "none"]
-- The `replace` tool did not seem to work as expected. It reported success, but `git status` showed no changes. I had to resort to `write_file` to get the change to persist.
 **Root cause** (if not success): [Category: component that failed]
 **Proposed changes**: [Pattern generalized, escalation trigger noted]
 **Next step**: [If follow-up needed, must be filed as task]
@@ -269,5 +264,3 @@ Output in the standard Framework Reflection format so session-insights can parse
 - Accomplishments → Task + fix + test (the deliverables)
 - Root cause → From step 1 (Clarity/Context/Blocking/Detection/Gap)
 - Proposed changes → From step 5 (pattern generalization) + escalation triggers
-
-```

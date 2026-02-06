@@ -43,6 +43,6 @@ def pytest_configure(config: pytest.Config) -> None:
 def demo_test_banner(request: pytest.FixtureRequest) -> None:
     """Print separator before each demo test for readability."""
     if request.node.get_closest_marker("demo"):
-        print(f"\n{'=' * 80}")
+        print(f"\n{'='*80}")
         print(f"DEMO: {request.node.name}")
-        print(f"{'=' * 80}")
+        print(f"{'='*80}")

@@ -11,11 +11,6 @@ permalink: skills-daily
 
 Manage daily note lifecycle: morning briefing, task recommendations, and session sync.
 
-## Path Resolution
-
-**CRITICAL**: This skill requires the `$ACA_DATA` environment variable to be set.
-- `$ACA_DATA` points to the user's data directory (contains daily notes, tasks, etc.)
-
 Location: `$ACA_DATA/daily/YYYYMMDD-daily.md`
 
 ## CRITICAL BOUNDARY: Planning Only
@@ -31,31 +26,35 @@ Location: `$ACA_DATA/daily/YYYYMMDD-daily.md`
 
 ## Invocation Modes
 
-The daily skill integrates sync into every run to keep the daily note current:
+The daily skill supports multiple entry points for continuous updating throughout the day:
 
 | Mode | Trigger | Sections Run | User Approval |
 |------|---------|--------------|---------------|
-| **Morning** | `/daily` (no args, note missing) | 1 → 2 → 3 → 4 (auto-sync) | Required (3.4) |
-| **Refresh** | `/daily` (note exists) | 2 → 3 → 4 (auto-sync) | Required (3.4) |
-| **Full Sync** | `/daily sync` | 4 only | Required (4.8) |
+| **Morning** | `/daily` (no args, note missing) | 1 → 2 → 3 | Required (3.4) |
+| **Refresh** | `/daily` (note exists) | 2 → 3 | Required (3.4) |
+| **Sync** | `/daily sync` | 4 only | Required (4.8) |
+| **Quick Sync** | `/daily sync --quick` | 4.1-4.4 only | Skipped |
 
 **Mode Detection Logic:**
 
 ```
 if args contains "sync":
-    mode = "Full Sync"  # Explicit sync-only with approval
+    if args contains "--quick":
+        mode = "Quick Sync"
+    else:
+        mode = "Sync"
 elif daily_note_exists():
-    mode = "Refresh"    # Briefing update + auto-sync
+    mode = "Refresh"
 else:
-    mode = "Morning"    # Full creation + auto-sync
+    mode = "Morning"
 ```
 
-**Auto-Sync Behavior**: When running Morning or Refresh modes, sync (section 4) runs automatically after section 3 completes. Auto-sync skips the approval step (4.8) to avoid interrupting the flow. Session data is processed and merged silently.
+**Quick Sync Use Case**: Automated/periodic updates during the day. Adds session data to daily note without requiring user interaction. Full approval cycle runs on final sync or explicit `/daily sync`.
 
-**Full Sync Use Case**: Run `/daily sync` explicitly when you want:
-- End-of-day synthesis with user approval of the narrative
-- To verify/correct auto-synced content
-- To process sessions without re-running email triage
+**Continuous Updating Pattern**: Throughout a work day:
+1. Morning: Run `/daily` to create note, triage emails, set focus
+2. After each session: System or user runs `/daily sync --quick` to incrementally update progress
+3. End of day: Run `/daily sync` for final synthesis with user approval
 
 ## Section Ownership
 
@@ -234,46 +233,6 @@ This provides a bird's eye view of active project hierarchy. The tree:
 
 Copy the `formatted` field from the response directly into the code block.
 
-### 3.1.7: Query Pending Decisions
-
-Count tasks awaiting user decisions (for decision queue summary):
-
-```python
-# Get waiting tasks assigned to user
-waiting_tasks = mcp__plugin_aops-core_task_manager__list_tasks(
-    status="waiting",
-    assignee="nic",
-    limit=50
-)
-
-# Get review tasks assigned to user
-review_tasks = mcp__plugin_aops-core_task_manager__list_tasks(
-    status="review",
-    assignee="nic",
-    limit=50
-)
-
-# Filter to decision-type tasks (exclude project/epic/goal)
-EXCLUDED_TYPES = ["project", "epic", "goal"]
-decisions = [
-    t for t in (waiting_tasks + review_tasks)
-    if t.type not in EXCLUDED_TYPES
-]
-
-# Get topology for blocking counts
-topology = mcp__plugin_aops-core_task_manager__get_tasks_with_topology()
-
-# Count high-priority decisions (blocking 2+ tasks)
-high_priority_count = sum(
-    1 for d in decisions
-    if get_blocking_count(d.id, topology) >= 2
-)
-
-decision_count = len(decisions)
-```
-
-This count appears in the Focus section summary.
-
 ### 3.2: Build Focus Section
 
 The Focus section combines priority dashboard AND task recommendations in ONE place.
@@ -289,8 +248,6 @@ P1 █░░░░░░░░░  12/85 → [ns-abc] [[OSB-PAO]] (-3d), [ns-def
 P2 ██████████  55/85
 P3 ██░░░░░░░░  15/85
 ```
-
-**Pending Decisions**: 4 (2 blocking other work) → `/decision-extract`
 
 🚨 **DEADLINE TODAY**: [ns-xyz] [[ARC FT26 Reviews]] - Due 23:59 AEDT (8 reviews)
 **SHOULD**: [ns-abc] [[OSB PAO 2025E Review]] - 3 days overdue
@@ -359,9 +316,8 @@ After presenting recommendations, use `AskUserQuestion` to confirm priorities:
 **IMPORTANT**: User's response states their PRIORITY for the day. This goes into the daily note's Focus section. It is NOT a command to execute those tasks. After recording the priority:
 
 1. Update the Focus section with user's stated priority
-2. Run auto-sync (Section 4, steps 4.1-4.7) to update daily note with session progress
-3. Output: "Daily planning complete. Use `/pull` to start work."
-4. HALT - do not proceed to task execution
+2. Output: "Daily planning complete. Use `/pull` to start work."
+3. HALT - do not proceed to task execution
 
 ### 3.5: Present candidate tasks to archive
 
@@ -373,20 +329,18 @@ Ask: "Any of these ready to archive?"
 
 When user picks, use `mcp__plugin_aops-core_task_manager__update_task(id="<id>", status="cancelled")` to archive.
 
-### 4. Daily progress (Sync)
+### 4. Daily progress (Incremental)
 
-Update daily note from session JSON files.
+Update daily note from session JSON files. Supports continuous updating throughout the day.
 
-**Invocation**:
-- **Auto-sync**: Runs automatically as part of Morning/Refresh modes (steps 4.1-4.7, skips 4.8 approval)
-- **Full sync**: `/daily sync` runs section 4 only with user approval (4.8)
+**Invocation**: `/daily sync` (full with approval) or `/daily sync --quick` (incremental without approval)
 
 **Incremental behavior**: Each sync run is additive—it processes only NEW session JSONs since the last sync. Previously processed sessions are identified by their presence in the Session Log table.
 
 ### Step 4.1: Find Session JSONs
 
 ```bash
-ls $ACA_DATA/../sessions/summaries/YYYYMMDD*.json 2>/dev/null
+ls $ACA_DATA/../summaries/YYYYMMDD*.json 2>/dev/null
 ```
 
 **Incremental filtering**: After listing JSONs, read the current daily note's Session Log table. Extract session IDs already present. Filter the JSON list to exclude already-processed sessions. This prevents duplicate entries on repeated syncs.
@@ -484,7 +438,7 @@ If the daily note contains a goals section (e.g., "## Things I want to achieve t
 
 Match session accomplishments to related tasks using semantic search.
 
-**Per spec** ([[archived/specs/session-sync-user-story.md|session-sync-user-story]]): The agent receives accomplishments + candidate task files and decides which tasks match. Agent-driven matching, NOT algorithmic.
+**Per spec** ([[session-sync-user-story]]): The agent receives accomplishments + candidate task files and decides which tasks match. Agent-driven matching, NOT algorithmic.
 
 **4.5.1: Search for Candidate Tasks**
 
@@ -611,11 +565,11 @@ Write `$ACA_DATA/dashboard/synthesis.json`:
 }
 ```
 
-### Step 4.8: User Approval of Synthesis (Full Sync Only)
+### Step 4.8: User Approval of Synthesis (Conditional)
 
-**Mode check**: Skip this step entirely when running as auto-sync (part of Morning/Refresh modes). Auto-sync processes session data silently without interrupting the flow.
+**Mode check**: Skip this step entirely if running in Quick Sync mode (`/daily sync --quick`).
 
-**For Full Sync mode** (`/daily sync`): Do NOT consider daily progress sync complete without user approval.
+**For full Sync mode**: Do NOT consider daily progress sync complete without user approval.
 
 After updating the daily note and synthesis.json, present a summary to the user for approval:
 
@@ -679,5 +633,4 @@ AskUserQuestion(
 
 ## Daily Note Structure (SSoT)
 
-See the note template at `aops-core/skills/daily/references/note-template.md` (relative to $AOPS)
-or `[[references/note-template]]` (Obsidian wikilink) for the complete daily note template.
+See [[references/note-template]] for the complete daily note template.

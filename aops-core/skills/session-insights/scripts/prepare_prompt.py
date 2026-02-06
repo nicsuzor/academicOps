@@ -126,7 +126,7 @@ def main():
         sys.exit(1)
 
     if args.debug:
-        print("Extracted metadata:", file=sys.stderr)
+        print(f"Extracted metadata:", file=sys.stderr)
         print(f"  session_id: {metadata['session_id']}", file=sys.stderr)
         print(f"  date: {metadata['date']}", file=sys.stderr)
         print(f"  project: {metadata['project']}", file=sys.stderr)
@@ -138,9 +138,7 @@ def main():
     except FileNotFoundError as e:
         print(f"ERROR: Could not load prompt template: {e}", file=sys.stderr)
         print("", file=sys.stderr)
-        print(
-            "Ensure aops-core/specs/session-insights-prompt.md exists", file=sys.stderr
-        )
+        print("Ensure aops-core/specs/session-insights-prompt.md exists", file=sys.stderr)
         sys.exit(1)
 
     # Substitute variables

@@ -75,7 +75,6 @@ Complete the task requested, then STOP. Don't be so fucking eager.
 - Find related issues -> Report them, don't fix them
 - "I'll just xyz" -> For the love of god, shut up and wait for direction
 - Collaborative mode ("work with me", "together") -> Execute ONE step, then wait.
-- Task complete -> invoke /handover -> session ends. Don't ask permission to end.
 
 **Derivation**: Scope creep destroys focus and introduces unreviewed changes. Process and guardrails exist to reduce catastrophic failure.
 
@@ -299,6 +298,5 @@ Legacy NLP (keyword matching, regex heuristics, fuzzy string matching) is forbid
 - Don't try to guess user intent with regex
 - Don't filter documentation based on keyword matches
 - Provide the Agent with the *index of choices* and let the Agent decide
-- Acceptance criteria for LLM-evaluated tests must be semantic ("QA verifies X"), not pattern-based ("output contains Y")
 
 **Derivation**: LLMs understand semantics; regex does not. Hardcoded NLP heuristics are brittle and require constant maintenance. Agentic decision-making scales better.

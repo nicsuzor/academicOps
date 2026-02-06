@@ -1,0 +1,94 @@
+name: Build and Release Distribution
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag for the release (e.g., v0.1.0)'
+        required: false
+        default: ''
+
+jobs:
+  build-dist:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run build script
+        env:
+          AOPS: ${{ github.workspace }}
+          ACA_DATA: /tmp/aca_data
+        run: |
+          mkdir -p /tmp/aca_data
+          uv run python scripts/build.py
+
+      - name: Verify gemini-extension.json at repo root
+        run: |
+          if [ ! -f gemini-extension.json ]; then
+            echo "ERROR: gemini-extension.json not found at repo root"
+            exit 1
+          fi
+          echo "Found gemini-extension.json at repo root:"
+          cat gemini-extension.json
+
+      - name: Create Gemini extension archive
+        run: |
+          # Create archive with gemini-extension.json at root
+          VERSION="${{ github.event.release.tag_name || github.event.inputs.version || 'dev' }}"
+          ARCHIVE_NAME="aops-gemini-extension-${VERSION}.zip"
+
+          # Create a temp directory for archive contents
+          mkdir -p /tmp/archive-staging
+
+          # Copy gemini-extension.json to archive root
+          cp gemini-extension.json /tmp/archive-staging/
+
+          # Copy dist/aops-core contents (excluding gemini-extension.json which is already at root)
+          cp -r dist/aops-core/* /tmp/archive-staging/
+
+          # Create the archive
+          cd /tmp/archive-staging
+          zip -r "${{ github.workspace }}/${ARCHIVE_NAME}" .
+
+          echo "ARCHIVE_NAME=${ARCHIVE_NAME}" >> $GITHUB_ENV
+          echo "Created archive: ${ARCHIVE_NAME}"
+
+      - name: Upload archive as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gemini-extension
+          path: ${{ env.ARCHIVE_NAME }}
+
+      - name: Upload release asset
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.ARCHIVE_NAME }}
+
+      - name: Commit gemini-extension.json to repo root
+        if: github.event_name == 'release'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add gemini-extension.json
+          git diff --staged --quiet || git commit -m "chore: update gemini-extension.json for ${{ github.event.release.tag_name }}"
+          git push origin HEAD:${{ github.event.repository.default_branch }}

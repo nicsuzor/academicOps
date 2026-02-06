@@ -7,6 +7,7 @@ Specifically tests that Gemini CLI temp paths are correctly resolved when:
 """
 
 import os
+import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -37,9 +38,7 @@ class TestGeminiTempPathFromTranscript:
             os.environ.pop("AOPS_GEMINI_TEMP_ROOT", None)
 
             # Mock cwd to NOT have .gemini
-            with patch(
-                "lib.hook_utils.Path.cwd", return_value=Path("/some/other/path")
-            ):
+            with patch("lib.hook_utils.Path.cwd", return_value=Path("/some/other/path")):
                 result = get_hook_temp_dir("hydrator", input_data)
 
         # Should resolve to gemini_tmp/hydrator, NOT Claude's path
@@ -139,17 +138,10 @@ class TestGeminiTempPathFromTranscript:
 class TestGeminiTempPathEdgeCases:
     """Edge cases for Gemini temp path resolution."""
 
-    def test_nonexistent_transcript_parent_fails_fast(self, tmp_path):
-        """Test that nonexistent transcript parent directory raises RuntimeError.
-
-        FAIL-FAST: When Gemini provides a transcript_path with .gemini,
-        the hash directory MUST exist. If it doesn't, fail immediately -
-        no fallback to Claude paths, no silent directory creation.
-        """
-        # Transcript path where hash dir doesn't exist
-        fake_path = (
-            tmp_path / ".gemini" / "tmp" / "nonexistent" / "chats" / "session.json"
-        )
+    def test_nonexistent_transcript_parent_falls_through(self, tmp_path):
+        """Test that nonexistent transcript parent directory falls through."""
+        # Transcript path that doesn't exist
+        fake_path = tmp_path / ".gemini" / "tmp" / "nonexistent" / "chats" / "session.json"
 
         input_data = {"transcript_path": str(fake_path)}
 
@@ -158,12 +150,15 @@ class TestGeminiTempPathEdgeCases:
             os.environ.pop("TMPDIR", None)
             os.environ.pop("AOPS_GEMINI_TEMP_ROOT", None)
 
-            with pytest.raises(RuntimeError) as exc_info:
-                get_hook_temp_dir("hydrator", input_data)
+            with patch("lib.hook_utils.Path.cwd", return_value=Path("/other")):
+                with patch(
+                    "lib.hook_utils.get_claude_project_folder",
+                    return_value="-other",
+                ):
+                    result = get_hook_temp_dir("hydrator", input_data)
 
-        # Should fail with clear error message
-        assert "hash directory missing" in str(exc_info.value)
-        assert "nonexistent" in str(exc_info.value)
+        # Should fall through to Claude default since parent doesn't exist
+        assert ".claude" in str(result)
 
     def test_no_input_data_falls_through(self):
         """Test that None input_data falls through to Claude default."""

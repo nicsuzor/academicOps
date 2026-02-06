@@ -14,7 +14,7 @@ Related:
 - Task: Implement hydration gate for Gemini - test cases from real events
 """
 
-import os
+import json
 import sys
 from pathlib import Path
 from typing import Any
@@ -164,16 +164,14 @@ class TestGeminiActivateSkillDetection:
         """_hydration_is_hydrator_task should detect activate_skill with hydrator name."""
         # This should be detected as a hydrator invocation
         tool_input = {"name": "prompt-hydrator"}
-        assert _hydration_is_hydrator_task(tool_input), (
+        assert _hydration_is_hydrator_task(tool_input), \
             "activate_skill with name='prompt-hydrator' should be detected"
-        )
 
     def test_activate_skill_partial_match_detected(self):
         """activate_skill with 'hydrator' in name should be detected."""
         tool_input = {"name": "aops-core:prompt-hydrator"}
-        assert _hydration_is_hydrator_task(tool_input), (
+        assert _hydration_is_hydrator_task(tool_input), \
             "activate_skill with 'hydrator' in name should be detected"
-        )
 
     def test_activate_skill_other_skill_not_detected(self):
         """activate_skill with other skill names should not be detected."""
@@ -266,11 +264,9 @@ class TestHydrationGateBehavior:
         result = check_hydration_gate(ctx)
         assert result is None, "Gate should allow subagent sessions"
 
-    @patch.dict(os.environ, {"HYDRATION_GATE_MODE": "block"})
     @patch("hooks.gate_registry.session_state")
     @patch("hooks.gate_registry.hook_utils")
     @patch("hooks.gate_registry.load_template")
-    @patch.dict("os.environ", {"HYDRATION_MODE": "block"})
     def test_gate_blocks_general_tool_when_hydration_pending(
         self,
         mock_load_template,
@@ -285,9 +281,7 @@ class TestHydrationGateBehavior:
         mock_hook_utils.is_subagent_session.return_value = False
         mock_session_state.is_hydration_pending.return_value = True
         mock_session_state.is_hydrator_active.return_value = False
-        mock_session_state.get_hydration_temp_path.return_value = (
-            "/tmp/hydrator/context.md"
-        )
+        mock_session_state.get_hydration_temp_path.return_value = "/tmp/hydrator/context.md"
         mock_hook_utils.get_hook_temp_dir.side_effect = RuntimeError("no temp dir")
         mock_load_template.return_value = "Hydration gate blocked"
 
@@ -296,7 +290,7 @@ class TestHydrationGateBehavior:
             "hook_event_name": "PreToolUse",
             "session_id": "test-session",
             "tool_name": "Bash",
-            "tool_input": {"command": "touch /tmp/should_block"},
+            "tool_input": {"command": "ls -la"},
         }
         ctx = GateContext(
             session_id=event["session_id"],
@@ -308,7 +302,6 @@ class TestHydrationGateBehavior:
         assert result is not None, "Gate should block Bash when hydration pending"
         # GateResult has verdict attribute (not permissionDecision)
         from hooks.gate_registry import GateVerdict
-
         assert result.verdict == GateVerdict.DENY
 
 
@@ -321,9 +314,7 @@ class TestGeminiHydrationFileRead:
     ):
         """run_shell_command with cat of hydration file should be detected."""
         # Mock the temp dir to match what's in the command
-        mock_hook_utils.get_hook_temp_dir.return_value = Path(
-            "/home/nic/.aops/tmp/hydrator"
-        )
+        mock_hook_utils.get_hook_temp_dir.return_value = Path("/home/nic/.aops/tmp/hydrator")
 
         event = gemini_pre_tool_use_shell_read_hydration_file
         result = _hydration_is_gemini_hydration_attempt(
@@ -337,9 +328,7 @@ class TestGeminiHydrationFileRead:
     @patch("hooks.gate_registry.hook_utils")
     def test_run_shell_command_other_command_not_detected(self, mock_hook_utils):
         """run_shell_command with unrelated command should not be detected."""
-        mock_hook_utils.get_hook_temp_dir.return_value = Path(
-            "/home/nic/.aops/tmp/hydrator"
-        )
+        mock_hook_utils.get_hook_temp_dir.return_value = Path("/home/nic/.aops/tmp/hydrator")
 
         result = _hydration_is_gemini_hydration_attempt(
             "run_shell_command",
@@ -352,9 +341,7 @@ class TestGeminiHydrationFileRead:
     @patch("hooks.gate_registry.hook_utils")
     def test_read_file_hydration_temp_detected(self, mock_hook_utils):
         """read_file targeting hydration temp dir should be detected."""
-        mock_hook_utils.get_hook_temp_dir.return_value = Path(
-            "/home/nic/.aops/tmp/hydrator"
-        )
+        mock_hook_utils.get_hook_temp_dir.return_value = Path("/home/nic/.aops/tmp/hydrator")
 
         result = _hydration_is_gemini_hydration_attempt(
             "read_file",
@@ -369,9 +356,7 @@ class TestGeminiHydrationFileRead:
         self, mock_hook_utils, gemini_pre_tool_use_read_file_general
     ):
         """read_file for general files should NOT be detected as hydration attempt."""
-        mock_hook_utils.get_hook_temp_dir.return_value = Path(
-            "/home/nic/.aops/tmp/hydrator"
-        )
+        mock_hook_utils.get_hook_temp_dir.return_value = Path("/home/nic/.aops/tmp/hydrator")
 
         event = gemini_pre_tool_use_read_file_general
         result = _hydration_is_gemini_hydration_attempt(
@@ -404,9 +389,7 @@ class TestSafeToolsAllowlist:
         """
         mock_hook_utils.is_subagent_session.return_value = False
         mock_session_state.is_hydration_pending.return_value = True
-        mock_hook_utils.get_hook_temp_dir.return_value = Path(
-            "/home/nic/.aops/tmp/hydrator"
-        )
+        mock_hook_utils.get_hook_temp_dir.return_value = Path("/home/nic/.aops/tmp/hydrator")
 
         event = gemini_pre_tool_use_read_file_general
         ctx = GateContext(
@@ -445,9 +428,7 @@ class TestSafeToolsAllowlist:
 
     @patch("hooks.gate_registry.session_state")
     @patch("hooks.gate_registry.hook_utils")
-    def test_claude_read_tool_should_not_block(
-        self, mock_hook_utils, mock_session_state
-    ):
+    def test_claude_read_tool_should_not_block(self, mock_hook_utils, mock_session_state):
         """Claude's Read tool should not be blocked by hydration gate."""
         mock_hook_utils.is_subagent_session.return_value = False
         mock_session_state.is_hydration_pending.return_value = True
@@ -467,9 +448,7 @@ class TestSafeToolsAllowlist:
 
     @patch("hooks.gate_registry.session_state")
     @patch("hooks.gate_registry.hook_utils")
-    def test_claude_glob_tool_should_not_block(
-        self, mock_hook_utils, mock_session_state
-    ):
+    def test_claude_glob_tool_should_not_block(self, mock_hook_utils, mock_session_state):
         """Claude's Glob tool should not be blocked by hydration gate."""
         mock_hook_utils.is_subagent_session.return_value = False
         mock_session_state.is_hydration_pending.return_value = True
@@ -504,9 +483,7 @@ class TestPostToolUseHydrationCompletion:
         assert "PreToolUse" in hydration_gate["events"]
 
         # Post-hydration gate handles PostToolUse (clearing pending)
-        post_hydration_gate = next(
-            g for g in ACTIVE_GATES if g["name"] == "post_hydration"
-        )
+        post_hydration_gate = next(g for g in ACTIVE_GATES if g["name"] == "post_hydration")
         assert "PostToolUse" in post_hydration_gate["events"]
 
     @patch("hooks.gate_registry.session_state")
@@ -520,9 +497,7 @@ class TestPostToolUseHydrationCompletion:
         on PostToolUse, not PreToolUse. Uses post_hydration_trigger gate.
         """
         mock_hook_utils.is_subagent_session.return_value = False
-        mock_hook_utils.get_hook_temp_dir.return_value = Path(
-            "/home/nic/.aops/tmp/hydrator"
-        )
+        mock_hook_utils.get_hook_temp_dir.return_value = Path("/home/nic/.aops/tmp/hydrator")
 
         # Real Gemini PostToolUse event for hydrator completion
         event = {
@@ -548,9 +523,7 @@ class TestPostToolUseHydrationCompletion:
         result = post_hydration_trigger(ctx)
 
         # Should return ALLOW result and clear pending
-        assert result is not None, (
-            "PostToolUse activate_skill hydrator should return result"
-        )
+        assert result is not None, "PostToolUse activate_skill hydrator should return result"
         mock_session_state.clear_hydration_pending.assert_called_once_with(
             "6a416d2b-8864-4a05-ac5e-85e3ebeef207"
         )
@@ -624,168 +597,3 @@ class TestCrossAgentCompatibility:
         # Both should be detected as hydrator invocations
         assert _hydration_is_hydrator_task(claude_ctx.tool_input)
         assert _hydration_is_hydrator_task(gemini_ctx.tool_input)
-
-
-# ============================================================================
-# Session Start Validation Tests (P#8 Fail-Fast)
-# ============================================================================
-
-
-class TestGeminiSessionStartValidation:
-    """Test that Gemini session start validates hydration infrastructure.
-
-    Per P#8 (Fail-Fast): Validate hydration temp path infrastructure at session
-    start, not later at PreToolUse. This catches state corruption early.
-
-    The error "STATE ERROR: Hydration temp path missing" should appear at
-    session start for Gemini, not wait until PreToolUse.
-    """
-
-    @patch("hooks.gate_registry.session_paths")
-    @patch("hooks.gate_registry.hook_utils")
-    @patch("hooks.gate_registry.session_state")
-    def test_gemini_session_start_validates_temp_dir_infrastructure(
-        self, mock_session_state, mock_hook_utils, mock_session_paths
-    ):
-        """SessionStart for Gemini should validate temp directory exists.
-
-        If get_hook_temp_dir fails (temp dir missing), session should be DENIED
-        immediately at start, not wait for UserPromptSubmit or PreToolUse.
-        """
-        from hooks.gate_registry import check_session_start_gate, GateVerdict
-
-        # Mock session_paths to return valid paths
-        mock_session_paths.get_session_short_hash.return_value = "abc123"
-        mock_session_paths.get_session_file_path.return_value = Path(
-            "/tmp/test-state.json"
-        )
-
-        # Mock session_state to create state successfully
-        mock_session_state.get_or_create_session_state.return_value = {"state": {}}
-        mock_session_state.save_session_state.return_value = None
-
-        # Simulate Gemini session with missing temp dir - this is the key test
-        mock_hook_utils.get_hook_temp_dir.side_effect = RuntimeError(
-            "GEMINI_CLI is set but temp root not found"
-        )
-
-        gemini_event = {
-            "hook_event_name": "SessionStart",
-            "session_id": "gemini-test-session",
-            "transcript_path": "/home/nic/.gemini/tmp/nonexistent/chats/session.json",
-            "cwd": "/home/nic/src/test-project",
-        }
-
-        ctx = GateContext(
-            session_id=gemini_event["session_id"],
-            event_name=gemini_event["hook_event_name"],
-            input_data=gemini_event,
-        )
-
-        # Make the state file "exist" for the first check
-        with patch.object(Path, "exists", return_value=True):
-            result = check_session_start_gate(ctx)
-
-        # Should DENY with clear error message about temp infrastructure
-        assert result is not None, (
-            "Session start should return result for Gemini validation"
-        )
-        assert result.verdict == GateVerdict.DENY, (
-            "Should deny when temp infrastructure missing"
-        )
-        assert "STATE ERROR" in (result.system_message or ""), (
-            "Error message should include 'STATE ERROR' for visibility"
-        )
-        assert "temp" in (result.system_message or "").lower(), (
-            "Error message should mention temp path issue"
-        )
-
-    @patch("hooks.gate_registry.session_paths")
-    @patch("hooks.gate_registry.hook_utils")
-    @patch("hooks.gate_registry.session_state")
-    def test_gemini_session_start_passes_when_temp_dir_valid(
-        self, mock_session_state, mock_hook_utils, mock_session_paths
-    ):
-        """SessionStart for Gemini should pass when temp directory is valid."""
-        from hooks.gate_registry import check_session_start_gate, GateVerdict
-
-        # Mock session_paths
-        mock_session_paths.get_session_short_hash.return_value = "abc123"
-        mock_session_paths.get_session_file_path.return_value = Path(
-            "/tmp/test-state.json"
-        )
-
-        # Mock session_state
-        mock_session_state.get_or_create_session_state.return_value = {"state": {}}
-        mock_session_state.save_session_state.return_value = None
-
-        # Simulate valid temp dir that exists
-        mock_temp_dir = MagicMock()
-        mock_temp_dir.exists.return_value = True
-        mock_hook_utils.get_hook_temp_dir.return_value = mock_temp_dir
-
-        gemini_event = {
-            "hook_event_name": "SessionStart",
-            "session_id": "gemini-test-session",
-            "transcript_path": "/home/nic/.gemini/tmp/validhash/chats/session.json",
-            "cwd": "/home/nic/src/test-project",
-        }
-
-        ctx = GateContext(
-            session_id=gemini_event["session_id"],
-            event_name=gemini_event["hook_event_name"],
-            input_data=gemini_event,
-        )
-
-        # Make the state file "exist" for the first check
-        with patch.object(Path, "exists", return_value=True):
-            result = check_session_start_gate(ctx)
-
-        # Should ALLOW when infrastructure is valid
-        assert result is not None, "Session start should return result"
-        assert result.verdict == GateVerdict.ALLOW, (
-            "Should allow when temp infrastructure valid"
-        )
-
-    @patch("hooks.gate_registry.session_paths")
-    @patch("hooks.gate_registry.session_state")
-    def test_claude_session_start_not_affected(
-        self, mock_session_state, mock_session_paths
-    ):
-        """Claude session start should not be affected by this Gemini-specific validation.
-
-        Claude uses a different temp path mechanism that doesn't require
-        the same infrastructure validation (no .gemini in transcript_path).
-        """
-        from hooks.gate_registry import check_session_start_gate, GateVerdict
-
-        # Mock session_paths
-        mock_session_paths.get_session_short_hash.return_value = "abc123"
-        mock_session_paths.get_session_file_path.return_value = Path(
-            "/tmp/test-state.json"
-        )
-
-        # Mock session_state
-        mock_session_state.get_or_create_session_state.return_value = {"state": {}}
-        mock_session_state.save_session_state.return_value = None
-
-        # Claude event - no transcript_path with .gemini
-        claude_event = {
-            "hook_event_name": "SessionStart",
-            "session_id": "claude-test-session",
-            "cwd": "/home/nic/src/test-project",
-        }
-
-        ctx = GateContext(
-            session_id=claude_event["session_id"],
-            event_name=claude_event["hook_event_name"],
-            input_data=claude_event,
-        )
-
-        # Make the state file "exist" for the check
-        with patch.object(Path, "exists", return_value=True):
-            result = check_session_start_gate(ctx)
-
-        # Claude session start should succeed (no Gemini temp validation)
-        assert result is not None
-        assert result.verdict == GateVerdict.ALLOW

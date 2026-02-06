@@ -5,7 +5,8 @@ from hook events (Tool Use, User Propmt, etc.).
 """
 
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
+import re
 import json
 
 
@@ -35,15 +36,13 @@ class EventDetector:
                 "tools": ["EnterPlanMode"],
             },
             # --- Task Binding (Claim) ---
-            # Support both Claude (mcp__plugin_*) and Gemini (aops-core/tools:*) naming conventions
+            # Support both Claude (mcp__plugin_*) and Gemini (aops-core:*) naming conventions
             {
                 "change": StateChange.BIND_TASK,
                 "type": RuleType.TOOL_CALL,
                 "tools": [
                     "mcp__plugin_aops-core_task_manager__update_task",
-                    "mcp__plugin_aops-tools_task_manager__update_task",
                     "aops-core:task_manager:update_task",
-                    "aops-tools:task_manager:update_task",
                     "task_manager__update_task",
                     "update_task",
                 ],
@@ -55,15 +54,11 @@ class EventDetector:
                 "type": RuleType.TOOL_CALL,
                 "tools": [
                     "mcp__plugin_aops-core_task_manager__complete_task",
-                    "mcp__plugin_aops-tools_task_manager__complete_task",
                     "aops-core:task_manager:complete_task",
-                    "aops-tools:task_manager:complete_task",
                     "task_manager__complete_task",
                     "complete_task",
                     "mcp__plugin_aops-core_task_manager__complete_tasks",
-                    "mcp__plugin_aops-tools_task_manager__complete_tasks",
                     "aops-core:task_manager:complete_tasks",
-                    "aops-tools:task_manager:complete_tasks",
                     "task_manager__complete_tasks",
                     "complete_tasks",
                 ],
@@ -74,9 +69,7 @@ class EventDetector:
                 "type": RuleType.TOOL_CALL,
                 "tools": [
                     "mcp__plugin_aops-core_task_manager__update_task",
-                    "mcp__plugin_aops-tools_task_manager__update_task",
                     "aops-core:task_manager:update_task",
-                    "aops-tools:task_manager:update_task",
                     "task_manager__update_task",
                     "update_task",
                 ],
@@ -87,9 +80,7 @@ class EventDetector:
                 "type": RuleType.TOOL_CALL,
                 "tools": [
                     "mcp__plugin_aops-core_task_manager__update_task",
-                    "mcp__plugin_aops-tools_task_manager__update_task",
                     "aops-core:task_manager:update_task",
-                    "aops-tools:task_manager:update_task",
                     "task_manager__update_task",
                     "update_task",
                 ],

@@ -26,7 +26,6 @@ tags: [framework, enforcement, moc]
 | [[project-independence]]                    | Project Independence            | AXIOMS.md                                       | SessionStart         |       |
 | [[fail-fast-code]]                          | Fail-Fast (Code)                | policy_enforcer.py blocks destructive git       | PreToolUse           |       |
 | [[fail-fast-code]]                          | Fail-Fast (Code) - No Fallbacks | check_no_fallbacks.py AST visitor detects `.get(..., "")`, `.get(..., [])`, `or ""` patterns | Pre-commit (active)  |       |
-| [[fail-fast-code]]                          | Fail-Fast (Code) Analysis       | axiom_enforcer (DISABLED)                       | PreToolUse           |       |
 | [[fail-fast-agents]]                        | Fail-Fast (Agents)              | fail_fast_watchdog.py injects reminder          | PostToolUse          |       |
 | [[self-documenting]]                        | Self-Documenting                | policy_enforcer.py blocks *-GUIDE.md            | PreToolUse           |       |
 | [[single-purpose-files]]                    | Single-Purpose Files            | policy_enforcer.py 200-line limit               | PreToolUse           |       |
@@ -37,7 +36,6 @@ tags: [framework, enforcement, moc]
 | [[trust-version-control]]                   | Trust Version Control           | policy_enforcer.py blocks backup patterns       | PreToolUse           |       |
 | [[no-workarounds]]                          | No Workarounds                  | fail_fast_watchdog.py                           | PostToolUse          |       |
 | [[verify-first]]                            | Verify First                    | TodoWrite checkpoint                            | During execution     |       |
-| [[verify-first]]                            | Write-Without-Read Check        | axiom_enforcer (DISABLED)                       | PreToolUse           |       |
 | [[no-excuses]]                              | No Excuses                      | AXIOMS.md                                       | SessionStart         |       |
 | [[write-for-long-term]]                     | Write for Long Term             | AXIOMS.md                                       | SessionStart         |       |
 | [[maintain-relational-integrity]]           | Relational Integrity            | wikilink conventions                            | Pre-commit (planned) |       |
@@ -109,10 +107,6 @@ tags: [framework, enforcement, moc]
 | [[task-sequencing-on-insert]]           | Task Sequencing on Insert              | HEURISTICS.md                                         | SessionStart              |       |
 | [[methodology-belongs-to-researcher]]   | Methodology Belongs to Researcher      | HEURISTICS.md, prompt-hydrator guidance               | SessionStart, UserPromptSubmit |       |
 | [[preserve-pre-existing-content]]       | Preserve Pre-Existing Content          | HEURISTICS.md                                         | SessionStart              |       |
-| [[user-intent-discovery]]               | User Intent Discovery Before Implementation | HEURISTICS.md, prompt-hydrator guidance          | SessionStart, UserPromptSubmit |       |
-| [[verify-non-duplication-batch-create]] | Verify Non-Duplication Before Batch Create | HEURISTICS.md, triage-email workflow             | SessionStart, batch operations | 1a    |
-| [[run-python-via-uv]]                   | Run Python via uv                          | HEURISTICS.md                                    | SessionStart                   | 1a    |
-| [[protect-dist-directory]]              | Protect dist/ Directory                    | .agent/rules/HEURISTICS.md, policy_enforcer.py | SessionStart, PreToolUse       | 1a    |
 
 ## Enforcement Level Summary
 
@@ -177,15 +171,6 @@ This is the **default enforcement mechanism** for instructions. Principles surfa
 
 This ensures [[enforcement-changes-require-rules-md-update]] is followed.
 
-## MCP Tool Hydration Requirements
-
-| Tool | Exempt from Hydration | Rationale |
-|------|----------------------|-----------|
-| `store_memory` | **No** | Must route through `/remember` skill to create both markdown + memory (aops-887fba77) |
-| `retrieve_memory` | Yes | Read-only, no state change |
-| `recall_memory` | Yes | Read-only, no state change |
-| Task manager tools | Yes | Establish task binding (infrastructure) |
-
 ## Soft Gate Guardrails (Prompt Hydration)
 
 These guardrails are applied by [[prompt-hydration]] based on task classification. Each maps to a heuristic and defines when/how to apply it.
@@ -236,8 +221,7 @@ The custodiet hook (`hooks/custodiet_gate.py`) provides periodic semantic compli
 | ---------------------- | ---------------------------------- | ---------------------------------------- |
 | `TOOL_CALL_THRESHOLD`  | 7 (2 for debug)                    | Full compliance check every N tool calls |
 | `REMINDER_PROBABILITY` | 0.3                                | 30% chance of reminder between checks    |
-| Counted tools          | ALL tool calls                     | Counter increments for every tool (Read, Edit, etc.) |
-| Blocked tools          | MUTATING_TOOLS only                | Only Edit/Write/Bash blocked at threshold |
+| Skip tools             | Read, Glob, Grep, memory retrieval | Don't count passive reads                |
 
 ### Compliance Check (Threshold)
 
@@ -280,50 +264,51 @@ Uses passive `additionalContext` format - agent may proceed without addressing.
 
 **Note**: Technical enforcement prevents accidental premature completion. Agents must either complete children first or explicitly override with force flag.
 
-## TASK GATE (Unified PreToolUse Enforcement)
+## Task-Gated Permissions (PreToolUse Hook)
 
-Destructive operations require passing the TASK GATE. See [[specs/permission-model-v1]].
+Destructive operations require ALL THREE gates to pass. See [[specs/permission-model-v1]].
 
-The TASK GATE consolidates multiple enforcement concerns into a single PreToolUse check:
-- Task binding (work tracking)
-- Hydration completion (plan before execute)
-- Critic review (second opinion)
+| Operation Type | Tool | Requires Gates | Bypass |
+|----------------|------|----------------|--------|
+| File creation/modification | Write, Edit, NotebookEdit | All 3 gates | `.` prefix, subagent |
+| Destructive Bash | `rm`, `mv`, `git commit`, etc. | All 3 gates | `.` prefix, subagent |
+| Read-only | Read, Glob, Grep, `git status` | None | N/A |
+| Task operations | create_task, update_task | None (they establish gate a) | N/A |
 
-| Operation Type | Tool | Requires TASK GATE | Bypass |
-|----------------|------|-------------------|--------|
-| File creation/modification | Write, Edit, NotebookEdit | Yes | `.` prefix, subagent |
-| Destructive Bash | `rm`, `mv`, `git commit`, etc. | Yes | `.` prefix, subagent |
-| Read-only | Read, Glob, Grep, `git status` | No | N/A |
-| Task operations | create_task, update_task | No (they establish gate a) | N/A |
-
-**Enforcement**: `check_task_required_gate()` in `gate_registry.py` (PreToolUse hook).
+**Enforcement**: `task_required_gate.py` PreToolUse hook.
 
 **Output format** (JSON, always exit 0):
 - Allow: `{}` (empty JSON)
 - Block: `{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "additionalContext": "..."}}`
 - Warn: `{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "additionalContext": "..."}}`
 
-### Three-Gate Conditions
+### Three-Gate Requirement
 
-The TASK GATE tracks three conditions for full compliance:
+All three gates must pass before destructive operations are allowed:
 
 | Gate | Requirement | How Set | Session State Flag |
 |------|-------------|---------|-------------------|
-| (a) Task bound | Session has active task | `update_task(status="in_progress")` or `create_task(...)` | `main_agent.current_task` |
-| (b) Hydrator invoked | Plan mode or hydrator completed | `EnterPlanMode` tool or prompt-hydrator SubagentStop | `state.plan_mode_invoked` |
+| (a) Task bound | Session has active task | `update_task(status="active")` or `create_task(...)` | `main_agent.current_task` |
+| (b) Hydrator invoked | Prompt-hydrator analyzed task | SubagentStop with `subagent_type="prompt-hydrator"` | `state.hydrator_invoked` |
 | (c) Critic invoked | Critic agent reviewed plan | SubagentStop with `subagent_type="critic"` | `state.critic_invoked` |
 
-**Default enforcement**: Only gate (a) task_bound is enforced. Gates (b) and (c) are tracked for observability.
-
-**Full enforcement**: Set `TASK_GATE_ENFORCE_ALL=1` to require all three gates.
+**Known Issue (aops-c6224bc2)**: The hydrator gate (`state.hydrator_invoked`) is not being set correctly by the SubagentStop handler. The flag should be set when prompt-hydrator completes, but currently shows "Hydrator invoked: ✗" even after successful hydration. Fix pending in hooks system.
 
 **Binding flow**:
 1. Hydrator guides: "claim existing or create new task"
-2. Agent calls `update_task(status="in_progress")` or `create_task(...)` → gate (a) set
+2. Agent calls `update_task(status="active")` or `create_task(...)` → gate (a) set
 3. `task_binding.py` PostToolUse hook sets `current_task` in session state
-4. Agent enters plan mode or hydrator completes → gate (b) set
-5. Agent invokes critic: `Task(subagent_type="aops-core:critic", ...)` → gate (c) set
-6. `check_task_required_gate()` checks gates before allowing destructive operations
+4. Agent invokes critic: `Task(subagent_type="aops-core:critic", ...)` → gate (b) set
+5. `unified_logger.py` SubagentStop handler sets `critic_invoked` flag
+6. Agent creates todo list with handover step → gate (c) set
+7. `todowrite_handover_gate.py` PostToolUse hook sets `todo_with_handover` flag
+8. `task_required_gate.py` checks all three gates before allowing destructive operations
+
+**Handover patterns detected** (case-insensitive):
+- "session end", "session close", "session handover"
+- "handover", "hand over", "hand-over"
+- "commit and push", "final commit"
+- "wrap up", "framework reflection"
 
 **Bypass conditions**:
 - User prefix `.` (sets `gates_bypassed` flag via UserPromptSubmit)
@@ -343,54 +328,36 @@ The TASK GATE tracks three conditions for full compliance:
 
 ## Session-End Validation (Stop Hooks)
 
-Session end is blocked until requirements are met. Three-phase validation ensures proper handover.
+Session end is blocked until requirements are met. Two-phase validation ensures proper handover.
 
-### Framework Reflection Validation (Three-Stage)
+### Framework Reflection Validation
 
-**Enforcement**: `gate_registry.py` (AfterAgent → `check_agent_response_listener`) + `check_stop_gate`.
+**Enforcement**: `reflection_check.py` Stop hook using `parse_framework_reflection` from transcript_parser.py.
 
-The stop gate requires THREE conditions for session completion:
+| Requirement | Validation | Block Message |
+|-------------|------------|---------------|
+| `## Framework Reflection` header | Regex match | "Output ## Framework Reflection..." |
+| Parseable fields | `parse_framework_reflection()` returns non-None | Shows required format |
+| Minimum fields | `outcome` field present | Shows required format |
 
-| Condition | Gate | Set By | Check |
-|-----------|------|--------|-------|
-| (1) Hydration invoked | `hydrator_invoked` | `post_hydration_trigger` (PostToolUse) | Prompt-hydrator completed |
-| (2) Reflection validated | `handover_skill_invoked` | `check_agent_response_listener` (AfterAgent) | All required fields present |
-| (3) QA verified | `qa_invoked` | `post_qa_trigger` (PostToolUse) | QA skill/task invoked |
+**Required format** (parseable by transcript.py):
+```markdown
+## Framework Reflection
 
-**Note**: Condition (3) is only required when hydration occurred AND workflow is not streamlined (`interactive-followup`, `simple-question`, `direct-skill`).
+**Outcome**: success/partial/failure
+**Accomplishments**: what was done
+**Next step**: what to do next
+```
 
-**Gate (2) Field Validation**: When `## Framework Reflection` is detected in agent response, all 8 required fields must be present:
-
-| Required Field | Purpose |
-|----------------|---------|
-| `**Prompts**:` | Original request |
-| `**Guidance received**:` | Hydrator advice (write N/A if none) |
-| `**Followed**:` | Yes/No/Partial with explanation |
-| `**Outcome**:` | One of: success, partial, failure |
-| `**Accomplishments**:` | What was completed |
-| `**Friction points**:` | Issues encountered (write none if none) |
-| `**Proposed changes**:` | Framework improvements (write none if none) |
-| `**Next step**:` | Follow-up needed (write none if none) |
-
-**Malformed Reflection Handling**: If `## Framework Reflection` is present but missing required fields:
-- Gate remains closed (`handover_skill_invoked` NOT set)
-- Warning message lists missing fields
-- Context injection shows correct format
-- Agent can retry with complete reflection
-
-**Stop Gate Enforcement**: `check_stop_gate` blocks session end if any required flag is not set.
+**Timing constraint**: Due to transcript timing, reflection must be output BEFORE the stopping turn. The transcript file isn't updated until after the Stop hook completes, so reflection in the final message cannot be detected.
 
 **Workflow**:
 1. Agent completes work
-2. Agent invokes QA skill to verify results against original request and acceptance criteria
-3. PostToolUse hook sets `qa_invoked` flag
-4. Agent outputs Framework Reflection with ALL required fields
-5. AfterAgent hook validates format and sets `handover_skill_invoked` flag
-6. Agent invokes `/handover` skill
-7. Agent attempts to end session (triggers Stop event)
-8. Stop gate checks all three flags (hydrator, handover, QA)
-9. If all flags set: session ends
-10. If any flag missing: blocks with instructions for the missing step
+2. Agent outputs Framework Reflection in a message
+3. Agent attempts to end session (triggers Stop event)
+4. Hook reads transcript, finds reflection in earlier message
+5. If found and parseable: session ends
+6. If not found: blocks with format instructions, agent retries
 
 ### Uncommitted Work Check
 
@@ -488,7 +455,7 @@ Context injected via CORE.md at SessionStart. Guides where agents place files.
 | Deny rules       | `$AOPS/config/claude/settings.json` → `permissions.deny`                        |
 | Agent tools      | `$AOPS/aops-core/agents/*.md` → `tools:` frontmatter                            |
 | PreToolUse       | `$AOPS/aops-core/hooks/gate_registry.py` (hydration, custodiet, subagent_restrictions), `task_required_gate.py`, `policy_enforcer.py`  |
-| PostToolUse      | `$AOPS/aops-core/hooks/gate_registry.py` (accountant, task_binding, post_hydration, post_critic, skill_activation) |
+| PostToolUse      | `$AOPS/aops-core/hooks/fail_fast_watchdog.py`, `autocommit_state.py`, `custodiet_gate.py`, `todowrite_handover_gate.py` |
 | SubagentStop     | `$AOPS/aops-core/hooks/unified_logger.py` (sets `critic_invoked` flag)          |
 | UserPromptSubmit | `$AOPS/aops-core/hooks/user_prompt_submit.py`                                   |
 | SessionStart     | `$AOPS/aops-core/hooks/sessionstart_load_axioms.py`                             |

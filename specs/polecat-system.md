@@ -192,7 +192,7 @@ Merge a crew branch when:
 
 ### Merge Steps
 
-For each project in the crew (e.g., `~/.aops/crew/cheryl/aops`):
+For each project in the crew (e.g., `~/.aops/polecat/crew/cheryl/aops`):
 
 0. **Create tracking task** (before starting):
    ```
@@ -206,7 +206,7 @@ For each project in the crew (e.g., `~/.aops/crew/cheryl/aops`):
 
 1. **Check status**:
    ```bash
-   cd ~/.aops/crew/<name>/<project>
+   cd ~/.aops/polecat/crew/<name>/<project>
    git status
    git log main..HEAD --oneline  # See commits to merge
    ```
@@ -262,8 +262,8 @@ Since worktrees depend on a parent repo, the system maps projects to paths:
 ## Integration with Task System
 
 This system builds *on top* of the existing Task MCP:
-- It consumes tasks via the internal `TaskStorage.get_ready_tasks()` method.
-- It updates tasks via `update_task` (status/assignee) MCP tool.
+- It consumes tasks via `get_ready_tasks`.
+- It updates tasks via `update_task` (status/assignee).
 - It does NOT replace the task database; it just provides the **workspace** for executing them.
 
 ## Refinery System

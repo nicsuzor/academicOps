@@ -15,12 +15,13 @@ Used by:
 from __future__ import annotations
 
 import glob
+import json
 import re
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 from lib.transcript_parser import (
+    Entry,
     SessionInfo,
     SessionProcessor,
     SessionState,
@@ -174,7 +175,7 @@ def _extract_questions_from_text(text: str) -> list[str]:
     questions = []
     # Look for text ending with ? - capture the full sentence leading up to it
     # Using regex to find sentence-like patterns ending with ?
-    pattern = r"[^.!?\n]*\?"
+    pattern = r'[^.!?\n]*\?'
     matches = re.findall(pattern, text)
 
     for match in matches:
@@ -184,63 +185,6 @@ def _extract_questions_from_text(text: str) -> list[str]:
             questions.append(question)
 
     return questions
-
-
-def _extract_and_expand_prompts(turns: list, max_turns: int) -> list[str]:
-    """Extracts user prompts from turns, expanding command invocations."""
-    prompts = []
-    for turn in turns:
-        user_message = (
-            turn.get("user_message") if isinstance(turn, dict) else turn.user_message
-        )
-        is_meta = turn.get("is_meta") if isinstance(turn, dict) else turn.is_meta
-
-        if not user_message or is_meta:
-            continue
-
-        text = user_message.strip()
-
-        if not text or _is_system_injected_context(text):
-            continue
-
-        command_name = None
-        args = ""
-
-        # Case 1: XML-wrapped command
-        command_name_match = re.search(
-            r"<command-name>(.*?)</command-name>", text, re.DOTALL
-        )
-        if command_name_match:
-            command_name = command_name_match.group(1).strip()
-            args_match = re.search(
-                r"<command-args>(.*?)</command-args>", text, re.DOTALL
-            )
-            if args_match:
-                args = f" {args_match.group(1).strip()}"
-        # Case 2: Simple command prefix
-        elif text.startswith("/"):
-            parts = text.split(maxsplit=1)
-            command_name = parts[0]
-            if len(parts) > 1:
-                args = f" {parts[1]}"
-
-        if command_name:
-            skill_name = command_name.lstrip("/")
-
-            scope = load_skill_scope(skill_name)
-            if scope:
-                # The scope is a markdown summary. Let's clean it up for the prompt.
-                # "Purpose: ..." or "Workflow: ..."
-                summary = " ".join(scope.replace("**", "").split())
-                prompts.append(f'{command_name}{args} → "{summary}"')
-                continue
-
-        # Fallback to old logic
-        cleaned = _clean_prompt_text(text)
-        if cleaned:
-            prompts.append(cleaned)
-
-    return prompts[-max_turns:] if prompts else []
 
 
 def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
@@ -258,8 +202,30 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
     # Group into turns to handle command expansion properly
     turns = processor.group_entries_into_turns(entries, full_mode=True)
 
-    # Extract user prompts, expanding commands
-    recent_prompts = _extract_and_expand_prompts(turns, max_turns)
+    # Extract user prompts (skip system injected)
+    recent_prompts: list[str] = []
+
+    # Process turns in reverse to find recent info
+    # (But group_entries_into_turns returns chronological)
+
+    # Extract prompts from turns
+    for turn in turns:
+        # Check for user message
+        user_message = (
+            turn.get("user_message") if isinstance(turn, dict) else turn.user_message
+        )
+        is_meta = turn.get("is_meta") if isinstance(turn, dict) else turn.is_meta
+
+        if user_message and not is_meta:
+            text = user_message.strip()
+            # Restore aggressive filtering lost in refactor
+            if text and not _is_system_injected_context(text):
+                cleaned = _clean_prompt_text(text)
+                if cleaned:
+                    recent_prompts.append(cleaned)
+
+    # Keep only last N prompts
+    recent_prompts = recent_prompts[-max_turns:] if recent_prompts else []
 
     # Find most recent Skill invocation
     recent_skill: str | None = None
@@ -394,7 +360,7 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
         for i, question in enumerate(agent_questions, 1):
             # Ensure question ends with ? for clarity
             q = question if question.endswith("?") else question + "?"
-            lines.append(f"{i}. {q}")
+            lines.append(f'{i}. {q}')
         lines.append("")
 
     if agent_responses:
@@ -479,7 +445,21 @@ def _extract_gate_context_impl(
 
     # Extract prompts using Turns logic
     if "prompts" in include:
-        result["prompts"] = _extract_and_expand_prompts(turns, max_turns)
+        prompts = []
+        for turn in turns:
+            user_message = (
+                turn.get("user_message")
+                if isinstance(turn, dict)
+                else turn.user_message
+            )
+            is_meta = turn.get("is_meta") if isinstance(turn, dict) else turn.is_meta
+            if user_message and not is_meta:
+                text = user_message.strip()
+                if text and not _is_system_injected_context(text):
+                    cleaned = _clean_prompt_text(text)
+                    if cleaned:
+                        prompts.append(cleaned)
+        result["prompts"] = prompts[-max_turns:]
 
     # For skill we can use raw entries or turns. TodoWrite needs raw entries currently.
     if "skill" in include:
@@ -525,6 +505,32 @@ def _extract_gate_context_impl(
     if "conversation" in include:
         # Generate unified conversation log (ns-52v)
         # Returns list of strings [User]: ..., [Agent]: ...
+        log_lines: list[str] = []
+
+        # Use reversed turns to efficiently get last N
+        count = 0
+        for turn in reversed(turns):
+            if count >= max_turns:
+                break
+
+            turn_lines = []
+
+            # Assistant part (happens after user message in turn)
+            assistant_sequence = (
+                turn.get("assistant_sequence")
+                if isinstance(turn, dict)
+                else turn.assistant_sequence
+            )
+            if assistant_sequence:
+                for item in reversed(
+                    assistant_sequence
+                ):  # Reversed again to push to front of turn lines? No.
+                    # We want chronological order within the turn.
+                    pass
+
+            # Actually easier to process chronological turns and then slice.
+            pass
+
         # Linear pass chronological
         chronological_lines = []
         for turn in turns:
@@ -680,8 +686,9 @@ def load_skill_scope(skill_name: str) -> str | None:
     Returns:
         Brief description of what the skill authorizes, or None if not found.
     """
+    import os
 
-    aops_root = Path(__file__).parent.parent.parent
+    aops_root = Path(os.environ.get("AOPS", "")) or Path(__file__).parent.parent.parent
 
     # Search locations for skill/command definitions
     search_paths = [
@@ -720,7 +727,7 @@ def _extract_skill_scope_from_file(path: Path) -> str | None:
             frontmatter = parts[1]
             for line in frontmatter.split("\n"):
                 if line.startswith("description:"):
-                    desc = line[len("description:") :].strip().strip("\"'")
+                    desc = line[len("description:") :].strip().strip('"\'')
                     lines.append(f"**Purpose**: {desc}")
                     break
 
@@ -1009,7 +1016,8 @@ def find_sessions(
 
                 # Get modification time from most recently modified .md file
                 mtime = max(
-                    datetime.fromtimestamp(f.stat().st_mtime, tz=UTC) for f in md_files
+                    datetime.fromtimestamp(f.stat().st_mtime, tz=UTC)
+                    for f in md_files
                 )
 
                 # Filter by time if specified

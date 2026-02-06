@@ -1,29 +1,84 @@
 {
   "name": "aops-core",
-  "version": "0.1.14",
-  "description": "AcademicOps Framework Extension for Gemini CLI - skills, agents, hooks, and tools for research workflow automation",
-  "contextFileName": "GEMINI.md",
-  "settings": [
-    {
-      "name": "Memory Server API Key",
-      "description": "API Key for the semantic memory server",
-      "envVar": "MCP_MEMORY_API_KEY",
-      "sensitive": true
-    }
-  ],
+  "version": "0.1.0",
+  "description": "AcademicOps Core Framework Extension for Gemini CLI",
   "mcpServers": {
     "task_manager": {
       "command": "uv",
       "args": [
         "run",
         "--directory",
-        "${extensionPath}",
+        "/home/nic/.aops/main/aops-core",
         "python",
-        "mcp_servers${/}tasks_server.py"
+        "mcp_servers/tasks_server.py"
       ],
       "env": {
-        "ACA_DATA": "${ACA_DATA}"
+        "AOPS": "/home/nic/.aops/main",
+        "ACA_DATA": "/home/nic/writing/data"
+      }
+    },
+    "memory": {
+      "url": "http://services.stoat-musical.ts.net:8026/mcp",
+      "headers": {
+        "Authorization": "Bearer 07f203bcc6fbe9a410d9850336f8ff9c73a64c3d0e7802e3450ce39b139f5d67"
       }
     }
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --directory ${AOPS} python ${extensionPath}/hooks/router.py --client gemini",
+            "timeout": 15000
+          }
+        ]
+      }
+    ],
+    "BeforeTool": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --directory ${AOPS} python ${extensionPath}/hooks/router.py --client gemini",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "AfterTool": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --directory ${AOPS} python ${extensionPath}/hooks/router.py --client gemini",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "BeforeAgent": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --directory ${AOPS} python ${extensionPath}/hooks/router.py --client gemini",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --directory ${AOPS} python ${extensionPath}/hooks/router.py --client gemini",
+            "timeout": 10000
+          }
+        ]
+      }
+    ]
   }
 }

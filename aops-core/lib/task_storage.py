@@ -46,18 +46,16 @@ from lib.task_model import Task, TaskComplexity, TaskStatus, TaskType
 
 # Directories to exclude from recursive task scanning
 # These contain non-task data that shouldn't be indexed
-EXCLUDED_DIRS = frozenset(
-    {
-        "archive",  # Historical data, not active tasks
-        "sessions",  # Session transcripts
-        "contacts",  # Contact information
-        "assets",  # Media files
-        "diagrams",  # Diagram files
-        "dotfiles",  # Configuration files
-        "metrics",  # Metrics data
-        "qa",  # QA test data
-    }
-)
+EXCLUDED_DIRS = frozenset({
+    "archive",      # Historical data, not active tasks
+    "sessions",     # Session transcripts
+    "contacts",     # Contact information
+    "assets",       # Media files
+    "diagrams",     # Diagram files
+    "dotfiles",     # Configuration files
+    "metrics",      # Metrics data
+    "qa",           # QA test data
+})
 
 
 class TaskStorage:
@@ -105,7 +103,8 @@ class TaskStorage:
     def _find_task_path(self, task_id: str) -> Path | None:
         """Find existing task file by ID.
 
-        Searches all project directories and inbox for task file.
+        Searches all markdown files in $ACA_DATA with valid task types.
+        Task ID can match either the frontmatter 'id' field or the filename prefix.
         Supports both new format (<id>-<slug>.md) and legacy format (<id>.md).
 
         Args:
@@ -114,35 +113,31 @@ class TaskStorage:
         Returns:
             Path if found, None otherwise
         """
-        # Search top-level tasks/ directory (legacy location)
-        tasks_dir = self.data_root / "tasks"
-        if tasks_dir.exists():
-            for path in tasks_dir.glob(f"{task_id}*.md"):
-                if path.is_file() and (
-                    path.stem == task_id or path.stem.startswith(f"{task_id}-")
-                ):
-                    return path
+        # First, try to find by iterating all task files (matches frontmatter id)
+        # This handles files in any location: goals/, projects/, tasks/, etc.
+        for task, path in self._iter_all_tasks_with_paths():
+            if task.id == task_id:
+                return path
 
-        # Search inbox
-        inbox_dir = self.data_root / "tasks" / "inbox"
-        if inbox_dir.exists():
-            for path in inbox_dir.glob(f"{task_id}*.md"):
-                if path.stem == task_id or path.stem.startswith(f"{task_id}-"):
-                    return path
+        # Fallback: search by filename pattern in common locations
+        # This handles legacy files that might not parse correctly
+        search_dirs = [
+            self.data_root / "tasks",  # Legacy top-level
+            self.data_root / "tasks" / "inbox",  # Inbox
+        ]
 
-        # Search all project directories
+        # Add all project task directories
         for project_dir in self.data_root.iterdir():
-            if not project_dir.is_dir():
-                continue
-            if project_dir.name.startswith("."):
-                continue
-            if project_dir.name == "tasks":
-                continue  # Skip global tasks dir
+            if project_dir.is_dir() and not project_dir.name.startswith("."):
+                if project_dir.name != "tasks":
+                    tasks_dir = project_dir / "tasks"
+                    if tasks_dir.exists():
+                        search_dirs.append(tasks_dir)
 
-            tasks_dir = project_dir / "tasks"
-            if tasks_dir.exists():
-                for path in tasks_dir.glob(f"{task_id}*.md"):
-                    if path.stem == task_id or path.stem.startswith(f"{task_id}-"):
+        for search_dir in search_dirs:
+            if search_dir.exists():
+                for path in search_dir.glob(f"{task_id}*.md"):
+                    if path.is_file() and (path.stem == task_id or path.stem.startswith(f"{task_id}-")):
                         return path
 
         return None
@@ -211,67 +206,6 @@ class TaskStorage:
             assignee=assignee,
             complexity=complexity,
         )
-
-    def claim_task(self, task_id: str, assignee: str) -> Task | None:
-        """Atomically claim a task if it is active.
-
-        Args:
-            task_id: Task ID to claim
-            assignee: Agent/user claiming the task
-
-        Returns:
-            Updated Task if successfully claimed, None if already claimed or not found
-        """
-        import os
-
-        path = self._find_task_path(task_id)
-        if path is None:
-            return None
-
-        lock_path = path.with_suffix(path.suffix + ".lock")
-        lock = FileLock(lock_path, timeout=10)
-
-        with lock:
-            # Reload task from disk to ensure freshness
-            try:
-                task = Task.from_file(path)
-            except Exception:
-                return None
-
-            # Check if available
-            if task.status != TaskStatus.ACTIVE:
-                return None
-
-            # Claim it
-            task.status = TaskStatus.IN_PROGRESS
-            task.assignee = assignee
-            task.modified = task.modified.__class__.now(task.modified.tzinfo)
-
-            # Write logic (duplicated from _atomic_write to avoid double-lock)
-            # We are inside the lock, so we can write safely.
-            new_content = task.to_markdown()
-
-            # Create parent directory if needed
-            path.parent.mkdir(parents=True, exist_ok=True)
-
-            # Write to temp file
-            fd, temp_path = tempfile.mkstemp(
-                suffix=".tmp",
-                prefix=path.stem + "_",
-                dir=path.parent,
-            )
-            try:
-                os.close(fd)
-                temp = Path(temp_path)
-                temp.write_text(new_content, encoding="utf-8")
-                temp.rename(path)
-            except Exception:
-                Path(temp_path).unlink(missing_ok=True)
-                raise
-
-            # Populate relationships for response
-            self._populate_inverse_relationships(task)
-            return task
 
     def save_task(self, task: Task, *, update_body: bool = True) -> Path:
         """Save task to file with file locking and atomic writes.
@@ -360,8 +294,6 @@ class TaskStorage:
         Writes to temp file first, then renames for atomicity.
         Verifies the write succeeded by checking file existence and validity.
 
-        P#83: No-op if file content is unchanged to avoid dirtying repo.
-
         Args:
             path: Target file path
             task: Task to write
@@ -393,17 +325,9 @@ class TaskStorage:
                 except Exception as e:
                     # Log warning but proceed with overwrite if read fails
                     import logging
-
                     logging.getLogger(__name__).warning(
                         f"Failed to read existing body from {path}, overwriting: {e}"
                     )
-
-            # P#83: Check for changes before writing
-            new_content = task.to_markdown()
-            if path.exists():
-                existing_content = path.read_text(encoding="utf-8")
-                if new_content == existing_content:
-                    return  # No changes, do nothing
 
             # Create parent directory if needed
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -417,7 +341,7 @@ class TaskStorage:
             try:
                 os.close(fd)  # Close the file descriptor from mkstemp
                 temp = Path(temp_path)
-                temp.write_text(new_content, encoding="utf-8")
+                temp.write_text(task.to_markdown(), encoding="utf-8")
                 # Atomic rename (on POSIX systems)
                 temp.rename(path)
 
@@ -429,9 +353,7 @@ class TaskStorage:
                 try:
                     Task.from_file(path)
                 except Exception as e:
-                    raise IOError(
-                        f"Write verification failed: {path} is not valid: {e}"
-                    )
+                    raise IOError(f"Write verification failed: {path} is not valid: {e}")
 
             except Exception:
                 # Clean up temp file on error
@@ -474,7 +396,6 @@ class TaskStorage:
         type: TaskType | None = None,
         priority: int | None = None,
         priority_max: int | None = None,
-        assignee: str | None = None,
     ) -> list[Task]:
         """List tasks with optional filters.
 
@@ -484,7 +405,6 @@ class TaskStorage:
             type: Filter by type
             priority: Filter by exact priority
             priority_max: Filter by priority <= max
-            assignee: Filter by assignee (e.g., 'bot', 'nic')
 
         Returns:
             List of matching tasks
@@ -500,8 +420,6 @@ class TaskStorage:
             if priority is not None and task.priority != priority:
                 continue
             if priority_max is not None and task.priority > priority_max:
-                continue
-            if assignee is not None and task.assignee != assignee:
                 continue
             tasks.append(task)
 
@@ -552,7 +470,8 @@ class TaskStorage:
         for root, dirs, files in self.data_root.walk():
             # Filter out excluded and hidden directories (in-place modification)
             dirs[:] = [
-                d for d in dirs if not d.startswith(".") and d not in EXCLUDED_DIRS
+                d for d in dirs
+                if not d.startswith(".") and d not in EXCLUDED_DIRS
             ]
 
             for filename in files:

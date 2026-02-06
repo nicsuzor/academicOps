@@ -14,6 +14,9 @@ Related:
 - Spec: aops-core/specs/enforcement.md
 """
 
+import json
+from pathlib import Path
+
 import pytest
 
 # Mark all tests in this file as integration tests
@@ -88,17 +91,21 @@ class TestHydrationGateBlocking:
         # If hydrator was invoked, subsequent Bash should be allowed
         if hydrator_calls:
             # After hydrator, Bash should work
+            bash_calls = [c for c in tool_calls if c["name"] == "Bash"]
+            # Bash should have been attempted after hydrator
             # (exact behavior depends on the hydrator's decision)
 
             # Get indices
             hydrator_idx = tool_calls.index(hydrator_calls[0])
-            bash_indices = [i for i, c in enumerate(tool_calls) if c["name"] == "Bash"]
+            bash_indices = [
+                i for i, c in enumerate(tool_calls) if c["name"] == "Bash"
+            ]
             post_hydrator_bash = [i for i in bash_indices if i > hydrator_idx]
 
             # At least some Bash calls should be after hydrator
-            assert len(post_hydrator_bash) > 0 or result["success"], (
-                "Bash should be allowed after hydrator invocation"
-            )
+            assert (
+                len(post_hydrator_bash) > 0 or result["success"]
+            ), "Bash should be allowed after hydrator invocation"
 
     def test_dot_prefix_bypasses_hydration(self, claude_headless_tracked):
         """Prompts starting with '.' should bypass hydration gate.
@@ -113,8 +120,8 @@ class TestHydrationGateBlocking:
         )
 
         # With '.' prefix, Bash should be allowed without hydrator
-        # Check that we didn't need hydrator (hydrator_calls computed earlier in test)
-        _ = [
+        # Check that we didn't need hydrator
+        hydrator_calls = [
             c
             for c in tool_calls
             if c["name"] == "Task"
@@ -126,9 +133,9 @@ class TestHydrationGateBlocking:
         # 2. OR session failed but NOT due to hydration gate
         if not result["success"]:
             error = result.get("error", "")
-            assert "hydration" not in error.lower(), (
-                f"'.' prefix should bypass hydration gate: {error}"
-            )
+            assert (
+                "hydration" not in error.lower()
+            ), f"'.' prefix should bypass hydration gate: {error}"
 
     def test_slash_prefix_bypasses_hydration(self, claude_headless_tracked):
         """Prompts starting with '/' (commands) should bypass hydration.
@@ -145,9 +152,9 @@ class TestHydrationGateBlocking:
         # With '/' prefix, should not need hydrator
         if not result["success"]:
             error = result.get("error", "")
-            assert "hydration" not in error.lower(), (
-                f"'/' prefix should bypass hydration gate: {error}"
-            )
+            assert (
+                "hydration" not in error.lower()
+            ), f"'/' prefix should bypass hydration gate: {error}"
 
 
 class TestHydrationGateEditBlocking:

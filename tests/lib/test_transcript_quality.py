@@ -333,9 +333,9 @@ class TestMarkdownStructure:
 
         # Should have a clear structure showing what generated what
         # Example: "### Hook: PostToolUse: Bash" or similar
-        assert "PostToolUse" in markdown or "Hook" in markdown, (
-            "Hook events should be visible in transcript for debugging"
-        )
+        assert (
+            "PostToolUse" in markdown or "Hook" in markdown
+        ), "Hook events should be visible in transcript for debugging"
 
     def test_json_in_tool_results_properly_escaped(self, tmp_path: Path):
         """JSON in tool results must not break markdown fences.
@@ -484,7 +484,9 @@ class TestExitCodeExtraction:
         session_file = tmp_path / "session.jsonl"
         entries = [
             _create_user_entry("Run a failing command", offset=0),
-            _create_tool_use_entry("Bash", {"command": "exit 1"}, "tool-1", offset=1),
+            _create_tool_use_entry(
+                "Bash", {"command": "exit 1"}, "tool-1", offset=1
+            ),
             {
                 "type": "user",
                 "uuid": "result-2",
@@ -599,7 +601,9 @@ class TestExitCodeExtraction:
         )
 
         # Non-Bash tools should not have "→ exit" suffix
-        assert "→ exit" not in markdown, "Non-Bash tools should not display exit codes."
+        assert "→ exit" not in markdown, (
+            "Non-Bash tools should not display exit codes."
+        )
 
     def test_exit_code_128_extracted(self, tmp_path: Path):
         """Exit code 128 (and other codes) should be correctly extracted.
@@ -609,7 +613,9 @@ class TestExitCodeExtraction:
         session_file = tmp_path / "session.jsonl"
         entries = [
             _create_user_entry("Push to git", offset=0),
-            _create_tool_use_entry("Bash", {"command": "git push"}, "tool-1", offset=1),
+            _create_tool_use_entry(
+                "Bash", {"command": "git push"}, "tool-1", offset=1
+            ),
             {
                 "type": "user",
                 "uuid": "result-2",

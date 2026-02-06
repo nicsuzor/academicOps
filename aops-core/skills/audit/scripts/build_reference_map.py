@@ -15,7 +15,7 @@ import os
 import re
 import sys
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -340,7 +340,7 @@ def main() -> int:
         "--root",
         type=Path,
         default=None,
-        help="Framework root directory (default: plugin root)",
+        help="Framework root directory (default: $AOPS or current dir)",
     )
     parser.add_argument(
         "--output",
@@ -351,12 +351,13 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    # Determine root - default to plugin root (4 levels up from this script)
-    # This file is at aops-core/skills/audit/scripts/build_reference_map.py
+    # Determine root
     if args.root:
         root = args.root.resolve()
+    elif "AOPS" in os.environ:
+        root = Path(os.environ["AOPS"]).resolve()
     else:
-        root = Path(__file__).resolve().parent.parent.parent.parent
+        root = Path.cwd().resolve()
 
     if not root.is_dir():
         print(f"Error: Root directory does not exist: {root}", file=sys.stderr)

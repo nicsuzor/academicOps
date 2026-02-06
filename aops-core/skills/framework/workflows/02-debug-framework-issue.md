@@ -10,61 +10,60 @@ description: Process for diagnosing and fixing framework component failures and 
 
 **When**: Framework component failing, unexpected behavior, integration broken.
 
-**Key principle**: Use **controlled tests in /tmp** to run experiments and validate hypotheses. Read **session transcripts** to understand agent behavior.
+**Key principle**: Use **controlled tests in /tmp** to run experiments and validate hypotheses. Read **Claude session logs** to understand agent behavior.
+
+**CRITICAL**: If you need to read session JSONL files, invoke `Skill(skill='transcript')` FIRST to convert to markdown. Raw JSONL wastes 10-70K tokens; transcripts are 90% smaller and human-readable.
 
 **Steps**:
 
-1. **Generate transcript FIRST (MANDATORY)**
-   - Raw JSONL wastes 10-70K tokens; transcripts are 90% smaller and human-readable
-   - Run: `cd $AOPS && uv run python scripts/transcript.py <session.jsonl>`
-   - Works with both Claude (`.jsonl`) and Gemini (`.json`) session files
-   - Output shows paths to full and abridged versions
-   - **Abridged is usually sufficient** (excludes verbose tool results)
-
-2. **Reproduce the issue with controlled test** (if not already reproduced)
+1. **Reproduce the issue with controlled test**
    - Run test with `--debug` flag (fixture does this automatically)
    - Test runs in `/tmp/claude-test-*` directory (controlled environment)
    - Required env vars (`AOPS`, `ACA_DATA`) must be set (fail-fast if missing)
    - Document exact steps to trigger issue
    - Verify issue exists (not user error)
 
-3. **Read the transcript to understand behavior**
-   - Look for tool calls, errors, and agent reasoning
-   - Check: Did agent read the right files? Follow instructions? Use correct tools?
-   - Note: Transcripts don't show hook-injected `<system-reminder>` tags
-   - To verify hook behavior, grep raw JSONL: `grep "system-reminder" <session.jsonl>`
+2. **Read Claude session logs to understand behavior**
+   - Session logs stored in `~/.claude/projects/-tmp-claude-test-*/`
+   - Use ripgrep to search logs: `rg "pattern" ~/.claude/projects/-tmp-claude-test-*/`
+   - Check JSONL files for:
+     - User prompts sent to agent
+     - Tool calls made by agent
+     - Agent's reasoning and decisions
+     - Error messages or failures
+   - Look for: Did agent read the right files? Follow instructions? Use correct tools?
 
-4. **Form hypothesis about root cause**
+3. **Form hypothesis about root cause**
    - Verify component follows single source of truth
    - Look for duplication or conflicts
    - **Agent behavior analysis**: Did agent receive correct context? Interpret instructions correctly?
 
-5. **Test hypothesis with controlled experiment**
+4. **Test hypothesis with controlled experiment**
    - Modify one variable at a time
    - Run test in `/tmp` with `--debug` flag
-   - Generate transcript and read it to confirm behavior change
+   - Read session logs to confirm behavior change
    - Iterate until hypothesis confirmed
-   - **Pattern**: Change → Test → Generate transcript → Refine hypothesis
+   - **Pattern**: Change → Test → Read logs → Refine hypothesis
 
-6. **Design minimal fix**
+5. **Design minimal fix**
    - Minimal change to address root cause
    - Avoid workarounds
    - Maintain documentation integrity
    - **Fail-fast enforcement**: Add validation that fails immediately on misconfiguration
 
-7. **Create/update integration test**
+6. **Create/update integration test**
    - Test must fail with current broken state
    - Test must pass with fix applied
    - Cover regression cases
    - **E2E test**: Agent must actually read and follow instructions (not just file existence)
 
-8. **Validate fix with full test suite**
+7. **Validate fix with full test suite**
    - Run all integration tests with `--debug` enabled
    - Verify no new conflicts introduced
    - Confirm documentation consistency
-   - Generate transcripts if tests fail
+   - Check session logs if tests fail
 
-9. **Log in experiment if significant**
+8. **Log in experiment if significant**
    - Document issue, root cause, fix
    - Note lessons learned from session log analysis
    - Document debugging pattern used
@@ -88,36 +87,26 @@ rg "type.*tool" ~/.claude/projects/-tmp-claude-test-*/
 **Session transcript generation** (human-readable format):
 
 ```bash
-# List recent Claude sessions
-ls -lt ~/.claude/projects/-home-nic-src-academicOps/*.jsonl | head -5
+# List recent sessions for current project
+ls -lt ~/.claude/projects/-home-nic-src-aOps/*.jsonl | head -5
 
-# List recent Gemini sessions
-ls -lt ~/.gemini/tmp/*/chats/*.json | head -5
+# Generate markdown transcript from JSONL
+mkdir -p ~/.cache/aops/transcripts
+uv run $AOPS/scripts/session_transcript.py \
+  ~/.claude/projects/{project-path}/{session-id}.jsonl \
+  -o ~/.cache/aops/transcripts/{session-id}_transcript.md
 
-# Generate markdown transcript (works for both Claude and Gemini)
-cd $AOPS && uv run python scripts/transcript.py <session-file>
-
-# Output shows paths to full and abridged transcripts
-# Abridged is usually sufficient (excludes verbose tool results)
+# Read transcript (much easier than raw JSONL)
+cat ~/.cache/aops/transcripts/{session-id}_transcript.md
 ```
 
-**ALWAYS generate transcript first** - raw JSONL/JSON wastes tokens and is hard to read.
+Use transcripts when:
 
-**Hooks logs vs Session files** (important distinction):
+- Raw JSONL search results are hard to interpret
+- Need to understand full conversation flow
+- Sharing session details for debugging
 
-| File Type | Location | Contains |
-|-----------|----------|----------|
-| **Session file** | `~/.claude/projects/*/*.jsonl` or `~/.gemini/tmp/*/chats/session-*.json` | Actual conversation: user prompts, agent responses, tool calls |
-| **Hooks log** | `~/.gemini/tmp/*/chats/*-hooks.jsonl` | Hook events only: SessionStart, BeforeAgent, BeforeTool, AfterTool |
-
-- **Hooks logs** record what hooks fired and their outputs, NOT the conversation
-- If you have a hooks log, find the session file via `transcript_path` field in the first entry
-- Use `transcript.py` on the **session file**, not the hooks log
-
-```bash
-# Extract session file path from hooks log
-head -1 /path/to/hooks.jsonl | jq -r '.input.transcript_path'
-```
+**Note**: Transcripts don't show hook-injected `<system-reminder>` tags. To verify hook behavior, grep raw JSONL.
 
 **Controlled test environment**:
 
@@ -247,12 +236,12 @@ ls -lt ~/.claude/projects/-home-nic-src-academicOps/*.jsonl | head -10
 Raw JSONL is unreadable. Always convert first:
 
 ```bash
-# Generate transcript
-cd $AOPS && uv run python scripts/transcript.py \
+# Generate transcript (saves to $ACA_DATA/../sessions/claude/)
+cd $AOPS && uv run python scripts/session_transcript.py \
   ~/.claude/projects/-home-nic-src-academicOps/SESSION_ID.jsonl
 
 # Output shows paths to full and abridged versions
-# Abridged is usually sufficient (excludes verbose tool results)
+# Abridged is usually sufficient (excludes tool results)
 ```
 
 ### 3. Analyze the Transcript
@@ -289,7 +278,7 @@ grep -rl "c64de01b" ~/.claude/projects/
 # Found: ~/.claude/projects/-home-nic-src-academicOps/c64de01b-....jsonl
 
 # Generate transcript
-cd $AOPS && uv run python scripts/transcript.py \
+cd $AOPS && uv run python scripts/session_transcript.py \
   ~/.claude/projects/-home-nic-src-academicOps/c64de01b-....jsonl
 ```
 

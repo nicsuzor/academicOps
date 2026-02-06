@@ -65,9 +65,9 @@ def test_tasks_prompt_invokes_skill(claude_headless_tracked, skill_was_invoked) 
         tool_calls, "task"
     )
 
-    assert task_tools_used, (
-        f"No task tools used. Tool calls: {[c['name'] for c in tool_calls]}"
-    )
+    assert (
+        task_tools_used
+    ), f"No task tools used. Tool calls: {[c['name'] for c in tool_calls]}"
 
 
 def _read_framework_files(tool_calls: list) -> bool:
@@ -135,6 +135,6 @@ def test_memory_prompt_invokes_skill(
         tool_calls, "remember"
     )
 
-    assert memory_tools_used, (
-        f"No memory tools used. Tool calls: {[c['name'] for c in tool_calls]}"
-    )
+    assert (
+        memory_tools_used
+    ), f"No memory tools used. Tool calls: {[c['name'] for c in tool_calls]}"

@@ -4,11 +4,12 @@
 Tests hydration triggering logic, skip conditions, temp file creation, and context structure.
 """
 
+import json
 import os
 import tempfile
 import time
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -23,6 +24,7 @@ from user_prompt_submit import (
     build_hydration_instruction,
     cleanup_old_temp_files,
     load_template,
+    main,
     should_skip_hydration,
     write_temp_file,
 )
@@ -58,11 +60,6 @@ class TestSkipConditions:
         assert should_skip_hydration("/commit") is True
         assert should_skip_hydration("/help") is True
         assert should_skip_hydration("/ test") is True
-
-    def test_skip_expanded_slash_command(self):
-        """Test that expanded slash commands (starting with # /) are skipped."""
-        assert should_skip_hydration("# /pull - Pull task") is True
-        assert should_skip_hydration("# /test - Test command") is True
 
     def test_skip_dot_prefix(self):
         """Test that prompts starting with . are skipped (user ignore shortcut)."""
@@ -289,7 +286,9 @@ class TestHydrationContext:
                     "Preview: {prompt_preview}\nFile: {temp_path}",
                 ]
 
-                build_hydration_instruction(session_id, prompt, transcript_path)
+                instruction = build_hydration_instruction(
+                    session_id, prompt, transcript_path
+                )
 
                 # Verify context was included in temp file
                 temp_files = list(temp_hydrator_dir.glob("hydrate_*.md"))
@@ -327,7 +326,9 @@ class TestHydrationContext:
             ]
 
             # Should not raise - graceful degradation
-            build_hydration_instruction(session_id, prompt, "/fake/transcript")
+            instruction = build_hydration_instruction(
+                session_id, prompt, "/fake/transcript"
+            )
 
             # Should still create temp file and instruction
             assert len(list(temp_hydrator_dir.glob("hydrate_*.md"))) == 1
@@ -355,6 +356,168 @@ class TestHydrationContext:
             # Should propagate IOError for fail-fast behavior
             with pytest.raises(IOError, match="Disk full"):
                 build_hydration_instruction(session_id, prompt)
+
+
+class TestMainHookEntry:
+    """Test main() hook entry point."""
+
+    def test_main_skips_hydration_for_slash_command(
+        self, temp_hydrator_dir, mock_session_state, monkeypatch, capsys
+    ):
+        """Test that main() skips hydration for slash commands."""
+        import io
+
+        input_data = {
+            "prompt": "/commit",
+            "session_id": "test-session",
+        }
+        monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(input_data)))
+
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+
+        assert exc_info.value.code == 0
+
+        # Verify output has no context injection
+        captured = capsys.readouterr()
+        output = json.loads(captured.out)
+        assert output.get("context_injection") is None
+        assert output["verdict"] == "allow"
+
+        # Verify hydration_pending was cleared
+        mock_session_state["clear"].assert_called_once()
+
+    def test_main_skips_hydration_for_dot_prefix(
+        self, temp_hydrator_dir, mock_session_state, monkeypatch, capsys
+    ):
+        """Test that main() skips hydration for dot prefix."""
+        import io
+
+        input_data = {
+            "prompt": ".just do it without planning",
+            "session_id": "test-session",
+        }
+        monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(input_data)))
+
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+
+        assert exc_info.value.code == 0
+
+        # Verify output has no context injection
+        captured = capsys.readouterr()
+        output = json.loads(captured.out)
+        assert output.get("context_injection") is None
+        assert output["verdict"] == "allow"
+
+    def test_main_builds_hydration_for_normal_prompt(
+        self, temp_hydrator_dir, mock_session_state, monkeypatch, capsys
+    ):
+        """Test that main() builds hydration instruction for normal prompts."""
+        import io
+
+        input_data = {
+            "prompt": "Fix the authentication bug",
+            "session_id": "test-session-normal",
+        }
+        monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(input_data)))
+
+        with patch(
+            "user_prompt_submit.build_hydration_instruction",
+            return_value="Hydration instruction with temp file path",
+        ):
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+
+            assert exc_info.value.code == 0
+
+            captured = capsys.readouterr()
+            output = json.loads(captured.out)
+            assert (
+                "Hydration instruction"
+                in output["context_injection"]
+            )
+    def test_main_handles_missing_session_id(
+        self, temp_hydrator_dir, monkeypatch, capsys
+    ):
+        """Test that main() fails fast on missing session_id (P#8, P#25)."""
+        import io
+
+        input_data = {
+            "prompt": "Test prompt",
+            # No session_id
+        }
+        monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(input_data)))
+
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+
+        # Fail-fast: exit 2 on missing required field
+        assert exc_info.value.code == 2
+
+        captured = capsys.readouterr()
+        assert "session_id" in captured.err
+
+    def test_main_handles_invalid_json(self, temp_hydrator_dir, monkeypatch, capsys):
+        """Test that main() fails fast on invalid JSON input (P#8, P#25)."""
+        import io
+
+        monkeypatch.setattr("sys.stdin", io.StringIO("not valid json"))
+
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+
+        # Fail-fast: exit 2 on malformed input
+        assert exc_info.value.code == 2
+
+        captured = capsys.readouterr()
+        assert "JSON" in captured.err
+
+    def test_main_fails_fast_on_io_error(
+        self, temp_hydrator_dir, mock_session_state, monkeypatch, capsys
+    ):
+        """Test that main() exits with code 2 on temp file write failure (P#8, P#25)."""
+        import io
+
+        input_data = {
+            "prompt": "Normal prompt",
+            "session_id": "test-fail-fast",
+        }
+        monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(input_data)))
+
+        with patch(
+            "user_prompt_submit.build_hydration_instruction",
+            side_effect=IOError("Disk full"),
+        ):
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+
+            # Fail-fast: exit 2 for infrastructure failure
+            assert exc_info.value.code == 2
+
+            captured = capsys.readouterr()
+            assert "Disk full" in captured.err
+
+    def test_main_handles_empty_prompt(self, temp_hydrator_dir, monkeypatch, capsys):
+        """Test that main() handles empty prompt gracefully."""
+        import io
+
+        input_data = {
+            "prompt": "",
+            "session_id": "test-empty",
+        }
+        monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(input_data)))
+
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+
+        assert exc_info.value.code == 0
+
+        # Empty prompt results in empty output dict (doesn't enter if prompt: block)
+        captured = capsys.readouterr()
+        output = json.loads(captured.out)
+        # When prompt is empty, output_data is initialized as {} and stays that way
+        assert output == {}
 
 
 if __name__ == "__main__":

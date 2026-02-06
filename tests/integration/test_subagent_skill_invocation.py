@@ -64,7 +64,7 @@ def retry_flaky_e2e(test_func, max_attempts: int = 3):
             else:
                 # All attempts failed
                 raise AssertionError(
-                    f"Test failed after {max_attempts} attempts. Last error: {e}"
+                    f"Test failed after {max_attempts} attempts. " f"Last error: {e}"
                 ) from last_error
     # This should never be reached, but satisfies type checker
     raise AssertionError("Retry logic error")
@@ -80,7 +80,8 @@ def test_skill_invocation_produces_formatted_output(claude_headless) -> None:
 
     Format markers checked:
     - Proper frontmatter (title, permalink, type, tags)
-    - Content with [[wikilinks]] for related concepts
+    - ## Observations section with [category] syntax
+    - ## Relations section with [[WikiLinks]]
     """
 
     def _test_attempt():
@@ -139,7 +140,8 @@ def test_skill_invocation_produces_formatted_output(claude_headless) -> None:
         "title_field": "title:" in content,
         "permalink_field": "permalink:" in content,
         "type_field": "type:" in content,
-        "has_wikilinks": "[[" in content and "]]" in content,
+        "context_or_observations": "## Context" in content
+        or "## Observations" in content,
     }
 
     # At least 4 of 5 markers should be present if skill was properly loaded

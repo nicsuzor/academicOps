@@ -282,9 +282,7 @@ class TestV1ComponentsDemo:
         all_analyses = []
 
         for i, session_file in enumerate(session_files, 1):
-            print(
-                f"\n>>> SESSION {i}/{len(session_files)}: {session_file.name[:16]}..."
-            )
+            print(f"\n>>> SESSION {i}/{len(session_files)}: {session_file.name[:16]}...")
 
             # Generate transcript
             print("  Generating transcript...")
@@ -359,9 +357,7 @@ class TestV1ComponentsDemo:
         for agent, count in component_counts["agents"].items():
             pct = (count / total_sessions) * 100
             status = "✓" if count > 0 else "✗"
-            print(
-                f"  {status} {agent:20s} - {count}/{total_sessions} sessions ({pct:.0f}%)"
-            )
+            print(f"  {status} {agent:20s} - {count}/{total_sessions} sessions ({pct:.0f}%)")
 
         print("\n--- WORKFLOWS (6) ---")
         for workflow, count in component_counts["workflows"].items():
@@ -375,25 +371,19 @@ class TestV1ComponentsDemo:
         for gate, count in component_counts["qa_gates"].items():
             pct = (count / total_sessions) * 100
             status = "✓" if count > 0 else "✗"
-            print(
-                f"  {status} {gate:20s} - {count}/{total_sessions} sessions ({pct:.0f}%)"
-            )
+            print(f"  {status} {gate:20s} - {count}/{total_sessions} sessions ({pct:.0f}%)")
 
         print("\n--- SESSION CLOSE (2) ---")
         for component, count in component_counts["session_close"].items():
             pct = (count / total_sessions) * 100
             status = "✓" if count > 0 else "✗"
-            print(
-                f"  {status} {component:20s} - {count}/{total_sessions} sessions ({pct:.0f}%)"
-            )
+            print(f"  {status} {component:20s} - {count}/{total_sessions} sessions ({pct:.0f}%)")
 
         print("\n--- TODOWRITE ---")
         count = component_counts["todowrite"]
         pct = (count / total_sessions) * 100
         status = "✓" if count > 0 else "✗"
-        print(
-            f"  {status} TodoWrite usage     - {count}/{total_sessions} sessions ({pct:.0f}%)"
-        )
+        print(f"  {status} TodoWrite usage     - {count}/{total_sessions} sessions ({pct:.0f}%)")
 
         # === STEP 5: Show Evidence Examples ===
         print("\n" + "=" * 80)
@@ -409,19 +399,19 @@ class TestV1ComponentsDemo:
             for agent, data in first_analysis.get("agents", {}).items():
                 if data.get("found"):
                     evidence = data.get("evidence", "")[:150]
-                    print(f'  {agent}: "{evidence}..."')
+                    print(f"  {agent}: \"{evidence}...\"")
 
             print("\n--- Workflow Evidence ---")
             for workflow, data in first_analysis.get("workflows", {}).items():
                 if data.get("found"):
                     evidence = data.get("evidence", "")[:150]
-                    print(f'  {workflow}: "{evidence}..."')
+                    print(f"  {workflow}: \"{evidence}...\"")
 
             print("\n--- QA Gate Evidence ---")
             for gate, data in first_analysis.get("qa_gates", {}).items():
                 if data.get("found"):
                     evidence = data.get("evidence", "")[:150]
-                    print(f'  {gate}: "{evidence}..."')
+                    print(f"  {gate}: \"{evidence}...\"")
 
         # === VALIDATION CRITERIA ===
         print("\n" + "=" * 80)
@@ -435,10 +425,7 @@ class TestV1ComponentsDemo:
                 "Hydration (prompt-hydrator agent)",
                 component_counts["agents"]["prompt-hydrator"] >= 1,
             ),
-            (
-                "QA Gates (critic OR custodiet)",
-                sum(component_counts["qa_gates"].values()) >= 1,
-            ),
+            ("QA Gates (critic OR custodiet)", sum(component_counts["qa_gates"].values()) >= 1),
             ("TodoWrite usage", component_counts["todowrite"] >= 1),
             (
                 "At least one workflow identified",
@@ -467,22 +454,22 @@ This demo verified the v1.0 core loop by analyzing {total_sessions} real session
 
 **v1.0 Components Verified:**
 
-**Agents ({sum(1 for c in component_counts["agents"].values() if c > 0)}/5 found):**
+**Agents ({sum(1 for c in component_counts['agents'].values() if c > 0)}/5 found):**
 - prompt-hydrator: Transforms prompts into execution plans
 - critic: Reviews plans BEFORE execution
 - custodiet: Checks compliance DURING execution
 - qa-verifier: Verifies work AFTER completion
 - framework: Manages reflections and learnings
 
-**Workflows ({sum(1 for c in component_counts["workflows"].values() if c > 0)}/6 found):**
+**Workflows ({sum(1 for c in component_counts['workflows'].values() if c > 0)}/6 found):**
 The hydrator routes prompts to appropriate workflows based on intent.
 
-**QA Gates ({sum(1 for c in component_counts["qa_gates"].values() if c > 0)}/3 found):**
+**QA Gates ({sum(1 for c in component_counts['qa_gates'].values() if c > 0)}/3 found):**
 - Critic (BEFORE): Identifies plan problems before wasting effort
 - Custodiet (DURING): Detects scope drift and compliance violations
 - QA-verifier (AFTER): Independent verification before completion
 
-**Session Close ({sum(1 for c in component_counts["session_close"].values() if c > 0)}/2 found):**
+**Session Close ({sum(1 for c in component_counts['session_close'].values() if c > 0)}/2 found):**
 Work is NOT complete until git push succeeds.
 
 **What This Proves:**

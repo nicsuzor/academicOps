@@ -350,7 +350,9 @@ def main() -> int:
         action="store_true",
         help="Only show errors, not warnings",
     )
-    parser.add_argument("--json", "-j", action="store_true", help="Output as JSON")
+    parser.add_argument(
+        "--json", "-j", action="store_true", help="Output as JSON"
+    )
 
     args = parser.parse_args()
 

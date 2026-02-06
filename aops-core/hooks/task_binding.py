@@ -18,5 +18,155 @@ Exit codes:
     0: Success (always - this hook doesn't block)
 """
 
+import json
+import os
+import sys
+from typing import Any
 
-# Re-export from hook_utils for backwards compatibility
+
+def get_task_id_from_result(tool_result: dict[str, Any]) -> str | None:
+    """Extract task_id from MCP tool result.
+
+    Args:
+        tool_result: The tool_result dict from hook input
+
+    Returns:
+        Task ID string or None if not found
+    """
+    # Handle Gemini tool_response structure (JSON in returnDisplay string)
+    if "returnDisplay" in tool_result:
+        try:
+            content = tool_result["returnDisplay"]
+            if isinstance(content, str):
+                data = json.loads(content)
+                return data.get("task", {}).get("id")
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    # MCP task tools return {"success": true, "task": {"id": "...", ...}}
+    task = tool_result.get("task", {})
+    return task.get("id")
+
+
+def main() -> None:
+    """Main hook entry point."""
+    # Read input from stdin
+    try:
+        input_data: dict[str, Any] = json.load(sys.stdin)
+    except Exception:
+        print(json.dumps({}))
+        sys.exit(0)
+
+    # Extract tool info (support both naming conventions)
+    tool_name = input_data.get("tool_name") or input_data.get("toolName", "")
+    tool_input = input_data.get("tool_input") or input_data.get("toolInput", {})
+
+    # Handle Gemini tool_response vs Claude tool_result
+    tool_result = (
+        input_data.get("tool_result")
+        or input_data.get("toolResult")
+        or input_data.get("tool_response", {})
+    )
+
+    # Get session ID from input_data (Gemini) or environment (Claude)
+    session_id = input_data.get("session_id") or os.environ.get("CLAUDE_SESSION_ID")
+    if not session_id:
+        print(json.dumps({}))
+        sys.exit(0)
+
+    # Track state changes
+    try:
+        from lib.event_detector import detect_tool_state_changes, StateChange
+
+        changes = detect_tool_state_changes(tool_name, tool_input, tool_result)
+    except Exception as e:
+        print(f"event_detector error: {e}", file=sys.stderr)
+        print(json.dumps({}))
+        sys.exit(0)
+
+    # 1. PLAN MODE
+    if StateChange.PLAN_MODE in changes:
+        try:
+            from lib.session_state import is_plan_mode_invoked, set_plan_mode_invoked
+
+            if not is_plan_mode_invoked(session_id):
+                set_plan_mode_invoked(session_id)
+                output = {
+                    "verdict": "allow",
+                    "system_message": "Plan mode gate passed ✓",
+                }
+                print(json.dumps(output))
+                sys.exit(0)
+        except Exception as e:
+            print(f"task_binding plan_mode error: {e}", file=sys.stderr)
+        print(json.dumps({}))
+        sys.exit(0)
+
+    # 2. TASK UNBINDING
+    if StateChange.UNBIND_TASK in changes:
+        try:
+            from lib.session_state import clear_current_task, get_current_task
+
+            current = get_current_task(session_id)
+            if current:
+                clear_current_task(session_id)
+                output = {
+                    "verdict": "allow",
+                    "system_message": f"Task completed and unbound from session: {current}",
+                }
+                print(json.dumps(output))
+                sys.exit(0)
+        except Exception as e:
+            print(f"task_binding unbind error: {e}", file=sys.stderr)
+        print(json.dumps({}))
+        sys.exit(0)
+
+    # 3. TASK BINDING
+    if StateChange.BIND_TASK in changes:
+        # Extract task_id from result (still need specific logic for this as it depends on extracting ID)
+        task_id = get_task_id_from_result(tool_result)
+        if not task_id:
+            print(json.dumps({}))
+            sys.exit(0)
+
+        # Determine binding source
+        source = "claim"
+
+        try:
+            from lib.session_state import get_current_task, set_current_task
+
+            # Check if already bound to a different task
+            current = get_current_task(session_id)
+            if current and current != task_id:
+                # Already bound to another task - log but don't override
+                output = {
+                    "verdict": "allow",
+                    "system_message": f"Note: Session already bound to task {current}, ignoring {task_id}",
+                }
+                print(json.dumps(output))
+                sys.exit(0)
+
+            # Bind the task
+            set_current_task(session_id, task_id, source=source)
+
+            # Output confirmation
+            output = {
+                "verdict": "allow",
+                "system_message": f"Task bound to session: {task_id}",
+            }
+            print(json.dumps(output))
+            sys.exit(0)
+
+        except Exception as e:
+            # Log error but don't block execution
+            print(f"task_binding hook error: {e}", file=sys.stderr)
+            print(json.dumps({}))
+            sys.exit(0)
+
+    # No changes detected
+    print(json.dumps({}))
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()

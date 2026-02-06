@@ -18,7 +18,9 @@ Exit codes:
     0: Success (transformation applied or pass-through)
 """
 
+import json
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -220,3 +222,66 @@ def transform_tool(
         return transform_grep(tool_input, tool_config)
 
     return None, None, False
+
+
+def main() -> None:
+    """Main hook entry point."""
+    # Read input from stdin
+    input_data: dict[str, Any] = {}
+    try:
+        input_data = json.load(sys.stdin)
+    except Exception:
+        # No input or invalid JSON - pass through
+        print(json.dumps({}))
+        sys.exit(0)
+
+    tool_name = input_data.get("tool_name", "")
+    tool_input = input_data.get("tool_input", {})
+
+    if not tool_name:
+        # No tool name - pass through
+        print(json.dumps({}))
+        sys.exit(0)
+
+    # Load config
+    config = load_config()
+
+    # Check master switch
+    if not config.get("enabled", True):
+        # Disabled globally - pass through
+        print(json.dumps({}))
+        sys.exit(0)
+
+    # Apply transformation
+    updated_input, context, should_block = transform_tool(tool_name, tool_input, config)
+
+    # Build output
+    if updated_input is None and context is None and not should_block:
+        # No transformation - pass through
+        print(json.dumps({}))
+        sys.exit(0)
+
+    output: dict[str, Any] = {}
+
+    if should_block:
+        # Block the tool call and provide alternative
+        output = {"verdict": "deny", "context_injection": context if context else None}
+    elif updated_input is not None:
+        # Allow with modified input
+        output = {"verdict": "allow", "metadata": {"updated_input": updated_input}}
+        if context:
+            output["context_injection"] = context
+    elif context is not None:
+        # Advisory only (Warn/Allow with context)
+        # Using 'warn' to signify attention needed, which maps to allowed with context in Claude
+        output = {"verdict": "warn", "context_injection": context}
+    else:
+        # Pass through empty
+        output = {}
+
+    print(json.dumps(output))
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()

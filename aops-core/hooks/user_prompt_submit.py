@@ -14,6 +14,7 @@ Exit codes:
 import json
 import os
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -25,7 +26,6 @@ from lib.hook_utils import (
 )
 from lib.paths import (
     get_plugin_root,
-    get_aops_root,
     get_data_root,
     get_skills_dir,
     get_hooks_dir,
@@ -46,6 +46,10 @@ from lib.session_state import (
     set_hydration_pending,
     set_hydration_temp_path,
     clear_hydration_pending,
+    set_gates_bypassed,
+    clear_reflection_output,
+    get_or_create_session_state,
+    save_session_state,
 )
 from lib.template_loader import load_template
 
@@ -57,26 +61,16 @@ INSTRUCTION_TEMPLATE_FILE = HOOK_DIR / "templates" / "prompt-hydration-instructi
 # Temp directory category (matches hydration_gate.py)
 TEMP_CATEGORY = "hydrator"
 
-# Debug log - opt-in via AOPS_DEBUG_LOG environment variable
-# If not set, debug logging is disabled (no-op)
-_DEBUG_LOG_PATH: Path | None = None
-if "AOPS_DEBUG_LOG" in os.environ:
-    _DEBUG_LOG_PATH = Path(os.environ["AOPS_DEBUG_LOG"])
+DEBUG_LOG_FILE = Path("/home/nic/gemini_hook_debug.log")
 
 
 def _log_debug(msg: str) -> None:
-    """Log debug message to file if AOPS_DEBUG_LOG is set."""
-    if _DEBUG_LOG_PATH is None:
-        return
     try:
-        with open(_DEBUG_LOG_PATH, "a") as f:
+        with open(DEBUG_LOG_FILE, "a") as f:
             ts = datetime.now().isoformat()
             f.write(f"[{ts}] {msg}\n")
-    except OSError as e:
-        # Debug logging failure is non-fatal but we log to stderr for visibility
-        import sys
-
-        print(f"Debug log write failed: {e}", file=sys.stderr)
+    except Exception:
+        pass
 
 
 FILE_PREFIX = "hydrate_"
@@ -101,7 +95,6 @@ def load_framework_paths() -> str:
     """
     try:
         plugin_root = get_plugin_root()
-        aops_root = get_aops_root()
         # data_root = get_data_root()  # May raise if not set, handled by catch-all
 
         # Build path table dynamically
@@ -112,7 +105,6 @@ def load_framework_paths() -> str:
             "",
             "| Path Variable | Resolved Path |",
             "|--------------|---------------|",
-            f"| $AOPS        | {aops_root} |",
             f"| $PLUGIN_ROOT | {plugin_root} |",
             f"| $ACA_DATA    | {get_data_root()} |",
             "",
@@ -142,76 +134,6 @@ def load_framework_paths() -> str:
 
     except Exception as e:
         return f"(Error gathering framework paths: {e})"
-
-
-def load_mcp_tools_context() -> str:
-    """List available MCP tools and servers."""
-    # These are the known servers in the framework
-    servers = {
-        "task_manager": "Manages the hierarchical task system (create, update, complete, decompose)",
-        "memory": "Semantic memory retrieval and recall",
-        "outlook": "Integration with Outlook calendar and messages",
-    }
-
-    lines = ["## Available MCP Servers", ""]
-    lines.append("| Server | Description |")
-    lines.append("|--------|-------------|")
-    for name, desc in servers.items():
-        lines.append(f"| {name} | {desc} |")
-
-    return "\n".join(lines)
-
-
-def load_environment_variables_context() -> str:
-    """List relevant environment variables."""
-    vars_to_check = [
-        "AOPS",
-        "ACA_DATA",
-        "POLECAT_HOME",
-        "NTFY_TOPIC",
-        "HYDRATION_GATE_MODE",
-        "CUSTODIET_MODE",
-        "TASK_GATE_MODE",
-        "CLAUDE_SESSION_ID",
-    ]
-
-    lines = ["## Environment Variables", ""]
-    lines.append("| Variable | Value |")
-    lines.append("|----------|-------|")
-    for var in vars_to_check:
-        value = os.environ.get(var, "(not set)")
-        lines.append(f"| {var} | `{value}` |")
-
-    return "\n".join(lines)
-
-
-def load_project_paths_context() -> str:
-    """Load project-specific paths from polecat.yaml."""
-    polecat_config = Path.home() / ".aops" / "polecat.yaml"
-    if not polecat_config.exists():
-        return ""
-
-    try:
-        import yaml
-
-        with open(polecat_config) as f:
-            config = yaml.safe_load(f)
-
-        projects = config.get("projects", {})
-        if not projects:
-            return ""
-
-        lines = ["## Project-Specific Paths", ""]
-        lines.append("| Project | Path | Default Branch |")
-        lines.append("|---------|------|----------------|")
-        for slug, proj in projects.items():
-            path = proj.get("path", "")
-            branch = proj.get("default_branch", "main")
-            lines.append(f"| {slug} | `{path}` | {branch} |")
-        return "\n".join(lines)
-    except Exception as e:
-        # Don't fail the whole hook if yaml or polecat.yaml loading fails
-        return f"<!-- Project paths skipped: {e} -->"
 
 
 def _strip_frontmatter(content: str) -> str:
@@ -276,10 +198,7 @@ def _load_project_workflows(prompt: str = "") -> str:
 
     included_workflows = []
     for wf_file in workflow_files:
-        # Internal dict lookup - empty list for unlisted files is correct (no keywords = no match)
-        keywords = workflow_keywords.get(wf_file.name)
-        if keywords is None:
-            keywords = []
+        keywords = workflow_keywords.get(wf_file.name, [])
         if any(kw in prompt_lower for kw in keywords):
             try:
                 content = wf_file.read_text()
@@ -337,15 +256,9 @@ def load_project_context_index() -> str:
 
     try:
         context_map = json.loads(map_file.read_text())
+        docs = context_map.get("docs", [])
     except (json.JSONDecodeError, OSError):
         return ""
-
-    # Validate structure - docs array is required if context-map exists
-    if "docs" not in context_map:
-        return ""  # No docs key = graceful skip (optional feature)
-    docs = context_map["docs"]
-    if not isinstance(docs, list):
-        return ""  # Invalid structure = graceful skip
 
     if not docs:
         return ""
@@ -355,23 +268,10 @@ def load_project_context_index() -> str:
     # Header handled in template
 
     for doc in docs:
-        # Validate required fields per doc entry
-        if not isinstance(doc, dict):
-            continue  # Skip malformed entries
-        topic = doc.get("topic")
-        if topic is None:
-            topic = "Unknown"
-        topic = topic.replace("_", " ").title()
-        path = doc.get("path")
-        if path is None:
-            path = ""
-        desc = doc.get("description")
-        if desc is None:
-            desc = ""
-        keywords_list = doc.get("keywords")
-        if keywords_list is None:
-            keywords_list = []
-        keywords = ", ".join(keywords_list)
+        topic = doc.get("topic", "Unknown").replace("_", " ").title()
+        path = doc.get("path", "")
+        desc = doc.get("description", "")
+        keywords = ", ".join(doc.get("keywords", []))
 
         entry = f"- **{topic}** (`{path}`)"
         if desc:
@@ -507,11 +407,9 @@ def get_session_id() -> str:
     Returns CLAUDE_SESSION_ID if set, raises ValueError otherwise.
     Session ID is required for state isolation.
     """
-    session_id = os.environ.get("CLAUDE_SESSION_ID")
-    if session_id is None:
-        raise ValueError("CLAUDE_SESSION_ID not set - cannot save session state")
+    session_id = os.environ.get("CLAUDE_SESSION_ID", "")
     if not session_id:
-        raise ValueError("CLAUDE_SESSION_ID is empty - cannot save session state")
+        raise ValueError("CLAUDE_SESSION_ID not set - cannot save session state")
     return session_id
 
 
@@ -604,15 +502,6 @@ def build_hydration_instruction(
     # Load framework paths from FRAMEWORK-PATHS.md (DRY - single source of truth)
     framework_paths = load_framework_paths()
 
-    # Load available MCP tools and servers
-    mcp_tools = load_mcp_tools_context()
-
-    # Load relevant environment variables
-    env_vars = load_environment_variables_context()
-
-    # Load project-specific paths
-    project_paths = load_project_paths_context()
-
     # Pre-load stable framework docs (reduces hydrator runtime I/O)
     workflows_index = load_workflows_index(prompt)
     skills_index = load_skills_index()
@@ -634,9 +523,6 @@ def build_hydration_instruction(
         prompt=prompt,
         session_context=session_context,
         framework_paths=framework_paths,
-        mcp_tools=mcp_tools,
-        env_vars=env_vars,
-        project_paths=project_paths,
         project_context_index=project_context_index,
         relevant_files=relevant_files,
         workflows_index=workflows_index,
@@ -723,31 +609,15 @@ def is_followup_prompt(session_id: str, prompt: str) -> bool:
     # Continuation markers indicating same-context work
     continuation_markers = [
         # Pronouns referring to prior context
-        "this",
-        "that",
-        "those",
-        "these",
-        "it",
+        "this", "that", "those", "these", "it",
         # Additive markers
-        "also",
-        "too",
-        "as well",
-        "while you're at it",
+        "also", "too", "as well", "while you're at it",
         # Repetition markers
-        "same",
-        "again",
-        "another",
+        "same", "again", "another",
         # Action verbs for quick tasks
-        "save",
-        "add",
-        "put",
-        "update",
-        "log",
-        "note",
+        "save", "add", "put", "update", "log", "note",
         # Continuation phrases
-        "one more",
-        "quick",
-        "before you go",
+        "one more", "quick", "before you go",
     ]
     prompt_lower = prompt.lower()
     has_continuation = any(marker in prompt_lower for marker in continuation_markers)
@@ -761,7 +631,6 @@ def should_skip_hydration(prompt: str, session_id: str | None = None) -> bool:
     Returns True for:
     - Agent/task completion notifications (<agent-notification>, <task-notification>)
     - Skill invocations (prompts starting with '/')
-    - Expanded slash commands (containing <command-name>/ tag)
     - User ignore shortcut (prompts starting with '.')
     - Follow-up prompts within active session work (requires session_id)
     """
@@ -771,16 +640,8 @@ def should_skip_hydration(prompt: str, session_id: str | None = None) -> bool:
         return True
     if prompt_stripped.startswith("<task-notification>"):
         return True
-    # Expanded slash commands - the skill expansion IS the hydration
-    # These contain <command-name>/xxx</command-name> tags from Claude Code
-    if "<command-name>/" in prompt:
-        return True
-    # Skill invocations - generally skip hydration, UNLESS it's a pull command
-    # /pull implies picking up a task, which requires context to understand
+    # Skill invocations - generally skip hydration
     if prompt_stripped.startswith("/"):
-        return True
-    # Slash command expansions (e.g. "# /pull ...")
-    if prompt_stripped.startswith("# /"):
         return True
     # User ignore shortcut - user explicitly wants no hydration
     if prompt_stripped.startswith("."):
@@ -789,3 +650,84 @@ def should_skip_hydration(prompt: str, session_id: str | None = None) -> bool:
     if session_id and is_followup_prompt(session_id, prompt_stripped):
         return True
     return False
+
+
+def main():
+    """Main hook entry point - writes context to temp file, returns short instruction."""
+    # Read input from stdin
+    input_data: dict[str, Any] = {}
+    try:
+        input_data = json.load(sys.stdin)
+        input_data["argv"] = sys.argv
+    except Exception as e:
+        _log_debug(f"Input Parse Error: {e}")
+        # Fail-fast: no silent failures (P#8, P#25)
+        print(
+            f"ERROR: UserPromptSubmit hook failed to parse stdin JSON: {e}",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+    try:
+        prompt = input_data.get("prompt", "")
+        transcript_path = input_data.get("transcript_path")
+        session_id = input_data.get("session_id", "")
+
+        _log_debug(f"SID={session_id} Prompt='{prompt[:50]}...'")
+
+        # Require session_id for state isolation
+        if not session_id:
+            msg = "ERROR: UserPromptSubmit hook requires session_id for state isolation"
+            _log_debug(msg)
+            print(msg, file=sys.stderr)
+            sys.exit(2)
+
+        # Clear reflection tracking flag for new user prompt
+        # This tracks whether the agent outputs a Framework Reflection before session end
+        clear_reflection_output(session_id)
+
+        # Check for skip patterns FIRST before any state changes
+        # Skip hydration for system messages, skill invocations, user ignore shortcut,
+        # and follow-up prompts within active session work
+        if should_skip_hydration(prompt, session_id):
+            # Write state with hydration_pending=False so gate doesn't block
+            write_initial_hydrator_state(session_id, prompt, hydration_pending=False)
+            # If '.' prefix, also set gates_bypassed for task_required_gate
+            if prompt.strip().startswith("."):
+                set_gates_bypassed(session_id, True)
+
+            _log_debug("Skipping: should_skip_hydration=True")
+            output_data = {
+                "verdict": "allow",
+                # No hydration needed
+            }
+            print(json.dumps(output_data))
+            sys.exit(0)
+
+        # Build hydration instruction (writes temp file)
+        output_data: dict[str, Any] = {}
+        exit_code = 0
+
+        if prompt:
+            _log_debug("Attempting to build hydration instruction...")
+            hydration_instruction = build_hydration_instruction(
+                session_id, prompt, transcript_path
+            )
+            output_data = {
+                "verdict": "allow",
+                "context_injection": hydration_instruction,
+            }
+            _log_debug("Hydration instruction built successfully")
+
+        # Output JSON
+        print(json.dumps(output_data))
+        sys.exit(exit_code)
+
+    except Exception as e:
+        import traceback
+
+        tb = traceback.format_exc()
+        _log_debug(f"CRITICAL ERROR in main: {e}\n{tb}")
+        # Fail-fast
+        print(f"ERROR: UserPromptSubmit hook crashed: {e}", file=sys.stderr)
+        sys.exit(2)

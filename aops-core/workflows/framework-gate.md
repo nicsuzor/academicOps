@@ -35,7 +35,7 @@ For ANY framework modification, output:
 **Component**: [which framework component is being modified]
 **Spec**: [relevant spec file, e.g., specs/workflow-system-spec.md]
 **Indices**: [which indices need updating: WORKFLOWS.md, SKILLS.md, framework/enforcement-map.md, etc.]
-**Governance level**: [governance (axes: AXIOMS.md, HEURISTICS.md) | code (specs/workflows/skills)]
+**Governance level**: [governance (axes: framework/AXIOMS.md, framework/HEURISTICS.md) | code (specs/workflows/skills)]
 ```
 
 ## Critical Rule
