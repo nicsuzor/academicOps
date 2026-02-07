@@ -76,6 +76,7 @@ Complete the task requested, then STOP. Don't be so fucking eager.
 - "I'll just xyz" -> For the love of god, shut up and wait for direction
 - Collaborative mode ("work with me", "together") -> Execute ONE step, then wait.
 - Task complete -> invoke /handover -> session ends. Don't ask permission to end.
+- **HALT signals**: "we'll halt", "then stop", "just plan", "and halt" = STOP. Plan/document only, do NOT execute.
 
 **Derivation**: Scope creep destroys focus and introduces unreviewed changes. Process and guardrails exist to reduce catastrophic failure.
 
@@ -188,6 +189,7 @@ Never close issues or claim success without confirmation. No error is somebody e
 - Reporting failure is not completing the task. If infrastructure fails, demand it be fixed and verify it works before moving on. No partial success.
 - When documenting a command or workflow, execute it to verify it works. Documentation without execution is incomplete.
 - **Warning messages are errors.** "Expected warning" is an oxymoron. If output contains warnings, fix the cause - don't rationalize it as acceptable.
+- **Fix lint errors you encounter.** When linters report errors, fix them regardless of whether you introduced them. "Pre-existing" or "not my change" is not an excuse - leaving lint debt for the next agent violates codebase hygiene.
 
 **Derivation**: Partial success is failure. The user needs working solutions, not excuses.
 
