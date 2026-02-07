@@ -602,3 +602,17 @@ mcp__task_manager__complete_task(id=batch_task_id)
 
 **Derivation**: P#9 (Fail-Fast Agents) requires stopping when tools fail. Subagents are tools. Their failure verdicts must be respected - the agent cannot self-certify when external review is mandated.
 
+---
+
+## QA Tests Are Black-Box (P#96)
+
+**Statement**: When executing QA/acceptance tests, treat the system as a black box. If you don't know how to execute the test procedure or what output to expect, FAIL the test immediately and halt. Never investigate implementation to figure out what you're testing.
+
+**Corollaries**:
+- Unknown test execution method (how to run CLI headless) → test FAILS, halt
+- Unknown expected output format (what icons to look for) → test FAILS, halt
+- Temptation to read source code during QA → STOP, you're doing QA wrong
+- Missing prerequisites are test failures, not investigation triggers
+
+**Derivation**: QA validates observable behavior from the user's perspective. Implementation investigation defeats the purpose - you're no longer testing what users experience. P#9 (Fail-Fast) requires halting when procedure is unclear. P#48 (Human Tasks) routes interactive testing to users.
+
