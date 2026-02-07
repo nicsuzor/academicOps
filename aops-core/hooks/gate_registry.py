@@ -1552,21 +1552,26 @@ def check_stop_gate(ctx: HookContext) -> Optional[GateResult]:
     # but no subagents have been recorded yet.
     hydration_data = state.get("hydration", {})
     subagents = state.get("subagents", {})
-    current_workflow = state.get("state", {}).get("current_workflow")
+    state_data = state.get("state", {})
+    current_workflow = state_data.get("current_workflow")
 
-    is_hydrated = (
-        hydration_data.get("hydrated_intent") is not None
-        or hydration_data.get("original_prompt") is not None
-    )
+    # Only consider "hydrated" if the hydrator actually ran and produced intent.
+    # original_prompt being set alone just means a prompt was submitted, not that
+    # hydration was needed or performed.
+    is_hydrated = hydration_data.get("hydrated_intent") is not None
     has_run_subagents = len(subagents) > 0
     is_streamlined = current_workflow in (
         "interactive-followup",
         "simple-question",
         "direct-skill",
     )
+    # If hydration_pending is False but hydrated_intent is None, the session
+    # was a trivial query that didn't require hydration (e.g., "what time is it?")
+    hydration_pending = state_data.get("hydration_pending", False)
+    is_trivial_session = not hydration_pending and not is_hydrated
 
-    # <!-- NS: disabling this until we have a working test. It's firing when hydration is not needed -- we'd better check what is_hydrated does, because this should not fire if we don't _need_ hydration. -->
-    if is_hydrated and not has_run_subagents and not is_streamlined:
+    # Only require critic if hydration actually occurred and no work was done yet
+    if is_hydrated and not has_run_subagents and not is_streamlined and not is_trivial_session:
         # User explicitly asked for turns_since_hydration == 0 logic
         # This implies the agent is trying to stop immediately after the hydrator finished.
         msg = load_template(STOP_GATE_CRITIC_TEMPLATE)
@@ -1780,9 +1785,9 @@ def check_agent_response_listener(ctx: HookContext) -> Optional[GateResult]:
         # Reset turns counter since hydration just happened
         session_state.update_hydration_metrics(ctx.session_id, turns_since_hydration=0)
 
-        # Parse workflow ID
+        # Parse workflow ID (supports both **Workflow**: and **Workflows**: formats)
         workflow_match = re.search(
-            r"\*\*Workflow\*\*:\s*\[\[workflows/([^\]]+)\]\]", response_text
+            r"\*\*Workflows?\*\*:\s*\[\[workflows/([^\]]+)\]\]", response_text
         )
         workflow_id = workflow_match.group(1) if workflow_match else None
 

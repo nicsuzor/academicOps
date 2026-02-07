@@ -218,6 +218,7 @@ description: Working hypotheses validated by evidence.
 - The agent is autonomous on structural decisions - don't ask "should I set parent?"
 - If no suitable epic exists, create one that links to the project
 - Priority flows from tree position: tasks closer to trunk are more immediate
+- **Follow-up tasks for verification**: When creating bug fix or feature tasks, also create a dependent verification task (e.g., "Re-run QA after fix"). Don't leave dead task trees - fixes need confirmation.
 
 **Derivation**: Orphan tasks fragment project coherence and become invisible to prioritization. The task graph visualization reveals structural gaps - 15 disconnected components instead of 3-5 indicates missing links. Agents must maintain graph integrity on every insert.
 

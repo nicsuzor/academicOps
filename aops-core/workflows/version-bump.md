@@ -70,8 +70,10 @@ command claude plugin marketplace update aops && command claude plugin install a
 
 **Gemini CLI:**
 ```bash
-command gemini extensions install git@github.com:nicsuzor/aops-dist.git --consent --auto-update --pre-release 
+command gemini extensions uninstall aops-core && command gemini extensions install git@github.com:nicsuzor/aops-dist.git --consent --auto-update --pre-release
 ```
+
+**Note**: Gemini requires uninstall before reinstall. Claude's install command handles updates automatically.
 
 **Gate**: Both commands succeed without error
 
@@ -83,9 +85,35 @@ Check version information with:
 
 **Gate**: Both CLIs show correct new version
 
-### Phase 8: Full QA Release check
+### Phase 8: Post-Release QA
 
-[ Add workflow for full end-to-end acceptance testing of AOPS plugins. ]
+Run the smoke test to verify the installed distribution works correctly.
+
+1. Run Claude test:
+   ```bash
+   command claude --permission-mode bypassPermissions --output-format json --print "What time is it?"
+   ```
+
+2. Run Gemini test:
+   ```bash
+   command gemini --approval-mode yolo --output-format stream-json --p "What time is it?"
+   ```
+
+3. Generate transcripts:
+   ```bash
+   uv run python $AOPS/aops-core/scripts/transcript.py --recent
+   ```
+
+4. Find and review transcripts:
+   ```bash
+   fd --newer 10m -e md . ~/writing/sessions/
+   ```
+
+5. Assess each transcript for framework markers and correct behavior
+
+**Gate**: Both clients answer correctly without excessive friction. Log any regressions as P1 bugs.
+
+See [[manual-qa]] for detailed transcript analysis instructions.
 
 ## Verification Checklist
 
@@ -97,3 +125,4 @@ Check version information with:
 - [ ] Claude plugin updated from distribution
 - [ ] Gemini extension updated from distribution
 - [ ] Both CLIs functional with new version
+- [ ] Post-release QA passed (Phase 8) - transcripts reviewed, no regressions
