@@ -1565,10 +1565,12 @@ def check_stop_gate(ctx: HookContext) -> Optional[GateResult]:
         "direct-skill",
     )
 
+    # <!-- NS: disabling this until we have a working test. It's firing when hydration is not needed -- we'd better check what is_hydrated does, because this should not fire if we don't _need_ hydration. -->
     if is_hydrated and not has_run_subagents and not is_streamlined:
         # User explicitly asked for turns_since_hydration == 0 logic
         # This implies the agent is trying to stop immediately after the hydrator finished.
         msg = load_template(STOP_GATE_CRITIC_TEMPLATE)
+        # <!-- NS: please add a brief system_message to ALL GateResult() calls to provide user feedback. -->
         return GateResult(verdict=GateVerdict.DENY, context_injection=msg)
 
     # --- 2. Handover Check ---

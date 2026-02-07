@@ -206,6 +206,7 @@ GATE_MODE_DEFAULTS: Dict[str, str] = {
     "custodiet": "warn",  # CUSTODIET_MODE env var
     "critic": "warn",  # CRITIC_GATE_MODE env var (new)
     "qa": "warn",  # QA_GATE_MODE env var (new)
+    "handover": "warn",  # HANDOVER_GATE_MODE env var (new)
 }
 
 # Environment variable names for gate modes
@@ -215,6 +216,7 @@ GATE_MODE_ENV_VARS: Dict[str, str] = {
     "custodiet": "CUSTODIET_GATE_MODE",
     "critic": "CRITIC_GATE_MODE",
     "qa": "QA_GATE_MODE",
+    "handover": "HANDOVER_GATE_MODE",
 }
 
 
