@@ -149,6 +149,10 @@ If infrastructure doesn't support the data format, HALT and report the infrastru
 
 Use real projects as development guides, test cases, and tutorials. Never create fake examples.
 
+**Corollaries**:
+
+- When testing deployment/release workflows, test the ACTUAL workflow users would run. Never simulate deployment by directly modifying installed artifacts.
+
 **Derivation**: Fake examples don't surface real-world edge cases. Dogfooding ensures the framework works for actual use cases.
 
 ## No Workarounds (P#25)
