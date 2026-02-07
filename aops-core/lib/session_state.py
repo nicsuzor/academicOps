@@ -815,7 +815,7 @@ def get_passed_gates(session_id: str) -> set[str]:
     Used by the unified tool_gate to check tool permissions.
 
     Gate states:
-    - hydration: True if hydrated_intent is set
+    - hydration: True if hydrated_intent is set OR hydration_pending is False
     - task: True if current_task is set
     - critic: True if critic_invoked is set
     - qa: True if qa_invoked is set
@@ -833,13 +833,14 @@ def get_passed_gates(session_id: str) -> set[str]:
 
     passed = set()
 
-    # Hydration gate: passed if hydrated_intent is set
+    # Hydration gate: passed if hydrated_intent is set OR hydration_pending is False
+    # The latter handles /commands (like /pull) that bypass hydration via clear_hydration_pending()
     hydration = state.get("hydration", {})
-    if hydration.get("hydrated_intent"):
+    state_data = state.get("state", {})
+    if hydration.get("hydrated_intent") or not state_data.get("hydration_pending", True):
         passed.add("hydration")
 
     # Task gate: passed if current_task is set
-    state_data = state.get("state", {})
     if state_data.get("current_task"):
         passed.add("task")
 
