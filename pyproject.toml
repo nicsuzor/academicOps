@@ -1,6 +1,6 @@
 [project]
 name = "academicops"
-version = "0.1.19"
+version = "0.1.20"
 description = "Academic Operations Framework"
 requires-python = ">=3.11"
 dependencies = [

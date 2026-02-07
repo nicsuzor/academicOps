@@ -12,7 +12,6 @@
     "framework",
     "workflow"
   ],
-  "agents": "./agents/",
   "hooks": [],
   "mcpServers": "./.mcp.json"
 }
