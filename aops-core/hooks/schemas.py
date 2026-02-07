@@ -1,4 +1,5 @@
-from typing import Optional, Literal, Union, Dict, Any
+from typing import Any, Dict, Literal, Optional, Union
+
 from pydantic import BaseModel, Field
 
 # --- Input Schemas (Context) ---
@@ -21,6 +22,8 @@ class HookContext(BaseModel):
     # Event Data
     tool_name: Optional[str] = None
     tool_input: Dict[str, Any] = Field(default_factory=dict)
+    tool_output: Dict[str, Any] = Field(default_factory=dict)
+
     transcript_path: Optional[str] = None
     cwd: Optional[str] = None
 
