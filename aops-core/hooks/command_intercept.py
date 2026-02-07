@@ -215,8 +215,9 @@ def transform_tool(
     if tool_name == "Glob":
         return transform_glob(tool_input, tool_config)
     elif tool_name == "Grep":
-        return None, None, False
         # <!-- NS: I think this is broken for gemini at the moment. -->
-        return transform_grep(tool_input, tool_config)
+        # <!-- @claude 2026-02-07: Yes, CONFIRMED BROKEN. The early `return None, None, False` above makes transform_grep() unreachable. This was likely a quick disable that should be either: (1) removed entirely if Grep transform isn't needed, or (2) fixed by removing the early return. Leaving as-is for now since it was intentionally disabled. -->
+        return None, None, False
+        # return transform_grep(tool_input, tool_config)  # Disabled - see above
 
     return None, None, False

@@ -297,6 +297,23 @@ mcp__plugin_aops-core_task_manager__update_task(
 )
 ```
 
+### 5.5. Create Escalation Task (If Applicable)
+
+If your fix includes a proposed escalation (e.g., "if prompt-level fix fails, implement hook enforcement"), create a **blocked task** to track it:
+
+```python
+mcp__plugin_aops-core_task_manager__create_task(
+  title="[Escalation] {description of stronger intervention}",
+  type="task",
+  project="aops",
+  status="blocked",
+  depends_on=["<current-learn-task-id>"],
+  body="## Proposed Escalation\n\n{mechanism description}\n\n**Blocked pending**: Evidence that prompt-level fix (parent task) is insufficient."
+)
+```
+
+This ensures proposed escalations are tracked in the task system, not just mentioned in reflection text.
+
 ### 6. Generalize the Pattern (REQUIRED)
 
 After fixing the immediate issue, ask: **What general class of error is this?**

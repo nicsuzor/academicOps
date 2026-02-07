@@ -587,4 +587,18 @@ mcp__task_manager__complete_task(id=batch_task_id)
 
 **Derivation**: P#86 (Background Notifications Unreliable) correctly recommends not blocking on notifications. But "don't block" was over-applied to mean "declare done immediately." The correct interpretation: continue other work while monitoring, but verify completion before declaring the batch task done. Premature completion violates P#31 (Acceptance Criteria Own Success) - the batch task's success criteria is "all work processed," not "all work delegated."
 
+---
+
+## Subagent Verdicts Are Binding (P#95)
+
+**Statement**: When a subagent (critic, custodiet, qa) returns a HALT or REVISE verdict, the main agent MUST stop and address the issue. Proceeding after a blocking verdict is a protocol violation.
+
+**Corollaries**:
+- "HALT" from critic → don't proceed with plan, fix the blocking issue first
+- "HALT" from custodiet → don't proceed with action, address the violation
+- "REVISE" from qa → fix identified issues before claiming complete
+- Agent cannot substitute its own judgment for a failed subagent review
+- If subagent fails to execute (file not found, tool error), that is also a HALT condition
+
+**Derivation**: P#9 (Fail-Fast Agents) requires stopping when tools fail. Subagents are tools. Their failure verdicts must be respected - the agent cannot self-certify when external review is mandated.
 

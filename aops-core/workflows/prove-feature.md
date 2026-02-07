@@ -6,6 +6,7 @@ bases: []
 
 # Prove Feature
 <!-- NS: this is just the QA skill/feature/command. consolidate -->
+<!-- @claude 2026-02-07: Agreed. prove-feature overlaps with /qa skill. QA skill does end-to-end verification; prove-feature is framework-integration specific. Consolidating into QA skill with optional --framework flag would reduce duplication. Task created: aops-d915f7fd. -->
 Validate framework integration. "Does it integrate correctly?"
 
 ## Routing Signals

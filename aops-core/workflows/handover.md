@@ -11,6 +11,7 @@ tags:
 ---
 
 <!-- NS: make this a 'base' workflow and require just about EVERY task to go through the session end process. MANDATORY. also add git commit and cleanup. -->
+<!-- @claude 2026-02-07: Agreed. This should become base-handover and be composed into all file-modifying workflows. Current MANDATORY section already covers git commit/push. Task created: aops-54ff7ab0. Will: (1) rename to base-handover.md, (2) add to bases: array in all relevant workflows, (3) ensure hydrator always includes handover steps. -->
 # Landing the Plane (Session Completion)
 **When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds and you output a framework reflection in the required form.
 
@@ -55,9 +56,12 @@ If you DID NOT claim a task AND you did meaningful work:
 Update your claimed task with progress and release it.
 
 <!--@NS: add proper syntax here for updating and releasing the task. -->
+<!-- @claude 2026-02-07: Done. Updated with complete syntax including body append and status change. -->
 ```
 mcp__plugin_aops-core_task_manager__update_task(
   id="<task-id>",
+  body="## Session Progress\n- [What was accomplished]\n- [Any blockers or notes]",
+  status="done"  # or "review" if needs human verification
 )
 ```
 

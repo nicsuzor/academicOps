@@ -15,6 +15,7 @@ from pathlib import Path
 
 
 # <!-- @NS: This seems to violate DRY -- I think we already have this script. merge them -->
+# <!-- @claude 2026-02-07: Confirmed DRY violation. Similar functions: hooks/user_prompt_submit.py:_strip_frontmatter (body only), skills/hypervisor/scripts/batch_worker.py:parse_frontmatter. No canonical lib exists yet. Task aops-411ba25a: create lib/frontmatter.py with both strip_frontmatter() and parse_frontmatter() functions. -->
 def extract_frontmatter(content: str) -> tuple[dict, str]:
     """
     Extract YAML frontmatter and body from markdown content.

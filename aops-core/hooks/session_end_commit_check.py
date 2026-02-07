@@ -65,6 +65,21 @@ TEST_SUCCESS_PATTERNS = [
 # Framework Reflection indicator
 REFLECTION_PATTERNS = ["Framework Reflection", "## Framework Reflection"]
 
+# QA invocation patterns (detect if QA agent was called)
+# Fix for aops-8c2b7faf: sessions with code changes should invoke QA
+QA_INVOCATION_PATTERNS = [
+    'subagent_type="qa"',
+    "subagent_type='qa'",
+    'subagent_type": "qa"',
+    "subagent_type': 'qa'",
+    "aops-core:qa",
+    "/qa",  # Skill invocation
+    "QA verification",
+    "PASS:",  # QA verdict prefix
+    "FAIL:",
+    "REVISE:",
+]
+
 
 def extract_recent_messages(
     transcript_path: Path, max_messages: int = MAX_MESSAGES_TO_CHECK
@@ -171,6 +186,25 @@ def has_test_success(messages: list[str]) -> bool:
         for pattern in TEST_SUCCESS_PATTERNS:
             if pattern.lower() in message.lower():
                 logger.debug(f"Test success pattern detected: {pattern}")
+                return True
+    return False
+
+
+def has_qa_invocation(messages: list[str]) -> bool:
+    """Check if QA agent was invoked during the session.
+
+    Fix for aops-8c2b7faf: detect when QA was not invoked despite code changes.
+
+    Args:
+        messages: List of message texts
+
+    Returns:
+        True if QA invocation detected
+    """
+    for message in messages:
+        for pattern in QA_INVOCATION_PATTERNS:
+            if pattern.lower() in message.lower():
+                logger.debug(f"QA invocation pattern detected: {pattern}")
                 return True
     return False
 
@@ -582,6 +616,9 @@ def check_uncommitted_work(
     # Check for test success
     tests_passed = has_test_success(messages)
 
+    # Check for QA invocation (fix for aops-8c2b7faf)
+    qa_invoked = has_qa_invocation(messages)
+
     # Get git status
     git_status = get_git_status()
 
@@ -611,13 +648,21 @@ def check_uncommitted_work(
             f"{push_status.commits_ahead} unpushed commit(s) on {branch_display}"
         )
 
+    # Check for QA invocation when code was modified (fix for aops-8c2b7faf)
+    has_tracked_changes = git_status.staged_changes or git_status.unstaged_changes
+    if has_tracked_changes and not qa_invoked:
+        reminder_parts.append(
+            "⚠️ Code modified without QA verification. Consider running /qa before completion."
+        )
+
     # Build result
     should_block = False
     reminder_needed = False
     message = ""
 
-    # Only trigger blocking if: (has reflection OR has test success) AND has uncommitted changes
-    if (reflection_found or tests_passed) and git_status.has_changes:
+    # Block if: (has reflection OR has test success OR has tracked changes) AND has uncommitted changes
+    # Fix for aops-579dcaeb: sessions without reflection/tests were bypassing commit check
+    if (reflection_found or tests_passed or has_tracked_changes) and git_status.has_changes:
         should_block = True  # Default to blocking when uncommitted changes detected
 
         if git_status.staged_changes:

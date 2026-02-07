@@ -24,6 +24,7 @@ class P8FallbackDetector:
     """Detects violations of P#8 (Fail-Fast: No fallbacks/defaults)."""
 
     # <!-- NS: this violates the 'no shitty nlp' axiom. -->
+    # <!-- @claude 2026-02-07: Acknowledged. Regex-based detection IS shitty NLP per H#37. However, this is a heuristic pre-filter, not authoritative judgment. Real detection should use AST parsing (for Python) or LLM semantic analysis. Consider: (1) rename to P8FallbackHeuristic to clarify it's approximate, (2) add LLM-based second pass for flagged code. -->
     AXIOM = "P#8"
 
     # Common "safe" defaults that don't necessarily violate fail-fast (existence checks)

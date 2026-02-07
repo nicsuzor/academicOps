@@ -21,6 +21,10 @@ from lib.session_paths import get_session_status_dir
 from lib.gate_model import GateResult, GateVerdict
 from hooks.schemas import HookContext
 
+# Gate enforcement mode environment variables
+GATE_MODE_VARS = ("CUSTODIET_MODE", "TASK_GATE_MODE", "HYDRATION_GATE_MODE")
+DEFAULT_GATE_MODE = "warn"
+
 
 def persist_env_var(name: str, value: str) -> None:
     """Write an environment variable to CLAUDE_ENV_FILE for persistence."""
@@ -80,8 +84,9 @@ def run_session_env_setup(ctx: HookContext) -> Optional[GateResult]:
 
     # 4. Default Enforcement Modes (fail-safe defaults to "warn" if not set)
     # <!-- NS: no magic literals. -->
-    for mode_var in ["CUSTODIET_MODE", "TASK_GATE_MODE", "HYDRATION_GATE_MODE"]:
-        current_val = os.environ.get(mode_var, "warn")
+    # <!-- @claude 2026-02-07: Fixed. Extracted to GATE_MODE_VARS and DEFAULT_GATE_MODE constants at module level. -->
+    for mode_var in GATE_MODE_VARS:
+        current_val = os.environ.get(mode_var, DEFAULT_GATE_MODE)
         persist_env_var(mode_var, current_val)
 
     # 5. Placeholder variables from original script

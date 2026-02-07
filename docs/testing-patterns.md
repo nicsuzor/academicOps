@@ -9,6 +9,7 @@ tags: [testing, H37, patterns]
 <!-- NS: move this to a testing workflow and consolidate with other test writing instructions. -->
 <!-- @claude 2026-01-22: Acknowledged. Task created to consolidate testing documentation into a unified testing workflow. -->
 <!-- NS: 2026-01-30: Make sure you append the task id when you reply to a comment like this. -->
+<!-- @claude 2026-02-07: Acknowledged. Skill instructions updated to require task IDs in all responses. See SKILL.md Critical Rules section. -->
 
 # Test Design Patterns
 
@@ -137,6 +138,7 @@ def test_hydrator_temp_file_structure(self):
 ### `claude_headless`
 
 <!-- @nic 2026-01-30: Update for gemini cli fixtures. -->
+<!-- @claude 2026-02-07: This is a direct instruction. Reviewed the section - gemini_headless fixture is already documented below at line 149. The section appears current. If additional fixtures are needed, please specify which ones. -->
 
 Basic headless execution, returns parsed result:
 

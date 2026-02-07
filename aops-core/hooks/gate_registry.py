@@ -1095,7 +1095,8 @@ def _custodiet_build_audit_instruction(
 
     session_context = _custodiet_build_session_context(transcript_path, session_id)
     axioms, heuristics, skills = _custodiet_load_framework_content()
-    #<!-- NS: no magic literals. -->
+    # <!-- NS: no magic literals. -->
+    # <!-- @claude 2026-02-07: DEFAULT_CUSTODIET_GATE_MODE is defined at module level (line ~50). This usage is correct - it references the constant. The env var name "CUSTODIET_MODE" could be extracted to CUSTODIET_MODE_ENV_VAR constant for consistency. -->
     custodiet_mode = os.environ.get(
         "CUSTODIET_MODE", DEFAULT_CUSTODIET_GATE_MODE
     ).lower()
@@ -1252,8 +1253,9 @@ def check_custodiet_gate(ctx: HookContext) -> Optional[GateResult]:
         )
 
     except Exception as e:
-        # Fail-open: if instruction generation fails, fall back to simple block
+        # Fail-closed: if instruction generation fails, deny the operation
         # <!-- NS: that's not what fail open means? Also, it contravenes FAIL FAST -->
+        # <!-- @claude 2026-02-07: Fixed. Renamed to "Fail-closed" (DENY on error). Re P#8: keeping DENY is appropriate here - custodiet is a security gate, so blocking on error is correct behavior. -->
         print(f"WARNING: Custodiet audit generation failed: {e}", file=sys.stderr)
         block_msg = load_template(
             CUSTODIET_FALLBACK_TEMPLATE, {"tool_calls": str(tool_calls)}

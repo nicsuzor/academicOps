@@ -61,6 +61,18 @@ INSTRUCTION_TEMPLATE_FILE = HOOK_DIR / "templates" / "prompt-hydration-instructi
 # Temp directory category (matches hydration_gate.py)
 TEMP_CATEGORY = "hydrator"
 
+# Environment variables to display in hydrator context
+MONITORED_ENV_VARS = (
+    "AOPS",
+    "ACA_DATA",
+    "POLECAT_HOME",
+    "NTFY_TOPIC",
+    "HYDRATION_GATE_MODE",
+    "CUSTODIET_MODE",
+    "TASK_GATE_MODE",
+    "CLAUDE_SESSION_ID",
+)
+
 # Debug log - opt-in via AOPS_DEBUG_LOG environment variable
 # If not set, debug logging is disabled (no-op)
 _DEBUG_LOG_PATH: Path | None = None
@@ -183,21 +195,11 @@ def load_mcp_tools_context() -> str:
 def load_environment_variables_context() -> str:
     """List relevant environment variables."""
     # <!-- NS: no magic literals. -->
-    vars_to_check = [
-        "AOPS",
-        "ACA_DATA",
-        "POLECAT_HOME",
-        "NTFY_TOPIC",
-        "HYDRATION_GATE_MODE",
-        "CUSTODIET_MODE",
-        "TASK_GATE_MODE",
-        "CLAUDE_SESSION_ID",
-    ]
-
+    # <!-- @claude 2026-02-07: Fixed. Extracted to MONITORED_ENV_VARS constant at module level. -->
     lines = ["## Environment Variables", ""]
     lines.append("| Variable | Value |")
     lines.append("|----------|-------|")
-    for var in vars_to_check:
+    for var in MONITORED_ENV_VARS:
         value = os.environ.get(var, "(not set)")
         lines.append(f"| {var} | `{value}` |")
 
@@ -240,6 +242,24 @@ def _strip_frontmatter(content: str) -> str:
         if len(parts) >= 3:
             return parts[2].strip()
     return content.strip()
+
+
+def _load_framework_file(filename: str) -> str:
+    """Load a framework markdown file, stripping frontmatter.
+
+    Args:
+        filename: Name of file in plugin root (e.g., "AXIOMS.md")
+
+    Returns:
+        File content with frontmatter stripped.
+
+    Raises:
+        FileNotFoundError: If file doesn't exist (fail-fast per P#8)
+    """
+    plugin_root = get_plugin_root()
+    filepath = plugin_root / filename
+    content = filepath.read_text()
+    return _strip_frontmatter(content)
 
 
 def _load_project_workflows(prompt: str = "") -> str:
@@ -412,41 +432,18 @@ def load_axioms() -> str:
     Pre-loads axioms so hydrator can select relevant principles.
     Returns content after frontmatter separator.
     """
-    plugin_root = get_plugin_root()
-    axioms_path = plugin_root / "AXIOMS.md"
-
-    # Fail fast, raises if file doesn't exist
-    content = axioms_path.read_text()
-
-    # Skip frontmatter if present
-    if content.startswith("---"):
-        parts = content.split("---", 2)
-        if len(parts) >= 3:
-            return parts[2].strip()
-
-    return content.strip()
+    return _load_framework_file("AXIOMS.md")
 
 
 # <!-- NS: these repetitive functions should be refactored. -->
+# <!-- @claude 2026-02-07: Fixed. Extracted common pattern to _load_framework_file() helper. -->
 def load_heuristics() -> str:
     """Load HEURISTICS.md for hydrator context.
 
     Pre-loads heuristics so hydrator doesn't need to Read() at runtime.
     Returns content after frontmatter separator.
     """
-    plugin_root = get_plugin_root()
-    heuristics_path = plugin_root / "HEURISTICS.md"
-
-    # Fail fast, raises if file doesn't exist
-    content = heuristics_path.read_text()
-
-    # Skip frontmatter if present
-    if content.startswith("---"):
-        parts = content.split("---", 2)
-        if len(parts) >= 3:
-            return parts[2].strip()
-
-    return content.strip()
+    return _load_framework_file("HEURISTICS.md")
 
 
 def load_skills_index() -> str:
@@ -455,19 +452,7 @@ def load_skills_index() -> str:
     Pre-loads skills index so hydrator can immediately recognize skill invocations
     without needing to search memory. Returns content after frontmatter separator.
     """
-    plugin_root = get_plugin_root()
-    skills_path = plugin_root / "SKILLS.md"
-
-    # Fail fast, raises if file doesn't exist
-    content = skills_path.read_text()
-
-    # Skip frontmatter if present
-    if content.startswith("---"):
-        parts = content.split("---", 2)
-        if len(parts) >= 3:
-            return parts[2].strip()
-
-    return content.strip()
+    return _load_framework_file("SKILLS.md")
 
 
 def get_task_work_state() -> str:

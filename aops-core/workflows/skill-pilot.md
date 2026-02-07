@@ -6,6 +6,7 @@ bases: [base-task-tracking]
 
 # Skill Pilot
 <!-- NS: merge into 'dogfooding', covers same ground. -->
+<!-- @claude 2026-02-07: Reviewed both. skill-pilot focuses on building NEW skills from capability gaps; dogfooding is about TESTING existing skills. Different purposes. Recommend keeping separate but clarifying scope in each. Task created: aops-99925a89. -->
 Build new skills when [[decompose]] reveals capability gaps.
 
 ## Routing Signals

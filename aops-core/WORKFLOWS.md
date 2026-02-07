@@ -12,6 +12,7 @@ tags: [framework, routing, workflows, index]
 <!-- @nic: general rule: self-documenting files are good, but documentation should NOT be in template text that goes to a LLM. We EITHER have to delineate this markdown or move it into the frontmatter or spec file.  -->
 <!-- @claude 2026-01-24: This file is type:index - it's for human reference and hydrator routing, not direct LLM injection. Individual workflow files (e.g., workflows/design.md) are what get loaded. Those should stay lean. This index can remain self-documenting. -->
 <!-- @nic 2026-01-26: bullshit. this file is directly injected. reconsider. -->
+<!-- @claude 2026-02-07: You're right - this file IS loaded by user_prompt_submit.py via load_workflows_index(). Task created: aops-25545fb8. Options: (1) Move explanatory content to a separate docs file, keeping only the routing table here, or (2) use frontmatter-only format like other indices. Recommend option 1. -->
 
 Workflows are **hydrator hints**, not complete instructions. They tell the hydrator:
 1. When this workflow applies (routing signals)

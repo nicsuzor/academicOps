@@ -6,18 +6,18 @@ bases: []
 
 # Version Bump Workflow
 
-Bumps the academicOps version, builds distributions, and installs locally for both Gemini CLI and Claude Code.
+Bumps the academicOps version, builds distributions, pushes to github, and installs from the official distribution package.
 
 ## Routing Signals
 
 - "bump version", "release", "update packages"
 - Releasing a new version of academicOps
-- After completing features that need local testing
+- After completing features ready for release
 
 ## NOT This Workflow
 
-- Publishing to marketplace (requires git push + separate release process)
-- Hotfixes that need immediate deployment
+- Local development testing (use git worktrees or direct source)
+- Hotfixes that skip the build/test cycle
 
 ## Phases
 
@@ -46,31 +46,54 @@ Check version consistency across:
 
 **Gate**: All three show identical version numbers
 
-### Phase 4: Install Locally
+### Phase 4: Commit and Push
 
-**Gemini CLI** (from academicOps root):
-```bash
-gemini extensions uninstall aops-core
-gemini extensions link ./dist/aops-gemini --consent
-```
+1. Commit all changes: `git add -A && git commit -m "chore: bump version to X.Y.Z"`
+2. Push to trigger distribution: `git push origin main`
+
+**Gate**: Push succeeds
+
+### Phase 5: Wait for GitHub Actions
+
+1. Check action status: `gh run list --limit 1`
+2. Wait for completion: `gh run watch` (or poll until status is "completed")
+3. Verify success: `gh run view --log` if needed
+
+**Gate**: GitHub Actions workflow completes successfully
+
+### Phase 6: Install from Distribution
 
 **Claude Code:**
 ```bash
-claude plugin update aops-core@aops
+command claude plugin marketplace update aops && command claude plugin install aops-core@aops
+```
+
+**Gemini CLI:**
+```bash
+command gemini extensions install git@github.com:nicsuzor/aops-dist.git --consent --auto-update --pre-release 
 ```
 
 **Gate**: Both commands succeed without error
 
-### Phase 5: Verify Installation
+### Phase 7: Verify Installation
 
-- Gemini: Run `/diag` in new session, check version
-- Claude: Start new session, verify plugin loads with correct version
+Check version information with:
+- Claude code: `command claude plugin list`
+- Gemini extension: `command gemini extensions list`
+
+**Gate**: Both CLIs show correct new version
+
+### Phase 8: Full QA Release check
+
+[ Add workflow for full end-to-end acceptance testing of AOPS plugins. ]
 
 ## Verification Checklist
 
 - [ ] Version bumped in pyproject.toml
 - [ ] dist/aops-gemini built with matching version
 - [ ] dist/aops-claude built with matching version
-- [ ] Gemini extension linked locally
-- [ ] Claude plugin updated locally
+- [ ] Changes committed and pushed
+- [ ] GitHub Actions completed successfully
+- [ ] Claude plugin updated from distribution
+- [ ] Gemini extension updated from distribution
 - [ ] Both CLIs functional with new version
