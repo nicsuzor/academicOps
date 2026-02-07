@@ -17,7 +17,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 
-from lib.session_reader import Entry, SessionProcessor
+from lib.session_reader import SessionProcessor
+from lib.transcript_parser import Entry
 
 
 def _make_timestamp(offset_seconds: int = 0) -> str:

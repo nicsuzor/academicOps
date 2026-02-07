@@ -65,7 +65,7 @@ class TestSessionEnvSetup:
         assert 'export AOPS_SESSION_STATE_DIR="/tmp/aops/sessions"' in content
 
         # Verify enforcement modes
-        assert "export CUSTODIET_GATE_MODE=" in content
+        assert "export CUSTODIET_MODE=" in content
         assert "export TASK_GATE_MODE=" in content
         assert "export HYDRATION_GATE_MODE=" in content
 
