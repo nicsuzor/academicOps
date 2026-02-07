@@ -115,6 +115,7 @@ tags: [framework, enforcement, moc]
 | [[protect-dist-directory]]              | Protect dist/ Directory                    | .agent/rules/HEURISTICS.md, policy_enforcer.py | SessionStart, PreToolUse       | 1a    |
 | [[subagent-verdicts-binding]]           | Subagent Verdicts Are Binding              | HEURISTICS.md                                  | SessionStart, SubagentStop     | 1a    |
 | [[qa-tests-black-box]]                  | QA Tests Are Black-Box                     | HEURISTICS.md                                  | SessionStart, QA execution     | 1b    |
+| [[cli-testing-extended-timeouts]]       | CLI Testing Requires Extended Timeouts     | HEURISTICS.md                                  | SessionStart                   | 1a    |
 
 ## Enforcement Level Summary
 

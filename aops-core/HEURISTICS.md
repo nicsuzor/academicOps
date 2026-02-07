@@ -635,3 +635,16 @@ mcp__task_manager__complete_task(id=batch_task_id)
 
 **Derivation**: QA validates observable behavior from the user's perspective. Implementation investigation defeats the purpose - you're no longer testing what users experience. P#9 (Fail-Fast) requires halting when procedure is unclear. P#48 (Human Tasks) routes interactive testing to users.
 
+---
+
+## CLI Testing Requires Extended Timeouts (P#98)
+
+**Statement**: When testing CLI tools (claude, gemini, etc.) via Bash, use `timeout: 180000` (3 minutes) minimum. "Session interference" or "nesting issues" are usually misdiagnosed timeout problems.
+
+**Corollaries**:
+- Default Bash timeout (120000ms / 2 min) is insufficient for conversational CLI tools
+- If a nested CLI call "times out without output", increase timeout before concluding it's impossible
+- CLI tools that run full conversations need 3+ minutes
+
+**Derivation**: P#27 (No Excuses) requires not rationalizing away failures. Claiming "interference" when the real issue is timeout is an excuse. Verify the actual cause before declaring operations impossible.
+
