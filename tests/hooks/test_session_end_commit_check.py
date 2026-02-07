@@ -20,7 +20,6 @@ sys.path.insert(0, str(HOOKS_DIR))
 from session_end_commit_check import (
     has_framework_reflection,
     has_test_success,
-    has_qa_invocation,
     get_git_status,
     get_git_push_status,
     check_uncommitted_work,

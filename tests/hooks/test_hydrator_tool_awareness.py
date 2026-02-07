@@ -167,7 +167,7 @@ class TestDocumentForbiddenPatterns:
         assert len(FORBIDDEN_HYDRATOR_OUTPUT_PATTERNS) > 0
 
         # Create a markdown snippet that could be used in test plans
-        patterns_md = "\n".join(f"- `{p}`" for p in FORBIDDEN_HYDRATOR_OUTPUT_PATTERNS)
+        "\n".join(f"- `{p}`" for p in FORBIDDEN_HYDRATOR_OUTPUT_PATTERNS)
 
         # This test exists to document the patterns
         # In a real E2E test, you'd check hydrator output against these

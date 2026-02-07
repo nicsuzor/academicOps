@@ -1338,7 +1338,7 @@ def watch(ctx, interval, stall_threshold, project):
                     )
 
             # Check for completed tasks (mark as activity)
-            done_tasks = manager.storage.list_tasks(
+            manager.storage.list_tasks(
                 status=TaskStatus.DONE, project=project
             )
             # We don't track done tasks, but finding new ones means progress
