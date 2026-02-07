@@ -763,6 +763,18 @@ def is_critic_invoked(session_id: str) -> bool:
     return state.get("state", {}).get("critic_invoked", False)
 
 
+def clear_critic_invoked(session_id: str) -> None:
+    """Clear critic_invoked flag (gate closes on new user prompt).
+
+    Args:
+        session_id: Claude Code session ID
+    """
+    state = get_or_create_session_state(session_id)
+    state.get("state", {}).pop("critic_invoked", None)
+    state.get("hydration", {}).pop("critic_verdict", None)
+    save_session_state(session_id, state)
+
+
 # ============================================================================
 # QA Invocation Tracking API
 # ============================================================================
@@ -792,6 +804,17 @@ def is_qa_invoked(session_id: str) -> bool:
     if state is None:
         return False
     return state.get("state", {}).get("qa_invoked", False)
+
+
+def clear_qa_invoked(session_id: str) -> None:
+    """Clear qa_invoked flag (gate closes on new user prompt).
+
+    Args:
+        session_id: Claude Code session ID
+    """
+    state = get_or_create_session_state(session_id)
+    state.get("state", {}).pop("qa_invoked", None)
+    save_session_state(session_id, state)
 
 
 def is_handover_invoked(session_id: str) -> bool:

@@ -50,9 +50,8 @@ dev = [
   "pytest-cov>=7.0.0",
   "pytest-timeout>=2.4.0",
   # Linting & type checking
-  "mypy>=1.19.1",
+  "basedpyright>=1.29.0",
   "ruff>=0.14.10",
-  "types-pyyaml>=6.0.12.20250915",
   # Git hooks
   "pre-commit>=4.5.1",
 ]
@@ -72,9 +71,16 @@ exclude = ["archived/**"]
 "polecat/*.py" = ["E402"]
 "lib/overwhelm/*.py" = ["E402"]
 
-[tool.mypy]
+[tool.basedpyright]
 # Exclude archived files from type checking - they are legacy code kept for reference
-exclude = ["archived/"]
+exclude = ["archived/", "tests/"]
+# Use basic mode for gradual adoption - standard is too strict initially
+typeCheckingMode = "basic"
+# Ignore missing imports for third-party packages without stubs
+reportMissingImports = false
+reportMissingTypeStubs = false
+# Python path for internal imports
+extraPaths = ["aops-core", "aops-core/hooks", "aops-core/lib"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "aops-core/tests"]

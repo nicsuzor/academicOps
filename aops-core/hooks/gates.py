@@ -108,7 +108,7 @@ def check_tool_gate(ctx: "HookContext") -> GateResult:
 
 def update_gate_state(ctx: "HookContext") -> Optional[GateResult]:
     """PostToolUse: Open/close gates based on conditions."""
-    from hooks.gate_config import GATE_OPENING_CONDITIONS, GATE_CLOSURE_TRIGGERS
+    from hooks.gate_config import GATE_CLOSURE_TRIGGERS, GATE_OPENING_CONDITIONS
     from lib import session_state
 
     if ctx.hook_event != "PostToolUse":
@@ -116,7 +116,12 @@ def update_gate_state(ctx: "HookContext") -> Optional[GateResult]:
 
     tool_name = ctx.tool_name or ""
     tool_input = ctx.tool_input or {}
-    tool_output = str(ctx.tool_output or ctx.raw_input.get("tool_result", ""))
+    # <!-- NS: move all this logic into the ctx pydantic object as a property for easier access and reuse. Make sure we share the same code with the transcript generator. -->
+    tool_output = (
+        ctx.tool_output
+        or ctx.raw_input.get("tool_result", {})
+        or ctx.raw_input.get("tool_response", {})
+    )
     messages: List[str] = []
 
     # Check opening conditions
@@ -240,7 +245,7 @@ def _matches_condition(
     cond: Dict[str, Any],
     tool_name: str,
     tool_input: Dict[str, Any],
-    tool_output: str,
+    tool_output: Dict[str, Any],
 ) -> bool:
     """Check if opening condition matches."""
     pattern = cond.get("tool_pattern")
@@ -252,8 +257,11 @@ def _matches_condition(
         return False
 
     contains = cond.get("output_contains")
-    if contains and contains not in tool_output:
-        return False
+    if contains:
+        # Check if string appears in any string value of the output dict
+        output_str = str(tool_output)
+        if contains not in output_str:
+            return False
 
     skill = cond.get("skill_name")
     if skill:
