@@ -1,12 +1,65 @@
 #!/usr/bin/env python3
+import json
 import os
 import sys
-from datetime import UTC
+from datetime import UTC, datetime
 from pathlib import Path
 
 import click
 from manager import PolecatManager
 from validation import TaskIDValidationError, validate_task_id_or_raise
+
+
+def save_worker_transcript(
+    task_id: str,
+    stdout: str,
+    stderr: str,
+    exit_code: int,
+    agent_type: str,
+    home_dir: Path,
+) -> Path:
+    """Save worker output to transcript file.
+
+    Writes a JSONL entry with metadata and full output to
+    ~/.aops/transcripts/<task-id>.jsonl
+
+    Args:
+        task_id: The task identifier
+        stdout: Captured standard output
+        stderr: Captured standard error
+        exit_code: Process exit code
+        agent_type: "claude" or "gemini"
+        home_dir: Polecat home directory (typically ~/.aops)
+
+    Returns:
+        Path to the transcript file
+
+    Raises:
+        OSError: If transcript directory cannot be created or file cannot be written
+    """
+    try:
+        transcript_dir = home_dir / "transcripts"
+        transcript_dir.mkdir(parents=True, exist_ok=True)
+
+        transcript_file = transcript_dir / f"{task_id}.jsonl"
+
+        entry = {
+            "timestamp": datetime.now(UTC).isoformat(),
+            "task_id": task_id,
+            "agent": agent_type,
+            "session_type": "polecat",
+            "exit_code": exit_code,
+            "success": exit_code == 0,
+            "stdout": stdout or "",
+            "stderr": stderr or "",
+        }
+
+        with open(transcript_file, "a") as f:
+            f.write(json.dumps(entry) + "\n")
+
+        return transcript_file
+    except (OSError, IOError) as e:
+        raise OSError(f"Failed to save transcript for task {task_id}: {e}") from e
 
 
 def is_interactive() -> bool:
@@ -868,6 +921,20 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
                 print(result.stdout)
             if result.stderr:
                 print(result.stderr, file=sys.stderr)
+
+            # Save transcript to ~/.aops/transcripts/<task-id>.jsonl
+            try:
+                transcript_path = save_worker_transcript(
+                    task_id=task.id,
+                    stdout=result.stdout,
+                    stderr=result.stderr,
+                    exit_code=exit_code,
+                    agent_type=cli_tool,
+                    home_dir=manager.home_dir,
+                )
+                print(f"📝 Transcript saved: {transcript_path}")
+            except OSError as e:
+                print(f"⚠️  Warning: Failed to save transcript: {e}", file=sys.stderr)
 
             # Analyze the transcript for failures
             analyze_func = getattr(manager, "analyze_transcript", None)
