@@ -108,6 +108,19 @@ SKILLS_FILE = AOPS_ROOT / "aops-core" / "SKILLS.md"
 
 # --- Task Required Gate Constants ---
 
+# Tools that bind/unbind tasks to sessions (for ntfy notifications)
+TASK_BINDING_TOOLS = {
+    "mcp__plugin_aops-core_task_manager__update_task",
+    "mcp__plugin_aops-core_task_manager__claim_next_task",
+    "mcp__plugin_aops-core_task_manager__complete_task",
+    "mcp__plugin_aops-core_task_manager__complete_tasks",
+    # Gemini variants
+    "update_task",
+    "claim_next_task",
+    "complete_task",
+    "complete_tasks",
+}
+
 # Safe temp directories - writes allowed without task binding
 # These are framework-controlled, session-local, not user data
 SAFE_TEMP_PREFIXES = [
@@ -167,6 +180,99 @@ def _is_safe_temp_path(file_path: str | None) -> bool:
             return True
 
     return False
+
+
+def _is_destructive_bash(command: str) -> bool:
+    """Check if a bash command is destructive (modifies state).
+
+    Read-only commands (git status, ls, cat, etc.) return False.
+    State-modifying commands (git commit, rm, etc.) return True.
+
+    Args:
+        command: The bash command string
+
+    Returns:
+        True if the command modifies state, False if read-only
+    """
+    # Normalize command for pattern matching
+    cmd = command.strip().lower()
+
+    # Read-only command patterns (safe, don't require task binding)
+    readonly_patterns = [
+        "git status",
+        "git diff",
+        "git log",
+        "git show",
+        "git branch",
+        "git remote",
+        "git fetch",
+        "ls ",
+        "ls\n",
+        "ls$",
+        "cat ",
+        "head ",
+        "tail ",
+        "grep ",
+        "rg ",
+        "find ",
+        "which ",
+        "type ",
+        "echo ",
+        "pwd",
+        "env",
+        "printenv",
+        "uname",
+        "whoami",
+        "date",
+        "uptime",
+    ]
+
+    for pattern in readonly_patterns:
+        if pattern.endswith("$"):
+            if cmd == pattern[:-1]:
+                return False
+        elif cmd.startswith(pattern) or f" {pattern}" in cmd:
+            return False
+
+    # Destructive command patterns
+    destructive_patterns = [
+        "git commit",
+        "git push",
+        "git merge",
+        "git rebase",
+        "git reset",
+        "git checkout",
+        "git restore",
+        "git clean",
+        "git stash",
+        "rm ",
+        "rm\n",
+        "rmdir",
+        "mv ",
+        "cp ",
+        "mkdir",
+        "touch ",
+        "chmod ",
+        "chown ",
+        "> ",  # redirect (overwrites)
+        ">>",  # append
+        "tee ",
+        "sed -i",
+        "npm install",
+        "npm run",
+        "yarn ",
+        "pip install",
+        "uv pip",
+        "uv sync",
+        "uv run",
+    ]
+
+    for pattern in destructive_patterns:
+        if cmd.startswith(pattern) or f" {pattern}" in cmd or f"&& {pattern}" in cmd:
+            return True
+
+    # Default: assume destructive (fail-closed)
+    return True
 
 
 def _is_actually_destructive(tool_name: str, tool_input: Dict[str, Any]) -> bool:
