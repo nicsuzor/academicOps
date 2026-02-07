@@ -60,7 +60,11 @@ class TestTaskRequiredGateIntegration:
             }
             # Passed gates for tool_gate check
             mock_session_state.get_passed_gates.return_value = {
-                "hydration", "task", "critic", "qa", "handover"
+                "hydration",
+                "task",
+                "critic",
+                "qa",
+                "handover",
             }
 
             r = router.HookRouter()
@@ -257,3 +261,123 @@ class TestGateRegistry:
                 result.verdict == GateVerdict.ALLOW
                 or result.verdict == GateVerdict.WARN
             )
+
+
+class TestToolGateWarnModeSystemMessage:
+    """Test that warn mode properly populates system_message for user visibility.
+
+    Regression test for aops-375930d8: Task-gate warning was missing for shell
+    commands because check_tool_gate returned GateResult.allow(context_injection=msg)
+    instead of GateResult.warn(system_message=msg, context_injection=msg).
+
+    The system_message field is what gets displayed to the user in the terminal,
+    while context_injection is injected into the LLM prompt. Both must be set
+    for warnings to be visible.
+    """
+
+    @pytest.fixture
+    def mock_session_state(self, tmp_path):
+        """Mock session state with hydration open but task gate closed."""
+        with patch("lib.session_state") as mock_ss:
+            # Hydration gate is open (not pending)
+            mock_ss.is_hydrator_active.return_value = False
+            # Task gate is closed - return only hydration as passed
+            mock_ss.get_passed_gates.return_value = {"hydration"}
+            yield mock_ss
+
+    @pytest.fixture
+    def hook_context(self):
+        """Create a HookContext for a write tool (Edit) without task bound."""
+        from hooks.schemas import HookContext
+
+        return HookContext(
+            session_id="test-warn-mode",
+            hook_event="PreToolUse",
+            tool_name="Edit",
+            tool_input={"file_path": "/home/user/src/test.py"},
+            raw_input={
+                "hook_event_name": "PreToolUse",
+                "tool_name": "Edit",
+                "tool_input": {"file_path": "/home/user/src/test.py"},
+            },
+        )
+
+    def test_warn_mode_returns_warn_verdict(self, mock_session_state, hook_context):
+        """When TASK_GATE_MODE=warn, check_tool_gate should return WARN verdict."""
+        from hooks.gates import check_tool_gate
+        from lib.gate_model import GateVerdict
+
+        with patch.dict(os.environ, {"TASK_GATE_MODE": "warn"}):
+            result = check_tool_gate(hook_context)
+
+        assert result.verdict == GateVerdict.WARN
+
+    def test_warn_mode_populates_system_message(self, mock_session_state, hook_context):
+        """When TASK_GATE_MODE=warn, system_message must be populated for user visibility."""
+        from hooks.gates import check_tool_gate
+
+        with patch.dict(os.environ, {"TASK_GATE_MODE": "warn"}):
+            result = check_tool_gate(hook_context)
+
+        assert result.system_message is not None
+        assert len(result.system_message) > 0
+        assert "GATE BLOCKED" in result.system_message
+        assert "warn" in result.system_message
+
+    def test_warn_mode_populates_context_injection(
+        self, mock_session_state, hook_context
+    ):
+        """When TASK_GATE_MODE=warn, context_injection must also be set for LLM awareness."""
+        from hooks.gates import check_tool_gate
+
+        with patch.dict(os.environ, {"TASK_GATE_MODE": "warn"}):
+            result = check_tool_gate(hook_context)
+
+        assert result.context_injection is not None
+        assert len(result.context_injection) > 0
+
+    def test_warn_mode_message_contains_tool_name(
+        self, mock_session_state, hook_context
+    ):
+        """Warning message should contain the tool name for context."""
+        from hooks.gates import check_tool_gate
+
+        with patch.dict(os.environ, {"TASK_GATE_MODE": "warn"}):
+            result = check_tool_gate(hook_context)
+
+        assert "Edit" in result.system_message
+
+    def test_warn_mode_message_shows_missing_gates(
+        self, mock_session_state, hook_context
+    ):
+        """Warning message should show which gates are missing."""
+        from hooks.gates import check_tool_gate
+
+        with patch.dict(os.environ, {"TASK_GATE_MODE": "warn"}):
+            result = check_tool_gate(hook_context)
+
+        # Should show task gate is missing
+        assert "task" in result.system_message.lower()
+
+    def test_block_mode_returns_deny_verdict(self, mock_session_state, hook_context):
+        """When TASK_GATE_MODE=block, check_tool_gate should return DENY verdict."""
+        from hooks.gates import check_tool_gate
+        from lib.gate_model import GateVerdict
+
+        with patch.dict(os.environ, {"TASK_GATE_MODE": "block"}):
+            result = check_tool_gate(hook_context)
+
+        assert result.verdict == GateVerdict.DENY
+
+    def test_block_mode_also_populates_system_message(
+        self, mock_session_state, hook_context
+    ):
+        """Block mode should also have system_message for user feedback."""
+        from hooks.gates import check_tool_gate
+
+        with patch.dict(os.environ, {"TASK_GATE_MODE": "block"}):
+            result = check_tool_gate(hook_context)
+
+        assert result.system_message is not None
+        assert "GATE BLOCKED" in result.system_message
+        assert "block" in result.system_message

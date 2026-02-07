@@ -74,16 +74,13 @@ def check_tool_gate(ctx: "HookContext") -> GateResult:
     # Build block message
     first = missing[0]
     mode = os.environ.get(
-        GATE_MODE_ENV_VARS.get(first, ""),
-        GATE_MODE_DEFAULTS.get(first, "warn")
+        GATE_MODE_ENV_VARS.get(first, ""), GATE_MODE_DEFAULTS.get(first, "warn")
     )
 
     agent = GATE_AGENTS.get(first, "")
     audit_path = _create_audit_file(ctx.session_id, first, ctx)
 
-    status = "\n".join(
-        f"- {g}: {'✓' if g in passed else '✗'}" for g in required
-    )
+    status = "\n".join(f"- {g}: {'✓' if g in passed else '✗'}" for g in required)
 
     if agent and audit_path:
         instruction = f'`Task(subagent_type="{agent}", prompt="Analyze {audit_path}")`'
@@ -102,8 +99,8 @@ def check_tool_gate(ctx: "HookContext") -> GateResult:
 **Next**: {instruction}"""
 
     if mode == "block":
-        return GateResult.deny(context_injection=msg)
-    return GateResult.allow(context_injection=msg)
+        return GateResult.deny(system_message=msg, context_injection=msg)
+    return GateResult.warn(system_message=msg, context_injection=msg)
 
 
 def update_gate_state(ctx: "HookContext") -> Optional[GateResult]:
@@ -185,6 +182,7 @@ def on_session_start(ctx: "HookContext") -> Optional[GateResult]:
 # HELPERS
 # =============================================================================
 
+
 def _open_gate(session_id: str, gate: str) -> None:
     """Open a gate by setting the corresponding state flag."""
     from lib import session_state
@@ -223,7 +221,9 @@ def _close_gate(session_id: str, gate: str) -> None:
         session_state.clear_handover_skill_invoked(session_id)
 
 
-def _create_audit_file(session_id: str, gate: str, ctx: "HookContext") -> Optional[Path]:
+def _create_audit_file(
+    session_id: str, gate: str, ctx: "HookContext"
+) -> Optional[Path]:
     """Create audit file for gate if template exists."""
     template = TEMPLATES_DIR / f"{gate}-audit.md"
     if not template.exists():
@@ -237,6 +237,7 @@ def _create_audit_file(session_id: str, gate: str, ctx: "HookContext") -> Option
 
     # Write to temp
     from lib import hook_utils
+
     temp_dir = hook_utils.get_hook_temp_dir(gate, ctx.raw_input)
     return hook_utils.write_temp_file(content, temp_dir, f"{gate}_")
 
