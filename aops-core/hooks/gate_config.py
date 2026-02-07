@@ -159,23 +159,22 @@ GATE_EXECUTION_ORDER: Dict[str, List[str]] = {
         "session_env_setup",
         "unified_logger",
         "session_start",
+        "gate_init",  # Initialize gate states from GATE_INITIAL_STATE
     ],
     "UserPromptSubmit": [
         "user_prompt_submit",
         "unified_logger",
+        "gate_reset",  # Close gates that re-close on new prompt
     ],
     "PreToolUse": [
         "unified_logger",
-        "subagent_restrictions",
-        "tool_gate",  # NEW: unified tool gating based on TOOL_GATE_REQUIREMENTS
+        "tool_gate",  # Unified tool gating based on TOOL_GATE_REQUIREMENTS
     ],
     "PostToolUse": [
         "unified_logger",
         "task_binding",
         "accountant",
-        "post_hydration",
-        "post_critic",
-        "post_qa",
+        "gate_update",  # Open/close gates based on GATE_OPENING_CONDITIONS/GATE_CLOSURE_TRIGGERS
     ],
     "AfterAgent": [
         "unified_logger",
@@ -203,15 +202,10 @@ GATE_EXECUTION_ORDER: Dict[str, List[str]] = {
 
 MAIN_AGENT_ONLY_GATES: Set[str] = {
     "tool_gate",
-    "hydration",
-    "task_required",
-    "custodiet",
-    "qa_enforcement",
-    "axiom_enforcer",
+    "gate_init",
+    "gate_reset",
+    "gate_update",
     "user_prompt_submit",
-    "post_hydration",
-    "post_critic",
-    "post_qa",
     "task_binding",
     "stop_gate",
     "session_end_commit",

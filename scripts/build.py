@@ -244,10 +244,91 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
     print(f"  ✓ Generated Gemini hooks.json with {len(gemini_hooks)} events")
 
 
-def transform_agent_for_platform(content: str, platform: str) -> str:
+def validate_gemini_agent_schema(frontmatter: dict, filename: str) -> dict:
+    """Validate and transform frontmatter to comply with Gemini agent schema.
+
+    Gemini CLI agent schema requires:
+    - name (required): slug format (lowercase, numbers, hyphens, underscores)
+    - description (required): short description
+    - kind: "local" or "remote" (default: "local")
+    - tools: array of tool names
+    - model: specific model or "inherit" (default: "inherit")
+    - temperature: 0.0-2.0 (optional)
+    - max_turns: number (default: 15)
+    - timeout_mins: number (default: 5)
+
+    Raises ValueError if required fields are missing or invalid.
+    """
+    import re
+
+    errors = []
+
+    # Validate required fields
+    if "name" not in frontmatter or not frontmatter["name"]:
+        errors.append("Missing required field: name")
+    else:
+        name = frontmatter["name"]
+        # Validate slug format: lowercase letters, numbers, hyphens, underscores
+        if not re.match(r"^[a-z0-9_-]+$", name):
+            errors.append(
+                f"Invalid name '{name}': must be lowercase with only letters, "
+                "numbers, hyphens, and underscores"
+            )
+
+    if "description" not in frontmatter or not frontmatter["description"]:
+        errors.append("Missing required field: description")
+
+    if errors:
+        raise ValueError(f"Agent '{filename}' schema validation failed:\n  - " + "\n  - ".join(errors))
+
+    # Set defaults for optional fields
+    if "kind" not in frontmatter:
+        frontmatter["kind"] = "local"
+    elif frontmatter["kind"] not in ("local", "remote"):
+        raise ValueError(
+            f"Agent '{filename}': kind must be 'local' or 'remote', got '{frontmatter['kind']}'"
+        )
+
+    # Model mapping: Claude model names -> Gemini model names
+    CLAUDE_TO_GEMINI_MODEL = {
+        "opus": "gemini-2.5-pro",
+        "sonnet": "gemini-2.5-flash",
+        "haiku": "gemini-2.5-flash",
+        "claude-opus-4-5-20251101": "gemini-2.5-pro",
+        "claude-sonnet-4-20250514": "gemini-2.5-flash",
+    }
+
+    if "model" not in frontmatter:
+        frontmatter["model"] = "inherit"
+    else:
+        model = frontmatter["model"]
+        # Map Claude model names to Gemini equivalents
+        if model in CLAUDE_TO_GEMINI_MODEL:
+            frontmatter["model"] = CLAUDE_TO_GEMINI_MODEL[model]
+
+    # Set defaults for optional numeric fields
+    if "max_turns" not in frontmatter:
+        frontmatter["max_turns"] = 15
+
+    if "timeout_mins" not in frontmatter:
+        frontmatter["timeout_mins"] = 5
+
+    # Temperature is optional, only validate if present
+    if "temperature" in frontmatter:
+        temp = frontmatter["temperature"]
+        if not isinstance(temp, (int, float)) or temp < 0 or temp > 2:
+            raise ValueError(
+                f"Agent '{filename}': temperature must be between 0.0 and 2.0, got {temp}"
+            )
+
+    return frontmatter
+
+
+def transform_agent_for_platform(content: str, platform: str, filename: str = "agent") -> str:
     """Transform agent markdown for a specific platform.
 
-    For Gemini: filters out mcp__* tools from frontmatter since they're Claude-specific.
+    For Gemini: filters out mcp__* tools from frontmatter since they're Claude-specific,
+                and validates/applies Gemini agent schema with defaults.
     For Claude: converts YAML array tools to comma-separated string with PascalCase names.
     """
     # Split frontmatter from body
@@ -262,7 +343,7 @@ def transform_agent_for_platform(content: str, platform: str) -> str:
     except yaml.YAMLError:
         return content
 
-    if not frontmatter or "tools" not in frontmatter:
+    if not frontmatter:
         return content
 
     original_tools = frontmatter.get("tools", [])
@@ -273,24 +354,25 @@ def transform_agent_for_platform(content: str, platform: str) -> str:
             # Filter mcp__ tools from comma-separated string
             tools_list = [t.strip() for t in original_tools.split(",")]
             filtered = [t for t in tools_list if not t.startswith("mcp__")]
-            if filtered != tools_list:
-                frontmatter["tools"] = ", ".join(filtered)
-                new_frontmatter = yaml.dump(
-                    frontmatter, default_flow_style=False, sort_keys=False
-                )
-                return f"---\n{new_frontmatter}---{parts[2]}"
-        return content
-
-    if platform == "gemini":
-        # Filter out mcp__* tools (Claude-specific MCP tool names)
-        filtered_tools = [t for t in original_tools if not t.startswith("mcp__")]
-        if filtered_tools != original_tools:
-            frontmatter["tools"] = filtered_tools
+            frontmatter["tools"] = filtered  # Convert to list for Gemini schema
+            # Validate and apply Gemini schema defaults
+            frontmatter = validate_gemini_agent_schema(frontmatter, filename)
             new_frontmatter = yaml.dump(
                 frontmatter, default_flow_style=False, sort_keys=False
             )
             return f"---\n{new_frontmatter}---{parts[2]}"
         return content
+
+    if platform == "gemini":
+        # Filter out mcp__* tools (Claude-specific MCP tool names)
+        filtered_tools = [t for t in original_tools if not t.startswith("mcp__")]
+        frontmatter["tools"] = filtered_tools
+        # Validate and apply Gemini schema defaults
+        frontmatter = validate_gemini_agent_schema(frontmatter, filename)
+        new_frontmatter = yaml.dump(
+            frontmatter, default_flow_style=False, sort_keys=False
+        )
+        return f"---\n{new_frontmatter}---{parts[2]}"
 
     elif platform == "claude":
         # Claude Code requires:
@@ -479,8 +561,8 @@ def build_aops_core(
                 dst.mkdir(parents=True, exist_ok=True)
                 for agent_file in src.glob("*.md"):
                     content = agent_file.read_text()
-                    # Transform frontmatter (filter mcp__ tools for Gemini)
-                    content = transform_agent_for_platform(content, platform)
+                    # Transform frontmatter (filter mcp__ tools for Gemini, apply schema)
+                    content = transform_agent_for_platform(content, platform, agent_file.name)
                     # Translate tool calls in body text
                     content = translate_tool_calls(content, platform)
                     (dst / agent_file.name).write_text(content)

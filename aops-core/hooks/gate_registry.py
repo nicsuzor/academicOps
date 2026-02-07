@@ -805,121 +805,6 @@ def check_stop_gate(ctx: HookContext) -> Optional[GateResult]:
     return None
 
 
-def post_hydration_trigger(ctx: HookContext) -> Optional[GateResult]:
-    """
-    PostToolUse: Detect successful hydration and inject next step.
-    """
-    _check_imports()
-
-    # Check if this was a successful hydration
-    # We re-use logic from check_hydration_gate to identify hydrator tools
-    is_hydrator_tool = ctx.tool_name in (
-        "Task",
-        "delegate_to_agent",
-        "activate_skill",
-        "Skill",
-    )
-    is_hydrator = is_hydrator_tool and _hydration_is_hydrator_task(ctx.tool_input)
-    is_gemini = _hydration_is_gemini_hydration_attempt(
-        ctx.tool_name or "", ctx.tool_input, ctx.raw_input
-    )
-    # Gemini tool invocation: tool_name is directly "prompt-hydrator"
-    is_gemini_mcp_hydrator = ctx.tool_name == "prompt-hydrator"
-
-    if is_hydrator or is_gemini or is_gemini_mcp_hydrator:
-        # Reset trackers
-        session_state.update_hydration_metrics(ctx.session_id, turns_since_hydration=0)
-        session_state.clear_hydration_pending(ctx.session_id)
-
-        # User-facing output + agent context injection
-        return GateResult(
-            verdict=GateVerdict.ALLOW,
-            system_message="💧 [Gate] Hydration complete.",
-            context_injection="Hydration complete. You may now invoke the critic or proceed with your task.",
-        )
-
-    return None
-
-
-def post_critic_trigger(ctx: HookContext) -> Optional[GateResult]:
-    """
-    PostToolUse: Detect successful critic invocation and update state.
-    """
-    _check_imports()
-
-    # Check if this was a critic invocation
-    is_delegate = ctx.tool_name == "delegate_to_agent"
-    is_critic = is_delegate and ctx.tool_input.get("agent_name") == "critic"
-
-    # Also check Task tool (Claude)
-    is_task = ctx.tool_name == "Task"
-    subagent_type = ctx.tool_input.get("subagent_type", "")
-    is_critic_task = is_task and (
-        subagent_type == "critic"
-        or subagent_type == "aops-core:critic"
-        or "critic" in subagent_type.lower()
-    )
-
-    # Also check Skill/activate_skill
-    is_skill = ctx.tool_name in ("activate_skill", "Skill")
-    skill_input = ctx.tool_input or {}
-    skill_name = skill_input.get("name") or skill_input.get("skill")
-    is_critic_skill = is_skill and skill_name == "critic"
-
-    if is_critic or is_critic_task or is_critic_skill:
-        # Set flags
-        session_state.set_critic_invoked(
-            ctx.session_id, "INVOKED"
-        )  # Generic verdict for now
-        session_state.update_hydration_metrics(ctx.session_id, turns_since_critic=0)
-
-        # User-facing output for gate state change
-        return GateResult(
-            verdict=GateVerdict.ALLOW,
-            system_message="🔍 [Gate] Critic invoked. Gate satisfied.",
-        )
-
-    return None
-
-
-def post_qa_trigger(ctx: HookContext) -> Optional[GateResult]:
-    """
-    PostToolUse: Detect successful QA invocation and update state.
-    """
-    _check_imports()
-
-    # Check if this was a QA invocation
-    is_delegate = ctx.tool_name == "delegate_to_agent"
-    is_qa = is_delegate and ctx.tool_input.get("agent_name") == "qa"
-
-    # Also check Task tool (Claude)
-    is_task = ctx.tool_name == "Task"
-    subagent_type = ctx.tool_input.get("subagent_type", "")
-    is_qa_task = is_task and (
-        subagent_type == "qa"
-        or subagent_type == "aops-core:qa"
-        or "qa" in subagent_type.lower()
-    )
-
-    # Also check Skill/activate_skill
-    is_skill = ctx.tool_name in ("activate_skill", "Skill")
-    skill_input = ctx.tool_input or {}
-    skill_name = skill_input.get("name") or skill_input.get("skill")
-    is_qa_skill = is_skill and skill_name == "qa"
-
-    if is_qa or is_qa_task or is_qa_skill:
-        # Set flags
-        session_state.set_qa_invoked(ctx.session_id)
-
-        # User-facing output for gate state change
-        return GateResult(
-            verdict=GateVerdict.ALLOW,
-            system_message="🧪 [Gate] QA verified. Gate satisfied.",
-        )
-
-    return None
-
-
 def check_agent_response_listener(ctx: HookContext) -> Optional[GateResult]:
     """
     AfterAgent: Listen to agent response for state updates and optional enforcement.
@@ -971,7 +856,7 @@ def check_agent_response_listener(ctx: HookContext) -> Optional[GateResult]:
                 verdict=GateVerdict.ALLOW,
                 system_message=f"[Gate] Hydration complete (workflow: {workflow_id}). Streamlined mode enabled.",
                 metadata={
-                    "source": "post_hydration_trigger",
+                    "source": "agent_response_hydration",
                     "streamlined": True,
                     "workflow": workflow_id,
                 },
@@ -987,7 +872,7 @@ def check_agent_response_listener(ctx: HookContext) -> Optional[GateResult]:
                 "Use: `activate_skill(name='critic', prompt='Review this plan...')`\n"
                 "</system-reminder>"
             ),
-            metadata={"source": "post_hydration_trigger"},
+            metadata={"source": "agent_response_hydration"},
         )
 
     # 2. Update Handover State - validate Framework Reflection format
@@ -1540,97 +1425,13 @@ def run_session_env_setup(ctx: HookContext) -> Optional[GateResult]:
     return setup_func(ctx)
 
 
-# =============================================================================
-# Unified Tool Gate
-# =============================================================================
-
-
-def check_tool_gate(ctx: "HookContext") -> GateResult:
-    """Unified gate that checks tool permissions based on passed gates.
-
-    This gate replaces the separate hydration, task_required, custodiet, and
-    qa_enforcement gates with a single check that:
-    1. Categorizes the tool (read_only, write, meta)
-    2. Looks up required gates for that category
-    3. Blocks if required gates haven't passed
-
-    Tool categories and requirements are defined in gate_config.py.
-    """
-    _check_imports()
-
-    from hooks.gate_config import (
-        GATE_MODE_DEFAULTS,
-        GATE_MODE_ENV_VARS,
-        get_required_gates,
-        get_tool_category,
-    )
-
-    # Skip for non-tool events
-    if ctx.hook_event != "PreToolUse":
-        return GateResult.allow()
-
-    tool_name = ctx.tool_name or ""
-
-    # Always allow the hydrator itself to run (prevents deadlock)
-    if session_state.is_hydrator_active(ctx.session_id):
-        return GateResult.allow()
-
-    # Allow Task tool when spawning the hydrator (needed before hydration passes)
-    if tool_name == "Task":
-        tool_input = ctx.tool_input or {}
-        subagent_type = tool_input.get("subagent_type", "")
-        if subagent_type in ("aops-core:prompt-hydrator", "prompt-hydrator"):
-            # Set hydrator_active flag so the hydrator's own tool calls bypass gates
-            session_state.set_hydrator_active(ctx.session_id)
-            return GateResult.allow()
-
-    # Get tool category and required gates
-    category = get_tool_category(tool_name)
-
-    # Always-available tools bypass ALL gates (bootstrap tools like hydration, task reads)
-    if category == "always_available":
-        return GateResult.allow()
-
-    required_gates = get_required_gates(tool_name)
-
-    # Get passed gates for this session
-    passed_gates = session_state.get_passed_gates(ctx.session_id)
-
-    # Check if all required gates have passed
-    missing_gates = [g for g in required_gates if g not in passed_gates]
-
-    if not missing_gates:
-        return GateResult.allow()
-
-    # Some gates haven't passed - check enforcement mode
-    # Use the mode of the first missing gate
-    first_missing = missing_gates[0]
-    mode_env_var = GATE_MODE_ENV_VARS.get(first_missing, "")
-    mode = os.environ.get(mode_env_var, GATE_MODE_DEFAULTS.get(first_missing, "warn"))
-
-    # Build status indicators
-    gate_status = []
-    for gate in required_gates:
-        status = "✓" if gate in passed_gates else "✗"
-        gate_status.append(f"- {gate.title()}: {status}")
-
-    context_msg = f"""⚠️ **GATE BLOCKED ({mode})**: 
-
-**Tool**: Tool `{tool_name}` ({category})
-**Required gates**: {", ".join(required_gates)}
-**Missing gates**: {", ".join(missing_gates)}
-
-**Gate status**:
-{chr(10).join(gate_status)}
-
-**Next step**: Satisfy the `{first_missing}` gate to proceed."""
-
-    if mode == "block":
-        return GateResult.deny(context_injection=context_msg)
-    else:
-        # Warn mode - allow but inject context
-        return GateResult.allow(context_injection=context_msg)
-
+# Import unified gate functions from gates.py
+from hooks.gates import (
+    check_tool_gate as _check_tool_gate,
+    update_gate_state as _update_gate_state,
+    on_user_prompt as _on_user_prompt,
+    on_session_start as _on_session_start,
+)
 
 # Registry of available gate checks
 GATE_CHECKS = {
@@ -1638,25 +1439,22 @@ GATE_CHECKS = {
     "unified_logger": run_unified_logger,
     "ntfy_notifier": run_ntfy_notifier,
     "session_env_setup": run_session_env_setup,
-    # UserPromptSubmit
-    "user_prompt_submit": run_user_prompt_submit,
-    # PreToolUse gates (order matters)
+    # SessionStart gates
     "session_start": check_session_start_gate,
-    "tool_gate": check_tool_gate,  # Unified tool gating based on TOOL_GATE_REQUIREMENTS
-    # LEGACY gates removed - now handled by unified tool_gate:
-    # - hydration: check_hydration_gate (gate_config.py category system)
-    # - task_required: check_task_required_gate (gate_config.py category system)
-    # - axiom_enforcer, custodiet, qa_enforcement: still exist but not in PreToolUse order
+    "gate_init": _on_session_start,  # Initialize gate states
+    # UserPromptSubmit gates
+    "user_prompt_submit": run_user_prompt_submit,
+    "gate_reset": _on_user_prompt,  # Close gates that reset on new prompt
+    # PreToolUse gates
+    "tool_gate": _check_tool_gate,  # Unified tool gating from gates.py
     # PostToolUse gates
     "task_binding": run_task_binding,
     "accountant": run_accountant,
-    "post_hydration": post_hydration_trigger,
-    "post_critic": post_critic_trigger,
-    "post_qa": post_qa_trigger,
+    "gate_update": _update_gate_state,  # Open/close gates based on conditions
     # AfterAgent gates
     "agent_response": check_agent_response_listener,
     # Stop gates
     "stop_gate": check_stop_gate,
-    "session_end_commit": run_session_end_commit_check,  # Enabled: session-type detection implemented (aops-54ddc76d)
+    "session_end_commit": run_session_end_commit_check,
     "generate_transcript": run_generate_transcript,
 }
