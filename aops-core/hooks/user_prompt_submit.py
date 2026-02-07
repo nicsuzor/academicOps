@@ -14,7 +14,6 @@ Exit codes:
 import json
 import os
 import subprocess
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -62,6 +61,7 @@ INSTRUCTION_TEMPLATE_FILE = HOOK_DIR / "templates" / "prompt-hydration-instructi
 TEMP_CATEGORY = "hydrator"
 
 # Environment variables to display in hydrator context
+# <!-- NS: no magic literals, no repetition. -->
 MONITORED_ENV_VARS = (
     "AOPS",
     "ACA_DATA",
@@ -72,27 +72,6 @@ MONITORED_ENV_VARS = (
     "TASK_GATE_MODE",
     "CLAUDE_SESSION_ID",
 )
-
-# Debug log - opt-in via AOPS_DEBUG_LOG environment variable
-# If not set, debug logging is disabled (no-op)
-_DEBUG_LOG_PATH: Path | None = None
-if "AOPS_DEBUG_LOG" in os.environ:
-    _DEBUG_LOG_PATH = Path(os.environ["AOPS_DEBUG_LOG"])
-
-
-def _log_debug(msg: str) -> None:
-    """Log debug message to file if AOPS_DEBUG_LOG is set."""
-    if _DEBUG_LOG_PATH is None:
-        return
-    try:
-        with open(_DEBUG_LOG_PATH, "a") as f:
-            ts = datetime.now().isoformat()
-            f.write(f"[{ts}] {msg}\n")
-    except OSError as e:
-        # Debug logging failure is non-fatal but we log to stderr for visibility
-        import sys
-
-        print(f"Debug log write failed: {e}", file=sys.stderr)
 
 
 FILE_PREFIX = "hydrate_"
@@ -282,6 +261,7 @@ def _load_project_workflows(prompt: str = "") -> str:
         return ""
 
     # Check for project workflow index first
+    # <!-- NS: Extract magic literals to a constants file. -->
     project_index = project_agent_dir / "WORKFLOWS.md"
     if project_index.exists():
         content = project_index.read_text()
@@ -305,6 +285,7 @@ def _load_project_workflows(prompt: str = "") -> str:
         name = wf.stem.replace("-", " ").replace("_", " ").title()
         lines.append(f"| {name} | `{wf.name}` |")
 
+    # <!-- NS: no crappy nlp. just output all workflows and let the hydrator figure it out. -->
     # Detect and include relevant workflow content based on prompt keywords
     prompt_lower = prompt.lower()
     workflow_keywords = {
@@ -334,6 +315,7 @@ def _load_project_workflows(prompt: str = "") -> str:
     return "\n".join(lines)
 
 
+# <!-- NS: these repetitive functions should be refactored. -->
 def load_workflows_index(prompt: str = "") -> str:
     """Load WORKFLOWS.md for hydrator context.
 
@@ -426,6 +408,9 @@ def load_project_context_index() -> str:
     return "\n".join(lines)
 
 
+# <!-- NS: replace all this with a jinja2 template for the hydrator. Don't generate any indices here, we do it as part of the audit skill already. -->
+
+
 def load_axioms() -> str:
     """Load AXIOMS.md for hydrator context.
 
@@ -435,8 +420,6 @@ def load_axioms() -> str:
     return _load_framework_file("AXIOMS.md")
 
 
-# <!-- NS: these repetitive functions should be refactored. -->
-# <!-- @claude 2026-02-07: Fixed. Extracted common pattern to _load_framework_file() helper. -->
 def load_heuristics() -> str:
     """Load HEURISTICS.md for hydrator context.
 
@@ -674,90 +657,6 @@ def build_hydration_instruction(
     return instruction
 
 
-def is_followup_prompt(session_id: str, prompt: str) -> bool:
-    """Detect if this is a follow-up to existing session work.
-
-    Follow-ups are interactive continuations that don't need full hydration
-    ceremony (hydrator agent + critic). They inherit context from the active
-    session.
-
-    Returns True if ALL conditions met:
-    1. Session already has work context (turns_since_hydration > 0 OR task bound)
-    2. Prompt is short (< 30 words) - long prompts likely introduce new scope
-    3. Prompt contains continuation markers indicating same-context work
-
-    Rationale (aops-a63694ce):
-    - Full hydration adds ceremony for simple requests like "save to daily note"
-    - Follow-ups should inherit active task binding (no new task needed)
-    - Context injection still happens via MCP tools (memory, tasks) which bypass gates
-    """
-    from lib.session_state import load_session_state
-
-    # Check session state for existing work context
-    state = load_session_state(session_id)
-    if not state:
-        return False
-
-    # Check for existing work context - either hydrated or task-bound
-    # Use explicit key checks for fail-fast (P#8)
-    has_hydration_context = False
-    has_task_context = False
-
-    if "hydration" in state:
-        hydration = state["hydration"]
-        if "turns_since_hydration" in hydration:
-            turns_since = hydration["turns_since_hydration"]
-            if turns_since > 0:  # Has done work since hydration
-                has_hydration_context = True
-
-    if "state" in state:
-        session_state_data = state["state"]
-        if "current_task" in session_state_data:
-            if session_state_data["current_task"]:  # Non-empty task ID
-                has_task_context = True
-
-    if not has_hydration_context and not has_task_context:
-        return False  # No existing work - needs full hydration
-
-    # Short prompt check (< 30 words)
-    words = prompt.split()
-    if len(words) > 30:
-        return False  # Too long - likely new work scope
-
-    # Continuation markers indicating same-context work
-    continuation_markers = [
-        # Pronouns referring to prior context
-        "this",
-        "that",
-        "those",
-        "these",
-        "it",
-        # Additive markers
-        "also",
-        "too",
-        "as well",
-        "while you're at it",
-        # Repetition markers
-        "same",
-        "again",
-        "another",
-        # Action verbs for quick tasks
-        "save",
-        "add",
-        "put",
-        "update",
-        "log",
-        "note",
-        # Continuation phrases
-        "one more",
-        "quick",
-        "before you go",
-    ]
-    prompt_lower = prompt.lower()
-    has_continuation = any(marker in prompt_lower for marker in continuation_markers)
-
-    return has_continuation
-
 
 def should_skip_hydration(prompt: str, session_id: str | None = None) -> bool:
     """Check if prompt should skip hydration.
@@ -767,7 +666,6 @@ def should_skip_hydration(prompt: str, session_id: str | None = None) -> bool:
     - Skill invocations (prompts starting with '/')
     - Expanded slash commands (containing <command-name>/ tag)
     - User ignore shortcut (prompts starting with '.')
-    - Follow-up prompts within active session work (requires session_id)
     """
     prompt_stripped = prompt.strip()
     # Agent/task completion notifications from background Task agents
@@ -789,48 +687,4 @@ def should_skip_hydration(prompt: str, session_id: str | None = None) -> bool:
     # User ignore shortcut - user explicitly wants no hydration
     if prompt_stripped.startswith("."):
         return True
-    # Follow-up prompts within active session work
-    if session_id and is_followup_prompt(session_id, prompt_stripped):
-        return True
-    # Simple questions that don't need hydration workflow
-    if _is_simple_question(prompt_stripped):
-        return True
-    return False
-
-
-def _is_simple_question(prompt: str) -> bool:
-    """Detect simple informational questions that don't need the full workflow.
-
-    Returns True for:
-    - Very short prompts (< 8 words, no code/file references)
-    - Common greetings and pleasantries
-    - Simple time/date queries
-    """
-    words = prompt.lower().split()
-    word_count = len(words)
-
-    # Very short prompts without code references
-    if word_count <= 7:
-        # Check for code/file indicators that would need hydration
-        code_indicators = {'file', 'code', 'function', 'class', 'bug', 'error',
-                          'fix', 'implement', 'create', 'write', 'edit', 'update',
-                          'delete', 'remove', 'add', 'change', 'modify', 'refactor',
-                          'test', 'commit', 'push', 'pull', 'merge', 'branch',
-                          '.py', '.js', '.ts', '.md', '.json', '.yaml', '.yml'}
-        prompt_lower = prompt.lower()
-        if not any(indicator in prompt_lower for indicator in code_indicators):
-            return True
-
-    # Common simple patterns
-    simple_patterns = [
-        'what time', 'what date', 'what day', 'what is the time', 'what is the date',
-        'hello', 'hi', 'hey', 'thanks', 'thank you', 'bye', 'goodbye',
-        'how are you', 'good morning', 'good afternoon', 'good evening',
-        'ok', 'okay', 'yes', 'no', 'sure', 'cool', 'great', 'nice',
-    ]
-    prompt_lower = prompt.lower().strip()
-    for pattern in simple_patterns:
-        if prompt_lower.startswith(pattern) or prompt_lower == pattern:
-            return True
-
     return False
