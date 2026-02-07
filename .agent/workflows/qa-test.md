@@ -20,32 +20,40 @@ This workflow provides concrete instructions for acceptance testing the aops fra
 
 Run tests in headless mode. Session logs are automatically saved to standard locations.
 
+**Important**: For slash commands (e.g., `/pull`), do NOT wrap the prompt in quotes - pass it directly so the CLI interprets it as a command, not a literal string.
+
 ### Claude Code
 
 ```bash
-# Run headless test
-claude -p "[PROMPT]" --permission-mode yolo
+# Run headless test - slash commands without quotes
+claude -p /pull --permission-mode yolo
+
+# Regular prompts can use quotes
+claude -p "What time is it?" --permission-mode yolo
 
 # Check exit code
 echo "Exit: $?"
 ```
 
 Flags:
-- `-p "[PROMPT]"`: Non-interactive mode with prompt
+- `-p <PROMPT>`: Non-interactive mode with prompt (no quotes for slash commands)
 - `--permission-mode yolo`: Auto-approve for automated testing
 
 ### Gemini CLI
 
 ```bash
-# Run headless test
-gemini -p "[PROMPT]" --approval-mode yolo
+# Run headless test - slash commands without quotes
+gemini -p /pull --approval-mode yolo
+
+# Regular prompts can use quotes
+gemini -p "What time is it?" --approval-mode yolo
 
 # Check exit code
 echo "Exit: $?"
 ```
 
 Flags:
-- `-p "[PROMPT]"`: Non-interactive mode with prompt
+- `-p <PROMPT>`: Non-interactive mode with prompt (no quotes for slash commands)
 - `--approval-mode yolo`: Auto-approve for automated testing
 
 ## Generating Readable Transcripts
