@@ -792,4 +792,45 @@ def should_skip_hydration(prompt: str, session_id: str | None = None) -> bool:
     # Follow-up prompts within active session work
     if session_id and is_followup_prompt(session_id, prompt_stripped):
         return True
+    # Simple questions that don't need hydration workflow
+    if _is_simple_question(prompt_stripped):
+        return True
+    return False
+
+
+def _is_simple_question(prompt: str) -> bool:
+    """Detect simple informational questions that don't need the full workflow.
+
+    Returns True for:
+    - Very short prompts (< 8 words, no code/file references)
+    - Common greetings and pleasantries
+    - Simple time/date queries
+    """
+    words = prompt.lower().split()
+    word_count = len(words)
+
+    # Very short prompts without code references
+    if word_count <= 7:
+        # Check for code/file indicators that would need hydration
+        code_indicators = {'file', 'code', 'function', 'class', 'bug', 'error',
+                          'fix', 'implement', 'create', 'write', 'edit', 'update',
+                          'delete', 'remove', 'add', 'change', 'modify', 'refactor',
+                          'test', 'commit', 'push', 'pull', 'merge', 'branch',
+                          '.py', '.js', '.ts', '.md', '.json', '.yaml', '.yml'}
+        prompt_lower = prompt.lower()
+        if not any(indicator in prompt_lower for indicator in code_indicators):
+            return True
+
+    # Common simple patterns
+    simple_patterns = [
+        'what time', 'what date', 'what day', 'what is the time', 'what is the date',
+        'hello', 'hi', 'hey', 'thanks', 'thank you', 'bye', 'goodbye',
+        'how are you', 'good morning', 'good afternoon', 'good evening',
+        'ok', 'okay', 'yes', 'no', 'sure', 'cool', 'great', 'nice',
+    ]
+    prompt_lower = prompt.lower().strip()
+    for pattern in simple_patterns:
+        if prompt_lower.startswith(pattern) or prompt_lower == pattern:
+            return True
+
     return False
