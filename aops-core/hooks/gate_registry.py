@@ -82,9 +82,6 @@ HYDRATION_ALLOWED_TOOLS = {
     # is_hydrator_active() fails to detect subagent context correctly)
     "Skill",
 }
-# Alias for backward compatibility (Deprecated usage in Hydration Gate)
-HYDRATION_SAFE_TOOLS = SAFE_READ_TOOLS
-
 # Custodiet
 CUSTODIET_TEMP_CATEGORY = "compliance"
 CUSTODIET_DEFAULT_THRESHOLD = 7
@@ -96,8 +93,6 @@ def get_custodiet_threshold() -> int:
     return int(raw) if raw else CUSTODIET_DEFAULT_THRESHOLD
 
 
-# Legacy alias for backward compatibility
-CUSTODIET_TOOL_CALL_THRESHOLD: int = CUSTODIET_DEFAULT_THRESHOLD
 CUSTODIET_CONTEXT_TEMPLATE_FILE = (
     Path(__file__).parent / "templates" / "custodiet-context.md"
 )
@@ -140,7 +135,7 @@ TASK_BINDING_TOOLS = {
 
 # Mutating tools that require task binding
 MUTATING_TOOLS = {
-    # Claude/Legacy
+    # Claude
     "Edit",
     "Write",
     "Bash",
@@ -839,7 +834,7 @@ def check_hydration_gate(ctx: HookContext) -> Optional[GateResult]:
     # Check if a skill is being activated (allow ANY skill to bypass hydration check)
     # If the user explicitly activates a skill, they are providing a plan/context.
     is_skill_activation = ctx.tool_name in ("activate_skill", "Skill")
-    # Legacy: prompt-hydrator specific check (kept for robust detection context)
+    # Check for prompt-hydrator Task agent invocation
     is_hydrator_tool_or_agent = _hydration_is_hydrator_task(ctx.tool_input)
 
     tool_name = ctx.tool_name if ctx.tool_name is not None else ""
@@ -1062,13 +1057,13 @@ def _custodiet_build_session_context(
         # Also show recent conversation flow (condensed)
         lines.append("**Recent Conversation Summary**:")
         for turn in conversation[-5:]:
-            # Handle both string and dict formats for backward compatibility
+            # Handle both string and dict formats
             if isinstance(turn, dict):
                 role = turn["role"]  # Required - fail if missing
                 content = turn["content"][:200]  # Required - fail if missing
                 lines.append(f"  [{role}]: {content}...")
             else:
-                # String format - prepend [unknown] for legacy compatibility
+                # String format - role unknown
                 content = str(turn)[:200]
                 if content:
                     lines.append(f"  [unknown]: {content}...")
@@ -1121,14 +1116,14 @@ def _custodiet_build_audit_instruction(
 
 def check_axiom_enforcer_gate(ctx: HookContext) -> Optional[GateResult]:
     """
-    Real-time axiom violation detection for Edit/Write operations.
+    Real-time programmatic axiom violation detection for Edit/Write operations.
 
     Blocks tool calls that contain code patterns violating framework axioms:
     - P#8: Fail-fast violations (fallbacks, silent exception handling)
-    - P#26: Write-without-read violations (writing to files not previously read)
 
-    This gate runs BEFORE custodiet threshold checks to catch violations
-    immediately, regardless of compliance counter state.
+    This is a PROGRAMMATIC gate that uses regex pattern matching to catch
+    mechanical violations in code. It is separate from custodiet, which
+    uses a qualitative subagent for semantic compliance checking.
 
     Returns None if allowed, or GateResult with DENY if violation detected.
     """
@@ -1197,11 +1192,19 @@ def check_axiom_enforcer_gate(ctx: HookContext) -> Optional[GateResult]:
 
 def check_custodiet_gate(ctx: HookContext) -> Optional[GateResult]:
     """
-    Check if compliance is overdue (The Bouncer).
-    Returns None if allowed, or GateResult if blocked.
+    Qualitative compliance gate requiring subagent verification.
 
-    Only runs on PreToolUse events. Blocks mutating tools when too many
-    tool calls have occurred without a compliance check.
+    Custodiet is a QUALITATIVE gate that spawns a haiku subagent to perform
+    semantic analysis of agent behavior against framework principles. It detects
+    ultra vires activity (acting beyond granted authority) by analyzing:
+    - Scope drift from original user request
+    - Axiom/heuristic violations in decision-making
+    - Reactive helpfulness patterns (unauthorized problem-solving)
+
+    This gate blocks mutating tools until the custodiet subagent approves.
+    The gate re-closes after N write operations, requiring periodic re-verification.
+
+    Separate from axiom_enforcer, which does programmatic pattern matching.
     """
     _check_imports()
 
@@ -1214,7 +1217,6 @@ def check_custodiet_gate(ctx: HookContext) -> Optional[GateResult]:
         return None
 
     # Track tool calls and trigger compliance check when threshold reached
-    # Use unified SessionState API directly (no backwards compat wrappers)
     sess = session_state.get_or_create_session_state(ctx.session_id)
     state = sess.get("state", {})
 
@@ -1222,12 +1224,8 @@ def check_custodiet_gate(ctx: HookContext) -> Optional[GateResult]:
     state.setdefault("tool_calls_since_compliance", 0)
     state.setdefault("last_compliance_ts", 0.0)
 
-    # NOTE: Counter is incremented by run_accountant in PostToolUse, not here
-    # We only READ the counter here to check if we should block
+    # Counter is incremented by run_accountant in PostToolUse
     tool_calls = state["tool_calls_since_compliance"]
-
-    # NOTE: Axiom enforcement is now handled by dedicated check_axiom_enforcer_gate
-    # which runs before custodiet in the PreToolUse gate chain.
 
     # Check compliance threshold
     threshold = get_custodiet_threshold()
@@ -1596,7 +1594,7 @@ def check_stop_gate(ctx: HookContext) -> Optional[GateResult]:
                 verdict=GateVerdict.DENY,
                 context_injection=(
                     "⛔ **BLOCKED: QA Verification Required**\n\n"
-                    "This session was planned via prompt-hydrator, which mandates QA verification.\n"
+                    "This session has work that requires QA verification before ending.\n"
                     "You have not invoked QA yet.\n\n"
                     "**Action Required**: Invoke QA to verify your work against the original request "
                     "and acceptance criteria before completing handover.\n\n"
@@ -2577,12 +2575,12 @@ GATE_CHECKS = {
     # PreToolUse gates (order matters)
     "subagent_restrictions": check_subagent_tool_restrictions,
     "session_start": check_session_start_gate,
-    "tool_gate": check_tool_gate,  # NEW: unified tool gating
-    # Legacy gates (kept for backwards compatibility, can be removed)
+    "tool_gate": check_tool_gate,  # Unified tool gating based on TOOL_GATE_REQUIREMENTS
+    # Specialized gates
     "hydration": check_hydration_gate,
     "task_required": check_task_required_gate,
-    "axiom_enforcer": check_axiom_enforcer_gate,
-    "custodiet": check_custodiet_gate,
+    "axiom_enforcer": check_axiom_enforcer_gate,  # Programmatic code pattern detection
+    "custodiet": check_custodiet_gate,  # Qualitative subagent compliance check
     "qa_enforcement": check_qa_enforcement_gate,
     # PostToolUse gates
     "task_binding": run_task_binding,
