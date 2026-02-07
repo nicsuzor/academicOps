@@ -195,7 +195,9 @@ def format_text(summaries: list[dict[str, Any]]) -> str:
         if date != current_date:
             if current_date is not None:
                 lines.append("")
-            formatted_date = f"{date[:4]}-{date[4:6]}-{date[6:8]}" if len(date) == 8 else date
+            formatted_date = (
+                f"{date[:4]}-{date[4:6]}-{date[6:8]}" if len(date) == 8 else date
+            )
             lines.append(f"=== {formatted_date} ===")
             current_date = date
 

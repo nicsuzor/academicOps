@@ -103,17 +103,9 @@ def convert_command(md_path: Path) -> str:
 
     literal_body = escape_toml_literal(body)
     if literal_body is not None:
-        toml_lines.extend([
-            "prompt = '''",
-            literal_body,
-            "'''"
-        ])
+        toml_lines.extend(["prompt = '''", literal_body, "'''"])
     else:
-        toml_lines.extend([
-            'prompt = """',
-            escape_toml_basic_multiline(body),
-            '"""'
-        ])
+        toml_lines.extend(['prompt = """', escape_toml_basic_multiline(body), '"""'])
 
     return "\n".join(toml_lines)
 

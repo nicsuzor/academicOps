@@ -860,7 +860,9 @@ def get_passed_gates(session_id: str) -> set[str]:
     # The latter handles /commands (like /pull) that bypass hydration via clear_hydration_pending()
     hydration = state.get("hydration", {})
     state_data = state.get("state", {})
-    if hydration.get("hydrated_intent") or not state_data.get("hydration_pending", True):
+    if hydration.get("hydrated_intent") or not state_data.get(
+        "hydration_pending", True
+    ):
         passed.add("hydration")
 
     # Task gate: passed if current_task is set
@@ -1106,7 +1108,6 @@ def clear_hydrator_active(session_id: str) -> None:
 # ============================================================================
 # Stop Hook Mode API (Interactive/Relaxed Sessions)
 # ============================================================================
-
 
 
 # ============================================================================

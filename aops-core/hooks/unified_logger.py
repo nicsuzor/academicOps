@@ -79,7 +79,7 @@ def log_hook_event(
         # Gather process metrics for debugging (aops-runaway-fix)
         process = psutil.Process(os.getpid())
         mem_info = process.memory_info()
-        
+
         # Create log entry using typed model
         log_entry = HookLogEntry(
             hook_event=ctx.hook_event,
@@ -91,7 +91,7 @@ def log_hook_event(
             input=input_data,
             output=output.model_dump() if output else None,
         )
-        
+
         # Add debug metrics to metadata
         log_dict = log_entry.model_dump()
         log_dict["debug"] = {
@@ -189,12 +189,16 @@ def handle_subagent_stop(session_id: str, input_data: dict[str, Any]) -> None:
     elif isinstance(subagent_result, dict):
         # Strip large fields but preserve keys for gate logic (verdict, etc.)
         result_data = {
-            k: (v[:max_len] + "... [TRUNCATED]") if isinstance(v, str) and len(v) > max_len else v
+            k: (v[:max_len] + "... [TRUNCATED]")
+            if isinstance(v, str) and len(v) > max_len
+            else v
             for k, v in subagent_result.items()
         }
     else:
         raw = str(subagent_result)
-        result_data = {"raw": raw[:max_len] + "... [TRUNCATED]" if len(raw) > max_len else raw}
+        result_data = {
+            "raw": raw[:max_len] + "... [TRUNCATED]" if len(raw) > max_len else raw
+        }
 
     result_data["stopped_at"] = (
         datetime.now().astimezone().replace(microsecond=0).isoformat()

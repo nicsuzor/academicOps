@@ -390,7 +390,6 @@ class TestAxiomEnforcerGateGeminiTools:
         assert result.verdict == GateVerdict.DENY
 
 
-
 # =============================================================================
 # Event Filtering Tests
 # =============================================================================

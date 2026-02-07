@@ -21,11 +21,13 @@ class TestGateLifecycleHydration:
     def test_hydration_starts_closed(self):
         """Hydration gate starts in closed state."""
         from hooks.gate_config import get_gate_initial_state
+
         assert get_gate_initial_state("hydration") == "closed"
 
     def test_hydration_opens_on_hydrator_completion(self):
         """Hydration gate opening condition is hydrator Task completion."""
         from hooks.gate_config import get_gate_opening_condition
+
         condition = get_gate_opening_condition("hydration")
         assert condition["event"] == "PostToolUse"
         assert condition["subagent_type"] == "aops-core:prompt-hydrator"
@@ -34,6 +36,7 @@ class TestGateLifecycleHydration:
     def test_hydration_recloses_on_new_prompt(self):
         """Hydration gate re-closes on UserPromptSubmit."""
         from hooks.gate_config import get_gate_closure_triggers
+
         triggers = get_gate_closure_triggers("hydration")
         assert len(triggers) == 1
         assert triggers[0]["event"] == "UserPromptSubmit"
@@ -41,6 +44,7 @@ class TestGateLifecycleHydration:
     def test_read_only_tools_require_only_hydration(self):
         """Read-only tools only need hydration gate."""
         from hooks.gate_config import get_required_gates
+
         gates = get_required_gates("Read")
         assert gates == ["hydration"]
         assert "task" not in gates
@@ -53,12 +57,14 @@ class TestGateLifecycleTask:
     def test_task_starts_open(self):
         """Task gate starts open to allow planning."""
         from hooks.gate_config import get_gate_initial_state
+
         assert get_gate_initial_state("task") == "open"
 
     def test_task_opens_on_task_manager_success(self):
         """Task gate opens when task manager tools succeed."""
         from hooks.gate_config import get_gate_opening_condition
         import re
+
         condition = get_gate_opening_condition("task")
         assert condition["event"] == "PostToolUse"
         # Verify pattern matches task operations
@@ -71,11 +77,19 @@ class TestGateLifecycleTask:
         """Task gate re-closes when task is completed."""
         from hooks.gate_config import get_gate_closure_triggers
         import re
+
         triggers = get_gate_closure_triggers("task")
         complete_trigger = next(
-            (t for t in triggers if "tool_pattern" in t and
-             re.search(t["tool_pattern"], "mcp__plugin_aops-core_task_manager__complete_task")),
-            None
+            (
+                t
+                for t in triggers
+                if "tool_pattern" in t
+                and re.search(
+                    t["tool_pattern"],
+                    "mcp__plugin_aops-core_task_manager__complete_task",
+                )
+            ),
+            None,
         )
         assert complete_trigger is not None
 
@@ -86,11 +100,13 @@ class TestGateLifecycleCritic:
     def test_critic_starts_open(self):
         """Critic gate starts open to allow planning."""
         from hooks.gate_config import get_gate_initial_state
+
         assert get_gate_initial_state("critic") == "open"
 
     def test_critic_opens_on_approval(self):
         """Critic gate opens when critic agent approves."""
         from hooks.gate_config import get_gate_opening_condition
+
         condition = get_gate_opening_condition("critic")
         assert condition["event"] == "PostToolUse"
         assert condition["subagent_type"] == "aops-core:critic"
@@ -99,20 +115,20 @@ class TestGateLifecycleCritic:
     def test_critic_closes_on_new_prompt(self):
         """Critic gate re-closes on new user prompt."""
         from hooks.gate_config import get_gate_closure_triggers
+
         triggers = get_gate_closure_triggers("critic")
         prompt_trigger = next(
-            (t for t in triggers if t["event"] == "UserPromptSubmit"),
-            None
+            (t for t in triggers if t["event"] == "UserPromptSubmit"), None
         )
         assert prompt_trigger is not None
 
     def test_critic_closes_on_task_complete(self):
         """Critic gate re-closes when task is completed."""
         from hooks.gate_config import get_gate_closure_triggers
+
         triggers = get_gate_closure_triggers("critic")
         complete_trigger = next(
-            (t for t in triggers if "complete_task" in t.get("tool_pattern", "")),
-            None
+            (t for t in triggers if "complete_task" in t.get("tool_pattern", "")), None
         )
         assert complete_trigger is not None
 
@@ -123,11 +139,13 @@ class TestGateLifecycleCustodiet:
     def test_custodiet_starts_open(self):
         """Custodiet gate starts open."""
         from hooks.gate_config import get_gate_initial_state
+
         assert get_gate_initial_state("custodiet") == "open"
 
     def test_custodiet_opens_on_ok(self):
         """Custodiet gate opens when custodiet confirms OK."""
         from hooks.gate_config import get_gate_opening_condition
+
         condition = get_gate_opening_condition("custodiet")
         assert condition["event"] == "PostToolUse"
         assert condition["subagent_type"] == "aops-core:custodiet"
@@ -136,20 +154,20 @@ class TestGateLifecycleCustodiet:
     def test_custodiet_closes_on_new_prompt(self):
         """Custodiet gate re-closes on new user prompt."""
         from hooks.gate_config import get_gate_closure_triggers
+
         triggers = get_gate_closure_triggers("custodiet")
         prompt_trigger = next(
-            (t for t in triggers if t["event"] == "UserPromptSubmit"),
-            None
+            (t for t in triggers if t["event"] == "UserPromptSubmit"), None
         )
         assert prompt_trigger is not None
 
     def test_custodiet_closes_after_threshold(self):
         """Custodiet gate re-closes after threshold write operations."""
         from hooks.gate_config import get_gate_closure_triggers
+
         triggers = get_gate_closure_triggers("custodiet")
         threshold_trigger = next(
-            (t for t in triggers if "threshold_counter" in t),
-            None
+            (t for t in triggers if "threshold_counter" in t), None
         )
         assert threshold_trigger is not None
         assert threshold_trigger["threshold_value"] == 7
@@ -162,11 +180,13 @@ class TestGateLifecycleQA:
     def test_qa_starts_closed(self):
         """QA gate starts closed (must verify before stop)."""
         from hooks.gate_config import get_gate_initial_state
+
         assert get_gate_initial_state("qa") == "closed"
 
     def test_qa_opens_on_verification(self):
         """QA gate opens when QA verification completes."""
         from hooks.gate_config import get_gate_opening_condition
+
         condition = get_gate_opening_condition("qa")
         assert condition["event"] == "PostToolUse"
         assert "qa" in condition["subagent_or_skill"]
@@ -174,6 +194,7 @@ class TestGateLifecycleQA:
     def test_qa_does_not_reclose(self):
         """QA gate stays open once verified."""
         from hooks.gate_config import get_gate_closure_triggers
+
         triggers = get_gate_closure_triggers("qa")
         assert triggers == []
 
@@ -184,11 +205,13 @@ class TestGateLifecycleHandover:
     def test_handover_starts_open(self):
         """Handover gate starts open."""
         from hooks.gate_config import get_gate_initial_state
+
         assert get_gate_initial_state("handover") == "open"
 
     def test_handover_opens_on_skill(self):
         """Handover gate opens when handover skill is invoked."""
         from hooks.gate_config import get_gate_opening_condition
+
         condition = get_gate_opening_condition("handover")
         assert condition["event"] == "PostToolUse"
         assert condition["skill_name"] == "aops-core:handover"
@@ -196,10 +219,10 @@ class TestGateLifecycleHandover:
     def test_handover_closes_on_git_dirty(self):
         """Handover gate re-closes when repo has uncommitted changes."""
         from hooks.gate_config import get_gate_closure_triggers
+
         triggers = get_gate_closure_triggers("handover")
         dirty_trigger = next(
-            (t for t in triggers if t.get("condition") == "git_dirty"),
-            None
+            (t for t in triggers if t.get("condition") == "git_dirty"), None
         )
         assert dirty_trigger is not None
         assert dirty_trigger["tool_category"] == "write"
@@ -211,6 +234,7 @@ class TestWriteToolGateChain:
     def test_write_tools_require_all_primary_gates(self):
         """Write tools require hydration + task + critic + custodiet."""
         from hooks.gate_config import get_required_gates
+
         gates = get_required_gates("Edit")
         assert "hydration" in gates
         assert "task" in gates
@@ -220,6 +244,7 @@ class TestWriteToolGateChain:
     def test_stop_requires_all_gates(self):
         """Stop event requires all gates including QA and handover."""
         from hooks.gate_config import TOOL_GATE_REQUIREMENTS
+
         stop_gates = TOOL_GATE_REQUIREMENTS["stop"]
         assert "hydration" in stop_gates
         assert "task" in stop_gates
@@ -281,12 +306,24 @@ class TestToolCategoryConsistency:
         from hooks.gate_config import get_tool_category
 
         # Read MCP tools
-        assert get_tool_category("mcp__plugin_aops-core_task_manager__get_task") == "read_only"
-        assert get_tool_category("mcp__plugin_aops-core_task_manager__list_tasks") == "read_only"
+        assert (
+            get_tool_category("mcp__plugin_aops-core_task_manager__get_task")
+            == "read_only"
+        )
+        assert (
+            get_tool_category("mcp__plugin_aops-core_task_manager__list_tasks")
+            == "read_only"
+        )
 
         # Write MCP tools
-        assert get_tool_category("mcp__plugin_aops-core_task_manager__create_task") == "write"
-        assert get_tool_category("mcp__plugin_aops-core_task_manager__update_task") == "write"
+        assert (
+            get_tool_category("mcp__plugin_aops-core_task_manager__create_task")
+            == "write"
+        )
+        assert (
+            get_tool_category("mcp__plugin_aops-core_task_manager__update_task")
+            == "write"
+        )
 
 
 class TestGateExecutionOrderIntegrity:
@@ -410,8 +447,9 @@ class TestGateStateTransitions:
         # Gates that start closed must have opening conditions
         for gate, state in GATE_INITIAL_STATE.items():
             if state == "closed":
-                assert gate in GATE_OPENING_CONDITIONS, \
+                assert gate in GATE_OPENING_CONDITIONS, (
                     f"{gate} starts closed but has no opening condition"
+                )
 
     def test_gates_with_closure_triggers(self):
         """Gates with closure triggers can re-close."""

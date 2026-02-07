@@ -657,7 +657,6 @@ def build_hydration_instruction(
     return instruction
 
 
-
 def should_skip_hydration(prompt: str, session_id: str | None = None) -> bool:
     """Check if prompt should skip hydration.
 

@@ -9,7 +9,13 @@ from pathlib import Path
 
 import pytest
 
-from .paths import get_bots_dir, get_data_dir, get_hooks_dir, get_repo_root, get_writing_root
+from .paths import (
+    get_bots_dir,
+    get_data_dir,
+    get_hooks_dir,
+    get_repo_root,
+    get_writing_root,
+)
 
 
 def _is_xdist_worker() -> bool:

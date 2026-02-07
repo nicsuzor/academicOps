@@ -7,8 +7,6 @@ from manager import PolecatManager
 from validation import TaskIDValidationError, validate_task_id_or_raise
 
 
-
-
 def is_interactive() -> bool:
     """Check if we're running in an interactive terminal."""
     return sys.stdin.isatty()
@@ -413,7 +411,14 @@ def finish(ctx, no_push, do_nuke):
             # Use --force-with-lease for safe force push after rebase
             # This is safe because we just rebased and no one else should be pushing to this branch
             subprocess.run(
-                ["git", "push", "--force-with-lease", "-u", "origin", f"{branch_name}:{branch_name}"],
+                [
+                    "git",
+                    "push",
+                    "--force-with-lease",
+                    "-u",
+                    "origin",
+                    f"{branch_name}:{branch_name}",
+                ],
                 check=True,
             )
         except subprocess.CalledProcessError as e:
@@ -923,7 +928,9 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
 
 @main.command()
 @click.argument("task_id")
-@click.option("--transcript-lines", "-n", default=20, help="Number of transcript lines to show")
+@click.option(
+    "--transcript-lines", "-n", default=20, help="Number of transcript lines to show"
+)
 @click.pass_context
 def analyze(ctx, task_id, transcript_lines):
     """Diagnose a stalled or failed task.
@@ -958,7 +965,9 @@ def analyze(ctx, task_id, transcript_lines):
     # --- Section 1: Task Metadata ---
     print("\n📋 TASK METADATA")
     print(f"   Title:    {task.title}")
-    print(f"   Status:   {task.status.value if hasattr(task.status, 'value') else task.status}")
+    print(
+        f"   Status:   {task.status.value if hasattr(task.status, 'value') else task.status}"
+    )
     print(f"   Assignee: {task.assignee or '(none)'}")
     print(f"   Project:  {task.project or 'aops'}")
     print(f"   Priority: P{task.priority}")
@@ -989,6 +998,7 @@ def analyze(ctx, task_id, transcript_lines):
 
         # Check git status
         import subprocess
+
         git_status = subprocess.run(
             ["git", "status", "--porcelain"],
             cwd=worktree_path,
@@ -1049,6 +1059,7 @@ def analyze(ctx, task_id, transcript_lines):
         print("   💡 Transcript capture may not be enabled yet")
     else:
         import json
+
         try:
             # Read last N lines
             with open(transcript_path, "r") as f:
@@ -1057,14 +1068,18 @@ def analyze(ctx, task_id, transcript_lines):
             if not lines:
                 print("   (Transcript file is empty)")
             else:
-                print(f"   Showing last {min(transcript_lines, len(lines))} of {len(lines)} entries:")
+                print(
+                    f"   Showing last {min(transcript_lines, len(lines))} of {len(lines)} entries:"
+                )
                 print()
                 for line in lines[-transcript_lines:]:
                     try:
                         entry = json.loads(line)
                         # Format depends on transcript structure
                         if "type" in entry:
-                            print(f"   [{entry.get('type', '?')}] {entry.get('message', entry.get('content', str(entry)[:80]))}")
+                            print(
+                                f"   [{entry.get('type', '?')}] {entry.get('message', entry.get('content', str(entry)[:80]))}"
+                            )
                         else:
                             print(f"   {str(entry)[:100]}")
                     except json.JSONDecodeError:
@@ -1075,12 +1090,16 @@ def analyze(ctx, task_id, transcript_lines):
     # --- Section 4: Suggested Remediation ---
     print("\n💡 SUGGESTED ACTIONS")
 
-    status_str = task.status.value if hasattr(task.status, 'value') else str(task.status)
+    status_str = (
+        task.status.value if hasattr(task.status, "value") else str(task.status)
+    )
 
     if status_str == "in_progress":
         if not worktree_path.exists():
             print("   1. Task claimed but no worktree - may have crashed during setup")
-            print(f"      → Reset: polecat reset-stalled --hours 0 --project {task.project or 'aops'}")
+            print(
+                f"      → Reset: polecat reset-stalled --hours 0 --project {task.project or 'aops'}"
+            )
             print("      → Or retry: polecat run -t {task_id}")
         elif hours > 4:
             print("   1. Task appears stalled (no activity > 4h)")
@@ -1301,7 +1320,9 @@ def watch(ctx, interval, stall_threshold, project):
         for task in review_tasks:
             seen_review.add(task.id)
 
-        print(f"Initial state: {len(seen_merge_ready)} merge_ready, {len(seen_review)} review")
+        print(
+            f"Initial state: {len(seen_merge_ready)} merge_ready, {len(seen_review)} review"
+        )
     except Exception as e:
         print(f"Warning: Initial scan failed: {e}")
 
@@ -1338,9 +1359,7 @@ def watch(ctx, interval, stall_threshold, project):
                     )
 
             # Check for completed tasks (mark as activity)
-            manager.storage.list_tasks(
-                status=TaskStatus.DONE, project=project
-            )
+            manager.storage.list_tasks(status=TaskStatus.DONE, project=project)
             # We don't track done tasks, but finding new ones means progress
             # This is a simplification - in production you'd track these too
 
@@ -1582,7 +1601,9 @@ def summary(ctx, since, project):
             else:
                 print("No PRs merged in this period.")
         else:
-            print("(Could not query GitHub - gh CLI not available or not authenticated)")
+            print(
+                "(Could not query GitHub - gh CLI not available or not authenticated)"
+            )
 
     except FileNotFoundError:
         print("(GitHub CLI not installed)")
@@ -1609,7 +1630,9 @@ def summary(ctx, since, project):
                     task_mod = task_mod.replace(tzinfo=timezone.utc)
             else:
                 # It's a date - convert to datetime at midnight UTC
-                task_mod = datetime.combine(task_mod, datetime.min.time(), tzinfo=timezone.utc)
+                task_mod = datetime.combine(
+                    task_mod, datetime.min.time(), tzinfo=timezone.utc
+                )
 
             if task_mod >= cutoff:
                 completed_tasks.append(task)
@@ -1679,7 +1702,9 @@ def summary(ctx, since, project):
             print("- **Polecats**: None active")
 
         if crew_workers:
-            print(f"- **Crew**: {len(crew_workers)} workers ({', '.join(crew_workers)})")
+            print(
+                f"- **Crew**: {len(crew_workers)} workers ({', '.join(crew_workers)})"
+            )
         else:
             print("- **Crew**: None active")
 

@@ -449,6 +449,7 @@ def should_gate_close_on_tool(gate_name: str, tool_name: str, event: str) -> boo
         # Check tool pattern match (if specified)
         if "tool_pattern" in trigger:
             import re
+
             if re.match(trigger["tool_pattern"], tool_name):
                 return True
 

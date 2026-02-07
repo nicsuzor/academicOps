@@ -4276,7 +4276,9 @@ def render_network_analysis():
 
         try:
             betweenness = nx.betweenness_centrality(G)
-            top_betweenness = sorted(betweenness.items(), key=lambda x: x[1], reverse=True)[:10]
+            top_betweenness = sorted(
+                betweenness.items(), key=lambda x: x[1], reverse=True
+            )[:10]
 
             if top_betweenness and top_betweenness[0][1] > 0:
                 for task_id, score in top_betweenness:
@@ -4284,7 +4286,9 @@ def render_network_analysis():
                         node_data = G.nodes[task_id]
                         title = node_data.get("title", task_id)[:50]
                         status = node_data.get("status", "")
-                        st.markdown(f"- **{score:.4f}** | `{task_id[:20]}` | {title} ({status})")
+                        st.markdown(
+                            f"- **{score:.4f}** | `{task_id[:20]}` | {title} ({status})"
+                        )
             else:
                 st.caption("No significant betweenness (sparse graph)")
         except Exception as e:
@@ -4296,13 +4300,17 @@ def render_network_analysis():
 
         try:
             pagerank = nx.pagerank(G, alpha=0.85)
-            top_pagerank = sorted(pagerank.items(), key=lambda x: x[1], reverse=True)[:10]
+            top_pagerank = sorted(pagerank.items(), key=lambda x: x[1], reverse=True)[
+                :10
+            ]
 
             for task_id, score in top_pagerank:
                 node_data = G.nodes[task_id]
                 title = node_data.get("title", task_id)[:50]
                 status = node_data.get("status", "")
-                st.markdown(f"- **{score:.4f}** | `{task_id[:20]}` | {title} ({status})")
+                st.markdown(
+                    f"- **{score:.4f}** | `{task_id[:20]}` | {title} ({status})"
+                )
         except Exception as e:
             st.error(f"PageRank calculation error: {e}")
 
@@ -4325,7 +4333,9 @@ def render_network_analysis():
                 node_data = G.nodes[task_id]
                 title = node_data.get("title", task_id)[:40]
                 status = node_data.get("status", "")
-                st.markdown(f"- **{degree}** deps | `{task_id[:15]}` | {title} ({status})")
+                st.markdown(
+                    f"- **{degree}** deps | `{task_id[:15]}` | {title} ({status})"
+                )
 
     with col_b:
         st.markdown("**📦 High In-Degree (Dependent)**")
@@ -4339,7 +4349,9 @@ def render_network_analysis():
                 node_data = G.nodes[task_id]
                 title = node_data.get("title", task_id)[:40]
                 status = node_data.get("status", "")
-                st.markdown(f"- **{degree}** deps | `{task_id[:15]}` | {title} ({status})")
+                st.markdown(
+                    f"- **{degree}** deps | `{task_id[:15]}` | {title} ({status})"
+                )
 
     # Project distribution
     st.markdown("---")
@@ -4350,7 +4362,9 @@ def render_network_analysis():
         proj = t.get("project", "unassigned") or "unassigned"
         project_counts[proj] = project_counts.get(proj, 0) + 1
 
-    sorted_projects = sorted(project_counts.items(), key=lambda x: x[1], reverse=True)[:15]
+    sorted_projects = sorted(project_counts.items(), key=lambda x: x[1], reverse=True)[
+        :15
+    ]
 
     if sorted_projects:
         # Simple bar display
@@ -4367,7 +4381,9 @@ def render_network_analysis():
 
 # Navigation
 page = st.sidebar.radio(
-    "View Mode", ["Dashboard", "Manage Tasks", "Session Summary", "Network Analysis"], index=0
+    "View Mode",
+    ["Dashboard", "Manage Tasks", "Session Summary", "Network Analysis"],
+    index=0,
 )
 
 # Time range filter for "Completed Today" section

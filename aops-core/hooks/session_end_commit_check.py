@@ -662,7 +662,9 @@ def check_uncommitted_work(
 
     # Block if: (has reflection OR has test success OR has tracked changes) AND has uncommitted changes
     # Fix for aops-579dcaeb: sessions without reflection/tests were bypassing commit check
-    if (reflection_found or tests_passed or has_tracked_changes) and git_status.has_changes:
+    if (
+        reflection_found or tests_passed or has_tracked_changes
+    ) and git_status.has_changes:
         should_block = True  # Default to blocking when uncommitted changes detected
 
         if git_status.staged_changes:

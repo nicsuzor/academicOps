@@ -282,7 +282,9 @@ def check_enforcement_mapping(root: Path, metrics: HealthMetrics) -> None:
                 metrics.heuristics_without_enforcement.append(f"H#{h}")
 
 
-def normalize_wikilink_target(target: str, root: Path, source_path: Path | None = None) -> str | None:
+def normalize_wikilink_target(
+    target: str, root: Path, source_path: Path | None = None
+) -> str | None:
     """Normalize a wikilink target to canonical form (with .md extension).
 
     Returns the canonical path if it resolves to a file, None otherwise.
@@ -843,7 +845,14 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
             # Check relative paths (references/*, instructions/*, workflows/*)
             # These resolve within the same skill directory in Obsidian
             if not resolved and target.startswith(
-                ("references/", "instructions/", "workflows/", "templates/", "scripts/", "checks/")
+                (
+                    "references/",
+                    "instructions/",
+                    "workflows/",
+                    "templates/",
+                    "scripts/",
+                    "checks/",
+                )
             ):
                 # First, try to resolve relative to the source file's directory
                 # (e.g., if source is aops-core/skills/analyst/SKILL.md, check aops-core/skills/analyst/references/...)

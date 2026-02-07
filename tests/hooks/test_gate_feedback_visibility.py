@@ -154,7 +154,10 @@ class TestGateBlockIncludesReason:
                 "session_id": session_id,
                 "hook_event_name": "BeforeTool",
                 "tool_name": "write_file",
-                "tool_input": {"file_path": "/home/user/project/file.py", "content": "test"},
+                "tool_input": {
+                    "file_path": "/home/user/project/file.py",
+                    "content": "test",
+                },
             }
         )
 
@@ -170,8 +173,7 @@ class TestGateBlockIncludesReason:
             # Note: This may not trigger if hydration gate catches it first
             # That's OK - we just verify the reason mentions something useful
             assert has_task_guidance or "hydration" in output.reason.lower(), (
-                f"Gate block reason should mention gate type. "
-                f"Got: {output.reason!r}"
+                f"Gate block reason should mention gate type. Got: {output.reason!r}"
             )
 
 
@@ -315,14 +317,18 @@ class TestGeminiFeedbackGap:
         save_session_state(session_id, state)
 
         # Invoke router as subprocess to check exit code
-        router_script = Path(__file__).parent.parent.parent / "aops-core" / "hooks" / "router.py"
+        router_script = (
+            Path(__file__).parent.parent.parent / "aops-core" / "hooks" / "router.py"
+        )
 
-        input_json = json.dumps({
-            "session_id": session_id,
-            "hook_event_name": "BeforeTool",
-            "tool_name": "write_file",
-            "tool_input": {"file_path": "/tmp/test.txt"},
-        })
+        input_json = json.dumps(
+            {
+                "session_id": session_id,
+                "hook_event_name": "BeforeTool",
+                "tool_name": "write_file",
+                "tool_input": {"file_path": "/tmp/test.txt"},
+            }
+        )
 
         env = {
             **dict(__import__("os").environ),
@@ -377,14 +383,18 @@ class TestGeminiFeedbackGap:
         state["hydration"]["temp_path"] = str(tmp_path / "hydrate.md")
         save_session_state(session_id, state)
 
-        router_script = Path(__file__).parent.parent.parent / "aops-core" / "hooks" / "router.py"
+        router_script = (
+            Path(__file__).parent.parent.parent / "aops-core" / "hooks" / "router.py"
+        )
 
-        input_json = json.dumps({
-            "session_id": session_id,
-            "hook_event_name": "BeforeTool",
-            "tool_name": "write_file",
-            "tool_input": {"file_path": "/tmp/test.txt"},
-        })
+        input_json = json.dumps(
+            {
+                "session_id": session_id,
+                "hook_event_name": "BeforeTool",
+                "tool_name": "write_file",
+                "tool_input": {"file_path": "/tmp/test.txt"},
+            }
+        )
 
         env = {
             **dict(__import__("os").environ),
@@ -528,7 +538,9 @@ class TestClaudeVsGeminiFeedbackParity:
         # (context_injection is the source for both)
         if result.context_injection:
             gemini_reason = gemini_output.reason or ""
-            claude_reason = claude_output.reason if hasattr(claude_output, "reason") else ""
+            claude_reason = (
+                claude_output.reason if hasattr(claude_output, "reason") else ""
+            )
 
             # They should share key terms from the gate message
             gate_terms = ["hydration", "task", "plan", "critic"]
@@ -537,7 +549,9 @@ class TestClaudeVsGeminiFeedbackParity:
 
             # If one identifies a gate, the other should too (or both empty)
             if gemini_gate or claude_gate:
-                assert gemini_gate == claude_gate or not gemini_gate or not claude_gate, (
+                assert (
+                    gemini_gate == claude_gate or not gemini_gate or not claude_gate
+                ), (
                     f"Gate identification mismatch. "
                     f"Gemini identified: {gemini_gate}, Claude: {claude_gate}"
                 )

@@ -168,10 +168,10 @@ class HookRouter:
         status_dir_env = os.environ.get("AOPS_SESSION_STATE_DIR")
         if not status_dir_env:
             return
-            
+
         heartbeat_file = Path(status_dir_env) / "hook-heartbeat.json"
         now = time.time()
-        
+
         try:
             # Read previous heartbeats
             heartbeats = []
@@ -180,11 +180,11 @@ class HookRouter:
                     heartbeats = json.loads(heartbeat_file.read_text())
                 except (json.JSONDecodeError, OSError):
                     pass
-            
+
             # Add current heartbeat and prune old ones (older than window)
             heartbeats.append(now)
             heartbeats = [t for t in heartbeats if (now - t) < self._WINDOW_SECONDS]
-            
+
             # Atomically write back
             fd, temp_path = tempfile.mkstemp(dir=str(heartbeat_file.parent), text=True)
             try:
@@ -217,11 +217,13 @@ class HookRouter:
                         ),
                     )
                 except Exception as e:
-                    print(f"WARNING: Failed to log loop detection: {e}", file=sys.stderr)
+                    print(
+                        f"WARNING: Failed to log loop detection: {e}", file=sys.stderr
+                    )
 
                 # Terminate the current process forcefully.
                 os.kill(os.getpid(), signal.SIGKILL)
-                
+
         except Exception as e:
             # Don't let loop detection failure block the hook
             print(f"WARNING: Loop detection failed: {e}", file=sys.stderr)
@@ -351,8 +353,10 @@ class HookRouter:
             try:
                 result = check_func(ctx)
                 duration = time.monotonic() - start_time
-                merged_result.metadata.setdefault("gate_times", {})[gate_name] = duration
-                
+                merged_result.metadata.setdefault("gate_times", {})[gate_name] = (
+                    duration
+                )
+
                 if result:
                     hook_output = self._gate_result_to_canonical(result)
                     self._merge_result(merged_result, hook_output)
@@ -374,7 +378,9 @@ class HookRouter:
         try:
             gate_status = format_gate_status_icons(ctx.session_id)
             if merged_result.system_message:
-                merged_result.system_message = f"{merged_result.system_message} {gate_status}"
+                merged_result.system_message = (
+                    f"{merged_result.system_message} {gate_status}"
+                )
             else:
                 merged_result.system_message = gate_status
         except Exception as e:

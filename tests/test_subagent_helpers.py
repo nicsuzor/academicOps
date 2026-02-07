@@ -3,7 +3,6 @@
 These helpers are defined in conftest.py and used for testing multi-agent workflows.
 """
 
-
 from .conftest import (
     count_task_calls,
     extract_subagent_tool_calls,
@@ -108,7 +107,10 @@ class TestExtractSubagentToolCalls:
     def test_ignores_malformed_task_calls(self):
         """Task calls without subagent_type are skipped."""
         tool_calls = [
-            {"name": "Task", "input": {"prompt": "Do something"}},  # Missing subagent_type
+            {
+                "name": "Task",
+                "input": {"prompt": "Do something"},
+            },  # Missing subagent_type
             {"name": "Task", "input": {}},  # Empty input
         ]
 
@@ -237,7 +239,10 @@ class TestTaskToolWithType:
     def test_exact_match_required(self):
         """Subagent type matching is exact, not substring."""
         tool_calls = [
-            {"name": "Task", "input": {"subagent_type": "general-purpose", "prompt": ""}}
+            {
+                "name": "Task",
+                "input": {"subagent_type": "general-purpose", "prompt": ""},
+            }
         ]
 
         assert task_tool_with_type(tool_calls, "general") is False

@@ -169,7 +169,6 @@ def _is_safe_temp_path(file_path: str | None) -> bool:
     return False
 
 
-
 def _is_actually_destructive(tool_name: str, tool_input: Dict[str, Any]) -> bool:
     """Check if this tool call is actually destructive (modifies state).
 

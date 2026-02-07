@@ -13,7 +13,9 @@ from pathlib import Path
 # Paths to hydrator files
 AOPS_CORE = Path(__file__).parent.parent.parent / "aops-core"
 HYDRATOR_AGENT = AOPS_CORE / "agents" / "prompt-hydrator.md"
-HYDRATOR_CONTEXT_TEMPLATE = AOPS_CORE / "hooks" / "templates" / "prompt-hydrator-context.md"
+HYDRATOR_CONTEXT_TEMPLATE = (
+    AOPS_CORE / "hooks" / "templates" / "prompt-hydrator-context.md"
+)
 
 
 class TestHydratorAntiInstructions:
@@ -24,17 +26,19 @@ class TestHydratorAntiInstructions:
         content = HYDRATOR_AGENT.read_text()
 
         # Must warn about tool blindness
-        assert "do NOT know what tools the main agent has" in content.lower() or \
-               "you do not know what tools" in content.lower(), \
-               "Hydrator agent must warn about tool availability blindness"
+        assert (
+            "do NOT know what tools the main agent has" in content.lower()
+            or "you do not know what tools" in content.lower()
+        ), "Hydrator agent must warn about tool availability blindness"
 
     def test_agent_forbids_human_task_claims(self) -> None:
         """Hydrator agent must forbid claiming tasks are 'human tasks' based on tools."""
         content = HYDRATOR_AGENT.read_text()
 
         # Must have explicit prohibition
-        assert "never" in content.lower() and "human task" in content.lower(), \
-               "Hydrator agent must forbid 'human task' claims based on tool assumptions"
+        assert "never" in content.lower() and "human task" in content.lower(), (
+            "Hydrator agent must forbid 'human task' claims based on tool assumptions"
+        )
 
     def test_agent_forbids_feasibility_judgments(self) -> None:
         """Hydrator agent must forbid feasibility judgments about tool availability."""
@@ -52,16 +56,18 @@ class TestHydratorAntiInstructions:
             for pattern in forbidden_patterns
         )
 
-        assert has_prohibition, \
-               "Hydrator agent must forbid feasibility judgments about tools"
+        assert has_prohibition, (
+            "Hydrator agent must forbid feasibility judgments about tools"
+        )
 
     def test_agent_suggests_conditional_approach(self) -> None:
         """Hydrator agent must suggest conditional approach for uncertain tools."""
         content = HYDRATOR_AGENT.read_text()
 
         # Should suggest "if X is available, use it; otherwise ask user"
-        assert "if" in content.lower() and "available" in content.lower(), \
-               "Hydrator agent must suggest conditional approach for tool uncertainty"
+        assert "if" in content.lower() and "available" in content.lower(), (
+            "Hydrator agent must suggest conditional approach for tool uncertainty"
+        )
 
 
 class TestContextTemplateWarnings:
@@ -71,22 +77,25 @@ class TestContextTemplateWarnings:
         """Context template must reference curated tools list."""
         content = HYDRATOR_CONTEXT_TEMPLATE.read_text()
 
-        assert "curated" in content.lower() or "reference" in content.lower(), \
-               "Context template must indicate tools list is a curated reference"
+        assert "curated" in content.lower() or "reference" in content.lower(), (
+            "Context template must indicate tools list is a curated reference"
+        )
 
     def test_template_forbids_feasibility_judgments(self) -> None:
         """Context template must forbid feasibility judgments based on tools list."""
         content = HYDRATOR_CONTEXT_TEMPLATE.read_text()
 
-        assert "do not" in content.lower() and "feasibility" in content.lower(), \
-               "Context template must forbid feasibility judgments from tools list"
+        assert "do not" in content.lower() and "feasibility" in content.lower(), (
+            "Context template must forbid feasibility judgments from tools list"
+        )
 
     def test_template_warns_about_additional_tools(self) -> None:
         """Context template must warn main agent may have additional tools."""
         content = HYDRATOR_CONTEXT_TEMPLATE.read_text()
 
-        assert "additional tools" in content.lower() or "cannot see" in content.lower(), \
-               "Context template must warn about unseen tools"
+        assert (
+            "additional tools" in content.lower() or "cannot see" in content.lower()
+        ), "Context template must warn about unseen tools"
 
 
 class TestToolsIndexFunction:
@@ -106,12 +115,12 @@ class TestToolsIndexFunction:
         func_body = content[func_start:func_end]
 
         # Should reference TOOLS.md
-        assert "TOOLS.md" in func_body, \
-               "load_tools_index must read from TOOLS.md"
+        assert "TOOLS.md" in func_body, "load_tools_index must read from TOOLS.md"
 
         # Should NOT have hardcoded server descriptions
-        assert '"outlook"' not in func_body.lower(), \
-               "load_tools_index must not have hardcoded server descriptions"
+        assert '"outlook"' not in func_body.lower(), (
+            "load_tools_index must not have hardcoded server descriptions"
+        )
 
     def test_tools_md_exists_and_has_content(self) -> None:
         """TOOLS.md must exist and contain tool descriptions."""
@@ -134,15 +143,18 @@ class TestToolsIndexFunction:
     def test_output_returns_curated_content(self) -> None:
         """Tools index output must return curated content from TOOLS.md."""
         import sys
+
         sys.path.insert(0, str(AOPS_CORE / "hooks"))
 
         try:
             from user_prompt_submit import load_tools_index
+
             output = load_tools_index()
 
             # Should have tools content (not empty or error)
-            assert "Tools Index" in output or "MCP Servers" in output, \
-                   "load_tools_index must return TOOLS.md content"
+            assert "Tools Index" in output or "MCP Servers" in output, (
+                "load_tools_index must return TOOLS.md content"
+            )
         finally:
             sys.path.pop(0)
 
@@ -157,6 +169,7 @@ FORBIDDEN_HYDRATOR_OUTPUT_PATTERNS = [
     "agent cannot assume",
     "cannot be performed by",
 ]
+
 
 # Document these for manual testing
 class TestDocumentForbiddenPatterns:

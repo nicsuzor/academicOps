@@ -318,17 +318,13 @@ class TestGateClosureTriggers:
     def test_task_closes_on_complete(self):
         """Task gate re-closes when task is completed."""
         triggers = GATE_CLOSURE_TRIGGERS["task"]
-        assert any(
-            "complete_task" in t.get("tool_pattern", "")
-            for t in triggers
-        )
+        assert any("complete_task" in t.get("tool_pattern", "") for t in triggers)
 
     def test_critic_closes_on_new_prompt(self):
         """Critic gate re-closes on new user prompt."""
         triggers = GATE_CLOSURE_TRIGGERS["critic"]
         prompt_trigger = next(
-            (t for t in triggers if t["event"] == "UserPromptSubmit"),
-            None
+            (t for t in triggers if t["event"] == "UserPromptSubmit"), None
         )
         assert prompt_trigger is not None
 
@@ -336,8 +332,7 @@ class TestGateClosureTriggers:
         """Critic gate re-closes when task is completed."""
         triggers = GATE_CLOSURE_TRIGGERS["critic"]
         complete_trigger = next(
-            (t for t in triggers if "complete_task" in t.get("tool_pattern", "")),
-            None
+            (t for t in triggers if "complete_task" in t.get("tool_pattern", "")), None
         )
         assert complete_trigger is not None
 
@@ -345,8 +340,7 @@ class TestGateClosureTriggers:
         """Custodiet gate re-closes on new user prompt."""
         triggers = GATE_CLOSURE_TRIGGERS["custodiet"]
         prompt_trigger = next(
-            (t for t in triggers if t["event"] == "UserPromptSubmit"),
-            None
+            (t for t in triggers if t["event"] == "UserPromptSubmit"), None
         )
         assert prompt_trigger is not None
 
@@ -354,8 +348,7 @@ class TestGateClosureTriggers:
         """Custodiet gate re-closes after N write operations."""
         triggers = GATE_CLOSURE_TRIGGERS["custodiet"]
         threshold_trigger = next(
-            (t for t in triggers if "threshold_counter" in t),
-            None
+            (t for t in triggers if "threshold_counter" in t), None
         )
         assert threshold_trigger is not None
         assert threshold_trigger["threshold_value"] == 7
@@ -364,8 +357,7 @@ class TestGateClosureTriggers:
         """Handover gate re-closes when repo has uncommitted changes."""
         triggers = GATE_CLOSURE_TRIGGERS["handover"]
         dirty_trigger = next(
-            (t for t in triggers if t.get("condition") == "git_dirty"),
-            None
+            (t for t in triggers if t.get("condition") == "git_dirty"), None
         )
         assert dirty_trigger is not None
 
@@ -395,11 +387,17 @@ class TestGetToolCategory:
 
     def test_mcp_read_tool_returns_read_only(self):
         """MCP read tools return 'read_only' category."""
-        assert get_tool_category("mcp__plugin_aops-core_task_manager__get_task") == "read_only"
+        assert (
+            get_tool_category("mcp__plugin_aops-core_task_manager__get_task")
+            == "read_only"
+        )
 
     def test_mcp_write_tool_returns_write(self):
         """MCP write tools return 'write' category."""
-        assert get_tool_category("mcp__plugin_aops-core_task_manager__create_task") == "write"
+        assert (
+            get_tool_category("mcp__plugin_aops-core_task_manager__create_task")
+            == "write"
+        )
 
 
 class TestGetRequiredGates:

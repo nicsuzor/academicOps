@@ -279,7 +279,10 @@ def validate_gemini_agent_schema(frontmatter: dict, filename: str) -> dict:
         errors.append("Missing required field: description")
 
     if errors:
-        raise ValueError(f"Agent '{filename}' schema validation failed:\n  - " + "\n  - ".join(errors))
+        raise ValueError(
+            f"Agent '{filename}' schema validation failed:\n  - "
+            + "\n  - ".join(errors)
+        )
 
     # Set defaults for optional fields
     if "kind" not in frontmatter:
@@ -324,7 +327,9 @@ def validate_gemini_agent_schema(frontmatter: dict, filename: str) -> dict:
     return frontmatter
 
 
-def transform_agent_for_platform(content: str, platform: str, filename: str = "agent") -> str:
+def transform_agent_for_platform(
+    content: str, platform: str, filename: str = "agent"
+) -> str:
     """Transform agent markdown for a specific platform.
 
     For Gemini: filters out mcp__* tools from frontmatter since they're Claude-specific,
@@ -562,7 +567,9 @@ def build_aops_core(
                 for agent_file in src.glob("*.md"):
                     content = agent_file.read_text()
                     # Transform frontmatter (filter mcp__ tools for Gemini, apply schema)
-                    content = transform_agent_for_platform(content, platform, agent_file.name)
+                    content = transform_agent_for_platform(
+                        content, platform, agent_file.name
+                    )
                     # Translate tool calls in body text
                     content = translate_tool_calls(content, platform)
                     (dst / agent_file.name).write_text(content)
@@ -625,7 +632,10 @@ def build_aops_core(
 
                 # Fix up task_manager path if it was using the repo-root format
                 # (where aops-core is a subdirectory, but in dist it is the root)
-                if "mcpServers" in manifest and "task_manager" in manifest["mcpServers"]:
+                if (
+                    "mcpServers" in manifest
+                    and "task_manager" in manifest["mcpServers"]
+                ):
                     args = manifest["mcpServers"]["task_manager"].get("args", [])
                     new_args = [
                         a.replace(
