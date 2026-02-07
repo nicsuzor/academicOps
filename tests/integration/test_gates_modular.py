@@ -1,9 +1,10 @@
-import pytest
 import os
 import sys
 from pathlib import Path
-from typing import Dict, Any
-from unittest.mock import patch, MagicMock
+from typing import Any, Dict
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Add aops-core to path
 AOPS_CORE_DIR = Path(__file__).parent.parent.parent / "aops-core"
@@ -11,7 +12,7 @@ if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
 # Now we can import from hooks and lib
-from hooks.gate_registry import GateContext, GATE_CHECKS
+from hooks.gate_registry import GATE_CHECKS, GateContext
 from lib.gate_model import GateVerdict
 
 # --- Fixtures ---
@@ -160,13 +161,13 @@ def _simulate_tool_call(agent: str, instruction: str) -> Dict[str, Any]:
             {"task_bound": False},
             "allowed",
         ),  # Task binding tools allowed
-        ("task_required", "bash ls", {"task_bound": False}, "allowed"),  # Safe bash
+        ("task_required", "bash ls", {"task_bound": False}, "block"),  # bash disallowed
         (
             "task_required",
-            "bash rm -rf /",
-            {"task_bound": False},
+            "bash -c 'rm -rf /fakepath'",
+            {"critic_invoked": False},
             "blocked",
-        ),  # Destructive bash
+        ),  # Destructive bash also disallowed
         # Task Required with Full Enforcement (Hydrator/Critic check)
         (
             "task_required",
