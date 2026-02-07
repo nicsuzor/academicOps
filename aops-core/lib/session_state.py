@@ -864,7 +864,9 @@ def get_passed_gates(session_id: str) -> set[str]:
         passed.add("hydration")
 
     # Task gate: passed if current_task is set
-    if state_data.get("current_task"):
+    # Note: current_task is in main_agent, not state
+    main_agent = state.get("main_agent", {})
+    if main_agent.get("current_task"):
         passed.add("task")
 
     # Critic gate: passed if critic_invoked is set

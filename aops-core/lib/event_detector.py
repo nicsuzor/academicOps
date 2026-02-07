@@ -34,7 +34,7 @@ class EventDetector:
                 "type": RuleType.TOOL_CALL,
                 "tools": ["EnterPlanMode"],
             },
-            # --- Task Binding (Claim) ---
+            # --- Task Binding (Claim via update_task) ---
             # Support both Claude (mcp__plugin_*) and Gemini (aops-core/tools:*) naming conventions
             {
                 "change": StateChange.BIND_TASK,
@@ -48,6 +48,21 @@ class EventDetector:
                     "update_task",
                 ],
                 "input_pattern": {"status": "in_progress"},
+            },
+            # --- Task Binding (Claim via claim_next_task) ---
+            # claim_next_task implicitly sets status to in_progress, no input_pattern needed
+            {
+                "change": StateChange.BIND_TASK,
+                "type": RuleType.TOOL_CALL,
+                "tools": [
+                    "mcp__plugin_aops-core_task_manager__claim_next_task",
+                    "mcp__plugin_aops-tools_task_manager__claim_next_task",
+                    "aops-core:task_manager:claim_next_task",
+                    "aops-tools:task_manager:claim_next_task",
+                    "task_manager__claim_next_task",
+                    "claim_next_task",
+                ],
+                "result_check": "success",
             },
             # --- Task Unbinding (Completion) ---
             {
