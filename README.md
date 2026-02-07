@@ -35,7 +35,7 @@ command claude plugin marketplace update aops && command claude plugin install a
 
 Gemini CLI (warning: auto accept flag below, remove --consent if you're concerned)
 ```bash
-command gemini extensions install git@github.com:nicsuzor/aops-dist.git --consent --auto-update --pre-release 
+(command gemini extensions uninstall aops-core || echo Gemini plugin not installed -- not removing.) && command gemini extensions install git@github.com:nicsuzor/aops-dist.git --consent --auto-update --pre-release 
 ```
 
 ## Core Loop

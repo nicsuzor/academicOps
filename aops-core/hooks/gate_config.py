@@ -116,10 +116,10 @@ TOOL_GATE_REQUIREMENTS: Dict[str, List[str]] = {
     "read_only": ["hydration"],
     # Meta tools: same as read_only (planning/questioning is safe)
     "meta": ["hydration"],
-    # Write tools: need hydration + task binding + critic approval
-    "write": ["hydration", "task", "critic"],
+    # Write tools: need hydration + task binding + critic + custodiet approval
+    "write": ["hydration", "task", "critic", "custodiet"],
     # Stop event: need all gates including QA and handover
-    "stop": ["hydration", "task", "critic", "qa", "handover"],
+    "stop": ["hydration", "task", "critic", "custodiet", "qa", "handover"],
 }
 
 # =============================================================================
@@ -229,6 +229,7 @@ GATE_INITIAL_STATE: Dict[str, str] = {
     "hydration": "closed",  # Must hydrate before any work
     "task": "open",  # Must bind a task before writes, but allow planning and answers first
     "critic": "open",  # Must get approval before writes, but allow planning and answers first
+    "custodiet": "open",  # Must get compliance check before writes, but allow planning first
     "qa": "closed",  # Must verify before stop
     "handover": "open",  # Starts open; closes on uncommitted changes
 }
@@ -261,6 +262,13 @@ GATE_OPENING_CONDITIONS: Dict[str, Dict[str, Any]] = {
         "subagent_type": "aops-core:critic",
         "output_contains": "APPROVED",
         "description": "Opens when critic agent approves the plan",
+    },
+    "custodiet": {
+        "event": "PostToolUse",
+        "tool_pattern": r"^Task$",
+        "subagent_type": "aops-core:custodiet",
+        "output_contains": "OK",
+        "description": "Opens when custodiet agent confirms no ultra vires activity",
     },
     "qa": {
         "event": "PostToolUse",
@@ -311,6 +319,19 @@ GATE_CLOSURE_TRIGGERS: Dict[str, List[Dict[str, Any]]] = {
             "result_key": "success",
             "result_value": True,
             "description": "Re-close on task change (completed = need new approval)",
+        },
+    ],
+    "custodiet": [
+        {
+            "event": "UserPromptSubmit",
+            "description": "Re-close on new user prompt (fresh compliance check required)",
+        },
+        {
+            "event": "PostToolUse",
+            "tool_category": "write",
+            "threshold_counter": "tool_calls_since_custodiet",
+            "threshold_value": 7,
+            "description": "Re-close after N write operations (periodic re-verification)",
         },
     ],
     "handover": [

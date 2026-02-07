@@ -5,7 +5,6 @@ Tests all tool categories, gate requirements, execution order,
 initial states, opening conditions, and closure triggers.
 """
 
-import pytest
 import sys
 from pathlib import Path
 

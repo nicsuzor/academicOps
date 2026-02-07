@@ -5,11 +5,8 @@ Tests gate state transitions across the full hook lifecycle,
 including opening conditions, closure triggers, and cross-gate interactions.
 """
 
-import os
-import pytest
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 # Add aops-core to path
 AOPS_CORE = Path(__file__).parent.parent.parent
@@ -237,7 +234,7 @@ class TestSubagentBypass:
 
     def test_main_agent_only_gates_bypass_for_subagents(self):
         """Gates in MAIN_AGENT_ONLY_GATES should bypass for subagents."""
-        from hooks.gate_config import MAIN_AGENT_ONLY_GATES, is_main_agent_only
+        from hooks.gate_config import is_main_agent_only
 
         # All these should be main-agent only
         assert is_main_agent_only("tool_gate")
