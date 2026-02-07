@@ -4,12 +4,12 @@ Gate Registry: Defines the logic for specific gates.
 This module contains the "Conditions" that gates evaluate.
 """
 
-from typing import Any, Dict, Optional, Tuple
-from pathlib import Path
+import os
 import re
 import sys
-import os
 import time
+from pathlib import Path
+from typing import Any, Dict, Optional, Tuple
 
 from lib.gate_model import GateResult, GateVerdict
 from lib.paths import get_ntfy_config
@@ -18,12 +18,10 @@ from lib.paths import get_ntfy_config
 # These imports are REQUIRED for gate functionality - fail explicitly if missing
 _IMPORT_ERROR: str | None = None
 try:
-    from lib import session_state
-    from lib import session_paths
-    from lib import hook_utils
-    from lib import axiom_detector
-    from lib.template_loader import load_template
     from lib.session_reader import extract_gate_context
+    from lib.template_loader import load_template
+
+    from lib import axiom_detector, hook_utils, session_paths, session_state
 except ImportError as e:
     _IMPORT_ERROR = str(e)
     # Provide stub implementations that raise clear errors when used
@@ -2130,14 +2128,15 @@ def run_user_prompt_submit(ctx: HookContext) -> Optional[GateResult]:
         return None
 
     try:
+        from lib.session_state import (
+            clear_reflection_output,
+            set_gates_bypassed,
+        )
+
         from hooks.user_prompt_submit import (
             build_hydration_instruction,
             should_skip_hydration,
             write_initial_hydrator_state,
-        )
-        from lib.session_state import (
-            set_gates_bypassed,
-            clear_reflection_output,
         )
     except ImportError as e:
         print(f"WARNING: user_prompt_submit import failed: {e}", file=sys.stderr)
@@ -2197,8 +2196,8 @@ def run_task_binding(ctx: HookContext) -> Optional[GateResult]:
     if ctx.hook_event != "PostToolUse":
         return None
 
+    from lib.event_detector import StateChange, detect_tool_state_changes
     from lib.hook_utils import get_task_id_from_result
-    from lib.event_detector import detect_tool_state_changes, StateChange
 
     # Support both Claude (snake_case) and Gemini (camelCase) field names
     tool_name = (
@@ -2496,10 +2495,10 @@ def check_tool_gate(ctx: "HookContext") -> GateResult:
     _check_imports()
 
     from hooks.gate_config import (
-        get_tool_category,
-        get_required_gates,
-        GATE_MODE_ENV_VARS,
         GATE_MODE_DEFAULTS,
+        GATE_MODE_ENV_VARS,
+        get_required_gates,
+        get_tool_category,
     )
 
     # Skip for non-tool events
@@ -2512,9 +2511,21 @@ def check_tool_gate(ctx: "HookContext") -> GateResult:
     if session_state.is_hydrator_active(ctx.session_id):
         return GateResult.allow()
 
+    # Allow Task tool when spawning the hydrator (needed before hydration passes)
+    if tool_name == "Task":
+        tool_input = ctx.tool_input or {}
+        subagent_type = tool_input.get("subagent_type", "")
+        if subagent_type in ("aops-core:prompt-hydrator", "prompt-hydrator"):
+            return GateResult.allow()
+
     # Get tool category and required gates
     category = get_tool_category(tool_name)
     required_gates = get_required_gates(tool_name)
+
+    # Check hydration exemption - tools in MCP_TOOLS_EXEMPT_FROM_HYDRATION
+    # don't require hydration (e.g., task manager tools needed for /pull)
+    if tool_name in MCP_TOOLS_EXEMPT_FROM_HYDRATION:
+        required_gates = [g for g in required_gates if g != "hydration"]
 
     # Get passed gates for this session
     passed_gates = session_state.get_passed_gates(ctx.session_id)
@@ -2537,11 +2548,11 @@ def check_tool_gate(ctx: "HookContext") -> GateResult:
         status = "✓" if gate in passed_gates else "✗"
         gate_status.append(f"- {gate.title()}: {status}")
 
-    context_msg = f"""⚠️ **TOOL GATE ({mode})**: Tool `{tool_name}` requires gates that haven't passed.
+    context_msg = f"""⚠️ **GATE BLOCKED ({mode})**: 
 
-**Tool category**: {category}
-**Required gates**: {', '.join(required_gates)}
-**Missing gates**: {', '.join(missing_gates)}
+**Tool**: Tool `{tool_name}` ({category})
+**Required gates**: {", ".join(required_gates)}
+**Missing gates**: {", ".join(missing_gates)}
 
 **Gate status**:
 {chr(10).join(gate_status)}
