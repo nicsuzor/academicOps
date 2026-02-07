@@ -727,32 +727,7 @@ def build_aops_core(
             print(f"Error processing template {template_path}: {e}", file=sys.stderr)
             raise
 
-    # 5. Build Sub-Agents (Skills)
-    if platform == "gemini":
-        agents_dir = src_dir / "agents"
-        if agents_dir.exists():
-            for agent_file in agents_dir.glob("*.md"):
-                try:
-                    content = agent_file.read_text()
-                    parts = content.split("---", 2)
-                    if len(parts) >= 3:
-                        import yaml
-
-                        frontmatter = yaml.safe_load(parts[1])
-                        if "name" in frontmatter:
-                            agent_name = frontmatter["name"]
-                            skill_dir = content_dir / "skills" / agent_name
-                            skill_dir.mkdir(parents=True, exist_ok=True)
-
-                            text = agent_file.read_text()
-                            text = translate_tool_calls(text, "gemini")
-
-                            with open(skill_dir / "SKILL.md", "w") as f:
-                                f.write(text)
-                except Exception as e:
-                    print(f"Warning: Failed to parse agent {agent_file}: {e}")
-
-    # 6. Commands (Gemini only for now as they use .toml)
+    # 5. Commands (Gemini only for now as they use .toml)
     if platform == "gemini":
         commands_dist = content_dir / "commands"
         convert_script = aops_root / "scripts" / "convert_commands_to_toml.py"
@@ -772,7 +747,7 @@ def build_aops_core(
             md_file.unlink()
             print(f"  - Removed {md_file.name} (Gemini uses TOML)")
 
-    # 7. Generate FILES.md dynamically
+    # 6. Generate FILES.md dynamically
     generate_files_md(dist_dir, platform)
 
     print(f"✓ Built {plugin_name} ({platform})")
