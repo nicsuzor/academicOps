@@ -40,6 +40,18 @@ If there are uncommitted changes:
 
 > **CRITICAL**: Do not proceed to Step 2 with uncommitted work unless you explicitly document why (e.g., "Changes intentionally not committed because...")
 
+### Step 1.5: Check for Revealed Work
+
+If your session revealed errors or warnings that weren't caused by your changes (e.g., post-commit hook output, CI failures in other areas, deprecation warnings):
+
+1. **Create a follow-up task** to track fixing them:
+   ```
+   create_task(title="Fix [category] errors revealed by [your change]", project="aops", priority=3)
+   ```
+2. **Note the task ID** in your reflection under "Next step"
+
+> **Why**: P#30 (Nothing Is Someone Else's Responsibility) - revealed problems are now your responsibility to track, even if not to fix immediately.
+
 ### Step 2: Output Framework Reflection
 
 Output the following structure **exactly** (the stop hook validates this format):
@@ -94,11 +106,15 @@ The handover skill:
 /handover
 
 > git status --porcelain shows no changes
+> Post-commit hook revealed 50 lint errors in other files
+
+Created task aops-abc123: "Fix lint errors revealed by authentication feature"
 
 ## Framework Reflection
 **Outcome**: success
 **Accomplishments**: Implemented user authentication, added tests, updated documentation
 **Friction points**: none
+**Next step**: Fix lint errors (aops-abc123)
 
 Handover complete. Session may now end.
 ```
