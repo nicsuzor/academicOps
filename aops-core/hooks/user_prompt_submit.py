@@ -18,34 +18,38 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from lib.file_index import get_formatted_relevant_paths
 from lib.hook_utils import (
     cleanup_old_temp_files as _cleanup_temp,
+)
+from lib.hook_utils import (
     get_hook_temp_dir,
+)
+from lib.hook_utils import (
     write_temp_file as _write_temp,
 )
 from lib.paths import (
-    get_plugin_root,
     get_aops_root,
-    get_data_root,
-    get_skills_dir,
-    get_hooks_dir,
     get_commands_dir,
-    get_tests_dir,
     get_config_dir,
-    get_workflows_dir,
-    get_indices_dir,
-    get_sessions_dir,
-    get_projects_dir,
-    get_logs_dir,
     get_context_dir,
+    get_data_root,
     get_goals_dir,
+    get_hooks_dir,
+    get_indices_dir,
+    get_logs_dir,
+    get_plugin_root,
+    get_projects_dir,
+    get_sessions_dir,
+    get_skills_dir,
+    get_tests_dir,
+    get_workflows_dir,
 )
-from lib.file_index import get_formatted_relevant_paths
 from lib.session_reader import extract_router_context
 from lib.session_state import (
+    clear_hydration_pending,
     set_hydration_pending,
     set_hydration_temp_path,
-    clear_hydration_pending,
 )
 from lib.template_loader import load_template
 
@@ -178,6 +182,7 @@ def load_mcp_tools_context() -> str:
 
 def load_environment_variables_context() -> str:
     """List relevant environment variables."""
+    # <!-- NS: no magic literals. -->
     vars_to_check = [
         "AOPS",
         "ACA_DATA",

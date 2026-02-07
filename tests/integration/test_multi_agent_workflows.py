@@ -12,7 +12,7 @@ Key patterns tested:
 
 import pytest
 
-from tests.conftest import count_task_calls, extract_task_calls, task_tool_with_type
+from tests.conftest import count_task_calls, extract_task_calls
 
 pytestmark = [
     pytest.mark.integration,

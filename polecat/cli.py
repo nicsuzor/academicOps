@@ -7,7 +7,6 @@ from manager import PolecatManager
 from validation import TaskIDValidationError, validate_task_id_or_raise
 
 
-from lib.paths import get_aops_root
 
 
 def is_interactive() -> bool:
@@ -396,7 +395,7 @@ def finish(ctx, no_push, do_nuke):
                         from lib.task_model import TaskStatus
 
                         task.status = TaskStatus.REVIEW
-                        task.body += f"\n\n## ⚠️ Rebase Failed\nConflicts detected during rebase onto main.\n"
+                        task.body += "\n\n## ⚠️ Rebase Failed\nConflicts detected during rebase onto main.\n"
                         manager.storage.save_task(task)
                     except ImportError:
                         pass
@@ -1086,7 +1085,7 @@ def analyze(ctx, task_id, transcript_lines):
         elif hours > 4:
             print("   1. Task appears stalled (no activity > 4h)")
             print("      → Check if agent is still running")
-            print(f"      → Reset if abandoned: polecat reset-stalled")
+            print("      → Reset if abandoned: polecat reset-stalled")
             print(f"      → Or manually finish: cd {worktree_path} && polecat finish")
         else:
             print("   1. Task is in progress and appears active")
@@ -1282,7 +1281,7 @@ def watch(ctx, interval, stall_threshold, project):
     signal.signal(signal.SIGINT, handle_signal)
     signal.signal(signal.SIGTERM, handle_signal)
 
-    print(f"Starting polecat watch...")
+    print("Starting polecat watch...")
     print(f"  Polling interval: {interval}s")
     print(f"  Stall threshold: {stall_threshold}min")
     print(f"  Project filter: {project or 'all'}")
@@ -1567,7 +1566,7 @@ def summary(ctx, since, project):
                             if project:
                                 # Check if branch matches project pattern
                                 branch = pr.get("headRefName", "")
-                                if not branch.startswith(f"polecat/"):
+                                if not branch.startswith("polecat/"):
                                     continue
                             merged_prs.append(pr)
                     except (ValueError, TypeError):

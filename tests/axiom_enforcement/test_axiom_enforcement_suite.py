@@ -14,8 +14,6 @@ when this file is written. The _decode() function decodes them at runtime.
 from __future__ import annotations
 
 import base64
-from pathlib import Path
-from unittest.mock import patch
 
 from lib.axiom_detector import P8FallbackDetector, detect_all_violations
 from hooks.gate_registry import GateContext, check_axiom_enforcer_gate

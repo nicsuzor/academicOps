@@ -80,7 +80,7 @@ The `axiom_enforcer` gate provided real-time detection of axiom violations durin
 | `WARN` | warn | Issues found, advisory warning surfaced |
 | `BLOCK` | block | Issues found, session halted until addressed |
 
-**Mode control**: Set `CUSTODIET_MODE=block` to enable blocking (default: `warn`)
+**Mode control**: Set `CUSTODIET_GATE_MODE=block` to enable blocking (default: `warn`)
 
 ### Block Flag Mechanism
 
@@ -96,7 +96,7 @@ To switch from warn to block mode:
 
 ```bash
 # In settings.local.json or CLAUDE_ENV_FILE
-export CUSTODIET_MODE=block
+export CUSTODIET_GATE_MODE=block
 export TASK_GATE_MODE=block
 ```
 

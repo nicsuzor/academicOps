@@ -18,8 +18,8 @@ aops_core_dir = Path(__file__).parent.parent.parent / "aops-core"
 if str(aops_core_dir) not in sys.path:
     sys.path.insert(0, str(aops_core_dir))
 
-from hooks.session_env_setup import run_session_env_setup, persist_env_var
 from hooks.schemas import HookContext
+from hooks.session_env_setup import persist_env_var, run_session_env_setup
 
 
 class TestSessionEnvSetup:
@@ -65,7 +65,7 @@ class TestSessionEnvSetup:
         assert 'export AOPS_SESSION_STATE_DIR="/tmp/aops/sessions"' in content
 
         # Verify enforcement modes
-        assert "export CUSTODIET_MODE=" in content
+        assert "export CUSTODIET_GATE_MODE=" in content
         assert "export TASK_GATE_MODE=" in content
         assert "export HYDRATION_GATE_MODE=" in content
 

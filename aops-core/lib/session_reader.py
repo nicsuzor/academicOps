@@ -21,7 +21,6 @@ from pathlib import Path
 from typing import Any
 
 from lib.transcript_parser import (
-    Entry,
     SessionInfo,
     SessionProcessor,
     SessionState,

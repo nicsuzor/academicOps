@@ -3,7 +3,6 @@
 These helpers are defined in conftest.py and used for testing multi-agent workflows.
 """
 
-import pytest
 
 from .conftest import (
     count_task_calls,

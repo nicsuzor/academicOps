@@ -148,7 +148,7 @@ def test_symlink_points_to_aops():
 
     if not symlink_scripts.exists():
         print(f"⚠️  SKIP: Symlink scripts don't exist: {symlink_scripts}")
-        pytest.skip(f"Symlink scripts don't exist - local setup only")
+        pytest.skip("Symlink scripts don't exist - local setup only")
 
     # Resolve both paths
     aops_resolved = aops_scripts.resolve()

@@ -9,7 +9,6 @@ See: aops-XXXXXXXX (the original bug where hydrator claimed email search was hum
 
 from pathlib import Path
 
-import pytest
 
 # Paths to hydrator files
 AOPS_CORE = Path(__file__).parent.parent.parent / "aops-core"

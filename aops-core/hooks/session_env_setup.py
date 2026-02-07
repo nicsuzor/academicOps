@@ -79,6 +79,7 @@ def run_session_env_setup(ctx: HookContext) -> Optional[GateResult]:
         print(f"WARNING: Failed to determine session status dir: {e}", file=sys.stderr)
 
     # 4. Default Enforcement Modes (fail-safe defaults to "warn" if not set)
+    # <!-- NS: no magic literals. -->
     for mode_var in ["CUSTODIET_MODE", "TASK_GATE_MODE", "HYDRATION_GATE_MODE"]:
         current_val = os.environ.get(mode_var, "warn")
         persist_env_var(mode_var, current_val)

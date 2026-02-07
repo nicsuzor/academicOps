@@ -438,7 +438,7 @@ class PolecatManager:
                     capture_output=True,
                 )
                 if origin_result.returncode != 0:
-                    print(f"  ⚠ Origin fetch failed (offline?) - continuing with local")
+                    print("  ⚠ Origin fetch failed (offline?) - continuing with local")
 
                 # Fetch from local repo (should always succeed)
                 subprocess.run(
@@ -844,7 +844,7 @@ class PolecatManager:
             if not is_fresh:
                 print(f"⚠ {message}", file=sys.stderr)
             else:
-                print(f"  ✅ Mirror is fresh")
+                print("  ✅ Mirror is fresh")
 
         repo_path = self.get_repo_path(task)
         if not repo_path.exists():

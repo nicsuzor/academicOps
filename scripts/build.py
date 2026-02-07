@@ -10,7 +10,6 @@ import shutil
 import json
 import subprocess
 import tarfile
-import zipfile
 from pathlib import Path
 
 # Add shared lib to path (assuming scripts/lib exists)
@@ -853,7 +852,7 @@ def create_git_tags(aops_root: Path, version: str):
         text=True,
     )
     if result.returncode == 0:
-        print(f"  ✓ Created tag: latest")
+        print("  ✓ Created tag: latest")
     else:
         print(f"  ✗ Failed to create tag latest: {result.stderr}")
 

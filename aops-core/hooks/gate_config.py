@@ -212,7 +212,7 @@ GATE_MODE_DEFAULTS: Dict[str, str] = {
 GATE_MODE_ENV_VARS: Dict[str, str] = {
     "hydration": "HYDRATION_GATE_MODE",
     "task": "TASK_GATE_MODE",
-    "custodiet": "CUSTODIET_MODE",
+    "custodiet": "CUSTODIET_GATE_MODE",
     "critic": "CRITIC_GATE_MODE",
     "qa": "QA_GATE_MODE",
 }

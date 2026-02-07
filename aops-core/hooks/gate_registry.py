@@ -9,7 +9,6 @@ from pathlib import Path
 import re
 import sys
 import os
-import json
 import time
 
 from lib.gate_model import GateResult, GateVerdict
@@ -1096,6 +1095,7 @@ def _custodiet_build_audit_instruction(
 
     session_context = _custodiet_build_session_context(transcript_path, session_id)
     axioms, heuristics, skills = _custodiet_load_framework_content()
+    #<!-- NS: no magic literals. -->
     custodiet_mode = os.environ.get(
         "CUSTODIET_MODE", DEFAULT_CUSTODIET_GATE_MODE
     ).lower()

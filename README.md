@@ -30,8 +30,7 @@ Claude Code
 
 ```bash
 command claude plugin marketplace add nicsuzor/aops-dist
-command claude plugin marketplace update aops
-command claude plugin install aops-core@aops
+command claude plugin marketplace update aops && command claude plugin install aops-core@aops && command claude plugin list
 ```
 
 Gemini CLI (warning: auto accept flag below, remove --consent if you're concerned)
