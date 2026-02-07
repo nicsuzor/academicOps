@@ -13,10 +13,8 @@ from typing import Any, Dict, Optional, Tuple
 
 from lib.gate_model import GateResult, GateVerdict
 from lib.paths import get_ntfy_config
-from hooks.schemas import HookContext
 
-# Backwards compatibility alias - tests use GateContext
-GateContext = HookContext
+from hooks.schemas import HookContext
 
 # Adjust imports to work within the aops-core environment
 # These imports are REQUIRED for gate functionality - fail explicitly if missing
@@ -76,8 +74,6 @@ HYDRATION_TEMP_CATEGORY = "hydrator"
 HYDRATION_BLOCK_TEMPLATE = (
     Path(__file__).parent / "templates" / "hydration-gate-block.md"
 )
-# LEGACY: HYDRATION_ALLOWED_TOOLS has been removed.
-# These tools are now in "always_available" category in gate_config.py.
 
 # Custodiet
 CUSTODIET_TEMP_CATEGORY = "compliance"
@@ -146,8 +142,6 @@ STOP_GATE_HANDOVER_BLOCK_TEMPLATE = (
     Path(__file__).parent / "templates" / "stop-gate-handover-block.md"
 )
 
-
-from hooks.schemas import HookContext
 
 # --- Shared Helper Functions ---
 
@@ -401,10 +395,6 @@ def _check_git_dirty() -> bool:
 
 
 # --- Hydration Logic ---
-
-# LEGACY: MCP_TOOLS_EXEMPT_FROM_HYDRATION has been removed.
-# These tools are now in the "always_available" category in gate_config.py.
-# See TOOL_CATEGORIES["always_available"] for the authoritative list.
 
 # Infrastructure skills that should NOT clear hydration_pending when activated.
 # These are utility/navigation commands that don't satisfy the "provide context" intent.
@@ -1268,11 +1258,7 @@ def run_task_binding(ctx: HookContext) -> Optional[GateResult]:
         or ctx.raw_input.get("tool_input")
         or ctx.raw_input.get("toolInput", {})
     )
-    tool_result = (
-        ctx.raw_input.get("tool_result")
-        or ctx.raw_input.get("toolResult")
-        or ctx.raw_input.get("tool_response", {})
-    )
+    tool_result = ctx.tool_output
 
     changes = detect_tool_state_changes(tool_name, tool_input, tool_result)
 
@@ -1505,12 +1491,7 @@ def run_ntfy_notifier(ctx: HookContext) -> Optional[GateResult]:
             # Try to extract verdict from tool result
             # Note: tool_result/toolResult are pre-normalized by router.py
             verdict = None
-            if "tool_result" in ctx.raw_input:
-                tool_result = ctx.raw_input["tool_result"]
-                if isinstance(tool_result, dict) and "verdict" in tool_result:
-                    verdict = tool_result["verdict"]
-            elif "toolResult" in ctx.raw_input:
-                tool_result = ctx.raw_input["toolResult"]
+            if tool_result := ctx.tool_output:
                 if isinstance(tool_result, dict) and "verdict" in tool_result:
                     verdict = tool_result["verdict"]
 
@@ -1537,9 +1518,15 @@ def run_session_env_setup(ctx: HookContext) -> Optional[GateResult]:
 # Import unified gate functions from gates.py
 from hooks.gates import (
     check_tool_gate as _check_tool_gate,
-    update_gate_state as _update_gate_state,
-    on_user_prompt as _on_user_prompt,
+)
+from hooks.gates import (
     on_session_start as _on_session_start,
+)
+from hooks.gates import (
+    on_user_prompt as _on_user_prompt,
+)
+from hooks.gates import (
+    update_gate_state as _update_gate_state,
 )
 
 # Registry of available gate checks

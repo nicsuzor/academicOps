@@ -14,7 +14,7 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 if TYPE_CHECKING:
     from hooks.schemas import HookContext
@@ -111,15 +111,11 @@ def update_gate_state(ctx: "HookContext") -> Optional[GateResult]:
     if ctx.hook_event != "PostToolUse":
         return None
 
+    messages = []
     tool_name = ctx.tool_name or ""
     tool_input = ctx.tool_input or {}
-    # <!-- NS: move all this logic into the ctx pydantic object as a property for easier access and reuse. Make sure we share the same code with the transcript generator. -->
-    tool_output = (
-        ctx.tool_output
-        or ctx.raw_input.get("tool_result", {})
-        or ctx.raw_input.get("tool_response", {})
-    )
-    messages: List[str] = []
+    # <!-- NS: move all the logic for normalising ctx and converting from gemini/claude into the ctx pydantic object as a property for easier access and reuse. Make sure we share the same code with the transcript generator. -->
+    tool_output = ctx.tool_output
 
     # Check opening conditions
     for gate, cond in GATE_OPENING_CONDITIONS.items():

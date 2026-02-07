@@ -24,7 +24,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-
 # --- Path Setup ---
 HOOK_DIR = Path(__file__).parent  # aops-core/hooks
 AOPS_CORE_DIR = HOOK_DIR.parent  # aops-core
@@ -34,24 +33,25 @@ if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
 try:
-    from hooks.schemas import (
-        HookContext,
-        CanonicalHookOutput,
-        ClaudeHookOutput,
-        GeminiHookOutput,
-        GeminiHookSpecificOutput,
-        ClaudeHookSpecificOutput,
-        ClaudeGeneralHookOutput,
-        ClaudeStopHookOutput,
-    )
-    from hooks.gate_registry import GATE_CHECKS
+    from lib.gate_model import GateResult
+    from lib.session_paths import get_pid_session_map_path, get_session_status_dir
+
     from hooks.gate_config import (
         GATE_EXECUTION_ORDER,
         MAIN_AGENT_ONLY_GATES,
     )
+    from hooks.gate_registry import GATE_CHECKS
+    from hooks.schemas import (
+        CanonicalHookOutput,
+        ClaudeGeneralHookOutput,
+        ClaudeHookOutput,
+        ClaudeHookSpecificOutput,
+        ClaudeStopHookOutput,
+        GeminiHookOutput,
+        GeminiHookSpecificOutput,
+        HookContext,
+    )
     from hooks.unified_logger import log_hook_event
-    from lib.gate_model import GateResult
-    from lib.session_paths import get_pid_session_map_path, get_session_status_dir
     from lib import session_state
 except ImportError as e:
     # Fail fast if schemas missing
@@ -79,19 +79,37 @@ GEMINI_EVENT_MAP = {
 
 # --- Gate Status Display ---
 
+# Gate icons: shown when gate is CLOSED (blocking)
+# When a gate is open (passed), it's not shown - only blocking gates are displayed
+GATE_ICONS = {
+    "hydration": "💧",  # Needs hydration (water drop)
+    "task": "📌",  # Needs task binding (pin)
+    "critic": "👁",  # Needs critic review (eye)
+    "custodiet": "🛡",  # Needs compliance check (shield)
+    "qa": "🧪",  # Needs QA verification (test tube)
+    "handover": "🤝",  # Needs handover (handshake)
+}
+
 
 def format_gate_status_icons(session_id: str) -> str:
     """Format current gate statuses as a compact icon line.
 
-    Returns a short, non-intrusive string showing gate states:
-    📌 = Task, 💧 = Hydration, 🤝 = Handover
-    ✓ = passed, ✗ = not passed
+    Shows only BLOCKING gates (closed state) for a clean display.
+    When all gates are open, shows a simple ready indicator.
+
+    Gate icons (shown when blocking):
+        💧 = hydration needed
+        📌 = task binding needed
+        👁 = critic review needed
+        🛡 = custodiet check needed
+        🧪 = QA verification needed
+        🤝 = handover needed
 
     Args:
         session_id: Session ID to check gates for
 
     Returns:
-        Formatted status line like "[📌✓ 💧✓ 🤝✗]"
+        Formatted status line like "[💧 📌]" (blocking gates) or "[✓ ready]" (all passed)
 
     Raises:
         ValueError: If session state cannot be loaded (fail fast)
@@ -101,20 +119,58 @@ def format_gate_status_icons(session_id: str) -> str:
         raise ValueError(f"Cannot load session state for {session_id}")
 
     state_data = state.get("state", {})
+    gates_state = state_data.get("gates", {})
 
-    # Task bound status
-    task_bound = state.get("main_agent", {}).get("current_task") is not None
-    task_icon = "✓" if task_bound else "✗"
+    # Collect blocking (closed) gates
+    blocking_gates = []
 
-    # Hydration status (not pending = passed)
+    # Check each gate - uses gates state dict if available, falls back to legacy checks
+    # Hydration: closed if pending
     hydration_pending = state_data.get("hydration_pending", True)
-    hydration_icon = "✓" if not hydration_pending else "✗"
+    if gates_state.get("hydration") == "closed" or hydration_pending:
+        blocking_gates.append("hydration")
 
-    # Handover status (default False = conservative assumption if key missing)
+    # Task: closed if no current task bound
+    task_bound = state.get("main_agent", {}).get("current_task") is not None
+    if gates_state.get("task") == "closed" or (
+        "task" not in gates_state and not task_bound
+    ):
+        # Only show task as blocking if gates dict says so, or if explicitly unbound
+        # Default is open per GATE_INITIAL_STATE
+        if gates_state.get("task") == "closed":
+            blocking_gates.append("task")
+
+    # Critic: check gates state (default open per GATE_INITIAL_STATE)
+    if gates_state.get("critic") == "closed":
+        blocking_gates.append("critic")
+
+    # Custodiet: check gates state (default open per GATE_INITIAL_STATE)
+    if gates_state.get("custodiet") == "closed":
+        blocking_gates.append("custodiet")
+
+    # QA: closed by default, opens when QA is invoked
+    qa_invoked = state_data.get("qa_invoked", False)
+    if gates_state.get("qa") == "closed" or (
+        "qa" not in gates_state and not qa_invoked
+    ):
+        blocking_gates.append("qa")
+
+    # Handover: check gates state or legacy flag
     handover_ok = state_data.get("handover_skill_invoked", False)
-    handover_icon = "✓" if handover_ok else "✗"
+    if gates_state.get("handover") == "closed" or (
+        "handover" not in gates_state and not handover_ok
+    ):
+        # Only show if explicitly closed - default is open per GATE_INITIAL_STATE
+        if gates_state.get("handover") == "closed":
+            blocking_gates.append("handover")
 
-    return f"[📌{task_icon} 💧{hydration_icon} 🤝{handover_icon}]"
+    # Format output
+    if not blocking_gates:
+        return "[✓ ready]"
+
+    # Show blocking gate icons
+    icons = " ".join(GATE_ICONS[g] for g in blocking_gates if g in GATE_ICONS)
+    return f"[{icons}]"
 
 
 # --- Session Management ---
@@ -295,19 +351,16 @@ class HookRouter:
             tool_input = {}
 
         # Normalize tool_result and toolResult in raw_input (for PostToolUse/SubagentStop)
-        normalized_raw = raw_input.copy()
-        if "tool_result" in normalized_raw:
-            normalized_raw["tool_result"] = self._normalize_json_field(
-                normalized_raw["tool_result"]
-            )
-        if "toolResult" in normalized_raw:
-            normalized_raw["toolResult"] = self._normalize_json_field(
-                normalized_raw["toolResult"]
-            )
-        if "subagent_result" in normalized_raw:
-            normalized_raw["subagent_result"] = self._normalize_json_field(
-                normalized_raw["subagent_result"]
-            )
+        tool_output = {}
+        raw_tool_output = (
+            raw_input.get("tool_result")
+            or raw_input.get("toolResult")
+            or raw_input.get("tool_response", {})
+        )
+        if raw_tool_output:
+            tool_output = self._normalize_json_field(raw_tool_output)
+        elif "subagent_result" in raw_input:
+            tool_output = self._normalize_json_field(raw_input["subagent_result"])
 
         return HookContext(
             session_id=session_id,
@@ -317,9 +370,10 @@ class HookRouter:
             is_sidechain=raw_input.get("isSidechain"),
             tool_name=raw_input.get("tool_name"),
             tool_input=tool_input,
+            tool_output=tool_output,
             transcript_path=transcript_path,
             cwd=raw_input.get("cwd"),
-            raw_input=normalized_raw,
+            raw_input=raw_input,
         )
 
     def execute_hooks(self, ctx: HookContext) -> CanonicalHookOutput:
@@ -584,14 +638,7 @@ def main():
         client_type = args.client
         gemini_event = args.event
     else:
-        # Emergency fallback for missing flag - try to detect from input
-        if raw_input.get("session_id", "").startswith("gemini-") or "/.gemini/" in str(
-            raw_input.get("transcript_path", "")
-        ):
-            client_type = "gemini"
-            gemini_event = args.event
-        else:
-            raise OSError("No --client flag provided on hook invocation.")
+        raise OSError("No --client flag provided on hook invocation.")
 
     # Pipeline
     ctx = router.normalize_input(raw_input, gemini_event)
