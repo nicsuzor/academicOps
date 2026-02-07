@@ -1,0 +1,23 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/pyright/main/packages/pyright/schema/pyrightconfig.schema.json",
+  "include": ["src", "app", "tests"],
+
+  "exclude": [
+    "**/__pycache__",
+    "**/.mypy_cache",
+    "**/.pytest_cache",
+    "**/.ruff_cache",
+    "**/build",
+    "**/dist",
+    "**/.venv",
+    "**/venv"
+  ],
+
+  // Optional: don’t analyze third‑party libs unless they’re in include
+  "ignore": [
+    "**/site-packages"
+  ],
+
+  "venv": ".venv"
+}
+

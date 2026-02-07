@@ -22,7 +22,7 @@ List all skills from the Skill tool's Available Commands section.
 
 List all commands from the SlashCommand tool's Available Commands section.
 
-## 3. Task Subagent Types
+## 3. Subagent types
 
 List all subagent_type values from the Task tool description.
 
@@ -30,7 +30,11 @@ List all subagent_type values from the Task tool description.
 
 List MCP server prefixes you have access to (e.g., mcp__memory__, mcp__gh__).
 
-## 5. Files Referenced This Session
+## 5. Hook gates enabled
+
+Output value of `export | grep _GATE_` env vars.
+
+## 6. Files Referenced This Session
 
 List any files that were:
 
