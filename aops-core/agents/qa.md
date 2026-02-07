@@ -56,6 +56,7 @@ Output your assessment starting with one of these keywords:
 - Rationalize failures as "edge cases"
 - Add caveats when things pass ("mostly works")
 - **Accept criterion substitution** - If user asked for "conversations with X" and agent claims "found emails mentioning X", that's NOT the same thing. FAIL it.
+- **Invent verification methods beyond provided evidence** - If main agent verified "MCP tool returned healthy", that IS the verification. Do not assume alternative architectures (e.g., standalone port services) and fail verification based on invented checks. Work with the evidence you're given, not assumptions about how systems "should" work.
 
 ## Example Invocation
 
