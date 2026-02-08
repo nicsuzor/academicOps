@@ -56,6 +56,46 @@ class TestActivateSkillAlwaysAvailable:
         assert "Task" in TOOL_CATEGORIES["always_available"]
 
 
+class TestAskUserQuestionAlwaysAvailable:
+    """Test that AskUserQuestion is never blocked by the hydration gate.
+
+    AskUserQuestion is essential for agent-user communication and should
+    be available at all times, including before hydration completes.
+
+    Related: Task aops-ffee2d2a
+    """
+
+    def test_ask_user_question_in_always_available(self):
+        """AskUserQuestion should be in the always_available category."""
+        assert "AskUserQuestion" in TOOL_CATEGORIES["always_available"]
+
+    def test_ask_user_question_category(self):
+        """get_tool_category should return always_available for AskUserQuestion."""
+        assert get_tool_category("AskUserQuestion") == "always_available"
+
+    def test_ask_user_question_requires_no_gates(self):
+        """AskUserQuestion should require no gates."""
+        gates = get_required_gates("AskUserQuestion")
+        assert gates == []
+
+    def test_ask_user_question_allowed_without_hydration(self):
+        """AskUserQuestion should be allowed even without hydration."""
+        ctx = HookContext(
+            session_id="test-session-123",
+            hook_event="PreToolUse",
+            tool_name="AskUserQuestion",
+            tool_input={"questions": [{"question": "Test?", "header": "Test", "options": [], "multiSelect": False}]},
+        )
+
+        with patch("lib.session_state.is_hydrator_active", return_value=False), patch(
+            "lib.session_state.get_passed_gates", return_value=set()
+        ):
+            result = check_tool_gate(ctx)
+
+            # Should allow because AskUserQuestion is always_available
+            assert result.verdict == GateVerdict.ALLOW
+
+
 class TestActivateSkillNeverBlocked:
     """Test that activate_skill is never blocked by check_tool_gate."""
 

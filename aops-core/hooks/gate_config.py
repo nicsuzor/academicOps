@@ -72,6 +72,14 @@ TOOL_CATEGORIES: Dict[str, Set[str]] = {
         "retrieve_memory",
         "recall_memory",
         "search_by_tag",
+        # User interaction: must never be blocked (essential for agent-user communication)
+        "AskUserQuestion",
+        # Meta tools: affect agent behavior but don't modify user files
+        # These are always available to allow planning and questioning at any time
+        "TodoWrite",
+        "EnterPlanMode",
+        "ExitPlanMode",
+        "KillShell",
     },
     # Read-only tools: no side effects, safe to run after hydration
     "read_only": {
@@ -117,16 +125,11 @@ TOOL_CATEGORIES: Dict[str, Set[str]] = {
         "mcp__plugin_aops-core_memory__store_memory",
         "mcp__plugin_aops-core_memory__delete_memory",
     },
-    # Meta tools: affect agent behavior but don't modify user files
-    # These are allowed after hydration (like read_only)
-    # Note: Task/Skill are in always_available (needed for hydration bootstrap)
-    "meta": {
-        "TodoWrite",
-        "AskUserQuestion",
-        "EnterPlanMode",
-        "ExitPlanMode",
-        "KillShell",
-    },
+    # Meta tools: now merged into always_available
+    # These affect agent behavior but don't modify user files, so they're
+    # always available to allow planning and questioning at any time.
+    # Keeping empty set for backwards compatibility with gate requirement lookups.
+    "meta": set(),
 }
 
 # =============================================================================

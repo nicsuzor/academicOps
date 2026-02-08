@@ -93,18 +93,20 @@ class TestToolCategories:
         assert "mcp__plugin_aops-core_task_manager__update_task" in always
         assert "mcp__plugin_aops-core_task_manager__complete_task" in always
 
-    def test_meta_tools_include_agent_tools(self):
-        """Meta tools are correctly categorized."""
-        meta = TOOL_CATEGORIES["meta"]
+    def test_meta_tools_in_always_available(self):
+        """Meta tools are all in always_available (merged for unrestricted access)."""
         always = TOOL_CATEGORIES["always_available"]
-        # Task/Skill are in always_available for hydration bootstrap
+        meta = TOOL_CATEGORIES["meta"]
+        # Meta category is now empty - all meta tools merged into always_available
+        assert len(meta) == 0, "meta category should be empty"
+        # All agent behavior tools are in always_available
         assert "Task" in always
         assert "Skill" in always
-        # Other meta tools are in meta
-        assert "TodoWrite" in meta
-        assert "AskUserQuestion" in meta
-        assert "EnterPlanMode" in meta
-        assert "ExitPlanMode" in meta
+        assert "AskUserQuestion" in always
+        assert "TodoWrite" in always
+        assert "EnterPlanMode" in always
+        assert "ExitPlanMode" in always
+        assert "KillShell" in always
 
     def test_categories_are_mutually_exclusive(self):
         """No tool should appear in multiple categories."""

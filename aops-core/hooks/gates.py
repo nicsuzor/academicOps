@@ -54,6 +54,7 @@ def check_tool_gate(ctx: "HookContext") -> GateResult:
     if tool_name == "Task":
         subagent = (ctx.tool_input or {}).get("subagent_type", "")
         if "hydrator" in subagent.lower():
+            # <!-- NS: this should just be in the ordinary config for always_allowed tools. -->
             session_state.set_hydrator_active(ctx.session_id)
             return GateResult.allow()
 
@@ -84,6 +85,7 @@ def check_tool_gate(ctx: "HookContext") -> GateResult:
 
     gate_status = "\n".join(f"- {g}: {'✓' if g in passed else '✗'}" for g in required)
 
+    # <!-- NS: instructions need revision to provide both gemini cli and claude code snippets. Also need to ensure that the Task tool call is properly formatted for both agents. -->
     if agent and audit_path:
         next_instruction = f'`Task(subagent_type="{agent}", prompt="Analyze {audit_path}")`'
     elif agent:
