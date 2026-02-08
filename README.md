@@ -310,3 +310,61 @@ The **framework agent** embodies the self-reflexive principle—it both executes
 | /pdf              | Generate professionally formatted academic PDFs       |
 | /hypervisor       | Parallel batch task processing                        |
 | /excalidraw       | Create hand-drawn style diagrams and mind maps        |
+
+## Project Configuration
+
+Projects can customize the hydrator's behavior by adding files to a `.agent/` directory in the project root.
+
+### `.agent/context-map.json`
+
+Maps project documentation to topics for just-in-time context injection. The hydrator presents this index to agents, who decide which files to read based on relevance.
+
+```json
+{
+  "docs": [
+    {
+      "topic": "authentication",
+      "path": "docs/auth-flow.md",
+      "description": "OAuth2 implementation with JWT tokens",
+      "keywords": ["oauth", "jwt", "login", "session", "token"]
+    },
+    {
+      "topic": "database_schema",
+      "path": "docs/schema.md",
+      "description": "PostgreSQL table definitions and migrations",
+      "keywords": ["postgres", "tables", "migrations", "sql"]
+    },
+    {
+      "topic": "api_endpoints",
+      "path": "docs/api.md",
+      "description": "REST API reference",
+      "keywords": ["api", "rest", "endpoints", "http"]
+    }
+  ]
+}
+```
+
+**Fields**:
+- `topic`: Short identifier for the documentation area
+- `path`: Relative path from project root to the documentation file
+- `description`: Brief explanation of what the file covers
+- `keywords`: Terms that trigger relevance (agent makes semantic decision, not keyword matching)
+
+### `.agent/rules/`
+
+Project-specific rules that apply to ALL work in the project. Files in this directory are pre-loaded into the hydrator context and presented as binding constraints.
+
+```
+project/
+├── .agent/
+│   ├── rules/
+│   │   ├── testing.md      # "All PRs require 80% coverage"
+│   │   ├── code-style.md   # "Use ruff, not black"
+│   │   └── architecture.md # "No direct DB access from handlers"
+```
+
+Rules are loaded automatically—agents don't need to search for them.
+
+### `.agent/workflows/`
+
+Project-specific workflows that supplement the global workflow index. Use for project-specific processes (e.g., release procedures, review checklists).
