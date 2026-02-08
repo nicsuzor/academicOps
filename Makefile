@@ -1,0 +1,38 @@
+.PHONY: ver nextver release install install-claude install-gemini
+
+# Show current version
+ver:
+	@git describe --tags --abbrev=0
+
+# Show current and next version
+nextver:
+	@current=$$(git describe --tags --abbrev=0 | sed 's/^v//'); \
+	next=$$(echo $$current | awk -F. '{print $$1 "." $$2 "." $$3+1}'); \
+	echo "Current: v$$current → Next: v$$next"
+
+# Tag and push a new release
+release:
+	@current=$$(git describe --tags --abbrev=0 | sed 's/^v//'); \
+	next=$$(echo $$current | awk -F. '{print $$1 "." $$2 "." $$3+1}'); \
+	echo "Releasing v$$next..."; \
+	git tag "v$$next" && git push origin "v$$next" && echo "✓ Released v$$next"
+
+# Install aops plugin for both Claude Code and Gemini CLI
+install: install-claude install-gemini
+
+# Install aops plugin for Claude Code
+install-claude:
+	@echo "Installing aops plugin for Claude Code..."
+	@command claude plugin marketplace add nicsuzor/aops-dist && \
+	command claude plugin marketplace update aops && \
+	command claude plugin install aops-core@aops && \
+	command claude plugin list && \
+	echo "✓ Claude Code plugin installed"
+
+# Install aops plugin for Gemini CLI
+# WARNING: Uses --consent flag for auto-accept. Remove if you want manual confirmation.
+install-gemini:
+	@echo "Installing aops plugin for Gemini CLI..."
+	@(command gemini extensions uninstall aops-core 2>/dev/null || echo "Gemini plugin not installed -- skipping removal") && \
+	command gemini extensions install git@github.com:nicsuzor/aops-dist.git --consent --auto-update --pre-release && \
+	echo "✓ Gemini CLI plugin installed"
