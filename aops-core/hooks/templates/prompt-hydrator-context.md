@@ -181,5 +181,5 @@ Select 3-7 from AXIOMS/HEURISTICS. For simple questions, omit this section.
 - Output Framework Reflection in the required form.
 
 ```
-```
-````
+
+**Gemini CLI agents** MUST call `complete_task` with your final formatted response.
