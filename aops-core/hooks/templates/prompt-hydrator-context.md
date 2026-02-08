@@ -31,8 +31,7 @@ Transform this user prompt into an execution plan with scope detection and task 
 The following files are mapped in this project's context map. **You must decide** if any of them are relevant to the user's request. If so, read them immediately.
 
 {project_context_index}
-
-**MANDATORY**: If the project has `.agent/rules/` directory, READ ALL FILES in it. These are project-wide conventions that apply to ALL work in this project (test patterns, code style, architectural constraints). Include their key rules in Applicable Principles.
+{project_rules}
 
 ## Relevant Files (Selective Injection)
 

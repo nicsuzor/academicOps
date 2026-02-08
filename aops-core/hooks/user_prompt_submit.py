@@ -241,6 +241,48 @@ def _load_framework_file(filename: str) -> str:
     return _strip_frontmatter(content)
 
 
+def _load_project_rules() -> str:
+    """Load project-specific rules from .agent/rules/ in cwd.
+
+    Projects can define their own rules in .agent/rules/*.md.
+    These are project-wide conventions that apply to ALL work in the project
+    (test patterns, code style, architectural constraints, etc.).
+
+    Rules are pre-loaded and included in hydrator context so the agent
+    has immediate access without needing to Read() them.
+
+    Returns:
+        Project rules section with all rule file contents, or empty string if none found.
+    """
+    cwd = Path.cwd()
+    rules_dir = cwd / ".agent" / "rules"
+
+    if not rules_dir.exists():
+        return ""
+
+    rule_files = sorted(rules_dir.glob("*.md"))
+    if not rule_files:
+        return ""
+
+    lines = [f"\n\n## Project Rules ({cwd.name})", ""]
+    lines.append(f"Location: `{rules_dir}`\n")
+    lines.append(
+        "These rules apply to ALL work in this project. Follow them as binding constraints.\n"
+    )
+
+    for rule_file in rule_files:
+        try:
+            content = rule_file.read_text()
+            rule_name = rule_file.stem.replace("-", " ").replace("_", " ").title()
+            lines.append(f"### {rule_name}\n")
+            lines.append(_strip_frontmatter(content))
+            lines.append("")
+        except (IOError, OSError):
+            pass  # Skip unreadable files
+
+    return "\n".join(lines)
+
+
 def _load_project_workflows(prompt: str = "") -> str:
     """Load project-specific workflows from .agent/workflows/ in cwd.
 
@@ -451,6 +493,18 @@ def load_scripts_index() -> str:
         return ""
 
 
+def load_project_rules() -> str:
+    """Load project-specific rules from .agent/rules/.
+
+    Pre-loads all rule files so hydrator has immediate access to project
+    constraints without needing to Read() them at runtime.
+
+    Returns:
+        Formatted project rules section, or empty string if none found.
+    """
+    return _load_project_rules()
+
+
 def get_task_work_state() -> str:
     """Query task system for current work state.
 
@@ -620,6 +674,9 @@ def build_hydration_instruction(
     axioms = load_axioms()
     heuristics = load_heuristics()
 
+    # Load project-specific rules from .agent/rules/ (P#60: Local over central)
+    project_rules = load_project_rules()
+
     # Get task work state (active and inbox tasks)
     task_state = get_task_work_state()
 
@@ -639,6 +696,7 @@ def build_hydration_instruction(
         env_vars=env_vars,
         project_paths=project_paths,
         project_context_index=project_context_index,
+        project_rules=project_rules,
         relevant_files=relevant_files,
         workflows_index=workflows_index,
         skills_index=skills_index,
