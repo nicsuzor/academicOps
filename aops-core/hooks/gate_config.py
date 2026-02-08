@@ -72,6 +72,18 @@ TOOL_CATEGORIES: Dict[str, Set[str]] = {
         "retrieve_memory",
         "recall_memory",
         "search_by_tag",
+        # Gemini direct MCP calls for framework agents/skills
+        # (Gemini may call these as MCP tools rather than via delegate_to_agent)
+        "prompt-hydrator",
+        "aops-core:prompt-hydrator",
+        "critic",
+        "aops-core:critic",
+        "custodiet",
+        "aops-core:custodiet",
+        "qa",
+        "aops-core:qa",
+        "handover",
+        "aops-core:handover",
         # User interaction: must never be blocked (essential for agent-user communication)
         "AskUserQuestion",
         # Meta tools: affect agent behavior but don't modify user files
@@ -267,7 +279,7 @@ GATE_INITIAL_STATE: Dict[str, str] = {
 GATE_OPENING_CONDITIONS: Dict[str, Dict[str, Any]] = {
     "hydration": {
         "event": "PostToolUse",
-        "tool_pattern": r"^Task$",
+        "tool_pattern": r"^(Task|Skill|delegate_to_agent|activate_skill|prompt-hydrator|aops-core:prompt-hydrator)$",
         "subagent_type": "aops-core:prompt-hydrator",
         "output_contains": "HYDRATION RESULT",
         "description": "Opens when hydrator agent completes successfully",
@@ -281,27 +293,27 @@ GATE_OPENING_CONDITIONS: Dict[str, Dict[str, Any]] = {
     },
     "critic": {
         "event": "PostToolUse",
-        "tool_pattern": r"^Task$",
+        "tool_pattern": r"^(Task|Skill|delegate_to_agent|activate_skill|critic|aops-core:critic)$",
         "subagent_type": "aops-core:critic",
         "output_contains": "APPROVED",
         "description": "Opens when critic agent approves the plan",
     },
     "custodiet": {
         "event": "PostToolUse",
-        "tool_pattern": r"^Task$",
+        "tool_pattern": r"^(Task|Skill|delegate_to_agent|activate_skill|custodiet|aops-core:custodiet)$",
         "subagent_type": "aops-core:custodiet",
         "output_contains": "OK",
         "description": "Opens when custodiet agent confirms no ultra vires activity",
     },
     "qa": {
         "event": "PostToolUse",
-        "tool_pattern": r"^Task$|^Skill$",
+        "tool_pattern": r"^(Task|Skill|delegate_to_agent|activate_skill|qa|aops-core:qa)$",
         "subagent_or_skill": ["aops-core:qa", "qa"],
         "description": "Opens when QA verification completes",
     },
     "handover": {
         "event": "PostToolUse",
-        "tool_pattern": r"^Skill$",
+        "tool_pattern": r"^(Skill|activate_skill|handover|aops-core:handover)$",
         "skill_name": "aops-core:handover",
         "description": "Opens when handover skill is invoked with clean repo",
     },

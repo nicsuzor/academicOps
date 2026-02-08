@@ -726,8 +726,9 @@ def run_accountant(ctx: HookContext) -> Optional[GateResult]:
     # BUT we DO clear hydrator_active here because the Task tool has completed,
     # meaning the hydrator subagent has finished running.
     # Include Skill/activate_skill for Claude/Gemini which may use them to spawn hydrator.
-    if ctx.tool_name in ("Task", "delegate_to_agent", "activate_skill", "Skill"):
-        if _hydration_is_hydrator_task(ctx.tool_input):
+    # Also include direct MCP agent calls (Gemini pattern: tool_name IS the agent).
+    if ctx.tool_name in ("Task", "delegate_to_agent", "activate_skill", "Skill") or "hydrator" in (ctx.tool_name or "").lower():
+        if _hydration_is_hydrator_task(ctx.tool_input) or "hydrator" in (ctx.tool_name or "").lower():
             session_state.clear_hydrator_active(ctx.session_id)
 
         # Track subagent invocations for stop gate (checks has_run_subagents)
@@ -737,6 +738,9 @@ def run_accountant(ctx: HookContext) -> Optional[GateResult]:
             or ctx.tool_input.get("skill")
             or ctx.tool_input.get("name")
         )
+        # Gemini direct MCP: tool_name IS the agent
+        if not subagent_type and ctx.tool_name not in ("Task", "Skill", "delegate_to_agent", "activate_skill"):
+            subagent_type = ctx.tool_name
         if subagent_type:
             sess = session_state.get_or_create_session_state(ctx.session_id)
             subagents = sess.setdefault("subagents", {})

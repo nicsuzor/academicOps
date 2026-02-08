@@ -85,13 +85,18 @@ def check_tool_gate(ctx: "HookContext") -> GateResult:
 
     gate_status = "\n".join(f"- {g}: {'✓' if g in passed else '✗'}" for g in required)
 
-    # <!-- NS: instructions need revision to provide both gemini cli and claude code snippets. Also need to ensure that the Task tool call is properly formatted for both agents. -->
     if agent and audit_path:
+        short_name = agent.split(":")[-1]
         next_instruction = (
-            f'`Task(subagent_type="{agent}", prompt="Analyze {audit_path}")`'
+            f"- **Claude Code**: `Task(subagent_type=\"{agent}\", prompt=\"Analyze {audit_path}\")`\n"
+            f"  - **Gemini CLI**: `activate_skill(name=\"{short_name}\", prompt=\"Analyze {audit_path}\")`"
         )
     elif agent:
-        next_instruction = f'`Task(subagent_type="{agent}")`'
+        short_name = agent.split(":")[-1]
+        next_instruction = (
+            f"- **Claude Code**: `Task(subagent_type=\"{agent}\")`\n"
+            f"  - **Gemini CLI**: `activate_skill(name=\"{short_name}\")`"
+        )
     else:
         next_instruction = f"Satisfy `{first}` gate"
 
@@ -144,9 +149,9 @@ def update_gate_state(ctx: "HookContext") -> Optional[GateResult]:
                 messages.append(f"✗ `{gate}` closed")
 
     # Clear hydrator_active when hydrator completes
-    if tool_name in ("Task", "Skill"):
+    if tool_name in ("Task", "Skill", "prompt-hydrator", "aops-core:prompt-hydrator"):
         subagent = tool_input.get("subagent_type", "") or tool_input.get("skill", "")
-        if "hydrator" in subagent.lower():
+        if "hydrator" in subagent.lower() or "hydrator" in tool_name.lower():
             session_state.clear_hydrator_active(ctx.session_id)
 
     if messages:
@@ -259,8 +264,17 @@ def _matches_condition(
         return False
 
     subagent = cond.get("subagent_type")
-    if subagent and subagent not in tool_input.get("subagent_type", ""):
-        return False
+    if subagent:
+        # Check delegation tool inputs (Claude Task, Gemini delegate_to_agent, etc.)
+        actual = (
+            tool_input.get("subagent_type", "")
+            or tool_input.get("agent_name", "")
+            or tool_input.get("name", "")
+            or tool_input.get("skill", "")
+        )
+        # Also match when tool_name IS the agent (Gemini direct MCP call)
+        if subagent not in actual and tool_name not in (subagent, subagent.split(":")[-1]):
+            return False
 
     contains = cond.get("output_contains")
     if contains:
@@ -272,7 +286,8 @@ def _matches_condition(
     skill = cond.get("skill_name")
     if skill:
         actual = tool_input.get("skill", "") or tool_input.get("name", "")
-        if skill not in actual:
+        # Also match when tool_name IS the skill (Gemini direct MCP call)
+        if skill not in actual and tool_name not in (skill, skill.split(":")[-1]):
             return False
 
     return True
