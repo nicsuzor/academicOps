@@ -213,16 +213,20 @@ Generated indices are root-level files for agent consumption (INDEX.md, enforcem
 
 #### AXIOMS.md and HEURISTICS.md
 
+**TODO**: Script not yet implemented. When created, place in `aops-core/skills/audit/scripts/generate_principle_indices.py`.
+
 ```bash
-cd $AOPS && uv run python scripts/generate_principle_indices.py
+cd $AOPS && uv run python aops-core/skills/audit/scripts/generate_principle_indices.py
 ```
 
 Reads `axioms/` and `heuristics/` folders, generates machine-readable indices sorted by priority (1-100 bands: 1-20 core, 21-40 behavioral, 41-60 domain, 61-80 derived, 81-100 experimental).
 
 #### SKILLS.md
 
+**TODO**: Script not yet implemented. When created, place in `aops-core/skills/audit/scripts/generate_skills_index.py`.
+
 ```bash
-cd $AOPS && uv run python scripts/generate_skills_index.py
+cd $AOPS && uv run python aops-core/skills/audit/scripts/generate_skills_index.py
 ```
 
 Scans `aops-core/` and `aops-tools/` for skills and commands, extracts frontmatter (name, description), and generates routing index. Preserves existing triggers from previous SKILLS.md. Reports components missing triggers.
