@@ -201,8 +201,11 @@ def _attempt_auto_merge(task, manager):
 @click.option(
     "--nuke", "do_nuke", is_flag=True, help="Also remove the worktree after finishing"
 )
+@click.option(
+    "--force", "-f", is_flag=True, help="Skip confirmation prompts (required in non-interactive mode)"
+)
 @click.pass_context
-def finish(ctx, no_push, do_nuke):
+def finish(ctx, no_push, do_nuke, force):
     """Mark current task as ready for merge.
 
     Must be run from within a polecat worktree.
@@ -252,10 +255,8 @@ def finish(ctx, no_push, do_nuke):
             print("  ✅ Changes saved.")
         except subprocess.CalledProcessError as e:
             print(f"  ❌ Failed to auto-commit: {e}")
-            if not is_interactive():
-                print("  🚫 Non-interactive mode: refusing to continue without saving.")
-                sys.exit(1)
-            if not click.confirm("Continue without saving? (Risk of data loss)"):
+            if not force:
+                print("  🚫 Uncommitted changes could not be saved. Use --force to continue anyway.")
                 sys.exit(1)
 
     # --- NO-CHANGES DETECTION ---
@@ -327,15 +328,10 @@ def finish(ctx, no_push, do_nuke):
                     print(
                         "   Run 'git reset --soft FETCH_HEAD' to recover if this is accidental."
                     )
-                    if not is_interactive():
+                    if not force:
                         print(
-                            "   🚫 Non-interactive mode: refusing to push large changeset without confirmation."
+                            "   🚫 Large changeset requires confirmation. Use --force to push anyway."
                         )
-                        print(
-                            "   Re-run interactively or manually push if this is intentional."
-                        )
-                        sys.exit(1)
-                    if not click.confirm("Are you SURE you want to push this?"):
                         sys.exit(1)
     except Exception as e:
         print(f"Warning: Could not run repo checking safeguards: {e}")
@@ -1137,8 +1133,11 @@ def analyze(ctx, task_id, transcript_lines):
 @click.option(
     "--dry-run", is_flag=True, help="Show what would be reset without changing"
 )
+@click.option(
+    "--force", "-f", is_flag=True, help="Skip confirmation prompt (required in non-interactive mode)"
+)
 @click.pass_context
-def reset_stalled(ctx, project, hours, dry_run):
+def reset_stalled(ctx, project, hours, dry_run, force):
     """Reset stalled in_progress tasks back to active.
 
     Finds tasks that have been in_progress for > N hours and resets them.
@@ -1190,9 +1189,9 @@ def reset_stalled(ctx, project, hours, dry_run):
         print("\nDry run: no changes made.")
         return
 
-    if not click.confirm(f"\nReset these {len(stalled)} tasks to ACTIVE?"):
-        print("Aborted.")
-        return
+    if not force:
+        print(f"\nError: This will reset {len(stalled)} tasks. Use --force to confirm.")
+        sys.exit(1)
 
     reset_count = 0
     for task in stalled:
