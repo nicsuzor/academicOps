@@ -1,8 +1,8 @@
 # Claude code
 .claude/
 .gemini/
-.agent/commands/
-.agent/skills/
+!.agent/commands/
+!.agent/skills/
 !.agent/rules
 !.agent/workflows
 
@@ -336,4 +336,3 @@ aops-core/.mcp.json
 dist/
 
 streamlit_log.txt
-.agent/PATHS.md
