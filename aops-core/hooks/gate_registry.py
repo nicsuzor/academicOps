@@ -71,6 +71,7 @@ SAFE_READ_TOOLS = {
 
 # Hydration
 HYDRATION_TEMP_CATEGORY = "hydrator"
+# DEPRECATED: Use TemplateRegistry.instance().render("hydration.block", ...) instead
 HYDRATION_BLOCK_TEMPLATE = (
     Path(__file__).parent / "templates" / "hydration-gate-block.md"
 )
@@ -86,12 +87,15 @@ def get_custodiet_threshold() -> int:
     return int(raw) if raw else CUSTODIET_DEFAULT_THRESHOLD
 
 
+# DEPRECATED: Use TemplateRegistry.instance().render("custodiet.context", ...) instead
 CUSTODIET_CONTEXT_TEMPLATE_FILE = (
     Path(__file__).parent / "templates" / "custodiet-context.md"
 )
+# DEPRECATED: Use TemplateRegistry.instance().render("custodiet.instruction", ...) instead
 CUSTODIET_INSTRUCTION_TEMPLATE_FILE = (
     Path(__file__).parent / "templates" / "custodiet-instruction.md"
 )
+# DEPRECATED: Use TemplateRegistry.instance().render("custodiet.fallback", ...) instead
 CUSTODIET_FALLBACK_TEMPLATE = (
     Path(__file__).parent / "templates" / "overdue-enforcement-block.md"
 )
@@ -128,16 +132,21 @@ SAFE_TEMP_PREFIXES = [
 
 
 # Template paths for task gate messages
+# DEPRECATED: Use TemplateRegistry.instance().render("task.block", ...) instead
 TASK_GATE_BLOCK_TEMPLATE = Path(__file__).parent / "templates" / "task-gate-block.md"
+# DEPRECATED: Use TemplateRegistry.instance().render("task.warn", ...) instead
 TASK_GATE_WARN_TEMPLATE = Path(__file__).parent / "templates" / "task-gate-warn.md"
 DEFAULT_TASK_GATE_MODE = "block"
 DEFAULT_CUSTODIET_GATE_MODE = "block"
 
+# DEPRECATED: Use TemplateRegistry.instance().render("hydration.warn", ...) instead
 HYDRATION_WARN_TEMPLATE = Path(__file__).parent / "templates" / "hydration-gate-warn.md"
 
 # --- Stop Gate Constants ---
 
+# DEPRECATED: Use TemplateRegistry.instance().render("stop.critic", ...) instead
 STOP_GATE_CRITIC_TEMPLATE = Path(__file__).parent / "templates" / "stop-gate-critic.md"
+# DEPRECATED: Use TemplateRegistry.instance().render("stop.handover_block", ...) instead
 STOP_GATE_HANDOVER_BLOCK_TEMPLATE = (
     Path(__file__).parent / "templates" / "stop-gate-handover-block.md"
 )
@@ -666,21 +675,25 @@ def _custodiet_build_audit_instruction(
         "CUSTODIET_MODE", DEFAULT_CUSTODIET_GATE_MODE
     ).lower()
 
-    context_template = load_template(CUSTODIET_CONTEXT_TEMPLATE_FILE)
-    full_context = context_template.format(
-        session_context=session_context,
-        tool_name=tool_name,
-        axioms_content=axioms,
-        heuristics_content=heuristics,
-        skills_content=skills,
-        custodiet_mode=custodiet_mode,
+    from lib.template_registry import TemplateRegistry
+
+    registry = TemplateRegistry.instance()
+    full_context = registry.render(
+        "custodiet.context",
+        {
+            "session_context": session_context,
+            "tool_name": tool_name,
+            "axioms_content": axioms,
+            "heuristics_content": heuristics,
+            "skills_content": skills,
+            "custodiet_mode": custodiet_mode,
+        },
     )
 
     temp_dir = hook_utils.get_hook_temp_dir(CUSTODIET_TEMP_CATEGORY, input_data)
     temp_path = hook_utils.write_temp_file(full_context, temp_dir, "audit_")
 
-    instruction_template = load_template(CUSTODIET_INSTRUCTION_TEMPLATE_FILE)
-    return instruction_template.format(temp_path=str(temp_path))
+    return registry.render("custodiet.instruction", {"temp_path": str(temp_path)})
 
 
 # --- Accountant Logic (Post-Tool State Updates) ---
@@ -863,7 +876,9 @@ def check_stop_gate(ctx: HookContext) -> Optional[GateResult]:
     ):
         # User explicitly asked for turns_since_hydration == 0 logic
         # This implies the agent is trying to stop immediately after the hydrator finished.
-        msg = load_template(STOP_GATE_CRITIC_TEMPLATE)
+        from lib.template_registry import TemplateRegistry
+
+        msg = TemplateRegistry.instance().render("stop.critic", {})
         # <!-- NS: please add a brief system_message to ALL GateResult() calls to provide user feedback. -->
         return GateResult(verdict=GateVerdict.DENY, context_injection=msg)
 
@@ -877,7 +892,9 @@ def check_stop_gate(ctx: HookContext) -> Optional[GateResult]:
 
         if has_uncommitted or current_task:
             # Work at risk - block stop until handover
-            msg = load_template(STOP_GATE_HANDOVER_BLOCK_TEMPLATE)
+            from lib.template_registry import TemplateRegistry
+
+            msg = TemplateRegistry.instance().render("stop.handover_block", {})
             return GateResult(verdict=GateVerdict.DENY, context_injection=msg)
         # No work at risk - allow stop without handover
 

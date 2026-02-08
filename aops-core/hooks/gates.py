@@ -71,7 +71,9 @@ def check_tool_gate(ctx: "HookContext") -> GateResult:
     if not missing:
         return GateResult.allow()
 
-    # Build block message
+    # Build block message using template registry
+    from lib.template_registry import TemplateRegistry
+
     first = missing[0]
     mode = os.environ.get(
         GATE_MODE_ENV_VARS.get(first, ""), GATE_MODE_DEFAULTS.get(first, "warn")
@@ -80,23 +82,26 @@ def check_tool_gate(ctx: "HookContext") -> GateResult:
     agent = GATE_AGENTS.get(first, "")
     audit_path = _create_audit_file(ctx.session_id, first, ctx)
 
-    status = "\n".join(f"- {g}: {'✓' if g in passed else '✗'}" for g in required)
+    gate_status = "\n".join(f"- {g}: {'✓' if g in passed else '✗'}" for g in required)
 
     if agent and audit_path:
-        instruction = f'`Task(subagent_type="{agent}", prompt="Analyze {audit_path}")`'
+        next_instruction = f'`Task(subagent_type="{agent}", prompt="Analyze {audit_path}")`'
     elif agent:
-        instruction = f'`Task(subagent_type="{agent}")`'
+        next_instruction = f'`Task(subagent_type="{agent}")`'
     else:
-        instruction = f"Satisfy `{first}` gate"
+        next_instruction = f"Satisfy `{first}` gate"
 
-    msg = f"""⚠️ **GATE BLOCKED ({mode})**
-
-**Tool**: `{tool_name}` ({get_tool_category(tool_name)})
-**Missing**: {", ".join(missing)}
-
-{status}
-
-**Next**: {instruction}"""
+    msg = TemplateRegistry.instance().render(
+        "tool.gate_message",
+        {
+            "mode": mode,
+            "tool_name": tool_name,
+            "tool_category": get_tool_category(tool_name),
+            "missing_gates": ", ".join(missing),
+            "gate_status": gate_status,
+            "next_instruction": next_instruction,
+        },
+    )
 
     if mode == "block":
         return GateResult.deny(system_message=msg, context_injection=msg)
