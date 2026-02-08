@@ -86,7 +86,7 @@ def log_hook_event(
             hook_event=ctx.hook_event,
             logged_at=datetime.now().astimezone().replace(microsecond=0).isoformat(),
             exit_code=exit_code,
-            agent_id=ctx.agent_id,
+            agent_id=ctx.agent_id or ctx.subagent_type,
             slug=ctx.slug,
             is_sidechain=ctx.is_sidechain,
             input=input_data,
