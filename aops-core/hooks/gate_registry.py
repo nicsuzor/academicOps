@@ -9,7 +9,7 @@ import re
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from lib.gate_model import GateResult, GateVerdict
 from lib.paths import get_ntfy_config
@@ -278,7 +278,7 @@ def _is_destructive_bash(command: str) -> bool:
     return True
 
 
-def _is_actually_destructive(tool_name: str, tool_input: Dict[str, Any]) -> bool:
+def _is_actually_destructive(tool_name: str, tool_input: dict[str, Any]) -> bool:
     """Check if this tool call is actually destructive (modifies state).
 
     For most mutating tools (Edit, Write), this returns True.
@@ -317,7 +317,7 @@ def _is_actually_destructive(tool_name: str, tool_input: Dict[str, Any]) -> bool
 
 
 def _is_skill_invocation(
-    tool_name: str, tool_input: Dict[str, Any], skill_names: tuple[str, ...]
+    tool_name: str, tool_input: dict[str, Any], skill_names: tuple[str, ...]
 ) -> bool:
     """Check if this is an invocation of a specific skill/agent.
 
@@ -367,14 +367,14 @@ def _is_skill_invocation(
     return False
 
 
-def _is_handover_skill_invocation(tool_name: str, tool_input: Dict[str, Any]) -> bool:
+def _is_handover_skill_invocation(tool_name: str, tool_input: dict[str, Any]) -> bool:
     """Check if this is a handover skill invocation."""
     return _is_skill_invocation(
         tool_name, tool_input, ("handover", "aops-core:handover")
     )
 
 
-def _is_custodiet_invocation(tool_name: str, tool_input: Dict[str, Any]) -> bool:
+def _is_custodiet_invocation(tool_name: str, tool_input: dict[str, Any]) -> bool:
     """Check if this is a custodiet skill invocation."""
     return _is_skill_invocation(
         tool_name, tool_input, ("custodiet", "aops-core:custodiet")
@@ -520,7 +520,7 @@ def _hydration_is_gemini_hydration_attempt(
 # --- Custodiet Logic ---
 
 
-def _custodiet_load_framework_content() -> Tuple[str, str, str]:
+def _custodiet_load_framework_content() -> tuple[str, str, str]:
     """Load framework content."""
     axioms = load_template(AXIOMS_FILE)
     heuristics = load_template(HEURISTICS_FILE)
@@ -528,9 +528,7 @@ def _custodiet_load_framework_content() -> Tuple[str, str, str]:
     return axioms, heuristics, skills
 
 
-def _custodiet_build_session_context(
-    transcript_path: Optional[str], session_id: str
-) -> str:
+def _custodiet_build_session_context(transcript_path: str | None, session_id: str) -> str:
     """Build rich session context for custodiet compliance checks.
 
     Extracts recent conversation history, tool usage, files modified,
@@ -657,7 +655,7 @@ def _custodiet_build_session_context(
 
 
 def _custodiet_build_audit_instruction(
-    transcript_path: Optional[str], tool_name: str, session_id: str
+    transcript_path: str | None, tool_name: str, session_id: str
 ) -> str:
     """Build instruction for compliance audit."""
     # Build minimal input_data for hook_utils resolution
@@ -699,7 +697,7 @@ def _custodiet_build_audit_instruction(
 # --- Accountant Logic (Post-Tool State Updates) ---
 
 
-def run_accountant(ctx: HookContext) -> Optional[GateResult]:
+def run_accountant(ctx: HookContext) -> GateResult | None:
     """
     The Accountant: General state tracking for all components.
     Runs on PostToolUse. Never blocks, only updates state.
@@ -823,7 +821,7 @@ def run_accountant(ctx: HookContext) -> Optional[GateResult]:
     return None
 
 
-def check_stop_gate(ctx: HookContext) -> Optional[GateResult]:
+def check_stop_gate(ctx: HookContext) -> GateResult | None:
     """
     Check if the agent is allowed to stop (Stop / AfterAgent Enforcement).
     Returns None if allowed, or GateResult if blocked/warned.
@@ -925,7 +923,7 @@ def check_stop_gate(ctx: HookContext) -> Optional[GateResult]:
     return None
 
 
-def check_agent_response_listener(ctx: HookContext) -> Optional[GateResult]:
+def check_agent_response_listener(ctx: HookContext) -> GateResult | None:
     """
     AfterAgent: Listen to agent response for state updates and optional enforcement.
 
@@ -1052,7 +1050,7 @@ def check_agent_response_listener(ctx: HookContext) -> Optional[GateResult]:
     return None
 
 
-def check_session_start_gate(ctx: HookContext) -> Optional[GateResult]:
+def check_session_start_gate(ctx: HookContext) -> GateResult | None:
     """
     Handle SessionStart event.
     Creates the session state file and returns startup info to USER.
@@ -1162,7 +1160,7 @@ def check_session_start_gate(ctx: HookContext) -> Optional[GateResult]:
 # --- Unified Logger Gate (formerly unified_logger.py) ---
 
 
-def run_unified_logger(ctx: HookContext) -> Optional[GateResult]:
+def run_unified_logger(ctx: HookContext) -> GateResult | None:
     """
     Log hook events to session file and handle SubagentStop/Stop state updates.
     Never blocks, only updates state and returns context for SessionStart.
@@ -1187,7 +1185,7 @@ def run_unified_logger(ctx: HookContext) -> Optional[GateResult]:
 # --- User Prompt Submit Gate (formerly user_prompt_submit.py) ---
 
 
-def run_user_prompt_submit(ctx: HookContext) -> Optional[GateResult]:
+def run_user_prompt_submit(ctx: HookContext) -> GateResult | None:
     """
     UserPromptSubmit: Build hydration context and return instruction.
     """
@@ -1256,7 +1254,7 @@ def run_user_prompt_submit(ctx: HookContext) -> Optional[GateResult]:
 # --- Task Binding Gate (formerly task_binding.py) ---
 
 
-def run_task_binding(ctx: HookContext) -> Optional[GateResult]:
+def run_task_binding(ctx: HookContext) -> GateResult | None:
     """
     PostToolUse: Bind/unbind task to session when task MCP operations occur.
     """
@@ -1333,7 +1331,7 @@ def run_task_binding(ctx: HookContext) -> Optional[GateResult]:
 # --- Session End Commit Check Gate (formerly session_end_commit_check.py) ---
 
 
-def run_session_end_commit_check(ctx: HookContext) -> Optional[GateResult]:
+def run_session_end_commit_check(ctx: HookContext) -> GateResult | None:
     """
     Stop: Check for uncommitted work and perform session cleanup.
     """
@@ -1391,7 +1389,7 @@ def run_session_end_commit_check(ctx: HookContext) -> Optional[GateResult]:
 # --- Generate Transcript Gate (formerly generate_transcript.py) ---
 
 
-def run_generate_transcript(ctx: HookContext) -> Optional[GateResult]:
+def run_generate_transcript(ctx: HookContext) -> GateResult | None:
     """
     Stop: Run transcript.py on session end.
     """
@@ -1434,7 +1432,7 @@ def run_generate_transcript(ctx: HookContext) -> Optional[GateResult]:
 # --- ntfy Push Notification Gate ---
 
 
-def run_ntfy_notifier(ctx: HookContext) -> Optional[GateResult]:
+def run_ntfy_notifier(ctx: HookContext) -> GateResult | None:
     """
     Send push notifications for key session events via ntfy.
 
@@ -1521,7 +1519,7 @@ def run_ntfy_notifier(ctx: HookContext) -> Optional[GateResult]:
     return None
 
 
-def run_session_env_setup(ctx: HookContext) -> Optional[GateResult]:
+def run_session_env_setup(ctx: HookContext) -> GateResult | None:
     """
     Persist environment variables for Claude Code sessions.
     """
@@ -1572,6 +1570,6 @@ GATE_CHECKS = {
     "agent_response": check_agent_response_listener,
     # Stop gates
     "stop_gate": check_stop_gate,
-    "session_end_commit": run_session_end_commit_check,
+    # "session_end_commit": run_session_end_commit_check,
     "generate_transcript": run_generate_transcript,
 }

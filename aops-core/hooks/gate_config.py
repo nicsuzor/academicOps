@@ -11,7 +11,7 @@ All gate configuration should live here, not scattered across router.py,
 gate_registry.py, or gates.py.
 """
 
-from typing import Any, Dict, List, Set
+from typing import Any
 
 # =============================================================================
 # TOOL CATEGORIES
@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Set
 # Categorize tools by their side effects. This determines which gates must
 # pass before the tool can be used.
 
-TOOL_CATEGORIES: Dict[str, Set[str]] = {
+TOOL_CATEGORIES: dict[str, set[str]] = {
     # Always available: bypass ALL gates, including hydration
     # These are framework infrastructure tools, not user file modifications.
     # They're required to bootstrap the session (hydration, task binding, context).
@@ -150,7 +150,7 @@ TOOL_CATEGORIES: Dict[str, Set[str]] = {
 # Which gates must have passed for each tool category to be allowed?
 # Gates are checked in order; all listed gates must be in "passed" state.
 
-TOOL_GATE_REQUIREMENTS: Dict[str, List[str]] = {
+TOOL_GATE_REQUIREMENTS: dict[str, list[str]] = {
     # Always available: no gates required (bootstrap tools)
     "always_available": [],
     # Read-only tools: just need hydration
@@ -169,7 +169,7 @@ TOOL_GATE_REQUIREMENTS: Dict[str, List[str]] = {
 # Which gates run for each event type, and in what order.
 # Order matters: gates run in sequence, first deny wins.
 
-GATE_EXECUTION_ORDER: Dict[str, List[str]] = {
+GATE_EXECUTION_ORDER: dict[str, list[str]] = {
     "SessionStart": [
         "session_env_setup",
         "unified_logger",
@@ -201,10 +201,11 @@ GATE_EXECUTION_ORDER: Dict[str, List[str]] = {
     "Stop": [
         "unified_logger",
         "stop_gate",
-        "generate_transcript",
-        "session_end_commit",
+        # Disable session_end_commit for now since it's causing issues with handover.
+        # "session_end_commit",
     ],
     "SessionEnd": [
+        "generate_transcript",
         "unified_logger",
     ],
 }
@@ -214,8 +215,8 @@ GATE_EXECUTION_ORDER: Dict[str, List[str]] = {
 # =============================================================================
 # Gates that should only run for the main agent (bypass for subagents).
 # Prevents recursive loops and reduces overhead.
-
-MAIN_AGENT_ONLY_GATES: Set[str] = {
+# <!-- NS: change this to MAIN_AGENT_GATES and SUBAGENT_GATES for clarity? -->
+MAIN_AGENT_ONLY_GATES: set[str] = {
     "tool_gate",
     "gate_init",
     "gate_reset",
@@ -223,7 +224,6 @@ MAIN_AGENT_ONLY_GATES: Set[str] = {
     "user_prompt_submit",
     "task_binding",
     "stop_gate",
-    "session_end_commit",
     "session_start",
     "agent_response",
 }
@@ -233,7 +233,7 @@ MAIN_AGENT_ONLY_GATES: Set[str] = {
 # =============================================================================
 # Default enforcement modes for gates. Can be overridden by environment variables.
 
-GATE_MODE_DEFAULTS: Dict[str, str] = {
+GATE_MODE_DEFAULTS: dict[str, str] = {
     "hydration": "block",  # HYDRATION_GATE_MODE env var
     "task": "warn",  # TASK_GATE_MODE env var
     "custodiet": "warn",  # CUSTODIET_MODE env var
@@ -243,7 +243,7 @@ GATE_MODE_DEFAULTS: Dict[str, str] = {
 }
 
 # Environment variable names for gate modes
-GATE_MODE_ENV_VARS: Dict[str, str] = {
+GATE_MODE_ENV_VARS: dict[str, str] = {
     "hydration": "HYDRATION_GATE_MODE",
     "task": "TASK_GATE_MODE",
     "custodiet": "CUSTODIET_GATE_MODE",
@@ -260,7 +260,7 @@ GATE_MODE_ENV_VARS: Dict[str, str] = {
 # "closed" = gate check will fail, tool blocked
 # "open" = gate check will pass, tool allowed
 
-GATE_INITIAL_STATE: Dict[str, str] = {
+GATE_INITIAL_STATE: dict[str, str] = {
     "hydration": "closed",  # Must hydrate before any work
     "task": "open",  # Must bind a task before writes, but allow planning and answers first
     "critic": "open",  # Must get approval before writes, but allow planning and answers first
@@ -276,7 +276,7 @@ GATE_INITIAL_STATE: Dict[str, str] = {
 # What triggers each gate to transition from closed → open?
 # Each gate has an event type and conditions that must be met.
 
-GATE_OPENING_CONDITIONS: Dict[str, Dict[str, Any]] = {
+GATE_OPENING_CONDITIONS: dict[str, dict[str, Any]] = {
     "hydration": {
         "event": "PostToolUse",
         "tool_pattern": r"^(Task|Skill|delegate_to_agent|activate_skill|prompt-hydrator|aops-core:prompt-hydrator)$",
@@ -327,7 +327,7 @@ GATE_OPENING_CONDITIONS: Dict[str, Dict[str, Any]] = {
 # This enforces re-approval workflows, e.g., "critic must approve each batch".
 # Gates not listed here stay open once opened.
 
-GATE_CLOSURE_TRIGGERS: Dict[str, List[Dict[str, Any]]] = {
+GATE_CLOSURE_TRIGGERS: dict[str, list[dict[str, Any]]] = {
     "hydration": [
         {
             "event": "UserPromptSubmit",
@@ -395,13 +395,13 @@ def get_tool_category(tool_name: str) -> str:
     return "write"
 
 
-def get_required_gates(tool_name: str) -> List[str]:
+def get_required_gates(tool_name: str) -> list[str]:
     """Get the gates that must pass before this tool can be used."""
     category = get_tool_category(tool_name)
     return TOOL_GATE_REQUIREMENTS.get(category, TOOL_GATE_REQUIREMENTS["write"])
 
 
-def get_gates_for_event(event: str) -> List[str]:
+def get_gates_for_event(event: str) -> list[str]:
     """Get the ordered list of gates to run for an event."""
     return GATE_EXECUTION_ORDER.get(event, [])
 
@@ -419,7 +419,7 @@ def get_gate_initial_state(gate_name: str) -> str:
     return GATE_INITIAL_STATE.get(gate_name, "closed")
 
 
-def get_gate_opening_condition(gate_name: str) -> Dict[str, Any]:
+def get_gate_opening_condition(gate_name: str) -> dict[str, Any]:
     """Get the conditions that open a gate.
 
     Returns dict with event type and conditions, or empty dict if not configured.
@@ -427,7 +427,7 @@ def get_gate_opening_condition(gate_name: str) -> Dict[str, Any]:
     return GATE_OPENING_CONDITIONS.get(gate_name, {})
 
 
-def get_gate_closure_triggers(gate_name: str) -> List[Dict[str, Any]]:
+def get_gate_closure_triggers(gate_name: str) -> list[dict[str, Any]]:
     """Get the triggers that re-close a gate.
 
     Returns list of trigger definitions, or empty list if gate doesn't re-close.

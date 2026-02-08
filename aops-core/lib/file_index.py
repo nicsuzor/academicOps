@@ -436,18 +436,6 @@ def _normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", text.lower().strip())
 
 
-def _extract_keywords_from_prompt(prompt: str) -> set[str]:
-    """Extract potential keywords from prompt for matching."""
-    normalized = _normalize_text(prompt)
-
-    # Split into words and bigrams for matching
-    words = set(normalized.split())
-
-    # Also check for multi-word phrases
-    # This allows matching "prompt hydrator" as a phrase
-    return words | {normalized}
-
-
 def get_relevant_file_paths(prompt: str, max_files: int = 10) -> list[dict[str, str]]:
     """
     Get file paths relevant to the given prompt.
