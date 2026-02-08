@@ -3,7 +3,7 @@
 Unified hook logger for Claude Code and Gemini CLI.
 
 Logs ALL hook events to:
-1. Session state file: /tmp/aops-{YYYY-MM-DD}-{session_id}.json (for gate state)
+1. Session state file: ???{YYYY-MM-DD}-{session_id}.json (for gate state)
 2. Per-session JSONL hook log: ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
    or ~/.gemini/tmp/<hash>/logs/<date>-<shorthash>-hooks.jsonl (for event audit trail)
 
@@ -15,12 +15,13 @@ metrics to the temporary session state file.
 import json
 import logging
 import os
-import psutil
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
+import psutil
+from lib.gate_model import GateResult
 from lib.insights_generator import (
     extract_project_name,
     extract_short_hash,
@@ -38,9 +39,9 @@ from lib.session_state import (
     set_qa_invoked,
     set_session_insights,
 )
-from lib.gate_model import GateResult
+
 from hooks.internal_models import HookLogEntry
-from hooks.schemas import HookContext, CanonicalHookOutput
+from hooks.schemas import CanonicalHookOutput, HookContext
 
 # Set up logging
 logging.basicConfig(
@@ -72,7 +73,7 @@ def log_hook_event(
         input_data = ctx.raw_input
         date = input_data.get("date")
         if date is None:
-            date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            date = datetime.now(UTC).strftime("%Y-%m-%d")
 
         log_path = get_hook_log_path(session_id, input_data, date)
 
@@ -90,6 +91,7 @@ def log_hook_event(
             is_sidechain=ctx.is_sidechain,
             input=input_data,
             output=output.model_dump() if output else None,
+            raw_input=ctx.raw_input,
         )
 
         # Add debug metrics to metadata

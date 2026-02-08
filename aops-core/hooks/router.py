@@ -22,7 +22,7 @@ import uuid
 from collections import deque
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 # --- Path Setup ---
 HOOK_DIR = Path(__file__).parent  # aops-core/hooks
@@ -176,7 +176,7 @@ def format_gate_status_icons(session_id: str) -> str:
 # --- Session Management ---
 
 
-def get_session_data() -> Dict[str, Any]:
+def get_session_data() -> dict[str, Any]:
     """Read session metadata."""
     try:
         session_file = get_pid_session_map_path()
@@ -187,7 +187,7 @@ def get_session_data() -> Dict[str, Any]:
     return {}
 
 
-def persist_session_data(data: Dict[str, Any]) -> None:
+def persist_session_data(data: dict[str, Any]) -> None:
     """Write session metadata atomically."""
     try:
         session_file = get_pid_session_map_path()
@@ -306,7 +306,7 @@ class HookRouter:
         return value
 
     def normalize_input(
-        self, raw_input: Dict[str, Any], gemini_event: Optional[str] = None
+        self, raw_input: dict[str, Any], gemini_event: str | None = None
     ) -> HookContext:
         """Create a normalized HookContext from raw input."""
 
@@ -361,7 +361,7 @@ class HookRouter:
             tool_output = self._normalize_json_field(raw_tool_output)
         elif "subagent_result" in raw_input:
             tool_output = self._normalize_json_field(raw_input["subagent_result"])
-
+        subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE")
         return HookContext(
             session_id=session_id,
             hook_event=hook_event,
@@ -374,6 +374,7 @@ class HookRouter:
             transcript_path=transcript_path,
             cwd=raw_input.get("cwd"),
             raw_input=raw_input,
+            subagent_type=subagent_type,
         )
 
     def execute_hooks(self, ctx: HookContext) -> CanonicalHookOutput:
@@ -459,7 +460,7 @@ class HookRouter:
             metadata=result.metadata,
         )
 
-    def _normalize_hook_output(self, raw: Dict[str, Any]) -> CanonicalHookOutput:
+    def _normalize_hook_output(self, raw: dict[str, Any]) -> CanonicalHookOutput:
         """Convert raw dictionary to CanonicalHookOutput."""
         if "verdict" in raw:
             return CanonicalHookOutput(**raw)

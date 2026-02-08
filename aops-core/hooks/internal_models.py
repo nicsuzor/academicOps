@@ -168,6 +168,9 @@ class HookLogEntry(BaseModel):
     is_sidechain: bool | None = None
     input: dict = Field(default_factory=dict)
     output: dict | None = None
+    raw_input: dict = Field(default_factory=dict)
+
+
 
 
 # --- Policy Enforcer Models (policy_enforcer.py) ---

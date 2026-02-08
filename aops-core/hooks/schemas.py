@@ -1,4 +1,4 @@
-from typing import Any, Dict, Literal, Optional, Union
+from typing import Any, Literal, Union
 
 from pydantic import BaseModel, Field
 
@@ -15,26 +15,24 @@ class HookContext(BaseModel):
     hook_event: str = Field(
         ..., description="The normalized event name (e.g., SessionStart, PreToolUse)."
     )
-    agent_id: Optional[str] = Field(
-        None, description="The unique ID for the specific agent instance."
-    )
-    slug: Optional[str] = Field(
-        None, description="The human-readable slug for the session/agent."
-    )
-    is_sidechain: Optional[bool] = Field(
+    agent_id: str | None = Field(None, description="The unique ID for the specific agent instance.")
+    slug: str | None = Field(None, description="The human-readable slug for the session/agent.")
+    is_sidechain: bool | None = Field(
         None, description="Whether this is a subagent (sidechain) session."
     )
 
     # Event Data
-    tool_name: Optional[str] = None
-    tool_input: Dict[str, Any] = Field(default_factory=dict)
-    tool_output: Dict[str, Any] = Field(default_factory=dict)
+    tool_name: str | None = None
+    tool_input: dict[str, Any] = Field(default_factory=dict)
+    tool_output: dict[str, Any] = Field(default_factory=dict)
 
-    transcript_path: Optional[str] = None
-    cwd: Optional[str] = None
+    transcript_path: str | None = None
+    cwd: str | None = None
+
+    subagent_type: str | None = None
 
     # Raw Input (for fallback/passthrough)
-    raw_input: Dict[str, Any] = Field(default_factory=dict)
+    raw_input: dict[str, Any] = Field(default_factory=dict)
 
 
 # --- Claude Code Hook Schemas ---
@@ -48,15 +46,15 @@ class ClaudeHookSpecificOutput(BaseModel):
     hookEventName: str = Field(
         ..., description="The name of the event that triggered the hook."
     )
-    permissionDecision: Optional[Literal["allow", "deny", "ask"]] = Field(
+    permissionDecision: Literal["allow", "deny", "ask"] | None = Field(
         None,
         description="The decision for the hook (allow/deny/ask). Primarily for PreToolUse.",
     )
-    additionalContext: Optional[str] = Field(
+    additionalContext: str | None = Field(
         None,
         description="Additional context to be provided to the agent. Supported in PreToolUse, PostToolUse, UserPromptSubmit, SessionStart.",
     )
-    updatedInput: Optional[str] = Field(
+    updatedInput: str | None = Field(
         None, description="Updated input for the command. Supported in PreToolUse."
     )
 
@@ -67,18 +65,12 @@ class ClaudeStopHookOutput(BaseModel):
     Unlike other events, 'Stop' uses top-level fields instead of hookSpecificOutput.
     """
 
-    decision: Optional[Literal["approve", "block"]] = Field(
+    decision: Literal["approve", "block"] | None = Field(
         None, description="Decision for the Stop event (approve/block)."
     )
-    reason: Optional[str] = Field(
-        None, description="Reason for the decision (visible to the agent)."
-    )
-    stopReason: Optional[str] = Field(
-        None, description="Reason for the stop (visible to the user)."
-    )
-    systemMessage: Optional[str] = Field(
-        None, description="A message to be displayed to the user."
-    )
+    reason: str | None = Field(None, description="Reason for the decision (visible to the agent).")
+    stopReason: str | None = Field(None, description="Reason for the stop (visible to the user).")
+    systemMessage: str | None = Field(None, description="A message to be displayed to the user.")
 
 
 class ClaudeGeneralHookOutput(BaseModel):
@@ -86,10 +78,8 @@ class ClaudeGeneralHookOutput(BaseModel):
     Output structure for standard Claude Code hooks (PreToolUse, etc.).
     """
 
-    systemMessage: Optional[str] = Field(
-        None, description="A message to be displayed to the user."
-    )
-    hookSpecificOutput: Optional[ClaudeHookSpecificOutput] = Field(
+    systemMessage: str | None = Field(None, description="A message to be displayed to the user.")
+    hookSpecificOutput: ClaudeHookSpecificOutput | None = Field(
         None, description="Event-specific output data."
     )
 
@@ -111,16 +101,14 @@ class GeminiHookSpecificOutput(BaseModel):
     - toolConfig: Override tool selection behavior (BeforeToolSelection)
     """
 
-    hookEventName: Optional[str] = Field(
-        None, description="The event type triggering the hook."
-    )
-    additionalContext: Optional[str] = Field(
+    hookEventName: str | None = Field(None, description="The event type triggering the hook.")
+    additionalContext: str | None = Field(
         None, description="Context injected into the agent's prompt."
     )
-    toolConfig: Optional[Dict[str, Any]] = Field(
+    toolConfig: dict[str, Any] | None = Field(
         None, description="Tool selection configuration (mode, allowedFunctionNames)."
     )
-    clearContext: Optional[bool] = Field(
+    clearContext: bool | None = Field(
         None, description="If True, clears LLM memory (AfterAgent only)."
     )
 
@@ -136,34 +124,26 @@ class GeminiHookOutput(BaseModel):
     - Exit code 2 is "emergency brake" - stderr shown to agent
     """
 
-    systemMessage: Optional[str] = Field(
-        None, description="Message to be displayed to the user."
-    )
-    decision: Optional[Literal["allow", "deny", "block"]] = Field(
+    systemMessage: str | None = Field(None, description="Message to be displayed to the user.")
+    decision: Literal["allow", "deny", "block"] | None = Field(
         None, description="Permission decision. 'deny'/'block' prevents the operation."
     )
-    reason: Optional[str] = Field(
+    reason: str | None = Field(
         None, description="Reason for denial decision. NOT for context injection."
     )
-    hookSpecificOutput: Optional[GeminiHookSpecificOutput] = Field(
+    hookSpecificOutput: GeminiHookSpecificOutput | None = Field(
         None, description="Event-specific output including additionalContext."
     )
-    suppressOutput: Optional[bool] = Field(
-        None, description="If True, suppresses output display."
-    )
-    continue_: Optional[bool] = Field(
+    suppressOutput: bool | None = Field(None, description="If True, suppresses output display.")
+    continue_: bool | None = Field(
         None, alias="continue", description="If False, halts processing."
     )
-    stopReason: Optional[str] = Field(
-        None, description="Reason for stopping (visible to user)."
-    )
-    updatedInput: Optional[str] = Field(
+    stopReason: str | None = Field(None, description="Reason for stopping (visible to user).")
+    updatedInput: str | None = Field(
         None, description="Modified input string. Used for command interception."
     )
     # Metadata for internal tracking/debugging
-    metadata: Dict[str, Any] = Field(
-        default_factory=dict, description="Internal metadata."
-    )
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Internal metadata.")
 
 
 # --- Canonical Internal Schema ---
@@ -175,8 +155,8 @@ class CanonicalHookOutput(BaseModel):
     All hooks (python scripts) should output this format.
     """
 
-    system_message: Optional[str] = None
-    verdict: Optional[Literal["allow", "deny", "ask", "warn"]] = "allow"
-    context_injection: Optional[str] = None
-    updated_input: Optional[str] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    system_message: str | None = None
+    verdict: Literal["allow", "deny", "ask", "warn"] | None = "allow"
+    context_injection: str | None = None
+    updated_input: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
