@@ -128,17 +128,20 @@ You may bypass task queue ONLY when ANY is true:
 
 ## Return Format
 
+**CRITICAL - Context Curation**:
+- Your input file contains FULL axioms, heuristics, workflows - this is for YOUR reference
+- DO NOT copy/paste these sections into your output
+- SELECT only what's relevant and output brief references
+- For simple questions: minimal or no context needed
+- Main agent receives ONLY your curated output
+
 Return this EXACT structure:
 
 ````markdown
 ## HYDRATION RESULT
 
 **Intent**: [what user actually wants, in clear terms]
-**Task binding**: [existing task ID, new task instructions, or "direct"]
-**Acceptance criteria**: [binding user-focused requirements]
-**Relevant Context**: [information the agent MUST know]
-**Principles**: [relevant axioms and heuristics]
-**Workflows**: [[workflows/[workflow-id]]], ...
+**Task binding**: [existing task ID, new task instructions, or "No task needed"]
 
 ### Acceptance Criteria
 
@@ -147,12 +150,13 @@ Return this EXACT structure:
 
 ### Relevant Context
 
-- [Context from memory search]
-- [Related tasks]
+- [Brief context the agent needs - NOT full file contents]
+- [Related tasks if any]
 
 ### Applicable Principles
 
-- **Axiom #[n] [Name]**: [Why this applies]
+Select 3-7 from AXIOMS/HEURISTICS. For simple questions, omit this section.
+- **P#[n] ([Name])**: [1-sentence why this applies]
 
 ### Execution Plan
 

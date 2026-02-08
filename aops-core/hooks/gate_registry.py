@@ -914,7 +914,7 @@ def check_stop_gate(ctx: HookContext) -> GateResult | None:
                     "**Action Required**: Invoke QA to verify your work against the original request "
                     "and acceptance criteria before completing handover.\n\n"
                     "- **Claude Code**: `Task(subagent_type='aops-core:qa', prompt='Verify...')` or `Skill(skill='qa')`\n"
-                    "- **Gemini CLI**: `delegate_to_agent(agent_name='qa', prompt='Verify...')` or `activate_skill(name='qa')`\n\n"
+                    "- **Gemini CLI**: `spawn_agent(agent_name='qa', user_prompt='Verify...')` or `activate_skill(name='qa')`\n\n"
                     "After QA passes, invoke `/handover` again to end the session."
                 ),
                 metadata={"source": "stop_gate_qa_check"},

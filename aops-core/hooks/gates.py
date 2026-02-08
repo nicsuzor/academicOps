@@ -102,13 +102,13 @@ def check_tool_gate(ctx: "HookContext") -> GateResult:
         short_name = agent.split(":")[-1]
         next_instruction = (
             f"- **Claude Code**: `Task(subagent_type=\"{agent}\", prompt=\"Analyze {audit_path}\")`\n"
-            f"  - **Gemini CLI**: `activate_skill(name=\"{short_name}\", prompt=\"Analyze {audit_path}\")`"
+            f"  - **Gemini CLI**: `spawn_agent(agent_name=\"{short_name}\", user_prompt=\"Analyze {audit_path}\")`"
         )
     elif agent:
         short_name = agent.split(":")[-1]
         next_instruction = (
             f"- **Claude Code**: `Task(subagent_type=\"{agent}\")`\n"
-            f"  - **Gemini CLI**: `activate_skill(name=\"{short_name}\")`"
+            f"  - **Gemini CLI**: `spawn_agent(agent_name=\"{short_name}\")`"
         )
     else:
         next_instruction = f"Satisfy `{first}` gate"

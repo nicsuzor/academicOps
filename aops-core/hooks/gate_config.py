@@ -279,7 +279,7 @@ GATE_INITIAL_STATE: dict[str, str] = {
 GATE_OPENING_CONDITIONS: dict[str, dict[str, Any]] = {
     "hydration": {
         "event": "PostToolUse",
-        "tool_pattern": r"^(Task|Skill|delegate_to_agent|activate_skill|prompt-hydrator|aops-core:prompt-hydrator)$",
+        "tool_pattern": r"^(Task|Skill|delegate_to_agent|activate_skill|spawn_agent|prompt-hydrator|aops-core:prompt-hydrator)$",
         "subagent_type": "aops-core:prompt-hydrator",
         "output_contains": "HYDRATION RESULT",
         "description": "Opens when hydrator agent completes successfully",
