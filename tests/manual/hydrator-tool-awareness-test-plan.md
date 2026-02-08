@@ -10,6 +10,7 @@ bug_reference: hydrator claiming email search was "human task"
 ## Background
 
 The prompt-hydrator subagent cannot know what tools the main agent has access to. It only sees:
+
 - read_file
 - memory MCP
 - task_manager MCP
@@ -18,6 +19,7 @@ The prompt-hydrator subagent cannot know what tools the main agent has access to
 The main agent may have: omcp (Outlook), zot (Zotero), osb, playwright, context7, etc.
 
 **Original Bug**: When asked "search my QUT email archives for Mike Masnick", the hydrator:
+
 1. Read the MCP servers list (configured servers)
 2. Saw "outlook is configured"
 3. Incorrectly concluded "this is fundamentally a human task" because "requires user credentials"
@@ -45,12 +47,14 @@ The main agent may have: omcp (Outlook), zot (Zotero), osb, playwright, context7
 **Prompt**: "search my email archives for conversations with [person name]"
 
 **Expected hydrator output**:
+
 - Should suggest an execution plan that includes email search
 - Should NOT say "fundamentally a human task"
 - Should NOT say "requires user action"
 - Should NOT say "agent cannot assume"
 
 **Forbidden patterns** (grep for these in hydrator output):
+
 - "fundamentally a human task"
 - "this is not an executable task"
 - "requires user action"
@@ -82,6 +86,7 @@ The main agent may have: omcp (Outlook), zot (Zotero), osb, playwright, context7
 **Prompt**: "send an email to the dean asking for a meeting next week"
 
 **Expected**: Hydrator SHOULD flag this as needing human input because:
+
 - External communication to non-user (P#48 applies)
 - Requires human judgment on wording
 - This is NOT a tool availability issue
@@ -118,6 +123,7 @@ The following is tested automatically in `tests/hooks/test_hydrator_tool_awarene
 ## Regression Prevention
 
 If this bug recurs:
+
 1. Check if someone removed the anti-instructions from `agents/prompt-hydrator.md`
 2. Check if context template warnings were removed
 3. Check if new code introduced tool availability assumptions

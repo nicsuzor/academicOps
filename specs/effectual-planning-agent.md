@@ -21,9 +21,9 @@ The agent is designed for work where many ideas fail, where you don't know what 
 ## Vision
 
 i have a key idea: i want to use network mapping methods from maths and science to improve our academic task planning and prioritising in conditions of uncertainty. i have a tasks database that has hierarchical dependencies but also soft dependencies. i want to, for example:
+
 - identify what abstract goals/tasks are ready for deconstruction in to more concrete assortments of specific tasks for things we know how to do and exploratory tasks for things we know we don't know
 - prioritise between different tasks based on how much valueable information we are likely to generate from a task and what cross-network work gets unlocked by finding out that info.
-
 
 ### Where we're going
 

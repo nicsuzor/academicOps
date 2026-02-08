@@ -5,6 +5,7 @@ Disable hard-blocking stop hook for this session.
 ## Purpose
 
 In interactive sessions where the user is actively engaged, the stop hook's hard-blocking can be disruptive. This skill sets the session to "relaxed mode" where:
+
 - Stop hook warnings are still shown
 - But session end is not blocked
 

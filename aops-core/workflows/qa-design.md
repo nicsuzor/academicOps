@@ -42,6 +42,7 @@ Design acceptance testing as a **dependent task chain**. Each phase blocks the n
 **Question**: What QA infrastructure already exists?
 
 Survey existing:
+
 - Test frameworks and runners
 - Verification scripts or checks
 - Review processes (code review, QA gates)
@@ -55,6 +56,7 @@ Survey existing:
 **Question**: What's missing for outcome-based QA?
 
 Assess against these capabilities:
+
 1. Can reviewers verify **outcome quality** (not just completion)?
 2. Are there test cases with **explicit fail conditions**?
 3. Is there **batch execution** with measurement?
@@ -68,6 +70,7 @@ Assess against these capabilities:
 **Question**: How will the QA system work end-to-end?
 
 Design these components:
+
 1. **Reviewer lifecycle**: setup → execute → review → verdict
 2. **Test case format**: feature, expected behavior, fail condition
 3. **Batch execution**: how to run multiple tests, aggregate results
@@ -83,6 +86,7 @@ Design these components:
 **Question**: What specific behaviors must be tested?
 
 For each key feature:
+
 - **Feature name**: What's being tested
 - **Expected behavior**: What success looks like
 - **Fail condition**: What specific problem this catches
@@ -97,6 +101,7 @@ Create coverage matrix mapping test cases to features. Identify gaps.
 Build the designed system. Created **after** test cases are defined and reviewed.
 
 Typical tasks:
+
 - Implement test execution framework
 - Implement reviewer guidance/checklist
 - Implement batch runner
@@ -104,13 +109,13 @@ Typical tasks:
 
 ## Anti-Patterns to Avoid
 
-| Anti-Pattern | Why It Fails | Instead |
-|--------------|--------------|---------|
-| Pattern matching | Passes without semantic understanding | Reviewer examines actual output |
-| "Did it run?" tests | Passes broken behavior | Verify outcome is useful |
-| Element presence checks | UI exists but content is garbage | Check content quality |
-| Success = no errors | Silent failures pass | Define positive success criteria |
-| Skip to implementation | Build wrong thing | Complete design phases first |
+| Anti-Pattern            | Why It Fails                          | Instead                          |
+| ----------------------- | ------------------------------------- | -------------------------------- |
+| Pattern matching        | Passes without semantic understanding | Reviewer examines actual output  |
+| "Did it run?" tests     | Passes broken behavior                | Verify outcome is useful         |
+| Element presence checks | UI exists but content is garbage      | Check content quality            |
+| Success = no errors     | Silent failures pass                  | Define positive success criteria |
+| Skip to implementation  | Build wrong thing                     | Complete design phases first     |
 
 ## Verification
 

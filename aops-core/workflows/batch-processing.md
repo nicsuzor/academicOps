@@ -56,6 +56,7 @@ $SCRATCHPAD/batch-[task-id]/
 ### User Checkpoints
 
 After each chunk:
+
 1. Present summary (counts by category)
 2. Show sample items per category
 3. **AskUserQuestion** before:

@@ -8,7 +8,6 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 
 # Add aops-core to path for hook imports
 AOPS_CORE = Path(__file__).parent.parent.parent / "aops-core"
@@ -120,7 +119,9 @@ class TestGeminiHydrationAttemptDetection:
         tool_input = {"file_path": "/home/nic/src/project/README.md"}
         raw_input = {"tool_name": tool_name, "tool_input": tool_input}
 
-        assert not _hydration_is_gemini_hydration_attempt(tool_name, tool_input, raw_input)
+        assert not _hydration_is_gemini_hydration_attempt(
+            tool_name, tool_input, raw_input
+        )
 
     def test_empty_inputs_handled(self):
         """Empty inputs should be handled safely."""

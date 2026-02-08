@@ -10,9 +10,11 @@ description: |
     {critic_invoked_status} - Gate status indicator (✓ or ✗)
     {missing_gates} - Newline-separated list of missing gate instructions
 ---
+
 ⛔ **TASK GATE: Cannot perform destructive operations.**
 
 The unified TASK GATE requires compliance before modifying files:
+
 - Task bound: {task_bound_status}
 - Hydrator invoked: {hydrator_invoked_status}
 - Critic invoked: {critic_invoked_status}

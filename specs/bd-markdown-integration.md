@@ -66,45 +66,42 @@ status: active
 ---
 ```
 
-
 ## Component 2: RO ASCII View Generator
 
 ### Purpose
 
 Generate a read-only task tree in project markdown files, showing the full decomposition from epic to skill-sized tasks.
 
-### tasks tree command 
+### tasks tree command
 
 ```markdown
 ○ aops-nn1l [P1] [epic] Write TJA paper
 ├─○ aops-lr01 [P2] Literature review
-│  ├─● aops-lr02 [P2] @bot Search databases for [terms]
-│  └─○ aops-lr03 [P2] Screen 50 abstracts
+│ ├─● aops-lr02 [P2] @bot Search databases for [terms]
+│ └─○ aops-lr03 [P2] Screen 50 abstracts
 ├─◐ aops-da01 [P1] @nic Data analysis
-│  └─○ aops-da02 [P2] [discovery] Clarify methodology
+│ └─○ aops-da02 [P2] [discovery] Clarify methodology
 └─○ aops-wr01 [P2] Writing
-   └─○ aops-wr02 [P3] Draft introduction
+└─○ aops-wr02 [P3] Draft introduction
 ```
 
 ### Status Symbols
 
-| Symbol | Meaning |
-|--------|---------|
-| `○` | Open |
-| `●` | Closed |
-| `◐` | In-progress |
-| `⊘` | Blocked |
+| Symbol | Meaning     |
+| ------ | ----------- |
+| `○`    | Open        |
+| `●`    | Closed      |
+| `◐`    | In-progress |
+| `⊘`    | Blocked     |
 
 ### Annotations
 
-| Annotation | Meaning |
-|------------|---------|
-| `@bot` | Assigned to automated agent |
-| `@nic` | Assigned to human |
+| Annotation    | Meaning                      |
+| ------------- | ---------------------------- |
+| `@bot`        | Assigned to automated agent  |
+| `@nic`        | Assigned to human            |
 | `[discovery]` | Needs human input to proceed |
-| `[P1]` | Priority level |
-
-
+| `[P1]`        | Priority level               |
 
 ## Component 3: Decomposition Algorithm
 
@@ -148,6 +145,7 @@ For each child, ask: **Do we have enough information to decompose further?**
 - **No** → Create discovery task to gather information
 
 Example:
+
 ```bash
 # We know how to do literature searches
 task create "Search databases for [terms]" --parent=aops-lr01 --assignee=bot
@@ -165,23 +163,25 @@ task ready --label project:tja-paper
 ```
 
 Shows tasks that are:
+
 - Skill-sized (leaf nodes or explicitly marked ready)
 - Have no unmet dependencies
 - Assigned (@bot or @nic)
 
 ### Decomposition Heuristics
 
-| Signal | Action |
-|--------|--------|
-| Domain knowledge exists (e.g., "paper" → known structure) | Infer necessary steps |
-| User provided detail | Create detailed subtasks |
-| Path unclear | Create `[discovery]` task assigned to @nic |
-| Task is skill-sized | Stop decomposing, mark ready |
-| Task is coarse but boundaries clear | Keep coarse, expand later |
+| Signal                                                    | Action                                     |
+| --------------------------------------------------------- | ------------------------------------------ |
+| Domain knowledge exists (e.g., "paper" → known structure) | Infer necessary steps                      |
+| User provided detail                                      | Create detailed subtasks                   |
+| Path unclear                                              | Create `[discovery]` task assigned to @nic |
+| Task is skill-sized                                       | Stop decomposing, mark ready               |
+| Task is coarse but boundaries clear                       | Keep coarse, expand later                  |
 
 ### Skill-Sized Criteria (from Principle #6)
 
 A task is skill-sized when:
+
 - Maps to exactly one skill (python-dev, analyst, pdf, etc.)
 - Clear input/output boundaries
 - Can be verified independently

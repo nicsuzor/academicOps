@@ -6,4 +6,4 @@ allowed-tools: []
 permalink: commands/bump
 ---
 
-*bump*. You seem to be stuck -- please continue.
+_bump_. You seem to be stuck -- please continue.

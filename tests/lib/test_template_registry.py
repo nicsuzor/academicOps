@@ -251,7 +251,9 @@ def test_list_templates_by_category(registry):
 # =============================================================================
 
 
-def test_env_override_changes_path(configured_registry, templates_dir: Path, monkeypatch):
+def test_env_override_changes_path(
+    configured_registry, templates_dir: Path, monkeypatch
+):
     """Environment variable overrides template path."""
     from lib.template_registry import TemplateCategory, TemplateSpec
 
@@ -269,12 +271,16 @@ def test_env_override_changes_path(configured_registry, templates_dir: Path, mon
     )
 
     # Without env var - uses default
-    result1 = configured_registry.render("test.override", {"name": "Default", "session_id": "x"})
+    result1 = configured_registry.render(
+        "test.override", {"name": "Default", "session_id": "x"}
+    )
     assert "Hello Default!" in result1
 
     # With env var - uses override
     monkeypatch.setenv("TEST_TEMPLATE_OVERRIDE", str(override_template))
-    result2 = configured_registry.render("test.override", {"name": "Custom", "session_id": "x"})
+    result2 = configured_registry.render(
+        "test.override", {"name": "Custom", "session_id": "x"}
+    )
     assert "OVERRIDE: Custom" in result2
 
 
@@ -318,7 +324,9 @@ def test_env_override_relative_path_resolution(
 
     # Relative path should resolve against templates_dir
     monkeypatch.setenv("TEST_RELATIVE_OVERRIDE", "overrides/custom.md")
-    result = configured_registry.render("test.relative", {"name": "Rel", "session_id": "x"})
+    result = configured_registry.render(
+        "test.relative", {"name": "Rel", "session_id": "x"}
+    )
     assert "CUSTOM: Rel" in result
 
 
@@ -364,17 +372,23 @@ def test_configure_creates_fresh_instance(tmp_path: Path):
 
 def test_all_specs_have_valid_files(registry):
     """All registered specs point to existing template files."""
-    templates_dir = Path(__file__).parent.parent.parent / "aops-core" / "hooks" / "templates"
+    templates_dir = (
+        Path(__file__).parent.parent.parent / "aops-core" / "hooks" / "templates"
+    )
 
     for name in registry.list_templates():
         spec = registry.get_spec(name)
         template_path = templates_dir / spec.filename
-        assert template_path.exists(), f"Template file missing for {name}: {template_path}"
+        assert template_path.exists(), (
+            f"Template file missing for {name}: {template_path}"
+        )
 
 
 def test_all_templates_render_without_error(registry):
     """All templates can be rendered (with mock variables)."""
-    templates_dir = Path(__file__).parent.parent.parent / "aops-core" / "hooks" / "templates"
+    templates_dir = (
+        Path(__file__).parent.parent.parent / "aops-core" / "hooks" / "templates"
+    )
     from lib.template_registry import TemplateRegistry
 
     # Configure with real templates dir
@@ -414,15 +428,25 @@ def test_spec_category_assignment(registry):
     from lib.template_registry import TemplateCategory
 
     # User messages
-    assert registry.get_spec("hydration.block").category == TemplateCategory.USER_MESSAGE
+    assert (
+        registry.get_spec("hydration.block").category == TemplateCategory.USER_MESSAGE
+    )
     assert registry.get_spec("task.warn").category == TemplateCategory.USER_MESSAGE
 
     # Context injection
-    assert registry.get_spec("custodiet.instruction").category == TemplateCategory.CONTEXT_INJECTION
-    assert registry.get_spec("stop.critic").category == TemplateCategory.CONTEXT_INJECTION
+    assert (
+        registry.get_spec("custodiet.instruction").category
+        == TemplateCategory.CONTEXT_INJECTION
+    )
+    assert (
+        registry.get_spec("stop.critic").category == TemplateCategory.CONTEXT_INJECTION
+    )
 
     # Subagent instruction
-    assert registry.get_spec("custodiet.context").category == TemplateCategory.SUBAGENT_INSTRUCTION
+    assert (
+        registry.get_spec("custodiet.context").category
+        == TemplateCategory.SUBAGENT_INSTRUCTION
+    )
 
 
 # =============================================================================
@@ -430,7 +454,9 @@ def test_spec_category_assignment(registry):
 # =============================================================================
 
 
-def test_render_with_metadata_returns_full_info(configured_registry, templates_dir: Path):
+def test_render_with_metadata_returns_full_info(
+    configured_registry, templates_dir: Path
+):
     """render_with_metadata returns content, spec, and variables used."""
     from lib.template_registry import TemplateCategory, TemplateSpec
 

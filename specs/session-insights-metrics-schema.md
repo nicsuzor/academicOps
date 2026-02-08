@@ -32,57 +32,57 @@ This document defines the metrics schema for monitoring the session insights pip
 
 Track each pipeline run:
 
-| Metric | Type | Description |
-|--------|------|-------------|
-| `run_timestamp` | ISO 8601 | When the pipeline ran |
-| `run_duration_ms` | int | Execution time in milliseconds |
-| `run_status` | enum | "success", "partial", "failure" |
-| `run_error` | string | Error message if failure (null otherwise) |
-| `run_trigger` | enum | "manual", "skill", "hook", "batch" |
+| Metric            | Type     | Description                               |
+| ----------------- | -------- | ----------------------------------------- |
+| `run_timestamp`   | ISO 8601 | When the pipeline ran                     |
+| `run_duration_ms` | int      | Execution time in milliseconds            |
+| `run_status`      | enum     | "success", "partial", "failure"           |
+| `run_error`       | string   | Error message if failure (null otherwise) |
+| `run_trigger`     | enum     | "manual", "skill", "hook", "batch"        |
 
 ### 2. Processing Metrics
 
 Track what was processed:
 
-| Metric | Type | Description |
-|--------|------|-------------|
-| `sessions_scanned` | int | Total sessions scanned for pending |
-| `sessions_pending` | int | Sessions needing insights generation |
-| `sessions_processed` | int | Sessions successfully processed |
-| `sessions_failed` | int | Sessions that failed processing |
-| `sessions_skipped` | int | Sessions skipped (already done, invalid, etc.) |
+| Metric               | Type | Description                                    |
+| -------------------- | ---- | ---------------------------------------------- |
+| `sessions_scanned`   | int  | Total sessions scanned for pending             |
+| `sessions_pending`   | int  | Sessions needing insights generation           |
+| `sessions_processed` | int  | Sessions successfully processed                |
+| `sessions_failed`    | int  | Sessions that failed processing                |
+| `sessions_skipped`   | int  | Sessions skipped (already done, invalid, etc.) |
 
 ### 3. Quality Metrics
 
 Track output quality:
 
-| Metric | Type | Description |
-|--------|------|-------------|
-| `validation_errors` | int | Schema validation failures |
-| `malformed_json` | int | JSON parse failures from LLM |
-| `empty_responses` | int | Responses with no content |
-| `coercions_applied` | int | Fields that required type coercion |
+| Metric              | Type | Description                        |
+| ------------------- | ---- | ---------------------------------- |
+| `validation_errors` | int  | Schema validation failures         |
+| `malformed_json`    | int  | JSON parse failures from LLM       |
+| `empty_responses`   | int  | Responses with no content          |
+| `coercions_applied` | int  | Fields that required type coercion |
 
 ### 4. Task Sync Metrics
 
 Track task integration:
 
-| Metric | Type | Description |
-|--------|------|-------------|
-| `sessions_with_task_match` | int | Sessions matched to tasks |
-| `sessions_no_task_match` | int | Sessions with no task match |
-| `task_match_rate` | float | Ratio (0.0-1.0) of matched sessions |
-| `accomplishments_synced` | int | Accomplishments synced to tasks |
+| Metric                     | Type  | Description                         |
+| -------------------------- | ----- | ----------------------------------- |
+| `sessions_with_task_match` | int   | Sessions matched to tasks           |
+| `sessions_no_task_match`   | int   | Sessions with no task match         |
+| `task_match_rate`          | float | Ratio (0.0-1.0) of matched sessions |
+| `accomplishments_synced`   | int   | Accomplishments synced to tasks     |
 
 ### 5. Operational Health Metrics
 
 Track pipeline health over time:
 
-| Metric | Type | Description |
-|--------|------|-------------|
-| `last_successful_run` | ISO 8601 | Timestamp of last success |
-| `consecutive_failures` | int | Count of back-to-back failures |
-| `uptime_24h` | float | Success rate in last 24h (0.0-1.0) |
+| Metric                 | Type     | Description                        |
+| ---------------------- | -------- | ---------------------------------- |
+| `last_successful_run`  | ISO 8601 | Timestamp of last success          |
+| `consecutive_failures` | int      | Count of back-to-back failures     |
+| `uptime_24h`           | float    | Success rate in last 24h (0.0-1.0) |
 
 ## Schema Definition
 
@@ -146,19 +146,28 @@ Location: `~/writing/sessions/summaries/.metrics/runs.jsonl`
 Each line is a complete run record (JSONL format for easy appending):
 
 ```json
-{"run_timestamp":"2026-02-04T10:30:00+10:00","run_duration_ms":2340,"run_status":"success","run_trigger":"skill","sessions_processed":3,"sessions_failed":0,"validation_errors":0,"task_match_rate":0.67}
+{
+  "run_timestamp": "2026-02-04T10:30:00+10:00",
+  "run_duration_ms": 2340,
+  "run_status": "success",
+  "run_trigger": "skill",
+  "sessions_processed": 3,
+  "sessions_failed": 0,
+  "validation_errors": 0,
+  "task_match_rate": 0.67
+}
 ```
 
 ## Derived Metrics
 
 These are computed from raw metrics for reporting:
 
-| Metric | Formula | Purpose |
-|--------|---------|---------|
-| `success_rate` | sessions_processed / (sessions_processed + sessions_failed) | Pipeline reliability |
-| `task_match_rate` | sessions_with_task_match / sessions_processed | Task integration quality |
-| `processing_rate` | sessions_processed / run_duration_ms * 1000 | Sessions per second |
-| `quality_score` | 1 - (validation_errors + malformed_json) / sessions_processed | Output quality |
+| Metric            | Formula                                                       | Purpose                  |
+| ----------------- | ------------------------------------------------------------- | ------------------------ |
+| `success_rate`    | sessions_processed / (sessions_processed + sessions_failed)   | Pipeline reliability     |
+| `task_match_rate` | sessions_with_task_match / sessions_processed                 | Task integration quality |
+| `processing_rate` | sessions_processed / run_duration_ms * 1000                   | Sessions per second      |
+| `quality_score`   | 1 - (validation_errors + malformed_json) / sessions_processed | Output quality           |
 
 ## Alert Thresholds
 
@@ -166,17 +175,17 @@ See [alert-thresholds task](../tasks/aops-b31047ec) for threshold definitions.
 
 Preliminary thresholds:
 
-| Condition | Threshold | Severity |
-|-----------|-----------|----------|
-| `consecutive_failures` | >= 3 | warning |
-| `consecutive_failures` | >= 5 | critical |
-| `uptime_24h` | < 0.8 | warning |
-| `uptime_24h` | < 0.5 | critical |
-| `task_match_rate` | < 0.5 | warning |
-| `validation_errors` (per run) | > 0 | info |
-| `malformed_json` (per run) | > 0 | warning |
-| `hours_since_success` | > 24 | warning |
-| `hours_since_success` | > 48 | critical |
+| Condition                     | Threshold | Severity |
+| ----------------------------- | --------- | -------- |
+| `consecutive_failures`        | >= 3      | warning  |
+| `consecutive_failures`        | >= 5      | critical |
+| `uptime_24h`                  | < 0.8     | warning  |
+| `uptime_24h`                  | < 0.5     | critical |
+| `task_match_rate`             | < 0.5     | warning  |
+| `validation_errors` (per run) | > 0       | info     |
+| `malformed_json` (per run)    | > 0       | warning  |
+| `hours_since_success`         | > 24      | warning  |
+| `hours_since_success`         | > 48      | critical |
 
 ## Collection Points
 

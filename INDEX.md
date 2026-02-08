@@ -27,14 +27,14 @@ The core logic, hooks, agents, and skills are located in the `aops-core/` direct
 
 ## Directories
 
-| Path | Purpose |
-|------|---------|
-| `aops-core/` | Core framework components |
-| `docs/` | General documentation |
-| `specs/` | Feature and workflow specifications |
-| `scripts/` | Framework maintenance and utility scripts |
-| `tests/` | Framework test suite |
-| `lib/` | Shared libraries and submodules |
+| Path         | Purpose                                   |
+| ------------ | ----------------------------------------- |
+| `aops-core/` | Core framework components                 |
+| `docs/`      | General documentation                     |
+| `specs/`     | Feature and workflow specifications       |
+| `scripts/`   | Framework maintenance and utility scripts |
+| `tests/`     | Framework test suite                      |
+| `lib/`       | Shared libraries and submodules           |
 
 ## Maintenance
 

@@ -109,10 +109,12 @@ The [[specs/prompt-hydration]] process classifies prompts and suggests workflows
 Blocks/warns when agent attempts to use tools before invoking prompt-hydrator subagent.
 
 **Gate Behavior**:
+
 - **Warn mode** (default, `HYDRATION_GATE_MODE=warn`): Logs warning to stderr, allows tool use
 - **Block mode** (`HYDRATION_GATE_MODE=block`): Blocks all tools (exit code 2) until hydrator invoked
 
 **Bypass Conditions**:
+
 - Subagent sessions (`CLAUDE_AGENT_TYPE` set) - subagents inherit hydration from parent
 - First prompt from CLI (no session state exists) - prevents blocking on session startup
 - User bypass prefix (`.` or `/`) - handled by UserPromptSubmit hook

@@ -1,6 +1,5 @@
 {
   "mcpServers": {
-
     "gemini-cli": {
       "command": "npx",
       "args": [

@@ -39,12 +39,12 @@ When decomposing under uncertainty, use **spike tasks** (type: `learn`) to inves
 
 ### Spike vs Placeholder Decision
 
-| Situation | Use Spike | Use Placeholder |
-|-----------|-----------|-----------------|
-| "We don't know if X is possible" | ✅ Investigate first | |
-| "We know X is needed, details TBD" | | ✅ Capture intent |
-| "We need to understand current system" | ✅ Audit/explore | |
-| "Implementation approach is unclear" | ✅ Prototype/probe | |
+| Situation                              | Use Spike            | Use Placeholder   |
+| -------------------------------------- | -------------------- | ----------------- |
+| "We don't know if X is possible"       | ✅ Investigate first |                   |
+| "We know X is needed, details TBD"     |                      | ✅ Capture intent |
+| "We need to understand current system" | ✅ Audit/explore     |                   |
+| "Implementation approach is unclear"   | ✅ Prototype/probe   |                   |
 
 ### Sequential Discovery Pattern
 
@@ -61,10 +61,10 @@ Use `depends_on` to enforce sequencing: implementation tasks should hard-depend 
 
 When decomposing, choose relationship types based on execution semantics:
 
-| Relationship | Field | Meaning | Use When |
-|--------------|-------|---------|----------|
-| **Hard** | `depends_on` | Task CANNOT proceed | Dependency produces required input |
-| **Soft** | `soft_depends_on` | Task BENEFITS from context | Dependency provides optional context |
+| Relationship | Field             | Meaning                    | Use When                             |
+| ------------ | ----------------- | -------------------------- | ------------------------------------ |
+| **Hard**     | `depends_on`      | Task CANNOT proceed        | Dependency produces required input   |
+| **Soft**     | `soft_depends_on` | Task BENEFITS from context | Dependency provides optional context |
 
 **Decision heuristic: "What happens if the dependency never completes?"**
 
@@ -88,6 +88,7 @@ When decomposing, choose relationship types based on execution semantics:
 ```
 
 **Agent behavior with soft deps:**
+
 - Read soft dependencies for context when claiming (if complete)
 - Proceed regardless of soft dependency completion status
 - Log context gaps, don't block on them
@@ -99,15 +100,18 @@ When decomposing, choose relationship types based on execution semantics:
 **Pattern: Propagate UP**
 
 After completing a spike task:
+
 1. Summarize key findings in parent epic body under "## Findings from Spikes"
 2. Note implications for sibling tasks explicitly
 3. This ensures future agents pulling sibling tasks inherit context via parent
 
 **"Findings from Spikes" Section Format**:
+
 ```markdown
 ## Findings from Spikes
 
 ### [task-id] Task Title (date)
+
 **Verdict**: One-line conclusion
 **Key findings**: Bullet list
 **Implications for siblings**: How this affects related work
@@ -137,16 +141,18 @@ When requirements are partially known, structure the task body with explicit dec
 
 ```markdown
 ## CONFIRMED
-| Decision | Status | Notes |
-|----------|--------|-------|
-| Use framework X | ✓ Confirmed | Validates system utility |
-| Question style | ✓ Confirmed | Content generation approach |
+
+| Decision        | Status      | Notes                       |
+| --------------- | ----------- | --------------------------- |
+| Use framework X | ✓ Confirmed | Validates system utility    |
+| Question style  | ✓ Confirmed | Content generation approach |
 
 ## TO BE DECIDED
-| Decision | Owner | Blocker |
-|----------|-------|---------|
-| Exact template | TBD | Needs examples first |
-| Output format | TBD | Depends on template |
+
+| Decision       | Owner | Blocker              |
+| -------------- | ----- | -------------------- |
+| Exact template | TBD   | Needs examples first |
+| Output format  | TBD   | Depends on template  |
 ```
 
 **Why this works**: Makes uncertainty visible. Prevents premature decisions while documenting what IS known. Future agents can see exactly what's settled vs. open.
@@ -167,11 +173,11 @@ Mark with `complexity: blocked-human` to signal this isn't bot-executable. The d
 
 Use `soft_depends_on` for "this matters but doesn't block":
 
-| Context Type | Example | Why Soft |
-|--------------|---------|----------|
-| **Strategic validation** | Using framework X proves utility | Work can proceed; validation is bonus |
-| **Infrastructure constraints** | Hook router blocks dev work | Planning continues; only implementation blocked |
-| **Environmental factors** | Workspace setup affects comfort | Work possible, just less optimal |
+| Context Type                   | Example                          | Why Soft                                        |
+| ------------------------------ | -------------------------------- | ----------------------------------------------- |
+| **Strategic validation**       | Using framework X proves utility | Work can proceed; validation is bonus           |
+| **Infrastructure constraints** | Hook router blocks dev work      | Planning continues; only implementation blocked |
+| **Environmental factors**      | Workspace setup affects comfort  | Work possible, just less optimal                |
 
 ### Parent as Project Boundary
 
@@ -194,6 +200,7 @@ The parent defines what belongs together. Cross-project relationships use soft d
 ### Actionable Context → Tasks
 
 When decomposing, distinguish:
+
 - **Actionable constraints** → Create tasks (can be worked on)
 - **Informational context** → Keep in body (just background)
 
@@ -204,12 +211,14 @@ When decomposing, distinguish:
 Tasks cluster in visualizations based on their parent chain reaching a canonical project file. When tasks appear disconnected:
 
 **Checklist:**
+
 1. **Project file exists**: `$ACA_DATA/{project}/{project}.md` with `type: project`
 2. **Root goals link to project**: Goals have `parent: {project-id}`
 3. **Tasks link to goals**: Every task has `parent:` pointing up the chain
 4. **Project field matches**: `project: {slug}` matches the project file's `id:`
 
 **Structure:**
+
 ```
 {project}.md (type: project)
 ├── {goal}.md (type: goal, parent: project-id)

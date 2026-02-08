@@ -13,7 +13,7 @@ tags:
 
 ## Giving Effect
 
-*Add this section once implementation exists. List [[wikilinks]] to files that implement this spec.*
+_Add this section once implementation exists. List [[wikilinks]] to files that implement this spec._
 
 - [[path/to/implementation.py]] - Brief description of what this file does
 - [[path/to/agent.md]] - Brief description of agent role

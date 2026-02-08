@@ -10,14 +10,14 @@ description: Daily note structure template (SSoT)
 # Daily Summary - YYYY-MM-DD
 
 ## Focus
-
-```
-P0 ░░░░░░░░░░  3/85  → No specific tasks tracked
-P1 █░░░░░░░░░  12/85 → [ns-abc] [[OSB-PAO]] (-3d), [ns-def] [[ADMS-Clever]] (-16d)
-P2 ██████████  55/85
-P3 ██░░░░░░░░  15/85
 ```
 
+P0 ░░░░░░░░░░ 3/85 → No specific tasks tracked
+P1 █░░░░░░░░░ 12/85 → [ns-abc] [[OSB-PAO]] (-3d), [ns-def] [[ADMS-Clever]] (-16d)
+P2 ██████████ 55/85
+P3 ██░░░░░░░░ 15/85
+
+```
 **Pending Decisions**: 0 (0 blocking other work) → `/decision-extract`
 
 **SHOULD**: [ns-abc] [[OSB PAO 2025E Review]] - 3 days overdue
@@ -29,19 +29,19 @@ P3 ██░░░░░░░░  15/85
 *Suggested sequence*: Tackle overdue items first, then deep work.
 
 ## Task Tree
-
 ```
+
 [aops] AcademicOps (in_progress)
-  [aops-79edb5a4] Daily Goals - Session Review... (active)
-    [aops-b1854175] Add ASCII task tree to daily note (in_progress)
+[aops-79edb5a4] Daily Goals - Session Review... (active)
+[aops-b1854175] Add ASCII task tree to daily note (in_progress)
 
 [arc-future-fellowship] ARC Future Fellowship (active)
-  [arc-ft-reviews] Complete FT26 Reviews (in_progress)
+[arc-ft-reviews] Complete FT26 Reviews (in_progress)
 
 [writing] Writing Projects (active)
-  [toxicity] Toxicity paper (in_progress)
-```
+[toxicity] Toxicity paper (in_progress)
 
+```
 *Active projects with depth 2, excluding done/cancelled tasks*
 
 ## Today's Story

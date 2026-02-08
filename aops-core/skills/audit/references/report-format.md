@@ -52,26 +52,31 @@ High-level findings and overall status. Brief description of what was audited, m
 ### Content Violations
 
 **Skill Content Issues**:
+
 - skills/foo/SKILL.md:45-67 - explanatory content (move to spec)
 - skills/bar/SKILL.md - 623 lines (>500 limit)
 
 **Execution Flow Drift**:
+
 - Hook in code, missing from diagram: unified_logger.py (PostToolUse)
 - Hook in diagram, not in router.py: old_hook.py
 
 **Hook→Axiom Mismatches**:
+
 - Hook declares axiom but framework/enforcement-map.md shows "Prompt" level only
 - Axiom has Hard/Soft Gate in framework/enforcement-map.md but no hook declares it
 
 ### Actions Taken
 
 **Generated Indices Regenerated**:
+
 - INDEX.md: [N] files mapped
 - framework/enforcement-map.md: [N] enforcement mechanisms
 - WORKFLOWS.md: [N] task types, [M] skill workflows
 - README.md flowchart: [N] hooks in flow diagram
 
 **Other Updates**:
+
 - Updated README.md commands table
 - Fixed broken wikilinks
 - Added missing entries to indices

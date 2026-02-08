@@ -10,6 +10,7 @@ triggers:
 # Hypervisor - Atomic Locking Patterns
 
 > **DEPRECATION NOTICE** (2026-02-06): For parallel task processing, use `/swarm-supervisor` and `polecat swarm` instead. The polecat swarm provides:
+>
 > - **Worktree isolation** (no merge conflicts)
 > - **API-based atomic claiming** (no file locks)
 > - **Auto-restart on success**
@@ -137,7 +138,7 @@ pgrep -f "polecat/cli.py"
 git status
 ```
 
-**Note on Isolation**: Polecats run in the *same worktree*. They rely on atomic task claiming (via lockfiles or API) to avoid collisions. If two polecats edit the same file, git merge conflicts may occur.
+**Note on Isolation**: Polecats run in the _same worktree_. They rely on atomic task claiming (via lockfiles or API) to avoid collisions. If two polecats edit the same file, git merge conflicts may occur.
 
 ### 3. Handle Failures (DEPRECATED)
 
@@ -170,6 +171,7 @@ gemini mcp list
 ### Worker Prompt
 
 Located at `prompts/gemini-task-worker.md`. Key features:
+
 - Atomic claiming via `list_tasks` + `update_task` (status="in_progress")
 - Fail-fast on errors (mark blocked instead of retrying)
 - Scope boundaries (no git, no external changes)

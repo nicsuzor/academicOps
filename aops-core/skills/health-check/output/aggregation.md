@@ -10,12 +10,14 @@ This module describes how to aggregate individual component health assessments i
 ## Input
 
 You will have completed assessments for each component:
+
 - Hydrator Health Assessment
 - Gate System Health Assessment
 - Custodiet Health Assessment
 - QA Agent Health Assessment
 
 Each assessment includes:
+
 - Overall Health rating (Healthy | Needs Attention | Critical)
 - Instance/activation analysis
 - Aggregate findings (strengths, weaknesses)
@@ -27,16 +29,17 @@ Each assessment includes:
 
 Calculate from component ratings:
 
-| Component Ratings | Framework Health |
-|------------------|------------------|
-| All Healthy | **Healthy** |
-| 1 Needs Attention, rest Healthy | **Healthy** (with notes) |
-| 2+ Needs Attention OR 1 Critical | **Needs Attention** |
-| 2+ Critical | **Critical** |
+| Component Ratings                | Framework Health         |
+| -------------------------------- | ------------------------ |
+| All Healthy                      | **Healthy**              |
+| 1 Needs Attention, rest Healthy  | **Healthy** (with notes) |
+| 2+ Needs Attention OR 1 Critical | **Needs Attention**      |
+| 2+ Critical                      | **Critical**             |
 
 ### 2. Write Executive Summary
 
 Synthesize 3-5 sentences covering:
+
 1. Overall assessment (one sentence)
 2. Strongest component performance (one sentence)
 3. Weakest component performance (one sentence)
@@ -44,6 +47,7 @@ Synthesize 3-5 sentences covering:
 5. Context about transcript coverage (optional)
 
 Example:
+
 > The aops framework is performing well overall, with all components rated Healthy or Needs Attention. The Gate System showed excellent accuracy with only 2 false positives across 47 activations. The Hydrator needs attention due to context gathering issues in 30% of sampled instances. Priority recommendation: improve hydrator's file discovery heuristics to catch relevant context earlier.
 
 ### 3. Extract Cross-Component Patterns
@@ -51,15 +55,18 @@ Example:
 Look for patterns that span multiple components:
 
 **Integration Issues**
+
 - Does hydrator output trigger appropriate gates?
 - Do gate blocks get properly handled by subsequent agents?
 - Does QA verify what custodiet allowed through?
 
 **Common Root Causes**
+
 - Same transcript showing issues in multiple components
 - Patterns suggesting systemic problems (e.g., poor context everywhere)
 
 **Handoff Problems**
+
 - Information loss between components
 - Redundant checking (same thing verified multiple times)
 - Gaps (something no component checks)
@@ -69,12 +76,14 @@ Look for patterns that span multiple components:
 Collect all recommendations from component assessments and prioritize:
 
 **Prioritization Criteria**:
+
 1. **Impact**: How many sessions/users affected?
 2. **Severity**: Critical > Needs Attention > Enhancement
 3. **Actionability**: Can we fix this now vs needs research?
 4. **Dependencies**: Does fixing X enable fixing Y?
 
 **Output Format**:
+
 1. [P0] Critical: [recommendation] - [which component] - [expected impact]
 2. [P1] High: [recommendation] - [which component] - [expected impact]
 3. [P2] Medium: [recommendation] - [which component] - [expected impact]
@@ -85,10 +94,10 @@ Limit to top 5-7 recommendations to maintain focus.
 
 Create a quick-reference table of all transcript evidence cited:
 
-| Session | Component | Finding | Severity |
-|---------|-----------|---------|----------|
-| 20260205-session-abc | Hydrator | Missed context file | Med |
-| 20260204-session-xyz | Gates | False positive block | Low |
+| Session              | Component | Finding              | Severity |
+| -------------------- | --------- | -------------------- | -------- |
+| 20260205-session-abc | Hydrator  | Missed context file  | Med      |
+| 20260204-session-xyz | Gates     | False positive block | Low      |
 
 This enables future auditors to quickly locate specific evidence.
 
@@ -112,36 +121,44 @@ The final aggregated report follows this structure:
 ## Component Assessments
 
 ### Hydrator
+
 **Health**: [Healthy | Needs Attention | Critical]
 **Summary**: [2-3 sentences from component assessment]
 **Key Findings**:
+
 - [Most important finding with evidence reference]
 - [Second finding]
-**Recommendations**:
+  **Recommendations**:
 - [Top recommendation for this component]
 
 ### Gate System
+
 **Health**: [rating]
 **Summary**: [summary]
 **Key Findings**:
+
 - [finding]
-**Recommendations**:
+  **Recommendations**:
 - [recommendation]
 
 ### Custodiet
+
 **Health**: [rating]
 **Summary**: [summary]
 **Key Findings**:
+
 - [finding]
-**Recommendations**:
+  **Recommendations**:
 - [recommendation]
 
 ### QA Agent
+
 **Health**: [rating]
 **Summary**: [summary]
 **Key Findings**:
+
 - [finding]
-**Recommendations**:
+  **Recommendations**:
 - [recommendation]
 
 ---
@@ -167,8 +184,8 @@ The final aggregated report follows this structure:
 ## Evidence Summary
 
 | Session | Component | Finding | Severity |
-|---------|-----------|---------|----------|
-| [id] | [name] | [brief] | [H/M/L] |
+| ------- | --------- | ------- | -------- |
+| [id]    | [name]    | [brief] | [H/M/L]  |
 
 ---
 
@@ -253,24 +270,29 @@ Example for single-component:
 
 ```markdown
 ### Gate System
+
 **Health**: Needs Attention
 **Summary**: [detailed assessment]
 **Key Findings**:
+
 - [finding 1 with full evidence]
 - [finding 2 with full evidence]
 - [finding 3 with full evidence]
-**Recommendations**:
+  **Recommendations**:
 - [recommendation 1]
 - [recommendation 2]
 
 ### Hydrator
-*Not evaluated in this run*
+
+_Not evaluated in this run_
 
 ### Custodiet
-*Not evaluated in this run*
+
+_Not evaluated in this run_
 
 ### QA Agent
-*Not evaluated in this run*
+
+_Not evaluated in this run_
 ```
 
 ## Quality Checklist

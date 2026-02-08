@@ -23,6 +23,7 @@ get_graph_metrics()
 ```
 
 Key numbers to note:
+
 - `total_tasks` - overall scale
 - `tasks_by_status` - distribution of active/blocked/done
 - `orphan_count` - tasks without parent relationships
@@ -50,14 +51,14 @@ list_tasks(type="learn", status="active", limit=15)
 
 Common problem patterns:
 
-| Pattern | Detection | Action |
-|---------|-----------|--------|
-| **Duplicates** | Same title/goal, different IDs | Cancel one, note in close reason |
-| **Superseded** | Old task replaced by epic | Cancel with "superseded by X" |
-| **Stale** | "TODAY" or date-specific from weeks ago | Cancel as stale |
-| **Learning tasks** | type=learn, observation already captured | Mark done |
-| **Orphan epics** | Multiple overlapping epics | Merge under one parent |
-| **Blocked indefinitely** | No clear unblock path | Cancel or re-scope |
+| Pattern                  | Detection                                | Action                           |
+| ------------------------ | ---------------------------------------- | -------------------------------- |
+| **Duplicates**           | Same title/goal, different IDs           | Cancel one, note in close reason |
+| **Superseded**           | Old task replaced by epic                | Cancel with "superseded by X"    |
+| **Stale**                | "TODAY" or date-specific from weeks ago  | Cancel as stale                  |
+| **Learning tasks**       | type=learn, observation already captured | Mark done                        |
+| **Orphan epics**         | Multiple overlapping epics               | Merge under one parent           |
+| **Blocked indefinitely** | No clear unblock path                    | Cancel or re-scope               |
 
 ## Phase 2: Interactive Triage
 
@@ -66,10 +67,10 @@ Present tasks in batches for human approval. Use this format:
 ```markdown
 ## Triage Batch N: [Category]
 
-| # | ID | Title | Recommendation | Reason |
-|---|-----|-------|----------------|--------|
+| # | ID        | Title      | Recommendation       | Reason       |
+| - | --------- | ---------- | -------------------- | ------------ |
 | 1 | `task-id` | Task title | **CLOSE/KEEP/MERGE** | Brief reason |
-| 2 | ... | ... | ... | ... |
+| 2 | ...       | ...        | ...                  | ...          |
 
 **Reply with numbers**: e.g., "approve 1,2,3" or "all" or "skip"
 ```
@@ -88,10 +89,12 @@ For faster triage, use checkbox format:
 
 ```markdown
 ### A. LEARN tasks - mark DONE?
+
 1. [ ] `task-id`: Brief description
 2. [ ] `task-id`: Brief description
 
 ### B. DUPLICATES - cancel?
+
 3. [ ] `task-id`: Dup of `other-id`
 
 Reply: "done: 1,2 cancel: 3,4"
@@ -102,6 +105,7 @@ Reply: "done: 1,2 cancel: 3,4"
 For each approved action:
 
 ### Close as Cancelled
+
 ```python
 update_task(
     id="task-id",
@@ -111,6 +115,7 @@ update_task(
 ```
 
 ### Close as Done (Learning)
+
 ```python
 update_task(
     id="task-id",
@@ -120,6 +125,7 @@ update_task(
 ```
 
 ### Merge Under Parent
+
 ```python
 update_task(
     id="child-id",
@@ -129,6 +135,7 @@ update_task(
 ```
 
 ### Mark as Superseded
+
 ```python
 update_task(
     id="old-id",
@@ -146,6 +153,7 @@ get_graph_metrics()  # Compare to Phase 1 numbers
 ```
 
 Expected outcomes:
+
 - Fewer active tasks
 - Fewer orphans (better parent relationships)
 - Cleaner status distribution
@@ -156,26 +164,31 @@ Expected outcomes:
 # Triage Session [DATE]
 
 ## Starting State
+
 - Total tasks: X
 - Active: Y
 - Orphans: Z
 
 ## Actions Taken
+
 - Closed as stale: [count]
 - Closed as duplicate: [count]
 - Merged: [count]
 - Marked done (learning): [count]
 
 ## Ending State
+
 - Total tasks: X
 - Active: Y (delta)
 - Orphans: Z (delta)
 
 ## Patterns Observed
+
 - [Pattern 1]
 - [Pattern 2]
 
 ## Follow-up Needed
+
 - [Any tasks requiring deeper review]
 ```
 

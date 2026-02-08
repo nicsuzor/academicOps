@@ -43,6 +43,7 @@ Review the abridged transcript for each session and assess the conversation, loo
 ### Reading Transcripts
 
 **Transcript Structure:**
+
 - YAML frontmatter with session metadata (date, session_id, source_file)
 - `Tools Used` summary - quick overview of what tools were invoked
 - `Subagents` count - how many sub-agents were spawned
@@ -73,12 +74,12 @@ Review the abridged transcript for each session and assess the conversation, loo
 
 **Claude vs Gemini on "What time is it?":**
 
-| Aspect | Claude | Gemini |
-|--------|--------|--------|
-| Turns | 6 | 1 |
-| Hydration | Read file after prompting | Followed instructions immediately |
-| Stop hook battles | 4+ stop hook triggers | None |
-| Final answer | Correct (3:02 PM AEST) | Correct (3:03 PM AEST) |
+| Aspect            | Claude                    | Gemini                            |
+| ----------------- | ------------------------- | --------------------------------- |
+| Turns             | 6                         | 1                                 |
+| Hydration         | Read file after prompting | Followed instructions immediately |
+| Stop hook battles | 4+ stop hook triggers     | None                              |
+| Final answer      | Correct (3:02 PM AEST)    | Correct (3:03 PM AEST)            |
 
 **Issue identified**: Stop hook fires inappropriately for `simple-question` workflow, demanding critic/QA review for trivial queries. Bug logged as `aops-ba026b2f`.
 
@@ -99,6 +100,7 @@ mcp__plugin_aops-core_task_manager__create_task(
 ```
 
 **Bug template checklist:**
+
 - [ ] Clear title describing the issue
 - [ ] Evidence from transcripts (turn counts, hook triggers, token usage)
 - [ ] Comparison between clients if available (Claude vs Gemini)
@@ -107,5 +109,6 @@ mcp__plugin_aops-core_task_manager__create_task(
 - [ ] Link to relevant transcript files
 
 **Example bugs from QA sessions:**
+
 - `aops-ba026b2f` - Stop hook triggers critic requirement for simple questions (logged by agent)
 - `aops-f8759a13` - Stop hook ignores simple-question workflow routing (logged during review)

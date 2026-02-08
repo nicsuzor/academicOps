@@ -2,6 +2,7 @@
 title: personal knowledge base
 type: instructions
 ---
+
 # About this system
 
 This is a [[Zettelkasten]]-style personal knowledge base. Notes are atomic, densely linked, and written in plain markdown with YAML frontmatter. The system is designed to be human-first but navigable by AI agents.
@@ -17,6 +18,7 @@ This is a [[Zettelkasten]]-style personal knowledge base. Notes are atomic, dens
 ## Frontmatter schema
 
 Every note uses this structure:
+
 ```yaml
 ---
 type: note
@@ -30,40 +32,44 @@ tags: [optional, for-filtering]
 
 ### Required fields
 
-| Field | Purpose |
-|-------|---------|
-| `type` | What kind of note this is (see Note types below) |
-| `created` | When the note was created (YYYY-MM-DD) |
+| Field       | Purpose                                                      |
+| ----------- | ------------------------------------------------------------ |
+| `type`      | What kind of note this is (see Note types below)             |
+| `created`   | When the note was created (YYYY-MM-DD)                       |
 | `permalink` | Stable identifier, usually the timestamp portion of filename |
 
 ### Optional fields
 
-| Field | Purpose |
-|-------|---------|
-| `updated` | Last modified date |
-| `aliases` | Alternate names for wikilink resolution |
-| `tags` | Additional categorisation, use sparingly |
-| `status` | For notes in progress: `draft`, `active`, `archive` |
-| `source` | For source notes: bibliographic reference |
+| Field     | Purpose                                             |
+| --------- | --------------------------------------------------- |
+| `updated` | Last modified date                                  |
+| `aliases` | Alternate names for wikilink resolution             |
+| `tags`    | Additional categorisation, use sparingly            |
+| `status`  | For notes in progress: `draft`, `active`, `archive` |
+| `source`  | For source notes: bibliographic reference           |
 
 ## Note types
 
 Keep this set small. If you need a new type, you probably need a tag instead.
 
 ### concept
+
 An atomic idea. The core unit of the system. Reusable, linkable, could be referenced from anywhere.
 
 Example: `202412221430 extended cognition.md`
 
 ### moc
+
 Map of Content. An index note that links to related concepts. Not a folder—a note that creates structure through links. Every concept should eventually be reachable from a MOC.
 
 Example: `personal knowledge management.md`
 
 ### decision
-A choice made, with reasoning. Inspired by Architecture Decision Records. Captures *why* so future-you understands past-you.
+
+A choice made, with reasoning. Inspired by Architecture Decision Records. Captures _why_ so future-you understands past-you.
 
 Structure:
+
 - What was decided
 - Context at the time
 - Reasoning
@@ -72,21 +78,25 @@ Structure:
 Example: `202412221445 decision — plain markdown pkm.md`
 
 ### pattern
+
 Something reliably true about the note-taker, their context, or their tendencies. Self-knowledge that influences decisions.
 
 Example: `202412221500 my tendency to system-hop.md`
 
 ### source
+
 A book, paper, article, or other reference. Contains bibliographic info and key ideas extracted (in your own words). Links to concept notes, not the other way around—concepts shouldn't depend on sources.
 
 Example: `202412221515 source — bush 1945 as we may think.md`
 
 ### log
+
 Timestamped, context-heavy capture. Daily notes, conversation summaries, event records. Less refined than concepts. The raw material from which concepts may later be extracted.
 
 Example: `2024-12-22 log.md`
 
 ## Filename conventions
+
 ```
 [timestamp] [type prefix if useful] — [title].md
 ```
@@ -97,6 +107,7 @@ Example: `2024-12-22 log.md`
 - Title in natural case
 
 Examples:
+
 - `202412221430 extended cognition.md`
 - `202412221445 decision — plain markdown pkm.md`
 - `2024-12-22 log.md`
@@ -107,6 +118,7 @@ Examples:
 ### Wikilinks
 
 Use `[[note title]]` or `[[note title|display text]]`. Obsidian resolves these.
+
 ```markdown
 See: [[extended cognition]]
 This relates to [[202412221430|Clark's extended mind thesis]].
@@ -118,6 +130,7 @@ Links appear in two places:
 
 1. **Inline**: When referencing an idea in prose
 2. **Footer**: Under `See:` or `Related:` for explicit connections
+
 ```markdown
 # Some concept
 
@@ -134,7 +147,7 @@ Every note should have at least one outgoing link. Notes with zero links or zero
 
 ### MOC linking
 
-MOCs link *to* concepts. Concepts link *to each other*. This creates navigable clusters.
+MOCs link _to_ concepts. Concepts link _to each other_. This creates navigable clusters.
 
 ## For AI agents
 

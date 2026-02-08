@@ -3,10 +3,7 @@
 Tests the safe temp path detection logic used by the gate system.
 """
 
-import os
 import sys
-import pytest
-from unittest.mock import patch
 from pathlib import Path
 
 # Add aops-core to path

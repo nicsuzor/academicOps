@@ -14,17 +14,20 @@ Extract pending decisions from your task queue and format them for batch process
 ## What is a Decision?
 
 A **decision** is a task that:
+
 - Requires your input/approval but NOT substantive work
 - Is blocking other tasks from proceeding
 - Can typically be resolved in <5 minutes
 
 **Examples**:
+
 - RSVP yes/no, approve/reject, go/no-go, choose A vs B
 - Tasks waiting on external input (you can report progress, follow up, or cancel)
 
 **Not decisions**: Write code, research topic, draft document, fix bug
 
 **Note on external dependencies**: Tasks waiting for others (e.g., "waiting for Elsa's examples") are included because you can still make decisions about them:
+
 - Report progress: "No update yet" / "Received, proceeding"
 - Follow up: "Sending reminder"
 - Cancel: "No longer needed"
@@ -86,6 +89,7 @@ for decision in decisions:
 ### Step 4: Prioritize
 
 Sort decisions by:
+
 1. `blocking_count` (descending) - decisions blocking most work first
 2. `priority` (ascending) - P0 before P1 before P2
 3. `created` (ascending) - older decisions first
@@ -114,12 +118,13 @@ You have **{total}** decisions pending ({high} high priority).
 ### High Priority (Blocking Multiple Tasks)
 
 #### D001: {task_title}
+
 - **Task**: `{task_id}`
 - **Blocks**: {blocking_count} tasks
 - **Context**: {first 200 chars of task body}
 - **Created**: {days_ago} days ago
 
-**Decision**: [ ] Approve  [ ] Reject  [ ] Defer
+**Decision**: [ ] Approve [ ] Reject [ ] Defer
 **Notes**: _________________
 
 ---
@@ -127,11 +132,13 @@ You have **{total}** decisions pending ({high} high priority).
 ### Medium Priority (Blocking 1 Task)
 
 #### D002: {task_title}
+
 ...
 
 ### Low Priority (No Dependencies)
 
 #### D003: {task_title}
+
 ...
 
 ---
@@ -157,18 +164,22 @@ Insert the `## Pending Decisions` section immediately after `## Focus`:
 
 ```markdown
 ## Focus
+
 [existing focus content]
 
 ## Pending Decisions
+
 [generated decision content]
 
 ## Task Tree
+
 [existing tree]
 ```
 
 ### Updating Existing Section
 
 If `## Pending Decisions` already exists in the daily note:
+
 1. Read existing decisions and their annotations
 2. Preserve any user annotations (non-null decisions)
 3. Add new decisions not already present
@@ -195,10 +206,10 @@ This summary uses the same query logic (Steps 1-3) but only outputs the count, n
 
 ## Error Handling
 
-| Scenario | Behavior |
-|----------|----------|
-| No decisions found | Output "No pending decisions. Your queue is clear." |
-| Daily note missing | Create minimal daily note with decisions section |
+| Scenario                 | Behavior                                                   |
+| ------------------------ | ---------------------------------------------------------- |
+| No decisions found       | Output "No pending decisions. Your queue is clear."        |
+| Daily note missing       | Create minimal daily note with decisions section           |
 | Task details unavailable | Include task ID and title only, note "details unavailable" |
 
 ## Example Output
@@ -211,23 +222,25 @@ You have **4** decisions pending (2 high priority).
 ### High Priority (Blocking Multiple Tasks)
 
 #### D001: Approve authentication provider choice
+
 - **Task**: `aops-abc123`
 - **Blocks**: 3 tasks (login-ui, session-mgmt, user-tests)
 - **Context**: Options are Auth0 vs Cognito. See comparison doc for trade-offs.
 - **Created**: 5 days ago
 
-**Decision**: [ ] Auth0  [ ] Cognito  [ ] Need more info
+**Decision**: [ ] Auth0 [ ] Cognito [ ] Need more info
 **Notes**: _________________
 
 ---
 
 #### D002: Sign off on API schema v2
+
 - **Task**: `aops-def456`
 - **Blocks**: 2 tasks
 - **Context**: Breaking changes from v1. Migration path documented.
 - **Created**: 3 days ago
 
-**Decision**: [ ] Approve  [ ] Request changes  [ ] Defer
+**Decision**: [ ] Approve [ ] Request changes [ ] Defer
 **Notes**: _________________
 
 ---
@@ -235,12 +248,13 @@ You have **4** decisions pending (2 high priority).
 ### Low Priority (No Dependencies)
 
 #### D003: Review PR #789 - typo fix
+
 - **Task**: `aops-ghi789`
 - **Blocks**: 0 tasks
 - **Context**: Single character typo in README
 - **Created**: 1 day ago
 
-**Decision**: [ ] Approve  [ ] Skip
+**Decision**: [ ] Approve [ ] Skip
 **Notes**: _________________
 
 ---

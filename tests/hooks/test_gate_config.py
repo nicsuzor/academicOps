@@ -402,8 +402,7 @@ class TestGetToolCategory:
     def test_mcp_memory_store_returns_write(self):
         """MCP memory store returns 'write' category."""
         assert (
-            get_tool_category("mcp__plugin_aops-core_memory__store_memory")
-            == "write"
+            get_tool_category("mcp__plugin_aops-core_memory__store_memory") == "write"
         )
 
 

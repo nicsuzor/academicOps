@@ -5,11 +5,13 @@ Red-green-refactor cycle for any testable code change.
 ## When to Use
 
 Use this workflow when:
+
 - Implementing new features
 - Fixing bugs (reproduce with test first)
 - Refactoring existing code
 
 Do NOT use for:
+
 - Non-code changes (docs, config)
 - Exploratory work where tests aren't yet meaningful
 - Test infrastructure itself
@@ -56,6 +58,7 @@ Do NOT use for:
 ## Triggers
 
 Cycle state transitions:
+
 - When test is written → verify it fails
 - When test fails (as expected) → proceed to implement
 - When test passes → proceed to refactor or commit
@@ -64,6 +67,7 @@ Cycle state transitions:
 - When tests pass and acceptance is complete → proceed to commit
 
 Error handling:
+
 - If test passes unexpectedly → HALT with message "test may not be testing what you think"
 - If tests fail after refactor → undo the refactor
 

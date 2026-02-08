@@ -41,9 +41,9 @@ flowchart TD
 
 Instead of creating temporary clones inside the main repo (which confuses IDEs), we use a centralized directory:
 
-*   **Location:** `~/.aops/polecat/`
-*   **Structure:** `~/.aops/polecat/<task-id>/`
-*   **Mechanism:** `git worktree` linked to bare mirror repositories.
+- **Location:** `~/.aops/polecat/`
+- **Structure:** `~/.aops/polecat/<task-id>/`
+- **Mechanism:** `git worktree` linked to bare mirror repositories.
 
 ### Bare Mirror Architecture
 
@@ -79,19 +79,19 @@ Worktrees are spawned from **bare mirror clones** stored in `~/.aops/polecat/.re
 
 A Python library that handles the lifecycle:
 
-*   **`claim_next_task(caller, project)`**:
-    *   Finds the highest priority `active` task.
-    *   Atomically locks it and updates status to `in_progress`.
-    *   Assigns it to the caller (e.g., `nic`, `bot`).
-*   **`setup_worktree(task)`**:
-    *   Performs a safe sync of the mirror (if used) before creating the worktree.
-    *   Checks mirror freshness and warns if stale.
-    *   Identifies the correct parent repo (e.g., `academicOps`, `buttermilk`).
-    *   Creates a `git worktree` at `~/.aops/polecat/<task-id>`.
-    *   Creates a feature branch `polecat/<task-id>` from `main`.
-*   **`nuke_worktree(task_id)`**:
-    *   Force-removes the worktree.
-    *   Deletes the local branch.
+- **`claim_next_task(caller, project)`**:
+  - Finds the highest priority `active` task.
+  - Atomically locks it and updates status to `in_progress`.
+  - Assigns it to the caller (e.g., `nic`, `bot`).
+- **`setup_worktree(task)`**:
+  - Performs a safe sync of the mirror (if used) before creating the worktree.
+  - Checks mirror freshness and warns if stale.
+  - Identifies the correct parent repo (e.g., `academicOps`, `buttermilk`).
+  - Creates a `git worktree` at `~/.aops/polecat/<task-id>`.
+  - Creates a feature branch `polecat/<task-id>` from `main`.
+- **`nuke_worktree(task_id)`**:
+  - Force-removes the worktree.
+  - Deletes the local branch.
 
 ### 2. CLI Tool (`polecat/cli.py`)
 
@@ -167,12 +167,12 @@ Note: Agents are responsible for calling `polecat finish` at the end of their wo
 
 ## Workflow
 
-1.  **Start:** `polecat start` claims a task (e.g., `osb-c36de7ec`).
-2.  **Context Switch:** The user/agent `cd`s to `/home/nic/polecats/osb-c36de7ec`.
-3.  **Work:** Code changes are made, tested, and committed in this isolated environment.
-4.  **Finish:** `polecat finish` pushes the branch and marks the task as `merge_ready`.
-5.  **Cleanup:** `polecat nuke` removes the worktree directory.
-6.  **Merge:** The Refinery scans `merge_ready` tasks, merges them to `main`, and marks them `done`.
+1. **Start:** `polecat start` claims a task (e.g., `osb-c36de7ec`).
+2. **Context Switch:** The user/agent `cd`s to `/home/nic/polecats/osb-c36de7ec`.
+3. **Work:** Code changes are made, tested, and committed in this isolated environment.
+4. **Finish:** `polecat finish` pushes the branch and marks the task as `merge_ready`.
+5. **Cleanup:** `polecat nuke` removes the worktree directory.
+6. **Merge:** The Refinery scans `merge_ready` tasks, merges them to `main`, and marks them `done`.
 
 ### Task Status Lifecycle
 
@@ -196,6 +196,7 @@ They don't have `merge_ready` status transitions - merging is manual.
 ### When to Merge
 
 Merge a crew branch when:
+
 - Interactive work session is complete
 - Changes are ready for integration into main
 - Crew is no longer needed for ongoing collaboration
@@ -236,10 +237,11 @@ For each project in the crew (e.g., `~/.aops/crew/cheryl/aops`):
 4. **Resolve conflicts** if any, then commit
 
 4b. **Document conflicts** (if any occurred):
-   Update the tracking task body with:
-   - Which files had conflicts
-   - How conflicts were resolved (e.g., "combined both feature sets")
-   - Why certain changes were kept/discarded
+Update the tracking task body with:
+
+- Which files had conflicts
+- How conflicts were resolved (e.g., "combined both feature sets")
+- Why certain changes were kept/discarded
 
 5. **Push**:
    ```bash
@@ -263,15 +265,16 @@ Repeat steps 1-5 for each project before nuking the crew.
 
 Since worktrees depend on a parent repo, the system maps projects to paths:
 
-| Project | Repository Path |
-|---------|-----------------|
-| `aops` | `~/src/academicOps` |
-| `buttermilk` | `~/src/buttermilk` |
-| `writing` | `~/writing` |
+| Project      | Repository Path     |
+| ------------ | ------------------- |
+| `aops`       | `~/src/academicOps` |
+| `buttermilk` | `~/src/buttermilk`  |
+| `writing`    | `~/writing`         |
 
 ## Integration with Task System
 
-This system builds *on top* of the existing Task MCP:
+This system builds _on top_ of the existing Task MCP:
+
 - It consumes tasks via the internal `TaskStorage.get_ready_tasks()` method.
 - It updates tasks via `update_task` (status/assignee) MCP tool.
 - It does NOT replace the task database; it just provides the **workspace** for executing them.
@@ -282,29 +285,29 @@ The Refinery completes the lifecycle by merging completed work back into the mai
 
 ### Components
 
-1.  **Engineer (`polecat/engineer.py`)**:
-    *   **`scan_and_merge()`**: Finds tasks with status `merge_ready`.
-    *   **`process_merge(task)`**:
-        1. Locates the repo using `PolecatManager.get_repo_path`.
-        2. Fetches `origin` to find the `polecat/<task-id>` branch.
-        3. Checks out `main` and pulls latest.
-        4. **Squash Merges** the feature branch (dry run to check conflicts).
-        5. **Runs Tests** (default: `uv run pytest`).
-        6. Commits and pushes to `main`.
-        7. Deletes the feature branch (local & remote).
-        8. Updates task status to `done`.
-        9. **Nukes** the local worktree via `PolecatManager`.
+1. **Engineer (`polecat/engineer.py`)**:
+   - **`scan_and_merge()`**: Finds tasks with status `merge_ready`.
+   - **`process_merge(task)`**:
+     1. Locates the repo using `PolecatManager.get_repo_path`.
+     2. Fetches `origin` to find the `polecat/<task-id>` branch.
+     3. Checks out `main` and pulls latest.
+     4. **Squash Merges** the feature branch (dry run to check conflicts).
+     5. **Runs Tests** (default: `uv run pytest`).
+     6. Commits and pushes to `main`.
+     7. Deletes the feature branch (local & remote).
+     8. Updates task status to `done`.
+     9. **Nukes** the local worktree via `PolecatManager`.
 
-2.  **CLI (unified with polecat)**:
-    ```bash
-    # Run a single pass of the merge queue
-    polecat merge
-    ```
+2. **CLI (unified with polecat)**:
+   ```bash
+   # Run a single pass of the merge queue
+   polecat merge
+   ```
 
 ### Kickback & Recovery Workflow
 
 If a merge fails (due to conflicts or failing tests), the Refinery implements a "Kickback" logic:
 
-1.  **Status Change**: The task status is set to `review`.
-2.  **Annotation**: A `🏭 Refinery Report` is appended to the task body, containing the error log and timestamp.
-3.  **Manual/LLM Intervention**: An interactive agent picks up `review` tasks, fixes the code, and sets status back to `merge_ready` to retry.
+1. **Status Change**: The task status is set to `review`.
+2. **Annotation**: A `🏭 Refinery Report` is appended to the task body, containing the error log and timestamp.
+3. **Manual/LLM Intervention**: An interactive agent picks up `review` tasks, fixes the code, and sets status back to `merge_ready` to retry.

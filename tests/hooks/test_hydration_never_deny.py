@@ -84,11 +84,21 @@ class TestAskUserQuestionAlwaysAvailable:
             session_id="test-session-123",
             hook_event="PreToolUse",
             tool_name="AskUserQuestion",
-            tool_input={"questions": [{"question": "Test?", "header": "Test", "options": [], "multiSelect": False}]},
+            tool_input={
+                "questions": [
+                    {
+                        "question": "Test?",
+                        "header": "Test",
+                        "options": [],
+                        "multiSelect": False,
+                    }
+                ]
+            },
         )
 
-        with patch("lib.session_state.is_hydrator_active", return_value=False), patch(
-            "lib.session_state.get_passed_gates", return_value=set()
+        with (
+            patch("lib.session_state.is_hydrator_active", return_value=False),
+            patch("lib.session_state.get_passed_gates", return_value=set()),
         ):
             result = check_tool_gate(ctx)
 
@@ -111,8 +121,9 @@ class TestActivateSkillNeverBlocked:
 
     def test_activate_skill_allowed_without_hydration(self, mock_context):
         """activate_skill should be allowed even without hydration."""
-        with patch("lib.session_state.is_hydrator_active", return_value=False), patch(
-            "lib.session_state.get_passed_gates", return_value=set()
+        with (
+            patch("lib.session_state.is_hydrator_active", return_value=False),
+            patch("lib.session_state.get_passed_gates", return_value=set()),
         ):
             result = check_tool_gate(mock_context)
 
@@ -121,8 +132,9 @@ class TestActivateSkillNeverBlocked:
 
     def test_activate_skill_allowed_when_hydration_pending(self, mock_context):
         """activate_skill should be allowed even when hydration is pending."""
-        with patch("lib.session_state.is_hydrator_active", return_value=False), patch(
-            "lib.session_state.get_passed_gates", return_value=set()
+        with (
+            patch("lib.session_state.is_hydrator_active", return_value=False),
+            patch("lib.session_state.get_passed_gates", return_value=set()),
         ):
             result = check_tool_gate(mock_context)
 
@@ -222,13 +234,11 @@ class TestTaskHydratorSpawn:
             },
         )
 
-        with patch(
-            "lib.session_state.is_hydrator_active", return_value=False
-        ), patch(
-            "lib.session_state.get_passed_gates", return_value=set()
-        ), patch(
-            "lib.session_state.set_hydrator_active"
-        ) as mock_set:
+        with (
+            patch("lib.session_state.is_hydrator_active", return_value=False),
+            patch("lib.session_state.get_passed_gates", return_value=set()),
+            patch("lib.session_state.set_hydrator_active") as mock_set,
+        ):
             result = check_tool_gate(ctx)
 
             assert result.verdict == GateVerdict.ALLOW
@@ -247,13 +257,11 @@ class TestTaskHydratorSpawn:
             },
         )
 
-        with patch(
-            "lib.session_state.is_hydrator_active", return_value=False
-        ), patch(
-            "lib.session_state.get_passed_gates", return_value=set()
-        ), patch(
-            "lib.session_state.set_hydrator_active"
-        ) as mock_set:
+        with (
+            patch("lib.session_state.is_hydrator_active", return_value=False),
+            patch("lib.session_state.get_passed_gates", return_value=set()),
+            patch("lib.session_state.set_hydrator_active") as mock_set,
+        ):
             result = check_tool_gate(ctx)
 
             assert result.verdict == GateVerdict.ALLOW
@@ -271,13 +279,11 @@ class TestTaskHydratorSpawn:
             },
         )
 
-        with patch(
-            "lib.session_state.is_hydrator_active", return_value=False
-        ), patch(
-            "lib.session_state.get_passed_gates", return_value=set()
-        ), patch(
-            "lib.session_state.set_hydrator_active"
-        ) as mock_set:
+        with (
+            patch("lib.session_state.is_hydrator_active", return_value=False),
+            patch("lib.session_state.get_passed_gates", return_value=set()),
+            patch("lib.session_state.set_hydrator_active") as mock_set,
+        ):
             result = check_tool_gate(ctx)
 
             # Task is always_available, so it's allowed
@@ -298,9 +304,11 @@ class TestReadToolBlockedWithoutHydration:
             tool_input={"file_path": "/some/file.py"},
         )
 
-        with patch("lib.session_state.is_hydrator_active", return_value=False), patch(
-            "lib.session_state.get_passed_gates", return_value=set()
-        ), patch("hooks.gates._create_audit_file", return_value=None):
+        with (
+            patch("lib.session_state.is_hydrator_active", return_value=False),
+            patch("lib.session_state.get_passed_gates", return_value=set()),
+            patch("hooks.gates._create_audit_file", return_value=None),
+        ):
             result = check_tool_gate(ctx)
 
             # Should block or warn because hydration is required for read_only
@@ -315,8 +323,9 @@ class TestReadToolBlockedWithoutHydration:
             tool_input={"file_path": "/some/file.py"},
         )
 
-        with patch("lib.session_state.is_hydrator_active", return_value=False), patch(
-            "lib.session_state.get_passed_gates", return_value={"hydration"}
+        with (
+            patch("lib.session_state.is_hydrator_active", return_value=False),
+            patch("lib.session_state.get_passed_gates", return_value={"hydration"}),
         ):
             result = check_tool_gate(ctx)
 

@@ -109,35 +109,38 @@ On failure (exit != 0): Worker stops, alerts, others continue
 
 ## When to Use
 
-| Scenario | Use This |
-|----------|----------|
-| 10+ independent tasks | `polecat swarm` |
-| Single task | `polecat run` |
-| Interactive work | `polecat crew` |
-| Non-task batch ops | See hypervisor atomic lock pattern |
+| Scenario              | Use This                           |
+| --------------------- | ---------------------------------- |
+| 10+ independent tasks | `polecat swarm`                    |
+| Single task           | `polecat run`                      |
+| Interactive work      | `polecat crew`                     |
+| Non-task batch ops    | See hypervisor atomic lock pattern |
 
 ## Comparison with Deprecated Patterns
 
-| Feature | Old Hypervisor | New Swarm |
-|---------|---------------|-----------|
-| Worktree | Shared (conflicts!) | Isolated per task |
-| Claiming | File locks | API-based atomic claim |
-| Workers | `Task()` subagents | Native processes |
-| Restart | Manual | Automatic on success |
-| Monitoring | Poll TaskOutput | Native stdout/alerts |
+| Feature    | Old Hypervisor      | New Swarm              |
+| ---------- | ------------------- | ---------------------- |
+| Worktree   | Shared (conflicts!) | Isolated per task      |
+| Claiming   | File locks          | API-based atomic claim |
+| Workers    | `Task()` subagents  | Native processes       |
+| Restart    | Manual              | Automatic on success   |
+| Monitoring | Poll TaskOutput     | Native stdout/alerts   |
 
 ## Troubleshooting
 
 ### "No ready tasks found"
+
 - Check task status: tasks must be `active` and have no unmet dependencies
 - Verify project filter matches existing tasks
 
 ### Worker keeps failing
+
 1. Check the specific error in worker output
 2. Look for task-specific issues (missing files, invalid instructions)
 3. Mark problematic task as `blocked` and restart
 
 ### Stale locks after crash
+
 ```bash
 # Reset tasks stuck in_progress for >4 hours
 polecat reset-stalled --hours 4
@@ -147,7 +150,9 @@ polecat reset-stalled --hours 4 --dry-run
 ```
 
 ### Merge conflicts
+
 Shouldn't happen with worktree isolation. If it does:
+
 1. Check if multiple tasks modify same files
 2. Add `depends_on` relationships between them
 3. Or process sequentially instead of in parallel
@@ -157,6 +162,7 @@ Shouldn't happen with worktree isolation. If it does:
 Supervisor sessions consume context quickly. Minimize by:
 
 ### Use Batch Commands
+
 ```bash
 # Check status in one command
 polecat summary
@@ -166,12 +172,15 @@ gh pr list --json number -q '.[].number' | xargs -I{} gh pr merge {} --squash --
 ```
 
 ### Use Watchdog Instead of Polling
+
 ```bash
 polecat watch &  # Background notifications for new PRs
 ```
 
 ### Commission Don't Debug
+
 When functionality is missing:
+
 1. **Don't write code** - create a task with `/q`
 2. Assign to `polecat` with clear acceptance criteria
 3. Let swarm implement and file PR
@@ -180,6 +189,7 @@ When functionality is missing:
 This keeps supervisor sessions lean.
 
 ### Available Monitoring Commands
+
 ```bash
 polecat summary              # Digest of recent work
 polecat analyze <task-id>    # Diagnose stalled tasks
@@ -192,11 +202,13 @@ polecat reset-stalled        # Reset hung in_progress tasks
 The "refinery" handles PR review and merge:
 
 ### Local Refinery (default)
+
 - Manual merge via `gh pr merge --squash`
 - Handle conflicts, complex PRs
 - Works for all repos
 
 ### GitHub Actions Refinery (aops only)
+
 - Auto-merge clean PRs (pure additions, tests pass)
 - Label `polecat` triggers workflow
 - Failed checks → stays open for review

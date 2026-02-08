@@ -31,6 +31,7 @@ related: [[framework-observability]], [[feedback-loops]], [[enforcement]]
 **Pre-LLM thinking**: Parse YAML frontmatter, deterministic ordering, structured data
 
 **LLM thinking**:
+
 - Workflows are markdown written for humans to read
 - LLMs are smart - they can read, understand, and compose workflows themselves
 - No need for deterministic code or complex parsing
@@ -40,6 +41,7 @@ related: [[framework-observability]], [[feedback-loops]], [[enforcement]]
 ### Example Invocation (Hybrid Approach)
 
 **Automatic detection:**
+
 ```
 User: "help me design a composable workflow system..."
 → Hydrator detects: "feature development" intent
@@ -50,6 +52,7 @@ User: "help me design a composable workflow system..."
 ```
 
 **Explicit invocation:**
+
 ```
 User: "/workflow feature-dev --for='composable workflow system'"
 → Agent loads workflows/feature-dev.md
@@ -72,11 +75,13 @@ User: "/workflow feature-dev --for='composable workflow system'"
 ### Current (v1.0 Core Loop)
 
 **Prompt Hydrator:**
+
 - Fixed routing table in `/tmp/claude-hydrator/hydrate_lgjzvhbr.md`
 - Returns workflow name + TodoWrite plan
 - Hardcoded workflow logic in agent prompt
 
 **Problems:**
+
 - Workflows not version-controlled or composable
 - Can't visualize workflow dependencies
 - Can't reuse workflow fragments
@@ -85,6 +90,7 @@ User: "/workflow feature-dev --for='composable workflow system'"
 ### Desired (Composable Workflow System)
 
 **Workflow Storage:**
+
 ```
 workflows/
   feature-dev.md           # Feature development workflow
@@ -100,6 +106,7 @@ WORKFLOWS.md               # Index of all workflows
 **Workflow Format (Minimal Hydrator Hints):**
 
 Workflows are **hydrator hints**, not complete agent instructions. They specify:
+
 1. **Routing signals** - when this workflow applies
 2. **Unique steps** - what's specific to this workflow (not covered by bases)
 3. **Bases** - which composable patterns to include (in YAML frontmatter)
@@ -134,11 +141,13 @@ Specification and planning for known work.
 ## Exit Routing
 
 Once design approved:
+
 - General code → [[base-tdd]]
 - Python → python-dev skill
 ```
 
 **Key points**:
+
 - Minimal - only what's unique to this workflow
 - References other workflows with [[wikilinks]]
 - Bases in frontmatter declare composable patterns
@@ -148,16 +157,17 @@ Once design approved:
 
 Base workflows are reusable patterns that specialized workflows compose:
 
-| Base | Pattern | Skip When |
-|------|---------|-----------|
+| Base                   | Pattern                                      | Skip When                             |
+| ---------------------- | -------------------------------------------- | ------------------------------------- |
 | [[base-task-tracking]] | Claim/create task, update progress, complete | [[simple-question]], [[direct-skill]] |
-| [[base-tdd]] | Red-green-refactor cycle | Non-code changes |
-| [[base-verification]] | Checkpoint before completion | Trivial changes |
-| [[base-commit]] | Stage, commit (why not what), push | No file modifications |
+| [[base-tdd]]           | Red-green-refactor cycle                     | Non-code changes                      |
+| [[base-verification]]  | Checkpoint before completion                 | Trivial changes                       |
+| [[base-commit]]        | Stage, commit (why not what), push           | No file modifications                 |
 
 **Composition rule**: The hydrator reads the selected workflow's `bases` frontmatter and composes those patterns with the workflow's unique steps.
 
 **Prompt Hydrator (LLM-Native Composition):**
+
 - Reads WORKFLOWS.md to select appropriate workflow
 - Reads the selected workflow file (e.g., `workflows/feature-dev.md`)
 - When it sees `[[spec-review]]`, reads `workflows/spec-review.md` inline
@@ -170,25 +180,26 @@ Base workflows are reusable patterns that specialized workflows compose:
 
 ### What We Have (Existing)
 
-| Component | Location | Status |
-|-----------|----------|--------|
-| bd issue tracking | `bd` CLI | ✅ Working |
-| TodoWrite planning | Main agent | ✅ Working |
-| Prompt hydrator | `aops-core:prompt-hydrator` | ✅ Working (needs workflow file support) |
-| Axioms | `AXIOMS.md` | ✅ Exists (P# references) |
-| Heuristics | `HEURISTICS.md` | ✅ Exists (H# references) |
-| Vector memory | MCP server | ✅ Working ($ACA_DATA) |
+| Component          | Location                    | Status                                   |
+| ------------------ | --------------------------- | ---------------------------------------- |
+| bd issue tracking  | `bd` CLI                    | ✅ Working                               |
+| TodoWrite planning | Main agent                  | ✅ Working                               |
+| Prompt hydrator    | `aops-core:prompt-hydrator` | ✅ Working (needs workflow file support) |
+| Axioms             | `AXIOMS.md`                 | ✅ Exists (P# references)                |
+| Heuristics         | `HEURISTICS.md`             | ✅ Exists (H# references)                |
+| Vector memory      | MCP server                  | ✅ Working ($ACA_DATA)                   |
 
 ### What We Need (New)
 
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| Workflow directory | `workflows/` | Store simple markdown workflow files |
-| Workflow index | `WORKFLOWS.md` | List all workflows with decision tree |
+| Component           | Location          | Purpose                                              |
+| ------------------- | ----------------- | ---------------------------------------------------- |
+| Workflow directory  | `workflows/`      | Store simple markdown workflow files                 |
+| Workflow index      | `WORKFLOWS.md`    | List all workflows with decision tree                |
 | Workflow compositor | In hydrator (LLM) | Read and compose workflows by understanding markdown |
-| Workflow selector | In hydrator (LLM) | Match prompt intent → workflow file |
+| Workflow selector   | In hydrator (LLM) | Match prompt intent → workflow file                  |
 
 **What we DON'T need**:
+
 - ❌ Workflow parser (LLM reads markdown directly)
 - ❌ Wikilink resolver utility (LLM reads referenced files)
 - ❌ Issue decomposer agent (hydrator generates TodoWrite at appropriate granularity)
@@ -198,6 +209,7 @@ Base workflows are reusable patterns that specialized workflows compose:
 The feature-dev workflow will be the first implementation, using itself as the dogfooding example.
 
 ### Steps (from user specification):
+
 1. User story - Gather user story with concrete examples
 2. Acceptance criteria - Define what constitutes success
 3. Spec → critic loop - Design spec, get critic review, iterate
@@ -206,6 +218,7 @@ The feature-dev workflow will be the first implementation, using itself as the d
 6. QA demo test - Independent verification before completion
 
 ### Composition Example:
+
 - `feature-dev.md` references `[[spec-review]]` for step 3
 - `spec-review.md` defines the spec → critic iteration loop
 - `feature-dev.md` references `[[tdd-cycle]]` for step 5
@@ -218,23 +231,25 @@ The feature-dev workflow will be the first implementation, using itself as the d
 
 **Skills** and **Workflows** serve fundamentally different purposes:
 
-| Aspect | Skills | Workflows |
-|--------|--------|-----------|
-| **Purpose** | HOW to do a known thing | WHAT to do (sequence of steps) |
-| **Nature** | Fungible instructions | Composable chains |
-| **Examples** | Create a PDF, generate a mindmap, format code | Feature development, debugging, TDD cycle |
+| Aspect          | Skills                                                                          | Workflows                                           |
+| --------------- | ------------------------------------------------------------------------------- | --------------------------------------------------- |
+| **Purpose**     | HOW to do a known thing                                                         | WHAT to do (sequence of steps)                      |
+| **Nature**      | Fungible instructions                                                           | Composable chains                                   |
+| **Examples**    | Create a PDF, generate a mindmap, format code                                   | Feature development, debugging, TDD cycle           |
 | **Reusability** | Interchangeable - any skill can be swapped for another that does the same thing | Compositional - workflows reference other workflows |
-| **Invocation** | Direct: `Skill(skill="pdf")` | Selected by hydrator based on intent |
+| **Invocation**  | Direct: `Skill(skill="pdf")`                                                    | Selected by hydrator based on intent                |
 
 **Key insight**: Skills are the building blocks (the "how"); workflows orchestrate them into coherent processes (the "what"). A workflow might use multiple skills, but a skill never contains a workflow.
 
 ### Principle #1: LLM-Native Design
+
 - **Workflows are markdown for humans** - not structured data for parsers
 - **LLMs read and understand** - no parsing logic needed
 - **Composition by comprehension** - LLM reads [[spec-review]] and understands it
 - **Simple > Structured** - optimize for human editing and LLM understanding
 
 ### Principle #2: [[Wikilinks]] for Composition
+
 - Use `[[workflow-name]]` to reference other workflows
 - LLM sees the link and reads the referenced file
 - **Inline expansion**: Hydrator reads all referenced workflows and generates unified plan
@@ -242,6 +257,7 @@ The feature-dev workflow will be the first implementation, using itself as the d
 - Works with existing wikilink tools (Obsidian, graph generators)
 
 ### Principle #3: Human-Readable Markdown
+
 - Written for humans first, LLMs second
 - Clear explanations, not just commands
 - Code examples where helpful
@@ -249,6 +265,7 @@ The feature-dev workflow will be the first implementation, using itself as the d
 - Version-controlled in git for auditability
 
 ### Principle #4: Mid-Grained bd Issues
+
 - **bd issues are mid-grained tasks** - not every git command
 - A task can include a list: "format, commit, push" without each being separate
 - If a list item needs expansion → make it a subtask/new issue
@@ -256,6 +273,7 @@ The feature-dev workflow will be the first implementation, using itself as the d
 - Example too fine: separate issues for "git add", "git commit", "git push"
 
 ### Principle #5: Hydrator as Intelligent Compositor
+
 - Reads WORKFLOWS.md to select workflow
 - Reads selected workflow file
 - When it sees [[wikilink]], reads that file too
@@ -268,6 +286,7 @@ The feature-dev workflow will be the first implementation, using itself as the d
 A task is **skill-sized** when it can be fully completed by invoking a single skill. This is the minimum actionable unit for agent-assigned ('bot') work.
 
 **Definition**: A skill-sized task has:
+
 - Clear input/output boundaries
 - Maps to exactly one skill (e.g., python-dev, pdf, excalidraw, analyst)
 - Can be verified independently
@@ -275,13 +294,13 @@ A task is **skill-sized** when it can be fully completed by invoking a single sk
 
 **Examples**:
 
-| Task | Skill-Sized? | Why |
-|------|--------------|-----|
-| "Create a test for the hook" | ✅ Yes | → python-dev skill |
-| "Generate a flowchart of the process" | ✅ Yes | → flowchart skill |
-| "Debug the custodiet hook" | ❌ No | Multiple skills, unclear path |
-| "Analyze compliance rates from transcripts" | ✅ Yes | → analyst skill |
-| "Convert document to markdown" | ✅ Yes | → convert-to-md skill |
+| Task                                        | Skill-Sized? | Why                           |
+| ------------------------------------------- | ------------ | ----------------------------- |
+| "Create a test for the hook"                | ✅ Yes       | → python-dev skill            |
+| "Generate a flowchart of the process"       | ✅ Yes       | → flowchart skill             |
+| "Debug the custodiet hook"                  | ❌ No        | Multiple skills, unclear path |
+| "Analyze compliance rates from transcripts" | ✅ Yes       | → analyst skill               |
+| "Convert document to markdown"              | ✅ Yes       | → convert-to-md skill         |
 
 **Agent rule**: When an agent claims a coarse-grained task, it must DECOMPOSE into skill-sized subtasks before executing. See [[decompose]] workflow.
 
@@ -327,6 +346,7 @@ When an agent claims a task, apply this decision tree:
 ```
 
 **Decomposition pattern**:
+
 1. Identify which skills are needed for the task
 2. Create one bd subtask per skill invocation
 3. Each subtask should name the skill: "Use [skill] to [action]"
@@ -335,6 +355,7 @@ When an agent claims a task, apply this decision tree:
 **Example decomposition**:
 
 "Debug the custodiet hook" →
+
 1. "Use python-dev skill to create a reproducible test case"
 2. "Use analyst skill to analyze compliance rates from transcripts"
 3. "Use framework skill to identify hook configuration issues"
@@ -343,6 +364,7 @@ When an agent claims a task, apply this decision tree:
 ## Implementation Phases
 
 ### Phase 1: Foundation ✓ COMPLETED
+
 - [x] Create `workflows/` directory
 - [x] Create `WORKFLOWS.md` index file
 - [x] Write workflow files as simple markdown (feature-dev, spec-review, tdd-cycle, qa-demo, debugging, batch-processing, simple-question, direct-skill, design)
@@ -353,6 +375,7 @@ When an agent claims a task, apply this decision tree:
 **Status**: ✓ COMPLETED
 
 ### Phase 2: LLM-Native Composition ✓ COMPLETED
+
 - [x] **Simplify existing workflow files** - Remove YAML frontmatter, keep simple markdown
 - [x] Update hydrator instructions: "When you see [[spec-review]], read workflows/spec-review.md"
 - [x] **Inline expansion by understanding**: Hydrator reads all referenced workflows and generates unified TodoWrite plan
@@ -364,6 +387,7 @@ When an agent claims a task, apply this decision tree:
 **Key insight**: No code needed - just update hydrator instructions and simplify workflow files. ✓ Confirmed.
 
 ### Phase 3: Enrichment (FUTURE)
+
 - [ ] Integrate axioms (P#) references into workflow files
 - [ ] Integrate heuristics (H#) references into workflow files
 - [ ] Hydrator naturally includes these when reading workflows
@@ -372,6 +396,7 @@ When an agent claims a task, apply this decision tree:
 **Key insight**: Enrichment happens naturally - LLM reads axioms/heuristics references and understands them.
 
 ### Phase 4: Mid-Grained bd Issues (FUTURE)
+
 - [ ] Document bd issue granularity guidelines
 - [ ] Update hydrator to generate mid-grained TodoWrite plans
 - [ ] Hydrator creates bd issues for multi-session work
@@ -429,12 +454,12 @@ The workflow system is part of a larger **self-reflexive framework** that observ
 
 Track these per workflow to identify improvement opportunities:
 
-| Metric | Source | Action if Low |
-|--------|--------|---------------|
-| Selection accuracy | insights.workflows_used | Improve routing signals |
-| Completion rate | insights.outcome | Simplify or decompose |
-| Skill compliance | insights.skill_compliance | Clarify skill triggers |
-| Token efficiency | insights.token_metrics | Optimize base composition |
+| Metric             | Source                    | Action if Low             |
+| ------------------ | ------------------------- | ------------------------- |
+| Selection accuracy | insights.workflows_used   | Improve routing signals   |
+| Completion rate    | insights.outcome          | Simplify or decompose     |
+| Skill compliance   | insights.skill_compliance | Clarify skill triggers    |
+| Token efficiency   | insights.token_metrics    | Optimize base composition |
 
 ## Success Metrics
 

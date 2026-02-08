@@ -195,42 +195,47 @@ flowchart LR
 
 ## Quick Reference: When to Use Which Template
 
-| Your Diagram | Template to Use | Layout | Spacing |
-|---|---|---|---|
-| Simple pipeline (6-10 steps in a line) | Horizontal Process Flow | `LR` | `70/80` |
-| Process with branches/conditions | Wide Decision Tree | `TD` | `60/70` |
-| Distinct phases + steps in each phase | Horizontal Multi-Phase | `LR` + `TB` subgraphs | `60/70` |
-| Complex with many interconnections | Complex System Flow with ELK | `LR` + `TB` subgraphs + ELK | `50+` |
+| Your Diagram                           | Template to Use              | Layout                      | Spacing |
+| -------------------------------------- | ---------------------------- | --------------------------- | ------- |
+| Simple pipeline (6-10 steps in a line) | Horizontal Process Flow      | `LR`                        | `70/80` |
+| Process with branches/conditions       | Wide Decision Tree           | `TD`                        | `60/70` |
+| Distinct phases + steps in each phase  | Horizontal Multi-Phase       | `LR` + `TB` subgraphs       | `60/70` |
+| Complex with many interconnections     | Complex System Flow with ELK | `LR` + `TB` subgraphs + ELK | `50+`   |
 
 ## Horizontal Space Best Practices Checklist
 
 Before finalizing any flowchart, check these spacing items:
 
 **SPACING (Critical for readability)**:
+
 - [ ] `nodeSpacing: 60` minimum (increase to 70-80 for clarity)
 - [ ] `rankSpacing: 70` minimum (increase to 80+ for multi-phase)
 - [ ] `padding: 20` to prevent label cutoff
 - [ ] For horizontal layouts, prioritize nodeSpacing over rankSpacing
 
 **LAYOUT (Use screen real estate effectively)**:
+
 - [ ] Using `LR` for linear/mostly-linear diagrams (DEFAULT choice)
 - [ ] Using `TD` only when branches need horizontal spread
 - [ ] Subgraph phasing arranges left-to-right, internals top-to-bottom
 - [ ] Links go between subgraphs, not leaking out of internal nodes
 
 **COLOR & VISUALS**:
+
 - [ ] 4-5 colors maximum (one dominant 60%, accent 30%, highlight 10%)
 - [ ] Color has semantic meaning (not just decoration)
 - [ ] Solid backgrounds always (never transparent)
 - [ ] `stroke-width: 2px` for emphasis on decisions/starts
 
 **LABELS**:
+
 - [ ] 3-9 words per node (move long text to notes/subgraphs)
 - [ ] Verbs at start ("Process data", "Check valid", not just "Data" or "Valid")
 - [ ] Consistent casing (sentence case for labels, CAPS for subgraph titles)
 - [ ] Font size 14px minimum
 
 **ANTI-PATTERNS TO AVOID**:
+
 - ❌ Using default spacing (35/45) - always feels cramped
 - ❌ TD layout for everything - creates tall, scrolly charts
 - ❌ Mixing LR and TD at same level - confusing flow direction

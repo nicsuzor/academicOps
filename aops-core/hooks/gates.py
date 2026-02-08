@@ -87,7 +87,9 @@ def check_tool_gate(ctx: "HookContext") -> GateResult:
 
     # <!-- NS: instructions need revision to provide both gemini cli and claude code snippets. Also need to ensure that the Task tool call is properly formatted for both agents. -->
     if agent and audit_path:
-        next_instruction = f'`Task(subagent_type="{agent}", prompt="Analyze {audit_path}")`'
+        next_instruction = (
+            f'`Task(subagent_type="{agent}", prompt="Analyze {audit_path}")`'
+        )
     elif agent:
         next_instruction = f'`Task(subagent_type="{agent}")`'
     else:

@@ -11,6 +11,7 @@ Governance modifications requiring justification and escalation.
 ## Routing Signals
 
 Modifying:
+
 - AXIOMS.md, HEURISTICS.md
 - framework/enforcement-map.md
 - hooks/*.py
@@ -33,10 +34,10 @@ Modifying:
 
 ## Escalation Matrix
 
-| Change Type | Escalation |
-|-------------|------------|
-| Corollary to existing | auto |
-| New heuristic | critic |
-| New axiom | human |
-| Enforcement hook | critic |
-| Deny rule | human |
+| Change Type           | Escalation |
+| --------------------- | ---------- |
+| Corollary to existing | auto       |
+| New heuristic         | critic     |
+| New axiom             | human      |
+| Enforcement hook      | critic     |
+| Deny rule             | human      |

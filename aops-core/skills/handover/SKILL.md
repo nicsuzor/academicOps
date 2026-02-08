@@ -14,6 +14,7 @@ Required session-end handover procedure. Invoked when stop hook blocks session.
 ## Purpose
 
 The handover skill ensures clean session closure by:
+
 1. Verifying uncommitted changes are handled
 2. Outputting structured Framework Reflection
 3. Clearing the stop gate to allow session to end
@@ -35,6 +36,7 @@ git status --porcelain
 ```
 
 If there are uncommitted changes:
+
 - **Staged changes**: Commit them now with descriptive message
 - **Unstaged changes**: Stage relevant files and commit, or explicitly note why changes are not being committed
 
@@ -58,12 +60,14 @@ Output the following structure **exactly** (the stop hook validates this format)
 
 ```markdown
 ## Framework Reflection
+
 **Outcome**: success|partial|failure
 **Accomplishments**: [What was completed this session]
 **Friction points**: [Issues encountered, or "none"]
 ```
 
 **Field definitions**:
+
 - **Outcome**:
   - `success` - All planned work completed
   - `partial` - Some work completed, some deferred
@@ -84,11 +88,13 @@ This confirms to the user and the stop hook that the handover procedure complete
 ## Why This Skill Exists
 
 Previously, the stop hook required inline Framework Reflection in any assistant message. This caused issues:
+
 - Agents would forget the exact format
 - The error message was verbose and noisy
 - No structured procedure ensured commits happened before reflection
 
 The handover skill:
+
 - Encapsulates all session-end requirements in one place
 - Ensures commits happen before reflection
 - Provides clear, auditable session closure

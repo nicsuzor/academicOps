@@ -168,6 +168,7 @@ The framework improves through structured feedback loops that connect observatio
 ### /learn - Graduated Framework Improvement
 
 The primary feedback workflow. Invoked when:
+
 - User reports an issue
 - Agent self-reports a mistake
 - Pattern detected across sessions
@@ -213,6 +214,7 @@ Lightweight logging without immediate fix:
 ```
 
 Use when:
+
 - Observing a pattern but not ready to fix
 - Accumulating evidence before escalation
 - Deferring root cause analysis
@@ -237,22 +239,22 @@ Periodic health check:
 
 ### When to Escalate
 
-| Signal | Current Level | Escalate To |
-|--------|---------------|-------------|
-| Same issue 3x across sessions | 1a (corollary) | 1b (heuristic) |
-| Heuristic ignored repeatedly | 1b (heuristic) | 2a (PostToolUse hook) |
-| PostToolUse warning ineffective | 2a (advisory) | 3a (PreToolUse deny) |
-| Deny rule has false positives | 3a (deny) | Refine or revert |
+| Signal                          | Current Level  | Escalate To           |
+| ------------------------------- | -------------- | --------------------- |
+| Same issue 3x across sessions   | 1a (corollary) | 1b (heuristic)        |
+| Heuristic ignored repeatedly    | 1b (heuristic) | 2a (PostToolUse hook) |
+| PostToolUse warning ineffective | 2a (advisory)  | 3a (PreToolUse deny)  |
+| Deny rule has false positives   | 3a (deny)      | Refine or revert      |
 
 ### Escalation Approval
 
-| Intervention Level | Approval Required |
-|-------------------|-------------------|
-| 1a: Corollary | Auto (proceed immediately) |
-| 1b-1d: Soft prompt | Critic review |
-| 2a-2b: Hooks | Critic review |
-| 3a-3b: Deny rules | Human approval (AskUserQuestion) |
-| 4+: Structural | Human approval + spec |
+| Intervention Level | Approval Required                |
+| ------------------ | -------------------------------- |
+| 1a: Corollary      | Auto (proceed immediately)       |
+| 1b-1d: Soft prompt | Critic review                    |
+| 2a-2b: Hooks       | Critic review                    |
+| 3a-3b: Deny rules  | Human approval (AskUserQuestion) |
+| 4+: Structural     | Human approval + spec            |
 
 ## Guardrails
 
@@ -276,13 +278,13 @@ Periodic health check:
 
 Track these to measure framework health:
 
-| Metric | Source | Target |
-|--------|--------|--------|
-| Skill compliance rate | insights.skill_compliance | > 0.9 |
-| Session success rate | insights.outcome | > 0.8 |
-| Custodiet false positive rate | insights.custodiet_blocks | < 0.1 |
-| Learning observation frequency | count of learn-type tasks | Stable or decreasing |
-| Time to root cause | task creation → fix | < 24 hours for recurring issues |
+| Metric                         | Source                    | Target                          |
+| ------------------------------ | ------------------------- | ------------------------------- |
+| Skill compliance rate          | insights.skill_compliance | > 0.9                           |
+| Session success rate           | insights.outcome          | > 0.8                           |
+| Custodiet false positive rate  | insights.custodiet_blocks | < 0.1                           |
+| Learning observation frequency | count of learn-type tasks | Stable or decreasing            |
+| Time to root cause             | task creation → fix       | < 24 hours for recurring issues |
 
 ## Related Documents
 

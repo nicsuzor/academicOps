@@ -19,11 +19,11 @@ Framework modification intent detected via prompt content (NOT file paths). Watc
 
 ## Routing Rules
 
-| Intent | Route to | Rationale |
-|--------|----------|-----------|
-| Governance changes (AXIOMS, HEURISTICS, enforcement-map, hooks, deny rules) | `[[framework-change]]` | Requires structured justification and escalation |
-| Framework code (specs, workflows, agents, skills, scripts) | `[[design]]` + spec review | Framework code is shared infrastructure |
-| Framework debugging | `[[debugging]]` + framework context | Still needs spec awareness |
+| Intent                                                                      | Route to                            | Rationale                                        |
+| --------------------------------------------------------------------------- | ----------------------------------- | ------------------------------------------------ |
+| Governance changes (AXIOMS, HEURISTICS, enforcement-map, hooks, deny rules) | `[[framework-change]]`              | Requires structured justification and escalation |
+| Framework code (specs, workflows, agents, skills, scripts)                  | `[[design]]` + spec review          | Framework code is shared infrastructure          |
+| Framework debugging                                                         | `[[debugging]]` + framework context | Still needs spec awareness                       |
 
 ## Framework Context Output
 

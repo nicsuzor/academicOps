@@ -105,10 +105,10 @@ cd $AOPS && uv run python scripts/transcript.py <session-file>
 
 **Hooks logs vs Session files** (important distinction):
 
-| File Type | Location | Contains |
-|-----------|----------|----------|
-| **Session file** | `~/.claude/projects/*/*.jsonl` or `~/.gemini/tmp/*/chats/session-*.json` | Actual conversation: user prompts, agent responses, tool calls |
-| **Hooks log** | `~/.gemini/tmp/*/chats/*-hooks.jsonl` | Hook events only: SessionStart, BeforeAgent, BeforeTool, AfterTool |
+| File Type        | Location                                                                 | Contains                                                           |
+| ---------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| **Session file** | `~/.claude/projects/*/*.jsonl` or `~/.gemini/tmp/*/chats/session-*.json` | Actual conversation: user prompts, agent responses, tool calls     |
+| **Hooks log**    | `~/.gemini/tmp/*/chats/*-hooks.jsonl`                                    | Hook events only: SessionStart, BeforeAgent, BeforeTool, AfterTool |
 
 - **Hooks logs** record what hooks fired and their outputs, NOT the conversation
 - If you have a hooks log, find the session file via `transcript_path` field in the first entry

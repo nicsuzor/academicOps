@@ -148,15 +148,16 @@ These are parsed by `extract_reflection_from_entries()` and converted to insight
 
 Per-entry token data is extracted from `message.usage`:
 
-| Field | Source | Purpose |
-|-------|--------|---------|
-| `input_tokens` | message.usage.input_tokens | Track input consumption |
-| `output_tokens` | message.usage.output_tokens | Track output generation |
-| `cache_read_input_tokens` | message.usage.cache_read_input_tokens | Measure cache efficiency |
-| `cache_creation_input_tokens` | message.usage.cache_creation_input_tokens | Track cache population |
-| `model` | message.model | Attribution by model |
+| Field                         | Source                                    | Purpose                  |
+| ----------------------------- | ----------------------------------------- | ------------------------ |
+| `input_tokens`                | message.usage.input_tokens                | Track input consumption  |
+| `output_tokens`               | message.usage.output_tokens               | Track output generation  |
+| `cache_read_input_tokens`     | message.usage.cache_read_input_tokens     | Measure cache efficiency |
+| `cache_creation_input_tokens` | message.usage.cache_creation_input_tokens | Track cache population   |
+| `model`                       | message.model                             | Attribution by model     |
 
 Aggregated by `UsageStats.add_entry()` into:
+
 - **Totals**: Session-wide token counts
 - **By model**: Breakdown per model (opus, haiku, etc.)
 - **By agent**: Breakdown per agent (main, subagents)
@@ -177,6 +178,7 @@ Track whether suggested skills were actually invoked:
 ```
 
 Low compliance rates indicate:
+
 - Skill discovery problems (agent didn't know skill existed)
 - Context gaps (agent didn't understand when to use skill)
 - Instruction clarity issues (skill trigger conditions unclear)
@@ -201,20 +203,20 @@ These feed into the [[/learn|learn]] workflow for root cause analysis.
 
 ### Hooks That Generate Observables
 
-| Hook | Event | Observable Generated |
-|------|-------|---------------------|
-| `sessionstart_load_axioms.py` | SessionStart | Session initialization logged |
-| `custodiet_gate.py` | PostToolUse | Block events, drift detection |
-| `session_reflect.py` | Stop | Framework Reflection extraction |
-| `autocommit_state.py` | PostToolUse | State file updates |
+| Hook                          | Event        | Observable Generated            |
+| ----------------------------- | ------------ | ------------------------------- |
+| `sessionstart_load_axioms.py` | SessionStart | Session initialization logged   |
+| `custodiet_gate.py`           | PostToolUse  | Block events, drift detection   |
+| `session_reflect.py`          | Stop         | Framework Reflection extraction |
+| `autocommit_state.py`         | PostToolUse  | State file updates              |
 
 ### Workflows That Consume Observables
 
-| Workflow | Consumes | Produces |
-|----------|----------|----------|
-| [[/learn]] | Insights JSON, learning_observations | Heuristic/axiom updates, tasks |
-| [[audit]] | Insights JSON, skill_compliance | Compliance reports, enforcement proposals |
-| [[qa]] | Insights JSON, friction_points | Root cause analysis, fix proposals |
+| Workflow   | Consumes                             | Produces                                  |
+| ---------- | ------------------------------------ | ----------------------------------------- |
+| [[/learn]] | Insights JSON, learning_observations | Heuristic/axiom updates, tasks            |
+| [[audit]]  | Insights JSON, skill_compliance      | Compliance reports, enforcement proposals |
+| [[qa]]     | Insights JSON, friction_points       | Root cause analysis, fix proposals        |
 
 ## Adding New Observables
 
@@ -245,6 +247,7 @@ To add a new observable pattern:
 ### Observability is for Humans
 
 The framework does NOT automatically act on insights. Humans review insights JSON and decide what changes to make. This prevents:
+
 - Runaway self-modification
 - Overfitting to single sessions
 - Loss of human oversight
@@ -252,6 +255,7 @@ The framework does NOT automatically act on insights. Humans review insights JSO
 ### Observable, Not Interpretable
 
 Observables capture WHAT happened, not WHY. Interpretation requires:
+
 - Pattern recognition across multiple sessions
 - Root cause analysis (via [[/learn]])
 - Human judgment on appropriate response
@@ -259,6 +263,7 @@ Observables capture WHAT happened, not WHY. Interpretation requires:
 ### Structured for Analysis
 
 Insights JSON uses consistent schemas so tooling can:
+
 - Aggregate across sessions
 - Trend over time
 - Filter by project/outcome/compliance

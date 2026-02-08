@@ -253,7 +253,6 @@ Worker reports failure
            No  → Continue with remaining workers
 ```
 
-
 ## Success Criteria
 
 1. Workers can independently complete tasks without supervision
@@ -269,13 +268,13 @@ Tested parallel worker spawning with 5 haiku workers on aops framework tasks:
 
 ### Results
 
-| Metric | Result |
-|--------|--------|
-| Spawn success | 5/5 (100%) |
-| Execution success | 5/5 (100%) |
-| Conflicts/collisions | 0 |
-| Commits produced | 5 |
-| Notification delivery | 4/5 (80%) |
+| Metric                | Result     |
+| --------------------- | ---------- |
+| Spawn success         | 5/5 (100%) |
+| Execution success     | 5/5 (100%) |
+| Conflicts/collisions  | 0          |
+| Commits produced      | 5          |
+| Notification delivery | 4/5 (80%)  |
 
 ### Confirmed Working
 

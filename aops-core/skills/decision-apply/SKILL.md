@@ -34,6 +34,7 @@ Read the daily note using the Read tool.
 Find the `## Pending Decisions` section and extract:
 
 1. **Decision metadata block** (YAML in HTML comment):
+
 ```markdown
 <!-- decision-metadata
 decisions:
@@ -45,6 +46,7 @@ decisions:
 ```
 
 2. **User annotations** from the decision entries:
+
 - Checked boxes: `[x] Approve`, `[x] Reject`, etc.
 - Notes field content
 
@@ -102,6 +104,7 @@ def parse_decision(entry_text):
 For each decision with a non-null choice:
 
 #### Approve/Yes/Go
+
 ```python
 mcp__plugin_aops-core_task_manager__update_task(
     id=task_id,
@@ -111,6 +114,7 @@ mcp__plugin_aops-core_task_manager__update_task(
 ```
 
 #### Reject/No/Cancel
+
 ```python
 mcp__plugin_aops-core_task_manager__update_task(
     id=task_id,
@@ -120,6 +124,7 @@ mcp__plugin_aops-core_task_manager__update_task(
 ```
 
 #### Defer
+
 ```python
 mcp__plugin_aops-core_task_manager__update_task(
     id=task_id,
@@ -129,12 +134,14 @@ mcp__plugin_aops-core_task_manager__update_task(
 ```
 
 #### Skip
+
 ```python
 # No status change, just mark as processed
 # Task stays in current state for next extraction
 ```
 
 #### Needs More Info
+
 ```python
 mcp__plugin_aops-core_task_manager__update_task(
     id=task_id,
@@ -144,6 +151,7 @@ mcp__plugin_aops-core_task_manager__update_task(
 ```
 
 #### Custom Decision
+
 ```python
 mcp__plugin_aops-core_task_manager__update_task(
     id=task_id,
@@ -213,17 +221,19 @@ After processing, output a summary:
 **Processed**: 3 of 4 decisions
 **Skipped**: 1 (no annotation)
 
-| Decision | Task | Action | Unblocked |
-|----------|------|--------|-----------|
-| D001 | `aops-abc123` | Approved - active | 2 tasks |
-| D002 | `aops-def456` | Rejected - cancelled | 0 tasks |
-| D003 | `aops-ghi789` | Deferred - waiting | 0 tasks |
+| Decision | Task          | Action               | Unblocked |
+| -------- | ------------- | -------------------- | --------- |
+| D001     | `aops-abc123` | Approved - active    | 2 tasks   |
+| D002     | `aops-def456` | Rejected - cancelled | 0 tasks   |
+| D003     | `aops-ghi789` | Deferred - waiting   | 0 tasks   |
 
 **Total tasks unblocked**: 2
+
 - [aops-login] Login UI implementation
 - [aops-session] Session management
 
 **Remaining pending decisions**: 1
+
 - D004: PR #789 review (no annotation)
 
 Run `/decision-extract` again to refresh the pending list.
@@ -243,6 +253,7 @@ If user only annotates some decisions:
 ### NEVER Auto-Execute
 
 This skill updates task STATUS only. It does NOT:
+
 - Send emails
 - Make calendar changes
 - Execute code
@@ -253,6 +264,7 @@ Those actions require separate skills with explicit user invocation.
 ### Preserve User Notes
 
 When updating task bodies, APPEND to existing content:
+
 ```python
 mcp__plugin_aops-core_task_manager__update_task(
     id=task_id,
@@ -264,6 +276,7 @@ mcp__plugin_aops-core_task_manager__update_task(
 ### Audit Trail
 
 Every decision application adds to the task's body:
+
 - Date of decision
 - User's choice
 - User's notes (if any)
@@ -272,25 +285,28 @@ This creates an audit trail for future reference.
 
 ## Error Handling
 
-| Scenario | Behavior |
-|----------|----------|
-| No decisions section | Output "No pending decisions found. Run `/decision-extract` first." |
-| Task not found | Log warning, skip that decision, continue with others |
-| Invalid decision format | Log warning, skip, continue |
-| All decisions skipped | Output "No annotations found. Add your decisions to the daily note and run again." |
+| Scenario                | Behavior                                                                           |
+| ----------------------- | ---------------------------------------------------------------------------------- |
+| No decisions section    | Output "No pending decisions found. Run `/decision-extract` first."                |
+| Task not found          | Log warning, skip that decision, continue with others                              |
+| Invalid decision format | Log warning, skip, continue                                                        |
+| All decisions skipped   | Output "No annotations found. Add your decisions to the daily note and run again." |
 
 ## Example Session
 
 **Before** (daily note has annotated decisions):
+
 ```markdown
 #### D001: Approve authentication provider
-**Decision**: [x] Auth0  [ ] Cognito  [ ] Need more info
+
+**Decision**: [x] Auth0 [ ] Cognito [ ] Need more info
 **Notes**: Go with Auth0 for better docs and support.
 ```
 
 **User runs**: `/decision-apply`
 
 **After** (task updated):
+
 ```yaml
 # Task aops-abc123 now has:
 status: active
@@ -303,6 +319,7 @@ body: |
 ```
 
 **Output**:
+
 ```
 Decision Apply Results
 

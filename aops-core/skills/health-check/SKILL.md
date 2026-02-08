@@ -39,12 +39,12 @@ Or with specific component:
 
 ## Components Evaluated (v1)
 
-| Component | What It Does | Health Check Focus |
-|-----------|--------------|-------------------|
-| **Hydrator** | Transforms terse prompts into execution plans | Is it getting enough information? Too much? Quality of execution plans? |
-| **Gate System** | Blocks/warns on policy violations | Are gates blocking appropriately? Over-blocking? Under-blocking? |
-| **Custodiet** | Ultra vires detection | Accurate detection? False positives? Missed violations? |
-| **QA Agent** | Independent verification before completion | Thoroughness? Catching real issues? |
+| Component       | What It Does                                  | Health Check Focus                                                      |
+| --------------- | --------------------------------------------- | ----------------------------------------------------------------------- |
+| **Hydrator**    | Transforms terse prompts into execution plans | Is it getting enough information? Too much? Quality of execution plans? |
+| **Gate System** | Blocks/warns on policy violations             | Are gates blocking appropriately? Over-blocking? Under-blocking?        |
+| **Custodiet**   | Ultra vires detection                         | Accurate detection? False positives? Missed violations?                 |
+| **QA Agent**    | Independent verification before completion    | Thoroughness? Catching real issues?                                     |
 
 ## Workflow
 
@@ -84,6 +84,7 @@ Each component check follows this structure:
 See [[checks/hydrator]] for the full evaluation prompt.
 
 Key assessment areas:
+
 - Prompt-to-plan transformation quality
 - Context gathering completeness
 - Workflow selection accuracy
@@ -95,6 +96,7 @@ Key assessment areas:
 See [[checks/gates]] for the full evaluation prompt.
 
 Key assessment areas:
+
 - Gate trigger accuracy (fired when should, didn't when shouldn't)
 - Block vs warn mode appropriateness
 - User friction vs protection balance
@@ -106,6 +108,7 @@ Key assessment areas:
 See [[checks/custodiet]] for the full evaluation prompt.
 
 Key assessment areas:
+
 - Ultra vires detection accuracy
 - Principle citation correctness
 - False positive impact (blocked legitimate work)
@@ -117,6 +120,7 @@ Key assessment areas:
 See [[checks/qa]] for the full evaluation prompt.
 
 Key assessment areas:
+
 - Verification thoroughness
 - Issue detection accuracy
 - False confidence (approved broken work)
@@ -143,20 +147,25 @@ Combine component assessments into a unified health report following this struct
 ## Component Assessments
 
 ### Hydrator
+
 **Health**: [Healthy | Needs Attention | Critical]
 **Summary**: [2-3 sentences]
 **Key Findings**:
+
 - [Finding with transcript evidence]
-**Recommendations**:
+  **Recommendations**:
 - [Actionable improvement]
 
 ### Gate System
+
 [Same structure]
 
 ### Custodiet
+
 [Same structure]
 
 ### QA Agent
+
 [Same structure]
 
 ## Cross-Component Patterns
@@ -172,11 +181,12 @@ Combine component assessments into a unified health report following this struct
 ## Evidence Summary
 
 | Session | Component | Finding | Severity |
-|---------|-----------|---------|----------|
-| [id] | [name] | [brief] | [H/M/L] |
+| ------- | --------- | ------- | -------- |
+| [id]    | [name]    | [brief] | [H/M/L]  |
 ```
 
 Key aggregation rules:
+
 - **Overall Health**: All Healthy = Healthy; 2+ Needs Attention or 1 Critical = Needs Attention; 2+ Critical = Critical
 - **Prioritization**: P0 (Critical), P1 (High), P2 (Medium) - limit to top 5-7 recommendations
 - **Cross-Component**: Look for patterns spanning multiple components, handoff issues, common root causes
@@ -248,6 +258,7 @@ When invoked with a specific component (`/health-check hydrator`):
 ## Output
 
 The skill produces:
+
 1. **Console summary**: Brief health status for each component
 2. **Persisted report**: Full markdown report in `$ACA_DATA/projects/aops/health-checks/`
 3. **Memory entry**: Searchable summary in memory server

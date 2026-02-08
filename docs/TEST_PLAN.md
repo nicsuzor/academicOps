@@ -17,33 +17,33 @@ Test strategy and roadmap for improving test coverage across the academicOps fra
 
 ### Infrastructure
 
-| Component | Status |
-|-----------|--------|
-| Framework | pytest 8.0+ with pytest-xdist |
-| Parallelization | 4 workers (configurable) |
-| Markers | slow, integration, metrics, demo, endtoend, tool |
-| Fixtures | Comprehensive (conftest.py ~1000 LOC) |
-| Documentation | tests/README.md |
+| Component       | Status                                           |
+| --------------- | ------------------------------------------------ |
+| Framework       | pytest 8.0+ with pytest-xdist                    |
+| Parallelization | 4 workers (configurable)                         |
+| Markers         | slow, integration, metrics, demo, endtoend, tool |
+| Fixtures        | Comprehensive (conftest.py ~1000 LOC)            |
+| Documentation   | tests/README.md                                  |
 
 ### Test Counts
 
-| Category | Count | Status |
-|----------|-------|--------|
-| Unit tests | 680+ | Active |
-| Integration tests | 21 | Partial pass |
-| Slow tests (Claude exec) | 11 | 73% pass |
-| E2E tests | Variable | Credential-dependent |
+| Category                 | Count    | Status               |
+| ------------------------ | -------- | -------------------- |
+| Unit tests               | 680+     | Active               |
+| Integration tests        | 21       | Partial pass         |
+| Slow tests (Claude exec) | 11       | 73% pass             |
+| E2E tests                | Variable | Credential-dependent |
 
 ### Coverage by Component
 
-| Component | Coverage | Notes |
-|-----------|----------|-------|
-| aops-core/lib | High | task_model, task_storage, session_paths tested |
-| aops-core/hooks | Medium | gate_registry good, others variable |
-| aops-core/skills/framework | Medium | 3 test files |
-| aops-core/skills/* (other) | None | 12 skills untested |
-| aops-tools/skills | None | 4 skills, 0 tests |
-| MCP tools | Low | Basic tool invocation only |
+| Component                  | Coverage | Notes                                          |
+| -------------------------- | -------- | ---------------------------------------------- |
+| aops-core/lib              | High     | task_model, task_storage, session_paths tested |
+| aops-core/hooks            | Medium   | gate_registry good, others variable            |
+| aops-core/skills/framework | Medium   | 3 test files                                   |
+| aops-core/skills/* (other) | None     | 12 skills untested                             |
+| aops-tools/skills          | None     | 4 skills, 0 tests                              |
+| MCP tools                  | Low      | Basic tool invocation only                     |
 
 ## Priority Gaps
 
@@ -112,6 +112,7 @@ aops-tools/
 **Test Cases per Skill**:
 
 #### PDF Skill
+
 - [ ] Valid markdown → PDF conversion
 - [ ] Invalid markdown handling
 - [ ] Font availability check
@@ -119,12 +120,14 @@ aops-tools/
 - [ ] Overwrite behavior
 
 #### Excalidraw Skill
+
 - [ ] Valid input → diagram JSON
 - [ ] Element placement validation
 - [ ] Color/style application
 - [ ] Invalid input handling
 
 #### Convert-to-MD Skill
+
 - [ ] DOCX → markdown
 - [ ] PDF → markdown
 - [ ] XLSX → markdown
@@ -132,6 +135,7 @@ aops-tools/
 - [ ] Comment extraction
 
 #### Flowchart Skill
+
 - [ ] Valid mermaid syntax generation
 - [ ] Node/edge validation
 - [ ] Layout compliance
@@ -157,12 +161,14 @@ tests/hooks/
 **Test Cases**:
 
 #### Router
+
 - [ ] Skill routing detection
 - [ ] Task context extraction
 - [ ] Default routing behavior
 - [ ] Error recovery
 
 #### Policy Enforcer
+
 - [ ] Valid policy enforcement
 - [ ] Policy bypass conditions
 - [ ] Policy conflict resolution
@@ -185,6 +191,7 @@ tests/tools/
 **Test Cases**:
 
 #### Task Manager
+
 - [ ] create_task validation
 - [ ] update_task field handling
 - [ ] complete_task state transition
@@ -193,6 +200,7 @@ tests/tools/
 - [ ] search_tasks query matching
 
 #### Memory
+
 - [ ] store_memory persistence
 - [ ] retrieve_memory semantic search
 - [ ] recall_memory time expressions
@@ -205,6 +213,7 @@ tests/tools/
 **Goal**: Validate session state handling
 
 **Test Areas**:
+
 - State transitions
 - Transcript parsing edge cases
 - Session summary generation
@@ -270,13 +279,13 @@ class Test<Feature>Integration:
 
 ## Success Metrics
 
-| Metric | Current | Target (Phase 1) | Target (Full) |
-|--------|---------|------------------|---------------|
-| Total tests | 680+ | 700+ | 800+ |
-| aops-tools coverage | 0% | 80% | 95% |
-| Hook coverage | 40% | 70% | 90% |
-| Integration pass rate | 73% | 90% | 95% |
-| CI pipeline pass | Variable | Stable | Green |
+| Metric                | Current  | Target (Phase 1) | Target (Full) |
+| --------------------- | -------- | ---------------- | ------------- |
+| Total tests           | 680+     | 700+             | 800+          |
+| aops-tools coverage   | 0%       | 80%              | 95%           |
+| Hook coverage         | 40%      | 70%              | 90%           |
+| Integration pass rate | 73%      | 90%              | 95%           |
+| CI pipeline pass      | Variable | Stable           | Green         |
 
 ## Running Tests
 
@@ -305,6 +314,7 @@ uv run pytest tests/ --cov=aops-core --cov-report=html
 ### Fixture Reuse
 
 Leverage existing fixtures from `tests/conftest.py`:
+
 - `writing_root`: Framework root path
 - `test_data_dir`: Temporary task directory
 - `claude_headless`: Claude Code execution
@@ -318,6 +328,7 @@ Leverage existing fixtures from `tests/conftest.py`:
 ### CI Integration
 
 Tests should work with:
+
 - GitHub Actions (`framework-health.yml`)
 - Pre-commit hooks
 - Local development

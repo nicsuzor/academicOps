@@ -14,6 +14,7 @@ Manage daily note lifecycle: morning briefing, task recommendations, and session
 ## Path Resolution
 
 **CRITICAL**: This skill requires the `$ACA_DATA` environment variable to be set.
+
 - `$ACA_DATA` points to the user's data directory (contains daily notes, tasks, etc.)
 
 Location: `$ACA_DATA/daily/YYYYMMDD-daily.md`
@@ -33,11 +34,11 @@ Location: `$ACA_DATA/daily/YYYYMMDD-daily.md`
 
 The daily skill integrates sync into every run to keep the daily note current:
 
-| Mode | Trigger | Sections Run | User Approval |
-|------|---------|--------------|---------------|
-| **Morning** | `/daily` (no args, note missing) | 1 → 2 → 3 → 4 (auto-sync) | Required (3.4) |
-| **Refresh** | `/daily` (note exists) | 2 → 3 → 4 (auto-sync) | Required (3.4) |
-| **Full Sync** | `/daily sync` | 4 only | Required (4.8) |
+| Mode          | Trigger                          | Sections Run              | User Approval  |
+| ------------- | -------------------------------- | ------------------------- | -------------- |
+| **Morning**   | `/daily` (no args, note missing) | 1 → 2 → 3 → 4 (auto-sync) | Required (3.4) |
+| **Refresh**   | `/daily` (note exists)           | 2 → 3 → 4 (auto-sync)     | Required (3.4) |
+| **Full Sync** | `/daily sync`                    | 4 only                    | Required (4.8) |
 
 **Mode Detection Logic:**
 
@@ -53,22 +54,23 @@ else:
 **Auto-Sync Behavior**: When running Morning or Refresh modes, sync (section 4) runs automatically after section 3 completes. Auto-sync skips the approval step (4.8) to avoid interrupting the flow. Session data is processed and merged silently.
 
 **Full Sync Use Case**: Run `/daily sync` explicitly when you want:
+
 - End-of-day synthesis with user approval of the narrative
 - To verify/correct auto-synced content
 - To process sessions without re-running email triage
 
 ## Section Ownership
 
-| Section                 | Owner    | Updated By             |
-| ----------------------- | -------- | ---------------------- |
+| Section                 | Owner    | Updated By                              |
+| ----------------------- | -------- | --------------------------------------- |
 | Focus                   | `/daily` | Morning briefing + task recommendations |
-| Task Tree               | `/daily` | Task hierarchy snapshot |
-| Today's Story           | `/daily` | Session JSON synthesis |
-| FYI                     | `/daily` | Email triage           |
-| Session Log/Timeline    | `/daily` | Session JSON synthesis |
-| Project Accomplishments | `/daily` | Session JSON synthesis |
-| Reflection              | `/daily` | End-of-day sync (Step 4.4.5) |
-| Abandoned Todos         | `/daily` | End-of-day             |
+| Task Tree               | `/daily` | Task hierarchy snapshot                 |
+| Today's Story           | `/daily` | Session JSON synthesis                  |
+| FYI                     | `/daily` | Email triage                            |
+| Session Log/Timeline    | `/daily` | Session JSON synthesis                  |
+| Project Accomplishments | `/daily` | Session JSON synthesis                  |
+| Reflection              | `/daily` | End-of-day sync (Step 4.4.5)            |
+| Abandoned Todos         | `/daily` | End-of-day                              |
 
 ## Formatting Rules
 
@@ -153,6 +155,7 @@ From [sender]: [Actual content or summary]
 ```
 
 **CRITICAL - For each FYI item, IMMEDIATELY after writing it:**
+
 1. **If action required** (feedback, review, response, decision, "review X before Y") → `mcp__plugin_aops-core_task_manager__create_task()` NOW
    - Include deadline if mentioned or implied (e.g., "before Planning Day" = Planning Day date)
    - **Then add task link to FYI content**: `- **→ Task**: [task-id] Task title`
@@ -162,6 +165,7 @@ From [sender]: [Actual content or summary]
 Do NOT batch these to a later step. Task creation AND linking happens AS you process each email, not after.
 
 **Archive flow (user confirmation required)**:
+
 1. Present FYI content in daily note (complete section 2.2)
 2. **DO NOT offer to archive yet** - user needs time to read and process the content
 3. **Wait for user signal** - user will indicate when they've read the content (e.g., responds to the briefing, asks a question, or says "ok" / "got it")
@@ -214,6 +218,7 @@ mcp__plugin_aops-tools_task_manager__get_task_tree(
 ```
 
 This provides a bird's eye view of active project hierarchy. The tree:
+
 - Excludes completed and cancelled tasks
 - Shows up to 2 levels deep (roots + children + grandchildren)
 - Displays task ID, title, and status
@@ -222,13 +227,13 @@ This provides a bird's eye view of active project hierarchy. The tree:
 
 ```markdown
 ## Task Tree
-
 ```
+
 [project-id] Project Name (status)
-  [task-id] Task title (status)
-    [subtask-id] Subtask title (status)
-```
+[task-id] Task title (status)
+[subtask-id] Subtask title (status)
 
+```
 *Active projects with depth 2, excluding done/cancelled tasks*
 ```
 
@@ -282,14 +287,14 @@ The Focus section combines priority dashboard AND task recommendations in ONE pl
 
 ```markdown
 ## Focus
-
-```
-P0 ░░░░░░░░░░  3/85  → No specific tasks tracked
-P1 █░░░░░░░░░  12/85 → [ns-abc] [[OSB-PAO]] (-3d), [ns-def] [[ADMS-Clever]] (-16d)
-P2 ██████████  55/85
-P3 ██░░░░░░░░  15/85
 ```
 
+P0 ░░░░░░░░░░ 3/85 → No specific tasks tracked
+P1 █░░░░░░░░░ 12/85 → [ns-abc] [[OSB-PAO]] (-3d), [ns-def] [[ADMS-Clever]] (-16d)
+P2 ██████████ 55/85
+P3 ██░░░░░░░░ 15/85
+
+```
 **Pending Decisions**: 4 (2 blocking other work) → `/decision-extract`
 
 🚨 **DEADLINE TODAY**: [ns-xyz] [[ARC FT26 Reviews]] - Due 23:59 AEDT (8 reviews)

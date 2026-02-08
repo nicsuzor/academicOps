@@ -12,7 +12,9 @@ tags:
 
 <!-- NS: make this a 'base' workflow and require just about EVERY task to go through the session end process. MANDATORY. also add git commit and cleanup. -->
 <!-- @claude 2026-02-07: Agreed. This should become base-handover and be composed into all file-modifying workflows. Current MANDATORY section already covers git commit/push. Task created: aops-54ff7ab0. Will: (1) rename to base-handover.md, (2) add to bases: array in all relevant workflows, (3) ensure hydrator always includes handover steps. -->
+
 # Landing the Plane (Session Completion)
+
 **When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds and you output a framework reflection in the required form.
 
 ## MANDATORY WORKFLOW
@@ -32,13 +34,13 @@ tags:
 - If push fails, resolve and retry until it succeeds
 - Using mutating tools (Edit, Write, Bash, git) after handover will reset the gate
 
-
 ## Quick Exit: No Work Done
 
 If the session only involved answering user questions with no code changes, task work, or meaningful framework work:
 
 ```markdown
 ## Framework Reflection
+
 User asked: "<brief summary of question/topic>"
 Answer: "<summary of answer>"
 Next steps: "<what the user or agent should do next, including task ID if applicable>"
@@ -51,12 +53,14 @@ Then **stop** - skip all other steps.
 ## Step 1: Update Task with Progress
 
 If you DID NOT claim a task AND you did meaningful work:
+
 - You shouldn't have, but fix that now by creating a task to document your work.
 
 Update your claimed task with progress and release it.
 
 <!--@NS: add proper syntax here for updating and releasing the task. -->
 <!-- @claude 2026-02-07: Done. Updated with complete syntax including body append and status change. -->
+
 ```
 mcp__plugin_aops-core_task_manager__update_task(
   id="<task-id>",
@@ -85,11 +89,13 @@ git push  # Push to remote
 If you're working in a **polecat worktree**, the work isn't complete until the Refinery merges it. Instead of marking the task `done`, signal it's ready for merge:
 
 1. **Push the feature branch**:
+
 ```bash
 git push -u origin polecat/<task-id>
 ```
 
 2. **Set task status to `merge_ready`**:
+
 ```
 mcp__plugin_aops-tools_task_manager__update_task(
   id="<task-id>",
@@ -100,6 +106,7 @@ mcp__plugin_aops-tools_task_manager__update_task(
 3. **Do NOT mark as `done`** - the Refinery sets `done` after merging to main.
 
 The task lifecycle in polecat workflow:
+
 ```
 active → in_progress → merge_ready → done
          (claimed)    (you)     (refinery)
@@ -132,7 +139,6 @@ mcp__memory__store_memory(
 )
 ```
 
-
 ## Step 5: Output Framework Reflection
 
 Output the reflection in **exact AGENTS.md format**:
@@ -156,6 +162,7 @@ Output the reflection in **exact AGENTS.md format**:
 ## Step 6: Halt
 
 After outputting the reflection, **stop working**. Do not:
+
 - Start new tasks
 - Attempt to fix issues
 - Continue with other work
@@ -189,12 +196,12 @@ mcp__plugin_aops-core_task_manager__create_task(
 
 This ensures all sessions leave an audit trail in the task system. Note in reflection: "Created historical task for session work"
 
-
 ### Blocked by infrastructure bug (P#9/P#25)
 
 When session ends because tooling failed and a bug was filed:
 
 1. **Mark original task as blocked**:
+
 ```
 mcp__plugin_aops-core_task_manager__update_task(
   id="<original-task-id>",
@@ -208,6 +215,7 @@ mcp__plugin_aops-core_task_manager__update_task(
 3. **Do NOT leave task as "active"** - blocked tasks should be visible as blocked, not appear claimed
 
 This ensures:
+
 - Task tree shows blocking relationship
 - Future sessions don't re-claim blocked work
 - Bug must be fixed before original task can resume

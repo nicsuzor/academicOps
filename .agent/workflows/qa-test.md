@@ -36,6 +36,7 @@ echo "Exit: $?"
 ```
 
 Flags:
+
 - `-p <PROMPT>`: Non-interactive mode with prompt (no quotes for slash commands)
 - `--permission-mode yolo`: Auto-approve for automated testing
 
@@ -53,6 +54,7 @@ echo "Exit: $?"
 ```
 
 Flags:
+
 - `-p <PROMPT>`: Non-interactive mode with prompt (no quotes for slash commands)
 - `--approval-mode yolo`: Auto-approve for automated testing
 
@@ -70,24 +72,26 @@ Read the transcript and evaluate each dimension. This is NOT automated - you rea
 
 ### Evaluation Dimensions
 
-| Dimension | Question to Answer | Score 1-4 |
-|-----------|-------------------|-----------|
-| **Intent Recognition** | Did the agent understand what the user wanted? | 1=misunderstood, 4=perfect |
-| **Response Quality** | Was the response helpful, accurate, complete? | 1=wrong/useless, 4=excellent |
-| **Efficiency** | Was the path direct or did the agent waste steps? | 1=many detours, 4=optimal |
-| **Error Recovery** | How did the agent handle problems? | 1=stuck/crashed, 4=graceful |
-| **Communication** | Was output clear and appropriately detailed? | 1=confusing, 4=perfect |
-| **Framework Adherence** | Did the agent follow aops principles? | 1=violated, 4=exemplary |
+| Dimension               | Question to Answer                                | Score 1-4                    |
+| ----------------------- | ------------------------------------------------- | ---------------------------- |
+| **Intent Recognition**  | Did the agent understand what the user wanted?    | 1=misunderstood, 4=perfect   |
+| **Response Quality**    | Was the response helpful, accurate, complete?     | 1=wrong/useless, 4=excellent |
+| **Efficiency**          | Was the path direct or did the agent waste steps? | 1=many detours, 4=optimal    |
+| **Error Recovery**      | How did the agent handle problems?                | 1=stuck/crashed, 4=graceful  |
+| **Communication**       | Was output clear and appropriately detailed?      | 1=confusing, 4=perfect       |
+| **Framework Adherence** | Did the agent follow aops principles?             | 1=violated, 4=exemplary      |
 
 ### Scoring Protocol
 
 For each dimension:
+
 1. Read the entire transcript
 2. Find specific evidence (quote relevant lines)
 3. Assign score based on rubric
 4. Record: `[Dimension]: [Score] - "[evidence quote]"`
 
 **Overall Score**: Sum / 24 = percentage
+
 - < 50%: CRITICAL failure
 - 50-69%: POOR, significant issues
 - 70-84%: ACCEPTABLE, meets minimum bar
@@ -105,9 +109,10 @@ Each test case must specify:
 
 **Prompt** (exact text):
 ```
-[The exact prompt to send - copy-paste ready]
-```
 
+[The exact prompt to send - copy-paste ready]
+
+```
 **Expected Behavior**:
 - [Observable outcome 1]
 - [Observable outcome 2]

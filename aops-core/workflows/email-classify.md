@@ -10,12 +10,12 @@ Classify emails into actionable categories.
 
 ## Classification
 
-| Category | Action | Signals |
-|----------|--------|---------|
-| **Task** | Create task | "Please review...", decisions, deadlines, personal invitations |
-| **FYI** | Archive | "awarded", "approved", outcomes, thank-you |
-| **Skip** | Archive | noreply@, newsletters, already replied |
-| **Uncertain** | Ask user | Mixed signals, unknown sender |
+| Category      | Action      | Signals                                                        |
+| ------------- | ----------- | -------------------------------------------------------------- |
+| **Task**      | Create task | "Please review...", decisions, deadlines, personal invitations |
+| **FYI**       | Archive     | "awarded", "approved", outcomes, thank-you                     |
+| **Skip**      | Archive     | noreply@, newsletters, already replied                         |
+| **Uncertain** | Ask user    | Mixed signals, unknown sender                                  |
 
 ## Critical Check
 

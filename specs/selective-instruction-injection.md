@@ -17,7 +17,7 @@ tags: [enforcement, hydration, optimization]
 - [[AXIOMS.md]] - Source of universal principles
 - [[HEURISTICS.md]] - Source of practical patterns (~254 lines, target for selective injection)
 
-*Note: This spec proposes optimization of existing injection - not yet implemented.*
+_Note: This spec proposes optimization of existing injection - not yet implemented._
 
 Replace full-file instruction loading with per-task selective injection via prompt hydration.
 
@@ -28,6 +28,7 @@ Replace full-file instruction loading with per-task selective injection via prom
 **Evidence**: `user_prompt_submit.py` line 148-168 (`load_heuristics()`) reads the full file. The `{heuristics}` variable in `prompt-hydrator-context.md` template (line 47) injects it entirely.
 
 **Waste quantified**:
+
 - HEURISTICS.md: ~254 lines, ~6KB, ~1500 tokens
 - Per-prompt cost: 1500 tokens × N prompts/session
 - Most principles irrelevant to any given task
@@ -55,6 +56,7 @@ Main agent receives hydrator output (filtered principles only)
 ```
 
 **Token economics**:
+
 - Hydrator sees ~3000 tokens (full AXIOMS + HEURISTICS)
 - Main agent sees ~100-200 tokens (3-5 relevant principles)
 - Haiku cost: ~$0.0003 per prompt
@@ -68,9 +70,11 @@ The hydrator outputs relevant principles with brief justification:
 ### Applicable Principles
 
 From AXIOMS:
+
 - **P#5 (Do One Thing)**: This is a bounded task - complete it, then stop
 
 From HEURISTICS:
+
 - **P#74 (User System Expertise)**: User reported the bug, trust their observation
 - **P#26 (Verify First)**: Run the fix, don't assume it works
 ```
@@ -115,6 +119,7 @@ None needed. The hydrator output format already includes "Applicable Principles"
 **Risk**: Hydrator might miss critical principles.
 
 **Mitigation**:
+
 - Universal axioms (P#5 Do One Thing, P#3 Don't Make Shit Up) should always be included for ambiguous tasks
 - Framework-change tasks should always include P#65 (enforcement-map update)
 - Debug tasks should always include P#26 (Verify First)
@@ -122,14 +127,15 @@ None needed. The hydrator output format already includes "Applicable Principles"
 **Risk**: Hydrator output becomes inconsistent.
 
 **Mitigation**:
+
 - Add explicit instruction in hydrator agent definition
 - QA can check if relevant principles were included
 
 ## Files to Modify
 
-| File | Change |
-|------|--------|
-| `hooks/user_prompt_submit.py` | Add `load_axioms()` function |
-| `hooks/templates/prompt-hydrator-context.md` | Add `{axioms}` section |
-| `agents/prompt-hydrator.md` | Clarify principle selection instructions |
-| `indices/enforcement-map.md` | Document selective injection as enforcement mechanism |
+| File                                         | Change                                                |
+| -------------------------------------------- | ----------------------------------------------------- |
+| `hooks/user_prompt_submit.py`                | Add `load_axioms()` function                          |
+| `hooks/templates/prompt-hydrator-context.md` | Add `{axioms}` section                                |
+| `agents/prompt-hydrator.md`                  | Clarify principle selection instructions              |
+| `indices/enforcement-map.md`                 | Document selective injection as enforcement mechanism |

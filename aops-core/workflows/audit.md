@@ -5,30 +5,36 @@ Framework governance audit workflow. Runs structure checking, justification veri
 ## When to Use
 
 **Manual trigger** (recommended):
+
 - After significant framework changes (new skills, hooks, or agents)
 - Before major releases or milestones
 - When suspecting drift between documentation and implementation
 
 **Session-end** (optional):
+
 - Session end hook can trigger session-effectiveness sub-workflow
 - Full governance audit is NOT suitable for session-end (too heavy)
 
 **Periodic** (weekly/monthly):
+
 - Schedule via external cron or reminder
 - Run full audit to catch accumulated drift
 
 Do NOT use for:
+
 - Quick sanity checks (use individual scripts instead)
 - Session transcript analysis only (use session-effectiveness sub-workflow)
 
 ## Invocation
 
 **Full governance audit:**
+
 ```
 Skill(skill="audit")
 ```
 
 **Session effectiveness only:**
+
 ```
 Skill(skill="audit", args="session-effectiveness /path/to/transcript.md")
 ```
@@ -37,19 +43,19 @@ Skill(skill="audit", args="session-effectiveness /path/to/transcript.md")
 
 The full audit runs 10 phases (see `skills/audit/SKILL.md` for details):
 
-| Phase | Name | Purpose |
-|-------|------|---------|
-| 0 | Health Metrics | Run `audit_framework_health.py` for baseline metrics |
-| 1 | Structure Audit | Compare filesystem to INDEX.md |
-| 2 | Reference Graph | Build reference map, find orphans and broken links |
-| 3 | Skill Content | Verify size limits (<500 lines) and actionability |
-| 4 | File Justification | Ensure files trace to specs |
-| 4b | Instruction Justification | Verify instructions trace to framework/enforcement-map.md |
-| 5 | Documentation Accuracy | Verify README.md flowchart matches hooks |
-| 6 | Regenerate Indices | Rebuild INDEX.md, WORKFLOWS.md, etc. |
-| 7 | Other Updates | Fix violations, update tables |
-| 8 | Persist Report | Save to `$ACA_DATA/projects/aops/audit/` |
-| 9 | Create Tasks | File tasks for actionable findings |
+| Phase | Name                      | Purpose                                                   |
+| ----- | ------------------------- | --------------------------------------------------------- |
+| 0     | Health Metrics            | Run `audit_framework_health.py` for baseline metrics      |
+| 1     | Structure Audit           | Compare filesystem to INDEX.md                            |
+| 2     | Reference Graph           | Build reference map, find orphans and broken links        |
+| 3     | Skill Content             | Verify size limits (<500 lines) and actionability         |
+| 4     | File Justification        | Ensure files trace to specs                               |
+| 4b    | Instruction Justification | Verify instructions trace to framework/enforcement-map.md |
+| 5     | Documentation Accuracy    | Verify README.md flowchart matches hooks                  |
+| 6     | Regenerate Indices        | Rebuild INDEX.md, WORKFLOWS.md, etc.                      |
+| 7     | Other Updates             | Fix violations, update tables                             |
+| 8     | Persist Report            | Save to `$ACA_DATA/projects/aops/audit/`                  |
+| 9     | Create Tasks              | File tasks for actionable findings                        |
 
 ## Scripts Reference
 
@@ -76,6 +82,7 @@ uv run python skills/audit/scripts/find_orphans.py
 Reports are saved to: `$ACA_DATA/projects/aops/audit/YYYY-MM-DD-HHMMSS-audit.md`
 
 Format defined in `skills/audit/references/report-format.md`:
+
 - YAML frontmatter with summary stats
 - Executive summary
 - Phase-by-phase findings

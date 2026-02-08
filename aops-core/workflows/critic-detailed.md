@@ -32,6 +32,7 @@ Task(subagent_type="critic", model="opus",
 ## Test Code Checks (H37)
 
 When reviewing test code, also check:
+
 - Volkswagen patterns (keyword matching instead of semantic verification)
 - Can test pass on wrong behavior?
 - Real fixtures vs contrived examples?

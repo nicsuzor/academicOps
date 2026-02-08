@@ -15,11 +15,13 @@ This workflow governs end-to-end acceptance testing. It is distinct from unit/in
 ### 1. Black-Box Testing Only
 
 You are testing the system as a user would experience it. You do NOT:
+
 - Read source code to understand expected behavior
 - Examine implementation details
 - Peek at logs or internal state
 
 You DO:
+
 - Provide inputs (prompts, commands)
 - Observe outputs (responses, side effects)
 - Compare outputs to acceptance criteria from specifications
@@ -31,6 +33,7 @@ You DO:
 Acceptance testing is NOT about running scripts and checking exit codes. The agent oversees the entire process, making judgment calls about quality.
 
 For each test case, evaluate:
+
 - Did the system understand the user's intent?
 - Was the response helpful and appropriate?
 - Was the interaction efficient or wasteful?
@@ -42,6 +45,7 @@ For each test case, evaluate:
 ### 3. Acceptance Criteria Come From Specs
 
 Find acceptance criteria in:
+
 - Feature specifications
 - User stories
 - Design documents
@@ -52,6 +56,7 @@ Find acceptance criteria in:
 ### 4. Failures Are Not Excused
 
 When a test fails:
+
 - Document exactly what happened
 - Create a new task to address the failure
 - Do NOT mark the test as "partial pass" or "acceptable given constraints"
@@ -75,6 +80,7 @@ tags: [qa, acceptance-test]
 ```
 
 The task body must include:
+
 1. **Scope**: What feature/behavior is being tested
 2. **Acceptance Criteria**: From the spec (with source reference)
 3. **Test Cases**: Each with trigger, expected outcome, evaluation method
@@ -83,6 +89,7 @@ The task body must include:
 ### Step 2: Get Plan Approved
 
 Before execution:
+
 - Review the plan for completeness
 - Verify all acceptance criteria are testable
 - Confirm qualitative rubric is appropriate
@@ -91,6 +98,7 @@ Before execution:
 ### Step 3: Execute Tests
 
 For each test case:
+
 1. Set up preconditions
 2. Execute the trigger action
 3. Capture all outputs (responses, transcripts, side effects)
@@ -101,6 +109,7 @@ For each test case:
 ### Step 4: Report Results
 
 Create a test report with:
+
 - Summary table (test case → result)
 - Qualitative scores with evidence
 - Detailed findings for each test
@@ -109,6 +118,7 @@ Create a test report with:
 ### Step 5: Handle Failures
 
 For each failure:
+
 1. Create a new task describing the issue
 2. Link it to the test plan task
 3. Set appropriate priority based on severity

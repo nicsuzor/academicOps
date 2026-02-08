@@ -63,11 +63,11 @@ Workflows referenced: hydrate, framework-gate, constraint-check (see `workflows/
 
 ### Key Workflows
 
-| Workflow | Purpose | Location |
-|----------|---------|----------|
-| [[hydrate]] | Main hydration decision process | `workflows/hydrate.md` |
-| [[framework-gate]] | First check - detect framework modifications | `workflows/framework-gate.md` |
-| [[constraint-check]] | Verify plan satisfies workflow constraints | `workflows/constraint-check.md` |
+| Workflow             | Purpose                                      | Location                        |
+| -------------------- | -------------------------------------------- | ------------------------------- |
+| [[hydrate]]          | Main hydration decision process              | `workflows/hydrate.md`          |
+| [[framework-gate]]   | First check - detect framework modifications | `workflows/framework-gate.md`   |
+| [[constraint-check]] | Verify plan satisfies workflow constraints   | `workflows/constraint-check.md` |
 
 ### Design Principles
 
@@ -117,6 +117,7 @@ The hydrator interprets the workflow for this specific task, breaking it into co
 
 ```markdown
 ## Execution Steps
+
 1. Read parser.py and understand the type error
 2. Implement the fix
 3. CHECKPOINT: Run pytest to verify fix works
@@ -143,12 +144,12 @@ The hydrator reads WORKFLOWS.md to select the appropriate workflow based on user
 
 The hydrator follows the **Knowledge Retrieval Hierarchy** to inform workflow selection and step planning:
 
-| Tier | Source | What |
-|------|--------|------|
-| **1** | **Memory Server** | PRIMARY: Semantic search for related knowledge (mcp__memory) |
-| **2** | **Framework Specs** | SECONDARY: AXIOMS, HEURISTICS, and pre-loaded indices |
+| Tier  | Source              | What                                                                  |
+| ----- | ------------------- | --------------------------------------------------------------------- |
+| **1** | **Memory Server**   | PRIMARY: Semantic search for related knowledge (mcp__memory)          |
+| **2** | **Framework Specs** | SECONDARY: AXIOMS, HEURISTICS, and pre-loaded indices                 |
 | **3** | **External Search** | TERTIARY: GitHub or Web search when internal sources are insufficient |
-| **4** | **Transcripts** | LAST RESORT: Raw session logs for very recent context |
+| **4** | **Transcripts**     | LAST RESORT: Raw session logs for very recent context                 |
 
 **Total budget**: ~450 tokens of context for the hydrator itself (Tier 1 & 2). Tier 3 & 4 are suggested as execution steps for the main agent.
 
@@ -160,15 +161,15 @@ The hydrator receives pre-loaded indices to enable routing decisions without run
 
 [[INDEX.md]] is the authoritative source pointing to all sub-indices:
 
-| Index | Purpose | Always Loaded |
-|-------|---------|---------------|
-| [[SKILLS.md]] | Skill invocation patterns | Yes |
-| [[WORKFLOWS.md]] | Workflow decision tree | Yes |
-| [[AXIOMS.md]] | Inviolable principles (full) | Yes |
-| [[HEURISTICS.md]] | Guidelines (full) | Yes |
-| [[RULES.md]] | Quick-reference P# lookup | On demand |
-| [[indices/FILES.md]] | File discovery | On demand |
-| [[indices/PATHS.md]] | Resolved paths | On demand |
+| Index                | Purpose                      | Always Loaded |
+| -------------------- | ---------------------------- | ------------- |
+| [[SKILLS.md]]        | Skill invocation patterns    | Yes           |
+| [[WORKFLOWS.md]]     | Workflow decision tree       | Yes           |
+| [[AXIOMS.md]]        | Inviolable principles (full) | Yes           |
+| [[HEURISTICS.md]]    | Guidelines (full)            | Yes           |
+| [[RULES.md]]         | Quick-reference P# lookup    | On demand     |
+| [[indices/FILES.md]] | File discovery               | On demand     |
+| [[indices/PATHS.md]] | Resolved paths               | On demand     |
 
 ### Index Schema
 
@@ -249,6 +250,7 @@ The hydrator returns structured guidance:
 
 ```markdown
 ## Execution Steps
+
 1. [Step description]
 2. CHECKPOINT: [verification]
 3. [Final step]
@@ -379,6 +381,7 @@ check the custodiet agent -- make sure it doesn't use inline python:
 
 ```markdown
 ## Execution Steps
+
 1. Create task to track this issue
 2. Read custodiet agent and identify inline Python usage
 3. Create packaged script in lib/ for the operation
@@ -422,6 +425,7 @@ what workflows are available?
 
 ```markdown
 ## Execution Steps
+
 1. Answer the question about available workflows
 ```
 ````
@@ -454,6 +458,7 @@ figure out why the memory server isn't returning results
 
 ```markdown
 ## Execution Steps
+
 1. Create task to track investigation
 2. Check memory server health with check_database_health
 3. Test retrieve_memory with a known query

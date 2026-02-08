@@ -9,6 +9,7 @@ fast-indexer /path/to/markdown/notes --output graph.json
 ```
 
 Arguments:
+
 - `ROOT`: The root directory to scan (default: current directory).
 - `--output`: The path to the output JSON file (default: `graph.json`).
 

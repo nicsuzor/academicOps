@@ -5,11 +5,13 @@ Answer and HALT. No modifications.
 ## When to Use
 
 Use this workflow when:
+
 - "What is...", "How does...", "Where is..."
 - Pure information request
 - No actions are required
 
 Do NOT use for:
+
 - "Can you...", "Please...", "Fix..." (action is required)
 - Questions that lead to investigation (use debugging)
 - Requests that need file modifications (use design)

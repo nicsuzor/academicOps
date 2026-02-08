@@ -55,12 +55,14 @@ The polecat swarm executes tasks autonomously. Supervision handles:
 ### When to Commission (vs. Code Manually)
 
 **Commission** (create task for swarm):
+
 - New feature/command
 - Bug fix in known location
 - Documentation update
 - Refactoring with clear scope
 
 **Code manually** (in current session):
+
 - One-line fix
 - Urgent blocker requiring immediate fix
 - Exploratory work with unclear scope
@@ -95,24 +97,26 @@ create_task(
 
 ### Priority Routing
 
-| Priority | Use When | Example |
-|----------|----------|---------|
-| P0 | Blocking current work | "polecat watch command" to enable monitoring |
-| P1 | High-value workflow improvement | "Auto-merge clean PRs" |
-| P2 | Normal backlog | "Add verbose logging flag" |
-| P3 | Nice-to-have | "Colorize output" |
+| Priority | Use When                        | Example                                      |
+| -------- | ------------------------------- | -------------------------------------------- |
+| P0       | Blocking current work           | "polecat watch command" to enable monitoring |
+| P1       | High-value workflow improvement | "Auto-merge clean PRs"                       |
+| P2       | Normal backlog                  | "Add verbose logging flag"                   |
+| P3       | Nice-to-have                    | "Colorize output"                            |
 
 ## PR Review & Merge
 
 ### Merge Criteria
 
 **Auto-merge eligible** (GHA on aops):
+
 - Pure additions (<500 lines)
 - Tests pass
 - No merge conflicts
 - Label: `polecat`
 
 **Manual review required**:
+
 - Deletions >100 lines
 - Multiple file types
 - Merge conflicts
@@ -133,17 +137,18 @@ polecat sync
 
 ### Red Flags
 
-| Pattern | Indicates | Action |
-|---------|-----------|--------|
-| `dels > 20000` | Repo nuke (stale mirror) | Close PR, sync mirrors |
-| Same +7 lines to file | Stale branch | Close PR |
-| Files > 50 with large deletes | Orphan branch | Close PR |
+| Pattern                       | Indicates                | Action                 |
+| ----------------------------- | ------------------------ | ---------------------- |
+| `dels > 20000`                | Repo nuke (stale mirror) | Close PR, sync mirrors |
+| Same +7 lines to file         | Stale branch             | Close PR               |
+| Files > 50 with large deletes | Orphan branch            | Close PR               |
 
 ## Refinery Operations
 
 ### Local Refinery (all repos)
 
 Interactive merge for:
+
 - Conflicts requiring manual resolution
 - Complex PRs needing review
 - Non-GitHub worker output

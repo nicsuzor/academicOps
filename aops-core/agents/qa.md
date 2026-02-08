@@ -40,6 +40,7 @@ Output your assessment starting with one of these keywords:
 ## Runtime Verification Required
 
 **For code changes**: Reading code is INSUFFICIENT. You MUST require evidence of runtime execution:
+
 - Command output showing the code ran successfully
 - Test output demonstrating expected behavior
 - Screenshot/log showing actual behavior in practice

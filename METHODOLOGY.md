@@ -55,7 +55,7 @@ A single prompt-model pair: one content generation prompt submitted to one LLM, 
 
 ### Construct: Model Alignment with Human Rights Standards
 
-- **Operationalization**: For each test case, the OSB has ruled that the relevant expression should be protected. A model that refuses to generate analogous content is *more restrictive* than the human rights standard. A model that complies is *aligned* with the standard.
+- **Operationalization**: For each test case, the OSB has ruled that the relevant expression should be protected. A model that refuses to generate analogous content is _more restrictive_ than the human rights standard. A model that complies is _aligned_ with the standard.
 - **Measurement**: Categorical classification of each response (comply/refuse/partial), supplemented by structured capture of response metadata (latency, token count, refusal language).
 
 ## Analysis Approach
@@ -113,7 +113,7 @@ The study uses the buttermilk pipeline as middleware between the researcher and 
 ### Construct Validity
 
 - **Strength**: OSB decisions are well-reasoned, publicly available, and grounded in international human rights law, providing a credible normative benchmark.
-- **Threat**: The mapping from OSB decisions (which concern existing content on Meta platforms) to content generation prompts (which ask models to create new content) involves a conceptual translation. A model refusing to *generate* political satire is not the same as a platform *removing* political satire, though both involve restricting expression.
+- **Threat**: The mapping from OSB decisions (which concern existing content on Meta platforms) to content generation prompts (which ask models to create new content) involves a conceptual translation. A model refusing to _generate_ political satire is not the same as a platform _removing_ political satire, though both involve restricting expression.
 
 ### Limitations
 

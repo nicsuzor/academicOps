@@ -51,11 +51,11 @@ This noise trains agents to skim past system-reminders, causing important guidan
 
 ### Implications
 
-| Scenario | Hooks Fire? |
-|----------|-------------|
-| MCP tool in plugin A, hooks defined in plugin A | ✓ Yes |
-| MCP tool in plugin A, hooks defined in plugin B | ✗ No |
-| Built-in tool (Bash, Read, etc.), hooks in any plugin | ✓ Yes |
+| Scenario                                              | Hooks Fire? |
+| ----------------------------------------------------- | ----------- |
+| MCP tool in plugin A, hooks defined in plugin A       | ✓ Yes       |
+| MCP tool in plugin A, hooks defined in plugin B       | ✗ No        |
+| Built-in tool (Bash, Read, etc.), hooks in any plugin | ✓ Yes       |
 
 ### Example: Task Manager
 
@@ -77,6 +77,7 @@ aops-tools/
 ### Debugging Hook Scope Issues
 
 If hooks aren't firing for an MCP tool:
+
 1. Check which plugin defines the MCP server (`.mcp.json`)
 2. Check which plugin defines the hooks (`hooks/hooks.json`)
 3. Ensure they're the **same plugin**
@@ -101,6 +102,7 @@ When gates block tool execution, the feedback mechanism differs by client:
 ### Required Fix (task aops-ee4bbecc)
 
 When `verdict == "deny"` and `client == "gemini"`:
+
 1. Write `context_injection` to **stderr**
 2. Exit with **code 2**
 

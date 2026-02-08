@@ -2,8 +2,10 @@
 title: ADHD Accommodations and Work Style
 type: instructions
 ---
+
 <!-- NS: reduce some of the detail to make this a good example doc. do the same for other files in this directory, and create a README.md that explains what this dir is. -->
 <!-- @claude 2026-01-22: Acknowledged. Task created to simplify example docs and add README explaining the example/ directory purpose. -->
+
 # ADHD Accommodations & Work Style
 
 - I'm `nic`, a law professor working on fairness and equality in tech.

@@ -14,16 +14,18 @@ permalink: commands/pull
 
 ### Step 1: Get and Claim a Task
 
-1.  **List ready tasks**: Call `mcp__plugin_aops-tools_task_manager__list_tasks(status="active", limit=10)` to find ready tasks.
-2.  **Select task**: Review the list and select the highest priority task (lowest priority number, e.g., P0).
-3.  **Claim task**: Call `mcp__plugin_aops-tools_task_manager__update_task(id="<task-id>", status="in_progress", assignee="polecat")` to claim it.
+1. **List ready tasks**: Call `mcp__plugin_aops-tools_task_manager__list_tasks(status="active", limit=10)` to find ready tasks.
+2. **Select task**: Review the list and select the highest priority task (lowest priority number, e.g., P0).
+3. **Claim task**: Call `mcp__plugin_aops-tools_task_manager__update_task(id="<task-id>", status="in_progress", assignee="polecat")` to claim it.
 
 **If a specific task ID is provided** (`/pull <task-id>`):
-1.  Call `mcp__plugin_aops-tools_task_manager__get_task(id="<task-id>")` to load it.
-2.  If the task has children (leaf=false), navigate to the first ready leaf subtask instead.
-3.  Claim with `mcp__plugin_aops-tools_task_manager__update_task(id="<task-id>", status="in_progress", assignee="polecat")`.
+
+1. Call `mcp__plugin_aops-tools_task_manager__get_task(id="<task-id>")` to load it.
+2. If the task has children (leaf=false), navigate to the first ready leaf subtask instead.
+3. Claim with `mcp__plugin_aops-tools_task_manager__update_task(id="<task-id>", status="in_progress", assignee="polecat")`.
 
 **If no tasks are ready**:
+
 - Check active/inbox tasks for any that can be worked on.
 - If none exist, report and halt.
 
@@ -44,12 +46,14 @@ After claiming, check if the task has `soft_depends_on` relationships:
 The following completed tasks provide informational context for this task:
 
 ### [<soft-dep-id>] <title>
+
 <body excerpt or summary>
 
 ---
 ```
 
 **Important**: Soft dependencies are ADVISORY only:
+
 - Reading them is recommended but not mandatory
 - Missing/incomplete soft deps do NOT block task execution
 - Context injection helps but agent can proceed without it
@@ -141,6 +145,7 @@ mcp__task_manager__update_task(
 ```
 
 **Role assignment logic:**
+
 - `assignee="nic"` - Requires human judgment, strategic decisions, or external context
 - `assignee="polecat"` - Can be automated but needs clarification on scope/approach
 - Leave unassigned if role unclear
@@ -163,6 +168,7 @@ mcp__plugin_aops-tools_task_manager__decompose_task(
 ```
 
 **Subtask explosion heuristics:**
+
 - Each subtask should pass EXECUTE criteria (15-60 min, clear deliverable)
 - Break by natural boundaries: files, features, or dependencies
 - Order subtasks logically (dependencies first)
@@ -192,11 +198,13 @@ After successful execution (EXECUTE path only), finalize the task:
 Detect via: current directory is under `~/.aops/polecat/` or `$POLECAT_HOME/polecat/`
 
 Run `polecat finish` via Bash:
+
 ```bash
 polecat finish
 ```
 
 This command:
+
 1. Auto-commits any uncommitted changes (safeguard)
 2. Pushes the branch to origin
 3. Sets task status to `merge_ready`
@@ -205,6 +213,7 @@ This command:
 #### If NOT in a Polecat Worktree
 
 For tasks executed outside the polecat worktree system (e.g., direct `/pull` in a normal repo), use:
+
 ```
 mcp__plugin_aops-tools_task_manager__complete_task(id="<task-id>")
 ```

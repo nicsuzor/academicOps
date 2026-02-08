@@ -7,7 +7,7 @@ description: |
   Alerts agent that hydrator should be invoked, but allows proceeding.
 ---
 
-⚠️  HYDRATION GATE (warn-only): Hydrator not invoked yet.
+⚠️ HYDRATION GATE (warn-only): Hydrator not invoked yet.
 
 This session is in WARN mode for testing. In production, this would BLOCK all tools.
 

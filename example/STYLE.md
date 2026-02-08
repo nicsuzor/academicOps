@@ -27,13 +27,13 @@ You tend to converge toward generic, "on distribution" outputs. This creates wha
 
 **Font Preferences by Context:**
 
-| Context | Primary | Alternatives | Notes |
-|---------|---------|--------------|-------|
-| **Terminal/Code** | BlexMono Nerd Font | IBM Plex Mono | 12-14pt, Nerd Font variant for icons |
-| **Academic PDFs** | Baskervville (body), BlexMono (code) | STIX Two Text for math | Serif for formal documents |
-| **Web UI** | Space Grotesk, Host Grotesk | Mukta, Spline Sans | Distinctive sans-serif |
-| **Accessibility** | Atkinson Hyperlegible | — | When legibility is paramount |
-| **Display/Headers** | Orbitron, Zen Antique | — | Context-dependent decorative |
+| Context             | Primary                              | Alternatives           | Notes                                |
+| ------------------- | ------------------------------------ | ---------------------- | ------------------------------------ |
+| **Terminal/Code**   | BlexMono Nerd Font                   | IBM Plex Mono          | 12-14pt, Nerd Font variant for icons |
+| **Academic PDFs**   | Baskervville (body), BlexMono (code) | STIX Two Text for math | Serif for formal documents           |
+| **Web UI**          | Space Grotesk, Host Grotesk          | Mukta, Spline Sans     | Distinctive sans-serif               |
+| **Accessibility**   | Atkinson Hyperlegible                | —                      | When legibility is paramount         |
+| **Display/Headers** | Orbitron, Zen Antique                | —                      | Context-dependent decorative         |
 
 **Typography Principles:**
 

@@ -45,18 +45,21 @@ Tier 3: JIT Injection (prompt-hydrator or on-demand)
 **Who reads**: ALL agents, at session start.
 
 **Contains** (ESSENTIAL only):
+
 - Framework tool inventory (what MCP servers exist, what they do)
 - Task system usage (create, update, complete, search)
 - Memory system usage (store, retrieve, remember skill)
 - Git/submodule handling rules
 
 **Does NOT contain**:
+
 - Detailed workflows (-> Tier 3)
 - Heuristics/axioms (-> Tier 3)
 - Skill-specific instructions (-> Tier 3)
 - Project-specific context (-> Tier 2)
 
 **Contract**:
+
 - Must fit in ~2KB (token budget: ~500 tokens)
 - Every line must answer: "Does an agent need this to START working?"
 - If no, move to Tier 3
@@ -68,12 +71,14 @@ Tier 3: JIT Injection (prompt-hydrator or on-demand)
 **Who reads**: Agents working in a project directory.
 
 **Contains**:
+
 - Project-specific conventions
 - Local tool configuration
 - Domain knowledge essential for the project
 - Links to project documentation
 
 **Contract**:
+
 - Optional - projects without this file use Tier 1 only
 - Must be project-specific (no framework content)
 - Replaces per-project CLAUDE.md for framework-aware projects
@@ -83,10 +88,12 @@ Tier 3: JIT Injection (prompt-hydrator or on-demand)
 **Mechanism**: `prompt-hydrator` agent or skill-specific loading.
 
 **Who uses**:
+
 - Agents WITH prompt hooks: Hydrator loads context based on task
 - Agents WITHOUT prompt hooks: MUST read `$AOPS/aops-core/agents/prompt-hydrator.md` and self-hydrate
 
 **Contains** (loaded on-demand):
+
 - Workflow instructions
 - Skill/command documentation
 - Heuristics relevant to task
@@ -94,22 +101,24 @@ Tier 3: JIT Injection (prompt-hydrator or on-demand)
 - Historical context from memory
 
 **Contract**:
+
 - Never front-load speculatively
 - Load only what the current task requires
 - Hydrator decides relevance, not session-start hooks
 
 ## File Inventory
 
-| Tier | File | Purpose | Size Target |
-|------|------|---------|-------------|
-| 1 | `$AOPS/CORE.md` | Framework tools | ~2KB |
-| 2 | `$cwd/.agent/CORE.md` | Project context | ~1KB |
-| 3 | `$AOPS/aops-core/agents/prompt-hydrator.md` | Fallback for non-hooked agents | ~1KB |
-| 3 | Various | JIT-loaded by hydrator | As needed |
+| Tier | File                                        | Purpose                        | Size Target |
+| ---- | ------------------------------------------- | ------------------------------ | ----------- |
+| 1    | `$AOPS/CORE.md`                             | Framework tools                | ~2KB        |
+| 2    | `$cwd/.agent/CORE.md`                       | Project context                | ~1KB        |
+| 3    | `$AOPS/aops-core/agents/prompt-hydrator.md` | Fallback for non-hooked agents | ~1KB        |
+| 3    | Various                                     | JIT-loaded by hydrator         | As needed   |
 
 ## What Was Removed (from v1 spec)
 
 The previous spec mandated 4 files at session start:
+
 - FRAMEWORK-PATHS.md -> Merged into CORE.md (essential paths only)
 - AXIOMS.md -> Tier 3 (JIT when relevant)
 - HEURISTICS.md -> Tier 3 (JIT when relevant)
@@ -145,6 +154,7 @@ fi
 ### Non-Hooked Agents
 
 Agents spawned without hooks (e.g., subagents via Task tool) must:
+
 1. Read `$AOPS/aops-core/agents/prompt-hydrator.md`
 2. Self-assess what context they need
 3. Load relevant files before executing
@@ -152,12 +162,14 @@ Agents spawned without hooks (e.g., subagents via Task tool) must:
 ## Verification
 
 ### Test: Tier 1 loads correctly
+
 ```bash
 # Session starts with CORE.md content visible
 claude --print-context | grep "Framework tool inventory"
 ```
 
 ### Test: Tier 2 loads when present
+
 ```bash
 mkdir -p .agent
 echo "# Project Context" > .agent/CORE.md
@@ -165,6 +177,7 @@ echo "# Project Context" > .agent/CORE.md
 ```
 
 ### Test: Non-hooked agent self-hydrates
+
 ```bash
 # Spawn subagent, verify it reads prompt-hydrator.md
 ```

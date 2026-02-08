@@ -16,7 +16,7 @@ created: 2026-01-21
 - [[hooks/user_prompt_submit.py]] - Sets `gates_bypassed` flag on `.` prefix
 - [[lib/session_state.py]] - Session state management including `current_task` tracking
 
-*Note: Spec is in draft status. Implementation is in WARN mode (Phase 1).*
+_Note: Spec is in draft status. Implementation is in WARN mode (Phase 1)._
 
 ## Problem Statement
 
@@ -65,39 +65,39 @@ Tools that require task binding:
 
 ### Always Require Task
 
-| Tool | Reason |
-|------|--------|
-| `Write` | Creates/overwrites files |
-| `Edit` | Modifies existing files |
+| Tool           | Reason                     |
+| -------------- | -------------------------- |
+| `Write`        | Creates/overwrites files   |
+| `Edit`         | Modifies existing files    |
 | `NotebookEdit` | Modifies Jupyter notebooks |
 
 ### Conditional (Bash Commands)
 
-| Command Pattern | Requires Task | Reason |
-|----------------|---------------|--------|
-| `rm`, `rm -rf` | Yes | Deletes files |
-| `mv`, `cp` | Yes | Moves/copies files |
-| `mkdir`, `touch` | Yes | Creates filesystem entries |
-| `chmod`, `chown` | Yes | Modifies permissions |
-| `git commit`, `git push` | Yes | Commits/pushes changes |
-| `npm install`, `pip install` | Yes | Modifies dependencies |
-| `sed -i`, `awk -i` | Yes | In-place file edits |
-| `cat`, `head`, `tail` | No | Read-only |
-| `ls`, `find`, `grep` | No | Read-only |
-| `git status`, `git diff`, `git log` | No | Read-only |
-| `npm list`, `pip list` | No | Read-only |
+| Command Pattern                     | Requires Task | Reason                     |
+| ----------------------------------- | ------------- | -------------------------- |
+| `rm`, `rm -rf`                      | Yes           | Deletes files              |
+| `mv`, `cp`                          | Yes           | Moves/copies files         |
+| `mkdir`, `touch`                    | Yes           | Creates filesystem entries |
+| `chmod`, `chown`                    | Yes           | Modifies permissions       |
+| `git commit`, `git push`            | Yes           | Commits/pushes changes     |
+| `npm install`, `pip install`        | Yes           | Modifies dependencies      |
+| `sed -i`, `awk -i`                  | Yes           | In-place file edits        |
+| `cat`, `head`, `tail`               | No            | Read-only                  |
+| `ls`, `find`, `grep`                | No            | Read-only                  |
+| `git status`, `git diff`, `git log` | No            | Read-only                  |
+| `npm list`, `pip list`              | No            | Read-only                  |
 
 ### Never Require Task
 
-| Tool | Reason |
-|------|--------|
-| `Read` | Read-only |
-| `Glob` | Read-only |
-| `Grep` | Read-only |
-| `Task` | Spawning subagents (not destructive) |
-| `WebFetch` | Read-only external |
-| `WebSearch` | Read-only external |
-| MCP read tools | Read-only |
+| Tool           | Reason                               |
+| -------------- | ------------------------------------ |
+| `Read`         | Read-only                            |
+| `Glob`         | Read-only                            |
+| `Grep`         | Read-only                            |
+| `Task`         | Spawning subagents (not destructive) |
+| `WebFetch`     | Read-only external                   |
+| `WebSearch`    | Read-only external                   |
+| MCP read tools | Read-only                            |
 
 ## Bypass Conditions
 
@@ -114,6 +114,7 @@ This sets `gates_bypassed=true` in session state, which all gates respect.
 ### 2. Subagent Sessions
 
 Subagents (detected via `CLAUDE_AGENT_TYPE` env var) bypass the gate because:
+
 - They inherit the parent session's task context
 - The parent is responsible for task binding
 - Blocking subagents would break legitimate workflows
@@ -121,6 +122,7 @@ Subagents (detected via `CLAUDE_AGENT_TYPE` env var) bypass the gate because:
 ### 3. Task Operations
 
 The tools that establish task binding are always allowed:
+
 - `mcp__plugin_aops-core_task_manager__create_task`
 - `mcp__plugin_aops-core_task_manager__update_task`
 
@@ -209,12 +211,12 @@ The task_required_gate will BLOCK Write/Edit until a task is bound to this sessi
 
 With task binding enforced by the gate, `/q` becomes redundant:
 
-| /q Functionality | New Location |
-|-----------------|--------------|
-| Hydrate prompt | Standard hydrator (already invoked) |
-| Check for duplicates | Hydrator guidance includes search step |
-| Place in hierarchy | Hydrator guidance includes parent finding |
-| Create task(s) | Main agent follows hydrator guidance |
+| /q Functionality     | New Location                              |
+| -------------------- | ----------------------------------------- |
+| Hydrate prompt       | Standard hydrator (already invoked)       |
+| Check for duplicates | Hydrator guidance includes search step    |
+| Place in hierarchy   | Hydrator guidance includes parent finding |
+| Create task(s)       | Main agent follows hydrator guidance      |
 
 The `/q` command file can be removed. Its functionality is absorbed by the default hydration workflow.
 

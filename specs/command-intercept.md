@@ -27,6 +27,7 @@ Claude Code's built-in tools (Glob, Grep, etc.) have fixed behaviors that someti
 - Other tools may need parameter normalization or augmentation
 
 Currently, the only options are:
+
 1. Block the tool entirely (too restrictive)
 2. Accept the default behavior (wastes context on noise)
 

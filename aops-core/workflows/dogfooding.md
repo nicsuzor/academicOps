@@ -27,18 +27,19 @@ EXECUTE → OBSERVE → CODIFY
 ### 1. Execute (Do the Work)
 
 Complete the task while staying aware of friction points:
+
 - What steps feel awkward or unclear?
 - Where did you need to ask for clarification?
 - What context was missing?
 
 ### 2. Observe (Capture Learnings)
 
-| Observation | Action |
-|-------------|--------|
-| One-time friction | `/log [observation]` → continue |
-| Recurring pattern (3+) | Check HEURISTICS.md → `/learn` if missing |
-| Blocking current task | Fix minimally, note for codification |
-| Better pattern discovered | Document what worked |
+| Observation               | Action                                    |
+| ------------------------- | ----------------------------------------- |
+| One-time friction         | `/log [observation]` → continue           |
+| Recurring pattern (3+)    | Check HEURISTICS.md → `/learn` if missing |
+| Blocking current task     | Fix minimally, note for codification      |
+| Better pattern discovered | Document what worked                      |
 
 ### 3. Codify (Improve the Framework)
 
@@ -46,19 +47,21 @@ Complete the task while staying aware of friction points:
 
 After completing work, ask: "What did I learn that should become part of the framework?"
 
-| Learning Type | Codification Target |
-|---------------|---------------------|
-| Better workflow steps | Update workflow .md file |
-| Missing guardrail | Add to constraint-check or hooks |
-| Useful question pattern | Add to AskUserQuestion templates |
-| New heuristic | Add to HEURISTICS.md via `/learn` |
+| Learning Type           | Codification Target               |
+| ----------------------- | --------------------------------- |
+| Better workflow steps   | Update workflow .md file          |
+| Missing guardrail       | Add to constraint-check or hooks  |
+| Useful question pattern | Add to AskUserQuestion templates  |
+| New heuristic           | Add to HEURISTICS.md via `/learn` |
 
 **Example from task recategorization session:**
+
 - Executed: Interactive task recategorization with user
 - Observed: Presenting suggestions with confidence + getting confirmation works better than guessing
 - Codified: Updated classify-task.md with confirmation pattern
 
 **Example from daily note synthesis (2026-01-27):**
+
 - Executed: Retroactive update of yesterday's daily note from 40 session JSONs
 - Observed:
   - 35/40 session JSONs had empty accomplishment arrays (Gemini mining gap)

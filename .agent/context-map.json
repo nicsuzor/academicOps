@@ -1,28 +1,28 @@
 {
-    "docs": [
-        {
-            "topic": "hooks",
-            "keywords": [
-                "hook",
-                "gate",
-                "router",
-                "event",
-                "userpromptsubmit",
-                "hydration"
-            ],
-            "path": "docs/hooks.md",
-            "description": "Guide for developing agent hooks and gates"
-        },
-        {
-            "topic": "project_structure",
-            "keywords": [
-                "structure",
-                "layout",
-                "where is",
-                "file organization"
-            ],
-            "path": "README.md",
-            "description": "Project overview and structure"
-        }
-    ]
+  "docs": [
+    {
+      "topic": "hooks",
+      "keywords": [
+        "hook",
+        "gate",
+        "router",
+        "event",
+        "userpromptsubmit",
+        "hydration"
+      ],
+      "path": "docs/hooks.md",
+      "description": "Guide for developing agent hooks and gates"
+    },
+    {
+      "topic": "project_structure",
+      "keywords": [
+        "structure",
+        "layout",
+        "where is",
+        "file organization"
+      ],
+      "path": "README.md",
+      "description": "Project overview and structure"
+    }
+  ]
 }

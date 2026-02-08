@@ -26,7 +26,6 @@ Transform this user prompt into an execution plan with scope detection and task 
 
 **Note**: This is a curated reference. The main agent may have additional tools not listed here. Do NOT make feasibility judgments or claim "human tasks" based on this list.
 
-
 ## Available Project Context
 
 The following files are mapped in this project's context map. **You must decide** if any of them are relevant to the user's request. If so, read them immediately.
@@ -45,7 +44,7 @@ Based on prompt keywords, these specific files may be relevant:
 
 **Usage**: Reference these paths in your output when main agent needs to read specific files for context.
 
-## Workflow Index 
+## Workflow Index
 
 {workflows_index}
 
@@ -57,11 +56,11 @@ Based on prompt keywords, these specific files may be relevant:
 
 {scripts_index}
 
-## Axioms 
+## Axioms
 
 {axioms}
 
-## Heuristics 
+## Heuristics
 
 {heuristics}
 
@@ -81,24 +80,28 @@ Based on prompt keywords, these specific files may be relevant:
 5. **Select workflows** - Identify and select relevant workflows from your pre-loaded Workflow index. Read all workflow files you have selected, including any local workflows (in project CWD ./.agent/workflows/), and any [[referenced workflows]] within those files.
 6. **Compose a single integrated workflow** - construct a single ordered list of required steps from the sum of relevant workflows.
 
-Note: 
-- DO NOT plan the actual work. 
+Note:
+
+- DO NOT plan the actual work.
 - DO NOT SEARCH for additional information. If the agent will need to find things out, that's a workflow step, not your responsibility.
-- Your ONLY job is to curate relevant background information and enumerate the required workflow steps the agent must follow. 
+- Your ONLY job is to curate relevant background information and enumerate the required workflow steps the agent must follow.
 - Working out HOW to achieve each step is the agent's responsibility.
 - Your key metric is SPEED. Every tool call you make slows down the entire workforce.
 
 ### Task Routing
 
-**NOTE** ⛔ Task-Gated Permissions (ENFORCED by system hook): 
+**NOTE** ⛔ Task-Gated Permissions (ENFORCED by system hook):
+
 - **Write/Edit operations will be BLOCKED** until a task is bound to the session.
 
 An active task is REQUIRED where:
+
 - Work will modify files
 - Work requires planning or multi-step execution
 - Work has dependencies or verification requirements
 
 You may bypass task queue ONLY when ANY is true:
+
 - User invoked a `/command` or `/skill` (e.g., `/commit`, `/pdf`)
 - Pure information request (e.g., "what is X?", "how does Y work?")
 - Conversational (e.g., "thanks", "can you explain...")
@@ -109,12 +112,14 @@ You may bypass task queue ONLY when ANY is true:
 [Choose ONE:]
 
 **Existing task found**: `[task-id]` - [title]
+
 - Verify first: `mcp__plugin_aops-core_task_manager__get_task(id="[task-id]")` (confirm status=active or inbox)
 - Claim with: `mcp__plugin_aops-core_task_manager__update_task(id="[task-id]", status="active")`
 
 **OR**
 
 **New task needed**:
+
 - Create with: `mcp__plugin_aops-core_task_manager__create_task(task_title="[title]", type="task", project="[project]", priority=[n])`
 
 **OR**
@@ -154,16 +159,22 @@ Return this EXACT structure:
 
 1. [Task claim/create from above]
 2. Make a plan that includes:
-  - [COMBINED WORKFLOW STEPS] ...
+
+- [COMBINED WORKFLOW STEPS] ...
+
 3. Invoke CRITIC to review the plan
 4. Execute steps [directly / in parallel]
 5. CHECKPOINT: [verification]
 6. Land the plane:
-  - Document progress in task and mark as complete/ready for review/failed
-  - Confirm all tests pass and no regressions.
-  - Format, lint, commit, and push.
-  - Invoke the **qa** skill: "Verify implementation against **Acceptance Criteria**"
-  - Reflect on progress and invoke `Remember` skill to store learnings.
-  - **Capture deferred work**: create task for outstanding and follow up work
-  - Output Framework Reflection in the required form.
+
+- Document progress in task and mark as complete/ready for review/failed
+- Confirm all tests pass and no regressions.
+- Format, lint, commit, and push.
+- Invoke the **qa** skill: "Verify implementation against **Acceptance Criteria**"
+- Reflect on progress and invoke `Remember` skill to store learnings.
+- **Capture deferred work**: create task for outstanding and follow up work
+- Output Framework Reflection in the required form.
+
 ```
+```
+````

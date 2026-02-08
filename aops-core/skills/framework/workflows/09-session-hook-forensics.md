@@ -30,6 +30,7 @@ tail -20 <session-hooks.jsonl> | jq -c '.'
 ### 1. Locate the Files
 
 Session files come in pairs:
+
 - **Session file**: `<session-id>.jsonl` - The actual conversation
 - **Hooks log**: `YYYYMMDD-HH-<short-id>-hooks.jsonl` - Every hook event
 
@@ -58,14 +59,14 @@ The transcript shows **what the agent did**. Use it to understand the session fl
 
 The hooks log shows **what the framework did**. Key fields:
 
-| Field | Purpose |
-|-------|---------|
-| `hook_event` | Event type: SessionStart, PreToolUse, PostToolUse, SubagentStop, Stop |
-| `tool_name` | Which tool triggered the hook |
-| `output.verdict` | `allow` or `deny` |
-| `output.context_injection` | Message injected into context |
-| `metadata.errors` | Any hook crashes |
-| `metadata.tracebacks` | Full stack traces |
+| Field                      | Purpose                                                               |
+| -------------------------- | --------------------------------------------------------------------- |
+| `hook_event`               | Event type: SessionStart, PreToolUse, PostToolUse, SubagentStop, Stop |
+| `tool_name`                | Which tool triggered the hook                                         |
+| `output.verdict`           | `allow` or `deny`                                                     |
+| `output.context_injection` | Message injected into context                                         |
+| `metadata.errors`          | Any hook crashes                                                      |
+| `metadata.tracebacks`      | Full stack traces                                                     |
 
 ```bash
 # Read last N hook events
@@ -102,6 +103,7 @@ tail -5 <hooks.jsonl> | jq '{
 **Symptom**: Hydrator completed with "HYDRATION RESULT" but subsequent tools blocked.
 
 **Diagnosis**:
+
 ```bash
 # Find PostToolUse for hydrator
 jq 'select(.hook_event == "PostToolUse" and .input.tool_name == "Task")' <hooks.jsonl>
@@ -113,6 +115,7 @@ jq 'select(.metadata.errors[]? | contains("gate_update"))' <hooks.jsonl>
 **Root cause**: The `gate_update` hook crashed before calling `_open_gate()`.
 
 **Example** (from real session):
+
 ```
 errors: ["Gate 'gate_update' failed: 'HookContext' object has no attribute 'tool_output'"]
 ```
@@ -124,6 +127,7 @@ Fix: Check `gates.py` for attribute access on HookContext.
 **Symptom**: Session times out with many SubagentStop events.
 
 **Diagnosis**:
+
 ```bash
 # Count subagent events
 jq 'select(.hook_event == "SubagentStop")' <hooks.jsonl> | wc -l
@@ -139,6 +143,7 @@ jq 'select(.hook_event == "SubagentStop") | .input.agent_id' <hooks.jsonl>
 **Symptom**: Tool denied with specific missing gates listed.
 
 **Diagnosis**:
+
 ```bash
 # Find denied tools with gate status
 jq 'select(.output.verdict == "deny") | {
@@ -148,6 +153,7 @@ jq 'select(.output.verdict == "deny") | {
 ```
 
 **Example output**:
+
 ```
 Tool: Read (read_only)
 Missing: hydration
@@ -166,14 +172,14 @@ Once you identify the issue, document:
 
 ## Reference: Hook Event Types
 
-| Event | When Fired | What to Look For |
-|-------|------------|------------------|
-| `SessionStart` | Session begins | Gate initialization, env setup |
-| `UserPromptSubmit` | User sends message | Gate resets, hydration triggers |
-| `PreToolUse` | Before tool runs | Gate checks, tool blocking |
-| `PostToolUse` | After tool completes | Gate state updates, errors |
-| `SubagentStop` | Subagent finishes | Subagent success/failure |
-| `Stop` | Session ending | QA/handover gate checks |
+| Event              | When Fired           | What to Look For                |
+| ------------------ | -------------------- | ------------------------------- |
+| `SessionStart`     | Session begins       | Gate initialization, env setup  |
+| `UserPromptSubmit` | User sends message   | Gate resets, hydration triggers |
+| `PreToolUse`       | Before tool runs     | Gate checks, tool blocking      |
+| `PostToolUse`      | After tool completes | Gate state updates, errors      |
+| `SubagentStop`     | Subagent finishes    | Subagent success/failure        |
+| `Stop`             | Session ending       | QA/handover gate checks         |
 
 ## Reference: Gate Status Indicators
 
@@ -183,13 +189,13 @@ The `system_message` field shows gate status:
 [📌✗ 💧✗ 🤝✓]
 ```
 
-| Symbol | Gate | Meaning |
-|--------|------|---------|
-| 📌 | task | Task binding status |
-| 💧 | hydration | Hydration gate status |
-| 🤝 | critic | Critic approval status |
-| ✓ | - | Gate open (passed) |
-| ✗ | - | Gate closed (blocked) |
+| Symbol | Gate      | Meaning                |
+| ------ | --------- | ---------------------- |
+| 📌     | task      | Task binding status    |
+| 💧     | hydration | Hydration gate status  |
+| 🤝     | critic    | Critic approval status |
+| ✓      | -         | Gate open (passed)     |
+| ✗      | -         | Gate closed (blocked)  |
 
 ## Example: Full Forensics Session
 
@@ -217,14 +223,15 @@ tail -15 /path/to/hooks.jsonl | jq '{
 
 **Findings**:
 
-| # | Event | Tool | Verdict | Issue |
-|---|-------|------|---------|-------|
-| 8 | PostToolUse | Task (hydrator) | allow | `gate_update` crashed |
-| 9 | PreToolUse | Glob | **deny** | hydration ✗ |
-| 10 | PreToolUse | Read | **deny** | hydration ✗ |
-| 11 | PreToolUse | Read | **deny** | hydration ✗ |
+| #  | Event       | Tool            | Verdict  | Issue                 |
+| -- | ----------- | --------------- | -------- | --------------------- |
+| 8  | PostToolUse | Task (hydrator) | allow    | `gate_update` crashed |
+| 9  | PreToolUse  | Glob            | **deny** | hydration ✗           |
+| 10 | PreToolUse  | Read            | **deny** | hydration ✗           |
+| 11 | PreToolUse  | Read            | **deny** | hydration ✗           |
 
 **Root cause**: Line 8 shows the hydrator completed but `gate_update` failed:
+
 ```
 AttributeError: 'HookContext' object has no attribute 'tool_output'
 ```

@@ -49,6 +49,7 @@ Pull and complete a task. Use MCP task tools directly:
 **Why this works**: Workers call `complete_task()` directly, updating task status in the MCP database. You don't need notifications - just poll the task database.
 
 **Avoid these anti-patterns**:
+
 - ❌ `TaskOutput(block=true)` - deadlock risk
 - ❌ Waiting for `<agent-notification>` or `<task-notification>` - unreliable
 - ❌ Reading `.output` files for status - files are cleaned up after completion
@@ -63,13 +64,13 @@ If maintaining a worker pool:
 
 ## Known Limitations
 
-| Issue | Cause | Workaround |
-|-------|-------|------------|
-| Skill tool denied | Background agents can't prompt | Use MCP tools directly |
-| Bash denied (some) | Same permission issue | Workers can use Glob/Grep/Read |
-| Can't kill agents | KillShell only for bash tasks | Wait for natural completion |
-| Race conditions | Multiple workers claiming same task | Check status/assignee before claiming |
-| **Notifications unreliable** | Empirical observation (P#86) | Use fire-and-forget + MCP polling |
+| Issue                        | Cause                               | Workaround                            |
+| ---------------------------- | ----------------------------------- | ------------------------------------- |
+| Skill tool denied            | Background agents can't prompt      | Use MCP tools directly                |
+| Bash denied (some)           | Same permission issue               | Workers can use Glob/Grep/Read        |
+| Can't kill agents            | KillShell only for bash tasks       | Wait for natural completion           |
+| Race conditions              | Multiple workers claiming same task | Check status/assignee before claiming |
+| **Notifications unreliable** | Empirical observation (P#86)        | Use fire-and-forget + MCP polling     |
 
 ## Efficiency Guidelines
 

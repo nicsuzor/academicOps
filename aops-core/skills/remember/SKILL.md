@@ -103,11 +103,11 @@ Use memory server semantic search for `$ACA_DATA/` content. Never grep for markd
 
 When capturing learnings from debugging/development sessions, **prefer generalizable patterns over implementation specifics**.
 
-| ❌ Too Specific | ✅ Generalizable |
-|----------------|------------------|
+| ❌ Too Specific                                                       | ✅ Generalizable                                                   |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | "AOPS_SESSION_STATE_DIR env var set at SessionStart in router.py:350" | "Configuration should be set once at initialization, no fallbacks" |
-| "Fixed bug in session_paths.py on 2026-01-28" | "Single source of truth prevents cascading ambiguity" |
-| "Gemini uses ~/.gemini/tmp/<hash>/ for state" | "Derive paths from authoritative input, don't hardcode locations" |
+| "Fixed bug in session_paths.py on 2026-01-28"                         | "Single source of truth prevents cascading ambiguity"              |
+| "Gemini uses ~/.gemini/tmp/<hash>/ for state"                         | "Derive paths from authoritative input, don't hardcode locations"  |
 
 **Why this matters**: Specific implementation details are only useful for one code path. Generalizable patterns apply across all future framework work. We're dogfooding - capture what helps NEXT session, not what happened THIS session.
 

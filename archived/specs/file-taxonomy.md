@@ -175,25 +175,25 @@ Every framework file belongs to exactly one category. This classification determ
 
 ## Directory Mapping
 
-| Directory                                                    | Category    | Rationale                       |
-| ------------------------------------------------------------ | ----------- | ------------------------------- |
-| `specs/`                                                     | SPEC        | Framework design specifications |
-| `VISION.md`, `README.md`, `INDEX.md`, `ROADMAP.md`           | SPEC        | Design/status for humans        |
+| Directory                                                          | Category    | Rationale                       |
+| ------------------------------------------------------------------ | ----------- | ------------------------------- |
+| `specs/`                                                           | SPEC        | Framework design specifications |
+| `VISION.md`, `README.md`, `INDEX.md`, `ROADMAP.md`                 | SPEC        | Design/status for humans        |
 | `AXIOMS.md`, `HEURISTICS.md`, `FRAMEWORK-PATHS.md`, `WORKFLOWS.md` | INSTRUCTION | Injected to agents              |
-| `docs/`                                                      | DOCS        | Implementation guides           |
-| `skills/*/references/`                                       | REF         | External domain knowledge       |
-| `scripts/`                                                   | SCRIPT      | Utility scripts                 |
-| `lib/`                                                       | SCRIPT      | Shared library code             |
-| `hooks/*.py`                                                 | SCRIPT      | Hook implementations            |
-| `skills/*/scripts/`                                          | SCRIPT      | Skill automation                |
-| `tests/`                                                     | SCRIPT      | Test code                       |
-| `skills/*/SKILL.md`                                          | INSTRUCTION | Skill entry points              |
-| `skills/*/instructions/`                                     | INSTRUCTION | Detailed workflows              |
-| `skills/*/workflows/`                                        | INSTRUCTION | Multi-step procedures           |
-| `commands/`                                                  | INSTRUCTION | Slash commands                  |
-| `agents/`                                                    | INSTRUCTION | Agent definitions               |
-| `*/templates/`                                               | TEMPLATE    | Output patterns                 |
-| `enforcement-map.md`                                                   | STATE       | Auto-generated                  |
+| `docs/`                                                            | DOCS        | Implementation guides           |
+| `skills/*/references/`                                             | REF         | External domain knowledge       |
+| `scripts/`                                                         | SCRIPT      | Utility scripts                 |
+| `lib/`                                                             | SCRIPT      | Shared library code             |
+| `hooks/*.py`                                                       | SCRIPT      | Hook implementations            |
+| `skills/*/scripts/`                                                | SCRIPT      | Skill automation                |
+| `tests/`                                                           | SCRIPT      | Test code                       |
+| `skills/*/SKILL.md`                                                | INSTRUCTION | Skill entry points              |
+| `skills/*/instructions/`                                           | INSTRUCTION | Detailed workflows              |
+| `skills/*/workflows/`                                              | INSTRUCTION | Multi-step procedures           |
+| `commands/`                                                        | INSTRUCTION | Slash commands                  |
+| `agents/`                                                          | INSTRUCTION | Agent definitions               |
+| `*/templates/`                                                     | TEMPLATE    | Output patterns                 |
+| `enforcement-map.md`                                               | STATE       | Auto-generated                  |
 
 ## Frontmatter Convention
 

@@ -5,6 +5,7 @@ Classify emails into actionable categories.
 ## When to Use
 
 Use this workflow when:
+
 - Processing incoming emails
 - Triaging an email inbox
 
@@ -19,18 +20,22 @@ Before classifying any email, **check sent mail first**. If a matching reply alr
 Each email gets exactly one classification:
 
 **Task** (create a task):
+
 - Signals: "please review...", decisions needed, deadlines, personal invitations
 - Action: Create a task with appropriate priority
 
 **FYI** (archive):
+
 - Signals: "awarded", "approved", outcomes, thank-you messages
 - Action: Archive the email
 
 **Skip** (archive):
+
 - Signals: from noreply@, newsletters, already replied to
 - Action: Archive the email
 
 **Uncertain** (ask user):
+
 - Signals: mixed signals, unknown sender
 - Action: Ask the user for classification
 

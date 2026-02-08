@@ -40,6 +40,7 @@ Bumps the academicOps version, builds distributions, pushes to github, and insta
 ### Phase 3: Verify Versions Match
 
 Check version consistency across:
+
 - `pyproject.toml` (source of truth)
 - `dist/aops-gemini/gemini-extension.json`
 - `dist/aops-claude/plugin.json`
@@ -64,11 +65,13 @@ Check version consistency across:
 ### Phase 6: Install from Distribution
 
 **Claude Code:**
+
 ```bash
 command claude plugin marketplace update aops && command claude plugin install aops-core@aops
 ```
 
 **Gemini CLI:**
+
 ```bash
 command gemini extensions uninstall aops-core && command gemini extensions install git@github.com:nicsuzor/aops-dist.git --consent --auto-update --pre-release
 ```
@@ -80,6 +83,7 @@ command gemini extensions uninstall aops-core && command gemini extensions insta
 ### Phase 7: Verify Installation
 
 Check version information with:
+
 - Claude code: `command claude plugin list`
 - Gemini extension: `command gemini extensions list`
 

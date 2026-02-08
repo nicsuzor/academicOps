@@ -13,6 +13,7 @@ description: |
     {gate_status} - Formatted gate status lines
     {next_instruction} - What the agent should do next
 ---
+
 ⚠️ **GATE BLOCKED ({mode})**
 
 **Tool**: `{tool_name}` ({tool_category})

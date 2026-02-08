@@ -9,9 +9,11 @@ description: |
     {hydrator_invoked_status} - Gate status indicator (checks plan_mode_invoked)
     {critic_invoked_status} - Gate status indicator (✓ or ✗)
 ---
+
 ⚠️ **TASK GATE (warn)**: Missing gate compliance.
 
 Gate status:
+
 - Task bound: {task_bound_status}
 - Hydrator invoked: {hydrator_invoked_status}
 - Critic invoked: {critic_invoked_status}

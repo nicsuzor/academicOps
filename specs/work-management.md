@@ -48,16 +48,16 @@ flowchart LR
 
 ## Core Functions
 
-| Function | Purpose |
-|----------|---------|
-| `mcp__plugin_aops-core_task_manager__create_task()` | Create new task |
-| `mcp__plugin_aops-core_task_manager__get_task(id)` | Get task details |
-| `mcp__plugin_aops-core_task_manager__update_task(id, ...)` | Update task fields |
-| `mcp__plugin_aops-core_task_manager__complete_task(id)` | Mark task done |
-| `mcp__plugin_aops-core_task_manager__list_tasks(...)` | List/filter tasks |
-| `mcp__plugin_aops-core_task_manager__search_tasks(query)` | Search tasks |
-| `mcp__plugin_aops-core_task_manager__get_blocked_tasks()` | Get blocked tasks |
-| `mcp__plugin_aops-core_task_manager__decompose_task(id, children)` | Break down task |
+| Function                                                           | Purpose            |
+| ------------------------------------------------------------------ | ------------------ |
+| `mcp__plugin_aops-core_task_manager__create_task()`                | Create new task    |
+| `mcp__plugin_aops-core_task_manager__get_task(id)`                 | Get task details   |
+| `mcp__plugin_aops-core_task_manager__update_task(id, ...)`         | Update task fields |
+| `mcp__plugin_aops-core_task_manager__complete_task(id)`            | Mark task done     |
+| `mcp__plugin_aops-core_task_manager__list_tasks(...)`              | List/filter tasks  |
+| `mcp__plugin_aops-core_task_manager__search_tasks(query)`          | Search tasks       |
+| `mcp__plugin_aops-core_task_manager__get_blocked_tasks()`          | Get blocked tasks  |
+| `mcp__plugin_aops-core_task_manager__decompose_task(id, children)` | Break down task    |
 
 ## Task Lifecycle
 
@@ -68,6 +68,7 @@ active → in_progress → done
 ```
 
 **Statuses**:
+
 - `active`: Ready to be worked on
 - `in_progress`: Currently being worked on
 - `blocked`: Waiting on dependencies
@@ -81,13 +82,14 @@ active → in_progress → done
 
 Tasks are organized by `project` field:
 
-| Project | Use For |
-|---------|---------|
-| `aops` | Framework tasks |
+| Project   | Use For               |
+| --------- | --------------------- |
+| `aops`    | Framework tasks       |
 | `writing` | Writing project tasks |
-| (custom) | Other projects |
+| (custom)  | Other projects        |
 
 **Create with project**:
+
 ```python
 mcp__plugin_aops-core_task_manager__create_task(
     title="Task title",
@@ -129,6 +131,7 @@ When creating a task, the agent MUST:
 3. **Create intermediates if needed** - If no suitable epic exists, create one that links to a project
 
 **Why this matters:**
+
 - Disconnected tasks become invisible to prioritization
 - Orphaned work cannot be sequenced for delivery
 - The task graph visualization reveals structural gaps
@@ -154,13 +157,14 @@ mcp__plugin_aops-core_task_manager__create_task(
 
 Tasks can be assigned to a specific actor:
 
-| Assignee | Meaning |
-|----------|---------|
-| `nic` | Human tasks - requires judgment, external context |
-| `bot` | Agent tasks - automatable work |
-| (unset) | Available to anyone (legacy compatibility) |
+| Assignee | Meaning                                           |
+| -------- | ------------------------------------------------- |
+| `nic`    | Human tasks - requires judgment, external context |
+| `bot`    | Agent tasks - automatable work                    |
+| (unset)  | Available to anyone (legacy compatibility)        |
 
 **Creating assigned tasks**:
+
 ```python
 mcp__plugin_aops-core_task_manager__create_task(
     title="Review proposal",
@@ -169,6 +173,7 @@ mcp__plugin_aops-core_task_manager__create_task(
 ```
 
 **Listing tasks by assignee**:
+
 ```python
 # Bot tasks
 mcp__plugin_aops-core_task_manager__list_tasks(project="aops", assignee="bot")
@@ -180,5 +185,6 @@ mcp__plugin_aops-core_task_manager__list_tasks(project="aops", assignee="nic")
 ## Task Storage
 
 Tasks are stored as markdown files in `data/tasks/`:
+
 - `data/tasks/inbox/` - New tasks
 - `data/tasks/index.json` - Task index for fast queries

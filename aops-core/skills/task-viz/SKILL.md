@@ -67,11 +67,13 @@ $AOPS/scripts/bin/fast-indexer [DIRECTORY] -o OUTPUT -f FORMAT
 ```
 
 **Options**:
+
 - `-o, --output OUTPUT`: Output file path (extension auto-added based on format)
 - `-f, --format FORMAT`: Output format - `json`, `graphml`, `dot`, `all` (default: all)
 - `-t, --filter-type TYPE`: Filter by frontmatter type (comma-separated: `task,project,goal`)
 
 **Features**:
+
 - Respects `.gitignore` files
 - Extracts tags from frontmatter and inline hashtags
 - Resolves wikilinks and markdown links
@@ -86,6 +88,7 @@ python3 $AOPS/scripts/task_graph.py INPUT.json [-o OUTPUT] [--layout LAYOUT]
 ```
 
 **Options**:
+
 - `-o, --output`: Output base name (default: `tasks`)
 - `--layout`: Graphviz layout engine: `dot`, `neato`, `sfdp`, `fdp`, `circo`, `twopi` (default: `sfdp`)
 - `--include-orphans`: Include unconnected nodes
@@ -95,29 +98,29 @@ python3 $AOPS/scripts/task_graph.py INPUT.json [-o OUTPUT] [--layout LAYOUT]
 
 **Color Coding**:
 
-| Attribute | Visual |
-|-----------|--------|
-| Status: done | Fill: green |
-| Status: active | Fill: blue |
-| Status: blocked | Fill: red |
-| Status: waiting | Fill: yellow |
-| Status: inbox | Fill: white |
-| Priority: 0 (critical) | Border: thick red |
-| Priority: 1 (high) | Border: thick orange |
-| Priority: 2+ | Border: gray |
-| Type: goal | Shape: ellipse |
-| Type: project | Shape: box3d |
-| Type: task | Shape: box |
-| Type: action | Shape: note |
+| Attribute              | Visual               |
+| ---------------------- | -------------------- |
+| Status: done           | Fill: green          |
+| Status: active         | Fill: blue           |
+| Status: blocked        | Fill: red            |
+| Status: waiting        | Fill: yellow         |
+| Status: inbox          | Fill: white          |
+| Priority: 0 (critical) | Border: thick red    |
+| Priority: 1 (high)     | Border: thick orange |
+| Priority: 2+           | Border: gray         |
+| Type: goal             | Shape: ellipse       |
+| Type: project          | Shape: box3d         |
+| Type: task             | Shape: box           |
+| Type: action           | Shape: note          |
 
 ## Output Formats
 
-| Format | Extension | Compatible Tools |
-|--------|-----------|------------------|
-| `json` | `.json` | D3.js, Cytoscape.js, vis.js, NetworkX |
-| `graphml` | `.graphml` | yEd, Gephi, Cytoscape |
-| `dot` | `.dot` | Graphviz (neato, fdp, sfdp, dot) |
-| `svg` | `.svg` | Browser, any image viewer (via task_graph.py) |
+| Format    | Extension  | Compatible Tools                              |
+| --------- | ---------- | --------------------------------------------- |
+| `json`    | `.json`    | D3.js, Cytoscape.js, vis.js, NetworkX         |
+| `graphml` | `.graphml` | yEd, Gephi, Cytoscape                         |
+| `dot`     | `.dot`     | Graphviz (neato, fdp, sfdp, dot)              |
+| `svg`     | `.svg`     | Browser, any image viewer (via task_graph.py) |
 
 ## Complete Workflows
 

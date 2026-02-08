@@ -3,6 +3,7 @@
 Update daily note from session JSON files.
 
 **Invocation**:
+
 - **Auto-sync**: Runs automatically as part of Morning/Refresh modes (steps 4.1-4.7, skips 4.8 approval)
 - **Full sync**: `/daily sync` runs section 4 only with user approval (4.8)
 
@@ -75,11 +76,13 @@ Using **Edit tool** (not Write) to preserve existing content:
 If the daily note contains a goals section (e.g., "## Things I want to achieve today", "## Focus", or similar), generate a reflection comparing stated intentions against actual outcomes.
 
 **Check for goals section**: Look for sections like:
+
 - `## Things I want to achieve today`
 - `## Focus` (the task recommendations from morning planning)
 - `## Today's Work Queue` (scheduled tasks)
 
 **For each stated goal/priority**:
+
 1. Check if corresponding work appears in session accomplishments
 2. Check if related tasks were completed (from Step 4.1.5)
 3. Classify as: Achieved | Partially/Spawned | Not achieved
@@ -91,13 +94,14 @@ If the daily note contains a goals section (e.g., "## Things I want to achieve t
 
 **Goals from "[section name]":**
 
-| Goal | Status | Notes |
-|------|--------|-------|
-| [Goal 1] | Achieved | Completed in session [id] |
-| [Goal 2] | Partially | Task created but no completion data |
-| [Goal 3] | Not achieved | No matching work found |
+| Goal     | Status       | Notes                               |
+| -------- | ------------ | ----------------------------------- |
+| [Goal 1] | Achieved     | Completed in session [id]           |
+| [Goal 2] | Partially    | Task created but no completion data |
+| [Goal 3] | Not achieved | No matching work found              |
 
 **Unplanned work that consumed the day:**
+
 - [Major unplanned item] (~Xh) - [brief explanation]
 
 **Key insight**: [One-sentence observation about drift, priorities, or patterns]
@@ -142,6 +146,7 @@ For each accomplishment with candidates:
    - Action: Continue to next accomplishment
 
 **Matching heuristics**:
+
 - Prefer no match over wrong match (conservative)
 - Consider task title, body, project alignment
 - "Implemented X" accomplishment matches "Add X feature" or "X" task
@@ -149,11 +154,11 @@ For each accomplishment with candidates:
 
 ### 4.5.3: Graceful Degradation
 
-| Scenario | Behavior |
-|----------|----------|
+| Scenario                  | Behavior                                    |
+| ------------------------- | ------------------------------------------- |
 | Memory server unavailable | Skip semantic matching, continue processing |
-| Task file not found | Log warning, continue to next |
-| Unexpected task format | Skip that task, log warning |
+| Task file not found       | Log warning, continue to next               |
+| Unexpected task format    | Skip that task, log warning                 |
 
 ## Step 4.6: Update Task Files (Cross-Linking)
 
@@ -165,15 +170,18 @@ If accomplishment matches a specific checklist item in the task:
 
 ```markdown
 # Before
+
 - [ ] Implement feature X
 
 # After
+
 - [x] Implement feature X [completion:: 2026-01-19]
 ```
 
 Use Edit tool to add `[x]` and `[completion:: YYYY-MM-DD]`.
 
 **Constraints**:
+
 - Mark sub-task checklist items complete
 - NEVER mark parent tasks complete automatically
 - NEVER delete any task content
@@ -252,15 +260,18 @@ Output the key synthesized content for review:
 ## Daily Progress Synthesis - Review Required
 
 **Today's Story** (synthesized narrative):
+
 > [The narrative text from Today's Story section]
 
 **Sessions Processed**: [N] sessions across [projects]
 
 **Accomplishments** ([count] items):
+
 - [First 3-5 accomplishments listed]
 - ...
 
 **Task Matches Made**:
+
 - [List of high-confidence task matches, if any]
 ```
 
@@ -285,10 +296,10 @@ AskUserQuestion(
 
 ### 4.8.3: Handle Response
 
-| Response | Action |
-|----------|--------|
-| "Looks good" | Proceed to completion, output "Daily sync complete." |
+| Response      | Action                                                                                                                          |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| "Looks good"  | Proceed to completion, output "Daily sync complete."                                                                            |
 | "Needs edits" | Output "Daily note ready for your edits at [path]. Run `/daily` again after editing to re-sync." HALT without marking complete. |
-| "Regenerate" | Ask what should change, then re-run Steps 4.4-4.7 |
+| "Regenerate"  | Ask what should change, then re-run Steps 4.4-4.7                                                                               |
 
 **Rationale**: Per AXIOM #3 (Don't Make Shit Up), Gemini-mined accomplishments may contain inaccuracies. User approval catches hallucinations before they persist in the daily record.
