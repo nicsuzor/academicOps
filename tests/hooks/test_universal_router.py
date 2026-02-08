@@ -156,23 +156,25 @@ class TestToolInputNormalization:
         assert isinstance(ctx.tool_input, dict)
 
     def test_normalize_input_tool_result_json_string(self, router_instance):
-        """tool_result as JSON string is normalized in raw_input."""
+        """tool_result as JSON string is normalized into tool_output."""
         raw = {
             "hook_event_name": "PostToolUse",
             "session_id": "test-123",
             "tool_result": '{"verdict": "PROCEED"}',
         }
         ctx = router_instance.normalize_input(raw)
-        assert ctx.raw_input["tool_result"] == {"verdict": "PROCEED"}
-        assert isinstance(ctx.raw_input["tool_result"], dict)
+        # raw_input is unchanged, but tool_output is normalized
+        assert ctx.tool_output == {"verdict": "PROCEED"}
+        assert isinstance(ctx.tool_output, dict)
 
     def test_normalize_input_subagent_result_json_string(self, router_instance):
-        """subagent_result as JSON string is normalized in raw_input."""
+        """subagent_result as JSON string is normalized into tool_output."""
         raw = {
             "hook_event_name": "SubagentStop",
             "session_id": "test-123",
             "subagent_result": '{"output": "done", "status": "ok"}',
         }
         ctx = router_instance.normalize_input(raw)
-        assert ctx.raw_input["subagent_result"] == {"output": "done", "status": "ok"}
-        assert isinstance(ctx.raw_input["subagent_result"], dict)
+        # raw_input is unchanged, but tool_output is normalized
+        assert ctx.tool_output == {"output": "done", "status": "ok"}
+        assert isinstance(ctx.tool_output, dict)

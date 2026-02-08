@@ -58,9 +58,14 @@ class TestToolCategories:
     def test_read_only_tools_include_mcp_read_tools(self):
         """MCP read-only tools are correctly categorized."""
         read_only = TOOL_CATEGORIES["read_only"]
-        assert "mcp__plugin_aops-core_memory__retrieve_memory" in read_only
-        assert "mcp__plugin_aops-core_task_manager__get_task" in read_only
-        assert "mcp__plugin_aops-core_task_manager__list_tasks" in read_only
+        always = TOOL_CATEGORIES["always_available"]
+        # Memory retrieval is in always_available for bootstrap
+        assert "mcp__plugin_aops-core_memory__retrieve_memory" in always
+        # Task manager reads are in always_available (framework infrastructure)
+        assert "mcp__plugin_aops-core_task_manager__get_task" in always
+        assert "mcp__plugin_aops-core_task_manager__list_tasks" in always
+        # Other MCP reads are in read_only
+        assert "mcp__plugin_aops-core_memory__list_memories" in read_only
 
     def test_write_tools_include_claude_write_tools(self):
         """Claude write tools are correctly categorized."""
@@ -80,16 +85,22 @@ class TestToolCategories:
     def test_write_tools_include_mcp_mutating_tools(self):
         """MCP mutating tools are correctly categorized."""
         write = TOOL_CATEGORIES["write"]
+        always = TOOL_CATEGORIES["always_available"]
+        # Memory store is in write (requires /remember skill)
         assert "mcp__plugin_aops-core_memory__store_memory" in write
-        assert "mcp__plugin_aops-core_task_manager__create_task" in write
-        assert "mcp__plugin_aops-core_task_manager__update_task" in write
-        assert "mcp__plugin_aops-core_task_manager__complete_task" in write
+        # Task manager mutations are in always_available (framework infrastructure)
+        assert "mcp__plugin_aops-core_task_manager__create_task" in always
+        assert "mcp__plugin_aops-core_task_manager__update_task" in always
+        assert "mcp__plugin_aops-core_task_manager__complete_task" in always
 
     def test_meta_tools_include_agent_tools(self):
         """Meta tools are correctly categorized."""
         meta = TOOL_CATEGORIES["meta"]
-        assert "Task" in meta
-        assert "Skill" in meta
+        always = TOOL_CATEGORIES["always_available"]
+        # Task/Skill are in always_available for hydration bootstrap
+        assert "Task" in always
+        assert "Skill" in always
+        # Other meta tools are in meta
         assert "TodoWrite" in meta
         assert "AskUserQuestion" in meta
         assert "EnterPlanMode" in meta
@@ -150,7 +161,6 @@ class TestGateExecutionOrder:
         """PreToolUse has correct gate sequence."""
         gates = GATE_EXECUTION_ORDER["PreToolUse"]
         assert "unified_logger" in gates
-        assert "subagent_restrictions" in gates
         assert "tool_gate" in gates
 
     def test_post_tool_use_gates(self):
@@ -159,10 +169,7 @@ class TestGateExecutionOrder:
         assert "unified_logger" in gates
         assert "task_binding" in gates
         assert "accountant" in gates
-        assert "post_hydration" in gates
-        assert "post_critic" in gates
-        assert "post_qa" in gates
-        assert "skill_activation" in gates
+        assert "gate_update" in gates
 
     def test_stop_gates(self):
         """Stop event has correct gate sequence."""
@@ -185,23 +192,17 @@ class TestMainAgentOnlyGates:
         """tool_gate should only run for main agent."""
         assert "tool_gate" in MAIN_AGENT_ONLY_GATES
 
-    def test_hydration_is_main_agent_only(self):
-        """hydration should only run for main agent."""
-        assert "hydration" in MAIN_AGENT_ONLY_GATES
-
-    def test_custodiet_is_main_agent_only(self):
-        """custodiet should only run for main agent."""
-        assert "custodiet" in MAIN_AGENT_ONLY_GATES
+    def test_gate_update_is_main_agent_only(self):
+        """gate_update should only run for main agent."""
+        assert "gate_update" in MAIN_AGENT_ONLY_GATES
 
     def test_stop_gate_is_main_agent_only(self):
         """stop_gate should only run for main agent."""
         assert "stop_gate" in MAIN_AGENT_ONLY_GATES
 
-    def test_post_triggers_are_main_agent_only(self):
-        """Post-tool triggers should only run for main agent."""
-        assert "post_hydration" in MAIN_AGENT_ONLY_GATES
-        assert "post_critic" in MAIN_AGENT_ONLY_GATES
-        assert "post_qa" in MAIN_AGENT_ONLY_GATES
+    def test_task_binding_is_main_agent_only(self):
+        """task_binding should only run for main agent."""
+        assert "task_binding" in MAIN_AGENT_ONLY_GATES
 
 
 class TestGateModeDefaults:
@@ -377,25 +378,29 @@ class TestGetToolCategory:
         """Edit tool returns 'write' category."""
         assert get_tool_category("Edit") == "write"
 
-    def test_task_returns_meta(self):
-        """Task tool returns 'meta' category."""
-        assert get_tool_category("Task") == "meta"
+    def test_task_returns_always_available(self):
+        """Task tool returns 'always_available' category (needed for hydration bootstrap)."""
+        assert get_tool_category("Task") == "always_available"
 
     def test_unknown_tool_returns_write(self):
         """Unknown tools default to 'write' (conservative)."""
         assert get_tool_category("UnknownTool") == "write"
 
-    def test_mcp_read_tool_returns_read_only(self):
-        """MCP read tools return 'read_only' category."""
+    def test_mcp_task_manager_returns_always_available(self):
+        """MCP task manager tools return 'always_available' (framework infrastructure)."""
         assert (
             get_tool_category("mcp__plugin_aops-core_task_manager__get_task")
-            == "read_only"
+            == "always_available"
         )
-
-    def test_mcp_write_tool_returns_write(self):
-        """MCP write tools return 'write' category."""
         assert (
             get_tool_category("mcp__plugin_aops-core_task_manager__create_task")
+            == "always_available"
+        )
+
+    def test_mcp_memory_store_returns_write(self):
+        """MCP memory store returns 'write' category."""
+        assert (
+            get_tool_category("mcp__plugin_aops-core_memory__store_memory")
             == "write"
         )
 

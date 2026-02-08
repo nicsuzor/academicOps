@@ -261,67 +261,53 @@ class TestSubagentBypass:
         """Gates in MAIN_AGENT_ONLY_GATES should bypass for subagents."""
         from hooks.gate_config import is_main_agent_only
 
-        # All these should be main-agent only
+        # Core gates are main-agent only
         assert is_main_agent_only("tool_gate")
-        assert is_main_agent_only("hydration")
-        assert is_main_agent_only("custodiet")
         assert is_main_agent_only("stop_gate")
+        assert is_main_agent_only("gate_update")
 
         # unified_logger should run for all
         assert not is_main_agent_only("unified_logger")
-
-    def test_hydrator_cannot_use_mutating_tools(self):
-        """Hydrator subagent is blocked from mutating tools."""
-        from hooks.gate_registry import MUTATING_TOOLS
-
-        # Verify Edit, Write, Bash are in mutating tools
-        assert "Edit" in MUTATING_TOOLS
-        assert "Write" in MUTATING_TOOLS
-        assert "Bash" in MUTATING_TOOLS
 
 
 class TestToolCategoryConsistency:
     """Integration tests for tool category consistency."""
 
-    def test_gate_config_and_registry_aligned(self):
-        """gate_config TOOL_CATEGORIES aligned with gate_registry patterns."""
+    def test_write_tools_in_write_category(self):
+        """Write tools are correctly categorized."""
         from hooks.gate_config import TOOL_CATEGORIES
-        from hooks.gate_registry import MUTATING_TOOLS, SAFE_READ_TOOLS
 
-        # All MUTATING_TOOLS should be in write category
-        for tool in MUTATING_TOOLS:
-            if tool in TOOL_CATEGORIES["write"]:
-                continue
-            # Some tools may use different names in config vs registry
-            # This is expected for Gemini/Claude naming differences
+        write = TOOL_CATEGORIES["write"]
+        assert "Edit" in write
+        assert "Write" in write
+        assert "Bash" in write
 
-        # All SAFE_READ_TOOLS should be in read_only category
-        for tool in SAFE_READ_TOOLS:
-            if tool in TOOL_CATEGORIES["read_only"]:
-                continue
-            # Some MCP tools may have different naming conventions
+    def test_read_tools_in_read_only_category(self):
+        """Read tools are correctly categorized."""
+        from hooks.gate_config import TOOL_CATEGORIES
+
+        read_only = TOOL_CATEGORIES["read_only"]
+        assert "Read" in read_only
+        assert "Glob" in read_only
+        assert "Grep" in read_only
 
     def test_mcp_tools_categorized(self):
         """MCP tools are properly categorized."""
         from hooks.gate_config import get_tool_category
 
-        # Read MCP tools
+        # Task manager tools are always_available (framework infrastructure)
         assert (
             get_tool_category("mcp__plugin_aops-core_task_manager__get_task")
-            == "read_only"
+            == "always_available"
         )
-        assert (
-            get_tool_category("mcp__plugin_aops-core_task_manager__list_tasks")
-            == "read_only"
-        )
-
-        # Write MCP tools
         assert (
             get_tool_category("mcp__plugin_aops-core_task_manager__create_task")
-            == "write"
+            == "always_available"
         )
+
+        # Memory store is in write
         assert (
-            get_tool_category("mcp__plugin_aops-core_task_manager__update_task")
+            get_tool_category("mcp__plugin_aops-core_memory__store_memory")
             == "write"
         )
 
@@ -400,41 +386,6 @@ class TestGateClosureOnToolCategory:
         assert get_tool_category("Read") == "read_only"
         # Handover should NOT close on read tools
         assert should_gate_close_on_tool("handover", "Read", "PostToolUse") is False
-
-
-class TestBashCommandClassification:
-    """Integration tests for Bash command classification consistency."""
-
-    def test_safe_bash_bypasses_task_gate(self):
-        """Safe Bash commands don't require task binding."""
-        from hooks.gate_registry import _should_require_task
-
-        # Safe commands
-        assert _should_require_task("Bash", {"command": "git status"}) is False
-        assert _should_require_task("Bash", {"command": "cat file.txt"}) is False
-        assert _should_require_task("Bash", {"command": "ls -la"}) is False
-
-    def test_destructive_bash_requires_task_gate(self):
-        """Destructive Bash commands require task binding."""
-        from hooks.gate_registry import _should_require_task
-
-        # Destructive commands
-        assert _should_require_task("Bash", {"command": "rm file.txt"}) is True
-        assert _should_require_task("Bash", {"command": "git commit -m 'test'"}) is True
-        assert _should_require_task("Bash", {"command": "echo 'x' > file"}) is True
-
-    def test_hydration_safe_bash_bypasses_hydration(self):
-        """Hydration-safe Bash commands bypass hydration gate."""
-        from hooks.gate_registry import _is_hydration_safe_bash
-
-        # Git operations for handover
-        assert _is_hydration_safe_bash("git add .") is True
-        assert _is_hydration_safe_bash("git commit -m 'test'") is True
-        assert _is_hydration_safe_bash("git push") is True
-
-        # Read operations
-        assert _is_hydration_safe_bash("cat file.txt") is True
-        assert _is_hydration_safe_bash("jq '.data' file.json") is True
 
 
 class TestGateStateTransitions:
