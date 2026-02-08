@@ -50,13 +50,26 @@ def check_tool_gate(ctx: "HookContext") -> GateResult:
     if session_state.is_hydrator_active(ctx.session_id):
         return GateResult.allow()
 
-    # Allow spawning hydrator
-    if tool_name == "Task":
-        subagent = (ctx.tool_input or {}).get("subagent_type", "")
+    # Allow spawning hydrator and open hydration gate immediately
+    if tool_name in ("Task", "Skill", "activate_skill", "delegate_to_agent"):
+        subagent = (
+            (ctx.tool_input or {}).get("subagent_type", "")
+            or (ctx.tool_input or {}).get("skill", "")
+            or (ctx.tool_input or {}).get("name", "")
+            or (ctx.tool_input or {}).get("agent_name", "")
+        )
         if "hydrator" in subagent.lower():
-            # <!-- NS: this should just be in the ordinary config for always_allowed tools. -->
             session_state.set_hydrator_active(ctx.session_id)
+            # Open hydration gate immediately when hydrator is invoked (not just when it completes)
+            # This allows the main agent to proceed with tool calls while hydrator runs
+            session_state.clear_hydration_pending(ctx.session_id)
             return GateResult.allow()
+
+    # Allow reads from hydrator files (solves hydrator bootstrap chicken-and-egg)
+    # The hydrator needs to read its hydrate_*.md file, but the hydration gate
+    # blocks reads until hydration completes. Allow reads from hydrator file paths.
+    if _is_hydrator_file_read(tool_name, ctx.tool_input):
+        return GateResult.allow()
 
     # Always-available tools bypass all gates
     if get_tool_category(tool_name) == "always_available":
@@ -191,6 +204,50 @@ def on_session_start(ctx: "HookContext") -> Optional[GateResult]:
 # =============================================================================
 # HELPERS
 # =============================================================================
+
+
+def _is_hydrator_file_read(
+    tool_name: str,
+    tool_input: Optional[Dict[str, Any]],
+) -> bool:
+    """Check if this is a read of a hydrator file.
+
+    This solves the hydrator bootstrap problem:
+    - The hydrator subagent needs to read its hydrate_*.md file
+    - But the hydration gate blocks reads until hydration completes
+    - We allow reads from paths containing /hydrator/hydrate_ to break the cycle
+
+    This is safe because:
+    1. Hydrator files are framework-generated, not user files
+    2. Read-only operations have no side effects
+    3. The pattern is specific enough to avoid unintended bypasses
+
+    Args:
+        tool_name: Name of the tool being invoked
+        tool_input: Tool input parameters
+
+    Returns:
+        True if this is a read of a hydrator file
+    """
+    # Only applies to read tools
+    if tool_name not in ("Read", "read_file", "view_file"):
+        return False
+
+    if not tool_input:
+        return False
+
+    # Get the file being read
+    file_path = tool_input.get("file_path") or tool_input.get("path")
+    if not file_path:
+        return False
+
+    # Allow reads from hydrator files
+    # Gemini: ~/.gemini/tmp/<hash>/hydrator/hydrate_*.md
+    # Claude: ~/.claude/projects/.../tmp/hydrator/hydrate_*.md
+    if "/hydrator/hydrate_" in file_path:
+        return True
+
+    return False
 
 
 def _open_gate(session_id: str, gate: str) -> None:

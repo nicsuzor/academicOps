@@ -91,7 +91,7 @@ def log_hook_event(
             is_sidechain=ctx.is_sidechain,
             input=input_data,
             output=output.model_dump() if output else None,
-            raw_input=ctx.raw_input,
+            # raw_input=ctx.raw_input,
         )
 
         # Add debug metrics to metadata
