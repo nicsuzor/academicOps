@@ -362,9 +362,7 @@ class TemplateRegistry:
         # Validate required variables
         missing = [var for var in spec.required_vars if var not in variables]
         if missing:
-            raise ValueError(
-                f"Template '{name}' missing required variables: {', '.join(missing)}"
-            )
+            raise ValueError(f"Template '{name}' missing required variables: {', '.join(missing)}")
 
         # Build complete variables dict with optional defaults
         complete_vars = dict(variables)

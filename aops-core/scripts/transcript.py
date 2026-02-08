@@ -13,8 +13,8 @@ Usage:
 import argparse
 import subprocess
 import sys
-from pathlib import Path
 from datetime import datetime, timedelta
+from pathlib import Path
 
 # Add framework roots to path for lib imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -24,6 +24,14 @@ FRAMEWORK_ROOT = AOPS_CORE_ROOT.parent
 sys.path.insert(0, str(FRAMEWORK_ROOT))
 sys.path.insert(0, str(AOPS_CORE_ROOT))
 
+from lib.insights_generator import (  # noqa: E402
+    InsightsValidationError,
+    find_existing_insights,
+    get_insights_file_path,
+    validate_insights_schema,
+    write_insights_file,
+)
+from lib.paths import get_sessions_dir  # noqa: E402
 from lib.session_reader import find_sessions  # noqa: E402
 from lib.transcript_parser import (  # noqa: E402
     SessionProcessor,
@@ -35,14 +43,6 @@ from lib.transcript_parser import (  # noqa: E402
     format_reflection_header,
     infer_project_from_working_dir,
     reflection_to_insights,
-)
-from lib.paths import get_sessions_dir  # noqa: E402
-from lib.insights_generator import (  # noqa: E402
-    find_existing_insights,
-    get_insights_file_path,
-    write_insights_file,
-    validate_insights_schema,
-    InsightsValidationError,
 )
 
 
@@ -119,14 +119,10 @@ def _save_minimal_token_summary(
         # Check for existing insights
         existing = find_existing_insights(date_str, session_id)
         if existing:
-            print(
-                f"⏭️  Insights already exist for session {session_id}: {existing.name}"
-            )
+            print(f"⏭️  Insights already exist for session {session_id}: {existing.name}")
             return
 
-        insights_path = get_insights_file_path(
-            date_str, session_id, slug, None, project
-        )
+        insights_path = get_insights_file_path(date_str, session_id, slug, None, project)
         write_insights_file(insights_path, insights, session_id=session_id)
         print(f"📊 Token metrics saved (no reflection): {insights_path}")
     except Exception as e:
@@ -204,14 +200,10 @@ def _process_reflection(
             # Check for existing insights (avoid duplicates with different slugs)
             existing = find_existing_insights(date_str, session_id)
             if existing:
-                print(
-                    f"⏭️  Insights already exist for session {session_id}: {existing.name}"
-                )
+                print(f"⏭️  Insights already exist for session {session_id}: {existing.name}")
                 continue
 
-            insights_path = get_insights_file_path(
-                date_str, session_id, slug, idx, project
-            )
+            insights_path = get_insights_file_path(date_str, session_id, slug, idx, project)
             write_insights_file(insights_path, insights, session_id=session_id)
             print(f"💡 Reflection {i + 1}/{len(reflections)} saved to: {insights_path}")
         except InsightsValidationError as e:
@@ -304,9 +296,9 @@ def _filter_recent_sessions(sessions: list, days: int = 7) -> list:
         Filtered list of sessions with mtime within the cutoff period
     """
     # Cutoff: midnight N days ago (local timezone)
-    cutoff = datetime.now().replace(
-        hour=0, minute=0, second=0, microsecond=0
-    ) - timedelta(days=days)
+    cutoff = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(
+        days=days
+    )
     cutoff_ts = cutoff.timestamp()
 
     filtered = []
@@ -373,9 +365,7 @@ def _find_existing_transcript(out_dir: Path, session_id: str) -> Path | None:
         Path to existing -full.md transcript if found, None otherwise
     """
     matches = [
-        p
-        for p in _find_existing_transcripts(out_dir, session_id)
-        if p.name.endswith("-full.md")
+        p for p in _find_existing_transcripts(out_dir, session_id) if p.name.endswith("-full.md")
     ]
     return matches[0] if matches else None
 
@@ -537,16 +527,12 @@ Examples:
         if not args.all:
             original_count = len(sessions)
             sessions = _filter_recent_sessions(sessions, days=7)
-            print(
-                f"📅 Filtering to last 7 days: {len(sessions)} of {original_count} sessions"
-            )
+            print(f"📅 Filtering to last 7 days: {len(sessions)} of {original_count} sessions")
 
         # Process newest sessions first (reverse chronological)
         sessions = sorted(
             sessions,
-            key=lambda s: (
-                s.path.stat().st_mtime if hasattr(s, "path") and s.path.exists() else 0
-            ),
+            key=lambda s: s.path.stat().st_mtime if hasattr(s, "path") and s.path.exists() else 0,
             reverse=True,
         )
 
@@ -560,9 +546,7 @@ Examples:
 
                 # Early mtime check: skip if transcript already exists and is current
                 session_id = _get_session_id(session_path)
-                existing_transcript = _find_existing_transcript(
-                    sessions_claude, session_id
-                )
+                existing_transcript = _find_existing_transcript(sessions_claude, session_id)
                 if existing_transcript and _transcript_is_current(
                     session_path, existing_transcript
                 ):
@@ -572,9 +556,7 @@ Examples:
                 # Delete stale transcripts before regenerating (prevents duplicates
                 # when filename format changes, e.g., slug added/changed)
                 if existing_transcript:
-                    stale_files = _find_existing_transcripts(
-                        sessions_claude, session_id
-                    )
+                    stale_files = _find_existing_transcripts(sessions_claude, session_id)
                     for stale in stale_files:
                         print(f"🗑️  Removing stale transcript: {stale.name}")
                         stale.unlink()
@@ -724,7 +706,7 @@ Examples:
     if session_path.name.endswith("-hooks.jsonl"):
         import json
 
-        with open(session_path, "r") as f:
+        with open(session_path) as f:
             first_line = f.readline().strip()
             if first_line:
                 try:
@@ -733,9 +715,7 @@ Examples:
                     if transcript_path:
                         actual_session = Path(transcript_path)
                         if actual_session.exists():
-                            print(
-                                f"⚠️  Hooks file provided. Using actual session: {actual_session}"
-                            )
+                            print(f"⚠️  Hooks file provided. Using actual session: {actual_session}")
                             session_path = actual_session
                         else:
                             print(
@@ -749,9 +729,7 @@ Examples:
     # Process the session
     try:
         print(f"📝 Processing session: {session_path}")
-        session_summary, entries, agent_entries = processor.parse_session_file(
-            str(session_path)
-        )
+        session_summary, entries, agent_entries = processor.parse_session_file(str(session_path))
 
         # Generate output base name
         output_dir = None
@@ -814,9 +792,7 @@ Examples:
             # Get session ID from path
             sid = session_path.stem[:8]
             proj = (
-                session_path.parent.name.split("-")[-1]
-                if session_path.parent.name
-                else "unknown"
+                session_path.parent.name.split("-")[-1] if session_path.parent.name else "unknown"
             )
             slug = processor.generate_session_slug(entries)
 

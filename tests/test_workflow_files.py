@@ -9,7 +9,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-
 from lib.paths import get_plugin_root, get_workflows_dir
 
 
@@ -101,9 +100,7 @@ class TestWorkflowFiles:
 
         for workflow_name in expected_workflows:
             workflow_path = workflows_dir / workflow_name
-            assert workflow_path.exists(), (
-                f"Expected workflow file {workflow_name} does not exist"
-            )
+            assert workflow_path.exists(), f"Expected workflow file {workflow_name} does not exist"
 
     def test_workflows_index_exists(self) -> None:
         """Verify WORKFLOWS.md index file exists and has correct structure."""

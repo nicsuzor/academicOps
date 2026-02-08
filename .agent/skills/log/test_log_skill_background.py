@@ -15,7 +15,7 @@ Success criteria:
 """
 
 import sys
-from pathlib import Path
+
 
 def test_log_skill_accepts_observation():
     """Test that /log skill accepts observation parameter."""

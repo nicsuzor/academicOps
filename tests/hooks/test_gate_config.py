@@ -14,22 +14,22 @@ sys.path.insert(0, str(AOPS_CORE))
 sys.path.insert(0, str(AOPS_CORE / "hooks"))
 
 from hooks.gate_config import (
-    TOOL_CATEGORIES,
-    TOOL_GATE_REQUIREMENTS,
+    GATE_CLOSURE_TRIGGERS,
     GATE_EXECUTION_ORDER,
-    MAIN_AGENT_ONLY_GATES,
+    GATE_INITIAL_STATE,
     GATE_MODE_DEFAULTS,
     GATE_MODE_ENV_VARS,
-    GATE_INITIAL_STATE,
     GATE_OPENING_CONDITIONS,
-    GATE_CLOSURE_TRIGGERS,
-    get_tool_category,
-    get_required_gates,
-    get_gates_for_event,
-    is_main_agent_only,
+    MAIN_AGENT_ONLY_GATES,
+    TOOL_CATEGORIES,
+    TOOL_GATE_REQUIREMENTS,
+    get_gate_closure_triggers,
     get_gate_initial_state,
     get_gate_opening_condition,
-    get_gate_closure_triggers,
+    get_gates_for_event,
+    get_required_gates,
+    get_tool_category,
+    is_main_agent_only,
     should_gate_close_on_tool,
 )
 
@@ -326,9 +326,7 @@ class TestGateClosureTriggers:
     def test_critic_closes_on_new_prompt(self):
         """Critic gate re-closes on new user prompt."""
         triggers = GATE_CLOSURE_TRIGGERS["critic"]
-        prompt_trigger = next(
-            (t for t in triggers if t["event"] == "UserPromptSubmit"), None
-        )
+        prompt_trigger = next((t for t in triggers if t["event"] == "UserPromptSubmit"), None)
         assert prompt_trigger is not None
 
     def test_critic_closes_on_task_complete(self):
@@ -342,26 +340,20 @@ class TestGateClosureTriggers:
     def test_custodiet_closes_on_new_prompt(self):
         """Custodiet gate re-closes on new user prompt."""
         triggers = GATE_CLOSURE_TRIGGERS["custodiet"]
-        prompt_trigger = next(
-            (t for t in triggers if t["event"] == "UserPromptSubmit"), None
-        )
+        prompt_trigger = next((t for t in triggers if t["event"] == "UserPromptSubmit"), None)
         assert prompt_trigger is not None
 
     def test_custodiet_closes_after_threshold_writes(self):
         """Custodiet gate re-closes after N write operations."""
         triggers = GATE_CLOSURE_TRIGGERS["custodiet"]
-        threshold_trigger = next(
-            (t for t in triggers if "threshold_counter" in t), None
-        )
+        threshold_trigger = next((t for t in triggers if "threshold_counter" in t), None)
         assert threshold_trigger is not None
         assert threshold_trigger["threshold_value"] == 7
 
     def test_handover_closes_on_git_dirty(self):
         """Handover gate re-closes when repo has uncommitted changes."""
         triggers = GATE_CLOSURE_TRIGGERS["handover"]
-        dirty_trigger = next(
-            (t for t in triggers if t.get("condition") == "git_dirty"), None
-        )
+        dirty_trigger = next((t for t in triggers if t.get("condition") == "git_dirty"), None)
         assert dirty_trigger is not None
 
     def test_qa_does_not_reclose(self):
@@ -391,8 +383,7 @@ class TestGetToolCategory:
     def test_mcp_task_manager_returns_always_available(self):
         """MCP task manager tools return 'always_available' (framework infrastructure)."""
         assert (
-            get_tool_category("mcp__plugin_aops-core_task_manager__get_task")
-            == "always_available"
+            get_tool_category("mcp__plugin_aops-core_task_manager__get_task") == "always_available"
         )
         assert (
             get_tool_category("mcp__plugin_aops-core_task_manager__create_task")
@@ -401,9 +392,7 @@ class TestGetToolCategory:
 
     def test_mcp_memory_store_returns_write(self):
         """MCP memory store returns 'write' category."""
-        assert (
-            get_tool_category("mcp__plugin_aops-core_memory__store_memory") == "write"
-        )
+        assert get_tool_category("mcp__plugin_aops-core_memory__store_memory") == "write"
 
 
 class TestGetRequiredGates:

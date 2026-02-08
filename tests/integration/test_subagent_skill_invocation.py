@@ -116,10 +116,7 @@ def test_skill_invocation_produces_formatted_output(claude_headless) -> None:
             if file.stat().st_mtime < start_time:
                 continue
             content = file.read_text()
-            if (
-                "test automation" in content.lower()
-                or "automation patterns" in content.lower()
-            ):
+            if "test automation" in content.lower() or "automation patterns" in content.lower():
                 created_file = file
                 break
 

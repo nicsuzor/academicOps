@@ -37,13 +37,13 @@ uv run python $AOPS/aops-tools/skills/garden/scripts/lint_frontmatter.py <path> 
 
 **What it checks:**
 
-| Code | Severity | Issue |
-|------|----------|-------|
-| FM003 | error | Opening `---` not on its own line (e.g., `---title:`) |
-| FM005 | error | Missing closing `---` delimiter |
-| FM008 | error | Invalid YAML syntax |
-| FM009 | warning | Missing identifier (id/task_id/permalink) |
-| FM010 | warning | Missing title field |
+| Code  | Severity | Issue                                                 |
+| ----- | -------- | ----------------------------------------------------- |
+| FM003 | error    | Opening `---` not on its own line (e.g., `---title:`) |
+| FM005 | error    | Missing closing `---` delimiter                       |
+| FM008 | error    | Invalid YAML syntax                                   |
+| FM009 | warning  | Missing identifier (id/task_id/permalink)             |
+| FM010 | warning  | Missing title field                                   |
 
 **Common YAML issues requiring manual fix:**
 

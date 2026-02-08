@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from task_model import Task, TaskType
 
 
 def test_task_planned_field_serialization_deserialization():
     """Verify that the 'planned' field is correctly serialized and deserialized."""
-    planned_date = datetime.now(timezone.utc)
+    planned_date = datetime.now(UTC)
     task = Task(
         id="test-123",
         title="Test Task with Planned Date",

@@ -690,3 +690,18 @@ mcp__task_manager__complete_task(id=batch_task_id)
 - CLI tools that run full conversations need 3+ minutes
 
 **Derivation**: P#27 (No Excuses) requires not rationalizing away failures. Claiming "interference" when the real issue is timeout is an excuse. Verify the actual cause before declaring operations impossible.
+
+---
+
+## Centralized Git Versioning (P#99)
+
+**Statement**: Versioning logic MUST be centralized in a single source of truth (e.g., `scripts/build.py --version`) and use robust Git commands that handle multiple tags and history noise.
+
+**Corollaries**:
+
+- NEVER duplicate version detection logic across Makefile, scripts, and CI/CD YAML files.
+- Prefer `git tag --merged HEAD --sort=-v:refname` over `git describe` to handle multiple tags on one commit.
+- Use explicit pattern matching (e.g., `--list "v0.*"`) to ignore "noise" tags from failed experiments or different product lines in history.
+- The build script SHOULD provide a `--version` flag that returns ONLY the semantic string for easy shell consumption.
+
+**Derivation**: Divergent versioning logic leads to build failures and inconsistent releases. `git describe` defaults often prefer annotated tags or proximal commits in ways that don't align with semantic release intent when history is complex. Centralization ensures consistency across the entire development lifecycle.

@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -106,7 +106,7 @@ def scan_summaries(
         return []
 
     # Calculate date range
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     cutoff = today - timedelta(days=days - 1)  # Include today
     cutoff_str = cutoff.strftime("%Y%m%d")
 
@@ -195,9 +195,7 @@ def format_text(summaries: list[dict[str, Any]]) -> str:
         if date != current_date:
             if current_date is not None:
                 lines.append("")
-            formatted_date = (
-                f"{date[:4]}-{date[4:6]}-{date[6:8]}" if len(date) == 8 else date
-            )
+            formatted_date = f"{date[:4]}-{date[4:6]}-{date[6:8]}" if len(date) == 8 else date
             lines.append(f"=== {formatted_date} ===")
             current_date = date
 

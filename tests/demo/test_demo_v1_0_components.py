@@ -243,9 +243,7 @@ IMPORTANT: Return ONLY the JSON, no other text.
 class TestV1ComponentsDemo:
     """Demo test for comprehensive v1.0 component verification."""
 
-    def test_demo_v1_0_components_from_real_transcripts(
-        self, claude_headless_tracked
-    ) -> None:
+    def test_demo_v1_0_components_from_real_transcripts(self, claude_headless_tracked) -> None:
         """Demo: Verify all v1.0 components working via real transcript analysis.
 
         This test demonstrates the COMPLETE v1.0 core loop by analyzing real
@@ -282,9 +280,7 @@ class TestV1ComponentsDemo:
         all_analyses = []
 
         for i, session_file in enumerate(session_files, 1):
-            print(
-                f"\n>>> SESSION {i}/{len(session_files)}: {session_file.name[:16]}..."
-            )
+            print(f"\n>>> SESSION {i}/{len(session_files)}: {session_file.name[:16]}...")
 
             # Generate transcript
             print("  Generating transcript...")
@@ -359,41 +355,31 @@ class TestV1ComponentsDemo:
         for agent, count in component_counts["agents"].items():
             pct = (count / total_sessions) * 100
             status = "✓" if count > 0 else "✗"
-            print(
-                f"  {status} {agent:20s} - {count}/{total_sessions} sessions ({pct:.0f}%)"
-            )
+            print(f"  {status} {agent:20s} - {count}/{total_sessions} sessions ({pct:.0f}%)")
 
         print("\n--- WORKFLOWS (6) ---")
         for workflow, count in component_counts["workflows"].items():
             pct = (count / total_sessions) * 100
             status = "✓" if count > 0 else "○"
-            print(
-                f"  {status} {workflow:20s} - {count}/{total_sessions} sessions ({pct:.0f}%)"
-            )
+            print(f"  {status} {workflow:20s} - {count}/{total_sessions} sessions ({pct:.0f}%)")
 
         print("\n--- QA GATES (3) ---")
         for gate, count in component_counts["qa_gates"].items():
             pct = (count / total_sessions) * 100
             status = "✓" if count > 0 else "✗"
-            print(
-                f"  {status} {gate:20s} - {count}/{total_sessions} sessions ({pct:.0f}%)"
-            )
+            print(f"  {status} {gate:20s} - {count}/{total_sessions} sessions ({pct:.0f}%)")
 
         print("\n--- SESSION CLOSE (2) ---")
         for component, count in component_counts["session_close"].items():
             pct = (count / total_sessions) * 100
             status = "✓" if count > 0 else "✗"
-            print(
-                f"  {status} {component:20s} - {count}/{total_sessions} sessions ({pct:.0f}%)"
-            )
+            print(f"  {status} {component:20s} - {count}/{total_sessions} sessions ({pct:.0f}%)")
 
         print("\n--- TODOWRITE ---")
         count = component_counts["todowrite"]
         pct = (count / total_sessions) * 100
         status = "✓" if count > 0 else "✗"
-        print(
-            f"  {status} TodoWrite usage     - {count}/{total_sessions} sessions ({pct:.0f}%)"
-        )
+        print(f"  {status} TodoWrite usage     - {count}/{total_sessions} sessions ({pct:.0f}%)")
 
         # === STEP 5: Show Evidence Examples ===
         print("\n" + "=" * 80)

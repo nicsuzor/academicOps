@@ -1,10 +1,7 @@
-# Hydrate Before Acting
+**Hydrate all prompts**: invoke the **prompt-hydrator** agent before proceeding.
 
-**Preliminary Step**: invoke the **aops-core:prompt-hydrator** agent or skill to gather context using the EXACT command for your client:
+- Do NOT read the temp file yourself
+- The Hydrator will provide missing context to help you understand and execute the instruction.
+- Use your subagent tool or Task tool to call "prompt-hydrator" (or "aops-core:prompt-hydrator") with this exact query:
 
-- For Claude Code: `Task(subagent_type="aops-core:prompt-hydrator", prompt="Analyze context in {temp_path}")`
-- For Gemini CLI: `spawn_agent(agent_name="prompt-hydrator", user_prompt="Analyze context in {temp_path}")`
-
-**IMMEDIATE ACTION REQUIRED**:
-Once the hydrator returns the plan, you **MUST IMMEDIATELY PROCEED** to execute it (e.g. claim task, invoke critic).
-**DO NOT STOP** after hydration. This is just a context-loading step.
+> `Analyze context in {temp_path}`

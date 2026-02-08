@@ -7,7 +7,7 @@ Tests that log_hook_event correctly writes to per-session JSONL files.
 import json
 import sys
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -16,7 +16,7 @@ import pytest
 aops_core_dir = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(aops_core_dir))
 
-from hooks.schemas import HookContext, CanonicalHookOutput
+from hooks.schemas import CanonicalHookOutput, HookContext
 from hooks.unified_logger import log_hook_event
 
 
@@ -148,7 +148,7 @@ class TestLogHookEvent:
     def test_log_file_path_format(self, temp_claude_projects):
         """Test that log file path follows expected format: YYYYMMDD-shorthash-hooks.jsonl."""
         session_id = "test-path-format-xyz"
-        today = datetime.now(timezone.utc).strftime("%Y%m%d")
+        today = datetime.now(UTC).strftime("%Y%m%d")
 
         log_hook_event(
             HookContext(
@@ -172,12 +172,8 @@ class TestLogHookEvent:
 
     def test_different_sessions_different_files(self, temp_claude_projects):
         """Test that different session IDs create different log files."""
-        log_hook_event(
-            HookContext(session_id="session-aaa", hook_event="Test", raw_input={})
-        )
-        log_hook_event(
-            HookContext(session_id="session-bbb", hook_event="Test", raw_input={})
-        )
+        log_hook_event(HookContext(session_id="session-aaa", hook_event="Test", raw_input={}))
+        log_hook_event(HookContext(session_id="session-bbb", hook_event="Test", raw_input={}))
 
         projects_dir = Path(temp_claude_projects) / ".claude" / "projects"
         log_files = list(projects_dir.rglob("*-hooks.jsonl"))

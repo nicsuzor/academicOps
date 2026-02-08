@@ -50,6 +50,7 @@ You don't know what tools the main agent has. **NEVER** claim a task is "fundame
 Your output MUST be valid Markdown following this structure.
 
 **CRITICAL - Context Curation Rule**:
+
 - Your input file contains FULL axioms, heuristics, workflows, and skills
 - You must SELECT only what's relevant - DO NOT copy/paste full sections
 - For Applicable Principles: select 3-7 that apply to THIS task
@@ -75,6 +76,7 @@ Your output MUST be valid Markdown following this structure.
 ### Applicable Principles
 
 Select 3-7 principles from AXIOMS/HEURISTICS relevant to THIS task:
+
 - **P#[n] ([Name])**: [1-sentence why this applies]
 
 For simple questions: omit this section entirely.

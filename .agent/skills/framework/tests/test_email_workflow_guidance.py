@@ -38,9 +38,7 @@ def test_core_md_has_explicit_email_workflow_triggers():
     core_content = core_md_path.read_text()
 
     # Assert: Verify email workflow section exists
-    assert (
-        "Email → Task workflow" in core_content or "email-task-capture" in core_content
-    ), (
+    assert "Email → Task workflow" in core_content or "email-task-capture" in core_content, (
         "CORE.md should have an Email → Task workflow section referencing "
         "email-task-capture workflow"
     )
@@ -99,18 +97,14 @@ def test_email_workflow_guidance_is_complete():
     core_content = core_md_path.read_text()
 
     # Assert: Should reference the workflow documentation
-    assert (
-        "email-capture.md" in core_content or "workflows/email-capture" in core_content
-    ), (
+    assert "email-capture.md" in core_content or "workflows/email-capture" in core_content, (
         "CORE.md should reference the email-capture.md workflow documentation "
         "so agents can find detailed implementation guidance"
     )
 
     # Assert: Should describe what the workflow does
     workflow_keywords = ["extract", "action items", "categorize", "task"]
-    found_keywords = [
-        kw for kw in workflow_keywords if kw.lower() in core_content.lower()
-    ]
+    found_keywords = [kw for kw in workflow_keywords if kw.lower() in core_content.lower()]
 
     assert len(found_keywords) >= 3, (
         f"CORE.md email workflow description should include key concepts. "

@@ -10,6 +10,7 @@ Note: Hydration tests are in test_hydrator.py
 """
 
 import json
+
 import pytest
 
 
@@ -63,9 +64,7 @@ def test_claude_headless_with_model(claude_headless) -> None:
     - Execution completes with custom model
     - Result structure is maintained
     """
-    result = claude_headless(
-        "Respond with just 'ok'", model="claude-sonnet-4-5-20250929"
-    )
+    result = claude_headless("Respond with just 'ok'", model="claude-sonnet-4-5-20250929")
 
     assert result["success"] is True, "Execution with model param should succeed"
     assert "output" in result, "Result should include output"
@@ -124,18 +123,14 @@ def test_claude_headless_json_output(claude_headless) -> None:
 
     if isinstance(output_data, dict):
         # Current format: {"type": "result", "result": "...", ...}
-        assert output_data.get("type") == "result", (
-            "Dict output should have type=result"
-        )
+        assert output_data.get("type") == "result", "Dict output should have type=result"
         assert "result" in output_data, "Dict output should have result field"
     else:
         # Legacy format: list of events
         event_types = [e.get("type") for e in output_data if isinstance(e, dict)]
         assert any(t in event_types for t in ["assistant", "result"]) or any(
             "hook_event" in e for e in output_data if isinstance(e, dict)
-        ), (
-            f"Should have assistant/result message or hook events. Found types: {event_types}"
-        )
+        ), f"Should have assistant/result message or hook events. Found types: {event_types}"
 
 
 @pytest.mark.slow

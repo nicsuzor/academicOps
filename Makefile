@@ -2,17 +2,17 @@
 
 # Show current version
 ver:
-	@git describe --tags --abbrev=0
+	@uv run python scripts/build.py --version
 
 # Show current and next version
 nextver:
-	@current=$$(git describe --tags --abbrev=0 | sed 's/^v//'); \
+	@current=$$(uv run python scripts/build.py --version); \
 	next=$$(echo $$current | awk -F. '{print $$1 "." $$2 "." $$3+1}'); \
 	echo "Current: v$$current → Next: v$$next"
 
 # Tag and push a new release
 release:
-	@current=$$(git describe --tags --abbrev=0 | sed 's/^v//'); \
+	@current=$$(uv run python scripts/build.py --version); \
 	next=$$(echo $$current | awk -F. '{print $$1 "." $$2 "." $$3+1}'); \
 	echo "Releasing v$$next..."; \
 	git tag "v$$next" && git push origin "v$$next" && echo "✓ Released v$$next"

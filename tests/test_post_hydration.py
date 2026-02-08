@@ -1,6 +1,7 @@
 """Test Post-Hydration logic."""
 
 from unittest.mock import patch
+
 from hooks.gate_registry import check_agent_response_listener
 from hooks.schemas import HookContext
 from lib.gate_model import GateVerdict

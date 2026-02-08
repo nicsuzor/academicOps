@@ -70,12 +70,8 @@ class TaskIndexEntry:
     children: list[str]  # Computed: inverse of parent
     depends_on: list[str]
     blocks: list[str]  # Computed: inverse of depends_on
-    soft_depends_on: list[str] = field(
-        default_factory=list
-    )  # Non-blocking context hints
-    soft_blocks: list[str] = field(
-        default_factory=list
-    )  # Computed: inverse of soft_depends_on
+    soft_depends_on: list[str] = field(default_factory=list)  # Non-blocking context hints
+    soft_blocks: list[str] = field(default_factory=list)  # Computed: inverse of soft_depends_on
     depth: int = 0
     leaf: bool = True
     project: str | None = None
@@ -181,12 +177,7 @@ def _find_fast_indexer() -> Path | None:
     # 2. Relative to module (development location)
     module_dir = Path(__file__).parent
     dev_binary = (
-        module_dir.parent.parent
-        / "lib"
-        / "fast-indexer"
-        / "target"
-        / "release"
-        / "fast-indexer"
+        module_dir.parent.parent / "lib" / "fast-indexer" / "target" / "release" / "fast-indexer"
     )
     if dev_binary.exists():
         return dev_binary
@@ -299,16 +290,12 @@ class TaskIndex:
         # Identify roots (no parent OR parent doesn't exist in index)
         # Orphan tasks (with non-existent parents) are treated as roots
         self._roots = [
-            tid
-            for tid, e in self._tasks.items()
-            if e.parent is None or e.parent not in self._tasks
+            tid for tid, e in self._tasks.items() if e.parent is None or e.parent not in self._tasks
         ]
 
         # Compute ready and blocked
         completed_statuses = {TaskStatus.DONE.value, TaskStatus.CANCELLED.value}
-        completed_ids = {
-            tid for tid, e in self._tasks.items() if e.status in completed_statuses
-        }
+        completed_ids = {tid for tid, e in self._tasks.items() if e.status in completed_statuses}
 
         for task_id, entry in self._tasks.items():
             # Skip completed tasks
@@ -436,8 +423,7 @@ class TaskIndex:
 
             self._generated = data.get("generated")
             self._tasks = {
-                tid: TaskIndexEntry.from_dict(entry)
-                for tid, entry in data.get("tasks", {}).items()
+                tid: TaskIndexEntry.from_dict(entry) for tid, entry in data.get("tasks", {}).items()
             }
             self._by_project = data.get("by_project", {})
             self._roots = data.get("roots", [])

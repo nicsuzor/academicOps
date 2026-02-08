@@ -482,9 +482,7 @@ def update_hydration_metrics(
 # ============================================================================
 
 
-def record_subagent_invocation(
-    session_id: str, agent_name: str, result: dict[str, Any]
-) -> None:
+def record_subagent_invocation(session_id: str, agent_name: str, result: dict[str, Any]) -> None:
     """Record a subagent invocation.
 
     Args:
@@ -860,9 +858,7 @@ def get_passed_gates(session_id: str) -> set[str]:
     # The latter handles /commands (like /pull) that bypass hydration via clear_hydration_pending()
     hydration = state.get("hydration", {})
     state_data = state.get("state", {})
-    if hydration.get("hydrated_intent") or not state_data.get(
-        "hydration_pending", True
-    ):
+    if hydration.get("hydrated_intent") or not state_data.get("hydration_pending", True):
         passed.add("hydration")
 
     # Task gate: passed if current_task is set
@@ -891,9 +887,7 @@ def get_passed_gates(session_id: str) -> set[str]:
 # ============================================================================
 
 
-def set_todo_with_handover(
-    session_id: str, handover_content: str | None = None
-) -> None:
+def set_todo_with_handover(session_id: str, handover_content: str | None = None) -> None:
     """Set todo_with_handover flag when todo list includes handover step.
 
     Part of the three-gate requirement for destructive operations:

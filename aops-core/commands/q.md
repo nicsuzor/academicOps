@@ -7,9 +7,9 @@ permalink: commands/q
 triggers: ["queue task", "save for later", "add to backlog", "new task:"]
 ---
 
-# /q - Quick Queue (No Hydration)
+# /q - Quick Queue
 
-**Purpose**: Capture a task for later execution with minimal overhead. Bypasses full hydration workflow. Tasks queued here can be claimed by polecat swarm workers.
+**Purpose**: Capture a task for later execution with minimal overhead.
 
 ## When to Use
 

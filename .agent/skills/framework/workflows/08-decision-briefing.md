@@ -16,13 +16,13 @@ description: Generate user-facing briefing for tasks requiring approval or decis
 
 ## Task Categories Requiring User Decision
 
-| Category            | Detection Pattern                                | Decision Needed                |
-| ------------------- | ------------------------------------------------ | ------------------------------ |
-| **RFC**             | Title starts with "RFC:"                         | Approve/reject proposed change |
-| **Blocked**         | Has dependencies shown in `get_blocked_tasks()`  | Prioritize resolution or defer |
-| **Design Decision** | Body contains "Design decision needed"           | Choose implementation approach |
-| **Experiment**      | Tag `experiment`, status `active`                | Direct next steps or complete  |
-| **Investigation**   | Title contains "Investigate:"                    | Approve proposed solution      |
+| Category            | Detection Pattern                               | Decision Needed                |
+| ------------------- | ----------------------------------------------- | ------------------------------ |
+| **RFC**             | Title starts with "RFC:"                        | Approve/reject proposed change |
+| **Blocked**         | Has dependencies shown in `get_blocked_tasks()` | Prioritize resolution or defer |
+| **Design Decision** | Body contains "Design decision needed"          | Choose implementation approach |
+| **Experiment**      | Tag `experiment`, status `active`               | Direct next steps or complete  |
+| **Investigation**   | Title contains "Investigate:"                   | Approve proposed solution      |
 
 ## Tasks MCP Commands
 

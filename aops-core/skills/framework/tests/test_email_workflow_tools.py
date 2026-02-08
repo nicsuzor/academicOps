@@ -49,9 +49,7 @@ def test_email_workflow_has_explicit_tool_examples() -> None:
         outlook_section_end = content.find("### Step 2:", outlook_section_start)
         outlook_section = content[outlook_section_start:outlook_section_end]
 
-        assert (
-            "account" in outlook_section.lower() or "limit" in outlook_section.lower()
-        ), (
+        assert "account" in outlook_section.lower() or "limit" in outlook_section.lower(), (
             "Outlook MCP tool example must show parameter structure.\n"
             "Expected: Parameters like 'account' or 'limit' with type information"
         )
@@ -73,9 +71,7 @@ def test_email_workflow_has_explicit_tool_examples() -> None:
         memory_section_end = content.find("### Step 4:", memory_section_start)
         memory_section = content[memory_section_start:memory_section_end]
 
-        assert (
-            "query" in memory_section.lower() or "search" in memory_section.lower()
-        ), (
+        assert "query" in memory_section.lower() or "search" in memory_section.lower(), (
             "memory MCP tool example must show parameter structure.\n"
             "Expected: Parameters like 'query' or 'n_results' with examples"
         )
@@ -89,9 +85,7 @@ def test_email_workflow_has_explicit_tool_examples() -> None:
     task_script_section_start = content.find("**Scripts backend example**:")
     if task_script_section_start > 0:
         task_script_section_end = content.find("```", task_script_section_start + 200)
-        task_script_section = content[
-            task_script_section_start : task_script_section_end + 3
-        ]
+        task_script_section = content[task_script_section_start : task_script_section_end + 3]
 
         # Check all required task_add.py parameters are shown
         required_params = ["--title", "--priority", "--project", "--body"]

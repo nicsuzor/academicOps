@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
-import sys
-import os
 import fcntl
-import subprocess
+import os
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import yaml
-
-from validation import validate_task_id_or_raise
 from observability import metrics
+from validation import validate_task_id_or_raise
 
 # Add aops-core to path for lib imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -205,9 +204,7 @@ class PolecatManager:
             Path to the crew worktree
         """
         if project not in self.projects:
-            raise ValueError(
-                f"Unknown project: {project}. Known: {list(self.projects.keys())}"
-            )
+            raise ValueError(f"Unknown project: {project}. Known: {list(self.projects.keys())}")
 
         # Get project config - use local repo path directly
         project_config = self.projects[project]
@@ -227,9 +224,7 @@ class PolecatManager:
             # Already exists, just return it
             return worktree_path
 
-        print(
-            f"Creating crew worktree at {worktree_path} from local repo {local_repo_path}..."
-        )
+        print(f"Creating crew worktree at {worktree_path} from local repo {local_repo_path}...")
 
         # Check if branch already exists in local repo
         if self._branch_exists(local_repo_path, branch_name):
@@ -351,9 +346,7 @@ class PolecatManager:
             subprocess.CalledProcessError: If git operations fail
         """
         if project not in self.projects:
-            raise ValueError(
-                f"Unknown project: {project}. Known: {list(self.projects.keys())}"
-            )
+            raise ValueError(f"Unknown project: {project}. Known: {list(self.projects.keys())}")
 
         config = self.projects[project]
         source_path = config["path"]
@@ -741,7 +734,7 @@ class PolecatManager:
                     finally:
                         fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
-            except (OSError, IOError) as e:
+            except OSError as e:
                 print(f"Warning: Failed to claim {task.id}: {e}", file=sys.stderr)
                 continue
             finally:
@@ -852,9 +845,7 @@ class PolecatManager:
 
         worktree_path = self.polecats_dir / task.id
         branch_name = f"polecat/{task.id}"
-        default_branch = self.projects.get(task.project or "aops", {}).get(
-            "default_branch", "main"
-        )
+        default_branch = self.projects.get(task.project or "aops", {}).get("default_branch", "main")
 
         if worktree_path.exists():
             # Validate it's actually a git worktree (has .git file pointing to parent repo)
@@ -905,12 +896,8 @@ class PolecatManager:
             if self._branch_exists(repo_path, branch_name):
                 # Branch exists - delete it if orphan, then recreate
                 if self._is_orphan_branch(repo_path, branch_name):
-                    print(
-                        f"Branch {branch_name} is orphan, deleting...", file=sys.stderr
-                    )
-                    subprocess.run(
-                        ["git", "branch", "-D", branch_name], cwd=repo_path, check=False
-                    )
+                    print(f"Branch {branch_name} is orphan, deleting...", file=sys.stderr)
+                    subprocess.run(["git", "branch", "-D", branch_name], cwd=repo_path, check=False)
                     # Recreate with -b flag from default_branch
                     subprocess.run(cmd, cwd=repo_path, check=True)
                 else:
@@ -936,12 +923,8 @@ class PolecatManager:
             # Clean up and fail
             shutil.rmtree(worktree_path)
             subprocess.run(["git", "worktree", "prune"], cwd=repo_path, check=False)
-            subprocess.run(
-                ["git", "branch", "-D", branch_name], cwd=repo_path, check=False
-            )
-            raise RuntimeError(
-                "Failed to create valid worktree - orphan branch detected"
-            )
+            subprocess.run(["git", "branch", "-D", branch_name], cwd=repo_path, check=False)
+            raise RuntimeError("Failed to create valid worktree - orphan branch detected")
 
         # Configure git identity if specified in config
         identity = self.config.get("git_identity", {})
@@ -968,9 +951,7 @@ class PolecatManager:
 
         return worktree_path
 
-    def _verify_worktree_setup(
-        self, worktree_path: Path, branch_name: str, default_branch: str
-    ):
+    def _verify_worktree_setup(self, worktree_path: Path, branch_name: str, default_branch: str):
         """Verify worktree is correctly set up for the PR workflow.
 
         Checks:
@@ -1018,10 +999,7 @@ class PolecatManager:
                 capture_output=True,
                 text=True,
             )
-            if (
-                commits_behind.returncode == 0
-                and int(commits_behind.stdout.strip()) > 10
-            ):
+            if commits_behind.returncode == 0 and int(commits_behind.stdout.strip()) > 10:
                 print(
                     f"⚠ Worktree is {commits_behind.stdout.strip()} commits behind "
                     f"origin/{default_branch}. Consider rebasing.",
@@ -1059,9 +1037,7 @@ class PolecatManager:
         )
         return result.returncode != 0
 
-    def _is_branch_merged(
-        self, repo_path: Path, branch_name: str, target: str = "main"
-    ) -> bool:
+    def _is_branch_merged(self, repo_path: Path, branch_name: str, target: str = "main") -> bool:
         """Check if branch has been merged into target branch."""
         # Check if any commits in branch are NOT in target
         result = subprocess.run(
@@ -1136,6 +1112,4 @@ class PolecatManager:
 
         if self._branch_exists(repo_path, branch_name):
             print(f"Deleting branch {branch_name}...")
-            subprocess.run(
-                ["git", "branch", "-D", branch_name], cwd=repo_path, check=False
-            )
+            subprocess.run(["git", "branch", "-D", branch_name], cwd=repo_path, check=False)

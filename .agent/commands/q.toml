@@ -6,7 +6,7 @@ description = "Quick-queue a task for later without hydration overhead"
 prompt = '''
 # /q - Quick Queue (No Hydration)
 
-**Purpose**: Capture a task for later execution with minimal overhead. Bypasses full hydration workflow.
+**Purpose**: Capture a task for later execution with minimal overhead.
 
 ## When to Use
 

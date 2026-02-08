@@ -197,9 +197,7 @@ class TestExtractTaskCalls:
 
     def test_handles_missing_optional_fields(self):
         """Optional fields default appropriately."""
-        tool_calls = [
-            {"name": "Task", "input": {"subagent_type": "Explore", "prompt": "Find"}}
-        ]
+        tool_calls = [{"name": "Task", "input": {"subagent_type": "Explore", "prompt": "Find"}}]
 
         result = extract_task_calls(tool_calls)
 
@@ -221,9 +219,7 @@ class TestTaskToolWithType:
 
     def test_returns_false_when_no_match(self):
         """Returns False when no matching subagent_type."""
-        tool_calls = [
-            {"name": "Task", "input": {"subagent_type": "Explore", "prompt": "Find"}}
-        ]
+        tool_calls = [{"name": "Task", "input": {"subagent_type": "Explore", "prompt": "Find"}}]
 
         assert task_tool_with_type(tool_calls, "critic") is False
 

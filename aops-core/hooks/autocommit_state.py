@@ -206,9 +206,7 @@ def get_modified_repos(tool_name: str, tool_input: dict[str, Any]) -> set[str]:
     # Task script patterns (Bash commands) -> data repo
     if tool_name == "Bash":
         if "command" not in tool_input:
-            raise ValueError(
-                "Bash tool_input requires 'command' parameter (P#8: fail-fast)"
-            )
+            raise ValueError("Bash tool_input requires 'command' parameter (P#8: fail-fast)")
         command = tool_input["command"]
         task_script_patterns = [
             "task_add.py",

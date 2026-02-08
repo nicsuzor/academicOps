@@ -9,8 +9,8 @@ This script orchestrates end-to-end framework tests by:
 """
 
 import argparse
-import re
 import logging
+import re
 import subprocess
 import sys
 import time
@@ -35,9 +35,9 @@ POLECAT_CLI = AOPS_ROOT / "polecat" / "cli.py"
 sys.path.insert(0, str(AOPS_CORE))
 
 try:
+    from lib.paths import get_sessions_dir
     from lib.task_model import TaskStatus, TaskType
     from lib.task_storage import TaskStorage
-    from lib.paths import get_sessions_dir
 except ImportError as e:
     logger.error(f"Failed to import framework libs: {e}")
     logger.info("Tip: Try running with 'uv run scripts/automated_test_harness.py'")
@@ -84,9 +84,7 @@ class TestHarness:
         # Claude is default in polecat if --gemini is not present
 
         if self.task_id:
-            logger.info(
-                f"Starting polecat run ({agent_type}) for task {self.task_id}..."
-            )
+            logger.info(f"Starting polecat run ({agent_type}) for task {self.task_id}...")
             cmd.extend(["-t", self.task_id])
         else:
             logger.info(f"Starting polecat run ({agent_type}) (pulling from stack)...")
@@ -155,9 +153,7 @@ class TestHarness:
             logger.info(f"Identified Task ID from output: {found_id}")
             self.task_id = found_id
 
-    def verify_transcript(
-        self, agent_type: str = "gemini", min_entries: int = 5
-    ) -> bool:
+    def verify_transcript(self, agent_type: str = "gemini", min_entries: int = 5) -> bool:
         """Verify that a transcript was generated and contains expected content."""
         logger.info(f"Verifying transcript generation for {agent_type}...")
 
@@ -170,9 +166,7 @@ class TestHarness:
         candidates = list(sessions_dir.glob(f"{today_str}*-session-*.md"))
 
         if not candidates:
-            logger.error(
-                f"No transcripts found for today ({today_str}) in {sessions_dir}"
-            )
+            logger.error(f"No transcripts found for today ({today_str}) in {sessions_dir}")
             return False
 
         latest = sorted(candidates, key=lambda p: p.stat().st_mtime)[-1]
@@ -185,9 +179,7 @@ class TestHarness:
         elif "TEST:" in content:
             logger.info("Found task title 'TEST:' in transcript.")
         else:
-            logger.warning(
-                "Transcript might not be for this task (Title/ID not explicitly found)."
-            )
+            logger.warning("Transcript might not be for this task (Title/ID not explicitly found).")
 
         if len(content.splitlines()) < min_entries:
             logger.error("Transcript is too short.")
@@ -226,9 +218,7 @@ def main():
     # Safety: If pulling from stack (real work) or using existing ID, default keep=True
     if not args.create:
         if not args.keep:
-            logger.info(
-                "Running real/existing task: Defaulting to --keep (preserving worktree)"
-            )
+            logger.info("Running real/existing task: Defaulting to --keep (preserving worktree)")
             args.keep = True
 
     try:

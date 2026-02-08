@@ -21,8 +21,9 @@ This test suite verifies:
 """
 
 import json
-import pytest
 from pathlib import Path
+
+import pytest
 
 
 class TestGateBlockIncludesReason:
@@ -121,9 +122,7 @@ class TestGateBlockIncludesReason:
         if output.decision == "deny" and output.reason:
             # Check for actionable guidance
             guidance_terms = ["hydrat", "invoke", "skill", "prompt-hydrator"]
-            has_guidance = any(
-                term.lower() in output.reason.lower() for term in guidance_terms
-            )
+            has_guidance = any(term.lower() in output.reason.lower() for term in guidance_terms)
             assert has_guidance, (
                 f"Gate block reason should include actionable guidance. "
                 f"Got: {output.reason!r}. "
@@ -167,9 +166,7 @@ class TestGateBlockIncludesReason:
         # If task gate blocked, reason must mention task requirement
         if output.decision == "deny" and output.reason:
             task_terms = ["task", "claim", "pull"]
-            has_task_guidance = any(
-                term.lower() in output.reason.lower() for term in task_terms
-            )
+            has_task_guidance = any(term.lower() in output.reason.lower() for term in task_terms)
             # Note: This may not trigger if hydration gate catches it first
             # That's OK - we just verify the reason mentions something useful
             assert has_task_guidance or "hydration" in output.reason.lower(), (
@@ -317,9 +314,7 @@ class TestGeminiFeedbackGap:
         save_session_state(session_id, state)
 
         # Invoke router as subprocess to check exit code
-        router_script = (
-            Path(__file__).parent.parent.parent / "aops-core" / "hooks" / "router.py"
-        )
+        router_script = Path(__file__).parent.parent.parent / "aops-core" / "hooks" / "router.py"
 
         input_json = json.dumps(
             {
@@ -383,9 +378,7 @@ class TestGeminiFeedbackGap:
         state["hydration"]["temp_path"] = str(tmp_path / "hydrate.md")
         save_session_state(session_id, state)
 
-        router_script = (
-            Path(__file__).parent.parent.parent / "aops-core" / "hooks" / "router.py"
-        )
+        router_script = Path(__file__).parent.parent.parent / "aops-core" / "hooks" / "router.py"
 
         input_json = json.dumps(
             {
@@ -538,9 +531,7 @@ class TestClaudeVsGeminiFeedbackParity:
         # (context_injection is the source for both)
         if result.context_injection:
             gemini_reason = gemini_output.reason or ""
-            claude_reason = (
-                claude_output.reason if hasattr(claude_output, "reason") else ""
-            )
+            claude_reason = claude_output.reason if hasattr(claude_output, "reason") else ""
 
             # They should share key terms from the gate message
             gate_terms = ["hydration", "task", "plan", "critic"]
@@ -549,9 +540,7 @@ class TestClaudeVsGeminiFeedbackParity:
 
             # If one identifies a gate, the other should too (or both empty)
             if gemini_gate or claude_gate:
-                assert (
-                    gemini_gate == claude_gate or not gemini_gate or not claude_gate
-                ), (
+                assert gemini_gate == claude_gate or not gemini_gate or not claude_gate, (
                     f"Gate identification mismatch. "
                     f"Gemini identified: {gemini_gate}, Claude: {claude_gate}"
                 )

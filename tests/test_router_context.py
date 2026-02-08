@@ -204,9 +204,7 @@ class TestExtractRouterContext:
         )
 
         # Verify active skill is shown
-        assert "framework" in result.lower(), (
-            "Should show 'framework' as the active/recent skill"
-        )
+        assert "framework" in result.lower(), "Should show 'framework' as the active/recent skill"
 
         # Verify TodoWrite summary shows status counts
         assert "completed" in result.lower() or "2" in result, (
@@ -219,9 +217,7 @@ class TestExtractRouterContext:
             "Should show pending task count or status"
         )
 
-    def test_extract_router_context_truncates_long_prompts(
-        self, tmp_path: Path
-    ) -> None:
+    def test_extract_router_context_truncates_long_prompts(self, tmp_path: Path) -> None:
         """Test that long user prompts are truncated to ~100 chars."""
         from lib.session_reader import extract_router_context
 
@@ -245,9 +241,7 @@ class TestExtractRouterContext:
         assert "A" * 400 in result, "Long prompts should include up to 400 chars"
         assert "A" * 401 not in result, "Long prompts should be truncated at 400 chars"
 
-    def test_extract_router_context_limits_to_recent_prompts(
-        self, tmp_path: Path
-    ) -> None:
+    def test_extract_router_context_limits_to_recent_prompts(self, tmp_path: Path) -> None:
         """Test that only last 3-5 user prompts are included."""
         from lib.session_reader import extract_router_context
 
@@ -257,9 +251,7 @@ class TestExtractRouterContext:
 
         for i in range(10):
             entries.append(
-                _create_user_entry(
-                    f"User prompt number {i} with unique content", offset=i * 10
-                )
+                _create_user_entry(f"User prompt number {i} with unique content", offset=i * 10)
             )
             entries.append(_create_assistant_entry(offset=i * 10 + 1))
 
@@ -270,12 +262,8 @@ class TestExtractRouterContext:
         result = extract_router_context(session_file)
 
         # Should NOT contain early prompts (0, 1, 2)
-        assert "prompt number 0" not in result.lower(), (
-            "Should not contain oldest prompts"
-        )
-        assert "prompt number 1" not in result.lower(), (
-            "Should not contain oldest prompts"
-        )
+        assert "prompt number 0" not in result.lower(), "Should not contain oldest prompts"
+        assert "prompt number 1" not in result.lower(), "Should not contain oldest prompts"
 
         # Should contain recent prompts (at least 8 or 9)
         assert "prompt number 9" in result.lower(), "Should contain most recent prompt"
@@ -321,9 +309,7 @@ class TestExtractRouterContext:
         # Should either be empty or not contain the slash commands
         # (implementation may vary - either skip them entirely or include them)
         # The key is it should NOT crash and should handle gracefully
-        assert isinstance(result, str), (
-            "Should return a string even for slash-only session"
-        )
+        assert isinstance(result, str), "Should return a string even for slash-only session"
         # If not empty, verify it's well-formed (doesn't have parsing errors)
         if result:
             assert "Recent prompts" in result or "prompt" in result.lower(), (
@@ -356,18 +342,12 @@ class TestExtractRouterContext:
         result = extract_router_context(session_file)
 
         # Should not crash and should return a string
-        assert isinstance(result, str), (
-            "Should return a string even with malformed lines"
-        )
+        assert isinstance(result, str), "Should return a string even with malformed lines"
         # Should still extract at least one valid prompt
         if result:
             # Should contain at least one of the valid prompts
-            has_valid_content = (
-                "first valid" in result.lower() or "second valid" in result.lower()
-            )
-            assert has_valid_content, (
-                "Should extract valid prompts despite malformed lines"
-            )
+            has_valid_content = "first valid" in result.lower() or "second valid" in result.lower()
+            assert has_valid_content, "Should extract valid prompts despite malformed lines"
 
     def test_extract_router_context_no_todowrite(self, tmp_path: Path) -> None:
         """Test that session without TodoWrite omits 'Tasks:' line.
@@ -495,9 +475,7 @@ class TestExtractRouterContext:
         assert "fix the bug" in result.lower() or "/do" in result, (
             "Should extract string-format command content"
         )
-        assert "test the fix" in result.lower(), (
-            "Should extract list-format prompt content"
-        )
+        assert "test the fix" in result.lower(), "Should extract list-format prompt content"
         assert "save that" in result.lower() or "output directory" in result.lower(), (
             "Should extract follow-up string-format prompt"
         )
@@ -586,9 +564,7 @@ class TestExtractRouterContextDemo:
 
         # Analyze token efficiency
         assert len(context) < 2000, "Context should be compact (<2000 chars)"
-        assert "Session Context" in context or context == "", (
-            "Should have header or be empty"
-        )
+        assert "Session Context" in context or context == "", "Should have header or be empty"
 
     def test_demo_show_raw_vs_extracted(self, tmp_path: Path) -> None:
         """Given mixed content formats, show what gets extracted vs filtered.
@@ -629,9 +605,7 @@ class TestExtractRouterContextDemo:
                 "type": "user",
                 "uuid": "u2",
                 "timestamp": "2026-01-01T10:02:00Z",
-                "message": {
-                    "content": [{"type": "text", "text": "now run the tests to verify"}]
-                },
+                "message": {"content": [{"type": "text", "text": "now run the tests to verify"}]},
             },
             {
                 "type": "assistant",
@@ -838,9 +812,7 @@ class TestCleanPromptExtraction:
         context = extract_router_context(session_file)
 
         # Should contain the actual command args, not XML markup
-        assert "fix the hydrator" in context.lower(), (
-            "Should extract command args content"
-        )
+        assert "fix the hydrator" in context.lower(), "Should extract command args content"
         # Should NOT contain XML tags
         assert "<command-message>" not in context, "Should strip <command-message> tag"
         assert "<command-name>" not in context, "Should strip <command-name> tag"
@@ -867,9 +839,7 @@ class TestCleanPromptExtraction:
                 "type": "user",
                 "uuid": "u1",
                 "timestamp": "2026-01-01T10:00:00Z",
-                "message": {
-                    "content": [{"type": "text", "text": "run the tests please"}]
-                },
+                "message": {"content": [{"type": "text", "text": "run the tests please"}]},
             },
             {
                 "type": "assistant",
@@ -905,9 +875,7 @@ class TestCleanPromptExtraction:
         assert "run the tests" in context.lower(), "Should include real user prompt"
         assert "save that" in context.lower(), "Should include follow-up prompt"
         # Should NOT contain agent notification content
-        assert "agent-notification" not in context, (
-            "Should filter out agent notifications"
-        )
+        assert "agent-notification" not in context, "Should filter out agent notifications"
         assert "aa7d721" not in context, "Should not include agent IDs"
 
     def test_combined_cleaning(self, tmp_path: Path) -> None:
@@ -952,9 +920,7 @@ class TestCleanPromptExtraction:
                 "type": "user",
                 "uuid": "u3",
                 "timestamp": "2026-01-01T10:03:00Z",
-                "message": {
-                    "content": [{"type": "text", "text": "add tests for edge cases"}]
-                },
+                "message": {"content": [{"type": "text", "text": "add tests for edge cases"}]},
             },
             {
                 "type": "assistant",
@@ -1144,17 +1110,11 @@ class TestCustodietContextFormat:
         assert "authentication bug" in context.lower(), "Should contain first prompt"
         assert "verify the fix" in context.lower(), "Should contain recent prompt"
         assert "python-dev" in context.lower(), "Should show active skill"
-        assert "1 completed" in context or "completed" in context.lower(), (
-            "Should show task counts"
-        )
-        assert "1 in_progress" in context or "in_progress" in context, (
-            "Should show in_progress"
-        )
+        assert "1 completed" in context or "completed" in context.lower(), "Should show task counts"
+        assert "1 in_progress" in context or "in_progress" in context, "Should show in_progress"
 
         # No duplicate headers
-        assert context.count("## Session Context") == 1, (
-            "Should have exactly one header"
-        )
+        assert context.count("## Session Context") == 1, "Should have exactly one header"
 
 
 class TestContextIncludesAgentActivity:
@@ -1165,9 +1125,7 @@ class TestContextIncludesAgentActivity:
     compliance checking is impossible.
     """
 
-    def _create_tool_use_entry(
-        self, tool_name: str, tool_input: dict, offset: int = 0
-    ) -> dict:
+    def _create_tool_use_entry(self, tool_name: str, tool_input: dict, offset: int = 0) -> dict:
         """Create an assistant entry with a tool_use block."""
         return {
             "type": "assistant",
@@ -1216,9 +1174,7 @@ class TestContextIncludesAgentActivity:
             _create_user_entry("fix the login bug", offset=0),
             _create_assistant_entry(offset=1),
             # Agent reads a file
-            self._create_tool_use_entry(
-                "Read", {"file_path": "/src/auth.py"}, offset=5
-            ),
+            self._create_tool_use_entry("Read", {"file_path": "/src/auth.py"}, offset=5),
             self._create_tool_result_entry(offset=6),
             # Agent edits a file
             self._create_tool_use_entry(
@@ -1228,9 +1184,7 @@ class TestContextIncludesAgentActivity:
             ),
             self._create_tool_result_entry(offset=11),
             # Agent runs tests
-            self._create_tool_use_entry(
-                "Bash", {"command": "uv run pytest tests/"}, offset=15
-            ),
+            self._create_tool_use_entry("Bash", {"command": "uv run pytest tests/"}, offset=15),
             self._create_tool_result_entry(offset=16),
         ]
 
@@ -1243,9 +1197,7 @@ class TestContextIncludesAgentActivity:
         # Context MUST show recent tool calls
         assert "Read" in context, "Should show Read tool was called"
         assert "Edit" in context, "Should show Edit tool was called"
-        assert "Bash" in context or "pytest" in context, (
-            "Should show Bash/test execution"
-        )
+        assert "Bash" in context or "pytest" in context, "Should show Bash/test execution"
 
     def test_context_shows_files_touched(self, tmp_path: Path) -> None:
         """Context should indicate which files the agent has interacted with.
@@ -1303,9 +1255,7 @@ class TestContextIncludesAgentActivity:
                 },
             },
             # Agent uses a tool
-            self._create_tool_use_entry(
-                "Bash", {"command": "cat /var/log/error.log"}, offset=10
-            ),
+            self._create_tool_use_entry("Bash", {"command": "cat /var/log/error.log"}, offset=10),
             self._create_tool_result_entry(offset=11),
             # User follow-up
             _create_user_entry("what did you find?", offset=20),
@@ -1336,9 +1286,7 @@ class TestContextIncludesAgentActivity:
         assert "what did you find" in context.lower(), "Should show second user prompt"
 
         # Should show agent activity (tool calls at minimum)
-        assert "Bash" in context or "log" in context, (
-            "Should show agent investigated logs"
-        )
+        assert "Bash" in context or "log" in context, "Should show agent investigated logs"
 
     def test_context_not_empty_for_active_session(self, tmp_path: Path) -> None:
         """A session with real activity should produce substantial context.
@@ -1356,15 +1304,11 @@ class TestContextIncludesAgentActivity:
             self._create_tool_result_entry(offset=6),
             self._create_tool_use_entry("Glob", {"pattern": "**/*.py"}, offset=10),
             self._create_tool_result_entry(offset=11),
-            self._create_tool_use_entry(
-                "Edit", {"file_path": "src/main.py"}, offset=15
-            ),
+            self._create_tool_use_entry("Edit", {"file_path": "src/main.py"}, offset=15),
             self._create_tool_result_entry(offset=16),
             _create_user_entry("now run the tests", offset=20),
             _create_assistant_entry(offset=21),
-            self._create_tool_use_entry(
-                "Bash", {"command": "uv run pytest"}, offset=25
-            ),
+            self._create_tool_use_entry("Bash", {"command": "uv run pytest"}, offset=25),
             self._create_tool_result_entry(offset=26),
         ]
 
@@ -1376,15 +1320,13 @@ class TestContextIncludesAgentActivity:
 
         # Context should be SUBSTANTIAL for a real session
         assert len(context) > 100, (
-            f"Context too short ({len(context)} chars) for active session. "
-            f"Got:\n{context}"
+            f"Context too short ({len(context)} chars) for active session. Got:\n{context}"
         )
 
         # Should have multiple types of information
         assert "Recent prompts:" in context, "Should have user prompts section"
         # At least one of these should be present to show agent activity
         has_tool_info = any(
-            x in context
-            for x in ["Read", "Edit", "Bash", "Glob", "Tool", "Recent tools"]
+            x in context for x in ["Read", "Edit", "Bash", "Glob", "Tool", "Recent tools"]
         )
         assert has_tool_info, f"Should show agent tool activity. Got:\n{context}"

@@ -21,7 +21,6 @@ Migration pattern:
 
 from pydantic import BaseModel, Field
 
-
 # --- Git Status Models (session_end_commit_check.py) ---
 
 
@@ -169,8 +168,6 @@ class HookLogEntry(BaseModel):
     input: dict = Field(default_factory=dict)
     output: dict | None = None
     raw_input: dict = Field(default_factory=dict)
-
-
 
 
 # --- Policy Enforcer Models (policy_enforcer.py) ---

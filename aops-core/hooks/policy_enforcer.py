@@ -15,7 +15,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
 # Destructive git operations that should be blocked
 DESTRUCTIVE_GIT_PATTERNS = [
     r"git\s+reset\s+--hard",
@@ -43,21 +42,15 @@ def count_prose_lines(content: str) -> int:
     return count
 
 
-def validate_minimal_documentation(
-    tool_name: str, args: dict[str, Any]
-) -> dict[str, Any] | None:
+def validate_minimal_documentation(tool_name: str, args: dict[str, Any]) -> dict[str, Any] | None:
     """Block *-GUIDE.md files and .md files > 200 prose lines."""
     if tool_name != "Write":
         return None
 
     if "file_path" not in args:
-        raise ValueError(
-            "Write tool args requires 'file_path' parameter (P#8: fail-fast)"
-        )
+        raise ValueError("Write tool args requires 'file_path' parameter (P#8: fail-fast)")
     if "content" not in args:
-        raise ValueError(
-            "Write tool args requires 'content' parameter (P#8: fail-fast)"
-        )
+        raise ValueError("Write tool args requires 'content' parameter (P#8: fail-fast)")
     file_path = args["file_path"]
     content = args["content"]
 
@@ -85,9 +78,7 @@ def validate_minimal_documentation(
     return None
 
 
-def validate_safe_git_usage(
-    tool_name: str, args: dict[str, Any]
-) -> dict[str, Any] | None:
+def validate_safe_git_usage(tool_name: str, args: dict[str, Any]) -> dict[str, Any] | None:
     """Block destructive git operations."""
     if tool_name != "Bash":
         return None
@@ -110,9 +101,7 @@ def validate_safe_git_usage(
     return None
 
 
-def validate_protect_artifacts(
-    tool_name: str, args: dict[str, Any]
-) -> dict[str, Any] | None:
+def validate_protect_artifacts(tool_name: str, args: dict[str, Any]) -> dict[str, Any] | None:
     """Block modification of protected files (H#94)."""
     if tool_name not in ["Write", "Edit", "replace"]:
         return None

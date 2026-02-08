@@ -311,8 +311,7 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
     valid_outcomes = {"success", "partial", "failure"}
     if insights["outcome"] not in valid_outcomes:
         raise InsightsValidationError(
-            f"Field 'outcome' must be one of {valid_outcomes}, "
-            f"got '{insights['outcome']}'"
+            f"Field 'outcome' must be one of {valid_outcomes}, got '{insights['outcome']}'"
         )
 
     # Validate date format (ISO 8601: YYYY-MM-DD or full timestamp with tz)
@@ -381,10 +380,7 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
         _validate_token_metrics(insights["token_metrics"])
 
     # Validate framework_reflections structure (optional)
-    if (
-        "framework_reflections" in insights
-        and insights["framework_reflections"] is not None
-    ):
+    if "framework_reflections" in insights and insights["framework_reflections"] is not None:
         _validate_framework_reflections(insights["framework_reflections"])
 
 
@@ -584,9 +580,7 @@ def write_insights_file(
         patterns_to_try.append(status_dir / f"{session_id}.json")
         # Fallback: search with glob for pattern matching (handles renamed files)
         if date_compact:
-            patterns_to_try.extend(
-                status_dir.glob(f"{date_compact}-*{session_id}*.json")
-            )
+            patterns_to_try.extend(status_dir.glob(f"{date_compact}-*{session_id}*.json"))
         patterns_to_try.extend(status_dir.glob(f"*{session_id}*.json"))
 
         for candidate in patterns_to_try:
@@ -596,7 +590,7 @@ def write_insights_file(
 
         if status_path:
             try:
-                with open(status_path, "r", encoding="utf-8") as f:
+                with open(status_path, encoding="utf-8") as f:
                     status_data = json.load(f)
                 # Extract insights from status and merge into insights dict
                 # Handle both formats:
@@ -617,9 +611,7 @@ def write_insights_file(
     path.parent.mkdir(parents=True, exist_ok=True)
 
     # Create temp file in same directory
-    fd, temp_path_str = tempfile.mkstemp(
-        suffix=".json", prefix="insights-", dir=str(path.parent)
-    )
+    fd, temp_path_str = tempfile.mkstemp(suffix=".json", prefix="insights-", dir=str(path.parent))
     temp_path = Path(temp_path_str)
 
     try:

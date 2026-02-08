@@ -1,9 +1,10 @@
-import pytest
+import json
 import os
 import sys
-import json
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Add aops-core to path
 AOPS_ROOT = Path(__file__).parent.parent.parent
@@ -220,9 +221,7 @@ def test_hook_json_io(case):
             output_dict = json.loads(output.model_dump_json(exclude_none=True))
             # Claude PreToolUse puts decision in hookSpecificOutput
             if "hookSpecificOutput" in output_dict:
-                actual_decision = output_dict["hookSpecificOutput"].get(
-                    "permissionDecision"
-                )
+                actual_decision = output_dict["hookSpecificOutput"].get("permissionDecision")
                 assert actual_decision == expected_decision, description
             else:
                 # Stop event

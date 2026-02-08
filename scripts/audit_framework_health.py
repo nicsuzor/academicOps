@@ -23,7 +23,7 @@ import os
 import re
 import sys
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -109,15 +109,13 @@ class HealthMetrics:
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
         return {
-            "generated": datetime.now(timezone.utc).isoformat(),
+            "generated": datetime.now(UTC).isoformat(),
             "summary": {
                 "files_not_in_index": len(self.files_not_in_index),
                 "files_missing": len(self.files_in_index_but_missing),
                 "skills_without_specs": len(self.skills_without_specs),
                 "axioms_without_enforcement": len(self.axioms_without_enforcement),
-                "heuristics_without_enforcement": len(
-                    self.heuristics_without_enforcement
-                ),
+                "heuristics_without_enforcement": len(self.heuristics_without_enforcement),
                 "orphan_files": len(self.orphan_files),
                 "broken_wikilinks": len(self.broken_wikilinks),
                 "oversized_skills": len(self.oversized_skills),
@@ -272,9 +270,7 @@ def check_enforcement_mapping(root: Path, metrics: HealthMetrics) -> None:
         heuristics_content = heuristics_path.read_text()
         # Match patterns like "## H1:" or "## H23:"
         heuristic_pattern = re.compile(r"^##\s+H(\d+):", re.MULTILINE)
-        heuristic_nums = [
-            int(m.group(1)) for m in heuristic_pattern.finditer(heuristics_content)
-        ]
+        heuristic_nums = [int(m.group(1)) for m in heuristic_pattern.finditer(heuristics_content)]
 
         for h in heuristic_nums:
             patterns = [f"h#{h}", f"h{h}", f"heuristic #{h}", f"heuristic {h}"]
@@ -596,7 +592,6 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "task-output-includes-ids",
         "internal-records-before-external-apis",
         "local-agents-md-over-central-docs",
-        "indices-before-exploration",
         "never-bypass-locks-without-user-direction",
         # Workflow placeholders and internal references
         "qa-demo",

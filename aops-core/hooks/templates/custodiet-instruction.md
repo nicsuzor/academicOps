@@ -8,12 +8,11 @@ description: |
   Variables: {temp_path} - Path to temp file with full compliance context
 ---
 
-**MANDATORY**: Invoke custodiet compliance check (do NOT read the temp file yourself):
+**MANDATORY**: Invoke custodiet compliance check.
 
-```
-Invoke the **custodiet** skill:
+- DO NOT read the temp file yourself
+- Invoke the **custodiet** sub agent or tool:
 
-"Analyze the user's implicit authority and provide a risk assessment of {temp_path}."
-```
+> `Analyze the user's implicit authority and provide a risk assessment of {temp_path}.`
 
-Follow custodiet's guidance: if BLOCK is returned, STOP and address the issue before continuing.
+- Follow custodiet's guidance: if BLOCK is returned, STOP and address the issue before continuing.

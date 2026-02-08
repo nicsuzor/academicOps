@@ -14,7 +14,7 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from hooks.schemas import HookContext
@@ -23,7 +23,7 @@ from lib.gate_model import GateResult
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 
-GATE_AGENTS: Dict[str, str] = {
+GATE_AGENTS: dict[str, str] = {
     "hydration": "aops-core:prompt-hydrator",
     "custodiet": "aops-core:custodiet",
     "critic": "aops-core:critic",
@@ -31,7 +31,7 @@ GATE_AGENTS: Dict[str, str] = {
 }
 
 
-def check_tool_gate(ctx: "HookContext") -> GateResult:
+def check_tool_gate(ctx: HookContext) -> GateResult:
     """PreToolUse: Check if tool is allowed based on gate_config.py."""
     from hooks.gate_config import (
         GATE_MODE_DEFAULTS,
@@ -61,7 +61,7 @@ def check_tool_gate(ctx: "HookContext") -> GateResult:
         if "hydrator" in subagent.lower():
             session_state.set_hydrator_active(ctx.session_id)
             # Open hydration gate immediately when hydrator is invoked (not just when it completes)
-            # This allows the main agent to proceed with tool calls while hydrator runs
+            # This allows the subagent to proceed with tool calls while hydrator runs
             session_state.clear_hydration_pending(ctx.session_id)
             return GateResult.allow()
 
@@ -89,9 +89,7 @@ def check_tool_gate(ctx: "HookContext") -> GateResult:
     from lib.template_registry import TemplateRegistry
 
     first = missing[0]
-    mode = os.environ.get(
-        GATE_MODE_ENV_VARS.get(first, ""), GATE_MODE_DEFAULTS.get(first, "warn")
-    )
+    mode = os.environ.get(GATE_MODE_ENV_VARS.get(first, ""), GATE_MODE_DEFAULTS.get(first, "warn"))
 
     agent = GATE_AGENTS.get(first, "")
     audit_path = _create_audit_file(ctx.session_id, first, ctx)
@@ -100,16 +98,10 @@ def check_tool_gate(ctx: "HookContext") -> GateResult:
 
     if agent and audit_path:
         short_name = agent.split(":")[-1]
-        next_instruction = (
-            f"- **Claude Code**: `Task(subagent_type=\"{agent}\", prompt=\"Analyze {audit_path}\")`\n"
-            f"  - **Gemini CLI**: `spawn_agent(agent_name=\"{short_name}\", user_prompt=\"Analyze {audit_path}\")`"
-        )
+        next_instruction = f"  Invoke {agent} ({short_name}) agent with query: `{audit_path})`\n"
     elif agent:
         short_name = agent.split(":")[-1]
-        next_instruction = (
-            f"- **Claude Code**: `Task(subagent_type=\"{agent}\")`\n"
-            f"  - **Gemini CLI**: `spawn_agent(agent_name=\"{short_name}\")`"
-        )
+        next_instruction = f"Invoke {agent} ({short_name}) agent immediately.\n"
     else:
         next_instruction = f"Satisfy `{first}` gate"
 
@@ -130,7 +122,7 @@ def check_tool_gate(ctx: "HookContext") -> GateResult:
     return GateResult.warn(system_message=msg, context_injection=msg)
 
 
-def update_gate_state(ctx: "HookContext") -> Optional[GateResult]:
+def update_gate_state(ctx: HookContext) -> GateResult | None:
     """PostToolUse: Open/close gates based on conditions."""
     from hooks.gate_config import GATE_CLOSURE_TRIGGERS, GATE_OPENING_CONDITIONS
     from lib import session_state
@@ -172,7 +164,7 @@ def update_gate_state(ctx: "HookContext") -> Optional[GateResult]:
     return None
 
 
-def on_user_prompt(ctx: "HookContext") -> Optional[GateResult]:
+def on_user_prompt(ctx: HookContext) -> GateResult | None:
     """UserPromptSubmit: Close gates that re-close on new input."""
     from hooks.gate_config import GATE_CLOSURE_TRIGGERS
 
@@ -187,7 +179,7 @@ def on_user_prompt(ctx: "HookContext") -> Optional[GateResult]:
     return None
 
 
-def on_session_start(ctx: "HookContext") -> Optional[GateResult]:
+def on_session_start(ctx: HookContext) -> GateResult | None:
     """SessionStart: Initialize gates."""
     from hooks.gate_config import GATE_INITIAL_STATE
 
@@ -208,7 +200,7 @@ def on_session_start(ctx: "HookContext") -> Optional[GateResult]:
 
 def _is_hydrator_file_read(
     tool_name: str,
-    tool_input: Optional[Dict[str, Any]],
+    tool_input: dict[str, Any] | None,
 ) -> bool:
     """Check if this is a read of a hydrator file.
 
@@ -288,9 +280,7 @@ def _close_gate(session_id: str, gate: str) -> None:
         session_state.clear_handover_skill_invoked(session_id)
 
 
-def _create_audit_file(
-    session_id: str, gate: str, ctx: "HookContext"
-) -> Optional[Path]:
+def _create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path | None:
     """Create audit file for gate if template exists."""
     template = TEMPLATES_DIR / f"{gate}-audit.md"
     if not template.exists():
@@ -310,10 +300,10 @@ def _create_audit_file(
 
 
 def _matches_condition(
-    cond: Dict[str, Any],
+    cond: dict[str, Any],
     tool_name: str,
-    tool_input: Dict[str, Any],
-    tool_output: Dict[str, Any],
+    tool_input: dict[str, Any],
+    tool_output: dict[str, Any],
 ) -> bool:
     """Check if opening condition matches."""
     pattern = cond.get("tool_pattern")
@@ -351,9 +341,9 @@ def _matches_condition(
 
 
 def _matches_trigger(
-    trigger: Dict[str, Any],
+    trigger: dict[str, Any],
     tool_name: str,
-    tool_input: Dict[str, Any],
+    tool_input: dict[str, Any],
     session_id: str,
     gate: str,
 ) -> bool:

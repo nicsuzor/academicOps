@@ -11,12 +11,11 @@ import argparse
 import multiprocessing
 import os
 import random
+import shutil
+import signal
 import subprocess
 import sys
 import time
-import shutil
-import signal
-from typing import Optional
 
 # Global event to signal workers to drain
 STOP_EVENT = multiprocessing.Event()
@@ -24,9 +23,7 @@ STOP_EVENT = multiprocessing.Event()
 
 def signal_handler(signum, frame):
     """Handle SIGINT (Ctrl+C) by setting stop event for graceful drain."""
-    print(
-        "\n🛑 Received stop signal. Enabling drain mode... (Press Ctrl+C again to force quit)"
-    )
+    print("\n🛑 Received stop signal. Enabling drain mode... (Press Ctrl+C again to force quit)")
     STOP_EVENT.set()
 
 
@@ -47,11 +44,11 @@ def alert(message: str):
 
 def worker_loop(
     agent_type: str,
-    cpu_id: Optional[int],
-    project: Optional[str],
+    cpu_id: int | None,
+    project: str | None,
     caller: str,
     dry_run: bool,
-    home_dir: Optional[str] = None,
+    home_dir: str | None = None,
 ):
     """
     Main loop for a single worker process.
@@ -68,9 +65,7 @@ def worker_loop(
         try:
             os.sched_setaffinity(0, {cpu_id})
         except Exception as e:
-            print(
-                f"[{agent_type}-{os.getpid()}] ⚠️ Failed to set affinity to CPU {cpu_id}: {e}"
-            )
+            print(f"[{agent_type}-{os.getpid()}] ⚠️ Failed to set affinity to CPU {cpu_id}: {e}")
 
     worker_name = f"{agent_type.upper()}-Worker-{os.getpid()}"
     if cpu_id is not None:
@@ -150,10 +145,10 @@ def worker_loop(
 def run_swarm(
     claude_count: int,
     gemini_count: int,
-    project: Optional[str] = None,
+    project: str | None = None,
     caller: str = "polecat",
     dry_run: bool = False,
-    home_dir: Optional[str] = None,
+    home_dir: str | None = None,
 ):
     """Entry point for CLI integration.
 
@@ -187,9 +182,7 @@ def run_swarm(
 
     # Register signal handler for the main process
     signal.signal(signal.SIGINT, signal_handler)
-    print(
-        "ℹ️  Press Ctrl+C to stop gracefully (finish current items). Press twice to force quit."
-    )
+    print("ℹ️  Press Ctrl+C to stop gracefully (finish current items). Press twice to force quit.")
 
     processes = []
 
@@ -234,15 +227,9 @@ def run_swarm(
 
 def main():
     parser = argparse.ArgumentParser(description="Run a swarm of Polecat workers.")
-    parser.add_argument(
-        "--claude", "-c", type=int, default=0, help="Number of Claude workers"
-    )
-    parser.add_argument(
-        "--gemini", "-g", type=int, default=0, help="Number of Gemini workers"
-    )
-    parser.add_argument(
-        "--project", "-p", type=str, help="Project to focus on (default: all)"
-    )
+    parser.add_argument("--claude", "-c", type=int, default=0, help="Number of Claude workers")
+    parser.add_argument("--gemini", "-g", type=int, default=0, help="Number of Gemini workers")
+    parser.add_argument("--project", "-p", type=str, help="Project to focus on (default: all)")
     parser.add_argument(
         "--caller",
         type=str,
@@ -261,9 +248,7 @@ def main():
     )
 
     args = parser.parse_args()
-    run_swarm(
-        args.claude, args.gemini, args.project, args.caller, args.dry_run, args.home
-    )
+    run_swarm(args.claude, args.gemini, args.project, args.caller, args.dry_run, args.home)
 
 
 if __name__ == "__main__":

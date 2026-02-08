@@ -9,13 +9,12 @@ import json
 import os
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+
 import pytest
 from lib.session_reader import SessionInfo
 
 
-def create_mock_session(
-    path: Path, project: str, session_id: str, mtime_offset: int = 0
-) -> Path:
+def create_mock_session(path: Path, project: str, session_id: str, mtime_offset: int = 0) -> Path:
     """Create a mock session file with specified mtime."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps({"sessionId": session_id}))
@@ -44,9 +43,7 @@ def create_mock_transcript(
     return transcript_path
 
 
-def create_mock_mining_json(
-    aca_data: Path, session_id: str, mtime_offset: int = 0
-) -> Path:
+def create_mock_mining_json(aca_data: Path, session_id: str, mtime_offset: int = 0) -> Path:
     """Create a mock mining JSON file.
 
     v3.2: Unified session file at $ACA_DATA/sessions/summaries/{date}-{session_prefix}.json
@@ -91,7 +88,7 @@ def test_identify_unprocessed_missing_transcript(mock_env):
     create_mock_session(session_file, "my-project", "session1")
 
     # Use our (to be implemented) consolidated logic
-    from lib.session_reader import get_session_state, SessionState
+    from lib.session_reader import SessionState, get_session_state
 
     session_info = SessionInfo(
         path=session_file,
@@ -116,7 +113,7 @@ def test_identify_unprocessed_outdated_transcript(mock_env):
     session_file = mock_env["projects"] / "my-project" / "session1.jsonl"
     create_mock_session(session_file, "my-project", "session1", mtime_offset=0)
 
-    from lib.session_reader import get_session_state, SessionState
+    from lib.session_reader import SessionState, get_session_state
 
     session_info = SessionInfo(
         path=session_file,
@@ -134,15 +131,13 @@ def test_identify_unprocessed_missing_mining(mock_env):
     date_str = datetime.now(UTC).strftime("%Y%m%d")
 
     # Create transcript (newer than session)
-    create_mock_transcript(
-        mock_env["aca_data"], date_str, "my-project", "session1", mtime_offset=0
-    )
+    create_mock_transcript(mock_env["aca_data"], date_str, "my-project", "session1", mtime_offset=0)
 
     # Create raw session (older)
     session_file = mock_env["projects"] / "my-project" / "session1.jsonl"
     create_mock_session(session_file, "my-project", "session1", mtime_offset=-60)
 
-    from lib.session_reader import get_session_state, SessionState
+    from lib.session_reader import SessionState, get_session_state
 
     session_info = SessionInfo(
         path=session_file,
@@ -171,7 +166,7 @@ def test_identify_processed_full_id(mock_env):
     session_file = mock_env["projects"] / "my-project" / "session1.jsonl"
     create_mock_session(session_file, "my-project", "session1", mtime_offset=-60)
 
-    from lib.session_reader import get_session_state, SessionState
+    from lib.session_reader import SessionState, get_session_state
 
     session_info = SessionInfo(
         path=session_file,
@@ -194,15 +189,13 @@ def test_identify_processed_prefix_id(mock_env):
     create_mock_mining_json(mock_env["aca_data"], prefix, mtime_offset=0)
 
     # Create transcript (middle)
-    create_mock_transcript(
-        mock_env["aca_data"], date_str, "my-project", full_id, mtime_offset=-30
-    )
+    create_mock_transcript(mock_env["aca_data"], date_str, "my-project", full_id, mtime_offset=-30)
 
     # Create raw session (oldest)
     session_file = mock_env["projects"] / "my-project" / f"{full_id}.jsonl"
     create_mock_session(session_file, "my-project", full_id, mtime_offset=-60)
 
-    from lib.session_reader import get_session_state, SessionState, SessionInfo
+    from lib.session_reader import SessionInfo, SessionState, get_session_state
 
     session_info = SessionInfo(
         path=session_file,
@@ -223,9 +216,7 @@ def test_idempotency_transcript_newer_than_session(mock_env):
 
     # 1. Create Raw Session (Oldest)
     session_file = mock_env["projects"] / "academicOps" / f"{full_id}.jsonl"
-    create_mock_session(
-        session_file, "academicOps", full_id, mtime_offset=-3600
-    )  # 1 hour ago
+    create_mock_session(session_file, "academicOps", full_id, mtime_offset=-3600)  # 1 hour ago
 
     # 2. Create Transcript (Middle)
     create_mock_transcript(
@@ -235,7 +226,7 @@ def test_idempotency_transcript_newer_than_session(mock_env):
     # 3. Create Mining JSON (Newest)
     create_mock_mining_json(mock_env["aca_data"], prefix, mtime_offset=0)  # Now
 
-    from lib.session_reader import get_session_state, SessionState, SessionInfo
+    from lib.session_reader import SessionInfo, SessionState, get_session_state
 
     session_info = SessionInfo(
         path=session_file,

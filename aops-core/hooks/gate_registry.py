@@ -72,9 +72,7 @@ SAFE_READ_TOOLS = {
 # Hydration
 HYDRATION_TEMP_CATEGORY = "hydrator"
 # DEPRECATED: Use TemplateRegistry.instance().render("hydration.block", ...) instead
-HYDRATION_BLOCK_TEMPLATE = (
-    Path(__file__).parent / "templates" / "hydration-gate-block.md"
-)
+HYDRATION_BLOCK_TEMPLATE = Path(__file__).parent / "templates" / "hydration-gate-block.md"
 
 # Custodiet
 CUSTODIET_TEMP_CATEGORY = "compliance"
@@ -88,20 +86,14 @@ def get_custodiet_threshold() -> int:
 
 
 # DEPRECATED: Use TemplateRegistry.instance().render("custodiet.context", ...) instead
-CUSTODIET_CONTEXT_TEMPLATE_FILE = (
-    Path(__file__).parent / "templates" / "custodiet-context.md"
-)
+CUSTODIET_CONTEXT_TEMPLATE_FILE = Path(__file__).parent / "templates" / "custodiet-context.md"
 # DEPRECATED: Use TemplateRegistry.instance().render("custodiet.instruction", ...) instead
 CUSTODIET_INSTRUCTION_TEMPLATE_FILE = (
     Path(__file__).parent / "templates" / "custodiet-instruction.md"
 )
 # DEPRECATED: Use TemplateRegistry.instance().render("custodiet.fallback", ...) instead
-CUSTODIET_FALLBACK_TEMPLATE = (
-    Path(__file__).parent / "templates" / "overdue-enforcement-block.md"
-)
-AOPS_ROOT = Path(
-    __file__
-).parent.parent.parent  # aops-core -> hooks -> gate_registry -> ...
+CUSTODIET_FALLBACK_TEMPLATE = Path(__file__).parent / "templates" / "overdue-enforcement-block.md"
+AOPS_ROOT = Path(__file__).parent.parent.parent  # aops-core -> hooks -> gate_registry -> ...
 AXIOMS_FILE = AOPS_ROOT / "aops-core" / "AXIOMS.md"
 HEURISTICS_FILE = AOPS_ROOT / "aops-core" / "HEURISTICS.md"
 SKILLS_FILE = AOPS_ROOT / "aops-core" / "SKILLS.md"
@@ -369,16 +361,12 @@ def _is_skill_invocation(
 
 def _is_handover_skill_invocation(tool_name: str, tool_input: dict[str, Any]) -> bool:
     """Check if this is a handover skill invocation."""
-    return _is_skill_invocation(
-        tool_name, tool_input, ("handover", "aops-core:handover")
-    )
+    return _is_skill_invocation(tool_name, tool_input, ("handover", "aops-core:handover"))
 
 
 def _is_custodiet_invocation(tool_name: str, tool_input: dict[str, Any]) -> bool:
     """Check if this is a custodiet skill invocation."""
-    return _is_skill_invocation(
-        tool_name, tool_input, ("custodiet", "aops-core:custodiet")
-    )
+    return _is_skill_invocation(tool_name, tool_input, ("custodiet", "aops-core:custodiet"))
 
 
 def _check_git_dirty() -> bool:
@@ -490,9 +478,7 @@ def _hydration_is_gemini_hydration_attempt(
         return False
 
     try:
-        temp_dir = str(
-            hook_utils.get_hook_temp_dir(HYDRATION_TEMP_CATEGORY, input_data)
-        )
+        temp_dir = str(hook_utils.get_hook_temp_dir(HYDRATION_TEMP_CATEGORY, input_data))
     except RuntimeError:
         return False
 
@@ -619,9 +605,7 @@ def _custodiet_build_session_context(transcript_path: str | None, session_id: st
         lines.append("**Recent Agent Responses** (full text for phrase detection):")
         # Extract only agent responses, show last 3 with more content
         agent_responses = [
-            turn
-            for turn in conversation
-            if (isinstance(turn, str) and turn.startswith("[Agent]:"))
+            turn for turn in conversation if (isinstance(turn, str) and turn.startswith("[Agent]:"))
         ]
         for turn in agent_responses[-3:]:  # Last 3 agent responses
             # String format: "[Agent]: content"
@@ -669,9 +653,7 @@ def _custodiet_build_audit_instruction(
     axioms, heuristics, skills = _custodiet_load_framework_content()
     # <!-- NS: no magic literals. -->
     # <!-- @claude 2026-02-07: DEFAULT_CUSTODIET_GATE_MODE is defined at module level (line ~50). This usage is correct - it references the constant. The env var name "CUSTODIET_MODE" could be extracted to CUSTODIET_MODE_ENV_VAR constant for consistency. -->
-    custodiet_mode = os.environ.get(
-        "CUSTODIET_MODE", DEFAULT_CUSTODIET_GATE_MODE
-    ).lower()
+    custodiet_mode = os.environ.get("CUSTODIET_MODE", DEFAULT_CUSTODIET_GATE_MODE).lower()
 
     from lib.template_registry import TemplateRegistry
 
@@ -725,8 +707,14 @@ def run_accountant(ctx: HookContext) -> GateResult | None:
     # meaning the hydrator subagent has finished running.
     # Include Skill/activate_skill for Claude/Gemini which may use them to spawn hydrator.
     # Also include direct MCP agent calls (Gemini pattern: tool_name IS the agent).
-    if ctx.tool_name in ("Task", "delegate_to_agent", "activate_skill", "Skill") or "hydrator" in (ctx.tool_name or "").lower():
-        if _hydration_is_hydrator_task(ctx.tool_input) or "hydrator" in (ctx.tool_name or "").lower():
+    if (
+        ctx.tool_name in ("Task", "delegate_to_agent", "activate_skill", "Skill")
+        or "hydrator" in (ctx.tool_name or "").lower()
+    ):
+        if (
+            _hydration_is_hydrator_task(ctx.tool_input)
+            or "hydrator" in (ctx.tool_name or "").lower()
+        ):
             session_state.clear_hydrator_active(ctx.session_id)
 
         # Track subagent invocations for stop gate (checks has_run_subagents)
@@ -737,7 +725,12 @@ def run_accountant(ctx: HookContext) -> GateResult | None:
             or ctx.tool_input.get("name")
         )
         # Gemini direct MCP: tool_name IS the agent
-        if not subagent_type and ctx.tool_name not in ("Task", "Skill", "delegate_to_agent", "activate_skill"):
+        if not subagent_type and ctx.tool_name not in (
+            "Task",
+            "Skill",
+            "delegate_to_agent",
+            "activate_skill",
+        ):
             subagent_type = ctx.tool_name
         if subagent_type:
             sess = session_state.get_or_create_session_state(ctx.session_id)
@@ -779,6 +772,9 @@ def run_accountant(ctx: HookContext) -> GateResult | None:
 
     else:
         state["tool_calls_since_compliance"] += 1
+        system_messages.append(
+            f"🛡️ [Gate] Tool calls since last Custodiet check: {state['tool_calls_since_compliance']}."
+        )
 
     session_state.save_session_state(ctx.session_id, sess)
 
@@ -793,9 +789,7 @@ def run_accountant(ctx: HookContext) -> GateResult | None:
                 "🤝 [Gate] Handover tool recorded. Stop gate will open once repo is clean and reflection message printed."
             )
         except Exception as e:
-            print(
-                f"WARNING: Accountant failed to set handover flag: {e}", file=sys.stderr
-            )
+            print(f"WARNING: Accountant failed to set handover flag: {e}", file=sys.stderr)
     elif _is_actually_destructive(ctx.tool_name or "", ctx.tool_input):
         # Destructive tool used - require handover before stop
         # Only show warning on status change (gate was open, now closing)
@@ -870,12 +864,7 @@ def check_stop_gate(ctx: HookContext) -> GateResult | None:
     is_trivial_session = not hydration_pending and not is_hydrated
 
     # Only require critic if hydration actually occurred and no work was done yet
-    if (
-        is_hydrated
-        and not has_run_subagents
-        and not is_streamlined
-        and not is_trivial_session
-    ):
+    if is_hydrated and not has_run_subagents and not is_streamlined and not is_trivial_session:
         # User explicitly asked for turns_since_hydration == 0 logic
         # This implies the agent is trying to stop immediately after the hydrator finished.
         from lib.template_registry import TemplateRegistry
@@ -908,13 +897,8 @@ def check_stop_gate(ctx: HookContext) -> GateResult | None:
             return GateResult(
                 verdict=GateVerdict.DENY,
                 context_injection=(
-                    "⛔ **BLOCKED: QA Verification Required**\n\n"
-                    "This session has work that requires QA verification before ending.\n"
-                    "You have not invoked QA yet.\n\n"
-                    "**Action Required**: Invoke QA to verify your work against the original request "
-                    "and acceptance criteria before completing handover.\n\n"
-                    "- **Claude Code**: `Task(subagent_type='aops-core:qa', prompt='Verify...')` or `Skill(skill='qa')`\n"
-                    "- **Gemini CLI**: `spawn_agent(agent_name='qa', user_prompt='Verify...')` or `activate_skill(name='qa')`\n\n"
+                    "⛔ **BLOCKED: QA Verification Required**\n"
+                    "**Action Required**: Invoke QA agent to verify your work.\n"
                     "After QA passes, invoke `/handover` again to end the session."
                 ),
                 metadata={"source": "stop_gate_qa_check"},
@@ -1070,9 +1054,7 @@ def check_session_start_gate(ctx: HookContext) -> GateResult | None:
     hook_log_path = get_hook_log_path(ctx.session_id, ctx.raw_input)
 
     # Get actual state file path (not a glob pattern)
-    state_file_path = session_paths.get_session_file_path(
-        ctx.session_id, input_data=ctx.raw_input
-    )
+    state_file_path = session_paths.get_session_file_path(ctx.session_id, input_data=ctx.raw_input)
 
     # FAIL-FAST: Actually create the state file, don't just report the path
     # If this fails, the session should not proceed
@@ -1227,9 +1209,7 @@ def run_user_prompt_submit(ctx: HookContext) -> GateResult | None:
             return None
 
         if prompt:
-            hydration_instruction = build_hydration_instruction(
-                session_id, prompt, transcript_path
-            )
+            hydration_instruction = build_hydration_instruction(session_id, prompt, transcript_path)
             return GateResult(
                 verdict=GateVerdict.ALLOW,
                 context_injection=hydration_instruction,
@@ -1267,15 +1247,9 @@ def run_task_binding(ctx: HookContext) -> GateResult | None:
     from lib.hook_utils import get_task_id_from_result
 
     # Support both Claude (snake_case) and Gemini (camelCase) field names
-    tool_name = (
-        ctx.tool_name
-        or ctx.raw_input.get("tool_name")
-        or ctx.raw_input.get("toolName", "")
-    )
+    tool_name = ctx.tool_name or ctx.raw_input.get("tool_name") or ctx.raw_input.get("toolName", "")
     tool_input = (
-        ctx.tool_input
-        or ctx.raw_input.get("tool_input")
-        or ctx.raw_input.get("toolInput", {})
+        ctx.tool_input or ctx.raw_input.get("tool_input") or ctx.raw_input.get("toolInput", {})
     )
     tool_result = ctx.tool_output
 

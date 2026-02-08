@@ -49,7 +49,7 @@ def main():
         if target_path.exists():
             print(f"Merging with existing file: {target_path}")
             try:
-                with open(target_path, "r") as f:
+                with open(target_path) as f:
                     existing_insights = json.load(f)
 
                 final_insights = merge_insights(existing_insights, new_insights)

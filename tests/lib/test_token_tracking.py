@@ -1,6 +1,6 @@
 """Tests for token tracking in transcript parser."""
 
-from lib.transcript_parser import Entry, TimingInfo, ConversationTurn
+from lib.transcript_parser import ConversationTurn, Entry, TimingInfo
 
 
 class TestTokenExtraction:
@@ -171,6 +171,7 @@ class TestPerTurnTokensInTranscript:
         4. format_session_as_markdown displays tokens
         """
         import json
+
         from lib.session_reader import SessionProcessor
 
         session_file = tmp_path / "session.jsonl"
@@ -204,9 +205,7 @@ class TestPerTurnTokensInTranscript:
                 f.write(json.dumps(entry) + "\n")
 
         processor = SessionProcessor()
-        session, parsed_entries, agent_entries = processor.parse_session_file(
-            session_file
-        )
+        session, parsed_entries, agent_entries = processor.parse_session_file(session_file)
 
         markdown = processor.format_session_as_markdown(
             session, parsed_entries, agent_entries=agent_entries, variant="full"
@@ -220,6 +219,7 @@ class TestPerTurnTokensInTranscript:
     def test_per_turn_cache_tokens_displayed(self, tmp_path):
         """Verify cache tokens (read and create) are displayed per turn."""
         import json
+
         from lib.session_reader import SessionProcessor
 
         session_file = tmp_path / "session.jsonl"
@@ -252,9 +252,7 @@ class TestPerTurnTokensInTranscript:
                 f.write(json.dumps(entry) + "\n")
 
         processor = SessionProcessor()
-        session, parsed_entries, agent_entries = processor.parse_session_file(
-            session_file
-        )
+        session, parsed_entries, agent_entries = processor.parse_session_file(session_file)
 
         markdown = processor.format_session_as_markdown(
             session, parsed_entries, agent_entries=agent_entries, variant="full"
@@ -267,6 +265,7 @@ class TestPerTurnTokensInTranscript:
     def test_multi_turn_tokens_aggregated_separately(self, tmp_path):
         """Verify each turn shows its own token totals, not cumulative."""
         import json
+
         from lib.session_reader import SessionProcessor
 
         session_file = tmp_path / "session.jsonl"
@@ -311,9 +310,7 @@ class TestPerTurnTokensInTranscript:
                 f.write(json.dumps(entry) + "\n")
 
         processor = SessionProcessor()
-        session, parsed_entries, agent_entries = processor.parse_session_file(
-            session_file
-        )
+        session, parsed_entries, agent_entries = processor.parse_session_file(session_file)
 
         markdown = processor.format_session_as_markdown(
             session, parsed_entries, agent_entries=agent_entries, variant="full"
@@ -328,6 +325,7 @@ class TestPerTurnTokensInTranscript:
     def test_multi_assistant_entry_turn_aggregates_tokens(self, tmp_path):
         """Verify tokens from multiple assistant entries in one turn are summed."""
         import json
+
         from lib.session_reader import SessionProcessor
 
         session_file = tmp_path / "session.jsonl"
@@ -345,9 +343,7 @@ class TestPerTurnTokensInTranscript:
                 "uuid": "assistant-1",
                 "timestamp": "2026-01-15T10:00:05Z",
                 "message": {
-                    "content": [
-                        {"type": "tool_use", "id": "t1", "name": "Read", "input": {}}
-                    ],
+                    "content": [{"type": "tool_use", "id": "t1", "name": "Read", "input": {}}],
                     "usage": {"input_tokens": 500, "output_tokens": 100},
                 },
             },
@@ -381,9 +377,7 @@ class TestPerTurnTokensInTranscript:
                 f.write(json.dumps(entry) + "\n")
 
         processor = SessionProcessor()
-        session, parsed_entries, agent_entries = processor.parse_session_file(
-            session_file
-        )
+        session, parsed_entries, agent_entries = processor.parse_session_file(session_file)
 
         markdown = processor.format_session_as_markdown(
             session, parsed_entries, agent_entries=agent_entries, variant="full"

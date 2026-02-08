@@ -122,8 +122,7 @@ def test_plan_agent_spawns(claude_headless_tracked) -> None:
     Note: Plan agent often times out due to complexity - marked skip.
     """
     result, session_id, tool_calls = claude_headless_tracked(
-        "Use the Task tool to spawn a Plan agent to design how we would "
-        "add a new hook for logging",
+        "Use the Task tool to spawn a Plan agent to design how we would add a new hook for logging",
         timeout_seconds=300,  # Plan agent needs more time
     )
 

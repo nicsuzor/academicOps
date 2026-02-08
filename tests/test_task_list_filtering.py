@@ -4,8 +4,9 @@
 import os
 import subprocess
 import sys
-import pytest
 from pathlib import Path
+
+import pytest
 
 # CLI is invoked via subprocess to test actual entry point behavior
 CLI_CMD = [sys.executable, "-m", "scripts.task_cli"]

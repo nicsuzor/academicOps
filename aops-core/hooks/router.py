@@ -132,9 +132,7 @@ def format_gate_status_icons(session_id: str) -> str:
 
     # Task: closed if no current task bound
     task_bound = state.get("main_agent", {}).get("current_task") is not None
-    if gates_state.get("task") == "closed" or (
-        "task" not in gates_state and not task_bound
-    ):
+    if gates_state.get("task") == "closed" or ("task" not in gates_state and not task_bound):
         # Only show task as blocking if gates dict says so, or if explicitly unbound
         # Default is open per GATE_INITIAL_STATE
         if gates_state.get("task") == "closed":
@@ -150,9 +148,7 @@ def format_gate_status_icons(session_id: str) -> str:
 
     # QA: closed by default, opens when QA is invoked
     qa_invoked = state_data.get("qa_invoked", False)
-    if gates_state.get("qa") == "closed" or (
-        "qa" not in gates_state and not qa_invoked
-    ):
+    if gates_state.get("qa") == "closed" or ("qa" not in gates_state and not qa_invoked):
         blocking_gates.append("qa")
 
     # Handover: check gates state or legacy flag
@@ -273,9 +269,7 @@ class HookRouter:
                         ),
                     )
                 except Exception as e:
-                    print(
-                        f"WARNING: Failed to log loop detection: {e}", file=sys.stderr
-                    )
+                    print(f"WARNING: Failed to log loop detection: {e}", file=sys.stderr)
 
                 # Terminate the current process forcefully.
                 os.kill(os.getpid(), signal.SIGKILL)
@@ -408,9 +402,7 @@ class HookRouter:
             try:
                 result = check_func(ctx)
                 duration = time.monotonic() - start_time
-                merged_result.metadata.setdefault("gate_times", {})[gate_name] = (
-                    duration
-                )
+                merged_result.metadata.setdefault("gate_times", {})[gate_name] = duration
 
                 if result:
                     hook_output = self._gate_result_to_canonical(result)
@@ -424,18 +416,14 @@ class HookRouter:
 
                 error_msg = f"Gate '{gate_name}' failed: {e}"
                 merged_result.metadata.setdefault("errors", []).append(error_msg)
-                merged_result.metadata.setdefault("tracebacks", []).append(
-                    traceback.format_exc()
-                )
+                merged_result.metadata.setdefault("tracebacks", []).append(traceback.format_exc())
 
         # Append gate status icons to system message (non-intrusive display)
         # Function raises on failure (fail fast), but we catch here to avoid blocking hooks
         try:
             gate_status = format_gate_status_icons(ctx.session_id)
             if merged_result.system_message:
-                merged_result.system_message = (
-                    f"{merged_result.system_message} {gate_status}"
-                )
+                merged_result.system_message = f"{merged_result.system_message} {gate_status}"
             else:
                 merged_result.system_message = gate_status
         except Exception as e:
@@ -519,9 +507,7 @@ class HookRouter:
 
         target.metadata.update(source.metadata)
 
-    def output_for_gemini(
-        self, result: CanonicalHookOutput, event: str
-    ) -> GeminiHookOutput:
+    def output_for_gemini(self, result: CanonicalHookOutput, event: str) -> GeminiHookOutput:
         """Format for Gemini CLI."""
         out = GeminiHookOutput()
 
@@ -550,9 +536,7 @@ class HookRouter:
         out.metadata = result.metadata
         return out
 
-    def output_for_claude(
-        self, result: CanonicalHookOutput, event: str
-    ) -> ClaudeHookOutput:
+    def output_for_claude(self, result: CanonicalHookOutput, event: str) -> ClaudeHookOutput:
         """Format for Claude Code."""
         if event == "Stop" or event == "SessionEnd":
             output = ClaudeStopHookOutput()

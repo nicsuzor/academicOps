@@ -157,9 +157,7 @@ def _extract_session_context_impl(
             context.current_status = todo_state.in_progress_task
 
         # Planned next step from first pending task
-        pending_tasks = [
-            t["content"] for t in todo_state.todos if t.get("status") == "pending"
-        ]
+        pending_tasks = [t["content"] for t in todo_state.todos if t.get("status") == "pending"]
         if pending_tasks:
             context.planned_next_step = pending_tasks[0]
         elif todo_state.in_progress_task:
@@ -181,9 +179,7 @@ def _extract_all_prompts(turns: list) -> list[str]:
     """
     prompts = []
     for turn in turns:
-        user_message = (
-            turn.get("user_message") if isinstance(turn, dict) else turn.user_message
-        )
+        user_message = turn.get("user_message") if isinstance(turn, dict) else turn.user_message
         is_meta = turn.get("is_meta") if isinstance(turn, dict) else turn.is_meta
 
         if not user_message or is_meta:
@@ -236,18 +232,14 @@ def _extract_status_from_response(turns: list) -> str:
     """
     for turn in reversed(turns):
         assistant_sequence = (
-            turn.get("assistant_sequence")
-            if isinstance(turn, dict)
-            else turn.assistant_sequence
+            turn.get("assistant_sequence") if isinstance(turn, dict) else turn.assistant_sequence
         )
         if not assistant_sequence:
             continue
 
         # Get text responses
         texts = [
-            item.get("content", "")
-            for item in assistant_sequence
-            if item.get("type") == "text"
+            item.get("content", "") for item in assistant_sequence if item.get("type") == "text"
         ]
 
         if texts:

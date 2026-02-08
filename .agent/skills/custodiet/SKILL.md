@@ -82,11 +82,13 @@ Only use BLOCK when the context explicitly says "Enforcement Mode: block".
 **Issue field guidance**: Be DIAGNOSTIC (identify the violation), not NARRATIVE (describe what happened).
 
 ✅ GOOD Issue statements:
+
 - "Scope expansion: added refactoring not in original request"
 - "Authority assumption: deployed to production without explicit approval"
 - "Infrastructure gap treated as authorization problem"
 
 ❌ BAD Issue statements:
+
 - "Agent calling Task tool after user request; Task agent not available" (narrative, unclear violation)
 - "TodoWrite includes items not directly requested" (describes action, not violation)
 - "Used Edit tool on file outside scope" (what's the scope? unclear)

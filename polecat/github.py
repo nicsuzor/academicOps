@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-import sys
 import re
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 

@@ -49,9 +49,7 @@ def test_email_workflow_has_explicit_tool_examples() -> None:
         outlook_section_end = content.find("### Step 2:", outlook_section_start)
         outlook_section = content[outlook_section_start:outlook_section_end]
 
-        assert (
-            "account" in outlook_section.lower() or "limit" in outlook_section.lower()
-        ), (
+        assert "account" in outlook_section.lower() or "limit" in outlook_section.lower(), (
             "Outlook MCP tool example must show parameter structure.\n"
             "Expected: Parameters like 'account' or 'limit' with type information"
         )
@@ -73,25 +71,21 @@ def test_email_workflow_has_explicit_tool_examples() -> None:
         memory_section_end = content.find("### Step 4:", memory_section_start)
         memory_section = content[memory_section_start:memory_section_end]
 
-        assert (
-            "query" in memory_section.lower() or "search" in memory_section.lower()
-        ), (
+        assert "query" in memory_section.lower() or "search" in memory_section.lower(), (
             "memory MCP tool example must show parameter structure.\n"
             "Expected: Parameters like 'query' or 'n_results' with examples"
         )
 
     # Step 6: Create Tasks - Must show both backend examples with full parameters
     # Scripts backend
-    assert (
-        "task_add.py" in content
-    ), "Step 6 (Create Tasks via Backend) must include task_add.py script example"
+    assert "task_add.py" in content, (
+        "Step 6 (Create Tasks via Backend) must include task_add.py script example"
+    )
 
     task_script_section_start = content.find("**Scripts backend example**:")
     if task_script_section_start > 0:
         task_script_section_end = content.find("```", task_script_section_start + 200)
-        task_script_section = content[
-            task_script_section_start : task_script_section_end + 3
-        ]
+        task_script_section = content[task_script_section_start : task_script_section_end + 3]
 
         # Check all required task_add.py parameters are shown
         required_params = ["--title", "--priority", "--project", "--body"]
@@ -104,17 +98,17 @@ def test_email_workflow_has_explicit_tool_examples() -> None:
 
     # Tasks MCP backend
     task_mcp_section_start = content.find("**Tasks MCP backend example**:")
-    assert (
-        task_mcp_section_start > 0
-    ), "Step 6 must include Tasks MCP backend example showing tool structure"
+    assert task_mcp_section_start > 0, (
+        "Step 6 must include Tasks MCP backend example showing tool structure"
+    )
 
     task_mcp_section_end = content.find("```", task_mcp_section_start + 200)
     task_mcp_section = content[task_mcp_section_start : task_mcp_section_end + 3]
 
     # Check for tool name and parameter structure
-    assert (
-        "create_task" in task_mcp_section or "Tool:" in task_mcp_section
-    ), "Tasks MCP example must show tool name (e.g., 'create_task')"
+    assert "create_task" in task_mcp_section or "Tool:" in task_mcp_section, (
+        "Tasks MCP example must show tool name (e.g., 'create_task')"
+    )
 
     required_task_fields = ["title", "priority", "project", "body"]
     missing_fields = [f for f in required_task_fields if f not in task_mcp_section]

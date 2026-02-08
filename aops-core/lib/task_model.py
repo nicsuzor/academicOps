@@ -140,12 +140,8 @@ class Task:
 
     # Graph relationships (stored in frontmatter)
     parent: str | None = None  # Parent task ID (null = root)
-    depends_on: list[str] = field(
-        default_factory=list
-    )  # Must complete first (blocking)
-    soft_depends_on: list[str] = field(
-        default_factory=list
-    )  # Context hints (non-blocking)
+    depends_on: list[str] = field(default_factory=list)  # Must complete first (blocking)
+    soft_depends_on: list[str] = field(default_factory=list)  # Context hints (non-blocking)
 
     # Decomposition metadata
     depth: int = 0  # Distance from root (0 = root goal)
@@ -319,23 +315,17 @@ class Task:
         # Parse type - require explicit type field (skip non-task files)
         task_type_str = fm.get("type")
         if task_type_str is None:
-            raise ValueError(
-                f"Missing 'type' field for item {task_id} - not a task file"
-            )
+            raise ValueError(f"Missing 'type' field for item {task_id} - not a task file")
         try:
             task_type = TaskType(task_type_str)
         except ValueError:
-            raise ValueError(
-                f"Invalid type '{task_type_str}' for item {task_id} - not a task"
-            )
+            raise ValueError(f"Invalid type '{task_type_str}' for item {task_id} - not a task")
 
         # Map status aliases and parse with graceful coercion
         status_str = fm.get("status", "active")
         if isinstance(status_str, str):
             status_str = cls.STATUS_ALIASES.get(status_str, status_str)
-        status = _safe_parse_enum(
-            status_str, TaskStatus, TaskStatus.ACTIVE, "status", task_id
-        )
+        status = _safe_parse_enum(status_str, TaskStatus, TaskStatus.ACTIVE, "status", task_id)
 
         # Parse numeric fields (may come as strings from YAML)
         priority = fm.get("priority", 2)
@@ -498,9 +488,7 @@ class Task:
             raise ValueError("Empty frontmatter")
         # Accept id, task_id, or permalink as the ID field
         if "id" not in fm and "task_id" not in fm and "permalink" not in fm:
-            raise ValueError(
-                "Task frontmatter missing required field: id, task_id, or permalink"
-            )
+            raise ValueError("Task frontmatter missing required field: id, task_id, or permalink")
         if "title" not in fm:
             raise ValueError("Task frontmatter missing required field: title")
 

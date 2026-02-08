@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
 from hooks.gate_registry import check_session_start_gate
 from hooks.schemas import HookContext
 from lib.gate_model import GateResult, GateVerdict

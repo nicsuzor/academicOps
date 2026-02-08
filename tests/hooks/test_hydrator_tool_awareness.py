@@ -9,13 +9,10 @@ See: aops-XXXXXXXX (the original bug where hydrator claimed email search was hum
 
 from pathlib import Path
 
-
 # Paths to hydrator files
 AOPS_CORE = Path(__file__).parent.parent.parent / "aops-core"
 HYDRATOR_AGENT = AOPS_CORE / "agents" / "prompt-hydrator.md"
-HYDRATOR_CONTEXT_TEMPLATE = (
-    AOPS_CORE / "hooks" / "templates" / "prompt-hydrator-context.md"
-)
+HYDRATOR_CONTEXT_TEMPLATE = AOPS_CORE / "hooks" / "templates" / "prompt-hydrator-context.md"
 
 
 class TestHydratorAntiInstructions:
@@ -56,9 +53,7 @@ class TestHydratorAntiInstructions:
             for pattern in forbidden_patterns
         )
 
-        assert has_prohibition, (
-            "Hydrator agent must forbid feasibility judgments about tools"
-        )
+        assert has_prohibition, "Hydrator agent must forbid feasibility judgments about tools"
 
     def test_agent_suggests_conditional_approach(self) -> None:
         """Hydrator agent must suggest conditional approach for uncertain tools."""
@@ -93,9 +88,9 @@ class TestContextTemplateWarnings:
         """Context template must warn main agent may have additional tools."""
         content = HYDRATOR_CONTEXT_TEMPLATE.read_text()
 
-        assert (
-            "additional tools" in content.lower() or "cannot see" in content.lower()
-        ), "Context template must warn about unseen tools"
+        assert "additional tools" in content.lower() or "cannot see" in content.lower(), (
+            "Context template must warn about unseen tools"
+        )
 
 
 class TestToolsIndexFunction:

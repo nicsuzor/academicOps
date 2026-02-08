@@ -81,8 +81,7 @@ class TestHydrationGateBlocking:
         hydrator_calls = [
             c
             for c in tool_calls
-            if c["name"] == "Task"
-            and c.get("input", {}).get("subagent_type") == "prompt-hydrator"
+            if c["name"] == "Task" and c.get("input", {}).get("subagent_type") == "prompt-hydrator"
         ]
 
         # If hydrator was invoked, subsequent Bash should be allowed
@@ -117,8 +116,7 @@ class TestHydrationGateBlocking:
         _ = [
             c
             for c in tool_calls
-            if c["name"] == "Task"
-            and c.get("input", {}).get("subagent_type") == "prompt-hydrator"
+            if c["name"] == "Task" and c.get("input", {}).get("subagent_type") == "prompt-hydrator"
         ]
 
         # Either:

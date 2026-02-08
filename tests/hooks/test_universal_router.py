@@ -1,16 +1,17 @@
 import json
 import sys
-import pytest
-from unittest.mock import MagicMock, patch
 from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Add aops-core to path
 AOPS_CORE_DIR = Path(__file__).parent.parent.parent / "aops-core"
 if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
-from hooks.router import HookRouter, CanonicalHookOutput
-from hooks.schemas import HookContext, GeminiHookOutput
+from hooks.router import CanonicalHookOutput, HookRouter
+from hooks.schemas import GeminiHookOutput, HookContext
 
 
 class TestUniversalRouter:
@@ -28,9 +29,7 @@ class TestUniversalRouter:
 
         assert ctx.hook_event == "PreToolUse"
         assert ctx.tool_name == "read_file"
-        assert ctx.session_id.startswith("gemini-") or ctx.session_id.startswith(
-            "unknown-"
-        )
+        assert ctx.session_id.startswith("gemini-") or ctx.session_id.startswith("unknown-")
 
     def test_normalize_input_claude(self, router_instance):
         raw = {

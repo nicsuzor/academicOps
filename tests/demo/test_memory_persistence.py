@@ -72,9 +72,7 @@ class TestMemoryPersistenceDemo:
         print(f"    Remember skill invoked: {remember_invoked}")
 
         # Check 2: Memory server store was called
-        memory_store_calls = [
-            c for c in tool_calls if c["name"] == "mcp__memory__store_memory"
-        ]
+        memory_store_calls = [c for c in tool_calls if c["name"] == "mcp__memory__store_memory"]
         print(f"\n--- Memory Store Calls: {len(memory_store_calls)} ---")
         memory_stored = len(memory_store_calls) >= 1
         if memory_store_calls:

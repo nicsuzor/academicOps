@@ -27,31 +27,31 @@ All paths are expanded to absolute values at generation time.
 
 These are the concrete absolute paths for this framework instance:
 
-| Path Variable | Resolved Path |
-|--------------|---------------|
-| $AOPS        | /home/nic/src/academicOps   |
-| $ACA_DATA    | /home/nic/writing/data   |
+| Path Variable | Resolved Path             |
+| ------------- | ------------------------- |
+| $AOPS         | /home/nic/src/academicOps |
+| $ACA_DATA     | /home/nic/writing/data    |
 
 ## Framework Directories
 
 Framework component directories within $AOPS:
 
-| Directory | Absolute Path |
-|-----------|---------------|
-| Skills    | /home/nic/src/academicOps/aops-core/skills  |
-| Hooks     | /home/nic/src/academicOps/aops-core/hooks   |
+| Directory | Absolute Path                                |
+| --------- | -------------------------------------------- |
+| Skills    | /home/nic/src/academicOps/aops-core/skills   |
+| Hooks     | /home/nic/src/academicOps/aops-core/hooks    |
 | Commands  | /home/nic/src/academicOps/aops-core/commands |
-| Tests     | /home/nic/src/academicOps/tests   |
-| Config    | /home/nic/src/academicOps/config  |
-| Workflows | /home/nic/src/academicOps/workflows |
+| Tests     | /home/nic/src/academicOps/tests              |
+| Config    | /home/nic/src/academicOps/config             |
+| Workflows | /home/nic/src/academicOps/workflows          |
 
 ## Data Directories
 
 User data directories within $ACA_DATA:
 
-| Directory | Absolute Path |
-|-----------|---------------|
-| Sessions  | /home/nic/writing/sessions |
+| Directory | Absolute Path                   |
+| --------- | ------------------------------- |
+| Sessions  | /home/nic/writing/sessions      |
 | Projects  | /home/nic/writing/data/projects |
 | Logs      | /home/nic/writing/data/logs     |
 | Context   | /home/nic/writing/data/context  |

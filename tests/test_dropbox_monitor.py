@@ -1,9 +1,9 @@
-import pytest
+# Add project root to path
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
-# Add project root to path
-import sys
+import pytest
 
 REPO_ROOT = Path(__file__).parents[1].resolve()
 sys.path.insert(0, str(REPO_ROOT))

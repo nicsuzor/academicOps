@@ -27,7 +27,6 @@ from typing import Any
 
 import yaml
 
-
 # Configurable paths - override via environment or edit here
 BATCH_DIR = Path("/tmp/task-batch")
 QUEUE_FILE = BATCH_DIR / "queue.txt"
@@ -79,9 +78,7 @@ def parse_frontmatter(content: str) -> tuple[dict[str, Any], str]:
 
 def serialize_frontmatter(fm: dict[str, Any], body: str) -> str:
     """Serialize frontmatter and body back to markdown."""
-    fm_str = yaml.dump(
-        fm, default_flow_style=False, allow_unicode=True, sort_keys=False
-    )
+    fm_str = yaml.dump(fm, default_flow_style=False, allow_unicode=True, sort_keys=False)
     return f"---\n{fm_str}---\n{body}"
 
 
@@ -344,9 +341,7 @@ def get_stats() -> dict[str, int]:
     """Get processing statistics."""
     locks = list(LOCKS_DIR.glob("*")) if LOCKS_DIR.exists() else []
     results = list(RESULTS_DIR.glob("*.yaml")) if RESULTS_DIR.exists() else []
-    queue_size = (
-        len(QUEUE_FILE.read_text().strip().split("\n")) if QUEUE_FILE.exists() else 0
-    )
+    queue_size = len(QUEUE_FILE.read_text().strip().split("\n")) if QUEUE_FILE.exists() else 0
 
     return {
         "queue_total": queue_size,

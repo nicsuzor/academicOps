@@ -4,11 +4,11 @@ Installation script for AcademicOps Gemini framework.
 Replaces setup.sh logic.
 """
 
+import argparse
 import os
-import sys
 import shutil
 import subprocess
-import argparse
+import sys
 from pathlib import Path
 
 # Add shared lib to path
@@ -17,10 +17,10 @@ sys.path.append(str(SCRIPT_DIR / "lib"))
 
 try:
     from build_utils import (
-        safe_symlink,
-        get_git_commit_sha,
         check_installed_plugin_version,
         emit_version_mismatch_warning,
+        get_git_commit_sha,
+        safe_symlink,
     )
 except ImportError:
     print("Error: Could not import build_utils.", file=sys.stderr)
@@ -72,10 +72,7 @@ def install_cron_jobs(aops_path: Path, aca_data_path: str):
             continue
         if "# aOps transcripts" in line or "scripts/transcript_push.py" in line:
             continue
-        if (
-            "# aOps session insights" in line
-            or "scripts/cron_session_insights.sh" in line
-        ):
+        if "# aOps session insights" in line or "scripts/cron_session_insights.sh" in line:
             continue
         new_crontab_lines.append(line)
 
@@ -109,10 +106,7 @@ def uninstall_framework(aops_path: Path):
         ).decode()
         new_lines = []
         for line in current_crontab.splitlines():
-            if (
-                "# aOps task index" in line
-                or "scripts/regenerate_task_index.py" in line
-            ):
+            if "# aOps task index" in line or "scripts/regenerate_task_index.py" in line:
                 continue
             if (
                 "# aOps transcripts" in line
@@ -120,10 +114,7 @@ def uninstall_framework(aops_path: Path):
                 or "scripts/transcript.py" in line
             ):
                 continue
-            if (
-                "# aOps session insights" in line
-                or "scripts/cron_session_insights.sh" in line
-            ):
+            if "# aOps session insights" in line or "scripts/cron_session_insights.sh" in line:
                 continue
             if "# aOps refinery" in line or "scripts/refinery.py" in line:
                 continue
@@ -177,9 +168,7 @@ def generate_paths_md(aops_root: Path):
 
 def main():
     parser = argparse.ArgumentParser(description="Install AcademicOps Gemini Framework")
-    parser.add_argument(
-        "--disable", action="store_true", help="Disable/Uninstall framework"
-    )
+    parser.add_argument("--disable", action="store_true", help="Disable/Uninstall framework")
     args = parser.parse_args()
 
     aops_path_str = os.environ.get("AOPS")
@@ -198,9 +187,7 @@ def main():
 
     # 1. Run Build
     print("=== Phase 1: Build ===")
-    run_command(
-        [sys.executable, str(aops_root / "scripts" / "build.py")], env=os.environ
-    )
+    run_command([sys.executable, str(aops_root / "scripts" / "build.py")], env=os.environ)
 
     print("\n=== Phase 2: Install ===")
 
@@ -284,9 +271,7 @@ def main():
     print("\n=== Version Check ===")
     source_commit = get_git_commit_sha(aops_root)
     if source_commit:
-        matches, installed_commit = check_installed_plugin_version(
-            "aops-core", source_commit
-        )
+        matches, installed_commit = check_installed_plugin_version("aops-core", source_commit)
         if not matches and installed_commit:
             emit_version_mismatch_warning("aops-core", source_commit, installed_commit)
         if matches:

@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, Dict, Any
+from typing import Any
 
 
 class GateVerdict(Enum):
@@ -17,16 +17,16 @@ class GateResult:
     """Provider-agnostic result of a gate check."""
 
     verdict: GateVerdict
-    system_message: Optional[str] = None
-    context_injection: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    system_message: str | None = None
+    context_injection: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def allow(
         cls,
-        system_message: Optional[str] = None,
-        context_injection: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        system_message: str | None = None,
+        context_injection: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> "GateResult":
         """Factory method for ALLOW verdict."""
         return cls(
@@ -39,9 +39,9 @@ class GateResult:
     @classmethod
     def deny(
         cls,
-        system_message: Optional[str] = None,
-        context_injection: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        system_message: str | None = None,
+        context_injection: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> "GateResult":
         """Factory method for DENY verdict."""
         return cls(
@@ -54,9 +54,9 @@ class GateResult:
     @classmethod
     def warn(
         cls,
-        system_message: Optional[str] = None,
-        context_injection: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        system_message: str | None = None,
+        context_injection: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> "GateResult":
         """Factory method for WARN verdict."""
         return cls(
@@ -66,7 +66,7 @@ class GateResult:
             metadata=metadata or {},
         )
 
-    def to_json(self) -> Dict[str, Any]:
+    def to_json(self) -> dict[str, Any]:
         """Serialize to canonical JSON format."""
         return {
             "verdict": self.verdict.value,

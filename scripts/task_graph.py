@@ -112,9 +112,7 @@ def extract_assignee(file_path: str) -> str | None:
     return None
 
 
-def filter_completed_smart(
-    nodes: list[dict], edges: list[dict]
-) -> tuple[list[dict], set[str]]:
+def filter_completed_smart(nodes: list[dict], edges: list[dict]) -> tuple[list[dict], set[str]]:
     """Filter completed tasks, keeping structural parents with active descendants.
 
     Returns:
@@ -124,12 +122,8 @@ def filter_completed_smart(
     done_statuses = {"done", "completed"}
 
     # Build node lookup and identify completed nodes
-    completed_ids = {
-        n["id"] for n in nodes if n.get("status", "").lower() in done_statuses
-    }
-    active_ids = {
-        n["id"] for n in nodes if n.get("status", "").lower() not in done_statuses
-    }
+    completed_ids = {n["id"] for n in nodes if n.get("status", "").lower() in done_statuses}
+    active_ids = {n["id"] for n in nodes if n.get("status", "").lower() not in done_statuses}
 
     # Build adjacency: for each node, find its neighbors (bidirectional for wikilinks)
     neighbors = {n["id"]: set() for n in nodes}
@@ -183,9 +177,7 @@ def filter_rollup(nodes: list[dict], edges: list[dict]) -> tuple[list[dict], set
 
     # Build lookups
     node_by_id = {n["id"]: n for n in nodes}
-    unfinished_ids = {
-        n["id"] for n in nodes if n.get("status", "").lower() not in done_statuses
-    }
+    unfinished_ids = {n["id"] for n in nodes if n.get("status", "").lower() not in done_statuses}
 
     # Build parent→children mapping from node.parent field
     # (more reliable than parsing edges since nodes directly declare their parent)
@@ -341,17 +333,13 @@ def generate_dot(
         by_status = stats.get("by_status", {})
 
         # Build type breakdown string
-        type_parts = [
-            f"{v} {k}" for k, v in sorted(by_type.items(), key=lambda x: -x[1])
-        ]
+        type_parts = [f"{v} {k}" for k, v in sorted(by_type.items(), key=lambda x: -x[1])]
         type_str = ", ".join(type_parts[:5])  # Top 5 types
         if len(type_parts) > 5:
             type_str += f", +{len(type_parts) - 5} more"
 
         # Build status breakdown string
-        status_parts = [
-            f"{v} {k}" for k, v in sorted(by_status.items(), key=lambda x: -x[1])
-        ]
+        status_parts = [f"{v} {k}" for k, v in sorted(by_status.items(), key=lambda x: -x[1])]
         status_str = ", ".join(status_parts[:5])  # Top 5 statuses
         if len(status_parts) > 5:
             status_str += f", +{len(status_parts) - 5} more"
@@ -444,9 +432,7 @@ def generate_dot(
     return "\n".join(lines)
 
 
-def generate_svg(
-    dot_content: str, output_base: str, layout: str, keep_dot: bool = False
-) -> bool:
+def generate_svg(dot_content: str, output_base: str, layout: str, keep_dot: bool = False) -> bool:
     """Generate SVG from DOT content using Graphviz.
 
     Args:
@@ -473,9 +459,7 @@ def generate_svg(
     }
 
     try:
-        cmd = (
-            [layout, "-Tsvg"] + layout_opts.get(layout, []) + [dot_path, "-o", svg_path]
-        )
+        cmd = [layout, "-Tsvg"] + layout_opts.get(layout, []) + [dot_path, "-o", svg_path]
         subprocess.run(cmd, check=True, capture_output=True)
         print(f"  Written {svg_path}")
         success = True
@@ -500,9 +484,7 @@ def main():
     )
     parser.add_argument("input", help="Input JSON file from fast-indexer")
     parser.add_argument("-o", "--output", default="tasks", help="Output base name")
-    parser.add_argument(
-        "--include-orphans", action="store_true", help="Include unconnected nodes"
-    )
+    parser.add_argument("--include-orphans", action="store_true", help="Include unconnected nodes")
     parser.add_argument(
         "--no-filter",
         action="store_true",

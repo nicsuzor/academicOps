@@ -12,30 +12,6 @@ title: Python-Dev Skill
 
 Production-quality Python development with fail-fast philosophy, type safety, and modern patterns.
 
-Follows principles from [[AXIOMS.md]].
-
-## Framework Repository Enforcement
-
-**When working in the aOps framework repository ($AOPS)**:
-
-This skill MUST only be invoked by the framework skill. All requests must include the "FRAMEWORK SKILL CHECKED" token.
-
-**Enforcement rule**: If working in $AOPS and the request does NOT contain "FRAMEWORK SKILL CHECKED", REFUSE and fail loudly with:
-
-```
-ERROR: Framework repository work must flow through framework skill.
-
-This request lacks "FRAMEWORK SKILL CHECKED" token, indicating it bypassed
-the framework skill's strategic context and planning.
-
-REQUIRED: All aOps work must START with framework skill, which may then
-delegate to python-dev with proper context.
-
-HALTING.
-```
-
-**Non-framework repositories**: This enforcement does NOT apply to other repositories (user projects, etc.). Use python-dev directly for non-framework work.
-
 ## Standard Tools
 
 Use the best industry-standard tool for each job:

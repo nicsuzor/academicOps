@@ -62,8 +62,9 @@ class TestGateLifecycleTask:
 
     def test_task_opens_on_task_manager_success(self):
         """Task gate opens when task manager tools succeed."""
-        from hooks.gate_config import get_gate_opening_condition
         import re
+
+        from hooks.gate_config import get_gate_opening_condition
 
         condition = get_gate_opening_condition("task")
         assert condition["event"] == "PostToolUse"
@@ -75,8 +76,9 @@ class TestGateLifecycleTask:
 
     def test_task_closes_on_complete(self):
         """Task gate re-closes when task is completed."""
-        from hooks.gate_config import get_gate_closure_triggers
         import re
+
+        from hooks.gate_config import get_gate_closure_triggers
 
         triggers = get_gate_closure_triggers("task")
         complete_trigger = next(
@@ -117,9 +119,7 @@ class TestGateLifecycleCritic:
         from hooks.gate_config import get_gate_closure_triggers
 
         triggers = get_gate_closure_triggers("critic")
-        prompt_trigger = next(
-            (t for t in triggers if t["event"] == "UserPromptSubmit"), None
-        )
+        prompt_trigger = next((t for t in triggers if t["event"] == "UserPromptSubmit"), None)
         assert prompt_trigger is not None
 
     def test_critic_closes_on_task_complete(self):
@@ -156,9 +156,7 @@ class TestGateLifecycleCustodiet:
         from hooks.gate_config import get_gate_closure_triggers
 
         triggers = get_gate_closure_triggers("custodiet")
-        prompt_trigger = next(
-            (t for t in triggers if t["event"] == "UserPromptSubmit"), None
-        )
+        prompt_trigger = next((t for t in triggers if t["event"] == "UserPromptSubmit"), None)
         assert prompt_trigger is not None
 
     def test_custodiet_closes_after_threshold(self):
@@ -166,9 +164,7 @@ class TestGateLifecycleCustodiet:
         from hooks.gate_config import get_gate_closure_triggers
 
         triggers = get_gate_closure_triggers("custodiet")
-        threshold_trigger = next(
-            (t for t in triggers if "threshold_counter" in t), None
-        )
+        threshold_trigger = next((t for t in triggers if "threshold_counter" in t), None)
         assert threshold_trigger is not None
         assert threshold_trigger["threshold_value"] == 7
         assert threshold_trigger["tool_category"] == "write"
@@ -221,9 +217,7 @@ class TestGateLifecycleHandover:
         from hooks.gate_config import get_gate_closure_triggers
 
         triggers = get_gate_closure_triggers("handover")
-        dirty_trigger = next(
-            (t for t in triggers if t.get("condition") == "git_dirty"), None
-        )
+        dirty_trigger = next((t for t in triggers if t.get("condition") == "git_dirty"), None)
         assert dirty_trigger is not None
         assert dirty_trigger["tool_category"] == "write"
 
@@ -297,8 +291,7 @@ class TestToolCategoryConsistency:
 
         # Task manager tools are always_available (framework infrastructure)
         assert (
-            get_tool_category("mcp__plugin_aops-core_task_manager__get_task")
-            == "always_available"
+            get_tool_category("mcp__plugin_aops-core_task_manager__get_task") == "always_available"
         )
         assert (
             get_tool_category("mcp__plugin_aops-core_task_manager__create_task")
@@ -306,9 +299,7 @@ class TestToolCategoryConsistency:
         )
 
         # Memory store is in write
-        assert (
-            get_tool_category("mcp__plugin_aops-core_memory__store_memory") == "write"
-        )
+        assert get_tool_category("mcp__plugin_aops-core_memory__store_memory") == "write"
 
 
 class TestGateExecutionOrderIntegrity:
@@ -370,7 +361,7 @@ class TestGateClosureOnToolCategory:
 
     def test_handover_closes_on_write_category(self):
         """Handover gate should close when write tools are used."""
-        from hooks.gate_config import should_gate_close_on_tool, get_tool_category
+        from hooks.gate_config import get_tool_category, should_gate_close_on_tool
 
         # Edit is a write tool
         assert get_tool_category("Edit") == "write"
@@ -379,7 +370,7 @@ class TestGateClosureOnToolCategory:
 
     def test_handover_does_not_close_on_read(self):
         """Handover gate should NOT close on read-only tools."""
-        from hooks.gate_config import should_gate_close_on_tool, get_tool_category
+        from hooks.gate_config import get_tool_category, should_gate_close_on_tool
 
         # Read is a read_only tool
         assert get_tool_category("Read") == "read_only"

@@ -345,6 +345,7 @@ Maps project documentation to topics for just-in-time context injection. The hyd
 ```
 
 **Fields**:
+
 - `topic`: Short identifier for the documentation area
 - `path`: Relative path from project root to the documentation file
 - `description`: Brief explanation of what the file covers

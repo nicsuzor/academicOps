@@ -279,11 +279,13 @@ Derive task routing from:
 - `enforcement-map.md` (Soft Gate Guardrails section) - type→guardrail mappings
 
 **Skill workflow discovery**: Scan all `skills/*/workflows/*.md` files and extract:
+
 - Workflow name from filename (e.g., `05-feature-development.md` → `feature-development`)
 - Purpose from first heading or frontmatter description
 - Parent skill from directory path (e.g., `skills/framework/workflows/` → `framework` skill)
 
 **Include in output**:
+
 - A "Skill Workflows" section listing all discovered workflow files
 - Path reference for each (e.g., `[[skills/framework/workflows/05-feature-development]]`)
 - Brief description extracted from file
@@ -400,16 +402,16 @@ For each finding from Phases 0-7 that requires action:
 
 #### Finding Type → Issue Mapping
 
-| Finding Type                           | Priority | Issue Type | Labels              |
-| -------------------------------------- | -------- | ---------- | ------------------- |
-| Broken wikilinks                       | P2       | bug        | audit,documentation |
-| Orphan files                           | P3       | chore      | audit,cleanup       |
-| Skill >500 lines                       | P2       | chore      | audit,refactor      |
-| Explanatory content in skill           | P2       | chore      | audit,refactor      |
-| Missing from INDEX.md                  | P3       | chore      | audit,documentation |
+| Finding Type                                     | Priority | Issue Type | Labels              |
+| ------------------------------------------------ | -------- | ---------- | ------------------- |
+| Broken wikilinks                                 | P2       | bug        | audit,documentation |
+| Orphan files                                     | P3       | chore      | audit,cleanup       |
+| Skill >500 lines                                 | P2       | chore      | audit,refactor      |
+| Explanatory content in skill                     | P2       | chore      | audit,refactor      |
+| Missing from INDEX.md                            | P3       | chore      | audit,documentation |
 | Orphan instruction (no enforcement-map.md trace) | P2       | bug        | audit,governance    |
-| README.md flowchart drift              | P2       | bug        | audit,documentation |
-| Hook→Axiom mismatch                    | P2       | bug        | audit,governance    |
+| README.md flowchart drift                        | P2       | bug        | audit,documentation |
+| Hook→Axiom mismatch                              | P2       | bug        | audit,governance    |
 
 #### Task Creation Pattern
 

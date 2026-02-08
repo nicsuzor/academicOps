@@ -73,9 +73,7 @@ def check_normality(
         )
         mu, sigma = data_clean.mean(), data_clean.std()
         x = np.linspace(data_clean.min(), data_clean.max(), 100)
-        ax2.plot(
-            x, stats.norm.pdf(x, mu, sigma), "r-", linewidth=2, label="Normal curve"
-        )
+        ax2.plot(x, stats.norm.pdf(x, mu, sigma), "r-", linewidth=2, label="Normal curve")
         ax2.set_xlabel("Value")
         ax2.set_ylabel("Density")
         ax2.set_title(f"Histogram: {name}")
@@ -406,9 +404,7 @@ def detect_outliers(
                 edgecolors="black",
                 linewidths=0.5,
             )
-        ax2.axhline(
-            y=lower_bound, color="orange", linestyle="--", linewidth=1.5, label="Bounds"
-        )
+        ax2.axhline(y=lower_bound, color="orange", linestyle="--", linewidth=1.5, label="Bounds")
         ax2.axhline(y=upper_bound, color="orange", linestyle="--", linewidth=1.5)
         ax2.set_xlabel("Index")
         ax2.set_ylabel("Value")
@@ -492,9 +488,7 @@ def comprehensive_assumption_check(
         all_normal = normality_results["Normal"].eq("Yes").all()
         print(f"\n   All groups normal: {'Yes' if all_normal else 'No'}")
         if not all_normal:
-            print(
-                "   → Consider non-parametric alternative (Mann-Whitney, Kruskal-Wallis)"
-            )
+            print("   → Consider non-parametric alternative (Mann-Whitney, Kruskal-Wallis)")
 
         # Homogeneity of variance
         print("\n3. HOMOGENEITY OF VARIANCE")
@@ -532,9 +526,7 @@ def comprehensive_assumption_check(
         is_homogeneous = results.get("homogeneity", {}).get("is_homogeneous", False)
 
         if all_normal and is_homogeneous:
-            print(
-                "✓ All assumptions met. Proceed with parametric test (t-test, ANOVA)."
-            )
+            print("✓ All assumptions met. Proceed with parametric test (t-test, ANOVA).")
         elif not all_normal:
             print("✗ Normality violated. Use non-parametric alternative.")
         elif not is_homogeneous:
@@ -544,9 +536,7 @@ def comprehensive_assumption_check(
         if is_normal:
             print("✓ Normality assumption met.")
         else:
-            print(
-                "✗ Normality violated. Consider transformation or non-parametric method."
-            )
+            print("✗ Normality violated. Consider transformation or non-parametric method.")
 
     print("=" * 70)
 
@@ -566,6 +556,4 @@ if __name__ == "__main__":
     )
 
     # Run comprehensive check
-    results = comprehensive_assumption_check(
-        df, value_col="score", group_col="group", alpha=0.05
-    )
+    results = comprehensive_assumption_check(df, value_col="score", group_col="group", alpha=0.05)

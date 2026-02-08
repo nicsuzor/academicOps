@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-import click
 import os
 import sys
+from datetime import UTC
 from pathlib import Path
+
+import click
 from manager import PolecatManager
 from validation import TaskIDValidationError, validate_task_id_or_raise
 
@@ -198,11 +200,12 @@ def _attempt_auto_merge(task, manager):
 
 @main.command()
 @click.option("--no-push", is_flag=True, help="Skip pushing to remote")
+@click.option("--nuke", "do_nuke", is_flag=True, help="Also remove the worktree after finishing")
 @click.option(
-    "--nuke", "do_nuke", is_flag=True, help="Also remove the worktree after finishing"
-)
-@click.option(
-    "--force", "-f", is_flag=True, help="Skip confirmation prompts (required in non-interactive mode)"
+    "--force",
+    "-f",
+    is_flag=True,
+    help="Skip confirmation prompts (required in non-interactive mode)",
 )
 @click.pass_context
 def finish(ctx, no_push, do_nuke, force):
@@ -236,18 +239,14 @@ def finish(ctx, no_push, do_nuke, force):
 
     # --- SAFEGUARD 1: Dirty Exit Protection ---
     # Check for uncommitted changes
-    result = subprocess.run(
-        ["git", "status", "--porcelain"], capture_output=True, text=True
-    )
+    result = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
     if result.stdout.strip():
         print("⚠️  Warning: Uncommitted changes detected.")
         # Automatically commit changes if they are simple
         print("  🧹 Automatically staging and committing changes...")
         try:
             subprocess.run(["git", "add", "-u"], check=True)  # Stage modified/deleted
-            subprocess.run(
-                ["git", "add", "."], check=True
-            )  # Stage new files (careful!)
+            subprocess.run(["git", "add", "."], check=True)  # Stage new files (careful!)
             subprocess.run(
                 ["git", "commit", "-m", "chore: saving uncommitted agent work"],
                 check=True,
@@ -256,7 +255,9 @@ def finish(ctx, no_push, do_nuke, force):
         except subprocess.CalledProcessError as e:
             print(f"  ❌ Failed to auto-commit: {e}")
             if not force:
-                print("  🚫 Uncommitted changes could not be saved. Use --force to continue anyway.")
+                print(
+                    "  🚫 Uncommitted changes could not be saved. Use --force to continue anyway."
+                )
                 sys.exit(1)
 
     # --- NO-CHANGES DETECTION ---
@@ -285,9 +286,7 @@ def finish(ctx, no_push, do_nuke, force):
                 manager.storage.save_task(task)
                 print("✅ Task marked as 'done' (no changes to merge)")
             except ImportError:
-                print(
-                    "Warning: Could not update task status (lib.task_model not available)"
-                )
+                print("Warning: Could not update task status (lib.task_model not available)")
 
             # Optionally nuke
             if do_nuke:
@@ -325,9 +324,7 @@ def finish(ctx, no_push, do_nuke, force):
                         f"\n🚨 SAFEGUARD ACTIVATE: Large changeset detected ({files_changed} files)."
                     )
                     print("   This looks like a 'repo nuke' or orphan branch issue.")
-                    print(
-                        "   Run 'git reset --soft FETCH_HEAD' to recover if this is accidental."
-                    )
+                    print("   Run 'git reset --soft FETCH_HEAD' to recover if this is accidental.")
                     if not force:
                         print(
                             "   🚫 Large changeset requires confirmation. Use --force to push anyway."
@@ -389,7 +386,9 @@ def finish(ctx, no_push, do_nuke, force):
                         from lib.task_model import TaskStatus
 
                         task.status = TaskStatus.REVIEW
-                        task.body += "\n\n## ⚠️ Rebase Failed\nConflicts detected during rebase onto main.\n"
+                        task.body += (
+                            "\n\n## ⚠️ Rebase Failed\nConflicts detected during rebase onto main.\n"
+                        )
                         manager.storage.save_task(task)
                     except ImportError:
                         pass
@@ -425,18 +424,18 @@ def finish(ctx, no_push, do_nuke, force):
     try:
         # Import locally to avoid potential circular dependencies
         try:
-            from github import generate_pr_body, check_gh_installed
+            from github import check_gh_installed, generate_pr_body
         except ImportError:
             # Fallback if running as module
-            from .github import generate_pr_body, check_gh_installed
+            from .github import check_gh_installed, generate_pr_body
 
         if check_gh_installed():
             print("  🐙 GitHub CLI detected. Updating Pull Request...")
             pr_body = generate_pr_body(task)
 
             # Create a temp file for the body to handle multiline content safely
-            import tempfile
             import json
+            import tempfile
 
             with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
                 f.write(pr_body)
@@ -596,9 +595,7 @@ def merge():
 
 
 @main.command()
-@click.option(
-    "--project", "-p", multiple=True, help="Project(s) to work on (default: all)"
-)
+@click.option("--project", "-p", multiple=True, help="Project(s) to work on (default: all)")
 @click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
 @click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
@@ -738,9 +735,7 @@ def list_crew(ctx):
 @click.option("--task-id", "-t", help="Specific task ID to run (skips claim)")
 @click.option("--no-finish", is_flag=True, hidden=True, help="(Deprecated, no-op)")
 @click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
-@click.option(
-    "--interactive", "-i", is_flag=True, help="Run in interactive mode (not headless)"
-)
+@click.option("--interactive", "-i", is_flag=True, help="Run in interactive mode (not headless)")
 @click.option(
     "--no-auto-finish",
     is_flag=True,
@@ -786,9 +781,7 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
         except ImportError:
             pass
     else:
-        print(
-            f"Looking for ready tasks{' in project ' + project if project else ''}..."
-        )
+        print(f"Looking for ready tasks{' in project ' + project if project else ''}...")
         task = manager.claim_next_task(caller, project)
         if not task:
             print("No ready tasks found.")
@@ -903,14 +896,10 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
             except SystemExit as e:
                 if e.code != 0:
                     print("⚠️  Auto-finish failed.")
-                    print(
-                        f"   You can retry manually: cd {worktree_path} && polecat finish"
-                    )
+                    print(f"   You can retry manually: cd {worktree_path} && polecat finish")
             except Exception as e:
                 print(f"⚠️  Auto-finish failed: {e}")
-                print(
-                    f"   You can retry manually: cd {worktree_path} && polecat finish"
-                )
+                print(f"   You can retry manually: cd {worktree_path} && polecat finish")
             finally:
                 os.chdir(original_cwd)
         else:
@@ -924,9 +913,7 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
 
 @main.command()
 @click.argument("task_id")
-@click.option(
-    "--transcript-lines", "-n", default=20, help="Number of transcript lines to show"
-)
+@click.option("--transcript-lines", "-n", default=20, help="Number of transcript lines to show")
 @click.pass_context
 def analyze(ctx, task_id, transcript_lines):
     """Diagnose a stalled or failed task.
@@ -938,7 +925,7 @@ def analyze(ctx, task_id, transcript_lines):
         polecat analyze aops-abc12345     # Full diagnostic
         polecat analyze aops-abc12345 -n 50  # Show more transcript
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     # Validate task ID
     try:
@@ -961,19 +948,17 @@ def analyze(ctx, task_id, transcript_lines):
     # --- Section 1: Task Metadata ---
     print("\n📋 TASK METADATA")
     print(f"   Title:    {task.title}")
-    print(
-        f"   Status:   {task.status.value if hasattr(task.status, 'value') else task.status}"
-    )
+    print(f"   Status:   {task.status.value if hasattr(task.status, 'value') else task.status}")
     print(f"   Assignee: {task.assignee or '(none)'}")
     print(f"   Project:  {task.project or 'aops'}")
     print(f"   Priority: P{task.priority}")
 
     # Calculate staleness
     if task.modified:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         modified = task.modified
         if modified.tzinfo is None:
-            modified = modified.replace(tzinfo=timezone.utc)
+            modified = modified.replace(tzinfo=UTC)
         age = now - modified
         hours = age.total_seconds() / 3600
         print(f"   Modified: {modified.isoformat()} ({hours:.1f}h ago)")
@@ -1058,7 +1043,7 @@ def analyze(ctx, task_id, transcript_lines):
 
         try:
             # Read last N lines
-            with open(transcript_path, "r") as f:
+            with open(transcript_path) as f:
                 lines = f.readlines()
 
             if not lines:
@@ -1086,9 +1071,7 @@ def analyze(ctx, task_id, transcript_lines):
     # --- Section 4: Suggested Remediation ---
     print("\n💡 SUGGESTED ACTIONS")
 
-    status_str = (
-        task.status.value if hasattr(task.status, "value") else str(task.status)
-    )
+    status_str = task.status.value if hasattr(task.status, "value") else str(task.status)
 
     if status_str == "in_progress":
         if not worktree_path.exists():
@@ -1130,11 +1113,12 @@ def analyze(ctx, task_id, transcript_lines):
 @main.command("reset-stalled")
 @click.option("--project", "-p", help="Filter by project")
 @click.option("--hours", default=4.0, help="Hours since last modification (default: 4)")
+@click.option("--dry-run", is_flag=True, help="Show what would be reset without changing")
 @click.option(
-    "--dry-run", is_flag=True, help="Show what would be reset without changing"
-)
-@click.option(
-    "--force", "-f", is_flag=True, help="Skip confirmation prompt (required in non-interactive mode)"
+    "--force",
+    "-f",
+    is_flag=True,
+    help="Skip confirmation prompt (required in non-interactive mode)",
 )
 @click.pass_context
 def reset_stalled(ctx, project, hours, dry_run, force):
@@ -1143,11 +1127,11 @@ def reset_stalled(ctx, project, hours, dry_run, force):
     Finds tasks that have been in_progress for > N hours and resets them.
     Useful for cleaning up after crashed/abandoned agents.
     """
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
     try:
-        from lib.task_model import TaskStatus
         from lib.task_index import TaskIndex
+        from lib.task_model import TaskStatus
     except ImportError:
         print(
             "Error: Could not import task libraries. Ensure aops-core is available.",
@@ -1158,21 +1142,19 @@ def reset_stalled(ctx, project, hours, dry_run, force):
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
 
     # Calculate cutoff time
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    cutoff = datetime.now(UTC) - timedelta(hours=hours)
 
     print(f"Checking for tasks stalled since {cutoff.isoformat()}...")
 
     # List tasks
-    candidates = manager.storage.list_tasks(
-        status=TaskStatus.IN_PROGRESS, project=project
-    )
+    candidates = manager.storage.list_tasks(status=TaskStatus.IN_PROGRESS, project=project)
 
     stalled = []
     for task in candidates:
         # Ensure timezone awareness
         task_mod = task.modified
         if task_mod.tzinfo is None:
-            task_mod = task_mod.replace(tzinfo=timezone.utc)
+            task_mod = task_mod.replace(tzinfo=UTC)
 
         if task_mod < cutoff:
             stalled.append(task)
@@ -1273,7 +1255,7 @@ def watch(ctx, interval, stall_threshold, project):
     """
     import signal
     import time
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
     try:
         from lib.task_model import TaskStatus
@@ -1286,7 +1268,7 @@ def watch(ctx, interval, stall_threshold, project):
     # Track seen PRs and last activity time
     seen_merge_ready = set()
     seen_review = set()
-    last_activity = datetime.now(timezone.utc)
+    last_activity = datetime.now(UTC)
 
     # Graceful shutdown
     stop_requested = False
@@ -1313,21 +1295,17 @@ def watch(ctx, interval, stall_threshold, project):
         for task in merge_ready_tasks:
             seen_merge_ready.add(task.id)
 
-        review_tasks = manager.storage.list_tasks(
-            status=TaskStatus.REVIEW, project=project
-        )
+        review_tasks = manager.storage.list_tasks(status=TaskStatus.REVIEW, project=project)
         for task in review_tasks:
             seen_review.add(task.id)
 
-        print(
-            f"Initial state: {len(seen_merge_ready)} merge_ready, {len(seen_review)} review"
-        )
+        print(f"Initial state: {len(seen_merge_ready)} merge_ready, {len(seen_review)} review")
     except Exception as e:
         print(f"Warning: Initial scan failed: {e}")
 
     while not stop_requested:
         try:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
 
             # Check for new merge_ready tasks (new PRs filed)
             merge_ready_tasks = manager.storage.list_tasks(
@@ -1344,9 +1322,7 @@ def watch(ctx, interval, stall_threshold, project):
                     )
 
             # Check for new review tasks (merge failures)
-            review_tasks = manager.storage.list_tasks(
-                status=TaskStatus.REVIEW, project=project
-            )
+            review_tasks = manager.storage.list_tasks(status=TaskStatus.REVIEW, project=project)
             for task in review_tasks:
                 if task.id not in seen_review:
                     seen_review.add(task.id)
@@ -1363,15 +1339,13 @@ def watch(ctx, interval, stall_threshold, project):
             # This is a simplification - in production you'd track these too
 
             # Check for in_progress tasks (active work)
-            in_progress = manager.storage.list_tasks(
-                status=TaskStatus.IN_PROGRESS, project=project
-            )
+            in_progress = manager.storage.list_tasks(status=TaskStatus.IN_PROGRESS, project=project)
             if in_progress:
                 # Check if any were modified recently
                 for task in in_progress:
                     task_mod = task.modified
                     if task_mod.tzinfo is None:
-                        task_mod = task_mod.replace(tzinfo=timezone.utc)
+                        task_mod = task_mod.replace(tzinfo=UTC)
                     if task_mod > last_activity:
                         last_activity = task_mod
 
@@ -1412,9 +1386,7 @@ def watch(ctx, interval, stall_threshold, project):
 @click.option("--claude", "-c", default=0, help="Number of Claude workers")
 @click.option("--gemini", "-g", default=0, help="Number of Gemini workers")
 @click.option("--project", "-p", help="Project to focus on (default: all)")
-@click.option(
-    "--caller", default="polecat", help="Identity claiming the tasks (default: bot)"
-)
+@click.option("--caller", default="polecat", help="Identity claiming the tasks (default: bot)")
 @click.option("--dry-run", is_flag=True, help="Simulate execution")
 @click.pass_context
 def swarm(ctx, claude, gemini, project, caller, dry_run):
@@ -1507,9 +1479,9 @@ def summary(ctx, since, project):
         polecat summary --since 1d     # Last day
         polecat summary -s 4h -p aops  # Last 4 hours, aops only
     """
-    import subprocess
     import json
-    from datetime import datetime, timedelta, timezone
+    import subprocess
+    from datetime import datetime, timedelta
 
     try:
         from lib.task_model import TaskStatus
@@ -1529,7 +1501,7 @@ def summary(ctx, since, project):
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    cutoff = datetime.now(timezone.utc) - timedelta(seconds=seconds)
+    cutoff = datetime.now(UTC) - timedelta(seconds=seconds)
     cutoff_iso = cutoff.strftime("%Y-%m-%dT%H:%M:%S")
 
     # Format duration for display
@@ -1576,9 +1548,7 @@ def summary(ctx, since, project):
                 if merged_at:
                     # Parse ISO timestamp
                     try:
-                        merged_dt = datetime.fromisoformat(
-                            merged_at.replace("Z", "+00:00")
-                        )
+                        merged_dt = datetime.fromisoformat(merged_at.replace("Z", "+00:00"))
                         if merged_dt >= cutoff:
                             # Filter by project if specified
                             if project:
@@ -1600,9 +1570,7 @@ def summary(ctx, since, project):
             else:
                 print("No PRs merged in this period.")
         else:
-            print(
-                "(Could not query GitHub - gh CLI not available or not authenticated)"
-            )
+            print("(Could not query GitHub - gh CLI not available or not authenticated)")
 
     except FileNotFoundError:
         print("(GitHub CLI not installed)")
@@ -1626,12 +1594,10 @@ def summary(ctx, since, project):
             if hasattr(task_mod, "tzinfo"):
                 # It's a datetime
                 if task_mod.tzinfo is None:
-                    task_mod = task_mod.replace(tzinfo=timezone.utc)
+                    task_mod = task_mod.replace(tzinfo=UTC)
             else:
                 # It's a date - convert to datetime at midnight UTC
-                task_mod = datetime.combine(
-                    task_mod, datetime.min.time(), tzinfo=timezone.utc
-                )
+                task_mod = datetime.combine(task_mod, datetime.min.time(), tzinfo=UTC)
 
             if task_mod >= cutoff:
                 completed_tasks.append(task)
@@ -1658,14 +1624,10 @@ def summary(ctx, since, project):
     try:
         # Count tasks by status
         ready_tasks = manager.storage.get_ready_tasks(project=project)
-        in_progress = manager.storage.list_tasks(
-            status=TaskStatus.IN_PROGRESS, project=project
-        )
+        in_progress = manager.storage.list_tasks(status=TaskStatus.IN_PROGRESS, project=project)
         blocked = manager.storage.list_tasks(status=TaskStatus.BLOCKED, project=project)
         review = manager.storage.list_tasks(status=TaskStatus.REVIEW, project=project)
-        merge_ready = manager.storage.list_tasks(
-            status=TaskStatus.MERGE_READY, project=project
-        )
+        merge_ready = manager.storage.list_tasks(status=TaskStatus.MERGE_READY, project=project)
 
         print(f"- **Ready**: {len(ready_tasks)} tasks")
         print(f"- **In Progress**: {len(in_progress)} tasks")
@@ -1701,9 +1663,7 @@ def summary(ctx, since, project):
             print("- **Polecats**: None active")
 
         if crew_workers:
-            print(
-                f"- **Crew**: {len(crew_workers)} workers ({', '.join(crew_workers)})"
-            )
+            print(f"- **Crew**: {len(crew_workers)} workers ({', '.join(crew_workers)})")
         else:
             print("- **Crew**: None active")
 

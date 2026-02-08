@@ -29,9 +29,7 @@ import pytest
 class TestHydrationPipelineDemo:
     """Demo test for the complete prompt hydration pipeline."""
 
-    def test_demo_hydration_pipeline_full_workflow(
-        self, claude_headless_tracked
-    ) -> None:
+    def test_demo_hydration_pipeline_full_workflow(self, claude_headless_tracked) -> None:
         """Demo: Complete hydration pipeline from prompt to execution.
 
         This test demonstrates the v1.0 core loop hydration process using a
@@ -168,8 +166,7 @@ class TestHydrationPipelineDemo:
             # Check for workflow indicators in response
             print("\n--- Workflow Selection Evidence ---")
             workflow_indicators = {
-                "question": "question" in response_lower
-                and "workflow" in response_lower,
+                "question": "question" in response_lower and "workflow" in response_lower,
                 "design": "design" in response_lower,
                 "tdd": "tdd" in response_lower or "test-driven" in response_lower,
                 "debug": "debug" in response_lower,
@@ -177,9 +174,7 @@ class TestHydrationPipelineDemo:
                 "qa-proof": "qa" in response_lower or "verify" in response_lower,
                 "plan-mode": "plan" in response_lower and "mode" in response_lower,
             }
-            detected_workflows = [
-                wf for wf, present in workflow_indicators.items() if present
-            ]
+            detected_workflows = [wf for wf, present in workflow_indicators.items() if present]
             print(
                 f"  Workflow indicators: {', '.join(detected_workflows) if detected_workflows else 'None explicitly mentioned'}"
             )

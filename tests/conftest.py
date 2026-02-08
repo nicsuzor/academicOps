@@ -5,6 +5,7 @@ All paths resolve using AOPS and ACA_DATA environment variables.
 """
 
 import os
+from datetime import UTC
 from pathlib import Path
 
 import pytest
@@ -58,9 +59,7 @@ def skip_demo_in_xdist(request):
     Run demo tests with: pytest -m demo -n 0
     """
     if "demo" in request.keywords and _is_xdist_worker():
-        pytest.skip(
-            "Demo tests require -n 0 for visible output. Run: pytest -m demo -n 0"
-        )
+        pytest.skip("Demo tests require -n 0 for visible output. Run: pytest -m demo -n 0")
 
 
 @pytest.fixture
@@ -140,12 +139,8 @@ def test_data_dir(tmp_path: Path, monkeypatch) -> Path:
     (tasks_dir / "archived").mkdir(parents=True)
 
     # Create sample task files for tests
-    _create_sample_task(
-        inbox_dir, "sample-task-1", "High Priority Task", 1, "project-a"
-    )
-    _create_sample_task(
-        inbox_dir, "sample-task-2", "Medium Priority Task", 2, "project-b"
-    )
+    _create_sample_task(inbox_dir, "sample-task-1", "High Priority Task", 1, "project-a")
+    _create_sample_task(inbox_dir, "sample-task-2", "Medium Priority Task", 2, "project-b")
     _create_sample_task(inbox_dir, "sample-task-3", "Low Priority Task", 3, "project-a")
 
     # Set ACA_DATA - server reads this directly via task_ops.get_data_dir()
@@ -166,14 +161,14 @@ def _create_sample_task(
         priority: Priority level (0-3)
         project: Project name
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     filename = f"{task_id}.md"
     filepath = directory / filename
 
     # Generate properly formatted content
-    now = datetime.now(timezone.utc).isoformat()
-    created = datetime(2025, 1, 1, tzinfo=timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
+    created = datetime(2025, 1, 1, tzinfo=UTC).isoformat()
 
     content = f"""---
 title: {title}
@@ -211,11 +206,11 @@ Provides:
 
 import json
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import pytest
-
 from lib.paths import get_plugin_root as get_aops_root
 
 
@@ -248,12 +243,9 @@ def extract_response_text(result: dict[str, Any]) -> str:
             if isinstance(text, str):
                 return text
             raise TypeError(
-                f"Expected result['result']['result'] to be string, "
-                f"got {type(text).__name__}"
+                f"Expected result['result']['result'] to be string, got {type(text).__name__}"
             )
-        raise ValueError(
-            f"Dict result missing 'result' field. Keys: {list(result_data.keys())}"
-        )
+        raise ValueError(f"Dict result missing 'result' field. Keys: {list(result_data.keys())}")
 
     # Handle string result directly (simplest case)
     if isinstance(result_data, str):
@@ -303,8 +295,7 @@ def extract_response_text(result: dict[str, Any]) -> str:
         )
 
     raise TypeError(
-        f"Expected result['result'] to be dict, str, or list, "
-        f"got {type(result_data).__name__}"
+        f"Expected result['result'] to be dict, str, or list, got {type(result_data).__name__}"
     )
 
 
@@ -489,8 +480,7 @@ def _make_failing_wrapper(
         if not result["success"] and fail_on_error:
             error_msg = result.get("error", "Unknown error")
             pytest.fail(
-                f"Headless session failed (set fail_on_error=False to handle manually): "
-                f"{error_msg}"
+                f"Headless session failed (set fail_on_error=False to handle manually): {error_msg}"
             )
 
         return result
@@ -1234,9 +1224,7 @@ def pytest_configure(config):
         "markers",
         "integration: mark test as integration test (requires external systems)",
     )
-    config.addinivalue_line(
-        "markers", "slow: mark test as slow (may take minutes to complete)"
-    )
+    config.addinivalue_line("markers", "slow: mark test as slow (may take minutes to complete)")
 
 
 def pytest_collection_modifyitems(config, items):  # noqa: ARG001

@@ -35,9 +35,9 @@ Usage:
 from __future__ import annotations
 
 import tempfile
+from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
-from typing import Iterator
 
 from filelock import FileLock
 
@@ -435,15 +435,13 @@ class TaskStorage:
 
                 # Verify write succeeded
                 if not path.exists():
-                    raise IOError(f"Write failed: {path} does not exist after rename")
+                    raise OSError(f"Write failed: {path} does not exist after rename")
 
                 # Verify written content is valid by reading back
                 try:
                     Task.from_file(path)
                 except Exception as e:
-                    raise IOError(
-                        f"Write verification failed: {path} is not valid: {e}"
-                    )
+                    raise OSError(f"Write verification failed: {path} is not valid: {e}")
 
             except Exception:
                 # Clean up temp file on error
@@ -563,9 +561,7 @@ class TaskStorage:
         """
         for root, dirs, files in self.data_root.walk():
             # Filter out excluded and hidden directories (in-place modification)
-            dirs[:] = [
-                d for d in dirs if not d.startswith(".") and d not in EXCLUDED_DIRS
-            ]
+            dirs[:] = [d for d in dirs if not d.startswith(".") and d not in EXCLUDED_DIRS]
 
             for filename in files:
                 if filename.endswith(".md") and not filename.startswith("."):

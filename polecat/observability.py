@@ -22,8 +22,7 @@ Usage:
 import sys
 import time
 from contextlib import contextmanager
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 
 class PolecatMetrics:
@@ -36,7 +35,7 @@ class PolecatMetrics:
 
         Format: [POLECAT_METRIC] type=<type> timestamp=<iso> key1=value1 key2=value2
         """
-        timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+        timestamp = datetime.now(UTC).isoformat(timespec="milliseconds")
         parts = [f"{self.PREFIX} type={metric_type}", f"timestamp={timestamp}"]
         for key, value in fields.items():
             if value is not None:
@@ -47,9 +46,7 @@ class PolecatMetrics:
         print(" ".join(parts), file=sys.stderr)
 
     @contextmanager
-    def time_operation(
-        self, operation: str, project: Optional[str] = None, **extra_fields
-    ):
+    def time_operation(self, operation: str, project: str | None = None, **extra_fields):
         """Context manager to time an operation and emit latency metric.
 
         Args:
@@ -89,7 +86,7 @@ class PolecatMetrics:
         lock_name: str,
         wait_time_ms: float,
         acquired: bool = True,
-        caller: Optional[str] = None,
+        caller: str | None = None,
     ):
         """Record time spent waiting for a lock.
 
@@ -107,9 +104,7 @@ class PolecatMetrics:
             caller=caller,
         )
 
-    def record_queue_depth(
-        self, queue_name: str, count: int, project: Optional[str] = None
-    ):
+    def record_queue_depth(self, queue_name: str, count: int, project: str | None = None):
         """Record the depth of a queue.
 
         Args:
@@ -120,7 +115,7 @@ class PolecatMetrics:
         self._emit("queue_depth", queue_name=queue_name, count=count, project=project)
 
     def record_lock_timeout(
-        self, lock_name: str, timeout_seconds: float, caller: Optional[str] = None
+        self, lock_name: str, timeout_seconds: float, caller: str | None = None
     ):
         """Record when a lock acquisition times out.
 
@@ -141,7 +136,7 @@ class PolecatMetrics:
         task_id: str,
         success: bool,
         duration_ms: float,
-        failure_reason: Optional[str] = None,
+        failure_reason: str | None = None,
     ):
         """Record a merge attempt with outcome.
 

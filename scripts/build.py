@@ -4,11 +4,12 @@ Build script for AcademicOps Gemini extensions.
 Generates dist/aops-core and dist/antigravity.
 """
 
-import os
-import sys
-import shutil
+import argparse
 import json
+import os
+import shutil
 import subprocess
+import sys
 import tarfile
 from pathlib import Path
 
@@ -18,11 +19,11 @@ sys.path.append(str(SCRIPT_DIR / "lib"))
 
 try:
     from build_utils import (
-        convert_mcp_to_gemini,
         convert_gemini_to_antigravity,
-        safe_symlink,
-        safe_copy,
+        convert_mcp_to_gemini,
         get_git_commit_sha,
+        safe_copy,
+        safe_symlink,
         write_plugin_version,
     )
 except ImportError as e:
@@ -53,24 +54,22 @@ CLAUDE_TO_GEMINI_EVENTS = {
 
 
 def get_project_version(aops_root: Path) -> str:
-    """Extract the version from pyproject.toml."""
-    pyproject_path = aops_root / "pyproject.toml"
-    if pyproject_path.exists():
-        try:
-            import tomllib
-
-            with open(pyproject_path, "rb") as f:
-                data = tomllib.load(f)
-                return data.get("project", {}).get("version", "0.1.0")
-        except (ImportError, Exception):
-            # Fallback regex if tomllib is missing or fails
-            import re
-
-            content = pyproject_path.read_text()
-            match = re.search(r'version\s*=\s*"([^"]+)"', content)
-            if match:
-                return match.group(1)
-    return "0.1.0"
+    """Get version from git tags (matches uv-dynamic-versioning)."""
+    try:
+        result = subprocess.run(
+            ["git", "tag", "--merged", "HEAD", "--sort=-v:refname", "--list", "v0.*"],
+            cwd=aops_root,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        tags = [t.strip() for t in result.stdout.split("\n") if t.strip()]
+        if tags:
+            return tags[0].lstrip("v")
+        return "0.1.0"
+    except subprocess.CalledProcessError:
+        print("Warning: No git tags found, using fallback version 0.1.0")
+        return "0.1.0"
 
 
 # Template for aops-core pyproject.toml - version is injected at build time
@@ -208,9 +207,7 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
                         if "command" in new_hook:
                             # Replace Claude variable with Gemini variable
                             cmd = new_hook["command"]
-                            cmd = cmd.replace(
-                                "${CLAUDE_PLUGIN_ROOT}", "${extensionPath}"
-                            )
+                            cmd = cmd.replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
 
                             # Ensure we use the correct client flag for Gemini
                             cmd = cmd.replace("--client claude", "--client gemini")
@@ -280,8 +277,7 @@ def validate_gemini_agent_schema(frontmatter: dict, filename: str) -> dict:
 
     if errors:
         raise ValueError(
-            f"Agent '{filename}' schema validation failed:\n  - "
-            + "\n  - ".join(errors)
+            f"Agent '{filename}' schema validation failed:\n  - " + "\n  - ".join(errors)
         )
 
     # Set defaults for optional fields
@@ -327,9 +323,7 @@ def validate_gemini_agent_schema(frontmatter: dict, filename: str) -> dict:
     return frontmatter
 
 
-def transform_agent_for_platform(
-    content: str, platform: str, filename: str = "agent"
-) -> str:
+def transform_agent_for_platform(content: str, platform: str, filename: str = "agent") -> str:
     """Transform agent markdown for a specific platform.
 
     For Gemini: filters out mcp__* tools from frontmatter since they're Claude-specific,
@@ -362,9 +356,7 @@ def transform_agent_for_platform(
             frontmatter["tools"] = filtered  # Convert to list for Gemini schema
             # Validate and apply Gemini schema defaults
             frontmatter = validate_gemini_agent_schema(frontmatter, filename)
-            new_frontmatter = yaml.dump(
-                frontmatter, default_flow_style=False, sort_keys=False
-            )
+            new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
             return f"---\n{new_frontmatter}---{parts[2]}"
         return content
 
@@ -374,9 +366,7 @@ def transform_agent_for_platform(
         frontmatter["tools"] = filtered_tools
         # Validate and apply Gemini schema defaults
         frontmatter = validate_gemini_agent_schema(frontmatter, filename)
-        new_frontmatter = yaml.dump(
-            frontmatter, default_flow_style=False, sort_keys=False
-        )
+        new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
         return f"---\n{new_frontmatter}---{parts[2]}"
 
     elif platform == "claude":
@@ -433,9 +423,7 @@ def transform_agent_for_platform(
         frontmatter["tools"] = tools_string
 
         # Rebuild the content with the new frontmatter
-        new_frontmatter = yaml.dump(
-            frontmatter, default_flow_style=False, sort_keys=False
-        )
+        new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
         return f"---\n{new_frontmatter}---{parts[2]}"
 
     return content
@@ -567,9 +555,7 @@ def build_aops_core(
                 for agent_file in src.glob("*.md"):
                     content = agent_file.read_text()
                     # Transform frontmatter (filter mcp__ tools for Gemini, apply schema)
-                    content = transform_agent_for_platform(
-                        content, platform, agent_file.name
-                    )
+                    content = transform_agent_for_platform(content, platform, agent_file.name)
                     # Translate tool calls in body text
                     content = translate_tool_calls(content, platform)
                     (dst / agent_file.name).write_text(content)
@@ -632,10 +618,7 @@ def build_aops_core(
 
                 # Fix up task_manager path if it was using the repo-root format
                 # (where aops-core is a subdirectory, but in dist it is the root)
-                if (
-                    "mcpServers" in manifest
-                    and "task_manager" in manifest["mcpServers"]
-                ):
+                if "mcpServers" in manifest and "task_manager" in manifest["mcpServers"]:
                     args = manifest["mcpServers"]["task_manager"].get("args", [])
                     new_args = [
                         a.replace(
@@ -711,7 +694,7 @@ def build_aops_core(
                 gemini_mcps = convert_mcp_to_gemini(gemini_servers_config)
 
                 if dist_extension_json.exists():
-                    with open(dist_extension_json, "r") as f:
+                    with open(dist_extension_json) as f:
                         manifest = json.load(f)
                     current_mcps = manifest.get("mcpServers", {})
                     manifest["mcpServers"] = {**current_mcps, **gemini_mcps}
@@ -799,6 +782,15 @@ def build_antigravity(aops_root: Path, dist_root: Path, all_mcps: dict):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Build script for AcademicOps Gemini extensions.")
+    parser.add_argument("--version", action="store_true", help="Print detected version and exit")
+    args = parser.parse_args()
+
+    aops_root = Path(__file__).parent.parent.resolve()
+    if args.version:
+        print(get_project_version(aops_root))
+        sys.exit(0)
+
     aca_data_path = os.environ.get("ACA_DATA")
 
     if not aca_data_path:
@@ -819,9 +811,7 @@ def main():
         dist_root.mkdir()
 
     # Build components (Gemini)
-    core_mcps_gemini = build_aops_core(
-        aops_root, dist_root, aca_data_path, "gemini", version
-    )
+    core_mcps_gemini = build_aops_core(aops_root, dist_root, aca_data_path, "gemini", version)
 
     # Build components (Claude)
     build_aops_core(aops_root, dist_root, aca_data_path, "claude", version)

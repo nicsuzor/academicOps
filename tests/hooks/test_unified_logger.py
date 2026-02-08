@@ -5,14 +5,14 @@ Tests SessionStart session file creation, SubagentStop recording, and Stop event
 """
 
 import json
+
+# Import the functions we're testing
+import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
-# Import the functions we're testing
-import sys
 
 # Add hooks directory to path for imports
 hooks_dir = Path(__file__).parent.parent.parent / "hooks"
@@ -39,9 +39,7 @@ def temp_session_dir(monkeypatch):
 
         # Patch get_session_status_dir in lib.session_paths
         # This is the single source of truth used by session_state
-        with patch(
-            "lib.session_paths.get_session_status_dir", mock_get_session_status_dir
-        ):
+        with patch("lib.session_paths.get_session_status_dir", mock_get_session_status_dir):
             yield tmpdir
 
 
@@ -170,9 +168,7 @@ class TestSubagentStopEvent:
 
         state = load_session_state(session_id)
         assert "explore" in state["subagents"]
-        assert (
-            state["subagents"]["explore"]["output"] == "Found 3 files matching pattern"
-        )
+        assert state["subagents"]["explore"]["output"] == "Found 3 files matching pattern"
         assert "stopped_at" in state["subagents"]["explore"]
 
     def test_multiple_subagents_recorded(self, temp_session_dir):

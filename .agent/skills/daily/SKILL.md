@@ -28,12 +28,12 @@ Location: `$ACA_SESSIONS/YYYYMMDD-daily.md`
 
 The daily skill supports multiple entry points for continuous updating throughout the day:
 
-| Mode | Trigger | Sections Run | User Approval |
-|------|---------|--------------|---------------|
-| **Morning** | `/daily` (no args, note missing) | 1 → 2 → 3 | Required (3.4) |
-| **Refresh** | `/daily` (note exists) | 2 → 3 | Required (3.4) |
-| **Sync** | `/daily sync` | 4 only | Required (4.8) |
-| **Quick Sync** | `/daily sync --quick` | 4.1-4.4 only | Skipped |
+| Mode           | Trigger                          | Sections Run | User Approval  |
+| -------------- | -------------------------------- | ------------ | -------------- |
+| **Morning**    | `/daily` (no args, note missing) | 1 → 2 → 3    | Required (3.4) |
+| **Refresh**    | `/daily` (note exists)           | 2 → 3        | Required (3.4) |
+| **Sync**       | `/daily sync`                    | 4 only       | Required (4.8) |
+| **Quick Sync** | `/daily sync --quick`            | 4.1-4.4 only | Skipped        |
 
 **Mode Detection Logic:**
 
@@ -52,22 +52,23 @@ else:
 **Quick Sync Use Case**: Automated/periodic updates during the day. Adds session data to daily note without requiring user interaction. Full approval cycle runs on final sync or explicit `/daily sync`.
 
 **Continuous Updating Pattern**: Throughout a work day:
+
 1. Morning: Run `/daily` to create note, triage emails, set focus
 2. After each session: System or user runs `/daily sync --quick` to incrementally update progress
 3. End of day: Run `/daily sync` for final synthesis with user approval
 
 ## Section Ownership
 
-| Section                 | Owner    | Updated By             |
-| ----------------------- | -------- | ---------------------- |
+| Section                 | Owner    | Updated By                              |
+| ----------------------- | -------- | --------------------------------------- |
 | Focus                   | `/daily` | Morning briefing + task recommendations |
-| Task Tree               | `/daily` | Task hierarchy snapshot |
-| Today's Story           | `/daily` | Session JSON synthesis |
-| FYI                     | `/daily` | Email triage           |
-| Session Log/Timeline    | `/daily` | Session JSON synthesis |
-| Project Accomplishments | `/daily` | Session JSON synthesis |
-| Reflection              | `/daily` | End-of-day sync (Step 4.4.5) |
-| Abandoned Todos         | `/daily` | End-of-day             |
+| Task Tree               | `/daily` | Task hierarchy snapshot                 |
+| Today's Story           | `/daily` | Session JSON synthesis                  |
+| FYI                     | `/daily` | Email triage                            |
+| Session Log/Timeline    | `/daily` | Session JSON synthesis                  |
+| Project Accomplishments | `/daily` | Session JSON synthesis                  |
+| Reflection              | `/daily` | End-of-day sync (Step 4.4.5)            |
+| Abandoned Todos         | `/daily` | End-of-day                              |
 
 ## Formatting Rules
 
@@ -152,6 +153,7 @@ From [sender]: [Actual content or summary]
 ```
 
 **CRITICAL - For each FYI item, IMMEDIATELY after writing it:**
+
 1. **If action required** (feedback, review, response, decision) → `mcp__plugin_aops-core_tasks__create_task()` NOW
 2. **If links to existing task** → `mcp__plugin_aops-core_tasks__update_task()` with the info
 3. **If worth future recall** → `mcp__memory__store_memory()` with tags
@@ -159,6 +161,7 @@ From [sender]: [Actual content or summary]
 Do NOT batch these to a later step. Task creation happens AS you process each email, not after.
 
 **Archive flow (user confirmation required)**:
+
 1. Present FYI content in daily note (complete section 2.2)
 2. **DO NOT offer to archive yet** - user needs time to read and process the content
 3. **Wait for user signal** - user will indicate when they've read the content (e.g., responds to the briefing, asks a question, or says "ok" / "got it")
@@ -210,6 +213,7 @@ mcp__plugin_aops-tools_task_manager__get_task_tree(
 ```
 
 This provides a bird's eye view of active project hierarchy. The tree:
+
 - Excludes completed and cancelled tasks
 - Shows up to 2 levels deep (roots + children + grandchildren)
 - Displays task ID, title, and status
@@ -218,13 +222,13 @@ This provides a bird's eye view of active project hierarchy. The tree:
 
 ```markdown
 ## Task Tree
-
 ```
+
 [project-id] Project Name (status)
-  [task-id] Task title (status)
-    [subtask-id] Subtask title (status)
-```
+[task-id] Task title (status)
+[subtask-id] Subtask title (status)
 
+```
 *Active projects with depth 2, excluding done/cancelled tasks*
 ```
 
@@ -238,14 +242,14 @@ The Focus section combines priority dashboard AND task recommendations in ONE pl
 
 ```markdown
 ## Focus
-
-```
-P0 ░░░░░░░░░░  3/85  → No specific tasks tracked
-P1 █░░░░░░░░░  12/85 → [ns-abc] [[OSB-PAO]] (-3d), [ns-def] [[ADMS-Clever]] (-16d)
-P2 ██████████  55/85
-P3 ██░░░░░░░░  15/85
 ```
 
+P0 ░░░░░░░░░░ 3/85 → No specific tasks tracked
+P1 █░░░░░░░░░ 12/85 → [ns-abc] [[OSB-PAO]] (-3d), [ns-def] [[ADMS-Clever]] (-16d)
+P2 ██████████ 55/85
+P3 ██░░░░░░░░ 15/85
+
+```
 🚨 **DEADLINE TODAY**: [ns-xyz] [[ARC FT26 Reviews]] - Due 23:59 AEDT (8 reviews)
 **SHOULD**: [ns-abc] [[OSB PAO 2025E Review]] - 3 days overdue
 **SHOULD**: [ns-def] [[ADMS Clever Reporting]] - 16 days overdue
@@ -401,11 +405,13 @@ Using **Edit tool** (not Write) to preserve existing content:
 If the daily note contains a goals section (e.g., "## Things I want to achieve today", "## Focus", or similar), generate a reflection comparing stated intentions against actual outcomes.
 
 **Check for goals section**: Look for sections like:
+
 - `## Things I want to achieve today`
 - `## Focus` (the task recommendations from morning planning)
 - `## Today's Work Queue` (scheduled tasks)
 
 **For each stated goal/priority**:
+
 1. Check if corresponding work appears in session accomplishments
 2. Check if related tasks were completed (from Step 4.1.5)
 3. Classify as: ✅ Achieved | ⚠️ Partially/Spawned | ❌ Not achieved
@@ -417,13 +423,14 @@ If the daily note contains a goals section (e.g., "## Things I want to achieve t
 
 **Goals from "[section name]":**
 
-| Goal | Status | Notes |
-|------|--------|-------|
-| [Goal 1] | ✅ Achieved | Completed in session [id] |
-| [Goal 2] | ⚠️ Partially | Task created but no completion data |
-| [Goal 3] | ❌ Not achieved | No matching work found |
+| Goal     | Status          | Notes                               |
+| -------- | --------------- | ----------------------------------- |
+| [Goal 1] | ✅ Achieved     | Completed in session [id]           |
+| [Goal 2] | ⚠️ Partially     | Task created but no completion data |
+| [Goal 3] | ❌ Not achieved | No matching work found              |
 
 **Unplanned work that consumed the day:**
+
 - [Major unplanned item] (~Xh) - [brief explanation]
 
 **Key insight**: [One-sentence observation about drift, priorities, or patterns]
@@ -468,6 +475,7 @@ For each accomplishment with candidates:
    - Action: Continue to next accomplishment
 
 **Matching heuristics**:
+
 - Prefer no match over wrong match (conservative)
 - Consider task title, body, project alignment
 - "Implemented X" accomplishment matches "Add X feature" or "X" task
@@ -475,11 +483,11 @@ For each accomplishment with candidates:
 
 **4.5.3: Graceful Degradation**
 
-| Scenario | Behavior |
-|----------|----------|
+| Scenario                  | Behavior                                    |
+| ------------------------- | ------------------------------------------- |
 | Memory server unavailable | Skip semantic matching, continue processing |
-| Task file not found | Log warning, continue to next |
-| Unexpected task format | Skip that task, log warning |
+| Task file not found       | Log warning, continue to next               |
+| Unexpected task format    | Skip that task, log warning                 |
 
 ### Step 4.6: Update Task Files (Cross-Linking)
 
@@ -491,15 +499,18 @@ If accomplishment matches a specific checklist item in the task:
 
 ```markdown
 # Before
+
 - [ ] Implement feature X
 
 # After
+
 - [x] Implement feature X [completion:: 2026-01-19]
 ```
 
 Use Edit tool to add `[x]` and `[completion:: YYYY-MM-DD]`.
 
 **Constraints**:
+
 - ✅ Mark sub-task checklist items complete
 - ❌ NEVER mark parent tasks complete automatically
 - ❌ NEVER delete any task content
@@ -578,15 +589,18 @@ Output the key synthesized content for review:
 ## Daily Progress Synthesis - Review Required
 
 **Today's Story** (synthesized narrative):
+
 > [The narrative text from Today's Story section]
 
 **Sessions Processed**: [N] sessions across [projects]
 
 **Accomplishments** ([count] items):
+
 - [First 3-5 accomplishments listed]
 - ...
 
 **Task Matches Made**:
+
 - [List of high-confidence task matches, if any]
 ```
 
@@ -611,11 +625,11 @@ AskUserQuestion(
 
 **4.8.3: Handle Response**
 
-| Response | Action |
-|----------|--------|
-| "Looks good" | Proceed to completion, output "Daily sync complete." |
+| Response      | Action                                                                                                                          |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| "Looks good"  | Proceed to completion, output "Daily sync complete."                                                                            |
 | "Needs edits" | Output "Daily note ready for your edits at [path]. Run `/daily` again after editing to re-sync." HALT without marking complete. |
-| "Regenerate" | Ask what should change, then re-run Steps 4.4-4.7 |
+| "Regenerate"  | Ask what should change, then re-run Steps 4.4-4.7                                                                               |
 
 **Rationale**: Per AXIOM #3 (Don't Make Shit Up), Gemini-mined accomplishments may contain inaccuracies. User approval catches hallucinations before they persist in the daily record.
 

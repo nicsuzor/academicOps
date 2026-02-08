@@ -71,9 +71,7 @@ def test_settings_json_discoverable_by_claude(bots_dir: Path) -> None:
 
     # Validate SessionStart hooks are configured
     if "hooks" not in config:
-        pytest.skip(
-            "settings.json missing 'hooks' section (expected for CI/fresh environments)"
-        )
+        pytest.skip("settings.json missing 'hooks' section (expected for CI/fresh environments)")
 
     if "SessionStart" not in config["hooks"]:
         pytest.skip(

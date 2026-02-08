@@ -9,13 +9,11 @@ Checks:
 - No duplication of core content
 """
 
+import argparse
+import os
 import re
 import sys
 from pathlib import Path
-from typing import Optional
-
-import os
-import argparse
 
 # Get repo root from AOPS env var (Authoritative)
 if "AOPS" not in os.environ:
@@ -32,7 +30,7 @@ BOTS_DIR = REPO_ROOT
 README_PATH = REPO_ROOT / "README.md"
 
 
-def check_links_resolve(target_path: Optional[Path] = None) -> list[str]:
+def check_links_resolve(target_path: Path | None = None) -> list[str]:
     """Check that all [[file.md]] links resolve to existing files."""
     errors = []
 
@@ -66,9 +64,7 @@ def check_links_resolve(target_path: Optional[Path] = None) -> list[str]:
             candidates = [
                 md_file.parent / link,
                 REPO_ROOT / link,
-                REPO_ROOT
-                / "aops-core"
-                / link,  # Check aops-core for global files like AXIOMS.md
+                REPO_ROOT / "aops-core" / link,  # Check aops-core for global files like AXIOMS.md
             ]
             if aca_data.exists():
                 candidates.append(aca_data / link)
@@ -80,7 +76,7 @@ def check_links_resolve(target_path: Optional[Path] = None) -> list[str]:
     return errors
 
 
-def check_no_axiom_duplication(target_path: Optional[Path] = None) -> list[str]:
+def check_no_axiom_duplication(target_path: Path | None = None) -> list[str]:
     """Check that axioms aren't duplicated across files."""
     errors = []
     axiom_path = REPO_ROOT / "aops-core" / "AXIOMS.md"
@@ -187,9 +183,7 @@ def check_directory_structure_matches() -> list[str]:
 def main() -> int:
     """Run all validation checks."""
     parser = argparse.ArgumentParser(description="Validate documentation integrity.")
-    parser.add_argument(
-        "--path", type=str, help="Specific path to validate (default: repo root)"
-    )
+    parser.add_argument("--path", type=str, help="Specific path to validate (default: repo root)")
     args = parser.parse_args()
 
     target_path = Path(args.path).resolve() if args.path else REPO_ROOT

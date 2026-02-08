@@ -27,14 +27,14 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from lib.insights_generator import find_existing_insights
 from lib.reflection_detector import has_reflection
 from lib.session_paths import get_session_short_hash, get_session_status_dir
-from lib.insights_generator import find_existing_insights
 from lib.transcript_parser import SessionProcessor
 
 from hooks.internal_models import (
-    GitStatus,
     GitPushStatus,
+    GitStatus,
     SessionCleanupResult,
     UncommittedWorkCheck,
 )
@@ -236,8 +236,7 @@ def get_git_status(cwd: str | None = None) -> GitStatus:
             return GitStatus()
 
         has_staged = any(
-            line.startswith(("A ", "M ", "D ", "R ", "C "))
-            for line in output.split("\n")
+            line.startswith(("A ", "M ", "D ", "R ", "C ")) for line in output.split("\n")
         )
         has_unstaged = any(line.startswith((" M", " D")) for line in output.split("\n"))
         has_untracked = any(line.startswith("??") for line in output.split("\n"))
@@ -367,9 +366,7 @@ def attempt_auto_commit() -> bool:
     # Branch protection: never auto-commit to main/master
     current_branch = get_current_branch()
     if is_protected_branch(current_branch):
-        logger.info(
-            f"Skipping auto-commit: protected branch '{current_branch or 'detached HEAD'}'"
-        )
+        logger.info(f"Skipping auto-commit: protected branch '{current_branch or 'detached HEAD'}'")
         return False
 
     try:
@@ -522,9 +519,7 @@ def delete_session_state_file(session_id: str) -> bool:
         return False
 
 
-def perform_session_cleanup(
-    session_id: str, transcript_path: str | None
-) -> SessionCleanupResult:
+def perform_session_cleanup(session_id: str, transcript_path: str | None) -> SessionCleanupResult:
     """Perform end-of-session cleanup: transcript generation and state file deletion.
 
     Order of operations (fail-fast):
@@ -587,9 +582,7 @@ def perform_session_cleanup(
         )
 
 
-def check_uncommitted_work(
-    session_id: str, transcript_path: str | None
-) -> UncommittedWorkCheck:
+def check_uncommitted_work(session_id: str, transcript_path: str | None) -> UncommittedWorkCheck:
     """Check if session has uncommitted work or unpushed commits.
 
     Args:
@@ -640,13 +633,9 @@ def check_uncommitted_work(
     # Check for unpushed commits
     if push_status.branch_ahead:
         branch_display = (
-            push_status.current_branch
-            if push_status.current_branch
-            else "unknown branch"
+            push_status.current_branch if push_status.current_branch else "unknown branch"
         )
-        reminder_parts.append(
-            f"{push_status.commits_ahead} unpushed commit(s) on {branch_display}"
-        )
+        reminder_parts.append(f"{push_status.commits_ahead} unpushed commit(s) on {branch_display}")
 
     # Check for QA invocation when code was modified (fix for aops-8c2b7faf)
     has_tracked_changes = git_status.staged_changes or git_status.unstaged_changes
@@ -662,9 +651,7 @@ def check_uncommitted_work(
 
     # Block if: (has reflection OR has test success OR has tracked changes) AND has uncommitted changes
     # Fix for aops-579dcaeb: sessions without reflection/tests were bypassing commit check
-    if (
-        reflection_found or tests_passed or has_tracked_changes
-    ) and git_status.has_changes:
+    if (reflection_found or tests_passed or has_tracked_changes) and git_status.has_changes:
         should_block = True  # Default to blocking when uncommitted changes detected
 
         if git_status.staged_changes:

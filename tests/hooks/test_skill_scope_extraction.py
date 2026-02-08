@@ -13,13 +13,12 @@ custodiet_gate.py includes it in the context for compliance checking.
 import sys
 from pathlib import Path
 
-
 # Add aops-core to path for imports
 AOPS_CORE = Path(__file__).parent.parent.parent / "aops-core"
 if str(AOPS_CORE) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE))
 
-from lib.session_reader import load_skill_scope, _extract_skill_scope_from_file  # noqa: E402
+from lib.session_reader import _extract_skill_scope_from_file, load_skill_scope  # noqa: E402
 
 
 class TestLoadSkillScope:
@@ -66,9 +65,7 @@ class TestLoadSkillScope:
             or "Workflow" in scope
             or "Create" in scope  # First step mentions "Create"
         )
-        assert has_workflow_info, (
-            f"Scope should contain workflow information. Got: {scope}"
-        )
+        assert has_workflow_info, f"Scope should contain workflow information. Got: {scope}"
 
 
 class TestExtractSkillScopeFromFile:

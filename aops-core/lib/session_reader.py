@@ -31,9 +31,7 @@ from lib.transcript_parser import (
 # Configuration constants for router context extraction
 _MAX_TURNS = 5
 _SKILL_LOOKBACK = 10
-_PROMPT_TRUNCATE = (
-    400  # Increased from 100 to preserve more context (validated 2026-01-11)
-)
+_PROMPT_TRUNCATE = 400  # Increased from 100 to preserve more context (validated 2026-01-11)
 _MAX_TOOL_CALLS = 10  # Max recent tool calls to include in context
 
 
@@ -190,9 +188,7 @@ def _extract_and_expand_prompts(turns: list, max_turns: int) -> list[str]:
     """Extracts user prompts from turns, expanding command invocations."""
     prompts = []
     for turn in turns:
-        user_message = (
-            turn.get("user_message") if isinstance(turn, dict) else turn.user_message
-        )
+        user_message = turn.get("user_message") if isinstance(turn, dict) else turn.user_message
         is_meta = turn.get("is_meta") if isinstance(turn, dict) else turn.is_meta
 
         if not user_message or is_meta:
@@ -207,14 +203,10 @@ def _extract_and_expand_prompts(turns: list, max_turns: int) -> list[str]:
         args = ""
 
         # Case 1: XML-wrapped command
-        command_name_match = re.search(
-            r"<command-name>(.*?)</command-name>", text, re.DOTALL
-        )
+        command_name_match = re.search(r"<command-name>(.*?)</command-name>", text, re.DOTALL)
         if command_name_match:
             command_name = command_name_match.group(1).strip()
-            args_match = re.search(
-                r"<command-args>(.*?)</command-args>", text, re.DOTALL
-            )
+            args_match = re.search(r"<command-args>(.*?)</command-args>", text, re.DOTALL)
             if args_match:
                 args = f" {args_match.group(1).strip()}"
         # Case 2: Simple command prefix
@@ -278,9 +270,7 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
     # We iterate turns reversed
     for turn in reversed(turns):
         assistant_sequence = (
-            turn.get("assistant_sequence")
-            if isinstance(turn, dict)
-            else turn.assistant_sequence
+            turn.get("assistant_sequence") if isinstance(turn, dict) else turn.assistant_sequence
         )
         if not assistant_sequence:
             continue
@@ -289,11 +279,7 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
         # IMPORTANT: We iterate reversed, so first responses found are MOST RECENT
         if len(agent_responses) < 3:
             # Join text parts
-            texts = [
-                item["content"]
-                for item in assistant_sequence
-                if item.get("type") == "text"
-            ]
+            texts = [item["content"] for item in assistant_sequence if item.get("type") == "text"]
             if texts:
                 full_text = " ".join(texts)
                 # Extract questions from this agent response (especially important for most recent)
@@ -379,9 +365,7 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
         for i, prompt in enumerate(recent_prompts, 1):
             # Truncate long prompts
             truncated = (
-                prompt[:_PROMPT_TRUNCATE] + "..."
-                if len(prompt) > _PROMPT_TRUNCATE
-                else prompt
+                prompt[:_PROMPT_TRUNCATE] + "..." if len(prompt) > _PROMPT_TRUNCATE else prompt
             )
             # Escape backticks
             truncated = truncated.replace("```", "'''")
@@ -528,11 +512,7 @@ def _extract_gate_context_impl(
         # Linear pass chronological
         chronological_lines = []
         for turn in turns:
-            user_msg = (
-                turn.get("user_message")
-                if isinstance(turn, dict)
-                else turn.user_message
-            )
+            user_msg = turn.get("user_message") if isinstance(turn, dict) else turn.user_message
             is_meta = turn.get("is_meta") if isinstance(turn, dict) else turn.is_meta
 
             if user_msg and not is_meta:
@@ -581,11 +561,7 @@ def _extract_gate_context_impl(
         final_log = []
         for turn in processed_turns:
             # User
-            user_msg = (
-                turn.get("user_message")
-                if isinstance(turn, dict)
-                else turn.user_message
-            )
+            user_msg = turn.get("user_message") if isinstance(turn, dict) else turn.user_message
             is_meta = turn.get("is_meta") if isinstance(turn, dict) else turn.is_meta
             if user_msg and not is_meta:
                 msg = user_msg.strip()
@@ -633,9 +609,7 @@ def _extract_gate_context_impl(
                                 display_args = display_args[2:]
 
                             if tool_name and display_args.startswith(tool_name):
-                                display_args = (
-                                    display_args[len(tool_name) :].strip().strip("()")
-                                )
+                                display_args = display_args[len(tool_name) :].strip().strip("()")
 
                             if len(display_args) > 100:
                                 display_args = display_args[:100] + "..."
@@ -653,9 +627,7 @@ def _extract_recent_skill(entries: list[Any]) -> str | None:
         if etype != "assistant":
             continue
 
-        message = (
-            entry.message if hasattr(entry, "message") else entry.get("message", {})
-        )
+        message = entry.message if hasattr(entry, "message") else entry.get("message", {})
         content = message.get("content", [])
         if not isinstance(content, list):
             continue
@@ -776,9 +748,7 @@ def _extract_errors(entries: list[Any], max_turns: int) -> list[dict[str, Any]]:
         etype = entry.type if hasattr(entry, "type") else entry.get("type")
         if etype != "assistant":
             continue
-        message = (
-            entry.message if hasattr(entry, "message") else entry.get("message", {})
-        )
+        message = entry.message if hasattr(entry, "message") else entry.get("message", {})
         content = message.get("content", [])
         if not isinstance(content, list):
             continue
@@ -788,9 +758,7 @@ def _extract_errors(entries: list[Any], max_turns: int) -> list[dict[str, Any]]:
                 if tool_id:
                     tool_input = block.get("input", {})
                     # Extract key input for context
-                    input_summary = _summarize_tool_input(
-                        block.get("name", ""), tool_input
-                    )
+                    input_summary = _summarize_tool_input(block.get("name", ""), tool_input)
                     tool_use_map[tool_id] = {
                         "name": block.get("name", "unknown"),
                         "input_summary": input_summary,
@@ -803,9 +771,7 @@ def _extract_errors(entries: list[Any], max_turns: int) -> list[dict[str, Any]]:
         if etype != "user":
             continue
 
-        message = (
-            entry.message if hasattr(entry, "message") else entry.get("message", {})
-        )
+        message = entry.message if hasattr(entry, "message") else entry.get("message", {})
         content = message.get("content", [])
         if not isinstance(content, list):
             continue
@@ -841,9 +807,7 @@ def _extract_files_modified(entries: list[Any]) -> list[str]:
         if etype != "assistant":
             continue
 
-        message = (
-            entry.message if hasattr(entry, "message") else entry.get("message", {})
-        )
+        message = entry.message if hasattr(entry, "message") else entry.get("message", {})
         content = message.get("content", [])
         if not isinstance(content, list):
             continue
@@ -1008,9 +972,7 @@ def find_sessions(
                     continue
 
                 # Get modification time from most recently modified .md file
-                mtime = max(
-                    datetime.fromtimestamp(f.stat().st_mtime, tz=UTC) for f in md_files
-                )
+                mtime = max(datetime.fromtimestamp(f.stat().st_mtime, tz=UTC) for f in md_files)
 
                 # Filter by time if specified
                 if since and mtime < since:

@@ -5,15 +5,15 @@ Tests hydration triggering logic, skip conditions, temp file creation, and conte
 """
 
 import os
+
+# Import the functions we're testing
+import sys
 import tempfile
 import time
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
-# Import the functions we're testing
-import sys
 
 # Add hooks directory to path for imports
 hooks_dir = Path(__file__).parent.parent.parent / "hooks"
@@ -208,9 +208,7 @@ class TestHydrationContext:
         # Mock template loading and framework paths
         with (
             patch("user_prompt_submit.load_template") as mock_load,
-            patch(
-                "user_prompt_submit.load_framework_paths", return_value="# Paths\n..."
-            ),
+            patch("user_prompt_submit.load_framework_paths", return_value="# Paths\n..."),
             patch("user_prompt_submit.get_task_work_state", return_value=""),
         ):
             # Set up template mocks
@@ -273,12 +271,8 @@ class TestHydrationContext:
         try:
             with (
                 patch("user_prompt_submit.load_template") as mock_load,
-                patch(
-                    "user_prompt_submit.load_framework_paths", return_value="# Paths"
-                ),
-                patch(
-                    "user_prompt_submit.get_task_work_state", return_value="# BD State"
-                ),
+                patch("user_prompt_submit.load_framework_paths", return_value="# Paths"),
+                patch("user_prompt_submit.get_task_work_state", return_value="# BD State"),
                 patch(
                     "user_prompt_submit.extract_router_context",
                     return_value="## Session Context\nRecent activity...",
@@ -297,9 +291,7 @@ class TestHydrationContext:
                 content = temp_files[0].read_text()
 
                 # Verify session context was included in the temp file content
-                assert "Recent activity" in content, (
-                    "Session context should be in temp file"
-                )
+                assert "Recent activity" in content, "Session context should be in temp file"
                 assert "Test prompt" in content, "Prompt should be in temp file"
 
         finally:
@@ -343,9 +335,7 @@ class TestHydrationContext:
             patch("user_prompt_submit.load_template") as mock_load,
             patch("user_prompt_submit.load_framework_paths", return_value=""),
             patch("user_prompt_submit.get_task_work_state", return_value=""),
-            patch(
-                "user_prompt_submit.write_temp_file", side_effect=IOError("Disk full")
-            ),
+            patch("user_prompt_submit.write_temp_file", side_effect=OSError("Disk full")),
         ):
             mock_load.side_effect = [
                 "{prompt}{session_context}{framework_paths}{task_state}",

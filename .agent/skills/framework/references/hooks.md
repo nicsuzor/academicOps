@@ -637,21 +637,22 @@ All hooks receive JSON on stdin with these common fields:
 
 **Field visibility:**
 
-| Field | Shown to | Purpose |
-| --- | --- | --- |
-| `reason` | **Claude only** | Instructions for the agent when blocked |
-| `stopReason` | **User only** | Explains why session was blocked |
-| `systemMessage` | **User only** | Warning message (optional) |
+| Field           | Shown to        | Purpose                                 |
+| --------------- | --------------- | --------------------------------------- |
+| `reason`        | **Claude only** | Instructions for the agent when blocked |
+| `stopReason`    | **User only**   | Explains why session was blocked        |
+| `systemMessage` | **User only**   | Warning message (optional)              |
 
 **Exit codes (CRITICAL):**
 
-| Exit | JSON processed? | Result |
-| --- | --- | --- |
-| `0` | ✅ Yes | `decision: "block"` blocks, `reason` shown to Claude |
-| `1` | ❌ No | Warn but allow, stderr shown to user |
-| `2` | ❌ **No - JSON ignored!** | Only stderr used, agent sees stderr text |
+| Exit | JSON processed?           | Result                                               |
+| ---- | ------------------------- | ---------------------------------------------------- |
+| `0`  | ✅ Yes                    | `decision: "block"` blocks, `reason` shown to Claude |
+| `1`  | ❌ No                     | Warn but allow, stderr shown to user                 |
+| `2`  | ❌ **No - JSON ignored!** | Only stderr used, agent sees stderr text             |
 
 **IMPORTANT**: Exit code 2 completely ignores stdout JSON. If you want Claude to see your message, you MUST:
+
 1. Use `"decision": "block"` with `"reason": "..."` in JSON
 2. Exit with code 0 (not 2!)
 

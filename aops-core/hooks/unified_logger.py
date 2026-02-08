@@ -191,20 +191,14 @@ def handle_subagent_stop(session_id: str, input_data: dict[str, Any]) -> None:
     elif isinstance(subagent_result, dict):
         # Strip large fields but preserve keys for gate logic (verdict, etc.)
         result_data = {
-            k: (v[:max_len] + "... [TRUNCATED]")
-            if isinstance(v, str) and len(v) > max_len
-            else v
+            k: (v[:max_len] + "... [TRUNCATED]") if isinstance(v, str) and len(v) > max_len else v
             for k, v in subagent_result.items()
         }
     else:
         raw = str(subagent_result)
-        result_data = {
-            "raw": raw[:max_len] + "... [TRUNCATED]" if len(raw) > max_len else raw
-        }
+        result_data = {"raw": raw[:max_len] + "... [TRUNCATED]" if len(raw) > max_len else raw}
 
-    result_data["stopped_at"] = (
-        datetime.now().astimezone().replace(microsecond=0).isoformat()
-    )
+    result_data["stopped_at"] = datetime.now().astimezone().replace(microsecond=0).isoformat()
 
     record_subagent_invocation(session_id, subagent_type, result_data)
 
@@ -269,9 +263,7 @@ def handle_stop(session_id: str, input_data: dict[str, Any]) -> None:
         "subagent_count": len(subagents),
         "custodiet_blocks": 1 if state_section.get("custodiet_blocked") else 0,
         "stop_reason": input_data["stop_reason"],
-        "critic_verdict": hydration["critic_verdict"]
-        if "critic_verdict" in hydration
-        else None,
+        "critic_verdict": hydration["critic_verdict"] if "critic_verdict" in hydration else None,
         "acceptance_criteria_count": len(hydration["acceptance_criteria"])
         if "acceptance_criteria" in hydration
         else 0,

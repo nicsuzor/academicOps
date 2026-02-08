@@ -74,9 +74,7 @@ def test_script_execution_from_writing():
         pytest.skip(f"Writing root does not exist: {data_dir}")
 
     # Build command
-    script_path = (
-        Path.home() / ".claude" / "skills" / "tasks" / "scripts" / "task_view.py"
-    )
+    script_path = Path.home() / ".claude" / "skills" / "tasks" / "scripts" / "task_view.py"
     if not script_path.exists():
         print(f"⚠️  SKIP: Script not found: {script_path}")
         pytest.skip(f"Script not found: {script_path} - local setup only")
@@ -158,9 +156,7 @@ def test_symlink_points_to_aops():
         print("❌ FAIL: Paths don't match:")
         print(f"  AOPS:    {aops_resolved}")
         print(f"  Symlink: {symlink_resolved}")
-        assert False, (
-            f"Paths don't match: AOPS={aops_resolved}, Symlink={symlink_resolved}"
-        )
+        assert False, f"Paths don't match: AOPS={aops_resolved}, Symlink={symlink_resolved}"
 
     print(f"  ✓ Both resolve to: {aops_resolved}")
     print("✅ PASS: Symlink correctly points to AOPS")

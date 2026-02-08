@@ -73,12 +73,14 @@ for (file of files) {
 ## File Filtering
 
 **Include:**
+
 - `$ACA_DATA/projects/**/*.md`
 - `$ACA_DATA/goals/*.md`
 - `$ACA_DATA/context/*.md`
 - `$ACA_DATA/knowledge/**/*.md`
 
 **Exclude:**
+
 - `$ACA_DATA/../sessions/*.md` (daily notes, not semantic knowledge - now outside $ACA_DATA)
 - Files with `sync: false` in frontmatter
 - Empty files
@@ -95,6 +97,7 @@ The garden skill should include memory sync as part of periodic maintenance:
 
 ```markdown
 ## Garden Maintenance Includes
+
 - Orphan detection
 - Link repair
 - **Memory sync** (reconcile markdown → memory server)
@@ -104,6 +107,7 @@ The garden skill should include memory sync as part of periodic maintenance:
 ### With Remember Skill
 
 This workflow is the **repair path** for when the dual-write pattern is bypassed. Normal flow:
+
 1. New content → remember skill → markdown + memory (atomic)
 2. Direct edit → memory drifts → sync workflow → reconciled
 

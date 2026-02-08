@@ -20,15 +20,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from lib.insights_generator import (
     extract_json_from_response,
-    validate_insights_schema,
     get_insights_file_path,
+    validate_insights_schema,
 )
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Process and validate insights LLM response"
-    )
+    parser = argparse.ArgumentParser(description="Process and validate insights LLM response")
     parser.add_argument("date", help="Session date (YYYY-MM-DD)")
     parser.add_argument("session_id", help="Session ID (8-char hash)")
     parser.add_argument("--project", default="", help="Project name for filename")
@@ -60,9 +58,7 @@ def main():
         # We need to construct path manually or use library helper (but helper returns .json)
         # We want .debug.txt alongside where the json would be
         try:
-            target_path = get_insights_file_path(
-                args.date, args.session_id, project=args.project
-            )
+            target_path = get_insights_file_path(args.date, args.session_id, project=args.project)
             # E.g. .../YYYY-MM-DD-hash.json -> .../YYYY-MM-DD-hash.debug.txt
             debug_path = target_path.parent / f"{args.date}-{args.session_id}.debug.txt"
 

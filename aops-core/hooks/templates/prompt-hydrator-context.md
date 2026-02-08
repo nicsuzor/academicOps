@@ -129,6 +129,7 @@ You may bypass task queue ONLY when ANY is true:
 ## Return Format
 
 **CRITICAL - Context Curation**:
+
 - Your input file contains FULL axioms, heuristics, workflows - this is for YOUR reference
 - DO NOT copy/paste these sections into your output
 - SELECT only what's relevant and output brief references
@@ -156,6 +157,7 @@ Return this EXACT structure:
 ### Applicable Principles
 
 Select 3-7 from AXIOMS/HEURISTICS. For simple questions, omit this section.
+
 - **P#[n] ([Name])**: [1-sentence why this applies]
 
 ### Execution Plan

@@ -20,9 +20,7 @@ from pathlib import Path
 import pytest
 
 # Path to the measurement script
-MEASURE_SCRIPT = (
-    Path(__file__).parent.parent / "scripts" / "measure_router_compliance.py"
-)
+MEASURE_SCRIPT = Path(__file__).parent.parent / "scripts" / "measure_router_compliance.py"
 
 # Baseline from 2025-11-28 measurement
 BASELINE_COMPLIANCE_RATE = 3.2  # percent

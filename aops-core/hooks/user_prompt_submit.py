@@ -277,7 +277,7 @@ def _load_project_rules() -> str:
             lines.append(f"### {rule_name}\n")
             lines.append(_strip_frontmatter(content))
             lines.append("")
-        except (IOError, OSError):
+        except OSError:
             pass  # Skip unreadable files
 
     return "\n".join(lines)
@@ -348,7 +348,7 @@ def _load_project_workflows(prompt: str = "") -> str:
                 included_workflows.append(
                     f"\n\n### {wf_file.stem} (Project Instructions)\n\n{_strip_frontmatter(content)}"
                 )
-            except (IOError, OSError):
+            except OSError:
                 pass  # Skip unreadable files
 
     if included_workflows:

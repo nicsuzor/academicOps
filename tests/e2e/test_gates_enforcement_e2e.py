@@ -15,8 +15,9 @@ Run with: uv run pytest tests/e2e/test_gates_enforcement_e2e.py -v -n 0 -m slow 
 """
 
 import json
-import pytest
 from pathlib import Path
+
+import pytest
 
 
 @pytest.mark.slow
@@ -43,8 +44,7 @@ class TestHydrationGateE2E:
         is_blocked = any(ind.lower() in output_text.lower() for ind in block_indicators)
 
         assert is_blocked, (
-            f"[{platform}] Expected hydration gate to block Read tool.\n"
-            f"Output: {output_text[:500]}"
+            f"[{platform}] Expected hydration gate to block Read tool.\nOutput: {output_text[:500]}"
         )
 
     def test_hydration_allows_mcp_task_tools(self, cli_headless):
@@ -67,9 +67,7 @@ class TestHydrationGateE2E:
         assert result["success"], f"[{platform}] CLI execution should succeed"
 
         task_output_indicators = ["success", "tasks", "count", "total"]
-        has_task_output = any(
-            ind in output_text.lower() for ind in task_output_indicators
-        )
+        has_task_output = any(ind in output_text.lower() for ind in task_output_indicators)
         assert has_task_output, (
             f"[{platform}] Expected task manager output, got: {output_text[:300]}"
         )
@@ -98,9 +96,7 @@ class TestHydrationGateE2E:
             "changes",
             "commit",
         ]
-        has_git_output = any(
-            ind.lower() in output_text.lower() for ind in git_output_indicators
-        )
+        has_git_output = any(ind.lower() in output_text.lower() for ind in git_output_indicators)
 
         if "BLOCKED" in output_text.upper():
             assert "hydration" not in output_text.lower(), (
@@ -134,13 +130,10 @@ class TestTaskGateE2E:
         output_text = json.dumps(result.get("result", {}))
 
         gate_indicators = ["task", "gate", "binding", "claim", "BLOCKED", "warn"]
-        has_gate_message = any(
-            ind.lower() in output_text.lower() for ind in gate_indicators
-        )
+        has_gate_message = any(ind.lower() in output_text.lower() for ind in gate_indicators)
 
         assert has_gate_message, (
-            f"[{platform}] Expected task gate to warn/block on Write.\n"
-            f"Output: {output_text[:500]}"
+            f"[{platform}] Expected task gate to warn/block on Write.\nOutput: {output_text[:500]}"
         )
 
     def test_task_gate_allows_task_creation(self, cli_headless):
@@ -167,12 +160,8 @@ class TestTaskGateE2E:
         )
 
         success_indicators = ["success", "created", "task_title", task_title.lower()]
-        has_success = any(
-            ind.lower() in output_text.lower() for ind in success_indicators
-        )
-        assert has_success, (
-            f"[{platform}] Expected task creation success, got: {output_text[:300]}"
-        )
+        has_success = any(ind.lower() in output_text.lower() for ind in success_indicators)
+        assert has_success, f"[{platform}] Expected task creation success, got: {output_text[:300]}"
 
     def test_destructive_bash_triggers_task_gate(self, cli_headless, tmp_path):
         """
@@ -192,9 +181,7 @@ class TestTaskGateE2E:
         output_text = json.dumps(result.get("result", {}))
 
         gate_indicators = ["task", "gate", "destructive", "binding", "BLOCKED", "warn"]
-        has_gate_message = any(
-            ind.lower() in output_text.lower() for ind in gate_indicators
-        )
+        has_gate_message = any(ind.lower() in output_text.lower() for ind in gate_indicators)
 
         assert has_gate_message or not result["success"], (
             f"[{platform}] Expected task gate to enforce on destructive Bash.\n"
@@ -252,9 +239,7 @@ class TestBashClassificationE2E:
         output_text = json.dumps(result.get("result", {}))
 
         gate_indicators = ["gate", "task", "destructive", "BLOCKED", "warn"]
-        has_gate_enforcement = any(
-            ind.lower() in output_text.lower() for ind in gate_indicators
-        )
+        has_gate_enforcement = any(ind.lower() in output_text.lower() for ind in gate_indicators)
 
         file_still_exists = test_file.exists()
 
@@ -287,12 +272,8 @@ class TestBashClassificationE2E:
             "working tree clean",
         ]
 
-        has_gate_enforcement = any(
-            ind.lower() in output_text.lower() for ind in gate_indicators
-        )
-        has_git_refusal = any(
-            ind.lower() in output_text.lower() for ind in git_refusal_indicators
-        )
+        has_gate_enforcement = any(ind.lower() in output_text.lower() for ind in gate_indicators)
+        has_git_refusal = any(ind.lower() in output_text.lower() for ind in git_refusal_indicators)
 
         assert has_gate_enforcement or has_git_refusal, (
             f"[{platform}] Expected git commit to be blocked by gates or refused by git.\n"
@@ -325,9 +306,7 @@ class TestSafeTempPathE2E:
         output_text = json.dumps(result.get("result", {}))
 
         write_succeeded = test_file.exists()
-        blocked_for_task = (
-            "task" in output_text.lower() and "BLOCKED" in output_text.upper()
-        )
+        blocked_for_task = "task" in output_text.lower() and "BLOCKED" in output_text.upper()
 
         if test_file.exists():
             test_file.unlink()
@@ -400,9 +379,7 @@ class TestMultiGateE2E:
         output_text = json.dumps(result.get("result", {}))
 
         gate_indicators = ["gate", "hydration", "task", "BLOCKED", "warn", "required"]
-        has_gate_enforcement = any(
-            ind.lower() in output_text.lower() for ind in gate_indicators
-        )
+        has_gate_enforcement = any(ind.lower() in output_text.lower() for ind in gate_indicators)
 
         file_unchanged = test_file.read_text() == "original content"
 
@@ -430,9 +407,7 @@ class TestMultiGateE2E:
         output_text = json.dumps(result.get("result", {}))
 
         gate_indicators = ["gate", "hydration", "task", "BLOCKED", "warn"]
-        has_gate_enforcement = any(
-            ind.lower() in output_text.lower() for ind in gate_indicators
-        )
+        has_gate_enforcement = any(ind.lower() in output_text.lower() for ind in gate_indicators)
 
         file_not_created = not project_file.exists()
 
@@ -477,13 +452,10 @@ class TestHydrationExemptToolsE2E:
             "similarity",
             "no memories",
         ]
-        has_memory_output = any(
-            ind.lower() in output_text.lower() for ind in memory_indicators
-        )
+        has_memory_output = any(ind.lower() in output_text.lower() for ind in memory_indicators)
 
         assert not blocked_for_hydration, (
-            f"[{platform}] Memory tools should bypass hydration gate.\n"
-            f"Output: {output_text[:500]}"
+            f"[{platform}] Memory tools should bypass hydration gate.\nOutput: {output_text[:500]}"
         )
         assert result["success"] or has_memory_output, (
             f"[{platform}] Expected memory tool to execute. Output: {output_text[:500]}"
@@ -510,6 +482,5 @@ class TestHydrationExemptToolsE2E:
         )
 
         assert not blocked_for_hydration, (
-            f"[{platform}] Glob should bypass hydration gate.\n"
-            f"Output: {output_text[:500]}"
+            f"[{platform}] Glob should bypass hydration gate.\nOutput: {output_text[:500]}"
         )

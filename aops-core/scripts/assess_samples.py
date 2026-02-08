@@ -27,11 +27,7 @@ def list_samples(category=None):
         print(f"No samples found at {sample_root}")
         return []
 
-    categories = (
-        [category]
-        if category
-        else [d.name for d in sample_root.iterdir() if d.is_dir()]
-    )
+    categories = [category] if category else [d.name for d in sample_root.iterdir() if d.is_dir()]
 
     samples = []
     for cat in categories:
@@ -102,9 +98,7 @@ def main():
         samples = list_samples()
         print(f"Found {len(samples)} samples:")
         for s in samples:
-            print(
-                f"[{s['timestamp']}] {s['category']:<10} {s['session_id'][:8]} {s['id']}"
-            )
+            print(f"[{s['timestamp']}] {s['category']:<10} {s['session_id'][:8]} {s['id']}")
     elif len(sys.argv) > 2 and sys.argv[1] == "show":
         samples = list_samples()
         target = sys.argv[2]

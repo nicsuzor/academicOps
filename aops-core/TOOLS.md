@@ -25,6 +25,8 @@ Reference for agent capabilities. Use this to understand what operations are pos
 | `task_manager` | Work tracking system       | Create/update/complete tasks, manage dependencies, task trees          |
 | `context7`     | Library documentation      | Look up API docs for any programming library                           |
 
+<!-- NS: exclude Standard Tools from this file. -->
+
 ## Standard Tools
 
 | Tool        | Purpose                |

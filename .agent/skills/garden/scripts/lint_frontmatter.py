@@ -303,9 +303,7 @@ def fix_frontmatter_delimiter(content: str) -> str | None:
     return None
 
 
-def lint_directory(
-    path: Path, recursive: bool = False, fix: bool = False
-) -> list[LintIssue]:
+def lint_directory(path: Path, recursive: bool = False, fix: bool = False) -> list[LintIssue]:
     """Lint all markdown files in a directory."""
     pattern = "**/*.md" if recursive else "*.md"
     all_issues: list[LintIssue] = []
@@ -334,25 +332,19 @@ def lint_directory(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Lint markdown files for frontmatter problems"
-    )
+    parser = argparse.ArgumentParser(description="Lint markdown files for frontmatter problems")
     parser.add_argument("path", type=Path, help="File or directory to lint")
     parser.add_argument(
         "--recursive", "-r", action="store_true", help="Recursively lint directories"
     )
-    parser.add_argument(
-        "--fix", "-f", action="store_true", help="Attempt to fix simple issues"
-    )
+    parser.add_argument("--fix", "-f", action="store_true", help="Attempt to fix simple issues")
     parser.add_argument(
         "--errors-only",
         "-e",
         action="store_true",
         help="Only show errors, not warnings",
     )
-    parser.add_argument(
-        "--json", "-j", action="store_true", help="Output as JSON"
-    )
+    parser.add_argument("--json", "-j", action="store_true", help="Output as JSON")
 
     args = parser.parse_args()
 

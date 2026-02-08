@@ -9,7 +9,7 @@ where HH is the 24-hour local time when the session was created.
 
 import hashlib
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -150,9 +150,9 @@ def get_hook_log_path(
         Path to the hook log file
     """
     if date is None:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        date = datetime.now(UTC).strftime("%Y-%m-%d")
 
     short_hash = get_session_short_hash(session_id)
     date_compact = date.replace("-", "")  # YYYY-MM-DD -> YYYYMMDD
@@ -174,9 +174,7 @@ def get_hook_log_path(
         return claude_projects_dir / f"{date_compact}-{short_hash}-hooks.jsonl"
 
 
-def get_session_status_dir(
-    session_id: str | None = None, input_data: dict | None = None
-) -> Path:
+def get_session_status_dir(session_id: str | None = None, input_data: dict | None = None) -> Path:
     """Get session status directory from AOPS_SESSION_STATE_DIR or auto-detect.
 
     This env var is set by the router at SessionStart:
@@ -258,8 +256,7 @@ def get_session_file_path(
     short_hash = get_session_short_hash(session_id)
 
     return (
-        get_session_status_dir(session_id, input_data)
-        / f"{date_compact}-{hour}-{short_hash}.json"
+        get_session_status_dir(session_id, input_data) / f"{date_compact}-{hour}-{short_hash}.json"
     )
 
 

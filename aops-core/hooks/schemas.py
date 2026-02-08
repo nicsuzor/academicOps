@@ -43,9 +43,7 @@ class ClaudeHookSpecificOutput(BaseModel):
     Nested output structure for Claude Code hooks (used in most events).
     """
 
-    hookEventName: str = Field(
-        ..., description="The name of the event that triggered the hook."
-    )
+    hookEventName: str = Field(..., description="The name of the event that triggered the hook.")
     permissionDecision: Literal["allow", "deny", "ask"] | None = Field(
         None,
         description="The decision for the hook (allow/deny/ask). Primarily for PreToolUse.",

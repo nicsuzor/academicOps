@@ -26,9 +26,7 @@ class TestSafeTempPaths:
         """Writes to ~/.claude/projects/ should be allowed without task."""
         from hooks.gate_registry import _is_safe_temp_path
 
-        claude_projects = str(
-            Path.home() / ".claude" / "projects" / "abc" / "state.json"
-        )
+        claude_projects = str(Path.home() / ".claude" / "projects" / "abc" / "state.json")
         assert _is_safe_temp_path(claude_projects), "~/.claude/projects/ should be safe"
 
     def test_is_safe_temp_path_gemini_tmp(self):
@@ -57,9 +55,7 @@ class TestSafeTempPaths:
         from hooks.gate_registry import _is_safe_temp_path
 
         settings = str(Path.home() / ".claude" / "settings.json")
-        assert not _is_safe_temp_path(settings), (
-            "~/.claude/settings.json should not be safe"
-        )
+        assert not _is_safe_temp_path(settings), "~/.claude/settings.json should not be safe"
 
     def test_is_safe_temp_path_handles_none(self):
         """None path should be handled safely."""

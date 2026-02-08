@@ -33,9 +33,7 @@ def main() -> int:
     if is_custodiet_enabled():
         print(f"Block set for session {session_id}")
     else:
-        print(
-            f"Block recorded for session {session_id} (CUSTODIET_DISABLED - not enforced)"
-        )
+        print(f"Block recorded for session {session_id} (CUSTODIET_DISABLED - not enforced)")
     return 0
 
 

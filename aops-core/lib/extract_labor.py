@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -28,23 +28,19 @@ class WorkUnit:
 
     line_number: int
     timestamp: datetime | None
-    unit_type: str  # "delegation", "subagent_output", "main_agent_work", "skill_invocation", "tool_call"
+    unit_type: (
+        str  # "delegation", "subagent_output", "main_agent_work", "skill_invocation", "tool_call"
+    )
     actor: str  # "main_agent", "subagent:{id}", "skill:{name}", "tool:{name}"
     description: str
-    delegation_prompt: str | None = (
-        None  # For delegations: the prompt parameter from Task()
-    )
+    delegation_prompt: str | None = None  # For delegations: the prompt parameter from Task()
     output: str | None = None  # For subagent_output: the section content
     tool_name: str | None = None  # For tool_calls: the specific tool name
     tool_params: dict[str, Any] | None = (
         None  # For tool_calls: extracted parameters (at least file_path if present)
     )
-    skills_invoked: list[str] = field(
-        default_factory=list
-    )  # Skills triggered in this unit
-    commands_invoked: list[str] = field(
-        default_factory=list
-    )  # Slash commands (/skill, etc)
+    skills_invoked: list[str] = field(default_factory=list)  # Skills triggered in this unit
+    commands_invoked: list[str] = field(default_factory=list)  # Slash commands (/skill, etc)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -117,9 +113,7 @@ class LaborExtractor:
         if not project:
             # Infer from parent directory
             project = (
-                session_path.parent.name.split("-")[-1]
-                if session_path.parent.name
-                else "unknown"
+                session_path.parent.name.split("-")[-1] if session_path.parent.name else "unknown"
             )
 
         # Get timestamp from first entry
@@ -149,9 +143,7 @@ class LaborExtractor:
             for agent_id, agent_entry_list in agent_entries.items():
                 subagent_ids.add(agent_id)
                 for entry in agent_entry_list:
-                    self._process_entry(
-                        entry, labor_data, subagent_ids, agent_id=agent_id
-                    )
+                    self._process_entry(entry, labor_data, subagent_ids, agent_id=agent_id)
 
         # Set metadata
         labor_data.subagent_ids = sorted(list(subagent_ids))
@@ -293,8 +285,7 @@ class LaborExtractor:
                     unit_type="subagent_output",
                     actor=f"subagent:{agent_id}",
                     description=description,
-                    output=subagent_output[:2000]
-                    + ("..." if len(subagent_output) > 2000 else ""),
+                    output=subagent_output[:2000] + ("..." if len(subagent_output) > 2000 else ""),
                 )
                 labor_data.work_units.append(unit)
 
@@ -325,8 +316,7 @@ class LaborExtractor:
                     unit_type="main_agent_work",
                     actor=actor,
                     description=f"Agent response: {first_line}{'...' if len(first_line) >= 100 else ''}",
-                    output=stripped_text[:1000]
-                    + ("..." if len(stripped_text) > 1000 else ""),
+                    output=stripped_text[:1000] + ("..." if len(stripped_text) > 1000 else ""),
                 )
                 labor_data.work_units.append(unit)
 
@@ -539,9 +529,7 @@ class LaborExtractor:
         """Extract slash commands like /pull, /commit, etc."""
         # Match /command patterns at start of line or after whitespace
         # Excludes file paths
-        commands = re.findall(
-            r"(?:^|(?<=\s))/([a-z][a-z0-9]*(?:-[a-z0-9]+)*)", text, re.MULTILINE
-        )
+        commands = re.findall(r"(?:^|(?<=\s))/([a-z][a-z0-9]*(?:-[a-z0-9]+)*)", text, re.MULTILINE)
         return list(set(commands))  # Deduplicate
 
 

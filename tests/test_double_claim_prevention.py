@@ -13,12 +13,12 @@ but does not guarantee atomicity for truly concurrent operations.
 """
 
 import re
-import pytest
 from pathlib import Path
 from unittest.mock import patch
 
-from lib.task_storage import TaskStorage
+import pytest
 from lib.task_model import Task, TaskStatus, TaskType
+from lib.task_storage import TaskStorage
 
 
 @pytest.fixture

@@ -102,13 +102,13 @@ Task(subagent_type="aops-core:worker", model="haiku",
 
 Tested spawning 5 parallel haiku workers on aops framework tasks:
 
-| Metric | Result |
-|--------|--------|
-| Spawn success | 5/5 (100%) |
-| Execution success | 5/5 (100%) |
-| Conflicts/collisions | 0 |
-| Commits produced | 5 |
-| Notification delivery | 4/5 (80%) |
+| Metric                | Result     |
+| --------------------- | ---------- |
+| Spawn success         | 5/5 (100%) |
+| Execution success     | 5/5 (100%) |
+| Conflicts/collisions  | 0          |
+| Commits produced      | 5          |
+| Notification delivery | 4/5 (80%)  |
 
 ### Known Issues
 
@@ -154,6 +154,7 @@ gemini mcp list
 ### Worker Prompt
 
 Located at `prompts/gemini-task-worker.md`. Key features:
+
 - Atomic claiming via `claim_next_task(caller="gemini")`
 - Fail-fast on errors (mark blocked instead of retrying)
 - Scope boundaries (no git, no external changes)
@@ -206,9 +207,13 @@ Hypervisor should return aggregated results, not require manual TaskOutput polli
 ```json
 {
   "workers": [
-    {"task_id": "aops-f7458c85", "status": "success", "outcome": "verified complete"},
-    {"task_id": "aops-45528fa7", "status": "blocked", "reason": "lock file"},
-    {"task_id": "aops-2fff499a", "status": "success", "commit": "caecab8b"}
+    {
+      "task_id": "aops-f7458c85",
+      "status": "success",
+      "outcome": "verified complete"
+    },
+    { "task_id": "aops-45528fa7", "status": "blocked", "reason": "lock file" },
+    { "task_id": "aops-2fff499a", "status": "success", "commit": "caecab8b" }
   ],
   "runtime_seconds": 427,
   "total_tokens": 156000
@@ -218,6 +223,7 @@ Hypervisor should return aggregated results, not require manual TaskOutput polli
 **2. Pre-flight task validation**
 
 Check task state before spawning workers to avoid wasted tokens:
+
 - Skip tasks already `done` or `cancelled`
 - Check for existing lock files
 - Report "N tasks skipped (already complete)" upfront

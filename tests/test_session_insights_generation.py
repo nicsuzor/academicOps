@@ -7,10 +7,9 @@ and saved to session state per the simplified workflow.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
-
 from lib.session_paths import (
     get_session_file_path,
 )
@@ -68,7 +67,7 @@ class TestSessionInsightsPersistence:
     @pytest.fixture
     def session_id(self) -> str:
         """Generate unique session ID for test isolation."""
-        return f"test-{datetime.now(timezone.utc).strftime('%H%M%S%f')}"
+        return f"test-{datetime.now(UTC).strftime('%H%M%S%f')}"
 
     @pytest.fixture
     def cleanup_session_file(self, session_id: str):
@@ -164,8 +163,7 @@ class TestInsightsFromFrameworkReflection:
             else [],
             "friction_points": [],
             "proposed_changes": [reflection["proposed_change"]]
-            if reflection["proposed_change"]
-            and reflection["proposed_change"] != "None needed"
+            if reflection["proposed_change"] and reflection["proposed_change"] != "None needed"
             else [],
         }
 
@@ -180,7 +178,7 @@ class TestInsightsIntegration:
     @pytest.fixture
     def session_id(self) -> str:
         """Generate unique session ID for test isolation."""
-        return f"integration-{datetime.now(timezone.utc).strftime('%H%M%S%f')}"
+        return f"integration-{datetime.now(UTC).strftime('%H%M%S%f')}"
 
     @pytest.fixture
     def cleanup_session_file(self, session_id: str):

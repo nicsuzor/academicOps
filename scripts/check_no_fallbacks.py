@@ -40,11 +40,7 @@ class FallbackDetector(ast.NodeVisitor):
     def visit_Call(self, node: ast.Call) -> None:
         """Detect .get(..., empty_value) patterns."""
         # Check for method calls like x.get(key, default)
-        if (
-            isinstance(node.func, ast.Attribute)
-            and node.func.attr == "get"
-            and len(node.args) >= 2
-        ):
+        if isinstance(node.func, ast.Attribute) and node.func.attr == "get" and len(node.args) >= 2:
             default_arg = node.args[1]
             if self._is_empty_fallback(default_arg):
                 self.violations.append(
@@ -133,9 +129,7 @@ def main() -> int:
             print(f"    Fix: {v['message']}")
             print()
         print("P#8 (Fail-Fast Code): No defaults, no fallbacks, no silent failures.")
-        print(
-            "If the value is optional, use explicit None checks with clear semantics."
-        )
+        print("If the value is optional, use explicit None checks with clear semantics.")
         return 1
 
     print(f"OK: No silent fallback patterns in {len(files)} file(s)")

@@ -1,4 +1,5 @@
 from unittest.mock import patch
+
 from hooks import gate_registry
 
 
@@ -9,13 +10,9 @@ class TestGateRegistry:
 
         mock_gate_ctx = {"conversation": ["User: hello", "Assistant: hi there"]}
 
-        with patch(
-            "hooks.gate_registry.extract_gate_context", return_value=mock_gate_ctx
-        ):
+        with patch("hooks.gate_registry.extract_gate_context", return_value=mock_gate_ctx):
             # Should not raise AttributeError anymore
-            result = gate_registry._custodiet_build_session_context(
-                "/tmp/transcript.json", "sess1"
-            )
+            result = gate_registry._custodiet_build_session_context("/tmp/transcript.json", "sess1")
 
             assert "[unknown]: User: hello..." in result
             assert "[unknown]: Assistant: hi there..." in result

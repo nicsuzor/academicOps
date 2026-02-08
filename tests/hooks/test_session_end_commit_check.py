@@ -17,14 +17,14 @@ import pytest
 HOOKS_DIR = Path(__file__).parent.parent.parent / "hooks"
 sys.path.insert(0, str(HOOKS_DIR))
 
+from hooks.internal_models import GitPushStatus, GitStatus
 from session_end_commit_check import (
+    check_uncommitted_work,
+    get_git_push_status,
+    get_git_status,
     has_framework_reflection,
     has_test_success,
-    get_git_status,
-    get_git_push_status,
-    check_uncommitted_work,
 )
-from hooks.internal_models import GitStatus, GitPushStatus
 
 
 class TestHasFrameworkReflection:

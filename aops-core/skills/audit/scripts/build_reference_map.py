@@ -333,9 +333,7 @@ def build_graph(root: Path) -> dict:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Build reference graph from framework files"
-    )
+    parser = argparse.ArgumentParser(description="Build reference graph from framework files")
     parser.add_argument(
         "--root",
         type=Path,
@@ -387,9 +385,7 @@ def main() -> int:
         writer = csv.writer(f)
         writer.writerow(["source", "target", "weight", "ref_type"])
         for link in graph["links"]:
-            writer.writerow(
-                [link["source"], link["target"], link["weight"], link["ref_type"]]
-            )
+            writer.writerow([link["source"], link["target"], link["weight"], link["ref_type"]])
     print(f"Wrote {csv_output}", file=sys.stderr)
 
     return 0

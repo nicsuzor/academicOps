@@ -16,10 +16,10 @@ REPO_ROOT = TESTS_DIR.parent.parent
 sys.path.insert(0, str(REPO_ROOT / "polecat"))
 
 from validation import (
+    MAX_TASK_ID_LENGTH,
     TaskIDValidationError,
     validate_task_id,
     validate_task_id_or_raise,
-    MAX_TASK_ID_LENGTH,
 )
 
 

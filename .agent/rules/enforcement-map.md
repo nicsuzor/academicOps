@@ -464,7 +464,7 @@ Context injected via CORE.md at SessionStart. Guides where agents place files.
 | SubagentStop     | `$AOPS/aops-core/hooks/unified_logger.py` (sets `critic_invoked` flag)                                                  |
 | UserPromptSubmit | `$AOPS/aops-core/hooks/user_prompt_submit.py`                                                                           |
 | SessionStart     | `$AOPS/aops-core/hooks/sessionstart_load_axioms.py`                                                                     |
-| Stop             |                                       |
+| Stop             |                                                                                                                         |
 | Pre-commit       | `~/writing/.pre-commit-config.yaml`                                                                                     |
 | CI/CD            | `$AOPS/.github/workflows/`                                                                                              |
 | Remember skill   | `$AOPS/aops-core/skills/remember/SKILL.md`                                                                              |

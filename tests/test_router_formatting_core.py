@@ -1,8 +1,8 @@
 """Tests for GateResult model and HookRouter formatting logic."""
 
-from lib.gate_model import GateResult, GateVerdict
 from hooks.router import HookRouter
 from hooks.schemas import CanonicalHookOutput
+from lib.gate_model import GateResult, GateVerdict
 
 
 class TestGateModel:

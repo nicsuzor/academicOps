@@ -18,7 +18,11 @@ for path in [_aops_root, _aops_core]:
 
 from lib.paths import (  # noqa: E402
     get_aops_root as get_bots_dir,  # Framework root IS the old bots dir
+)
+from lib.paths import (
     get_data_root as get_data_dir,
+)
+from lib.paths import (
     get_hooks_dir,
 )
 

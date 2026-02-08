@@ -18,9 +18,7 @@ from pathlib import Path
 
 def main():
     parser = argparse.ArgumentParser(description="Find pending sessions")
-    parser.add_argument(
-        "--limit", type=int, default=5, help="Max number of sessions to return"
-    )
+    parser.add_argument("--limit", type=int, default=5, help="Max number of sessions to return")
     args = parser.parse_args()
 
     aca_data_env = os.environ.get("ACA_DATA")

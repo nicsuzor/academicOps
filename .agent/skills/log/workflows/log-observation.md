@@ -37,6 +37,7 @@ Task(
 ```
 
 **CRITICAL**: The `run_in_background=true` parameter is **mandatory**. This ensures:
+
 - Framework agent spawns asynchronously
 - User gets immediate control back
 - No blocking of main workflow
@@ -55,25 +56,25 @@ The framework agent references the [[workflow-learning-log]] pattern for how to 
 
 ## Key Requirements
 
-| Requirement | Must Have |
-|-------------|-----------|
-| Immediate response | YES |
-| Block user? | NO |
-| Run in background | YES |
-| Pass observation to agent | YES |
-| Use sonnet model | YES |
-| Use framework agent | YES |
-| Create task if needed | YES (agent responsibility) |
+| Requirement               | Must Have                  |
+| ------------------------- | -------------------------- |
+| Immediate response        | YES                        |
+| Block user?               | NO                         |
+| Run in background         | YES                        |
+| Pass observation to agent | YES                        |
+| Use sonnet model          | YES                        |
+| Use framework agent       | YES                        |
+| Create task if needed     | YES (agent responsibility) |
 
 ## Root Cause Focus
 
 Log **framework component failures**, not agent mistakes:
 
-| Proximate (Wrong) | Root Cause (Right) |
-|-------------------|-------------------|
+| Proximate (Wrong)     | Root Cause (Right)                       |
+| --------------------- | ---------------------------------------- |
 | "Agent skipped skill" | "Router didn't explain WHY skill needed" |
-| "Agent didn't verify" | "Guardrail instruction too generic" |
-| "Agent used mocks" | "No PreToolUse hook blocks mock imports" |
+| "Agent didn't verify" | "Guardrail instruction too generic"      |
+| "Agent used mocks"    | "No PreToolUse hook blocks mock imports" |
 
 See [[enforcement.md]] for the full component responsibility model.
 

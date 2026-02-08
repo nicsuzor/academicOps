@@ -8,8 +8,8 @@ if str(aops_core_dir) not in sys.path:
 
 from hooks.policy_enforcer import (
     validate_minimal_documentation,
-    validate_safe_git_usage,
     validate_protect_artifacts,
+    validate_safe_git_usage,
 )
 
 

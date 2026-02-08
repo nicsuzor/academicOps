@@ -19,6 +19,8 @@ from pathlib import Path
 # Add aops-core to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
+from datetime import UTC
+
 from lib.insights_generator import (
     load_prompt_template,
     substitute_prompt_variables,
@@ -60,9 +62,9 @@ def extract_metadata_from_filename(filename: str) -> dict[str, str]:
     if match:
         session_id = match.group(1)
         # Use today's date as fallback
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        date = datetime.now(UTC).strftime("%Y-%m-%d")
         return {"session_id": session_id, "date": date, "project": "unknown"}
 
     # Pattern 3: Try to extract any 8-char hex as session_id
@@ -75,9 +77,9 @@ def extract_metadata_from_filename(filename: str) -> dict[str, str]:
             date_str = date_match.group(1)
             date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
         else:
-            from datetime import datetime, timezone
+            from datetime import datetime
 
-            date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            date = datetime.now(UTC).strftime("%Y-%m-%d")
 
         # Try to extract project (usually between date and session_id)
         project_match = re.match(r"^\d{8}-([^-]+)-", stem)
@@ -96,9 +98,7 @@ def main():
         description="Prepare session insights prompt with metadata substitution"
     )
     parser.add_argument("transcript", help="Path to transcript file")
-    parser.add_argument(
-        "--debug", action="store_true", help="Print metadata extraction details"
-    )
+    parser.add_argument("--debug", action="store_true", help="Print metadata extraction details")
     args = parser.parse_args()
 
     transcript_path = Path(args.transcript)
@@ -116,7 +116,7 @@ def main():
         sys.exit(1)
 
     if args.debug:
-        print(f"Extracted metadata:", file=sys.stderr)
+        print("Extracted metadata:", file=sys.stderr)
         print(f"  session_id: {metadata['session_id']}", file=sys.stderr)
         print(f"  date: {metadata['date']}", file=sys.stderr)
         print(f"  project: {metadata['project']}", file=sys.stderr)

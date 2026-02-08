@@ -23,7 +23,6 @@ Threat models addressed:
 
 import re
 
-
 # Maximum task ID length to prevent DoS/buffer issues
 MAX_TASK_ID_LENGTH = 100
 
@@ -143,16 +142,12 @@ def validate_task_id_or_raise(task_id: str) -> str:
         raise TaskIDValidationError(task_id, "too short (minimum 2 characters)")
 
     if len(task_id) > MAX_TASK_ID_LENGTH:
-        raise TaskIDValidationError(
-            task_id, f"too long (maximum {MAX_TASK_ID_LENGTH} characters)"
-        )
+        raise TaskIDValidationError(task_id, f"too long (maximum {MAX_TASK_ID_LENGTH} characters)")
 
     # Check for dangerous patterns first (before regex, since regex won't catch all)
     for pattern in DANGEROUS_PATTERNS:
         if pattern in task_id:
-            raise TaskIDValidationError(
-                task_id, f"contains forbidden pattern: {repr(pattern)}"
-            )
+            raise TaskIDValidationError(task_id, f"contains forbidden pattern: {repr(pattern)}")
 
     # Check for git special refs (case-insensitive)
     if task_id.lower() in GIT_SPECIAL_REFS:
