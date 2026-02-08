@@ -49,9 +49,13 @@ Based on prompt keywords, these specific files may be relevant:
 
 {workflows_index}
 
-## Skills Index 
+## Skills Index
 
 {skills_index}
+
+## Scripts Index
+
+{scripts_index}
 
 ## Axioms 
 

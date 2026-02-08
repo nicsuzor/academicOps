@@ -111,7 +111,7 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
             "heuristics",
             "task_state",
         ),
-        optional_vars=(),
+        optional_vars=("scripts_index",),
         description="Full context for prompt hydration",
     ),
     "hydrator.instruction": TemplateSpec(

@@ -27,6 +27,7 @@ from hooks.user_prompt_submit import (  # noqa: E402
     build_hydration_instruction,
     load_template,
     load_skills_index,
+    load_scripts_index,
     CONTEXT_TEMPLATE_FILE,
 )
 
@@ -91,6 +92,7 @@ class TestFirstPromptHydration:
             "project_context_index": "",
             "workflows_index": "workflow content",
             "skills_index": "skills content",
+            "scripts_index": "",
             "heuristics": "heuristics content",
             "task_state": "",
             "relevant_files": "",
@@ -130,6 +132,7 @@ class TestFirstPromptHydration:
             "project_context_index": "",
             "workflows_index": "",
             "skills_index": "",
+            "scripts_index": "",
             "heuristics": "",
             "task_state": "",
             "relevant_files": "",
@@ -212,14 +215,15 @@ class TestTemplateEscaping:
             template_content = raw_content
 
         # Expected placeholders in the template
+        # Note: {framework_paths} and {env_vars} are in local override, not base template
         expected_placeholders = [
             "{prompt}",
             "{session_context}",
-            "{framework_paths}",
             "{project_context_index}",
             "{relevant_files}",
             "{workflows_index}",
             "{skills_index}",
+            "{scripts_index}",
             "{axioms}",
             "{heuristics}",
             "{task_state}",
@@ -367,3 +371,51 @@ name: Skills Index
             assert has_trigger, (
                 f"task-viz should have routing triggers like {meaningful_triggers}"
             )
+
+
+class TestScriptsIndex:
+    """Test scripts index loading for hydrator context."""
+
+    def test_load_scripts_index_returns_content(self, tmp_path):
+        """Verify load_scripts_index returns non-empty content when SCRIPTS.md exists."""
+        mock_scripts = tmp_path / "SCRIPTS.md"
+        mock_scripts.write_text("""---
+name: Scripts Index
+---
+# Scripts Index
+
+| Script | Purpose | Invocation |
+|--------|---------|------------|
+| `session_transcript.py` | Export session | `uv run python scripts/session_transcript.py` |
+""")
+
+        with patch("hooks.user_prompt_submit.get_plugin_root") as mock_root:
+            mock_root.return_value = tmp_path
+
+            result = load_scripts_index()
+
+            assert result, "load_scripts_index should return non-empty string"
+            assert "session_transcript" in result.lower(), (
+                "Scripts index should include session_transcript script"
+            )
+
+    def test_load_scripts_index_graceful_fallback(self, tmp_path):
+        """Verify load_scripts_index returns empty string when SCRIPTS.md doesn't exist."""
+        # tmp_path exists but has no SCRIPTS.md file
+
+        with patch("hooks.user_prompt_submit.get_plugin_root") as mock_root:
+            mock_root.return_value = tmp_path
+
+            result = load_scripts_index()
+
+            assert result == "", (
+                "load_scripts_index should return empty string when SCRIPTS.md missing"
+            )
+
+    def test_scripts_index_in_hydration_context(self):
+        """Verify scripts_index placeholder is included in hydration context template."""
+        template = load_template(CONTEXT_TEMPLATE_FILE)
+
+        assert "{scripts_index}" in template, (
+            "Hydration context template should include {scripts_index} placeholder"
+        )

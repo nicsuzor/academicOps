@@ -438,6 +438,19 @@ def load_skills_index() -> str:
     return _load_framework_file("SKILLS.md")
 
 
+def load_scripts_index() -> str:
+    """Load SCRIPTS.md for hydrator context.
+
+    Pre-loads scripts index so hydrator can surface relevant utility scripts
+    when user requests involve their functionality. Returns content after
+    frontmatter separator. Returns empty string if SCRIPTS.md doesn't exist.
+    """
+    try:
+        return _load_framework_file("SCRIPTS.md")
+    except FileNotFoundError:
+        return ""
+
+
 def get_task_work_state() -> str:
     """Query task system for current work state.
 
@@ -603,6 +616,7 @@ def build_hydration_instruction(
     # Pre-load stable framework docs (reduces hydrator runtime I/O)
     workflows_index = load_workflows_index(prompt)
     skills_index = load_skills_index()
+    scripts_index = load_scripts_index()
     axioms = load_axioms()
     heuristics = load_heuristics()
 
@@ -628,6 +642,7 @@ def build_hydration_instruction(
         relevant_files=relevant_files,
         workflows_index=workflows_index,
         skills_index=skills_index,
+        scripts_index=scripts_index,
         axioms=axioms,
         heuristics=heuristics,
         task_state=task_state,

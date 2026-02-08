@@ -23,13 +23,8 @@
 
 
 ## Utility Scripts (Not Skills)
-<!-- Nic: we should move these to a new index and inject them above. -->
-<!-- @claude 2026-02-07: Agreed. Should create SCRIPTS.md index similar to SKILLS_INDEX.md and inject via {{scripts_index}} variable. Task created: aops-2911a459. -->
-These scripts exist but aren't user-invocable skills. Provide exact invocation when relevant:
 
-| Request | Script | Invocation |
-| :--- | :--- | :--- |
-| "save transcript", "export session" | `session_transcript.py` | `uv run python $AOPS/scripts/session_transcript.py <session.jsonl> -o output.md` |
+{scripts_index}
 
 ## The AcademicOps Framework (AOPS)
 <!-- Nic: we should clarify here the distinction between working on the AOPS framework and USING the AOPS framework when working on another project. -->
