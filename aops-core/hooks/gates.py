@@ -378,8 +378,15 @@ def _matches_condition(
             or tool_input.get("name", "")
             or tool_input.get("skill", "")
         )
+        # Match if either is contained in the other (e.g. "hydrator" matches "aops-core:prompt-hydrator")
         # Also match when tool_name IS the agent (Gemini direct MCP call)
-        if subagent not in actual and tool_name not in (subagent, subagent.split(":")[-1]):
+        short_subagent = subagent.split(":")[-1]
+        if (
+            subagent not in actual
+            and short_subagent not in actual
+            and actual not in subagent
+            and tool_name not in (subagent, short_subagent)
+        ):
             return False
 
     contains = cond.get("output_contains")

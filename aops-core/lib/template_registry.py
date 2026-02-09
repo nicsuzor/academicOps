@@ -104,6 +104,7 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
             "env_vars",
             "project_paths",
             "project_context_index",
+            "project_rules",
             "relevant_files",
             "workflows_index",
             "skills_index",

@@ -169,6 +169,7 @@ TEST_CASES = [
             hook_event_name="PostToolUse",
             tool_name="prompt-hydrator",
             tool_input={"query": "Read and comment on /tmp/file.md"},
+            tool_result={"returnDisplay": "## HYDRATION RESULT\nIntent: test"},
         ),
         "expected_decision": "allow",
         "state_overrides": {"is_hydration_pending": True},
