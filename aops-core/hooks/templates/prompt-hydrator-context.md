@@ -5,10 +5,9 @@ category: template
 description: |
   Template written to temp file by UserPromptSubmit hook for prompt-hydrator subagent.
   Variables: {prompt} (user prompt), {session_context} (recent prompts, tools, tasks),
-             {axioms} (full AXIOMS.md), {heuristics} (full HEURISTICS.md),
              {task_state} (current work state from tasks MCP)
-  NOTE: Hydrator selects relevant principles from axioms/heuristics for main agent.
-  Main agent receives ONLY selected principles, not full files.
+  NOTE: Axioms/heuristics are handled by custodiet, not the hydrator.
+  Hydrator focuses on workflow routing, context curation, and task binding.
 ---
 
 # Prompt Hydration Request
@@ -55,14 +54,6 @@ Based on prompt keywords, these specific files may be relevant:
 
 {scripts_index}
 
-## Axioms
-
-{axioms}
-
-## Heuristics
-
-{heuristics}
-
 ## Current Work State
 
 {task_state}
@@ -72,8 +63,8 @@ Based on prompt keywords, these specific files may be relevant:
 1. **Understand intent** - What does the user actually want?
 2. **Select context to inject** - What does the agent need to know?
    - **Tier 1: Memory server** (PRIMARY) - Semantic search for related knowledge.
-   - **Tier 2: Framework rules** (SECONDARY) - Relevant AXIOMS and HEURISTICS
-   - **Tier 3: Tools and paths** (TERTIARY) - Relevant skills and paths from your pre-loaded indices (Skills, Workflows, MCP Tools).
+   - **Tier 2: Workflows and skills** (SECONDARY) - Relevant workflows and skills from your pre-loaded indices.
+   - **Tier 3: Tools and paths** (TERTIARY) - Relevant MCP tools and project paths.
 3. **Determine execution path** - Single-session (bounded, path known) or multi-session (goal-level, uncertain path)?
 4. **Bind to task** - Match to existing task or specify new task creation
 5. **Select workflows** - Identify and select relevant workflows from your pre-loaded Workflow index. Read all workflow files you have selected, including any local workflows (in project CWD ./.agent/workflows/), and any [[referenced workflows]] within those files.
@@ -130,11 +121,12 @@ You may bypass task queue ONLY when ANY is true:
 
 **CRITICAL - Context Curation**:
 
-- Your input file contains FULL axioms, heuristics, workflows - this is for YOUR reference
+- Your input file contains workflows, skills, and project context - this is for YOUR reference
 - DO NOT copy/paste these sections into your output
 - SELECT only what's relevant and output brief references
 - For simple questions: minimal or no context needed
 - Main agent receives ONLY your curated output
+- Axioms/heuristics are enforced by custodiet - NOT your responsibility
 
 Return this EXACT structure:
 
@@ -153,12 +145,6 @@ Return this EXACT structure:
 
 - [Brief context the agent needs - NOT full file contents]
 - [Related tasks if any]
-
-### Applicable Principles
-
-Select 3-7 from AXIOMS/HEURISTICS. For simple questions, omit this section.
-
-- **P#[n] ([Name])**: [1-sentence why this applies]
 
 ### Execution Plan
 

@@ -205,43 +205,35 @@ Verify README.md flowchart reflects actual hook architecture:
 3. Compare to settings.json hook events
 4. Flag drift
 
-### Phase 6: Regenerate Generated Indices
+### Phase 6: Curate Index Files
 
-Generated indices are root-level files for agent consumption (INDEX.md, enforcement-map.md, WORKFLOWS.md, SKILLS.md, AXIOMS.md, HEURISTICS.md, docs/ENFORCEMENT.md). The core loop flowchart is maintained in README.md.
+Index files are root-level files for agent consumption. The auditing agent curates these using LLM judgment, not mechanical script generation.
 
-**Regenerate each deterministically from sources:**
+**Target files**: INDEX.md, enforcement-map.md, WORKFLOWS.md, SKILLS.md, AXIOMS.md, HEURISTICS.md, docs/ENFORCEMENT.md, README.md (flowchart section).
 
-#### AXIOMS.md and HEURISTICS.md
+**Approach**: For each index file, read the source materials, then write a curated index that accurately reflects current state. Use your judgment to:
 
-**TODO**: Script not yet implemented. When created, place in `aops-core/skills/audit/scripts/generate_principle_indices.py`.
+- Prioritize what's most useful for agent routing and context
+- Remove stale entries that no longer match the filesystem
+- Add missing entries discovered during earlier audit phases
+- Keep descriptions concise and actionable
 
-```bash
-cd $AOPS && uv run python aops-core/skills/audit/scripts/generate_principle_indices.py
-```
+#### Per-File Instructions
 
-Reads `axioms/` and `heuristics/` folders, generates machine-readable indices sorted by priority (1-100 bands: 1-20 core, 21-40 behavioral, 41-60 domain, 61-80 derived, 81-100 experimental).
+| Index File | Sources | Key Judgment |
+|-----------|---------|-------------|
+| AXIOMS.md | `axioms/*.md` files | Priority ordering, concise summaries |
+| HEURISTICS.md | `heuristics/*.md` files | Priority ordering, concise summaries |
+| SKILLS.md | `skills/*/SKILL.md` frontmatter, `commands/*.md` | Routing triggers, description accuracy |
+| WORKFLOWS.md | `workflows/*.md`, `skills/*/workflows/*.md` | Decision tree accuracy, scope routing |
+| INDEX.md | Filesystem scan of `$AOPS/` | File tree with accurate purpose annotations |
+| enforcement-map.md | `hooks/*.py` "Enforces:" docstrings, `gate_config.py` | Axiom-to-hook mapping accuracy |
+| docs/ENFORCEMENT.md | `specs/enforcement.md`, existing content | Mechanism ladder, root cause model |
+| README.md (flowchart) | `hooks/router.py`, `gate_config.py`, `gates.py` | Invoke `Skill(skill="flowchart")` first. Mermaid accuracy |
 
-#### SKILLS.md
+#### enforcement-map.md Derivation
 
-**TODO**: Script not yet implemented. When created, place in `aops-core/skills/audit/scripts/generate_skills_index.py`.
-
-```bash
-cd $AOPS && uv run python aops-core/skills/audit/scripts/generate_skills_index.py
-```
-
-Scans `aops-core/` and `aops-tools/` for skills and commands, extracts frontmatter (name, description), and generates routing index. Preserves existing triggers from previous SKILLS.md. Reports components missing triggers.
-
-#### INDEX.md
-
-- Scan `$AOPS/` directory structure
-- Extract file purposes from frontmatter/headers
-- Output annotated file tree
-
-#### enforcement-map.md
-
-**Hook→Axiom Declaration Convention**:
-
-Every hook that enforces an axiom MUST declare it in its module docstring:
+**Hook-Axiom Declaration Convention**: Every hook that enforces an axiom declares it in its module docstring:
 
 ```python
 """
@@ -251,155 +243,25 @@ Enforces: current-state-machine (Current State Machine)
 """
 ```
 
-Multiple axioms: `Enforces: fail-fast-code, trust-version-control (Fail-Fast, Trust Version Control)`
-
-**Derivation sources**:
-
-- `hooks/*.py` docstrings - parse "Enforces:" lines for axiom mappings
-- `config/claude/settings.json` - deny rules map to axioms via comments
-- `.pre-commit-config.yaml` - commit-time checks
-
 **Cross-reference validation**:
 
 1. Parse all hooks for "Enforces:" declarations
-2. Compare against enforcement-map.md Axiom→Enforcement table
-3. Flag discrepancies:
-   - Hook declares axiom but enforcement-map.md shows "Prompt" level only
-   - enforcement-map.md lists hook but hook lacks "Enforces:" declaration
-   - Axiom has Hard/Soft Gate in enforcement-map.md but no hook declares it
+2. Compare against enforcement-map.md Axiom-Enforcement table
+3. Flag discrepancies (hook declares axiom not in map, map lists hook without declaration, etc.)
 
-**Output**: Table mapping each axiom to its enforcement mechanism, hook, trigger point, and level.
+#### README.md Flowchart
 
-#### WORKFLOWS.md
+**First**: Invoke `Skill(skill="flowchart")` to load Mermaid conventions.
 
-Derive task routing from:
+Regenerate the core loop flowchart from `hooks/router.py` dispatch mappings, `gate_config.py` gate definitions, and `hooks/*.py` implementations. Every gate in `gate_config.py` must be represented.
 
-- `skills/*/SKILL.md` frontmatter - what task types each skill handles
-- `skills/*/workflows/*.md` - skill-specific workflow files (e.g., `skills/framework/workflows/05-feature-development.md`)
-- `agents/*.md` - what workflows each agent uses
-- `enforcement-map.md` (Soft Gate Guardrails section) - type→guardrail mappings
+#### Generated File Header
 
-**Skill workflow discovery**: Scan all `skills/*/workflows/*.md` files and extract:
-
-- Workflow name from filename (e.g., `05-feature-development.md` → `feature-development`)
-- Purpose from first heading or frontmatter description
-- Parent skill from directory path (e.g., `skills/framework/workflows/` → `framework` skill)
-
-**Include in output**:
-
-- A "Skill Workflows" section listing all discovered workflow files
-- Path reference for each (e.g., `[[skills/framework/workflows/05-feature-development]]`)
-- Brief description extracted from file
-
-Output: Table of task types, when to use each, workflow, and skill. Plus skill workflow index.
-
-#### README.md (Core Loop Flowchart)
-
-**First**: Invoke `Skill(skill="flowchart")` to load Mermaid diagram conventions.
-
-Regenerate the core loop flowchart section in README.md from hook architecture sources:
-
-1. Parse `hooks/router.py` for dispatch mappings (event→handler)
-2. Parse `config/claude/settings.json` for hook event registrations
-3. Parse `hooks/*.py` for hook implementations and "Enforces:" declarations
-4. Generate Mermaid flowchart following **Flowchart Design Principles**:
-   - **Shapes match Roles**:
-     - Process/Dispatcher/Hook → Rectangle
-     - Decision/Hard Gate → Diamond
-     - Subagent/Skill → Stadium (`[[name]]`)
-     - State/Data/File → Parallelogram (`[/name/]`) or Cylinder (`[(name)]`)
-   - **Cross-Theme Semantic Coloring**:
-     - Use high-contrast fills with white text (`color:#fff`) for light/dark compatibility.
-     - **Hooks/Dispatch**: Blue (`#0277bd`)
-     - **Gates/Blocks**: Red (`#c62828`)
-     - **Agents/Subagents**: Purple (`#6a1b9a`)
-     - **State/Plan**: Orange (`#ef6c00`)
-     - **Events**: Dark Grey (`#424242`)
-   - **Horizontal Detail Branches**:
-     - For major gates and agents, add a horizontal branch (`---`) to a boxed explanation node (`[Description]`).
-     - Explanation nodes should use `classDef explain fill:none,stroke:#888,font-style:italic` to avoid visual weight.
-     - Content must be specific: "Fetches X, Y, Z" or "Validates field A", not generic summaries.
-   - **Readability**:
-     - Use `style <subgraph> fill:none,stroke:#888,stroke-dasharray: 5 5` for clean backgrounds.
-     - Group logic by execution phase (Init, Hydration, Execution, Termination).
-     - Label edges clearly with conditions (Yes/No, PROCEED/REVISE, percentage thresholds).
-   - **Accuracy**: Every "Hardware Gate" (PreToolUse) and "Logic Check" (Stop Gate) in `gate_registry.py` must be represented.
-
-**Structure**:
-
-- Vertical main flow showing session lifecycle
-- Horizontal insertion points for each hook event
-- Subgraphs for phase groupings
-
-**Location**: Replace the "Core Loop" section in README.md (after the Quick Start section)
-
-#### README.md (Polecat Supervision Quick Start)
-
-Add a "Polecat Supervision" section to README.md after the Core Loop flowchart. This provides users quick instructions for the task execution & merge workflow.
-
-**Content to include:**
-
-````markdown
-## Polecat Supervision (Task Execution & Merge)
-
-For running polecat swarm and merging results:
-
-### Quick Start
-
-```bash
-# Start swarm (3 Claude + 3 Gemini workers)
-polecat swarm -c 3 -g 3
-
-# Start watchdog for PR notifications
-polecat watch &
-
-# When notified, merge clean PRs:
-gh pr merge <N> --squash --delete-branch && polecat sync
-```
-````
-
-### Commission New Features
-
-Instead of coding manually, create tasks for the swarm:
-
-```bash
-/q bot P1 Add feature X to polecat
-```
-
-The swarm will implement, file a PR, and you merge.
-
-### Monitoring Commands
-
-| Command                 | Purpose                     |
-| ----------------------- | --------------------------- |
-| `polecat summary`       | Digest of recent work       |
-| `polecat analyze <id>`  | Diagnose stalled task       |
-| `polecat watch`         | Background PR notifications |
-| `polecat reset-stalled` | Reset hung tasks            |
-
-See [[specs/polecat-supervision.md]] for full specification.
+Each curated index must include:
 
 ```
-**Location**: After "Core Loop" section, before "Skills" section
-
-#### docs/ENFORCEMENT.md
-
-Derive practical enforcement guide from:
-
-- `docs/ENFORCEMENT.md` (existing mechanism ladder content - preserve)
-- `specs/enforcement.md` "Component Responsibilities" section - root cause model
-
-**Root Cause Analysis section** (append to end):
-
-1. Copy root cause definition from spec
-2. Copy responsibility tables (Pre/Execution/Post phases)
-3. Copy root cause categories
-4. Add failure→responsibility mapping examples from observed patterns
-
-**Each generated index must include header:**
+> **Curated by audit skill** - Regenerate with `Skill(skill="audit")`
 ```
-
-> **Generated by audit skill** - Do not edit manually.
 
 ````
 ### Phase 7: Other Updates

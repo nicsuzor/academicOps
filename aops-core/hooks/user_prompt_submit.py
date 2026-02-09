@@ -732,8 +732,7 @@ def build_hydration_instruction(
     workflows_index = load_workflows_index(prompt)
     skills_index = load_skills_index()
     scripts_index = load_scripts_index()
-    axioms = load_axioms()
-    heuristics = load_heuristics()
+    # Axioms/heuristics removed from hydrator context - now enforced by custodiet
 
     # Load project-specific rules from .agent/rules/ (P#60: Local over central)
     project_rules = load_project_rules()
@@ -762,8 +761,6 @@ def build_hydration_instruction(
         workflows_index=workflows_index,
         skills_index=skills_index,
         scripts_index=scripts_index,
-        axioms=axioms,
-        heuristics=heuristics,
         task_state=task_state,
     )
 

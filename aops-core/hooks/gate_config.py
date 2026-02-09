@@ -304,7 +304,9 @@ GATE_OPENING_CONDITIONS: dict[str, dict[str, Any]] = {
         "description": "Opens when a task is created, claimed, or updated",
     },
     "critic": {
-        "event": "AfterAgent",
+        "event": "PostToolUse",
+        "tool_pattern": r"^(Task|Skill|delegate_to_agent|activate_skill|critic|aops-core:critic)$",
+        "subagent_type": "aops-core:critic",
         "output_contains": "Verdict: APPROVED",
         "description": "Opens when critic agent approves the plan",
     },
