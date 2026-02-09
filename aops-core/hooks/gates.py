@@ -373,6 +373,30 @@ def _matches_condition(cond: dict[str, Any], ctx: HookContext) -> bool:
         ):
             return False
 
+    # Handle subagent_or_skill (list of acceptable values)
+    subagent_or_skill = cond.get("subagent_or_skill")
+    if subagent_or_skill:
+        actual = (
+            tool_input.get("subagent_type", "")
+            or tool_input.get("agent_name", "")
+            or tool_input.get("name", "")
+            or tool_input.get("skill", "")
+        )
+        # Check if any of the acceptable values match
+        matched = False
+        for acceptable in subagent_or_skill:
+            short_acceptable = acceptable.split(":")[-1]
+            if (
+                acceptable in actual
+                or short_acceptable in actual
+                or actual in acceptable
+                or tool_name in (acceptable, short_acceptable)
+            ):
+                matched = True
+                break
+        if not matched:
+            return False
+
     contains = cond.get("output_contains")
     if contains:
         # Check tool output (PostToolUse) OR agent response (AfterAgent)
@@ -385,6 +409,14 @@ def _matches_condition(cond: dict[str, Any], ctx: HookContext) -> bool:
             output_str = str(tool_output)
             if contains not in output_str:
                 return False
+
+    # Handle result_key and result_value (check specific output fields)
+    result_key = cond.get("result_key")
+    if result_key:
+        result_value = cond.get("result_value")
+        actual_value = tool_output.get(result_key) if isinstance(tool_output, dict) else None
+        if actual_value != result_value:
+            return False
 
     skill = cond.get("skill_name")
     if skill:
