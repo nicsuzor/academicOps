@@ -313,7 +313,6 @@ def _create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path | N
 
     registry = TemplateRegistry.instance()
 
-    # <!-- NS: this logic sucks. We have a config file and registry for gates for a reason. -->
     # Determine which template to use
     if gate == "custodiet":
         try:

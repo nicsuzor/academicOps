@@ -500,19 +500,6 @@ def _hydration_is_gemini_hydration_attempt(
 # --- Custodiet Logic ---
 
 
-# TODO(NS): Remove legacy Custodiet helper functions once all call sites use the standard hook_utils APIs.
-def _custodiet_load_framework_content() -> tuple[str, str, str]:
-    """Load framework content."""
-    return hook_utils.load_framework_content()
-
-
-def _custodiet_build_session_context(transcript_path: str | None, session_id: str) -> str:
-    """Build rich session context for custodiet compliance checks."""
-    if not transcript_path:
-        return "(No transcript path available)"
-    return build_rich_session_context(transcript_path)
-
-
 def _custodiet_build_audit_instruction(
     transcript_path: str | None, tool_name: str, session_id: str
 ) -> str:
@@ -524,10 +511,8 @@ def _custodiet_build_audit_instruction(
         hook_utils.get_hook_temp_dir(CUSTODIET_TEMP_CATEGORY, input_data), "audit_"
     )
 
-    session_context = _custodiet_build_session_context(transcript_path, session_id)
-    axioms, heuristics, skills = _custodiet_load_framework_content()
-    # <!-- NS: no magic literals. -->
-    # <!-- @claude 2026-02-07: DEFAULT_CUSTODIET_GATE_MODE is defined at module level (line ~50). This usage is correct - it references the constant. The env var name "CUSTODIET_MODE" could be extracted to CUSTODIET_MODE_ENV_VAR constant for consistency. -->
+    session_context = build_rich_session_context(transcript_path) if transcript_path else "(No transcript path available)"
+    axioms, heuristics, skills = hook_utils.load_framework_content()
     custodiet_mode = os.environ.get("CUSTODIET_MODE", DEFAULT_CUSTODIET_GATE_MODE).lower()
 
     from lib.template_registry import TemplateRegistry
