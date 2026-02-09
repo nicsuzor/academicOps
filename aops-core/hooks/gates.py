@@ -36,6 +36,7 @@ def check_tool_gate(ctx: HookContext) -> GateResult:
     from hooks.gate_config import (
         GATE_MODE_DEFAULTS,
         GATE_MODE_ENV_VARS,
+        GATE_OPENING_CONDITIONS,
         get_required_gates,
         get_tool_category,
     )
@@ -51,14 +52,21 @@ def check_tool_gate(ctx: HookContext) -> GateResult:
         return GateResult.allow()
 
     # Allow spawning hydrator and open hydration gate immediately
-    if tool_name in ("Task", "Skill", "activate_skill", "delegate_to_agent"):
+    # Tool names derived from gate_config.py GATE_OPENING_CONDITIONS
+    hydrator_direct_tools = set(
+        GATE_OPENING_CONDITIONS.get("hydration", {}).get("subagent_or_skill", [])
+    )
+    invocation_wrappers = {"Task", "Skill", "activate_skill", "delegate_to_agent"}
+
+    if tool_name in invocation_wrappers or tool_name in hydrator_direct_tools:
         subagent = (
             (ctx.tool_input or {}).get("subagent_type", "")
             or (ctx.tool_input or {}).get("skill", "")
             or (ctx.tool_input or {}).get("name", "")
             or (ctx.tool_input or {}).get("agent_name", "")
         )
-        if "hydrator" in subagent.lower():
+        # Check if subagent is hydrator OR tool_name itself is a direct hydrator call
+        if "hydrator" in subagent.lower() or tool_name in hydrator_direct_tools:
             session_state.set_hydrator_active(ctx.session_id)
             # Open hydration gate immediately when hydrator is invoked (not just when it completes)
             # This allows the subagent to proceed with tool calls while hydrator runs
@@ -154,9 +162,14 @@ def update_gate_state(ctx: HookContext) -> GateResult | None:
                     messages.append(f"✗ `{gate}` closed")
 
         # Clear hydrator_active when hydrator completes
-        if tool_name in ("Task", "Skill", "prompt-hydrator", "aops-core:prompt-hydrator"):
+        # Tool names derived from gate_config.py GATE_OPENING_CONDITIONS
+        hydrator_direct_tools = set(
+            GATE_OPENING_CONDITIONS.get("hydration", {}).get("subagent_or_skill", [])
+        )
+        invocation_wrappers = {"Task", "Skill", "activate_skill", "delegate_to_agent"}
+        if tool_name in invocation_wrappers or tool_name in hydrator_direct_tools:
             subagent = tool_input.get("subagent_type", "") or tool_input.get("skill", "")
-            if "hydrator" in (subagent or "").lower() or "hydrator" in tool_name.lower():
+            if "hydrator" in (subagent or "").lower() or tool_name in hydrator_direct_tools:
                 session_state.clear_hydrator_active(ctx.session_id)
 
     if messages:
