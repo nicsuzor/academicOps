@@ -1,19 +1,27 @@
 from unittest.mock import patch
 
-from hooks import gate_registry
+from lib.session_reader import build_rich_session_context
 
 
 class TestGateRegistry:
-    def test_custodiet_build_session_context_string_turns(self):
+    def test_build_rich_session_context_with_no_transcript(self):
+        # Verify that a missing transcript returns a fallback message
+        result = build_rich_session_context("/nonexistent/path.json")
+        assert "(No transcript path available)" in result
+
+    def test_build_rich_session_context_string_turns(self):
         # Verify fix for AttributeError: 'str' object has no attribute 'get'
-        # caused when conversation turns are strings instead of dicts
-
-        mock_gate_ctx = {"conversation": ["User: hello", "Assistant: hi there"]}
-
-        # Patch build_rich_session_context since logic moved to session_reader
-        with patch("hooks.gate_registry.build_rich_session_context") as mock_build:
-            mock_build.return_value = "[unknown]: User: hello...\n[unknown]: Assistant: hi there..."
-            result = gate_registry._custodiet_build_session_context("/tmp/transcript.json", "sess1")
-
-            assert "[unknown]: User: hello..." in result
-            assert "[unknown]: Assistant: hi there..." in result
+        # caused when conversation turns are strings instead of dicts.
+        # The logic that was in _custodiet_build_session_context is now
+        # inlined in _custodiet_build_audit_instruction.
+        with patch("lib.session_reader.extract_gate_context") as mock_extract:
+            mock_extract.return_value = {
+                "conversation": ["User: hello", "Assistant: hi there"],
+                "prompts": [],
+                "tools": [],
+                "files": [],
+                "errors": [],
+            }
+            result = build_rich_session_context("/tmp/transcript.json")
+            # Should not crash on string conversation turns
+            assert isinstance(result, str)
