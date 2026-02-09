@@ -299,10 +299,18 @@ def _create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path | N
     category = "hydrator"
 
     # Try to load rich context if possible
+    # Critic and custodiet get deep session context (full history, reasoning, diffs)
+    # — they need to review/audit what actually happened across the whole session.
+    # Other gates get the standard thin/wide context for scope-drift detection.
     transcript_path = ctx.transcript_path or ctx.raw_input.get("transcript_path")
     session_context = ""
     if transcript_path:
-        session_context = build_rich_session_context(transcript_path)
+        if gate in ("critic", "custodiet"):
+            from lib.session_reader import build_critic_session_context
+
+            session_context = build_critic_session_context(transcript_path)
+        else:
+            session_context = build_rich_session_context(transcript_path)
 
     axioms, heuristics, skills = hook_utils.load_framework_content()
     custodiet_mode = os.environ.get("CUSTODIET_MODE", "block").lower()
