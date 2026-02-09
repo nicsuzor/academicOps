@@ -140,6 +140,19 @@ These workflows support prompt hydration. Used internally by the hydrator agent.
 | [[framework-gate]] | First check - detect framework modifications | - |
 | [[constraint-check]] | Verify plan satisfies workflow constraints | - |
 
+## Project-Specific Workflows
+
+Projects can extend the global workflow catalog by defining local workflows in the project root:
+
+1. **Local Index**: `.agent/WORKFLOWS.md`
+   - If present, its content can be included in the hydration context during the `UserPromptSubmit` hook.
+   - Use this for project-wide workflow routing and definitions.
+
+2. **Workflow Directory**: `.agent/workflows/*.md`
+   - Individual workflow files.
+   - **Content Injection**: During the `UserPromptSubmit` hook, the orchestration layer may include the content of these files in the hydrator context if the prompt matches the filename (e.g., "manual-qa" matches `manual-qa.md`).
+   - Use these for specific, repetitive procedures unique to the project.
+
 ## Key Distinctions
 
 | If you're unsure between...          | Ask...                                              |

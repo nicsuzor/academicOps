@@ -13,11 +13,12 @@ Exit codes:
 
 import json
 import os
+import re
 import subprocess
 from pathlib import Path
 from typing import Any
 
-from lib.file_index import get_formatted_relevant_paths
+from lib.file_index import get_formatted_relevant_paths, get_relevant_file_paths
 from lib.hook_utils import (
     cleanup_old_temp_files as _cleanup_temp,
 )
@@ -291,7 +292,7 @@ def _load_project_workflows(prompt: str = "") -> str:
     scan workflow files and build a semantic index for JIT reading.
 
     Args:
-        prompt: User prompt (unused in new logic, kept for signature compatibility)
+        prompt: User prompt for content-aware matching.
 
     Returns:
         Project workflows section, or empty string if none found.
@@ -307,7 +308,7 @@ def _load_project_workflows(prompt: str = "") -> str:
     project_index = project_agent_dir / "WORKFLOWS.md"
     if project_index.exists():
         content = project_index.read_text()
-        return f"\\n\\n## Project-Specific Workflows ({cwd.name})\\n\\n{_strip_frontmatter(content)}"
+        return f"\n\n## Project-Specific Workflows ({cwd.name})\n\n{_strip_frontmatter(content)}"
 
     # Otherwise, list workflow files in .agent/workflows/
     workflows_dir = project_agent_dir / "workflows"
@@ -319,11 +320,16 @@ def _load_project_workflows(prompt: str = "") -> str:
         return ""
 
     # Build a semantic index from frontmatter
-    lines = [f"\\n\\n## Project-Specific Workflows ({cwd.name})", ""]
+    lines = [f"\n\n## Project-Specific Workflows ({cwd.name})", ""]
     lines.append(f"Location: `{workflows_dir}`")
-    lines.append("The following workflows are available locally. READ them if relevant to the user request.\\n")
+    lines.append("The following workflows are available locally. READ them if relevant to the user request.\n")
     lines.append("| Workflow | Description | Triggers | File |")
     lines.append("|----------|-------------|----------|------|")
+
+    included_workflows = []
+    prompt_lower = prompt.lower()
+
+    import yaml
 
     for wf_file in workflow_files:
         try:
@@ -331,37 +337,85 @@ def _load_project_workflows(prompt: str = "") -> str:
             name = wf_file.stem
             desc = ""
             triggers = ""
-            
+
             # Parse frontmatter
             if content.startswith("---"):
                 parts = content.split("---", 2)
                 if len(parts) >= 3:
                     frontmatter_raw = parts[1]
-                    import yaml
                     try:
                         fm = yaml.safe_load(frontmatter_raw)
                         if isinstance(fm, dict):
                             name = fm.get("title", name)  # Prefer title if available
-                            desc = fm.get("description", "").replace("\\n", " ").strip()
+                            desc = fm.get("description", "").replace("\n", " ").strip()
                             triggers_list = fm.get("triggers", [])
                             if isinstance(triggers_list, list):
                                 triggers = ", ".join(triggers_list)
                             elif isinstance(triggers_list, str):
                                 triggers = triggers_list
-                    except yaml.YAMLError:
-                        pass # Fallback to basics on parse error
+                    except (yaml.YAMLError, ValueError, TypeError):
+                        pass  # Fallback to basics on parse error
 
             # Format table row - escape pipes
-            desc = desc.replace("|", "-")[:100] + ("..." if len(desc) > 100 else "")
-            triggers = triggers.replace("|", "-")
-            lines.append(f"| {name} | {desc} | {triggers} | `{wf_file.name}` |")
-        except OSError:
-            pass  # Skip unreadable files
+            desc_table = desc.replace("|", "-")[:100] + ("..." if len(desc) > 100 else "")
+            triggers_table = triggers.replace("|", "-")
+            lines.append(f"| {name} | {desc_table} | {triggers_table} | `{wf_file.name}` |")
 
-    return "\\n".join(lines)
+            # Content injection logic based on prompt keywords (word boundary matching)
+            filename_keywords = set(wf_file.stem.lower().replace("-", " ").replace("_", " ").split())
+            if any(re.search(r'\b' + re.escape(kw) + r'\b', prompt_lower) for kw in filename_keywords) or wf_file.stem.lower() in prompt_lower:
+                # Use the same resolved display name as in the index
+                header_name = name
+                if name != wf_file.stem:
+                    header_name = f"{name} ({wf_file.stem})"
+                included_workflows.append(
+                    f"\n\n### {header_name} (Project Instructions)\n\n{_strip_frontmatter(content)}"
+                )
+        except OSError:
+            pass  # Skip unreadable workflow files
+
+    result = "\n".join(lines)
+    if included_workflows:
+        result += "\n" + "".join(included_workflows)
+    return result
 
 
 # <!-- NS: these repetitive functions should be refactored. -->
+def _load_global_workflow_content(prompt: str = "") -> str:
+    """Selectively load the content of relevant global workflows.
+
+    Uses FILE_INDEX to identify relevant workflow files and includes
+    their full content for the hydrator.
+    """
+    # Get relevant files from index
+    relevant_paths = get_relevant_file_paths(prompt, max_files=20)
+
+    # Filter for workflows in aops-core/workflows/
+    workflow_paths = [p for p in relevant_paths if p["path"].startswith("workflows/")]
+
+    if not workflow_paths:
+        return ""
+
+    plugin_root = get_plugin_root()
+    included_content = []
+
+    for wp in workflow_paths:
+        path = plugin_root / wp["path"]
+        if path.exists():
+            try:
+                content = path.read_text()
+                # Use filename stem for header
+                wf_name = Path(wp["path"]).stem
+                included_content.append(
+                    f"\n\n### Global Workflow: {wf_name}\n\n{_strip_frontmatter(content)}"
+                )
+            except OSError:
+                # Ignore unreadable workflow files; a missing file should not break context generation.
+                pass
+
+    return "".join(included_content)
+
+
 def load_workflows_index(prompt: str = "") -> str:
     """Load WORKFLOWS.md for hydrator context.
 
@@ -384,7 +438,10 @@ def load_workflows_index(prompt: str = "") -> str:
     # Append project-specific workflows if present (passing prompt for relevance detection)
     project_workflows = _load_project_workflows(prompt)
 
-    return base_workflows + project_workflows
+    # Append relevant global workflow content (P#43: JIT context)
+    global_workflow_content = _load_global_workflow_content(prompt)
+
+    return base_workflows + project_workflows + global_workflow_content
 
 
 def load_project_context_index() -> str:

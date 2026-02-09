@@ -133,7 +133,6 @@ class TestFirstPromptHydration:
             "relevant_files": "",
             "axioms": "",
             "project_rules": "",
-            "project_paths": "",
         }
 
         result = template.format(**test_values)
@@ -168,6 +167,7 @@ class TestFirstPromptHydration:
             patch("hooks.user_prompt_submit.get_plugin_root") as mock_root,
             patch("hooks.user_prompt_submit.set_hydration_pending") as mock_set,
             patch("hooks.user_prompt_submit.clear_hydration_pending") as mock_clear,
+            patch("hooks.user_prompt_submit.get_hydration_temp_dir", return_value=tmp_path),
         ):
             mock_root.return_value = AOPS_CORE
 
