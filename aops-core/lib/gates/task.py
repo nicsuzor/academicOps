@@ -1,10 +1,10 @@
 from typing import Any
 
 from hooks.schemas import HookContext
+from lib import session_state as session_state_lib
 from lib.gate_model import GateResult, GateVerdict
 from lib.gates.base import Gate
 from lib.session_state import SessionState
-from lib import session_state as session_state_lib
 
 
 class TaskGate(Gate):
@@ -66,9 +66,6 @@ class TaskGate(Gate):
                     subagents[subagent_type] = current + 1
                 else:
                     # If it's a dict (from record_subagent_invocation), just keep it there
-                    # We just need the key to exist for len(subagents) check.
-                    # But we should probably update a counter inside it if possible?
-                    # For now, just ensure key exists.
                     pass
 
                 session_state_lib.save_session_state(context.session_id, session_state)
@@ -129,7 +126,7 @@ class TaskGate(Gate):
     def _create_block_result(self, context: HookContext) -> GateResult:
         """Create a block result for the gate."""
         import os
-        from hooks.gate_config import GATE_MODE_ENV_VARS, GATE_MODE_DEFAULTS, get_tool_category
+        from hooks.gate_config import GATE_MODE_DEFAULTS, GATE_MODE_ENV_VARS, get_tool_category
         from lib.template_registry import TemplateRegistry
 
         mode = os.environ.get(GATE_MODE_ENV_VARS.get(self.name, ""), GATE_MODE_DEFAULTS.get(self.name, "warn"))

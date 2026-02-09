@@ -9,21 +9,19 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from hooks.schemas import HookContext
-from lib.gate_model import GateResult, GateVerdict
-from lib.gates.registry import GateRegistry
-from lib import session_state, session_paths, hook_utils
 from hooks.unified_logger import get_hook_log_path
-
-# Import Gates
-from lib.gates.hydration import HydrationGate
-from lib.gates.task import TaskGate
-from lib.gates.custodiet import CustodietGate
+from lib import hook_utils, session_paths, session_state
+from lib.gate_model import GateResult, GateVerdict
 from lib.gates.critic import CriticGate
-from lib.gates.qa import QaGate
+from lib.gates.custodiet import CustodietGate
 from lib.gates.handover import HandoverGate
+from lib.gates.hydration import HydrationGate
+from lib.gates.qa import QaGate
+from lib.gates.registry import GateRegistry
+from lib.gates.task import TaskGate
 
 if TYPE_CHECKING:
     pass

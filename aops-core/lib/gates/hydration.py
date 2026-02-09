@@ -1,13 +1,13 @@
 import re
 from typing import Any
 
-from hooks.gate_config import GATE_MODE_DEFAULTS, GATE_MODE_ENV_VARS, get_tool_category
+from hooks.gate_config import get_tool_category
 from hooks.schemas import HookContext
+from lib import session_state as session_state_lib
 from lib.gate_model import GateResult, GateVerdict
 from lib.gates.base import Gate
 from lib.session_state import SessionState
 from lib.template_registry import TemplateRegistry
-from lib import session_state as session_state_lib
 
 
 class HydrationGate(Gate):
@@ -226,7 +226,7 @@ class HydrationGate(Gate):
     def _create_block_result(self, context: HookContext) -> GateResult:
         """Create a block result for the gate."""
         import os
-        from hooks.gate_config import GATE_MODE_ENV_VARS, GATE_MODE_DEFAULTS
+        from hooks.gate_config import GATE_MODE_DEFAULTS, GATE_MODE_ENV_VARS
 
         mode = os.environ.get(GATE_MODE_ENV_VARS.get(self.name, ""), GATE_MODE_DEFAULTS.get(self.name, "warn"))
 

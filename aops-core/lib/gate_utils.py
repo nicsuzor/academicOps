@@ -1,7 +1,9 @@
 from pathlib import Path
+
 from hooks.schemas import HookContext
-from lib.template_registry import TemplateRegistry
 from lib import hook_utils
+from lib.template_registry import TemplateRegistry
+
 
 def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path | None:
     """Create rich audit file for gate using TemplateRegistry."""

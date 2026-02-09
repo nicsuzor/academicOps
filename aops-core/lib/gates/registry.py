@@ -1,5 +1,3 @@
-from typing import Type
-
 from lib.gates.base import Gate
 
 

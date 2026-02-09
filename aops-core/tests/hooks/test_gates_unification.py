@@ -2,10 +2,10 @@ from unittest.mock import ANY, patch
 
 import pytest
 
-from hooks.gates import on_after_agent, close_gate, open_gate
-from lib.gate_utils import create_audit_file
+from hooks.gates import close_gate, on_after_agent, open_gate
 from hooks.schemas import HookContext
 from lib import session_state
+from lib.gate_utils import create_audit_file
 
 
 @pytest.fixture

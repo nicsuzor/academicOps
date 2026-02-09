@@ -1,13 +1,14 @@
 import os
-import re
 from typing import Any
 
 from hooks.gate_config import get_tool_category
 from hooks.schemas import HookContext
+from lib import session_state as session_state_lib
 from lib.gate_model import GateResult, GateVerdict
+from lib.gate_utils import create_audit_file
 from lib.gates.base import Gate
 from lib.session_state import SessionState
-from lib import session_state as session_state_lib
+from lib.template_registry import TemplateRegistry
 
 
 class CriticGate(Gate):
@@ -122,9 +123,7 @@ class CriticGate(Gate):
 
     def _create_block_result(self, context: HookContext, reason: str) -> GateResult:
         """Create block result."""
-        from hooks.gate_config import GATE_MODE_ENV_VARS, GATE_MODE_DEFAULTS
-        from lib.template_registry import TemplateRegistry
-        from lib.gate_utils import create_audit_file
+        from hooks.gate_config import GATE_MODE_DEFAULTS, GATE_MODE_ENV_VARS
 
         mode = os.environ.get(GATE_MODE_ENV_VARS.get(self.name, ""), GATE_MODE_DEFAULTS.get(self.name, "warn"))
 

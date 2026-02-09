@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Any
 
 from hooks.schemas import HookContext
 from lib.gate_model import GateResult

@@ -1,12 +1,11 @@
 import re
-import sys
 from typing import Any
 
 from hooks.schemas import HookContext
+from lib import session_state as session_state_lib
 from lib.gate_model import GateResult, GateVerdict
 from lib.gates.base import Gate
 from lib.session_state import SessionState
-from lib import session_state as session_state_lib
 
 
 class HandoverGate(Gate):
