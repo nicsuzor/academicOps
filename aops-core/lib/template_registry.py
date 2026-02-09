@@ -158,10 +158,9 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
             "tool_name",
             "axioms_content",
             "heuristics_content",
-            "skills_content",
         ),
-        optional_vars=("session_id", "gate_name", "custodiet_mode"),
-        description="Full context for critic review",
+        optional_vars=("session_id", "gate_name", "custodiet_mode", "skills_content"),
+        description="Deep session context for critic review (full narrative)",
     ),
     "custodiet.instruction": TemplateSpec(
         name="custodiet.instruction",

@@ -292,7 +292,7 @@ GATE_OPENING_CONDITIONS: dict[str, dict[str, Any]] = {
     "hydration": {
         "event": "PostToolUse",
         "tool_pattern": r"^(Task|Skill|delegate_to_agent|activate_skill|spawn_agent|prompt-hydrator|aops-core:prompt-hydrator)$",
-        "subagent_type": "aops-core:prompt-hydrator",
+        "subagent_or_skill": ["aops-core:prompt-hydrator", "prompt-hydrator"],
         "output_contains": "HYDRATION RESULT",
         "description": "Opens when hydrator agent completes successfully",
     },
@@ -306,14 +306,14 @@ GATE_OPENING_CONDITIONS: dict[str, dict[str, Any]] = {
     "critic": {
         "event": "PostToolUse",
         "tool_pattern": r"^(Task|Skill|delegate_to_agent|activate_skill|critic|aops-core:critic)$",
-        "subagent_type": "aops-core:critic",
-        "output_contains": "Verdict: APPROVED",
+        "subagent_or_skill": ["aops-core:critic", "critic"],
+        "output_contains": "APPROVED",
         "description": "Opens when critic agent approves the plan",
     },
     "custodiet": {
         "event": "PostToolUse",
         "tool_pattern": r"^(Task|Skill|delegate_to_agent|activate_skill|custodiet|aops-core:custodiet)$",
-        "subagent_type": "aops-core:custodiet",
+        "subagent_or_skill": ["aops-core:custodiet", "custodiet"],
         "output_contains": "OK",
         "description": "Opens when custodiet agent confirms no ultra vires activity",
     },
@@ -348,12 +348,16 @@ GATE_CLOSURE_TRIGGERS: dict[str, list[dict[str, Any]]] = {
     ],
     "task": [
         {
-            "event": "PostToolUse",
-            "tool_pattern": r"mcp.*task_manager.*complete_task",
-            "result_key": "success",
-            "result_value": True,
-            "description": "Re-close when task is completed/released",
+            "event": "UserPromptSubmit",
+            "description": "Re-close on new user prompt to require fresh hydration",
         },
+        # {
+        #     "event": "PostToolUse",
+        #     "tool_pattern": r"mcp.*task_manager.*complete_task",
+        #     "result_key": "success",
+        #     "result_value": True,
+        #     "description": "Re-close when task is completed/released",
+        # },
     ],
     "critic": [
         {
@@ -363,10 +367,6 @@ GATE_CLOSURE_TRIGGERS: dict[str, list[dict[str, Any]]] = {
     ],
     "custodiet": [
         {
-            "event": "UserPromptSubmit",
-            "description": "Re-close on new user prompt (fresh compliance check required)",
-        },
-        {
             "event": "PostToolUse",
             "tool_category": "write",
             "threshold_counter": "tool_calls_since_custodiet",
@@ -375,12 +375,12 @@ GATE_CLOSURE_TRIGGERS: dict[str, list[dict[str, Any]]] = {
         },
     ],
     "handover": [
-        {
-            "event": "PostToolUse",
-            "tool_category": "write",
-            "condition": "git_dirty",
-            "description": "Re-close when repo has uncommitted changes",
-        },
+        # {
+        #     "event": "PostToolUse",
+        #     "tool_category": "write",
+        #     "condition": "git_dirty",
+        #     "description": "Re-close when repo has uncommitted changes",
+        # },
     ],
     # qa: Does not re-close (verified once is sufficient for session)
 }
