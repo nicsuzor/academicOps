@@ -123,41 +123,41 @@ def check_tool_gate(ctx: HookContext) -> GateResult:
 
 
 def update_gate_state(ctx: HookContext) -> GateResult | None:
-    """PostToolUse: Open/close gates based on conditions."""
+    """PostToolUse/AfterAgent: Open/close gates based on conditions."""
     from hooks.gate_config import GATE_CLOSURE_TRIGGERS, GATE_OPENING_CONDITIONS
     from lib import session_state
 
-    if ctx.hook_event != "PostToolUse":
+    if ctx.hook_event not in ("PostToolUse", "AfterAgent"):
         return None
 
     messages = []
     tool_name = ctx.tool_name or ""
     tool_input = ctx.tool_input or {}
-    # <!-- NS: move all the logic for normalising ctx and converting from gemini/claude into the ctx pydantic object as a property for easier access and reuse. Make sure we share the same code with the transcript generator. -->
-    tool_output = ctx.tool_output
-
+    
     # Check opening conditions
     for gate, cond in GATE_OPENING_CONDITIONS.items():
-        if cond.get("event") != "PostToolUse":
+        if cond.get("event") != ctx.hook_event:
             continue
-        if _matches_condition(cond, tool_name, tool_input, tool_output):
-            _open_gate(ctx.session_id, gate)
+        if _matches_condition(cond, ctx):
+            open_gate(ctx.session_id, gate)
             messages.append(f"✓ `{gate}` opened")
 
-    # Check closure triggers
-    for gate, triggers in GATE_CLOSURE_TRIGGERS.items():
-        for trigger in triggers:
-            if trigger.get("event") != "PostToolUse":
-                continue
-            if _matches_trigger(trigger, tool_name, tool_input, ctx.session_id, gate):
-                _close_gate(ctx.session_id, gate)
-                messages.append(f"✗ `{gate}` closed")
+    # Only PostToolUse handles closure triggers and hydrator_active clearing
+    if ctx.hook_event == "PostToolUse":
+        # Check closure triggers
+        for gate, triggers in GATE_CLOSURE_TRIGGERS.items():
+            for trigger in triggers:
+                if trigger.get("event") != "PostToolUse":
+                    continue
+                if _matches_trigger(trigger, tool_name, tool_input, ctx.session_id, gate):
+                    close_gate(ctx.session_id, gate)
+                    messages.append(f"✗ `{gate}` closed")
 
-    # Clear hydrator_active when hydrator completes
-    if tool_name in ("Task", "Skill", "prompt-hydrator", "aops-core:prompt-hydrator"):
-        subagent = tool_input.get("subagent_type", "") or tool_input.get("skill", "")
-        if "hydrator" in subagent.lower() or "hydrator" in tool_name.lower():
-            session_state.clear_hydrator_active(ctx.session_id)
+        # Clear hydrator_active when hydrator completes
+        if tool_name in ("Task", "Skill", "prompt-hydrator", "aops-core:prompt-hydrator"):
+            subagent = tool_input.get("subagent_type", "") or tool_input.get("skill", "")
+            if "hydrator" in (subagent or "").lower() or "hydrator" in tool_name.lower():
+                session_state.clear_hydrator_active(ctx.session_id)
 
     if messages:
         return GateResult.allow(context_injection="\n".join(messages))
@@ -174,7 +174,7 @@ def on_user_prompt(ctx: HookContext) -> GateResult | None:
     for gate, triggers in GATE_CLOSURE_TRIGGERS.items():
         for trigger in triggers:
             if trigger.get("event") == "UserPromptSubmit":
-                _close_gate(ctx.session_id, gate)
+                close_gate(ctx.session_id, gate)
 
     return None
 
@@ -188,7 +188,7 @@ def on_session_start(ctx: HookContext) -> GateResult | None:
 
     for gate, initial in GATE_INITIAL_STATE.items():
         if initial == "open":
-            _open_gate(ctx.session_id, gate)
+            open_gate(ctx.session_id, gate)
 
     return None
 
@@ -242,54 +242,50 @@ def _is_hydrator_file_read(
     return False
 
 
-def _open_gate(session_id: str, gate: str) -> None:
+def open_gate(session_id: str, gate: str) -> None:
     """Open a gate by setting the corresponding state flag."""
     from lib import session_state
 
     # Update unified gates dictionary
     state = session_state.get_or_create_session_state(session_id)
     state.setdefault("state", {}).setdefault("gates", {})[gate] = "open"
-    session_state.save_session_state(session_id, state)
-
-    # Legacy flag updates for backwards compatibility
+    
+    # Also set individual flags for legacy compatibility and stop gate logic
     if gate == "hydration":
         session_state.clear_hydration_pending(session_id)
-    elif gate == "task":
-        # Task gate is opened by task_binding - nothing to do here
-        pass
     elif gate == "critic":
-        session_state.set_critic_invoked(session_id, "APPROVED")
+        state["state"]["critic_invoked"] = True
     elif gate == "qa":
-        session_state.set_qa_invoked(session_id)
+        state["state"]["qa_invoked"] = True
     elif gate == "handover":
-        session_state.set_handover_skill_invoked(session_id)
+        state["state"]["handover_skill_invoked"] = True
     elif gate == "custodiet":
-        # Reset tool call counter
-        state = session_state.get_or_create_session_state(session_id)
         state.setdefault("state", {})["tool_calls_since_compliance"] = 0
-        session_state.save_session_state(session_id, state)
+
+    session_state.save_session_state(session_id, state)
 
 
-def _close_gate(session_id: str, gate: str) -> None:
+def close_gate(session_id: str, gate: str) -> None:
     """Close a gate by clearing the corresponding state flag."""
     from lib import session_state
 
     # Update unified gates dictionary
     state = session_state.get_or_create_session_state(session_id)
     state.setdefault("state", {}).setdefault("gates", {})[gate] = "closed"
-    session_state.save_session_state(session_id, state)
-
-    # Legacy flag updates for backwards compatibility
+    
+    # Also clear individual flags for legacy compatibility
     if gate == "hydration":
         session_state.set_hydration_pending(session_id, "")
     elif gate == "task":
         session_state.clear_current_task(session_id)
     elif gate == "critic":
-        session_state.clear_critic_invoked(session_id)
+        state["state"].pop("critic_invoked", None)
     elif gate == "qa":
-        session_state.clear_qa_invoked(session_id)
+        state["state"].pop("qa_invoked", None)
     elif gate == "handover":
-        session_state.clear_handover_skill_invoked(session_id)
+        state["state"]["handover_skill_invoked"] = False
+
+    session_state.save_session_state(session_id, state)
 
 
 def _create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path | None:
@@ -313,32 +309,23 @@ def _create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path | N
 
     registry = TemplateRegistry.instance()
 
-    # Determine which template to use
-    if gate == "custodiet":
-        try:
-            content = registry.render(
-                "custodiet.context",
-                {
-                    "session_context": session_context,
-                    "tool_name": ctx.tool_name or "unknown",
-                    "axioms_content": axioms,
-                    "heuristics_content": heuristics,
-                    "skills_content": skills,
-                    "custodiet_mode": custodiet_mode,
-                },
-            )
-        except (KeyError, ValueError, FileNotFoundError):
-            # Fallback to simple audit template if rich one fails
-            content = registry.render(
-                "custodiet.audit",
-                {
-                    "session_id": session_id,
-                    "gate_name": gate,
-                    "tool_name": ctx.tool_name or "unknown",
-                },
-            )
-    else:
-        # Generic audit for other gates
+    # Fill template using unified logic
+    try:
+        content = registry.render(
+            f"{gate}.context",
+            {
+                "session_id": session_id,
+                "gate_name": gate,
+                "tool_name": ctx.tool_name or "unknown",
+                "session_context": session_context,
+                "axioms_content": axioms,
+                "heuristics_content": heuristics,
+                "skills_content": skills,
+                "custodiet_mode": custodiet_mode,
+            },
+        )
+    except (KeyError, ValueError, FileNotFoundError):
+        # Fallback to simple audit template if rich one fails
         try:
             content = registry.render(
                 f"{gate}.audit",
@@ -353,17 +340,15 @@ def _create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path | N
 
     # Write to temp (using aligned category)
     temp_dir = hook_utils.get_hook_temp_dir(category, ctx.raw_input)
-    prefix = "audit_" if gate == "custodiet" else f"{gate}_"
-    return hook_utils.write_temp_file(content, temp_dir, prefix)
+    return hook_utils.write_temp_file(content, temp_dir, f"audit_{gate}_")
 
 
-def _matches_condition(
-    cond: dict[str, Any],
-    tool_name: str,
-    tool_input: dict[str, Any],
-    tool_output: dict[str, Any],
-) -> bool:
+def _matches_condition(cond: dict[str, Any], ctx: HookContext) -> bool:
     """Check if opening condition matches."""
+    tool_name = ctx.tool_name or ""
+    tool_input = ctx.tool_input or {}
+    tool_output = ctx.tool_output
+
     pattern = cond.get("tool_pattern")
     if pattern and not re.match(pattern, tool_name):
         return False
@@ -388,11 +373,49 @@ def _matches_condition(
         ):
             return False
 
+    # Handle subagent_or_skill (list of acceptable values)
+    subagent_or_skill = cond.get("subagent_or_skill")
+    if subagent_or_skill:
+        actual = (
+            tool_input.get("subagent_type", "")
+            or tool_input.get("agent_name", "")
+            or tool_input.get("name", "")
+            or tool_input.get("skill", "")
+        )
+        # Check if any of the acceptable values match
+        matched = False
+        for acceptable in subagent_or_skill:
+            short_acceptable = acceptable.split(":")[-1]
+            if (
+                acceptable in actual
+                or short_acceptable in actual
+                or actual in acceptable
+                or tool_name in (acceptable, short_acceptable)
+            ):
+                matched = True
+                break
+        if not matched:
+            return False
+
     contains = cond.get("output_contains")
     if contains:
-        # Check if string appears in any string value of the output dict
-        output_str = str(tool_output)
-        if contains not in output_str:
+        # Check tool output (PostToolUse) OR agent response (AfterAgent)
+        if ctx.hook_event == "AfterAgent":
+            text = ctx.raw_input.get("prompt_response", "")
+            if contains not in text:
+                return False
+        else:
+            # Check if string appears in any string value of the output dict
+            output_str = str(tool_output)
+            if contains not in output_str:
+                return False
+
+    # Handle result_key and result_value (check specific output fields)
+    result_key = cond.get("result_key")
+    if result_key:
+        result_value = cond.get("result_value")
+        actual_value = tool_output.get(result_key) if isinstance(tool_output, dict) else None
+        if actual_value != result_value:
             return False
 
     skill = cond.get("skill_name")

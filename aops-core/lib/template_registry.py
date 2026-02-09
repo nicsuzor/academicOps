@@ -92,13 +92,18 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         env_override="HYDRATION_WARN_TEMPLATE",
     ),
     # --- Prompt hydrator ---
-    "hydrator.context": TemplateSpec(
-        name="hydrator.context",
+    "hydration.context": TemplateSpec(
+        name="hydration.context",
         category=TemplateCategory.SUBAGENT_INSTRUCTION,
         filename="prompt-hydrator-context.md",
         required_vars=(
-            "prompt",
             "session_context",
+            "axioms_content",
+            "heuristics_content",
+            "skills_content",
+        ),
+        optional_vars=(
+            "prompt",
             "framework_paths",
             "mcp_tools",
             "env_vars",
@@ -111,9 +116,13 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
             "axioms",
             "heuristics",
             "task_state",
+            "scripts_index",
+            "session_id",
+            "gate_name",
+            "tool_name",
+            "custodiet_mode",
         ),
-        optional_vars=("scripts_index",),
-        description="Full context for prompt hydration",
+        description="Unified context for hydration gate",
     ),
     "hydrator.instruction": TemplateSpec(
         name="hydrator.instruction",
@@ -136,8 +145,23 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
             "skills_content",
             "custodiet_mode",
         ),
+        optional_vars=("session_id", "gate_name"),
         description="Full context for custodiet compliance check",
         env_override="CUSTODIET_CONTEXT_TEMPLATE",
+    ),
+    "critic.context": TemplateSpec(
+        name="critic.context",
+        category=TemplateCategory.SUBAGENT_INSTRUCTION,
+        filename="critic-context.md",
+        required_vars=(
+            "session_context",
+            "tool_name",
+            "axioms_content",
+            "heuristics_content",
+            "skills_content",
+        ),
+        optional_vars=("session_id", "gate_name", "custodiet_mode"),
+        description="Full context for critic review",
     ),
     "custodiet.instruction": TemplateSpec(
         name="custodiet.instruction",
