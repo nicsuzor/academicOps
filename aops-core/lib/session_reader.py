@@ -517,8 +517,13 @@ def build_rich_session_context(transcript_path: Path | str, max_turns: int = 15)
     if files:
         lines.append("**Files Accessed**:")
         for f in files[-10:]:  # Last 10 files
-            # These fields are required by extract_gate_context contract
-            lines.append(f"  - [{f['action']}] {f['path']}")
+            # Handle both legacy list[str] shape and newer list[dict] shape
+            if isinstance(f, dict) and "action" in f and "path" in f:
+                lines.append(f"  - [{f['action']}] {f['path']}")
+            else:
+                path_str = str(f)
+                if path_str:
+                    lines.append(f"  - {path_str}")
         lines.append("")
 
     # Tool errors (important for compliance - Type A detection)

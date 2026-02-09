@@ -328,7 +328,7 @@ def _create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path | N
                     "custodiet_mode": custodiet_mode,
                 },
             )
-        except (KeyError, ValueError):
+        except (KeyError, ValueError, FileNotFoundError):
             # Fallback to simple audit template if rich one fails
             content = registry.render(
                 "custodiet.audit",
@@ -349,7 +349,7 @@ def _create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path | N
                     "tool_name": ctx.tool_name or "unknown",
                 },
             )
-        except (KeyError, ValueError):
+        except (KeyError, ValueError, FileNotFoundError):
             return None
 
     # Write to temp (using aligned category)

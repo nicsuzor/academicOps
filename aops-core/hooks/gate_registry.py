@@ -20,7 +20,7 @@ from hooks.schemas import HookContext
 # These imports are REQUIRED for gate functionality - fail explicitly if missing
 _IMPORT_ERROR: str | None = None
 try:
-    from lib.session_reader import build_rich_session_context, extract_gate_context
+    from lib.session_reader import build_rich_session_context
     from lib.template_loader import load_template
 
     from lib import axiom_detector, hook_utils, session_paths, session_state
@@ -32,7 +32,6 @@ except ImportError as e:
     hook_utils = None  # type: ignore[assignment]
     axiom_detector = None  # type: ignore[assignment]
     load_template = None  # type: ignore[assignment]
-    extract_gate_context = None  # type: ignore[assignment]
     build_rich_session_context = None  # type: ignore[assignment]
 
 
@@ -501,7 +500,7 @@ def _hydration_is_gemini_hydration_attempt(
 # --- Custodiet Logic ---
 
 
-# <!-- NS: delete these helpers and ensure codebase only uses the correct functions -->
+# TODO(NS): Remove legacy Custodiet helper functions once all call sites use the standard hook_utils APIs.
 def _custodiet_load_framework_content() -> tuple[str, str, str]:
     """Load framework content."""
     return hook_utils.load_framework_content()

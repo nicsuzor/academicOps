@@ -114,7 +114,7 @@ def get_indices_dir() -> Path:
     return get_plugin_root() / "indices"
 
 
-# <!-- NS: I don't love that these are all hardcoded like this -->
+# TODO(NS): Consider refactoring these hardcoded paths into a configuration mechanism.
 def get_axioms_file() -> Path:
     """Get path to AXIOMS.md framework file."""
     return get_plugin_root() / "AXIOMS.md"
