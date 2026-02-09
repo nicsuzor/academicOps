@@ -292,7 +292,7 @@ def validate_gemini_agent_schema(frontmatter: dict, filename: str) -> dict:
     CLAUDE_TO_GEMINI_MODEL = {
         "opus": "gemini-3-pro-preview",
         "sonnet": "gemini-3-flash-preview",
-        "haiku": "gemini-2.5-flash-light",
+        "haiku": "gemini-3-flash-preview",
         "claude-opus-4-5-20251101": "gemini-3-pro-preview",
         "claude-sonnet-4-20250514": "gemini-3-flash-preview",
     }
@@ -326,7 +326,7 @@ def validate_gemini_agent_schema(frontmatter: dict, filename: str) -> dict:
 def transform_agent_for_platform(content: str, platform: str, filename: str = "agent") -> str:
     """Transform agent markdown for a specific platform.
 
-    For Gemini: filters out mcp__* tools from frontmatter since they're Claude-specific,
+    For Gemini: renames mcp__* tools from frontmatter by stripping prefix,
                 and validates/applies Gemini agent schema with defaults.
     For Claude: converts YAML array tools to comma-separated string with PascalCase names.
     """
@@ -350,9 +350,12 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
     # Handle case where tools is already a string (no transformation needed for format)
     if isinstance(original_tools, str):
         if platform == "gemini":
-            # Filter mcp__ tools from comma-separated string
+            # Strip mcp__ prefix from comma-separated string tools
             tools_list = [t.strip() for t in original_tools.split(",")]
-            filtered = [t for t in tools_list if not t.startswith("mcp__")]
+            filtered = [
+                t[5:] if t.startswith("mcp__") else t
+                for t in tools_list
+            ]
             frontmatter["tools"] = filtered  # Convert to list for Gemini schema
             # Validate and apply Gemini schema defaults
             frontmatter = validate_gemini_agent_schema(frontmatter, filename)
@@ -361,8 +364,11 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
         return content
 
     if platform == "gemini":
-        # Filter out mcp__* tools (Claude-specific MCP tool names)
-        filtered_tools = [t for t in original_tools if not t.startswith("mcp__")]
+        # Strip mcp__ prefix from tool names for Gemini
+        filtered_tools = [
+            t[5:] if t.startswith("mcp__") else t
+            for t in original_tools
+        ]
         frontmatter["tools"] = filtered_tools
         # Validate and apply Gemini schema defaults
         frontmatter = validate_gemini_agent_schema(frontmatter, filename)
