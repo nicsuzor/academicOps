@@ -133,7 +133,6 @@ class TestFirstPromptHydration:
             "relevant_files": "",
             "axioms": "",
             "project_rules": "",
-            "project_paths": "",
         }
 
         result = template.format(**test_values)

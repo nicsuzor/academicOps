@@ -534,15 +534,6 @@ def load_skills_index() -> str:
     return _load_framework_file("SKILLS.md")
 
 
-def load_skills_index() -> str:
-    """Load SKILLS.md for hydrator context.
-
-    Pre-loads skills index so hydrator can immediately recognize skill invocations
-    without needing to search memory. Returns content after frontmatter separator.
-    """
-    return _load_framework_file("SKILLS.md")
-
-
 def load_scripts_index() -> str:
     """Load SCRIPTS.md for hydrator context.
 
