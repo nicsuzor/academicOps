@@ -72,6 +72,9 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "aops-core:qa",
         "handover",
         "aops-core:handover",
+        "codebase_investigator",
+        "cli_help",
+        "effectual-planner",
         # User interaction: must never be blocked (essential for agent-user communication)
         "AskUserQuestion",
         # Meta tools: affect agent behavior but don't modify user files
@@ -96,9 +99,14 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "read_file",
         "view_file",
         "list_dir",
+        "list_directory",
         "find_by_name",
         "grep_search",
+        "search_file_content",
+        "glob",
         "search_web",
+        "google_web_search",
+        "web_fetch",
         "read_url_content",
         # MCP retrieval tools (read-only)
         # Note: memory retrieval and task manager reads are in always_available
@@ -135,6 +143,7 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "replace",
         "run_shell_command",
         "execute_code",
+        "save_memory",
         # Memory mutation (store needs /remember skill routing)
         "mcp__plugin_aops-core_memory__store_memory",
         "mcp__plugin_aops-core_memory__delete_memory",
@@ -196,6 +205,7 @@ GATE_EXECUTION_ORDER: dict[str, list[str]] = {
     "AfterAgent": [
         "unified_logger",
         "agent_response",
+        "gate_update",  # Check AfterAgent opening conditions (e.g. Critic approval)
     ],
     "SubagentStop": [
         "unified_logger",
@@ -294,10 +304,8 @@ GATE_OPENING_CONDITIONS: dict[str, dict[str, Any]] = {
         "description": "Opens when a task is created, claimed, or updated",
     },
     "critic": {
-        "event": "PostToolUse",
-        "tool_pattern": r"^(Task|Skill|delegate_to_agent|activate_skill|critic|aops-core:critic)$",
-        "subagent_type": "aops-core:critic",
-        "output_contains": "APPROVED",
+        "event": "AfterAgent",
+        "output_contains": "Verdict: APPROVED",
         "description": "Opens when critic agent approves the plan",
     },
     "custodiet": {
