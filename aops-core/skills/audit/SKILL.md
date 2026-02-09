@@ -263,7 +263,6 @@ Each curated index must include:
 > **Curated by audit skill** - Regenerate with `Skill(skill="audit")`
 ```
 
-````
 ### Phase 7: Other Updates
 
 1. **Fix README.md**: Update tables including sub-workflows (see below)
