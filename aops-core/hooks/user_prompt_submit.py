@@ -288,10 +288,10 @@ def _load_project_workflows(prompt: str = "") -> str:
 
     Projects can define their own workflows in .agent/workflows/*.md.
     If a WORKFLOWS.md index exists in .agent/, use that; otherwise
-    list available workflow files and include relevant content based on prompt.
+    scan workflow files and build a semantic index for JIT reading.
 
     Args:
-        prompt: User prompt to detect relevant workflow types
+        prompt: User prompt (unused in new logic, kept for signature compatibility)
 
     Returns:
         Project workflows section, or empty string if none found.
@@ -307,7 +307,7 @@ def _load_project_workflows(prompt: str = "") -> str:
     project_index = project_agent_dir / "WORKFLOWS.md"
     if project_index.exists():
         content = project_index.read_text()
-        return f"\n\n## Project-Specific Workflows ({cwd.name})\n\n{_strip_frontmatter(content)}"
+        return f"\\n\\n## Project-Specific Workflows ({cwd.name})\\n\\n{_strip_frontmatter(content)}"
 
     # Otherwise, list workflow files in .agent/workflows/
     workflows_dir = project_agent_dir / "workflows"
@@ -318,43 +318,47 @@ def _load_project_workflows(prompt: str = "") -> str:
     if not workflow_files:
         return ""
 
-    # Build a simple index from the files
-    lines = [f"\n\n## Project-Specific Workflows ({cwd.name})", ""]
-    lines.append(f"Location: `{workflows_dir}`\n")
-    lines.append("| Workflow | File |")
-    lines.append("|----------|------|")
-    for wf in workflow_files:
-        name = wf.stem.replace("-", " ").replace("_", " ").title()
-        lines.append(f"| {name} | `{wf.name}` |")
+    # Build a semantic index from frontmatter
+    lines = [f"\\n\\n## Project-Specific Workflows ({cwd.name})", ""]
+    lines.append(f"Location: `{workflows_dir}`")
+    lines.append("The following workflows are available locally. READ them if relevant to the user request.\\n")
+    lines.append("| Workflow | Description | Triggers | File |")
+    lines.append("|----------|-------------|----------|------|")
 
-    # <!-- NS: no crappy nlp. just output all workflows and let the hydrator figure it out. -->
-    # Detect and include relevant workflow content based on prompt keywords
-    prompt_lower = prompt.lower()
-    workflow_keywords = {
-        "TESTING.md": ["test", "pytest", "e2e", "unit test", "mock"],
-        "DEBUGGING.md": ["debug", "investigate", "error", "traceback", "fix bug"],
-        "DEVELOPMENT.md": ["develop", "implement", "feature", "add", "create"],
-    }
-
-    included_workflows = []
     for wf_file in workflow_files:
-        # Internal dict lookup - empty list for unlisted files is correct (no keywords = no match)
-        keywords = workflow_keywords.get(wf_file.name)
-        if keywords is None:
-            keywords = []
-        if any(kw in prompt_lower for kw in keywords):
-            try:
-                content = wf_file.read_text()
-                included_workflows.append(
-                    f"\n\n### {wf_file.stem} (Project Instructions)\n\n{_strip_frontmatter(content)}"
-                )
-            except OSError:
-                pass  # Skip unreadable files
+        try:
+            content = wf_file.read_text()
+            name = wf_file.stem
+            desc = ""
+            triggers = ""
+            
+            # Parse frontmatter
+            if content.startswith("---"):
+                parts = content.split("---", 2)
+                if len(parts) >= 3:
+                    frontmatter_raw = parts[1]
+                    import yaml
+                    try:
+                        fm = yaml.safe_load(frontmatter_raw)
+                        if isinstance(fm, dict):
+                            name = fm.get("title", name)  # Prefer title if available
+                            desc = fm.get("description", "").replace("\\n", " ").strip()
+                            triggers_list = fm.get("triggers", [])
+                            if isinstance(triggers_list, list):
+                                triggers = ", ".join(triggers_list)
+                            elif isinstance(triggers_list, str):
+                                triggers = triggers_list
+                    except yaml.YAMLError:
+                        pass # Fallback to basics on parse error
 
-    if included_workflows:
-        lines.append("\n" + "".join(included_workflows))
+            # Format table row - escape pipes
+            desc = desc.replace("|", "-")[:100] + ("..." if len(desc) > 100 else "")
+            triggers = triggers.replace("|", "-")
+            lines.append(f"| {name} | {desc} | {triggers} | `{wf_file.name}` |")
+        except OSError:
+            pass  # Skip unreadable files
 
-    return "\n".join(lines)
+    return "\\n".join(lines)
 
 
 # <!-- NS: these repetitive functions should be refactored. -->

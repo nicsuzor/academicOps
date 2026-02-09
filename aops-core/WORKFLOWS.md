@@ -95,6 +95,7 @@ User request
 | [[critic-fast]]     | Quick sanity check (default)    | -     |
 | [[critic-detailed]] | Framework/architectural changes | -     |
 | [[qa-demo]]         | Pre-completion verification     | -     |
+| [[qa-test]]         | User acceptance testing         | -     |
 | [[prove-feature]]   | Integration validation          | -     |
 
 ### Operations
