@@ -290,11 +290,11 @@ def validate_gemini_agent_schema(frontmatter: dict, filename: str) -> dict:
 
     # Model mapping: Claude model names -> Gemini model names
     CLAUDE_TO_GEMINI_MODEL = {
-        "opus": "gemini-2.5-pro",
-        "sonnet": "gemini-2.5-flash",
-        "haiku": "gemini-2.5-flash",
-        "claude-opus-4-5-20251101": "gemini-2.5-pro",
-        "claude-sonnet-4-20250514": "gemini-2.5-flash",
+        "opus": "gemini-3-pro-preview",
+        "sonnet": "gemini-3-flash-preview",
+        "haiku": "gemini-2.5-flash-light",
+        "claude-opus-4-5-20251101": "gemini-3-pro-preview",
+        "claude-sonnet-4-20250514": "gemini-3-flash-preview",
     }
 
     if "model" not in frontmatter:
