@@ -20,7 +20,7 @@ from hooks.schemas import HookContext
 # These imports are REQUIRED for gate functionality - fail explicitly if missing
 _IMPORT_ERROR: str | None = None
 try:
-    from lib.session_reader import extract_gate_context
+    from lib.session_reader import build_rich_session_context, extract_gate_context
     from lib.template_loader import load_template
 
     from lib import axiom_detector, hook_utils, session_paths, session_state
@@ -33,6 +33,7 @@ except ImportError as e:
     axiom_detector = None  # type: ignore[assignment]
     load_template = None  # type: ignore[assignment]
     extract_gate_context = None  # type: ignore[assignment]
+    build_rich_session_context = None  # type: ignore[assignment]
 
 
 def _check_imports() -> None:
@@ -75,7 +76,7 @@ HYDRATION_TEMP_CATEGORY = "hydrator"
 HYDRATION_BLOCK_TEMPLATE = Path(__file__).parent / "templates" / "hydration-gate-block.md"
 
 # Custodiet
-CUSTODIET_TEMP_CATEGORY = "compliance"
+CUSTODIET_TEMP_CATEGORY = "hydrator"
 CUSTODIET_DEFAULT_THRESHOLD = 7
 
 
@@ -499,137 +500,17 @@ def _hydration_is_gemini_hydration_attempt(
 
 # --- Custodiet Logic ---
 
-
+# <!-- NS: delete these helpers and ensure codebase only uses the correct functions -->
 def _custodiet_load_framework_content() -> tuple[str, str, str]:
     """Load framework content."""
-    axioms = load_template(AXIOMS_FILE)
-    heuristics = load_template(HEURISTICS_FILE)
-    skills = load_template(SKILLS_FILE)
-    return axioms, heuristics, skills
+    return hook_utils.load_framework_content()
 
 
 def _custodiet_build_session_context(transcript_path: str | None, session_id: str) -> str:
-    """Build rich session context for custodiet compliance checks.
-
-    Extracts recent conversation history, tool usage, files modified,
-    and any errors to provide context for compliance evaluation.
-
-    Enhanced (aops-226ccba2): Now includes:
-    - All user requests (chronological) for scope drift detection
-    - Tool arguments (truncated at 200 chars) for action verification
-    - Full agent responses (last 3, up to 1000 chars each) for phrase pattern detection
-    """
+    """Build rich session context for custodiet compliance checks."""
     if not transcript_path:
         return "(No transcript path available)"
-
-    lines: list[str] = []
-
-    # Extract using library
-    gate_ctx = extract_gate_context(
-        Path(transcript_path),
-        include={"prompts", "errors", "tools", "files", "conversation", "skill"},
-        max_turns=15,
-    )
-
-    # ALL user requests (chronological) - enables scope drift detection
-    prompts = gate_ctx.get("prompts", [])
-    if prompts:
-        lines.append("**All User Requests** (chronological):")
-        for i, prompt in enumerate(prompts, 1):
-            # Truncate very long prompts but preserve enough for scope checking
-            truncated = prompt[:500] + "..." if len(prompt) > 500 else prompt
-            lines.append(f"  {i}. {truncated}")
-        lines.append("")
-        # Also highlight the most recent for quick reference
-        lines.append("**Most Recent User Request**:")
-        lines.append(f"> {prompts[-1][:500]}")
-        lines.append("")
-
-    # Active skill context (if any)
-    skill = gate_ctx.get("skill")
-    if skill:
-        lines.append(f"**Active Skill**: {skill}")
-        lines.append("")
-
-    # Recent tool usage WITH ARGUMENTS - enables action verification
-    tools = gate_ctx.get("tools", [])
-    if tools:
-        lines.append("**Recent Tool Calls** (with arguments):")
-        for tool in tools[-10:]:  # Last 10 tools
-            tool_name = tool["name"]  # Required field - fail if missing
-            tool_input = tool.get("input") or {}
-            # Format tool arguments, truncate at 200 chars
-            if tool_input:
-                # Summarize key arguments
-                arg_parts = []
-                for k, v in list(tool_input.items())[:5]:  # Max 5 args shown
-                    v_str = str(v)
-                    if len(v_str) > 50:
-                        v_str = v_str[:50] + "..."
-                    arg_parts.append(f"{k}={v_str}")
-                args_str = ", ".join(arg_parts)
-                if len(args_str) > 200:
-                    args_str = args_str[:200] + "..."
-                lines.append(f"  - {tool_name}({args_str})")
-            else:
-                lines.append(f"  - {tool_name}()")
-        lines.append("")
-
-    # Files modified/read
-    files = gate_ctx.get("files", [])
-    if files:
-        lines.append("**Files Accessed**:")
-        for f in files[-10:]:  # Last 10 files
-            # These fields are required by extract_gate_context contract
-            lines.append(f"  - [{f['action']}] {f['path']}")
-        lines.append("")
-
-    # Tool errors (important for compliance - Type A detection)
-    errors = gate_ctx.get("errors", [])
-    if errors:
-        lines.append("**Tool Errors** (check for workaround attempts after these):")
-        for e in errors[-5:]:
-            lines.append(f"  - {e['tool_name']}: {e['error']}")
-        lines.append("")
-
-    # FULL agent responses for last 3 turns - enables phrase pattern detection
-    # ("I'll just...", "While I'm at it...", etc.)
-    conversation = gate_ctx.get("conversation", [])
-    if conversation:
-        lines.append("**Recent Agent Responses** (full text for phrase detection):")
-        # Extract only agent responses, show last 3 with more content
-        agent_responses = [
-            turn for turn in conversation if (isinstance(turn, str) and turn.startswith("[Agent]:"))
-        ]
-        for turn in agent_responses[-3:]:  # Last 3 agent responses
-            # String format: "[Agent]: content"
-            content = turn[8:] if turn.startswith("[Agent]:") else turn
-            # Allow up to 1000 chars per response for phrase detection
-            if len(content) > 1000:
-                content = content[:1000] + "..."
-            if content.strip():
-                lines.append(f"  {content.strip()}")
-                lines.append("")
-
-        # Also show recent conversation flow (condensed)
-        lines.append("**Recent Conversation Summary**:")
-        for turn in conversation[-5:]:
-            # Handle both string and dict formats
-            if isinstance(turn, dict):
-                role = turn["role"]  # Required - fail if missing
-                content = turn["content"][:200]  # Required - fail if missing
-                lines.append(f"  [{role}]: {content}...")
-            else:
-                # String format - role unknown
-                content = str(turn)[:200]
-                if content:
-                    lines.append(f"  [unknown]: {content}...")
-        lines.append("")
-
-    if not lines:
-        return "(No session context extracted)"
-
-    return "\n".join(lines)
+    return build_rich_session_context(transcript_path)
 
 
 def _custodiet_build_audit_instruction(

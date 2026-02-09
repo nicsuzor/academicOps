@@ -18,7 +18,13 @@ import time
 from pathlib import Path
 from typing import Any, TypedDict
 
+from lib.paths import (
+    get_axioms_file,
+    get_heuristics_file,
+    get_skills_file,
+)
 from lib.session_paths import get_claude_project_folder
+from lib.template_loader import load_template
 
 # DEFAULT_HOOK_TMP removed - now using ~/.claude/projects/... or ~/.gemini/...
 
@@ -166,6 +172,18 @@ def cleanup_old_temp_files(
             pass  # Ignore cleanup errors
 
     return deleted
+
+
+def load_framework_content() -> tuple[str, str, str]:
+    """Load framework content (axioms, heuristics, skills).
+
+    Returns:
+        tuple: (axioms_text, heuristics_text, skills_text)
+    """
+    axioms = load_template(get_axioms_file())
+    heuristics = load_template(get_heuristics_file())
+    skills = load_template(get_skills_file())
+    return axioms, heuristics, skills
 
 
 def write_temp_file(
