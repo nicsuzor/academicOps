@@ -619,8 +619,6 @@ def build_critic_session_context(transcript_path: Path | str) -> str:
 
     # Noise tools the critic doesn't need to see individually
     _SKIP_TOOLS = {"TodoWrite", "Skill"}
-    # Tools whose results are worth showing
-    _SHOW_RESULT_TOOLS = {"Task", "Bash"}
     # Max chars for agent reasoning text per turn
     _AGENT_TEXT_LIMIT = 2000
     # Max chars for tool arguments
