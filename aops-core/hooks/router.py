@@ -78,16 +78,13 @@ GEMINI_EVENT_MAP = {
 
 
 # --- Gate Status Display ---
-
-# Gate icons: shown when gate is CLOSED (blocking)
-# When a gate is open (passed), it's not shown - only blocking gates are displayed
 GATE_ICONS = {
-    "hydration": "🫗",  # Needs hydration (water drop)
-    "task": "📌",  # Needs task binding (pin)
-    "critic": "👁",  # Needs critic review (eye)
-    "custodiet": "🛡",  # Needs compliance check (shield)
-    "qa": "🧪",  # Needs QA verification (test tube)
-    "handover": "🤝",  # Needs handover (handshake)
+    "hydration": ("🫗", "💧"),  # open: not needed
+    "task": ("🔗", "📎"),
+    "critic": ("👀", "👁"),
+    "custodiet": ("🛂", "🛡"),
+    "qa": ("🧪", "🔬"),
+    "handover": ("📤", "🤝"),
 }
 
 
@@ -96,14 +93,6 @@ def format_gate_status_icons(session_id: str) -> str:
 
     Shows only BLOCKING gates (closed state) for a clean display.
     When all gates are open, shows a simple ready indicator.
-
-    Gate icons (shown when blocking):
-        🫗 = hydration needed
-        📌 = task binding needed
-        👁 = critic review needed
-        🛡 = custodiet check needed
-        🧪 = QA verification needed
-        🤝 = handover needed
 
     Args:
         session_id: Session ID to check gates for
@@ -161,12 +150,12 @@ def format_gate_status_icons(session_id: str) -> str:
             blocking_gates.append("handover")
 
     # Format output
-    if not blocking_gates:
-        return "[✓ ready]"
+    blocking_gates = set(blocking_gates)
+    open_gates = set(GATE_ICONS.keys()) - blocking_gates
+    blocking_icons = " ".join([GATE_ICONS[g][0] for g in blocking_gates])
+    open_icons = " ".join([GATE_ICONS[g][1] for g in open_gates])
 
-    # Show blocking gate icons
-    icons = " ".join(GATE_ICONS[g] for g in blocking_gates if g in GATE_ICONS)
-    return f"[{icons}]"
+    return f"[{blocking_icons}  ✓ {open_icons}]"
 
 
 # --- Session Management ---
