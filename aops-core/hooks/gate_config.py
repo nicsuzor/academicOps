@@ -11,7 +11,6 @@ Legacy configuration (TOOL_GATE_REQUIREMENTS, etc.) has been migrated to
 individual Gate classes in lib/gates/.
 """
 
-from typing import Any
 
 # =============================================================================
 # TOOL CATEGORIES

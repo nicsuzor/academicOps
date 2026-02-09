@@ -8,16 +8,16 @@ import sys
 from pathlib import Path
 
 from hooks.schemas import HookContext
-from lib.gate_model import GateResult, GateVerdict
+from lib.gate_model import GateResult
 
 # Import unified gate functions from gates.py
 from hooks.gates import (
-    check_tool_gate as _check_tool_gate,
-    update_gate_state as _update_gate_state,
-    on_user_prompt as _on_user_prompt,
-    on_session_start as _on_session_start,
     check_stop_gate as _check_stop_gate,
+    check_tool_gate as _check_tool_gate,
     on_after_agent as _on_after_agent,
+    on_session_start as _on_session_start,
+    on_user_prompt as _on_user_prompt,
+    update_gate_state as _update_gate_state,
 )
 
 # --- Unified Logger Gate ---
