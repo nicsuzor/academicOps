@@ -41,7 +41,7 @@ class SessionState(TypedDict, total=False):
 
     # Execution state
     state: dict[str, Any]  # custodiet_blocked, current_workflow, hydration_pending,
-    # reflection_output_since_prompt
+    # reflection_output_since_prompt, gates
 
     # Hydration data
     hydration: dict[
@@ -217,6 +217,7 @@ def create_session_state(session_id: str) -> SessionState:
             "hydration_pending": True,  # Default True - gate blocks until hydrator invoked
             "qa_invoked": False,
             "handover_skill_invoked": True,  # Gate starts OPEN - reset when mutating tool used
+            "gates": {},  # Unified gate storage
         },
         hydration={
             "original_prompt": None,
@@ -253,6 +254,82 @@ def get_or_create_session_state(session_id: str) -> SessionState:
 
 
 # ============================================================================
+# Generic Gate API
+# ============================================================================
+
+
+def get_gate_state(session_id: str, gate_name: str) -> dict[str, Any]:
+    """Get the state of a specific gate.
+
+    Args:
+        session_id: Claude Code session ID
+        gate_name: Name of the gate
+
+    Returns:
+        Dict containing gate state, or empty dict if not found
+    """
+    state = load_session_state(session_id)
+    if state is None:
+        return {}
+    gates = state.get("state", {}).get("gates", {})
+    gate_data = gates.get(gate_name, {})
+    # Handle legacy string format
+    if isinstance(gate_data, str):
+        return {"status": gate_data}
+    return gate_data
+
+
+def set_gate_state(session_id: str, gate_name: str, gate_data: dict[str, Any]) -> None:
+    """Set the state of a specific gate.
+
+    Args:
+        session_id: Claude Code session ID
+        gate_name: Name of the gate
+        gate_data: Dict containing gate state
+    """
+    state = get_or_create_session_state(session_id)
+    state.setdefault("state", {}).setdefault("gates", {})[gate_name] = gate_data
+    save_session_state(session_id, state)
+
+
+def get_gate_status(session_id: str, gate_name: str) -> str:
+    """Get the status of a gate (open/closed/pending).
+
+    Args:
+        session_id: Claude Code session ID
+        gate_name: Name of the gate
+
+    Returns:
+        Status string ("open", "closed", etc.) or "closed" if not found
+    """
+    data = get_gate_state(session_id, gate_name)
+    return str(data.get("status", "closed"))
+
+
+def set_gate_status(session_id: str, gate_name: str, status: str) -> None:
+    """Set the status of a gate.
+
+    Preserves other fields in gate state.
+
+    Args:
+        session_id: Claude Code session ID
+        gate_name: Name of the gate
+        status: Status string ("open", "closed", etc.)
+    """
+    state = get_or_create_session_state(session_id)
+    gates = state.setdefault("state", {}).setdefault("gates", {})
+
+    current_data = gates.get(gate_name, {})
+    # Handle legacy string format
+    if isinstance(current_data, str):
+        current_data = {"status": current_data}
+
+    current_data["status"] = status
+    gates[gate_name] = current_data
+    save_session_state(session_id, state)
+
+
+# ============================================================================
 # Custodiet Block API
 # ============================================================================
 
@@ -283,6 +360,11 @@ def is_custodiet_blocked(session_id: str) -> bool:
     """
     if not is_custodiet_enabled():
         return False
+    # Check new generic gate state
+    gate_state = get_gate_state(session_id, "custodiet")
+    if gate_state.get("blocked"):
+        return True
+
     state = load_session_state(session_id)
     if state is None:
         return False
@@ -299,6 +381,13 @@ def set_custodiet_block(session_id: str, reason: str) -> None:
         session_id: Claude Code session ID
         reason: Human-readable reason for block
     """
+    # Update generic gate state
+    gate_state = get_gate_state(session_id, "custodiet")
+    gate_state["blocked"] = True
+    gate_state["block_reason"] = reason
+    set_gate_state(session_id, "custodiet", gate_state)
+
+    # Legacy update
     state = get_or_create_session_state(session_id)
     state["state"]["custodiet_blocked"] = True
     state["state"]["custodiet_block_reason"] = reason
@@ -311,6 +400,14 @@ def clear_custodiet_block(session_id: str) -> None:
     Args:
         session_id: Claude Code session ID
     """
+    # Update generic gate state
+    gate_state = get_gate_state(session_id, "custodiet")
+    if "blocked" in gate_state:
+        gate_state["blocked"] = False
+        gate_state["block_reason"] = None
+        set_gate_state(session_id, "custodiet", gate_state)
+
+    # Legacy update
     state = load_session_state(session_id)
     if state is None:
         return
@@ -337,6 +434,14 @@ def is_hydration_pending(session_id: str) -> bool:
     Returns:
         True if hydration_pending flag is set OR state doesn't exist
     """
+    # Check new generic gate state
+    status = get_gate_status(session_id, "hydration")
+    if status == "closed":
+        return True
+    elif status == "open":
+        return False
+
+    # Fallback to legacy flag
     state = load_session_state(session_id)
     if state is None:
         # FAIL-CLOSED: No state means first prompt, assume hydration pending
@@ -351,6 +456,13 @@ def set_hydration_pending(session_id: str, original_prompt: str) -> None:
         session_id: Claude Code session ID
         original_prompt: The user's original prompt
     """
+    # Update generic gate state
+    gate_state = get_gate_state(session_id, "hydration")
+    gate_state["status"] = "closed"
+    gate_state["original_prompt"] = original_prompt
+    set_gate_state(session_id, "hydration", gate_state)
+
+    # Legacy update
     state = get_or_create_session_state(session_id)
     state["state"]["hydration_pending"] = True
     state["hydration"]["original_prompt"] = original_prompt
@@ -369,6 +481,10 @@ def clear_hydration_pending(session_id: str) -> None:
     Args:
         session_id: Claude Code session ID
     """
+    # Update generic gate state
+    set_gate_status(session_id, "hydration", "open")
+
+    # Legacy update
     state = get_or_create_session_state(session_id)
     state["state"]["hydration_pending"] = False
     save_session_state(session_id, state)
@@ -384,6 +500,12 @@ def set_hydration_temp_path(session_id: str, temp_path: str) -> None:
         session_id: Claude Code session ID
         temp_path: Absolute path to the hydration temp file
     """
+    # Update generic gate state
+    gate_state = get_gate_state(session_id, "hydration")
+    gate_state["temp_path"] = temp_path
+    set_gate_state(session_id, "hydration", gate_state)
+
+    # Legacy update
     state = get_or_create_session_state(session_id)
     state["hydration"]["temp_path"] = temp_path
     save_session_state(session_id, state)
@@ -398,6 +520,11 @@ def get_hydration_temp_path(session_id: str) -> str | None:
     Returns:
         Path to temp file, or None if not set
     """
+    # Check generic gate state
+    gate_state = get_gate_state(session_id, "hydration")
+    if "temp_path" in gate_state:
+        return gate_state["temp_path"]
+
     state = load_session_state(session_id)
     if state is None:
         return None
@@ -539,6 +666,12 @@ def set_current_task(session_id: str, task_id: str, source: str = "unknown") -> 
 
     logger = logging.getLogger(__name__)
 
+    # Update generic gate state
+    gate_state = get_gate_state(session_id, "task")
+    gate_state["status"] = "open"
+    gate_state["task_id"] = task_id
+    set_gate_state(session_id, "task", gate_state)
+
     state = get_or_create_session_state(session_id)
     state["main_agent"]["current_task"] = task_id
     state["main_agent"]["task_binding_source"] = source
@@ -560,6 +693,11 @@ def get_current_task(session_id: str) -> str | None:
     Returns:
         Task ID string or None if no task bound
     """
+    # Check generic gate state
+    gate_state = get_gate_state(session_id, "task")
+    if "task_id" in gate_state:
+        return gate_state["task_id"]
+
     state = load_session_state(session_id)
     if state is None:
         return None
@@ -580,6 +718,13 @@ def clear_current_task(session_id: str) -> bool:
     import logging
 
     logger = logging.getLogger(__name__)
+
+    # Update generic gate state
+    gate_state = get_gate_state(session_id, "task")
+    if "task_id" in gate_state:
+        gate_state["status"] = "closed"
+        del gate_state["task_id"]
+        set_gate_state(session_id, "task", gate_state)
 
     state = load_session_state(session_id)
     if state is None:
@@ -739,6 +884,9 @@ def set_critic_invoked(session_id: str, verdict: str | None = None) -> None:
         session_id: Claude Code session ID
         verdict: Optional critic verdict (PROCEED/REVISE/HALT)
     """
+    # Update generic gate state
+    set_gate_status(session_id, "critic", "open")
+
     state = get_or_create_session_state(session_id)
     state["state"]["critic_invoked"] = True
     if verdict:
@@ -755,6 +903,11 @@ def is_critic_invoked(session_id: str) -> bool:
     Returns:
         True if critic_invoked flag is set
     """
+    # Check generic gate state
+    status = get_gate_status(session_id, "critic")
+    if status == "open":
+        return True
+
     state = load_session_state(session_id)
     if state is None:
         return False
@@ -767,6 +920,9 @@ def clear_critic_invoked(session_id: str) -> None:
     Args:
         session_id: Claude Code session ID
     """
+    # Update generic gate state
+    set_gate_status(session_id, "critic", "closed")
+
     state = get_or_create_session_state(session_id)
     state.get("state", {}).pop("critic_invoked", None)
     state.get("hydration", {}).pop("critic_verdict", None)
@@ -784,6 +940,9 @@ def set_qa_invoked(session_id: str) -> None:
     Args:
         session_id: Claude Code session ID
     """
+    # Update generic gate state
+    set_gate_status(session_id, "qa", "open")
+
     state = get_or_create_session_state(session_id)
     state["state"]["qa_invoked"] = True
     save_session_state(session_id, state)
@@ -798,6 +957,11 @@ def is_qa_invoked(session_id: str) -> bool:
     Returns:
         True if qa_invoked flag is set
     """
+    # Check generic gate state
+    status = get_gate_status(session_id, "qa")
+    if status == "open":
+        return True
+
     state = load_session_state(session_id)
     if state is None:
         return False
@@ -810,6 +974,9 @@ def clear_qa_invoked(session_id: str) -> None:
     Args:
         session_id: Claude Code session ID
     """
+    # Update generic gate state
+    set_gate_status(session_id, "qa", "closed")
+
     state = get_or_create_session_state(session_id)
     state.get("state", {}).pop("qa_invoked", None)
     save_session_state(session_id, state)
@@ -824,6 +991,11 @@ def is_handover_invoked(session_id: str) -> bool:
     Returns:
         True if handover_skill_invoked flag is set
     """
+    # Check generic gate state
+    status = get_gate_status(session_id, "handover")
+    if status == "open":
+        return True
+
     state = load_session_state(session_id)
     if state is None:
         return False
@@ -848,41 +1020,26 @@ def get_passed_gates(session_id: str) -> set[str]:
     Returns:
         Set of gate names that have passed
     """
-    state = load_session_state(session_id)
-    if state is None:
-        return set()
-
     passed = set()
 
-    # Hydration gate: passed if hydrated_intent is set OR hydration_pending is False
-    # The latter handles /commands (like /pull) that bypass hydration via clear_hydration_pending()
-    hydration = state.get("hydration", {})
-    state_data = state.get("state", {})
-    if hydration.get("hydrated_intent") or not state_data.get("hydration_pending", True):
+    # Use generic gate state checks which handle legacy fallback
+    if not is_hydration_pending(session_id):
         passed.add("hydration")
 
-    # Task gate: passed if current_task is set
-    # Note: current_task is in main_agent, not state
-    main_agent = state.get("main_agent", {})
-    if main_agent.get("current_task"):
+    if get_current_task(session_id):
         passed.add("task")
 
-    # Critic gate: passed if critic_invoked is set
-    if state_data.get("critic_invoked"):
+    if is_critic_invoked(session_id):
         passed.add("critic")
 
-    # QA gate: passed if qa_invoked is set
-    if state_data.get("qa_invoked"):
+    if is_qa_invoked(session_id):
         passed.add("qa")
 
-    # Handover gate: passed if handover_skill_invoked is set
-    if state_data.get("handover_skill_invoked"):
+    if is_handover_invoked(session_id):
         passed.add("handover")
 
-    # Custodiet gate: passed if not explicitly closed
-    # Default is open per gate_config.py:GATE_INITIAL_STATE
-    gates_state = state_data.get("gates", {})
-    if gates_state.get("custodiet") != "closed":
+    # Custodiet
+    if not is_custodiet_blocked(session_id):
         passed.add("custodiet")
 
     return passed
@@ -1017,6 +1174,9 @@ def set_handover_skill_invoked(session_id: str) -> None:
     Args:
         session_id: Claude Code session ID
     """
+    # Update generic gate state
+    set_gate_status(session_id, "handover", "open")
+
     state = get_or_create_session_state(session_id)
     state["state"]["handover_skill_invoked"] = True
     save_session_state(session_id, state)
@@ -1034,6 +1194,13 @@ def is_handover_skill_invoked(session_id: str) -> bool:
     Returns:
         True if gate is open (no handover required), False if closed (handover required)
     """
+    # Check generic gate state
+    status = get_gate_status(session_id, "handover")
+    if status == "open":
+        return True
+    elif status == "closed":
+        return False
+
     state = load_session_state(session_id)
     if state is None:
         # No state = no mutations = gate open
@@ -1051,6 +1218,9 @@ def clear_handover_skill_invoked(session_id: str) -> None:
     Args:
         session_id: Claude Code session ID
     """
+    # Update generic gate state
+    set_gate_status(session_id, "handover", "closed")
+
     state = load_session_state(session_id)
     if state is None:
         return
