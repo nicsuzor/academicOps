@@ -19,10 +19,16 @@ class TestUserPromptSubmit(unittest.TestCase):
         # Setup mock session state
         self.mock_state = MagicMock(spec=SessionState)
         self.mock_state.gates = {}
-        self.mock_state.hydration = MagicMock()
-        self.mock_state.hydration.original_prompt = None
-        self.mock_state.hydration.temp_path = None
-        self.mock_state.state = {} # Legacy dictionary
+        # We need to ensure get_gate returns a mock gate with metrics dict
+        self.mock_gate = MagicMock()
+        self.mock_gate.metrics = {}
+        self.mock_state.get_gate.return_value = self.mock_gate
+
+        # Legacy
+        self.mock_state.state = {}
+
+        # New global turn count
+        self.mock_state.global_turn_count = 0
 
     @patch("hooks.user_prompt_submit.get_hook_temp_dir")
     @patch("hooks.user_prompt_submit._write_temp")
@@ -86,8 +92,9 @@ class TestUserPromptSubmit(unittest.TestCase):
         self.mock_state.save.assert_called_once()
 
         # Verify hydration state set
-        self.assertEqual(self.mock_state.hydration.temp_path, self.temp_path)
-        self.assertEqual(self.mock_state.hydration.original_prompt, self.prompt)
+        self.mock_state.get_gate.assert_called_with("hydration")
+        self.assertEqual(self.mock_gate.metrics["temp_path"], self.temp_path)
+        self.assertEqual(self.mock_gate.metrics["original_prompt"], self.prompt)
 
         # Verify gate closed (pending hydration)
         self.mock_state.close_gate.assert_called_with("hydration")
@@ -103,7 +110,7 @@ class TestUserPromptSubmit(unittest.TestCase):
         # Verify
         mock_load.assert_called_with(self.session_id)
         self.mock_state.close_gate.assert_called_with("hydration")
-        self.assertEqual(self.mock_state.hydration.original_prompt, self.prompt)
+        self.assertEqual(self.mock_gate.metrics["original_prompt"], self.prompt)
         self.mock_state.save.assert_called_once()
 
     @patch("lib.session_state.SessionState.load")

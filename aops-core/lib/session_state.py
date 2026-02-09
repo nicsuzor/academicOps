@@ -17,35 +17,17 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import tempfile
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from lib.session_paths import get_session_file_path, get_session_short_hash, get_session_status_dir
-
-
-class GateState(BaseModel):
-    """State of a specific gate."""
-    status: str = "closed"  # open, closed
-    metadata: Dict[str, Any] = Field(default_factory=dict)
-    # Additional fields can be stored in metadata or added here if common
-    blocked: bool = False
-    block_reason: Optional[str] = None
-
-
-class HydrationState(BaseModel):
-    """Hydration-specific state."""
-    original_prompt: Optional[str] = None
-    hydrated_intent: Optional[str] = None
-    acceptance_criteria: List[str] = Field(default_factory=list)
-    critic_verdict: Optional[str] = None
-    turns_since_hydration: int = -1
-    turns_since_critic: int = -1
-    temp_path: Optional[str] = None
+from lib.gate_types import GateState, GateStatus
 
 
 class MainAgentState(BaseModel):
@@ -67,16 +49,19 @@ class SessionState(BaseModel):
     started_at: str  # ISO timestamp
     ended_at: Optional[str] = None
 
+    # Global turn counter (increments on user prompt)
+    global_turn_count: int = 0
+
     # Session type detection (polecat vs interactive)
     session_type: str = "interactive"
 
     # Execution state (legacy bag + structured)
-    # We keep 'state' dict for backward compatibility/generic storage during migration
     state: Dict[str, Any] = Field(default_factory=dict)
 
     # Structured components
     gates: Dict[str, GateState] = Field(default_factory=dict)
-    hydration: HydrationState = Field(default_factory=HydrationState)
+
+    # Main Agent / Task tracking (could move to 'task' gate metrics, but useful globally)
     main_agent: MainAgentState = Field(default_factory=MainAgentState)
 
     # Subagent tracking: agent_name -> data dict
@@ -105,21 +90,19 @@ class SessionState(BaseModel):
         )
 
         # Initialize default gate states
-        # hydration: closed
-        instance.gates["hydration"] = GateState(status="closed")
-        # task: open (initially)
-        instance.gates["task"] = GateState(status="open")
-        # critic: open
-        instance.gates["critic"] = GateState(status="open")
-        # custodiet: open
-        instance.gates["custodiet"] = GateState(status="open")
-        # qa: closed
-        instance.gates["qa"] = GateState(status="closed")
-        # handover: open
-        instance.gates["handover"] = GateState(status="open")
+        default_gates = {
+            "hydration": GateStatus.CLOSED,
+            "task": GateStatus.OPEN,
+            "critic": GateStatus.OPEN,
+            "custodiet": GateStatus.OPEN,
+            "qa": GateStatus.CLOSED,
+            "handover": GateStatus.OPEN,
+        }
+
+        for name, status in default_gates.items():
+            instance.gates[name] = GateState(status=status)
 
         # Initialize legacy flags in 'state' dict for compatibility if needed
-        # (Though we are removing legacy code, some hooks might access .state directly)
         instance.state["hydration_pending"] = True
         instance.state["handover_skill_invoked"] = True
 
@@ -153,13 +136,24 @@ class SessionState(BaseModel):
                             data = json.loads(text)
                             # Convert dict to Pydantic
                             return cls.model_validate(data)
-                        except json.JSONDecodeError:
+                        except json.JSONDecodeError as e:
                             if attempt < retries - 1:
                                 time.sleep(0.01)
                                 continue
-                            return cls.create(session_id) # Fallback to new? Or fail?
-                        except Exception:
-                            pass
+                            print(f"WARNING: SessionState JSON decode error: {e}", file=sys.stderr)
+                            # Return new state on failure to avoid blocking
+                            return cls.create(session_id)
+                        except ValidationError as e:
+                            print(f"WARNING: SessionState validation error: {e}", file=sys.stderr)
+                            # Schema mismatch -> Create new (migration via reset)
+                            return cls.create(session_id)
+                        except Exception as e:
+                            print(f"WARNING: SessionState load error: {e}", file=sys.stderr)
+                            # Unknown error -> Create new? Or retry?
+                            if attempt < retries - 1:
+                                time.sleep(0.01)
+                                continue
+                            return cls.create(session_id)
 
         # Not found, create new
         return cls.create(session_id)
@@ -194,18 +188,29 @@ class SessionState(BaseModel):
 
     def get_gate(self, name: str) -> GateState:
         if name not in self.gates:
-            self.gates[name] = GateState()
+            # Default to OPEN if unknown gate accessed, or create closed?
+            # Safer to default to OPEN (non-blocking) for unknown gates unless configured otherwise
+            self.gates[name] = GateState(status=GateStatus.OPEN)
         return self.gates[name]
 
     def is_gate_open(self, name: str) -> bool:
-        return self.get_gate(name).status == "open"
+        return self.get_gate(name).status == GateStatus.OPEN
 
     def open_gate(self, name: str):
         gate = self.get_gate(name)
-        gate.status = "open"
+        if gate.status != GateStatus.OPEN:
+            gate.status = GateStatus.OPEN
+            gate.last_open_ts = time.time()
+            gate.last_open_turn = self.global_turn_count
+            gate.ops_since_open = 0
+            # Don't reset ops_since_close, it's irrelevant now
         self.gates[name] = gate
 
     def close_gate(self, name: str):
         gate = self.get_gate(name)
-        gate.status = "closed"
+        if gate.status != GateStatus.CLOSED:
+            gate.status = GateStatus.CLOSED
+            gate.last_close_ts = time.time()
+            gate.last_close_turn = self.global_turn_count
+            gate.ops_since_close = 0
         self.gates[name] = gate

@@ -12,33 +12,18 @@ from typing import TYPE_CHECKING
 
 from hooks.schemas import HookContext
 from hooks.unified_logger import get_hook_log_path
-from lib import hook_utils, session_paths, session_state
+from lib import hook_utils, session_paths
 from lib.gate_model import GateResult, GateVerdict
-from lib.gates.critic import CriticGate
-from lib.gates.custodiet import CustodietGate
-from lib.gates.handover import HandoverGate
-from lib.gates.hydration import HydrationGate
-from lib.gates.qa import QaGate
 from lib.gates.registry import GateRegistry
-from lib.gates.task import TaskGate
 from lib.session_state import SessionState
 
 if TYPE_CHECKING:
     pass
 
-TEMPLATES_DIR = Path(__file__).parent / "templates"
-
 
 def _ensure_initialized() -> None:
     """Initialize gate registry if needed."""
-    if not GateRegistry._initialized:
-        GateRegistry.register(HydrationGate())
-        GateRegistry.register(TaskGate())
-        GateRegistry.register(CustodietGate())
-        GateRegistry.register(CriticGate())
-        GateRegistry.register(QaGate())
-        GateRegistry.register(HandoverGate())
-        GateRegistry._initialized = True
+    GateRegistry.initialize()
 
 
 def check_tool_gate(ctx: HookContext, state: SessionState) -> GateResult:
@@ -52,7 +37,7 @@ def check_tool_gate(ctx: HookContext, state: SessionState) -> GateResult:
     # Iterate all gates
     # First deny wins
     for gate in GateRegistry.get_all_gates():
-        result = gate.check(ctx, state) # type: ignore
+        result = gate.check(ctx, state)
         if result and result.verdict == GateVerdict.DENY:
             return result
         if result and result.verdict == GateVerdict.WARN:
@@ -69,7 +54,7 @@ def update_gate_state(ctx: HookContext, state: SessionState) -> GateResult | Non
     messages = []
     
     for gate in GateRegistry.get_all_gates():
-        result = gate.on_tool_use(ctx, state) # type: ignore
+        result = gate.on_tool_use(ctx, state)
         if result and result.system_message:
             messages.append(result.system_message)
 
@@ -87,7 +72,7 @@ def on_user_prompt(ctx: HookContext, state: SessionState) -> GateResult | None:
     context_injections = []
 
     for gate in GateRegistry.get_all_gates():
-        result = gate.on_user_prompt(ctx, state) # type: ignore
+        result = gate.on_user_prompt(ctx, state)
         if result:
             if result.system_message:
                 messages.append(result.system_message)
@@ -114,11 +99,7 @@ def on_session_start(ctx: HookContext, state: SessionState) -> GateResult | None
     hook_log_path = get_hook_log_path(ctx.session_id, ctx.raw_input)
     state_file_path = session_paths.get_session_file_path(ctx.session_id, input_data=ctx.raw_input)
 
-    # Note: State is already created/loaded by Router before calling this
-    # We just need to check if the file exists (Router saved it)
     if not state_file_path.exists():
-         # Re-save to ensure it exists? Router will save at end.
-         # But we want to fail fast if we CANNOT save.
          try:
              state.save()
          except OSError as e:
@@ -171,7 +152,7 @@ def on_session_start(ctx: HookContext, state: SessionState) -> GateResult | None
     ]
 
     for gate in GateRegistry.get_all_gates():
-        result = gate.on_session_start(ctx, state) # type: ignore
+        result = gate.on_session_start(ctx, state)
         if result and result.system_message:
             messages.append(result.system_message)
 
@@ -183,8 +164,11 @@ def check_stop_gate(ctx: HookContext, state: SessionState) -> GateResult | None:
     _ensure_initialized()
 
     for gate in GateRegistry.get_all_gates():
-        result = gate.on_stop(ctx, state) # type: ignore
+        result = gate.on_stop(ctx, state)
         if result and result.verdict == GateVerdict.DENY:
+            return result
+        # Also return warnings?
+        if result and result.verdict == GateVerdict.WARN:
             return result
 
     return None
@@ -198,7 +182,7 @@ def on_after_agent(ctx: HookContext, state: SessionState) -> GateResult | None:
     context_injections = []
 
     for gate in GateRegistry.get_all_gates():
-        result = gate.on_after_agent(ctx, state) # type: ignore
+        result = gate.on_after_agent(ctx, state)
         if result:
             if result.system_message:
                 messages.append(result.system_message)
@@ -213,14 +197,14 @@ def on_after_agent(ctx: HookContext, state: SessionState) -> GateResult | None:
 
     return None
 
-def check_subagent_stop(ctx: HookContext, state: SessionState) -> GateResult | None:
+def on_subagent_stop(ctx: HookContext, state: SessionState) -> GateResult | None:
     """SubagentStop: Notify all gates."""
     _ensure_initialized()
 
     messages = []
 
     for gate in GateRegistry.get_all_gates():
-        result = gate.on_subagent_stop(ctx, state) # type: ignore
+        result = gate.on_subagent_stop(ctx, state)
         if result and result.system_message:
             messages.append(result.system_message)
 
@@ -228,23 +212,3 @@ def check_subagent_stop(ctx: HookContext, state: SessionState) -> GateResult | N
         return GateResult.allow(system_message="\n".join(messages))
 
     return None
-
-# =============================================================================
-# HELPERS (Legacy/Shared)
-# =============================================================================
-
-def _create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path | None:
-    """Create rich audit file for gate using TemplateRegistry."""
-    pass
-
-def open_gate(session_id: str, gate: str) -> None:
-    """Open a gate (Legacy/Testing Wrapper)."""
-    state = SessionState.load(session_id)
-    state.open_gate(gate)
-    state.save()
-
-def close_gate(session_id: str, gate: str) -> None:
-    """Close a gate (Legacy/Testing Wrapper)."""
-    state = SessionState.load(session_id)
-    state.close_gate(gate)
-    state.save()

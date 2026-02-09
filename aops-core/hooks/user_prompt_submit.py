@@ -640,10 +640,13 @@ def write_initial_hydrator_state(
     """
     state = SessionState.load(session_id)
 
+    # Increment global turn counter
+    state.global_turn_count += 1
+
     if hydration_pending:
         # pending = close gate
         state.close_gate("hydration")
-        state.hydration.original_prompt = prompt
+        state.get_gate("hydration").metrics["original_prompt"] = prompt
         # Also set legacy flag for compatibility if needed (though we're moving away from it)
         if "hydration_pending" in state.state:
             state.state["hydration_pending"] = True
@@ -780,12 +783,17 @@ def build_hydration_instruction(
     # We do this in one go to avoid race conditions/multiple writes
     state = SessionState.load(session_id)
 
-    # Set temp path
-    state.hydration.temp_path = str(temp_path)
+    # Increment global turn counter
+    state.global_turn_count += 1
+
+    # Set temp path in metrics
+    gate = state.get_gate("hydration")
+    gate.metrics["temp_path"] = str(temp_path)
+    gate.metrics["original_prompt"] = prompt
 
     # Close gate (pending hydration)
     state.close_gate("hydration")
-    state.hydration.original_prompt = prompt
+
     if "hydration_pending" in state.state:
         state.state["hydration_pending"] = True
 

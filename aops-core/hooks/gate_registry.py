@@ -13,7 +13,7 @@ from lib.session_state import SessionState
 # Import unified gate functions from gates.py
 from hooks.gates import (
     check_stop_gate as _check_stop_gate,
-    check_subagent_stop as _check_subagent_stop,
+    on_subagent_stop as _on_subagent_stop,
     check_tool_gate as _check_tool_gate,
     on_after_agent as _on_after_agent,
     on_session_start as _on_session_start,
@@ -175,8 +175,8 @@ GATE_CHECKS = {
     # AfterAgent
     "agent_response": _on_after_agent,
 
-    # SubagentStop (New mapping)
-    "subagent_stop": _check_subagent_stop,
+    # SubagentStop
+    "subagent_stop": _on_subagent_stop,
 
     # Stop
     "stop_gate": _check_stop_gate,

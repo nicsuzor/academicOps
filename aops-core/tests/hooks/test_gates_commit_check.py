@@ -3,13 +3,17 @@ from unittest.mock import MagicMock, patch
 
 from hooks.schemas import HookContext
 from lib.gate_model import GateResult, GateVerdict
-from lib.gates.custodiet import CustodietGate
+from lib.gates.engine import GenericGate
+from lib.gates.definitions import GATE_CONFIGS
 from lib.session_state import SessionState
+from lib.gate_types import GateStatus
 
+# Find custodiet config
+CUSTODIET_CONFIG = next(c for c in GATE_CONFIGS if c.name == "custodiet")
 
 class TestCustodietGateCommitCheck(unittest.TestCase):
     def setUp(self):
-        self.gate = CustodietGate()
+        self.gate = GenericGate(CUSTODIET_CONFIG)
         self.state = SessionState.create("test-session")
         self.ctx = HookContext(
             session_id="test-session",
@@ -17,7 +21,7 @@ class TestCustodietGateCommitCheck(unittest.TestCase):
             raw_input={"transcript_path": "/tmp/transcript.jsonl"}
         )
 
-    @patch("lib.gates.custodiet.check_uncommitted_work")
+    @patch("hooks.session_end_commit_check.check_uncommitted_work")
     def test_on_stop_blocking(self, mock_check):
         # Setup mock return value
         mock_result = MagicMock()
@@ -32,10 +36,11 @@ class TestCustodietGateCommitCheck(unittest.TestCase):
         # Verify result
         self.assertIsNotNone(result)
         self.assertEqual(result.verdict, GateVerdict.DENY)
+        # Check system message (resolved from {block_reason} metric)
+        # Note: check_custom_condition sets the metric.
         self.assertIn("Uncommitted changes detected", result.system_message)
-        self.assertIn("Uncommitted changes detected", result.context_injection)
 
-    @patch("lib.gates.custodiet.check_uncommitted_work")
+    @patch("hooks.session_end_commit_check.check_uncommitted_work")
     def test_on_stop_reminder(self, mock_check):
         # Setup mock return value
         mock_result = MagicMock()
@@ -49,10 +54,10 @@ class TestCustodietGateCommitCheck(unittest.TestCase):
 
         # Verify result
         self.assertIsNotNone(result)
-        self.assertEqual(result.verdict, GateVerdict.ALLOW)
+        self.assertEqual(result.verdict, GateVerdict.WARN)
         self.assertIn("Reminder: Unpushed commits", result.system_message)
 
-    @patch("lib.gates.custodiet.check_uncommitted_work")
+    @patch("hooks.session_end_commit_check.check_uncommitted_work")
     def test_on_stop_clean(self, mock_check):
         # Setup mock return value
         mock_result = MagicMock()

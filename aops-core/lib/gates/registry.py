@@ -1,24 +1,24 @@
-from lib.gates.base import Gate
+from lib.gates.engine import GenericGate
 
 
 class GateRegistry:
     """Registry for all active gates."""
 
-    _gates: dict[str, Gate] = {}
+    _gates: dict[str, GenericGate] = {}
     _initialized: bool = False
 
     @classmethod
-    def register(cls, gate: Gate) -> None:
+    def register(cls, gate: GenericGate) -> None:
         """Register a gate instance."""
         cls._gates[gate.name] = gate
 
     @classmethod
-    def get_gate(cls, name: str) -> Gate | None:
+    def get_gate(cls, name: str) -> GenericGate | None:
         """Get a gate by name."""
         return cls._gates.get(name)
 
     @classmethod
-    def get_all_gates(cls) -> list[Gate]:
+    def get_all_gates(cls) -> list[GenericGate]:
         """Get all registered gates."""
         return list(cls._gates.values())
 
@@ -28,12 +28,10 @@ class GateRegistry:
         if cls._initialized:
             return
 
-        # Import all gate modules to trigger registration
-        # This is where we'll add imports as we create the gate classes
-        # from lib.gates.hydration import HydrationGate
-        # cls.register(HydrationGate())
-        # ...
+        from lib.gates.definitions import GATE_CONFIGS
+        from lib.gates.engine import GenericGate
 
-        # For now, we'll leave it empty and populate it as we implement gates
-        # We can also use a dynamic import if needed, but explicit is better.
-        pass
+        for config in GATE_CONFIGS:
+            cls.register(GenericGate(config))
+
+        cls._initialized = True
