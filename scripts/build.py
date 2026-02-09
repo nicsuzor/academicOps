@@ -883,7 +883,7 @@ def create_git_tags(aops_root: Path, version: str):
     """Create git tags for release: v{version} and latest.
 
     Tags are created pointing to HEAD. If tags already exist, they are updated.
-    Note: Tags are local only - push with `git push origin v{version} latest` to publish.
+    Note: Tags are local only - push atomically with the branch (e.g., `git push origin main v{version} latest`) to publish.
     """
     print("\nCreating git tags...")
 
@@ -913,7 +913,14 @@ def create_git_tags(aops_root: Path, version: str):
     else:
         print(f"  ✗ Failed to create tag latest: {result.stderr}")
 
-    print("  Note: Push tags with: git push origin --tags")
+    branch = subprocess.run(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+        cwd=aops_root,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+    print(f"  Note: Push atomically with: git push origin {branch} {version_tag} latest")
 
 
 if __name__ == "__main__":

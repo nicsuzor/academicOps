@@ -6,6 +6,10 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
+concurrency:
+  group: build-deploy-nicsuzor-aops-dist
+  cancel-in-progress: false
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -142,7 +146,9 @@ jobs:
           # Commit and push
           git add -A
           git commit -m "Release v$VERSION from academicOps@${{ github.sha }}" || echo "No changes to commit"
-          git push
+          git fetch origin main
+          git rebase origin/main
+          git push origin main
 
       - name: Create GitHub Release on dist repo
         if: steps.check_version.outputs.version_changed == 'true'

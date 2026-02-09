@@ -14,8 +14,12 @@ nextver:
 release:
 	@current=$$(uv run python scripts/build.py --version); \
 	next=$$(echo $$current | awk -F. '{print $$1 "." $$2 "." $$3+1}'); \
-	echo "Releasing v$$next..."; \
-	git tag "v$$next" && git push origin "v$$next" && echo "✓ Released v$$next"
+	branch=$$(git rev-parse --abbrev-ref HEAD); \
+	echo "Releasing v$$next on $$branch..."; \
+	git tag "v$$next" && \
+	git fetch origin "$$branch" && \
+	git push origin "$$branch" "v$$next" && \
+	echo "✓ Released v$$next"
 
 # Install aops plugin for both Claude Code and Gemini CLI
 install: install-claude install-gemini
