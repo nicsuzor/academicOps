@@ -54,7 +54,9 @@ jobs:
             # Bump patch and append pre-release suffix so each build has a unique,
             # incrementing version that clients will pick up as an update.
             # Uses semver pre-release format: X.Y.Z-testing.N
-            NEXT_PATCH=$(echo "$BASE_VERSION" | awk -F. '{print $1 "." $2 "." $3+1}')
+            # Strip any existing pre-release suffix (e.g. 0.1.15-rc.1 -> 0.1.15)
+            CLEAN_VERSION=$(echo "$BASE_VERSION" | sed 's/[-+].*//')
+            NEXT_PATCH=$(echo "$CLEAN_VERSION" | awk -F. '{print $1 "." $2 "." $3+1}')
             VERSION="${NEXT_PATCH}-testing.${{ github.run_number }}"
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "Testing version: $VERSION (base: $BASE_VERSION)"
@@ -163,7 +165,8 @@ jobs:
           # For testing builds, mark gemini-extension.json as pre-release
           if [ "$RELEASE_TYPE" = "testing" ]; then
             python3 << EOF
-          import json, os
+          import json
+          import os
           version = os.environ['VERSION']
           path = 'aops-gemini/gemini-extension.json'
           with open(path, 'r') as f:
