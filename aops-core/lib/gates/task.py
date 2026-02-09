@@ -1,7 +1,6 @@
 from typing import Any
 
 from hooks.schemas import HookContext
-from lib import session_state as session_state_lib
 from lib.gate_model import GateResult, GateVerdict
 from lib.gates.base import Gate
 from lib.session_state import SessionState
@@ -28,7 +27,7 @@ class TaskGate(Gate):
             return None
 
         # Check if task is bound
-        if session_state_lib.get_current_task(context.session_id):
+        if session_state.main_agent.current_task:
             return None
 
         # Task not bound - Block
@@ -38,7 +37,6 @@ class TaskGate(Gate):
         """PostToolUse: Detect task binding/unbinding and track subagents."""
 
         # --- Subagent Tracking ---
-        # Track subagent invocations for stop gate (checks has_run_subagents)
         tool_input = context.tool_input or {}
         tool_name = context.tool_name or ""
 
@@ -48,7 +46,6 @@ class TaskGate(Gate):
             or tool_input.get("skill")
             or tool_input.get("name")
         )
-        # Gemini direct MCP: tool_name IS the agent
         if not subagent_type and tool_name not in (
             "Task",
             "Skill",
@@ -58,19 +55,16 @@ class TaskGate(Gate):
             subagent_type = tool_name
 
         if subagent_type:
-            try:
-                subagents = session_state.setdefault("subagents", {})
-                # Handle potential mixed types (legacy int count vs dict)
-                current = subagents.get(subagent_type, 0)
-                if isinstance(current, int):
-                    subagents[subagent_type] = current + 1
-                else:
-                    # If it's a dict (from record_subagent_invocation), just keep it there
-                    pass
+            current = session_state.subagents.get(subagent_type, {})
+            # Initialize if empty
+            if not current:
+                current = {"invocations": 0}
 
-                session_state_lib.save_session_state(context.session_id, session_state)
-            except Exception:
-                pass
+            # Increment
+            invocations = current.get("invocations", 0)
+            current["invocations"] = invocations + 1
+
+            session_state.subagents[subagent_type] = current
 
         # --- Task Binding ---
         try:
@@ -84,9 +78,9 @@ class TaskGate(Gate):
         changes = detect_tool_state_changes(tool_name, tool_input, tool_result)
 
         if StateChange.UNBIND_TASK in changes:
-            current = session_state_lib.get_current_task(context.session_id)
+            current = session_state.main_agent.current_task
             if current:
-                session_state_lib.clear_current_task(context.session_id)
+                session_state.main_agent.current_task = None
                 return GateResult(
                     verdict=GateVerdict.ALLOW,
                     system_message=f"Task completed and unbound from session: {current}",
@@ -99,14 +93,15 @@ class TaskGate(Gate):
                 return None
 
             source = "claim"
-            current = session_state_lib.get_current_task(context.session_id)
+            current = session_state.main_agent.current_task
             if current and current != task_id:
                 return GateResult(
                     verdict=GateVerdict.ALLOW,
                     system_message=f"Note: Session already bound to task {current}, ignoring {task_id}",
                 )
 
-            session_state_lib.set_current_task(context.session_id, task_id, source=source)
+            session_state.main_agent.current_task = task_id
+            session_state.main_agent.task_binding_source = source
             return GateResult(
                 verdict=GateVerdict.ALLOW,
                 system_message=f"Task bound to session: {task_id}",
@@ -114,13 +109,26 @@ class TaskGate(Gate):
 
         return None
 
+    def on_subagent_stop(self, context: HookContext, session_state: SessionState) -> GateResult | None:
+        """SubagentStop: Update subagent stats."""
+        # unified_logger handles recording invocation details (output, duration)
+        # TaskGate just tracks existence/counts if not handled in on_tool_use.
+        # But on_tool_use handles the *start*. SubagentStop handles the *end*.
+
+        # We can update the subagent record with result details
+        subagent_type = context.subagent_type or ""
+        if subagent_type and subagent_type in session_state.subagents:
+            data = session_state.subagents[subagent_type]
+            # Store last result snippet?
+            # Unified logger does this better.
+            # I'll leave this empty unless we need specific state updates.
+            pass
+        return None
+
     def on_user_prompt(self, context: HookContext, session_state: SessionState) -> GateResult | None:
-        """UserPromptSubmit: No-op (Task binding persists)."""
         return None
 
     def on_session_start(self, context: HookContext, session_state: SessionState) -> GateResult | None:
-        """SessionStart: Initialize task state."""
-        # Task starts unbound (None)
         return None
 
     def _create_block_result(self, context: HookContext) -> GateResult:

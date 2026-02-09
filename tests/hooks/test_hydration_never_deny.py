@@ -17,6 +17,17 @@ from hooks.gate_config import TOOL_CATEGORIES, get_tool_category
 from hooks.gates import check_tool_gate
 from hooks.schemas import HookContext
 from lib.gate_model import GateVerdict
+from lib.session_state import SessionState
+
+
+# Helper to mock session state loading
+@pytest.fixture
+def mock_session_state():
+    with patch("lib.session_state.SessionState.load") as mock_load:
+        # Create a real Pydantic object
+        state = SessionState.create("test-session-123")
+        mock_load.return_value = state
+        yield state, mock_load
 
 
 class TestActivateSkillAlwaysAvailable:
@@ -50,8 +61,13 @@ class TestAskUserQuestionAlwaysAvailable:
         """get_tool_category should return always_available for AskUserQuestion."""
         assert get_tool_category("AskUserQuestion") == "always_available"
 
-    def test_ask_user_question_allowed_without_hydration(self):
+    def test_ask_user_question_allowed_without_hydration(self, mock_session_state):
         """AskUserQuestion should be allowed even without hydration."""
+        state, _ = mock_session_state
+        # Ensure hydration is closed
+        state.gates["hydration"].status = "closed"
+        state.state["hydration_pending"] = True
+
         ctx = HookContext(
             session_id="test-session-123",
             hook_event="PreToolUse",
@@ -68,15 +84,21 @@ class TestAskUserQuestionAlwaysAvailable:
             },
         )
 
-        with (
-            patch("lib.session_state.is_hydrator_active", return_value=False),
-            # Mock is_hydration_pending to return True (gate closed)
-            patch("lib.session_state.is_hydration_pending", return_value=True),
-        ):
-            result = check_tool_gate(ctx)
+        # check_tool_gate no longer takes state argument when called via import?
+        # Wait, check_tool_gate in hooks/gates.py takes (ctx, state) or just ctx?
+        # In my refactor: `def check_tool_gate(ctx: HookContext) -> GateResult:`
+        # It calls `session_state.load_session_state(ctx.session_id)`.
+        # BUT I changed it to `def check_tool_gate(ctx: HookContext) -> GateResult:` in the *legacy* dispatcher signature?
+        # NO, I changed it to `def check_tool_gate(ctx: HookContext, state: SessionState) -> GateResult:` in the *new* dispatcher.
+        # But wait, `router.py` calls it with `(ctx, state)`.
 
-            # Should allow because AskUserQuestion is always_available
-            assert result.verdict == GateVerdict.ALLOW
+        # However, `gate_registry.py` imports it.
+        # If I import it directly from `hooks.gates`, I need to pass state.
+
+        result = check_tool_gate(ctx, state)
+
+        # Should allow because AskUserQuestion is always_available
+        assert result.verdict == GateVerdict.ALLOW
 
 
 class TestActivateSkillNeverBlocked:
@@ -92,33 +114,36 @@ class TestActivateSkillNeverBlocked:
             tool_input={"name": "prompt-hydrator"},
         )
 
-    def test_activate_skill_allowed_without_hydration(self, mock_context):
+    def test_activate_skill_allowed_without_hydration(self, mock_context, mock_session_state):
         """activate_skill should be allowed even without hydration."""
-        with (
-            patch("lib.session_state.is_hydrator_active", return_value=False),
-            patch("lib.session_state.is_hydration_pending", return_value=True),
-        ):
-            result = check_tool_gate(mock_context)
+        state, _ = mock_session_state
+        state.gates["hydration"].status = "closed"
+        state.state["hydration_pending"] = True
 
-            # Should allow because activate_skill is always_available
-            assert result.verdict == GateVerdict.ALLOW
+        result = check_tool_gate(mock_context, state)
 
-    def test_activate_skill_allowed_when_hydration_pending(self, mock_context):
+        # Should allow because activate_skill is always_available
+        assert result.verdict == GateVerdict.ALLOW
+
+    def test_activate_skill_allowed_when_hydration_pending(self, mock_context, mock_session_state):
         """activate_skill should be allowed even when hydration is pending."""
-        with (
-            patch("lib.session_state.is_hydrator_active", return_value=False),
-            patch("lib.session_state.is_hydration_pending", return_value=True),
-        ):
-            result = check_tool_gate(mock_context)
+        state, _ = mock_session_state
+        state.gates["hydration"].status = "closed"
+        state.state["hydration_pending"] = True
 
-            assert result.verdict == GateVerdict.ALLOW
+        result = check_tool_gate(mock_context, state)
+
+        assert result.verdict == GateVerdict.ALLOW
 
 
 class TestHydratorActiveBypass:
     """Test that when hydrator is active, all tools are allowed."""
 
-    def test_read_tool_allowed_when_hydrator_active(self):
+    def test_read_tool_allowed_when_hydrator_active(self, mock_session_state):
         """Read tool should be allowed when hydrator is active."""
+        state, _ = mock_session_state
+        state.state["hydrator_active"] = True
+
         ctx = HookContext(
             session_id="test-session-123",
             hook_event="PreToolUse",
@@ -126,13 +151,15 @@ class TestHydratorActiveBypass:
             tool_input={"file_path": "/some/file.py"},
         )
 
-        with patch("lib.session_state.is_hydrator_active", return_value=True):
-            result = check_tool_gate(ctx)
+        result = check_tool_gate(ctx, state)
 
-            assert result.verdict == GateVerdict.ALLOW
+        assert result.verdict == GateVerdict.ALLOW
 
-    def test_write_tool_allowed_when_hydrator_active(self):
+    def test_write_tool_allowed_when_hydrator_active(self, mock_session_state):
         """Write tool should be allowed when hydrator is active."""
+        state, _ = mock_session_state
+        state.state["hydrator_active"] = True
+
         ctx = HookContext(
             session_id="test-session-123",
             hook_event="PreToolUse",
@@ -140,17 +167,19 @@ class TestHydratorActiveBypass:
             tool_input={"file_path": "/some/file.py", "content": "test"},
         )
 
-        with patch("lib.session_state.is_hydrator_active", return_value=True):
-            result = check_tool_gate(ctx)
+        result = check_tool_gate(ctx, state)
 
-            assert result.verdict == GateVerdict.ALLOW
+        assert result.verdict == GateVerdict.ALLOW
 
 
 class TestTaskHydratorSpawn:
     """Test that Task tool with hydrator subagent is allowed and sets active."""
 
-    def test_task_hydrator_allowed_and_sets_active(self):
+    def test_task_hydrator_allowed_and_sets_active(self, mock_session_state):
         """Task with hydrator subagent should be allowed."""
+        state, _ = mock_session_state
+        state.gates["hydration"].status = "closed"
+
         ctx = HookContext(
             session_id="test-session-123",
             hook_event="PreToolUse",
@@ -161,24 +190,24 @@ class TestTaskHydratorSpawn:
             },
         )
 
-        with (
-            patch("lib.session_state.is_hydrator_active", return_value=False),
-            patch("lib.session_state.is_hydration_pending", return_value=True),
-            # Note: set_hydrator_active is called in on_tool_use, not check.
-            # But check calls clear_hydration_pending.
-            patch("lib.session_state.clear_hydration_pending") as mock_clear,
-        ):
-            result = check_tool_gate(ctx)
+        result = check_tool_gate(ctx, state)
 
-            assert result.verdict == GateVerdict.ALLOW
-            mock_clear.assert_called_once_with("test-session-123")
+        assert result.verdict == GateVerdict.ALLOW
+        # Note: Hydrator active flag is set in on_tool_use, not check.
+        # But gate should be opened (cleared) if spawning.
+        assert state.gates["hydration"].status == "open"
 
 
 class TestReadToolBlockedWithoutHydration:
     """Test that read tools are blocked without hydration (when hydrator not active)."""
 
-    def test_read_blocked_when_hydration_not_passed(self):
+    def test_read_blocked_when_hydration_not_passed(self, mock_session_state):
         """Read should be blocked when hydration gate is not passed."""
+        state, _ = mock_session_state
+        state.gates["hydration"].status = "closed"
+        state.state["hydrator_active"] = False
+        state.state["hydration_pending"] = True
+
         ctx = HookContext(
             session_id="test-session-123",
             hook_event="PreToolUse",
@@ -186,19 +215,23 @@ class TestReadToolBlockedWithoutHydration:
             tool_input={"file_path": "/some/file.py"},
         )
 
-        with (
-            patch("lib.session_state.is_hydrator_active", return_value=False),
-            # Gate closed (pending)
-            patch("lib.session_state.is_hydration_pending", return_value=True),
-            patch("lib.gate_utils.create_audit_file", return_value=None),
-        ):
-            result = check_tool_gate(ctx)
+        # Mock audit file creation to avoid IO error
+        with patch("lib.gates.hydration.HydrationGate._create_block_result") as mock_block:
+            from lib.gate_model import GateResult
+            mock_block.return_value = GateResult.deny("Blocked")
+
+            result = check_tool_gate(ctx, state)
 
             # Should block or warn because hydration is required for read_only
             assert result.verdict in (GateVerdict.DENY, GateVerdict.WARN)
 
-    def test_read_allowed_when_hydration_passed(self):
+    def test_read_allowed_when_hydration_passed(self, mock_session_state):
         """Read should be allowed when hydration gate is passed."""
+        state, _ = mock_session_state
+        state.gates["hydration"].status = "open"
+        state.state["hydrator_active"] = False
+        state.state["hydration_pending"] = False
+
         ctx = HookContext(
             session_id="test-session-123",
             hook_event="PreToolUse",
@@ -206,11 +239,6 @@ class TestReadToolBlockedWithoutHydration:
             tool_input={"file_path": "/some/file.py"},
         )
 
-        with (
-            patch("lib.session_state.is_hydrator_active", return_value=False),
-            # Gate open
-            patch("lib.session_state.is_hydration_pending", return_value=False),
-        ):
-            result = check_tool_gate(ctx)
+        result = check_tool_gate(ctx, state)
 
-            assert result.verdict == GateVerdict.ALLOW
+        assert result.verdict == GateVerdict.ALLOW

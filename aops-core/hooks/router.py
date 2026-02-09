@@ -7,9 +7,10 @@ Consolidates multiple hooks per event into a single invocation.
 Manages session persistence for Gemini.
 
 Architecture:
-- Gate functions are imported directly from gate_registry.py
-- GateResult objects used internally, converted to JSON only at final output
-- Shell scripts (session_env_setup.sh) still executed via subprocess
+- Loads Pydantic SessionState object at start.
+- Passes SessionState to all gates via gate_registry.
+- Saves SessionState at end.
+- GateResult objects used internally, converted to JSON only at final output.
 """
 
 import json
@@ -33,9 +34,6 @@ if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
 try:
-    from lib.gate_model import GateResult
-    from lib.session_paths import get_pid_session_map_path, get_session_status_dir
-
     from hooks.gate_config import (
         GATE_EXECUTION_ORDER,
         MAIN_AGENT_ONLY_GATES,
@@ -52,7 +50,9 @@ try:
         HookContext,
     )
     from hooks.unified_logger import log_hook_event
-    from lib import session_state
+    from lib.gate_model import GateResult
+    from lib.session_paths import get_pid_session_map_path, get_session_status_dir
+    from lib.session_state import SessionState
 except ImportError as e:
     # Fail fast if schemas missing
     print(f"CRITICAL: Failed to import: {e}", file=sys.stderr)
@@ -71,15 +71,12 @@ GEMINI_EVENT_MAP = {
     "SessionEnd": "Stop",  # Map SessionEnd to Stop to trigger stop gates
     "Notification": "Notification",
     "PreCompress": "PreCompact",
+    "SubagentStop": "SubagentStop", # Explicit mapping if Gemini sends it
 }
-
-# Gate configuration is now in gate_config.py
-# GATE_EXECUTION_ORDER and MAIN_AGENT_ONLY_GATES imported from there
-
 
 # --- Gate Status Display ---
 GATE_ICONS = {
-    "hydration": ("🫗", "."),  # open: not needed
+    "hydration": ("🫗", "."),
     "task": ("📎", "."),
     "critic": ("👁", "."),
     "custodiet": ("🛡", "."),
@@ -88,71 +85,26 @@ GATE_ICONS = {
 }
 
 
-def format_gate_status_icons(session_id: str) -> str:
+def format_gate_status_icons(state: SessionState) -> str:
     """Format current gate statuses as a compact icon line.
 
-    Shows only BLOCKING gates (closed state) for a clean display.
-    When all gates are open, shows a simple ready indicator.
-
-    Args:
-        session_id: Session ID to check gates for
-
-    Returns:
-        Formatted status line with icons showing which gates are blocking (closed) vs open.
-
-    Raises:
-        ValueError: If session state cannot be loaded (fail fast)
+    Uses the loaded SessionState object.
     """
-    state = session_state.load_session_state(session_id)
-    if not state:
-        raise ValueError(f"Cannot load session state for {session_id}")
-
-    state_data = state.get("state", {})
-    gates_state = state_data.get("gates", {})
-
     # Collect blocking (closed) gates
     blocking_gates = []
 
-    # Check each gate - uses gates state dict if available, falls back to legacy checks
-    # Hydration: closed if pending
-    hydration_pending = state_data.get("hydration_pending", True)
-    if gates_state.get("hydration") == "closed" or hydration_pending:
-        blocking_gates.append("hydration")
-
-    # Task: closed if no current task bound
-    task_bound = state.get("main_agent", {}).get("current_task") is not None
-    if gates_state.get("task") == "closed" or ("task" not in gates_state and not task_bound):
-        # Only show task as blocking if gates dict says so, or if explicitly unbound
-        # Default is open per GATE_INITIAL_STATE
-        if gates_state.get("task") == "closed":
-            blocking_gates.append("task")
-
-    # Critic: check gates state (default open per GATE_INITIAL_STATE)
-    if gates_state.get("critic") == "closed":
-        blocking_gates.append("critic")
-
-    # Custodiet: check gates state (default open per GATE_INITIAL_STATE)
-    if gates_state.get("custodiet") == "closed":
-        blocking_gates.append("custodiet")
-
-    # QA: closed by default, opens when QA is invoked
-    qa_invoked = state_data.get("qa_invoked", False)
-    if gates_state.get("qa") == "closed" or ("qa" not in gates_state and not qa_invoked):
-        blocking_gates.append("qa")
-
-    # Handover: check gates state or legacy flag
-    handover_ok = state_data.get("handover_skill_invoked", False)
-    if gates_state.get("handover") == "closed" or (
-        "handover" not in gates_state and not handover_ok
-    ):
-        # Only show if explicitly closed - default is open per GATE_INITIAL_STATE
-        if gates_state.get("handover") == "closed":
-            blocking_gates.append("handover")
+    # Iterate known gates
+    for gate_name in GATE_ICONS.keys():
+        gate_state = state.gates.get(gate_name)
+        if not gate_state or gate_state.status == "closed":
+            blocking_gates.append(gate_name)
+        elif gate_state.blocked: # Explicit block
+            blocking_gates.append(gate_name)
 
     # Format output
-    blocking_gates = set(blocking_gates)
-    open_gates = set(GATE_ICONS.keys()) - blocking_gates
-    blocking_icons = " ".join([GATE_ICONS[g][0] for g in blocking_gates])
+    blocking_set = set(blocking_gates)
+    open_gates = set(GATE_ICONS.keys()) - blocking_set
+    blocking_icons = " ".join([GATE_ICONS[g][0] for g in blocking_set])
     open_icons = " ".join([GATE_ICONS[g][1] for g in open_gates])
 
     return f"[{blocking_icons}  ✓ {open_icons}]"
@@ -269,18 +221,7 @@ class HookRouter:
 
     @staticmethod
     def _normalize_json_field(value: Any) -> Any:
-        """Normalize a field that may be a JSON string to its parsed form.
-
-        Gemini CLI sometimes passes tool_input and tool_result as JSON strings
-        instead of dicts. This centralizes parsing so downstream gates don't need
-        defensive json.loads calls.
-
-        Args:
-            value: Value that may be a JSON string or already-parsed dict/list
-
-        Returns:
-            Parsed value if it was a JSON string, otherwise unchanged
-        """
+        """Normalize a field that may be a JSON string to its parsed form."""
         if isinstance(value, str):
             try:
                 return json.loads(value)
@@ -328,7 +269,6 @@ class HookRouter:
             persist_session_data({"session_id": session_id})
 
         # 4. Normalize JSON string fields from Gemini
-        # Gemini sometimes passes tool_input/tool_result as JSON strings
         tool_input = self._normalize_json_field(raw_input.get("tool_input", {}))
         if not isinstance(tool_input, dict):
             tool_input = {}
@@ -344,7 +284,9 @@ class HookRouter:
             tool_output = self._normalize_json_field(raw_tool_output)
         elif "subagent_result" in raw_input:
             tool_output = self._normalize_json_field(raw_input["subagent_result"])
+
         subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE")
+
         return HookContext(
             session_id=session_id,
             hook_event=hook_event,
@@ -365,16 +307,18 @@ class HookRouter:
         self._check_for_loops(ctx.session_id)
         merged_result = CanonicalHookOutput()
 
-        # Build input dict for gate context
-        gate_input = ctx.raw_input.copy()
-        gate_input["hook_event_name"] = ctx.hook_event
-        gate_input["session_id"] = ctx.session_id
+        # Load Session State ONCE
+        try:
+            state = SessionState.load(ctx.session_id)
+        except Exception as e:
+            # Create fresh if load failed (should be rare)
+            print(f"WARNING: Failed to load session state: {e}", file=sys.stderr)
+            state = SessionState.create(ctx.session_id)
 
         # Execute gate functions directly (no subprocess)
         gate_names = GATE_EXECUTION_ORDER.get(ctx.hook_event, [])
 
-        # Filter: Certain gates ONLY run for the main agent to prevent recursion
-        # and unnecessary overhead in subagent tool calls.
+        # Filter: Certain gates ONLY run for the main agent
         subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE")
         if subagent_type:
             gate_names = [g for g in gate_names if g not in MAIN_AGENT_ONLY_GATES]
@@ -382,14 +326,13 @@ class HookRouter:
         for gate_name in gate_names:
             check_func = GATE_CHECKS.get(gate_name)
             if not check_func:
-                merged_result.metadata.setdefault("warnings", []).append(
-                    f"Gate '{gate_name}' not found"
-                )
                 continue
 
             start_time = time.monotonic()
             try:
-                result = check_func(ctx)
+                # Pass both context and state object
+                result = check_func(ctx, state)
+
                 duration = time.monotonic() - start_time
                 merged_result.metadata.setdefault("gate_times", {})[gate_name] = duration
 
@@ -402,15 +345,14 @@ class HookRouter:
 
             except Exception as e:
                 import traceback
-
                 error_msg = f"Gate '{gate_name}' failed: {e}"
+                print(error_msg, file=sys.stderr)
                 merged_result.metadata.setdefault("errors", []).append(error_msg)
                 merged_result.metadata.setdefault("tracebacks", []).append(traceback.format_exc())
 
         # Append gate status icons to system message (non-intrusive display)
-        # Function raises on failure (fail fast), but we catch here to avoid blocking hooks
         try:
-            gate_status = format_gate_status_icons(ctx.session_id)
+            gate_status = format_gate_status_icons(state)
             if merged_result.system_message:
                 merged_result.system_message = f"{merged_result.system_message} {gate_status}"
             else:
@@ -418,9 +360,13 @@ class HookRouter:
         except Exception as e:
             print(f"WARNING: Gate status icons failed: {e}", file=sys.stderr)
 
+        # Save Session State ONCE
+        try:
+            state.save()
+        except Exception as e:
+            print(f"CRITICAL: Failed to save session state: {e}", file=sys.stderr)
+
         # Log hook event with output AFTER all gates complete
-        # We already have a normalized context 'ctx' and result 'merged_result'
-        # Pass them directly to the logger (no JSON conversion here)
         try:
             log_hook_event(ctx, output=merged_result)
         except Exception as e:
@@ -436,37 +382,6 @@ class HookRouter:
             context_injection=result.context_injection,
             metadata=result.metadata,
         )
-
-    def _normalize_hook_output(self, raw: dict[str, Any]) -> CanonicalHookOutput:
-        """Convert raw dictionary to CanonicalHookOutput."""
-        if "verdict" in raw:
-            return CanonicalHookOutput(**raw)
-
-        canonical = CanonicalHookOutput()
-
-        if "systemMessage" in raw:
-            canonical.system_message = raw["systemMessage"]
-
-        hso = raw.get("hookSpecificOutput", {})
-        if hso:
-            decision = hso.get("permissionDecision")
-            if decision == "deny":
-                canonical.verdict = "deny"
-            elif decision == "ask":
-                canonical.verdict = "ask"
-
-            if "additionalContext" in hso:
-                canonical.context_injection = hso["additionalContext"]
-
-            if "updatedInput" in hso:
-                canonical.updated_input = hso["updatedInput"]
-
-        if raw.get("decision") == "block":
-            canonical.verdict = "deny"
-            if raw.get("reason"):
-                canonical.context_injection = raw["reason"]
-
-        return canonical
 
     def _merge_result(self, target: CanonicalHookOutput, source: CanonicalHookOutput):
         """Merge source into target (in-place)."""

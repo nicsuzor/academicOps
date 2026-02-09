@@ -34,6 +34,15 @@ class Gate(ABC):
         """
         return None
 
+    def on_subagent_stop(self, context: HookContext, session_state: SessionState) -> GateResult | None:
+        """
+        SubagentStop: Update state when a subagent completes.
+
+        Returns:
+            GateResult if actions taken.
+        """
+        return None
+
     def on_session_start(self, context: HookContext, session_state: SessionState) -> GateResult | None:
         """
         SessionStart: Initialize gate state.

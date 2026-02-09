@@ -11,9 +11,15 @@ from lib.gate_utils import create_audit_file
 @pytest.fixture
 def mock_session(tmp_path):
     session_id = "test_session_unification"
-    with patch("lib.session_paths.get_session_status_dir", return_value=tmp_path):
-        state = session_state.get_or_create_session_state(session_id)
-        session_state.save_session_state(session_id, state)
+    # We must patch WHERE it is used.
+    # session_state.py imports get_session_status_dir.
+    # session_paths.py defines get_session_file_path which uses get_session_status_dir.
+
+    with patch("lib.session_paths.get_session_status_dir", return_value=tmp_path), \
+         patch("lib.session_state.get_session_status_dir", return_value=tmp_path):
+
+        state = session_state.SessionState.create(session_id)
+        state.save()
         yield session_id
 
 
@@ -23,18 +29,13 @@ def test_gate_open_close_unification(mock_session):
 
     # Open critic gate
     open_gate(session_id, "critic")
-    state = session_state.load_session_state(session_id)
-    # Generic state is now a dict
-    assert state["state"]["gates"]["critic"]["status"] == "open"
-    # Helper should return True
-    assert session_state.is_critic_invoked(session_id) is True
+    state = session_state.SessionState.load(session_id)
+    assert state.gates["critic"].status == "open"
 
     # Close critic gate
     close_gate(session_id, "critic")
-    state = session_state.load_session_state(session_id)
-    assert state["state"]["gates"]["critic"]["status"] == "closed"
-    # Helper should return False
-    assert session_state.is_critic_invoked(session_id) is False
+    state = session_state.SessionState.load(session_id)
+    assert state.gates["critic"].status == "closed"
 
 
 def test_critic_gate_opening_after_agent(mock_session):
@@ -53,14 +54,17 @@ def test_critic_gate_opening_after_agent(mock_session):
     # Ensure gate starts closed (or uninitialized)
     close_gate(session_id, "critic")
 
+    # We need to manually load state since on_after_agent expects it
+    state = session_state.SessionState.load(session_id)
+
     # Use on_after_agent instead of update_gate_state
-    result = on_after_agent(ctx)
+    result = on_after_agent(ctx, state)
     assert result is not None
     assert "✓ `critic` opened" in result.system_message
 
-    state = session_state.load_session_state(session_id)
-    assert state["state"]["gates"]["critic"]["status"] == "open"
-    assert session_state.is_critic_invoked(session_id) is True
+    # Note: on_after_agent updates the passed state object, but doesn't save it internally
+    # (Router saves it). So we check the object state.
+    assert state.gates["critic"].status == "open"
 
 
 def test_audit_file_creation_unified(mock_session, tmp_path):

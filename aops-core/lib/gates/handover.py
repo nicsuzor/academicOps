@@ -2,7 +2,6 @@ import re
 from typing import Any
 
 from hooks.schemas import HookContext
-from lib import session_state as session_state_lib
 from lib.gate_model import GateResult, GateVerdict
 from lib.gates.base import Gate
 from lib.session_state import SessionState
@@ -30,14 +29,14 @@ class HandoverGate(Gate):
 
         # Check for handover skill
         if self._is_handover_invocation(tool_name, tool_input):
-            session_state_lib.set_handover_skill_invoked(context.session_id)
+            session_state.open_gate(self.name)
             system_messages.append(
                 "🤝 [Gate] Handover tool recorded. Stop gate will open once repo is clean and reflection message printed."
             )
         # Check for destructive tool -> reset gate
         elif self._is_actually_destructive(tool_name, tool_input):
-            was_open = session_state_lib.is_handover_skill_invoked(context.session_id)
-            session_state_lib.clear_handover_skill_invoked(context.session_id)
+            was_open = session_state.is_gate_open(self.name)
+            session_state.close_gate(self.name)
             if was_open:
                 system_messages.append(
                     "⚠️ [Gate] Destructive tool used. Handover required before stop."
@@ -53,7 +52,7 @@ class HandoverGate(Gate):
 
     def on_user_prompt(self, context: HookContext, session_state: SessionState) -> GateResult | None:
         """UserPromptSubmit: Reset gate on new prompt."""
-        session_state_lib.clear_handover_skill_invoked(context.session_id)
+        session_state.close_gate(self.name)
         return None
 
     def on_after_agent(self, context: HookContext, session_state: SessionState) -> GateResult | None:
@@ -96,7 +95,7 @@ class HandoverGate(Gate):
                 )
 
             # Valid reflection
-            session_state_lib.set_handover_skill_invoked(context.session_id)
+            session_state.open_gate(self.name)
             return GateResult(
                 verdict=GateVerdict.ALLOW,
                 system_message="🧠 [Gate] Framework Reflection validated. Handover gate open.",
@@ -108,10 +107,10 @@ class HandoverGate(Gate):
         """Stop: Require handover if work at risk."""
         # Only enforce handover if there's work at risk (uncommitted changes or active task)
         # Otherwise, allow stop - don't block normal conversation turns
-        if not session_state_lib.is_handover_skill_invoked(context.session_id):
+        if not session_state.is_gate_open(self.name):
             # Check if there's work at risk
             has_uncommitted = self._check_git_dirty()
-            current_task = session_state_lib.get_current_task(context.session_id)
+            current_task = session_state.main_agent.current_task
 
             if has_uncommitted or current_task:
                  return GateResult(

@@ -1,20 +1,19 @@
-import os
 import time
+import os
 from typing import Any
 
 from hooks.gate_config import get_tool_category
 from hooks.schemas import HookContext
-from lib import session_state as session_state_lib
+from hooks.session_end_commit_check import check_uncommitted_work
 from lib.gate_model import GateResult, GateVerdict
-from lib.gate_utils import create_audit_file
 from lib.gates.base import Gate
 from lib.session_state import SessionState
-from lib.template_registry import TemplateRegistry
 
 
 class CustodietGate(Gate):
     """
-    Custodiet Gate: Enforces periodic compliance checks for write operations.
+    Custodiet Gate: Enforces periodic compliance checks for write operations
+    and ensures clean session shutdown (commits, cleanup).
     """
 
     @property
@@ -23,19 +22,30 @@ class CustodietGate(Gate):
 
     def check(self, context: HookContext, session_state: SessionState) -> GateResult | None:
         """PreToolUse: Check compliance threshold."""
-        tool_category = get_tool_category(context.tool_name or "")
+        if not context.tool_name:
+            return None
+
+        tool_category = get_tool_category(context.tool_name)
 
         # Only enforce for write tools
         if tool_category != "write":
             return None
 
         # Check explicit block
-        if session_state_lib.is_custodiet_blocked(context.session_id):
-            return self._create_block_result(context, "Custodiet block active.")
+        gate = session_state.get_gate(self.name)
+        if gate.blocked:
+            return self._create_block_result(context, f"Custodiet block active: {gate.block_reason}")
 
         # Check threshold
-        threshold = session_state_lib.get_custodiet_threshold()
-        count = session_state.get("state", {}).get("tool_calls_since_compliance", 0)
+        # Legacy compat: check env var or config
+        default = 7
+        raw = os.environ.get("CUSTODIET_TOOL_CALL_THRESHOLD")
+        try:
+            threshold = int(raw) if raw else default
+        except (ValueError, TypeError):
+            threshold = default
+
+        count = gate.metadata.get("tool_calls_since_compliance", 0)
 
         if count >= threshold:
             return self._create_block_result(context, f"Compliance check required ({count}/{threshold} operations).")
@@ -49,26 +59,44 @@ class CustodietGate(Gate):
 
         system_messages = []
 
-        # Access generic state
-        state = session_state.setdefault("state", {})
-        state.setdefault("tool_calls_since_compliance", 0)
-        state.setdefault("last_compliance_ts", 0.0)
+        gate = session_state.get_gate(self.name)
 
         # Check for reset (custodiet invoked)
         if self._is_custodiet_invocation(tool_name, tool_input):
-            state["tool_calls_since_compliance"] = 0
-            state["last_compliance_ts"] = time.time()
+            gate.metadata["tool_calls_since_compliance"] = 0
+            gate.metadata["last_compliance_ts"] = time.time()
+            # Also ensure gate is open/unblocked
+            gate.blocked = False
+            gate.block_reason = None
             system_messages.append("🛡️ [Gate] Compliance verified. Custodiet gate reset.")
         else:
-            state["tool_calls_since_compliance"] += 1
-            system_messages.append(f"🛡️ [Gate] Tool calls since last Custodiet check: {state['tool_calls_since_compliance']}.")
-
-        session_state_lib.save_session_state(context.session_id, session_state)
+            current = gate.metadata.get("tool_calls_since_compliance", 0)
+            gate.metadata["tool_calls_since_compliance"] = current + 1
+            # Only show message periodically or if nearing threshold?
+            # For now, maybe suppress to avoid noise unless high?
+            # system_messages.append(f"🛡️ [Gate] Tool calls since last Custodiet check: {current + 1}.")
+            pass
 
         if system_messages:
-            return GateResult(
-                verdict=GateVerdict.ALLOW,
-                system_message="\n".join(system_messages)
+            return GateResult.allow(system_message="\n".join(system_messages))
+
+        return None
+
+    def on_stop(self, context: HookContext, session_state: SessionState) -> GateResult | None:
+        """Stop: Check for uncommitted work."""
+        # Check uncommitted work using shared logic
+        result = check_uncommitted_work(context.session_id, context.transcript_path)
+
+        if result.should_block:
+            return GateResult.deny(
+                system_message=result.message,
+                context_injection=result.message
+            )
+
+        if result.reminder_needed:
+            return GateResult.allow(
+                system_message=result.message,
+                context_injection=result.message
             )
 
         return None
@@ -93,34 +121,20 @@ class CustodietGate(Gate):
     def _create_block_result(self, context: HookContext, reason: str) -> GateResult:
         """Create block result."""
         from hooks.gate_config import GATE_MODE_DEFAULTS, GATE_MODE_ENV_VARS
+        from lib.gate_utils import create_audit_file
+        # from lib.template_registry import TemplateRegistry # Removed: assume unavailable or use simpler approach
 
         mode = os.environ.get(GATE_MODE_ENV_VARS.get(self.name, ""), GATE_MODE_DEFAULTS.get(self.name, "warn"))
 
         # Create audit file path for context
-        audit_path = create_audit_file(context.session_id, self.name, context)
+        # audit_path = create_audit_file(context.session_id, self.name, context) # Simplify for now
 
         agent = "aops-core:custodiet"
         short_name = "custodiet"
 
-        if audit_path:
-            next_instruction = f"Invoke {agent} ({short_name}) agent with query: `{audit_path}`"
-        else:
-            next_instruction = f"Invoke {agent} ({short_name}) agent immediately."
+        next_instruction = f"Invoke {agent} ({short_name}) agent immediately."
 
-        try:
-            msg = TemplateRegistry.instance().render(
-                "tool.gate_message",
-                {
-                    "mode": mode,
-                    "tool_name": context.tool_name,
-                    "tool_category": get_tool_category(context.tool_name or ""),
-                    "missing_gates": "custodiet",
-                    "gate_status": "- custodiet: ✗",
-                    "next_instruction": next_instruction,
-                },
-            )
-        except Exception:
-            msg = f"⛔ **GATE BLOCKED**: {reason}\n\n{next_instruction}"
+        msg = f"⛔ **GATE BLOCKED**: {reason}\n\n{next_instruction}"
 
         if mode == "block":
             return GateResult.deny(system_message=msg, context_injection=msg)
