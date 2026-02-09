@@ -82,7 +82,7 @@ GEMINI_EVENT_MAP = {
 # Gate icons: shown when gate is CLOSED (blocking)
 # When a gate is open (passed), it's not shown - only blocking gates are displayed
 GATE_ICONS = {
-    "hydration": "💧",  # Needs hydration (water drop)
+    "hydration": "🫗",  # Needs hydration (water drop)
     "task": "📌",  # Needs task binding (pin)
     "critic": "👁",  # Needs critic review (eye)
     "custodiet": "🛡",  # Needs compliance check (shield)
@@ -98,7 +98,7 @@ def format_gate_status_icons(session_id: str) -> str:
     When all gates are open, shows a simple ready indicator.
 
     Gate icons (shown when blocking):
-        💧 = hydration needed
+        🫗 = hydration needed
         📌 = task binding needed
         👁 = critic review needed
         🛡 = custodiet check needed
@@ -109,7 +109,7 @@ def format_gate_status_icons(session_id: str) -> str:
         session_id: Session ID to check gates for
 
     Returns:
-        Formatted status line like "[💧 📌]" (blocking gates) or "[✓ ready]" (all passed)
+        Formatted status line like "[🫗 📌]" (blocking gates) or "[✓ ready]" (all passed)
 
     Raises:
         ValueError: If session state cannot be loaded (fail fast)
