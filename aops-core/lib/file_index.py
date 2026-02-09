@@ -490,7 +490,7 @@ def get_relevant_file_paths(prompt: str, max_files: int = 10) -> list[dict[str, 
 
     # Take top entries up to max_files
     results: list[dict[str, str]] = []
-    for score, entry in scored_entries[:max_files]:
+    for _score, entry in scored_entries[:max_files]:
         try:
             abs_path = str(entry.absolute_path())
         except RuntimeError:
