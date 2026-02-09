@@ -39,19 +39,13 @@ def test_router_detects_hydration_completion_from_gemini_input(
                     "text": "Subagent 'prompt-hydrator' finished.\nTermination Reason: GOAL\nResult:\n## HYDRATION RESULT\n\n**Intent**: Answer the user's factual question about the current time.\n**Task binding**: No task needed\n\n### Acceptance Criteria\n\n1. The current local time is accurately provided to the user.\n\n### Relevant Context\n\n- The user has posed a direct, factual question requiring a simple answer.\n\n### Execution Plan\n\n1. Retrieve the current local time.\n2. Present the current local time to the user.\n3. Mark the interaction as complete."
                 }
             ],
-            "returnDisplay": "\nSubagent prompt-hydrator Finished\n\nTermination Reason:\n GOAL\n\nResult:\n## HYDRATION RESULT\n\n**Intent**: Answer the user's factual question about the current time.\n**Task binding**: No task needed\n\n### Acceptance Criteria\n\n1. The current local time is accurately provided to the user.\n\n### Relevant Context\n\n- The user has posed a direct, factual question requiring a simple answer.\n\n### Execution Plan\n\n1. Retrieve the current local time.\n2. Present the current local time to the user.\n3. Mark the interaction as complete.\n"
-        }
+            "returnDisplay": "\nSubagent prompt-hydrator Finished\n\nTermination Reason:\n GOAL\n\nResult:\n## HYDRATION RESULT\n\n**Intent**: Answer the user's factual question about the current time.\n**Task binding**: No task needed\n\n### Acceptance Criteria\n\n1. The current local time is accurately provided to the user.\n\n### Relevant Context\n\n- The user has posed a direct, factual question requiring a simple answer.\n\n### Execution Plan\n\n1. Retrieve the current local time.\n2. Present the current local time to the user.\n3. Mark the interaction as complete.\n",
+        },
     }
 
     # Setup mock session state
-    mock_load_state.return_value = {
-        "state": {"hydration_pending": True},
-        "hydration": {}
-    }
-    mock_get_state.return_value = {
-        "state": {"hydration_pending": True},
-        "hydration": {}
-    }
+    mock_load_state.return_value = {"state": {"hydration_pending": True}, "hydration": {}}
+    mock_get_state.return_value = {"state": {"hydration_pending": True}, "hydration": {}}
 
     # Normalize input
     ctx = router.normalize_input(raw_input)
@@ -62,9 +56,7 @@ def test_router_detects_hydration_completion_from_gemini_input(
     result = router.execute_hooks(ctx)
 
     # Verify hydration_pending was cleared
-    mock_clear_pending.assert_called_once_with(
-        "7f786eb0-2bd7-4820-b71a-a1c83d11a886"
-    )
+    mock_clear_pending.assert_called_once_with("7f786eb0-2bd7-4820-b71a-a1c83d11a886")
 
     # Verify the result message indicates gate name
     assert "hydration" in str(result.context_injection).lower()

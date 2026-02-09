@@ -442,6 +442,138 @@ def extract_gate_context(
         return {}
 
 
+def build_rich_session_context(transcript_path: Path | str, max_turns: int = 15) -> str:
+    """Build rich session context for compliance checks.
+
+    Extracts recent conversation history, tool usage, files modified,
+    and any errors to provide context for compliance evaluation.
+
+    Args:
+        transcript_path: Path to session transcript JSONL file
+        max_turns: Number of recent turns to include (default 15)
+
+    Returns:
+        Formatted markdown context or error message
+    """
+    path = Path(transcript_path)
+    if not path.exists():
+        return "(No transcript path available)"
+
+    lines: list[str] = []
+
+    # Extract using library
+    gate_ctx = extract_gate_context(
+        path,
+        include={"prompts", "errors", "tools", "files", "conversation", "skill"},
+        max_turns=max_turns,
+    )
+
+    # ALL user requests (chronological) - enables scope drift detection
+    prompts = gate_ctx.get("prompts", [])
+    if prompts:
+        lines.append("**All User Requests** (chronological):")
+        for i, prompt in enumerate(prompts, 1):
+            # Truncate very long prompts but preserve enough for scope checking
+            truncated = prompt[:500] + "..." if len(prompt) > 500 else prompt
+            lines.append(f"  {i}. {truncated}")
+        lines.append("")
+        # Also highlight the most recent for quick reference
+        lines.append("**Most Recent User Request**:")
+        lines.append(f"> {prompts[-1][:500]}")
+        lines.append("")
+
+    # Active skill context (if any)
+    skill = gate_ctx.get("skill")
+    if skill:
+        lines.append(f"**Active Skill**: {skill}")
+        lines.append("")
+
+    # Recent tool usage WITH ARGUMENTS - enables action verification
+    tools = gate_ctx.get("tools", [])
+    if tools:
+        lines.append("**Recent Tool Calls** (with arguments):")
+        for tool in tools[-10:]:  # Last 10 tools
+            tool_name = tool["name"]  # Required field - fail if missing
+            tool_input = tool.get("input") or {}
+            # Format tool arguments, truncate at 200 chars
+            if tool_input:
+                # Summarize key arguments
+                arg_parts = []
+                for k, v in list(tool_input.items())[:5]:  # Max 5 args shown
+                    v_str = str(v)
+                    if len(v_str) > 50:
+                        v_str = v_str[:50] + "..."
+                    arg_parts.append(f"{k}={v_str}")
+                args_str = ", ".join(arg_parts)
+                if len(args_str) > 200:
+                    args_str = args_str[:200] + "..."
+                lines.append(f"  - {tool_name}({args_str})")
+            else:
+                lines.append(f"  - {tool_name}()")
+        lines.append("")
+
+    # Files modified/read
+    files = gate_ctx.get("files", [])
+    if files:
+        lines.append("**Files Accessed**:")
+        for f in files[-10:]:  # Last 10 files
+            # Handle both legacy list[str] shape and newer list[dict] shape
+            if isinstance(f, dict) and "action" in f and "path" in f:
+                lines.append(f"  - [{f['action']}] {f['path']}")
+            else:
+                path_str = str(f)
+                if path_str:
+                    lines.append(f"  - {path_str}")
+        lines.append("")
+
+    # Tool errors (important for compliance - Type A detection)
+    errors = gate_ctx.get("errors", [])
+    if errors:
+        lines.append("**Tool Errors** (check for workaround attempts after these):")
+        for e in errors[-5:]:
+            lines.append(f"  - {e['tool_name']}: {e['error']}")
+        lines.append("")
+
+    # FULL agent responses for last 3 turns - enables phrase pattern detection
+    # ("I'll just...", "While I'm at it...", etc.)
+    conversation = gate_ctx.get("conversation", [])
+    if conversation:
+        lines.append("**Recent Agent Responses** (full text for phrase detection):")
+        # Extract only agent responses, show last 3 with more content
+        agent_responses = [
+            turn for turn in conversation if (isinstance(turn, str) and turn.startswith("[Agent]:"))
+        ]
+        for turn in agent_responses[-3:]:  # Last 3 agent responses
+            # String format: "[Agent]: content"
+            content = turn[8:] if turn.startswith("[Agent]:") else turn
+            # Allow up to 1000 chars per response for phrase detection
+            if len(content) > 1000:
+                content = content[:1000] + "..."
+            if content.strip():
+                lines.append(f"  {content.strip()}")
+                lines.append("")
+
+        # Also show recent conversation flow (condensed)
+        lines.append("**Recent Conversation Summary**:")
+        for turn in conversation[-5:]:
+            # Handle both string and dict formats
+            if isinstance(turn, dict):
+                role = turn["role"]  # Required - fail if missing
+                content = turn["content"][:200]  # Required - fail if missing
+                lines.append(f"  [{role}]: {content}...")
+            else:
+                # String format - role unknown
+                content = str(turn)[:200]
+                if content:
+                    lines.append(f"  [unknown]: {content}...")
+        lines.append("")
+
+    if not lines:
+        return "(No session context extracted)"
+
+    return "\n".join(lines)
+
+
 def _extract_gate_context_impl(
     transcript_path: Path,
     include: set[str],

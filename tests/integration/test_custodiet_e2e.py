@@ -20,6 +20,8 @@ from pathlib import Path
 
 import pytest
 
+from lib import hook_utils
+
 # Custodiet threshold from hooks/custodiet_gate.py
 TOOL_CALL_THRESHOLD = 5
 
@@ -28,9 +30,15 @@ TOOL_CALL_THRESHOLD = 5
 SKIP_TOOLS = {"Read", "Glob", "Grep", "mcp__memory__retrieve_memory"}
 
 
+def get_audit_temp_dir() -> Path:
+    """Get the audit temp directory using shared logic."""
+    # Align with the new consolidated "hydrator" category
+    return hook_utils.get_hook_temp_dir("hydrator")
+
+
 def find_recent_audit_files(max_age_seconds: int = 300) -> list[Path]:
     """Find audit files created in the last N seconds."""
-    temp_dir = Path("/tmp/claude-compliance")
+    temp_dir = get_audit_temp_dir()
     if not temp_dir.exists():
         return []
 
@@ -49,7 +57,7 @@ def test_custodiet_temp_file_created_on_threshold(claude_headless) -> None:
     Per H37c: Execution over inspection - we verify actual file creation.
     """
     # Record existing files before test
-    temp_dir = Path("/tmp/claude-compliance")
+    temp_dir = get_audit_temp_dir()
     files_before = set(temp_dir.glob("audit_*.md")) if temp_dir.exists() else set()
 
     # Prompt that triggers 7 separate BASH tool calls (not Read - those are skipped)
@@ -135,7 +143,7 @@ def test_custodiet_task_spawned(claude_headless_tracked) -> None:
     custodiet_input = custodiet_calls[0].get("input", {})
     custodiet_prompt = custodiet_input.get("prompt", "")
 
-    assert "/tmp/claude-compliance/audit_" in custodiet_prompt, (
+    assert "/hydrator/audit_" in custodiet_prompt, (
         f"Custodiet prompt should reference temp file path. Got: {custodiet_prompt[:200]}..."
     )
 
@@ -217,7 +225,7 @@ def test_custodiet_temp_file_structure() -> None:
 
     Reads existing temp files to verify structure - no Claude session needed.
     """
-    temp_dir = Path("/tmp/claude-compliance")
+    temp_dir = get_audit_temp_dir()
 
     if not temp_dir.exists():
         pytest.skip("No custodiet temp directory - run a Claude session first")
