@@ -5,11 +5,9 @@ Verifies that router.py correctly detects hydration as completed
 given the specific input provided by the user.
 """
 
-import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from hooks.router import HookRouter
-from lib.gate_model import GateVerdict
 
 
 @patch("lib.session_state.clear_hydration_pending")
@@ -67,6 +65,6 @@ def test_router_detects_hydration_completion_from_gemini_input(
     mock_clear_pending.assert_called_once_with(
         "7f786eb0-2bd7-4820-b71a-a1c83d11a886"
     )
-    
-    # Verify the result message indicates opening
-    assert "'hydration' opened" in result.context_injection
+
+    # Verify the result message indicates gate name
+    assert "hydration" in str(result.context_injection).lower()

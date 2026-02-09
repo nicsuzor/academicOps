@@ -326,11 +326,11 @@ class TestGateExecutionOrderIntegrity:
         gates = GATE_EXECUTION_ORDER["PostToolUse"]
         assert "accountant" in gates
 
-    def test_stop_has_transcript_generation(self):
-        """Stop event includes transcript generation."""
+    def test_sesssionend_has_transcript_generation(self):
+        """SessionEnd event includes transcript generation."""
         from hooks.gate_config import GATE_EXECUTION_ORDER
 
-        gates = GATE_EXECUTION_ORDER["Stop"]
+        gates = GATE_EXECUTION_ORDER["SessionEnd"]
         assert "generate_transcript" in gates
 
 
