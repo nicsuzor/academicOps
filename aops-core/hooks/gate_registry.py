@@ -5,7 +5,6 @@ This module contains the "Conditions" that gates evaluate.
 """
 
 import sys
-from pathlib import Path
 
 from hooks.schemas import HookContext
 from lib.gate_model import GateResult
@@ -132,6 +131,7 @@ def run_generate_transcript(ctx: HookContext) -> GateResult | None:
 
     try:
         import subprocess
+        from pathlib import Path
 
         root_dir = Path(__file__).parent.parent
         script_path = root_dir / "scripts" / "transcript_push.py"
