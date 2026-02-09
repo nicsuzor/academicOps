@@ -292,7 +292,7 @@ GATE_OPENING_CONDITIONS: dict[str, dict[str, Any]] = {
     "hydration": {
         "event": "PostToolUse",
         "tool_pattern": r"^(Task|Skill|delegate_to_agent|activate_skill|spawn_agent|prompt-hydrator|aops-core:prompt-hydrator)$",
-        "subagent_type": "aops-core:prompt-hydrator",
+        "subagent_or_skill": ["aops-core:prompt-hydrator", "prompt-hydrator"],
         "output_contains": "HYDRATION RESULT",
         "description": "Opens when hydrator agent completes successfully",
     },
@@ -305,13 +305,15 @@ GATE_OPENING_CONDITIONS: dict[str, dict[str, Any]] = {
     },
     "critic": {
         "event": "PostToolUse",
+        "tool_pattern": r"^(Task|Skill|delegate_to_agent|activate_skill|critic|aops-core:critic)$",
+        "subagent_or_skill": ["aops-core:critic", "critic"],
         "output_contains": "APPROVED",
         "description": "Opens when critic agent approves the plan",
     },
     "custodiet": {
         "event": "PostToolUse",
         "tool_pattern": r"^(Task|Skill|delegate_to_agent|activate_skill|custodiet|aops-core:custodiet)$",
-        "subagent_type": "aops-core:custodiet",
+        "subagent_or_skill": ["aops-core:custodiet", "custodiet"],
         "output_contains": "OK",
         "description": "Opens when custodiet agent confirms no ultra vires activity",
     },
