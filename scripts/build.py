@@ -352,10 +352,7 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
         if platform == "gemini":
             # Strip mcp__ prefix from comma-separated string tools
             tools_list = [t.strip() for t in original_tools.split(",")]
-            filtered = [
-                t[5:] if t.startswith("mcp__") else t
-                for t in tools_list
-            ]
+            filtered = [t[5:] if t.startswith("mcp__") else t for t in tools_list]
             frontmatter["tools"] = filtered  # Convert to list for Gemini schema
             # Validate and apply Gemini schema defaults
             frontmatter = validate_gemini_agent_schema(frontmatter, filename)
@@ -365,10 +362,7 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
 
     if platform == "gemini":
         # Strip mcp__ prefix from tool names for Gemini
-        filtered_tools = [
-            t[5:] if t.startswith("mcp__") else t
-            for t in original_tools
-        ]
+        filtered_tools = [t[5:] if t.startswith("mcp__") else t for t in original_tools]
         frontmatter["tools"] = filtered_tools
         # Validate and apply Gemini schema defaults
         frontmatter = validate_gemini_agent_schema(frontmatter, filename)

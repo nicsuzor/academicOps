@@ -113,6 +113,7 @@ def get_indices_dir() -> Path:
     """Get indices directory (plugin_root/indices)."""
     return get_plugin_root() / "indices"
 
+
 # <!-- NS: I don't love that these are all hardcoded like this -->
 def get_axioms_file() -> Path:
     """Get path to AXIOMS.md framework file."""
