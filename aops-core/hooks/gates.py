@@ -246,6 +246,12 @@ def _open_gate(session_id: str, gate: str) -> None:
     """Open a gate by setting the corresponding state flag."""
     from lib import session_state
 
+    # Update unified gates dictionary
+    state = session_state.get_or_create_session_state(session_id)
+    state.setdefault("state", {}).setdefault("gates", {})[gate] = "open"
+    session_state.save_session_state(session_id, state)
+
+    # Legacy flag updates for backwards compatibility
     if gate == "hydration":
         session_state.clear_hydration_pending(session_id)
     elif gate == "task":
@@ -268,6 +274,12 @@ def _close_gate(session_id: str, gate: str) -> None:
     """Close a gate by clearing the corresponding state flag."""
     from lib import session_state
 
+    # Update unified gates dictionary
+    state = session_state.get_or_create_session_state(session_id)
+    state.setdefault("state", {}).setdefault("gates", {})[gate] = "closed"
+    session_state.save_session_state(session_id, state)
+
+    # Legacy flag updates for backwards compatibility
     if gate == "hydration":
         session_state.set_hydration_pending(session_id, "")
     elif gate == "task":
@@ -363,11 +375,11 @@ def _matches_trigger(
     counter = trigger.get("threshold_counter")
     if counter:
         threshold = trigger.get("threshold_value", 0)
-        state = session_state.get_or_create_session_state(session_id)
-        state_data = state.setdefault("state", {})
-        count = state_data.get("tool_calls_since_compliance", 0) + 1
-        state_data["tool_calls_since_compliance"] = count
-        session_state.save_session_state(session_id, state)
+        state = session_state.load_session_state(session_id)
+        if state is None:
+            return False
+        state_data = state.get("state", {})
+        count = state_data.get("tool_calls_since_compliance", 0)
         if count < threshold:
             return False
 

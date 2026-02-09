@@ -79,12 +79,6 @@ CUSTODIET_TEMP_CATEGORY = "compliance"
 CUSTODIET_DEFAULT_THRESHOLD = 7
 
 
-def get_custodiet_threshold() -> int:
-    """Get custodiet threshold, reading from env at call time for testability."""
-    raw = os.environ.get("CUSTODIET_TOOL_CALL_THRESHOLD")
-    return int(raw) if raw else CUSTODIET_DEFAULT_THRESHOLD
-
-
 # DEPRECATED: Use TemplateRegistry.instance().render("custodiet.context", ...) instead
 CUSTODIET_CONTEXT_TEMPLATE_FILE = Path(__file__).parent / "templates" / "custodiet-context.md"
 # DEPRECATED: Use TemplateRegistry.instance().render("custodiet.instruction", ...) instead

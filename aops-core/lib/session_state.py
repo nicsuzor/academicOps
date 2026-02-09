@@ -879,6 +879,12 @@ def get_passed_gates(session_id: str) -> set[str]:
     if state_data.get("handover_skill_invoked"):
         passed.add("handover")
 
+    # Custodiet gate: passed if not explicitly closed
+    # Default is open per gate_config.py:GATE_INITIAL_STATE
+    gates_state = state_data.get("gates", {})
+    if gates_state.get("custodiet") != "closed":
+        passed.add("custodiet")
+
     return passed
 
 
@@ -1159,3 +1165,26 @@ def is_interactive_session(session_id: str) -> bool:
         True if session_type is "crew" or "interactive"
     """
     return get_session_type(session_id) in ("crew", "interactive")
+
+
+# ============================================================================
+# Threshold Configuration API
+# ============================================================================
+
+
+def get_custodiet_threshold() -> int:
+    """Get custodiet tool call threshold.
+
+    Defaults to 7, can be overridden by CUSTODIET_TOOL_CALL_THRESHOLD env var.
+    This value determines how many tool calls are allowed before a compliance
+    check is required.
+
+    Returns:
+        The threshold value (int)
+    """
+    default = 7
+    raw = os.environ.get("CUSTODIET_TOOL_CALL_THRESHOLD")
+    try:
+        return int(raw) if raw else default
+    except (ValueError, TypeError):
+        return default

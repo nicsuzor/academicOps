@@ -1,213 +1,153 @@
 ---
-id: aops-qa-test
+id: qa-test
 category: quality-assurance
-audience: LLM agents testing the aops framework itself
-description: Specific instructions for acceptance testing aops features using headless CLI execution and transcript analysis.
+bases: []
+audience: LLM agents conducting acceptance testing for any aops-managed project
+description: End-to-end user acceptance testing workflow. Creates test plans as tasks, runs qualitative evaluations, and tracks failures as new tasks.
 ---
 
-# aops Acceptance Testing Workflow
+# User Acceptance Testing Workflow
 
-This workflow provides concrete instructions for acceptance testing the aops framework. It implements the generic qa-test workflow with aops-specific tooling.
+This workflow governs end-to-end acceptance testing. It is distinct from unit/integration testing (which uses scripts). Acceptance tests verify that the system works **from the user's perspective**.
 
-## Prerequisites
+## Core Principles
 
-- Claude Code installed and configured
-- Gemini CLI installed and configured
-- Access to transcript.py script
-- Test prompts that exercise the feature under test
+### 1. Black-Box Testing Only
 
-## Execution Method: Headless CLI
+You are testing the system as a user would experience it. You do NOT:
 
-Run tests in headless mode. Session logs are automatically saved to standard locations.
+- Read source code to understand expected behavior
+- Examine implementation details
+- Peek at logs or internal state
 
-**Important**: For slash commands (e.g., `/pull`), do NOT wrap the prompt in quotes - pass it directly so the CLI interprets it as a command, not a literal string.
+You DO:
 
-### Claude Code
+- Provide inputs (prompts, commands)
+- Observe outputs (responses, side effects)
+- Compare outputs to acceptance criteria from specifications
 
-```bash
-# Run headless test - slash commands without quotes
-claude -p /pull --permission-mode yolo
+**If you don't know what output to expect, the test plan is incomplete. Fix the plan, don't investigate the code.**
 
-# Regular prompts can use quotes
-claude -p "What time is it?" --permission-mode yolo
+### 2. Qualitative Over Mechanical
 
-# Check exit code
-echo "Exit: $?"
-```
+Acceptance testing is NOT about running scripts and checking exit codes. The agent oversees the entire process, making judgment calls about quality.
 
-Flags:
+For each test case, evaluate:
 
-- `-p <PROMPT>`: Non-interactive mode with prompt (no quotes for slash commands)
-- `--permission-mode yolo`: Auto-approve for automated testing
+- Did the system understand the user's intent?
+- Was the response helpful and appropriate?
+- Was the interaction efficient or wasteful?
+- Did error handling work gracefully?
+- Would a real user be satisfied?
 
-### Gemini CLI
+**Qualitative dimensions matter more than pass/fail counts.** A system that passes 4/5 tests but provides poor user experience has failed acceptance testing.
 
-```bash
-# Run headless test - slash commands without quotes
-gemini -p /pull --approval-mode yolo
+### 3. Acceptance Criteria Come From Specs
 
-# Regular prompts can use quotes
-gemini -p "What time is it?" --approval-mode yolo
+Find acceptance criteria in:
 
-# Check exit code
-echo "Exit: $?"
-```
+- Feature specifications
+- User stories
+- Design documents
+- Issue/task descriptions
 
-Flags:
+**NEVER derive acceptance criteria from code.** The code may be wrong. That's what you're testing.
 
-- `-p <PROMPT>`: Non-interactive mode with prompt (no quotes for slash commands)
-- `--approval-mode yolo`: Auto-approve for automated testing
-
-## Generating Readable Transcripts
-
-After test execution, generate readable transcripts from session logs using the transcript workflow.
-
-See: `aops-core/workflows/transcript.md`
-
-The implementing agent should locate the session log from the most recent test run and use `transcript.py` to generate human-readable output.
-
-## Qualitative Transcript Evaluation
-
-Read the transcript and evaluate each dimension. This is NOT automated - you read and judge.
-
-### Evaluation Dimensions
-
-| Dimension               | Question to Answer                                | Score 1-4                    |
-| ----------------------- | ------------------------------------------------- | ---------------------------- |
-| **Intent Recognition**  | Did the agent understand what the user wanted?    | 1=misunderstood, 4=perfect   |
-| **Response Quality**    | Was the response helpful, accurate, complete?     | 1=wrong/useless, 4=excellent |
-| **Efficiency**          | Was the path direct or did the agent waste steps? | 1=many detours, 4=optimal    |
-| **Error Recovery**      | How did the agent handle problems?                | 1=stuck/crashed, 4=graceful  |
-| **Communication**       | Was output clear and appropriately detailed?      | 1=confusing, 4=perfect       |
-| **Framework Adherence** | Did the agent follow aops principles?             | 1=violated, 4=exemplary      |
-
-### Scoring Protocol
-
-For each dimension:
-
-1. Read the entire transcript
-2. Find specific evidence (quote relevant lines)
-3. Assign score based on rubric
-4. Record: `[Dimension]: [Score] - "[evidence quote]"`
-
-**Overall Score**: Sum / 24 = percentage
-
-- < 50%: CRITICAL failure
-- 50-69%: POOR, significant issues
-- 70-84%: ACCEPTABLE, meets minimum bar
-- 85-94%: GOOD, solid performance
-- 95%+: EXCELLENT
-
-## Creating Test Cases
-
-Each test case must specify:
-
-```markdown
-### TC-[N]: [Name]
-
-**Purpose**: What this validates
-
-**Prompt** (exact text):
-```
-
-[The exact prompt to send - copy-paste ready]
-
-```
-**Expected Behavior**:
-- [Observable outcome 1]
-- [Observable outcome 2]
-
-**Pass Indicators** (in transcript):
-- Pattern: `[regex or exact string]`
-- Behavior: [description]
-
-**Fail Indicators**:
-- Pattern: `[regex indicating failure]`
-- Behavior: [description]
-
-**Qualitative Focus**:
-- Which dimensions are most relevant for this test
-```
-
-## Task Structure for aops Testing
-
-```yaml
-# Parent epic
-type: epic
-title: "Acceptance Testing: [Feature] v[Version]"
-status: active
-project: aops
-
-# Design task
-type: task
-title: "Design acceptance tests for [Feature]"
-parent: [epic-id]
-assignee: bot
-body: |
-  Create test plan following .agent/workflows/qa-test.md
-
-  Deliverables:
-  - [ ] Test scope defined
-  - [ ] Acceptance criteria from spec
-  - [ ] Test cases with exact prompts
-  - [ ] Qualitative rubric
-
-# Execute task
-type: task
-title: "Execute acceptance tests for [Feature]"
-parent: [epic-id]
-depends_on: [design-task-id]
-assignee: bot
-body: |
-  Run tests using headless CLI.
-  Generate transcripts.
-  Evaluate qualitatively.
-  Create tasks for failures.
-
-# Human review
-type: task
-title: "Review [Feature] test results"
-parent: [epic-id]
-depends_on: [execute-task-id]
-assignee: nic
-```
-
-## Failure Handling
+### 4. Failures Are Not Excused
 
 When a test fails:
 
-1. **Document in test report**:
-   ```markdown
-   ### Failure: TC-[N]
+- Document exactly what happened
+- Create a new task to address the failure
+- Do NOT mark the test as "partial pass" or "acceptable given constraints"
+- Do NOT adjust criteria to make failures pass
 
-   **What happened**: [Description]
-   **Evidence**: [Transcript quote]
-   **Expected**: [What should have happened]
-   **Severity**: Critical/Major/Minor
-   ```
+A failure is a failure. Either the system needs fixing or the spec needs updating. Both require explicit action.
 
-2. **Create fix task**:
-   ```yaml
-   type: bug
-   title: "[Feature] fails [specific behavior]"
-   parent: [epic-id]
-   priority: [based on severity]
-   body: |
-     Discovered during acceptance testing (TC-[N]).
+## Workflow Steps
 
-     **Steps to reproduce**: [prompt used]
-     **Expected**: [expected outcome]
-     **Actual**: [what happened]
-     **Transcript**: [path or quote]
-   ```
+### Step 1: Create Test Plan Task
 
-3. **Do NOT**:
-   - Mark test as passed with caveats
-   - Adjust acceptance criteria to match actual behavior
-   - Skip documenting the failure
+Create a task of type `task` with:
 
-## References
+```yaml
+title: "QA Test Plan: [Feature Name]"
+type: task
+status: active
+assignee: bot
+complexity: requires-judgment
+tags: [qa, acceptance-test]
+```
 
-- Generic workflow: `aops-core/workflows/qa-test.md`
-- Transcript tool: `aops-core/scripts/transcript.py`
-- QA agent: `aops-core/agents/qa.md`
+The task body must include:
+
+1. **Scope**: What feature/behavior is being tested
+2. **Acceptance Criteria**: From the spec (with source reference)
+3. **Test Cases**: Each with trigger, expected outcome, evaluation method
+4. **Qualitative Rubric**: How to assess quality beyond pass/fail
+
+### Step 2: Get Plan Approved
+
+Before execution:
+
+- Review the plan for completeness
+- Verify all acceptance criteria are testable
+- Confirm qualitative rubric is appropriate
+- Get human approval (status → `in_progress`)
+
+### Step 3: Execute Tests
+
+For each test case:
+
+1. Set up preconditions
+2. Execute the trigger action
+3. Capture all outputs (responses, transcripts, side effects)
+4. Evaluate against expected outcomes
+5. Score qualitative dimensions
+6. Document evidence (quotes, screenshots, logs)
+
+### Step 4: Report Results
+
+Create a test report with:
+
+- Summary table (test case → result)
+- Qualitative scores with evidence
+- Detailed findings for each test
+- List of issues found
+
+### Step 5: Handle Failures
+
+For each failure:
+
+1. Create a new task describing the issue
+2. Link it to the test plan task
+3. Set appropriate priority based on severity
+4. Do NOT close the test plan until all failures are addressed or explicitly deferred
+
+## Task Structure
+
+```
+[Epic] Acceptance Testing: [Feature]
+├── [Task] QA Test Plan: [Feature] (design + approval)
+├── [Task] Execute QA Tests: [Feature] (depends on plan)
+├── [Task] Fix: [Issue 1] (created from test failure)
+├── [Task] Fix: [Issue 2] (created from test failure)
+└── [Task] Retest: [Feature] (after fixes)
+```
+
+## What This Workflow Is NOT
+
+- **Unit testing**: Use automated test suites
+- **Integration testing**: Use CI/CD pipelines
+- **Code review**: Use peer review workflows
+- **Performance testing**: Use benchmarking tools
+
+This workflow is for answering: "Does the feature work correctly from a user's perspective?"
+
+## Invocation
+
+```
+Task(subagent_type="qa",
+     prompt="Execute acceptance test plan from task [TASK-ID].
+             Evaluate qualitatively, document failures as new tasks.")
+```

@@ -13,6 +13,8 @@ gate_registry.py, or gates.py.
 
 from typing import Any
 
+from lib.session_state import get_custodiet_threshold
+
 # =============================================================================
 # TOOL CATEGORIES
 # =============================================================================
@@ -365,7 +367,7 @@ GATE_CLOSURE_TRIGGERS: dict[str, list[dict[str, Any]]] = {
             "event": "PostToolUse",
             "tool_category": "write",
             "threshold_counter": "tool_calls_since_custodiet",
-            "threshold_value": 7,
+            "threshold_value": get_custodiet_threshold(),
             "description": "Re-close after N write operations (periodic re-verification)",
         },
     ],
