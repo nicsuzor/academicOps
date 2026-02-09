@@ -1,0 +1,70 @@
+name: Claude LGTM Merge
+
+on:
+  pull_request_review:
+    types: [submitted] # fires when a review is submitted (not when edited/dismissed)
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  claude-lgtm-merge:
+    if: |
+      (github.event_name == 'pull_request_review' && github.event.review.state == 'approved') ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, 'lgtm') && github.event.comment.user.login == 'nicsuzor')
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+      issues: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Claude PR merge agent
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            PR #${{ github.event.pull_request.number }} has been approved.
+
+            Please:
+            1. Review the PR description and code changes to ensure they meet our standards.
+            2. Respond to any outstanding review comments, either by making code changes or posting a comment explaining why no change is needed.
+            3. Commit and push any changes to the PR branch.
+            4. Verify CI checks are passing using `gh pr checks`.
+            5. Post a final confirmation comment:
+               - "LGTM: All review comments addressed and CI checks passed. Ready to merge."
+               OR
+               - "Request changes: Address the remaining issues before this PR can be merged."
+               OR
+               - "Close: PR does not meet standards or requires design discussion."
+
+            ## Merging PRs with review comments
+
+            1. Fetch all comments upfront and triage comments before acting
+
+            Bot reviewers (Gemini Code Assist, Copilot) produce a mix of:
+            - Genuine bugs (e.g., type mismatch that would crash at runtime) - fix these
+            - Valid improvements (e.g., move import out of loop, add error types to except) - fix these
+            - False positives (e.g., claiming a key was removed when it wasn't) - respond explaining why no change is needed
+            - Architectural concerns (e.g., "this pattern is bad") - address if actionable and contained; otherwise respond explaining the rationale and consider as follow-up feedback.
+            - Scope creep (e.g., "add more tests") - consider implementing; if you choose not to, acknowledge as follow-up feedback rather than blocking the merge.
+
+            2. Address ALL comments by repository owners and managers thoroughly. Do NOT ignore or dismiss comments or defer implementation. Treat these comments as CRITICAL REQUIREMENTS that MUST be addressed before merging.
+
+            3. Rebase if required to resolve merge conflicts. Do NOT merge main into the PR branch. Always rebase to maintain a clean history.
+
+            4. Always run tests after modifying code. The PR will ONLY be merged if all tests pass. If tests fail, fix the issues and push a new commit.
+
+          claude_args: '--allowed-tools "Bash(gh pr:*),Bash(git:*),Edit,Read,Write"'
+
+      # - name: Enable Auto-merge
+      #   run: |
+      #     gh pr merge ${{ github.event.pull_request.number }} --auto --squash --delete-branch
+      #   env:
+      #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
