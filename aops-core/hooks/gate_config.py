@@ -349,14 +349,7 @@ GATE_CLOSURE_TRIGGERS: dict[str, list[dict[str, Any]]] = {
         {
             "event": "UserPromptSubmit",
             "description": "Re-close on new user prompt (new intent = new approval)",
-        },
-        {
-            "event": "PostToolUse",
-            "tool_pattern": r"mcp.*task_manager.*complete_task",
-            "result_key": "success",
-            "result_value": True,
-            "description": "Re-close on task change (completed = need new approval)",
-        },
+        }
     ],
     "custodiet": [
         {
