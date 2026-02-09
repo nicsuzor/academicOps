@@ -145,12 +145,12 @@ These workflows support prompt hydration. Used internally by the hydrator agent.
 Projects can extend the global workflow catalog by defining local workflows in the project root:
 
 1. **Local Index**: `.agent/WORKFLOWS.md`
-   - If present, its content is injected into the hydration context.
+   - If present, its content can be included in the hydration context during the `UserPromptSubmit` hook.
    - Use this for project-wide workflow routing and definitions.
 
 2. **Workflow Directory**: `.agent/workflows/*.md`
    - Individual workflow files.
-   - **Content Injection**: The hydrator selectively injects the content of these files if the prompt matches the filename (e.g., "manual-qa" matches `manual-qa.md`).
+   - **Content Injection**: During the `UserPromptSubmit` hook, the orchestration layer may include the content of these files in the hydrator context if the prompt matches the filename (e.g., "manual-qa" matches `manual-qa.md`).
    - Use these for specific, repetitive procedures unique to the project.
 
 ## Key Distinctions

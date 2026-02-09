@@ -1,29 +1,31 @@
 # Architectural Report: Hydration & Workflow Injection
 
-## Investigation Findings
+## Investigation Findings (Pre-change state)
+
+The following findings describe the system behavior **before** the workflow-hydration refactor introduced in this PR.
 
 ### 1. Whitelisting Logic in `user_prompt_submit.py`
-The current implementation in `user_prompt_submit.py` uses a **hardcoded filename whitelist** for local workflow injection:
-- It only checks for `TESTING.md`, `DEBUGGING.md`, and `DEVELOPMENT.md`.
-- It uses a static mapping of keywords for these specific files.
-- **Impact**: Any local workflow with a different name (e.g., `manual-qa.md`, `deploy.md`) is completely ignored, even if it's highly relevant to the user prompt.
+Before this change, the implementation in `user_prompt_submit.py` used a **hardcoded filename whitelist** for local workflow injection:
+- It only checked for `TESTING.md`, `DEBUGGING.md`, and `DEVELOPMENT.md`.
+- It used a static mapping of keywords for these specific files.
+- **Impact**: Any local workflow with a different name (e.g., `manual-qa.md`, `deploy.md`) was completely ignored, even if it was highly relevant to the user prompt.
 
 ### 2. Global Workflow Injection
-The hook currently loads only the **index file** (`aops-core/WORKFLOWS.md`).
-- While the index contains a table of workflows and signals, the **content** (the specific steps) of global workflows (like `workflows/design.md`) is NOT injected into the hydration context.
-- **Impact**: The hydrator (Haiku) must either guess the steps based on the name or use its own internal knowledge, which may deviate from the project's actual workflow definitions.
+Before this change, the hook loaded only the **index file** (`aops-core/WORKFLOWS.md`).
+- While the index contained a table of workflows and signals, the **content** (the specific steps) of global workflows (like `workflows/design.md`) was NOT injected into the hydration context.
+- **Impact**: The hydrator (Haiku) had to either guess the steps based on the name or use its own internal knowledge, which could deviate from the project's actual workflow definitions.
 
 ### 3. Instruction Contradiction
-- `agents/prompt-hydrator.md` system prompt says: **"DO NOT READ files beyond your input file"**.
-- `hooks/templates/prompt-hydrator-context.md` task description says: **"Read all workflow files you have selected"**.
-- **Impact**: Ambiguous behavior for the hydrator agent, leading to either missed context (if it follows system prompt) or slow execution (if it follows template and makes multiple `read_file` calls).
+- `agents/prompt-hydrator.md` system prompt said: **"DO NOT READ files beyond your input file"**.
+- `hooks/templates/prompt-hydrator-context.md` task description said: **"Read all workflow files you have selected"**.
+- **Impact**: Ambiguous behavior for the hydrator agent, leading to either missed context (if it followed the system prompt) or slow execution (if it followed the template and made multiple `read_file` calls).
 
 ### 4. Authoritative Location for Local Workflows
 - **Location**: `.agent/workflows/` (files) or `.agent/WORKFLOWS.md` (index).
-- **Maintenance**: Currently manual. There is no automated process to sync or validate these against the global index.
+- **Maintenance**: At the time of this analysis, maintenance was manual. There was no automated process to sync or validate these against the global index.
 
 ### 5. Format Optimality
-The current `WORKFLOWS.md` format uses `[[wikilinks]]` which are good for human navigation but require additional resolution logic for LLMs if they are to be followed.
+At the time of this analysis, the `WORKFLOWS.md` format used `[[wikilinks]]`, which are good for human navigation but require additional resolution logic for LLMs if they are to be followed.
 
 ## Refined Strategy
 

@@ -13,6 +13,7 @@ Exit codes:
 
 import json
 import os
+import re
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -328,19 +329,20 @@ def _load_project_workflows(prompt: str = "") -> str:
     included_workflows = []
     prompt_lower = prompt.lower()
 
+    import yaml
+
     for wf_file in workflow_files:
         try:
             content = wf_file.read_text()
             name = wf_file.stem
             desc = ""
             triggers = ""
-            
+
             # Parse frontmatter
             if content.startswith("---"):
                 parts = content.split("---", 2)
                 if len(parts) >= 3:
                     frontmatter_raw = parts[1]
-                    import yaml
                     try:
                         fm = yaml.safe_load(frontmatter_raw)
                         if isinstance(fm, dict):
@@ -351,22 +353,26 @@ def _load_project_workflows(prompt: str = "") -> str:
                                 triggers = ", ".join(triggers_list)
                             elif isinstance(triggers_list, str):
                                 triggers = triggers_list
-                    except yaml.YAMLError:
-                        pass # Fallback to basics on parse error
+                    except (yaml.YAMLError, ValueError, TypeError):
+                        pass  # Fallback to basics on parse error
 
             # Format table row - escape pipes
             desc_table = desc.replace("|", "-")[:100] + ("..." if len(desc) > 100 else "")
             triggers_table = triggers.replace("|", "-")
             lines.append(f"| {name} | {desc_table} | {triggers_table} | `{wf_file.name}` |")
 
-            # Content injection logic based on prompt keywords
+            # Content injection logic based on prompt keywords (word boundary matching)
             filename_keywords = set(wf_file.stem.lower().replace("-", " ").replace("_", " ").split())
-            if any(kw in prompt_lower for kw in filename_keywords) or wf_file.stem.lower() in prompt_lower:
+            if any(re.search(r'\b' + re.escape(kw) + r'\b', prompt_lower) for kw in filename_keywords) or wf_file.stem.lower() in prompt_lower:
+                # Use the same resolved display name as in the index
+                header_name = name
+                if name != wf_file.stem:
+                    header_name = f"{name} ({wf_file.stem})"
                 included_workflows.append(
-                    f"\n\n### {wf_file.stem} (Project Instructions)\n\n{_strip_frontmatter(content)}"
+                    f"\n\n### {header_name} (Project Instructions)\n\n{_strip_frontmatter(content)}"
                 )
         except OSError:
-            pass  # Skip unreadable files
+            pass  # Skip unreadable workflow files
 
     result = "\n".join(lines)
     if included_workflows:
@@ -382,7 +388,7 @@ def _load_global_workflow_content(prompt: str = "") -> str:
     their full content for the hydrator.
     """
     # Get relevant files from index
-    relevant_paths = get_relevant_file_paths(prompt, max_files=5)
+    relevant_paths = get_relevant_file_paths(prompt, max_files=20)
 
     # Filter for workflows in aops-core/workflows/
     workflow_paths = [p for p in relevant_paths if p["path"].startswith("workflows/")]
@@ -404,6 +410,7 @@ def _load_global_workflow_content(prompt: str = "") -> str:
                     f"\n\n### Global Workflow: {wf_name}\n\n{_strip_frontmatter(content)}"
                 )
             except OSError:
+                # Ignore unreadable workflow files; a missing file should not break context generation.
                 pass
 
     return "".join(included_content)
