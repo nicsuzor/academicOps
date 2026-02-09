@@ -81,20 +81,19 @@ GEMINI_EVENT_MAP = {
 
 
 def format_gate_status_icons(session_id: str) -> str:
-    """Format current gate statuses as a compact icon line.
+    """Format gates requiring action as a compact status line.
 
-    Returns a short, non-intrusive string showing gate states:
-    - checkmark = gate passed
-    - X = gate not passed
+    Only displays gates that need execution to continue - passed gates
+    are not shown. Uses minimal bracketed format for terminal clarity.
 
-    Gates displayed: Task, Hydration, Handover
+    Gates checked: task, hydration, handover
 
     Args:
         session_id: Session ID to check gates for
 
     Returns:
-        Formatted status line like "[Task:ok Hydration:ok Handover:X]"
-        Empty string if session state unavailable
+        Formatted status line like "[task] [hydration]" for failing gates
+        Empty string if all gates passed or state unavailable
     """
     try:
         state = session_state.load_session_state(session_id)
@@ -102,20 +101,24 @@ def format_gate_status_icons(session_id: str) -> str:
             return ""
 
         state_data = state.get("state", {})
+        pending_gates = []
 
         # Task bound status
         task_bound = state.get("main_agent", {}).get("current_task") is not None
-        task_icon = "ok" if task_bound else "X"
+        if not task_bound:
+            pending_gates.append("[task]")
 
         # Hydration status (not pending = passed)
         hydration_pending = state_data.get("hydration_pending", True)
-        hydration_icon = "ok" if not hydration_pending else "X"
+        if hydration_pending:
+            pending_gates.append("[hydration]")
 
         # Handover status
         handover_ok = state_data.get("handover_skill_invoked", True)
-        handover_icon = "ok" if handover_ok else "X"
+        if not handover_ok:
+            pending_gates.append("[handover]")
 
-        return f"[Task:{task_icon} Hydration:{hydration_icon} Handover:{handover_icon}]"
+        return " ".join(pending_gates)
 
     except Exception:
         # Silent failure - don't disrupt hook flow
@@ -374,11 +377,11 @@ class HookRouter:
                     traceback.format_exc()
                 )
 
-        # Append gate status icons to system message (non-intrusive display)
+        # Append gate status icons to system message (user-visible display)
         gate_status = format_gate_status_icons(ctx.session_id)
         if gate_status:
             if merged_result.system_message:
-                merged_result.system_message = f"{merged_result.system_message} {gate_status}"
+                merged_result.system_message = f"{merged_result.system_message}\n{gate_status}"
             else:
                 merged_result.system_message = gate_status
 
