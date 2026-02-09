@@ -149,6 +149,21 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         keywords=("feature", "feature-dev", "development", "implement", "new feature"),
     ),
     FileEntry(
+        path="workflows/design.md",
+        description="Planning/designing known work",
+        keywords=("design", "designing", "architecture", "plan"),
+    ),
+    FileEntry(
+        path="workflows/collaborate.md",
+        description="Interactive exploration/brainstorming",
+        keywords=("collaborate", "brainstorm", "explore", "interactive"),
+    ),
+    FileEntry(
+        path="workflows/batch-processing.md",
+        description="Multiple independent items processing",
+        keywords=("batch", "process all", "bulk"),
+    ),
+    FileEntry(
         path="workflows/debugging.md",
         description="Debugging workflow",
         keywords=("debug", "debugging", "investigate", "bug", "error", "fix"),
