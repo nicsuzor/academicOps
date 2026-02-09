@@ -79,12 +79,12 @@ GEMINI_EVENT_MAP = {
 
 # --- Gate Status Display ---
 GATE_ICONS = {
-    "hydration": ("🫗", "💧"),  # open: not needed
-    "task": ("🔗", "📎"),
-    "critic": ("👀", "👁"),
-    "custodiet": ("🛂", "🛡"),
-    "qa": ("🧪", "🔬"),
-    "handover": ("📤", "🤝"),
+    "hydration": ("🫗", "."),  # open: not needed
+    "task": ("📎", "."),
+    "critic": ("👁", "."),
+    "custodiet": ("🛡", "."),
+    "qa": ("🧪", "."),
+    "handover": ("📤", "."),
 }
 
 
@@ -98,7 +98,7 @@ def format_gate_status_icons(session_id: str) -> str:
         session_id: Session ID to check gates for
 
     Returns:
-        Formatted status line like "[🫗 📌]" (blocking gates) or "[✓ ready]" (all passed)
+        Formatted status line with icons showing which gates are blocking (closed) vs open.
 
     Raises:
         ValueError: If session state cannot be loaded (fail fast)

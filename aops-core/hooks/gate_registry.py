@@ -4,7 +4,6 @@ Gate Registry: Defines the logic for specific gates.
 This module contains the "Conditions" that gates evaluate.
 """
 
-import os
 import re
 import sys
 import time
@@ -498,42 +497,6 @@ def _hydration_is_gemini_hydration_attempt(
 
 
 # --- Custodiet Logic ---
-
-
-def _custodiet_build_audit_instruction(
-    transcript_path: str | None, tool_name: str, session_id: str
-) -> str:
-    """Build instruction for compliance audit."""
-    # Build minimal input_data for hook_utils resolution
-    input_data = {"transcript_path": transcript_path} if transcript_path else None
-
-    hook_utils.cleanup_old_temp_files(
-        hook_utils.get_hook_temp_dir(CUSTODIET_TEMP_CATEGORY, input_data), "audit_"
-    )
-
-    session_context = build_rich_session_context(transcript_path) if transcript_path else "(No transcript path available)"
-    axioms, heuristics, skills = hook_utils.load_framework_content()
-    custodiet_mode = os.environ.get("CUSTODIET_MODE", DEFAULT_CUSTODIET_GATE_MODE).lower()
-
-    from lib.template_registry import TemplateRegistry
-
-    registry = TemplateRegistry.instance()
-    full_context = registry.render(
-        "custodiet.context",
-        {
-            "session_context": session_context,
-            "tool_name": tool_name,
-            "axioms_content": axioms,
-            "heuristics_content": heuristics,
-            "skills_content": skills,
-            "custodiet_mode": custodiet_mode,
-        },
-    )
-
-    temp_dir = hook_utils.get_hook_temp_dir(CUSTODIET_TEMP_CATEGORY, input_data)
-    temp_path = hook_utils.write_temp_file(full_context, temp_dir, "audit_")
-
-    return registry.render("custodiet.instruction", {"temp_path": str(temp_path)})
 
 
 # --- Accountant Logic (Post-Tool State Updates) ---
