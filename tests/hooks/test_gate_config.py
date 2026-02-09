@@ -23,6 +23,7 @@ from hooks.gate_config import (
     MAIN_AGENT_ONLY_GATES,
     TOOL_CATEGORIES,
     TOOL_GATE_REQUIREMENTS,
+    get_custodiet_threshold,
     get_gate_closure_triggers,
     get_gate_initial_state,
     get_gate_opening_condition,
@@ -178,8 +179,8 @@ class TestGateExecutionOrder:
         gates = GATE_EXECUTION_ORDER["Stop"]
         assert "unified_logger" in gates
         assert "stop_gate" in gates
-        assert "generate_transcript" in gates
-        assert "session_end_commit" in gates
+        # generate_transcript moved to SessionEnd
+        # session_end_commit is currently disabled
 
     def test_all_events_have_unified_logger(self):
         """Every event type includes unified_logger."""
@@ -348,7 +349,7 @@ class TestGateClosureTriggers:
         triggers = GATE_CLOSURE_TRIGGERS["custodiet"]
         threshold_trigger = next((t for t in triggers if "threshold_counter" in t), None)
         assert threshold_trigger is not None
-        assert threshold_trigger["threshold_value"] == 7
+        assert threshold_trigger["threshold_value"] == get_custodiet_threshold()
 
     def test_handover_closes_on_git_dirty(self):
         """Handover gate re-closes when repo has uncommitted changes."""

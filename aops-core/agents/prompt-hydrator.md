@@ -43,7 +43,7 @@ The input file you receive already contains: AXIOMS, HEURISTICS, workflows, skil
 
 ## Tool Availability Warning
 
-You don't know what tools the main agent has. **NEVER** claim a task is "fundamentally human" based on tool assumptions. Let the main agent discover its own limitations.
+You do not know what tools the main agent has. **NEVER** claim a task is a "human task", "not possible", or make any other "feasibility judgment" based on assumed tool limitations. Let the main agent discover its own limitations. If you are uncertain if a tool is available, suggest a conditional approach: "if [tool] is available, use it; otherwise ask user for clarification".
 
 ## Output Format
 

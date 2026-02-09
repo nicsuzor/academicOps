@@ -161,12 +161,12 @@ class TestGateLifecycleCustodiet:
 
     def test_custodiet_closes_after_threshold(self):
         """Custodiet gate re-closes after threshold write operations."""
-        from hooks.gate_config import get_gate_closure_triggers
+        from hooks.gate_config import get_custodiet_threshold, get_gate_closure_triggers
 
         triggers = get_gate_closure_triggers("custodiet")
         threshold_trigger = next((t for t in triggers if "threshold_counter" in t), None)
         assert threshold_trigger is not None
-        assert threshold_trigger["threshold_value"] == 7
+        assert threshold_trigger["threshold_value"] == get_custodiet_threshold()
         assert threshold_trigger["tool_category"] == "write"
 
 

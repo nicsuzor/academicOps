@@ -41,6 +41,7 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "mcp__plugin_aops-core_task_manager__decompose_task",
         "mcp__plugin_aops-core_task_manager__claim_next_task",
         "mcp__plugin_aops-core_task_manager__rebuild_index",
+        "mcp__plugin_aops-core_task_manager__list_tasks",
         # Gemini short names for task manager
         "create_task",
         "update_task",
@@ -105,7 +106,6 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "mcp__plugin_aops-core_memory__check_database_health",
         "mcp__plugin_context7-plugin_context7__resolve-library-id",
         "mcp__plugin_context7-plugin_context7__query-docs",
-        "mcp__plugin_aops-core_task_manager__list_tasks",
         "mcp__plugin_aops-core_task_manager__search_tasks",
         "mcp__plugin_aops-core_task_manager__get_task_tree",
         "mcp__plugin_aops-core_task_manager__get_review_tasks",

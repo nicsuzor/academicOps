@@ -91,6 +91,7 @@ class TestFirstPromptHydration:
             "task_state": "",
             "relevant_files": "",
             "axioms": "",
+            "project_rules": "",
         }
 
         # This should NOT raise KeyError
@@ -131,6 +132,8 @@ class TestFirstPromptHydration:
             "task_state": "",
             "relevant_files": "",
             "axioms": "",
+            "project_rules": "",
+            "project_paths": "",
         }
 
         result = template.format(**test_values)
@@ -211,8 +214,11 @@ class TestTemplateEscaping:
         expected_placeholders = [
             "{prompt}",
             "{session_context}",
+            "{mcp_tools}",
             "{project_context_index}",
+            "{project_rules}",
             "{relevant_files}",
+            "{project_paths}",
             "{workflows_index}",
             "{skills_index}",
             "{scripts_index}",
