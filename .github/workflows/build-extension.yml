@@ -21,6 +21,18 @@ jobs:
         with:
           fetch-depth: 0  # Full history for version detection
 
+      - name: Determine release type
+        id: release_type
+        run: |
+          # Tag pushes (v*) produce stable releases; everything else is a testing pre-release
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "type=stable" >> $GITHUB_OUTPUT
+            echo "Release type: stable (tag push)"
+          else
+            echo "type=testing" >> $GITHUB_OUTPUT
+            echo "Release type: testing (pre-release)"
+          fi
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -35,9 +47,23 @@ jobs:
       - name: Get project version
         id: version
         run: |
-          VERSION=$(uv run python scripts/build.py --version)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Current version: $VERSION"
+          BASE_VERSION=$(uv run python scripts/build.py --version)
+          echo "base_version=$BASE_VERSION" >> $GITHUB_OUTPUT
+
+          if [ "${{ steps.release_type.outputs.type }}" = "testing" ]; then
+            # Bump patch and append pre-release suffix so each build has a unique,
+            # incrementing version that clients will pick up as an update.
+            # Uses semver pre-release format: X.Y.Z-testing.N
+            # Strip any existing pre-release suffix (e.g. 0.1.15-rc.1 -> 0.1.15)
+            CLEAN_VERSION=$(echo "$BASE_VERSION" | sed 's/[-+].*//')
+            NEXT_PATCH=$(echo "$CLEAN_VERSION" | awk -F. '{print $1 "." $2 "." $3+1}')
+            VERSION="${NEXT_PATCH}-testing.${{ github.run_number }}"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Testing version: $VERSION (base: $BASE_VERSION)"
+          else
+            echo "version=$BASE_VERSION" >> $GITHUB_OUTPUT
+            echo "Stable version: $BASE_VERSION"
+          fi
 
       - name: Setup SSH for dist repo
         uses: webfactory/ssh-agent@v0.9.0
@@ -49,8 +75,11 @@ jobs:
         run: |
           git clone git@github.com:nicsuzor/aops-dist.git ../aops-dist
 
-          # Check if version file exists and matches
-          if [ -f "../aops-dist/VERSION" ]; then
+          # Testing builds always deploy (version includes run_number so is always unique)
+          if [ "${{ steps.release_type.outputs.type }}" = "testing" ]; then
+            echo "version_changed=true" >> $GITHUB_OUTPUT
+            echo "Testing build: always deploy"
+          elif [ -f "../aops-dist/VERSION" ]; then
             DIST_VERSION=$(cat ../aops-dist/VERSION)
             echo "Dist repo version: $DIST_VERSION"
             if [ "$DIST_VERSION" = "${{ steps.version.outputs.version }}" ]; then
@@ -67,7 +96,12 @@ jobs:
 
       - name: Build distributions
         if: steps.check_version.outputs.version_changed == 'true'
-        run: uv run python scripts/build.py
+        run: |
+          if [ "${{ steps.release_type.outputs.type }}" = "testing" ]; then
+            uv run python scripts/build.py --set-version "${{ steps.version.outputs.version }}"
+          else
+            uv run python scripts/build.py
+          fi
         env:
           ACA_DATA: ${{ github.workspace }}
 
@@ -75,6 +109,7 @@ jobs:
         if: steps.check_version.outputs.version_changed == 'true'
         env:
           VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_TYPE: ${{ steps.release_type.outputs.type }}
           GH_TOKEN: ${{ secrets.AOPS_DIST_DEPLOY_KEY }}
         run: |
           git config --global user.name "github-actions[bot]"
@@ -89,22 +124,6 @@ jobs:
           cp -r ${{ github.workspace }}/dist/aops-claude .
           cp -r ${{ github.workspace }}/dist/aops-gemini .
           cp -r ${{ github.workspace }}/dist/aops-antigravity .
-
-          # # Copy gemini-extension.json to repo root (keeping it as a fallback)
-          # cp ${{ github.workspace }}/dist/aops-gemini/gemini-extension.json .
-          # python3 << EOF
-          # import json
-          # import os
-          # version = os.environ['VERSION']
-          # with open('gemini-extension.json', 'r') as f:
-          #     data = json.load(f)
-          # # Update version
-          # data['version'] = version
-          # # DO NOT adjust paths to point to aops-gemini subdirectory
-          # # We want users to link/install aops-gemini directly
-          # with open('gemini-extension.json', 'w') as f:
-          #     json.dump(data, f, indent=2)
-          # EOF
 
           # Copy marketplace definition
           mkdir -p .claude-plugin
@@ -143,26 +162,58 @@ jobs:
               json.dump(data, f, indent=2)
           EOF
 
+          # For testing builds, mark gemini-extension.json as pre-release
+          if [ "$RELEASE_TYPE" = "testing" ]; then
+            python3 << EOF
+          import json
+          import os
+          version = os.environ['VERSION']
+          path = 'aops-gemini/gemini-extension.json'
+          with open(path, 'r') as f:
+              data = json.load(f)
+          data['preRelease'] = True
+          with open(path, 'w') as f:
+              json.dump(data, f, indent=2)
+          EOF
+          fi
+
           # Commit and push
+          COMMIT_PREFIX="Release"
+          if [ "$RELEASE_TYPE" = "testing" ]; then
+            COMMIT_PREFIX="Testing release"
+          fi
           git add -A
-          git commit -m "Release v$VERSION from academicOps@${{ github.sha }}" || echo "No changes to commit"
+          git commit -m "$COMMIT_PREFIX v$VERSION from academicOps@${{ github.sha }}" || echo "No changes to commit"
           git fetch origin main
           git rebase origin/main
           git push origin main
+
+          # For testing builds, update the moving 'testing' tag
+          if [ "$RELEASE_TYPE" = "testing" ]; then
+            git tag -f testing
+            git push origin testing --force
+          fi
 
       - name: Create GitHub Release on dist repo
         if: steps.check_version.outputs.version_changed == 'true'
         env:
           VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_TYPE: ${{ steps.release_type.outputs.type }}
           GH_TOKEN: ${{ secrets.AOPS_DIST_PAT }}
         run: |
           # Create release using GitHub CLI with PAT that has repo access
           # Per gemini-packaging-guide.md: upload ONLY the Gemini tarball as a single
           # generic asset. With exactly one .tar.gz, the installer auto-selects it.
           # Claude Code uses different installation (not GitHub releases).
+          PRERELEASE_FLAG=""
+          if [ "$RELEASE_TYPE" = "testing" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
           gh release create "v$VERSION" \
             --repo nicsuzor/aops-dist \
             --title "v$VERSION" \
             --notes "Built from academicOps@${{ github.sha }}" \
+            $PRERELEASE_FLAG \
             ${{ github.workspace }}/dist/aops-gemini.tar.gz \
             || echo "Release v$VERSION may already exist"
