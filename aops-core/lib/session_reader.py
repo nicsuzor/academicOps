@@ -755,7 +755,7 @@ def build_critic_session_context(transcript_path: Path | str) -> str:
                         q_text = questions[0].get("question", "") if questions else ""
                         tool_line = f"  - **AskUserQuestion**: {q_text}"
                     else:
-                        tool_line = f"  - **AskUserQuestion**"
+                        tool_line = "  - **AskUserQuestion**"
 
                 else:
                     # Generic tool — show name and key args
