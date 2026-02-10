@@ -1122,7 +1122,6 @@ def claude_headless_tracked():
             plugin_dir_core,
             "--plugin-dir",
             plugin_dir_tools,
-            "--no-session-persistence",
         ]
 
         env = os.environ.copy()
