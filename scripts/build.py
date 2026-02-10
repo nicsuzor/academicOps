@@ -65,7 +65,12 @@ def get_project_version(aops_root: Path) -> str:
         )
         tags = [t.strip() for t in result.stdout.split("\n") if t.strip()]
         if tags:
-            return tags[0].lstrip("v")
+            version = tags[0].lstrip("v")
+            # Sanitize for PEP 440 compliance (uv is strict)
+            # Replace -testing.N with .devN
+            if "-testing." in version:
+                version = version.replace("-testing.", ".dev")
+            return version
         return "0.1.0"
     except subprocess.CalledProcessError:
         print("Warning: No git tags found, using fallback version 0.1.0")
