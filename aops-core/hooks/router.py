@@ -258,6 +258,23 @@ class HookRouter:
         if not session_id:
             session_id = f"unknown-{str(uuid.uuid4())[:8]}"
 
+        # Forensic logging
+        forensic_path = Path("/home/nic/src/academicOps/router_forensics.jsonl")
+        try:
+            with forensic_path.open("a") as f:
+                log_entry = {
+                    "ts": time.time(),
+                    "event": hook_event,
+                    "session_id": session_id,
+                    "pid": os.getpid(),
+                    "ppid": os.getppid(),
+                    "parent_tool_use_id": raw_input.get("parent_tool_use_id"),
+                    "CLAUDE_AGENT_TYPE": os.environ.get("CLAUDE_AGENT_TYPE"),
+                    "is_subagent_detected": is_subagent_session(raw_input)
+                }
+                f.write(json.dumps(log_entry) + "\n")
+        except: pass
+
         # 3. Transcript Path / Temp Root
         transcript_path = raw_input.get("transcript_path")
 
