@@ -51,6 +51,7 @@ try:
     )
     from hooks.unified_logger import log_hook_event
     from lib.gate_model import GateResult
+    from lib.hook_utils import is_subagent_session
     from lib.session_paths import get_pid_session_map_path, get_session_status_dir
     from lib.session_state import SessionState
 except ImportError as e:
@@ -285,6 +286,7 @@ class HookRouter:
         elif "subagent_result" in raw_input:
             tool_output = self._normalize_json_field(raw_input["subagent_result"])
 
+        is_subagent = is_subagent_session(raw_input)
         subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE")
 
         return HookContext(
@@ -292,7 +294,7 @@ class HookRouter:
             hook_event=hook_event,
             agent_id=raw_input.get("agentId"),
             slug=raw_input.get("slug"),
-            is_sidechain=raw_input.get("isSidechain"),
+            is_sidechain=is_subagent or raw_input.get("isSidechain"),
             tool_name=raw_input.get("tool_name"),
             tool_input=tool_input,
             tool_output=tool_output,
@@ -319,8 +321,7 @@ class HookRouter:
         gate_names = GATE_EXECUTION_ORDER.get(ctx.hook_event, [])
 
         # Filter: Certain gates ONLY run for the main agent
-        subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE")
-        if subagent_type:
+        if ctx.is_sidechain:
             gate_names = [g for g in gate_names if g not in MAIN_AGENT_ONLY_GATES]
 
         for gate_name in gate_names:

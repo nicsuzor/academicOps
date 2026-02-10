@@ -26,6 +26,12 @@ GATE_CONFIGS = [
                     target_status=GateStatus.CLOSED,
                     custom_action="hydrate_prompt"
                 )
+            ),
+            # DISPATCH: Main agent intends to call hydrator -> Open gate pre-emptively
+            # This allows the hydrator subagent to use its tools without being blocked.
+            GateTrigger(
+                condition=GateCondition(hook_event="PreToolUse", tool_name_pattern="Task", tool_input_pattern="hydrator"),
+                transition=GateTransition(target_status=GateStatus.OPEN, reset_ops_counter=True)
             )
         ],
         policies=[
