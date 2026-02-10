@@ -44,11 +44,10 @@ def get_hook_temp_dir(category: str, input_data: dict[str, Any] | None = None) -
     Unified temp directory resolution:
     1. TMPDIR env var (highest priority - host CLI provided)
     2. AOPS_GEMINI_TEMP_ROOT env var (Gemini router provided)
-    3. GEMINI_CLI mode: ~/.gemini/tmp/{project_hash}/{category}/
-       - Discovered via input_data["transcript_path"] (preferred)
-       - Discovered via CWD hash (fallback)
-
-    Using ~/.gemini/tmp/ to keep all Gemini artifacts in one place.
+    3. CLAUDE_SESSION_ID (Claude Code mode)
+    4. transcript_path has .gemini (Gemini CLI mode)
+    5. GEMINI_CLI or .gemini in cwd (Gemini CLI mode)
+    6. Default: ~/.claude/projects/... (Claude fallback)
 
     Args:
         category: Subdirectory name for this hook type (e.g., "hydrator", "compliance", "session")
@@ -58,7 +57,7 @@ def get_hook_temp_dir(category: str, input_data: dict[str, Any] | None = None) -
         Path to temp directory (created if doesn't exist)
 
     Raises:
-        RuntimeError: If GEMINI_CLI is set but temp dir resolves to nothing or doesn't exist
+        RuntimeError: If GEMINI_CLI is set but temp root not found
     """
     # 1. Check for standard temp dir env var
     tmpdir = os.environ.get("TMPDIR")
@@ -74,61 +73,35 @@ def get_hook_temp_dir(category: str, input_data: dict[str, Any] | None = None) -
         path.mkdir(parents=True, exist_ok=True)
         return path
 
-    # 3. Claude-specific check (prioritize over Gemini discovery if session ID present)
+    # 3. Claude-specific check (SSoT for Claude Code)
     claude_session_id = os.environ.get("CLAUDE_SESSION_ID")
-    if claude_session_id and not os.environ.get("GEMINI_CLI"):
+    if claude_session_id:
         project_folder = get_claude_project_folder()
         path = Path.home() / ".claude" / "projects" / project_folder / "tmp" / category
         path.mkdir(parents=True, exist_ok=True)
         return path
 
     # 4. Check transcript_path for Gemini CLI detection
-    # This handles cases where hook runs with different cwd than Gemini CLI
-    # FAIL-FAST: If Gemini provides a transcript_path, the hash dir MUST exist
     if input_data:
         transcript_path = input_data.get("transcript_path")
         if transcript_path and ".gemini" in str(transcript_path):
-            # Path is usually ~/.gemini/tmp/<hash>/chats/session.json
-            # We want ~/.gemini/tmp/<hash>/<category>/
-            # So we go up 2 levels from the file: chats/ -> hash/
             t_path = Path(transcript_path)
-            if t_path.suffix in (".jsonl", ".json"):
-                project_hash_dir = t_path.parent.parent
-            else:
-                project_hash_dir = t_path.parent
+            # Path is usually ~/.gemini/tmp/<hash>/chats/session.json
+            project_hash_dir = t_path.parent.parent if t_path.suffix in (".jsonl", ".json") else t_path.parent
 
             if not project_hash_dir.exists():
-                # FAIL-FAST: Gemini provided transcript_path but hash dir missing
                 raise RuntimeError(
                     f"Gemini transcript_path provided but hash directory missing: {project_hash_dir}\n"
-                    f"This indicates Gemini CLI failed to initialize the project properly.\n"
                     f"Expected: ~/.gemini/tmp/<hash>/ to exist before hooks run."
                 )
             path = project_hash_dir / category
             path.mkdir(parents=True, exist_ok=True)
             return path
 
-    # 5. Gemini-specific discovery logic (GEMINI_CLI env or .gemini in cwd)
+    # 5. Gemini-specific discovery logic (CWD hash fallback)
     if os.environ.get("GEMINI_CLI") or (Path.cwd() / ".gemini").exists():
-        # Strategy A: Use transcript path (already checked above, but keep for completeness)
-        if input_data:
-            transcript_path = input_data.get("transcript_path")
-            if transcript_path:
-                t_path = Path(transcript_path)
-                if t_path.suffix in (".jsonl", ".json"):
-                    project_hash_dir = t_path.parent.parent
-                else:
-                    project_hash_dir = t_path.parent
-
-                if project_hash_dir.exists() and ".gemini" in str(project_hash_dir):
-                    path = project_hash_dir / category
-                    path.mkdir(parents=True, exist_ok=True)
-                    return path
-
-        # Strategy B: Use CWD hash (standard Gemini behavior)
-        project_root = str(Path.cwd())
-        abs_root = str(Path(project_root).resolve())
-        project_hash = hashlib.sha256(abs_root.encode()).hexdigest()
+        project_root = str(Path.cwd().resolve())
+        project_hash = hashlib.sha256(project_root.encode()).hexdigest()
         gemini_tmp = Path.home() / ".gemini" / "tmp" / project_hash
 
         if gemini_tmp.exists():
@@ -136,21 +109,12 @@ def get_hook_temp_dir(category: str, input_data: dict[str, Any] | None = None) -
             path.mkdir(parents=True, exist_ok=True)
             return path
 
-        # FAIL-CLOSED: Gemini temp dir doesn't exist
-        # If we have a Claude session ID, we can still fall back to Claude logic
-        if claude_session_id:
-             project_folder = get_claude_project_folder()
-             path = Path.home() / ".claude" / "projects" / project_folder / "tmp" / category
-             path.mkdir(parents=True, exist_ok=True)
-             return path
-
         raise RuntimeError(
-            f"GEMINI_CLI is set but temp root not found. "
-            f"Tried transcript path and CWD hash: {gemini_tmp}. "
+            f"GEMINI_CLI is set but temp root not found at: {gemini_tmp}. "
             "Ensure you are running inside a Gemini project."
         )
 
-    # 6. Default: Claude behavior
+    # 6. Default: ~/.claude/projects/{project}/tmp/{category}/ (Claude behavior)
     project_folder = get_claude_project_folder()
     path = Path.home() / ".claude" / "projects" / project_folder / "tmp" / category
     path.mkdir(parents=True, exist_ok=True)
