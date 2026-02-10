@@ -227,6 +227,54 @@ Tasks cluster in visualizations based on their parent chain reaching a canonical
 
 **Diagnosis**: If tasks with `project: X` don't cluster, check whether `X.md` exists with `type: project`. Missing project files are a common cause of orphaned-looking tasks.
 
+## The Graph IS the Knowledge Base
+
+**Key insight**: The task graph is not just a todo list—it's a knowledge graph. Relationships between ideas belong as graph edges, not prose in task bodies.
+
+### Work Backwards from Action
+
+Before creating any node, ask: **"What would we DO with this information?"**
+
+| Answer | Container |
+|--------|-----------|
+| Clear next action | Task (actionable) |
+| Informs a future decision | Task + soft_depends_on from decision point |
+| Context for current work | Body prose (don't create node) |
+| Might be useful someday | Memory (not task graph) |
+
+**Anti-pattern**: Creating a "learn" task without knowing what happens after. If you can't answer "what does completing this enable?", you don't have a task yet.
+
+### Go Up a Level When Uncertain
+
+When you don't know WHICH solution is right, don't pick one prematurely:
+
+1. Create nodes for each alternative (marked `complexity: needs-decomposition`)
+2. Create or identify the spike that will inform the choice
+3. Link alternatives to spike via `soft_depends_on`
+4. Let the spike's findings determine which alternative to pursue
+
+```
+spike: Investigate options
+  ↑ soft_depends_on
+  ├── alternative-a (needs-decomposition)
+  ├── alternative-b (needs-decomposition)
+  └── alternative-c (needs-decomposition)
+```
+
+This captures the decision structure in the graph, not just in prose.
+
+### Nodes Not Prose
+
+When you observe something that might lead to action:
+
+| Don't | Do |
+|-------|-----|
+| Write observation as prose in parent body | Create task node with `complexity: needs-decomposition` |
+| List alternatives in a bullet list | Create nodes for each, link with soft dependencies |
+| Describe relationships in prose | Express as `depends_on` or `soft_depends_on` edges |
+
+**Why**: Prose isn't traversable. Graph edges are. When you later need to find "what would benefit from X?", soft_blocks queries work; grep through prose doesn't.
+
 ## Anti-Patterns
 
 - Expanding everything at once (premature detail)
@@ -237,3 +285,5 @@ Tasks cluster in visualizations based on their parent chain reaching a canonical
 - **Embedded actionable context**: Putting fixable constraints in task body instead of creating proper subtasks
 - **Cross-project pollution**: Putting personal/infrastructure tasks under unrelated project parents
 - **Missing project anchors**: Creating goals/tasks with `project: X` but no `X.md` project file exists, causing disconnected visualization clusters
+- **Reflexive task creation**: Creating tasks/spikes without knowing the action path (where does this go? what does completing it enable?)
+- **Prose instead of structure**: Writing relationships as prose when they should be graph edges
