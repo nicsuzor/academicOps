@@ -1,6 +1,7 @@
 import logging
 import re
 import time
+from collections import defaultdict
 from typing import Any, Dict, Optional
 
 from hooks.schemas import HookContext
@@ -88,7 +89,7 @@ class GenericGate:
         variables = {
             "session_id": ctx.session_id,
             "tool_name": ctx.tool_name or "",
-            "gate_status": state.status.value,
+            "gate_status": getattr(state.status, 'value', state.status),
             "ops_since_open": state.ops_since_open,
             "ops_since_close": state.ops_since_close,
             "blocked": state.blocked,
@@ -97,10 +98,10 @@ class GenericGate:
             **state.metrics
         }
 
-        # Safe format
+        # Safe format using format_map with default for missing keys
         try:
-            return template.format(**variables)
-        except KeyError:
+            return template.format_map(defaultdict(lambda: "(not set)", variables))
+        except Exception:
              # Fallback: simple replacement
              result = template
              for key, val in variables.items():
