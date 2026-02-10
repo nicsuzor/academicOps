@@ -784,6 +784,12 @@ def build_antigravity(aops_root: Path, dist_root: Path, all_mcps: dict):
 def main():
     parser = argparse.ArgumentParser(description="Build script for AcademicOps Gemini extensions.")
     parser.add_argument("--version", action="store_true", help="Print detected version and exit")
+    parser.add_argument(
+        "--set-version",
+        type=str,
+        default=None,
+        help="Override the auto-detected version (e.g. '0.1.15-testing.42')",
+    )
     args = parser.parse_args()
 
     aops_root = Path(__file__).parent.parent.resolve()
@@ -802,8 +808,12 @@ def main():
     print(f"Info: aops_root inferred to {aops_root}")
     dist_root = aops_root / "dist"
 
-    # Get version from pyproject.toml
-    version = get_project_version(aops_root)
+    # Get version: use --set-version override or detect from git tags
+    if args.set_version:
+        version = args.set_version
+        print(f"Using override version: v{version}")
+    else:
+        version = get_project_version(aops_root)
     print(f"Building AcademicOps v{version}...")
 
     # Clean/Create dist
