@@ -113,7 +113,6 @@ class GenericGate:
              for key, val in variables.items():
                  result = result.replace(f"{{{key}}}", str(val))
              # Replace any remaining {placeholder} with "(not set)"
-             import re
              result = re.sub(r'\{(\w+)\}', '(not set)', result)
              return result
 
