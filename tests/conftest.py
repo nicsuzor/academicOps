@@ -1103,8 +1103,8 @@ def claude_headless_tracked():
 
         # Get aops-core plugin directory for agent availability
         aops_root = get_aops_root()
-        plugin_dir_core = aops_root / ".." / "aops-core"
-        plugin_dir_tools = aops_root / ".." / "aops-tools"
+        plugin_dir_core = aops_root / "aops-core"
+        plugin_dir_tools = aops_root.parent / "aops-tools"
 
         cmd = [
             "claude",

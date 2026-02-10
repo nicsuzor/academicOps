@@ -259,7 +259,7 @@ class HookRouter:
             session_id = f"unknown-{str(uuid.uuid4())[:8]}"
 
         # Forensic logging
-        forensic_path = Path("/home/nic/src/academicOps/router_forensics.jsonl")
+        forensic_path = Path("/tmp/router_forensics.jsonl")
         try:
             with forensic_path.open("a") as f:
                 log_entry = {
@@ -273,7 +273,8 @@ class HookRouter:
                     "is_subagent_detected": is_subagent_session(raw_input)
                 }
                 f.write(json.dumps(log_entry) + "\n")
-        except: pass
+        except Exception as e:
+            print(f"DEBUG: Forensic log failed: {e}", file=sys.stderr)
 
         # 3. Transcript Path / Temp Root
         transcript_path = raw_input.get("transcript_path")
