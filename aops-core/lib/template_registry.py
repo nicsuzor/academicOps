@@ -10,7 +10,7 @@ Usage:
     from lib.template_registry import TemplateRegistry
 
     registry = TemplateRegistry.instance()
-    content = registry.render("hydration.block", {"temp_path": "/tmp/ctx.md"})
+    content = registry.render("hydration.block", {"temp_path": "/path/to/ctx.md"})
 
 Exit behavior: Functions raise exceptions (fail-fast P#8). Callers handle graceful degradation.
 """

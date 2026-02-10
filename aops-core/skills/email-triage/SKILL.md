@@ -112,6 +112,13 @@ emails = mcp__outlook__messages_search(
 | **FYI**  | Useful information, no action needed   | Read and archive    |
 | **Skip** | Spam, irrelevant, auto-generated noise | Archive immediately |
 
+**Reply-waiting signals** (ALWAYS Task, never FYI):
+- "following up", "checking in", "any update", "wanted to touch base"
+- "haven't heard back", "just checking", "circling back"
+- Questions awaiting answer from a previous thread
+- External parties waiting for scheduling, confirmation, or decision
+- PhD/collaboration inquiries requesting supervision or meeting
+
 ### Step 4: User Checkpoint Before Archive
 
 **MANDATORY**: Get user approval before archiving.
