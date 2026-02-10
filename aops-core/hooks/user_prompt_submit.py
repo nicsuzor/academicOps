@@ -703,7 +703,9 @@ def build_hydration_instruction(
         IOError: If temp file write fails (fail-fast per AXIOM #7)
     """
     # Build input_data for hook_utils resolution
-    input_data = {"transcript_path": transcript_path} if transcript_path else None
+    input_data = {"session_id": session_id}
+    if transcript_path:
+        input_data["transcript_path"] = transcript_path
 
     # Cleanup old temp files first
     cleanup_old_temp_files(input_data)
