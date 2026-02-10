@@ -230,18 +230,14 @@ class HookRouter:
                 return value
         return value
 
-    def normalize_input(
-        self, raw_input: dict[str, Any], gemini_event: str | None = None
-    ) -> HookContext:
-        """Create a normalized HookContext from raw input."""
-
+    def normalize_input(self, raw_input: dict[str, Any], gemini_event: str | None = None) -> HookContext:
+        """Standardize raw hook input from any client."""
         # 1. Determine Event Name
         if gemini_event:
             hook_event = GEMINI_EVENT_MAP.get(gemini_event, gemini_event)
         else:
             raw_event = raw_input.get("hook_event_name")
             if not raw_event:
-                # Raise KeyError for backward compatibility with tests
                 raise KeyError("hook_event_name")
             hook_event = GEMINI_EVENT_MAP.get(raw_event, raw_event)
 
@@ -258,23 +254,21 @@ class HookRouter:
         if not session_id:
             session_id = f"unknown-{str(uuid.uuid4())[:8]}"
 
-        # Forensic logging
-        forensic_path = Path("/tmp/router_forensics.jsonl")
+        # Global Session Registry (Cross-process sidechain detection)
+        registry_path = Path("/tmp/aops_session_registry.json")
+        is_registered_main = False
         try:
-            with forensic_path.open("a") as f:
-                log_entry = {
-                    "ts": time.time(),
-                    "event": hook_event,
-                    "session_id": session_id,
-                    "pid": os.getpid(),
-                    "ppid": os.getppid(),
-                    "parent_tool_use_id": raw_input.get("parent_tool_use_id"),
-                    "CLAUDE_AGENT_TYPE": os.environ.get("CLAUDE_AGENT_TYPE"),
-                    "is_subagent_detected": is_subagent_session(raw_input)
-                }
-                f.write(json.dumps(log_entry) + "\n")
-        except Exception as e:
-            print(f"DEBUG: Forensic log failed: {e}", file=sys.stderr)
+            registry = {}
+            if registry_path.exists():
+                registry = json.loads(registry_path.read_text())
+            
+            if hook_event == "UserPromptSubmit":
+                registry[session_id] = "main"
+                registry_path.write_text(json.dumps(registry))
+                is_registered_main = True
+            else:
+                is_registered_main = registry.get(session_id) == "main"
+        except: pass
 
         # 3. Transcript Path / Temp Root
         transcript_path = raw_input.get("transcript_path")
@@ -306,7 +300,10 @@ class HookRouter:
 
         is_subagent = is_subagent_session(raw_input)
         subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE")
-        is_sidechain = is_subagent or raw_input.get("isSidechain")
+        # Definitive sidechain detection:
+        # If it's NOT a registered main agent, it's a sidechain!
+        # (Exception: SessionStart might happen before registration, but that's okay)
+        is_sidechain = (not is_registered_main) or is_subagent or raw_input.get("isSidechain")
 
         return HookContext(
             session_id=session_id,
