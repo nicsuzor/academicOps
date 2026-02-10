@@ -6,16 +6,15 @@ Iterates through registered gates to enforce policies.
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
 from typing import TYPE_CHECKING
+
+from lib.gate_model import GateResult, GateVerdict
+from lib.gates.registry import GateRegistry
+from lib.session_state import SessionState
 
 from hooks.schemas import HookContext
 from hooks.unified_logger import get_hook_log_path
 from lib import hook_utils, session_paths
-from lib.gate_model import GateResult, GateVerdict
-from lib.gates.registry import GateRegistry
-from lib.session_state import SessionState
 
 if TYPE_CHECKING:
     pass

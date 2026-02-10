@@ -3,6 +3,7 @@ import re
 import sys
 import time
 from collections import defaultdict
+from typing import Any
 
 from hooks.schemas import HookContext
 
@@ -116,7 +117,7 @@ class GenericGate:
 
     def _render_template(self, template: str, ctx: HookContext, state: GateState, session_state: SessionState) -> str:
         # Prepare context variables
-        variables = {
+        variables: dict[str, Any] = {
             "session_id": ctx.session_id,
             "tool_name": ctx.tool_name or "",
             "gate_status": getattr(state.status, 'value', state.status),

@@ -1,6 +1,8 @@
 from hooks.schemas import HookContext
+
 from lib.gate_types import GateState
 from lib.session_state import SessionState
+
 
 def check_custom_condition(name: str, ctx: HookContext, state: GateState, session_state: SessionState) -> bool:
     """
