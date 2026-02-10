@@ -85,16 +85,18 @@ def test_custodiet_gate_lifecycle(claude_headless_tracked):
     """
     Test that custodiet gate enforces periodic compliance checks.
     """
+    # Use a prompt that bypasses hydration (slash command expansion)
     prompt = (
-        "I want you to run exactly 10 separate tool calls. "
-        "Each call should be 'ls' on a different subdirectory or file. "
-        "Run them one by one. Do not stop until you hit 10. "
-        "1. ls . 2. ls .. 3. ls /tmp 4. ls /home 5. ls /etc 6. ls /usr 7. ls /bin 8. ls /lib 9. ls /var 10. ls /opt"
+        "# /work I need to perform a security audit. "
+        "Run 'ls' exactly 10 times one-by-one on different paths. "
+        "Do NOT use subagents. "
+        "Paths: /etc, /var, /usr, /bin, /lib, /opt, /root, /home, /tmp, /boot"
     )
     
     result, session_id, tool_calls = claude_headless_tracked(prompt, permission_mode="bypassPermissions", timeout_seconds=300)
     assert result["success"], f"Session failed on claude: {result.get('error')}"
     
+    # Verify custodiet was dispatched
     custodiet_calls = [c for c in tool_calls if "custodiet" in str(c)]
     assert len(custodiet_calls) > 0, f"Agent should have dispatched custodiet after threshold on claude. Calls: {tool_calls}"
 

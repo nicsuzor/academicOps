@@ -1,5 +1,6 @@
 import logging
 import re
+import sys
 import time
 from collections import defaultdict
 from typing import Any, Dict, Optional
@@ -36,7 +37,6 @@ class GenericGate:
 
         # 1. Hook Event Match
         if condition.hook_event:
-            # Simple equality check
             if condition.hook_event != ctx.hook_event:
                 return False
 
@@ -50,7 +50,8 @@ class GenericGate:
         # 2.5 Excluded Tool Categories
         if condition.excluded_tool_categories:
             from hooks.gate_config import get_tool_category
-            if ctx.tool_name and get_tool_category(ctx.tool_name) in condition.excluded_tool_categories:
+            cat = get_tool_category(ctx.tool_name) if ctx.tool_name else "unknown"
+            if cat in condition.excluded_tool_categories:
                 return False
 
         # 3. Tool Input Pattern
@@ -98,11 +99,9 @@ class GenericGate:
             diff = current_turn - state.last_open_turn
             if diff < condition.min_turns_since_open:
                 return False
-        # ... implement other metric checks as needed ...
 
         # 5. Custom Check
         if condition.custom_check:
-            # Import dynamically or use registry
             from lib.gates.custom_conditions import check_custom_condition
             if not check_custom_condition(condition.custom_check, ctx, state, session_state):
                 return False

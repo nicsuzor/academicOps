@@ -302,8 +302,7 @@ class HookRouter:
         subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE")
         # Definitive sidechain detection:
         # If it's NOT a registered main agent, it's a sidechain!
-        # (Exception: SessionStart might happen before registration, but that's okay)
-        is_sidechain = (not is_registered_main) or is_subagent or raw_input.get("isSidechain")
+        is_sidechain = bool((not is_registered_main) or is_subagent or raw_input.get("isSidechain"))
 
         return HookContext(
             session_id=session_id,
