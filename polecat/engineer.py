@@ -142,9 +142,9 @@ class Engineer:
         print(f"  Attempting squash merge of {branch_name}...")
         try:
             self._run_git(repo_path, ["merge", "--squash", branch_name])
-        except subprocess.CalledProcessError:
+        except subprocess.CalledProcessError as e:
             self._run_git(repo_path, ["merge", "--abort"])
-            raise RuntimeError("Merge conflicts detected")
+            raise RuntimeError("Merge conflicts detected") from e
 
         # 4. Run Tests
         if not (repo_path / "pyproject.toml").exists():
@@ -160,7 +160,7 @@ class Engineer:
         except subprocess.CalledProcessError as e:
             self._run_git(repo_path, ["reset", "--hard", "HEAD"])
             # Include stdout/stderr in error message
-            raise RuntimeError(f"Tests failed:\n{e.stdout.decode()}\n{e.stderr.decode()}")
+            raise RuntimeError(f"Tests failed:\n{e.stdout.decode()}\n{e.stderr.decode()}") from e
 
         # 5. Commit & Push
         print("  Committing and Pushing...")

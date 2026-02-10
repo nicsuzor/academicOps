@@ -3,11 +3,17 @@ import re
 import sys
 import time
 from collections import defaultdict
-from typing import Any, Dict, Optional
 
 from hooks.schemas import HookContext
+
 from lib.gate_model import GateResult, GateVerdict
-from lib.gate_types import GateConfig, GateState, GateStatus, GateTransition, GateCondition
+from lib.gate_types import (
+    GateCondition,
+    GateConfig,
+    GateState,
+    GateStatus,
+    GateTransition,
+)
 from lib.session_state import SessionState
 
 logger = logging.getLogger(__name__)

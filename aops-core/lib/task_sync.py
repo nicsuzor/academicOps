@@ -342,7 +342,7 @@ class TaskSyncService:
             in_progress = False
             entry_added = False
 
-            for i, line in enumerate(lines):
+            for _i, line in enumerate(lines):
                 new_lines.append(line)
                 if line.strip() == "## Progress":
                     in_progress = True

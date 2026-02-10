@@ -22,20 +22,25 @@ import tempfile
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, ValidationError
 
-from lib.session_paths import get_session_file_path, get_session_short_hash, get_session_status_dir
 from lib.gate_types import GateState, GateStatus
+from lib.session_paths import (
+    get_session_file_path,
+    get_session_short_hash,
+    get_session_status_dir,
+)
 
 
 class MainAgentState(BaseModel):
     """Main agent tracking."""
-    current_task: Optional[str] = None
+
+    current_task: str | None = None
     task_binding_source: str = "unknown"
-    task_binding_ts: Optional[str] = None
-    task_cleared_ts: Optional[str] = None
+    task_binding_ts: str | None = None
+    task_cleared_ts: str | None = None
     todos_completed: int = 0
     todos_total: int = 0
 
@@ -47,7 +52,7 @@ class SessionState(BaseModel):
     session_id: str
     date: str  # YYYY-MM-DD
     started_at: str  # ISO timestamp
-    ended_at: Optional[str] = None
+    ended_at: str | None = None
 
     # Global turn counter (increments on user prompt)
     global_turn_count: int = 0
@@ -56,22 +61,22 @@ class SessionState(BaseModel):
     session_type: str = "interactive"
 
     # Execution state (legacy bag + structured)
-    state: Dict[str, Any] = Field(default_factory=dict)
+    state: dict[str, Any] = Field(default_factory=dict)
 
     # Structured components
-    gates: Dict[str, GateState] = Field(default_factory=dict)
+    gates: dict[str, GateState] = Field(default_factory=dict)
 
     # Main Agent / Task tracking (could move to 'task' gate metrics, but useful globally)
     main_agent: MainAgentState = Field(default_factory=MainAgentState)
 
     # Subagent tracking: agent_name -> data dict
-    subagents: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
+    subagents: dict[str, dict[str, Any]] = Field(default_factory=dict)
 
     # Session insights (written at close)
-    insights: Optional[Dict[str, Any]] = None
+    insights: dict[str, Any] | None = None
 
     @classmethod
-    def create(cls, session_id: str) -> "SessionState":
+    def create(cls, session_id: str) -> SessionState:
         """Create new session state."""
         now = datetime.now().astimezone().replace(microsecond=0)
 
@@ -109,7 +114,7 @@ class SessionState(BaseModel):
         return instance
 
     @classmethod
-    def load(cls, session_id: str, retries: int = 3) -> "SessionState":
+    def load(cls, session_id: str, retries: int = 3) -> SessionState:
         """Load session state from disk."""
         now = datetime.now()
         today = now.strftime("%Y%m%d")

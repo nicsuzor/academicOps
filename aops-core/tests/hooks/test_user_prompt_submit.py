@@ -2,10 +2,10 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from hooks.user_prompt_submit import (
-    build_hydration_instruction,
-    write_initial_hydrator_state,
     CONTEXT_TEMPLATE_FILE,
     INSTRUCTION_TEMPLATE_FILE,
+    build_hydration_instruction,
+    write_initial_hydrator_state,
 )
 from lib.session_state import SessionState
 

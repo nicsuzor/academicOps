@@ -333,7 +333,7 @@ def extract_reflection_from_entries(
     if agent_entries:
         # Collect all agent entries with their timestamps for sorting
         all_agent_entries = []
-        for agent_id, agent_entry_list in agent_entries.items():
+        for _agent_id, agent_entry_list in agent_entries.items():
             for entry in agent_entry_list:
                 if entry.type == "assistant":
                     all_agent_entries.append(entry)
@@ -1021,7 +1021,7 @@ def _parse_subagent_output(text: str, heading_level: int = 4) -> tuple[str, list
     if agent_id:
         markdown = f"**Subagent: {agent_id}**\n\n"
     else:
-        markdown = f"**Subagent Output**\n\n"
+        markdown = "**Subagent Output**\n\n"
 
     content = "".join(output_parts)
     markdown += content

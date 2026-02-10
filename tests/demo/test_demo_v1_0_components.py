@@ -95,10 +95,10 @@ def generate_transcript(session_path: Path, format_type: str = "abridged") -> st
 
         return result.stdout
 
-    except subprocess.TimeoutExpired:
-        raise RuntimeError("Transcript generation timed out after 60 seconds")
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError("Transcript generation timed out after 60 seconds") from e
     except Exception as e:
-        raise RuntimeError(f"Transcript generation error: {e}")
+        raise RuntimeError(f"Transcript generation error: {e}") from e
 
 
 def analyze_transcript_for_v1_0_components(
@@ -338,7 +338,7 @@ class TestV1ComponentsDemo:
         }
 
         # Aggregate findings
-        for session_name, analysis in all_analyses:
+        for _session_name, analysis in all_analyses:
             for category in ["agents", "workflows", "qa_gates", "session_close"]:
                 if category in analysis:
                     for component, data in analysis[category].items():

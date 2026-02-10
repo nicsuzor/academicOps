@@ -1,4 +1,11 @@
-from lib.gate_types import GateConfig, GateTrigger, GatePolicy, GateCondition, GateTransition, GateStatus
+from lib.gate_types import (
+    GateCondition,
+    GateConfig,
+    GatePolicy,
+    GateStatus,
+    GateTransition,
+    GateTrigger,
+)
 
 GATE_CONFIGS = [
     # --- Hydration ---

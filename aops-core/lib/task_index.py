@@ -273,7 +273,7 @@ class TaskIndex:
         # A task is a leaf only if:
         # 1. It has no computed children, AND
         # 2. Its frontmatter says leaf=True (respects explicit non-leaf declarations)
-        for task_id, entry in self._tasks.items():
+        for _task_id, entry in self._tasks.items():
             has_children = len(entry.children) > 0
             # If frontmatter said leaf=False, keep it False (declared parent)
             # If we found children, set to False
