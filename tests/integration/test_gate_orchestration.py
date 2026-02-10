@@ -41,8 +41,8 @@ def test_hydration_gate_lifecycle(cli_headless):
     # Use a prompt that DEMANDS context analysis
     prompt = "List all files in the current directory, but you MUST follow the project guidelines in the context file. Analyze the context first."
     
-    # Run with YOLO/bypass to allow tool use
-    result = runner(prompt, permission_mode="yolo", timeout_seconds=180)
+    # Run with bypass to allow tool use
+    result = runner(prompt, permission_mode="bypassPermissions", timeout_seconds=180)
     assert result["success"], f"Session failed on {platform}: {result.get('error')}"
     
     # 1. Verify hydrator was dispatched
@@ -70,7 +70,7 @@ def test_custodiet_gate_lifecycle(cli_headless):
         "1. ls . 2. ls .. 3. ls /tmp 4. ls /home 5. ls /etc 6. ls /usr 7. ls /bin 8. ls /lib 9. ls /var 10. ls /opt"
     )
     
-    result = runner(prompt, permission_mode="yolo", timeout_seconds=300)
+    result = runner(prompt, permission_mode="bypassPermissions", timeout_seconds=300)
     assert result["success"], f"Session failed on {platform}: {result.get('error')}"
     
     # Verify custodiet was dispatched
