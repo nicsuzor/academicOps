@@ -288,13 +288,14 @@ class HookRouter:
 
         is_subagent = is_subagent_session(raw_input)
         subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE")
+        is_sidechain = is_subagent or raw_input.get("isSidechain")
 
         return HookContext(
             session_id=session_id,
             hook_event=hook_event,
             agent_id=raw_input.get("agentId"),
             slug=raw_input.get("slug"),
-            is_sidechain=is_subagent or raw_input.get("isSidechain"),
+            is_sidechain=is_sidechain,
             tool_name=raw_input.get("tool_name"),
             tool_input=tool_input,
             tool_output=tool_output,
@@ -308,6 +309,13 @@ class HookRouter:
         """Run all configured gates for the event and merge results."""
         self._check_for_loops(ctx.session_id)
         merged_result = CanonicalHookOutput()
+        
+        # Debug sidechain detection in system message
+        if ctx.is_sidechain:
+            merged_result.metadata["sidechain"] = True
+            # We don't want to clutter system_message for every tool, 
+            # but for the first turn it might be useful.
+            # merged_result.system_message = "⛓️ Sidechain detected."
 
         # Load Session State ONCE
         try:
