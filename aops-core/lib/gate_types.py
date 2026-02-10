@@ -44,7 +44,6 @@ class GateCondition(BaseModel):
     tool_input_pattern: str | None = None # Regex on stringified tool input dict
     subagent_type_pattern: str | None = None # Regex on subagent type
     excluded_tool_categories: list[str] | None = None  # Skip if tool is in these categories
-    is_sidechain: bool | None = None # Filter by sidechain status
 
     # State checks
     current_status: GateStatus | None = None # Applies only if gate is in this status

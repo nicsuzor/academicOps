@@ -37,28 +37,26 @@ GATE_CONFIGS = [
             # DISPATCH: Main agent intends to call hydrator -> Open gate pre-emptively
             # This allows the hydrator subagent to use its tools without being blocked.
             GateTrigger(
+                condition=GateCondition(hook_event="PreToolUse", tool_name_pattern="Task", tool_input_pattern="hydrator"),
+                transition=GateTransition(target_status=GateStatus.OPEN, reset_ops_counter=True)
+            ),
+            GateTrigger(
+                condition=GateCondition(hook_event="PreToolUse", tool_name_pattern="Skill", tool_input_pattern="hydrator"),
+                transition=GateTransition(target_status=GateStatus.OPEN, reset_ops_counter=True)
+            ),
+            GateTrigger(
+                condition=GateCondition(hook_event="PreToolUse", tool_name_pattern="prompt-hydrator"),
+                transition=GateTransition(target_status=GateStatus.OPEN, reset_ops_counter=True)
+            ),
+            GateTrigger(
                 condition=GateCondition(hook_event="PreToolUse", tool_input_pattern="aops-core:prompt-hydrator"),
-                transition=GateTransition(target_status=GateStatus.OPEN, reset_ops_counter=True)
-            ),
-            GateTrigger(
-                condition=GateCondition(hook_event="PreToolUse", tool_name_pattern="^aops-core:prompt-hydrator"),
-                transition=GateTransition(target_status=GateStatus.OPEN, reset_ops_counter=True)
-            ),
-            GateTrigger(
-                condition=GateCondition(hook_event="PreToolUse", tool_name_pattern="^hydrator"),
                 transition=GateTransition(target_status=GateStatus.OPEN, reset_ops_counter=True)
             )
         ],
         policies=[
             # If Closed, Block tools (except always_available like Task, prompt-hydrator)
-            # ONLY for the main agent (is_sidechain=False)
             GatePolicy(
-                condition=GateCondition(
-                    current_status=GateStatus.CLOSED, 
-                    hook_event="PreToolUse", 
-                    excluded_tool_categories=["always_available"],
-                    is_sidechain=False
-                ),
+                condition=GateCondition(current_status=GateStatus.CLOSED, hook_event="PreToolUse", excluded_tool_categories=["always_available"]),
                 verdict="deny",
                 message_template=(
                     "⛔ **HYDRATION REQUIRED**\n\n"
@@ -97,12 +95,7 @@ GATE_CONFIGS = [
         policies=[
             # Threshold check (except always_available tools)
             GatePolicy(
-                condition=GateCondition(
-                    hook_event="PreToolUse", 
-                    min_ops_since_open=7, 
-                    excluded_tool_categories=["always_available"],
-                    is_sidechain=False
-                ),
+                condition=GateCondition(hook_event="PreToolUse", min_ops_since_open=7, excluded_tool_categories=["always_available"]),
                 verdict="deny", # Or warn based on env var? For now deny.
                 message_template="Compliance check required ({ops_since_open} ops since last check).\nInvoke 'custodiet' agent.",
                 context_template="Compliance Context: {temp_path}",
@@ -110,13 +103,13 @@ GATE_CONFIGS = [
             ),
             # Stop check (Uncommitted work)
             GatePolicy(
-                condition=GateCondition(hook_event="Stop", custom_check="has_uncommitted_work", is_sidechain=False),
+                condition=GateCondition(hook_event="Stop", custom_check="has_uncommitted_work"),
                 verdict="deny",
                 message_template="{block_reason}"
             ),
             # Stop warning (Unpushed commits)
             GatePolicy(
-                condition=GateCondition(hook_event="Stop", custom_check="has_unpushed_commits", is_sidechain=False),
+                condition=GateCondition(hook_event="Stop", custom_check="has_unpushed_commits"),
                 verdict="warn",
                 message_template="{warning_message}"
             )
@@ -153,12 +146,7 @@ GATE_CONFIGS = [
         ],
         policies=[
             GatePolicy(
-                condition=GateCondition(
-                    hook_event="PreToolUse", 
-                    min_ops_since_open=20, 
-                    excluded_tool_categories=["always_available"],
-                    is_sidechain=False
-                ),
+                condition=GateCondition(hook_event="PreToolUse", min_ops_since_open=20, excluded_tool_categories=["always_available"]),
                 verdict="warn",
                 message_template="Consider invoking 'critic' for review ({ops_since_open} ops since last check)."
             )
@@ -178,12 +166,7 @@ GATE_CONFIGS = [
         ],
         policies=[
              GatePolicy(
-                condition=GateCondition(
-                    hook_event="PreToolUse", 
-                    min_ops_since_open=30, 
-                    excluded_tool_categories=["always_available"],
-                    is_sidechain=False
-                ),
+                condition=GateCondition(hook_event="PreToolUse", min_ops_since_open=30, excluded_tool_categories=["always_available"]),
                 verdict="warn",
                 message_template="Consider running QA ({ops_since_open} ops since last QA)."
             )
@@ -200,12 +183,7 @@ GATE_CONFIGS = [
             # Note: min_turns_since_open is relative to last open.
             # If never closed, it equals global turns if opened at start.
             GatePolicy(
-                condition=GateCondition(
-                    hook_event="PreToolUse", 
-                    min_turns_since_open=50, 
-                    excluded_tool_categories=["always_available"],
-                    is_sidechain=False
-                ),
+                condition=GateCondition(hook_event="PreToolUse", min_turns_since_open=50, excluded_tool_categories=["always_available"]),
                 verdict="warn",
                 message_template="Session is getting long ({ops_since_open} turns). Consider summarizing and starting a new session."
             )
