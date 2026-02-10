@@ -246,9 +246,10 @@ def is_subagent_session(input_data: dict[str, Any] | None = None) -> bool:
 
     Uses multiple detection methods since env vars may not be passed to hook subprocesses:
     1. parent_tool_use_id presence (Definitive Claude subagent marker)
-    2. CLAUDE_AGENT_TYPE / CLAUDE_SUBAGENT_TYPE env vars
-    3. Transcript path contains /subagents/ or /agent-
-    4. Session ID starts with agent- or has sidechain markers
+    2. UUID validation (Claude main sessions are ALWAYS UUIDs)
+    3. CLAUDE_AGENT_TYPE / CLAUDE_SUBAGENT_TYPE env vars
+    4. Transcript path contains /subagents/ or /agent-
+    5. Session ID starts with agent- or has sidechain markers
 
     Args:
         input_data: Hook input data containing transcript_path (optional)
@@ -256,36 +257,46 @@ def is_subagent_session(input_data: dict[str, Any] | None = None) -> bool:
     Returns:
         True if this appears to be a subagent session
     """
+    import uuid
+
     # Method 0: Explicit parent marker (Claude Code)
     if input_data and input_data.get("parent_tool_use_id"):
         return True
 
-    # Method 1: Env vars (check all known variants)
+    # Method 1: Session ID validation (Claude Code)
+    # If we have a session_id, and it is NOT a valid UUID, then it's a sidechain
+    # (Claude main sessions are always UUIDs)
+    session_id = (input_data.get("session_id") if input_data else None) or os.environ.get("CLAUDE_SESSION_ID")
+    if session_id:
+        try:
+            uuid.UUID(str(session_id))
+            # It's a UUID, so it COULD be a main session.
+            # But wait, some sidechains might also use UUIDs.
+            # So we only return False if it's a UUID AND none of the other checks match.
+            pass
+        except (ValueError, TypeError):
+            # NOT a UUID -> DEFINITELY a sidechain in Claude context
+            # (Unless it's Gemini, but Gemini session IDs handled separately)
+            if not str(session_id).startswith("gemini-"):
+                return True
+
+    # Method 2: Env vars (check all known variants)
     if os.environ.get("CLAUDE_AGENT_TYPE"):
         return True
     if os.environ.get("CLAUDE_SUBAGENT_TYPE"):
         return True
 
-    # Method 2: Check transcript path for /subagents/ directory
-    # Claude Code stores subagent transcripts at:
-    #   ~/.claude/projects/<project>/<session-uuid>/subagents/agent-<hash>.jsonl
+    # Method 3: Check transcript path for /subagents/ directory
     if input_data:
         transcript_path = str(input_data.get("transcript_path", ""))
         if "/subagents/" in transcript_path:
             return True
-        # Also check for agent- prefix in filename (subagent transcripts often have this)
         if "/agent-" in transcript_path:
             return True
 
-    # Method 3: Check if session_id looks like a subagent ID
-    # (Main sessions are UUIDs, subagents may have different format)
-    if input_data:
-        session_id = str(input_data.get("session_id", ""))
-        if session_id.startswith("agent-"):
-            return True
-        
-        # If session_id is a UUID, it's likely a main session (handled by uuid check elsewhere)
-        # but if it's NOT a UUID and NOT gemini-, it might be a subagent.
+    # Method 4: ID prefix check
+    if session_id and str(session_id).startswith("agent-"):
+        return True
 
     return False
 
