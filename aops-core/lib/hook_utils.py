@@ -74,8 +74,11 @@ def get_hook_temp_dir(category: str, input_data: dict[str, Any] | None = None) -
         return path
 
     # 3. Claude-specific check (SSoT for Claude Code)
-    claude_session_id = os.environ.get("CLAUDE_SESSION_ID")
-    if claude_session_id:
+    session_id = (input_data.get("session_id") if input_data else None) or os.environ.get("CLAUDE_SESSION_ID")
+    # Claude session IDs are UUIDs, Gemini session IDs usually start with 'gemini-' or 'unknown-'
+    is_claude_session = session_id and len(session_id) == 36 and "-" in session_id and session_id.count("-") == 4
+    
+    if is_claude_session or os.environ.get("CLAUDE_SESSION_ID"):
         project_folder = get_claude_project_folder()
         path = Path.home() / ".claude" / "projects" / project_folder / "tmp" / category
         path.mkdir(parents=True, exist_ok=True)
