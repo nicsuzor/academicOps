@@ -88,6 +88,9 @@ class GatePolicy(BaseModel):
     message_template: str
     context_template: Optional[str] = None
 
+    # Execute complex logic (e.g. generate file)
+    custom_action: Optional[str] = None
+
 
 class GateConfig(BaseModel):
     """Declarative configuration for a gate."""

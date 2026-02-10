@@ -73,6 +73,8 @@ GATE_CONFIGS = [
                 condition=GateCondition(hook_event="PreToolUse", min_ops_since_open=7, excluded_tool_categories=["always_available"]),
                 verdict="deny", # Or warn based on env var? For now deny.
                 message_template="Compliance check required ({ops_since_open} ops since last check).\nInvoke 'custodiet' agent.",
+                context_template="Compliance Context: {temp_path}",
+                custom_action="prepare_compliance_report"
             ),
             # Stop check (Uncommitted work)
             GatePolicy(

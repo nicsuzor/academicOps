@@ -195,15 +195,32 @@ class GenericGate:
         for policy in self.config.policies:
             if self._evaluate_condition(policy.condition, ctx, state, session_state):
                 # Policy matched!
+                
+                # Custom Action (Side Effects before message rendering)
+                sys_msg_prefix = ""
+                ctx_inj_prefix = ""
+                if policy.custom_action:
+                    from lib.gates.custom_actions import execute_custom_action
+                    action_result = execute_custom_action(policy.custom_action, ctx, state, session_state)
+                    if action_result:
+                        if action_result.system_message:
+                            sys_msg_prefix = action_result.system_message + "\n"
+                        if action_result.context_injection:
+                            ctx_inj_prefix = action_result.context_injection + "\n\n"
+
                 sys_msg = self._render_template(policy.message_template, ctx, state, session_state)
                 ctx_inj = None
                 if policy.context_template:
                     ctx_inj = self._render_template(policy.context_template, ctx, state, session_state)
 
+                # Combine prefixes
+                final_sys_msg = sys_msg_prefix + sys_msg
+                final_ctx_inj = ctx_inj_prefix + (ctx_inj if ctx_inj else "")
+
                 if policy.verdict == "deny":
-                    return GateResult.deny(system_message=sys_msg, context_injection=ctx_inj)
+                    return GateResult.deny(system_message=final_sys_msg, context_injection=final_ctx_inj if final_ctx_inj else None)
                 elif policy.verdict == "warn":
-                    return GateResult.warn(system_message=sys_msg, context_injection=ctx_inj)
+                    return GateResult.warn(system_message=final_sys_msg, context_injection=final_ctx_inj if final_ctx_inj else None)
 
         return None
 

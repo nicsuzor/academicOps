@@ -32,4 +32,26 @@ def execute_custom_action(name: str, ctx: HookContext, state: GateState, session
             traceback.print_exc()
             return GateResult.allow(system_message=f"WARNING: Hydration failed: {e}")
 
+    if name == "prepare_compliance_report":
+        try:
+            from lib.gate_utils import create_audit_file
+            # Use 'custodiet' as the gate name for auditing
+            temp_path = create_audit_file(ctx.session_id, "custodiet", ctx)
+            if temp_path:
+                state.metrics["temp_path"] = str(temp_path)
+                
+                # Render instruction template
+                from lib.template_registry import TemplateRegistry
+                registry = TemplateRegistry.instance()
+                instruction = registry.render("custodiet.instruction", {"temp_path": str(temp_path)})
+                
+                return GateResult.allow(
+                    system_message=instruction,
+                    context_injection=f"Compliance Context: {temp_path}"
+                )
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return GateResult.allow(system_message=f"WARNING: Compliance report generation failed: {e}")
+
     return None
