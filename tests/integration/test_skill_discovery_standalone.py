@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Standalone test for skill script discovery - no pytest required.
+"""Standalone test for skill script discovery.
 
 Run directly to validate skill script architecture:
     python3 tests/integration/test_skill_discovery_standalone.py
