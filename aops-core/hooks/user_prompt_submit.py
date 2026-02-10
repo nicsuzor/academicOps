@@ -683,7 +683,7 @@ def write_temp_file(content: str, input_data: dict[str, Any] | None = None) -> P
 
 
 def build_hydration_instruction(
-    session_id: str, prompt: str, transcript_path: str | None = None
+    session_id: str, prompt: str, transcript_path: str | None = None, state: SessionState | None = None
 ) -> str:
     """
     Build instruction for main agent to invoke prompt-hydrator.
@@ -694,6 +694,7 @@ def build_hydration_instruction(
         session_id: Claude Code session ID for state isolation
         prompt: The user's original prompt
         transcript_path: Path to session transcript for context extraction
+        state: Optional existing SessionState object
 
     Returns:
         Short instruction string (<300 tokens) with temp file path
@@ -781,7 +782,11 @@ def build_hydration_instruction(
     # Store temp path in session state so hydration gate can include it in block message
     # And write initial hydrator state for downstream gates
     # We do this in one go to avoid race conditions/multiple writes
-    state = SessionState.load(session_id)
+    if state is None:
+        state = SessionState.load(session_id)
+        should_save = True
+    else:
+        should_save = False
 
     # Increment global turn counter
     state.global_turn_count += 1
@@ -797,7 +802,8 @@ def build_hydration_instruction(
     if "hydration_pending" in state.state:
         state.state["hydration_pending"] = True
 
-    state.save()
+    if should_save:
+        state.save()
 
     # Truncate prompt for description
     prompt_preview = prompt[:80].replace("\n", " ").strip()

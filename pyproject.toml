@@ -18,6 +18,7 @@ dependencies = [
   "streamlit>=1.54.0",
   "scipy>=1.17.0",
   "bump-my-version[dev]>=1.2.6",
+  "networkx>=3.6.1",
 ]
 
 [project.optional-dependencies]

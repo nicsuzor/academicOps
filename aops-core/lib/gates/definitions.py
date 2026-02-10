@@ -22,7 +22,10 @@ GATE_CONFIGS = [
             # This trigger ensures consistent state machine behavior.
             GateTrigger(
                 condition=GateCondition(hook_event="UserPromptSubmit", custom_check="is_hydratable"),
-                transition=GateTransition(target_status=GateStatus.CLOSED)
+                transition=GateTransition(
+                    target_status=GateStatus.CLOSED,
+                    custom_action="hydrate_prompt"
+                )
             )
         ],
         policies=[
@@ -30,7 +33,14 @@ GATE_CONFIGS = [
             GatePolicy(
                 condition=GateCondition(current_status=GateStatus.CLOSED, hook_event="PreToolUse", excluded_tool_categories=["always_available"]),
                 verdict="deny",
-                message_template="Hydration required! Please run the hydrator agent with:\n{temp_path}",
+                message_template=(
+                    "⛔ **HYDRATION REQUIRED**\n\n"
+                    "You must invoke the **prompt-hydrator** agent to load context before proceeding.\n\n"
+                    "**Instruction**:\n"
+                    "Run the hydrator with this command:\n"
+                    "- Gemini: `delegate_to_agent(name='prompt-hydrator', query='Analyze context in {temp_path}')`\n"
+                    "- Claude: `Task(subagent_type='prompt-hydrator', prompt='Analyze context in {temp_path}')`"
+                ),
                 context_template="Hydration Context: {temp_path}"
             )
         ]

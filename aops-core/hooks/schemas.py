@@ -23,8 +23,8 @@ class HookContext(BaseModel):
 
     # Event Data
     tool_name: str | None = None
-    tool_input: dict[str, Any] = Field(default_factory=dict)
-    tool_output: dict[str, Any] = Field(default_factory=dict)
+    tool_input: dict[str, Any] | list[Any] = Field(default_factory=dict)
+    tool_output: dict[str, Any] | list[Any] = Field(default_factory=dict)
 
     transcript_path: str | None = None
     cwd: str | None = None
