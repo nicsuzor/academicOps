@@ -103,8 +103,8 @@ def format_gate_status_icons(state: SessionState) -> str:
             blocking_gates.append(gate_name)
 
     # Format output
-    blocking_set = set(blocking_gates)
-    open_gates = set(GATE_ICONS.keys()) - blocking_set
+    blocking_set = sorted(blocking_gates)
+    open_gates = sorted(set(GATE_ICONS.keys()) - set(blocking_gates))
     blocking_icons = " ".join([GATE_ICONS[g][0] for g in blocking_set])
     open_icons = " ".join([GATE_ICONS[g][1] for g in open_gates])
 

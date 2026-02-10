@@ -228,7 +228,31 @@ class GenericGate:
 
     def check(self, context: HookContext, session_state: SessionState) -> GateResult | None:
         """PreToolUse: Check policies."""
-        return self._evaluate_policies(context, session_state)
+        # Run triggers first to allow JIT state transitions (e.g. unblocking hydrator)
+        trigger_result = self._evaluate_triggers(context, session_state)
+        policy_result = self._evaluate_policies(context, session_state)
+
+        if not trigger_result:
+            return policy_result
+        if not policy_result:
+            return trigger_result
+
+        # Merge results if both present
+        # Verdict: deny > warn > allow
+        verdict = policy_result.verdict
+        if trigger_result.verdict == GateVerdict.DENY:
+            verdict = GateVerdict.DENY
+
+        return GateResult(
+            verdict=verdict,
+            system_message="\n".join(
+                filter(None, [trigger_result.system_message, policy_result.system_message])
+            ),
+            context_injection="\n\n".join(
+                filter(None, [trigger_result.context_injection, policy_result.context_injection])
+            ),
+            metadata={**trigger_result.metadata, **policy_result.metadata},
+        )
 
     def on_stop(self, context: HookContext, session_state: SessionState) -> GateResult | None:
         """Stop: Check policies (blocking) AND Evaluate triggers (cleanup)."""

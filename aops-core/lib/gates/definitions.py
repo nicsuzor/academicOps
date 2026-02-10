@@ -32,6 +32,18 @@ GATE_CONFIGS = [
             GateTrigger(
                 condition=GateCondition(hook_event="PreToolUse", tool_name_pattern="Task", tool_input_pattern="hydrator"),
                 transition=GateTransition(target_status=GateStatus.OPEN, reset_ops_counter=True)
+            ),
+            GateTrigger(
+                condition=GateCondition(hook_event="PreToolUse", tool_name_pattern="Skill", tool_input_pattern="hydrator"),
+                transition=GateTransition(target_status=GateStatus.OPEN, reset_ops_counter=True)
+            ),
+            GateTrigger(
+                condition=GateCondition(hook_event="PreToolUse", tool_name_pattern="prompt-hydrator"),
+                transition=GateTransition(target_status=GateStatus.OPEN, reset_ops_counter=True)
+            ),
+            GateTrigger(
+                condition=GateCondition(hook_event="PreToolUse", tool_input_pattern="aops-core:prompt-hydrator"),
+                transition=GateTransition(target_status=GateStatus.OPEN, reset_ops_counter=True)
             )
         ],
         policies=[
