@@ -679,7 +679,8 @@ def write_temp_file(content: str, input_data: dict[str, Any] | None = None) -> P
     """
     temp_dir = get_hydration_temp_dir(input_data)
     _cleanup_temp(temp_dir, FILE_PREFIX)  # Ensure cleanup happens before write
-    return _write_temp(content, temp_dir, FILE_PREFIX)
+    session_id = (input_data.get("session_id") if input_data else None)
+    return _write_temp(content, temp_dir, FILE_PREFIX, session_id=session_id)
 
 
 def build_hydration_instruction(

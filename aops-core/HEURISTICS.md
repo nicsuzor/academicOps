@@ -705,3 +705,18 @@ mcp__task_manager__complete_task(id=batch_task_id)
 - The build script SHOULD provide a `--version` flag that returns ONLY the semantic string for easy shell consumption.
 
 **Derivation**: Divergent versioning logic leads to build failures and inconsistent releases. `git describe` defaults often prefer annotated tags or proximal commits in ways that don't align with semantic release intent when history is complex. Centralization ensures consistency across the entire development lifecycle.
+
+---
+
+## Plans Get Critic Review, Not Human Approval (P#100)
+
+**Statement**: After filing a plan or decomposition (GitHub issue, task with needs-decomposition), the next step is automated critic review. Human approval happens at PR, not at plan filing.
+
+**Corollaries**:
+
+- Filed a plan → invoke critic agent to review it → proceed based on verdict
+- Do NOT ask the user "should I proceed?" or "please review" after filing a plan
+- User re-enters the loop at PR review, not at plan approval
+- If critic raises issues, address them autonomously; only escalate to human if critic says HALT
+
+**Derivation**: P#99 (Delegated Authority) means agents act within granted authority — it does NOT mean asking for human sign-off at every checkpoint. When the user gives requirements and says "get it done", authority is delegated for the full pipeline. Automated review (critic) is the quality gate; human review is the acceptance gate (PR).

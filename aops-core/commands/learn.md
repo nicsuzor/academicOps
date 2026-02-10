@@ -31,13 +31,21 @@ This step is REQUIRED for failures in the current session. Skip ONLY if analyzin
 
 #### -1a. Generate Session Transcript
 
-Invoke `transcript.py` to capture the current session:
+Invoke `transcript.py` to capture the current session.
+
+**Find current session file**:
 
 ```bash
-# Find current session JSONL (most recently modified in last hour)
-SESSION_FILE=$(find ~/.claude/projects -name "*.jsonl" -mmin -60 -type f 2>/dev/null | xargs ls -t 2>/dev/null | head -1)
+# For Gemini (uses fd per P#79):
+SESSION_FILE=$(fd -a --newer 1h .json ~/.gemini/tmp | head -1)
 
-# Generate transcript (creates both -full.md and -abridged.md in ~/writing/sessions/claude/)
+# For Claude:
+# SESSION_FILE=$(find ~/.claude/projects -name "*.jsonl" -mmin -60 -type f 2>/dev/null | xargs ls -t 2>/dev/null | head -1)
+```
+
+**Generate transcript**:
+
+```bash
 uv run --directory ${AOPS} python aops-core/scripts/transcript.py "$SESSION_FILE"
 ```
 

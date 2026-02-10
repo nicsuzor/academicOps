@@ -120,6 +120,7 @@ def write_temp_file(
     temp_dir: Path,
     prefix: str,
     suffix: str = ".md",
+    session_id: str | None = None,
 ) -> Path:
     """Write content to temp file, return path.
 
@@ -128,6 +129,7 @@ def write_temp_file(
         temp_dir: Target directory
         prefix: File name prefix (e.g., "hydrate_", "audit_")
         suffix: File extension (default: ".md")
+        session_id: Optional session identifier for consistent naming
 
     Returns:
         Path to created temp file
@@ -137,6 +139,21 @@ def write_temp_file(
     """
     temp_dir.mkdir(parents=True, exist_ok=True)
 
+    # Attempt to use consistent session hash in filename (P#102)
+    sid = session_id or os.environ.get("CLAUDE_SESSION_ID")
+    if sid:
+        from lib.session_paths import get_session_short_hash
+
+        short_hash = get_session_short_hash(sid)
+        # prefix already contains trailing underscore if intended
+        path = temp_dir / f"{prefix}{short_hash}{suffix}"
+        try:
+            path.write_text(content)
+            return path
+        except OSError:
+            pass  # Fallback to random name on collision/permission error
+
+    # Fallback: Generate random unique filename
     with tempfile.NamedTemporaryFile(
         mode="w",
         prefix=prefix,

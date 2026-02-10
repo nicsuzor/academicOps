@@ -8,8 +8,9 @@ from lib.template_registry import TemplateRegistry
 
 def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path | None:
     """Create rich audit file for gate using TemplateRegistry."""
-    # Align temp category with hydrator per user request
-    category = "hydrator"
+    # Use gate name as category (e.g., 'custodiet', 'critic')
+    # Separation prevents hydrator from being distracted by unrelated audit files.
+    category = gate
 
     # Try to load rich context if possible
     # Critic and custodiet get deep session context (full history, reasoning, diffs)
@@ -66,9 +67,11 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path | No
         except (KeyError, ValueError, FileNotFoundError):
             return None
 
-    # Write to temp (using aligned category)
+    # Write to temp
     try:
         temp_dir = hook_utils.get_hook_temp_dir(category, ctx.raw_input)
-        return hook_utils.write_temp_file(content, temp_dir, f"audit_{gate}_")
+        # Cleanup old audit files for THIS gate before writing new one
+        hook_utils.cleanup_old_temp_files(temp_dir, f"audit_{gate}_")
+        return hook_utils.write_temp_file(content, temp_dir, f"audit_{gate}_", session_id=session_id)
     except Exception:
         return None

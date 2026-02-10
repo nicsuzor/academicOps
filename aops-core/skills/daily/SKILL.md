@@ -85,9 +85,29 @@ Check `$ACA_DATA/daily/YYYYMMDD-daily.md`.
 **If missing**: Create from template (see Daily Note Structure above), then:
 
 1. Read the previous working day's daily note
-2. Identify any incomplete tasks and copy to "## Carryover from Yesterday" section
-3. Copy "Abandoned Todos" to "## Carryover from Yesterday" section
-4. Note overdue items from yesterday's Focus Dashboard
+2. Identify task IDs from yesterday's Focus/Carryover sections
+3. **Verify each task exists** (Step 1.1 below)
+4. Copy "Abandoned Todos" to "## Carryover from Yesterday" section
+5. Note overdue items from yesterday's Focus Dashboard
+
+### 1.1: Verify Carryover Tasks (CRITICAL)
+
+**Before including ANY task from yesterday's note in today's carryover:**
+
+```python
+for task_id in yesterday_task_ids:
+    result = mcp__plugin_aops-core_task_manager__get_task(id=task_id)
+    if not result["success"]:
+        # Task was archived/deleted - EXCLUDE from carryover
+        continue
+    if result["task"]["status"] in ["done", "cancelled"]:
+        # Task completed - EXCLUDE from carryover
+        continue
+    # Task still active - include in carryover
+    carryover_tasks.append(result["task"])
+```
+
+**Why this matters**: Tasks archived between daily notes appear as "phantom overdue" items if copied blindly from yesterday's note. Always verify against the live task system.
 
 ### 1.2: Load Recent Activity
 

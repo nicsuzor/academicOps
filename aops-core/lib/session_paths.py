@@ -39,17 +39,26 @@ def get_claude_project_folder() -> str:
 
 
 def get_session_short_hash(session_id: str) -> str:
-    """Get 8-character hash from session ID.
+    """Get 8-character identifier from session ID.
 
-    Uses SHA-256 and takes first 8 hex characters for brevity.
-    Provides 2^32 (~4 billion) unique combinations.
+    Standardizes on the first 8 characters of the session ID (UUID prefix)
+    to match Gemini CLI transcript naming. Falls back to SHA-256 hash for
+    brevity if the session ID is short or non-standard.
 
     Args:
         session_id: Full session identifier
 
     Returns:
-        8-character hex string
+        8-character string
     """
+    # 1. If it's a standard UUID or long enough, use the prefix (matches transcript)
+    if len(session_id) >= 8:
+        # Check if first 8 are valid hex or alphanumeric
+        prefix = session_id[:8].lower()
+        if all(c in "0123456789abcdefghijklmnopqrstuvwxyz" for c in prefix):
+            return prefix
+
+    # 2. Fallback to SHA-256 for short/complex IDs
     return hashlib.sha256(session_id.encode()).hexdigest()[:8]
 
 
