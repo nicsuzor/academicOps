@@ -193,9 +193,8 @@ class TestTaskHydratorSpawn:
         result = check_tool_gate(ctx, state)
 
         assert result.verdict == GateVerdict.ALLOW
-        # Note: Hydrator active flag is set in on_tool_use, not check.
-        # But gate should be opened (cleared) if spawning.
-        assert state.gates["hydration"].status == "open"
+        # Note: Task is always_available so it bypasses all gates.
+        # Gate opens later on SubagentStop when hydrator finishes.
 
 
 class TestReadToolBlockedWithoutHydration:
@@ -204,7 +203,7 @@ class TestReadToolBlockedWithoutHydration:
     def test_read_blocked_when_hydration_not_passed(self, mock_session_state):
         """Read should be blocked when hydration gate is not passed."""
         state, _ = mock_session_state
-        state.gates["hydration"].status = "closed"
+        state.close_gate("hydration")
         state.state["hydrator_active"] = False
         state.state["hydration_pending"] = True
 
@@ -215,15 +214,10 @@ class TestReadToolBlockedWithoutHydration:
             tool_input={"file_path": "/some/file.py"},
         )
 
-        # Mock audit file creation to avoid IO error
-        with patch("lib.gates.hydration.HydrationGate._create_block_result") as mock_block:
-            from lib.gate_model import GateResult
-            mock_block.return_value = GateResult.deny("Blocked")
+        result = check_tool_gate(ctx, state)
 
-            result = check_tool_gate(ctx, state)
-
-            # Should block or warn because hydration is required for read_only
-            assert result.verdict in (GateVerdict.DENY, GateVerdict.WARN)
+        # Should block or warn because hydration is required for read_only
+        assert result.verdict in (GateVerdict.DENY, GateVerdict.WARN)
 
     def test_read_allowed_when_hydration_passed(self, mock_session_state):
         """Read should be allowed when hydration gate is passed."""
