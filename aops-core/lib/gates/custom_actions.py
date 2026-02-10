@@ -13,7 +13,10 @@ def execute_custom_action(name: str, ctx: HookContext, state: GateState, session
             # Gemini prompt is in ctx.raw_input["prompt"]
             prompt = ctx.raw_input.get("prompt")
             if not prompt:
-                # Fallback for Claude if needed, but for now we focus on Gemini
+                # Fallback for Claude or other clients
+                prompt = ctx.raw_input.get("message") or ctx.raw_input.get("intent")
+                
+            if not prompt:
                 return None
 
             transcript_path = ctx.transcript_path or ctx.raw_input.get("transcript_path")
@@ -47,7 +50,7 @@ def execute_custom_action(name: str, ctx: HookContext, state: GateState, session
                 
                 return GateResult.allow(
                     system_message=instruction,
-                    context_injection=f"Compliance Context: {temp_path}"
+                    context_injection=None # Let policy template handle it
                 )
         except Exception as e:
             import traceback

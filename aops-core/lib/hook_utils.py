@@ -44,14 +44,14 @@ def get_hook_temp_dir(category: str, input_data: dict[str, Any] | None = None) -
     Unified temp directory resolution:
     1. TMPDIR env var (highest priority - host CLI provided)
     2. AOPS_GEMINI_TEMP_ROOT env var (Gemini router provided)
-    3. CLAUDE_SESSION_ID (Claude Code mode)
-    4. transcript_path has .gemini (Gemini CLI mode)
-    5. GEMINI_CLI or .gemini in cwd (Gemini CLI mode)
-    6. Default: ~/.claude/projects/... (Claude fallback)
+    3. Claude-specific check (UUID session ID or Claude env vars)
+    4. Gemini-specific check (transcript_path contains .gemini)
+    5. Gemini-specific check (GEMINI_CLI or .gemini in cwd)
+    6. Default: Claude fallback path
 
     Args:
         category: Subdirectory name for this hook type (e.g., "hydrator", "compliance", "session")
-        input_data: Hook input data (optional). Used to extract transcript_path for precise location.
+        input_data: Hook input data (optional). Used to extract transcript_path or session_id.
 
     Returns:
         Path to temp directory (created if doesn't exist)
@@ -59,6 +59,8 @@ def get_hook_temp_dir(category: str, input_data: dict[str, Any] | None = None) -
     Raises:
         RuntimeError: If GEMINI_CLI is set but temp root not found
     """
+    import uuid
+
     # 1. Check for standard temp dir env var
     tmpdir = os.environ.get("TMPDIR")
     if tmpdir:
@@ -74,11 +76,20 @@ def get_hook_temp_dir(category: str, input_data: dict[str, Any] | None = None) -
         return path
 
     # 3. Claude-specific check (SSoT for Claude Code)
+    # Check both input_data and environ for session ID
     session_id = (input_data.get("session_id") if input_data else None) or os.environ.get("CLAUDE_SESSION_ID")
-    # Claude session IDs are UUIDs, Gemini session IDs usually start with 'gemini-' or 'unknown-'
-    is_claude_session = session_id and len(session_id) == 36 and "-" in session_id and session_id.count("-") == 4
     
-    if is_claude_session or os.environ.get("CLAUDE_SESSION_ID"):
+    is_claude_uuid = False
+    if session_id:
+        try:
+            # Claude session IDs are standard UUIDs
+            uuid.UUID(str(session_id))
+            is_claude_uuid = True
+        except (ValueError, TypeError):
+            is_claude_uuid = False
+
+    # If we have a Claude session ID OR we are in a known Claude plugin environment
+    if is_claude_uuid or os.environ.get("CLAUDE_SESSION_ID") or os.environ.get("CLAUDE_PLUGIN_ROOT"):
         project_folder = get_claude_project_folder()
         path = Path.home() / ".claude" / "projects" / project_folder / "tmp" / category
         path.mkdir(parents=True, exist_ok=True)
