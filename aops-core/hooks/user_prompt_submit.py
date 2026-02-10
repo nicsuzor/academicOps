@@ -46,11 +46,7 @@ from lib.paths import (
     get_workflows_dir,
 )
 from lib.session_reader import extract_router_context
-from lib.session_state import (
-    clear_hydration_pending,
-    set_hydration_pending,
-    set_hydration_temp_path,
-)
+from lib.session_state import SessionState
 from lib.template_loader import load_template
 
 # Paths
@@ -642,10 +638,25 @@ def write_initial_hydrator_state(
         prompt: User's original prompt
         hydration_pending: Whether hydration gate should block until hydrator invoked
     """
+    state = SessionState.load(session_id)
+
+    # Increment global turn counter
+    state.global_turn_count += 1
+
     if hydration_pending:
-        set_hydration_pending(session_id, prompt)
+        # pending = close gate
+        state.close_gate("hydration")
+        state.get_gate("hydration").metrics["original_prompt"] = prompt
+        # Also set legacy flag for compatibility if needed (though we're moving away from it)
+        if "hydration_pending" in state.state:
+            state.state["hydration_pending"] = True
     else:
-        clear_hydration_pending(session_id)
+        # not pending = open gate
+        state.open_gate("hydration")
+        if "hydration_pending" in state.state:
+            del state.state["hydration_pending"]
+
+    state.save()
 
 
 def cleanup_old_temp_files(input_data: dict[str, Any] | None = None) -> None:
@@ -768,10 +779,25 @@ def build_hydration_instruction(
     temp_path = write_temp_file(full_context, input_data)
 
     # Store temp path in session state so hydration gate can include it in block message
-    set_hydration_temp_path(session_id, str(temp_path))
+    # And write initial hydrator state for downstream gates
+    # We do this in one go to avoid race conditions/multiple writes
+    state = SessionState.load(session_id)
 
-    # Write initial hydrator state for downstream gates
-    write_initial_hydrator_state(session_id, prompt)
+    # Increment global turn counter
+    state.global_turn_count += 1
+
+    # Set temp path in metrics
+    gate = state.get_gate("hydration")
+    gate.metrics["temp_path"] = str(temp_path)
+    gate.metrics["original_prompt"] = prompt
+
+    # Close gate (pending hydration)
+    state.close_gate("hydration")
+
+    if "hydration_pending" in state.state:
+        state.state["hydration_pending"] = True
+
+    state.save()
 
     # Truncate prompt for description
     prompt_preview = prompt[:80].replace("\n", " ").strip()

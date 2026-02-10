@@ -1,85 +1,72 @@
-from unittest.mock import ANY, patch
+from unittest.mock import ANY, patch, MagicMock
+import uuid
 
 import pytest
 
-from hooks.gates import _create_audit_file, close_gate, open_gate, update_gate_state
+from hooks.gates import on_subagent_stop
 from hooks.schemas import HookContext
-from lib import session_state
+from lib.session_state import SessionState
+from lib.gate_types import GateStatus
 
 
 @pytest.fixture
 def mock_session(tmp_path):
-    session_id = "test_session_unification"
-    with patch("lib.session_paths.get_session_status_dir", return_value=tmp_path):
-        state = session_state.get_or_create_session_state(session_id)
-        session_state.save_session_state(session_id, state)
+    session_id = f"test_session_unification_{uuid.uuid4().hex}"
+    # Patch both locations to ensure consistent path resolution
+    with patch("lib.session_paths.get_session_status_dir", return_value=tmp_path), \
+         patch("lib.session_state.get_session_status_dir", return_value=tmp_path):
+
+        state = SessionState.create(session_id)
+        state.save()
         yield session_id
 
 
 def test_gate_open_close_unification(mock_session):
-    """Test that open_gate and close_gate update both unified and legacy state."""
+    """Test that open_gate and close_gate update unified state."""
     session_id = mock_session
+    state = SessionState.load(session_id)
 
     # Open critic gate
-    open_gate(session_id, "critic")
-    state = session_state.load_session_state(session_id)
-    assert state["state"]["gates"]["critic"] == "open"
-    assert state["state"]["critic_invoked"] is True
+    state.open_gate("critic")
+    state.save()
+
+    state = SessionState.load(session_id)
+    assert state.gates["critic"].status == GateStatus.OPEN
 
     # Close critic gate
-    close_gate(session_id, "critic")
-    state = session_state.load_session_state(session_id)
-    assert state["state"]["gates"]["critic"] == "closed"
-    assert "critic_invoked" not in state["state"]
+    state.close_gate("critic")
+    state.save()
+
+    state = SessionState.load(session_id)
+    assert state.gates["critic"].status == GateStatus.CLOSED
 
 
-def test_critic_gate_opening_after_agent(mock_session):
-    """Test that critic gate opens when APPROVED is detected in AfterAgent response."""
+def test_critic_gate_opening_subagent(mock_session):
+    """Test that critic gate opens when Critic subagent stops."""
     session_id = mock_session
 
     ctx = HookContext(
         session_id=session_id,
-        hook_event="AfterAgent",
-        raw_input={"prompt_response": "The plan looks solid. Verdict: APPROVED"},
-        tool_name=None,
-        tool_input={},
-        tool_output={},
+        hook_event="SubagentStop",
+        subagent_type="critic", # Matches pattern
+        raw_input={"subagent_type": "critic"},
     )
 
-    # Ensure gate starts closed (or uninitialized)
-    close_gate(session_id, "critic")
+    state = SessionState.load(session_id)
+    # Ensure gate starts closed (simulate metrics high)
+    state.gates["critic"].ops_since_open = 100
+    # Status might be open but we want to test ResetOps
+    state.gates["critic"].status = GateStatus.OPEN
 
-    result = update_gate_state(ctx)
+    # Run hook
+    # Note: on_subagent_stop calls triggers
+    result = on_subagent_stop(ctx, state)
+
     assert result is not None
-    assert "✓ `critic` opened" in result.context_injection
+    assert "Critic review complete" in result.system_message
 
-    state = session_state.load_session_state(session_id)
-    assert state["state"]["gates"]["critic"] == "open"
-    assert state["state"]["critic_invoked"] is True
-
-
-def test_audit_file_creation_unified(mock_session, tmp_path):
-    """Test that _create_audit_file uses the unified .context template."""
-    session_id = mock_session
-
-    ctx = HookContext(
-        session_id=session_id,
-        hook_event="PreToolUse",
-        raw_input={},
-        tool_name="write_file",
-        tool_input={"file_path": "test.txt"},
-        tool_output={},
-    )
-
-    with patch("lib.hook_utils.get_hook_temp_dir", return_value=tmp_path):
-        with patch("lib.template_registry.TemplateRegistry.render") as mock_render:
-            mock_render.return_value = "Audit Content"
-            path = _create_audit_file(session_id, "critic", ctx)
-
-            assert path is not None
-            assert path.name.startswith("audit_critic_")
-            # Verify render was called with critic.context
-            mock_render.assert_any_call("critic.context", ANY)
+    # Verify Ops reset
+    assert state.gates["critic"].ops_since_open == 0
 
 
 if __name__ == "__main__":

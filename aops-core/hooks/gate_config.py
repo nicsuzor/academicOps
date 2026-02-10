@@ -3,17 +3,14 @@ Gate Configuration: Single source of truth for gate behavior.
 
 This module defines:
 1. Tool categories (always_available, read_only, write, meta, stop)
-2. Gate requirements for each category
-3. Gate execution order per event
-4. Subagent bypass rules
+2. Gate execution order per event
+3. Subagent bypass rules
+4. Gate modes (block/warn)
 
-All gate configuration should live here, not scattered across router.py,
-gate_registry.py, or gates.py.
+Legacy configuration (TOOL_GATE_REQUIREMENTS, etc.) has been migrated to
+individual Gate classes in lib/gates/.
 """
 
-from typing import Any
-
-from lib.session_state import get_custodiet_threshold
 
 # =============================================================================
 # TOOL CATEGORIES
@@ -23,15 +20,8 @@ from lib.session_state import get_custodiet_threshold
 
 TOOL_CATEGORIES: dict[str, set[str]] = {
     # Always available: bypass ALL gates, including hydration
-    # These are framework infrastructure tools, not user file modifications.
-    # They're required to bootstrap the session (hydration, task binding, context).
     "always_available": {
-        # Agent/skill invocation for hydration bootstrap
-        "Task",
-        "Skill",
-        "delegate_to_agent",
-        "activate_skill",
-        # task manager tools for getting a task
+        "Task", "Skill", "delegate_to_agent", "activate_skill",
         "mcp__plugin_aops-core_task_manager__get_task",
         "mcp__plugin_aops-core_task_manager__get_children",
         "mcp__plugin_aops-core_task_manager__get_dependencies",
@@ -42,74 +32,29 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "mcp__plugin_aops-core_task_manager__claim_next_task",
         "mcp__plugin_aops-core_task_manager__rebuild_index",
         "mcp__plugin_aops-core_task_manager__list_tasks",
-        # Gemini short names for task manager
-        "create_task",
-        "update_task",
-        "complete_task",
-        "get_task",
-        "list_tasks",
-        "search_tasks",
-        "get_task_tree",
-        "get_children",
-        "decompose_task",
-        # Memory retrieval for context
+        "create_task", "update_task", "complete_task", "get_task", "list_tasks",
+        "search_tasks", "get_task_tree", "get_children", "decompose_task",
         "mcp__plugin_aops-core_memory__retrieve_memory",
         "mcp__plugin_aops-core_memory__recall_memory",
         "mcp__plugin_aops-core_memory__search_by_tag",
-        # Gemini short names for memory
-        "retrieve_memory",
-        "recall_memory",
-        "search_by_tag",
-        # Gemini direct MCP calls for framework agents/skills
-        # (Gemini may call these as MCP tools rather than via delegate_to_agent)
-        "prompt-hydrator",
-        "aops-core:prompt-hydrator",
-        "critic",
-        "aops-core:critic",
-        "custodiet",
-        "aops-core:custodiet",
-        "qa",
-        "aops-core:qa",
-        "handover",
-        "aops-core:handover",
-        "codebase_investigator",
-        "cli_help",
-        "effectual-planner",
-        # User interaction: must never be blocked (essential for agent-user communication)
+        "retrieve_memory", "recall_memory", "search_by_tag",
+        "prompt-hydrator", "aops-core:prompt-hydrator",
+        "critic", "aops-core:critic",
+        "custodiet", "aops-core:custodiet",
+        "qa", "aops-core:qa",
+        "handover", "aops-core:handover",
+        "codebase_investigator", "cli_help", "effectual-planner",
         "AskUserQuestion",
-        # Meta tools: affect agent behavior but don't modify user files
-        # These are always available to allow planning and questioning at any time
-        "TodoWrite",
-        "EnterPlanMode",
-        "ExitPlanMode",
-        "KillShell",
+        "TodoWrite", "EnterPlanMode", "ExitPlanMode", "KillShell",
     },
-    # Read-only tools: no side effects, safe to run after hydration
+    # Read-only tools: no side effects
     "read_only": {
-        # Claude tools
-        "Read",
-        "Glob",
-        "Grep",
-        "WebFetch",
-        "WebSearch",
-        "ListMcpResourcesTool",
-        "ReadMcpResourceTool",
-        "TaskOutput",
-        # Gemini tools
-        "read_file",
-        "view_file",
-        "list_dir",
-        "list_directory",
-        "find_by_name",
-        "grep_search",
-        "search_file_content",
-        "glob",
-        "search_web",
-        "google_web_search",
-        "web_fetch",
-        "read_url_content",
-        # MCP retrieval tools (read-only)
-        # Note: memory retrieval and task manager reads are in always_available
+        "Read", "Glob", "Grep", "WebFetch", "WebSearch",
+        "ListMcpResourcesTool", "ReadMcpResourceTool", "TaskOutput",
+        "read_file", "view_file", "list_dir", "list_directory",
+        "find_by_name", "grep_search", "search_file_content",
+        "glob", "search_web", "google_web_search",
+        "web_fetch", "read_url_content",
         "mcp__plugin_aops-core_memory__list_memories",
         "mcp__plugin_aops-core_memory__check_database_health",
         "mcp__plugin_context7-plugin_context7__resolve-library-id",
@@ -129,49 +74,14 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "mcp__plugin_aops-core_task_manager__reorder_children",
         "mcp__plugin_aops-core_task_manager__dedup_tasks",
     },
-    # Write tools: modify USER files/state, require task binding and critic approval
-    # Note: Task manager tools are in always_available (framework infrastructure)
+    # Write tools: modify USER files/state
     "write": {
-        # Claude tools
-        "Edit",
-        "Write",
-        "Bash",
-        "NotebookEdit",
-        "MultiEdit",
-        # Gemini tools
-        "write_file",
-        "replace",
-        "run_shell_command",
-        "execute_code",
-        "save_memory",
-        # Memory mutation (store needs /remember skill routing)
+        "Edit", "Write", "Bash", "NotebookEdit", "MultiEdit",
+        "write_file", "replace", "run_shell_command", "execute_code", "save_memory",
         "mcp__plugin_aops-core_memory__store_memory",
         "mcp__plugin_aops-core_memory__delete_memory",
     },
-    # Meta tools: now merged into always_available
-    # These affect agent behavior but don't modify user files, so they're
-    # always available to allow planning and questioning at any time.
-    # Keeping empty set for backwards compatibility with gate requirement lookups.
     "meta": set(),
-}
-
-# =============================================================================
-# GATE REQUIREMENTS
-# =============================================================================
-# Which gates must have passed for each tool category to be allowed?
-# Gates are checked in order; all listed gates must be in "passed" state.
-
-TOOL_GATE_REQUIREMENTS: dict[str, list[str]] = {
-    # Always available: no gates required (bootstrap tools)
-    "always_available": [],
-    # Read-only tools: just need hydration
-    "read_only": ["hydration"],
-    # Meta tools: same as read_only (planning/questioning is safe)
-    "meta": ["hydration"],
-    # Write tools: need hydration + task binding + critic + custodiet approval
-    "write": ["hydration", "task", "critic", "custodiet"],
-    # Stop event: need all gates including QA and handover
-    "stop": ["hydration", "task", "critic", "custodiet", "qa", "handover"],
 }
 
 # =============================================================================
@@ -185,36 +95,36 @@ GATE_EXECUTION_ORDER: dict[str, list[str]] = {
         "session_env_setup",
         "unified_logger",
         "session_start",
-        "gate_init",  # Initialize gate states from GATE_INITIAL_STATE
+        # "gate_init",  # Migrated to session_start (on_session_start)
     ],
     "UserPromptSubmit": [
         "user_prompt_submit",
         "unified_logger",
-        "gate_reset",  # Close gates that re-close on new prompt
+        # "gate_reset",  # Migrated to user_prompt_submit (on_user_prompt)
     ],
     "PreToolUse": [
         "unified_logger",
-        "tool_gate",  # Unified tool gating based on TOOL_GATE_REQUIREMENTS
+        "tool_gate",  # Unified tool gating
     ],
     "PostToolUse": [
         "unified_logger",
-        "task_binding",
-        "accountant",
-        "gate_update",  # Open/close gates based on GATE_OPENING_CONDITIONS/GATE_CLOSURE_TRIGGERS
+        # "task_binding", # Migrated to gate_update
+        # "accountant",   # Migrated to gate_update
+        "gate_update",  # Unified gate update
+        "ntfy_notifier",
     ],
     "AfterAgent": [
         "unified_logger",
         "agent_response",
-        "gate_update",  # Check AfterAgent opening conditions (e.g. Critic approval)
     ],
     "SubagentStop": [
         "unified_logger",
     ],
     "Stop": [
         "unified_logger",
+        "ntfy_notifier",
         "stop_gate",
-        # Disable session_end_commit for now since it's causing issues with handover.
-        # "session_end_commit",
+        "generate_transcript",
     ],
     "SessionEnd": [
         "generate_transcript",
@@ -226,15 +136,14 @@ GATE_EXECUTION_ORDER: dict[str, list[str]] = {
 # SUBAGENT BYPASS
 # =============================================================================
 # Gates that should only run for the main agent (bypass for subagents).
-# Prevents recursive loops and reduces overhead.
-# <!-- NS: change this to MAIN_AGENT_GATES and SUBAGENT_GATES for clarity? -->
+
 MAIN_AGENT_ONLY_GATES: set[str] = {
     "tool_gate",
-    "gate_init",
-    "gate_reset",
+    "gate_init", # kept for safety if referenced elsewhere, though dead
+    "gate_reset", # kept for safety
     "gate_update",
     "user_prompt_submit",
-    "task_binding",
+    "task_binding", # kept for safety
     "stop_gate",
     "session_start",
     "agent_response",
@@ -246,12 +155,12 @@ MAIN_AGENT_ONLY_GATES: set[str] = {
 # Default enforcement modes for gates. Can be overridden by environment variables.
 
 GATE_MODE_DEFAULTS: dict[str, str] = {
-    "hydration": "block",  # HYDRATION_GATE_MODE env var
-    "task": "warn",  # TASK_GATE_MODE env var
-    "custodiet": "warn",  # CUSTODIET_MODE env var
-    "critic": "warn",  # CRITIC_GATE_MODE env var (new)
-    "qa": "warn",  # QA_GATE_MODE env var (new)
-    "handover": "warn",  # HANDOVER_GATE_MODE env var (new)
+    "hydration": "block",
+    "task": "warn",
+    "custodiet": "warn",
+    "critic": "warn",
+    "qa": "warn",
+    "handover": "warn",
 }
 
 # Environment variable names for gate modes
@@ -263,128 +172,6 @@ GATE_MODE_ENV_VARS: dict[str, str] = {
     "qa": "QA_GATE_MODE",
     "handover": "HANDOVER_GATE_MODE",
 }
-
-
-# =============================================================================
-# GATE LIFECYCLE: INITIAL STATE
-# =============================================================================
-# What state does each gate start in at SessionStart?
-# "closed" = gate check will fail, tool blocked
-# "open" = gate check will pass, tool allowed
-
-GATE_INITIAL_STATE: dict[str, str] = {
-    "hydration": "closed",  # Must hydrate before any work
-    "task": "open",  # Must bind a task before writes, but allow planning and answers first
-    "critic": "open",  # Must get approval before writes, but allow planning and answers first
-    "custodiet": "open",  # Must get compliance check before writes, but allow planning first
-    "qa": "closed",  # Must verify before stop
-    "handover": "open",  # Starts open; closes on uncommitted changes
-}
-
-
-# =============================================================================
-# GATE LIFECYCLE: OPENING CONDITIONS
-# =============================================================================
-# What triggers each gate to transition from closed → open?
-# Each gate has an event type and conditions that must be met.
-
-GATE_OPENING_CONDITIONS: dict[str, dict[str, Any]] = {
-    "hydration": {
-        "event": "PostToolUse",
-        "tool_pattern": r"^(Task|Skill|delegate_to_agent|activate_skill|spawn_agent|prompt-hydrator|aops-core:prompt-hydrator)$",
-        "subagent_or_skill": ["aops-core:prompt-hydrator", "prompt-hydrator"],
-        "output_contains": "HYDRATION RESULT",
-        "description": "Opens when hydrator agent completes successfully",
-    },
-    "task": {
-        "event": "PostToolUse",
-        "tool_pattern": r"mcp.*task_manager.*(create|claim|update)_task",
-        "result_key": "success",
-        "result_value": True,
-        "description": "Opens when a task is created, claimed, or updated",
-    },
-    "critic": {
-        "event": "PostToolUse",
-        "tool_pattern": r"^(Task|Skill|delegate_to_agent|activate_skill|critic|aops-core:critic)$",
-        "subagent_or_skill": ["aops-core:critic", "critic"],
-        "output_contains": "APPROVED",
-        "description": "Opens when critic agent approves the plan",
-    },
-    "custodiet": {
-        "event": "PostToolUse",
-        "tool_pattern": r"^(Task|Skill|delegate_to_agent|activate_skill|custodiet|aops-core:custodiet)$",
-        "subagent_or_skill": ["aops-core:custodiet", "custodiet"],
-        "output_contains": "OK",
-        "description": "Opens when custodiet agent confirms no ultra vires activity",
-    },
-    "qa": {
-        "event": "PostToolUse",
-        "tool_pattern": r"^(Task|Skill|delegate_to_agent|activate_skill|qa|aops-core:qa)$",
-        "subagent_or_skill": ["aops-core:qa", "qa"],
-        "description": "Opens when QA verification completes",
-    },
-    "handover": {
-        "event": "PostToolUse",
-        "tool_pattern": r"^(Skill|activate_skill|handover|aops-core:handover)$",
-        "skill_name": "aops-core:handover",
-        "description": "Opens when handover skill is invoked with clean repo",
-    },
-}
-
-
-# =============================================================================
-# GATE LIFECYCLE: CLOSURE TRIGGERS
-# =============================================================================
-# What causes gates to re-close (transition from open → closed) mid-session?
-# This enforces re-approval workflows, e.g., "critic must approve each batch".
-# Gates not listed here stay open once opened.
-
-GATE_CLOSURE_TRIGGERS: dict[str, list[dict[str, Any]]] = {
-    "hydration": [
-        {
-            "event": "UserPromptSubmit",
-            "description": "Re-close on new user prompt to require fresh hydration",
-        },
-    ],
-    "task": [
-        {
-            "event": "UserPromptSubmit",
-            "description": "Re-close on new user prompt to require fresh hydration",
-        },
-        # {
-        #     "event": "PostToolUse",
-        #     "tool_pattern": r"mcp.*task_manager.*complete_task",
-        #     "result_key": "success",
-        #     "result_value": True,
-        #     "description": "Re-close when task is completed/released",
-        # },
-    ],
-    "critic": [
-        {
-            "event": "UserPromptSubmit",
-            "description": "Re-close on new user prompt (new intent = new approval)",
-        }
-    ],
-    "custodiet": [
-        {
-            "event": "PostToolUse",
-            "tool_category": "write",
-            "threshold_counter": "tool_calls_since_custodiet",
-            "threshold_value": get_custodiet_threshold(),
-            "description": "Re-close after N write operations (periodic re-verification)",
-        },
-    ],
-    "handover": [
-        # {
-        #     "event": "PostToolUse",
-        #     "tool_category": "write",
-        #     "condition": "git_dirty",
-        #     "description": "Re-close when repo has uncommitted changes",
-        # },
-    ],
-    # qa: Does not re-close (verified once is sufficient for session)
-}
-
 
 # =============================================================================
 # HELPER FUNCTIONS
@@ -398,79 +185,3 @@ def get_tool_category(tool_name: str) -> str:
             return category
     # Default: treat unknown tools as write (conservative)
     return "write"
-
-
-def get_required_gates(tool_name: str) -> list[str]:
-    """Get the gates that must pass before this tool can be used."""
-    category = get_tool_category(tool_name)
-    return TOOL_GATE_REQUIREMENTS.get(category, TOOL_GATE_REQUIREMENTS["write"])
-
-
-def get_gates_for_event(event: str) -> list[str]:
-    """Get the ordered list of gates to run for an event."""
-    return GATE_EXECUTION_ORDER.get(event, [])
-
-
-def is_main_agent_only(gate_name: str) -> bool:
-    """Check if a gate should only run for the main agent."""
-    return gate_name in MAIN_AGENT_ONLY_GATES
-
-
-def get_gate_initial_state(gate_name: str) -> str:
-    """Get the initial state of a gate at SessionStart.
-
-    Returns 'closed' or 'open'. Defaults to 'closed' for unknown gates.
-    """
-    return GATE_INITIAL_STATE.get(gate_name, "closed")
-
-
-def get_gate_opening_condition(gate_name: str) -> dict[str, Any]:
-    """Get the conditions that open a gate.
-
-    Returns dict with event type and conditions, or empty dict if not configured.
-    """
-    return GATE_OPENING_CONDITIONS.get(gate_name, {})
-
-
-def get_gate_closure_triggers(gate_name: str) -> list[dict[str, Any]]:
-    """Get the triggers that re-close a gate.
-
-    Returns list of trigger definitions, or empty list if gate doesn't re-close.
-    """
-    return GATE_CLOSURE_TRIGGERS.get(gate_name, [])
-
-
-def should_gate_close_on_tool(gate_name: str, tool_name: str, event: str) -> bool:
-    """Check if a gate should close based on a tool use.
-
-    Args:
-        gate_name: Name of the gate to check
-        tool_name: Name of the tool that was used
-        event: Event type (e.g., 'PostToolUse')
-
-    Returns:
-        True if the gate should transition from open to closed.
-    """
-    triggers = get_gate_closure_triggers(gate_name)
-    if not triggers:
-        return False
-
-    tool_category = get_tool_category(tool_name)
-
-    for trigger in triggers:
-        if trigger.get("event") != event:
-            continue
-
-        # Check tool category match
-        if "tool_category" in trigger:
-            if trigger["tool_category"] == tool_category:
-                return True
-
-        # Check tool pattern match (if specified)
-        if "tool_pattern" in trigger:
-            import re
-
-            if re.match(trigger["tool_pattern"], tool_name):
-                return True
-
-    return False

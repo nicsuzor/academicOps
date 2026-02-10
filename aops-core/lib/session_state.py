@@ -17,1174 +17,200 @@ from __future__ import annotations
 
 import json
 import os
+import sys
+import tempfile
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field, ValidationError
+
+from lib.session_paths import get_session_file_path, get_session_short_hash, get_session_status_dir
+from lib.gate_types import GateState, GateStatus
 
 
-class SessionState(TypedDict, total=False):
+class MainAgentState(BaseModel):
+    """Main agent tracking."""
+    current_task: Optional[str] = None
+    task_binding_source: str = "unknown"
+    task_binding_ts: Optional[str] = None
+    task_cleared_ts: Optional[str] = None
+    todos_completed: int = 0
+    todos_total: int = 0
+
+
+class SessionState(BaseModel):
     """Unified session state per flow.md spec."""
 
     # Core identifiers
     session_id: str
     date: str  # YYYY-MM-DD
     started_at: str  # ISO timestamp
-    ended_at: str | None
+    ended_at: Optional[str] = None
+
+    # Global turn counter (increments on user prompt)
+    global_turn_count: int = 0
 
     # Session type detection (polecat vs interactive)
-    # Values: "polecat" | "crew" | "interactive"
-    # - polecat: headless autonomous (strict commit behavior)
-    # - crew: interactive crew session (relaxed)
-    # - interactive: normal interactive session (relaxed)
-    session_type: str
+    session_type: str = "interactive"
 
-    # Execution state
-    state: dict[str, Any]  # custodiet_blocked, current_workflow, hydration_pending,
-    # reflection_output_since_prompt
+    # Execution state (legacy bag + structured)
+    state: Dict[str, Any] = Field(default_factory=dict)
 
-    # Hydration data
-    hydration: dict[
-        str, Any
-    ]  # original_prompt, hydrated_intent, acceptance_criteria, critic_verdict,
-    # turns_since_hydration, turns_since_critic
+    # Structured components
+    gates: Dict[str, GateState] = Field(default_factory=dict)
 
-    # Agent tracking
-    main_agent: dict[str, Any]  # current_task, todos_completed, todos_total
-    subagents: dict[str, Any]  # per-agent invocation records
+    # Main Agent / Task tracking (could move to 'task' gate metrics, but useful globally)
+    main_agent: MainAgentState = Field(default_factory=MainAgentState)
+
+    # Subagent tracking: agent_name -> data dict
+    subagents: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
 
     # Session insights (written at close)
-    insights: dict[str, Any] | None
+    insights: Optional[Dict[str, Any]] = None
 
+    @classmethod
+    def create(cls, session_id: str) -> "SessionState":
+        """Create new session state."""
+        now = datetime.now().astimezone().replace(microsecond=0)
 
-def load_session_state(session_id: str, retries: int = 3) -> SessionState | None:
-    """Load unified session state.
+        # Detect session type
+        stype = "interactive"
+        if "POLECAT_SESSION_TYPE" in os.environ:
+            val = os.environ["POLECAT_SESSION_TYPE"].lower()
+            if val in ("polecat", "crew"):
+                stype = val
 
-    Searches for session file matching session_id hash. Checks today's files first,
-    then yesterday's (for sessions spanning midnight). Handles both new format
-    (YYYYMMDD-HH-hash.json) and legacy format (YYYYMMDD-hash.json).
+        instance = cls(
+            session_id=session_id,
+            date=now.isoformat(),
+            started_at=now.isoformat(),
+            session_type=stype,
+        )
 
-    Args:
-        session_id: Claude Code session ID
-        retries: Number of retry attempts on JSONDecodeError
+        # Initialize default gate states
+        default_gates = {
+            "hydration": GateStatus.CLOSED,
+            "task": GateStatus.OPEN,
+            "critic": GateStatus.OPEN,
+            "custodiet": GateStatus.OPEN,
+            "qa": GateStatus.CLOSED,
+            "handover": GateStatus.OPEN,
+        }
 
-    Returns:
-        SessionState dict or None if not found
-    """
-    from lib.session_paths import get_session_short_hash, get_session_status_dir
+        for name, status in default_gates.items():
+            instance.gates[name] = GateState(status=status)
 
-    # Use local time for file lookup to match local-time-based storage
-    now = datetime.now()
-    today = now.strftime("%Y%m%d")
-    yesterday = (now - timedelta(days=1)).strftime("%Y%m%d")
+        # Initialize legacy flags in 'state' dict for compatibility if needed
+        instance.state["hydration_pending"] = True
+        instance.state["handover_skill_invoked"] = True
 
-    short_hash = get_session_short_hash(session_id)
-    status_dir = get_session_status_dir(session_id)
+        return instance
 
-    # Search for files matching this session_id on today or yesterday
-    for date_compact in [today, yesterday]:
-        # New format: YYYYMMDD-HH-hash.json (try all hours)
-        new_pattern = f"{date_compact}-??-{short_hash}.json"
-        # Legacy format: YYYYMMDD-hash.json
-        legacy_pattern = f"{date_compact}-{short_hash}.json"
+    @classmethod
+    def load(cls, session_id: str, retries: int = 3) -> "SessionState":
+        """Load session state from disk."""
+        now = datetime.now()
+        today = now.strftime("%Y%m%d")
+        yesterday = (now - timedelta(days=1)).strftime("%Y%m%d")
 
-        for pattern in [new_pattern, legacy_pattern]:
-            matches = list(status_dir.glob(pattern))
-            if matches:
-                # Use the most recent file if multiple matches
-                path = max(matches, key=lambda p: p.stat().st_mtime)
-                for attempt in range(retries):
-                    try:
-                        return json.loads(path.read_text())
-                    except json.JSONDecodeError as e:
-                        if attempt < retries - 1:
-                            time.sleep(0.01)
-                            continue
-                        # All retries exhausted - log the error
-                        import logging
+        short_hash = get_session_short_hash(session_id)
+        status_dir = get_session_status_dir(session_id)
 
-                        logging.getLogger(__name__).warning(
-                            f"Session state JSON decode failed after {retries} retries: {path}: {e}"
-                        )
-                        return None
-                    except OSError as e:
-                        # I/O error - log and return None
-                        import logging
+        # Search for files matching this session_id on today or yesterday
+        for date_compact in [today, yesterday]:
+            # New format: YYYYMMDD-HH-hash.json (try all hours)
+            new_pattern = f"{date_compact}-??-{short_hash}.json"
+            # Legacy format: YYYYMMDD-hash.json
+            legacy_pattern = f"{date_compact}-{short_hash}.json"
 
-                        logging.getLogger(__name__).debug(
-                            f"Session state read failed (OSError): {path}: {e}"
-                        )
-                        return None
+            for pattern in [new_pattern, legacy_pattern]:
+                matches = list(status_dir.glob(pattern))
+                if matches:
+                    # Use the most recent file if multiple matches
+                    path = max(matches, key=lambda p: p.stat().st_mtime)
+                    for attempt in range(retries):
+                        try:
+                            text = path.read_text()
+                            data = json.loads(text)
+                            # Convert dict to Pydantic
+                            return cls.model_validate(data)
+                        except json.JSONDecodeError as e:
+                            if attempt < retries - 1:
+                                time.sleep(0.01)
+                                continue
+                            print(f"WARNING: SessionState JSON decode error: {e}", file=sys.stderr)
+                            # Return new state on failure to avoid blocking
+                            return cls.create(session_id)
+                        except ValidationError as e:
+                            print(f"WARNING: SessionState validation error: {e}", file=sys.stderr)
+                            # Schema mismatch -> Create new (migration via reset)
+                            return cls.create(session_id)
+                        except Exception as e:
+                            print(f"WARNING: SessionState load error: {e}", file=sys.stderr)
+                            # Unknown error -> Create new? Or retry?
+                            if attempt < retries - 1:
+                                time.sleep(0.01)
+                                continue
+                            return cls.create(session_id)
 
-    return None
+        # Not found, create new
+        return cls.create(session_id)
 
+    def save(self) -> None:
+        """Save session state to disk."""
+        # Ensure directory exists
+        path = get_session_file_path(self.session_id, self.date)
+        path.parent.mkdir(parents=True, exist_ok=True)
 
-def save_session_state(session_id: str, state: SessionState) -> None:
-    """Atomically save unified session state.
+        fd, temp_path_str = tempfile.mkstemp(
+            prefix=f"aops-{self.date}-", suffix=".tmp", dir=str(path.parent)
+        )
+        temp_path = Path(temp_path_str)
 
-    Uses write-then-rename pattern for atomic updates.
-
-    Args:
-        session_id: Claude Code session ID
-        state: SessionState to save
-    """
-    import tempfile
-
-    # Ensure date is set
-    if "date" not in state:
-        # Standard format with TZ info in local time (e.g., 2026-01-22T16:25:17+10:00)
-        state["date"] = datetime.now().astimezone().replace(microsecond=0).isoformat()
-    if "session_id" not in state:
-        state["session_id"] = session_id
-
-    # Path uses the full ISO date (including hour) to ensure consistent file naming
-    # across session lifetime - prevents creating new files when hour changes
-    from lib.session_paths import get_session_file_path
-
-    path = get_session_file_path(session_id, state["date"])
-
-    # Ensure directory exists
-    path.parent.mkdir(parents=True, exist_ok=True)
-
-    fd, temp_path_str = tempfile.mkstemp(
-        prefix=f"aops-{state['date']}-", suffix=".tmp", dir=str(path.parent)
-    )
-    temp_path = Path(temp_path_str)
-
-    try:
-        os.write(fd, json.dumps(state, indent=2).encode())
-        os.close(fd)
-        temp_path.rename(path)
-    except Exception:
         try:
+            # Dump with exclude_none=False to preserve structure?
+            # Or use mode='json'
+            data = self.model_dump_json(indent=2)
+            os.write(fd, data.encode())
             os.close(fd)
+            temp_path.rename(path)
         except Exception:
-            pass
-        temp_path.unlink(missing_ok=True)
-        raise
-
-
-def _detect_session_type() -> str:
-    """Detect session type from environment.
-
-    POLECAT_SESSION_TYPE is optional - unset means interactive session.
-    This is a valid case, not an error, so we check existence explicitly.
-
-    Returns:
-        "polecat" | "crew" | "interactive"
-    """
-    if "POLECAT_SESSION_TYPE" not in os.environ:
-        return "interactive"
-    session_type = os.environ["POLECAT_SESSION_TYPE"].lower()
-    if session_type == "polecat":
-        return "polecat"
-    elif session_type == "crew":
-        return "crew"
-    else:
-        return "interactive"
-
-
-def create_session_state(session_id: str) -> SessionState:
-    """Create initial session state.
-
-    Sets hydration_pending=True by default to enforce the hydration gate.
-    This is cleared when:
-    - UserPromptSubmit sees / or . prefix (skip hydration)
-    - prompt-hydrator Task is invoked (normal flow)
-
-    Note: UserPromptSubmit does NOT fire for the first prompt of a fresh session
-    (Claude Code limitation), so we default to pending=True here in SessionStart
-    to ensure the gate blocks until hydrator runs.
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        New SessionState with defaults
-    """
-    # Use local time with TZ info for date and started_at
-    now = datetime.now().astimezone().replace(microsecond=0)
-    return SessionState(
-        session_id=session_id,
-        date=now.isoformat(),
-        started_at=now.isoformat(),
-        ended_at=None,
-        session_type=_detect_session_type(),
-        state={
-            "custodiet_blocked": False,
-            "custodiet_block_reason": None,
-            "current_workflow": None,
-            "hydration_pending": True,  # Default True - gate blocks until hydrator invoked
-            "qa_invoked": False,
-            "handover_skill_invoked": True,  # Gate starts OPEN - reset when mutating tool used
-        },
-        hydration={
-            "original_prompt": None,
-            "hydrated_intent": None,
-            "acceptance_criteria": [],
-            "critic_verdict": None,
-            "turns_since_hydration": -1,
-            "turns_since_critic": -1,
-        },
-        main_agent={
-            "current_task": None,
-            "todos_completed": 0,
-            "todos_total": 0,
-        },
-        subagents={},
-        insights=None,
-    )
-
-
-def get_or_create_session_state(session_id: str) -> SessionState:
-    """Load existing session state or create new one.
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        SessionState (existing or new)
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        state = create_session_state(session_id)
-        save_session_state(session_id, state)
-    return state
-
-
-# ============================================================================
-# Custodiet Block API
-# ============================================================================
-
-
-def is_custodiet_enabled() -> bool:
-    """Check if custodiet blocking is enabled.
-
-    Set CUSTODIET_DISABLED=1 to bypass blocking while keeping reporting.
-
-    Returns:
-        True if custodiet blocking is enabled (default)
-    """
-    disabled = os.environ.get("CUSTODIET_DISABLED", "").lower()
-    return disabled not in ("1", "true", "yes")
-
-
-def is_custodiet_blocked(session_id: str) -> bool:
-    """Check if session is blocked by custodiet.
-
-    Returns False if CUSTODIET_DISABLED=1, even if a block is set.
-    This allows the agent to report issues without halting the session.
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        True if custodiet_blocked flag is set AND blocking is enabled
-    """
-    if not is_custodiet_enabled():
-        return False
-    state = load_session_state(session_id)
-    if state is None:
-        return False
-    return state.get("state", {}).get("custodiet_blocked", False)
-
-
-def set_custodiet_block(session_id: str, reason: str) -> None:
-    """Set custodiet block flag.
-
-    Called when custodiet detects a violation. All hooks should check
-    this flag and FAIL until cleared.
-
-    Args:
-        session_id: Claude Code session ID
-        reason: Human-readable reason for block
-    """
-    state = get_or_create_session_state(session_id)
-    state["state"]["custodiet_blocked"] = True
-    state["state"]["custodiet_block_reason"] = reason
-    save_session_state(session_id, state)
-
-
-def clear_custodiet_block(session_id: str) -> None:
-    """Clear custodiet block flag.
-
-    Args:
-        session_id: Claude Code session ID
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        return
-    state["state"]["custodiet_blocked"] = False
-    state["state"]["custodiet_block_reason"] = None
-    save_session_state(session_id, state)
-
-
-# ============================================================================
-# Hydration Pending API
-# ============================================================================
-
-
-def is_hydration_pending(session_id: str) -> bool:
-    """Check if hydration is pending for this session.
-
-    FAIL-CLOSED: Returns True if state doesn't exist (assumes pending).
-    This handles the case where UserPromptSubmit doesn't fire for the
-    first prompt of a session (Claude Code limitation).
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        True if hydration_pending flag is set OR state doesn't exist
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        # FAIL-CLOSED: No state means first prompt, assume hydration pending
-        return True
-    return state.get("state", {}).get("hydration_pending", False)
-
-
-def set_hydration_pending(session_id: str, original_prompt: str) -> None:
-    """Set hydration pending flag with original prompt.
-
-    Args:
-        session_id: Claude Code session ID
-        original_prompt: The user's original prompt
-    """
-    state = get_or_create_session_state(session_id)
-    state["state"]["hydration_pending"] = True
-    state["hydration"]["original_prompt"] = original_prompt
-    save_session_state(session_id, state)
-
-
-def clear_hydration_pending(session_id: str) -> None:
-    """Clear hydration_pending flag.
-
-    Called when prompt-hydrator is invoked or when a skill is invoked
-    (via UserPromptSubmit detecting '/' prefix).
-
-    Uses get_or_create to ensure state exists - otherwise clearing would
-    silently fail and is_hydration_pending would return True (fail-closed).
-
-    Args:
-        session_id: Claude Code session ID
-    """
-    state = get_or_create_session_state(session_id)
-    state["state"]["hydration_pending"] = False
-    save_session_state(session_id, state)
-
-
-def set_hydration_temp_path(session_id: str, temp_path: str) -> None:
-    """Store the hydration temp file path.
-
-    Called by user_prompt_submit.py after writing the hydration context file.
-    The gate can then retrieve this to include in the block message.
-
-    Args:
-        session_id: Claude Code session ID
-        temp_path: Absolute path to the hydration temp file
-    """
-    state = get_or_create_session_state(session_id)
-    state["hydration"]["temp_path"] = temp_path
-    save_session_state(session_id, state)
-
-
-def get_hydration_temp_path(session_id: str) -> str | None:
-    """Get the hydration temp file path.
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        Path to temp file, or None if not set
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        return None
-    return state.get("hydration", {}).get("temp_path")
-
-
-# ============================================================================
-# Hydration Data API
-# ============================================================================
-
-
-def set_hydration_result(
-    session_id: str,
-    hydrated_intent: str,
-    acceptance_criteria: list[str],
-    workflow: str,
-) -> None:
-    """Store hydration results.
-
-    Args:
-        session_id: Claude Code session ID
-        hydrated_intent: The hydrated intent/plan
-        acceptance_criteria: List of acceptance criteria
-        workflow: Selected workflow name
-    """
-    state = get_or_create_session_state(session_id)
-    state["hydration"]["hydrated_intent"] = hydrated_intent
-    state["hydration"]["acceptance_criteria"] = acceptance_criteria
-    state["state"]["current_workflow"] = workflow
-    save_session_state(session_id, state)
-
-
-def set_critic_verdict(session_id: str, verdict: str) -> None:
-    """Store critic verdict.
-
-    Args:
-        session_id: Claude Code session ID
-        verdict: PROCEED, REVISE, or HALT
-    """
-    state = get_or_create_session_state(session_id)
-    state["hydration"]["critic_verdict"] = verdict
-    save_session_state(session_id, state)
-
-
-def get_hydration_data(session_id: str) -> dict[str, Any] | None:
-    """Get hydration data for QA verifier.
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        Hydration dict or None
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        return None
-    return state.get("hydration")
-
-
-def update_hydration_metrics(
-    session_id: str,
-    turns_since_hydration: int | None = None,
-    turns_since_critic: int | None = None,
-) -> None:
-    """Update hydration tracking metrics.
-
-    Args:
-        session_id: Claude Code session ID
-        turns_since_hydration: Optional override for turns count
-        turns_since_critic: Optional override for critic count
-    """
-    state = get_or_create_session_state(session_id)
-    if turns_since_hydration is not None:
-        state["hydration"]["turns_since_hydration"] = turns_since_hydration
-    if turns_since_critic is not None:
-        state["hydration"]["turns_since_critic"] = turns_since_critic
-    save_session_state(session_id, state)
-
-
-# ============================================================================
-# Subagent Tracking API
-# ============================================================================
-
-
-def record_subagent_invocation(session_id: str, agent_name: str, result: dict[str, Any]) -> None:
-    """Record a subagent invocation.
-
-    Args:
-        session_id: Claude Code session ID
-        agent_name: Name of the subagent
-        result: Result data from the subagent
-    """
-    state = get_or_create_session_state(session_id)
-    state["subagents"][agent_name] = {
-        "last_invoked": datetime.now().astimezone().replace(microsecond=0).isoformat(),
-        **result,
-    }
-    save_session_state(session_id, state)
-
-
-# ============================================================================
-# Session Insights API
-# ============================================================================
-
-
-def set_session_insights(session_id: str, insights: dict[str, Any]) -> None:
-    """Set session insights (final step before close).
-
-    Args:
-        session_id: Claude Code session ID
-        insights: Session insights data
-    """
-    state = get_or_create_session_state(session_id)
-    state["insights"] = insights
-    state["ended_at"] = datetime.now().astimezone().replace(microsecond=0).isoformat()
-    save_session_state(session_id, state)
-
-
-# ============================================================================
-# Current Task API
-# ============================================================================
-
-
-def set_current_task(session_id: str, task_id: str, source: str = "unknown") -> bool:
-    """Bind a task to the current session.
-
-    Called by hooks when task routing occurs. Enables observability:
-    every session has a linked task after hydration.
-
-    Args:
-        session_id: Claude Code session ID
-        task_id: Task ID to bind (e.g., "aops-abc123")
-        source: Binding source ("hydrator" | "fallback_hook" | "manual")
-
-    Returns:
-        True if binding succeeded
-    """
-    import logging
-
-    logger = logging.getLogger(__name__)
-
-    state = get_or_create_session_state(session_id)
-    state["main_agent"]["current_task"] = task_id
-    state["main_agent"]["task_binding_source"] = source
-    state["main_agent"]["task_binding_ts"] = (
-        datetime.now().astimezone().replace(microsecond=0).isoformat()
-    )
-    save_session_state(session_id, state)
-
-    logger.info(f"Task bound to session: {task_id} (source={source})")
-    return True
-
-
-def get_current_task(session_id: str) -> str | None:
-    """Get the task bound to this session.
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        Task ID string or None if no task bound
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        return None
-    return state.get("main_agent", {}).get("current_task")
-
-
-def clear_current_task(session_id: str) -> bool:
-    """Clear the task binding from this session.
-
-    Called when task is completed or session ends normally.
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        True if task was cleared, False if no task was bound
-    """
-    import logging
-
-    logger = logging.getLogger(__name__)
-
-    state = load_session_state(session_id)
-    if state is None:
-        return False
-
-    current_task = state.get("main_agent", {}).get("current_task")
-    if not current_task:
-        return False
-
-    state["main_agent"]["current_task"] = None
-    state["main_agent"]["task_cleared_ts"] = (
-        datetime.now().astimezone().replace(microsecond=0).isoformat()
-    )
-    save_session_state(session_id, state)
-
-    logger.info(f"Task cleared from session: {current_task}")
-    return True
-
-
-# ============================================================================
-# Gates Bypass API
-# ============================================================================
-
-
-def set_gates_bypassed(session_id: str, bypassed: bool = True) -> None:
-    """Set gates bypass flag for emergency/trivial operations.
-
-    Called when user prefix '.' is detected - bypasses all enforcement gates.
-
-    Args:
-        session_id: Claude Code session ID
-        bypassed: Whether gates are bypassed (default True)
-    """
-    state = get_or_create_session_state(session_id)
-    state["state"]["gates_bypassed"] = bypassed
-    save_session_state(session_id, state)
-
-
-def is_gates_bypassed(session_id: str) -> bool:
-    """Check if gates are bypassed for this session.
-
-    Returns True if:
-    1. Explicit gates_bypassed flag is set (via '.' prefix or /relax skill)
-    2. Session type is 'interactive' or 'crew' (auto-relaxed)
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        True if gates are bypassed/relaxed
-    """
-    if is_interactive_session(session_id):
-        return True
-
-    state = load_session_state(session_id)
-    if state is None:
-        return False
-    return state.get("state", {}).get("gates_bypassed", False)
-
-
-# ============================================================================
-# Reflection Output Tracking API
-# ============================================================================
-
-
-def set_reflection_output(session_id: str, value: bool = True) -> None:
-    """Set reflection_output_since_prompt flag.
-
-    Called when a Framework Reflection is detected in assistant output.
-
-    Args:
-        session_id: Claude Code session ID
-        value: Whether reflection has been output (default True)
-    """
-    state = get_or_create_session_state(session_id)
-    state["state"]["reflection_output_since_prompt"] = value
-    save_session_state(session_id, state)
-
-
-def clear_reflection_output(session_id: str) -> None:
-    """Clear reflection_output_since_prompt flag.
-
-    Called on UserPromptSubmit to reset tracking for new prompt.
-
-    Args:
-        session_id: Claude Code session ID
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        return
-    state["state"]["reflection_output_since_prompt"] = False
-    save_session_state(session_id, state)
-
-
-def has_reflection_output(session_id: str) -> bool:
-    """Check if reflection has been output since last user prompt.
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        True if reflection_output_since_prompt flag is set
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        return False
-    return state.get("state", {}).get("reflection_output_since_prompt", False)
-
-
-# ============================================================================
-# Stop Hook Reflection Validation API
-# ============================================================================
-
-
-def set_stop_reflection_validated(session_id: str) -> None:
-    """Set stop_reflection_validated flag when Stop hook validates reflection.
-
-    This flag is NOT cleared by UserPromptSubmit, unlike reflection_output_since_prompt.
-    Once the Stop hook has validated a reflection exists, the session can end
-    even if additional prompts are sent.
-
-    Args:
-        session_id: Claude Code session ID
-    """
-    state = get_or_create_session_state(session_id)
-    state["state"]["stop_reflection_validated"] = True
-    save_session_state(session_id, state)
-
-
-def is_stop_reflection_validated(session_id: str) -> bool:
-    """Check if Stop hook has validated a reflection for this session.
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        True if stop_reflection_validated flag is set
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        return False
-    return state.get("state", {}).get("stop_reflection_validated", False)
-
-
-# ============================================================================
-# Critic Invocation Tracking API
-# ============================================================================
-
-
-def set_critic_invoked(session_id: str, verdict: str | None = None) -> None:
-    """Set critic_invoked flag when critic agent completes.
-
-    Part of the three-gate requirement for destructive operations:
-    (a) task claimed, (b) critic invoked, (c) todo with handover.
-
-    Args:
-        session_id: Claude Code session ID
-        verdict: Optional critic verdict (PROCEED/REVISE/HALT)
-    """
-    state = get_or_create_session_state(session_id)
-    state["state"]["critic_invoked"] = True
-    if verdict:
-        state["hydration"]["critic_verdict"] = verdict
-    save_session_state(session_id, state)
-
-
-def is_critic_invoked(session_id: str) -> bool:
-    """Check if critic agent has been invoked for this session.
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        True if critic_invoked flag is set
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        return False
-    return state.get("state", {}).get("critic_invoked", False)
-
-
-def clear_critic_invoked(session_id: str) -> None:
-    """Clear critic_invoked flag (gate closes on new user prompt).
-
-    Args:
-        session_id: Claude Code session ID
-    """
-    state = get_or_create_session_state(session_id)
-    state.get("state", {}).pop("critic_invoked", None)
-    state.get("hydration", {}).pop("critic_verdict", None)
-    save_session_state(session_id, state)
-
-
-# ============================================================================
-# QA Invocation Tracking API
-# ============================================================================
-
-
-def set_qa_invoked(session_id: str) -> None:
-    """Set qa_invoked flag when QA skill is executed.
-
-    Args:
-        session_id: Claude Code session ID
-    """
-    state = get_or_create_session_state(session_id)
-    state["state"]["qa_invoked"] = True
-    save_session_state(session_id, state)
-
-
-def is_qa_invoked(session_id: str) -> bool:
-    """Check if QA skill has been invoked for this session.
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        True if qa_invoked flag is set
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        return False
-    return state.get("state", {}).get("qa_invoked", False)
-
-
-def clear_qa_invoked(session_id: str) -> None:
-    """Clear qa_invoked flag (gate closes on new user prompt).
-
-    Args:
-        session_id: Claude Code session ID
-    """
-    state = get_or_create_session_state(session_id)
-    state.get("state", {}).pop("qa_invoked", None)
-    save_session_state(session_id, state)
-
-
-def is_handover_invoked(session_id: str) -> bool:
-    """Check if handover skill has been invoked for this session.
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        True if handover_skill_invoked flag is set
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        return False
-    return state.get("state", {}).get("handover_skill_invoked", False)
-
-
-def get_passed_gates(session_id: str) -> set[str]:
-    """Get the set of gates that have passed for this session.
-
-    Used by the unified tool_gate to check tool permissions.
-
-    Gate states:
-    - hydration: True if hydrated_intent is set OR hydration_pending is False
-    - task: True if current_task is set
-    - critic: True if critic_invoked is set
-    - qa: True if qa_invoked is set
-    - handover: True if handover_skill_invoked is set
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        Set of gate names that have passed
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        return set()
-
-    passed = set()
-
-    # Hydration gate: passed if hydrated_intent is set OR hydration_pending is False
-    # The latter handles /commands (like /pull) that bypass hydration via clear_hydration_pending()
-    hydration = state.get("hydration", {})
-    state_data = state.get("state", {})
-    if hydration.get("hydrated_intent") or not state_data.get("hydration_pending", True):
-        passed.add("hydration")
-
-    # Task gate: passed if current_task is set
-    # Note: current_task is in main_agent, not state
-    main_agent = state.get("main_agent", {})
-    if main_agent.get("current_task"):
-        passed.add("task")
-
-    # Critic gate: passed if critic_invoked is set
-    if state_data.get("critic_invoked"):
-        passed.add("critic")
-
-    # QA gate: passed if qa_invoked is set
-    if state_data.get("qa_invoked"):
-        passed.add("qa")
-
-    # Handover gate: passed if handover_skill_invoked is set
-    if state_data.get("handover_skill_invoked"):
-        passed.add("handover")
-
-    # Custodiet gate: passed if not explicitly closed
-    # Default is open per gate_config.py:GATE_INITIAL_STATE
-    gates_state = state_data.get("gates", {})
-    if gates_state.get("custodiet") != "closed":
-        passed.add("custodiet")
-
-    return passed
-
-
-# ============================================================================
-# Todo Handover Validation API
-# ============================================================================
-
-
-def set_todo_with_handover(session_id: str, handover_content: str | None = None) -> None:
-    """Set todo_with_handover flag when todo list includes handover step.
-
-    Part of the three-gate requirement for destructive operations:
-    (a) task claimed, (b) critic invoked, (c) todo with handover.
-
-    Args:
-        session_id: Claude Code session ID
-        handover_content: Optional content of the handover todo item
-    """
-    state = get_or_create_session_state(session_id)
-    state["state"]["todo_with_handover"] = True
-    if handover_content:
-        state["state"]["handover_step_content"] = handover_content
-    save_session_state(session_id, state)
-
-
-def has_todo_with_handover(session_id: str) -> bool:
-    """Check if todo list includes a handover/session-end step.
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        True if todo_with_handover flag is set
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        return False
-    return state.get("state", {}).get("todo_with_handover", False)
-
-
-def clear_todo_handover(session_id: str) -> None:
-    """Clear todo_with_handover flag (e.g., when todos are reset).
-
-    Args:
-        session_id: Claude Code session ID
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        return
-    state["state"]["todo_with_handover"] = False
-    state["state"]["handover_step_content"] = None
-    save_session_state(session_id, state)
-
-
-# ============================================================================
-# Plan Mode Invocation Tracking API
-# ============================================================================
-
-
-def set_plan_mode_invoked(session_id: str) -> None:
-    """Set plan_mode_invoked flag when EnterPlanMode tool is called.
-
-    Part of the four-gate requirement for destructive operations:
-    (a) task claimed, (b) plan mode invoked, (c) critic invoked, (d) todo with handover.
-
-    Args:
-        session_id: Claude Code session ID
-    """
-    state = get_or_create_session_state(session_id)
-    state["state"]["plan_mode_invoked"] = True
-    save_session_state(session_id, state)
-
-
-def is_plan_mode_invoked(session_id: str) -> bool:
-    """Check if EnterPlanMode has been invoked for this session.
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        True if plan_mode_invoked flag is set
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        return False
-    return state.get("state", {}).get("plan_mode_invoked", False)
-
-
-# ============================================================================
-# Gate Status Check API
-# ============================================================================
-
-
-def check_all_gates(session_id: str) -> dict[str, bool]:
-    """Check status of all four gates for destructive operations.
-
-    Returns status of: task_bound, plan_mode_invoked, critic_invoked, todo_with_handover.
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        Dict with gate statuses and overall 'all_passed' flag
-    """
-    task_bound = get_current_task(session_id) is not None
-    plan_mode = is_plan_mode_invoked(session_id)
-    critic_invoked = is_critic_invoked(session_id)
-    todo_handover = has_todo_with_handover(session_id)
-
-    return {
-        "task_bound": task_bound,
-        "plan_mode_invoked": plan_mode,
-        "critic_invoked": critic_invoked,
-        "todo_with_handover": todo_handover,
-        "all_passed": task_bound and plan_mode and critic_invoked and todo_handover,
-    }
-
-
-# ============================================================================
-# Handover Skill Tracking API
-# ============================================================================
-
-
-def set_handover_skill_invoked(session_id: str) -> None:
-    """Set handover_skill_invoked flag when /handover skill is executed.
-
-    Called by the PostToolUse handover_gate.py hook when it detects
-    the Skill tool being invoked with skill="handover".
-
-    Args:
-        session_id: Claude Code session ID
-    """
-    state = get_or_create_session_state(session_id)
-    state["state"]["handover_skill_invoked"] = True
-    save_session_state(session_id, state)
-
-
-def is_handover_skill_invoked(session_id: str) -> bool:
-    """Check if the handover gate is open (allowing stop without handover).
-
-    The gate starts OPEN (True) and closes when mutating tools are detected.
-    Returns True if no state exists or no mutations have occurred.
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        True if gate is open (no handover required), False if closed (handover required)
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        # No state = no mutations = gate open
-        return True
-    # Default to True for backwards compatibility with old state files
-    # that don't have this field
-    return state.get("state", {}).get("handover_skill_invoked", True)
-
-
-def clear_handover_skill_invoked(session_id: str) -> None:
-    """Clear handover_skill_invoked flag.
-
-    Called on new user prompt to reset for multi-turn sessions.
-
-    Args:
-        session_id: Claude Code session ID
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        return
-    state["state"]["handover_skill_invoked"] = False
-    save_session_state(session_id, state)
-
-
-def set_hydrator_active(session_id: str) -> None:
-    """Set hydrator_active flag when prompt-hydrator subagent starts.
-
-    Called by PreToolUse when Task tool is invoked with hydrator subagent_type.
-    This flag allows the hydration gate to bypass checks for the hydrator's
-    own tool calls (which would otherwise be blocked in a recursive loop).
-
-    Args:
-        session_id: Claude Code session ID
-    """
-    state = get_or_create_session_state(session_id)
-    state["state"]["hydrator_active"] = True
-    save_session_state(session_id, state)
-
-
-def is_hydrator_active(session_id: str) -> bool:
-    """Check if the prompt-hydrator subagent is currently active.
-
-    Used by hydration gate to bypass blocking for the hydrator's tool calls.
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        True if hydrator_active flag is set
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        return False
-    return state.get("state", {}).get("hydrator_active", False)
-
-
-def clear_hydrator_active(session_id: str) -> None:
-    """Clear hydrator_active flag when prompt-hydrator subagent completes.
-
-    Called by PostToolUse when Task tool completes.
-
-    Args:
-        session_id: Claude Code session ID
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        return
-    state["state"]["hydrator_active"] = False
-    save_session_state(session_id, state)
-
-
-# ============================================================================
-# Stop Hook Mode API (Interactive/Relaxed Sessions)
-# ============================================================================
-
-
-# ============================================================================
-# Session Type API (Polecat vs Interactive Detection)
-# ============================================================================
-
-
-def get_session_type(session_id: str) -> str:
-    """Get the session type for commit behavior enforcement.
-
-    Session types:
-    - "polecat": Headless autonomous agent (strict commit behavior)
-    - "crew": Interactive crew session (relaxed)
-    - "interactive": Normal interactive session (relaxed)
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        Session type string, defaults to "interactive" if not set
-    """
-    state = load_session_state(session_id)
-    if state is None:
-        # No state yet - detect from environment
-        return _detect_session_type()
-    # Handle old session files that don't have session_type field
-    if "session_type" not in state:
-        return "interactive"
-    return state["session_type"]
-
-
-def is_polecat_session(session_id: str) -> bool:
-    """Check if this is a polecat (headless autonomous) session.
-
-    Polecat sessions require stricter commit behavior enforcement.
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        True if session_type is "polecat"
-    """
-    return get_session_type(session_id) == "polecat"
-
-
-def is_interactive_session(session_id: str) -> bool:
-    """Check if this is an interactive session (crew or normal).
-
-    Interactive sessions have relaxed commit behavior.
-
-    Args:
-        session_id: Claude Code session ID
-
-    Returns:
-        True if session_type is "crew" or "interactive"
-    """
-    return get_session_type(session_id) in ("crew", "interactive")
-
-
-# ============================================================================
-# Threshold Configuration API
-# ============================================================================
-
-
-def get_custodiet_threshold() -> int:
-    """Get custodiet tool call threshold.
-
-    Defaults to 7, can be overridden by CUSTODIET_TOOL_CALL_THRESHOLD env var.
-    This value determines how many tool calls are allowed before a compliance
-    check is required.
-
-    Returns:
-        The threshold value (int)
-    """
-    default = 7
-    raw = os.environ.get("CUSTODIET_TOOL_CALL_THRESHOLD")
-    try:
-        return int(raw) if raw else default
-    except (ValueError, TypeError):
-        return default
+            try:
+                os.close(fd)
+            except Exception:
+                pass
+            temp_path.unlink(missing_ok=True)
+            raise
+
+    # --- Helper methods for common checks ---
+
+    def get_gate(self, name: str) -> GateState:
+        if name not in self.gates:
+            # Default to OPEN if unknown gate accessed, or create closed?
+            # Safer to default to OPEN (non-blocking) for unknown gates unless configured otherwise
+            self.gates[name] = GateState(status=GateStatus.OPEN)
+        return self.gates[name]
+
+    def is_gate_open(self, name: str) -> bool:
+        return self.get_gate(name).status == GateStatus.OPEN
+
+    def open_gate(self, name: str):
+        gate = self.get_gate(name)
+        if gate.status != GateStatus.OPEN:
+            gate.status = GateStatus.OPEN
+            gate.last_open_ts = time.time()
+            gate.last_open_turn = self.global_turn_count
+            gate.ops_since_open = 0
+            # Don't reset ops_since_close, it's irrelevant now
+        self.gates[name] = gate
+
+    def close_gate(self, name: str):
+        gate = self.get_gate(name)
+        if gate.status != GateStatus.CLOSED:
+            gate.status = GateStatus.CLOSED
+            gate.last_close_ts = time.time()
+            gate.last_close_turn = self.global_turn_count
+            gate.ops_since_close = 0
+        self.gates[name] = gate

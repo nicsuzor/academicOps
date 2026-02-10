@@ -83,7 +83,7 @@ class ClaudeGeneralHookOutput(BaseModel):
 
 
 # Union type for any Claude Hook Output
-ClaudeHookOutput = Union[ClaudeGeneralHookOutput, ClaudeStopHookOutput]
+ClaudeHookOutput = ClaudeGeneralHookOutput | ClaudeStopHookOutput
 
 
 # --- Gemini CLI Hook Schemas ---
