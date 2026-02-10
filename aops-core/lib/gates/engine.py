@@ -55,10 +55,24 @@ class GenericGate:
 
         # 3. Tool Input Pattern
         if condition.tool_input_pattern:
-            # Stringify tool_input and regex search
+            # Check string representation first
             input_str = str(ctx.tool_input)
-            if not re.search(condition.tool_input_pattern, input_str):
-                return False
+            pattern = condition.tool_input_pattern
+            if re.search(pattern, input_str):
+                pass # Match found
+            else:
+                # Robust check: search recursively in dict/list values
+                def search_deep(val: Any) -> bool:
+                    if isinstance(val, str):
+                        return bool(re.search(pattern, val))
+                    if isinstance(val, dict):
+                        return any(search_deep(v) for v in val.values())
+                    if isinstance(val, list):
+                        return any(search_deep(v) for v in val)
+                    return False
+                
+                if not search_deep(ctx.tool_input):
+                    return False
 
         # 3.5 Subagent Type Pattern
         if condition.subagent_type_pattern:
