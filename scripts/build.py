@@ -53,6 +53,14 @@ CLAUDE_TO_GEMINI_EVENTS = {
 }
 
 
+def sanitize_version(version: str) -> str:
+    """Sanitize version for PEP 440 compliance (uv is strict)."""
+    # Replace -testing.N with .devN
+    if "-testing." in version:
+        return version.replace("-testing.", ".dev")
+    return version
+
+
 def get_project_version(aops_root: Path) -> str:
     """Get version from git tags (matches uv-dynamic-versioning)."""
     try:
@@ -65,12 +73,7 @@ def get_project_version(aops_root: Path) -> str:
         )
         tags = [t.strip() for t in result.stdout.split("\n") if t.strip()]
         if tags:
-            version = tags[0].lstrip("v")
-            # Sanitize for PEP 440 compliance (uv is strict)
-            # Replace -testing.N with .devN
-            if "-testing." in version:
-                version = version.replace("-testing.", ".dev")
-            return version
+            return sanitize_version(tags[0].lstrip("v"))
         return "0.1.0"
     except subprocess.CalledProcessError:
         print("Warning: No git tags found, using fallback version 0.1.0")
@@ -815,7 +818,7 @@ def main():
 
     # Get version: use --set-version override or detect from git tags
     if args.set_version:
-        version = args.set_version
+        version = sanitize_version(args.set_version)
         print(f"Using override version: v{version}")
     else:
         version = get_project_version(aops_root)
