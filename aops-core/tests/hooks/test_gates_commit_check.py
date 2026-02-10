@@ -2,11 +2,10 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from hooks.schemas import HookContext
-from lib.gate_model import GateResult, GateVerdict
-from lib.gates.engine import GenericGate
+from lib.gate_model import GateVerdict
 from lib.gates.definitions import GATE_CONFIGS
+from lib.gates.engine import GenericGate
 from lib.session_state import SessionState
-from lib.gate_types import GateStatus
 
 # Find custodiet config
 CUSTODIET_CONFIG = next(c for c in GATE_CONFIGS if c.name == "custodiet")

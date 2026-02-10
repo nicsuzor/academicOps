@@ -333,7 +333,7 @@ def extract_reflection_from_entries(
     if agent_entries:
         # Collect all agent entries with their timestamps for sorting
         all_agent_entries = []
-        for agent_id, agent_entry_list in agent_entries.items():
+        for _agent_id, agent_entry_list in agent_entries.items():
             for entry in agent_entry_list:
                 if entry.type == "assistant":
                     all_agent_entries.append(entry)
@@ -770,7 +770,9 @@ class Entry:
                 timestamp_str = data["timestamp"]
                 if timestamp_str.endswith("Z"):
                     timestamp_str = timestamp_str[:-1] + "+00:00"
-                entry.timestamp = datetime.fromisoformat(timestamp_str)
+                dt = datetime.fromisoformat(timestamp_str)
+                # Convert to local time immediately to ensure consistent display
+                entry.timestamp = dt.astimezone()
             except (ValueError, TypeError):
                 pass
 
@@ -900,8 +902,18 @@ def _adjust_heading_levels(text: str, increase_by: int = 2) -> str:
 
     lines = text.split("\n")
     adjusted = []
+    in_code_block = False
 
     for line in lines:
+        if line.strip().startswith("```"):
+            in_code_block = not in_code_block
+            adjusted.append(line)
+            continue
+
+        if in_code_block:
+            adjusted.append(line)
+            continue
+
         # Check if line starts with markdown heading
         if line.startswith("#"):
             # Count existing heading level
@@ -923,6 +935,13 @@ def _adjust_heading_levels(text: str, increase_by: int = 2) -> str:
             adjusted.append(line)
 
     return "\n".join(adjusted)
+
+
+def _quote_block(text: str) -> str:
+    """Wrap text in markdown blockquotes."""
+    if not text:
+        return ""
+    return "\n".join(f"> {line}" for line in text.split("\n"))
 
 
 def _parse_subagent_output(text: str, heading_level: int = 4) -> tuple[str, list[Entry]] | None:
@@ -964,7 +983,6 @@ def _parse_subagent_output(text: str, heading_level: int = 4) -> tuple[str, list
 
     # Format entries using similar logic to _extract_sidechain but with heading levels
     output_parts = []
-    heading_prefix = "#" * heading_level
 
     for entry in entries:
         if entry.type == "assistant" and entry.message:
@@ -997,15 +1015,21 @@ def _parse_subagent_output(text: str, heading_level: int = 4) -> tuple[str, list
     if not output_parts:
         return None
 
-    # Build markdown with agent header
+    # Build markdown with agent header and blockquotes
     markdown = ""
+    # We use bold for subagent header inside quote instead of heading to avoid clutter
     if agent_id:
-        markdown = f"{heading_prefix} Subagent: {agent_id}\n\n"
+        markdown = f"**Subagent: {agent_id}**\n\n"
     else:
-        markdown = f"{heading_prefix} Subagent Output\n\n"
+        markdown = "**Subagent Output**\n\n"
 
-    markdown += "".join(output_parts)
-    return markdown, entries
+    content = "".join(output_parts)
+    markdown += content
+
+    # Wrap everything in quotes
+    quoted_markdown = _quote_block(markdown)
+
+    return quoted_markdown, entries
 
 
 def _extract_task_notifications(text: str) -> list[dict[str, str]]:
@@ -1152,7 +1176,8 @@ class SessionProcessor:
                 try:
                     if timestamp_str.endswith("Z"):
                         timestamp_str = timestamp_str[:-1] + "+00:00"
-                    timestamp = datetime.fromisoformat(timestamp_str)
+                    dt = datetime.fromisoformat(timestamp_str)
+                    timestamp = dt.astimezone()
                 except (ValueError, TypeError):
                     pass
 
@@ -1333,7 +1358,7 @@ class SessionProcessor:
             )
 
         # Use earliest file mtime as session start
-        start_time = min(datetime.fromtimestamp(f.stat().st_mtime, tz=UTC) for f in md_files)
+        start_time = min(datetime.fromtimestamp(f.stat().st_mtime).astimezone() for f in md_files)
 
         # Define the order of files to process
         file_order = [
@@ -2095,7 +2120,12 @@ class SessionProcessor:
                             display_content = user_message
                         markdown += f"```markdown\n{display_content}\n```\n\n"
                 else:
-                    markdown += f"## User (Turn {turn_number}{timing_str})\n\n{user_message}\n\n"
+                    # Extract summary for heading
+                    summary = user_message.split("\n")[0].strip()
+                    if len(summary) > 60:
+                        summary = summary[:57] + "..."
+
+                    markdown += f"## User (Turn {turn_number}{timing_str}) - {summary}\n\n{user_message}\n\n"
 
                 inline_hooks = (
                     turn.inline_hooks
@@ -2204,7 +2234,8 @@ class SessionProcessor:
                                         )
                                         markdown += f"```\n{task_output}\n```\n\n"
                         else:
-                            markdown += f"{content}\n\n"
+                            # Demote headings to avoid breaking transcript structure
+                            markdown += f"{_adjust_heading_levels(content, 2)}\n\n"
 
                     elif item_type == "tool":
                         if not in_actions_section:
@@ -2285,7 +2316,8 @@ class SessionProcessor:
                             adjusted_summary = _adjust_heading_levels(item["sidechain_summary"], 2)
                             lines = adjusted_summary.split("\n")
                             condensed = "\n".join(line for line in lines if line.strip())
-                            markdown += condensed + "\n\n"
+                            # Quote the subagent summary/content
+                            markdown += _quote_block(condensed) + "\n\n"
 
         edited_files = details.get("edited_files", session.edited_files)
         files_list = edited_files if edited_files and isinstance(edited_files, list) else []

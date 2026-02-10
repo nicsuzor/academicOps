@@ -441,7 +441,7 @@ class TaskStorage:
                 try:
                     Task.from_file(path)
                 except Exception as e:
-                    raise OSError(f"Write verification failed: {path} is not valid: {e}")
+                    raise OSError(f"Write verification failed: {path} is not valid: {e}") from e
 
             except Exception:
                 # Clean up temp file on error

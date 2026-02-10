@@ -318,8 +318,8 @@ class Task:
             raise ValueError(f"Missing 'type' field for item {task_id} - not a task file")
         try:
             task_type = TaskType(task_type_str)
-        except ValueError:
-            raise ValueError(f"Invalid type '{task_type_str}' for item {task_id} - not a task")
+        except ValueError as e:
+            raise ValueError(f"Invalid type '{task_type_str}' for item {task_id} - not a task") from e
 
         # Map status aliases and parse with graceful coercion
         status_str = fm.get("status", "active")

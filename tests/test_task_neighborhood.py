@@ -369,7 +369,7 @@ class TestGetTaskNeighborhood:
 
         # Also check nested structures
         if result["existing_relationships"]:
-            for key, value in result["existing_relationships"].items():
+            for _key, value in result["existing_relationships"].items():
                 if isinstance(value, list):
                     for item in value:
                         assert "similarity" not in item

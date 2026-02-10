@@ -797,7 +797,7 @@ class PolecatManager:
                         raise TimeoutError(
                             f"Could not acquire worktree creation lock within {lock_timeout}s. "
                             f"Another polecat may be creating a worktree."
-                        )
+                        ) from None
                     time.sleep(0.1)  # Brief sleep before retry
 
             # Record lock wait time (time from start to acquisition)

@@ -164,7 +164,7 @@ class TestSessionDashboardDemo:
         # Todos
         print("\n📋 Todos:")
         if result["todos"]:
-            for i, todo in enumerate(result["todos"][:5]):  # Show first 5
+            for _i, todo in enumerate(result["todos"][:5]):  # Show first 5
                 status = todo.get("status", "unknown")
                 content = todo.get("content", "")[:50]
                 print(f"   [{status}] {content}...")

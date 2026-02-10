@@ -219,25 +219,6 @@ def get_session_status_dir(session_id: str | None = None, input_data: dict | Non
     # Same logic as session_env_setup.sh: ~/.claude/projects/-<cwd-with-dashes>/
     project_folder = get_claude_project_folder()
     status_dir = Path.home() / ".claude" / "projects" / project_folder
-    
-    # Robust search: If we have a session_id, check if its state file exists in any project dir
-    # This handles subagents running in different CWDs.
-    if session_id:
-        short_hash = get_session_short_hash(session_id)
-        claude_dir = Path.home() / ".claude" / "projects"
-        if claude_dir.exists():
-            # Check current project first (performance)
-            if (status_dir / f"{short_hash}.json").exists() or list(status_dir.glob(f"*-{short_hash}.json")):
-                return status_dir
-                
-            # Search other projects
-            for other_dir in claude_dir.iterdir():
-                if not other_dir.is_dir() or other_dir.name == project_folder:
-                    continue
-                # If ANY state file for this session exists here, this is the project
-                if list(other_dir.glob(f"*-{short_hash}.json")):
-                    return other_dir
-
     status_dir.mkdir(parents=True, exist_ok=True)
     return status_dir
 

@@ -1,12 +1,11 @@
-from unittest.mock import ANY, patch, MagicMock
 import uuid
+from unittest.mock import patch
 
 import pytest
-
 from hooks.gates import on_subagent_stop
 from hooks.schemas import HookContext
-from lib.session_state import SessionState
 from lib.gate_types import GateStatus
+from lib.session_state import SessionState
 
 
 @pytest.fixture

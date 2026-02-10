@@ -318,6 +318,10 @@ def _get_session_id(session_path: Path) -> str:
     Returns:
         8-character session ID
     """
+    if session_path.is_dir():
+        # Antigravity brain directory
+        return session_path.name[:8]
+
     session_id = session_path.stem
     if len(session_id) > 8:
         if session_id.startswith("session-"):
@@ -328,6 +332,53 @@ def _get_session_id(session_path: Path) -> str:
             # Claude format: UUID -> first 8 chars
             session_id = session_id[:8]
     return session_id
+
+
+def _generate_transcript_filename(
+    session_path: Path,
+    entries: list,
+    slug: str | None = None,
+    processor: "SessionProcessor" = None,
+) -> tuple[str, str, str, str, str]:
+    """Generate consistent transcript filename."""
+    # 1. Date and Hour
+    date_str = None
+    hour_str = None
+
+    # Try to find first timestamp in entries
+    for entry in entries:
+        if entry.timestamp:
+            # entry.timestamp is already local/aware from parser
+            date_str = entry.timestamp.strftime("%Y%m%d")
+            hour_str = entry.timestamp.strftime("%H")
+            break
+
+    # Fallback to mtime if no timestamp in entries
+    if not date_str:
+        mtime = datetime.fromtimestamp(session_path.stat().st_mtime).astimezone()
+        date_str = mtime.strftime("%Y%m%d")
+        hour_str = mtime.strftime("%H")
+
+    # 2. Project
+    short_project = _infer_project(session_path, entries)
+
+    # 3. Session ID
+    session_id = _get_session_id(session_path)
+
+    # 4. Slug
+    if not slug:
+        if processor:
+            slug = processor.generate_session_slug(entries)
+        else:
+            slug = "session"
+
+    return (
+        f"{date_str}-{hour_str}-{short_project}-{session_id}-{slug}",
+        date_str,
+        short_project,
+        session_id,
+        slug
+    )
 
 
 def _find_existing_transcripts(out_dir: Path, session_id: str) -> list[Path]:
@@ -457,7 +508,7 @@ def _infer_project(
 
     # Fallback: extract last segment
     project_parts = project.strip("-").split("-")
-    return project_parts[-1] if project_parts else "unknown"
+    return project_parts[-1] if project_parts and project_parts[-1] else "unknown"
 
 
 def main():
@@ -583,41 +634,23 @@ Examples:
                     print(
                         f"⏭️  Skipping: only {meaningful_count} meaningful entries (need {MIN_MEANINGFUL_ENTRIES}+)"
                     )
+                    # Cleanup existing transcripts if empty
+                    stale_files = _find_existing_transcripts(sessions_claude, session_id)
+                    for stale in stale_files:
+                        print(f"🗑️  Removing empty transcript: {stale.name}")
+                        stale.unlink()
+
                     skipped += 1
                     continue
 
-                # Generate output name with date and hour for better sorting
-                date_str = None
-                hour_str = None
-                for entry in entries:
-                    if entry.timestamp:
-                        date_str = entry.timestamp.strftime("%Y%m%d")
-                        hour_str = entry.timestamp.strftime("%H")
-                        break
-                if not date_str:
-                    mtime = datetime.fromtimestamp(session_path.stat().st_mtime)
-                    date_str = mtime.strftime("%Y%m%d")
-                    hour_str = mtime.strftime("%H")
-
-                # Get short project name (using entries for working dir extraction)
-                short_project = _infer_project(session_path, entries)
-
-                # Get session ID
-                if session_path.is_dir():
-                    # Antigravity brain directory - use directory name
-                    session_id = session_path.name[:8]
-                else:
-                    session_id = session_path.stem
-                    if len(session_id) > 8:
-                        if session_id.startswith("session-"):
-                            parts = session_id.split("-")
-                            session_id = parts[-1]
-                        else:
-                            session_id = session_id[:8]
-
-                # Get slug
-                slug = processor.generate_session_slug(entries)
-                filename = f"{date_str}-{hour_str}-{short_project}-{session_id}-{slug}"
+                # Generate output name
+                (
+                    filename,
+                    date_str,
+                    short_project,
+                    session_id,
+                    slug,
+                ) = _generate_transcript_filename(session_path, entries, processor=processor)
 
                 # Note: _output_exists() check removed - early mtime check handles
                 # both "already current" (skip) and "stale" (regenerate) cases
@@ -853,65 +886,18 @@ Examples:
 
         # Auto-generate filename: YYYYMMDD-HH-shortproject-sessionid-slug
         # (Used when -o is a directory or not specified)
-        date_str = None
-        hour_str = None
-        if session_path.suffix == ".json":
-            # Try to get timestamp from filename for Gemini: session-YYYY-MM-DDTHH-MM...
-            try:
-                parts = session_path.stem.split("-")
-                if len(parts) >= 4:
-                    # 2026-01-08T08
-                    date_part = "".join(parts[1:4])
-                    if date_part.isdigit():
-                        date_str = date_part
-                    # Extract hour from Gemini filename format
-                    if len(parts) >= 5 and parts[4][:2].isdigit():
-                        hour_str = parts[4][:2]
-            except Exception:
-                pass
-
-        if not date_str:
-            for entry in entries:
-                if entry.timestamp:
-                    date_str = entry.timestamp.strftime("%Y%m%d")
-                    hour_str = entry.timestamp.strftime("%H")
-                    break
-
-                if hasattr(entry, "message") and entry.message:
-                    ts = entry.message.get("timestamp")
-                    if ts:
-                        try:
-                            parsed = datetime.fromisoformat(ts.replace("Z", "+00:00"))
-                            date_str = parsed.strftime("%Y%m%d")
-                            hour_str = parsed.strftime("%H")
-                            break
-                        except (ValueError, TypeError):
-                            continue
-        if not date_str:
-            mtime = datetime.fromtimestamp(session_path.stat().st_mtime)
-            date_str = mtime.strftime("%Y%m%d")
-            hour_str = mtime.strftime("%H")
-        if not hour_str:
-            hour_str = datetime.now().astimezone().strftime("%H")
-
-        # Get short project name (using entries for working dir extraction)
-        short_project = _infer_project(session_path, entries)
-
-        # Get session ID from filename (first 8 chars of UUID)
-        # Gemini filenames might have uuid at end
-        session_id = session_path.stem
-        if len(session_id) > 8:
-            if session_id.startswith("session-"):
-                # session-2026-01-08T08-18-a5234d3e -> a5234d3e
-                parts = session_id.split("-")
-                session_id = parts[-1]
-            else:
-                session_id = session_id[:8]
-
-        # Get or generate slug
-        slug = args.slug if args.slug else processor.generate_session_slug(entries)
-
-        filename = f"{date_str}-{hour_str}-{short_project}-{session_id}-{slug}"
+        (
+            filename,
+            date_str,
+            short_project,
+            session_id,
+            slug,
+        ) = _generate_transcript_filename(
+            session_path,
+            entries,
+            slug=args.slug,
+            processor=processor,
+        )
 
         base_name = str(output_dir / filename)
         print(f"📛 Generated filename: {filename}")

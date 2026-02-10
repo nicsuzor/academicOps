@@ -19,7 +19,6 @@ Configuration via environment variables (all required if NTFY_TOPIC is set):
 from __future__ import annotations
 
 import logging
-import threading
 import urllib.error
 import urllib.request
 from typing import Any
@@ -27,7 +26,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
-def _send_notification_sync(
+def send_notification(
     config: dict[str, Any],
     title: str,
     message: str,
@@ -35,8 +34,20 @@ def _send_notification_sync(
     tags: str | None = None,
 ) -> bool:
     """
-    Synchronous implementation of ntfy notification sending.
-    Internal use only - use send_notification() for non-blocking calls.
+    Send a push notification via ntfy.
+
+    Uses urllib to avoid external dependencies (python-ntfy is optional).
+    This function never raises - failures are logged and return False.
+
+    Args:
+        config: ntfy configuration dict from get_ntfy_config()
+        title: Notification title
+        message: Notification body
+        priority: Override default priority (1-5)
+        tags: Override default tags (comma-separated)
+
+    Returns:
+        True if notification sent successfully, False otherwise
     """
     try:
         url = f"{config['server']}/{config['topic']}"
@@ -64,38 +75,6 @@ def _send_notification_sync(
     except Exception as e:
         logger.warning(f"ntfy error: {e}")
         return False
-
-
-def send_notification(
-    config: dict[str, Any],
-    title: str,
-    message: str,
-    priority: int | None = None,
-    tags: str | None = None,
-) -> bool:
-    """
-    Send a push notification via ntfy (non-blocking).
-
-    Spawns a background thread to send the notification using urllib.
-    This function returns True immediately once the thread is started.
-
-    Args:
-        config: ntfy configuration dict from get_ntfy_config()
-        title: Notification title
-        message: Notification body
-        priority: Override default priority (1-5)
-        tags: Override default tags (comma-separated)
-
-    Returns:
-        Always True (notification is sent in background)
-    """
-    thread = threading.Thread(
-        target=_send_notification_sync,
-        args=(config, title, message, priority, tags),
-        daemon=True,
-    )
-    thread.start()
-    return True
 
 
 def notify_session_start(config: dict[str, Any], session_id: str) -> bool:

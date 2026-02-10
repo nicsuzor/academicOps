@@ -1444,8 +1444,8 @@ def parse_duration(duration_str: str) -> int:
 
     try:
         value = float(value_str)
-    except ValueError:
-        raise ValueError(f"Invalid duration value: {value_str}")
+    except ValueError as e:
+        raise ValueError(f"Invalid duration value: {value_str}") from e
 
     multipliers = {
         "m": 60,  # minutes

@@ -117,7 +117,7 @@ def extract_recent_messages(
 
         # Also check agent entries if we haven't found enough
         if len(messages) < max_messages and agent_entries:
-            for agent_id, agent_entry_list in agent_entries.items():
+            for _agent_id, agent_entry_list in agent_entries.items():
                 for entry in reversed(agent_entry_list):
                     if entry.type != "assistant":
                         continue

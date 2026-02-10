@@ -44,7 +44,7 @@ def get_hook_temp_dir(category: str, input_data: dict[str, Any] | None = None) -
     Unified temp directory resolution:
     1. TMPDIR env var (highest priority - host CLI provided)
     2. AOPS_GEMINI_TEMP_ROOT env var (Gemini router provided)
-    3. Claude-specific check (SSoT for Claude Code)
+    3. Claude-specific check (UUID session ID or Claude env vars)
     4. Gemini-specific check (transcript_path contains .gemini)
     5. Gemini-specific check (GEMINI_CLI or .gemini in cwd)
     6. Default: Claude fallback path
@@ -76,7 +76,7 @@ def get_hook_temp_dir(category: str, input_data: dict[str, Any] | None = None) -
         return path
 
     # 3. Claude-specific check (SSoT for Claude Code)
-    # Priority: If we have a valid UUID session ID, it MUST be Claude
+    # Check both input_data and environ for session ID
     session_id = (input_data.get("session_id") if input_data else None) or os.environ.get("CLAUDE_SESSION_ID")
     
     is_claude_uuid = False
@@ -88,14 +88,12 @@ def get_hook_temp_dir(category: str, input_data: dict[str, Any] | None = None) -
         except (ValueError, TypeError):
             is_claude_uuid = False
 
+    # If we have a Claude session ID OR we are in a known Claude plugin environment
     if is_claude_uuid or os.environ.get("CLAUDE_SESSION_ID") or os.environ.get("CLAUDE_PLUGIN_ROOT"):
-        # Double check: if it looks like Gemini, don't use Claude path
-        # Unless we are SURE it's Claude
-        if not (input_data and "transcript_path" in input_data and ".gemini" in str(input_data["transcript_path"])):
-            project_folder = get_claude_project_folder()
-            path = Path.home() / ".claude" / "projects" / project_folder / "tmp" / category
-            path.mkdir(parents=True, exist_ok=True)
-            return path
+        project_folder = get_claude_project_folder()
+        path = Path.home() / ".claude" / "projects" / project_folder / "tmp" / category
+        path.mkdir(parents=True, exist_ok=True)
+        return path
 
     # 4. Check transcript_path for Gemini CLI detection
     if input_data:
@@ -115,7 +113,6 @@ def get_hook_temp_dir(category: str, input_data: dict[str, Any] | None = None) -
             return path
 
     # 5. Gemini-specific discovery logic (CWD hash fallback)
-    # ONLY if we haven't already identified as Claude
     if os.environ.get("GEMINI_CLI") or (Path.cwd() / ".gemini").exists():
         project_root = str(Path.cwd().resolve())
         project_hash = hashlib.sha256(project_root.encode()).hexdigest()
@@ -126,15 +123,12 @@ def get_hook_temp_dir(category: str, input_data: dict[str, Any] | None = None) -
             path.mkdir(parents=True, exist_ok=True)
             return path
 
-        # If GEMINI_CLI is set but we can't find the directory, AND we might be Claude,
-        # fall through to Claude default.
-        if not is_claude_uuid:
-            raise RuntimeError(
-                f"GEMINI_CLI is set but temp root not found at: {gemini_tmp}. "
-                "Ensure you are running inside a Gemini project."
-            )
+        raise RuntimeError(
+            f"GEMINI_CLI is set but temp root not found at: {gemini_tmp}. "
+            "Ensure you are running inside a Gemini project."
+        )
 
-    # 6. Default: Claude behavior
+    # 6. Default: ~/.claude/projects/{project}/tmp/{category}/ (Claude behavior)
     project_folder = get_claude_project_folder()
     path = Path.home() / ".claude" / "projects" / project_folder / "tmp" / category
     path.mkdir(parents=True, exist_ok=True)
@@ -245,11 +239,11 @@ def is_subagent_session(input_data: dict[str, Any] | None = None) -> bool:
     """Check if this is a subagent session.
 
     Uses multiple detection methods since env vars may not be passed to hook subprocesses:
-    1. parent_tool_use_id presence (Definitive Claude subagent marker)
-    2. UUID validation (Claude main sessions are ALWAYS UUIDs)
-    3. CLAUDE_AGENT_TYPE / CLAUDE_SUBAGENT_TYPE env vars
-    4. Transcript path contains /subagents/ or /agent-
-    5. Session ID starts with agent- or has sidechain markers
+    1. CLAUDE_AGENT_TYPE env var (if Claude passes it)
+    2. CLAUDE_SUBAGENT_TYPE env var (alternative Claude env var)
+    3. Transcript path contains /subagents/ (Claude Code stores subagent transcripts there)
+    4. Transcript path contains /agent- (subagent filename pattern)
+    5. Session ID starts with agent- (subagent ID format)
 
     Args:
         input_data: Hook input data containing transcript_path (optional)
@@ -257,48 +251,29 @@ def is_subagent_session(input_data: dict[str, Any] | None = None) -> bool:
     Returns:
         True if this appears to be a subagent session
     """
-    import json
-    import uuid
-    session_id = (input_data.get("session_id") if input_data else None) or os.environ.get("CLAUDE_SESSION_ID")
-    
-    # Method 0: Explicit parent marker (Claude Code)
-    if input_data and input_data.get("parent_tool_use_id"):
-        return True
-
-    # Method 1: Session ID validation (Claude Code)
-    # If we have a session_id, and it is NOT a valid UUID, then it's a sidechain
-    # (Claude main sessions are always UUIDs)
-    session_id = (input_data.get("session_id") if input_data else None) or os.environ.get("CLAUDE_SESSION_ID")
-    if session_id:
-        try:
-            uuid.UUID(str(session_id))
-            # It's a UUID, so it COULD be a main session.
-            # But wait, some sidechains might also use UUIDs.
-            # So we only return False if it's a UUID AND none of the other checks match.
-            pass
-        except (ValueError, TypeError):
-            # NOT a UUID -> DEFINITELY a sidechain in Claude context
-            # (Unless it's Gemini, but Gemini session IDs handled separately)
-            if not str(session_id).startswith("gemini-"):
-                return True
-
-    # Method 2: Env vars (check all known variants)
+    # Method 1: Env vars (check all known variants)
     if os.environ.get("CLAUDE_AGENT_TYPE"):
         return True
     if os.environ.get("CLAUDE_SUBAGENT_TYPE"):
         return True
 
-    # Method 3: Check transcript path for /subagents/ directory
+    # Method 2: Check transcript path for /subagents/ directory
+    # Claude Code stores subagent transcripts at:
+    #   ~/.claude/projects/<project>/<session-uuid>/subagents/agent-<hash>.jsonl
     if input_data:
         transcript_path = str(input_data.get("transcript_path", ""))
         if "/subagents/" in transcript_path:
             return True
+        # Also check for agent- prefix in filename (subagent transcripts often have this)
         if "/agent-" in transcript_path:
             return True
 
-    # Method 4: ID prefix check
-    if session_id and str(session_id).startswith("agent-"):
-        return True
+    # Method 3: Check if session_id looks like a subagent ID
+    # (Main sessions are UUIDs, subagents may have different format)
+    if input_data:
+        session_id = str(input_data.get("session_id", ""))
+        if session_id.startswith("agent-"):
+            return True
 
     return False
 

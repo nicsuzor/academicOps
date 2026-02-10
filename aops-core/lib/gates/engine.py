@@ -1,13 +1,19 @@
 import logging
 import re
-import sys
 import time
 from collections import defaultdict
-from typing import Any, Dict, Optional
+from typing import Any
 
 from hooks.schemas import HookContext
+
 from lib.gate_model import GateResult, GateVerdict
-from lib.gate_types import GateConfig, GateState, GateStatus, GateTransition, GateCondition
+from lib.gate_types import (
+    GateCondition,
+    GateConfig,
+    GateState,
+    GateStatus,
+    GateTransition,
+)
 from lib.session_state import SessionState
 
 logger = logging.getLogger(__name__)
@@ -37,6 +43,7 @@ class GenericGate:
 
         # 1. Hook Event Match
         if condition.hook_event:
+            # Simple equality check
             if condition.hook_event != ctx.hook_event:
                 return False
 
@@ -50,41 +57,21 @@ class GenericGate:
         # 2.5 Excluded Tool Categories
         if condition.excluded_tool_categories:
             from hooks.gate_config import get_tool_category
-            cat = get_tool_category(ctx.tool_name) if ctx.tool_name else "unknown"
-            if cat in condition.excluded_tool_categories:
+            if ctx.tool_name and get_tool_category(ctx.tool_name) in condition.excluded_tool_categories:
                 return False
 
         # 3. Tool Input Pattern
         if condition.tool_input_pattern:
-            # Check string representation first
+            # Stringify tool_input and regex search
             input_str = str(ctx.tool_input)
-            pattern = condition.tool_input_pattern
-            if re.search(pattern, input_str):
-                pass # Match found
-            else:
-                # Robust check: search recursively in dict/list values
-                def search_deep(val: Any) -> bool:
-                    if isinstance(val, str):
-                        return bool(re.search(pattern, val))
-                    if isinstance(val, dict):
-                        return any(search_deep(v) for v in val.values())
-                    if isinstance(val, list):
-                        return any(search_deep(v) for v in val)
-                    return False
-                
-                if not search_deep(ctx.tool_input):
-                    return False
+            if not re.search(condition.tool_input_pattern, input_str):
+                return False
 
         # 3.5 Subagent Type Pattern
         if condition.subagent_type_pattern:
             if not ctx.subagent_type:
                 return False
             if not re.search(condition.subagent_type_pattern, ctx.subagent_type):
-                return False
-
-        # 3.6 Sidechain Filter
-        if condition.is_sidechain is not None:
-            if ctx.is_sidechain != condition.is_sidechain:
                 return False
 
         # 4. State Metrics Checks
@@ -99,9 +86,11 @@ class GenericGate:
             diff = current_turn - state.last_open_turn
             if diff < condition.min_turns_since_open:
                 return False
+        # ... implement other metric checks as needed ...
 
         # 5. Custom Check
         if condition.custom_check:
+            # Import dynamically or use registry
             from lib.gates.custom_conditions import check_custom_condition
             if not check_custom_condition(condition.custom_check, ctx, state, session_state):
                 return False
@@ -110,7 +99,7 @@ class GenericGate:
 
     def _render_template(self, template: str, ctx: HookContext, state: GateState, session_state: SessionState) -> str:
         # Prepare context variables
-        variables = {
+        variables: dict[str, Any] = {
             "session_id": ctx.session_id,
             "tool_name": ctx.tool_name or "",
             "gate_status": getattr(state.status, 'value', state.status),

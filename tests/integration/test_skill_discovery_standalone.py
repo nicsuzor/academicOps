@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Standalone test for skill script discovery - no pytest required.
+"""Standalone test for skill script discovery.
 
 Run directly to validate skill script architecture:
     python3 tests/integration/test_skill_discovery_standalone.py
@@ -40,17 +40,19 @@ def test_symlink_structure():
 
 def test_aops_env_var():
     """Verify AOPS environment variable is set."""
+    import pytest
+
     print("\nTesting AOPS environment variable...")
 
     aops = os.environ.get("AOPS")
     if not aops:
         print("❌ FAIL: AOPS environment variable not set")
-        assert False, "AOPS environment variable not set"
+        pytest.fail("AOPS environment variable not set")
 
     aops_path = Path(aops)
     if not aops_path.exists():
         print(f"❌ FAIL: AOPS path does not exist: {aops_path}")
-        assert False, f"AOPS path does not exist: {aops_path}"
+        pytest.fail(f"AOPS path does not exist: {aops_path}")
 
     print(f"  ✓ AOPS={aops}")
     print("✅ PASS: AOPS environment variable valid")
@@ -105,12 +107,12 @@ def test_script_execution_from_writing():
             print("❌ FAIL: Script execution failed")
             print(f"  stdout: {result.stdout}")
             print(f"  stderr: {result.stderr}")
-            assert False, f"Script execution failed: {result.stderr}"
+            pytest.fail(f"Script execution failed: {result.stderr}")
 
         if "Using data_dir:" not in result.stdout:
             print("❌ FAIL: Unexpected output")
             print(f"  stdout: {result.stdout}")
-            assert False, f"Unexpected output: {result.stdout}"
+            pytest.fail(f"Unexpected output: {result.stdout}")
 
         print("  ✓ Script executed successfully")
         print("  ✓ Found data directory in output")
@@ -118,12 +120,12 @@ def test_script_execution_from_writing():
 
     except subprocess.TimeoutExpired:
         print("❌ FAIL: Script execution timed out")
-        assert False, "Script execution timed out"
+        pytest.fail("Script execution timed out")
     except AssertionError:
         raise
     except Exception as e:
         print(f"❌ FAIL: Exception during execution: {e}")
-        assert False, f"Exception during execution: {e}"
+        pytest.fail(f"Exception during execution: {e}")
 
 
 def test_symlink_points_to_aops():
@@ -156,7 +158,7 @@ def test_symlink_points_to_aops():
         print("❌ FAIL: Paths don't match:")
         print(f"  AOPS:    {aops_resolved}")
         print(f"  Symlink: {symlink_resolved}")
-        assert False, f"Paths don't match: AOPS={aops_resolved}, Symlink={symlink_resolved}"
+        pytest.fail(f"Paths don't match: AOPS={aops_resolved}, Symlink={symlink_resolved}")
 
     print(f"  ✓ Both resolve to: {aops_resolved}")
     print("✅ PASS: Symlink correctly points to AOPS")

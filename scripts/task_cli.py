@@ -186,19 +186,19 @@ def list_tasks(
     if status:
         try:
             status_filter = TaskStatus(status)
-        except ValueError:
+        except ValueError as e:
             console.print(f"[red]Invalid status: {status}[/red]")
             console.print(f"Valid values: {', '.join(s.value for s in TaskStatus)}")
-            raise SystemExit(1)
+            raise SystemExit(1) from e
 
     type_filter = None
     if task_type:
         try:
             type_filter = TaskType(task_type)
-        except ValueError:
+        except ValueError as e:
             console.print(f"[red]Invalid type: {task_type}[/red]")
             console.print(f"Valid values: {', '.join(t.value for t in TaskType)}")
-            raise SystemExit(1)
+            raise SystemExit(1) from e
 
     tasks = storage.list_tasks(project=project, status=status_filter, type=type_filter)
 
@@ -357,10 +357,10 @@ def create(
 
     try:
         type_enum = TaskType(task_type)
-    except ValueError:
+    except ValueError as e:
         console.print(f"[red]Invalid type: {task_type}[/red]")
         console.print(f"Valid values: {', '.join(t.value for t in TaskType)}")
-        raise SystemExit(1)
+        raise SystemExit(1) from e
 
     # Parse complexity
     task_complexity = None
@@ -369,9 +369,9 @@ def create(
             from lib.task_model import TaskComplexity
 
             task_complexity = TaskComplexity(complexity)
-        except ValueError:
+        except ValueError as e:
             console.print(f"[red]Invalid complexity: {complexity}[/red]")
-            raise SystemExit(1)
+            raise SystemExit(1) from e
 
     # Parse tags
     tag_list = [t.strip() for t in tags.split(",")] if tags else []
@@ -528,7 +528,7 @@ def decompose(task_id: str, titles: list[str]):
             console.print(f"  [dim]• {child.id}[/dim] {child.title}")
     except ValueError as e:
         console.print(f"[red]{e}[/red]")
-        raise SystemExit(1)
+        raise SystemExit(1) from e
 
 
 @main.command()
@@ -584,9 +584,9 @@ def update(
         try:
             task.status = TaskStatus(status)
             changes.append(f"status → {status}")
-        except ValueError:
+        except ValueError as e:
             console.print(f"[red]Invalid status: {status}[/red]")
-            raise SystemExit(1)
+            raise SystemExit(1) from e
 
     if title:
         task.title = title
@@ -614,9 +614,9 @@ def update(
 
                 task.complexity = TaskComplexity(complexity)
                 changes.append(f"complexity → {complexity}")
-            except ValueError:
+            except ValueError as e:
                 console.print(f"[red]Invalid complexity: {complexity}[/red]")
-                raise SystemExit(1)
+                raise SystemExit(1) from e
 
     if parent is not None:
         task.parent = parent if parent else None
@@ -631,9 +631,9 @@ def update(
         try:
             task.type = TaskType(task_type)
             changes.append(f"type → {task_type}")
-        except ValueError:
+        except ValueError as e:
             console.print(f"[red]Invalid type: {task_type}[/red]")
-            raise SystemExit(1)
+            raise SystemExit(1) from e
 
     if due is not None:
         if due == "":
@@ -645,9 +645,9 @@ def update(
 
                 task.due = datetime.fromisoformat(due.replace("Z", "+00:00"))
                 changes.append(f"due → {due}")
-            except ValueError:
+            except ValueError as e:
                 console.print(f"[red]Invalid due date format: {due}[/red]")
-                raise SystemExit(1)
+                raise SystemExit(1) from e
 
     if order is not None:
         task.order = order
