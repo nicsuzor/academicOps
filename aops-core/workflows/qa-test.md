@@ -64,6 +64,14 @@ When a test fails:
 
 A failure is a failure. Either the system needs fixing or the spec needs updating. Both require explicit action.
 
+### 5. Cross-Client Robustness
+
+AcademicOps supports multiple AI clients (Claude Code, Gemini CLI). Acceptance testing MUST verify that:
+
+- Environment variables from one client (e.g., `GEMINI_CLI`) do not break features in another (e.g., Claude's temp path resolution).
+- Instructions provided in block messages are tailored to the active client.
+- Tool output schemas are robust across different client versions (e.g., handling both `dict` and `list` results).
+
 ## Workflow Steps
 
 ### Step 1: Create Test Plan Task

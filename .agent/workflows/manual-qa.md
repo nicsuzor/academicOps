@@ -55,20 +55,40 @@ Review the abridged transcript for each session and assess the conversation, loo
 1. **Hydration behavior**: Did the agent invoke the prompt-hydrator when instructed?
    - Claude: `Task(subagent_type="aops-core:prompt-hydrator", ...)`
    - Gemini: `activate_skill(name="prompt-hydrator", ...)`
+   - **Check for "(not set)" paths**: Ensure the block message correctly resolved the `{temp_path}`. If it says `Analyze context in (not set)`, the path resolution logic is broken.
 
-2. **Hook compliance**: Look for `**Invoked:**` markers showing hook triggers
-   - Stop hook feedback blocks indicate the agent tried to stop but was blocked
-   - Multiple stop hook triggers suggest friction between agent and framework
+2. **Hook compliance**: Look for `**Invoked:**` markers showing hook triggers.
+   - **Pydantic Validation**: Check for `Failed with non-blocking status code` errors in stderr. This often indicates a schema mismatch (e.g., `tool_output` received a list instead of a dict).
+   - **Subagent Freedom**: Inspect hook logs (`cat ~/.claude/projects/...-hooks.jsonl`) to ensure subagents aren't being blocked by gates meant for the main agent.
 
-3. **Workflow routing**: Check if agent correctly identified the workflow type
-   - `simple-question` → should be fast, no task needed
-   - Complex tasks → should show hydration, task binding, critic review
+3. **Client-Specific Instructions**: Verify the block message provides the correct command for the current client.
+   - Claude should receive `Task(...)` instructions.
+   - Gemini should receive `delegate_to_agent(...)` instructions.
 
-4. **Gate satisfaction**: Look for critic and QA invocations where required
+4. **Workflow routing**: Check if agent correctly identified the workflow type.
+   - `simple-question` → should be fast, no task needed.
+   - Complex tasks → should show hydration, task binding, critic review.
+
+5. **Gate satisfaction**: Look for critic and QA invocations where required.
    - Critic: `Task(subagent_type="aops-core:critic", ...)`
    - QA: `Task(subagent_type="aops-core:qa", ...)`
 
-5. **Turn count**: Simple questions should complete in 1-2 turns. Many turns for simple tasks indicates framework friction.
+6. **Turn count**: Simple questions should complete in 1-2 turns. Many turns for simple tasks indicates framework friction or recursive blocking.
+
+### Hook Log Forensics
+
+If things seem "sticky", inspect the raw JSONL hook log:
+
+```bash
+# Find the latest hook log
+ls -t ~/.claude/projects/*-hooks.jsonl | head -n 1 | xargs cat
+```
+
+Look for:
+- `verdict: deny` on tool calls that should be allowed.
+- Gate names in `metadata.gate_times` to see which gates are firing.
+- `WARNING: Hydration failed` messages in `system_message`.
+
 
 ### Example Observations
 
