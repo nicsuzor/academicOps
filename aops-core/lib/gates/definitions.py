@@ -26,10 +26,9 @@ GATE_CONFIGS = [
             )
         ],
         policies=[
-            # If Closed, Block tools
-            # Note: We rely on user_prompt_submit.py to set 'temp_path' metric.
+            # If Closed, Block tools (except always_available like Task, prompt-hydrator)
             GatePolicy(
-                condition=GateCondition(current_status=GateStatus.CLOSED, hook_event="PreToolUse"),
+                condition=GateCondition(current_status=GateStatus.CLOSED, hook_event="PreToolUse", excluded_tool_categories=["always_available"]),
                 verdict="deny",
                 message_template="Hydration required! Please run the hydrator agent with:\n{temp_path}",
                 context_template="Hydration Context: {temp_path}"
@@ -59,9 +58,9 @@ GATE_CONFIGS = [
             )
         ],
         policies=[
-            # Threshold check
+            # Threshold check (except always_available tools)
             GatePolicy(
-                condition=GateCondition(hook_event="PreToolUse", min_ops_since_open=7),
+                condition=GateCondition(hook_event="PreToolUse", min_ops_since_open=7, excluded_tool_categories=["always_available"]),
                 verdict="deny", # Or warn based on env var? For now deny.
                 message_template="Compliance check required ({ops_since_open} ops since last check).\nInvoke 'custodiet' agent.",
             ),
@@ -110,7 +109,7 @@ GATE_CONFIGS = [
         ],
         policies=[
             GatePolicy(
-                condition=GateCondition(hook_event="PreToolUse", min_ops_since_open=20),
+                condition=GateCondition(hook_event="PreToolUse", min_ops_since_open=20, excluded_tool_categories=["always_available"]),
                 verdict="warn",
                 message_template="Consider invoking 'critic' for review ({ops_since_open} ops since last check)."
             )
@@ -130,7 +129,7 @@ GATE_CONFIGS = [
         ],
         policies=[
              GatePolicy(
-                condition=GateCondition(hook_event="PreToolUse", min_ops_since_open=30),
+                condition=GateCondition(hook_event="PreToolUse", min_ops_since_open=30, excluded_tool_categories=["always_available"]),
                 verdict="warn",
                 message_template="Consider running QA ({ops_since_open} ops since last QA)."
             )
@@ -147,7 +146,7 @@ GATE_CONFIGS = [
             # Note: min_turns_since_open is relative to last open.
             # If never closed, it equals global turns if opened at start.
             GatePolicy(
-                condition=GateCondition(hook_event="PreToolUse", min_turns_since_open=50),
+                condition=GateCondition(hook_event="PreToolUse", min_turns_since_open=50, excluded_tool_categories=["always_available"]),
                 verdict="warn",
                 message_template="Session is getting long ({ops_since_open} turns). Consider summarizing and starting a new session."
             )

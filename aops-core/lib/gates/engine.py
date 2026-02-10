@@ -47,6 +47,12 @@ class GenericGate:
             if not re.search(condition.tool_name_pattern, ctx.tool_name):
                 return False
 
+        # 2.5 Excluded Tool Categories
+        if condition.excluded_tool_categories:
+            from hooks.gate_config import get_tool_category
+            if ctx.tool_name and get_tool_category(ctx.tool_name) in condition.excluded_tool_categories:
+                return False
+
         # 3. Tool Input Pattern
         if condition.tool_input_pattern:
             # Stringify tool_input and regex search
@@ -101,11 +107,14 @@ class GenericGate:
         # Safe format using format_map with default for missing keys
         try:
             return template.format_map(defaultdict(lambda: "(not set)", variables))
-        except Exception:
-             # Fallback: simple replacement
+        except (KeyError, ValueError, IndexError):
+             # Fallback: simple replacement with default for missing keys
              result = template
              for key, val in variables.items():
                  result = result.replace(f"{{{key}}}", str(val))
+             # Replace any remaining {placeholder} with "(not set)"
+             import re
+             result = re.sub(r'\{(\w+)\}', '(not set)', result)
              return result
 
     def _apply_transition(self, transition: GateTransition, ctx: HookContext, state: GateState, session_state: SessionState) -> GateResult:

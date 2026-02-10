@@ -34,11 +34,6 @@ def check_tool_gate(ctx: HookContext, state: SessionState) -> GateResult:
     if state.state.get("hydrator_active"):
         return GateResult.allow()
 
-    # Category Bypass: Always-available tools bypass ALL gates (including hydration)
-    from hooks.gate_config import get_tool_category
-    if ctx.tool_name and get_tool_category(ctx.tool_name) == "always_available":
-        return GateResult.allow()
-
     # Iterate all gates
     # First deny wins
     for gate in GateRegistry.get_all_gates():
