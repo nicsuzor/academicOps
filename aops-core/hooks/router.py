@@ -25,10 +25,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-# CANARY
-with open("/tmp/router_canary.txt", "a") as f:
-    f.write(f"ROUTER INVOKED at {time.time()} event={sys.argv[1] if len(sys.argv)>1 else 'unknown'}\n")
-
 # --- Path Setup ---
 HOOK_DIR = Path(__file__).parent  # aops-core/hooks
 AOPS_CORE_DIR = HOOK_DIR.parent  # aops-core

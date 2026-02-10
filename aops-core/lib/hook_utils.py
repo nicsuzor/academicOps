@@ -258,23 +258,9 @@ def is_subagent_session(input_data: dict[str, Any] | None = None) -> bool:
         True if this appears to be a subagent session
     """
     import json
+    import uuid
     session_id = (input_data.get("session_id") if input_data else None) or os.environ.get("CLAUDE_SESSION_ID")
     
-    # Forensic logging for detection
-    forensic_path = Path("/tmp/subagent_detection.jsonl")
-    try:
-        with forensic_path.open("a") as f:
-            log_entry = {
-                "ts": time.time(),
-                "session_id": session_id,
-                "input_keys": list(input_data.keys()) if input_data else [],
-                "parent_id": input_data.get("parent_tool_use_id") if input_data else None,
-                "CLAUDE_AGENT_TYPE": os.environ.get("CLAUDE_AGENT_TYPE"),
-                "is_registered_main": Path("/tmp/aops_session_registry.json").exists() and (session_id in json.loads(Path("/tmp/aops_session_registry.json").read_text()) if session_id else False)
-            }
-            f.write(json.dumps(log_entry) + "\n")
-    except: pass
-
     # Method 0: Explicit parent marker (Claude Code)
     if input_data and input_data.get("parent_tool_use_id"):
         return True
