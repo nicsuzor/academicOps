@@ -44,8 +44,14 @@ GATE_CONFIGS = [
         ],
         policies=[
             # If Closed, Block tools (except always_available like Task, prompt-hydrator)
+            # ONLY for the main agent (is_sidechain=False)
             GatePolicy(
-                condition=GateCondition(current_status=GateStatus.CLOSED, hook_event="PreToolUse", excluded_tool_categories=["always_available"]),
+                condition=GateCondition(
+                    current_status=GateStatus.CLOSED, 
+                    hook_event="PreToolUse", 
+                    excluded_tool_categories=["always_available"],
+                    is_sidechain=False
+                ),
                 verdict="deny",
                 message_template=(
                     "⛔ **HYDRATION REQUIRED**\n\n"

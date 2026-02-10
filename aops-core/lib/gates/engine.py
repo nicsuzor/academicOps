@@ -81,6 +81,11 @@ class GenericGate:
             if not re.search(condition.subagent_type_pattern, ctx.subagent_type):
                 return False
 
+        # 3.6 Sidechain Filter
+        if condition.is_sidechain is not None:
+            if ctx.is_sidechain != condition.is_sidechain:
+                return False
+
         # 4. State Metrics Checks
         if condition.min_ops_since_open is not None:
             if state.ops_since_open < condition.min_ops_since_open:

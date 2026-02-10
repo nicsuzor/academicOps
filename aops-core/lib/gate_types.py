@@ -44,6 +44,7 @@ class GateCondition(BaseModel):
     tool_input_pattern: Optional[str] = None # Regex on JSON string of input? Or key-value match?
     subagent_type_pattern: Optional[str] = None # Regex on subagent type
     excluded_tool_categories: Optional[List[str]] = None  # Skip if tool is in these categories
+    is_sidechain: Optional[bool] = None # Filter by sidechain status
 
     # State checks
     current_status: Optional[GateStatus] = None # Applies only if gate is in this status

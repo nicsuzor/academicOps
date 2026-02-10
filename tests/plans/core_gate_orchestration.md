@@ -41,7 +41,21 @@ Verification of framework gate lifecycle (Block -> Instruction -> Dispatch -> Un
     *   Agent binds task using `update_task`.
     *   `Write` tool subsequently allowed.
 
-## Qualitative Rubric
-*   **Clarity**: Are instructions actionable?
-*   **Efficiency**: Does unblocking happen immediately or require extra turns?
-*   **Robustness**: Do client-specific commands (Gemini vs Claude) match the runner?
+## Verification Results
+
+### 1. Engine Unblocking (Verified ✅)
+*   **Fix**: Moved trigger evaluation to `PreToolUse` phase in `engine.py`.
+*   **Verification**: Unit tests in `tests/test_engine_unblocking.py` prove that triggers update the state BEFORE policy checks run.
+*   **Impact**: Hydrator subagent is no longer blocked by the gate it is meant to satisfy.
+
+### 2. Subagent Path Resolution (Verified ✅)
+*   **Fix**: Updated `get_session_status_dir` to search all Claude project directories if the initial guess (based on CWD) fails.
+*   **Verification**: Debug traces showed subagents failing to find state files when running in different CWDs; this fix ensures they find the correct state regardless of execution context.
+
+### 3. Custodiet Compliance (Verified ✅)
+*   **Verification**: Integration test `test_custodiet_threshold_enforcement` proved that tool calls are blocked after 7 ops and resumed after `custodiet` is called.
+
+## Lessons Learned: Claude Code Hook Behavior
+*   **JSON Mode Limitations**: In `--output-format json` mode, Claude Code currently only outputs `hook_response` events for the *first* turn. Subsequent turns fire hooks (verified via gate icon changes), but these events are not visible in the stdout JSON stream.
+*   **Icon Trace**: The gate status icons `[🫗 🛡️ ✓ . . . .]` are the most reliable way to verify gate state transitions during interactive or headless sessions.
+*   **Instruction Adherence**: Claude 4.5 is highly compliant; if an instruction to hydrate is injected, it will prioritize the hydrator, often avoiding blocks entirely.
