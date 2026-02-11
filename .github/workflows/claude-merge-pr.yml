@@ -68,16 +68,25 @@ jobs:
 
             ## Merging PRs with review comments
 
-            1. Fetch all comments upfront and triage comments before acting
+            ### Bot review comments
+            The pr-review-pipeline workflow may have already triaged and addressed bot reviewer comments
+            (Copilot, Gemini Code Assist). Check for a "Bot Review Triage" summary comment on the PR.
+            - If bot comments were already addressed: verify the fixes are adequate and move on.
+            - If no triage comment exists: triage bot comments yourself using these categories:
+              - Genuine bugs (e.g., type mismatch that would crash at runtime) - fix these
+              - Valid improvements (e.g., move import out of loop, add error types to except) - fix these
+              - False positives (e.g., claiming a key was removed when it wasn't) - respond explaining why no change is needed
+              - Scope creep (e.g., "add more tests") - acknowledge as follow-up feedback
 
-            Bot reviewers (Gemini Code Assist, Copilot) produce a mix of:
-            - Genuine bugs (e.g., type mismatch that would crash at runtime) - fix these
-            - Valid improvements (e.g., move import out of loop, add error types to except) - fix these
-            - False positives (e.g., claiming a key was removed when it wasn't) - respond explaining why no change is needed
-            - Architectural concerns (e.g., "this pattern is bad") - address if actionable and contained; otherwise respond explaining the rationale and consider as follow-up feedback.
-            - Scope creep (e.g., "add more tests") - consider implementing; if you choose not to, acknowledge as follow-up feedback rather than blocking the merge.
+            ### Custodiet and QA agent reviews
+            The pr-review-pipeline may have also run custodiet (scope/compliance) and QA (acceptance criteria)
+            agents. Check for reviews from these agents.
+            - If custodiet flagged issues: address scope or compliance concerns before merging.
+            - If QA flagged issues: verify acceptance criteria are met and fix any regressions.
+            - If these agents haven't run: proceed normally — they are not a merge gate.
 
-            2. Address ALL comments by repository owners and managers thoroughly. Do NOT ignore or dismiss comments or defer implementation. Treat these comments as CRITICAL REQUIREMENTS that MUST be addressed before merging.
+            ### Human review comments
+            Address ALL comments by repository owners and managers thoroughly. Do NOT ignore or dismiss comments or defer implementation. Treat these comments as CRITICAL REQUIREMENTS that MUST be addressed before merging.
 
             3. Rebase if required to resolve merge conflicts. Do NOT merge main into the PR branch. Always rebase to maintain a clean history.
 

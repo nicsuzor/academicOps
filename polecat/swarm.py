@@ -134,6 +134,10 @@ def worker_loop(
             if not dry_run:
                 time.sleep(1)  # Safety buffer
             continue
+        elif exit_code == 3:
+            # Exit 3 = queue empty (normal drain, not a failure)
+            print(f"[{worker_name}] 📭 Queue empty. Stopping worker.")
+            break
         else:
             msg = f"Worker {worker_name} failed with exit code {exit_code}. Stopping this worker."
             print(f"[{worker_name}] 🛑 {msg}")

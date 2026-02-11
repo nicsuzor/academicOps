@@ -311,6 +311,21 @@ Legacy NLP (keyword matching, regex heuristics, fuzzy string matching) is forbid
 
 **Derivation**: LLMs understand semantics; regex does not. Hardcoded NLP heuristics are brittle and require constant maintenance. Agentic decision-making scales better.
 
+## Explicit Approval For Costly Operations (P#50)
+
+Explicit user approval is REQUIRED before executing potentially expensive operations. This includes batch API calls, bulk external service requests, and any operation where the cost scales with request count.
+
+**Corollaries**:
+
+- Before submitting a batch of N requests to an external API: present the plan (model, request count, estimated cost) and get explicit "go ahead"
+- A single verification request (1-3 calls) does NOT require approval — it's the verification step itself
+- "Submit jobs for X and Y" is approval for the specific models named, not a blank cheque for retries or additional submissions
+- If a submission fails and needs retry with different parameters, get fresh approval — the original approval covered the original parameters
+- Applies to any operation where silent failure means wasted money: API calls, cloud resource provisioning, paid service interactions
+- "Explicit approval" means the user confirms AFTER seeing the specific parameters (model, count, target). A general task description ("run the batch") is not sufficient — the user must see and approve the concrete plan
+
+**Derivation**: External API calls are irreversible costs. Silent configuration failures (like Hydra overrides being ignored) can multiply costs by submitting duplicate or wrong requests. The human must approve the spend before it happens. See `$ACA_DATA/aops/fails/20260212-batch-model-override-ignored.md`.
+
 ## Delegated Authority Only (P#99)
 
 Agents act only within explicitly delegated authority. When a decision or classification wasn't delegated (e.g., "is this a bug or expected behavior?"), agent MUST NOT decide. Present observations without judgment; let the human classify.

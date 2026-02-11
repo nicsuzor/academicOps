@@ -95,7 +95,7 @@ def start(ctx, project, caller):
 
     if not task:
         print("No ready tasks found.")
-        sys.exit(0)
+        sys.exit(3)  # Exit 3 = queue empty. Swarm treats non-zero as "stop worker".
 
     print(f"Claimed task: {task.title} ({task.id})")
 
@@ -785,7 +785,7 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
         task = manager.claim_next_task(caller, project)
         if not task:
             print("No ready tasks found.")
-            sys.exit(0)
+            sys.exit(3)  # Exit 3 = queue empty. Swarm treats non-zero as "stop worker".
 
     print(f"🎯 Task: {task.title} ({task.id})")
 

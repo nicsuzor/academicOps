@@ -721,3 +721,17 @@ mcp__task_manager__complete_task(id=batch_task_id)
 - If critic raises issues, address them autonomously; only escalate to human if critic says HALT
 
 **Derivation**: P#99 (Delegated Authority) means agents act within granted authority — it does NOT mean asking for human sign-off at every checkpoint. When the user gives requirements and says "get it done", authority is delegated for the full pipeline. Automated review (critic) is the quality gate; human review is the acceptance gate (PR).
+
+---
+
+## Prefer Deep Functional Nesting Over Flat Projects (P#101)
+
+**Statement**: Structure tasks hierarchically under functional Epics (e.g., Framework Core, Academic Workflows) rather than flat project lists to manage complexity.
+
+**Corollaries**:
+
+- Root project `aops` should have minimal direct children (major Epics).
+- Tasks should be deeply nested (depth > 2 preferred).
+- Use Epics to group related work even across different physical projects if logically connected.
+
+**Derivation**: Flat lists of 50+ tasks are unmanageable. Deep nesting provides context and focus.

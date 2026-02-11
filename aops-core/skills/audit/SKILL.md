@@ -19,7 +19,7 @@ Comprehensive governance audit for the academicOps framework.
 
 ```
 TodoWrite(todos=[
-  {content: "Phase 0: Run health metrics script", status: "pending", activeForm: "Running health audit"},
+  {content: "Phase 0: Run health metrics", status: "pending", activeForm: "Running health audit"},
   {content: "Phase 1: Structure audit - compare filesystem to INDEX.md", status: "pending", activeForm: "Auditing structure"},
   {content: "Phase 2: Reference graph - invoke Skill(skill='framework') then run link audit scripts", status: "pending", activeForm: "Building reference graph"},
   {content: "Phase 3: Skill content audit - check size and actionability", status: "pending", activeForm: "Auditing skill content"},
@@ -29,6 +29,7 @@ TodoWrite(todos=[
   {content: "Phase 6: Regenerate indices - invoke Skill(skill='flowchart') for README.md flowchart", status: "pending", activeForm: "Regenerating indices"},
   {content: "Phase 7: Other updates", status: "pending", activeForm: "Finalizing updates"},
   {content: "Phase 8: Save audit report to $ACA_DATA/projects/aops/audit/YYYY-MM-DD-HHMMSS-audit.md", status: "pending", activeForm: "Persisting report"},
+  {content: "Phase 8b: Transcript QA - scan recent sessions for hydration gaps and operational failures", status: "pending", activeForm: "Running transcript QA analysis"},
   {content: "Phase 9: Create tasks for actionable findings", status: "pending", activeForm: "Creating tasks"}
 ])
 ```
@@ -52,10 +53,11 @@ Workflow defined in `workflows/session-effectiveness.md`.
 These scripts run individual checks. They are NOT a substitute for the full workflow:
 
 ```bash
-uv run python scripts/audit_framework_health.py -m  # Phase 0 only
+uv run python scripts/audit_framework_health.py -m  # Phase 0 health metrics
 uv run python scripts/check_skill_line_count.py
 uv run python scripts/check_broken_wikilinks.py
 uv run python scripts/check_orphan_files.py
+cd aops-core && uv run python -c "from lib.transcript_error_analyzer import scan_recent_sessions; print(scan_recent_sessions(hours=48).format_markdown())"  # Phase 8b transcript QA
 ```
 
 ## Phase Instructions
@@ -346,6 +348,44 @@ Use the Write tool to save the complete audit report (see Report Format below) t
 
 After writing, confirm: `Audit report saved to: [path]`
 
+### Phase 8b: Transcript QA Analysis
+
+Quantitative scan of recent session transcripts to detect operational failures — hydration gaps, stuck patterns, tool failures — that structural auditing (Phases 0-7) cannot catch.
+
+**Distinction from Session Effectiveness** (the `session-effectiveness` sub-workflow):
+
+| Aspect              | Transcript QA (Phase 8b)                  | Session Effectiveness                        |
+| ------------------- | ----------------------------------------- | -------------------------------------------- |
+| Scope               | Batch — all sessions in last 48h          | Single session                               |
+| Method              | Mechanical extraction from JSONL errors   | LLM qualitative analysis of full transcript  |
+| Output              | Severity-weighted investigation queue     | 6-dimension evaluation report                |
+| Typical trigger     | Every full audit                          | On-demand or session-end hook                |
+| Detects             | Hydration gaps, stuck loops, tool crashes | Token waste, goal drift, sycophancy patterns |
+
+**Run from `aops-core/` directory:**
+
+```bash
+cd aops-core && uv run python -c "
+from lib.transcript_error_analyzer import scan_recent_sessions
+report = scan_recent_sessions(hours=48)
+print(report.format_markdown())
+"
+```
+
+This produces a severity-weighted investigation queue. Error categories: `hydration_gap`, `exploration_miss`, `stuck_pattern`, `hook_denial`, `user_rejection`, `tool_failure`.
+
+**Include in audit report:**
+
+1. Summary line: "Transcript QA: N sessions scanned, M errors across K patterns"
+2. Top 5 issues by weighted score
+3. If no sessions or no errors: "Transcript QA: N sessions scanned, no issues detected."
+
+**Task creation criteria** (applied in Phase 9):
+
+- **Recurring pattern**: appears in 2+ sessions OR has `weighted_score >= 6`
+- **Critical stuck patterns**: any `stuck_pattern` with repeat count >= 3
+- **High-severity hydration gaps**: `hydration_gap` category with `weighted_score >= 4`
+
 ### Phase 9: Create Tasks for Actionable Findings
 
 **Create tasks for findings that require human action.**
@@ -368,6 +408,9 @@ For each finding from Phases 0-7 that requires action:
 | Orphan instruction (no enforcement-map.md trace) | P2       | bug        | audit,governance    |
 | README.md flowchart drift                        | P2       | bug        | audit,documentation |
 | Hook→Axiom mismatch                              | P2       | bug        | audit,governance    |
+| Recurring hydration gap (2+ sessions or score≥6) | P2       | bug        | audit,hydration     |
+| Critical stuck pattern (repeat≥3)                | P1       | bug        | audit,hydration     |
+| Recurring tool failure (2+ sessions)             | P3       | bug        | audit,hydration     |
 
 #### Task Creation Pattern
 

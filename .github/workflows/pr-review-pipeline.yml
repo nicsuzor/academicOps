@@ -1,0 +1,196 @@
+name: PR Review Pipeline
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+# Prevent concurrent runs for the same PR; cancel stale runs on new pushes
+concurrency:
+  group: pr-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  wait-for-reviews:
+    # Skip runs triggered by bot pushes (e.g., Claude fixing code)
+    if: >-
+      github.actor != 'github-actions[bot]' &&
+      !contains(github.event.pull_request.title, '[skip review]')
+    runs-on: ubuntu-latest
+    outputs:
+      copilot_reviewed: ${{ steps.poll.outputs.copilot_reviewed }}
+      gemini_reviewed: ${{ steps.poll.outputs.gemini_reviewed }}
+      reviews_ready: ${{ steps.poll.outputs.reviews_ready }}
+    steps:
+      - name: Wait for bot reviews
+        id: poll
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR=${{ github.event.pull_request.number }}
+          REPO=${{ github.repository }}
+          MAX_ATTEMPTS=10
+          INTERVAL=60
+
+          for i in $(seq 1 $MAX_ATTEMPTS); do
+            echo "Poll attempt $i/$MAX_ATTEMPTS..."
+
+            REVIEWS=$(gh api "repos/$REPO/pulls/$PR/reviews" --jq '.[].user.login')
+
+            COPILOT=false
+            GEMINI=false
+
+            if echo "$REVIEWS" | grep -q 'copilot-pull-request-reviewer\[bot\]'; then
+              COPILOT=true
+              echo "  Copilot review found"
+            fi
+
+            if echo "$REVIEWS" | grep -q 'gemini-code-assist\[bot\]'; then
+              GEMINI=true
+              echo "  Gemini review found"
+            fi
+
+            if [ "$COPILOT" = true ] && [ "$GEMINI" = true ]; then
+              echo "Both reviews found after $i attempts"
+              echo "copilot_reviewed=true" >> $GITHUB_OUTPUT
+              echo "gemini_reviewed=true" >> $GITHUB_OUTPUT
+              echo "reviews_ready=true" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
+            if [ "$i" -lt "$MAX_ATTEMPTS" ]; then
+              echo "  Waiting ${INTERVAL}s..."
+              sleep $INTERVAL
+            fi
+          done
+
+          # Timeout: proceed with whatever reviews are available
+          echo "Timeout after $MAX_ATTEMPTS attempts. Proceeding with available reviews."
+          echo "copilot_reviewed=$COPILOT" >> $GITHUB_OUTPUT
+          echo "gemini_reviewed=$GEMINI" >> $GITHUB_OUTPUT
+
+          if [ "$COPILOT" = true ] || [ "$GEMINI" = true ]; then
+            echo "reviews_ready=true" >> $GITHUB_OUTPUT
+          else
+            echo "reviews_ready=false" >> $GITHUB_OUTPUT
+          fi
+
+  claude-review:
+    needs: wait-for-reviews
+    if: needs.wait-for-reviews.outputs.reviews_ready == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+      issues: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Claude reviews bot comments
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            You are reviewing PR #${{ github.event.pull_request.number }}.
+
+            Bot review status:
+            - Copilot reviewed: ${{ needs.wait-for-reviews.outputs.copilot_reviewed }}
+            - Gemini reviewed: ${{ needs.wait-for-reviews.outputs.gemini_reviewed }}
+
+            ## Task
+
+            1. Fetch all review comments on this PR using `gh pr view ${{ github.event.pull_request.number }} --comments` and `gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews`.
+            2. Identify comments from bot reviewers (Copilot, Gemini Code Assist).
+            3. Triage each bot comment into one of:
+               - **Genuine bug**: A real defect that would cause incorrect behavior. FIX IT.
+               - **Valid improvement**: A meaningful code quality improvement. FIX IT.
+               - **False positive**: The bot misunderstood the code. RESPOND with a brief explanation.
+               - **Scope creep**: A valid suggestion but outside this PR's scope. ACKNOWLEDGE as future work.
+            4. Make code fixes for genuine bugs and valid improvements. Commit and push changes.
+            5. Reply to each bot comment thread with your assessment and action taken.
+            6. Post a summary comment on the PR:
+               ```
+               ## Bot Review Triage
+
+               | Reviewer | Comment | Category | Action |
+               |----------|---------|----------|--------|
+               | ... | ... | ... | ... |
+
+               **Changes made**: [count] fixes committed
+               **Deferred**: [count] items flagged as future work
+               ```
+
+            ## Rules
+            - Do NOT address human reviewer comments — those are handled in the merge workflow.
+            - Do NOT merge the PR. Your job is to address bot feedback only.
+            - If no bot reviews exist (timeout scenario), post a comment noting this and exit.
+            - Run tests after making changes to verify nothing is broken.
+
+          claude_args: '--allowed-tools "Bash(gh:*),Bash(git:*),Bash(npm:*),Bash(python:*),Bash(pytest:*),Bash(uv:*),Edit,Read,Write"'
+
+  custodiet-and-qa:
+    needs: claude-review
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+      issues: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Read custodiet instructions
+        id: custodiet-prompt
+        run: |
+          PROMPT=$(cat .github/agents/custodiet.md)
+          {
+            echo "prompt<<CUSTODIET_EOF"
+            echo "$PROMPT"
+            echo "CUSTODIET_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Read QA instructions
+        id: qa-prompt
+        run: |
+          PROMPT=$(cat .github/agents/qa.md)
+          {
+            echo "prompt<<QA_EOF"
+            echo "$PROMPT"
+            echo "QA_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run Custodiet Agent
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            ${{ steps.custodiet-prompt.outputs.prompt }}
+
+            ---
+
+            Review PR #${{ github.event.pull_request.number }} in repository ${{ github.repository }}.
+            Use `gh pr view ${{ github.event.pull_request.number }}` and `gh pr diff ${{ github.event.pull_request.number }}` to gather information.
+
+          claude_args: '--allowed-tools "Bash(gh:*),Read"'
+
+      - name: Run QA Agent
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            ${{ steps.qa-prompt.outputs.prompt }}
+
+            ---
+
+            Review PR #${{ github.event.pull_request.number }} in repository ${{ github.repository }}.
+            Use `gh pr view ${{ github.event.pull_request.number }}`, `gh pr diff ${{ github.event.pull_request.number }}`, and `gh pr checks ${{ github.event.pull_request.number }}` to gather information.
+
+          claude_args: '--allowed-tools "Bash(gh:*),Read"'

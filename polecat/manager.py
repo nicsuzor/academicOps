@@ -1006,14 +1006,10 @@ class PolecatManager:
                     file=sys.stderr,
                 )
 
-        # 3. Configure upstream tracking to origin (not local mirror)
-        # This ensures 'git push' works correctly
-        subprocess.run(
-            ["git", "remote", "set-url", "origin", "--push", "origin"],
-            cwd=worktree_path,
-            capture_output=True,
-            check=False,  # Non-fatal if fails
-        )
+        # Note: Worktrees inherit the mirror's remotes, which already have
+        # the correct origin push URL (git@github.com:...). No need to
+        # reconfigure here. (A previous attempt to set-url --push here
+        # had a bug that corrupted the push URL to the literal string "origin".)
 
     def _branch_exists(self, repo_path, branch_name):
         res = subprocess.run(

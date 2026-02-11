@@ -66,6 +66,20 @@ High-level findings and overall status. Brief description of what was audited, m
 - Hook declares axiom but framework/enforcement-map.md shows "Prompt" level only
 - Axiom has Hard/Soft Gate in framework/enforcement-map.md but no hook declares it
 
+### Transcript QA Analysis
+
+Transcript QA: N sessions scanned, M errors across K patterns.
+
+**Top Issues by Weighted Score**:
+
+| Rank | Category      | Pattern                    | Sessions | Weighted Score | Severity |
+| ---- | ------------- | -------------------------- | -------- | -------------- | -------- |
+| 1    | hydration_gap | Read tool / config.yaml    | 4        | 12             | high     |
+| 2    | stuck_pattern | Glob tool / *.test.ts      | 2        | 8              | critical |
+| 3    | tool_failure  | Bash tool / npm build      | 3        | 6              | medium   |
+
+**Task-eligible patterns** (recurring in 2+ sessions or weighted_score >= 6): N patterns flagged for Phase 9.
+
 ### Actions Taken
 
 **Generated Indices Regenerated**:
@@ -111,3 +125,4 @@ Created N tasks:
 - **Hook→Axiom accuracy**: Every hook with "Enforces:" declaration is in framework/enforcement-map.md with correct level (not just "Prompt")
 - **Enforcement completeness**: Every axiom with Hard/Soft Gate in framework/enforcement-map.md has a corresponding hook with "Enforces:" declaration
 - **Sub-workflow coverage**: Skills with `## Workflow:` headers or `workflows/` subdirectories have all workflows listed in README.md AND WORKFLOWS.md
+- **Transcript QA**: Recent sessions scanned, severity-weighted investigation queue included, task-eligible patterns flagged

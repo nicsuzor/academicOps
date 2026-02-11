@@ -918,6 +918,7 @@ def get_task_tree(
     exclude_status: list[str] | None = None,
     max_depth: int | None = None,
     project: str | None = None,
+    root_types: list[str] | None = None,
 ) -> dict[str, Any]:
     """Get the decomposition tree for a task, or all root tasks.
 
@@ -929,6 +930,9 @@ def get_task_tree(
         exclude_status: List of statuses to exclude (e.g., ["done", "cancelled"])
         max_depth: Maximum tree depth (0 = roots only, 1 = roots + children, etc.)
         project: Filter roots by project slug (only applies when id is None)
+        root_types: Filter root tasks by type (e.g., ["project"]). Defaults to
+            ["project"] to show project-level grouping. Pass [] or None with
+            explicit empty list to see all root types including goals.
 
     Returns:
         Dictionary with:
@@ -978,6 +982,12 @@ def get_task_tree(
                     "message": "No root tasks found",
                 }
 
+            # Filter roots by type - default to project-level grouping
+            # Use ["project"] as default; pass [] explicitly to see all roots
+            effective_root_types = root_types if root_types is not None else ["project"]
+            if effective_root_types:
+                roots = [r for r in roots if r.type in effective_root_types]
+
             # Filter roots by project if specified
             if project:
                 roots = [r for r in roots if r.project == project]
@@ -990,6 +1000,8 @@ def get_task_tree(
 
             formatted_trees = "\n\n".join(_format_tree(t) for t in trees)
             filters_desc = []
+            if effective_root_types:
+                filters_desc.append(f"root_types={effective_root_types}")
             if exclude_status:
                 filters_desc.append(f"excluding {exclude_status}")
             if max_depth is not None:
