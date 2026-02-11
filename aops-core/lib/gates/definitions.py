@@ -96,8 +96,8 @@ GATE_CONFIGS = [
                     "You must invoke the **prompt-hydrator** agent to load context before proceeding.\n\n"
                     "**Instruction**:\n"
                     "Run the hydrator with this command:\n"
-                    "- Gemini: `delegate_to_agent(name='prompt-hydrator', query='Analyze context in {temp_path}')`\n"
-                    "- Claude: `Task(subagent_type='prompt-hydrator', prompt='Analyze context in {temp_path}')`"
+                    "- Gemini: `delegate_to_agent(name='prompt-hydrator', query='Follow instructions in {temp_path}')`\n"
+                    "- Claude: `Task(subagent_type='prompt-hydrator', prompt='Follow instructions in {temp_path}')`"
                 ),
             )
         ],

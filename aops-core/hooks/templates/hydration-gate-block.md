@@ -16,8 +16,8 @@ You must invoke the **aops-core:prompt-hydrator** agent FIRST to load context.
 A temporary file has been created with the hydrator's instructions: `{temp_path}`
 
 1. Run the command for your client:
-   - For Claude Code: `Task(subagent_type="aops-core:prompt-hydrator", prompt="Analyze context in {temp_path}")`
-   - For Gemini CLI: delegate to agent `"name": "prompt-hydrator", "args": {{"query": "Analyze context in {temp_path}"}})`
+   - For Claude Code: `Task(subagent_type="aops-core:prompt-hydrator", prompt="Follow instructions in {temp_path}")`
+   - For Gemini CLI: delegate to agent `"name": "prompt-hydrator", "args": {{"query": "Follow instructions in {temp_path}"}})`
 
 2. **IMMEDIATELY** after it returns, continue with the plan it provides. Do not stop.
 
