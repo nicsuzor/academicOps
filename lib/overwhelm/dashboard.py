@@ -2964,41 +2964,6 @@ st.markdown(
         margin-top: 4px;
     }
 
-    .stale-actions {
-        display: flex;
-        gap: 8px;
-        margin-top: 10px;
-    }
-
-    .stale-action-btn {
-        padding: 6px 12px;
-        border-radius: 4px;
-        font-size: 0.85em;
-        font-weight: 500;
-        cursor: pointer;
-        border: none;
-        transition: opacity 0.2s;
-    }
-
-    .stale-action-btn:hover {
-        opacity: 0.8;
-    }
-
-    .stale-action-btn.archive {
-        background: rgba(251, 191, 36, 0.3);
-        color: #fbbf24;
-    }
-
-    .stale-action-btn.review {
-        background: rgba(96, 165, 250, 0.3);
-        color: #60a5fa;
-    }
-
-    .stale-action-btn.dismiss {
-        background: rgba(128, 128, 128, 0.3);
-        color: #888;
-    }
-
     /* Collapsible paused bucket */
     .wlo-paused-collapsible {
         border: 1px solid rgba(251, 191, 36, 0.2);
@@ -4843,11 +4808,6 @@ if stale_count > 0:
         f"""<div class='stale-sessions-prompt'>
             📦 {stale_count} stale session{"s" if stale_count != 1 else ""} (no activity &gt;24h)
             <span class='stale-hint'>These are hidden from the main display</span>
-            <div class='stale-actions'>
-                <span class='stale-action-btn archive' title='Move to archive folder'>Archive All</span>
-                <span class='stale-action-btn review' title='Expand to review'>Review &amp; Select</span>
-                <span class='stale-action-btn dismiss' title='Hide until next load'>Dismiss</span>
-            </div>
         </div>""",
         unsafe_allow_html=True,
     )
