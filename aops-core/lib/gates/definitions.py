@@ -208,7 +208,7 @@ GATE_CONFIGS = [
                 condition=GateCondition(
                     hook_event="PostToolUse",
                     tool_name_pattern="Task",
-                    tool_input_pattern="critic",
+                    tool_input_pattern=r"\bcritic\b",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
