@@ -6,6 +6,9 @@ This module contains the "Conditions" that gates evaluate.
 
 import sys
 
+from lib.gate_model import GateResult
+from lib.session_state import SessionState
+
 from hooks.gates import check_stop_gate as _check_stop_gate
 from hooks.gates import check_tool_gate as _check_tool_gate
 from hooks.gates import on_after_agent as _on_after_agent
@@ -14,8 +17,6 @@ from hooks.gates import on_subagent_stop as _on_subagent_stop
 from hooks.gates import on_user_prompt as _on_user_prompt
 from hooks.gates import update_gate_state as _update_gate_state
 from hooks.schemas import HookContext
-from lib.gate_model import GateResult
-from lib.session_state import SessionState
 
 # --- Unified Logger Gate ---
 

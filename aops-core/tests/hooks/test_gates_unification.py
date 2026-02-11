@@ -4,7 +4,6 @@ from unittest.mock import patch
 import pytest
 from hooks.gates import on_subagent_stop
 from hooks.schemas import HookContext
-
 from lib.gate_types import GateStatus
 from lib.session_state import SessionState
 

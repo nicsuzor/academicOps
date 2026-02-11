@@ -27,7 +27,6 @@ sys.path.insert(0, str(aops_core))
 from collections import defaultdict
 
 import networkx as nx
-
 from lib.path_reconstructor import EventType, reconstruct_path
 from lib.session_analyzer import SessionAnalyzer, extract_todowrite_from_session
 from lib.session_context import SessionContext, extract_context_from_session_state

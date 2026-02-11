@@ -2,7 +2,6 @@ from datetime import datetime
 
 import pandas as pd
 import streamlit as st
-
 from lib.paths import get_data_root
 from lib.task_index import TaskIndex
 from lib.task_model import Task, TaskComplexity, TaskStatus, TaskType

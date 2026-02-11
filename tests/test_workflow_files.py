@@ -9,7 +9,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-
 from lib.paths import get_plugin_root, get_workflows_dir
 
 

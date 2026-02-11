@@ -27,16 +27,17 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from lib.insights_generator import find_existing_insights
+from lib.reflection_detector import has_reflection
+from lib.session_paths import get_session_short_hash, get_session_status_dir
+from lib.transcript_parser import SessionProcessor
+
 from hooks.internal_models import (
     GitPushStatus,
     GitStatus,
     SessionCleanupResult,
     UncommittedWorkCheck,
 )
-from lib.insights_generator import find_existing_insights
-from lib.reflection_detector import has_reflection
-from lib.session_paths import get_session_short_hash, get_session_status_dir
-from lib.transcript_parser import SessionProcessor
 
 # Set up logging
 logging.basicConfig(

@@ -2,7 +2,6 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from hooks.schemas import HookContext
-
 from lib.gate_model import GateVerdict
 from lib.gates.definitions import GATE_CONFIGS
 from lib.gates.engine import GenericGate

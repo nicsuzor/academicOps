@@ -5,7 +5,6 @@ from unittest.mock import MagicMock, patch
 
 from hooks.gates import on_session_start
 from hooks.schemas import HookContext
-
 from lib.gate_model import GateResult, GateVerdict
 
 
