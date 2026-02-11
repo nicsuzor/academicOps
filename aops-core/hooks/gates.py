@@ -30,7 +30,8 @@ def check_tool_gate(ctx: HookContext, state: SessionState) -> GateResult:
     _ensure_initialized()
 
     # Global Bypass: Allow hydrator's own tool calls
-    if state.state.get("hydrator_active"):
+    # Check both legacy flag and new HookContext subagent_type
+    if state.state.get("hydrator_active") or ctx.subagent_type == "hydrator":
         return GateResult.allow()
 
     # Iterate all gates
