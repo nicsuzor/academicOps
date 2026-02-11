@@ -1,4 +1,4 @@
-.PHONY: ver nextver release install install-claude install-gemini
+.PHONY: ver nextver release prerelease install install-claude install-gemini
 
 # Show current version
 ver:
@@ -20,6 +20,12 @@ release:
 	git fetch origin "$$branch" && \
 	git push origin "$$branch" "v$$next" && \
 	echo "✓ Released v$$next"
+
+# Trigger a prerelease build via GitHub Actions workflow_dispatch
+prerelease:
+	@echo "Triggering prerelease build..."
+	@gh workflow run build-extension.yml --field prerelease=true && \
+	echo "✓ Prerelease workflow triggered. Check: gh run list --workflow=build-extension.yml"
 
 # Install aops plugin for both Claude Code and Gemini CLI
 install: install-claude install-gemini

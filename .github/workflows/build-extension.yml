@@ -2,9 +2,14 @@ name: Build and Deploy
 
 on:
   push:
-    branches: [main]
-    tags: ['v*']
+    tags: ['v*']  # Only trigger automatically on tag pushes (stable releases)
   workflow_dispatch:
+    inputs:
+      prerelease:
+        description: 'Create a pre-release version (testing build)'
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: build-deploy-nicsuzor-aops-dist
@@ -24,13 +29,18 @@ jobs:
       - name: Determine release type
         id: release_type
         run: |
-          # Tag pushes (v*) produce stable releases; everything else is a testing pre-release
+          # Tag pushes (v*) produce stable releases
+          # workflow_dispatch with prerelease=true produces testing pre-releases
+          # workflow_dispatch without prerelease produces stable releases from HEAD
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             echo "type=stable" >> $GITHUB_OUTPUT
             echo "Release type: stable (tag push)"
-          else
+          elif [[ "${{ github.event.inputs.prerelease }}" == "true" ]]; then
             echo "type=testing" >> $GITHUB_OUTPUT
-            echo "Release type: testing (pre-release)"
+            echo "Release type: testing (pre-release requested via workflow_dispatch)"
+          else
+            echo "type=stable" >> $GITHUB_OUTPUT
+            echo "Release type: stable (workflow_dispatch without prerelease)"
           fi
 
       - name: Setup Python
