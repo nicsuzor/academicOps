@@ -126,6 +126,10 @@ def write_temp_file(
 ) -> Path:
     """Write content to temp file, return path.
 
+    When session_id is provided, uses a deterministic filename based on the
+    session hash. This ensures a single temp file per session (P#102), with
+    subsequent writes overwriting the same file.
+
     Args:
         content: Content to write
         temp_dir: Target directory
@@ -137,11 +141,12 @@ def write_temp_file(
         Path to created temp file
 
     Raises:
-        IOError: If temp file cannot be written (fail-fast)
+        OSError: If temp file cannot be written (fail-fast, no silent fallback)
     """
     temp_dir.mkdir(parents=True, exist_ok=True)
 
-    # Attempt to use consistent session hash in filename (P#102)
+    # Use consistent session hash in filename when available (P#102)
+    # This ensures one temp file per session, overwritten on each trigger
     sid = session_id or os.environ.get("CLAUDE_SESSION_ID")
     if sid:
         from lib.session_paths import get_session_short_hash
@@ -149,13 +154,10 @@ def write_temp_file(
         short_hash = get_session_short_hash(sid)
         # prefix already contains trailing underscore if intended
         path = temp_dir / f"{prefix}{short_hash}{suffix}"
-        try:
-            path.write_text(content)
-            return path
-        except OSError:
-            pass  # Fallback to random name on collision/permission error
+        path.write_text(content)  # Fail-fast: no silent fallback to random names
+        return path
 
-    # Fallback: Generate random unique filename
+    # Fallback only when no session_id: Generate random unique filename
     with tempfile.NamedTemporaryFile(
         mode="w",
         prefix=prefix,
