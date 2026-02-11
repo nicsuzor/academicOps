@@ -11,7 +11,12 @@ description: |
 
 To proceed with file-modifying tools, you must first invoke the **prompt-hydrator** agent with the file path argument: `{temp_path}`
 
-- Gemini: `delegate_to_agent(name='aops-core:prompt-hydrator', query='{temp_path}')`
-- Claude: `Agent(subagent_type='aops-core:prompt-hydrator', prompt='{temp_path}')`
+A temporary file has been created with the hydrator's instructions: `{temp_path}`
 
-Only always-available tools are not blocked.
+1. Run the command for your client:
+   - For Claude Code: `Task(subagent_type="aops-core:prompt-hydrator", prompt="Follow instructions in {temp_path}")`
+   - For Gemini CLI: delegate to agent `"name": "prompt-hydrator", "args": {{"query": "Follow instructions in {temp_path}"}})`
+
+2. **IMMEDIATELY** after it returns, continue with the plan it provides. Do not stop.
+
+The `prompt-hydrator` locates required context and applies crucial defined procedures that you must follow in order to answer the user's request.

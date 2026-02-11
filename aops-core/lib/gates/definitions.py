@@ -75,11 +75,12 @@ GATE_CONFIGS = [
                 message_template="💧 Hydration required.",
                 # Full agent instructions
                 context_template=(
-                    "**ERROR:** You need to hydrate user prompts before you can use tools. To ensure alignment with project workflows and axioms, please invoke the **prompt-hydrator** agent with: `{temp_path}`\n\n"
-                    "Command:\n"
-                    "- Gemini: `delegate_to_agent(name='aops-core:prompt-hydrator', query='{temp_path}')`\n"
-                    "- Claude: `Agent(subagent_type='aops-core:prompt-hydrator', prompt='{temp_path}')`\n\n"
-                    "Invoke the prompt-hydrator to satisfy this gate."
+                    "**HYDRATION REQUIRED**\n\n"
+                    "You must invoke the **prompt-hydrator** agent to load context before proceeding.\n\n"
+                    "**Instruction**:\n"
+                    "Run the hydrator with this command:\n"
+                    "- Gemini: `delegate_to_agent(name='prompt-hydrator', query='Follow instructions in {temp_path}')`\n"
+                    "- Claude: `Task(subagent_type='prompt-hydrator', prompt='Follow instructions in {temp_path}')`"
                 ),
             )
         ],

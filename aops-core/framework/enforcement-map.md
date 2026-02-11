@@ -54,8 +54,8 @@ tags: [framework, enforcement, moc]
 | [[feedback-loops-for-uncertainty]]          | Feedback Loops                      | AXIOMS.md                                                                                    | SessionStart           |           |
 | [[current-state-machine]]                   | Current State Machine               | autocommit_state.py (auto-commit+push)                                                       | PostToolUse            |           |
 | [[one-spec-per-feature]]                    | One Spec Per Feature                | AXIOMS.md                                                                                    | SessionStart           |           |
-| [[mandatory-handover]]                      | Mandatory Handover Workflow         | prompt-hydrator-context.md (Session Completion Rules section), dump.md Step 2                | UserPromptSubmit, Stop |           |
-| [[capture-outstanding-work]]                | Capture Outstanding Work            | dump.md Step 2 (create follow-up tasks for incomplete/deferred work)                         | Stop                   |           |
+| [[mandatory-handover]]                      | Mandatory Handover Workflow         | prompt-hydrator-context.md (Session Completion Rules section), handover SKILL.md Step 1.5    | UserPromptSubmit, Stop |           |
+| [[capture-outstanding-work]]                | Capture Outstanding Work            | handover SKILL.md Step 1.5 (create follow-up tasks for incomplete/deferred work)             | Stop                   |           |
 | [[explicit-approval-costly-ops]]            | Costly Operations Approval          | external-batch-submission.md workflow + AskUserQuestion before batch submit                  | During execution       |           |
 | [[data-boundaries]]                         | Credential Isolation                | `SSH_AUTH_SOCK=""` in settings.local.json; `GH_TOKEN` from limited `AOPS_BOT_GH_TOKEN` PAT   | SessionStart           | 6         |
 

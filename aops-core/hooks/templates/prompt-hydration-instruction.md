@@ -2,7 +2,7 @@
 
 Command:
 
-- Gemini: `delegate_to_agent(name='aops-core:prompt-hydrator', query='{temp_path}')`
-- Claude: `Agent(subagent_type='aops-core:prompt-hydrator', prompt='{temp_path}')`
+- Gemini: `delegate_to_agent(name='aops-core:prompt-hydrator', query='Follow instructions in {temp_path}')`
+- Claude: `Agent(subagent_type='aops-core:prompt-hydrator', prompt='Follow instructions in {temp_path}')`
 
 Hydration is recommended for complex tasks but optional for simple ones.
