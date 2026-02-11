@@ -319,7 +319,9 @@ class Task:
         try:
             task_type = TaskType(task_type_str)
         except ValueError as e:
-            raise ValueError(f"Invalid type '{task_type_str}' for item {task_id} - not a task") from e
+            raise ValueError(
+                f"Invalid type '{task_type_str}' for item {task_id} - not a task"
+            ) from e
 
         # Map status aliases and parse with graceful coercion
         status_str = fm.get("status", "active")

@@ -39,10 +39,11 @@ class TestSessionSummaryPaths:
         """Task contributions file uses session_id as key."""
         monkeypatch.setenv("ACA_DATA", "/home/test/data")
 
+        from lib.session_paths import get_session_short_hash
         from lib.session_summary import get_task_contributions_path
 
         sid = "abc12345-uuid-here"
-        h = hashlib.sha256(sid.encode()).hexdigest()[:8]
+        h = get_session_short_hash(sid)
         result = get_task_contributions_path(sid)
         assert result == Path(f"/home/test/data/dashboard/sessions/{h}.tasks.json")
 
@@ -50,10 +51,11 @@ class TestSessionSummaryPaths:
         """Session summary file uses session_id as key."""
         monkeypatch.setenv("ACA_DATA", "/home/test/data")
 
+        from lib.session_paths import get_session_short_hash
         from lib.session_summary import get_session_summary_path
 
         sid = "abc12345-uuid-here"
-        h = hashlib.sha256(sid.encode()).hexdigest()[:8]
+        h = get_session_short_hash(sid)
         result = get_session_summary_path(sid)
         assert result == Path(f"/home/test/data/dashboard/sessions/{h}.summary.json")
 
@@ -453,6 +455,8 @@ class TestIntegration:
         tasks_a = load_task_contributions(session_a)
         tasks_b = load_task_contributions(session_b)
 
+        # Note: If they share the same project and base dir, they may append to same file
+        # unless session_id is part of the filename (which it is via get_session_short_hash)
         assert len(tasks_a) == 2
         assert len(tasks_b) == 1
         assert tasks_a[0]["request"] == "Task from terminal 1"

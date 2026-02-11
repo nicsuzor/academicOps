@@ -19,12 +19,14 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path | No
     if transcript_path:
         if gate in ("critic", "custodiet"):
             from lib.session_reader import build_critic_session_context
+
             try:
                 session_context = build_critic_session_context(transcript_path)
             except Exception:
                 pass
         else:
             from lib.session_reader import build_rich_session_context
+
             try:
                 session_context = build_rich_session_context(transcript_path)
             except Exception:
@@ -34,6 +36,7 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path | No
 
     # Import os here to avoid top-level import issues if not needed
     import os
+
     custodiet_mode = os.environ.get("CUSTODIET_MODE", "block").lower()
 
     registry = TemplateRegistry.instance()
@@ -72,6 +75,8 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path | No
         temp_dir = hook_utils.get_hook_temp_dir(category, ctx.raw_input)
         # Cleanup old audit files for THIS gate before writing new one
         hook_utils.cleanup_old_temp_files(temp_dir, f"audit_{gate}_")
-        return hook_utils.write_temp_file(content, temp_dir, f"audit_{gate}_", session_id=session_id)
+        return hook_utils.write_temp_file(
+            content, temp_dir, f"audit_{gate}_", session_id=session_id
+        )
     except Exception:
         return None

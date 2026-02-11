@@ -57,7 +57,9 @@ def get_hook_temp_dir(category: str, input_data: dict[str, Any] | None = None) -
         return path
 
     # 3. Use unified session status directory resolution
-    session_id = (input_data.get("session_id") if input_data else None) or os.environ.get("CLAUDE_SESSION_ID")
+    session_id = (input_data.get("session_id") if input_data else None) or os.environ.get(
+        "CLAUDE_SESSION_ID"
+    )
     status_dir = get_session_status_dir(session_id, input_data)
 
     # Platform-specific temp sub-structure

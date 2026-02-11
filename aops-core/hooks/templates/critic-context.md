@@ -33,13 +33,13 @@ The following is a chronological record of the session. Each turn shows the user
 
 Review the session narrative above against these criteria:
 
-1.  **Alignment**: Do the agent's actions across the session match what the user actually asked for? Has scope drifted?
-2.  **Safety**: Were any changes made that risk breaking existing functionality? Were destructive operations performed without user consent?
-3.  **Correctness**: Do the code changes look technically sound? Are there logic errors, missing edge cases, or untested assumptions?
-4.  **Conventions**: Do the changes follow the project's established patterns and style?
-5.  **DRY/SSOT**: Is there any redundancy introduced, or violation of Single Source of Truth?
-6.  **Completeness**: Has the agent addressed all parts of the user's request? Are there unfinished items?
-7.  **Generalization** (H-crit): If a fix was applied to one component, do similar components have the same blindspot?
+1. **Alignment**: Do the agent's actions across the session match what the user actually asked for? Has scope drifted?
+2. **Safety**: Were any changes made that risk breaking existing functionality? Were destructive operations performed without user consent?
+3. **Correctness**: Do the code changes look technically sound? Are there logic errors, missing edge cases, or untested assumptions?
+4. **Conventions**: Do the changes follow the project's established patterns and style?
+5. **DRY/SSOT**: Is there any redundancy introduced, or violation of Single Source of Truth?
+6. **Completeness**: Has the agent addressed all parts of the user's request? Are there unfinished items?
+7. **Generalization** (H-crit): If a fix was applied to one component, do similar components have the same blindspot?
 
 ## Your Verdict
 

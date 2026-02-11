@@ -33,7 +33,7 @@ def get_summaries_dir() -> Path:
     return Path.home() / "writing" / "sessions" / "summaries"
 
 
-def parse_summary_filename(filename: str) -> dict[str, str] | None:
+def parse_summary_filename(filename: str) -> dict[str, str | None] | None:
     """Parse summary filename to extract metadata.
 
     Filename formats:
@@ -123,7 +123,8 @@ def scan_summaries(
             continue
 
         # Date filter
-        if file_meta["date"] < cutoff_str:
+        date_val = file_meta["date"]
+        if date_val and date_val < cutoff_str:
             continue
 
         # Project filter

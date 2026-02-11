@@ -493,9 +493,7 @@ def reflection_to_insights(
     return result
 
 
-def extract_timeline_events(
-    turns: list[ConversationTurn], session_id: str
-) -> list[dict[str, Any]]:
+def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str, Any]]:
     """Extract timeline events from parsed conversation turns.
 
     Scans assistant_sequence for task operations, user prompts,
@@ -525,11 +523,13 @@ def extract_timeline_events(
 
         # User prompts (first line, truncated to ~120 chars)
         if user_msg and not getattr(turn, "is_meta", False):
-            events.append({
-                "timestamp": ts,
-                "type": "user_prompt",
-                "description": user_msg[:120],
-            })
+            events.append(
+                {
+                    "timestamp": ts,
+                    "type": "user_prompt",
+                    "description": user_msg[:120],
+                }
+            )
 
         # Tool calls from assistant_sequence
         for item in sequence:
@@ -541,34 +541,42 @@ def extract_timeline_events(
                 continue
 
             if "task_manager__create_task" in tool:
-                events.append({
-                    "timestamp": ts,
-                    "type": "task_create",
-                    "task_id": None,  # not known until result
-                    "task_title": inp.get("task_title", ""),
-                    "project": inp.get("project"),
-                })
+                events.append(
+                    {
+                        "timestamp": ts,
+                        "type": "task_create",
+                        "task_id": None,  # not known until result
+                        "task_title": inp.get("task_title", ""),
+                        "project": inp.get("project"),
+                    }
+                )
             elif "task_manager__complete_task" in tool:
-                events.append({
-                    "timestamp": ts,
-                    "type": "task_complete",
-                    "task_id": inp.get("id", ""),
-                })
+                events.append(
+                    {
+                        "timestamp": ts,
+                        "type": "task_complete",
+                        "task_id": inp.get("id", ""),
+                    }
+                )
             elif "task_manager__claim_next_task" in tool:
-                events.append({
-                    "timestamp": ts,
-                    "type": "task_claim",
-                    "project": inp.get("project"),
-                })
+                events.append(
+                    {
+                        "timestamp": ts,
+                        "type": "task_claim",
+                        "project": inp.get("project"),
+                    }
+                )
             elif "task_manager__update_task" in tool:
                 status = inp.get("status")
                 if status:  # only record status changes
-                    events.append({
-                        "timestamp": ts,
-                        "type": "task_update",
-                        "task_id": inp.get("id", ""),
-                        "new_status": status,
-                    })
+                    events.append(
+                        {
+                            "timestamp": ts,
+                            "type": "task_update",
+                            "task_id": inp.get("id", ""),
+                            "new_status": status,
+                        }
+                    )
 
     return events
 
@@ -1272,7 +1280,22 @@ class SessionProcessor:
             # Map Gemini type to Entry type
             entry_type = "assistant" if msg_type == "gemini" else "user"
 
-            content_text = msg.get("content", "")
+            content_raw = msg.get("content", "")
+            content_text = ""
+            if isinstance(content_raw, str):
+                content_text = content_raw
+            elif isinstance(content_raw, list):
+                # Gemini standard: list of parts
+                text_parts = []
+                for part in content_raw:
+                    if isinstance(part, str):
+                        text_parts.append(part)
+                    elif isinstance(part, dict):
+                        if "text" in part:
+                            text_parts.append(part["text"])
+                        elif "content" in part: # some variants
+                            text_parts.append(str(part["content"]))
+                content_text = "".join(text_parts)
 
             # Handle tool calls (assistant only)
             content_blocks = []
@@ -2988,7 +3011,7 @@ session_id: {session_uuid}
                 args.append(f'{key}="{value}"')
             elif isinstance(value, bool):
                 args.append(f"{key}={value!s}")
-            elif isinstance(value, (int, float)):
+            elif isinstance(value, int | float):
                 args.append(f"{key}={value}")
             elif isinstance(value, list):
                 if len(value) > 3:

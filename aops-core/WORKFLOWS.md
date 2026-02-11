@@ -79,35 +79,35 @@ User request
 
 These workflows help figure out what to do and how to do it.
 
-| Workflow       | When to Use                                | Bases         |
-| -------------- | ------------------------------------------ | ------------- |
-| [[decompose]]  | Multi-month, uncertain path, goals to epics | task-tracking |
-| [[design]]     | Known work, need architecture              | task-tracking |
-| [[collaborate]] | Open-ended exploration, brainstorming     | task-tracking |
-| [[strategy]]   | Strategic thinking partner (no execution)  | -             |
+| Workflow        | When to Use                                 | Bases         |
+| --------------- | ------------------------------------------- | ------------- |
+| [[decompose]]   | Multi-month, uncertain path, goals to epics | task-tracking |
+| [[design]]      | Known work, need architecture               | task-tracking |
+| [[collaborate]] | Open-ended exploration, brainstorming       | task-tracking |
+| [[strategy]]    | Strategic thinking partner (no execution)   | -             |
 
 ### Development
 
 Core workflows for building and fixing software.
 
-| Workflow              | When to Use                          | Bases                                 |
-| --------------------- | ------------------------------------ | ------------------------------------- |
-| [[tdd-cycle]]         | Any testable code change             | task-tracking, tdd, verification, commit |
-| [[feature-dev]]       | Test-first feature from idea to ship | task-tracking, tdd, verification, commit |
-| [[debugging]]         | Cause unknown, investigating         | task-tracking, verification           |
-| [[github-issue-cycle]] | Async work via GitHub issues        | task-tracking                         |
+| Workflow               | When to Use                          | Bases                                    |
+| ---------------------- | ------------------------------------ | ---------------------------------------- |
+| [[tdd-cycle]]          | Any testable code change             | task-tracking, tdd, verification, commit |
+| [[feature-dev]]        | Test-first feature from idea to ship | task-tracking, tdd, verification, commit |
+| [[debugging]]          | Cause unknown, investigating         | task-tracking, verification              |
+| [[github-issue-cycle]] | Async work via GitHub issues         | task-tracking                            |
 
 ### Quality Assurance
 
 Verification workflows for different scopes.
 
-| Workflow            | When to Use                     | Bases |
-| ------------------- | ------------------------------- | ----- |
-| [[critic-fast]]     | Quick sanity check (default)    | -     |
-| [[critic-detailed]] | Framework/architectural changes | -     |
-| [[qa-demo]]         | Pre-completion verification     | -     |
-| [[qa-test]]         | User acceptance testing         | -     |
-| [[prove-feature]]   | Integration validation          | -     |
+| Workflow            | When to Use                     | Bases         |
+| ------------------- | ------------------------------- | ------------- |
+| [[critic-fast]]     | Quick sanity check (default)    | -             |
+| [[critic-detailed]] | Framework/architectural changes | -             |
+| [[qa-demo]]         | Pre-completion verification     | -             |
+| [[qa-test]]         | User acceptance testing         | -             |
+| [[prove-feature]]   | Integration validation          | -             |
 | [[qa-design]]       | Design QA test plans            | task-tracking |
 
 ### Operations & Batch
@@ -126,22 +126,22 @@ Workflows for handling multiple items or operational tasks.
 
 Workflows for email processing and correspondence.
 
-| Workflow          | When to Use                    | Bases         |
-| ----------------- | ------------------------------ | ------------- |
-| [[triage-email]]  | Email classification           | task-tracking |
-| [[email-capture]] | Extract tasks from emails      | task-tracking |
-| [[email-classify]] | Classify email content        | -             |
-| [[email-reply]]   | Drafting replies               | task-tracking |
+| Workflow           | When to Use               | Bases         |
+| ------------------ | ------------------------- | ------------- |
+| [[triage-email]]   | Email classification      | task-tracking |
+| [[email-capture]]  | Extract tasks from emails | task-tracking |
+| [[email-classify]] | Classify email content    | -             |
+| [[email-reply]]    | Drafting replies          | task-tracking |
 
 ### Academic
 
 Workflows for academic and research activities.
 
-| Workflow            | When to Use                    | Bases         |
-| ------------------- | ------------------------------ | ------------- |
-| [[peer-review]]     | Grant/fellowship reviews       | task-tracking |
-| [[reference-letter]] | Reference letter workflow     | task-tracking |
-| [[hdr-supervision]] | HDR student supervision        | task-tracking |
+| Workflow             | When to Use               | Bases         |
+| -------------------- | ------------------------- | ------------- |
+| [[peer-review]]      | Grant/fellowship reviews  | task-tracking |
+| [[reference-letter]] | Reference letter workflow | task-tracking |
+| [[hdr-supervision]]  | HDR student supervision   | task-tracking |
 
 ### Routing & Information
 
@@ -164,31 +164,31 @@ Workflows for session management and state persistence.
 
 Workflows about the framework itself.
 
-| Workflow             | When to Use                   | Bases                         |
-| -------------------- | ----------------------------- | ----------------------------- |
+| Workflow             | When to Use                   | Bases                               |
+| -------------------- | ----------------------------- | ----------------------------------- |
 | [[framework-change]] | AXIOMS/HEURISTICS/enforcement | task-tracking, verification, commit |
-| [[dogfooding]]       | Framework self-improvement    | -                             |
-| [[skill-pilot]]      | Building new skills from gaps | task-tracking                 |
-| [[audit]]            | Framework governance audit    | -                             |
+| [[dogfooding]]       | Framework self-improvement    | -                                   |
+| [[skill-pilot]]      | Building new skills from gaps | task-tracking                       |
+| [[audit]]            | Framework governance audit    | -                                   |
 
 ### Git Operations
 
 Workflows for version control operations.
 
-| Workflow           | When to Use                 | Bases  |
-| ------------------ | --------------------------- | ------ |
-| [[merge-conflict]] | Resolve merge conflicts     | commit |
-| [[worktree-merge]] | Merge worktree branches     | commit |
-| [[version-bump]]   | Version bumping automation  | -      |
+| Workflow           | When to Use                | Bases  |
+| ------------------ | -------------------------- | ------ |
+| [[merge-conflict]] | Resolve merge conflicts    | commit |
+| [[worktree-merge]] | Merge worktree branches    | commit |
+| [[version-bump]]   | Version bumping automation | -      |
 
 ### Hydration (Internal)
 
 Internal workflows supporting prompt hydration.
 
-| Workflow           | When to Use                                  | Bases |
-| ------------------ | -------------------------------------------- | ----- |
-| [[framework-gate]] | First check - detect framework modifications | -     |
-| [[constraint-check]] | Verify plan satisfies workflow constraints | -     |
+| Workflow             | When to Use                                  | Bases |
+| -------------------- | -------------------------------------------- | ----- |
+| [[framework-gate]]   | First check - detect framework modifications | -     |
+| [[constraint-check]] | Verify plan satisfies workflow constraints   | -     |
 
 ## Project-Specific Workflows
 

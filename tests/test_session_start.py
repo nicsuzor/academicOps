@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 from hooks.gates import on_session_start
 from hooks.schemas import HookContext
+
 from lib.gate_model import GateResult, GateVerdict
 
 
@@ -33,7 +34,9 @@ def test_session_start_message_generation(
 
     # Create mock SessionState
     from datetime import datetime
+
     from lib.session_state import SessionState
+
     state = SessionState(
         session_id="session-123",
         date=datetime.now().strftime("%Y-%m-%d"),
@@ -55,7 +58,7 @@ def test_session_start_message_generation(
     # Check system_message has brief user-facing summary
     assert "Session Started: session-123" in result.system_message
     assert "abc12345" in result.system_message
-    
+
     # Check context_injection has detailed paths for agent
     assert result.context_injection is not None
     assert "State File:" in result.context_injection

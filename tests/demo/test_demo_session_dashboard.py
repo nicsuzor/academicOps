@@ -23,6 +23,7 @@ Related:
 from pathlib import Path
 
 import pytest
+
 from lib.session_analyzer import SessionAnalyzer
 
 

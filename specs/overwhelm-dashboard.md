@@ -98,7 +98,7 @@ index.json (created by [[fast-indexer]])
 - [[Overwhelm dashboard]] - reads index.json directly
 - [[task-viz]] - generates graph visualizations
 
-### Streamlit Dashboard
+### Dashboard Implementation Details
 
 Location: `aops/lib/overwhelm/`
 
@@ -499,7 +499,7 @@ When a task node is clicked or a task card is selected:
 └──────────────────────────────────────────────────┘
 ```
 
-### Design Principles
+### Task Operations Design Principles
 
 - **Non-blocking**: Task operations should not freeze the UI
 - **Optimistic updates**: Show changes immediately, sync in background
@@ -527,7 +527,7 @@ When a task node is clicked or a task card is selected:
 - [ ] Stale sessions trigger auto-archive prompt, not flat list display
 - [ ] User can answer "what was I doing?" for every displayed session
 
-### Session Triage
+### Session Triage Acceptance Criteria
 
 - [ ] Active sessions (last 4h) shown with full conversation context
 - [ ] Paused sessions (4-24h) shown collapsed, expandable
@@ -559,7 +559,7 @@ User runs parallel sessions, gets sidetracked by bugs, and loses their thread. A
 1. **Session display shows agent output, not user intent** — WLO cards show "Successfully completed: Standardized session short hashes..." instead of the user's initial prompt
 2. **No plan-level tracking** — no way to see across sessions what path was taken, what deviated, what was dropped
 
-### Architecture
+### Path Reconstruction Architecture
 
 **Data flow:**
 
@@ -579,13 +579,13 @@ Dashboard rendering (HTML/CSS in dashboard.py)
 
 ### Event Types
 
-| Event | Source | Description |
-|-------|--------|-------------|
-| `user_prompt` | User message in turn | First ~120 chars of user input |
-| `task_create` | `task_manager__create_task` tool call | Task title and project |
-| `task_complete` | `task_manager__complete_task` tool call | Task ID completed |
-| `task_claim` | `task_manager__claim_next_task` tool call | Task claimed from queue |
-| `task_update` | `task_manager__update_task` with status change | New status value |
+| Event           | Source                                         | Description                    |
+| --------------- | ---------------------------------------------- | ------------------------------ |
+| `user_prompt`   | User message in turn                           | First ~120 chars of user input |
+| `task_create`   | `task_manager__create_task` tool call          | Task title and project         |
+| `task_complete` | `task_manager__complete_task` tool call        | Task ID completed              |
+| `task_claim`    | `task_manager__claim_next_task` tool call      | Task claimed from queue        |
+| `task_update`   | `task_manager__update_task` with status change | New status value               |
 
 ### Display Design
 
@@ -622,9 +622,12 @@ Dashboard rendering (HTML/CSS in dashboard.py)
 
 Agents should eventually detect scope-escape and do task bookkeeping (e.g., when a user says "actually fix this bug first", the agent creates a deviation event). This is not yet implemented — current design is purely reactive reconstruction from transcript data.
 
-### Giving Effect
+### Path Reconstruction Giving Effect
 
-- `aops-core/lib/transcript_parser.py` — `extract_timeline_events()` function
+- `aops-core/lib/transcript_parser.py`
+
+— `extract_timeline_events()` function
+
 - `aops-core/scripts/transcript.py` — calls extractor, saves to summary JSON
 - `aops-core/lib/path_reconstructor.py` — reads summary JSONs, assembles path
 - `lib/overwhelm/dashboard.py` — CSS + rendering for path section

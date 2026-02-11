@@ -28,7 +28,7 @@ This document defines the component assignments for the academicOps plugin ecosy
 
 **Purpose**: Core framework infrastructure for agent coordination, quality assurance, and workflow orchestration.
 
-### Components
+### Core Components
 
 **Skills**:
 
@@ -61,7 +61,7 @@ This document defines the component assignments for the academicOps plugin ecosy
 
 **Purpose**: Domain-specific tools and utilities for research workflows - planning, communication, visualization, data processing, and development.
 
-### Components
+### Tools Components
 
 **Skills**:
 
@@ -95,9 +95,12 @@ This document defines the component assignments for the academicOps plugin ecosy
 
 ## Cross-Plugin Dependencies
 
-### aops-tools depends on aops-core for:
+### aops-tools depends on aops-core for
 
-- Framework agents (hydrator, custodiet, qa, critic)
+- Framework agents
+
+(hydrator, custodiet, qa, critic)
+
 - Core workflows (/learn, /log)
 - Audit capabilities
 

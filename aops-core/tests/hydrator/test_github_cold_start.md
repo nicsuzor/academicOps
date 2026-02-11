@@ -5,6 +5,7 @@ This test evaluates hydrator performance when an agent picks up work from GitHub
 ## Scenario
 
 An agent is invoked with only:
+
 - A GitHub issue reference
 - No conversation history
 - No prior knowledge of local task system state
@@ -20,22 +21,27 @@ Pick up GitHub issue nicsuzor/academicOps#394 and continue the work.
 The hydrator SHOULD:
 
 ### 1. Fetch GitHub Context
+
 - Issue body (current plan, audit tables)
 - Issue comments (critic feedback, status signals)
 - Issue metadata (labels, assignees, state)
 
 ### 2. Discover Local Task Binding
+
 - Search task system for issue reference
 - Find: `aops-84c88881` links to this issue
 - Get task body with session notes
 
 ### 3. Identify Workflow
+
 Route to `[[github-issue-cycle]]` workflow based on:
+
 - GitHub issue coordination pattern
 - Previous session notes mentioning this workflow
 - Issue comment conventions (`[PLAN VERIFIED]`, etc.)
 
 ### 4. Compose Execution Steps
+
 From `github-issue-cycle` + `base-task-tracking` + `base-tdd`:
 
 1. Claim task `aops-84c88881` (or verify already claimed)
@@ -48,6 +54,7 @@ From `github-issue-cycle` + `base-task-tracking` + `base-tdd`:
 8. Handover
 
 ### 5. Provide Implementation Context
+
 - Files to read: `aops-core/lib/gates/custom_actions.py`, `aops-core/lib/gate_model.py`
 - Test files affected: listed in issue audit
 - Acceptance criteria from issue body
@@ -58,13 +65,13 @@ From `github-issue-cycle` + `base-task-tracking` + `base-tdd`:
 
 ## Gap Analysis
 
-| Expected | Provided | Gap |
-|----------|----------|-----|
-| GitHub issue fetch | ? | ? |
-| Local task discovery | ? | ? |
-| Workflow identification | ? | ? |
-| Composed steps | ? | ? |
-| Implementation context | ? | ? |
+| Expected                | Provided | Gap |
+| ----------------------- | -------- | --- |
+| GitHub issue fetch      | ?        | ?   |
+| Local task discovery    | ?        | ?   |
+| Workflow identification | ?        | ?   |
+| Composed steps          | ?        | ?   |
+| Implementation context  | ?        | ?   |
 
 ## Recommendations
 

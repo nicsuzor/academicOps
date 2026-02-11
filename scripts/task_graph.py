@@ -274,8 +274,7 @@ def _build_legend_table(stats: dict) -> str:
     for i in range(0, len(type_items), 4):
         chunk = type_items[i : i + 4]
         cells = "".join(
-            f'<TD BGCOLOR="#cce5ff" BORDER="1">{name} ({shape})</TD>'
-            for name, shape in chunk
+            f'<TD BGCOLOR="#cce5ff" BORDER="1">{name} ({shape})</TD>' for name, shape in chunk
         )
         rows.append(f"<TR>{cells}</TR>")
 
@@ -287,24 +286,18 @@ def _build_legend_table(stats: dict) -> str:
         ("Structural", "#c3e6cb"),
         ("Blocked", "#f8d7da"),
     ]
-    cells = "".join(
-        f'<TD BGCOLOR="{color}" BORDER="1">{name}</TD>' for name, color in status_items
-    )
+    cells = "".join(f'<TD BGCOLOR="{color}" BORDER="1">{name}</TD>' for name, color in status_items)
     rows.append(f"<TR>{cells}</TR>")
     rows.append('<TR><TD BGCOLOR="#fff3cd" BORDER="1">Waiting</TD><TD COLSPAN="3"></TD></TR>')
 
     # Assignee
-    rows.append(
-        '<TR><TD COLSPAN="4" BGCOLOR="#e9ecef"><B>Assignee (border color)</B></TD></TR>'
-    )
+    rows.append('<TR><TD COLSPAN="4" BGCOLOR="#e9ecef"><B>Assignee (border color)</B></TD></TR>')
     assignee_items = [
         ("@bot", "#17a2b8"),
         ("@nic", "#6f42c1"),
         ("@worker", "#fd7e14"),
     ]
-    cells = "".join(
-        f'<TD BORDER="1" COLOR="{color}">{name}</TD>' for name, color in assignee_items
-    )
+    cells = "".join(f'<TD BORDER="1" COLOR="{color}">{name}</TD>' for name, color in assignee_items)
     cells += "<TD></TD>"
     rows.append(f"<TR>{cells}</TR>")
 
@@ -331,24 +324,16 @@ def _build_legend_table(stats: dict) -> str:
 
         by_type = stats.get("by_type", {})
         if by_type:
-            parts = [
-                f"{v} {k}"
-                for k, v in sorted(by_type.items(), key=lambda x: -x[1])[:5]
-            ]
+            parts = [f"{v} {k}" for k, v in sorted(by_type.items(), key=lambda x: -x[1])[:5]]
             rows.append(
-                f'<TR><TD COLSPAN="4"><FONT POINT-SIZE="10">'
-                f'{", ".join(parts)}</FONT></TD></TR>'
+                f'<TR><TD COLSPAN="4"><FONT POINT-SIZE="10">{", ".join(parts)}</FONT></TD></TR>'
             )
 
         by_status = stats.get("by_status", {})
         if by_status:
-            parts = [
-                f"{v} {k}"
-                for k, v in sorted(by_status.items(), key=lambda x: -x[1])[:5]
-            ]
+            parts = [f"{v} {k}" for k, v in sorted(by_status.items(), key=lambda x: -x[1])[:5]]
             rows.append(
-                f'<TR><TD COLSPAN="4"><FONT POINT-SIZE="10">'
-                f'{", ".join(parts)}</FONT></TD></TR>'
+                f'<TR><TD COLSPAN="4"><FONT POINT-SIZE="10">{", ".join(parts)}</FONT></TD></TR>'
             )
 
     rows.append("</TABLE>")

@@ -15,11 +15,9 @@ class HookContext(BaseModel):
     hook_event: str = Field(
         ..., description="The normalized event name (e.g., SessionStart, PreToolUse)."
     )
-    agent_id: str | None = Field(None, description="The unique ID for the specific agent instance.")
-    slug: str | None = Field(None, description="The human-readable slug for the session/agent.")
-    is_sidechain: bool | None = Field(
-        None, description="Whether this is a subagent (sidechain) session."
-    )
+    agent_id: str | None = None
+    slug: str | None = None
+    is_sidechain: bool | None = None
 
     # Event Data
     tool_name: str | None = None
@@ -43,18 +41,10 @@ class ClaudeHookSpecificOutput(BaseModel):
     Nested output structure for Claude Code hooks (used in most events).
     """
 
-    hookEventName: str = Field(..., description="The name of the event that triggered the hook.")
-    permissionDecision: Literal["allow", "deny", "ask"] | None = Field(
-        None,
-        description="The decision for the hook (allow/deny/ask). Primarily for PreToolUse.",
-    )
-    additionalContext: str | None = Field(
-        None,
-        description="Additional context to be provided to the agent. Supported in PreToolUse, PostToolUse, UserPromptSubmit, SessionStart.",
-    )
-    updatedInput: str | None = Field(
-        None, description="Updated input for the command. Supported in PreToolUse."
-    )
+    hookEventName: str
+    permissionDecision: Literal["allow", "deny", "ask"] | None = None
+    additionalContext: str | None = None
+    updatedInput: str | None = None
 
 
 class ClaudeStopHookOutput(BaseModel):
@@ -63,12 +53,10 @@ class ClaudeStopHookOutput(BaseModel):
     Unlike other events, 'Stop' uses top-level fields instead of hookSpecificOutput.
     """
 
-    decision: Literal["approve", "block"] | None = Field(
-        None, description="Decision for the Stop event (approve/block)."
-    )
-    reason: str | None = Field(None, description="Reason for the decision (visible to the agent).")
-    stopReason: str | None = Field(None, description="Reason for the stop (visible to the user).")
-    systemMessage: str | None = Field(None, description="A message to be displayed to the user.")
+    decision: Literal["approve", "block"] | None = None
+    reason: str | None = None
+    stopReason: str | None = None
+    systemMessage: str | None = None
 
 
 class ClaudeGeneralHookOutput(BaseModel):
@@ -76,10 +64,8 @@ class ClaudeGeneralHookOutput(BaseModel):
     Output structure for standard Claude Code hooks (PreToolUse, etc.).
     """
 
-    systemMessage: str | None = Field(None, description="A message to be displayed to the user.")
-    hookSpecificOutput: ClaudeHookSpecificOutput | None = Field(
-        None, description="Event-specific output data."
-    )
+    systemMessage: str | None = None
+    hookSpecificOutput: ClaudeHookSpecificOutput | None = None
 
 
 # Union type for any Claude Hook Output
@@ -99,16 +85,10 @@ class GeminiHookSpecificOutput(BaseModel):
     - toolConfig: Override tool selection behavior (BeforeToolSelection)
     """
 
-    hookEventName: str | None = Field(None, description="The event type triggering the hook.")
-    additionalContext: str | None = Field(
-        None, description="Context injected into the agent's prompt."
-    )
-    toolConfig: dict[str, Any] | None = Field(
-        None, description="Tool selection configuration (mode, allowedFunctionNames)."
-    )
-    clearContext: bool | None = Field(
-        None, description="If True, clears LLM memory (AfterAgent only)."
-    )
+    hookEventName: str | None = None
+    additionalContext: str | None = None
+    toolConfig: dict[str, Any] | None = None
+    clearContext: bool | None = None
 
 
 class GeminiHookOutput(BaseModel):
@@ -122,26 +102,16 @@ class GeminiHookOutput(BaseModel):
     - Exit code 2 is "emergency brake" - stderr shown to agent
     """
 
-    systemMessage: str | None = Field(None, description="Message to be displayed to the user.")
-    decision: Literal["allow", "deny", "block"] | None = Field(
-        None, description="Permission decision. 'deny'/'block' prevents the operation."
-    )
-    reason: str | None = Field(
-        None, description="Reason for denial decision. NOT for context injection."
-    )
-    hookSpecificOutput: GeminiHookSpecificOutput | None = Field(
-        None, description="Event-specific output including additionalContext."
-    )
-    suppressOutput: bool | None = Field(None, description="If True, suppresses output display.")
-    continue_: bool | None = Field(
-        None, alias="continue", description="If False, halts processing."
-    )
-    stopReason: str | None = Field(None, description="Reason for stopping (visible to user).")
-    updatedInput: str | None = Field(
-        None, description="Modified input string. Used for command interception."
-    )
+    systemMessage: str | None = None
+    decision: Literal["allow", "deny", "block"] | None = None
+    reason: str | None = None
+    hookSpecificOutput: GeminiHookSpecificOutput | None = None
+    suppressOutput: bool | None = None
+    continue_: bool | None = Field(default=None, alias="continue")
+    stopReason: str | None = None
+    updatedInput: str | None = None
     # Metadata for internal tracking/debugging
-    metadata: dict[str, Any] = Field(default_factory=dict, description="Internal metadata.")
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 # --- Canonical Internal Schema ---

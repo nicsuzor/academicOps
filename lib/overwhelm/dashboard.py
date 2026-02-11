@@ -27,6 +27,7 @@ sys.path.insert(0, str(aops_core))
 from collections import defaultdict
 
 import networkx as nx
+
 from lib.path_reconstructor import EventType, reconstruct_path
 from lib.session_analyzer import SessionAnalyzer, extract_todowrite_from_session
 from lib.session_context import SessionContext, extract_context_from_session_state
@@ -3349,7 +3350,10 @@ def load_task_graph() -> dict | None:
 
 # Default task graph SVG location
 TASK_GRAPH_SVG = (
-    Path(os.environ.get("ACA_DATA", str(Path.home() / "writing/data"))) / "aops" / "outputs" / "task-map.svg"
+    Path(os.environ.get("ACA_DATA", str(Path.home() / "writing/data")))
+    / "aops"
+    / "outputs"
+    / "task-map.svg"
 )
 
 
@@ -4072,11 +4076,31 @@ def render_graph_section():
         )
 
 
-_USELESS_PROMPTS = frozenset({
-    "created:", "created", "/dump", "/help", "/clear", "/commit",
-    "/pull", "/push", "/review", "/q", "y", "n", "yes", "no",
-    "ok", "continue", "done", "thanks", "thank you", "exit", "quit",
-})
+_USELESS_PROMPTS = frozenset(
+    {
+        "created:",
+        "created",
+        "/dump",
+        "/help",
+        "/clear",
+        "/commit",
+        "/pull",
+        "/push",
+        "/review",
+        "/q",
+        "y",
+        "n",
+        "yes",
+        "no",
+        "ok",
+        "continue",
+        "done",
+        "thanks",
+        "thank you",
+        "exit",
+        "quit",
+    }
+)
 
 _MIN_PROMPT_LENGTH = 10  # Minimum chars after sanitization to be worth displaying
 

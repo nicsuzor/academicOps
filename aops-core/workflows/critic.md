@@ -59,12 +59,12 @@ Task(subagent_type="critic", model="opus",
 
 ## Verdicts
 
-| Verdict | Meaning | Next Step |
-|---------|---------|-----------|
-| **PROCEED** | Execute as planned | Continue with work |
-| **ESCALATE** | Needs deeper review | Re-invoke in detailed mode |
-| **REVISE** | Apply critic's changes | Update plan, then execute |
-| **HALT** | Serious issue found | Stop, present to user |
+| Verdict      | Meaning                | Next Step                  |
+| ------------ | ---------------------- | -------------------------- |
+| **PROCEED**  | Execute as planned     | Continue with work         |
+| **ESCALATE** | Needs deeper review    | Re-invoke in detailed mode |
+| **REVISE**   | Apply critic's changes | Update plan, then execute  |
+| **HALT**     | Serious issue found    | Stop, present to user      |
 
 ## Test Code Checks (H37)
 

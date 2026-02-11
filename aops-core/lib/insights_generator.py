@@ -217,7 +217,7 @@ def _validate_token_metrics(token_metrics: dict[str, Any]) -> None:
         ]
         for field in totals_numeric_fields:
             if field in totals and totals[field] is not None:
-                if not isinstance(totals[field], (int, float)):
+                if not isinstance(totals[field], int | float):
                     raise InsightsValidationError(
                         f"Field 'token_metrics.totals.{field}' must be numeric"
                     )
@@ -265,14 +265,14 @@ def _validate_token_metrics(token_metrics: dict[str, Any]) -> None:
         ]
         for field in efficiency_numeric_fields:
             if field in efficiency and efficiency[field] is not None:
-                if not isinstance(efficiency[field], (int, float)):
+                if not isinstance(efficiency[field], int | float):
                     raise InsightsValidationError(
                         f"Field 'token_metrics.efficiency.{field}' must be numeric"
                     )
         # Validate cache_hit_rate range if present (0.0 to 1.0)
         if "cache_hit_rate" in efficiency and efficiency["cache_hit_rate"] is not None:
             rate = efficiency["cache_hit_rate"]
-            if isinstance(rate, (int, float)) and not (0.0 <= rate <= 1.0):
+            if isinstance(rate, int | float) and not (0.0 <= rate <= 1.0):
                 raise InsightsValidationError(
                     f"Field 'token_metrics.efficiency.cache_hit_rate' must be between 0.0 and 1.0, got {rate}"
                 )
@@ -355,7 +355,7 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
     ]
     for field in numeric_fields:
         if field in insights and insights[field] is not None:
-            if not isinstance(insights[field], (int, float)):
+            if not isinstance(insights[field], int | float):
                 raise InsightsValidationError(f"Field '{field}' must be numeric")
 
     # Validate user_mood range if present

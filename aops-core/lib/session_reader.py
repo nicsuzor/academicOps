@@ -603,9 +603,7 @@ def build_critic_session_context(transcript_path: Path | str) -> str:
         return "(No transcript path available)"
 
     processor = SessionProcessor()
-    _, entries, _ = processor.parse_session_file(
-        path, load_agents=False, load_hooks=False
-    )
+    _, entries, _ = processor.parse_session_file(path, load_agents=False, load_hooks=False)
 
     if not entries:
         return "(Empty session)"
@@ -1065,7 +1063,7 @@ def _extract_skill_scope_from_file(path: Path) -> str | None:
     return "\n".join(lines)
 
 
-def _extract_todos(entries: list[dict]) -> dict[str, Any] | None:
+def _extract_todos(entries: list[Any]) -> dict[str, Any] | None:
     """Extract current TodoWrite state with full todo list.
 
     Returns complete todo information for compliance checking,

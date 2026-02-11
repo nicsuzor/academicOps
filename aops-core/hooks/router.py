@@ -34,11 +34,6 @@ if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
 try:
-    from lib.gate_model import GateResult
-    from lib.hook_utils import is_subagent_session
-    from lib.session_paths import get_pid_session_map_path, get_session_status_dir
-    from lib.session_state import SessionState
-
     from hooks.gate_config import (
         GATE_EXECUTION_ORDER,
         MAIN_AGENT_ONLY_GATES,
@@ -55,6 +50,10 @@ try:
         HookContext,
     )
     from hooks.unified_logger import log_hook_event
+    from lib.gate_model import GateResult
+    from lib.hook_utils import is_subagent_session
+    from lib.session_paths import get_pid_session_map_path, get_session_status_dir
+    from lib.session_state import SessionState
 except ImportError as e:
     # Fail fast if schemas missing
     print(f"CRITICAL: Failed to import: {e}", file=sys.stderr)
@@ -73,7 +72,7 @@ GEMINI_EVENT_MAP = {
     "SessionEnd": "Stop",  # Map SessionEnd to Stop to trigger stop gates
     "Notification": "Notification",
     "PreCompress": "PreCompact",
-    "SubagentStop": "SubagentStop", # Explicit mapping if Gemini sends it
+    "SubagentStop": "SubagentStop",  # Explicit mapping if Gemini sends it
 }
 
 # --- Gate Status Display ---
@@ -100,7 +99,7 @@ def format_gate_status_icons(state: SessionState) -> str:
         gate_state = state.gates.get(gate_name)
         if not gate_state or gate_state.status == "closed":
             blocking_gates.append(gate_name)
-        elif gate_state.blocked: # Explicit block
+        elif gate_state.blocked:  # Explicit block
             blocking_gates.append(gate_name)
 
     # Format output
@@ -291,8 +290,8 @@ class HookRouter:
         subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE")
 
         return HookContext(
-            session_id=session_id,
-            hook_event=hook_event,
+            session_id=str(session_id),
+            hook_event=str(hook_event),
             agent_id=raw_input.get("agentId"),
             slug=raw_input.get("slug"),
             is_sidechain=is_subagent or raw_input.get("isSidechain"),
@@ -347,6 +346,7 @@ class HookRouter:
 
             except Exception as e:
                 import traceback
+
                 error_msg = f"Gate '{gate_name}' failed: {e}"
                 print(error_msg, file=sys.stderr)
                 merged_result.metadata.setdefault("errors", []).append(error_msg)

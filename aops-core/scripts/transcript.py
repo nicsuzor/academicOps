@@ -348,7 +348,7 @@ def _generate_transcript_filename(
     session_path: Path,
     entries: list,
     slug: str | None = None,
-    processor: "SessionProcessor" = None,
+    processor: "SessionProcessor | None" = None,
 ) -> tuple[str, str, str, str, str]:
     """Generate consistent transcript filename."""
     # 1. Date and Hour
@@ -387,7 +387,7 @@ def _generate_transcript_filename(
         date_str,
         short_project,
         session_id,
-        slug
+        slug,
     )
 
 

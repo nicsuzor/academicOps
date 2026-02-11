@@ -35,19 +35,19 @@ flowchart LR
     Queue[Task Queue] -->|Claim| Worker1[Polecat Worker 1]
     Queue -->|Claim| Worker2[Polecat Worker 2]
     Queue -->|Claim| Worker3[Polecat Worker 3]
-    
+
     Worker1 -->|Finish| MergeReady[Status: merge_ready]
     Worker2 -->|Finish| MergeReady
     Worker3 -->|Finish| MergeReady
-    
+
     MergeReady -->|Queue| Refinery
-    
+
     Refinery -->|Simple/Safe| AutoMerge[Auto Merge]
     Refinery -->|Complex/Risk| Engineer[Engineer Review]
-    
+
     Engineer -->|Approve| AutoMerge
     Engineer -->|Reject| Return[Return to Worker]
-    
+
     AutoMerge -->|Success| Done[Status: done]
     AutoMerge -->|Fail| Return
 ```

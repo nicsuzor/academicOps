@@ -220,16 +220,16 @@ Index files are root-level files for agent consumption. The auditing agent curat
 
 #### Per-File Instructions
 
-| Index File | Sources | Key Judgment |
-|-----------|---------|-------------|
-| AXIOMS.md | `axioms/*.md` files | Priority ordering, concise summaries |
-| HEURISTICS.md | `heuristics/*.md` files | Priority ordering, concise summaries |
-| SKILLS.md | `skills/*/SKILL.md` frontmatter, `commands/*.md` | Routing triggers, description accuracy |
-| WORKFLOWS.md | `workflows/*.md`, `skills/*/workflows/*.md` | Decision tree accuracy, scope routing |
-| INDEX.md | Filesystem scan of `$AOPS/` | File tree with accurate purpose annotations |
-| enforcement-map.md | `hooks/*.py` "Enforces:" docstrings, `gate_config.py` | Axiom-to-hook mapping accuracy |
-| docs/ENFORCEMENT.md | `specs/enforcement.md`, existing content | Mechanism ladder, root cause model |
-| README.md (flowchart) | `hooks/router.py`, `gate_config.py`, `gates.py` | Invoke `Skill(skill="flowchart")` first. Mermaid accuracy |
+| Index File            | Sources                                               | Key Judgment                                              |
+| --------------------- | ----------------------------------------------------- | --------------------------------------------------------- |
+| AXIOMS.md             | `axioms/*.md` files                                   | Priority ordering, concise summaries                      |
+| HEURISTICS.md         | `heuristics/*.md` files                               | Priority ordering, concise summaries                      |
+| SKILLS.md             | `skills/*/SKILL.md` frontmatter, `commands/*.md`      | Routing triggers, description accuracy                    |
+| WORKFLOWS.md          | `workflows/*.md`, `skills/*/workflows/*.md`           | Decision tree accuracy, scope routing                     |
+| INDEX.md              | Filesystem scan of `$AOPS/`                           | File tree with accurate purpose annotations               |
+| enforcement-map.md    | `hooks/*.py` "Enforces:" docstrings, `gate_config.py` | Axiom-to-hook mapping accuracy                            |
+| docs/ENFORCEMENT.md   | `specs/enforcement.md`, existing content              | Mechanism ladder, root cause model                        |
+| README.md (flowchart) | `hooks/router.py`, `gate_config.py`, `gates.py`       | Invoke `Skill(skill="flowchart")` first. Mermaid accuracy |
 
 #### WORKFLOWS.md Curation
 
@@ -250,11 +250,11 @@ Index files are root-level files for agent consumption. The auditing agent curat
 **Table format**:
 
 ```markdown
-| Workflow | When to Use | Bases |
-| -------- | ----------- | ----- |
-| [[tdd-cycle]] | Any testable code change | task-tracking, tdd, verification, commit |
-| [[debugging]] | Cause unknown, investigating | task-tracking, verification |
-| [[simple-question]] | Pure information, no modifications | - |
+| Workflow            | When to Use                        | Bases                                    |
+| ------------------- | ---------------------------------- | ---------------------------------------- |
+| [[tdd-cycle]]       | Any testable code change           | task-tracking, tdd, verification, commit |
+| [[debugging]]       | Cause unknown, investigating       | task-tracking, verification              |
+| [[simple-question]] | Pure information, no modifications | -                                        |
 ```
 
 **Why this matters**: The `bases:` metadata enables the hydrator to compose workflow steps rather than just listing options (see task aops-4f512f50).
@@ -315,7 +315,7 @@ Skills with multiple workflows/modes MUST have each sub-workflow documented sepa
 | session-insights | Session transcript analysis | Current (default), Batch, Issues             |
 | audit            | Framework governance        | Full audit (default), Session effectiveness  |
 | tasks            | Task lifecycle              | View/archive/create (default), Email capture |
-````
+```
 
 **Rules**:
 

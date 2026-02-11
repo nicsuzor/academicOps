@@ -16,6 +16,7 @@ if str(AOPS_CORE) not in sys.path:
 from hooks.gate_config import TOOL_CATEGORIES, get_tool_category
 from hooks.gates import check_tool_gate
 from hooks.schemas import HookContext
+
 from lib.gate_model import GateVerdict
 from lib.session_state import SessionState
 

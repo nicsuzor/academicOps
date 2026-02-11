@@ -4,4 +4,4 @@
 
 - It is not sufficient to enact the steps without invoking the `handover` skill -- this will not be recognised by the system.
 - Using mutating tools (Edit, Write, Bash, git) after handover will reset this gate and require you to invoke `/handover` again.
-</aops-warning>
+  </aops-warning>

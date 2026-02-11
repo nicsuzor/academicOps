@@ -117,12 +117,12 @@ Workers use MCP tools directly:
 
 ### Known Limitations
 
-| Issue | Workaround |
-|-------|------------|
-| Skill tool denied | Use MCP tools directly |
-| Can't kill agents | Wait for natural completion |
-| Race conditions | Check status/assignee before claiming |
-| Notifications unreliable | Use fire-and-forget + MCP polling |
+| Issue                    | Workaround                            |
+| ------------------------ | ------------------------------------- |
+| Skill tool denied        | Use MCP tools directly                |
+| Can't kill agents        | Wait for natural completion           |
+| Race conditions          | Check status/assignee before claiming |
+| Notifications unreliable | Use fire-and-forget + MCP polling     |
 
 ### References
 

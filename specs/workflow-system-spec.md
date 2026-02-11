@@ -208,18 +208,24 @@ Base workflows are reusable patterns that specialized workflows compose:
 
 The feature-dev workflow will be the first implementation, using itself as the dogfooding example.
 
-### Steps (from user specification):
+### Steps (from user specification)
 
-1. User story - Gather user story with concrete examples
+1. User story
+
+- Gather user story with concrete examples
+
 2. Acceptance criteria - Define what constitutes success
 3. Spec → critic loop - Design spec, get critic review, iterate
 4. Human approval - Get user sign-off on approach
 5. TDD - Test-driven development implementation
 6. QA demo test - Independent verification before completion
 
-### Composition Example:
+### Composition Example
 
-- `feature-dev.md` references `[[spec-review]]` for step 3
+- `feature-dev.md` references
+
+`[[spec-review]]` for step 3
+
 - `spec-review.md` defines the spec → critic iteration loop
 - `feature-dev.md` references `[[tdd-cycle]]` for step 5
 - `tdd-cycle.md` defines red-green-refactor loop
