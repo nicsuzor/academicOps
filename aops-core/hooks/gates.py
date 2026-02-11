@@ -155,6 +155,7 @@ def on_session_start(ctx: HookContext, state: SessionState) -> GateResult | None
     # We provide references here to help debugging
     messages = [
         f"🚀 Session Started: {ctx.session_id} ({short_hash})",
+        f"Version: {state.version}",
         f"State File: {state_file_path}",
         f"Hooks log: {hook_log_path}",
         f"Transcript: {transcript_path}",
