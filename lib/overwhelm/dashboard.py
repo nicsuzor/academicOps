@@ -2473,7 +2473,7 @@ st.markdown(
         background-color: var(--bg-card);
         border: 1px solid var(--border-subtle);
         border-radius: 8px;
-        padding: 0; 
+        padding: 0;
         overflow: hidden;
     }
 
@@ -2509,7 +2509,7 @@ st.markdown(
         padding: 6px 0;
         border-bottom: 1px solid rgba(255, 255, 255, 0.03);
     }
-    
+
     .project-task:last-child {
         border-bottom: none;
     }
@@ -2519,7 +2519,7 @@ st.markdown(
         color: var(--text-secondary);
         line-height: 1.4;
     }
-    
+
     .project-task-text strong, .project-task-text b {
         color: var(--text-primary);
         font-weight: 600;
@@ -2536,22 +2536,22 @@ st.markdown(
         letter-spacing: 0.05em;
     }
 
-    .project-task-priority.p0 { 
-        background: rgba(239, 68, 68, 0.2); 
-        color: #ef4444; 
+    .project-task-priority.p0 {
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
         border: 1px solid rgba(239, 68, 68, 0.3);
     }
-    .project-task-priority.p1 { 
-        background: rgba(249, 115, 22, 0.2); 
-        color: #f97316; 
+    .project-task-priority.p1 {
+        background: rgba(249, 115, 22, 0.2);
+        color: #f97316;
         border: 1px solid rgba(249, 115, 22, 0.3);
     }
-    .project-task-priority.p2 { 
-        background: rgba(99, 102, 241, 0.2); 
-        color: #818cf8; 
+    .project-task-priority.p2 {
+        background: rgba(99, 102, 241, 0.2);
+        color: #818cf8;
         border: 1px solid rgba(99, 102, 241, 0.3);
     }
-    
+
     /* Agent Status Panel */
     .agent-status-panel {
         background-color: #0f172a;
@@ -4835,7 +4835,7 @@ try:
 
         for proj, proj_threads in threads_by_project.items():
             proj_color = get_project_color(proj)
-            path_html += f"<div class='path-project-group'>"
+            path_html += "<div class='path-project-group'>"
             path_html += f"<div class='path-project-header' style='color: {proj_color}; border-left: 3px solid {proj_color}'>{esc(proj).upper()}</div>"
             path_html += "<div class='path-threads'>"
 
@@ -4846,7 +4846,11 @@ try:
 
                 path_html += "<div class='path-thread' style='border-left-color: {proj_color}66'>"
                 sid_display = esc(thread.session_id[:8])
-                goal_display = esc(thread.initial_goal[:40] + "..." if len(thread.initial_goal) > 40 else thread.initial_goal)
+                goal_display = esc(
+                    thread.initial_goal[:120] + "..."
+                    if len(thread.initial_goal) > 120
+                    else thread.initial_goal
+                )
                 path_html += f"<div class='path-thread-header' title='{esc(thread.initial_goal)}'>{goal_display} <span class='session-hash'>({sid_display})</span></div>"
 
                 # Consolidate consecutive TASK_UPDATE events
@@ -4908,7 +4912,7 @@ try:
 
         path_html += "</div>"  # end path-timeline
         st.markdown(path_html, unsafe_allow_html=True)
-except Exception as e:
+except Exception:
     pass  # Path reconstruction is non-critical; fail silently
 
 # === RECENT PROMPTS SECTION ===
