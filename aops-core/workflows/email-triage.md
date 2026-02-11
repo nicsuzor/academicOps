@@ -1,10 +1,10 @@
 ---
-id: triage-email
+id: email-triage
 category: operations
 bases: [base-task-tracking]
 ---
 
-# Triage Email Workflow
+# Email Triage
 
 Classify emails into actionable categories.
 

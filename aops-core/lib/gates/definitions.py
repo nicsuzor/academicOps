@@ -103,8 +103,8 @@ GATE_CONFIGS = [
         ],
     ),
     # --- Custodiet ---
+    # Note: temp file reuse is implemented via session hash in write_temp_file() (P#102)
     GateConfig(
-        # <!-- NS: ensure that each gate only creates one temporary file per session -- don't create a new audit file every hook action, just keep overwriting the same one. -->
         name="custodiet",
         description="Enforces periodic compliance checks.",
         initial_status=GateStatus.OPEN,
@@ -178,76 +178,143 @@ GATE_CONFIGS = [
         ],
     ),
     # --- Critic ---
-    # <!-- NS: revise this, this is NOT the critic gate we designed. It should close after hydration and block any edit tools until a plan with a satisfactory review is complete. -->
+    # Closes after hydration, blocks edit tools until plan is reviewed and approved by critic.
     GateConfig(
         name="critic",
-        description="Encourages periodic review.",
-        initial_status=GateStatus.OPEN,
+        description="Blocks edit tools until plan is reviewed and approved.",
+        initial_status=GateStatus.OPEN,  # Open at session start (no plan yet)
         triggers=[
+            # Hydration complete -> Close (plan exists, needs review)
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="SubagentStop", subagent_type_pattern="hydrator"
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.CLOSED,
+                    system_message_template="📋 Plan ready for review. Invoke critic before editing.",
+                ),
+            ),
+            # Fallback: Task tool with hydrator completes -> Close
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="PostToolUse",
+                    tool_name_pattern="Task",
+                    tool_input_pattern="hydrator",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.CLOSED,
+                    system_message_template="📋 Plan ready for review. Invoke critic before editing.",
+                ),
+            ),
+            # Critic review complete -> Open (can now edit)
             GateTrigger(
                 condition=GateCondition(hook_event="SubagentStop", subagent_type_pattern="critic"),
                 transition=GateTransition(
-                    reset_ops_counter=True, system_message_template="👁️ Critic review complete."
+                    target_status=GateStatus.OPEN,
+                    reset_ops_counter=True,
+                    system_message_template="👁️ Critic review complete. Edit tools enabled.",
+                ),
+            ),
+            # Fallback: Task tool with critic completes -> Open
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="PostToolUse",
+                    tool_name_pattern="Task",
+                    tool_input_pattern="critic",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.OPEN,
+                    reset_ops_counter=True,
                 ),
             ),
         ],
         policies=[
+            # If Closed, block edit tools (except always_available)
             GatePolicy(
                 condition=GateCondition(
+                    current_status=GateStatus.CLOSED,
                     hook_event="PreToolUse",
-                    min_ops_since_open=20,
-                    excluded_tool_categories=["always_available"],
+                    tool_name_pattern="Edit|Write|NotebookEdit",
                 ),
-                verdict="warn",
-                message_template="Consider invoking 'critic' for review ({ops_since_open} ops since last check).",
-            )
+                verdict="deny",
+                message_template="⛔ Critic review required before editing. Invoke critic agent first.",
+                context_template=(
+                    "**CRITIC REVIEW REQUIRED**\n\n"
+                    "You must invoke the **critic** agent to review your plan before making edits.\n\n"
+                    "**Instruction**:\n"
+                    "- Claude: `Task(subagent_type='aops-core:critic', prompt='Review the plan in the hydration output')`"
+                ),
+            ),
         ],
     ),
     # --- QA ---
-    # <!-- NS: revise this, this is NOT the QA gate we designed. It should block exit until the we have complied with all the planned requirements (set after hydration, approved by critic) -->
+    # Blocks exit until planned requirements are verified by QA agent.
+    # Requirements are set after hydration and approved by critic.
     GateConfig(
         name="qa",
-        description="Ensures code quality.",
-        initial_status=GateStatus.CLOSED,
+        description="Blocks exit until planned requirements are verified.",
+        initial_status=GateStatus.OPEN,  # Open at session start (no requirements yet)
         triggers=[
+            # Critic approves plan -> Close (requirements now set, need verification before exit)
+            GateTrigger(
+                condition=GateCondition(hook_event="SubagentStop", subagent_type_pattern="critic"),
+                transition=GateTransition(
+                    target_status=GateStatus.CLOSED,
+                    system_message_template="🧪 QA gate closed. Run QA before exiting.",
+                ),
+            ),
+            # QA verification complete -> Open (can now exit)
             GateTrigger(
                 condition=GateCondition(hook_event="SubagentStop", subagent_type_pattern="qa"),
                 transition=GateTransition(
-                    target_status=GateStatus.OPEN, system_message_template="🧪 QA complete."
+                    target_status=GateStatus.OPEN,
+                    system_message_template="🧪 QA verification complete. Exit allowed.",
                 ),
-            )
+            ),
+            # Fallback: Task tool with qa completes -> Open
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="PostToolUse",
+                    tool_name_pattern="Task",
+                    tool_input_pattern="qa",
+                ),
+                transition=GateTransition(target_status=GateStatus.OPEN),
+            ),
         ],
         policies=[
+            # If Closed, block Stop (exit)
             GatePolicy(
                 condition=GateCondition(
-                    hook_event="PreToolUse",
-                    min_ops_since_open=30,
-                    excluded_tool_categories=["always_available"],
+                    current_status=GateStatus.CLOSED,
+                    hook_event="Stop",
                 ),
-                verdict="warn",
-                message_template="Consider running QA ({ops_since_open} ops since last QA).",
-            )
+                verdict="deny",
+                message_template="⛔ QA verification required before exit. Invoke QA agent first.",
+                context_template=(
+                    "**QA VERIFICATION REQUIRED**\n\n"
+                    "You must invoke the **qa** agent to verify planned requirements before exiting.\n\n"
+                    "**Instruction**:\n"
+                    "- Claude: `Task(subagent_type='aops-core:qa', prompt='Verify planned requirements are met')`"
+                ),
+            ),
         ],
     ),
     # --- Handover ---
-    # <!-- NS: revise this, this is NOT the handover gate. It should require a reflection printed in the form expected by transcript.py -->
-    # GateConfig(
-    #     name="handover",
-    #     description="Manages session length.",
-    #     initial_status=GateStatus.OPEN,
-    #     triggers=[],
-    #     policies=[
-    #         # Note: min_turns_since_open is relative to last open.
-    #         # If never closed, it equals global turns if opened at start.
-    #         GatePolicy(
-    #             condition=GateCondition(
-    #                 hook_event="PreToolUse",
-    #                 min_turns_since_open=50,
-    #                 excluded_tool_categories=["always_available"],
-    #             ),
-    #             verdict="warn",
-    #             message_template="Session is getting long ({ops_since_open} turns). Consider summarizing and starting a new session.",
-    #         )
-    #     ],
-    # ),
+    # TODO: Implement handover gate that blocks Stop until Framework Reflection is output.
+    # Expected format (see aops-core/commands/learn.md):
+    #   ## Framework Reflection
+    #   **Prompts**: [trigger]
+    #   **Guidance received**: [guidance or N/A]
+    #   **Followed**: Yes/No
+    #   **Outcome**: success/partial/blocked/failure
+    #   **Accomplishments**: [list]
+    #   **Friction points**: [list or "none"]
+    #   **Root cause** (if not success): [category]
+    #   **Proposed changes**: [list]
+    #   **Next step**: [task reference if needed]
+    #
+    # Implementation requires:
+    # - custom_check to detect reflection in recent output (via transcript/session reader)
+    # - Block Stop hook until reflection detected
+    # - Trigger open when valid reflection format is found
 ]

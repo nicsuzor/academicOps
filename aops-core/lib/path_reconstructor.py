@@ -65,15 +65,44 @@ def _parse_timestamp(ts_str: str | None) -> datetime | None:
         return None
 
 
-def _build_thread_from_summary(summary: dict) -> SessionThread | None:
+def _extract_slug_from_filename(filename: str) -> str:
+    """Extract the human-readable slug from a summary filename.
+
+    Filename format: YYYYMMDD-HH-project-sessionid-slug.json
+    Example: 20260210-13-academicops-3cc6c91f-bash-input-export.json
+             -> "bash input export"
+
+    Args:
+        filename: The filename (stem, no extension)
+
+    Returns:
+        Human-readable slug with hyphens replaced by spaces, or empty string
+    """
+    parts = filename.split("-")
+    # Skip date (YYYYMMDD), hour (HH), project, session_id
+    # Format: YYYYMMDD-HH-project-sessionid-slug-parts...
+    if len(parts) >= 5:
+        # parts[0] = YYYYMMDD, parts[1] = HH, parts[2] = project,
+        # parts[3] = sessionid, parts[4:] = slug
+        slug_parts = parts[4:]
+        if slug_parts:
+            return " ".join(slug_parts).replace("-", " ")
+    return ""
+
+
+def _build_thread_from_summary(
+    summary: dict, filename_slug: str = ""
+) -> SessionThread | None:
     """Build a SessionThread from a summary JSON dict.
 
     Reads timeline_events array from summary. For summaries without
     timeline_events (pre-enrichment), builds minimal thread from
-    date + accomplishments.
+    date + accomplishments. Falls back to filename slug if no other
+    content is available.
 
     Args:
         summary: Parsed summary JSON dict
+        filename_slug: Optional slug extracted from filename for fallback
 
     Returns:
         SessionThread or None if insufficient data
@@ -135,6 +164,9 @@ def _build_thread_from_summary(summary: dict) -> SessionThread | None:
             initial_goal = summary_text
         elif accomplishments:
             initial_goal = accomplishments[0] if accomplishments else ""
+        elif filename_slug:
+            # Use filename slug as last resort (e.g., "bash input export")
+            initial_goal = filename_slug.title()
 
         # Add a synthetic session_start event
         if start_time:
@@ -157,6 +189,16 @@ def _build_thread_from_summary(summary: dict) -> SessionThread | None:
             ))
 
     if not events and not initial_goal:
+        return None
+
+    # Filter out sessions with only generic "session" content and no real events
+    # These are token-metrics-only summaries that don't add value to the path view
+    is_generic_session = (
+        initial_goal.lower() in ("session", "session started", "")
+        and len(events) <= 1
+        and all(e.event_type == EventType.SESSION_START for e in events)
+    )
+    if is_generic_session:
         return None
 
     # Determine start_time from first event if not from date
@@ -262,7 +304,10 @@ def reconstruct_path(hours: int = 24) -> ReconstructedPath:
             continue
         seen_sessions.add(session_id)
 
-        thread = _build_thread_from_summary(summary)
+        # Extract filename slug for fallback goal
+        filename_slug = _extract_slug_from_filename(name)
+
+        thread = _build_thread_from_summary(summary, filename_slug)
         if thread:
             threads.append(thread)
 

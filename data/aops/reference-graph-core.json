@@ -1,5 +1,5 @@
 {
-  "generated": "2026-02-08T14:11:44+10:00",
+  "generated": "2026-02-11T13:09:15+10:00",
   "framework_root": "/home/nic/src/academicOps/aops-core",
   "nodes": [
     {
@@ -96,12 +96,6 @@
       "id": "hooks/autocommit_state.py"
     },
     {
-      "id": "hooks/command_intercept.py"
-    },
-    {
-      "id": "hooks/fail_fast_watchdog.py"
-    },
-    {
       "id": "hooks/gate_config.py"
     },
     {
@@ -142,6 +136,9 @@
     },
     {
       "id": "hooks/templates/README.md"
+    },
+    {
+      "id": "hooks/templates/critic-context.md"
     },
     {
       "id": "hooks/templates/custodiet-audit.md"
@@ -222,10 +219,37 @@
       "id": "lib/gate_model.py"
     },
     {
+      "id": "lib/gate_types.py"
+    },
+    {
+      "id": "lib/gate_utils.py"
+    },
+    {
+      "id": "lib/gates/__init__.py"
+    },
+    {
+      "id": "lib/gates/custom_actions.py"
+    },
+    {
+      "id": "lib/gates/custom_conditions.py"
+    },
+    {
+      "id": "lib/gates/definitions.py"
+    },
+    {
+      "id": "lib/gates/engine.py"
+    },
+    {
+      "id": "lib/gates/registry.py"
+    },
+    {
       "id": "lib/hook_utils.py"
     },
     {
       "id": "lib/insights_generator.py"
+    },
+    {
+      "id": "lib/path_reconstructor.py"
     },
     {
       "id": "lib/paths.py"
@@ -696,6 +720,18 @@
       "id": "skills/task-viz/SKILL.md"
     },
     {
+      "id": "tests/hooks/test_gates_commit_check.py"
+    },
+    {
+      "id": "tests/hooks/test_gates_unification.py"
+    },
+    {
+      "id": "tests/hooks/test_user_prompt_submit.py"
+    },
+    {
+      "id": "tests/hydrator/test_github_cold_start.md"
+    },
+    {
       "id": "workflows/audit.md"
     },
     {
@@ -763,6 +799,9 @@
     },
     {
       "id": "workflows/framework-gate.md"
+    },
+    {
+      "id": "workflows/github-issue-cycle.md"
     },
     {
       "id": "workflows/handover.md"
@@ -984,11 +1023,11 @@
       "path_category": "env_var",
       "refs": [
         {
-          "line": 509,
+          "line": 510,
           "raw": "$AOPS/aops-core/hooks/gate_registry.py"
         },
         {
-          "line": 510,
+          "line": 511,
           "raw": "$AOPS/aops-core/hooks/gate_registry.py"
         }
       ]
@@ -1001,7 +1040,7 @@
       "path_category": "env_var",
       "refs": [
         {
-          "line": 511,
+          "line": 512,
           "raw": "$AOPS/aops-core/hooks/unified_logger.py"
         }
       ]
@@ -1014,7 +1053,7 @@
       "path_category": "env_var",
       "refs": [
         {
-          "line": 512,
+          "line": 513,
           "raw": "$AOPS/aops-core/hooks/user_prompt_submit.py"
         }
       ]
@@ -1027,7 +1066,7 @@
       "path_category": "env_var",
       "refs": [
         {
-          "line": 520,
+          "line": 521,
           "raw": "$AOPS/aops-core/lib/session_state.py"
         }
       ]
@@ -1040,7 +1079,7 @@
       "path_category": "env_var",
       "refs": [
         {
-          "line": 517,
+          "line": 518,
           "raw": "$AOPS/aops-core/skills/remember/SKILL.md"
         }
       ]
@@ -1053,7 +1092,7 @@
       "path_category": "env_var",
       "refs": [
         {
-          "line": 518,
+          "line": 519,
           "raw": "$AOPS/aops-core/skills/remember/workflows/sync.md"
         }
       ]
@@ -1066,45 +1105,44 @@
       "path_category": "env_var",
       "refs": [
         {
-          "line": 519,
+          "line": 520,
           "raw": "$AOPS/aops-core/skills/session-insights/SKILL.md"
-        }
-      ]
-    },
-    {
-      "source": "hooks/fail_fast_watchdog.py",
-      "target": "lib/template_loader.py",
-      "weight": 1,
-      "ref_type": "python_import_from",
-      "path_category": "module",
-      "refs": [
-        {
-          "line": 27,
-          "raw": "from lib.template_loader import"
         }
       ]
     },
     {
       "source": "hooks/gate_registry.py",
       "target": "hooks/gates.py",
-      "weight": 4,
+      "weight": 7,
       "ref_type": "python_import_from",
       "path_category": "module",
       "refs": [
         {
-          "line": 1536,
+          "line": 13,
           "raw": "from hooks.gates import"
         },
         {
-          "line": 1539,
+          "line": 16,
           "raw": "from hooks.gates import"
         },
         {
-          "line": 1542,
+          "line": 19,
           "raw": "from hooks.gates import"
         },
         {
-          "line": 1545,
+          "line": 22,
+          "raw": "from hooks.gates import"
+        },
+        {
+          "line": 25,
+          "raw": "from hooks.gates import"
+        },
+        {
+          "line": 28,
+          "raw": "from hooks.gates import"
+        },
+        {
+          "line": 31,
           "raw": "from hooks.gates import"
         }
       ]
@@ -1117,7 +1155,7 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 17,
+          "line": 34,
           "raw": "from hooks.schemas import"
         }
       ]
@@ -1130,21 +1168,47 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 14,
+          "line": 9,
           "raw": "from lib.gate_model import"
         }
       ]
     },
     {
       "source": "hooks/gate_registry.py",
-      "target": "lib/paths.py",
+      "target": "lib/session_state.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 10,
+          "raw": "from lib.session_state import"
+        }
+      ]
+    },
+    {
+      "source": "hooks/gates.py",
+      "target": "hooks/schemas.py",
       "weight": 1,
       "ref_type": "python_import_from",
       "path_category": "module",
       "refs": [
         {
           "line": 15,
-          "raw": "from lib.paths import"
+          "raw": "from hooks.schemas import"
+        }
+      ]
+    },
+    {
+      "source": "hooks/gates.py",
+      "target": "hooks/unified_logger.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 16,
+          "raw": "from hooks.unified_logger import"
         }
       ]
     },
@@ -1156,8 +1220,34 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 22,
+          "line": 11,
           "raw": "from lib.gate_model import"
+        }
+      ]
+    },
+    {
+      "source": "hooks/gates.py",
+      "target": "lib/gates/registry.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 12,
+          "raw": "from lib.gates.registry import"
+        }
+      ]
+    },
+    {
+      "source": "hooks/gates.py",
+      "target": "lib/session_state.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 13,
+          "raw": "from lib.session_state import"
         }
       ]
     },
@@ -1182,7 +1272,7 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 32,
+          "line": 30,
           "raw": "from lib.insights_generator import"
         }
       ]
@@ -1195,7 +1285,7 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 30,
+          "line": 31,
           "raw": "from lib.reflection_detector import"
         }
       ]
@@ -1208,7 +1298,7 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 31,
+          "line": 32,
           "raw": "from lib.session_paths import"
         }
       ]
@@ -1247,7 +1337,7 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 21,
+          "line": 19,
           "raw": "from lib.gate_model import"
         }
       ]
@@ -1286,7 +1376,7 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 42,
+          "line": 23,
           "raw": "from hooks.internal_models import"
         }
       ]
@@ -1299,7 +1389,7 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 43,
+          "line": 24,
           "raw": "from hooks.schemas import"
         }
       ]
@@ -1312,21 +1402,8 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 41,
+          "line": 19,
           "raw": "from lib.gate_model import"
-        }
-      ]
-    },
-    {
-      "source": "hooks/unified_logger.py",
-      "target": "lib/insights_generator.py",
-      "weight": 1,
-      "ref_type": "python_import_from",
-      "path_category": "module",
-      "refs": [
-        {
-          "line": 24,
-          "raw": "from lib.insights_generator import"
         }
       ]
     },
@@ -1338,7 +1415,7 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 29,
+          "line": 20,
           "raw": "from lib.session_paths import"
         }
       ]
@@ -1351,7 +1428,7 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 32,
+          "line": 21,
           "raw": "from lib.session_state import"
         }
       ]
@@ -1364,7 +1441,7 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 20,
+          "line": 21,
           "raw": "from lib.file_index import"
         }
       ]
@@ -1377,15 +1454,15 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 21,
+          "line": 22,
           "raw": "from lib.hook_utils import"
         },
         {
-          "line": 24,
+          "line": 25,
           "raw": "from lib.hook_utils import"
         },
         {
-          "line": 27,
+          "line": 28,
           "raw": "from lib.hook_utils import"
         }
       ]
@@ -1398,7 +1475,7 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 30,
+          "line": 31,
           "raw": "from lib.paths import"
         }
       ]
@@ -1411,7 +1488,7 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 47,
+          "line": 48,
           "raw": "from lib.session_reader import"
         }
       ]
@@ -1424,7 +1501,7 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 48,
+          "line": 49,
           "raw": "from lib.session_state import"
         }
       ]
@@ -1437,7 +1514,7 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 53,
+          "line": 50,
           "raw": "from lib.template_loader import"
         }
       ]
@@ -1495,6 +1572,214 @@
       ]
     },
     {
+      "source": "lib/gate_utils.py",
+      "target": "hooks/schemas.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 3,
+          "raw": "from hooks.schemas import"
+        }
+      ]
+    },
+    {
+      "source": "lib/gate_utils.py",
+      "target": "lib/template_registry.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 6,
+          "raw": "from lib.template_registry import"
+        }
+      ]
+    },
+    {
+      "source": "lib/gates/custom_actions.py",
+      "target": "hooks/schemas.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 1,
+          "raw": "from hooks.schemas import"
+        }
+      ]
+    },
+    {
+      "source": "lib/gates/custom_actions.py",
+      "target": "lib/gate_model.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 3,
+          "raw": "from lib.gate_model import"
+        }
+      ]
+    },
+    {
+      "source": "lib/gates/custom_actions.py",
+      "target": "lib/gate_types.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 4,
+          "raw": "from lib.gate_types import"
+        }
+      ]
+    },
+    {
+      "source": "lib/gates/custom_actions.py",
+      "target": "lib/session_state.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 5,
+          "raw": "from lib.session_state import"
+        }
+      ]
+    },
+    {
+      "source": "lib/gates/custom_conditions.py",
+      "target": "hooks/schemas.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 1,
+          "raw": "from hooks.schemas import"
+        }
+      ]
+    },
+    {
+      "source": "lib/gates/custom_conditions.py",
+      "target": "lib/gate_types.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 3,
+          "raw": "from lib.gate_types import"
+        }
+      ]
+    },
+    {
+      "source": "lib/gates/custom_conditions.py",
+      "target": "lib/session_state.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 4,
+          "raw": "from lib.session_state import"
+        }
+      ]
+    },
+    {
+      "source": "lib/gates/definitions.py",
+      "target": "lib/gate_types.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 3,
+          "raw": "from lib.gate_types import"
+        }
+      ]
+    },
+    {
+      "source": "lib/gates/engine.py",
+      "target": "hooks/schemas.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 7,
+          "raw": "from hooks.schemas import"
+        }
+      ]
+    },
+    {
+      "source": "lib/gates/engine.py",
+      "target": "lib/gate_model.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 9,
+          "raw": "from lib.gate_model import"
+        }
+      ]
+    },
+    {
+      "source": "lib/gates/engine.py",
+      "target": "lib/gate_types.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 10,
+          "raw": "from lib.gate_types import"
+        }
+      ]
+    },
+    {
+      "source": "lib/gates/engine.py",
+      "target": "lib/session_state.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 17,
+          "raw": "from lib.session_state import"
+        }
+      ]
+    },
+    {
+      "source": "lib/gates/registry.py",
+      "target": "lib/gates/engine.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 1,
+          "raw": "from lib.gates.engine import"
+        }
+      ]
+    },
+    {
+      "source": "lib/hook_utils.py",
+      "target": "lib/paths.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 20,
+          "raw": "from lib.paths import"
+        }
+      ]
+    },
+    {
       "source": "lib/hook_utils.py",
       "target": "lib/session_paths.py",
       "weight": 1,
@@ -1502,8 +1787,21 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 21,
+          "line": 25,
           "raw": "from lib.session_paths import"
+        }
+      ]
+    },
+    {
+      "source": "lib/hook_utils.py",
+      "target": "lib/template_loader.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 26,
+          "raw": "from lib.template_loader import"
         }
       ]
     },
@@ -1599,6 +1897,32 @@
       ]
     },
     {
+      "source": "lib/session_state.py",
+      "target": "lib/gate_types.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 29,
+          "raw": "from lib.gate_types import"
+        }
+      ]
+    },
+    {
+      "source": "lib/session_state.py",
+      "target": "lib/session_paths.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 30,
+          "raw": "from lib.session_paths import"
+        }
+      ]
+    },
+    {
       "source": "lib/task_index.py",
       "target": "lib/paths.py",
       "weight": 1,
@@ -1671,7 +1995,7 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 28,
+          "line": 27,
           "raw": "from lib.task_model import"
         }
       ]
@@ -1684,7 +2008,7 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 27,
+          "line": 28,
           "raw": "from lib.task_storage import"
         }
       ]
@@ -1710,7 +2034,7 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 37,
+          "line": 36,
           "raw": "from lib.paths import"
         }
       ]
@@ -1723,7 +2047,7 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 38,
+          "line": 37,
           "raw": "from lib.task_index import"
         }
       ]
@@ -1736,7 +2060,7 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 39,
+          "line": 38,
           "raw": "from lib.task_model import"
         }
       ]
@@ -1749,7 +2073,7 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 40,
+          "line": 39,
           "raw": "from lib.task_storage import"
         }
       ]
@@ -1788,7 +2112,7 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 40,
+          "line": 27,
           "raw": "from lib.insights_generator import"
         }
       ]
@@ -1801,7 +2125,7 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 39,
+          "line": 34,
           "raw": "from lib.paths import"
         }
       ]
@@ -1814,7 +2138,7 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 27,
+          "line": 35,
           "raw": "from lib.session_reader import"
         }
       ]
@@ -1827,7 +2151,7 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 28,
+          "line": 36,
           "raw": "from lib.transcript_parser import"
         }
       ]
@@ -1840,7 +2164,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 107,
+          "line": 85,
           "raw": "[[instructions/data-investigation.md]]"
         }
       ]
@@ -1853,15 +2177,15 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 109,
+          "line": 87,
           "raw": "[[instructions/dbt-workflow.md]]"
         },
         {
-          "line": 301,
+          "line": 279,
           "raw": "[[instructions/dbt-workflow.md]]"
         },
         {
-          "line": 318,
+          "line": 296,
           "raw": "[[instructions/dbt-workflow.md]]"
         }
       ]
@@ -1874,7 +2198,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 108,
+          "line": 86,
           "raw": "[[instructions/experiment-logging.md]]"
         }
       ]
@@ -1887,7 +2211,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 107,
+          "line": 85,
           "raw": "[[instructions/exploratory-analysis.md]]"
         }
       ]
@@ -1900,7 +2224,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 108,
+          "line": 86,
           "raw": "[[instructions/methodology-files.md]]"
         }
       ]
@@ -1913,7 +2237,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 108,
+          "line": 86,
           "raw": "[[instructions/methods-vs-methodology.md]]"
         }
       ]
@@ -1926,11 +2250,11 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 108,
+          "line": 86,
           "raw": "[[instructions/research-documentation.md]]"
         },
         {
-          "line": 475,
+          "line": 453,
           "raw": "[[instructions/research-documentation.md]]"
         }
       ]
@@ -1943,11 +2267,11 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 109,
+          "line": 87,
           "raw": "[[instructions/streamlit-workflow.md]]"
         },
         {
-          "line": 330,
+          "line": 308,
           "raw": "[[instructions/streamlit-workflow.md]]"
         }
       ]
@@ -1960,7 +2284,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 117,
+          "line": 95,
           "raw": "[[references/assumptions_and_diagnostics.md]]"
         }
       ]
@@ -1973,7 +2297,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 117,
+          "line": 95,
           "raw": "[[references/bayesian_statistics.md]]"
         }
       ]
@@ -1986,7 +2310,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 113,
+          "line": 91,
           "raw": "[[references/context-discovery.md]]"
         }
       ]
@@ -1999,19 +2323,19 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 113,
+          "line": 91,
           "raw": "[[references/dbt-workflow.md]]"
         },
         {
-          "line": 295,
+          "line": 273,
           "raw": "[[references/dbt-workflow.md]]"
         },
         {
-          "line": 318,
+          "line": 296,
           "raw": "[[references/dbt-workflow.md]]"
         },
         {
-          "line": 428,
+          "line": 406,
           "raw": "[[references/dbt-workflow.md]]"
         }
       ]
@@ -2024,7 +2348,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 117,
+          "line": 95,
           "raw": "[[references/effect_sizes_and_power.md]]"
         }
       ]
@@ -2037,7 +2361,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 121,
+          "line": 99,
           "raw": "[[references/matplotlib.md]]"
         }
       ]
@@ -2050,7 +2374,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 501,
+          "line": 479,
           "raw": "[[references/quick-reference-commands.md]]"
         }
       ]
@@ -2063,7 +2387,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 117,
+          "line": 95,
           "raw": "[[references/reporting_standards.md]]"
         }
       ]
@@ -2076,7 +2400,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 121,
+          "line": 99,
           "raw": "[[references/seaborn.md]]"
         }
       ]
@@ -2089,7 +2413,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 117,
+          "line": 95,
           "raw": "[[references/statistical-analysis.md]]"
         }
       ]
@@ -2102,7 +2426,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 121,
+          "line": 99,
           "raw": "[[references/statsmodels.md]]"
         }
       ]
@@ -2115,7 +2439,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 113,
+          "line": 91,
           "raw": "[[references/streamlit-patterns.md]]"
         }
       ]
@@ -2128,7 +2452,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 121,
+          "line": 99,
           "raw": "[[references/streamlit.md]]"
         }
       ]
@@ -2141,7 +2465,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 117,
+          "line": 95,
           "raw": "[[references/test_selection_guide.md]]"
         }
       ]
@@ -2427,21 +2751,8 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 516,
+          "line": 409,
           "raw": "[[references/report-format]]"
-        }
-      ]
-    },
-    {
-      "source": "skills/audit/SKILL.md",
-      "target": "skills/framework/workflows/05-feature-development.md",
-      "weight": 1,
-      "ref_type": "wikilink",
-      "path_category": "relative",
-      "refs": [
-        {
-          "line": 287,
-          "raw": "[[skills/framework/workflows/05-feature-development]]"
         }
       ]
     },
@@ -2466,7 +2777,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 383,
+          "line": 403,
           "raw": "[[instructions/sync-workflow.md]]"
         }
       ]
@@ -2479,7 +2790,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 399,
+          "line": 419,
           "raw": "[[references/note-template]]"
         }
       ]
@@ -2492,7 +2803,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 128,
+          "line": 148,
           "raw": "[[workflows/triage-email]]"
         }
       ]
@@ -2505,7 +2816,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 177,
+          "line": 184,
           "raw": "[[workflows/batch-processing]]"
         }
       ]
@@ -3277,26 +3588,13 @@
     },
     {
       "source": "skills/python-dev/SKILL.md",
-      "target": "AXIOMS.md",
-      "weight": 1,
-      "ref_type": "wikilink",
-      "path_category": "relative",
-      "refs": [
-        {
-          "line": 15,
-          "raw": "[[AXIOMS.md]]"
-        }
-      ]
-    },
-    {
-      "source": "skills/python-dev/SKILL.md",
       "target": "skills/python-dev/references/bigquery.md",
       "weight": 1,
       "ref_type": "wikilink",
       "path_category": "relative",
       "refs": [
         {
-          "line": 411,
+          "line": 387,
           "raw": "[[references/bigquery.md]]"
         }
       ]
@@ -3309,7 +3607,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 403,
+          "line": 379,
           "raw": "[[references/code-quality.md]]"
         }
       ]
@@ -3322,7 +3620,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 399,
+          "line": 375,
           "raw": "[[references/fail-fast.md]]"
         }
       ]
@@ -3335,7 +3633,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 409,
+          "line": 385,
           "raw": "[[references/fastapi.md]]"
         }
       ]
@@ -3348,7 +3646,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 410,
+          "line": 386,
           "raw": "[[references/fastmcp.md]]"
         }
       ]
@@ -3361,7 +3659,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 408,
+          "line": 384,
           "raw": "[[references/hydra.md]]"
         }
       ]
@@ -3374,7 +3672,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 402,
+          "line": 378,
           "raw": "[[references/modern-python.md]]"
         }
       ]
@@ -3387,7 +3685,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 407,
+          "line": 383,
           "raw": "[[references/pandas.md]]"
         }
       ]
@@ -3400,7 +3698,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 401,
+          "line": 377,
           "raw": "[[references/testing.md]]"
         }
       ]
@@ -3413,7 +3711,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 400,
+          "line": 376,
           "raw": "[[references/type-safety.md]]"
         }
       ]
@@ -3566,7 +3864,7 @@
       "path_category": "module",
       "refs": [
         {
-          "line": 22,
+          "line": 24,
           "raw": "from lib.insights_generator import"
         }
       ]
@@ -3581,6 +3879,149 @@
         {
           "line": 21,
           "raw": "from lib.insights_generator import"
+        }
+      ]
+    },
+    {
+      "source": "tests/hooks/test_gates_commit_check.py",
+      "target": "hooks/schemas.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 4,
+          "raw": "from hooks.schemas import"
+        }
+      ]
+    },
+    {
+      "source": "tests/hooks/test_gates_commit_check.py",
+      "target": "lib/gate_model.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 5,
+          "raw": "from lib.gate_model import"
+        }
+      ]
+    },
+    {
+      "source": "tests/hooks/test_gates_commit_check.py",
+      "target": "lib/gates/definitions.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 6,
+          "raw": "from lib.gates.definitions import"
+        }
+      ]
+    },
+    {
+      "source": "tests/hooks/test_gates_commit_check.py",
+      "target": "lib/gates/engine.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 7,
+          "raw": "from lib.gates.engine import"
+        }
+      ]
+    },
+    {
+      "source": "tests/hooks/test_gates_commit_check.py",
+      "target": "lib/session_state.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 8,
+          "raw": "from lib.session_state import"
+        }
+      ]
+    },
+    {
+      "source": "tests/hooks/test_gates_unification.py",
+      "target": "hooks/gates.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 5,
+          "raw": "from hooks.gates import"
+        }
+      ]
+    },
+    {
+      "source": "tests/hooks/test_gates_unification.py",
+      "target": "hooks/schemas.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 6,
+          "raw": "from hooks.schemas import"
+        }
+      ]
+    },
+    {
+      "source": "tests/hooks/test_gates_unification.py",
+      "target": "lib/gate_types.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 7,
+          "raw": "from lib.gate_types import"
+        }
+      ]
+    },
+    {
+      "source": "tests/hooks/test_gates_unification.py",
+      "target": "lib/session_state.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 8,
+          "raw": "from lib.session_state import"
+        }
+      ]
+    },
+    {
+      "source": "tests/hooks/test_user_prompt_submit.py",
+      "target": "hooks/user_prompt_submit.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 4,
+          "raw": "from hooks.user_prompt_submit import"
+        }
+      ]
+    },
+    {
+      "source": "tests/hooks/test_user_prompt_submit.py",
+      "target": "lib/session_state.py",
+      "weight": 1,
+      "ref_type": "python_import_from",
+      "path_category": "module",
+      "refs": [
+        {
+          "line": 10,
+          "raw": "from lib.session_state import"
         }
       ]
     },
@@ -3895,6 +4336,101 @@
       ]
     },
     {
+      "source": "workflows/github-issue-cycle.md",
+      "target": "workflows/base-tdd.md",
+      "weight": 1,
+      "ref_type": "wikilink",
+      "path_category": "relative",
+      "refs": [
+        {
+          "line": 187,
+          "raw": "[[base-tdd]]"
+        }
+      ]
+    },
+    {
+      "source": "workflows/github-issue-cycle.md",
+      "target": "workflows/critic-fast.md",
+      "weight": 1,
+      "ref_type": "wikilink",
+      "path_category": "relative",
+      "refs": [
+        {
+          "line": 186,
+          "raw": "[[critic-fast]]"
+        }
+      ]
+    },
+    {
+      "source": "workflows/github-issue-cycle.md",
+      "target": "workflows/debugging.md",
+      "weight": 1,
+      "ref_type": "wikilink",
+      "path_category": "relative",
+      "refs": [
+        {
+          "line": 31,
+          "raw": "[[debugging]]"
+        }
+      ]
+    },
+    {
+      "source": "workflows/github-issue-cycle.md",
+      "target": "workflows/decompose.md",
+      "weight": 1,
+      "ref_type": "wikilink",
+      "path_category": "relative",
+      "refs": [
+        {
+          "line": 33,
+          "raw": "[[decompose]]"
+        }
+      ]
+    },
+    {
+      "source": "workflows/github-issue-cycle.md",
+      "target": "workflows/design.md",
+      "weight": 2,
+      "ref_type": "wikilink",
+      "path_category": "relative",
+      "refs": [
+        {
+          "line": 31,
+          "raw": "[[design]]"
+        },
+        {
+          "line": 185,
+          "raw": "[[design]]"
+        }
+      ]
+    },
+    {
+      "source": "workflows/github-issue-cycle.md",
+      "target": "workflows/direct-skill.md",
+      "weight": 1,
+      "ref_type": "wikilink",
+      "path_category": "relative",
+      "refs": [
+        {
+          "line": 32,
+          "raw": "[[direct-skill]]"
+        }
+      ]
+    },
+    {
+      "source": "workflows/github-issue-cycle.md",
+      "target": "workflows/dogfooding.md",
+      "weight": 1,
+      "ref_type": "wikilink",
+      "path_category": "relative",
+      "refs": [
+        {
+          "line": 188,
+          "raw": "[[dogfooding]]"
+        }
+      ]
+    },
+    {
       "source": "workflows/hdr-supervision.md",
       "target": "workflows/reference-letter.md",
       "weight": 1,
@@ -3902,7 +4438,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 44,
+          "line": 46,
           "raw": "[[reference-letter]]"
         }
       ]
@@ -3915,7 +4451,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 72,
+          "line": 73,
           "raw": "[[base-task-tracking]]"
         }
       ]
@@ -3928,7 +4464,7 @@
       "path_category": "relative",
       "refs": [
         {
-          "line": 73,
+          "line": 74,
           "raw": "[[direct-skill]]"
         }
       ]
