@@ -66,8 +66,9 @@ def _is_gemini_session(session_id: str | None, input_data: dict | None) -> bool:
     """Detect if this is a Gemini CLI session.
 
     Detection methods:
-    1. session_id starts with "gemini-"
-    2. transcript_path contains "/.gemini/"
+    1. GEMINI_SESSION_ID env var is set (Gemini CLI always provides this)
+    2. session_id starts with "gemini-"
+    3. transcript_path contains "/.gemini/"
 
     Args:
         session_id: Session ID (may have "gemini-" prefix)
@@ -76,6 +77,10 @@ def _is_gemini_session(session_id: str | None, input_data: dict | None) -> bool:
     Returns:
         True if this is a Gemini session
     """
+    # Gemini CLI always sets GEMINI_SESSION_ID - most reliable detection
+    if os.environ.get("GEMINI_SESSION_ID"):
+        return True
+
     if session_id is not None and session_id.startswith("gemini-"):
         return True
 
@@ -217,8 +222,12 @@ def get_session_status_dir(session_id: str | None = None, input_data: dict | Non
             gemini_dir.mkdir(parents=True, exist_ok=True)
             return gemini_dir
 
-        # Fallback: use hash-based path from cwd
-        project_root = str(Path.cwd().resolve())
+        # Fallback: use hash-based path from GEMINI_PROJECT_DIR (provided by Gemini CLI)
+        project_root = (
+            os.environ.get("GEMINI_PROJECT_DIR")
+            or os.environ.get("CLAUDE_PROJECT_DIR")  # Gemini also provides this alias
+            or str(Path.cwd().resolve())
+        )
         project_hash = hashlib.sha256(project_root.encode()).hexdigest()
         gemini_tmp = Path.home() / ".gemini" / "tmp" / project_hash
         gemini_tmp.mkdir(parents=True, exist_ok=True)
