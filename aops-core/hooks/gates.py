@@ -150,8 +150,8 @@ def on_session_start(ctx: HookContext, state: SessionState) -> GateResult | None
 
     # --- Notify Gates ---
 
-    # Brief user summary
-    summary = f"🚀 Session Started: {ctx.session_id} ({short_hash})"
+    # Brief user-facing messages
+    messages = [f"🚀 Session Started: {ctx.session_id} ({short_hash})"]
 
     # Detailed context for agent
     details = [
@@ -165,12 +165,12 @@ def on_session_start(ctx: HookContext, state: SessionState) -> GateResult | None
         result = gate.on_session_start(ctx, state)
         if result:
             if result.system_message:
-                details.append(result.system_message)
+                messages.append(result.system_message)
             if result.context_injection:
                 context_injections.append(result.context_injection)
 
     return GateResult.allow(
-        system_message=summary,
+        system_message="\n".join(messages),
         context_injection="\n".join(details) + ("\n\n" + "\n\n".join(context_injections) if context_injections else "")
     )
 
