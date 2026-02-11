@@ -34,7 +34,8 @@ Workflows are **hydrator hints**, not complete instructions. They tell the hydra
 | [[base-task-tracking]] | Claim/create task, update progress, complete | [[simple-question]], [[direct-skill]] |
 | [[base-tdd]]           | Red-green-refactor cycle                     | Non-code changes                      |
 | [[base-verification]]  | Checkpoint before completion                 | Trivial changes                       |
-| [[base-commit]]        | Stage, commit (why not what), push           | No file modifications                 |
+| [[base-commit]]         | Stage, commit (why not what), push           | No file modifications                  |
+| [[base-memory-capture]] | Store findings to memory MCP via /remember   | No discoveries, [[simple-question]]    |
 
 ## Decision Tree
 

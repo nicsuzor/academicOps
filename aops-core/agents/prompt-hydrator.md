@@ -82,17 +82,22 @@ Your output MUST be valid Markdown following this structure.
 
 **Critical**: Progress updates are NOT "simple-question" - they contain valuable episodic data that should be captured. The user sharing progress implies intent to record it.
 
-### Insight Capture Advice
+### Insight Capture (MANDATORY for most workflows)
 
-When task involves discovery/learning, add:
+**Default behavior**: Capture progress and findings. Memory persistence enables cross-session learning.
+
+Always add this section to execution plans (except [[simple-question]]):
 
 ```markdown
-### Insight Capture
+### Memory Capture
 
-If this work produces insights worth preserving:
+Before task completion, invoke `/remember` to persist:
 
-- **Operational findings**: Update task body
-- **Knowledge discoveries**: Use `activate_skill(name="remember")`
+- **Progress updates**: What was accomplished
+- **Findings**: What was discovered or learned
+- **Decisions**: Rationale for choices made
+
+Storage: Memory MCP (universal index) + appropriate primary storage per [[base-memory-capture]].
 ```
 
-Include for: debugging, design/architecture, research, any task where "what we learned" matters.
+**Why mandatory**: Without memory capture, each session starts from scratch. The framework learns and improves only when insights are persisted.
