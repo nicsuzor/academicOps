@@ -62,7 +62,13 @@ def sanitize_version(version: str) -> str:
 
 
 def get_project_version(aops_root: Path) -> str:
-    """Get version from git tags (matches uv-dynamic-versioning)."""
+    """Get latest stable version from git tags.
+
+    Filters out dev/testing/pre-release tags so that the returned version
+    is always a clean X.Y.Z release.  Git's version sort disagrees with
+    PEP 440 on dev suffixes (git ranks 0.1.57.dev1 > 0.1.56, while
+    PEP 440 ranks it < 0.1.57), so we must exclude them explicitly.
+    """
     try:
         result = subprocess.run(
             ["git", "tag", "--merged", "HEAD", "--sort=-v:refname", "--list", "v0.*"],
@@ -72,7 +78,15 @@ def get_project_version(aops_root: Path) -> str:
             check=True,
         )
         tags = [t.strip() for t in result.stdout.split("\n") if t.strip()]
+        # Only consider stable release tags (vX.Y.Z with no suffix)
+        stable_tags = [
+            t for t in tags
+            if not any(s in t for s in ["-testing", ".dev", "-beta", "-rc", "-alpha"])
+        ]
+        if stable_tags:
+            return stable_tags[0].lstrip("v")
         if tags:
+            # Fall back to latest tag if no stable tags exist
             return sanitize_version(tags[0].lstrip("v"))
         return "0.1.0"
     except subprocess.CalledProcessError:
