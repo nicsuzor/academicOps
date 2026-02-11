@@ -38,12 +38,9 @@ def bump_version(aops_root: Path):
     try:
         subprocess.run(["git", "tag", "-a", tag_name, "-m", f"release {tag_name}"], check=True)
         print(f"Successfully created tag {tag_name}")
-        
+
         branch_result = subprocess.run(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"], 
-            capture_output=True, 
-            text=True, 
-            check=True
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True, check=True
         )
         branch = branch_result.stdout.strip()
         print(f"Remember to push atomically: git push origin {branch} {tag_name}")

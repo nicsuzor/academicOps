@@ -235,12 +235,12 @@ Tasks cluster in visualizations based on their parent chain reaching a canonical
 
 Before creating any node, ask: **"What would we DO with this information?"**
 
-| Answer | Container |
-|--------|-----------|
-| Clear next action | Task (actionable) |
+| Answer                    | Container                                  |
+| ------------------------- | ------------------------------------------ |
+| Clear next action         | Task (actionable)                          |
 | Informs a future decision | Task + soft_depends_on from decision point |
-| Context for current work | Body prose (don't create node) |
-| Might be useful someday | Memory (not task graph) |
+| Context for current work  | Body prose (don't create node)             |
+| Might be useful someday   | Memory (not task graph)                    |
 
 **Anti-pattern**: Creating a "learn" task without knowing what happens after. If you can't answer "what does completing this enable?", you don't have a task yet.
 
@@ -267,11 +267,11 @@ This captures the decision structure in the graph, not just in prose.
 
 When you observe something that might lead to action:
 
-| Don't | Do |
-|-------|-----|
+| Don't                                     | Do                                                      |
+| ----------------------------------------- | ------------------------------------------------------- |
 | Write observation as prose in parent body | Create task node with `complexity: needs-decomposition` |
-| List alternatives in a bullet list | Create nodes for each, link with soft dependencies |
-| Describe relationships in prose | Express as `depends_on` or `soft_depends_on` edges |
+| List alternatives in a bullet list        | Create nodes for each, link with soft dependencies      |
+| Describe relationships in prose           | Express as `depends_on` or `soft_depends_on` edges      |
 
 **Why**: Prose isn't traversable. Graph edges are. When you later need to find "what would benefit from X?", soft_blocks queries work; grep through prose doesn't.
 

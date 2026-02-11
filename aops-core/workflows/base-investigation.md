@@ -21,12 +21,12 @@ category: base
 
 ## Probe Design
 
-| Hypothesis Type | Cheap Probe |
-|-----------------|-------------|
-| "X causes Y" | Disable X, check if Y stops |
-| "File F contains Z" | Grep for Z in F |
-| "Function fails on input I" | Call function with I |
-| "Regression since commit C" | Git bisect from C |
+| Hypothesis Type             | Cheap Probe                 |
+| --------------------------- | --------------------------- |
+| "X causes Y"                | Disable X, check if Y stops |
+| "File F contains Z"         | Grep for Z in F             |
+| "Function fails on input I" | Call function with I        |
+| "Regression since commit C" | Git bisect from C           |
 
 ## Conclusion Format
 

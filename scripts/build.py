@@ -80,7 +80,8 @@ def get_project_version(aops_root: Path) -> str:
         tags = [t.strip() for t in result.stdout.split("\n") if t.strip()]
         # Only consider stable release tags (vX.Y.Z with no suffix)
         stable_tags = [
-            t for t in tags
+            t
+            for t in tags
             if not any(s in t for s in ["-testing", ".dev", "-beta", "-rc", "-alpha"])
         ]
         if stable_tags:
@@ -337,7 +338,7 @@ def validate_gemini_agent_schema(frontmatter: dict, filename: str) -> dict:
     # Temperature is optional, only validate if present
     if "temperature" in frontmatter:
         temp = frontmatter["temperature"]
-        if not isinstance(temp, (int, float)) or temp < 0 or temp > 2:
+        if not isinstance(temp, int | float) or temp < 0 or temp > 2:
             raise ValueError(
                 f"Agent '{filename}': temperature must be between 0.0 and 2.0, got {temp}"
             )

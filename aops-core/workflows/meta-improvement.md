@@ -43,23 +43,23 @@ Complete the task while staying aware of friction points:
 
 ### 2. Observe (Capture Learnings)
 
-| Observation | Action |
-|-------------|--------|
-| One-time friction | `/log [observation]` → continue |
-| Recurring pattern (3+) | Check HEURISTICS.md → `/learn` if missing |
-| Blocking current task | Fix minimally, note for codification |
-| Better pattern discovered | Document what worked |
+| Observation               | Action                                    |
+| ------------------------- | ----------------------------------------- |
+| One-time friction         | `/log [observation]` → continue           |
+| Recurring pattern (3+)    | Check HEURISTICS.md → `/learn` if missing |
+| Blocking current task     | Fix minimally, note for codification      |
+| Better pattern discovered | Document what worked                      |
 
 ### 3. Codify (Improve the Framework)
 
 **Critical step most often skipped.**
 
-| Learning Type | Codification Target |
-|---------------|---------------------|
-| Better workflow steps | Update workflow .md file |
-| Missing guardrail | Add to constraint-check or hooks |
-| Useful question pattern | Add to AskUserQuestion templates |
-| New heuristic | Add to HEURISTICS.md via `/learn` |
+| Learning Type           | Codification Target               |
+| ----------------------- | --------------------------------- |
+| Better workflow steps   | Update workflow .md file          |
+| Missing guardrail       | Add to constraint-check or hooks  |
+| Useful question pattern | Add to AskUserQuestion templates  |
+| New heuristic           | Add to HEURISTICS.md via `/learn` |
 
 ### Notice List
 
@@ -75,12 +75,12 @@ Watch for during any task:
 
 Reflect on each tool used:
 
-| Tool Category | Questions |
-|---------------|-----------|
-| Search tools | Did queries find what I described? |
-| Memory/retrieval | Was content relevant? Fresh? |
-| Task manager | Did structured queries beat semantic search? |
-| Graph traversal | Could I find relationships? |
+| Tool Category    | Questions                                    |
+| ---------------- | -------------------------------------------- |
+| Search tools     | Did queries find what I described?           |
+| Memory/retrieval | Was content relevant? Fresh?                 |
+| Task manager     | Did structured queries beat semantic search? |
+| Graph traversal  | Could I find relationships?                  |
 
 ### Knowledge Base Hygiene
 
@@ -111,11 +111,11 @@ Build new skills when decomposition reveals capability gaps.
 
 ### Anti-Patterns
 
-| Anti-Pattern | Problem |
-|--------------|---------|
-| Premature abstraction | Skill after one use |
-| Kitchen sink | Too much in one skill |
-| Orphan skill | Not indexed = doesn't exist |
+| Anti-Pattern          | Problem                     |
+| --------------------- | --------------------------- |
+| Premature abstraction | Skill after one use         |
+| Kitchen sink          | Too much in one skill       |
+| Orphan skill          | Not indexed = doesn't exist |
 
 ---
 

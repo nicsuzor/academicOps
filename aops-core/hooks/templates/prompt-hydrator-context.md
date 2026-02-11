@@ -130,7 +130,7 @@ You may bypass task queue ONLY when ANY is true:
 
 Return this EXACT structure:
 
-````markdown
+```markdown
 ## HYDRATION RESULT
 
 **Intent**: [what user actually wants, in clear terms]
@@ -167,4 +167,4 @@ Return this EXACT structure:
 - Output Framework Reflection in the required form.
 
 **Gemini CLI agents** MUST call `complete_task` with your final formatted response.
-````
+```

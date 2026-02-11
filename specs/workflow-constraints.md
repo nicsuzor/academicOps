@@ -491,7 +491,7 @@ Exceptions (direct execution allowed):
 5. [x] Predicate evaluation methods specified
 6. [x] Composition via inheritance defined
 
-### Part 2: Dispositor Pattern
+### Part 2: Dispositor Pattern Acceptance Criteria
 
 1. [x] Separation of enqueue vs execute clearly defined
 2. [x] Direct execution paths enumerated with detection heuristics

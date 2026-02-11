@@ -69,16 +69,20 @@ class TestUniversalRouter:
         from lib.gate_model import GateResult, GateVerdict
 
         # Mock a gate that returns deny
-        def mock_deny_gate(ctx):
+        # Signature must match (ctx, state)
+        def mock_deny_gate(ctx, state):
             return GateResult(verdict=GateVerdict.DENY, system_message="Blocked")
 
         # Replace gate checks with our mock
         mock_gate_checks.get.return_value = mock_deny_gate
 
-        ctx = HookContext(session_id="test", hook_event="PreToolUse", raw_input={})
-        result = router_instance.execute_hooks(ctx)
+        # Mock SessionState.load to avoid I/O
+        with patch("hooks.router.SessionState.load") as mock_load:
+            mock_load.return_value = MagicMock()
+            ctx = HookContext(session_id="test", hook_event="PreToolUse", raw_input={})
+            result = router_instance.execute_hooks(ctx)
 
-        assert result.verdict == "deny"
+            assert result.verdict == "deny"
 
     def test_output_for_gemini(self, router_instance):
         canonical = CanonicalHookOutput(

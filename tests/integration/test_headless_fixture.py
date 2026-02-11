@@ -44,7 +44,7 @@ def test_claude_headless_simple_prompt(claude_headless) -> None:
 
     # Verify output is valid JSON (format may be dict or list depending on CLI version)
     output_data = json.loads(result["output"])
-    assert isinstance(output_data, (dict, list)), "Output should be parseable as JSON"
+    assert isinstance(output_data, dict | list), "Output should be parseable as JSON"
     # For dict format, check for result field; for list, check non-empty
     if isinstance(output_data, dict):
         assert "result" in output_data or "type" in output_data, (
@@ -119,7 +119,7 @@ def test_claude_headless_json_output(claude_headless) -> None:
     # Parse the JSON output - format may be dict (current) or list (legacy)
     output_data = json.loads(result["output"])
 
-    assert isinstance(output_data, (dict, list)), "Parsed output should be dict or list"
+    assert isinstance(output_data, dict | list), "Parsed output should be dict or list"
 
     if isinstance(output_data, dict):
         # Current format: {"type": "result", "result": "...", ...}

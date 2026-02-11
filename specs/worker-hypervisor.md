@@ -55,7 +55,7 @@ Current execution is single-threaded: one agent handles one task at a time. For 
 
 ## Worker Agent
 
-### Purpose
+### Worker Purpose
 
 A worker agent is a self-contained execution unit that:
 
@@ -161,7 +161,7 @@ Workers MUST NOT:
 
 ## Hypervisor Agent
 
-### Purpose
+### Hypervisor Purpose
 
 The hypervisor is a coordination layer that:
 

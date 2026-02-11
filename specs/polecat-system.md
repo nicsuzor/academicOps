@@ -283,7 +283,7 @@ This system builds _on top_ of the existing Task MCP:
 
 The Refinery completes the lifecycle by merging completed work back into the main repository.
 
-### Components
+### Refinery Components
 
 1. **Engineer (`polecat/engineer.py`)**:
    - **`scan_and_merge()`**: Finds tasks with status `merge_ready`.

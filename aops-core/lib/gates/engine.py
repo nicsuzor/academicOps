@@ -18,10 +18,12 @@ from lib.session_state import SessionState
 
 logger = logging.getLogger(__name__)
 
+
 class GenericGate:
     """
     Generic Gate Engine that executes declarative GateConfig.
     """
+
     def __init__(self, config: GateConfig):
         self.config = config
 
@@ -35,7 +37,13 @@ class GenericGate:
             session_state.gates[self.name] = GateState(status=self.config.initial_status)
         return session_state.gates[self.name]
 
-    def _evaluate_condition(self, condition: GateCondition, ctx: HookContext, state: GateState, session_state: SessionState) -> bool:
+    def _evaluate_condition(
+        self,
+        condition: GateCondition,
+        ctx: HookContext,
+        state: GateState,
+        session_state: SessionState,
+    ) -> bool:
         # 0. Check Current Status
         if condition.current_status:
             if state.status != condition.current_status:
@@ -57,7 +65,11 @@ class GenericGate:
         # 2.5 Excluded Tool Categories
         if condition.excluded_tool_categories:
             from hooks.gate_config import get_tool_category
-            if ctx.tool_name and get_tool_category(ctx.tool_name) in condition.excluded_tool_categories:
+
+            if (
+                ctx.tool_name
+                and get_tool_category(ctx.tool_name) in condition.excluded_tool_categories
+            ):
                 return False
 
         # 3. Tool Input Pattern
@@ -92,38 +104,47 @@ class GenericGate:
         if condition.custom_check:
             # Import dynamically or use registry
             from lib.gates.custom_conditions import check_custom_condition
+
             if not check_custom_condition(condition.custom_check, ctx, state, session_state):
                 return False
 
         return True
 
-    def _render_template(self, template: str, ctx: HookContext, state: GateState, session_state: SessionState) -> str:
+    def _render_template(
+        self, template: str, ctx: HookContext, state: GateState, session_state: SessionState
+    ) -> str:
         # Prepare context variables
         variables: dict[str, Any] = {
             "session_id": ctx.session_id,
             "tool_name": ctx.tool_name or "",
-            "gate_status": getattr(state.status, 'value', state.status),
+            "gate_status": getattr(state.status, "value", state.status),
             "ops_since_open": state.ops_since_open,
             "ops_since_close": state.ops_since_close,
             "blocked": state.blocked,
             "block_reason": state.block_reason or "",
             # Access metrics
-            **state.metrics
+            **state.metrics,
         }
 
         # Safe format using format_map with default for missing keys
         try:
             return template.format_map(defaultdict(lambda: "(not set)", variables))
         except (KeyError, ValueError, IndexError):
-             # Fallback: simple replacement with default for missing keys
-             result = template
-             for key, val in variables.items():
-                 result = result.replace(f"{{{key}}}", str(val))
-             # Replace any remaining {placeholder} with "(not set)"
-             result = re.sub(r'\{(\w+)\}', '(not set)', result)
-             return result
+            # Fallback: simple replacement with default for missing keys
+            result = template
+            for key, val in variables.items():
+                result = result.replace(f"{{{key}}}", str(val))
+            # Replace any remaining {placeholder} with "(not set)"
+            result = re.sub(r"\{(\w+)\}", "(not set)", result)
+            return result
 
-    def _apply_transition(self, transition: GateTransition, ctx: HookContext, state: GateState, session_state: SessionState) -> GateResult:
+    def _apply_transition(
+        self,
+        transition: GateTransition,
+        ctx: HookContext,
+        state: GateState,
+        session_state: SessionState,
+    ) -> GateResult:
         # Update Status
         if transition.target_status and transition.target_status != state.status:
             # Change state
@@ -151,25 +172,40 @@ class GenericGate:
         # Render Messages
         sys_msg = None
         if transition.system_message_template:
-            sys_msg = self._render_template(transition.system_message_template, ctx, state, session_state)
+            sys_msg = self._render_template(
+                transition.system_message_template, ctx, state, session_state
+            )
 
         ctx_inj = None
         if transition.context_injection_template:
-            ctx_inj = self._render_template(transition.context_injection_template, ctx, state, session_state)
+            ctx_inj = self._render_template(
+                transition.context_injection_template, ctx, state, session_state
+            )
 
         # Custom Action (Side Effects)
         if transition.custom_action:
             from lib.gates.custom_actions import execute_custom_action
+
             result = execute_custom_action(transition.custom_action, ctx, state, session_state)
             if result:
                 if result.system_message:
-                    sys_msg = (sys_msg + "\n" + result.system_message) if sys_msg else result.system_message
+                    sys_msg = (
+                        (sys_msg + "\n" + result.system_message)
+                        if sys_msg
+                        else result.system_message
+                    )
                 if result.context_injection:
-                    ctx_inj = (ctx_inj + "\n\n" + result.context_injection) if ctx_inj else result.context_injection
+                    ctx_inj = (
+                        (ctx_inj + "\n\n" + result.context_injection)
+                        if ctx_inj
+                        else result.context_injection
+                    )
 
         return GateResult.allow(system_message=sys_msg, context_injection=ctx_inj)
 
-    def _evaluate_triggers(self, ctx: HookContext, session_state: SessionState) -> GateResult | None:
+    def _evaluate_triggers(
+        self, ctx: HookContext, session_state: SessionState
+    ) -> GateResult | None:
         """Evaluate triggers (Transitions)."""
         state = self._get_state(session_state)
 
@@ -191,24 +227,29 @@ class GenericGate:
         if transition_occurred:
             return GateResult.allow(
                 system_message="\n".join(messages) if messages else None,
-                context_injection="\n\n".join(injections) if injections else None
+                context_injection="\n\n".join(injections) if injections else None,
             )
         return None
 
-    def _evaluate_policies(self, ctx: HookContext, session_state: SessionState) -> GateResult | None:
+    def _evaluate_policies(
+        self, ctx: HookContext, session_state: SessionState
+    ) -> GateResult | None:
         """Evaluate policies (Blocking/Warning)."""
         state = self._get_state(session_state)
 
         for policy in self.config.policies:
             if self._evaluate_condition(policy.condition, ctx, state, session_state):
                 # Policy matched!
-                
+
                 # Custom Action (Side Effects before message rendering)
                 sys_msg_prefix = ""
                 ctx_inj_prefix = ""
                 if policy.custom_action:
                     from lib.gates.custom_actions import execute_custom_action
-                    action_result = execute_custom_action(policy.custom_action, ctx, state, session_state)
+
+                    action_result = execute_custom_action(
+                        policy.custom_action, ctx, state, session_state
+                    )
                     if action_result:
                         if action_result.system_message:
                             sys_msg_prefix = action_result.system_message + "\n"
@@ -218,16 +259,24 @@ class GenericGate:
                 sys_msg = self._render_template(policy.message_template, ctx, state, session_state)
                 ctx_inj = None
                 if policy.context_template:
-                    ctx_inj = self._render_template(policy.context_template, ctx, state, session_state)
+                    ctx_inj = self._render_template(
+                        policy.context_template, ctx, state, session_state
+                    )
 
                 # Combine prefixes
                 final_sys_msg = sys_msg_prefix + sys_msg
                 final_ctx_inj = ctx_inj_prefix + (ctx_inj if ctx_inj else "")
 
                 if policy.verdict == "deny":
-                    return GateResult.deny(system_message=final_sys_msg, context_injection=final_ctx_inj if final_ctx_inj else None)
+                    return GateResult.deny(
+                        system_message=final_sys_msg,
+                        context_injection=final_ctx_inj if final_ctx_inj else None,
+                    )
                 elif policy.verdict == "warn":
-                    return GateResult.warn(system_message=final_sys_msg, context_injection=final_ctx_inj if final_ctx_inj else None)
+                    return GateResult.warn(
+                        system_message=final_sys_msg,
+                        context_injection=final_ctx_inj if final_ctx_inj else None,
+                    )
 
         return None
 
@@ -274,7 +323,7 @@ class GenericGate:
         # Merge if policy warned and trigger happened?
         # Usually policy warning is more important.
         if policy_result and policy_result.verdict == GateVerdict.WARN:
-             return policy_result
+            return policy_result
 
         return trigger_result
 
@@ -289,14 +338,22 @@ class GenericGate:
 
         return self._evaluate_triggers(context, session_state)
 
-    def on_user_prompt(self, context: HookContext, session_state: SessionState) -> GateResult | None:
+    def on_user_prompt(
+        self, context: HookContext, session_state: SessionState
+    ) -> GateResult | None:
         return self._evaluate_triggers(context, session_state)
 
-    def on_session_start(self, context: HookContext, session_state: SessionState) -> GateResult | None:
+    def on_session_start(
+        self, context: HookContext, session_state: SessionState
+    ) -> GateResult | None:
         return self._evaluate_triggers(context, session_state)
 
-    def on_after_agent(self, context: HookContext, session_state: SessionState) -> GateResult | None:
+    def on_after_agent(
+        self, context: HookContext, session_state: SessionState
+    ) -> GateResult | None:
         return self._evaluate_triggers(context, session_state)
 
-    def on_subagent_stop(self, context: HookContext, session_state: SessionState) -> GateResult | None:
+    def on_subagent_stop(
+        self, context: HookContext, session_state: SessionState
+    ) -> GateResult | None:
         return self._evaluate_triggers(context, session_state)

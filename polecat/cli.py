@@ -169,6 +169,7 @@ def _attempt_auto_merge(task, manager):
     """
     try:
         from engineer import Engineer
+
         from lib.task_model import TaskStatus
 
         # Check if any blocking dependencies are not done
@@ -870,8 +871,9 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
                 print(result.stderr, file=sys.stderr)
 
             # Analyze the transcript for failures
-            if hasattr(manager, "analyze_transcript"):
-                manager.analyze_transcript(task, result.stdout, result.stderr)
+            analyze_func = getattr(manager, "analyze_transcript", None)
+            if analyze_func:
+                analyze_func(task, result.stdout, result.stderr)
 
     except FileNotFoundError:
         print(f"Error: '{cli_tool}' command not found.", file=sys.stderr)

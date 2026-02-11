@@ -8,13 +8,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from lib.gate_model import GateResult, GateVerdict
-from lib.gates.registry import GateRegistry
-from lib.session_state import SessionState
-
 from hooks.schemas import HookContext
 from hooks.unified_logger import get_hook_log_path
 from lib import hook_utils, session_paths
+from lib.gate_model import GateResult, GateVerdict
+from lib.gates.registry import GateRegistry
+from lib.session_state import SessionState
 
 if TYPE_CHECKING:
     pass
@@ -40,8 +39,8 @@ def check_tool_gate(ctx: HookContext, state: SessionState) -> GateResult:
         if result and result.verdict == GateVerdict.DENY:
             return result
         if result and result.verdict == GateVerdict.WARN:
-             # For now, return the first warning/block.
-             return result
+            # For now, return the first warning/block.
+            return result
 
     return GateResult.allow()
 
@@ -64,7 +63,7 @@ def update_gate_state(ctx: HookContext, state: SessionState) -> GateResult | Non
     if messages or context_injections:
         return GateResult.allow(
             system_message="\n".join(messages) if messages else None,
-            context_injection="\n\n".join(context_injections) if context_injections else None
+            context_injection="\n\n".join(context_injections) if context_injections else None,
         )
 
     return None
@@ -89,7 +88,7 @@ def on_user_prompt(ctx: HookContext, state: SessionState) -> GateResult | None:
     if messages or context_injections:
         return GateResult.allow(
             system_message="\n".join(messages) if messages else None,
-            context_injection="\n\n".join(context_injections) if context_injections else None
+            context_injection="\n\n".join(context_injections) if context_injections else None,
         )
 
     return None
@@ -98,17 +97,17 @@ def on_user_prompt(ctx: HookContext, state: SessionState) -> GateResult | None:
 def on_session_start(ctx: HookContext, state: SessionState) -> GateResult | None:
     """SessionStart: Notify all gates and perform initialization."""
     _ensure_initialized()
-    
+
     # --- Fail-Fast Initialization Logic (Restored) ---
-    
+
     short_hash = session_paths.get_session_short_hash(ctx.session_id)
     hook_log_path = get_hook_log_path(ctx.session_id, ctx.raw_input)
     state_file_path = session_paths.get_session_file_path(ctx.session_id, input_data=ctx.raw_input)
 
     if not state_file_path.exists():
-         try:
-             state.save()
-         except OSError as e:
+        try:
+            state.save()
+        except OSError as e:
             return GateResult(
                 verdict=GateVerdict.DENY,
                 system_message=(
@@ -174,7 +173,8 @@ def on_session_start(ctx: HookContext, state: SessionState) -> GateResult | None
 
     return GateResult.allow(
         system_message="\n".join(messages),
-        context_injection="\n".join(details) + ("\n\n" + "\n\n".join(context_injections) if context_injections else "")
+        context_injection="\n".join(details)
+        + ("\n\n" + "\n\n".join(context_injections) if context_injections else ""),
     )
 
 
@@ -211,7 +211,7 @@ def on_after_agent(ctx: HookContext, state: SessionState) -> GateResult | None:
     if messages or context_injections:
         return GateResult.allow(
             system_message="\n".join(messages) if messages else None,
-            context_injection="\n\n".join(context_injections) if context_injections else None
+            context_injection="\n\n".join(context_injections) if context_injections else None,
         )
 
     return None
@@ -235,7 +235,7 @@ def on_subagent_stop(ctx: HookContext, state: SessionState) -> GateResult | None
     if messages or context_injections:
         return GateResult.allow(
             system_message="\n".join(messages) if messages else None,
-            context_injection="\n\n".join(context_injections) if context_injections else None
+            context_injection="\n\n".join(context_injections) if context_injections else None,
         )
 
     return None

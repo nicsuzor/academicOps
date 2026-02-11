@@ -53,7 +53,7 @@ Gemini CLI (warning: auto accept flag below, remove --consent if you're concerne
 flowchart TD
     %% Node Definitions
     Start([Session Start])
-    
+
     subgraph Initialization [1. Initialization]
         SStart[SessionStart Event] --> Router1{Universal Router}
         Router1 -.-> Setup[session_env_setup.py]
@@ -68,9 +68,9 @@ flowchart TD
         SkipCheck -- No --> Context[Context -> Temp File]
         Context --> Hydrator[[prompt-hydrator Subagent]]
         Hydrator --> Plan[/Hydration Plan/]
-        
+
         Hydrator --- HydrateExpl[Fetches: Task queue, memory server,<br/>WORKFLOWS index, and relevant files]
-        
+
         Plan --> Critic[[critic Subagent]]
         Critic --> CriticCheck{Plan Approved?}
         CriticCheck -- REVISE --> Plan
@@ -79,20 +79,20 @@ flowchart TD
 
     subgraph Execution [3. Execution & Hard Gates]
         PreTool[PreToolUse Event] --> Router3{Universal Router}
-        
+
         Router3 -.-> GateH[Hydration Gate]
         GateH --> GateT[Task Gate]
-        
+
         GateH --- HExpl[Blocks mutating tools until<br/>an execution plan is generated]
         GateT --- TExpl[Enforces work tracking by requiring<br/>an active task for destructive actions]
-        
+
         GateT --> ProbCheck{Audit Threshold?}
         ProbCheck -- Yes ~14% --> GateC[Custodiet Gate]
         ProbCheck -- No --> Tool[[Execute Tool]]
-        
+
         GateC --- CExpl[Reviews session history for<br/>principle violations and scope drift]
         GateC --> Tool
-        
+
         Tool --> PostTool[PostToolUse Event]
         PostTool --> Router4{Universal Router}
         Router4 -.-> Accountant[Accountant: Update Counters]
@@ -102,12 +102,12 @@ flowchart TD
         AfterAgent[AfterAgent Event] --> Router5{Universal Router}
         Router5 -.-> RefCheck[Validate Reflection]
         RefCheck --- RefExpl[Ensures Framework Reflection includes<br/>all 8 required metadata fields]
-        
+
         RefCheck --> Stop[Stop Event]
         Stop --> Router6{Universal Router}
         Router6 -.-> StopGate[Stop Gate]
         StopGate --> Commit[Commit & Close]
-        
+
         StopGate --- StopExpl[Final gate: Mandates independent<br/>QA passage and clean git state]
     end
 

@@ -28,13 +28,13 @@ Quality assurance and verification workflows. Multiple modes for different verif
 
 **Default mode.** Pre-completion sanity check. "Does it run without error?"
 
-### When to Use
+### When to Use (Quick Verification)
 
 - Feature complete, tests pass
 - Before final commit
 - User-facing changes
 
-### Invocation
+### Invocation (Quick Verification)
 
 ```
 Task(subagent_type="qa",
@@ -52,7 +52,7 @@ Task(subagent_type="qa",
 
 Full user acceptance testing workflow. Creates test plans, runs qualitative evaluations, tracks failures.
 
-### When to Use
+### When to Use (Acceptance Testing)
 
 - End-to-end testing needed
 - User perspective verification
@@ -83,7 +83,7 @@ Full user acceptance testing workflow. Creates test plans, runs qualitative eval
 4. Report results: summary table, qualitative scores, detailed findings
 5. Handle failures: create task per failure, link to test plan
 
-### Invocation
+### Invocation (Acceptance Testing)
 
 ```
 Task(subagent_type="qa",
@@ -96,7 +96,7 @@ Task(subagent_type="qa",
 
 Criteria-based qualitative evaluation of a feature against its user stories. Not "does it work?" but "is it any good for the people it was designed for?" This is skilled interpretive assessment requiring empathy, design judgment, and domain expertise.
 
-### When to Use
+### When to Use (Qualitative Assessment)
 
 - Feature has user stories or acceptance criteria describing WHY it exists
 - You need to evaluate fitness-for-purpose, not just functional correctness
@@ -142,6 +142,7 @@ Design 2-3 realistic usage scenarios. Each scenario must include:
 - **Success feel**: What does it feel like when this works well? Not "information is present" but "I feel oriented / confident / ready to act"
 
 Scenarios should cover:
+
 1. The **golden path** — the primary use case the feature was designed for
 2. A **stressed path** — the user under pressure, low patience, high stakes
 3. An **edge case** that reveals design philosophy — what happens when things are incomplete, ambiguous, or unusual?
@@ -150,12 +151,12 @@ Scenarios should cover:
 
 For each scenario, define 3-5 assessment dimensions. Each dimension is a **question requiring interpretive judgment**, NOT a binary check.
 
-| Anti-pattern (don't do this) | Qualitative dimension (do this) |
-|---|---|
+| Anti-pattern (don't do this)                    | Qualitative dimension (do this)                                                                                                                                                |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | "Does the header show the session goal? Yes/No" | "When you scan the headers, can you reconstruct your working narrative? How much cognitive effort does it take? Does the information hierarchy match your priority hierarchy?" |
-| "Are timestamps in HH:MM format? Yes/No" | "Does the temporal information help you orient in time, or does it add visual noise? Would a different time representation better serve the user's orientation needs?" |
-| "Is DROPPED THREADS shown first? Yes/No" | "Does the display create appropriate urgency about unfinished work without triggering anxiety? Does the visual hierarchy match the emotional priority?" |
-| "Are there colored dots? Yes/No" | "Do the visual status indicators reduce cognitive load, or are they decorative? Can you grasp the state of your work in a glance?" |
+| "Are timestamps in HH:MM format? Yes/No"        | "Does the temporal information help you orient in time, or does it add visual noise? Would a different time representation better serve the user's orientation needs?"         |
+| "Is DROPPED THREADS shown first? Yes/No"        | "Does the display create appropriate urgency about unfinished work without triggering anxiety? Does the visual hierarchy match the emotional priority?"                        |
+| "Are there colored dots? Yes/No"                | "Do the visual status indicators reduce cognitive load, or are they decorative? Can you grasp the state of your work in a glance?"                                             |
 
 Dimensions should address:
 
@@ -195,17 +196,17 @@ The output MUST be **narrative prose**, not tables. Structure:
 
 ### Assessment Plan Anti-Patterns
 
-| Anti-Pattern | Why It Fails | Instead |
-|---|---|---|
-| Pass/Fail tables | Reduces nuance to binary; evaluator stops thinking | Narrative evaluation on a quality spectrum |
-| Point scoring | Creates false precision; 73/100 means nothing | Qualitative judgment with evidence |
-| "Is X present?" | Presence ≠ quality; a timestamp exists but is it useful? | "How well does X serve the user's need for Y?" |
-| Checklist mindset | Can be executed without understanding the user | Require persona immersion before evaluation |
-| Spec-as-checklist | Specs describe WHAT, not HOW WELL | Specs provide context; evaluate quality independently |
-| Identical weight | Not all criteria matter equally to the user | Weight by impact on user's actual experience |
-| Scoring rubrics | Invite mechanical execution; "3/4 = Good" | Require the evaluator to argue their judgment |
+| Anti-Pattern      | Why It Fails                                             | Instead                                               |
+| ----------------- | -------------------------------------------------------- | ----------------------------------------------------- |
+| Pass/Fail tables  | Reduces nuance to binary; evaluator stops thinking       | Narrative evaluation on a quality spectrum            |
+| Point scoring     | Creates false precision; 73/100 means nothing            | Qualitative judgment with evidence                    |
+| "Is X present?"   | Presence ≠ quality; a timestamp exists but is it useful? | "How well does X serve the user's need for Y?"        |
+| Checklist mindset | Can be executed without understanding the user           | Require persona immersion before evaluation           |
+| Spec-as-checklist | Specs describe WHAT, not HOW WELL                        | Specs provide context; evaluate quality independently |
+| Identical weight  | Not all criteria matter equally to the user              | Weight by impact on user's actual experience          |
+| Scoring rubrics   | Invite mechanical execution; "3/4 = Good"                | Require the evaluator to argue their judgment         |
 
-### Invocation
+### Invocation (Qualitative Assessment)
 
 ```
 Task(subagent_type="qa",
@@ -221,7 +222,7 @@ Task(subagent_type="qa",
 
 Framework integration testing. "Does it connect properly?"
 
-### When to Use
+### When to Use (Integration Validation)
 
 - Validating new framework capabilities
 - Verifying structural changes (relationships, computed fields)
@@ -236,11 +237,11 @@ Framework integration testing. "Does it connect properly?"
 
 ### Evidence Format
 
-| Field | Expected | Actual | Correct? |
-|-------|----------|--------|----------|
-| [key] | [value]  | [value]| ✅/❌    |
+| Field | Expected | Actual  | Correct? |
+| ----- | -------- | ------- | -------- |
+| [key] | [value]  | [value] | ✅/❌    |
 
-### Invocation
+### Invocation (Integration Validation)
 
 ```
 Task(subagent_type="qa",
@@ -253,7 +254,7 @@ Task(subagent_type="qa",
 
 Design acceptance testing infrastructure for a project.
 
-### When to Use
+### When to Use (System Design)
 
 - "Design QA system", "build acceptance testing"
 - New project needs verification strategy
@@ -284,12 +285,12 @@ Design acceptance testing infrastructure for a project.
 
 ### Anti-Patterns
 
-| Anti-Pattern | Why It Fails | Instead |
-|--------------|--------------|---------|
-| Pattern matching | Passes without understanding | Reviewer examines output |
-| "Did it run?" tests | Passes broken behavior | Verify outcome is useful |
-| Success = no errors | Silent failures pass | Define positive criteria |
-| Skip to implementation | Build wrong thing | Complete design first |
+| Anti-Pattern           | Why It Fails                 | Instead                  |
+| ---------------------- | ---------------------------- | ------------------------ |
+| Pattern matching       | Passes without understanding | Reviewer examines output |
+| "Did it run?" tests    | Passes broken behavior       | Verify outcome is useful |
+| Success = no errors    | Silent failures pass         | Define positive criteria |
+| Skip to implementation | Build wrong thing            | Complete design first    |
 
 ---
 

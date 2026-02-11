@@ -21,11 +21,11 @@ category: base
 
 ## Chunking Strategies
 
-| Strategy | Use When |
-|----------|----------|
-| Temporal | Time-series data (emails by month, logs by day) |
-| Categorical | Grouped data (by sender, by type) |
-| Size-based | Fixed chunks of 20-50 items |
+| Strategy    | Use When                                        |
+| ----------- | ----------------------------------------------- |
+| Temporal    | Time-series data (emails by month, logs by day) |
+| Categorical | Grouped data (by sender, by type)               |
+| Size-based  | Fixed chunks of 20-50 items                     |
 
 ## Receipt Persistence
 

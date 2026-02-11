@@ -318,7 +318,9 @@ def _load_project_workflows(prompt: str = "") -> str:
     # Build a semantic index from frontmatter
     lines = [f"\n\n## Project-Specific Workflows ({cwd.name})", ""]
     lines.append(f"Location: `{workflows_dir}`")
-    lines.append("The following workflows are available locally. READ them if relevant to the user request.\n")
+    lines.append(
+        "The following workflows are available locally. READ them if relevant to the user request.\n"
+    )
     lines.append("| Workflow | Description | Triggers | File |")
     lines.append("|----------|-------------|----------|------|")
 
@@ -358,8 +360,16 @@ def _load_project_workflows(prompt: str = "") -> str:
             lines.append(f"| {name} | {desc_table} | {triggers_table} | `{wf_file.name}` |")
 
             # Content injection logic based on prompt keywords (word boundary matching)
-            filename_keywords = set(wf_file.stem.lower().replace("-", " ").replace("_", " ").split())
-            if any(re.search(r'\b' + re.escape(kw) + r'\b', prompt_lower) for kw in filename_keywords) or wf_file.stem.lower() in prompt_lower:
+            filename_keywords = set(
+                wf_file.stem.lower().replace("-", " ").replace("_", " ").split()
+            )
+            if (
+                any(
+                    re.search(r"\b" + re.escape(kw) + r"\b", prompt_lower)
+                    for kw in filename_keywords
+                )
+                or wf_file.stem.lower() in prompt_lower
+            ):
                 # Use the same resolved display name as in the index
                 header_name = name
                 if name != wf_file.stem:
@@ -648,12 +658,12 @@ def write_initial_hydrator_state(
         state.close_gate("hydration")
         state.get_gate("hydration").metrics["original_prompt"] = prompt
         # Also set legacy flag for compatibility if needed (though we're moving away from it)
-        if "hydration_pending" in state.state:
+        if hasattr(state, "state") and "hydration_pending" in state.state:
             state.state["hydration_pending"] = True
     else:
         # not pending = open gate
         state.open_gate("hydration")
-        if "hydration_pending" in state.state:
+        if hasattr(state, "state") and "hydration_pending" in state.state:
             del state.state["hydration_pending"]
 
     state.save()
@@ -679,12 +689,15 @@ def write_temp_file(content: str, input_data: dict[str, Any] | None = None) -> P
     """
     temp_dir = get_hydration_temp_dir(input_data)
     _cleanup_temp(temp_dir, FILE_PREFIX)  # Ensure cleanup happens before write
-    session_id = (input_data.get("session_id") if input_data else None)
+    session_id = input_data.get("session_id") if input_data else None
     return _write_temp(content, temp_dir, FILE_PREFIX, session_id=session_id)
 
 
 def build_hydration_instruction(
-    session_id: str, prompt: str, transcript_path: str | None = None, state: SessionState | None = None
+    session_id: str,
+    prompt: str,
+    transcript_path: str | None = None,
+    state: SessionState | None = None,
 ) -> str:
     """
     Build instruction for main agent to invoke prompt-hydrator.
@@ -802,7 +815,7 @@ def build_hydration_instruction(
     # Close gate (pending hydration)
     state.close_gate("hydration")
 
-    if "hydration_pending" in state.state:
+    if hasattr(state, "state") and "hydration_pending" in state.state:
         state.state["hydration_pending"] = True
 
     if should_save:

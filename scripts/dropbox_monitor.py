@@ -34,7 +34,7 @@ class IncomingHandler(FileSystemEventHandler):
         if event.is_directory:
             return
         logger.info(f"New file detected: {event.src_path}")
-        self.process_file(Path(event.src_path))
+        self.process_file(Path(str(event.src_path)))
 
     def process_file(self, file_path):
         process_incoming_file(file_path)

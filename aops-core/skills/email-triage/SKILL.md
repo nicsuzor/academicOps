@@ -113,6 +113,7 @@ emails = mcp__outlook__messages_search(
 | **Skip** | Spam, irrelevant, auto-generated noise | Archive immediately |
 
 **Reply-waiting signals** (ALWAYS Task, never FYI):
+
 - "following up", "checking in", "any update", "wanted to touch base"
 - "haven't heard back", "just checking", "circling back"
 - Questions awaiting answer from a previous thread

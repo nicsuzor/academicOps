@@ -4,6 +4,7 @@ from unittest.mock import patch
 import pytest
 from hooks.gates import on_subagent_stop
 from hooks.schemas import HookContext
+
 from lib.gate_types import GateStatus
 from lib.session_state import SessionState
 
@@ -12,9 +13,10 @@ from lib.session_state import SessionState
 def mock_session(tmp_path):
     session_id = f"test_session_unification_{uuid.uuid4().hex}"
     # Patch both locations to ensure consistent path resolution
-    with patch("lib.session_paths.get_session_status_dir", return_value=tmp_path), \
-         patch("lib.session_state.get_session_status_dir", return_value=tmp_path):
-
+    with (
+        patch("lib.session_paths.get_session_status_dir", return_value=tmp_path),
+        patch("lib.session_state.get_session_status_dir", return_value=tmp_path),
+    ):
         state = SessionState.create(session_id)
         state.save()
         yield session_id
@@ -47,7 +49,7 @@ def test_critic_gate_opening_subagent(mock_session):
     ctx = HookContext(
         session_id=session_id,
         hook_event="SubagentStop",
-        subagent_type="critic", # Matches pattern
+        subagent_type="critic",  # Matches pattern
         raw_input={"subagent_type": "critic"},
     )
 
@@ -62,6 +64,7 @@ def test_critic_gate_opening_subagent(mock_session):
     result = on_subagent_stop(ctx, state)
 
     assert result is not None
+    assert result.system_message is not None
     assert "Critic review complete" in result.system_message
 
     # Verify Ops reset

@@ -85,10 +85,10 @@ ls -t ~/.claude/projects/*-hooks.jsonl | head -n 1 | xargs cat
 ```
 
 Look for:
+
 - `verdict: deny` on tool calls that should be allowed.
 - Gate names in `metadata.gate_times` to see which gates are firing.
 - `WARNING: Hydration failed` messages in `system_message`.
-
 
 ### Example Observations
 

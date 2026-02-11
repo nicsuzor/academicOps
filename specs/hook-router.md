@@ -16,14 +16,13 @@ category: spec
 
 The gates.py gate locking / unlocking is really buggy. we've spent way too much time trying to debug it for gemini cli and claude code, and it always seems like there's dead code lying around, backwards compatible code messing things up and confusing me, and bug fixes that create weird unintended consequences. Let's completely refactor and redesign the system to be much more robust? I want it to be configurable and modular, but most of all i want it to be robust.
 
-- All hooks are dispatched through a single [[router.py|hooks/router.py]]. 
+- All hooks are dispatched through a single [[router.py|hooks/router.py]].
 - Introduce a single pydantic state object that we load at the very start of unified router and save to disk at the very end only.
 - Create a single pydantic class that represents a gate configuration. factor down what every gate needs: open/closed, match conditions, messages, etc etc. no more loosely structured config dicts.
-- Work out how to create a gate Protocol or superclass that implements the logic of gates consistently. All gates basically need state update to do the same thing: match a pattern in the combination of hook name, caller, hook input and current state. 
-- So each gate should be configured with a list of matching criteria for state transitions (open -> close, close -> open, open -> open, close -> close) and then record all the same state variables (open y/n, turns_since_state_change (or turns_since_last_open?), time_since_last_open. gates should also specify the user message and the context injection template to be filled on each state transition or event. 
+- Work out how to create a gate Protocol or superclass that implements the logic of gates consistently. All gates basically need state update to do the same thing: match a pattern in the combination of hook name, caller, hook input and current state.
+- So each gate should be configured with a list of matching criteria for state transitions (open -> close, close -> open, open -> open, close -> close) and then record all the same state variables (open y/n, turns_since_state_change (or turns_since_last_open?), time_since_last_open. gates should also specify the user message and the context injection template to be filled on each state transition or event.
 - We should avoid having, for example, HydrationState.turns_since_hydration and different state objects for other gates, and definitely avoid the duplication we'd get if we had HydrationState.turns_since_critic and CriticState.status. all gate config and state objects should be strongly typed.
 - Adding new gates should be easy if we have generic config and generic matchers: create a new configuration, specify the transitions, specify the filename of the templates for messages, and that's it.
-
 
 ## Gate Block Feedback (Claude vs Gemini)
 

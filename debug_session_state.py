@@ -8,11 +8,7 @@ sys.path.insert(0, os.getcwd())
 sys.path.insert(0, os.path.join(os.getcwd(), "aops-core"))
 
 from lib.session_paths import get_session_file_path, get_session_status_dir
-from lib.session_state import (
-    get_or_create_session_state,
-    load_session_state,
-    save_session_state,
-)
+from lib.session_state import SessionState
 
 
 def test_repro():
@@ -31,11 +27,11 @@ def test_repro():
         print(f"DEBUG: Status Dir from lib: {get_session_status_dir(session_id)}")
 
         # 1. Create and Save State
-        state = get_or_create_session_state(session_id)
-        state["state"]["tool_calls_since_compliance"] = 10
-        save_session_state(session_id, state)
+        state = SessionState.create(session_id)
+        state.state["tool_calls_since_compliance"] = 10
+        state.save()
 
-        saved_path = get_session_file_path(session_id, state["date"])
+        saved_path = get_session_file_path(session_id, state.date)
         print(f"DEBUG: Saved to: {saved_path}")
         if saved_path.exists():
             print("DEBUG: File exists!")
@@ -44,10 +40,10 @@ def test_repro():
             print("DEBUG: File DOES NOT exist at expected path!")
 
         # 2. Load State
-        loaded_state = load_session_state(session_id)
+        loaded_state = SessionState.load(session_id)
         if loaded_state:
             print(
-                f"DEBUG: Loaded State Found. Tool calls: {loaded_state.get('state', {}).get('tool_calls_since_compliance')}"
+                f"DEBUG: Loaded State Found. Tool calls: {loaded_state.state.get('tool_calls_since_compliance')}"
             )
         else:
             print("DEBUG: Load returned None!")

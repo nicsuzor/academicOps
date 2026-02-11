@@ -3,6 +3,7 @@
 import json
 
 import pytest
+
 from lib.insights_generator import (
     InsightsValidationError,
     extract_json_from_response,
