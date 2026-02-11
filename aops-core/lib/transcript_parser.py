@@ -2213,7 +2213,10 @@ class SessionProcessor:
                     if len(summary) > 60:
                         summary = summary[:57] + "..."
 
-                    markdown += f"## User (Turn {turn_number}{timing_str}) - {summary}\n\n{user_message}\n\n"
+                    if len(user_message) > 500:
+                        markdown += f"## User (Turn {turn_number}{timing_str}) - {summary}\n\n{user_message[:500]}\n\n"
+                    else:
+                        markdown += f"## User (Turn {turn_number}{timing_str}) - {summary}\n\n{user_message}\n\n"
 
                 inline_hooks = (
                     turn.inline_hooks
