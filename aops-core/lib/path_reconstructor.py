@@ -10,6 +10,7 @@ No JSONL or markdown parsing — reads only pre-computed summary JSONs.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
@@ -90,9 +91,7 @@ def _extract_slug_from_filename(filename: str) -> str:
     return ""
 
 
-def _build_thread_from_summary(
-    summary: dict, filename_slug: str = ""
-) -> SessionThread | None:
+def _build_thread_from_summary(summary: dict, filename_slug: str = "") -> SessionThread | None:
     """Build a SessionThread from a summary JSON dict.
 
     Reads timeline_events array from summary. For summaries without
@@ -170,31 +169,54 @@ def _build_thread_from_summary(
 
         # Add a synthetic session_start event
         if start_time:
-            events.append(TimelineEvent(
-                timestamp=start_time,
-                event_type=EventType.SESSION_START,
-                session_id=session_id,
-                project=project,
-                description=initial_goal or "Session started",
-            ))
+            events.append(
+                TimelineEvent(
+                    timestamp=start_time,
+                    event_type=EventType.SESSION_START,
+                    session_id=session_id,
+                    project=project,
+                    description=initial_goal or "Session started",
+                )
+            )
 
         # Add accomplishments as synthetic completion events
         for acc in accomplishments:
-            events.append(TimelineEvent(
-                timestamp=start_time,
-                event_type=EventType.TASK_COMPLETE,
-                session_id=session_id,
-                project=project,
-                description=acc,
-            ))
+            events.append(
+                TimelineEvent(
+                    timestamp=start_time,
+                    event_type=EventType.TASK_COMPLETE,
+                    session_id=session_id,
+                    project=project,
+                    description=acc,
+                )
+            )
 
     if not events and not initial_goal:
         return None
 
-    # Filter out sessions with only generic "session" content and no real events
-    # These are token-metrics-only summaries that don't add value to the path view
+    # Filter out sessions with only generic content and no real events
+    # These are token-metrics-only summaries or filename-derived entries
+    # that don't add value to the path view
+    def _is_generic_goal(goal: str) -> bool:
+        g = goal.lower().strip()
+        if g in ("session", "session started", ""):
+            return True
+        # Filename-derived slugs: "list-files", "session-*"
+        if g in ("list-files", "list files"):
+            return True
+        if g.startswith("session-") or g.startswith("session "):
+            # Allow if there's meaningful content after "session"
+            suffix = g.split("-", 1)[-1] if "-" in g else g.split(" ", 1)[-1]
+            if len(suffix) <= 12:  # short hash or number, not meaningful
+                return True
+        # Purely date-based slugs (e.g., "20260211", "2026-02-11", "2026 02 11")
+        date_only = re.fullmatch(r"\d{4}[-\s]?\d{2}[-\s]?\d{2}", g)
+        if date_only:
+            return True
+        return False
+
     is_generic_session = (
-        initial_goal.lower() in ("session", "session started", "")
+        _is_generic_goal(initial_goal)
         and len(events) <= 1
         and all(e.event_type == EventType.SESSION_START for e in events)
     )
@@ -246,14 +268,16 @@ def _detect_abandoned_work(threads: list[SessionThread]) -> list[TimelineEvent]:
     abandoned = []
     for task_id, event in all_created.items():
         if task_id not in all_completed:
-            abandoned.append(TimelineEvent(
-                timestamp=event.timestamp,
-                event_type=EventType.TASK_ABANDON,
-                session_id=event.session_id,
-                project=event.project,
-                description=event.description,
-                task_id=task_id,
-            ))
+            abandoned.append(
+                TimelineEvent(
+                    timestamp=event.timestamp,
+                    event_type=EventType.TASK_ABANDON,
+                    session_id=event.session_id,
+                    project=event.project,
+                    description=event.description,
+                    task_id=task_id,
+                )
+            )
 
     return abandoned
 
