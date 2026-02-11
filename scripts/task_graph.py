@@ -239,6 +239,122 @@ def classify_edge(source_id: str, target_id: str, node_by_id: dict) -> str:
     return "wikilink"
 
 
+def _build_legend_table(stats: dict) -> str:
+    """Build an HTML table label for the legend node.
+
+    Uses Graphviz HTML-like label syntax to create a compact, boxed legend
+    that works with all layout engines (including sfdp, neato, fdp).
+    """
+    rows = []
+
+    rows.append(
+        '<TABLE BORDER="2" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4"'
+        ' COLOR="#dee2e6" BGCOLOR="#f8f9fa">'
+    )
+
+    # Title
+    rows.append(
+        '<TR><TD COLSPAN="4" ALIGN="CENTER">'
+        '<B><FONT POINT-SIZE="14" COLOR="#495057">Legend</FONT></B>'
+        "</TD></TR>"
+    )
+
+    # Task Types
+    rows.append('<TR><TD COLSPAN="4" BGCOLOR="#e9ecef"><B>Task Types</B></TD></TR>')
+    type_items = [
+        ("Goal", "ellipse"),
+        ("Project", "box3d"),
+        ("Epic", "octagon"),
+        ("Task", "box"),
+        ("Action", "note"),
+        ("Bug", "diamond"),
+        ("Feature", "hexagon"),
+        ("Learn", "tab"),
+    ]
+    for i in range(0, len(type_items), 4):
+        chunk = type_items[i : i + 4]
+        cells = "".join(
+            f'<TD BGCOLOR="#cce5ff" BORDER="1">{name} ({shape})</TD>'
+            for name, shape in chunk
+        )
+        rows.append(f"<TR>{cells}</TR>")
+
+    # Status
+    rows.append('<TR><TD COLSPAN="4" BGCOLOR="#e9ecef"><B>Status</B></TD></TR>')
+    status_items = [
+        ("Active", "#cce5ff"),
+        ("Done", "#d4edda"),
+        ("Structural", "#c3e6cb"),
+        ("Blocked", "#f8d7da"),
+    ]
+    cells = "".join(
+        f'<TD BGCOLOR="{color}" BORDER="1">{name}</TD>' for name, color in status_items
+    )
+    rows.append(f"<TR>{cells}</TR>")
+    rows.append('<TR><TD BGCOLOR="#fff3cd" BORDER="1">Waiting</TD><TD COLSPAN="3"></TD></TR>')
+
+    # Assignee
+    rows.append(
+        '<TR><TD COLSPAN="4" BGCOLOR="#e9ecef"><B>Assignee (border color)</B></TD></TR>'
+    )
+    assignee_items = [
+        ("@bot", "#17a2b8"),
+        ("@nic", "#6f42c1"),
+        ("@worker", "#fd7e14"),
+    ]
+    cells = "".join(
+        f'<TD BORDER="1" COLOR="{color}">{name}</TD>' for name, color in assignee_items
+    )
+    cells += "<TD></TD>"
+    rows.append(f"<TR>{cells}</TR>")
+
+    # Edge Types
+    rows.append('<TR><TD COLSPAN="4" BGCOLOR="#e9ecef"><B>Edge Types</B></TD></TR>')
+    rows.append(
+        "<TR>"
+        '<TD><FONT COLOR="#6c757d">&#x2500;&#x2500;</FONT> parent</TD>'
+        '<TD><FONT COLOR="#dc3545"><B>&#x2500;&#x2500;</B></FONT> depends_on</TD>'
+        '<TD><FONT COLOR="#17a2b8">- - -</FONT> soft_depends</TD>'
+        "<TD></TD>"
+        "</TR>"
+    )
+
+    # Statistics
+    if stats:
+        total_nodes = stats.get("total_nodes", 0)
+        total_edges = stats.get("total_edges", 0)
+        rows.append('<TR><TD COLSPAN="4" BGCOLOR="#e9ecef"><B>Statistics</B></TD></TR>')
+        rows.append(
+            f'<TR><TD COLSPAN="2">Nodes: {total_nodes}</TD>'
+            f'<TD COLSPAN="2">Edges: {total_edges}</TD></TR>'
+        )
+
+        by_type = stats.get("by_type", {})
+        if by_type:
+            parts = [
+                f"{v} {k}"
+                for k, v in sorted(by_type.items(), key=lambda x: -x[1])[:5]
+            ]
+            rows.append(
+                f'<TR><TD COLSPAN="4"><FONT POINT-SIZE="10">'
+                f'{", ".join(parts)}</FONT></TD></TR>'
+            )
+
+        by_status = stats.get("by_status", {})
+        if by_status:
+            parts = [
+                f"{v} {k}"
+                for k, v in sorted(by_status.items(), key=lambda x: -x[1])[:5]
+            ]
+            rows.append(
+                f'<TR><TD COLSPAN="4"><FONT POINT-SIZE="10">'
+                f'{", ".join(parts)}</FONT></TD></TR>'
+            )
+
+    rows.append("</TABLE>")
+    return "\n".join(rows)
+
+
 def generate_dot(
     nodes: list[dict],
     edges: list[dict],
@@ -273,111 +389,18 @@ def generate_dot(
         "    rankdir=TB;",
         '    node [style=filled, fontname="Helvetica"];',
         '    edge [color="#6c757d"];',
-        "",
-        "    // Legend Container",
-        "    subgraph cluster_legend_container {",
-        '        label="Legend & Statistics";',
-        '        style="filled,solid";',
-        '        fillcolor="#f8f9fa";',
-        '        color="#dee2e6";',
-        '        fontsize=14;',
-        "",
-        "        // Legend - Task Types",
-        "        subgraph cluster_legend_types {",
-        '            label="Task Types";',
-        "            style=dashed;",
-        '            legend_goal [label="Goal" shape=ellipse fillcolor="#cce5ff"];',
-        '            legend_project [label="Project" shape=box3d fillcolor="#cce5ff"];',
-        '            legend_epic [label="Epic" shape=octagon fillcolor="#cce5ff"];',
-        '            legend_task [label="Task" shape=box fillcolor="#cce5ff"];',
-        '            legend_action [label="Action" shape=note fillcolor="#cce5ff"];',
-        '            legend_bug [label="Bug" shape=diamond fillcolor="#cce5ff"];',
-        '            legend_feature [label="Feature" shape=hexagon fillcolor="#cce5ff"];',
-        '            legend_learn [label="Learn" shape=tab fillcolor="#cce5ff"];',
-        "        }",
-        "",
-        "        // Legend - Status",
-        "        subgraph cluster_legend_status {",
-        '            label="Status";',
-        "            style=dashed;",
-        '            legend_active [label="Active" shape=box fillcolor="#cce5ff"];',
-        '            legend_done [label="Done" shape=box fillcolor="#d4edda"];',
-        '            legend_structural [label="Done (structural)" shape=box3d style="filled,dashed" fillcolor="#c3e6cb"];',
-        '            legend_blocked [label="Blocked" shape=box fillcolor="#f8d7da"];',
-        '            legend_waiting [label="Waiting" shape=box fillcolor="#fff3cd"];',
-        "        }",
-        "",
-        "        // Legend - Assignee",
-        "        subgraph cluster_legend_assignee {",
-        '            label="Assignee";',
-        "            style=dashed;",
-        '            legend_bot [label="@bot" shape=box fillcolor="#ffffff" color="#17a2b8" penwidth=3];',
-        '            legend_nic [label="@nic" shape=box fillcolor="#ffffff" color="#6f42c1" penwidth=3];',
-        '            legend_worker [label="@worker" shape=box fillcolor="#ffffff" color="#fd7e14" penwidth=3];',
-        "        }",
-        "",
-        "        // Legend - Edge Types",
-        "        subgraph cluster_legend_edges {",
-        '            label="Edge Types";',
-        "            style=dashed;",
-        '            legend_e1 [label="" shape=point width=0.1];',
-        '            legend_e2 [label="" shape=point width=0.1];',
-        '            legend_e3 [label="" shape=point width=0.1];',
-        '            legend_e4 [label="" shape=point width=0.1];',
-        '            legend_e5 [label="" shape=point width=0.1];',
-        '            legend_e6 [label="" shape=point width=0.1];',
-        '            legend_e1 -> legend_e2 [label="parent" color="#6c757d" style=solid];',
-        '            legend_e3 -> legend_e4 [label="depends_on" color="#dc3545" style=bold];',
-        '            legend_e5 -> legend_e6 [label="soft_depends" color="#17a2b8" style=dashed];',
-        "        }",
     ]
 
-    # Add statistics subgraph if stats provided
-    if stats:
-        total_nodes = stats.get("total_nodes", 0)
-        total_edges = stats.get("total_edges", 0)
-        by_type = stats.get("by_type", {})
-        by_status = stats.get("by_status", {})
-
-        # Build type breakdown string
-        type_parts = [f"{v} {k}" for k, v in sorted(by_type.items(), key=lambda x: -x[1])]
-        type_str = ", ".join(type_parts[:5])  # Top 5 types
-        if len(type_parts) > 5:
-            type_str += f", +{len(type_parts) - 5} more"
-
-        # Build status breakdown string
-        status_parts = [f"{v} {k}" for k, v in sorted(by_status.items(), key=lambda x: -x[1])]
-        status_str = ", ".join(status_parts[:5])  # Top 5 statuses
-        if len(status_parts) > 5:
-            status_str += f", +{len(status_parts) - 5} more"
-
-        stats_label = (
-            f"Graph Statistics\\n"
-            f"─────────────────\\n"
-            f"Nodes: {total_nodes}\\n"
-            f"Edges: {total_edges}\\n"
-            f"─────────────────\\n"
-            f"By Type:\\n{type_str}\\n"
-            f"─────────────────\\n"
-            f"By Status:\\n{status_str}"
-        )
-
-        lines.extend(
-            [
-                "        // Statistics",
-                "        subgraph cluster_stats {",
-                '            label="";',
-                "            style=filled;",
-                '            fillcolor="#f8f9fa";',
-                f'            stats_box [label="{stats_label}" shape=note fillcolor="#ffffff" fontsize=10];',
-                "        }",
-                "",
-            ]
-        )
-
-    # Close the legend container
-    lines.append("    }")
-    lines.append("")
+    # Legend as a single HTML-table node (works with all layout engines)
+    legend_html = _build_legend_table(stats)
+    lines.extend(
+        [
+            "",
+            "    // Legend",
+            f"    legend [shape=plaintext margin=0 label=<{legend_html}>];",
+            "",
+        ]
+    )
 
     # Add nodes
     for node in nodes:
