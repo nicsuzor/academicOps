@@ -196,9 +196,7 @@ GATE_CONFIGS = [
             ),
             # Critic review completes with PROCEED -> Open gate
             GateTrigger(
-                condition=GateCondition(
-                    hook_event="SubagentStop", subagent_type_pattern="critic"
-                ),
+                condition=GateCondition(hook_event="SubagentStop", subagent_type_pattern="critic"),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
                     reset_ops_counter=True,
