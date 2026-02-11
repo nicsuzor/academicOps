@@ -7,8 +7,7 @@
     {
       "name": "Memory Server API Key",
       "description": "API Key for the semantic memory server",
-      "envVar": "MCP_MEMORY_API_KEY",
-      "sensitive": true
+      "envVar": "MCP_MEMORY_API_KEY"
     }
   ],
   "mcpServers": {
