@@ -4107,6 +4107,27 @@ def render_graph_section():
         )
 
 
+def _sanitize_prompt(text: str) -> str:
+    """Strip HTML/markdown markup from prompt text for clean display."""
+    import re as _re
+
+    s = text
+    # Remove HTML comments <!-- ... -->
+    s = _re.sub(r"<!--.*?-->", "", s, flags=_re.DOTALL)
+    # Remove HTML tags
+    s = _re.sub(r"<[^>]+>", "", s)
+    # Convert markdown links [text](url) to just text
+    s = _re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", s)
+    # Strip bold/italic markers (** __ * _) but keep content
+    s = _re.sub(r"\*\*(.+?)\*\*", r"\1", s)
+    s = _re.sub(r"__(.+?)__", r"\1", s)
+    s = _re.sub(r"\*(.+?)\*", r"\1", s)
+    s = _re.sub(r"(?<!\w)_(.+?)_(?!\w)", r"\1", s)
+    # Collapse multiple blank lines
+    s = _re.sub(r"\n{3,}", "\n\n", s)
+    return s.strip()
+
+
 def render_recent_prompts():
     """Render Recent Prompts section for quick context recovery.
 
@@ -4134,7 +4155,9 @@ def render_recent_prompts():
 
             # Display each prompt with copy-able code block
             for prompt in prompts:
-                st.code(prompt, language=None)
+                cleaned = _sanitize_prompt(prompt)
+                if cleaned:
+                    st.code(cleaned, language=None)
 
             st.markdown("---")
 
