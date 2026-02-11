@@ -840,11 +840,19 @@ def should_skip_hydration(prompt: str, session_id: str | None = None) -> bool:
     """Check if prompt should skip hydration.
 
     Returns True for:
+    - Subagent sessions (they are themselves part of the hydration/task flow)
     - Agent/task completion notifications (<agent-notification>, <task-notification>)
     - Skill invocations (prompts starting with '/')
     - Expanded slash commands (containing <command-name>/ tag)
     - User ignore shortcut (prompts starting with '.')
     """
+    from lib.hook_utils import is_subagent_session
+
+    # 0. Skip if this is a subagent session
+    # Subagents should never trigger their own hydration requirement
+    if is_subagent_session():
+        return True
+
     prompt_stripped = prompt.strip()
     # Agent/task completion notifications from background Task agents
     if prompt_stripped.startswith("<agent-notification>"):

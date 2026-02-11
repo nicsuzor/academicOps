@@ -4,6 +4,15 @@
   "description": "AcademicOps Framework Extension for Gemini CLI - skills, agents, hooks, and tools for research workflow automation",
   "contextFileName": "GEMINI.md",
   "mcpServers": {
+    "memory": {
+      "url": "http://services.stoat-musical.ts.net:8026/mcp",
+      "headers": {
+        "Authorization": "Bearer $MCP_MEMORY_API_KEY"
+      },
+      "env": {
+        "MCP_MEMORY_API_KEY": "${MCP_MEMORY_API_KEY}"
+      }
+    },
     "task_manager": {
       "command": "env",
       "args": [
