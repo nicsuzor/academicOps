@@ -73,8 +73,8 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path | No
     # Write to temp
     try:
         temp_dir = hook_utils.get_hook_temp_dir(category, ctx.raw_input)
-        # Cleanup old audit files for THIS gate before writing new one
-        hook_utils.cleanup_old_temp_files(temp_dir, f"audit_{gate}_")
+        # Use fixed filename per session - write_temp_file will use session hash
+        # No cleanup needed - we overwrite the same file each time
         return hook_utils.write_temp_file(
             content, temp_dir, f"audit_{gate}_", session_id=session_id
         )
