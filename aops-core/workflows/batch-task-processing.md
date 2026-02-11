@@ -1,3 +1,9 @@
+---
+id: batch-task-processing
+category: operations
+bases: [base-task-tracking]
+---
+
 # Batch Task Processing Workflow
 
 Orchestrate multiple worker agents to process tasks from the queue in parallel.

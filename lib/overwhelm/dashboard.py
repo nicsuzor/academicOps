@@ -3210,41 +3210,74 @@ st.markdown(
         padding: 2px 0;
     }
 
+    .path-project-group {
+        margin-bottom: 24px;
+        background: rgba(255, 255, 255, 0.02);
+        padding: 12px;
+        border-radius: 8px;
+    }
+
+    .path-project-header {
+        font-size: 0.75em;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 14px;
+        padding: 2px 8px;
+        display: inline-block;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.05);
+    }
+
     .path-threads {
         display: flex;
-        gap: 16px;
+        gap: 20px;
         overflow-x: auto;
+        padding-bottom: 8px;
     }
 
     .path-thread {
-        flex: 1;
-        min-width: 200px;
-        max-width: 350px;
-        border-left: 2px solid var(--border-color, #444);
-        padding-left: 12px;
+        flex: 0 0 280px;
+        border-left: 2px solid var(--border-color, #333);
+        padding-left: 14px;
+        transition: border-color 0.2s ease;
+    }
+
+    .path-thread:hover {
+        border-left-color: #555;
     }
 
     .path-thread-header {
         font-weight: 600;
         font-size: 0.85em;
         color: var(--text-primary, #e0e0e0);
-        margin-bottom: 8px;
+        margin-bottom: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .path-thread-header .session-hash {
-        color: var(--text-muted, #888);
+        color: var(--text-muted, #777);
         font-weight: 400;
-        font-family: monospace;
-        font-size: 0.85em;
+        font-family: var(--font-mono, monospace);
+        font-size: 0.8em;
     }
 
     .path-event {
         display: flex;
         gap: 8px;
         align-items: flex-start;
-        padding: 3px 0;
+        padding: 4px 0;
         font-size: 0.82em;
+        line-height: 1.4;
         color: var(--text-secondary, #bbb);
+    }
+
+    .path-event.minor {
+        opacity: 0.6;
+        font-size: 0.78em;
+        padding: 2px 0;
     }
 
     .path-event .dot {
@@ -3252,12 +3285,13 @@ st.markdown(
         width: 8px;
         height: 8px;
         border-radius: 50%;
-        margin-top: 4px;
+        margin-top: 5px;
+        box-shadow: 0 0 4px rgba(0,0,0,0.3);
     }
 
-    .path-event .dot.prompt { background: #60a5fa; }
+    .path-event .dot.prompt { background: #60a5fa; box-shadow: 0 0 6px rgba(96, 165, 250, 0.4); }
     .path-event .dot.create { background: #818cf8; }
-    .path-event .dot.complete { background: #22c55e; }
+    .path-event .dot.complete { background: #22c55e; box-shadow: 0 0 6px rgba(34, 197, 94, 0.4); }
     .path-event .dot.update { background: #f59e0b; }
     .path-event .dot.claim { background: #06b6d4; }
     .path-event .dot.abandon { background: #ef4444; }
@@ -3265,10 +3299,10 @@ st.markdown(
 
     .path-event .time {
         flex-shrink: 0;
-        color: var(--text-muted, #888);
-        font-family: monospace;
-        font-size: 0.9em;
-        min-width: 40px;
+        color: var(--text-muted, #777);
+        font-family: var(--font-mono, monospace);
+        font-size: 0.85em;
+        min-width: 38px;
     }
 
     .path-event .desc {
@@ -4783,58 +4817,95 @@ try:
         if path.abandoned_work:
             path_html += "<div class='path-abandoned'>"
             path_html += f"<div class='path-abandoned-title'>⚠ DROPPED THREADS ({len(path.abandoned_work)} started but not finished)</div>"
+            path_html += "<div style='display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px;'>"
             for ab in path.abandoned_work:
                 task_label = esc(ab.task_id or ab.description)
-                path_html += f"<div class='path-abandoned-item'>□ {task_label}</div>"
+                proj_color = get_project_color(ab.project)
+                path_html += f"<div class='path-abandoned-item' style='border-left: 2px solid {proj_color}; background: rgba(255,255,255,0.03); padding: 4px 10px; border-radius: 4px; font-size: 0.85em;' title='Project: {esc(ab.project)}'>□ {task_label}</div>"
+            path_html += "</div>"
             path_html += "</div>"
 
-        # Parallel session thread columns
-        path_html += "<div class='path-threads'>"
+        # Group threads by project
+        threads_by_project = {}
         for thread in path.threads:
-            path_html += "<div class='path-thread'>"
-            proj_display = esc(thread.project)
-            sid_display = esc(thread.session_id[:8])
-            path_html += f"<div class='path-thread-header'>{proj_display} <span class='session-hash'>({sid_display})</span></div>"
+            proj = thread.project or "unknown"
+            if proj not in threads_by_project:
+                threads_by_project[proj] = []
+            threads_by_project[proj].append(thread)
 
-            for event in thread.events:
-                # Timestamp in HH:MM format
-                if event.timestamp:
-                    time_str = event.timestamp.strftime("%H:%M")
-                else:
-                    time_str = ""
+        for proj, proj_threads in threads_by_project.items():
+            proj_color = get_project_color(proj)
+            path_html += f"<div class='path-project-group'>"
+            path_html += f"<div class='path-project-header' style='color: {proj_color}; border-left: 3px solid {proj_color}'>{esc(proj).upper()}</div>"
+            path_html += "<div class='path-threads'>"
 
-                # Dot color class
-                dot_class = {
-                    EventType.USER_PROMPT: "prompt",
-                    EventType.TASK_CREATE: "create",
-                    EventType.TASK_COMPLETE: "complete",
-                    EventType.TASK_UPDATE: "update",
-                    EventType.TASK_CLAIM: "claim",
-                    EventType.TASK_ABANDON: "abandon",
-                    EventType.SESSION_START: "start",
-                }.get(event.event_type, "start")
+            for thread in proj_threads:
+                # Limit sessions to those with at least one event or meaningful goal
+                if not thread.events and not thread.initial_goal:
+                    continue
 
-                # Event description
-                desc = esc(event.description[:100]) if event.description else ""
-                if event.event_type == EventType.TASK_CREATE:
-                    desc = f"Created: {desc}"
-                elif event.event_type == EventType.TASK_COMPLETE:
-                    desc = f"✓ {desc}"
-                elif event.event_type == EventType.TASK_UPDATE:
-                    status = getattr(event, "description", "")
-                    desc = f"→ {esc(status)}"
-                elif event.event_type == EventType.TASK_CLAIM:
-                    desc = f"Claimed task"
+                path_html += "<div class='path-thread' style='border-left-color: {proj_color}66'>"
+                sid_display = esc(thread.session_id[:8])
+                goal_display = esc(thread.initial_goal[:40] + "..." if len(thread.initial_goal) > 40 else thread.initial_goal)
+                path_html += f"<div class='path-thread-header' title='{esc(thread.initial_goal)}'>{goal_display} <span class='session-hash'>({sid_display})</span></div>"
 
-                path_html += f"<div class='path-event'>"
-                path_html += f"<span class='dot {dot_class}'></span>"
-                path_html += f"<span class='time'>{esc(time_str)}</span>"
-                path_html += f"<span class='desc'>{desc}</span>"
-                path_html += "</div>"
+                # Consolidate consecutive TASK_UPDATE events
+                display_events = []
+                update_buffer = []
 
-            path_html += "</div>"  # end path-thread
+                for event in thread.events:
+                    if event.event_type == EventType.TASK_UPDATE:
+                        update_buffer.append(event)
+                    else:
+                        if update_buffer:
+                            # Add the last update from the buffer
+                            display_events.append(update_buffer[-1])
+                            update_buffer = []
+                        display_events.append(event)
+                if update_buffer:
+                    display_events.append(update_buffer[-1])
 
-        path_html += "</div>"  # end path-threads
+                for event in display_events:
+                    # Timestamp in HH:MM format
+                    time_str = event.timestamp.strftime("%H:%M") if event.timestamp else ""
+
+                    # Dot color class
+                    dot_class = {
+                        EventType.USER_PROMPT: "prompt",
+                        EventType.TASK_CREATE: "create",
+                        EventType.TASK_COMPLETE: "complete",
+                        EventType.TASK_UPDATE: "update",
+                        EventType.TASK_CLAIM: "claim",
+                        EventType.TASK_ABANDON: "abandon",
+                        EventType.SESSION_START: "start",
+                    }.get(event.event_type, "start")
+
+                    # Event priority/style
+                    is_minor = event.event_type == EventType.TASK_UPDATE
+                    event_class = "path-event minor" if is_minor else "path-event"
+
+                    # Event description
+                    desc = esc(event.description[:100]) if event.description else ""
+                    if event.event_type == EventType.TASK_CREATE:
+                        desc = f"<b>Created:</b> {desc}"
+                    elif event.event_type == EventType.TASK_COMPLETE:
+                        desc = f"<b>✓</b> {desc}"
+                    elif event.event_type == EventType.TASK_UPDATE:
+                        desc = f"→ {desc}"
+                    elif event.event_type == EventType.TASK_CLAIM:
+                        desc = f"<b>Claimed:</b> {desc}"
+
+                    path_html += f"<div class='{event_class}'>"
+                    path_html += f"<span class='dot {dot_class}'></span>"
+                    path_html += f"<span class='time'>{esc(time_str)}</span>"
+                    path_html += f"<span class='desc'>{desc}</span>"
+                    path_html += "</div>"
+
+                path_html += "</div>"  # end path-thread
+
+            path_html += "</div>"  # end path-threads
+            path_html += "</div>"  # end path-project-group
+
         path_html += "</div>"  # end path-timeline
         st.markdown(path_html, unsafe_allow_html=True)
 except Exception as e:

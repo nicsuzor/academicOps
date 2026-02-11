@@ -1,3 +1,9 @@
+---
+id: tdd-cycle
+category: development
+bases: [base-task-tracking, base-tdd, base-verification, base-commit]
+---
+
 # TDD Cycle Workflow
 
 Red-green-refactor cycle for any testable code change.

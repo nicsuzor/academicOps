@@ -177,6 +177,7 @@ GATE_CONFIGS = [
         ],
     ),
     # --- Critic ---
+    # <!-- NS: revise this, this is NOT the critic gate we designed. It should close after hydration and block any edit tools until a plan with a satisfactory review is complete. -->
     GateConfig(
         name="critic",
         description="Encourages periodic review.",
@@ -202,6 +203,7 @@ GATE_CONFIGS = [
         ],
     ),
     # --- QA ---
+    # <!-- NS: revise this, this is NOT the QA gate we designed. It should block exit until the  -->
     GateConfig(
         name="qa",
         description="Ensures code quality.",

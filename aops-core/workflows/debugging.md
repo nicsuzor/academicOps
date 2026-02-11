@@ -1,3 +1,9 @@
+---
+id: debugging
+category: development
+bases: [base-task-tracking, base-verification]
+---
+
 # Debugging Workflow
 
 Understand the problem before fixing it.

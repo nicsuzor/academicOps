@@ -1,7 +1,7 @@
 ---
 id: framework-change
 category: governance
-bases: [base-task-tracking]
+bases: [base-task-tracking, base-verification, base-commit]
 ---
 
 # Framework Change
