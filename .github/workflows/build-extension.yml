@@ -61,13 +61,13 @@ jobs:
           echo "base_version=$BASE_VERSION" >> $GITHUB_OUTPUT
 
           if [ "${{ steps.release_type.outputs.type }}" = "testing" ]; then
-            # Bump patch and append pre-release suffix so each build has a unique,
-            # incrementing version that clients will pick up as an update.
-            # Uses semver pre-release format: X.Y.Z.devN
-            # Strip any existing pre-release suffix (e.g. 0.1.15-rc.1 -> 0.1.15 or 0.1.15.dev1 -> 0.1.15)
+            # Append pre-release suffix to the CURRENT stable version.
+            # Uses PEP 440 dev format: X.Y.Z.devN
+            # The next `make release` will bump to X.Y.(Z+1), which is
+            # strictly greater than any X.Y.Z.devN pre-release.
+            # Strip any existing pre-release suffix first (idempotent).
             CLEAN_VERSION=$(echo "$BASE_VERSION" | sed -E 's/([-+\.]dev|[-+]).*//')
-            NEXT_PATCH=$(echo "$CLEAN_VERSION" | awk -F. '{print $1 "." $2 "." $3+1}')
-            VERSION="${NEXT_PATCH}.dev${{ github.run_number }}"
+            VERSION="${CLEAN_VERSION}.dev${{ github.run_number }}"
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "Testing version: $VERSION (base: $BASE_VERSION)"
           else

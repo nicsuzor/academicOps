@@ -3,13 +3,6 @@
   "version": "0.1.14",
   "description": "AcademicOps Framework Extension for Gemini CLI - skills, agents, hooks, and tools for research workflow automation",
   "contextFileName": "GEMINI.md",
-  "settings": [
-    {
-      "name": "Memory Server API Key",
-      "description": "API Key for the semantic memory server",
-      "envVar": "MCP_MEMORY_API_KEY"
-    }
-  ],
   "mcpServers": {
     "task_manager": {
       "command": "env",
