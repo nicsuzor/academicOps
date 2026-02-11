@@ -1,3 +1,9 @@
+---
+id: feature-dev
+category: development
+bases: [base-task-tracking, base-tdd, base-verification, base-commit]
+---
+
 # Feature Development Workflow
 
 Test-first feature development from idea to validated implementation.

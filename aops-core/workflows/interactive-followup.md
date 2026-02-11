@@ -1,6 +1,7 @@
 ---
 id: interactive-followup
 category: session
+bases: [base-verification]
 triggers: ["follow-up", "also", "quick change", "one more thing"]
 ---
 

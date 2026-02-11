@@ -1,3 +1,9 @@
+---
+id: task-triage
+category: operations
+bases: [base-task-tracking]
+---
+
 # Task Triage Workflow
 
 Interactive workflow for cleaning up, prioritizing, and organizing task backlogs.

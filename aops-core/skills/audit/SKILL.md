@@ -231,6 +231,34 @@ Index files are root-level files for agent consumption. The auditing agent curat
 | docs/ENFORCEMENT.md | `specs/enforcement.md`, existing content | Mechanism ladder, root cause model |
 | README.md (flowchart) | `hooks/router.py`, `gate_config.py`, `gates.py` | Invoke `Skill(skill="flowchart")` first. Mermaid accuracy |
 
+#### WORKFLOWS.md Curation
+
+**Source data**: Each workflow file in `workflows/*.md` has YAML frontmatter with:
+
+- `id`: Workflow identifier
+- `category`: Workflow category (development, operations, routing, etc.)
+- `bases`: Array of base patterns this workflow composes (e.g., `[base-task-tracking, base-tdd]`)
+
+**Generation requirements**:
+
+1. **Preserve existing structure**: Keep the decision tree, key distinctions, and project-specific sections
+2. **Preserve annotations**: Do NOT delete `<!-- @nic: -->` or `<!-- @claude: -->` comments - these contain design history
+3. **Add Bases column**: In workflow tables, include a "Bases" column showing which base patterns each workflow composes
+4. **Extract from frontmatter**: Read `bases:` field from each workflow's YAML frontmatter
+5. **Handle missing bases**: If a workflow lacks `bases:` in frontmatter, show "-" in the Bases column
+
+**Table format**:
+
+```markdown
+| Workflow | When to Use | Bases |
+| -------- | ----------- | ----- |
+| [[tdd-cycle]] | Any testable code change | task-tracking, tdd, verification, commit |
+| [[debugging]] | Cause unknown, investigating | task-tracking, verification |
+| [[simple-question]] | Pure information, no modifications | - |
+```
+
+**Why this matters**: The `bases:` metadata enables the hydrator to compose workflow steps rather than just listing options (see task aops-4f512f50).
+
 #### enforcement-map.md Derivation
 
 **Hook-Axiom Declaration Convention**: Every hook that enforces an axiom declares it in its module docstring:

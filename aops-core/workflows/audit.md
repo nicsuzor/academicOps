@@ -1,3 +1,9 @@
+---
+id: audit
+category: governance
+bases: []
+---
+
 # Audit Workflow
 
 Framework governance audit workflow. Runs structure checking, justification verification, and index regeneration.

@@ -1,6 +1,8 @@
 ---
+id: strategy
 name: strategy
 category: instruction
+bases: []
 description: Strategic thinking partner for exploration, planning, and clarity - facilitates thinking without executing tasks
 permalink: commands/strategy
 allowed-tools: mcp__memory__retrieve_memory,Skill,AskUserQuestion

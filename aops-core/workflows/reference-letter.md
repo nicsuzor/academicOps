@@ -1,6 +1,8 @@
 ---
+id: reference-letter
 name: reference-letter
 category: academic
+bases: [base-task-tracking]
 description: Standard workflow for handling reference letter requests (request → draft → review → send).
 tags: [academic, reference, letter, workflow]
 ---

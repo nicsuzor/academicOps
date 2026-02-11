@@ -1,3 +1,9 @@
+---
+id: simple-question
+category: routing
+bases: []
+---
+
 # Simple Question Workflow
 
 Answer and HALT. No modifications.
