@@ -104,6 +104,7 @@ GATE_CONFIGS = [
     ),
     # --- Custodiet ---
     GateConfig(
+        # <!-- NS: ensure that each gate only creates one temporary file per session -- don't create a new audit file every hook action, just keep overwriting the same one. -->
         name="custodiet",
         description="Enforces periodic compliance checks.",
         initial_status=GateStatus.OPEN,
@@ -203,7 +204,7 @@ GATE_CONFIGS = [
         ],
     ),
     # --- QA ---
-    # <!-- NS: revise this, this is NOT the QA gate we designed. It should block exit until the  -->
+    # <!-- NS: revise this, this is NOT the QA gate we designed. It should block exit until the we have complied with all the planned requirements (set after hydration, approved by critic) -->
     GateConfig(
         name="qa",
         description="Ensures code quality.",
@@ -229,7 +230,7 @@ GATE_CONFIGS = [
         ],
     ),
     # --- Handover ---
-    # <!-- NS: revise this, this is NOT the handover gate. -->
+    # <!-- NS: revise this, this is NOT the handover gate. It should require a reflection printed in the form expected by transcript.py -->
     # GateConfig(
     #     name="handover",
     #     description="Manages session length.",
