@@ -151,14 +151,17 @@ def on_session_start(ctx: HookContext, state: SessionState) -> GateResult | None
     # --- Notify Gates ---
 
     # Brief user-facing messages
-    messages = [f"🚀 Session Started: {ctx.session_id} ({short_hash})"]
-
-    # Detailed context for agent
-    details = [
+    # We provide references here to help debugging
+    messages = [
+        f"🚀 Session Started: {ctx.session_id} ({short_hash})",
         f"State File: {state_file_path}",
         f"Hooks log: {hook_log_path}",
         f"Transcript: {transcript_path}",
     ]
+
+    # Detailed context for agent
+    # Agent doesn't need to know anything at this stage.
+    details = []
 
     context_injections = []
     for gate in GateRegistry.get_all_gates():
@@ -212,6 +215,7 @@ def on_after_agent(ctx: HookContext, state: SessionState) -> GateResult | None:
         )
 
     return None
+
 
 def on_subagent_stop(ctx: HookContext, state: SessionState) -> GateResult | None:
     """SubagentStop: Notify all gates."""
