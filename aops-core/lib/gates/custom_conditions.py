@@ -55,4 +55,46 @@ def check_custom_condition(
         except ImportError:
             return False
 
+    if name == "has_framework_reflection":
+        try:
+            from lib.transcript_parser import parse_framework_reflection
+            # Load transcript and check for reflection
+            transcript_path = ctx.transcript_path or ctx.raw_input.get("transcript_path")
+            if not transcript_path:
+                return False
+
+            # Read recent transcript content
+            from pathlib import Path
+            path = Path(transcript_path)
+            if not path.exists():
+                return False
+
+            # Read last portion of transcript to check for reflection
+            # Framework reflections are typically at the end
+            content = path.read_text()
+            # Parse the reflection
+            reflection = parse_framework_reflection(content)
+            return reflection is not None
+        except (ImportError, Exception):
+            return False
+
+    if name == "missing_framework_reflection":
+        # Inverse check - returns True when reflection is MISSING
+        try:
+            from lib.transcript_parser import parse_framework_reflection
+            transcript_path = ctx.transcript_path or ctx.raw_input.get("transcript_path")
+            if not transcript_path:
+                return True  # Missing if no transcript
+
+            from pathlib import Path
+            path = Path(transcript_path)
+            if not path.exists():
+                return True  # Missing if file doesn't exist
+
+            content = path.read_text()
+            reflection = parse_framework_reflection(content)
+            return reflection is None  # True when reflection is missing
+        except (ImportError, Exception):
+            return True  # Assume missing on error
+
     return False

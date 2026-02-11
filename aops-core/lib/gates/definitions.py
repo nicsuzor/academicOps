@@ -181,41 +181,31 @@ GATE_CONFIGS = [
     # Closes after hydration, blocks edit tools until plan is reviewed and approved by critic.
     GateConfig(
         name="critic",
-        description="Blocks edit tools until plan is reviewed and approved.",
-        initial_status=GateStatus.OPEN,  # Open at session start (no plan yet)
+        description="Enforces plan review before editing.",
+        initial_status=GateStatus.OPEN,
         triggers=[
-            # Hydration complete -> Close (plan exists, needs review)
+            # Hydration completes -> Close gate
             GateTrigger(
                 condition=GateCondition(
                     hook_event="SubagentStop", subagent_type_pattern="hydrator"
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
-                    system_message_template="📋 Plan ready for review. Invoke critic before editing.",
+                    system_message_template="📋 Hydration complete. Plan review required before editing.",
                 ),
             ),
-            # Fallback: Task tool with hydrator completes -> Close
+            # Critic review completes with PROCEED -> Open gate
             GateTrigger(
                 condition=GateCondition(
-                    hook_event="PostToolUse",
-                    tool_name_pattern="Task",
-                    tool_input_pattern="hydrator",
+                    hook_event="SubagentStop", subagent_type_pattern="critic"
                 ),
-                transition=GateTransition(
-                    target_status=GateStatus.CLOSED,
-                    system_message_template="📋 Plan ready for review. Invoke critic before editing.",
-                ),
-            ),
-            # Critic review complete -> Open (can now edit)
-            GateTrigger(
-                condition=GateCondition(hook_event="SubagentStop", subagent_type_pattern="critic"),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
                     reset_ops_counter=True,
-                    system_message_template="👁️ Critic review complete. Edit tools enabled.",
+                    system_message_template="👁️ Critic review complete. Editing allowed.",
                 ),
             ),
-            # Fallback: Task tool with critic completes -> Open
+            # Task tool calls critic (fallback)
             GateTrigger(
                 condition=GateCondition(
                     hook_event="PostToolUse",
@@ -227,9 +217,21 @@ GATE_CONFIGS = [
                     reset_ops_counter=True,
                 ),
             ),
+            # Skill tool calls critic (fallback)
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="PostToolUse",
+                    tool_name_pattern="Skill",
+                    tool_input_pattern="critic",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.OPEN,
+                    reset_ops_counter=True,
+                ),
+            ),
         ],
         policies=[
-            # If Closed, block edit tools (except always_available)
+            # Block edit tools when CLOSED
             GatePolicy(
                 condition=GateCondition(
                     current_status=GateStatus.CLOSED,
@@ -249,40 +251,44 @@ GATE_CONFIGS = [
     ),
     # --- QA ---
     # Blocks exit until planned requirements are verified by QA agent.
-    # Requirements are set after hydration and approved by critic.
     GateConfig(
         name="qa",
-        description="Blocks exit until planned requirements are verified.",
-        initial_status=GateStatus.OPEN,  # Open at session start (no requirements yet)
+        description="Ensures requirements compliance before exit.",
+        initial_status=GateStatus.CLOSED,
         triggers=[
-            # Critic approves plan -> Close (requirements now set, need verification before exit)
-            GateTrigger(
-                condition=GateCondition(hook_event="SubagentStop", subagent_type_pattern="critic"),
-                transition=GateTransition(
-                    target_status=GateStatus.CLOSED,
-                    system_message_template="🧪 QA gate closed. Run QA before exiting.",
-                ),
-            ),
-            # QA verification complete -> Open (can now exit)
+            # QA agent verifies requirements -> Open gate
             GateTrigger(
                 condition=GateCondition(hook_event="SubagentStop", subagent_type_pattern="qa"),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
-                    system_message_template="🧪 QA verification complete. Exit allowed.",
+                    system_message_template="🧪 QA complete. Requirements verified.",
                 ),
             ),
-            # Fallback: Task tool with qa completes -> Open
+            # Task tool calls QA (fallback)
             GateTrigger(
                 condition=GateCondition(
                     hook_event="PostToolUse",
                     tool_name_pattern="Task",
                     tool_input_pattern="qa",
                 ),
-                transition=GateTransition(target_status=GateStatus.OPEN),
+                transition=GateTransition(
+                    target_status=GateStatus.OPEN,
+                ),
+            ),
+            # Skill tool calls QA (fallback)
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="PostToolUse",
+                    tool_name_pattern="Skill",
+                    tool_input_pattern="qa",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.OPEN,
+                ),
             ),
         ],
         policies=[
-            # If Closed, block Stop (exit)
+            # Block Stop when CLOSED
             GatePolicy(
                 condition=GateCondition(
                     current_status=GateStatus.CLOSED,
@@ -300,21 +306,34 @@ GATE_CONFIGS = [
         ],
     ),
     # --- Handover ---
-    # TODO: Implement handover gate that blocks Stop until Framework Reflection is output.
-    # Expected format (see aops-core/commands/learn.md):
-    #   ## Framework Reflection
-    #   **Prompts**: [trigger]
-    #   **Guidance received**: [guidance or N/A]
-    #   **Followed**: Yes/No
-    #   **Outcome**: success/partial/blocked/failure
-    #   **Accomplishments**: [list]
-    #   **Friction points**: [list or "none"]
-    #   **Root cause** (if not success): [category]
-    #   **Proposed changes**: [list]
-    #   **Next step**: [task reference if needed]
-    #
-    # Implementation requires:
-    # - custom_check to detect reflection in recent output (via transcript/session reader)
-    # - Block Stop hook until reflection detected
-    # - Trigger open when valid reflection format is found
+    GateConfig(
+        name="handover",
+        description="Requires Framework Reflection before exit.",
+        initial_status=GateStatus.OPEN,
+        triggers=[],
+        policies=[
+            # Block Stop until Framework Reflection is provided
+            GatePolicy(
+                condition=GateCondition(
+                    hook_event="Stop",
+                    custom_check="missing_framework_reflection",
+                ),
+                verdict="deny",
+                message_template=(
+                    "⛔ Framework Reflection required before exit.\n\n"
+                    "Please provide a Framework Reflection in this format:\n\n"
+                    "## Framework Reflection\n"
+                    "**Prompts**: ...\n"
+                    "**Guidance received**: ...\n"
+                    "**Followed**: ...\n"
+                    "**Outcome**: success/partial/failure\n"
+                    "**Accomplishments**: ...\n"
+                    "**Friction points**: ...\n"
+                    "**Root cause**: ...\n"
+                    "**Proposed changes**: ...\n"
+                    "**Next step**: ..."
+                ),
+            ),
+        ],
+    ),
 ]
