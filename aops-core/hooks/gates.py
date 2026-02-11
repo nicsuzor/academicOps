@@ -8,12 +8,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from hooks.schemas import HookContext
-from hooks.unified_logger import get_hook_log_path
-from lib import hook_utils, session_paths
 from lib.gate_model import GateResult, GateVerdict
 from lib.gates.registry import GateRegistry
 from lib.session_state import SessionState
+
+from hooks.schemas import HookContext
+from hooks.unified_logger import get_hook_log_path
+from lib import hook_utils, session_paths
 
 if TYPE_CHECKING:
     pass

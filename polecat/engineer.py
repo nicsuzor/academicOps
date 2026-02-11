@@ -13,10 +13,9 @@ sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 from observability import metrics
 
 try:
-    from manager import PolecatManager
-
     from lib.task_model import TaskStatus
     from lib.task_storage import TaskStorage
+    from manager import PolecatManager
 except ImportError as e:
     # These imports may fail when running outside academicOps context
     # but are required for actual operation

@@ -1293,7 +1293,7 @@ class SessionProcessor:
                     elif isinstance(part, dict):
                         if "text" in part:
                             text_parts.append(part["text"])
-                        elif "content" in part: # some variants
+                        elif "content" in part:  # some variants
                             text_parts.append(str(part["content"]))
                 content_text = "".join(text_parts)
 

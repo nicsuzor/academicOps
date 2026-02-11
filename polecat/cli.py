@@ -169,7 +169,6 @@ def _attempt_auto_merge(task, manager):
     """
     try:
         from engineer import Engineer
-
         from lib.task_model import TaskStatus
 
         # Check if any blocking dependencies are not done
