@@ -50,7 +50,8 @@ tags: [framework, enforcement, moc]
 | [[feedback-loops-for-uncertainty]]          | Feedback Loops                  | AXIOMS.md                                                                                    | SessionStart         |           |
 | [[current-state-machine]]                   | Current State Machine           | autocommit_state.py (auto-commit+push)                                                       | PostToolUse          |           |
 | [[one-spec-per-feature]]                    | One Spec Per Feature            | AXIOMS.md                                                                                    | SessionStart         |           |
-| [[mandatory-handover]]                      | Mandatory Handover Workflow     | prompt-hydrator-context.md (Session Completion Rules section)                                | UserPromptSubmit     |           |
+| [[mandatory-handover]]                      | Mandatory Handover Workflow     | prompt-hydrator-context.md (Session Completion Rules section), handover SKILL.md Step 1.5    | UserPromptSubmit, Stop |           |
+| [[capture-outstanding-work]]                | Capture Outstanding Work        | handover SKILL.md Step 1.5 (create follow-up tasks for incomplete/deferred work)             | Stop                 |           |
 | [[explicit-approval-costly-ops]]            | Costly Operations Approval      | external-batch-submission.md workflow + AskUserQuestion before batch submit                  | During execution     |           |
 
 ## Heuristic → Enforcement Mapping
@@ -387,7 +388,7 @@ The stop gate requires THREE conditions for session completion:
 | `**Accomplishments**:`   | What was completed                          |
 | `**Friction points**:`   | Issues encountered (write none if none)     |
 | `**Proposed changes**:`  | Framework improvements (write none if none) |
-| `**Next step**:`         | Follow-up needed (write none if none)       |
+| `**Next step**:`         | Task IDs for follow-up work (write none if none) |
 
 **Malformed Reflection Handling**: If `## Framework Reflection` is present but missing required fields:
 

@@ -55,7 +55,7 @@ Review the abridged transcript for each session and assess the conversation, loo
 1. **Hydration behavior**: Did the agent invoke the prompt-hydrator when instructed?
    - Claude: `Task(subagent_type="aops-core:prompt-hydrator", ...)`
    - Gemini: `activate_skill(name="prompt-hydrator", ...)`
-   - **Check for "(not set)" paths**: Ensure the block message correctly resolved the `{temp_path}`. If it says `Analyze context in (not set)`, the path resolution logic is broken.
+   - **Check for "(not set)" paths**: Ensure the block message correctly resolved the `{temp_path}`. If it says `Follow instructions in (not set)`, the path resolution logic is broken.
 
 2. **Hook compliance**: Look for `**Invoked:**` markers showing hook triggers.
    - **Pydantic Validation**: Check for `Failed with non-blocking status code` errors in stderr. This often indicates a schema mismatch (e.g., `tool_output` received a list instead of a dict).

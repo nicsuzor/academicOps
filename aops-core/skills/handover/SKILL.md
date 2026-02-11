@@ -29,30 +29,37 @@ This skill is **mandatory** before session end. The stop hook blocks until `/han
 
 ## Execution
 
-### Step 1: Check for Uncommitted Changes
+### Step 1: Commit All Work (MANDATORY)
 
 ```bash
 git status --porcelain
 ```
 
-If there are uncommitted changes:
+**You MUST commit all your work before ending the session.** This is non-negotiable per P#24 (No Commit Hesitation).
 
-- **Staged changes**: Commit them now with descriptive message
-- **Unstaged changes**: Stage relevant files and commit, or explicitly note why changes are not being committed
+- **Staged changes**: Commit immediately with descriptive message
+- **Unstaged changes**: Stage and commit ALL relevant files
+- **No exceptions**: Work that isn't committed is lost
 
-> **CRITICAL**: Do not proceed to Step 2 with uncommitted work unless you explicitly document why (e.g., "Changes intentionally not committed because...")
+> **CRITICAL**: Do not proceed to Step 1.5 until ALL changes are committed. The only acceptable reason to skip committing is if you made NO file changes this session.
 
-### Step 1.5: Check for Revealed Work
+### Step 1.5: Capture Outstanding Work
 
-If your session revealed errors or warnings that weren't caused by your changes (e.g., post-commit hook output, CI failures in other areas, deprecation warnings):
+Before ending the session, create follow-up tasks for ANY outstanding work:
 
-1. **Create a follow-up task** to track fixing them:
-   ```
-   create_task(title="Fix [category] errors revealed by [your change]", project="aops", priority=3)
-   ```
-2. **Note the task ID** in your reflection under "Next step"
+1. **Revealed errors/warnings** - Problems discovered but not fixed (e.g., lint errors, CI failures, deprecation warnings)
+2. **Incomplete work** - Planned steps that weren't completed
+3. **Deferred decisions** - Items marked for later or needing user input
+4. **Verification gaps** - Tests that should be run, reviews that should happen
 
-> **Why**: P#30 (Nothing Is Someone Else's Responsibility) - revealed problems are now your responsibility to track, even if not to fix immediately.
+**For each item, create a task**:
+```
+create_task(title="[Category] Brief description", project="[relevant-project]", priority=3)
+```
+
+**Note task IDs** in your reflection under "Next step".
+
+> **Why**: P#30 (Nothing Is Someone Else's Responsibility) - anything discovered or deferred is your responsibility to track. Work that isn't captured in the task system is lost.
 
 ### Step 2: Output Framework Reflection
 
@@ -64,6 +71,7 @@ Output the following structure **exactly** (the stop hook validates this format)
 **Outcome**: success|partial|failure
 **Accomplishments**: [What was completed this session]
 **Friction points**: [Issues encountered, or "none"]
+**Next step**: [Task IDs for follow-up work, or "none"]
 ```
 
 **Field definitions**:
@@ -74,6 +82,7 @@ Output the following structure **exactly** (the stop hook validates this format)
   - `failure` - Unable to complete primary objective
 - **Accomplishments**: Brief bullet points of what was done
 - **Friction points**: Framework issues, tool problems, blockers, or "none"
+- **Next step**: Task IDs from Step 1.5 (e.g., `aops-abc123`), or "none" if no follow-up needed
 
 ### Step 3: Confirm Handover Complete
 
