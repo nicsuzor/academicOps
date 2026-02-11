@@ -278,7 +278,7 @@ GATE_CONFIGS = [
                 condition=GateCondition(
                     hook_event="PostToolUse",
                     tool_name_pattern="Skill",
-                    tool_input_pattern="qa",
+                    tool_input_pattern=r"\bqa\b",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
