@@ -4107,8 +4107,20 @@ def render_graph_section():
         )
 
 
+_USELESS_PROMPTS = frozenset({
+    "created:", "created", "/dump", "/help", "/clear", "/commit",
+    "/pull", "/push", "/review", "/q", "y", "n", "yes", "no",
+    "ok", "continue", "done", "thanks", "thank you", "exit", "quit",
+})
+
+_MIN_PROMPT_LENGTH = 10  # Minimum chars after sanitization to be worth displaying
+
+
 def _sanitize_prompt(text: str) -> str:
-    """Strip HTML/markdown markup from prompt text for clean display."""
+    """Strip HTML/markdown markup from prompt text for clean display.
+
+    Returns empty string for useless/too-short prompts.
+    """
     import re as _re
 
     s = text
@@ -4125,7 +4137,18 @@ def _sanitize_prompt(text: str) -> str:
     s = _re.sub(r"(?<!\w)_(.+?)_(?!\w)", r"\1", s)
     # Collapse multiple blank lines
     s = _re.sub(r"\n{3,}", "\n\n", s)
-    return s.strip()
+    s = s.strip()
+
+    # Filter useless prompts: slash commands, single words, confirmations
+    if s.lower() in _USELESS_PROMPTS:
+        return ""
+    if len(s) < _MIN_PROMPT_LENGTH:
+        return ""
+    # Filter slash commands not in the static set
+    if s.startswith("/") and " " not in s:
+        return ""
+
+    return s
 
 
 def render_recent_prompts():
