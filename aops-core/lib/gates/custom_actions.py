@@ -28,8 +28,10 @@ def execute_custom_action(name: str, ctx: HookContext, state: GateState, session
                 ctx.session_id, prompt, transcript_path, state=session_state
             )
             
+            # User sees brief summary; agent gets full instruction
+            temp_path = state.state.get("hydrator_temp_path", "temp file")
             return GateResult.allow(
-                system_message=instruction,
+                system_message=f"Hydration ready: {temp_path}",
                 context_injection=instruction
             )
         except Exception as e:
@@ -50,9 +52,10 @@ def execute_custom_action(name: str, ctx: HookContext, state: GateState, session
                 registry = TemplateRegistry.instance()
                 instruction = registry.render("custodiet.instruction", {"temp_path": str(temp_path)})
                 
+                # User sees brief summary; agent gets full instruction
                 return GateResult.allow(
-                    system_message=instruction,
-                    context_injection=None # Let policy template handle it
+                    system_message=f"Compliance report ready: {temp_path}",
+                    context_injection=instruction
                 )
         except Exception as e:
             import traceback

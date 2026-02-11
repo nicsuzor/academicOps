@@ -329,8 +329,9 @@ description: Working hypotheses validated by evidence.
 
 - Before creating a file in a new location, use `fd` to discover if related files already exist elsewhere
 - Example: Before creating `data/osb/osb.md`, run `fd "osb\|oversight" $ACA_DATA` to find existing locations
+- **Deterministic Selection**: When using `fd` to identify a specific file from a set (e.g., "the latest session"), always use deterministic sorting (e.g., `xargs ls -t | head -1`). `fd` output order is non-deterministic and can vary across sessions.
 
-**Derivation**: fd is faster, has built-in time filtering, and respects .gitignore. Generic `ls *.jsonl` matches unintended files (transcripts vs hooks). Specific patterns prevent deceptive results.
+**Derivation**: fd is faster, has built-in time filtering, and respects .gitignore. Generic `ls *.jsonl` matches unintended files (transcripts vs hooks). Specific patterns prevent deceptive results. Deterministic sorting prevents intermittent failures in identification logic.
 
 ---
 

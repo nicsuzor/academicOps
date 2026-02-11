@@ -88,15 +88,17 @@ GATE_CONFIGS = [
                     excluded_tool_categories=["always_available"],
                 ),
                 verdict="deny",
-                message_template=(
-                    "⛔ **HYDRATION REQUIRED**\n\n"
+                # Brief user-facing summary
+                message_template="⛔ Hydration required: invoke prompt-hydrator before proceeding",
+                # Full agent instructions
+                context_template=(
+                    "**HYDRATION REQUIRED**\n\n"
                     "You must invoke the **prompt-hydrator** agent to load context before proceeding.\n\n"
                     "**Instruction**:\n"
                     "Run the hydrator with this command:\n"
                     "- Gemini: `delegate_to_agent(name='prompt-hydrator', query='Analyze context in {temp_path}')`\n"
                     "- Claude: `Task(subagent_type='prompt-hydrator', prompt='Analyze context in {temp_path}')`"
                 ),
-                context_template="Hydration Context: {temp_path}",
             )
         ],
     ),

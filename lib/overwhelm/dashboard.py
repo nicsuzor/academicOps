@@ -27,6 +27,7 @@ sys.path.insert(0, str(aops_core))
 from collections import defaultdict
 
 import networkx as nx
+from lib.path_reconstructor import EventType, reconstruct_path
 from lib.session_analyzer import SessionAnalyzer, extract_todowrite_from_session
 from lib.session_context import SessionContext, extract_context_from_session_state
 from lib.session_reader import find_sessions
@@ -3173,6 +3174,108 @@ st.markdown(
         color: var(--text-muted);
     }
 
+    /* === PATH RECONSTRUCTION === */
+    .path-timeline {
+        background: var(--bg-secondary, #1e1e2e);
+        border: 1px solid var(--border-color, #333);
+        border-radius: 8px;
+        padding: 16px;
+        margin: 16px 0;
+    }
+
+    .path-timeline h3 {
+        margin: 0 0 12px 0;
+        font-size: 1.1em;
+        color: var(--text-primary, #e0e0e0);
+    }
+
+    .path-abandoned {
+        background: rgba(250, 204, 21, 0.08);
+        border: 1px solid rgba(250, 204, 21, 0.3);
+        border-radius: 6px;
+        padding: 10px 14px;
+        margin-bottom: 14px;
+    }
+
+    .path-abandoned-title {
+        font-weight: 600;
+        color: #facc15;
+        margin-bottom: 6px;
+        font-size: 0.9em;
+    }
+
+    .path-abandoned-item {
+        color: var(--text-secondary, #aaa);
+        font-size: 0.85em;
+        padding: 2px 0;
+    }
+
+    .path-threads {
+        display: flex;
+        gap: 16px;
+        overflow-x: auto;
+    }
+
+    .path-thread {
+        flex: 1;
+        min-width: 200px;
+        max-width: 350px;
+        border-left: 2px solid var(--border-color, #444);
+        padding-left: 12px;
+    }
+
+    .path-thread-header {
+        font-weight: 600;
+        font-size: 0.85em;
+        color: var(--text-primary, #e0e0e0);
+        margin-bottom: 8px;
+    }
+
+    .path-thread-header .session-hash {
+        color: var(--text-muted, #888);
+        font-weight: 400;
+        font-family: monospace;
+        font-size: 0.85em;
+    }
+
+    .path-event {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        padding: 3px 0;
+        font-size: 0.82em;
+        color: var(--text-secondary, #bbb);
+    }
+
+    .path-event .dot {
+        flex-shrink: 0;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-top: 4px;
+    }
+
+    .path-event .dot.prompt { background: #60a5fa; }
+    .path-event .dot.create { background: #818cf8; }
+    .path-event .dot.complete { background: #22c55e; }
+    .path-event .dot.update { background: #f59e0b; }
+    .path-event .dot.claim { background: #06b6d4; }
+    .path-event .dot.abandon { background: #ef4444; }
+    .path-event .dot.start { background: #60a5fa; }
+
+    .path-event .time {
+        flex-shrink: 0;
+        color: var(--text-muted, #888);
+        font-family: monospace;
+        font-size: 0.9em;
+        min-width: 40px;
+    }
+
+    .path-event .desc {
+        flex: 1;
+        word-break: break-word;
+    }
+
 </style>
 """,
     unsafe_allow_html=True,
@@ -4668,6 +4771,74 @@ if stale_count > 0:
         </div>""",
         unsafe_allow_html=True,
     )
+
+# === PATH RECONSTRUCTION SECTION ===
+try:
+    path = reconstruct_path(hours=activity_hours)
+    if path.threads:
+        path_html = "<div class='path-timeline'>"
+        path_html += "<h3>YOUR PATH</h3>"
+
+        # Dropped threads callout (most actionable — show first)
+        if path.abandoned_work:
+            path_html += "<div class='path-abandoned'>"
+            path_html += f"<div class='path-abandoned-title'>⚠ DROPPED THREADS ({len(path.abandoned_work)} started but not finished)</div>"
+            for ab in path.abandoned_work:
+                task_label = esc(ab.task_id or ab.description)
+                path_html += f"<div class='path-abandoned-item'>□ {task_label}</div>"
+            path_html += "</div>"
+
+        # Parallel session thread columns
+        path_html += "<div class='path-threads'>"
+        for thread in path.threads:
+            path_html += "<div class='path-thread'>"
+            proj_display = esc(thread.project)
+            sid_display = esc(thread.session_id[:8])
+            path_html += f"<div class='path-thread-header'>{proj_display} <span class='session-hash'>({sid_display})</span></div>"
+
+            for event in thread.events:
+                # Timestamp in HH:MM format
+                if event.timestamp:
+                    time_str = event.timestamp.strftime("%H:%M")
+                else:
+                    time_str = ""
+
+                # Dot color class
+                dot_class = {
+                    EventType.USER_PROMPT: "prompt",
+                    EventType.TASK_CREATE: "create",
+                    EventType.TASK_COMPLETE: "complete",
+                    EventType.TASK_UPDATE: "update",
+                    EventType.TASK_CLAIM: "claim",
+                    EventType.TASK_ABANDON: "abandon",
+                    EventType.SESSION_START: "start",
+                }.get(event.event_type, "start")
+
+                # Event description
+                desc = esc(event.description[:100]) if event.description else ""
+                if event.event_type == EventType.TASK_CREATE:
+                    desc = f"Created: {desc}"
+                elif event.event_type == EventType.TASK_COMPLETE:
+                    desc = f"✓ {desc}"
+                elif event.event_type == EventType.TASK_UPDATE:
+                    status = getattr(event, "description", "")
+                    desc = f"→ {esc(status)}"
+                elif event.event_type == EventType.TASK_CLAIM:
+                    desc = f"Claimed task"
+
+                path_html += f"<div class='path-event'>"
+                path_html += f"<span class='dot {dot_class}'></span>"
+                path_html += f"<span class='time'>{esc(time_str)}</span>"
+                path_html += f"<span class='desc'>{desc}</span>"
+                path_html += "</div>"
+
+            path_html += "</div>"  # end path-thread
+
+        path_html += "</div>"  # end path-threads
+        path_html += "</div>"  # end path-timeline
+        st.markdown(path_html, unsafe_allow_html=True)
+except Exception as e:
+    pass  # Path reconstruction is non-critical; fail silently
 
 # === RECENT PROMPTS SECTION ===
 render_recent_prompts()

@@ -550,6 +550,85 @@ When a task node is clicked or a task card is selected:
 - [ ] Delete task with confirmation
 - [ ] Changes sync to task files immediately
 
+## Path Reconstruction
+
+### Problem
+
+User runs parallel sessions, gets sidetracked by bugs, and loses their thread. After 30 minutes they can't remember what they were doing or what to do next. Two specific problems:
+
+1. **Session display shows agent output, not user intent** — WLO cards show "Successfully completed: Standardized session short hashes..." instead of the user's initial prompt
+2. **No plan-level tracking** — no way to see across sessions what path was taken, what deviated, what was dropped
+
+### Architecture
+
+**Data flow:**
+
+```
+Raw JSONL sessions
+    ↓ (transcript.py — existing processing pass)
+    ↓ extract_timeline_events() during processing
+    ↓
+Session summary JSONs (enriched with timeline_events)
+    ↓
+path_reconstructor.py (reads JSONs, assembles cross-session view)
+    ↓
+Dashboard rendering (HTML/CSS in dashboard.py)
+```
+
+**Key principle:** No double-handling. The existing `SessionProcessor` already parses tool calls from JSONL into `ConversationTurn` objects with `assistant_sequence` items containing `tool_name`, `tool_input`, and timestamps. Timeline events are extracted from this already-parsed data and saved to the summary JSON.
+
+### Event Types
+
+| Event | Source | Description |
+|-------|--------|-------------|
+| `user_prompt` | User message in turn | First ~120 chars of user input |
+| `task_create` | `task_manager__create_task` tool call | Task title and project |
+| `task_complete` | `task_manager__complete_task` tool call | Task ID completed |
+| `task_claim` | `task_manager__claim_next_task` tool call | Task claimed from queue |
+| `task_update` | `task_manager__update_task` with status change | New status value |
+
+### Display Design
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  YOUR PATH (what actually happened)                      │
+│                                                          │
+│ ⚠ DROPPED THREADS (started but not finished)             │
+│   □ "Investigate daily skill bug" (aops-6c93)            │
+│   □ "Design light-touch QA gate" (aops-f67d)             │
+│                                                          │
+│ academicOps (cd6a8da0)  │ gemini (4b0ecf85)  │ writing  │
+│ ● 07:21 Started:        │ ● 07:18 Started:   │ (f36b6d)│
+│   "dogfood polecats..."  │   "learn session"  │ ● 07:25 │
+│ ○ 07:25 Created task    │ ○ 07:22 Created    │   daily  │
+│   aops-84c88881          │   learn task        │   notes  │
+│ ✓ 07:45 Done             │ ✓ 07:40 Done       │ ✓ Done   │
+└──────────────────────────┴────────────────────┴─────────┘
+```
+
+- **DROPPED THREADS first** — most actionable info for someone who's lost
+- **Parallel columns** — visual layout communicates concurrent work
+- **HH:MM timestamps** — scannable, not ISO noise
+- **Colored dots** — status at a glance without reading
+
+### ADHD Accommodation Notes
+
+- Dropped threads shown first because that's the most actionable information for context recovery
+- Timeline is scannable — events are one line each, not paragraphs
+- Reactive design — reconstructs from existing data, no pre-planning required from user
+- Directive framing — "YOUR PATH" not "Session History"
+
+### Future: Proactive Deviation Tracking
+
+Agents should eventually detect scope-escape and do task bookkeeping (e.g., when a user says "actually fix this bug first", the agent creates a deviation event). This is not yet implemented — current design is purely reactive reconstruction from transcript data.
+
+### Giving Effect
+
+- `aops-core/lib/transcript_parser.py` — `extract_timeline_events()` function
+- `aops-core/scripts/transcript.py` — calls extractor, saves to summary JSON
+- `aops-core/lib/path_reconstructor.py` — reads summary JSONs, assembles path
+- `lib/overwhelm/dashboard.py` — CSS + rendering for path section
+
 ## Related
 
 - [[aops-0a7f6861]] - EPIC: fast-indexer adoption

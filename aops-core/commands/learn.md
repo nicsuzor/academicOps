@@ -36,8 +36,8 @@ Invoke `transcript.py` to capture the current session.
 **Find current session file**:
 
 ```bash
-# For Gemini (uses fd per P#79):
-SESSION_FILE=$(fd -a --newer 1h .json ~/.gemini/tmp | head -1)
+# For Gemini (uses fd per P#79 + ls -t for sorting):
+SESSION_FILE=$(fd -t f -a --newer 1h .json ~/.gemini/tmp | xargs ls -t | head -1)
 
 # For Claude:
 # SESSION_FILE=$(find ~/.claude/projects -name "*.jsonl" -mmin -60 -type f 2>/dev/null | xargs ls -t 2>/dev/null | head -1)

@@ -412,6 +412,7 @@ def reflection_to_insights(
     timestamp: datetime | None = None,
     usage_stats: UsageStats | None = None,
     session_duration_minutes: float | None = None,
+    timeline_events: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Convert parsed Framework Reflection to session insights format.
 
@@ -423,6 +424,7 @@ def reflection_to_insights(
         timestamp: Optional datetime for full ISO 8601 timestamp with tz
         usage_stats: Optional UsageStats for token_metrics field
         session_duration_minutes: Optional session duration for efficiency metrics
+        timeline_events: Optional list of timeline event dicts from extract_timeline_events
 
     Returns:
         Insights dict compatible with insights_generator schema
@@ -469,7 +471,7 @@ def reflection_to_insights(
         "next_step": reflection.get("next_step"),
     }
 
-    return {
+    result = {
         "session_id": session_id,
         "date": date_iso,
         "project": project,
@@ -483,6 +485,92 @@ def reflection_to_insights(
         # Token usage metrics (optional)
         "token_metrics": token_metrics,
     }
+
+    # Timeline events for path reconstruction (optional)
+    if timeline_events:
+        result["timeline_events"] = timeline_events
+
+    return result
+
+
+def extract_timeline_events(
+    turns: list[ConversationTurn], session_id: str
+) -> list[dict[str, Any]]:
+    """Extract timeline events from parsed conversation turns.
+
+    Scans assistant_sequence for task operations, user prompts,
+    and skill invocations. Returns list of event dicts ready for JSON serialization.
+
+    Args:
+        turns: List of ConversationTurn objects from group_entries_into_turns
+        session_id: 8-char session ID for context
+
+    Returns:
+        List of event dicts with timestamp, type, and description fields
+    """
+    events: list[dict[str, Any]] = []
+
+    for turn in turns:
+        # Handle both ConversationTurn dataclass and plain dict turns
+        if isinstance(turn, dict):
+            user_msg = turn.get("user_message")
+            sequence = turn.get("assistant_sequence", [])
+            start_time = turn.get("start_time")
+        else:
+            user_msg = turn.user_message
+            sequence = turn.assistant_sequence
+            start_time = turn.start_time
+
+        ts = start_time.isoformat() if start_time else None
+
+        # User prompts (first line, truncated to ~120 chars)
+        if user_msg and not getattr(turn, "is_meta", False):
+            events.append({
+                "timestamp": ts,
+                "type": "user_prompt",
+                "description": user_msg[:120],
+            })
+
+        # Tool calls from assistant_sequence
+        for item in sequence:
+            if not isinstance(item, dict) or item.get("type") != "tool":
+                continue
+            tool = item.get("tool_name", "")
+            inp = item.get("tool_input", {})
+            if not isinstance(inp, dict):
+                continue
+
+            if "task_manager__create_task" in tool:
+                events.append({
+                    "timestamp": ts,
+                    "type": "task_create",
+                    "task_id": None,  # not known until result
+                    "task_title": inp.get("task_title", ""),
+                    "project": inp.get("project"),
+                })
+            elif "task_manager__complete_task" in tool:
+                events.append({
+                    "timestamp": ts,
+                    "type": "task_complete",
+                    "task_id": inp.get("id", ""),
+                })
+            elif "task_manager__claim_next_task" in tool:
+                events.append({
+                    "timestamp": ts,
+                    "type": "task_claim",
+                    "project": inp.get("project"),
+                })
+            elif "task_manager__update_task" in tool:
+                status = inp.get("status")
+                if status:  # only record status changes
+                    events.append({
+                        "timestamp": ts,
+                        "type": "task_update",
+                        "task_id": inp.get("id", ""),
+                        "new_status": status,
+                    })
+
+    return events
 
 
 def format_reflection_header(reflection: dict[str, Any]) -> str:

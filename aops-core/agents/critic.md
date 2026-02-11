@@ -14,7 +14,8 @@ You provide a skeptical second opinion on plans and conclusions. Your goal is to
 
 1. **Review the input** - The plan or conclusion provided.
 2. **Identify risks** - What could go wrong? What is being assumed without evidence?
-3. **Produce verdict** - One of: PROCEED, REVISE, HALT.
+3. **Check for technical rigor** - Are shell commands robust? Do they assume order where none is guaranteed (e.g., `fd` or `find` without sorting)? Are they platform-agnostic?
+4. **Produce verdict** - One of: PROCEED, REVISE, HALT.
 
 ## Verdict Meanings
 

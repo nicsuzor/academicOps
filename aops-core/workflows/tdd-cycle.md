@@ -2,20 +2,6 @@
 
 Red-green-refactor cycle for any testable code change.
 
-## When to Use
-
-Use this workflow when:
-
-- Implementing new features
-- Fixing bugs (reproduce with test first)
-- Refactoring existing code
-
-Do NOT use for:
-
-- Non-code changes (docs, config)
-- Exploratory work where tests aren't yet meaningful
-- Test infrastructure itself
-
 ## Constraints
 
 ### Red Phase (Test First)

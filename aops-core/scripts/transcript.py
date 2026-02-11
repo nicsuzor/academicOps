@@ -38,6 +38,7 @@ from lib.transcript_parser import (  # noqa: E402
     UsageStats,
     decode_claude_project_path,
     extract_reflection_from_entries,
+    extract_timeline_events,
     extract_working_dir_from_content,
     extract_working_dir_from_entries,
     format_reflection_header,
@@ -90,6 +91,7 @@ def _save_minimal_token_summary(
     timestamp: datetime | None,
     usage_stats: "UsageStats",
     session_duration_minutes: float | None,
+    timeline_events: list[dict] | None = None,
 ) -> None:
     """Save minimal summary with just token_metrics when no reflection exists.
 
@@ -115,6 +117,10 @@ def _save_minimal_token_summary(
         "token_metrics": usage_stats.to_token_metrics(session_duration_minutes),
     }
 
+    # Timeline events for path reconstruction
+    if timeline_events:
+        insights["timeline_events"] = timeline_events
+
     try:
         # Check for existing insights
         existing = find_existing_insights(date_str, session_id)
@@ -139,6 +145,7 @@ def _process_reflection(
     timestamp: datetime | None = None,
     usage_stats: "UsageStats | None" = None,
     session_duration_minutes: float | None = None,
+    timeline_events: list[dict] | None = None,
 ) -> tuple[str | None, list[dict] | None]:
     """Extract reflections from entries and save to insights JSON files.
 
@@ -152,6 +159,7 @@ def _process_reflection(
         timestamp: Optional datetime for ISO 8601 timestamp in insights
         usage_stats: Optional UsageStats for token_metrics field in insights
         session_duration_minutes: Optional session duration for efficiency metrics
+        timeline_events: Optional list of timeline event dicts for path reconstruction
 
     Returns:
         Tuple of (combined_reflection_header_markdown, list_of_reflection_dicts)
@@ -169,6 +177,7 @@ def _process_reflection(
                 timestamp,
                 usage_stats,
                 session_duration_minutes,
+                timeline_events,
             )
         return None, None
 
@@ -190,6 +199,7 @@ def _process_reflection(
             timestamp=timestamp,
             usage_stats=usage_stats,
             session_duration_minutes=session_duration_minutes,
+            timeline_events=timeline_events if i == 0 else None,  # only on first reflection
         )
 
         try:
@@ -671,6 +681,10 @@ Examples:
                 usage_stats = processor._aggregate_session_usage(entries, agent_entries)
                 session_duration_minutes = _compute_session_duration(entries)
 
+                # Extract timeline events for path reconstruction
+                turns = processor.group_entries_into_turns(entries, agent_entries)
+                timeline_events = extract_timeline_events(turns, session_id)
+
                 reflection_header, _ = _process_reflection(
                     entries,
                     session_id,
@@ -681,6 +695,7 @@ Examples:
                     session_timestamp,
                     usage_stats,
                     session_duration_minutes,
+                    timeline_events,
                 )
 
                 # Generate full version
@@ -833,6 +848,10 @@ Examples:
             usage_stats = processor._aggregate_session_usage(entries, agent_entries)
             session_duration_minutes = _compute_session_duration(entries)
 
+            # Extract timeline events for path reconstruction
+            turns = processor.group_entries_into_turns(entries, agent_entries)
+            timeline_events = extract_timeline_events(turns, sid)
+
             reflection_header, _ = _process_reflection(
                 entries,
                 sid,
@@ -843,6 +862,7 @@ Examples:
                 session_timestamp,
                 usage_stats,
                 session_duration_minutes,
+                timeline_events,
             )
 
             # Generate transcripts and return
@@ -937,6 +957,10 @@ Examples:
         usage_stats = processor._aggregate_session_usage(entries, agent_entries)
         session_duration_minutes = _compute_session_duration(entries)
 
+        # Extract timeline events for path reconstruction
+        turns = processor.group_entries_into_turns(entries, agent_entries)
+        timeline_events = extract_timeline_events(turns, session_id)
+
         reflection_header, _ = _process_reflection(
             entries,
             session_id,
@@ -947,6 +971,7 @@ Examples:
             session_timestamp,
             usage_stats,
             session_duration_minutes,
+            timeline_events,
         )
 
         # Generate full version
