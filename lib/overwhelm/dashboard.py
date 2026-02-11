@@ -4910,6 +4910,9 @@ try:
             path_html += "</div>"  # end path-threads
             path_html += "</div>"  # end path-project-group
 
+        if path.filtered_session_count > 0:
+            path_html += f"<div style='text-align: center; color: var(--text-muted, #666); font-size: 0.8em; padding: 8px 0; opacity: 0.7;'>{path.filtered_session_count} session{'s' if path.filtered_session_count != 1 else ''} hidden (insufficient context)</div>"
+
         path_html += "</div>"  # end path-timeline
         st.markdown(path_html, unsafe_allow_html=True)
 except Exception:

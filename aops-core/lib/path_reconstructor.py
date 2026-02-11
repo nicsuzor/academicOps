@@ -54,6 +54,7 @@ class ReconstructedPath:
     threads: list[SessionThread] = field(default_factory=list)
     abandoned_work: list[TimelineEvent] = field(default_factory=list)
     time_range: tuple[datetime | None, datetime | None] = (None, None)
+    filtered_session_count: int = 0
 
 
 def _parse_timestamp(ts_str: str | None) -> datetime | None:
@@ -303,6 +304,7 @@ def reconstruct_path(hours: int = 24) -> ReconstructedPath:
     # Collect recent summaries
     threads: list[SessionThread] = []
     seen_sessions: set[str] = set()
+    filtered_count = 0
 
     for json_path in sorted(summaries_dir.glob("*.json"), reverse=True):
         # Quick date filter from filename (YYYYMMDD-HH-...)
@@ -334,6 +336,8 @@ def reconstruct_path(hours: int = 24) -> ReconstructedPath:
         thread = _build_thread_from_summary(summary, filename_slug)
         if thread:
             threads.append(thread)
+        else:
+            filtered_count += 1
 
     # Sort by start_time
     threads.sort(key=lambda t: t.start_time or datetime.min.replace(tzinfo=cutoff.tzinfo))
@@ -355,4 +359,5 @@ def reconstruct_path(hours: int = 24) -> ReconstructedPath:
         threads=threads,
         abandoned_work=abandoned,
         time_range=(start, end),
+        filtered_session_count=filtered_count,
     )
