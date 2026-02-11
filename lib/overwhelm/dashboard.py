@@ -3349,7 +3349,7 @@ def load_task_graph() -> dict | None:
 
 # Default task graph SVG location
 TASK_GRAPH_SVG = (
-    Path(os.environ.get("ACA_DATA", str(Path.home() / "writing/data"))) / "outputs" / "task-map.svg"
+    Path(os.environ.get("ACA_DATA", str(Path.home() / "writing/data"))) / "aops" / "outputs" / "task-map.svg"
 )
 
 
