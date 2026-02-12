@@ -213,11 +213,12 @@ def is_subagent_session(input_data: dict[str, Any] | None = None) -> bool:
     Returns:
         True if this appears to be a subagent session
     """
-    # Method 1: Env vars (check all known variants)
-    if os.environ.get("CLAUDE_AGENT_TYPE"):
-        return True
-    if os.environ.get("CLAUDE_SUBAGENT_TYPE"):
-        return True
+    # Method 1: Check for agent_id/agent_type fields in hook payload.
+    if input_data:
+        if input_data.get("agent_id") or input_data.get("agentId"):
+            return True
+        if input_data.get("agent_type") or input_data.get("agentType"):
+            return True
 
     # Method 2: Check if session_id matches the short hex format of subagent IDs.
     # Main sessions use full UUIDs (e.g., f4e3f1cb-775c-4aaf-8bf6-4e18a18dad3d).
@@ -226,12 +227,11 @@ def is_subagent_session(input_data: dict[str, Any] | None = None) -> bool:
     if _SUBAGENT_ID_RE.match(session_id):
         return True
 
-    # Method 3: Check for agent_id/agent_type fields in hook payload.
-    if input_data:
-        if input_data.get("agent_id") or input_data.get("agentId"):
-            return True
-        if input_data.get("agent_type") or input_data.get("agentType"):
-            return True
+    # Method 3: Env vars (check all known variants)
+    if os.environ.get("CLAUDE_AGENT_TYPE"):
+        return True
+    if os.environ.get("CLAUDE_SUBAGENT_TYPE"):
+        return True
 
     # Method 4: Check transcript path for /subagents/ directory
     if input_data:
