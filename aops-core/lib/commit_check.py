@@ -335,7 +335,9 @@ def check_uncommitted_work(session_id: str, transcript_path: str | None) -> Unco
             reminder_parts.append("Untracked files detected")
 
     if push_status.branch_ahead:
-        branch_display = push_status.current_branch if push_status.current_branch else "unknown branch"
+        branch_display = (
+            push_status.current_branch if push_status.current_branch else "unknown branch"
+        )
         reminder_parts.append(f"{push_status.commits_ahead} unpushed commit(s) on {branch_display}")
 
     has_tracked_changes = git_status.staged_changes or git_status.unstaged_changes
@@ -359,7 +361,9 @@ def check_uncommitted_work(session_id: str, transcript_path: str | None) -> Unco
                 if push_status.branch_ahead:
                     reminder_needed = True
                     branch_display = (
-                        push_status.current_branch if push_status.current_branch else "unknown branch"
+                        push_status.current_branch
+                        if push_status.current_branch
+                        else "unknown branch"
                     )
                     message += f"\nReminder: Push {push_status.commits_ahead} unpushed commit(s) on {branch_display}"
             else:

@@ -28,6 +28,7 @@ def on_subagent_stop(ctx: HookContext, state: SessionState):
 
     if messages or context_injections:
         from lib.gate_model import GateResult
+
         return GateResult.allow(
             system_message="\n".join(messages) if messages else None,
             context_injection="\n\n".join(context_injections) if context_injections else None,

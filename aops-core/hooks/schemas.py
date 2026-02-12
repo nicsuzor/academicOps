@@ -30,12 +30,11 @@ class HookContext(BaseModel):
 
     # Precomputed values (computed once in router.normalize_input())
     session_short_hash: str = Field(
-        default="",
-        description="8-char hash of session_id (computed once at normalization)."
+        default="", description="8-char hash of session_id (computed once at normalization)."
     )
     is_subagent: bool = Field(
         default=False,
-        description="Whether this is a subagent session (computed once at normalization)."
+        description="Whether this is a subagent session (computed once at normalization).",
     )
 
     # Event Data
@@ -62,6 +61,7 @@ class HookContext(BaseModel):
             tuple: (axioms_text, heuristics_text, skills_text)
         """
         from lib.hook_utils import load_framework_content
+
         return load_framework_content()
 
 

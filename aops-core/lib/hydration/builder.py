@@ -109,6 +109,7 @@ def build_hydration_instruction(
             pass
         except Exception as e:
             import logging
+
             logging.getLogger(__name__).debug(
                 f"Context extraction failed (degrading gracefully): {type(e).__name__}: {e}"
             )

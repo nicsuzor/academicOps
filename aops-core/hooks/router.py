@@ -181,7 +181,7 @@ class HookRouter:
             hook_event = GEMINI_EVENT_MAP.get(raw_event, raw_event)
 
         # 2. Determine Session ID
-        session_id = raw_input.get("session_id") 
+        session_id = raw_input.get("session_id")
         if not session_id:
             session_id = self.session_data.get("session_id") or os.environ.get("CLAUDE_SESSION_ID")
 
@@ -318,6 +318,7 @@ class HookRouter:
         if ctx.hook_event == "SessionStart":
             try:
                 from hooks.session_env_setup import run_session_env_setup
+
                 run_session_env_setup(ctx)
             except Exception as e:
                 print(f"WARNING: session_env_setup error: {e}", file=sys.stderr)
@@ -409,6 +410,7 @@ class HookRouter:
         """Run ntfy push notification handler."""
         try:
             from lib.paths import get_ntfy_config
+
             config = get_ntfy_config()
             if not config:
                 return
@@ -432,11 +434,18 @@ class HookRouter:
                     "mcp__plugin_aops-core_task_manager__claim_next_task",
                     "mcp__plugin_aops-core_task_manager__complete_task",
                     "mcp__plugin_aops-core_task_manager__complete_tasks",
-                    "update_task", "claim_next_task", "complete_task", "complete_tasks",
+                    "update_task",
+                    "claim_next_task",
+                    "complete_task",
+                    "complete_tasks",
                 }
                 if ctx.tool_name in TASK_BINDING_TOOLS:
                     tool_input = ctx.tool_input
-                    if isinstance(tool_input, dict) and "status" in tool_input and "id" in tool_input:
+                    if (
+                        isinstance(tool_input, dict)
+                        and "status" in tool_input
+                        and "id" in tool_input
+                    ):
                         status = tool_input["status"]
                         task_id = tool_input["id"]
                         if status == "in_progress":
@@ -448,7 +457,9 @@ class HookRouter:
                     agent_type = "unknown"
                     tool_input = ctx.tool_input
                     if isinstance(tool_input, dict):
-                        agent_type = tool_input.get("subagent_type") or tool_input.get("agent_name", "unknown")
+                        agent_type = tool_input.get("subagent_type") or tool_input.get(
+                            "agent_name", "unknown"
+                        )
                     verdict = None
                     if tool_result := ctx.tool_output:
                         if isinstance(tool_result, dict) and "verdict" in tool_result:
@@ -492,10 +503,15 @@ class HookRouter:
         """
         # Global bypass for compliance subagents
         _COMPLIANCE_SUBAGENT_TYPES = {
-            "hydrator", "prompt-hydrator", "aops-core:prompt-hydrator",
-            "custodiet", "aops-core:custodiet",
-            "qa", "aops-core:qa",
-            "aops-core:butler", "butler",
+            "hydrator",
+            "prompt-hydrator",
+            "aops-core:prompt-hydrator",
+            "custodiet",
+            "aops-core:custodiet",
+            "qa",
+            "aops-core:qa",
+            "aops-core:butler",
+            "butler",
         }
         if state.state.get("hydrator_active") or ctx.subagent_type in _COMPLIANCE_SUBAGENT_TYPES:
             return GateResult.allow()
@@ -523,6 +539,7 @@ class HookRouter:
 
             except Exception as e:
                 import traceback
+
                 print(f"Gate '{gate.name}' failed: {e}", file=sys.stderr)
                 traceback.print_exc(file=sys.stderr)
 
