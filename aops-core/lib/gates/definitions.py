@@ -150,7 +150,7 @@ GATE_CONFIGS = [
             # Stop check (Uncommitted work)
             GatePolicy(
                 condition=GateCondition(hook_event="Stop", custom_check="has_uncommitted_work"),
-                verdict="deny",
+                verdict="warn",
                 message_template="{block_reason}",
             ),
             # Stop warning (Unpushed commits)
@@ -326,18 +326,8 @@ GATE_CONFIGS = [
                 ),
                 verdict="deny",
                 message_template=(
-                    "⛔ Framework Reflection required before exit.\n\n"
-                    "Please provide a Framework Reflection in this format:\n\n"
-                    "## Framework Reflection\n"
-                    "**Prompts**: ...\n"
-                    "**Guidance received**: ...\n"
-                    "**Followed**: ...\n"
-                    "**Outcome**: success/partial/failure\n"
-                    "**Accomplishments**: ...\n"
-                    "**Friction points**: ...\n"
-                    "**Root cause**: ...\n"
-                    "**Proposed changes**: ...\n"
-                    "**Next step**: ..."
+                    "⛔ Finalization required before exit.\n\n"
+                    "Please invoke the Handover Skill. The gate will only allow exit once the Handover Skill has completed and the output is successfully parsed in the correct format."
                 ),
             ),
         ],
