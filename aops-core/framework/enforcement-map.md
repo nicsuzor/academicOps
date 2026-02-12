@@ -38,6 +38,7 @@ tags: [framework, enforcement, moc]
 | [[no-workarounds]]                          | No Workarounds                  | fail_fast_watchdog.py                                                                        | PostToolUse          |           |
 | [[verify-first]]                            | Verify First                    | TodoWrite checkpoint                                                                         | During execution     |           |
 | [[verify-first]]                            | Write-Without-Read Check        | axiom_enforcer (DISABLED)                                                                    | PreToolUse           |           |
+| [[verify-first]], [[dont-make-shit-up]]     | Check Existing Automation First | prompt-hydrator-context.md Step 1 (check .github/workflows/ before manual execution)        | UserPromptSubmit     | 1c        |
 | [[no-excuses]]                              | No Excuses                      | AXIOMS.md                                                                                    | SessionStart         |           |
 | [[write-for-long-term]]                     | Write for Long Term             | AXIOMS.md                                                                                    | SessionStart         |           |
 | [[maintain-relational-integrity]]           | Relational Integrity            | wikilink conventions                                                                         | Pre-commit (planned) |           |
