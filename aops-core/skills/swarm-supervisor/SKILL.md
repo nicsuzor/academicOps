@@ -724,6 +724,30 @@ Post-merge, supervisor extracts learnings.
 
 ---
 
+## Lifecycle Trigger Hooks
+
+External triggers that start lifecycle phases. These are minimal shell scripts
+that invoke `polecat` commands — they contain no agent logic.
+
+> **Configuration**: See [[LIFECYCLE-HOOKS.md]] for all tunable parameters
+> (queue thresholds, notification settings, stale timeouts, merge policy).
+> Modify that file to change trigger behavior without editing scripts or
+> this skill prompt.
+
+| Hook | Trigger | Phase | Script |
+|------|---------|-------|--------|
+| `queue-drain` | cron / manual | Phase 4 (Execute) | `scripts/hooks/lifecycle/queue-drain.sh` |
+| `post-finish` | polecat finish | Phase 6 (Capture) | `scripts/hooks/lifecycle/post-finish.sh` |
+| `stale-check` | cron / manual | Phase 4 (Monitor) | `scripts/hooks/lifecycle/stale-check.sh` |
+| `merge-ready` | cron / manual | Phase 5 (Merge) | `scripts/hooks/lifecycle/merge-ready.sh` |
+
+**Runner-agnostic design**: The `queue-drain` hook invokes a configurable
+`RUNNER_CMD` (default: `polecat swarm`). Any runner that claims tasks via
+the MCP task API and reports completion status can be substituted. See
+[[LIFECYCLE-HOOKS.md]] Runner Contract for the integration requirements.
+
+---
+
 # Parallel Worker Orchestration
 
 Orchestrate multiple parallel polecat workers, each with isolated git worktrees. This replaces the deprecated hypervisor patterns.
@@ -933,3 +957,5 @@ The "refinery" handles PR review and merge:
 - `polecat crew` - Interactive, persistent workers
 - `hypervisor` - Deprecated; atomic lock pattern still useful for non-task batches
 - `/q` - Quick-queue tasks for swarm to implement
+- `LIFECYCLE-HOOKS.md` - Configurable trigger parameters (thresholds, notifications, runner)
+- `WORKERS.md` - Worker types, capabilities, sizing defaults
