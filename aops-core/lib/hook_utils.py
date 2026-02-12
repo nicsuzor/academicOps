@@ -193,18 +193,25 @@ def get_session_id(input_data: dict[str, Any], require: bool = False) -> str:
     return session_id
 
 
+import re
+
+# Claude Code subagent IDs are short lowercase hex strings (e.g., aafdeee, adc71f1).
+# This pattern matches them without false-positiving on UUIDs, Gemini session IDs,
+# or other formats that contain hyphens, timestamps, or non-hex characters.
+_SUBAGENT_ID_RE = re.compile(r"^[0-9a-f]{5,16}$")
+
+
 def is_subagent_session(input_data: dict[str, Any] | None = None) -> bool:
     """Check if this is a subagent session.
 
     Uses multiple detection methods since env vars may not be passed to hook subprocesses:
-    1. CLAUDE_AGENT_TYPE env var (if Claude passes it)
-    2. CLAUDE_SUBAGENT_TYPE env var (alternative Claude env var)
-    3. Transcript path contains /subagents/ (Claude Code stores subagent transcripts there)
-    4. Transcript path contains /agent- (subagent filename pattern)
-    5. Session ID starts with agent- (subagent ID format)
+    1. CLAUDE_AGENT_TYPE / CLAUDE_SUBAGENT_TYPE env var
+    2. Session ID is a short hex string (subagent IDs like aafdeee vs main session UUIDs)
+    3. agent_id/agent_type fields in hook payload
+    4. Transcript path contains /subagents/ or /agent-
 
     Args:
-        input_data: Hook input data containing transcript_path (optional)
+        input_data: Hook input data containing session_id, transcript_path, etc.
 
     Returns:
         True if this appears to be a subagent session
@@ -215,22 +222,27 @@ def is_subagent_session(input_data: dict[str, Any] | None = None) -> bool:
     if os.environ.get("CLAUDE_SUBAGENT_TYPE"):
         return True
 
-    # Method 2: Check transcript path for /subagents/ directory
-    # Claude Code stores subagent transcripts at:
-    #   ~/.claude/projects/<project>/<session-uuid>/subagents/agent-<hash>.jsonl
+    # Method 2: Check if session_id matches the short hex format of subagent IDs.
+    # Main sessions use full UUIDs (e.g., f4e3f1cb-775c-4aaf-8bf6-4e18a18dad3d).
+    # Subagent sessions use short hex IDs (e.g., aafdeee, adc71f1).
+    if input_data:
+        session_id = str(input_data.get("session_id", ""))
+        if _SUBAGENT_ID_RE.match(session_id):
+            return True
+
+    # Method 3: Check for agent_id/agent_type fields in hook payload.
+    if input_data:
+        if input_data.get("agent_id") or input_data.get("agentId"):
+            return True
+        if input_data.get("agent_type") or input_data.get("agentType"):
+            return True
+
+    # Method 4: Check transcript path for /subagents/ directory
     if input_data:
         transcript_path = str(input_data.get("transcript_path", ""))
         if "/subagents/" in transcript_path:
             return True
-        # Also check for agent- prefix in filename (subagent transcripts often have this)
         if "/agent-" in transcript_path:
-            return True
-
-    # Method 3: Check if session_id looks like a subagent ID
-    # (Main sessions are UUIDs, subagents may have different format)
-    if input_data:
-        session_id = str(input_data.get("session_id", ""))
-        if session_id.startswith("agent-"):
             return True
 
     return False

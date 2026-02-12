@@ -161,8 +161,13 @@ GATE_EXECUTION_ORDER: dict[str, list[str]] = {
         "unified_logger",
         "agent_response",
     ],
+    "SubagentStart": [
+        "unified_logger",
+        "subagent_tracker",
+    ],
     "SubagentStop": [
         "unified_logger",
+        "subagent_tracker",
     ],
     "Stop": [
         "unified_logger",

@@ -73,6 +73,7 @@ GEMINI_EVENT_MAP = {
     "SessionEnd": "Stop",  # Map SessionEnd to Stop to trigger stop gates
     "Notification": "Notification",
     "PreCompress": "PreCompact",
+    "SubagentStart": "SubagentStart",  # Explicit mapping if Gemini sends it
     "SubagentStop": "SubagentStop",  # Explicit mapping if Gemini sends it
 }
 
