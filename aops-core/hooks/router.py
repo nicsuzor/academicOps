@@ -248,9 +248,9 @@ class HookRouter:
             hook_event = GEMINI_EVENT_MAP.get(raw_event, raw_event)
 
         # 2. Determine Session ID
-        session_id = raw_input.get("session_id")
+        session_id = raw_input.get("session_id") 
         if not session_id:
-            session_id = self.session_data.get("session_id")
+            session_id = self.session_data.get("session_id") or os.environ.get("CLAUDE_SESSION_ID")
 
         if not session_id and hook_event == "SessionStart":
             timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")

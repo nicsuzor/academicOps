@@ -25,8 +25,6 @@ from lib.paths import (
 from lib.session_paths import get_session_status_dir
 from lib.template_loader import load_template
 
-# DEFAULT_HOOK_TMP removed - now using ~/.claude/projects/... or ~/.gemini/...
-
 # Cleanup age: 1 hour in seconds
 CLEANUP_AGE_SECONDS = 60 * 60
 
@@ -57,9 +55,7 @@ def get_hook_temp_dir(category: str, input_data: dict[str, Any] | None = None) -
         return path
 
     # 3. Use unified session status directory resolution
-    session_id = (input_data.get("session_id") if input_data else None) or os.environ.get(
-        "CLAUDE_SESSION_ID"
-    )
+    session_id = get_session_id(input_data)
     status_dir = get_session_status_dir(session_id, input_data)
 
     # Platform-specific temp sub-structure
@@ -147,7 +143,7 @@ def write_temp_file(
 
     # Use consistent session hash in filename when available (P#102)
     # This ensures one temp file per session, overwritten on each trigger
-    sid = session_id or os.environ.get("CLAUDE_SESSION_ID")
+    sid = session_id or get_session_id({})
     if sid:
         from lib.session_paths import get_session_short_hash
 
@@ -169,12 +165,11 @@ def write_temp_file(
         return Path(f.name)
 
 
-def get_session_id(input_data: dict[str, Any], require: bool = False) -> str:
+def get_session_id(input_data: dict[str, Any]) -> str:
     """Get session ID from hook input data or environment.
 
     Args:
         input_data: Hook input data dict
-        require: If True, raise ValueError when session_id not found
 
     Returns:
         Session ID string, or empty string if not found and not required
@@ -184,12 +179,10 @@ def get_session_id(input_data: dict[str, Any], require: bool = False) -> str:
     """
     session_id = input_data.get("session_id") or os.environ.get("CLAUDE_SESSION_ID")
     if not session_id:
-        if require:
-            raise ValueError(
-                "session_id is required in hook input_data or CLAUDE_SESSION_ID env var. "
-                "If you're seeing this error, the hook invocation is missing required context."
-            )
-        return ""
+        raise ValueError(
+            "session_id is required in hook input_data or CLAUDE_SESSION_ID env var. "
+            "If you're seeing this error, the hook invocation is missing required context."
+        )
     return session_id
 
 
@@ -225,10 +218,9 @@ def is_subagent_session(input_data: dict[str, Any] | None = None) -> bool:
     # Method 2: Check if session_id matches the short hex format of subagent IDs.
     # Main sessions use full UUIDs (e.g., f4e3f1cb-775c-4aaf-8bf6-4e18a18dad3d).
     # Subagent sessions use short hex IDs (e.g., aafdeee, adc71f1).
-    if input_data:
-        session_id = str(input_data.get("session_id", ""))
-        if _SUBAGENT_ID_RE.match(session_id):
-            return True
+    session_id = get_session_id(input_data)
+    if _SUBAGENT_ID_RE.match(session_id):
+        return True
 
     # Method 3: Check for agent_id/agent_type fields in hook payload.
     if input_data:

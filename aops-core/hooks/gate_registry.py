@@ -113,26 +113,6 @@ def run_ntfy_notifier(ctx: HookContext, state: SessionState) -> GateResult | Non
     return None
 
 
-# --- Subagent Tracker ---
-
-
-def run_subagent_tracker(ctx: HookContext, state: SessionState) -> GateResult | None:
-    """Track active subagents via SubagentStart/SubagentStop events.
-
-    Increments/decrements a counter in session state so that PreToolUse/PostToolUse
-    hooks can detect when a subagent is running and skip main-agent-only gates.
-    This prevents recursive gate blocking when hooks fire for subagent tool calls.
-    """
-    count = state.state.get("active_subagent_count", 0)
-
-    if ctx.hook_event == "SubagentStart":
-        state.state["active_subagent_count"] = count + 1
-    elif ctx.hook_event == "SubagentStop":
-        state.state["active_subagent_count"] = max(0, count - 1)
-
-    return None
-
-
 # --- Session Env Setup ---
 
 
@@ -184,7 +164,6 @@ def run_generate_transcript(ctx: HookContext, state: SessionState) -> GateResult
 GATE_CHECKS = {
     "unified_logger": run_unified_logger,
     "ntfy_notifier": run_ntfy_notifier,
-    "subagent_tracker": run_subagent_tracker,
     "session_env_setup": run_session_env_setup,
     # SessionStart
     "session_start": _on_session_start,

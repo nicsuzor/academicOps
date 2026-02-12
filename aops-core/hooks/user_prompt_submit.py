@@ -622,19 +622,6 @@ def get_task_work_state() -> str:
         return ""  # Graceful degradation
 
 
-def get_session_id() -> str:
-    """Get session ID from environment.
-
-    Returns CLAUDE_SESSION_ID if set, raises ValueError otherwise.
-    Session ID is required for state isolation.
-    """
-    session_id = os.environ.get("CLAUDE_SESSION_ID")
-    if session_id is None:
-        raise ValueError("CLAUDE_SESSION_ID not set - cannot save session state")
-    if not session_id:
-        raise ValueError("CLAUDE_SESSION_ID is empty - cannot save session state")
-    return session_id
-
 
 def write_initial_hydrator_state(
     session_id: str, prompt: str, hydration_pending: bool = True
