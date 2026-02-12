@@ -70,7 +70,7 @@ def log_hook_event(
         )
 
         # Add debug metrics to metadata
-        log_dict = log_entry.model_dump()
+        log_dict = log_entry.model_dump(exclude={"framework_content"})
         log_dict["debug"] = {
             "pid": os.getpid(),
             "ppid": os.getppid(),
