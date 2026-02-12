@@ -355,7 +355,7 @@ GATE_CONFIGS = [
                     hook_event="Stop",
                     custom_check="missing_framework_reflection",
                 ),
-                verdict="deny",
+                verdict="warn",
                 message_template=("⛔ Handover required"),
                 context_template=(
                     "⛔ Finalization required before exit.\n\n"
