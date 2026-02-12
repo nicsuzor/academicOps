@@ -12,7 +12,7 @@ def check_custom_condition(
     """
     if name == "has_uncommitted_work":
         try:
-            from hooks.session_end_commit_check import check_uncommitted_work
+            from lib.commit_check import check_uncommitted_work
 
             # Use transcript path from input if context is missing it
             path = ctx.transcript_path or ctx.raw_input.get("transcript_path")
@@ -26,7 +26,7 @@ def check_custom_condition(
 
     if name == "has_unpushed_commits":
         try:
-            from hooks.session_end_commit_check import check_uncommitted_work
+            from lib.commit_check import check_uncommitted_work
 
             path = ctx.transcript_path or ctx.raw_input.get("transcript_path")
             result = check_uncommitted_work(ctx.session_id, path)
@@ -39,7 +39,7 @@ def check_custom_condition(
 
     if name == "is_hydratable":
         try:
-            from hooks.user_prompt_submit import should_skip_hydration
+            from lib.hydration import should_skip_hydration
 
             # Extract prompt
             # For Claude, prompt is not directly in input usually?

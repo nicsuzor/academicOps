@@ -2,10 +2,37 @@ import uuid
 from unittest.mock import patch
 
 import pytest
-from hooks.gates import on_subagent_stop
 from hooks.schemas import HookContext
 from lib.gate_types import GateStatus
+from lib.gates.registry import GateRegistry
 from lib.session_state import SessionState
+
+
+def on_subagent_stop(ctx: HookContext, state: SessionState):
+    """Dispatch SubagentStop to all gates.
+
+    Replacement for hooks.gates.on_subagent_stop after refactoring.
+    """
+    GateRegistry.initialize()
+
+    messages = []
+    context_injections = []
+
+    for gate in GateRegistry.get_all_gates():
+        result = gate.on_subagent_stop(ctx, state)
+        if result:
+            if result.system_message:
+                messages.append(result.system_message)
+            if result.context_injection:
+                context_injections.append(result.context_injection)
+
+    if messages or context_injections:
+        from lib.gate_model import GateResult
+        return GateResult.allow(
+            system_message="\n".join(messages) if messages else None,
+            context_injection="\n\n".join(context_injections) if context_injections else None,
+        )
+    return None
 
 
 @pytest.fixture

@@ -30,22 +30,22 @@ class TestUserPromptSubmit(unittest.TestCase):
         # New global turn count
         self.mock_state.global_turn_count = 0
 
-    @patch("hooks.user_prompt_submit.get_hook_temp_dir")
-    @patch("hooks.user_prompt_submit._write_temp")
-    @patch("hooks.user_prompt_submit.cleanup_old_temp_files")
-    @patch("hooks.user_prompt_submit.load_framework_paths")
-    @patch("hooks.user_prompt_submit.load_mcp_tools_context")
-    @patch("hooks.user_prompt_submit.load_environment_variables_context")
-    @patch("hooks.user_prompt_submit.load_project_paths_context")
-    @patch("hooks.user_prompt_submit.load_workflows_index")
-    @patch("hooks.user_prompt_submit.load_skills_index")
-    @patch("hooks.user_prompt_submit.load_scripts_index")
-    @patch("hooks.user_prompt_submit.load_project_rules")
-    @patch("hooks.user_prompt_submit.get_task_work_state")
-    @patch("hooks.user_prompt_submit.get_formatted_relevant_paths")
-    @patch("hooks.user_prompt_submit.load_project_context_index")
-    @patch("hooks.user_prompt_submit.load_template")
-    @patch("hooks.user_prompt_submit.extract_router_context")
+    @patch("lib.hydration.builder.get_hydration_temp_dir")
+    @patch("lib.hydration.builder.write_temp_file")
+    @patch("lib.hydration.builder.cleanup_old_temp_files")
+    @patch("lib.hydration.builder.load_framework_paths")
+    @patch("lib.hydration.builder.load_mcp_tools_context")
+    @patch("lib.hydration.builder.load_environment_variables_context")
+    @patch("lib.hydration.builder.load_project_paths_context")
+    @patch("lib.hydration.builder.load_workflows_index")
+    @patch("lib.hydration.builder.load_skills_index")
+    @patch("lib.hydration.builder.load_scripts_index")
+    @patch("lib.hydration.builder.load_project_rules")
+    @patch("lib.hydration.builder.get_task_work_state")
+    @patch("lib.hydration.builder.get_formatted_relevant_paths")
+    @patch("lib.hydration.builder.load_project_context_index")
+    @patch("lib.hydration.builder.load_template")
+    @patch("lib.hydration.builder.extract_router_context")
     @patch("lib.session_state.SessionState.load")
     def test_build_hydration_instruction(
         self,
@@ -64,12 +64,12 @@ class TestUserPromptSubmit(unittest.TestCase):
         mock_load_mcp,
         mock_load_framework,
         mock_cleanup,
-        mock_write_temp,
-        mock_get_hook_temp,
+        mock_write_temp_file,
+        mock_get_hydration_temp_dir,
     ):
         # Mock setup
         mock_load.return_value = self.mock_state
-        mock_write_temp.return_value = self.temp_path
+        mock_write_temp_file.return_value = self.temp_path
 
         # Determine return value based on file argument
         def side_effect(filepath):

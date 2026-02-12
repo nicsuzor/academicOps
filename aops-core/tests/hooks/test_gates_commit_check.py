@@ -21,9 +21,11 @@ class TestCustodietGateCommitCheck(unittest.TestCase):
             raw_input={"transcript_path": "/tmp/transcript.jsonl"},
         )
 
-    @patch("hooks.session_end_commit_check.check_uncommitted_work")
+    @patch("lib.commit_check.check_uncommitted_work")
     def test_on_stop_blocking(self, mock_check):
         # Setup mock return value
+        # NOTE: The custodiet gate has verdict="warn" for uncommitted work,
+        # so even with should_block=True, it returns WARN not DENY.
         mock_result = MagicMock()
         mock_result.should_block = True
         mock_result.reminder_needed = False
@@ -36,14 +38,15 @@ class TestCustodietGateCommitCheck(unittest.TestCase):
         # Verify result
         self.assertIsNotNone(result)
         if result:
-            self.assertEqual(result.verdict, GateVerdict.DENY)
+            # Gate policy has verdict="warn" for uncommitted work
+            self.assertEqual(result.verdict, GateVerdict.WARN)
             # Check system message (resolved from {block_reason} metric)
             # Note: check_custom_condition sets the metric.
             self.assertIsNotNone(result.system_message)
             if result.system_message:
                 self.assertIn("Uncommitted changes detected", result.system_message)
 
-    @patch("hooks.session_end_commit_check.check_uncommitted_work")
+    @patch("lib.commit_check.check_uncommitted_work")
     def test_on_stop_reminder(self, mock_check):
         # Setup mock return value
         mock_result = MagicMock()
@@ -63,7 +66,7 @@ class TestCustodietGateCommitCheck(unittest.TestCase):
             if result.system_message:
                 self.assertIn("Reminder: Unpushed commits", result.system_message)
 
-    @patch("hooks.session_end_commit_check.check_uncommitted_work")
+    @patch("lib.commit_check.check_uncommitted_work")
     def test_on_stop_clean(self, mock_check):
         # Setup mock return value
         mock_result = MagicMock()

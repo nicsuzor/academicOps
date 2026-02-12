@@ -1,8 +1,86 @@
+from pathlib import Path
+
 from hooks.schemas import HookContext
 
+from lib import hook_utils
 from lib.gate_model import GateResult
 from lib.gate_types import GateState
 from lib.session_state import SessionState
+from lib.template_registry import TemplateRegistry
+
+
+def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path | None:
+    """Create rich audit file for gate using TemplateRegistry.
+
+    Moved from lib/gate_utils.py to eliminate wrapper layer.
+    """
+    # Use gate name as category (e.g., 'custodiet', 'critic')
+    category = gate
+
+    # Try to load rich context if possible
+    transcript_path = ctx.transcript_path or ctx.raw_input.get("transcript_path")
+    session_context = ""
+    if transcript_path:
+        if gate in ("critic", "custodiet"):
+            from lib.session_reader import build_critic_session_context
+
+            try:
+                session_context = build_critic_session_context(transcript_path)
+            except Exception:
+                pass
+        else:
+            from lib.session_reader import build_rich_session_context
+
+            try:
+                session_context = build_rich_session_context(transcript_path)
+            except Exception:
+                pass
+
+    axioms, heuristics, skills = hook_utils.load_framework_content()
+
+    import os
+
+    custodiet_mode = os.environ.get("CUSTODIET_MODE", "block").lower()
+
+    registry = TemplateRegistry.instance()
+
+    # Fill template using unified logic
+    try:
+        content = registry.render(
+            f"{gate}.context",
+            {
+                "session_id": session_id,
+                "gate_name": gate,
+                "tool_name": ctx.tool_name or "unknown",
+                "session_context": session_context,
+                "axioms_content": axioms,
+                "heuristics_content": heuristics,
+                "skills_content": skills,
+                "custodiet_mode": custodiet_mode,
+            },
+        )
+    except (KeyError, ValueError, FileNotFoundError):
+        # Fallback to simple audit template if rich one fails
+        try:
+            content = registry.render(
+                f"{gate}.audit",
+                {
+                    "session_id": session_id,
+                    "gate_name": gate,
+                    "tool_name": ctx.tool_name or "unknown",
+                },
+            )
+        except (KeyError, ValueError, FileNotFoundError):
+            return None
+
+    # Write to temp
+    try:
+        temp_dir = hook_utils.get_hook_temp_dir(category, ctx.raw_input)
+        return hook_utils.write_temp_file(
+            content, temp_dir, f"audit_{gate}_", session_id=session_id
+        )
+    except Exception:
+        return None
 
 
 def execute_custom_action(
@@ -13,7 +91,7 @@ def execute_custom_action(
     """
     if name == "hydrate_prompt":
         try:
-            from hooks.user_prompt_submit import build_hydration_instruction
+            from lib.hydration import build_hydration_instruction
 
             # Gemini prompt is in ctx.raw_input["prompt"]
             prompt = ctx.raw_input.get("prompt")
@@ -44,8 +122,6 @@ def execute_custom_action(
 
     if name == "prepare_compliance_report":
         try:
-            from lib.gate_utils import create_audit_file
-
             # Use 'custodiet' as the gate name for auditing
             temp_path = create_audit_file(ctx.session_id, "custodiet", ctx)
             if temp_path:

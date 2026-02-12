@@ -1,6 +1,7 @@
+from functools import cached_property
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 # --- Input Schemas (Context) ---
 
@@ -8,7 +9,15 @@ from pydantic import BaseModel, Field
 class HookContext(BaseModel):
     """
     Normalized input context for all hooks.
+
+    Precomputed values (session_short_hash, is_subagent) are computed once
+    during normalize_input() to avoid redundant calculations across gates.
     """
+
+    model_config = ConfigDict(
+        # Allow cached_property to work with Pydantic
+        ignored_types=(cached_property,),
+    )
 
     # Core Identity
     session_id: str = Field(..., description="The unique session identifier.")
@@ -18,6 +27,16 @@ class HookContext(BaseModel):
     agent_id: str | None = None
     slug: str | None = None
     is_sidechain: bool | None = None
+
+    # Precomputed values (computed once in router.normalize_input())
+    session_short_hash: str = Field(
+        default="",
+        description="8-char hash of session_id (computed once at normalization)."
+    )
+    is_subagent: bool = Field(
+        default=False,
+        description="Whether this is a subagent session (computed once at normalization)."
+    )
 
     # Event Data
     tool_name: str | None = None
@@ -31,6 +50,19 @@ class HookContext(BaseModel):
 
     # Raw Input (for fallback/passthrough)
     raw_input: dict[str, Any] = Field(default_factory=dict)
+
+    # Cached framework content (lazy loaded)
+    _framework_content_cache: tuple[str, str, str] | None = None
+
+    @cached_property
+    def framework_content(self) -> tuple[str, str, str]:
+        """Lazy-load framework content (axioms, heuristics, skills).
+
+        Returns:
+            tuple: (axioms_text, heuristics_text, skills_text)
+        """
+        from lib.hook_utils import load_framework_content
+        return load_framework_content()
 
 
 # --- Claude Code Hook Schemas ---

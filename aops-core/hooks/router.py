@@ -17,7 +17,6 @@ import json
 import os
 import sys
 import tempfile
-import time
 import uuid
 from collections import deque
 from datetime import datetime
@@ -33,16 +32,17 @@ if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
 try:
-    from lib.gate_model import GateResult
+    from lib.gate_model import GateResult, GateVerdict
+    from lib.gates.registry import GateRegistry
     from lib.hook_utils import is_subagent_session
-    from lib.session_paths import get_pid_session_map_path, get_session_status_dir
+    from lib.session_paths import (
+        get_hook_log_path,
+        get_pid_session_map_path,
+        get_session_short_hash,
+        get_session_status_dir,
+    )
     from lib.session_state import SessionState
 
-    from hooks.gate_config import (
-        GATE_EXECUTION_ORDER,
-        MAIN_AGENT_ONLY_GATES,
-    )
-    from hooks.gate_registry import GATE_CHECKS
     from hooks.schemas import (
         CanonicalHookOutput,
         ClaudeGeneralHookOutput,
@@ -53,7 +53,7 @@ try:
         GeminiHookSpecificOutput,
         HookContext,
     )
-    from hooks.unified_logger import log_hook_event
+    from hooks.unified_logger import log_hook_event, log_event_to_session
 except ImportError as e:
     # Fail fast if schemas missing
     print(f"CRITICAL: Failed to import: {e}", file=sys.stderr)
@@ -221,8 +221,10 @@ class HookRouter:
         elif "subagent_result" in raw_input:
             tool_output = self._normalize_json_field(raw_input["subagent_result"])
 
+        # Precompute values once to avoid redundant calls across gates
         is_subagent = is_subagent_session(raw_input)
         subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE")
+        short_hash = get_session_short_hash(session_id)
 
         return HookContext(
             session_id=str(session_id),
@@ -230,6 +232,10 @@ class HookRouter:
             agent_id=raw_input.get("agentId"),
             slug=raw_input.get("slug"),
             is_sidechain=is_subagent or raw_input.get("isSidechain"),
+            # Precomputed values
+            session_short_hash=short_hash,
+            is_subagent=is_subagent,
+            # Event Data
             tool_name=raw_input.get("tool_name"),
             tool_input=tool_input,
             tool_output=tool_output,
@@ -240,53 +246,37 @@ class HookRouter:
         )
 
     def execute_hooks(self, ctx: HookContext) -> CanonicalHookOutput:
-        """Run all configured gates for the event and merge results."""
+        """Run all configured gates for the event and merge results.
+
+        Dispatches directly to GateRegistry and GenericGate methods,
+        eliminating the wrapper layers in gates.py and gate_registry.py.
+        """
         merged_result = CanonicalHookOutput()
 
         # Load Session State ONCE
         try:
             state = SessionState.load(ctx.session_id)
         except Exception as e:
-            # Create fresh if load failed (should be rare)
             print(f"WARNING: Failed to load session state: {e}", file=sys.stderr)
             state = SessionState.create(ctx.session_id)
 
-        # Execute gate functions directly (no subprocess)
-        gate_names = GATE_EXECUTION_ORDER.get(ctx.hook_event, [])
+        # Initialize gate registry
+        GateRegistry.initialize()
 
-        # Filter: Certain gates ONLY run for the main agent
+        # Run special handlers first (unified_logger, ntfy, etc.) then gates
+        self._run_special_handlers(ctx, state, merged_result)
+
+        # Skip gate dispatch for subagents (they bypass most gates)
         if ctx.is_sidechain:
-            gate_names = [g for g in gate_names if g not in MAIN_AGENT_ONLY_GATES]
+            pass  # Special handlers already run, skip gate dispatch
+        else:
+            # Dispatch to GenericGate methods based on event type
+            result = self._dispatch_gates(ctx, state)
+            if result:
+                hook_output = self._gate_result_to_canonical(result)
+                self._merge_result(merged_result, hook_output)
 
-        for gate_name in gate_names:
-            check_func = GATE_CHECKS.get(gate_name)
-            if not check_func:
-                continue
-
-            start_time = time.monotonic()
-            try:
-                # Pass both context and state object
-                result = check_func(ctx, state)
-
-                duration = time.monotonic() - start_time
-                merged_result.metadata.setdefault("gate_times", {})[gate_name] = duration
-
-                if result:
-                    hook_output = self._gate_result_to_canonical(result)
-                    self._merge_result(merged_result, hook_output)
-
-                    if hook_output.verdict == "deny":
-                        break
-
-            except Exception as e:
-                import traceback
-
-                error_msg = f"Gate '{gate_name}' failed: {e}"
-                print(error_msg, file=sys.stderr)
-                merged_result.metadata.setdefault("errors", []).append(error_msg)
-                merged_result.metadata.setdefault("tracebacks", []).append(traceback.format_exc())
-
-        # Append gate status icons to system message (non-intrusive display)
+        # Append gate status icons to system message
         try:
             gate_status = format_gate_status_icons(state)
             if merged_result.system_message:
@@ -309,6 +299,258 @@ class HookRouter:
             print(f"WARNING: Failed to log hook event: {e}", file=sys.stderr)
 
         return merged_result
+
+    def _run_special_handlers(
+        self, ctx: HookContext, state: SessionState, merged_result: CanonicalHookOutput
+    ) -> None:
+        """Run special handlers (logging, notifications) that aren't gates."""
+        # Unified logger
+        try:
+            log_event_to_session(ctx.session_id, ctx.hook_event, ctx.raw_input, state)
+        except Exception as e:
+            print(f"WARNING: unified_logger error: {e}", file=sys.stderr)
+
+        # ntfy push notifications
+        if ctx.hook_event in ("SessionStart", "Stop", "PostToolUse"):
+            self._run_ntfy_notifier(ctx, state)
+
+        # Session env setup on start
+        if ctx.hook_event == "SessionStart":
+            try:
+                from hooks.session_env_setup import run_session_env_setup
+                run_session_env_setup(ctx)
+            except Exception as e:
+                print(f"WARNING: session_env_setup error: {e}", file=sys.stderr)
+
+            # Session start initialization (moved from hooks/gates.py)
+            init_result = self._run_session_start_init(ctx, state)
+            if init_result:
+                hook_output = self._gate_result_to_canonical(init_result)
+                self._merge_result(merged_result, hook_output)
+                if init_result.verdict == GateVerdict.DENY:
+                    return  # Fail-fast on initialization failure
+
+        # Generate transcript on stop
+        if ctx.hook_event == "Stop":
+            transcript_path = ctx.raw_input.get("transcript_path")
+            if transcript_path:
+                self._run_generate_transcript(transcript_path)
+
+    def _run_session_start_init(self, ctx: HookContext, state: SessionState) -> GateResult | None:
+        """Session start initialization - fail-fast checks and user messages.
+
+        Moved from hooks/gates.py to eliminate wrapper layer.
+        """
+        from lib import hook_utils
+        from lib.session_paths import get_session_file_path
+
+        # Use precomputed short_hash from context
+        short_hash = ctx.session_short_hash
+        hook_log_path = get_hook_log_path(ctx.session_id, ctx.raw_input)
+        state_file_path = get_session_file_path(ctx.session_id, input_data=ctx.raw_input)
+
+        # Fail-fast: ensure state file can be written
+        if not state_file_path.exists():
+            try:
+                state.save()
+            except OSError as e:
+                return GateResult(
+                    verdict=GateVerdict.DENY,
+                    system_message=(
+                        f"FAIL-FAST: Cannot write session state file.\n"
+                        f"Path: {state_file_path}\n"
+                        f"Error: {e}\n"
+                        f"Fix: Check directory permissions and disk space."
+                    ),
+                    metadata={"source": "session_start", "error": str(e)},
+                )
+
+        # Gemini-specific: validate hydration temp path infrastructure
+        transcript_path = ctx.raw_input.get("transcript_path", "") if ctx.raw_input else ""
+        if transcript_path and ".gemini" in str(transcript_path):
+            try:
+                hydration_temp_dir = hook_utils.get_hook_temp_dir("hydrator", ctx.raw_input)
+                if not hydration_temp_dir.exists():
+                    hydration_temp_dir.mkdir(parents=True, exist_ok=True)
+            except RuntimeError as e:
+                return GateResult(
+                    verdict=GateVerdict.DENY,
+                    system_message=(
+                        f"STATE ERROR: Hydration temp path missing from session state.\n\n"
+                        f"Details: {e}\n\n"
+                        f"Fix: Ensure Gemini CLI has initialized the project directory."
+                    ),
+                    metadata={"source": "session_start", "error": "gemini_temp_dir_missing"},
+                )
+            except OSError as e:
+                return GateResult(
+                    verdict=GateVerdict.DENY,
+                    system_message=(
+                        f"STATE ERROR: Cannot create hydration temp directory.\n\n"
+                        f"Error: {e}\n\n"
+                        f"Fix: Check directory permissions for ~/.gemini/tmp/"
+                    ),
+                    metadata={"source": "session_start", "error": "gemini_temp_dir_permission"},
+                )
+
+        # Session started messages
+        messages = [
+            f"Session Started: {ctx.session_id} ({short_hash})",
+            f"Version: {state.version}",
+            f"State File: {state_file_path}",
+            f"Hooks log: {hook_log_path}",
+            f"Transcript: {transcript_path}",
+        ]
+
+        return GateResult.allow(system_message="\n".join(messages))
+
+    def _run_ntfy_notifier(self, ctx: HookContext, state: SessionState) -> None:
+        """Run ntfy push notification handler."""
+        try:
+            from lib.paths import get_ntfy_config
+            config = get_ntfy_config()
+            if not config:
+                return
+
+            from hooks.ntfy_notifier import (
+                notify_session_start,
+                notify_session_stop,
+                notify_subagent_stop,
+                notify_task_bound,
+                notify_task_completed,
+            )
+
+            if ctx.hook_event == "SessionStart":
+                notify_session_start(config, ctx.session_id)
+            elif ctx.hook_event == "Stop":
+                current_task = state.main_agent.current_task
+                notify_session_stop(config, ctx.session_id, current_task)
+            elif ctx.hook_event == "PostToolUse":
+                TASK_BINDING_TOOLS = {
+                    "mcp__plugin_aops-core_task_manager__update_task",
+                    "mcp__plugin_aops-core_task_manager__claim_next_task",
+                    "mcp__plugin_aops-core_task_manager__complete_task",
+                    "mcp__plugin_aops-core_task_manager__complete_tasks",
+                    "update_task", "claim_next_task", "complete_task", "complete_tasks",
+                }
+                if ctx.tool_name in TASK_BINDING_TOOLS:
+                    tool_input = ctx.tool_input
+                    if isinstance(tool_input, dict) and "status" in tool_input and "id" in tool_input:
+                        status = tool_input["status"]
+                        task_id = tool_input["id"]
+                        if status == "in_progress":
+                            notify_task_bound(config, ctx.session_id, task_id)
+                        elif status == "done":
+                            notify_task_completed(config, ctx.session_id, task_id)
+
+                if ctx.tool_name in ("Task", "delegate_to_agent"):
+                    agent_type = "unknown"
+                    tool_input = ctx.tool_input
+                    if isinstance(tool_input, dict):
+                        agent_type = tool_input.get("subagent_type") or tool_input.get("agent_name", "unknown")
+                    verdict = None
+                    if tool_result := ctx.tool_output:
+                        if isinstance(tool_result, dict) and "verdict" in tool_result:
+                            verdict = tool_result["verdict"]
+                    notify_subagent_stop(config, ctx.session_id, agent_type, verdict)
+        except Exception as e:
+            print(f"WARNING: ntfy_notifier error: {e}", file=sys.stderr)
+
+    def _run_generate_transcript(self, transcript_path: str) -> None:
+        """Run transcript generation on stop."""
+        try:
+            import subprocess
+            from pathlib import Path
+
+            root_dir = Path(__file__).parent.parent
+            script_path = root_dir / "scripts" / "transcript_push.py"
+            if not script_path.exists():
+                script_path = root_dir / "scripts" / "transcript.py"
+
+            if script_path.exists():
+                subprocess.run(
+                    [sys.executable, str(script_path), transcript_path],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+        except Exception as e:
+            print(f"WARNING: generate_transcript error: {e}", file=sys.stderr)
+
+    def _dispatch_gates(self, ctx: HookContext, state: SessionState) -> GateResult | None:
+        """Dispatch to GenericGate methods based on event type.
+
+        Maps hook events to GenericGate methods:
+        - PreToolUse -> gate.check()
+        - PostToolUse -> gate.on_tool_use()
+        - UserPromptSubmit -> gate.on_user_prompt()
+        - SessionStart -> gate.on_session_start()
+        - Stop -> gate.on_stop()
+        - AfterAgent -> gate.on_after_agent()
+        - SubagentStop -> gate.on_subagent_stop()
+        """
+        # Global bypass for compliance subagents
+        _COMPLIANCE_SUBAGENT_TYPES = {
+            "hydrator", "prompt-hydrator", "aops-core:prompt-hydrator",
+            "custodiet", "aops-core:custodiet",
+            "qa", "aops-core:qa",
+            "aops-core:butler", "butler",
+        }
+        if state.state.get("hydrator_active") or ctx.subagent_type in _COMPLIANCE_SUBAGENT_TYPES:
+            return GateResult.allow()
+
+        messages = []
+        context_injections = []
+        final_verdict = GateVerdict.ALLOW
+
+        for gate in GateRegistry.get_all_gates():
+            try:
+                result = self._call_gate_method(gate, ctx, state)
+
+                if result:
+                    if result.system_message:
+                        messages.append(result.system_message)
+                    if result.context_injection:
+                        context_injections.append(result.context_injection)
+
+                    # Verdict precedence: DENY > WARN > ALLOW
+                    if result.verdict == GateVerdict.DENY:
+                        final_verdict = GateVerdict.DENY
+                        break  # First deny wins
+                    elif result.verdict == GateVerdict.WARN and final_verdict != GateVerdict.DENY:
+                        final_verdict = GateVerdict.WARN
+
+            except Exception as e:
+                import traceback
+                print(f"Gate '{gate.name}' failed: {e}", file=sys.stderr)
+                traceback.print_exc(file=sys.stderr)
+
+        if messages or context_injections or final_verdict != GateVerdict.ALLOW:
+            return GateResult(
+                verdict=final_verdict,
+                system_message="\n".join(messages) if messages else None,
+                context_injection="\n\n".join(context_injections) if context_injections else None,
+            )
+        return None
+
+    def _call_gate_method(self, gate, ctx: HookContext, state: SessionState) -> GateResult | None:
+        """Call the appropriate gate method based on hook event."""
+        event = ctx.hook_event
+        if event == "PreToolUse":
+            return gate.check(ctx, state)
+        elif event == "PostToolUse":
+            return gate.on_tool_use(ctx, state)
+        elif event == "UserPromptSubmit":
+            return gate.on_user_prompt(ctx, state)
+        elif event == "SessionStart":
+            return gate.on_session_start(ctx, state)
+        elif event == "Stop":
+            return gate.on_stop(ctx, state)
+        elif event == "AfterAgent":
+            return gate.on_after_agent(ctx, state)
+        elif event == "SubagentStop":
+            return gate.on_subagent_stop(ctx, state)
+        return None
 
     def _gate_result_to_canonical(self, result: GateResult) -> CanonicalHookOutput:
         """Convert GateResult to CanonicalHookOutput."""

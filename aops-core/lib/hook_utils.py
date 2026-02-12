@@ -14,6 +14,7 @@ from __future__ import annotations
 import os
 import tempfile
 import time
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, TypedDict
 
@@ -101,8 +102,12 @@ def cleanup_old_temp_files(
     return deleted
 
 
+@lru_cache(maxsize=1)
 def load_framework_content() -> tuple[str, str, str]:
     """Load framework content (axioms, heuristics, skills).
+
+    Cached to avoid repeated file I/O within a single hook invocation.
+    Cache is process-scoped (reset when process restarts).
 
     Returns:
         tuple: (axioms_text, heuristics_text, skills_text)

@@ -129,74 +129,36 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
 }
 
 # =============================================================================
-# GATE EXECUTION ORDER
+# GATE EXECUTION ORDER (DEPRECATED)
 # =============================================================================
-# Which gates run for each event type, and in what order.
-# Order matters: gates run in sequence, first deny wins.
+# This section is kept for reference. The new router dispatches directly to
+# GenericGate methods via GateRegistry instead of using this mapping.
+# Special handlers (logging, notifications) are handled separately in router.py.
+#
+# NOTE: This dict is no longer used by the router. It remains here for
+# documentation purposes and potential rollback if needed.
 
 GATE_EXECUTION_ORDER: dict[str, list[str]] = {
-    "SessionStart": [
-        "session_env_setup",
-        "unified_logger",
-        "session_start",
-        # "gate_init",  # Migrated to session_start (on_session_start)
-    ],
-    "UserPromptSubmit": [
-        "user_prompt_submit",
-        "unified_logger",
-        # "gate_reset",  # Migrated to user_prompt_submit (on_user_prompt)
-    ],
-    "PreToolUse": [
-        "unified_logger",
-        "tool_gate",  # Unified tool gating
-    ],
-    "PostToolUse": [
-        "unified_logger",
-        # "task_binding", # Migrated to gate_update
-        # "accountant",   # Migrated to gate_update
-        "gate_update",  # Unified gate update
-        "ntfy_notifier",
-    ],
-    "AfterAgent": [
-        "unified_logger",
-        "agent_response",
-    ],
-    "SubagentStart": [
-        "unified_logger",
-        "subagent_tracker",
-    ],
-    "SubagentStop": [
-        "unified_logger",
-        "subagent_tracker",
-    ],
-    "Stop": [
-        "unified_logger",
-        "ntfy_notifier",
-        "stop_gate",
-        "generate_transcript",
-    ],
-    "SessionEnd": [
-        "generate_transcript",
-        "unified_logger",
-    ],
+    # Events now dispatch directly to gate methods:
+    # - SessionStart -> gate.on_session_start()
+    # - UserPromptSubmit -> gate.on_user_prompt()
+    # - PreToolUse -> gate.check()
+    # - PostToolUse -> gate.on_tool_use()
+    # - AfterAgent -> gate.on_after_agent()
+    # - SubagentStop -> gate.on_subagent_stop()
+    # - Stop -> gate.on_stop()
 }
 
 # =============================================================================
-# SUBAGENT BYPASS
+# SUBAGENT BYPASS (DEPRECATED)
 # =============================================================================
-# Gates that should only run for the main agent (bypass for subagents).
+# This set is no longer used. The router now checks ctx.is_sidechain and
+# ctx.subagent_type directly, and compliance subagents (hydrator, custodiet,
+# qa, butler) are explicitly bypassed in _dispatch_gates().
+#
+# NOTE: Kept for reference. Will be removed in a future cleanup.
 
-MAIN_AGENT_ONLY_GATES: set[str] = {
-    "tool_gate",
-    "gate_init",  # kept for safety if referenced elsewhere, though dead
-    "gate_reset",  # kept for safety
-    "gate_update",
-    "user_prompt_submit",
-    "task_binding",  # kept for safety
-    "stop_gate",
-    "session_start",
-    "agent_response",
-}
+MAIN_AGENT_ONLY_GATES: set[str] = set()  # Empty - logic moved to router
 
 # =============================================================================
 # GATE MODE DEFAULTS
