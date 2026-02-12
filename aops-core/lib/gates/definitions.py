@@ -342,7 +342,8 @@ GATE_CONFIGS = [
                     custom_check="missing_framework_reflection",
                 ),
                 verdict="deny",
-                message_template=(
+                message_template=("⛔ Handover required"),
+                context_template=(
                     "⛔ Finalization required before exit.\n\n"
                     "Please invoke the Handover Skill. The gate will only allow exit once the Handover Skill has completed and the output is successfully parsed in the correct format."
                 ),
