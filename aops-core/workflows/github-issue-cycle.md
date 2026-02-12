@@ -66,16 +66,18 @@ Async, decentralized work coordination via GitHub issues.
 
 ### 1. Trigger
 
-**Current**: Manual invocation
+**Manual invocation**:
 
 - User says "claim task X" or runs `/pull`
 - Agent claims task in task manager
 
-**Future**: Automated trigger (see task at end)
+**Automated trigger** (via `.github/workflows/polecat-issue-trigger.yml`):
 
-- GitHub webhook fires on issue comment
-- Hook matches pattern (e.g., "ready for review", "@polecat")
-- Agent spawns to handle
+- GitHub Actions workflow fires on issue/PR comment
+- Triggers when comment contains `@polecat` or `ready for agent` (case-insensitive)
+- Also triggers on PR review comments and reviews
+- Manual dispatch available via workflow_dispatch with issue number input
+- Concurrency control prevents parallel runs on the same issue
 
 ### 2. Fetch Context
 
@@ -213,21 +215,23 @@ This workflow composes with:
 6. HANDOVER: Task stays active, next session can implement
 ```
 
-## Future: Automated Trigger
+## Automated Trigger
 
-**Task to create**: Hook that responds to GitHub issue comments
+**Implemented**: `.github/workflows/polecat-issue-trigger.yml`
 
 Trigger conditions:
 
-- Comment contains "@polecat" or "ready for agent"
-- Comment from authorized reviewer
-- Issue has "agent-ready" label
+- Comment contains `@polecat` or `ready for agent` (case-insensitive)
+- Works on issues, PRs, and PR reviews
+- Manual dispatch available for testing
 
 Action:
 
-- Spawn agent with issue context
-- Run through this workflow
-- Post completion comment
+- Spawns Claude agent via `anthropics/claude-code-action@v1`
+- Agent follows instructions in the triggering comment
+- Concurrency control prevents parallel runs on same issue
+
+**Note**: Authorization is currently implicit via GitHub Actions permissions. The workflow runs for any comment matching the trigger phrases. To restrict to authorized reviewers, add a condition checking `github.event.comment.user.login` or require the "agent-ready" label.
 
 ---
 
@@ -245,6 +249,15 @@ This workflow is being developed through use on bug #394 (hook system_message/co
 - Created task `aops-e103b512` for future automated trigger
 - **Learning**: Verification step is critical — agent must run critic-requested greps and compare against audit tables before declaring plan complete
 - **Next**: Implementation phase (Step 1: Fix custom_actions.py)
+
+**2026-02-12 Session 2**: Automated trigger implementation (task `aops-e103b512`)
+
+- Created `.github/workflows/polecat-issue-trigger.yml`
+- Modeled after existing `claude.yml` pattern for consistency
+- Features: issue_comment + PR review triggers, workflow_dispatch for manual testing, concurrency control
+- Trigger phrases: `@polecat`, `ready for agent` (case-insensitive)
+- Updated this documentation to reflect implementation
+- **Learning**: Follow existing patterns (claude.yml) rather than inventing new approaches
 
 ### Open Questions
 
