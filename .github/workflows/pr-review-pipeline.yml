@@ -77,7 +77,7 @@ jobs:
 
   claude-review:
     # needs: wait-for-reviews
-    if: needs.wait-for-reviews.outputs.reviews_ready == 'true'
+    # if: needs.wait-for-reviews.outputs.reviews_ready == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
