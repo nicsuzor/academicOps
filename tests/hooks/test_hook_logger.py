@@ -65,6 +65,8 @@ class TestLogHookEvent:
             HookContext(
                 session_id=session_id,
                 hook_event="PreToolUse",
+                tool_name="Edit",
+                tool_input={"file": "test.py"},
                 raw_input={"tool_name": "Edit", "tool_input": {"file": "test.py"}},
             ),
             output=CanonicalHookOutput(context_injection="some context"),
@@ -83,13 +85,14 @@ class TestLogHookEvent:
         assert entry["hook_event"] == "PreToolUse"
         assert "logged_at" in entry
         assert entry["exit_code"] == 0
-        # Input data should be in 'input' key
-        assert "input" in entry
-        assert entry["input"]["tool_name"] == "Edit"
-        assert entry["input"]["tool_input"]["file"] == "test.py"
+        # Input data should be preserved
+        assert entry["tool_name"] == "Edit"
+        assert entry["tool_input"]["file"] == "test.py"
         # Output data should be in 'output' key
         assert "output" in entry
         assert entry["output"]["context_injection"] == "some context"
+
+        assert "raw_input" in entry
 
     def test_multiple_events_appended(self, temp_claude_projects):
         """Test that multiple events are appended to same file."""

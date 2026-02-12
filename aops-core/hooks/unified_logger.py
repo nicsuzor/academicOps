@@ -63,14 +63,15 @@ def log_hook_event(
 
         # Create log entry from superclass fields + new metadata
         log_entry = HookLogEntry(
+            session_id=session_id,
             hook_event=ctx.hook_event,
             logged_at=datetime.now().astimezone().replace(microsecond=0).isoformat(),
             exit_code=exit_code,
-            output=ctx.model_dump(),
+            output=ctx.model_dump(exclude={"framework_content", "session_id"}),
         )
 
         # Add debug metrics to metadata
-        log_dict = log_entry.model_dump(exclude={"framework_content"})
+        log_dict = log_entry.model_dump()
         log_dict["debug"] = {
             "pid": os.getpid(),
             "ppid": os.getppid(),
