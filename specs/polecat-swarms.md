@@ -13,6 +13,8 @@ status: DRAFT
 - [[polecat/engineer.py]] - Refinery and Engineer agent for merge queue processing
 - [[polecat/manager.py]] - Worktree management (`claim_next_task` with atomic locking)
 - [[skills/hypervisor/SKILL.md]] - Hypervisor skill for batch parallel processing
+- [[skills/swarm-supervisor/SKILL.md]] - Swarm supervisor skill (dispatch protocol)
+- [[WORKERS.md]] - Worker registry (types, capabilities, selection rules, thresholds)
 - [[specs/polecat-system.md]] - Foundation system this builds upon
 
 **Goal**: Scale development throughput by enabling multiple concurrent "polecat" workers to execute tasks in parallel, while maintaining high code quality through an automated "Refinery" and an intelligent "Engineer" review gate.
@@ -24,7 +26,8 @@ The Swarm builds upon the [Polecat System](./polecat-system.md) (ephemeral git w
 ### Components
 
 - **Task Queue**: The single source of truth (TaskDB). Holds tasks in `ready` state.
-- **Swarm Workers**: Independent agent instances, each operating in its own isolated polecat worktree (`~/.aops/polecat/<task-id>`).
+- **Worker Registry**: [[WORKERS.md]] defines available worker types, capabilities, selection rules, and operational thresholds. Deployment-specific; modify without changing code or skill prompts.
+- **Swarm Workers**: Independent agent instances, each operating in its own isolated polecat worktree (`~/.aops/polecat/<task-id>`). Worker types and dispatch rules are configured in the registry.
 - **The Refinery**: A centralized process (or singleton agent) responsible for integrating completed work.
 - **Engineer Agent**: A specialized persona responsible for code review and quality assurance.
 
@@ -68,7 +71,7 @@ A task qualifies for immediate auto-merge _without_ human/engineer intervention 
 
 1. **Tests Pass**: CI checks (pre-commit, unit tests) pass on the branch.
 2. **No Conflicts**: Merge to `main` is clean.
-3. **Low Complexity**: The task is marked as `mechanical` or `chore` (e.g., formatting, dependency bumps).
+3. **Low Complexity**: Task complexity is `mechanical` or equivalent (see Complexity Routing in [[WORKERS.md]] for current values).
 4. **Verified Author**: The change was produced by a trusted tool/workflow (e.g., automated refactor).
 
 ### Merge Strategy
@@ -85,9 +88,9 @@ The "Engineer" is a specialized agent invocation that acts as a quality gate. It
 
 ### Triggers
 
-- **Complexity**: Task complexity is `requires-judgment` or `multi-step`.
-- **Heuristics**: Changes touch critical paths (core logic, security).
-- **Random Sampling**: % of "mechanical" tasks are reviewed to prevent drift.
+- **Complexity**: Task complexity routes to Engineer review (see Complexity Routing in [[WORKERS.md]] for which values trigger review vs auto-merge).
+- **Heuristics**: Changes touch critical paths (tags matching high-stakes tags in [[WORKERS.md]]).
+- **Random Sampling**: % of `mechanical` tasks are reviewed to prevent drift.
 - **Merge Conflict**: Refinery fails to auto-merge; Engineer attempts to resolve or kicks back.
 
 ### Review Workflow
@@ -130,7 +133,23 @@ Existing: `active` -> `in_progress` -> `merge_ready` -> `done`
 - `done`: Merged.
 - `blocked`: Kickback/Conflict requiring human intervention.
 
-## 5. Future Work
+## 5. Configuration Separation
+
+This spec describes the **architecture and protocols** (hard). Deployment-specific
+parameters are in **[[WORKERS.md]]** (soft):
+
+| Concern | Spec (hard) | WORKERS.md (soft) |
+|---------|------------|-------------------|
+| Worker types | Architecture, lifecycle | Names, capabilities, cost/speed |
+| Selection | Decision tree structure | Tag lists, complexity mappings, thresholds |
+| Monitoring | Stall detection protocol | Heartbeat intervals, alert thresholds |
+| Failure handling | Recovery protocol structure | Exit codes, retry limits, backoff |
+| Review routing | Engineer trigger logic | Which complexity values trigger review |
+| Domain review | Specialist invocation protocol | Specialist registry, domain mappings |
+
+To customize for a different deployment, modify WORKERS.md only.
+
+## 6. Future Work
 
 - **Speculative Merging**: Run tests on "virtual" merges of queued tasks to predict conflicts early.
 - **Reviewer Personas**: Different "Engineer" profiles (Security, Perf, Style).
