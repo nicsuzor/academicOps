@@ -622,7 +622,6 @@ def get_task_work_state() -> str:
         return ""  # Graceful degradation
 
 
-
 def write_initial_hydrator_state(
     session_id: str, prompt: str, hydration_pending: bool = True
 ) -> None:
@@ -837,7 +836,7 @@ def should_skip_hydration(prompt: str, session_id: str | None = None) -> bool:
 
     # 0. Skip if this is a subagent session
     # Subagents should never trigger their own hydration requirement
-    if is_subagent_session():
+    if is_subagent_session({"session_id": session_id}):
         return True
 
     prompt_stripped = prompt.strip()
