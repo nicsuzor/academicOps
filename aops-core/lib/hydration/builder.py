@@ -12,10 +12,15 @@ from typing import Any
 from lib.file_index import get_formatted_relevant_paths
 from lib.hook_utils import (
     cleanup_old_temp_files as _cleanup_temp,
+)
+from lib.hook_utils import (
     get_hook_temp_dir,
+)
+from lib.hook_utils import (
     write_temp_file as _write_temp,
 )
 from lib.hydration.context_loaders import (
+    get_task_work_state,
     load_environment_variables_context,
     load_framework_paths,
     load_mcp_tools_context,
@@ -25,7 +30,6 @@ from lib.hydration.context_loaders import (
     load_scripts_index,
     load_skills_index,
     load_workflows_index,
-    get_task_work_state,
 )
 from lib.session_reader import extract_router_context
 from lib.session_state import SessionState

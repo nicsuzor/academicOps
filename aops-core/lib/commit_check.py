@@ -16,6 +16,7 @@ from hooks.internal_models import (
     GitStatus,
     UncommittedWorkCheck,
 )
+
 from lib.reflection_detector import has_reflection
 from lib.transcript_parser import SessionProcessor
 

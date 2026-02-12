@@ -53,7 +53,7 @@ try:
         GeminiHookSpecificOutput,
         HookContext,
     )
-    from hooks.unified_logger import log_hook_event, log_event_to_session
+    from hooks.unified_logger import log_event_to_session, log_hook_event
 except ImportError as e:
     # Fail fast if schemas missing
     print(f"CRITICAL: Failed to import: {e}", file=sys.stderr)
@@ -341,8 +341,9 @@ class HookRouter:
 
         Moved from hooks/gates.py to eliminate wrapper layer.
         """
-        from lib import hook_utils
         from lib.session_paths import get_session_file_path
+
+        from lib import hook_utils
 
         # Use precomputed short_hash from context
         short_hash = ctx.session_short_hash

@@ -206,6 +206,7 @@ jobs:
         if: steps.pr-ref.outputs.ref != ''
         uses: anthropics/claude-code-action@v1
         with:
+          allowed_bots: "claude[bot]"
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
             PR #${{ steps.pr-ref.outputs.pr_number }} has been approved.
