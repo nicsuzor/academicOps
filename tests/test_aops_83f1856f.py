@@ -9,6 +9,7 @@ Verifies that:
 """
 import sys
 from pathlib import Path
+
 import pytest
 
 # Add framework root to sys.path for imports
@@ -16,7 +17,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 AOPS_CORE_ROOT = PROJECT_ROOT / "aops-core"
 sys.path.insert(0, str(AOPS_CORE_ROOT))
 
-from lib.transcript_parser import SessionProcessor, Entry, SessionSummary
+from lib.transcript_parser import Entry, SessionProcessor, SessionSummary
 
 
 class TestUserPromptTruncation:

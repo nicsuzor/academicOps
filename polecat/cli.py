@@ -58,7 +58,7 @@ def save_worker_transcript(
             f.write(json.dumps(entry) + "\n")
 
         return transcript_file
-    except (OSError, IOError) as e:
+    except OSError as e:
         raise OSError(f"Failed to save transcript for task {task_id}: {e}") from e
 
 
