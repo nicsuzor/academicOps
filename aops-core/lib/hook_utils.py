@@ -238,12 +238,26 @@ def is_subagent_session(input_data: dict[str, Any] | None = None) -> bool:
     if os.environ.get("CLAUDE_SUBAGENT_TYPE"):
         return True
 
-    # Method 4: Check transcript path for /subagents/ directory
+    # Method 4: Check transcript path or CWD for /subagents/ directory
+    # Also check actual CWD as fallback since subagents run in dedicated dirs
+    paths_to_check = []
+
     if input_data:
-        transcript_path = str(input_data.get("transcript_path", ""))
-        if "/subagents/" in transcript_path:
+        paths_to_check.append(str(input_data.get("transcript_path", "")))
+        paths_to_check.append(str(input_data.get("cwd", "")))
+
+    # Fallback to current process CWD (hooks run in subagent context)
+    try:
+        paths_to_check.append(os.getcwd())
+    except OSError:
+        pass
+
+    for path in paths_to_check:
+        if not path:
+            continue
+        if "/subagents/" in path:
             return True
-        if "/agent-" in transcript_path:
+        if "/agent-" in path:
             return True
 
     return False
