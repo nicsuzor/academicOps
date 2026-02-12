@@ -1,15 +1,15 @@
 ---
 name: daily
 category: instruction
-description: Daily note lifecycle - morning briefing, task recommendations, session sync. SSoT for daily note structure.
+description: Daily note lifecycle - briefing, task recommendations, progress sync, and work summary. SSoT for daily note structure.
 allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,mcp__outlook__messages_list_recent,mcp__outlook__messages_get,mcp__outlook__messages_move
-version: 1.0.0
+version: 2.0.0
 permalink: skills-daily
 ---
 
 # Daily Note Skill
 
-Manage daily note lifecycle: morning briefing, task recommendations, and session sync.
+Manage daily note lifecycle: briefing, task recommendations, progress sync, and work summary.
 
 Location: `$ACA_SESSIONS/YYYYMMDD-daily.md`
 
@@ -24,51 +24,38 @@ Location: `$ACA_SESSIONS/YYYYMMDD-daily.md`
 
 **User stating a priority ≠ authorization to execute that priority.**
 
-## Invocation Modes
+## Invocation
 
-The daily skill supports multiple entry points for continuous updating throughout the day:
-
-| Mode           | Trigger                          | Sections Run | User Approval  |
-| -------------- | -------------------------------- | ------------ | -------------- |
-| **Morning**    | `/daily` (no args, note missing) | 1 → 2 → 3    | Required (3.4) |
-| **Refresh**    | `/daily` (note exists)           | 2 → 3        | Required (3.4) |
-| **Sync**       | `/daily sync`                    | 4 only       | Required (4.8) |
-| **Quick Sync** | `/daily sync --quick`            | 4.1-4.4 only | Skipped        |
-
-**Mode Detection Logic:**
+Every `/daily` invocation runs the **full pipeline** and updates the daily note in place. There are no separate modes — the skill is designed to be run repeatedly throughout the day.
 
 ```
-if args contains "sync":
-    if args contains "--quick":
-        mode = "Quick Sync"
-    else:
-        mode = "Sync"
-elif daily_note_exists():
-    mode = "Refresh"
-else:
-    mode = "Morning"
+/daily          # Run full pipeline (create note if missing, then update everything)
+/daily sync     # Alias — same behavior, kept for muscle memory
 ```
 
-**Quick Sync Use Case**: Automated/periodic updates during the day. Adds session data to daily note without requiring user interaction. Full approval cycle runs on final sync or explicit `/daily sync`.
+**Pipeline**: 1 (create if missing) → 2 (email briefing) → 3 (focus & recommendations) → 4 (progress sync & merged PRs) → 5 (work summary)
 
-**Continuous Updating Pattern**: Throughout a work day:
+**Idempotent updates**: Each section is updated in place using the Edit tool. User-written content is **never deleted**:
 
-1. Morning: Run `/daily` to create note, triage emails, set focus
-2. After each session: System or user runs `/daily sync --quick` to incrementally update progress
-3. End of day: Run `/daily sync` for final synthesis with user approval
+- **Purely machine sections** (Task Tree, Session Log, Session Timeline, Merged PRs): fully replaced on each run
+- **Mixed sections** (Focus, FYI, Project Accomplishments): machine content is regenerated above a `<!-- user notes -->` marker; anything the user writes below that marker is preserved
+- **User sections** (any section/text the user adds that isn't in the template): left untouched entirely
+
+**Incremental data handling**: Email triage skips already-processed emails (cross-ref against FYI section + sent mail). Session sync skips already-processed session JSONs (cross-ref against Session Log table). Merged PR listing always refreshes from GitHub API.
 
 ## Section Ownership
 
-| Section                 | Owner    | Updated By                              |
-| ----------------------- | -------- | --------------------------------------- |
-| Focus                   | `/daily` | Morning briefing + task recommendations |
-| Task Tree               | `/daily` | Task hierarchy snapshot                 |
-| Today's Story           | `/daily` | Session JSON synthesis                  |
-| FYI                     | `/daily` | Email triage                            |
-| Session Log/Timeline    | `/daily` | Session JSON synthesis                  |
-| Project Accomplishments | `/daily` | Session JSON synthesis                  |
-| Reflection              | `/daily` | End-of-day sync (Step 4.4.5)            |
-| Abandoned Todos         | `/daily` | End-of-day                              |
+| Section                 | Owner    | Updated By                                  |
+| ----------------------- | -------- | ------------------------------------------- |
+| Focus                   | `/daily` | Task data + user priorities (mixed)         |
+| Task Tree               | `/daily` | Task hierarchy snapshot (machine)           |
+| Today's Story           | `/daily` | Synthesis from merges + sessions + tasks    |
+| FYI                     | `/daily` | Email triage (mixed)                        |
+| Merged PRs              | `/daily` | GitHub API query (machine)                  |
+| Session Log/Timeline    | `/daily` | Session JSON synthesis (machine)            |
+| Project Accomplishments | `/daily` | Session JSON synthesis (mixed)              |
+| Reflection              | `/daily` | Goals vs achieved analysis (machine)        |
+| Abandoned Todos         | `/daily` | End-of-day (user)                           |
 
 ## Formatting Rules
 
@@ -80,12 +67,34 @@ else:
 
 Check `$ACA_SESSIONS/YYYYMMDD-daily.md`.
 
-**If missing**: Create from template (see Daily Note Structure above), then:
+**If exists**: Skip to section 2. The note is updated in place.
+
+**If missing**: Create from template (see [[references/note-template]]), then:
 
 1. Read the previous working day's daily note
-2. Identify any incomplete tasks and copy to "## Carryover from Yesterday" section
-3. Copy "Abandoned Todos" to "## Carryover from Yesterday" section
-4. Note overdue items from yesterday's Focus Dashboard
+2. Identify task IDs from yesterday's Focus/Carryover sections
+3. **Verify each task exists** (Step 1.1 below)
+4. Copy "Abandoned Todos" to "## Carryover from Yesterday" section
+5. Note overdue items from yesterday's Focus Dashboard
+
+### 1.1: Verify Carryover Tasks (CRITICAL)
+
+**Before including ANY task from yesterday's note in today's carryover:**
+
+```python
+for task_id in yesterday_task_ids:
+    result = mcp__plugin_aops-core_task_manager__get_task(id=task_id)
+    if not result["success"]:
+        # Task was archived/deleted - EXCLUDE from carryover
+        continue
+    if result["task"]["status"] in ["done", "cancelled"]:
+        # Task completed - EXCLUDE from carryover
+        continue
+    # Task still active - include in carryover
+    carryover_tasks.append(result["task"])
+```
+
+**Why this matters**: Tasks archived between daily notes appear as "phantom overdue" items if copied blindly from yesterday's note. Always verify against the live task system.
 
 ### 1.2: Load Recent Activity
 
@@ -123,6 +132,8 @@ mcp__outlook__messages_list_recent(limit=20, folder="sent")
 
 **For EACH inbox email**: Compare subject line (ignoring Re:/Fwd: prefixes) against sent mail subjects. If a matching sent reply exists, classify as **Skip** (already handled). This cross-reference is MANDATORY - skipping it causes duplicate task creation.
 
+**Incremental**: Also cross-reference against the existing FYI section in today's note. If an email thread is already summarised there, skip it.
+
 **Classify each email** using [[workflows/triage-email]] criteria (LLM semantic classification, not keyword matching).
 
 ### 2.2: FYI Content in Daily Note
@@ -154,8 +165,10 @@ From [sender]: [Actual content or summary]
 
 **CRITICAL - For each FYI item, IMMEDIATELY after writing it:**
 
-1. **If action required** (feedback, review, response, decision) → `mcp__plugin_aops-core_tasks__create_task()` NOW
-2. **If links to existing task** → `mcp__plugin_aops-core_tasks__update_task()` with the info
+1. **If action required** (feedback, review, response, decision) → `mcp__plugin_aops-core_task_manager__create_task()` NOW
+   - Include deadline if mentioned or implied
+   - **Then add task link to FYI content**: `- **→ Task**: [task-id] Task title`
+2. **If links to existing task** → `mcp__plugin_aops-core_task_manager__update_task()` with the info
 3. **If worth future recall** → `mcp__memory__store_memory()` with tags
 
 Do NOT batch these to a later step. Task creation happens AS you process each email, not after.
@@ -170,7 +183,7 @@ Do NOT batch these to a later step. Task creation happens AS you process each em
 
 **Archiving emails**: Use `messages_move` with `folder_path="Archive"` (not "Deleted Items" - that's trash, not archive). If the Archive folder doesn't exist for an account, ask the user which folder to use.
 
-**Empty state**: If no FYI emails, skip this section.
+**Empty state**: If no new FYI emails, leave existing FYI content unchanged.
 
 ### 2.3: Verify FYI Persistence (Checkpoint)
 
@@ -191,7 +204,7 @@ Populate the `## Focus` section with priority dashboard and task recommendations
 ### 3.1: Load Task Data
 
 ```python
-mcp__plugin_aops-core_tasks__list_tasks(limit=100)
+mcp__plugin_aops-core_task_manager__list_tasks(limit=100)
 ```
 
 Parse task data from output to identify:
@@ -206,7 +219,7 @@ Parse task data from output to identify:
 After loading task data, generate the ASCII task tree for the `## Task Tree` section:
 
 ```python
-mcp__plugin_aops-tools_task_manager__get_task_tree(
+mcp__plugin_aops-core_task_manager__get_task_tree(
     exclude_status=["done", "cancelled"],
     max_depth=2
 )
@@ -225,8 +238,8 @@ This provides a bird's eye view of active project hierarchy. The tree:
 ```
 
 [project-id] Project Name (status)
-[task-id] Task title (status)
-[subtask-id] Subtask title (status)
+  [task-id] Task title (status)
+    [subtask-id] Subtask title (status)
 
 ```
 *Active projects with depth 2, excluding done/cancelled tasks*
@@ -234,9 +247,51 @@ This provides a bird's eye view of active project hierarchy. The tree:
 
 Copy the `formatted` field from the response directly into the code block.
 
+### 3.1.7: Query Pending Decisions
+
+Count tasks awaiting user decisions (for decision queue summary):
+
+```python
+# Get waiting tasks assigned to user
+waiting_tasks = mcp__plugin_aops-core_task_manager__list_tasks(
+    status="waiting",
+    assignee="nic",
+    limit=50
+)
+
+# Get review tasks assigned to user
+review_tasks = mcp__plugin_aops-core_task_manager__list_tasks(
+    status="review",
+    assignee="nic",
+    limit=50
+)
+
+# Filter to decision-type tasks (exclude project/epic/goal)
+EXCLUDED_TYPES = ["project", "epic", "goal"]
+decisions = [
+    t for t in (waiting_tasks + review_tasks)
+    if t.type not in EXCLUDED_TYPES
+]
+
+# Get topology for blocking counts
+topology = mcp__plugin_aops-core_task_manager__get_tasks_with_topology()
+
+# Count high-priority decisions (blocking 2+ tasks)
+high_priority_count = sum(
+    1 for d in decisions
+    if get_blocking_count(d.id, topology) >= 2
+)
+
+decision_count = len(decisions)
+```
+
+This count appears in the Focus section summary.
+
 ### 3.2: Build Focus Section
 
 The Focus section combines priority dashboard AND task recommendations in ONE place.
+
+When regenerating, **preserve user priorities**: If the Focus section contains a `### My priorities` subsection (user-written), keep it intact. Only regenerate the machine-generated content above it.
 
 **Format** (all within `## Focus`):
 
@@ -250,6 +305,8 @@ P2 ██████████ 55/85
 P3 ██░░░░░░░░ 15/85
 
 ```
+**Pending Decisions**: 4 (2 blocking other work) → `/decision-extract`
+
 🚨 **DEADLINE TODAY**: [ns-xyz] [[ARC FT26 Reviews]] - Due 23:59 AEDT (8 reviews)
 **SHOULD**: [ns-abc] [[OSB PAO 2025E Review]] - 3 days overdue
 **SHOULD**: [ns-def] [[ADMS Clever Reporting]] - 16 days overdue
@@ -259,6 +316,10 @@ P3 ██░░░░░░░░ 15/85
 **UNBLOCK**: [ns-pqr] Framework CI - Address ongoing GitHub Actions failures
 
 *Suggested sequence*: Tackle overdue items first (OSB PAO highest priority given 3-day delay, then ADMS Clever).
+
+### My priorities
+
+(User's stated priorities are recorded here and never overwritten)
 ```
 
 ### 3.3: Reason About Recommendations
@@ -314,11 +375,12 @@ After presenting recommendations, use `AskUserQuestion` to confirm priorities:
 - "What sounds right for today?"
 - Offer to adjust recommendations based on user context
 
-**IMPORTANT**: User's response states their PRIORITY for the day. This goes into the daily note's Focus section. It is NOT a command to execute those tasks. After recording the priority:
+**IMPORTANT**: User's response states their PRIORITY for the day. Record it in the `### My priorities` subsection of Focus. It is NOT a command to execute those tasks. After recording the priority:
 
-1. Update the Focus section with user's stated priority
-2. Output: "Daily planning complete. Use `/pull` to start work."
-3. HALT - do not proceed to task execution
+1. Update the `### My priorities` subsection with user's stated priority
+2. Continue to section 4 (progress sync)
+3. After section 5 completes, output: "Daily planning complete. Use `/pull` to start work."
+4. HALT - do not proceed to task execution
 
 ### 3.5: Present candidate tasks to archive
 
@@ -328,15 +390,11 @@ After presenting recommendations, use `AskUserQuestion` to confirm priorities:
 
 Ask: "Any of these ready to archive?"
 
-When user picks, use `mcp__plugin_aops-core_tasks__update_task(id="<id>", status="cancelled")` to archive.
+When user picks, use `mcp__plugin_aops-core_task_manager__update_task(id="<id>", status="cancelled")` to archive.
 
-### 4. Daily progress (Incremental)
+## 4. Daily progress sync
 
-Update daily note from session JSON files. Supports continuous updating throughout the day.
-
-**Invocation**: `/daily sync` (full with approval) or `/daily sync --quick` (incremental without approval)
-
-**Incremental behavior**: Each sync run is additive—it processes only NEW session JSONs since the last sync. Previously processed sessions are identified by their presence in the Session Log table.
+Update daily note from session JSON files and GitHub merge data.
 
 ### Step 4.1: Find Session JSONs
 
@@ -351,10 +409,10 @@ ls $ACA_SESSIONS/summaries/YYYYMMDD*.json 2>/dev/null
 Fetch recently completed tasks to provide context for today's story synthesis:
 
 ```python
-mcp__plugin_aops-core_tasks__list_tasks(status="done", limit=20)
+mcp__plugin_aops-core_task_manager__list_tasks(status="done", limit=20)
 ```
 
-**Purpose**: Completed tasks represent work that may not appear in session JSONs (e.g., tasks completed in previous sessions, or completed without a dedicated session). This context enriches the daily narrative.
+**Purpose**: Completed tasks represent work that may not appear in session JSONs. This context enriches the daily narrative.
 
 **Extract from completed tasks**:
 
@@ -374,6 +432,39 @@ Read each session JSON. Extract:
 - Skill compliance metrics
 - Framework feedback: workflow_improvements, jit_context_needed, context_distractions, user_mood
 
+### Step 4.2.5: Query Merged PRs
+
+Fetch today's merged PRs from the current repository:
+
+```bash
+gh pr list --state merged --json number,title,author,mergedAt,headRefName,url --limit 50 2>/dev/null
+```
+
+**Post-filter**: From the JSON output, filter to PRs where `mergedAt` falls on today's date (YYYY-MM-DD).
+
+**Format in daily note** (fully replace the `## Merged PRs` section):
+
+```markdown
+## Merged PRs
+
+| PR | Title | Author | Merged |
+|----|-------|--------|--------|
+| [#123](url) | Fix authentication bug | @nicsuzor | 10:15 |
+| [#124](url) | Add daily skill merge review | @claude-for-github[bot] | 14:30 |
+
+*N PRs merged today*
+```
+
+**Empty state**: If no PRs merged today:
+
+```markdown
+## Merged PRs
+
+No PRs merged today.
+```
+
+**Error handling**: If `gh` CLI is unavailable or authentication fails, skip this section and note "GitHub CLI unavailable — skipped merge review" in the section.
+
 ### Step 4.3: Verify Descriptions
 
 **CRITICAL**: Gemini mining may hallucinate. Cross-check accomplishment descriptions against actual changes (git log, file content). Per AXIOMS #2, do not propagate fabricated descriptions.
@@ -382,17 +473,11 @@ Read each session JSON. Extract:
 
 Using **Edit tool** (not Write) to preserve existing content:
 
-**Today's Story**: Synthesize narrative from session summaries AND closed issues.
+**Session Log**: Add/update session entries (fully replace table).
 
-- Format in dot points, but use prose to provide detail
-- Include recently closed issues from Step 4.1.5 as context (e.g., "Closed [ns-xyz] completing the X feature")
-- Deduplicate: If a closed issue also appears as a session accomplishment, mention it once with session context
+**Session Timeline**: Build from conversation_flow timestamps (fully replace table).
 
-**Session Log**: Add/update session entries.
-
-**Session Timeline**: Build from conversation_flow timestamps.
-
-**Project Accomplishments**: Add `[x]` items under project headers.
+**Project Accomplishments**: Add `[x]` items under project headers. Preserve any user-added notes below items.
 
 **Progress metrics** per project:
 
@@ -402,19 +487,13 @@ Using **Edit tool** (not Write) to preserve existing content:
 
 ### Step 4.4.5: Generate Goals vs. Achieved Reflection
 
-If the daily note contains a goals section (e.g., "## Things I want to achieve today", "## Focus", or similar), generate a reflection comparing stated intentions against actual outcomes.
-
-**Check for goals section**: Look for sections like:
-
-- `## Things I want to achieve today`
-- `## Focus` (the task recommendations from morning planning)
-- `## Today's Work Queue` (scheduled tasks)
+If the daily note contains a goals section (e.g., "## Things I want to achieve today", "## Focus", "### My priorities"), generate a reflection comparing stated intentions against actual outcomes.
 
 **For each stated goal/priority**:
 
 1. Check if corresponding work appears in session accomplishments
 2. Check if related tasks were completed (from Step 4.1.5)
-3. Classify as: ✅ Achieved | ⚠️ Partially/Spawned | ❌ Not achieved
+3. Classify as: Achieved | Partially/Spawned | Not achieved
 
 **Generate reflection section**:
 
@@ -423,11 +502,11 @@ If the daily note contains a goals section (e.g., "## Things I want to achieve t
 
 **Goals from "[section name]":**
 
-| Goal     | Status          | Notes                               |
-| -------- | --------------- | ----------------------------------- |
-| [Goal 1] | ✅ Achieved     | Completed in session [id]           |
-| [Goal 2] | ⚠️ Partially     | Task created but no completion data |
-| [Goal 3] | ❌ Not achieved | No matching work found              |
+| Goal     | Status       | Notes                               |
+| -------- | ------------ | ----------------------------------- |
+| [Goal 1] | Achieved     | Completed in session [id]           |
+| [Goal 2] | Partially    | Task created but no completion data |
+| [Goal 3] | Not achieved | No matching work found              |
 
 **Unplanned work that consumed the day:**
 
@@ -436,13 +515,9 @@ If the daily note contains a goals section (e.g., "## Things I want to achieve t
 **Key insight**: [One-sentence observation about drift, priorities, or patterns]
 ```
 
-**Purpose**: This reflection reveals intention drift and helps understand why plans diverge from reality. Tracking "unplanned work that consumed the day" explains goal displacement.
-
 ### Step 4.5: Task Matching (Session → Task Sync)
 
 Match session accomplishments to related tasks using semantic search.
-
-**Per spec** ([[session-sync-user-story]]): The agent receives accomplishments + candidate task files and decides which tasks match. Agent-driven matching, NOT algorithmic.
 
 **4.5.1: Search for Candidate Tasks**
 
@@ -462,24 +537,18 @@ candidates = mcp__memory__retrieve_memory(
 For each accomplishment with candidates:
 
 1. **High confidence match** (agent is certain):
-   - Accomplishment clearly relates to a specific task
-   - Example: "Implemented session-sync" matches task "Add session-end sync feature"
    - Action: Update task file (Step 4.6) + add task link to daily.md
 
 2. **Low confidence match** (possible but uncertain):
-   - Accomplishment might relate to a task but agent is unsure
    - Action: Note in daily.md as "possibly related to [[task]]?" - NO task file update
 
 3. **No match** (no relevant candidates):
-   - Accomplishment in daily.md only, no link
    - Action: Continue to next accomplishment
 
 **Matching heuristics**:
 
 - Prefer no match over wrong match (conservative)
 - Consider task title, body, project alignment
-- "Implemented X" accomplishment matches "Add X feature" or "X" task
-- Framework work → framework tasks; project work → project tasks
 
 **4.5.3: Graceful Degradation**
 
@@ -499,21 +568,17 @@ If accomplishment matches a specific checklist item in the task:
 
 ```markdown
 # Before
-
 - [ ] Implement feature X
 
 # After
-
 - [x] Implement feature X [completion:: 2026-01-19]
 ```
 
-Use Edit tool to add `[x]` and `[completion:: YYYY-MM-DD]`.
-
 **Constraints**:
 
-- ✅ Mark sub-task checklist items complete
-- ❌ NEVER mark parent tasks complete automatically
-- ❌ NEVER delete any task content
+- Mark sub-task checklist items complete
+- NEVER mark parent tasks complete automatically
+- NEVER delete any task content
 
 **4.6.2: Append Progress Section**
 
@@ -534,8 +599,8 @@ In the Project Accomplishments section, add task links:
 ```markdown
 ### [[academicOps]] → [[projects/aops]]
 
-- [x] Implemented session-sync → [[tasks/inbox/ns-whue-impl-aggregate-session-insights-to-dailymd.md]]
-- [x] Fixed authentication bug (possibly related to [[tasks/inbox/ns-abc-auth-refactor.md]]?)
+- [x] Implemented session-sync → [[tasks/inbox/ns-whue-impl.md]]
+- [x] Fixed authentication bug (possibly related to [[tasks/inbox/ns-abc.md]]?)
 - [x] Added new endpoint (no task match)
 ```
 
@@ -558,6 +623,10 @@ Write `$ACA_DATA/dashboard/synthesis.json`:
     "summary": "brief text",
     "items": [{"project": "aops", "item": "Completed X"}]
   },
+  "merged_prs": {
+    "count": N,
+    "items": [{"number": 123, "title": "...", "author": "..."}]
+  },
   "next_action": {"task": "P0 task", "reason": "Highest priority"},
   "alignment": {"status": "on_track|blocked|drifted", "note": "..."},
   "waiting_on": [{"task": "...", "blocker": "..."}],
@@ -573,69 +642,62 @@ Write `$ACA_DATA/dashboard/synthesis.json`:
 }
 ```
 
-### Step 4.8: User Approval of Synthesis (Conditional)
+## 5. Work Summary
 
-**Mode check**: Skip this step entirely if running in Quick Sync mode (`/daily sync --quick`).
+After progress sync, generate a brief natural language summary of the day's work. This is the **key output** that the user sees both in the daily note and in the terminal.
 
-**For full Sync mode**: Do NOT consider daily progress sync complete without user approval.
+### Step 5.1: Gather Inputs
 
-After updating the daily note and synthesis.json, present a summary to the user for approval:
+Collect from the sections already populated:
 
-**4.8.1: Present Synthesis Summary**
+- **Merged PRs** (from Step 4.2.5): titles and count
+- **Session accomplishments** (from Step 4.2): what was done in each session
+- **Completed tasks** (from Step 4.1.5): tasks closed today
+- **Focus goals** (from `### My priorities`): what the user intended to do
 
-Output the key synthesized content for review:
+### Step 5.2: Generate Today's Story
+
+Write a 2-4 sentence natural language summary to the `## Today's Story` section. This replaces (not appends to) the existing Today's Story content.
+
+**Style guide**:
+
+- Write in past tense, first person plural or third person ("Merged 3 PRs..." / "The day focused on...")
+- Lead with the most impactful work, not chronological order
+- Mention specific PR numbers and task IDs for traceability
+- Note any significant merges, completions, or milestones
+- If goals were set in Focus, note alignment or drift briefly
+
+**Example**:
 
 ```markdown
-## Daily Progress Synthesis - Review Required
+## Today's Story
 
-**Today's Story** (synthesized narrative):
-
-> [The narrative text from Today's Story section]
-
-**Sessions Processed**: [N] sessions across [projects]
-
-**Accomplishments** ([count] items):
-
-- [First 3-5 accomplishments listed]
-- ...
-
-**Task Matches Made**:
-
-- [List of high-confidence task matches, if any]
+Consolidated the PR review and merge workflows into a single pipeline (#415), fixing the broken LGTM merge trigger. Updated the daily skill to include GitHub merge tracking and natural language summaries. Three PRs merged today, all related to the academicOps framework infrastructure push. Focus stayed on framework work despite planning to tackle the OSB review — that carries to tomorrow.
 ```
 
-**4.8.2: Request Approval**
+### Step 5.3: Terminal Briefing Output
 
-Use `AskUserQuestion` to get explicit approval:
+After updating the daily note, output a concise briefing to the terminal:
 
-```python
-AskUserQuestion(
-    questions=[{
-        "question": "Does this synthesis accurately capture today's progress?",
-        "header": "Synthesis",
-        "options": [
-            {"label": "Looks good", "description": "Synthesis is accurate, proceed to save"},
-            {"label": "Needs edits", "description": "I'll make manual corrections to the daily note"},
-            {"label": "Regenerate", "description": "Re-run synthesis with different approach"}
-        ],
-        "multiSelect": false
-    }]
-)
+```
+## Daily Summary
+
+[Today's Story text from 5.2]
+
+**Merged today**: N PRs (#123, #124, #125)
+**Sessions**: N across [projects]
+**Tasks completed**: N
+
+Daily note updated at [path].
+Daily planning complete. Use `/pull` to start work.
 ```
 
-**4.8.3: Handle Response**
-
-| Response      | Action                                                                                                                          |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| "Looks good"  | Proceed to completion, output "Daily sync complete."                                                                            |
-| "Needs edits" | Output "Daily note ready for your edits at [path]. Run `/daily` again after editing to re-sync." HALT without marking complete. |
-| "Regenerate"  | Ask what should change, then re-run Steps 4.4-4.7                                                                               |
-
-**Rationale**: Per AXIOM #3 (Don't Make Shit Up), Gemini-mined accomplishments may contain inaccuracies. User approval catches hallucinations before they persist in the daily record.
+This gives the user a quick snapshot without needing to open the note.
 
 ## Error Handling
 
 - **Outlook unavailable**: Skip email triage, continue with recommendations
+- **GitHub CLI unavailable**: Skip merged PR listing, note in section
 - **No session JSONs**: Skip sync, note "No sessions to sync"
 - **No tasks**: Present empty state, offer to run `/tasks`
 - **Memory server unavailable**: Skip semantic task matching (Step 4.5), continue with daily.md updates

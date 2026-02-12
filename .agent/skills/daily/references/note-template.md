@@ -18,6 +18,8 @@ P2 ██████████ 55/85
 P3 ██░░░░░░░░ 15/85
 
 ```
+**Pending Decisions**: 0 (0 blocking other work) → `/decision-extract`
+
 **SHOULD**: [ns-abc] [[OSB PAO 2025E Review]] - 3 days overdue
 **DEEP**: [ns-ghi] [[Write TJA paper]] - Advances ARC Future Fellowship research goals
 **ENJOY**: [ns-jkl] [[Internet Histories article]] - [[Jeff Lazarus]] invitation
@@ -26,31 +28,43 @@ P3 ██░░░░░░░░ 15/85
 
 *Suggested sequence*: Tackle overdue items first, then deep work.
 
+### My priorities
+
+(User's stated priorities are recorded here and never overwritten)
+
 ## Task Tree
 ```
 
 [aops] AcademicOps (in_progress)
-[aops-79edb5a4] Daily Goals - Session Review... (active)
-[aops-b1854175] Add ASCII task tree to daily note (in_progress)
+  [aops-79edb5a4] Daily Goals - Session Review... (active)
+  [aops-b1854175] Add ASCII task tree to daily note (in_progress)
 
 [arc-future-fellowship] ARC Future Fellowship (active)
-[arc-ft-reviews] Complete FT26 Reviews (in_progress)
+  [arc-ft-reviews] Complete FT26 Reviews (in_progress)
 
 [writing] Writing Projects (active)
-[toxicity] Toxicity paper (in_progress)
+  [toxicity] Toxicity paper (in_progress)
 
 ```
 *Active projects with depth 2, excluding done/cancelled tasks*
 
 ## Today's Story
 
-Synthesized narrative from session summaries (2-3 sentences).
+(Natural language summary of the day's work — generated from merged PRs, sessions, and completed tasks)
 
 ## FYI
 
 ### [[Topic from Email]]
 
 [[Sender Name]] shared: [Key content summary]
+
+## Merged PRs
+
+| PR | Title | Author | Merged |
+|----|-------|--------|--------|
+| - | - | - | - |
+
+*0 PRs merged today*
 
 ## Carryover from YYYY-MM-DD
 
@@ -71,7 +85,7 @@ Synthesized narrative from session summaries (2-3 sentences).
 
 ### Terminal Overwhelm Analysis
 
-(Updated by /daily sync)
+(Updated by /daily)
 
 ## Project Accomplishments
 
