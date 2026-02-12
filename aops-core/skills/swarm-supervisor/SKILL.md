@@ -403,26 +403,311 @@ Task waits for human decision. Surfaced via `/daily` skill in daily note.
 
 ### Phase 4: Worker Execution
 
-Supervisor dispatches workers based on task requirements.
+Supervisor dispatches workers based on task requirements. This phase transforms approved decomposition into parallel execution.
 
-**Worker Selection**:
+---
+
+#### 4.1 Worker Types and Capabilities
+
+| Worker | Capabilities | Cost | Speed | Max Concurrent | Best For |
+|--------|-------------|------|-------|----------------|----------|
+| `polecat-claude` | code, docs, refactor, test, debug | 3 | 5 | 2 | Most tasks |
+| `polecat-gemini` | code, docs, analysis, bulk-ops | 1 | 3 | 4 | High-volume, simpler tasks |
+| `jules` | deep-code, architecture, complex-refactor | 5 | 1 | 1 | Critical path, complex logic |
+
+**Capability Definitions**:
+- `code`: Standard implementation work
+- `docs`: Documentation, comments, README updates
+- `refactor`: Code restructuring without behavior change
+- `test`: Test writing and updates
+- `debug`: Bug investigation and fixes
+- `analysis`: Code review, spike investigations
+- `bulk-ops`: Repetitive changes across many files
+- `deep-code`: Complex algorithms, performance-critical code
+- `architecture`: System design changes, API contracts
+- `complex-refactor`: Multi-file refactors with behavior preservation
+
+---
+
+#### 4.2 Worker Selection Protocol
+
+**Step 1: Assess Task Requirements**
+
+Extract required capabilities from task metadata:
 
 ```markdown
-## Supervisor: Dispatch Worker
+## Task Analysis for Worker Selection
 
-1. Identify required capabilities from task tags
-2. Select worker type:
-   - `polecat-claude`: code, docs, refactor, test (cost: 3, speed: 5)
-   - `polecat-gemini`: code, docs, analysis (cost: 1, speed: 3)
-   - `jules`: deep-code, architecture, complex-refactor (cost: 5, speed: 1)
+**Task**: <task-id>
+**Tags**: [list from task.tags]
+**Complexity**: <task.complexity or inferred>
+**Files affected**: <count from decomposition>
+**Estimated effort**: <from decomposition>
 
-3. Check worker availability (max_concurrent limits)
+### Required Capabilities
+[Map task characteristics to capabilities]
 
-4. Dispatch:
-   - Single task: `polecat run -p <project>`
-   - Batch: `polecat swarm -c N -g M -p <project>`
+### Constraints
+- Deadline pressure: [yes/no]
+- Budget sensitivity: [yes/no]
+- Quality criticality: [low/medium/high]
+```
 
-5. Monitor progress (30min heartbeat expected)
+**Step 2: Apply Selection Rules**
+
+```python
+def select_worker(task) -> str:
+    """
+    Worker selection decision tree.
+    Returns: 'claude', 'gemini', or 'jules'
+    """
+    # Rule 1: Explicit complexity routing
+    if task.complexity == 'needs-decomposition':
+        return 'jules'  # Shouldn't reach here, but safety net
+
+    if task.complexity in ['requires-judgment', 'multi-step']:
+        return 'claude'
+
+    # Rule 2: Tag-based routing
+    high_stakes_tags = {'security', 'api', 'database', 'auth', 'payment'}
+    if set(task.tags) & high_stakes_tags:
+        return 'claude'
+
+    bulk_tags = {'formatting', 'lint-fix', 'dependency-bump', 'rename'}
+    if set(task.tags) & bulk_tags:
+        return 'gemini'
+
+    # Rule 3: File count heuristic
+    if task.files_affected > 10:
+        return 'gemini'  # Bulk operations
+
+    # Rule 4: Effort-based (from decomposition estimate)
+    if task.effort and task.effort > '2h':
+        return 'claude'
+
+    # Default: Claude for safety
+    return 'claude'
+```
+
+**Step 3: Check Capacity**
+
+Before dispatch, verify worker availability:
+
+```bash
+# Check current worker count (conceptual - supervisor tracks internally)
+# active_claude = count of in_progress tasks assigned to 'polecat' with claude flag
+# active_gemini = count of in_progress tasks assigned to 'polecat' with gemini flag
+
+# If at capacity, queue for later or wait
+```
+
+| Worker | At Capacity Action |
+|--------|-------------------|
+| claude | Queue task, try gemini if capable |
+| gemini | Queue task, wait for slot |
+| jules | Queue task (never substitute) |
+
+---
+
+#### 4.3 Dispatch Protocol
+
+**Single Task Dispatch**:
+
+```bash
+# Claude worker for specific task
+polecat run -p <project>
+
+# Gemini worker for specific task
+polecat run -g -p <project>
+
+# Jules (manual invocation - not automated)
+# Requires explicit human trigger due to cost
+```
+
+**Batch Dispatch (Swarm)**:
+
+When multiple approved subtasks are ready:
+
+```bash
+# Calculate swarm composition
+# Based on: ready_tasks, task_mix, budget, deadline
+
+# Example: 5 ready tasks, 3 code-heavy, 2 doc-heavy
+polecat swarm -c 2 -g 2 -p <project>
+```
+
+**Swarm Sizing Heuristics**:
+
+| Ready Tasks | Task Mix | Recommended Swarm |
+|-------------|----------|-------------------|
+| 1-2 | Any | `polecat run` (no swarm) |
+| 3-5 | Mostly simple | `-c 1 -g 2` |
+| 3-5 | Mostly complex | `-c 2 -g 1` |
+| 6-10 | Mixed | `-c 2 -g 3` |
+| 10+ | Mixed | `-c 2 -g 4` (max reasonable) |
+
+**Dispatch Output Format** (appended to parent task body):
+
+```markdown
+## Worker Dispatch Log
+
+**Dispatched**: 2026-02-12T14:30:00Z
+**Swarm**: 2 Claude, 3 Gemini
+
+### Task Assignments
+| Task | Worker Type | Reason |
+|------|-------------|--------|
+| subtask-1 | claude | complexity=requires-judgment |
+| subtask-2 | gemini | tags=[formatting] |
+| subtask-3 | claude | files>10, critical path |
+
+### Capacity Status
+- Claude: 2/2 (at limit)
+- Gemini: 3/4 (1 slot available)
+```
+
+---
+
+#### 4.4 Progress Monitoring Protocol
+
+**Heartbeat Expectations**:
+
+| Worker | Expected Heartbeat | Alert Threshold |
+|--------|-------------------|-----------------|
+| claude | Task status update every 30min | 45min silence |
+| gemini | Task status update every 20min | 30min silence |
+| jules | Task status update every 60min | 90min silence |
+
+**Monitoring Commands**:
+
+```bash
+# Check swarm status
+polecat summary
+
+# Analyze specific stalled task
+polecat analyze <task-id>
+
+# Reset tasks stuck in_progress for >4 hours
+polecat reset-stalled --hours 4 --dry-run
+polecat reset-stalled --hours 4
+```
+
+**Stall Detection Protocol**:
+
+```markdown
+## Supervisor: Handle Stalled Worker
+
+1. Detect: Task in_progress > alert_threshold without update
+2. Diagnose:
+   - Check task body for error messages
+   - Check git status in worktree (if accessible)
+   - Check for blocking dependencies that appeared
+3. Action based on diagnosis:
+
+| Diagnosis | Action |
+|-----------|--------|
+| Worker crashed | Reset task to active, re-dispatch |
+| Task blocked | Mark task blocked, append reason |
+| Infinite loop suspected | Reset task, add constraint to body |
+| Resource exhaustion | Wait, retry with same worker type |
+| Unknown | Reset task, flag for human review |
+```
+
+---
+
+#### 4.5 Worker Failure Handling
+
+**Exit Code Semantics** (from `polecat run`):
+
+| Exit Code | Meaning | Supervisor Action |
+|-----------|---------|-------------------|
+| 0 | Success | Mark merge_ready, proceed to Phase 5 |
+| 1 | Task failure | Inspect error, mark blocked or retry |
+| 2 | Setup failure | Retry once, then mark blocked |
+| 3 | Queue empty | Normal - no action needed |
+| 4+ | Unknown | Mark blocked, flag for human |
+
+**Failure Recovery Protocol**:
+
+```markdown
+## Supervisor: Handle Worker Failure
+
+**Task**: <task-id>
+**Worker**: <worker-type>
+**Exit Code**: <code>
+**Error Output**: <last 50 lines>
+
+### Diagnosis
+[Supervisor's analysis of what went wrong]
+
+### Recovery Action
+[One of: RETRY, REASSIGN, BLOCK, ESCALATE]
+
+### If RETRY:
+- Retry count: [n/3 max]
+- Backoff: [exponential, starting 5min]
+
+### If REASSIGN:
+- Original worker: <type>
+- New worker: <type>
+- Reason: [capability mismatch, etc.]
+
+### If BLOCK:
+- Blocking reason appended to task body
+- Status set to 'blocked'
+- Surfaced in daily note for human
+
+### If ESCALATE:
+- Task assigned to human (assignee='nic')
+- Full context preserved in task body
+```
+
+---
+
+#### 4.6 Parallel Execution Coordination
+
+When multiple workers execute simultaneously, the supervisor ensures:
+
+**Dependency Respect**:
+- Workers only claim tasks with satisfied `depends_on`
+- `claim_next_task()` API enforces this automatically
+- Supervisor verifies before dispatch
+
+**Conflict Prevention**:
+- Each worker operates in isolated worktree
+- No two workers touch same task (atomic claiming)
+- If decomposition reveals shared files:
+  - Add explicit `depends_on` between subtasks
+  - Or process sequentially
+
+**Progress Aggregation**:
+
+```markdown
+## Swarm Progress Report
+
+**Project**: <project>
+**Swarm Started**: <timestamp>
+**Duration**: <elapsed>
+
+### Completed (ready for merge)
+| Task | Worker | Duration | PR |
+|------|--------|----------|-----|
+| subtask-1 | claude-1 | 23min | #456 |
+
+### In Progress
+| Task | Worker | Started | Last Update |
+|------|--------|---------|-------------|
+| subtask-2 | gemini-1 | 10min ago | 2min ago |
+
+### Pending
+| Task | Blocked By | Est. Start |
+|------|-----------|------------|
+| subtask-3 | subtask-1 | After merge |
+
+### Summary
+- Throughput: 2.6 tasks/hour
+- Completion: 1/5 (20%)
+- Est. remaining: ~1.5 hours
 ```
 
 ### Phase 5: PR Review & Merge
