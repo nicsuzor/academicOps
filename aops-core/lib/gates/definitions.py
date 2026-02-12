@@ -230,11 +230,13 @@ GATE_CONFIGS = [
         ],
         policies=[
             # Block edit tools when CLOSED
+            # Anchored regex prevents matching TodoWrite etc. (aops-81df9690)
             GatePolicy(
                 condition=GateCondition(
                     current_status=GateStatus.CLOSED,
                     hook_event="PreToolUse",
-                    tool_name_pattern="Edit|Write|NotebookEdit",
+                    tool_name_pattern="^(Edit|Write|NotebookEdit|MultiEdit)$",
+                    excluded_tool_categories=["always_available"],
                 ),
                 verdict="deny",
                 message_template="⛔ Critic review required before editing. Invoke critic agent first.",
