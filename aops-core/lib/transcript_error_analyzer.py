@@ -554,20 +554,20 @@ def _compute_severity_score(errors: list[TranscriptError]) -> float:
 
     Accounts for stuck_pattern escalation when same resource fails >= 3 times.
     """
-    # Count repeats per path for stuck escalation
+    # Count all repeats per path (across all categories) for stuck escalation
     path_error_counts: Counter[str] = Counter()
     for e in errors:
-        if e.category == "stuck_pattern":
-            path = e.tool_input.get("file_path", "") or e.tool_input.get("pattern", "")
-            if path:
-                path_error_counts[path] += 1
+        path = e.tool_input.get("file_path", "") or e.tool_input.get("pattern", "")
+        if path:
+            path_error_counts[path] += 1
 
     score = 0.0
     for e in errors:
         repeat = 1
         if e.category == "stuck_pattern":
             path = e.tool_input.get("file_path", "") or e.tool_input.get("pattern", "")
-            repeat = path_error_counts.get(path, 1)
+            if path:
+                repeat = path_error_counts.get(path, 1)
         _, weight = severity_for(e.category, repeat)
         score += weight
     return score
