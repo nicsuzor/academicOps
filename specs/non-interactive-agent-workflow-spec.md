@@ -18,7 +18,34 @@ tags:
 
 Complete lifecycle for non-interactive agent operation: task selection through PR merge and knowledge capture.
 
-## Design Principles
+> **ARCHITECTURE PIVOT (2026-02-12)**: This spec has been revised from programmatic infrastructure to agent-based prompts. The lifecycle phases below remain valid as *concepts*, but their implementation is prompt-driven, not code-driven. Agents make all decisions; code is limited to hooks (triggers) and MCP tools (task state). See project task `aops-core-e89cdca4` for the revised plan.
+
+## Design Principles — Revised
+
+1. **Agents decide, code triggers** - Hooks start agent work; agents make all substantive decisions via prompts
+2. **Minimal code surface** - A few hooks, a few MCP tools, everything else is prompt text
+3. **Fail loudly** - No silent failures; every error surfaces to observable state
+4. **Human-in-the-loop gates** - Automation proposes, humans approve (at PR, not at plan)
+5. **Task body is the audit trail** - No separate observability infrastructure; agents append to task bodies as they work
+
+## What Is Code vs What Is Prompt
+
+| Concern | Implementation | Rationale |
+|---|---|---|
+| Task state transitions | Code (MCP tools + guards) | Deterministic, already built |
+| Trigger: "check for ready tasks" | Code (shell hook / cron) | Mechanical trigger |
+| Trigger: "post-merge capture" | Code (git hook) | Mechanical trigger |
+| Decomposition strategy | Prompt (supervisor skill) | Requires judgment |
+| Reviewer selection & synthesis | Prompt (supervisor skill) | Requires judgment |
+| Worker selection & dispatch | Prompt (supervisor skill) | Requires judgment |
+| Knowledge extraction | Prompt (/remember skill) | Already exists |
+| Consensus & debate | Prompt (supervisor skill) | Requires judgment |
+| Decision surfacing | Prompt (/daily skill) | Already exists |
+| PR lifecycle monitoring | Prompt (agent uses `gh` CLI) | On-demand, not infrastructure |
+
+---
+
+## Original Design Principles (Superseded)
 
 1. **Fail loudly** - No silent failures; every error surfaces to observable state
 2. **Idempotent by default** - All state transitions include idempotency keys

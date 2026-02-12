@@ -9,9 +9,209 @@ triggers:
   - "parallel workers"
   - "batch tasks"
   - "parallel processing"
+  - "supervise tasks"
+  - "orchestrate workflow"
 ---
 
-# Swarm Supervisor - Parallel Polecat Orchestration
+# Swarm Supervisor - Full Lifecycle Orchestration
+
+Orchestrate the complete non-interactive agent workflow: decompose → review → approve → execute → merge → capture.
+
+## Design Philosophy
+
+**Agents decide, code triggers.** This skill provides prompt instructions for agent-driven orchestration. The supervisor agent makes all substantive decisions (decomposition strategy, reviewer selection, worker dispatch). Code is limited to:
+
+- **Hooks**: Triggers that start agent work (shell scripts, cron)
+- **MCP tools**: Task state management (create, update, complete)
+- **CLI**: Worker spawning via `polecat swarm`
+
+## Lifecycle Phases
+
+```
+┌─────────────┐    ┌──────────┐    ┌─────────┐    ┌──────────┐    ┌───────┐    ┌─────────┐
+│  DECOMPOSE  │───►│  REVIEW  │───►│ APPROVE │───►│ EXECUTE  │───►│ MERGE │───►│ CAPTURE │
+│  (agent)    │    │ (agents) │    │ (human) │    │ (workers)│    │(human)│    │ (agent) │
+└─────────────┘    └──────────┘    └─────────┘    └──────────┘    └───────┘    └─────────┘
+```
+
+### Phase 1: Decompose
+
+The supervisor decomposes large tasks into PR-sized subtasks.
+
+**PR-Sized Definition** (all must be true):
+- Estimated effort ≤ 4 hours
+- Touches ≤ 10 files
+- Single logical unit (one "why")
+- Testable in isolation
+- Reviewable by human in ≤ 15 minutes
+
+**Decomposition Protocol**:
+
+```markdown
+## Supervisor: Decompose Task
+
+1. Read task body and context
+2. Identify natural boundaries (files, features, dependencies)
+3. Create subtasks using decompose_task():
+   - Each subtask passes PR-sized criteria
+   - Dependencies explicit in depends_on
+   - 3-7 subtasks ideal (>7 suggests intermediate grouping)
+4. Append decomposition summary to task body
+5. Set task status to 'consensus'
+```
+
+**Output Format** (appended to task body):
+
+```markdown
+## Decomposition Proposal
+
+### Subtasks
+| ID | Title | Estimate | Confidence |
+|----|-------|----------|------------|
+| subtask-1 | Description | 2h | medium |
+
+### Dependency Graph
+subtask-1 -> subtask-2 (blocks)
+subtask-1 ~> subtask-3 (informs)
+
+### Information Spikes (must resolve first)
+- [ ] spike-1: Question we need answered
+
+### Assumptions (load-bearing, untested)
+- Assumption 1
+
+### Risks
+- Risk 1 (mitigation: ...)
+```
+
+### Phase 2: Multi-Agent Review
+
+Supervisor invokes reviewer agents and synthesizes their feedback.
+
+**Reviewers**:
+| Reviewer | Role | Mandatory |
+|----------|------|-----------|
+| Custodiet | Authority check: is task within granted scope? | Yes |
+| Critic | Pedantic review: assumptions, logical errors, missing cases | Yes |
+| Domain specialist | Subject matter expertise | If task.tags intersect specialist.domains |
+
+**Review Protocol**:
+
+```markdown
+## Supervisor: Invoke Reviewers
+
+1. Spawn reviewer subagents in parallel:
+   Task(subagent_type='aops-core:critic', prompt='Review decomposition for task <id>')
+   Task(subagent_type='aops-core:custodiet', prompt='Verify task <id> is within scope')
+
+2. Wait for all reviewers (10min timeout each)
+
+3. Aggregate verdicts:
+   - All APPROVE → status='waiting'
+   - Any BLOCK → status='decomposing' (attach feedback)
+   - Mixed CONCERN → initiate debate round
+
+4. If debate needed (max 2 rounds):
+   - Share all concerns with reviewers
+   - Each has 5min to WITHDRAW or MAINTAIN
+   - Unresolved concerns → synthesize for human
+```
+
+**Reviewer Response Format**:
+
+```yaml
+verdict: APPROVE | CONCERN | BLOCK | ESCALATE
+rationale: "Why this verdict"
+concerns: []  # List of specific issues
+suggestions: []  # Optional improvements
+```
+
+### Phase 3: Human Approval Gate
+
+Task waits for human decision. Surfaced via `/daily` skill in daily note.
+
+**User Actions**:
+| Action | Task State | Notes |
+|--------|------------|-------|
+| Approve | → in_progress | Subtasks created, first claimed |
+| Request Changes | → decomposing | Feedback attached |
+| Send Back | → pending | Assignee cleared |
+| Backburner | → dormant | Preserved but inactive |
+| Cancel | → cancelled | Reason required |
+
+### Phase 4: Worker Execution
+
+Supervisor dispatches workers based on task requirements.
+
+**Worker Selection**:
+
+```markdown
+## Supervisor: Dispatch Worker
+
+1. Identify required capabilities from task tags
+2. Select worker type:
+   - `polecat-claude`: code, docs, refactor, test (cost: 3, speed: 5)
+   - `polecat-gemini`: code, docs, analysis (cost: 1, speed: 3)
+   - `jules`: deep-code, architecture, complex-refactor (cost: 5, speed: 1)
+
+3. Check worker availability (max_concurrent limits)
+
+4. Dispatch:
+   - Single task: `polecat run -p <project>`
+   - Batch: `polecat swarm -c N -g M -p <project>`
+
+5. Monitor progress (30min heartbeat expected)
+```
+
+### Phase 5: PR Review & Merge
+
+Human gate. Supervisor surfaces merge-ready tasks in daily note.
+
+```markdown
+## Ready to Merge
+
+| PR | Task | Tests | Reviews | Summary |
+|----|------|-------|---------|---------|
+| [#123](url) | [[task-abc]] | Pass | 3/3 APPROVE | Added auth module |
+```
+
+**Merge via**:
+- `gh pr merge --squash --delete-branch`
+- Or GitHub Actions auto-merge for clean PRs
+
+### Phase 6: Knowledge Capture
+
+Post-merge, supervisor extracts learnings.
+
+**Extraction Protocol**:
+
+```markdown
+## Supervisor: Capture Knowledge
+
+1. Collect sources:
+   - PR description and comments
+   - Commit messages
+   - Task body
+   - Review comments
+
+2. Extract learnings:
+   - Decisions made
+   - Alternatives rejected
+   - Patterns discovered
+   - Mistakes caught
+   - Estimate accuracy
+
+3. Store via /remember skill
+
+4. Create follow-up tasks if needed:
+   - TODO comments → tech-debt task
+   - Reviewer suggestions → enhancement task (needs approval)
+   - Estimate >50% off → learn task for estimation improvement
+```
+
+---
+
+# Parallel Worker Orchestration
 
 Orchestrate multiple parallel polecat workers, each with isolated git worktrees. This replaces the deprecated hypervisor patterns.
 
