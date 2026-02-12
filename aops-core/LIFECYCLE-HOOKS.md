@@ -5,126 +5,64 @@ type: index
 category: framework
 description: |
     Configurable lifecycle trigger hooks for the swarm-supervisor workflow.
-    Shell scripts that invoke lifecycle phases. Modify this file to change
-    trigger behavior without editing skill prompts or hook scripts.
+    Minimal shell scripts that check preconditions and start agent sessions.
+    All dispatch decisions (which runners, how many, which tasks) are made
+    by the supervisor agent, not by these scripts.
 permalink: lifecycle-hooks
 tags: [framework, hooks, lifecycle, swarm, index]
 ---
 
-> **Deployment-specific configuration** - Customize for your environment.
-> Hook scripts are in `scripts/hooks/lifecycle/`. This file contains only
-> the configurable parameters they read at runtime.
+> **Design principle**: Agents decide, code triggers. These hooks contain
+> zero decision logic. They check preconditions (is queue non-empty?) and
+> start supervisor sessions. The supervisor reads [[WORKERS.md]] and makes
+> all dispatch decisions.
 
-# Lifecycle Hook Configuration
-
-Trigger hooks are minimal shell scripts that start agent work at lifecycle
-boundaries. They don't contain logic — they invoke `polecat` commands or
-agent sessions and let the supervisor/worker prompts make all decisions.
+# Lifecycle Hooks
 
 ## Hook Registry
 
-Available lifecycle hooks and their triggers.
-
 | Hook | Script | Trigger | Purpose |
 |------|--------|---------|---------|
-| `queue-drain` | `queue-drain.sh` | cron, manual | Drain ready tasks via polecat swarm |
-| `post-finish` | `post-finish.sh` | polecat finish | After worker finishes: notify, capture |
+| `queue-drain` | `queue-drain.sh` | cron, manual | Start supervisor session if tasks are ready |
+| `post-finish` | `post-finish.sh` | polecat finish | Notify on task completion/failure |
 | `stale-check` | `stale-check.sh` | cron, manual | Detect and reset stalled tasks |
-| `merge-ready` | `merge-ready.sh` | cron, manual | Surface merge-ready PRs for review |
+| `merge-ready` | `merge-ready.sh` | cron, manual | List merge-ready PRs and notify |
 
-## Queue Drain Configuration
+Scripts live in `scripts/hooks/lifecycle/`.
 
-Settings for `queue-drain.sh` — the main trigger that starts worker execution.
+## Decision Boundary
 
-| Parameter | Value | Description |
-|-----------|-------|-------------|
-| `MIN_READY_TASKS` | `1` | Minimum ready tasks before spawning swarm |
-| `DEFAULT_PROJECT` | (unset) | Project filter (empty = all projects) |
-| `CALLER_IDENTITY` | `polecat` | Identity for task claiming |
-| `DRY_RUN` | `false` | Simulate without executing |
+What shell hooks do vs what the supervisor agent does:
 
-### Runner Command Template
+| Concern | Shell hooks | Supervisor agent |
+|---------|-------------|------------------|
+| Is queue empty? | Yes (grep task files) | No |
+| Which runners to use? | No | Yes (reads WORKERS.md) |
+| How many workers? | No | Yes (reads queue depth + task mix) |
+| Which tasks get which worker? | No | Yes (reads task tags + complexity) |
+| Send notifications? | Yes (mechanical) | No |
+| Reset stale tasks? | Yes (threshold check) | No |
+| Merge PRs? | No | Human or supervisor session |
 
-The queue-drain hook invokes this command to start workers. Replace the
-command to use any runner that integrates with the task queue.
+## Notification Configuration
 
-```bash
-# Default: polecat swarm (spawns claude + gemini workers)
-RUNNER_CMD="polecat swarm"
+The only configuration these hooks need — how to notify humans.
 
-# Alternative: single polecat run
-# RUNNER_CMD="polecat run"
-
-# Alternative: custom runner (must claim tasks via MCP API)
-# RUNNER_CMD="/path/to/my-runner --queue aops"
-```
-
-**Runner contract**: Any runner can be used as long as it:
-
-1. Claims tasks atomically via `claim_next_task()` or `update_task(status=in_progress)`
-2. Sets task status on completion (`done`, `merge_ready`, or `blocked`)
-3. Exits with standard codes (0=success, 1=failure, 3=queue-empty)
-
-### Swarm Sizing (when using polecat swarm)
-
-> See [[WORKERS.md]] Swarm Sizing Defaults for the full sizing table.
-
-| Parameter | Value | Description |
-|-----------|-------|-------------|
-| `MAX_CLAUDE_WORKERS` | `2` | Maximum Claude workers to spawn |
-| `MAX_GEMINI_WORKERS` | `3` | Maximum Gemini workers to spawn |
-| `SWARM_AUTO_SIZE` | `true` | Auto-calculate from queue size |
-
-When `SWARM_AUTO_SIZE` is true, the hook reads the ready task count
-and applies the sizing table from WORKERS.md to determine worker counts.
-
-## Post-Finish Configuration
-
-Settings for `post-finish.sh` — runs after a worker completes a task.
-
-| Parameter | Value | Description |
-|-----------|-------|-------------|
-| `NOTIFY_ON_SUCCESS` | `true` | Send notification on task completion |
-| `NOTIFY_ON_FAILURE` | `true` | Send notification on task failure |
-| `NOTIFY_CMD` | `notify-send` | Notification command (or `ntfy`, `curl`) |
-| `AUTO_MERGE_ATTEMPT` | `true` | Attempt auto-merge after finish |
-
-### Notification Templates
-
-```bash
-# Success notification
-NOTIFY_SUCCESS_TITLE="Task Complete"
-NOTIFY_SUCCESS_BODY="{{task_id}}: {{task_title}}"
-
-# Failure notification
-NOTIFY_FAILURE_TITLE="Task Failed"
-NOTIFY_FAILURE_BODY="{{task_id}} failed (exit {{exit_code}})"
-```
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `NOTIFY_CMD` | `notify-send` | Notification command (`notify-send`, `ntfy`, or custom) |
+| `NTFY_TOPIC` | `polecat` | Topic for ntfy.sh notifications |
 
 ## Stale Check Configuration
 
-Settings for `stale-check.sh` — detects and resets stalled workers.
-
-| Parameter | Value | Description |
-|-----------|-------|-------------|
+| Parameter | Default | Description |
+|-----------|---------|-------------|
 | `STALE_THRESHOLD_HOURS` | `4` | Hours before task considered stale |
-| `AUTO_RESET` | `false` | Automatically reset stale tasks |
-| `NOTIFY_ON_STALE` | `true` | Notify when stale tasks detected |
-
-## Merge-Ready Configuration
-
-Settings for `merge-ready.sh` — surfaces tasks ready for human review.
-
-| Parameter | Value | Description |
-|-----------|-------|-------------|
-| `AUTO_MERGE_CLEAN` | `false` | Auto-merge PRs with passing checks |
-| `REQUIRE_HUMAN_REVIEW` | `true` | Always require human approval |
-| `NOTIFY_CMD` | `notify-send` | How to surface merge-ready tasks |
 
 ## Cron Schedule (Example)
 
 ```crontab
-# Drain queue every 30 minutes during work hours
+# Start supervisor if tasks are ready (every 30 min during work hours)
 */30 9-17 * * 1-5  $AOPS/scripts/hooks/lifecycle/queue-drain.sh
 
 # Check for stale tasks every 2 hours
@@ -134,15 +72,29 @@ Settings for `merge-ready.sh` — surfaces tasks ready for human review.
 0 * * * *          $AOPS/scripts/hooks/lifecycle/merge-ready.sh
 ```
 
-## Customization Guide
+## Manual Invocation
 
-To customize lifecycle hooks for your deployment:
+```bash
+# Start a supervisor session to drain the queue
+./scripts/hooks/lifecycle/queue-drain.sh
 
-1. **Change runner**: Edit `RUNNER_CMD` in Queue Drain Configuration
-2. **Add notifications**: Change `NOTIFY_CMD` to your preferred method
-3. **Adjust timing**: Modify cron schedules above
-4. **Add a new hook**: Create script in `scripts/hooks/lifecycle/`, add row to Hook Registry
-5. **Disable a hook**: Remove from cron or set `DRY_RUN=true`
+# Dry run — see what the supervisor would be asked
+./scripts/hooks/lifecycle/queue-drain.sh --dry-run
 
-Hook scripts read this configuration at runtime. Changes take effect on next
-invocation without modifying the scripts themselves.
+# Filter to a project
+./scripts/hooks/lifecycle/queue-drain.sh -p aops-core
+
+# Check for stale tasks (dry run by default)
+./scripts/hooks/lifecycle/stale-check.sh
+./scripts/hooks/lifecycle/stale-check.sh --reset
+
+# List merge-ready PRs
+./scripts/hooks/lifecycle/merge-ready.sh
+```
+
+## Adding a New Hook
+
+1. Create script in `scripts/hooks/lifecycle/`
+2. Script should only check preconditions and start an agent session (or run a mechanical command)
+3. Add row to Hook Registry above
+4. Any decision logic goes in the supervisor skill prompt, not the script

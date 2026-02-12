@@ -726,25 +726,25 @@ Post-merge, supervisor extracts learnings.
 
 ## Lifecycle Trigger Hooks
 
-External triggers that start lifecycle phases. These are minimal shell scripts
-that invoke `polecat` commands — they contain no agent logic.
+External triggers that start lifecycle phases. Shell scripts check
+preconditions (is queue non-empty?) and start supervisor sessions.
+All dispatch decisions are made by this supervisor agent, not by scripts.
 
-> **Configuration**: See [[LIFECYCLE-HOOKS.md]] for all tunable parameters
-> (queue thresholds, notification settings, stale timeouts, merge policy).
-> Modify that file to change trigger behavior without editing scripts or
-> this skill prompt.
+> **Configuration**: See [[LIFECYCLE-HOOKS.md]] for notification settings
+> and cron schedules. See [[WORKERS.md]] for runner types, capabilities,
+> and sizing defaults — the supervisor reads these at dispatch time.
 
-| Hook | Trigger | Phase | Script |
-|------|---------|-------|--------|
-| `queue-drain` | cron / manual | Phase 4 (Execute) | `scripts/hooks/lifecycle/queue-drain.sh` |
-| `post-finish` | polecat finish | Phase 6 (Capture) | `scripts/hooks/lifecycle/post-finish.sh` |
-| `stale-check` | cron / manual | Phase 4 (Monitor) | `scripts/hooks/lifecycle/stale-check.sh` |
-| `merge-ready` | cron / manual | Phase 5 (Merge) | `scripts/hooks/lifecycle/merge-ready.sh` |
+| Hook | Trigger | What it does | Script |
+|------|---------|--------------|--------|
+| `queue-drain` | cron / manual | Checks queue, starts supervisor session | `scripts/hooks/lifecycle/queue-drain.sh` |
+| `post-finish` | polecat finish | Sends completion notification | `scripts/hooks/lifecycle/post-finish.sh` |
+| `stale-check` | cron / manual | Resets tasks stuck beyond threshold | `scripts/hooks/lifecycle/stale-check.sh` |
+| `merge-ready` | cron / manual | Lists merge-ready PRs, notifies | `scripts/hooks/lifecycle/merge-ready.sh` |
 
-**Runner-agnostic design**: The `queue-drain` hook invokes a configurable
-`RUNNER_CMD` (default: `polecat swarm`). Any runner that claims tasks via
-the MCP task API and reports completion status can be substituted. See
-[[LIFECYCLE-HOOKS.md]] Runner Contract for the integration requirements.
+**Agent-driven dispatch**: When `queue-drain.sh` starts a supervisor session,
+the supervisor (this skill) reads WORKERS.md, inspects the task queue via
+MCP, and decides which runners to invoke and how many. Any runner that
+claims tasks via `claim_next_task()` and reports completion status works.
 
 ---
 

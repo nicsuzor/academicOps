@@ -1,121 +1,85 @@
 #!/usr/bin/env bash
-# queue-drain.sh - Drain ready tasks from the queue via worker swarm.
+# queue-drain.sh - Trigger a supervisor session to drain ready tasks.
 #
-# Trigger: cron, manual invocation, or external scheduler.
-# Contract: Checks queue depth, spawns workers if tasks are ready.
-# Configuration: See LIFECYCLE-HOOKS.md for tunable parameters.
+# This is a pure trigger. It checks whether work exists, then starts a
+# supervisor agent session. The supervisor reads WORKERS.md, inspects the
+# queue, and decides what runners to dispatch and how many.
 #
 # Usage:
-#   ./queue-drain.sh                    # Use defaults
+#   ./queue-drain.sh                    # Start supervisor if tasks ready
 #   ./queue-drain.sh -p aops-core       # Filter to project
-#   ./queue-drain.sh --dry-run          # Simulate only
-#   RUNNER_CMD="my-runner" ./queue-drain.sh  # Custom runner
+#   ./queue-drain.sh --dry-run          # Print what would happen
 #
 # Exit codes:
-#   0 - Workers dispatched (or dry-run completed)
+#   0 - Supervisor session started (or dry-run completed)
 #   1 - Error
 #   3 - No ready tasks (normal, not a failure)
 
 set -euo pipefail
 
-# --- Defaults (override via environment or LIFECYCLE-HOOKS.md) ---
-MIN_READY_TASKS="${MIN_READY_TASKS:-1}"
-DEFAULT_PROJECT="${DEFAULT_PROJECT:-}"
-CALLER_IDENTITY="${CALLER_IDENTITY:-polecat}"
+# --- Defaults ---
 DRY_RUN="${DRY_RUN:-false}"
-MAX_CLAUDE_WORKERS="${MAX_CLAUDE_WORKERS:-2}"
-MAX_GEMINI_WORKERS="${MAX_GEMINI_WORKERS:-3}"
-SWARM_AUTO_SIZE="${SWARM_AUTO_SIZE:-true}"
-RUNNER_CMD="${RUNNER_CMD:-polecat swarm}"
+PROJECT=""
 
 # --- Parse arguments ---
-PROJECT="$DEFAULT_PROJECT"
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -p|--project) PROJECT="$2"; shift 2 ;;
         --dry-run) DRY_RUN="true"; shift ;;
-        --caller) CALLER_IDENTITY="$2"; shift 2 ;;
-        -c|--claude) MAX_CLAUDE_WORKERS="$2"; shift 2 ;;
-        -g|--gemini) MAX_GEMINI_WORKERS="$2"; shift 2 ;;
         *) echo "Unknown option: $1" >&2; exit 1 ;;
     esac
 done
 
 # --- Resolve AOPS path ---
 AOPS="${AOPS:-$(cd "$(dirname "$0")/../../.." && pwd)}"
-export AOPS
 
-# --- Check queue depth ---
-# Use polecat summary or task_manager to count ready tasks.
-# Falls back to the MCP task API via polecat CLI.
-READY_COUNT=0
-
-if command -v polecat &>/dev/null; then
-    # Use polecat's task listing to count ready tasks
-    PROJECT_FLAG=""
-    if [[ -n "$PROJECT" ]]; then
-        PROJECT_FLAG="-p $PROJECT"
-    fi
-    # shellcheck disable=SC2086
-    READY_COUNT=$(uv run --project "$AOPS" "$AOPS/polecat/cli.py" list --status active --format count $PROJECT_FLAG 2>/dev/null || echo "0")
-else
-    # Fallback: count task files with status: active
-    TASK_DIR="${AOPS}/data/aops/tasks"
-    if [[ -d "$TASK_DIR" ]]; then
-        READY_COUNT=$(grep -rl "^status: active" "$TASK_DIR" 2>/dev/null | wc -l || echo "0")
-    fi
+# --- Check: are there ready tasks? ---
+# This is the only decision the shell makes: is the queue non-empty?
+PROJECT_FILTER=""
+if [[ -n "$PROJECT" ]]; then
+    PROJECT_FILTER="--project $PROJECT"
 fi
 
-# Trim whitespace
-READY_COUNT=$(echo "$READY_COUNT" | tr -d '[:space:]')
+# Quick check via task index (no agent needed for this)
+TASK_DIR="${AOPS}/data/aops/tasks"
+READY_COUNT=0
+if [[ -d "$TASK_DIR" ]]; then
+    READY_COUNT=$(grep -rl "^status: active" "$TASK_DIR" 2>/dev/null | wc -l)
+    READY_COUNT=$(echo "$READY_COUNT" | tr -d '[:space:]')
+fi
 
-echo "[queue-drain] Ready tasks: $READY_COUNT (minimum: $MIN_READY_TASKS)"
+echo "[queue-drain] Ready tasks: ${READY_COUNT}"
 
-if [[ "$READY_COUNT" -lt "$MIN_READY_TASKS" ]]; then
-    echo "[queue-drain] Below threshold. No workers needed."
+if [[ "$READY_COUNT" -eq 0 ]]; then
+    echo "[queue-drain] Queue empty. Nothing to do."
     exit 3
 fi
 
-# --- Calculate swarm size ---
-CLAUDE_COUNT="$MAX_CLAUDE_WORKERS"
-GEMINI_COUNT="$MAX_GEMINI_WORKERS"
-
-if [[ "$SWARM_AUTO_SIZE" == "true" ]]; then
-    # Simple auto-sizing: scale workers to queue depth
-    # These heuristics match the Swarm Sizing Defaults in WORKERS.md
-    if [[ "$READY_COUNT" -le 2 ]]; then
-        CLAUDE_COUNT=1
-        GEMINI_COUNT=0
-    elif [[ "$READY_COUNT" -le 5 ]]; then
-        CLAUDE_COUNT=1
-        GEMINI_COUNT=2
-    elif [[ "$READY_COUNT" -le 10 ]]; then
-        CLAUDE_COUNT=2
-        GEMINI_COUNT=3
-    fi
-
-    # Clamp to maximums
-    [[ "$CLAUDE_COUNT" -gt "$MAX_CLAUDE_WORKERS" ]] && CLAUDE_COUNT="$MAX_CLAUDE_WORKERS"
-    [[ "$GEMINI_COUNT" -gt "$MAX_GEMINI_WORKERS" ]] && GEMINI_COUNT="$MAX_GEMINI_WORKERS"
+# --- Build supervisor prompt ---
+PROMPT="You are the swarm supervisor. Check the ready task queue"
+if [[ -n "$PROJECT" ]]; then
+    PROMPT="${PROMPT} for project '${PROJECT}'"
 fi
+PROMPT="${PROMPT} and dispatch workers according to WORKERS.md."
+PROMPT="${PROMPT} Use polecat swarm or polecat run as appropriate."
 
-echo "[queue-drain] Swarm size: ${CLAUDE_COUNT} claude, ${GEMINI_COUNT} gemini"
-
-# --- Dispatch workers ---
 if [[ "$DRY_RUN" == "true" ]]; then
-    echo "[queue-drain] DRY RUN: Would run: $RUNNER_CMD -c $CLAUDE_COUNT -g $GEMINI_COUNT"
+    echo "[queue-drain] DRY RUN: Would start supervisor session with prompt:"
+    echo "  ${PROMPT}"
     exit 0
 fi
 
-# Build the command
-CMD=("$RUNNER_CMD")
-CMD+=(-c "$CLAUDE_COUNT")
-CMD+=(-g "$GEMINI_COUNT")
-CMD+=(--caller "$CALLER_IDENTITY")
-
-if [[ -n "$PROJECT" ]]; then
-    CMD+=(-p "$PROJECT")
+# --- Start supervisor session ---
+# The supervisor agent makes all dispatch decisions.
+# Swap this command for any agent CLI that can run the swarm-supervisor skill.
+echo "[queue-drain] Starting supervisor session..."
+if command -v claude &>/dev/null; then
+    exec claude --print --allowedTools "Bash,Read,Glob,Grep,Task,mcp__*" \
+        "$PROMPT"
+elif command -v gemini &>/dev/null; then
+    exec gemini --prompt "$PROMPT"
+else
+    echo "[queue-drain] ERROR: No agent CLI found (claude, gemini)." >&2
+    echo "[queue-drain] Install one or set AGENT_CMD to a custom runner." >&2
+    exit 1
 fi
-
-echo "[queue-drain] Dispatching: ${CMD[*]}"
-exec "${CMD[@]}"
