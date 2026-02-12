@@ -353,37 +353,30 @@ Respond with:
 
 When task tags indicate specialized domain expertise is needed:
 
+> **Configuration**: See Domain Specialists registry in [[WORKERS.md]] for
+> available specialists and their domain mappings.
+
+```markdown
+## Domain Specialist Protocol
+
+1. Load Domain Specialists table from WORKERS.md
+2. Match task.tags against registered domains
+3. For each matching domain:
+   - Invoke the configured specialist agent
+   - Provide review context and domain-specific focus areas
+   - Collect structured feedback
+4. Synthesize specialist input with mandatory reviewer verdicts
+```
+
 ```python
-# Check if domain specialist is warranted
-domain_specialists = {
-    'security': 'security-reviewer',
-    'database': 'db-reviewer',
-    'api': 'api-reviewer',
-    'frontend': 'ui-reviewer'
-}
-
-matching_domains = [d for d in task.tags if d in domain_specialists]
-
-if matching_domains:
-    for domain in matching_domains:
-        specialist_task = Task(
-            subagent_type=f'aops-core:{domain_specialists[domain]}',
-            prompt=f'''Review this decomposition for {domain} concerns:
-
-<context>
-{{review_context}}
-</context>
-
-Focus on {domain}-specific issues:
-- Best practices violations
-- Security implications (if security domain)
-- Performance concerns
-- Integration patterns
-
-Return structured feedback.
-''',
-            description=f'{domain} specialist review'
-        )
+# Invoke specialist (conceptual)
+for domain in matching_domains:
+    specialist = lookup_specialist(domain)  # from WORKERS.md
+    specialist_task = Task(
+        subagent_type=specialist.agent,
+        prompt=build_specialist_prompt(domain, review_context),
+        description=f'{domain} specialist review'
+    )
 ```
 
 **Note**: Domain specialists are advisory. Their concerns inform but don't automatically block—supervisor synthesizes their input alongside mandatory reviewers.
@@ -409,23 +402,15 @@ Supervisor dispatches workers based on task requirements. This phase transforms 
 
 #### 4.1 Worker Types and Capabilities
 
-| Worker | Capabilities | Cost | Speed | Max Concurrent | Best For |
-|--------|-------------|------|-------|----------------|----------|
-| `polecat-claude` | code, docs, refactor, test, debug | 3 | 5 | 2 | Most tasks |
-| `polecat-gemini` | code, docs, analysis, bulk-ops | 1 | 3 | 4 | High-volume, simpler tasks |
-| `jules` | deep-code, architecture, complex-refactor | 5 | 1 | 1 | Critical path, complex logic |
+> **Configuration**: See [[WORKERS.md]] for current worker types, capabilities,
+> cost/speed profiles, and capacity limits. Modify that file to add workers or
+> change profiles without editing this skill.
 
-**Capability Definitions**:
-- `code`: Standard implementation work
-- `docs`: Documentation, comments, README updates
-- `refactor`: Code restructuring without behavior change
-- `test`: Test writing and updates
-- `debug`: Bug investigation and fixes
-- `analysis`: Code review, spike investigations
-- `bulk-ops`: Repetitive changes across many files
-- `deep-code`: Complex algorithms, performance-critical code
-- `architecture`: System design changes, API contracts
-- `complex-refactor`: Multi-file refactors with behavior preservation
+Load worker registry before dispatch. Each worker has:
+- **Capabilities**: What task types it can handle
+- **Cost/Speed**: Resource trade-offs (1-5 scale)
+- **Max Concurrent**: Capacity limit for parallel dispatch
+- **Best For**: Recommended use cases
 
 ---
 
@@ -455,57 +440,38 @@ Extract required capabilities from task metadata:
 
 **Step 2: Apply Selection Rules**
 
-```python
-def select_worker(task) -> str:
-    """
-    Worker selection decision tree.
-    Returns: 'claude', 'gemini', or 'jules'
-    """
-    # Rule 1: Explicit complexity routing
-    if task.complexity == 'needs-decomposition':
-        return 'jules'  # Shouldn't reach here, but safety net
+> **Configuration**: Selection rules (tag routing, complexity routing, heuristic
+> thresholds) are defined in [[WORKERS.md]]. Modify that file to change routing
+> behavior.
 
-    if task.complexity in ['requires-judgment', 'multi-step']:
-        return 'claude'
+Apply rules in priority order:
 
-    # Rule 2: Tag-based routing
-    high_stakes_tags = {'security', 'api', 'database', 'auth', 'payment'}
-    if set(task.tags) & high_stakes_tags:
-        return 'claude'
+```markdown
+## Worker Selection Decision Tree
 
-    bulk_tags = {'formatting', 'lint-fix', 'dependency-bump', 'rename'}
-    if set(task.tags) & bulk_tags:
-        return 'gemini'
-
-    # Rule 3: File count heuristic
-    if task.files_affected > 10:
-        return 'gemini'  # Bulk operations
-
-    # Rule 4: Effort-based (from decomposition estimate)
-    if task.effort and task.effort > '2h':
-        return 'claude'
-
-    # Default: Claude for safety
-    return 'claude'
+1. **Complexity routing**: Match task.complexity against Complexity Routing table
+2. **Tag routing**: Check task.tags against High-Stakes and Bulk tag lists
+3. **Heuristic thresholds**: Apply file count and effort rules
+4. **Default**: Use configured default worker (typically claude for safety)
 ```
+
+The supervisor loads current rules from WORKERS.md and applies them to each task.
 
 **Step 3: Check Capacity**
 
-Before dispatch, verify worker availability:
+Before dispatch, verify worker availability against limits in [[WORKERS.md]].
 
-```bash
-# Check current worker count (conceptual - supervisor tracks internally)
-# active_claude = count of in_progress tasks assigned to 'polecat' with claude flag
-# active_gemini = count of in_progress tasks assigned to 'polecat' with gemini flag
+```markdown
+## Capacity Check
 
-# If at capacity, queue for later or wait
+1. Load Max Concurrent for selected worker type from WORKERS.md
+2. Count in_progress tasks assigned to that worker type
+3. If at capacity:
+   - Try fallback worker if task capabilities permit
+   - Otherwise queue task for later dispatch
 ```
 
-| Worker | At Capacity Action |
-|--------|-------------------|
-| claude | Queue task, try gemini if capable |
-| gemini | Queue task, wait for slot |
-| jules | Queue task (never substitute) |
+Capacity overflow actions are worker-specific (some allow substitution, others queue only).
 
 ---
 
@@ -538,32 +504,30 @@ polecat swarm -c 2 -g 2 -p <project>
 
 **Swarm Sizing Heuristics**:
 
-| Ready Tasks | Task Mix | Recommended Swarm |
-|-------------|----------|-------------------|
-| 1-2 | Any | `polecat run` (no swarm) |
-| 3-5 | Mostly simple | `-c 1 -g 2` |
-| 3-5 | Mostly complex | `-c 2 -g 1` |
-| 6-10 | Mixed | `-c 2 -g 3` |
-| 10+ | Mixed | `-c 2 -g 4` (max reasonable) |
+> **Configuration**: See Swarm Sizing Defaults in [[WORKERS.md]] for recommended
+> compositions based on queue size and task mix.
+
+Calculate swarm composition from:
+- Number of ready tasks
+- Task complexity/type distribution
+- Current capacity limits
+- Budget constraints (if applicable)
 
 **Dispatch Output Format** (appended to parent task body):
 
 ```markdown
 ## Worker Dispatch Log
 
-**Dispatched**: 2026-02-12T14:30:00Z
-**Swarm**: 2 Claude, 3 Gemini
+**Dispatched**: <timestamp>
+**Swarm**: <worker counts by type>
 
 ### Task Assignments
 | Task | Worker Type | Reason |
 |------|-------------|--------|
-| subtask-1 | claude | complexity=requires-judgment |
-| subtask-2 | gemini | tags=[formatting] |
-| subtask-3 | claude | files>10, critical path |
+| <subtask-id> | <worker> | <selection rule that matched> |
 
 ### Capacity Status
-- Claude: 2/2 (at limit)
-- Gemini: 3/4 (1 slot available)
+[Per-worker-type: current/max from WORKERS.md]
 ```
 
 ---
@@ -572,11 +536,12 @@ polecat swarm -c 2 -g 2 -p <project>
 
 **Heartbeat Expectations**:
 
-| Worker | Expected Heartbeat | Alert Threshold |
-|--------|-------------------|-----------------|
-| claude | Task status update every 30min | 45min silence |
-| gemini | Task status update every 20min | 30min silence |
-| jules | Task status update every 60min | 90min silence |
+> **Configuration**: See Heartbeat Expectations in [[WORKERS.md]] for per-worker
+> update frequencies and alert thresholds.
+
+Each worker type has configured:
+- **Expected Heartbeat**: How often task status should update
+- **Alert Threshold**: Silence duration that triggers stall detection
 
 **Monitoring Commands**:
 
@@ -619,13 +584,14 @@ polecat reset-stalled --hours 4
 
 **Exit Code Semantics** (from `polecat run`):
 
-| Exit Code | Meaning | Supervisor Action |
-|-----------|---------|-------------------|
-| 0 | Success | Mark merge_ready, proceed to Phase 5 |
-| 1 | Task failure | Inspect error, mark blocked or retry |
-| 2 | Setup failure | Retry once, then mark blocked |
-| 3 | Queue empty | Normal - no action needed |
-| 4+ | Unknown | Mark blocked, flag for human |
+> **Configuration**: See Exit Code Semantics and Retry Limits in [[WORKERS.md]]
+> for exit code meanings and recovery parameters.
+
+Map worker exit codes to supervisor actions:
+- **Success (0)**: Proceed to merge phase
+- **Task/Setup failures**: Apply retry/block logic per configuration
+- **Queue empty**: Normal termination, no action needed
+- **Unknown codes**: Escalate to human review
 
 **Failure Recovery Protocol**:
 
@@ -644,8 +610,8 @@ polecat reset-stalled --hours 4
 [One of: RETRY, REASSIGN, BLOCK, ESCALATE]
 
 ### If RETRY:
-- Retry count: [n/3 max]
-- Backoff: [exponential, starting 5min]
+- Retry count: [n/max per WORKERS.md Retry Limits]
+- Backoff: [per WORKERS.md configuration]
 
 ### If REASSIGN:
 - Original worker: <type>
