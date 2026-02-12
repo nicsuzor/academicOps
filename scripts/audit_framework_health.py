@@ -682,8 +682,6 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         # Agent directory paths (may not exist in all configurations)
         ".agent/PATHS.md",
         # MCP tool references (conceptual links to tool documentation)
-        "mcp__gemini__*",
-        "mcp__plugin_aops-core_task_manager__*",
         "mcp__plugin_aops-core_task_manager__claim_next_task",
         "mcp__plugin_aops-core_task_manager__create_task",
         "mcp__plugin_aops-core_task_manager__update_task",
@@ -733,6 +731,7 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "aops-tools/fast_indexer/",
         "aops-tools/skills/",
         "aops-tools/.mcp.json",
+        "aops-core/.mcp.json",
         # Cross-vault/project-specific paths
         ".agent/CORE.md",
         "STYLE.md",
