@@ -257,14 +257,31 @@ GATE_CONFIGS = [
     GateConfig(
         name="qa",
         description="Ensures requirements compliance before exit.",
-        initial_status=GateStatus.CLOSED,
+        initial_status=GateStatus.OPEN,
         triggers=[
+            # Start -> Open
+            GateTrigger(
+                condition=GateCondition(hook_event="SessionStart"),
+                transition=GateTransition(target_status=GateStatus.OPEN),
+            ),
             # QA agent verifies requirements -> Open gate
             GateTrigger(
                 condition=GateCondition(hook_event="SubagentStop", subagent_type_pattern="qa"),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
                     system_message_template="🧪 QA complete. Requirements verified.",
+                ),
+            ),
+            # Critic once called, requires QA review to ensure compliance before exit
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="PostToolUse",
+                    tool_name_pattern="Task",
+                    tool_input_pattern=r"\bcritic\b",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.CLOSED,
+                    reset_ops_counter=False,
                 ),
             ),
             # Task tool calls QA (fallback)
