@@ -248,7 +248,9 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
                                     "uv run",
                                     "env -u VIRTUAL_ENV uv run",
                                 )
-                            new_hook["command"] = cmd
+                            # Gemini CLI doesn't pass hook_event_name in stdin payload like Claude does,
+                            # so we append it as a CLI argument for router.py to detect the event type
+                            new_hook["command"] = f"{cmd} {gemini_event}"
                         new_hooks.append(new_hook)
                     new_entry[key] = new_hooks
                 else:
