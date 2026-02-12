@@ -1,19 +1,27 @@
 name: Claude LGTM Merge
 
 on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to run LGTM merge on'
+        required: true
+        type: number
+  pull_request:
+    types: [assigned]
   pull_request_review:
     types: [submitted] # fires when a review is submitted (not when edited/dismissed)
   pull_request_review_comment:
     types: [created]
   issue_comment:
     types: [created]
-  issues:
-    types: [opened, assigned]
 
 jobs:
   claude-lgtm-merge:
-    # Run for approved reviews, or comments from nicsuzor on PRs
+    # Run for: manual dispatch, PR assigned to claude, approved reviews, or LGTM comments from nicsuzor
     if: |
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event_name == 'pull_request' && github.event.assignee.login == 'claude-for-github[bot]') ||
       (github.event_name == 'pull_request_review' && github.event.review.state == 'approved') ||
       (github.event_name == 'pull_request_review_comment' && github.event.comment.user.login == 'nicsuzor') ||
       (github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.comment.user.login == 'nicsuzor')
@@ -28,7 +36,7 @@ jobs:
     steps:
       - name: Check LGTM pattern
         id: lgtm-check
-        if: github.event_name != 'pull_request_review'
+        if: github.event_name == 'issue_comment' || github.event_name == 'pull_request_review_comment'
         env:
           COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
@@ -41,18 +49,18 @@ jobs:
           fi
 
       - uses: actions/checkout@v4
-        if: github.event_name == 'pull_request_review' || steps.lgtm-check.outputs.proceed == 'true'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || github.event_name == 'pull_request_review' || steps.lgtm-check.outputs.proceed == 'true'
         with:
           fetch-depth: 0
 
       - name: Claude PR merge agent
         id: claude
-        if: github.event_name == 'pull_request_review' || steps.lgtm-check.outputs.proceed == 'true'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || github.event_name == 'pull_request_review' || steps.lgtm-check.outputs.proceed == 'true'
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
-            PR #${{ github.event.pull_request.number || github.event.issue.number }} has been approved.
+            PR #${{ github.event.inputs.pr_number || github.event.pull_request.number || github.event.issue.number }} has been approved.
 
             Please:
             1. Review the PR description and code changes to ensure they meet our standards.

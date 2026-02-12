@@ -10,72 +10,73 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  wait-for-reviews:
-    # Skip runs triggered by bot pushes (e.g., Claude fixing code)
-    if: >-
-      github.actor != 'github-actions[bot]' &&
-      !contains(github.event.pull_request.title, '[skip review]')
-    runs-on: ubuntu-latest
-    outputs:
-      copilot_reviewed: ${{ steps.poll.outputs.copilot_reviewed }}
-      gemini_reviewed: ${{ steps.poll.outputs.gemini_reviewed }}
-      reviews_ready: ${{ steps.poll.outputs.reviews_ready }}
-    steps:
-      - name: Wait for bot reviews
-        id: poll
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          PR=${{ github.event.pull_request.number }}
-          REPO=${{ github.repository }}
-          MAX_ATTEMPTS=10
-          INTERVAL=60
+  # # disabling, i don't like it, let's use hooks instead.
+  # wait-for-reviews:
+  #   # Skip runs triggered by bot pushes (e.g., Claude fixing code)
+  #   if: >-
+  #     github.actor != 'github-actions[bot]' &&
+  #     !contains(github.event.pull_request.title, '[skip review]')
+  #   runs-on: ubuntu-latest
+  #   outputs:
+  #     copilot_reviewed: ${{ steps.poll.outputs.copilot_reviewed }}
+  #     gemini_reviewed: ${{ steps.poll.outputs.gemini_reviewed }}
+  #     reviews_ready: ${{ steps.poll.outputs.reviews_ready }}
+  #   steps:
+  #     - name: Wait for bot reviews
+  #       id: poll
+  #       env:
+  #         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       run: |
+  #         PR=${{ github.event.pull_request.number }}
+  #         REPO=${{ github.repository }}
+  #         MAX_ATTEMPTS=10
+  #         INTERVAL=60
 
-          for i in $(seq 1 $MAX_ATTEMPTS); do
-            echo "Poll attempt $i/$MAX_ATTEMPTS..."
+  #         for i in $(seq 1 $MAX_ATTEMPTS); do
+  #           echo "Poll attempt $i/$MAX_ATTEMPTS..."
 
-            REVIEWS=$(gh api "repos/$REPO/pulls/$PR/reviews" --jq '.[].user.login')
+  #           REVIEWS=$(gh api "repos/$REPO/pulls/$PR/reviews" --jq '.[].user.login')
 
-            COPILOT=false
-            GEMINI=false
+  #           COPILOT=false
+  #           GEMINI=false
 
-            if echo "$REVIEWS" | grep -q 'copilot-pull-request-reviewer\[bot\]'; then
-              COPILOT=true
-              echo "  Copilot review found"
-            fi
+  #           if echo "$REVIEWS" | grep -q 'copilot-pull-request-reviewer\[bot\]'; then
+  #             COPILOT=true
+  #             echo "  Copilot review found"
+  #           fi
 
-            if echo "$REVIEWS" | grep -q 'gemini-code-assist\[bot\]'; then
-              GEMINI=true
-              echo "  Gemini review found"
-            fi
+  #           if echo "$REVIEWS" | grep -q 'gemini-code-assist\[bot\]'; then
+  #             GEMINI=true
+  #             echo "  Gemini review found"
+  #           fi
 
-            if [ "$COPILOT" = true ] && [ "$GEMINI" = true ]; then
-              echo "Both reviews found after $i attempts"
-              echo "copilot_reviewed=true" >> $GITHUB_OUTPUT
-              echo "gemini_reviewed=true" >> $GITHUB_OUTPUT
-              echo "reviews_ready=true" >> $GITHUB_OUTPUT
-              exit 0
-            fi
+  #           if [ "$COPILOT" = true ] && [ "$GEMINI" = true ]; then
+  #             echo "Both reviews found after $i attempts"
+  #             echo "copilot_reviewed=true" >> $GITHUB_OUTPUT
+  #             echo "gemini_reviewed=true" >> $GITHUB_OUTPUT
+  #             echo "reviews_ready=true" >> $GITHUB_OUTPUT
+  #             exit 0
+  #           fi
 
-            if [ "$i" -lt "$MAX_ATTEMPTS" ]; then
-              echo "  Waiting ${INTERVAL}s..."
-              sleep $INTERVAL
-            fi
-          done
+  #           if [ "$i" -lt "$MAX_ATTEMPTS" ]; then
+  #             echo "  Waiting ${INTERVAL}s..."
+  #             sleep $INTERVAL
+  #           fi
+  #         done
 
-          # Timeout: proceed with whatever reviews are available
-          echo "Timeout after $MAX_ATTEMPTS attempts. Proceeding with available reviews."
-          echo "copilot_reviewed=$COPILOT" >> $GITHUB_OUTPUT
-          echo "gemini_reviewed=$GEMINI" >> $GITHUB_OUTPUT
+  #         # Timeout: proceed with whatever reviews are available
+  #         echo "Timeout after $MAX_ATTEMPTS attempts. Proceeding with available reviews."
+  #         echo "copilot_reviewed=$COPILOT" >> $GITHUB_OUTPUT
+  #         echo "gemini_reviewed=$GEMINI" >> $GITHUB_OUTPUT
 
-          if [ "$COPILOT" = true ] || [ "$GEMINI" = true ]; then
-            echo "reviews_ready=true" >> $GITHUB_OUTPUT
-          else
-            echo "reviews_ready=false" >> $GITHUB_OUTPUT
-          fi
+  #         if [ "$COPILOT" = true ] || [ "$GEMINI" = true ]; then
+  #           echo "reviews_ready=true" >> $GITHUB_OUTPUT
+  #         else
+  #           echo "reviews_ready=false" >> $GITHUB_OUTPUT
+  #         fi
 
   claude-review:
-    needs: wait-for-reviews
+    # needs: wait-for-reviews
     if: needs.wait-for-reviews.outputs.reviews_ready == 'true'
     runs-on: ubuntu-latest
     permissions:

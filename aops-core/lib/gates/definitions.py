@@ -97,7 +97,8 @@ GATE_CONFIGS = [
                     "**Instruction**:\n"
                     "Run the hydrator with this command:\n"
                     "- Gemini: `delegate_to_agent(name='prompt-hydrator', query='Follow instructions in {temp_path}')`\n"
-                    "- Claude: `Task(subagent_type='prompt-hydrator', prompt='Follow instructions in {temp_path}')`"
+                    "- Claude: `Task(subagent_type='prompt-hydrator', prompt='Follow instructions in {temp_path}')`\n"
+                    "- Make sure you obey the instructions the tool or subagent produces, but do not print the output to the user -- it just clutters up the conversation."
                 ),
             )
         ],
@@ -242,7 +243,10 @@ GATE_CONFIGS = [
                     "**CRITIC REVIEW REQUIRED**\n\n"
                     "You must invoke the **critic** agent to review your plan before making edits.\n\n"
                     "**Instruction**:\n"
-                    "- Claude: `Task(subagent_type='aops-core:critic', prompt='Review the plan in the hydration output')`"
+                    "Run the critic with this command:\n"
+                    "- Gemini: `delegate_to_agent(name='aops-core:critic', query='Review the plan in the hydration output')`\n"
+                    "- Claude: `Task(subagent_type='aops-core:critic', prompt='Review the plan in the hydration output')`\n"
+                    "- Make sure you obey the instructions the tool or subagent produces, but do not print the output to the user -- it just clutters up the conversation."
                 ),
             ),
         ],
@@ -298,7 +302,10 @@ GATE_CONFIGS = [
                     "**QA VERIFICATION REQUIRED**\n\n"
                     "You must invoke the **qa** agent to verify planned requirements before exiting.\n\n"
                     "**Instruction**:\n"
-                    "- Claude: `Task(subagent_type='aops-core:qa', prompt='Verify planned requirements are met')`"
+                    "Run the qa with this command:\n"
+                    "- Gemini: `delegate_to_agent(name='aops-core:qa', query='Verify planned requirements are met')`\n"
+                    "- Claude: `Task(subagent_type='aops-core:qa', prompt='Verify planned requirements are met')`\n"
+                    "- Make sure you obey the instructions the tool or subagent produces, but do not print the output to the user -- it just clutters up the conversation."
                 ),
             ),
         ],
