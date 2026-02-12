@@ -38,6 +38,11 @@ def check_tool_gate(ctx: HookContext, state: SessionState) -> GateResult:
         "aops-core:prompt-hydrator",
         "custodiet",
         "aops-core:custodiet",
+        "qa",
+        "aops-core:qa",
+        # special case for framework butler.
+        "aops-core:butler",
+        "butler",
     }
     if state.state.get("hydrator_active") or ctx.subagent_type in _COMPLIANCE_SUBAGENT_TYPES:
         return GateResult.allow()
