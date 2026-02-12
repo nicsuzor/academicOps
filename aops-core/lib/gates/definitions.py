@@ -272,7 +272,7 @@ GATE_CONFIGS = [
                     system_message_template="🧪 QA complete. Requirements verified.",
                 ),
             ),
-            # Critic once called, requires QA review to ensure compliance before exit
+            # Critic, once called, requires QA review to ensure compliance before exit
             GateTrigger(
                 condition=GateCondition(
                     hook_event="PostToolUse",
@@ -282,6 +282,7 @@ GATE_CONFIGS = [
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
                     reset_ops_counter=False,
+                    system_message_template="🧪 QA complete. Requirements verified.",
                 ),
             ),
             # Task tool calls QA (fallback)
@@ -293,6 +294,18 @@ GATE_CONFIGS = [
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
+                    system_message_template="🧪 QA complete. Requirements verified.",
+                ),
+            ),
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="PreToolUse",
+                    tool_name_pattern="Task",
+                    tool_input_pattern=r"\bqa\b",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.OPEN,
+                    system_message_template="🧪 QA complete. Requirements verified.",
                 ),
             ),
             # Skill tool calls QA (fallback)
@@ -304,6 +317,7 @@ GATE_CONFIGS = [
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
+                    system_message_template="🧪 QA complete. Requirements verified.",
                 ),
             ),
         ],
