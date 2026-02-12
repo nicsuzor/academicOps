@@ -15,7 +15,6 @@ Architecture:
 
 import json
 import os
-import signal
 import sys
 import tempfile
 import time
@@ -155,72 +154,6 @@ class HookRouter:
     def __init__(self):
         self.session_data = get_session_data()
         self._execution_timestamps = deque(maxlen=20)  # Store last 20 timestamps
-        self._MAX_CALLS_PER_WINDOW = 35
-        self._WINDOW_SECONDS = 5.0
-
-    def _check_for_loops(self, session_id: str):
-        """Detect if execute_hooks is being called in a tight loop across processes."""
-        # Use a dedicated heartbeat file in the session status directory
-        status_dir_env = os.environ.get("AOPS_SESSION_STATE_DIR")
-        if not status_dir_env:
-            return
-
-        heartbeat_file = Path(status_dir_env) / "hook-heartbeat.json"
-        now = time.time()
-
-        try:
-            # Read previous heartbeats
-            heartbeats = []
-            if heartbeat_file.exists():
-                try:
-                    heartbeats = json.loads(heartbeat_file.read_text())
-                except (json.JSONDecodeError, OSError):
-                    pass
-
-            # Add current heartbeat and prune old ones (older than window)
-            heartbeats.append(now)
-            heartbeats = [t for t in heartbeats if (now - t) < self._WINDOW_SECONDS]
-
-            # Atomically write back
-            fd, temp_path = tempfile.mkstemp(dir=str(heartbeat_file.parent), text=True)
-            try:
-                with os.fdopen(fd, "w") as f:
-                    json.dump(heartbeats, f)
-                Path(temp_path).rename(heartbeat_file)
-            except Exception:
-                Path(temp_path).unlink(missing_ok=True)
-
-            if len(heartbeats) >= self._MAX_CALLS_PER_WINDOW:
-                # Loop detected
-                error_msg = (
-                    f"CRITICAL: Infinite loop detected in hook router. "
-                    f"Over {len(heartbeats)} hook calls in {self._WINDOW_SECONDS:.1f} seconds across processes. "
-                    f"Terminating process {os.getpid()} to protect system RAM."
-                )
-                print(error_msg, file=sys.stderr)
-
-                # Log to unified logger if possible
-                try:
-                    loop_ctx = HookContext(
-                        session_id=session_id,
-                        hook_event="RouterLoop",
-                        raw_input={"error": error_msg, "heartbeats": heartbeats},
-                    )
-                    log_hook_event(
-                        loop_ctx,
-                        output=CanonicalHookOutput(
-                            verdict="deny", system_message="Infinite loop detected."
-                        ),
-                    )
-                except Exception as e:
-                    print(f"WARNING: Failed to log loop detection: {e}", file=sys.stderr)
-
-                # Terminate the current process forcefully.
-                os.kill(os.getpid(), signal.SIGKILL)
-
-        except Exception as e:
-            # Don't let loop detection failure block the hook
-            print(f"WARNING: Loop detection failed: {e}", file=sys.stderr)
 
     @staticmethod
     def _normalize_json_field(value: Any) -> Any:
@@ -308,7 +241,6 @@ class HookRouter:
 
     def execute_hooks(self, ctx: HookContext) -> CanonicalHookOutput:
         """Run all configured gates for the event and merge results."""
-        self._check_for_loops(ctx.session_id)
         merged_result = CanonicalHookOutput()
 
         # Load Session State ONCE

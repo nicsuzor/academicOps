@@ -177,6 +177,7 @@ def get_session_id(input_data: dict[str, Any] | None = None) -> str:
     Raises:
         ValueError: If require=True and session_id not found
     """
+    session_id = None
     if input_data:
         session_id = input_data.get("session_id")
     if not session_id:
