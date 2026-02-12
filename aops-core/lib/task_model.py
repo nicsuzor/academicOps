@@ -53,18 +53,40 @@ class TaskType(Enum):
 
 
 class TaskStatus(Enum):
-    """Task lifecycle states."""
+    """Task lifecycle states.
 
+    See specs/non-interactive-agent-workflow-spec.md for full state machine.
+    """
+
+    # Pre-work states
     INBOX = "inbox"  # New task, not yet triaged
     ACTIVE = "active"  # Ready to be claimed (no blockers)
-    IN_PROGRESS = "in_progress"  # Currently being worked on (claimed)
-    BLOCKED = "blocked"  # Waiting on dependencies
-    WAITING = "waiting"  # Waiting on external input
-    REVIEW = "review"  # Requires human review before proceeding
-    MERGE_READY = "merge_ready"  # Work complete, ready for automated merge/integration
-    MERGING = "merging"  # Currently being merged (merge slot - only one task at a time)
-    DONE = "done"  # Completed
-    CANCELLED = "cancelled"  # Abandoned
+
+    # Decomposition phase (Phase 1)
+    DECOMPOSING = "decomposing"  # Effectual planner iterating on breakdown
+
+    # Review phase (Phase 2)
+    CONSENSUS = "consensus"  # Multi-agent review in progress
+
+    # Approval phase (Phase 3)
+    WAITING = "waiting"  # Awaiting user decision
+
+    # Execution phase (Phase 4)
+    IN_PROGRESS = "in_progress"  # Worker executing approved plan
+
+    # PR phase (Phase 5)
+    REVIEW = "review"  # PR filed, awaiting review consensus
+    MERGE_READY = "merge_ready"  # Reviews done, awaiting merge approval
+    MERGING = "merging"  # Currently being merged (merge slot)
+
+    # Terminal states
+    DONE = "done"  # Completed (Phase 6: knowledge captured)
+    CANCELLED = "cancelled"  # Abandoned, with reason
+
+    # Special states
+    BLOCKED = "blocked"  # External dependency, with unblock_condition
+    DORMANT = "dormant"  # User-initiated backburner
+    FAILED = "failed"  # Unrecoverable error, with diagnostic
 
 
 class TaskComplexity(Enum):
@@ -81,6 +103,17 @@ class TaskComplexity(Enum):
     MULTI_STEP = "multi-step"  # Multi-session orchestration
     NEEDS_DECOMPOSITION = "needs-decomposition"  # Must break down first
     BLOCKED_HUMAN = "blocked-human"  # Requires human decision/input
+
+
+class ApprovalType(Enum):
+    """Approval type for tasks in WAITING status.
+
+    Used to differentiate standard approvals from escalated ones
+    that require immediate attention due to unresolved reviewer concerns.
+    """
+
+    STANDARD = "standard"  # Normal approval flow
+    ESCALATED = "escalated"  # Has unresolved concerns from review
 
 
 def _safe_parse_enum(
@@ -156,6 +189,16 @@ class Task:
     context: str | None = None  # @home, @computer, etc.
     assignee: str | None = None  # Task owner: 'nic' or 'polecat'
     complexity: TaskComplexity | None = None  # Routing classification (set by hydrator)
+
+    # Workflow state fields (per non-interactive-agent-workflow-spec.md)
+    unblock_condition: str | None = None  # Required when status=BLOCKED
+    diagnostic: str | None = None  # Required when status=FAILED
+    pr_url: str | None = None  # Required when status=REVIEW or MERGE_READY
+    worker_id: str | None = None  # Required when status=IN_PROGRESS
+    approval_type: ApprovalType | None = None  # Set when status=WAITING
+    decision_deadline: datetime | None = None  # Set when status=WAITING
+    retry_count: int = 0  # Incremented on each retry from FAILED
+    idempotency_key: str | None = None  # For state transition deduplication
 
     # Body content (markdown below frontmatter)
     body: str = ""
@@ -267,6 +310,24 @@ class Task:
         if self.complexity:
             fm["complexity"] = self.complexity.value
 
+        # Workflow state fields (only include if set)
+        if self.unblock_condition:
+            fm["unblock_condition"] = self.unblock_condition
+        if self.diagnostic:
+            fm["diagnostic"] = self.diagnostic
+        if self.pr_url:
+            fm["pr_url"] = self.pr_url
+        if self.worker_id:
+            fm["worker_id"] = self.worker_id
+        if self.approval_type:
+            fm["approval_type"] = self.approval_type.value
+        if self.decision_deadline:
+            fm["decision_deadline"] = self.decision_deadline.isoformat()
+        if self.retry_count:
+            fm["retry_count"] = self.retry_count
+        if self.idempotency_key:
+            fm["idempotency_key"] = self.idempotency_key
+
         return fm
 
     # Status aliases for convenience (hyphenated forms)
@@ -312,6 +373,10 @@ class Task:
         if isinstance(planned, str):
             planned = datetime.fromisoformat(planned)
 
+        decision_deadline = fm.get("decision_deadline")
+        if isinstance(decision_deadline, str):
+            decision_deadline = datetime.fromisoformat(decision_deadline)
+
         # Parse type - require explicit type field (skip non-task files)
         task_type_str = fm.get("type")
         if task_type_str is None:
@@ -353,6 +418,24 @@ class Task:
                     task_id,
                 )
 
+        # Parse approval_type (optional field - None is valid)
+        approval_type_str = fm.get("approval_type")
+        approval_type: ApprovalType | None = None
+        if approval_type_str is not None:
+            try:
+                approval_type = ApprovalType(approval_type_str)
+            except ValueError:
+                logger.warning(
+                    "Invalid approval_type '%s' (task: %s), ignoring",
+                    approval_type_str,
+                    task_id,
+                )
+
+        # Parse retry_count (defaults to 0)
+        retry_count = fm.get("retry_count", 0)
+        if isinstance(retry_count, str):
+            retry_count = int(retry_count) if retry_count.isdigit() else 0
+
         return cls(
             id=task_id,
             title=fm["title"],
@@ -375,6 +458,15 @@ class Task:
             context=fm.get("context"),
             assignee=fm.get("assignee"),
             complexity=complexity,
+            # Workflow state fields
+            unblock_condition=fm.get("unblock_condition"),
+            diagnostic=fm.get("diagnostic"),
+            pr_url=fm.get("pr_url"),
+            worker_id=fm.get("worker_id"),
+            approval_type=approval_type,
+            decision_deadline=decision_deadline,
+            retry_count=retry_count,
+            idempotency_key=fm.get("idempotency_key"),
             body=body,
         )
 
