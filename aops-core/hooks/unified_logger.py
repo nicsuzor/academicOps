@@ -61,16 +61,12 @@ def log_hook_event(
         process = psutil.Process(os.getpid())
         mem_info = process.memory_info()
 
-        # Create log entry using typed model
+        # Create log entry from superclass fields + new metadata
         log_entry = HookLogEntry(
             hook_event=ctx.hook_event,
             logged_at=datetime.now().astimezone().replace(microsecond=0).isoformat(),
             exit_code=exit_code,
-            agent_id=ctx.agent_id or ctx.subagent_type,
-            slug=ctx.slug,
-            is_sidechain=ctx.is_sidechain,
-            input=input_data,
-            output=output.model_dump() if output else None,
+            output=ctx.model_dump(),
         )
 
         # Add debug metrics to metadata

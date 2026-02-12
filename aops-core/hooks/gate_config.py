@@ -129,38 +129,6 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
 }
 
 # =============================================================================
-# GATE EXECUTION ORDER (DEPRECATED)
-# =============================================================================
-# This section is kept for reference. The new router dispatches directly to
-# GenericGate methods via GateRegistry instead of using this mapping.
-# Special handlers (logging, notifications) are handled separately in router.py.
-#
-# NOTE: This dict is no longer used by the router. It remains here for
-# documentation purposes and potential rollback if needed.
-
-GATE_EXECUTION_ORDER: dict[str, list[str]] = {
-    # Events now dispatch directly to gate methods:
-    # - SessionStart -> gate.on_session_start()
-    # - UserPromptSubmit -> gate.on_user_prompt()
-    # - PreToolUse -> gate.check()
-    # - PostToolUse -> gate.on_tool_use()
-    # - AfterAgent -> gate.on_after_agent()
-    # - SubagentStop -> gate.on_subagent_stop()
-    # - Stop -> gate.on_stop()
-}
-
-# =============================================================================
-# SUBAGENT BYPASS (DEPRECATED)
-# =============================================================================
-# This set is no longer used. The router now checks ctx.is_sidechain and
-# ctx.subagent_type directly, and compliance subagents (hydrator, custodiet,
-# qa, butler) are explicitly bypassed in _dispatch_gates().
-#
-# NOTE: Kept for reference. Will be removed in a future cleanup.
-
-MAIN_AGENT_ONLY_GATES: set[str] = set()  # Empty - logic moved to router
-
-# =============================================================================
 # GATE MODE DEFAULTS
 # =============================================================================
 # Default enforcement modes for gates. Can be overridden by environment variables.
