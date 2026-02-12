@@ -21,6 +21,7 @@ import sys
 import tempfile
 import time
 from datetime import datetime, timedelta
+from importlib import metadata
 from pathlib import Path
 from typing import Any
 
@@ -53,6 +54,7 @@ class SessionState(BaseModel):
     date: str  # YYYY-MM-DD
     started_at: str  # ISO timestamp
     ended_at: str | None = None
+    version: str = "unknown"
 
     # Global turn counter (increments on user prompt)
     global_turn_count: int = 0
@@ -87,11 +89,17 @@ class SessionState(BaseModel):
             if val in ("polecat", "crew"):
                 stype = val
 
+        try:
+            ver = metadata.version("academicops")
+        except metadata.PackageNotFoundError:
+            ver = "unknown"
+
         instance = cls(
             session_id=session_id,
             date=now.isoformat(),
             started_at=now.isoformat(),
             session_type=stype,
+            version=ver,
         )
 
         # Initialize default gate states

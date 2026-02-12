@@ -57,11 +57,9 @@ def test_session_start_message_generation(
     # Check system_message has brief user-facing summary
     assert "Session Started: session-123" in result.system_message
     assert "abc12345" in result.system_message
-
-    # Check context_injection has detailed paths for agent
-    assert result.context_injection is not None
-    assert "State File:" in result.context_injection
-    assert "/tmp/gemini/sessions/20260201-16-abc12345.json" in result.context_injection
+    assert "State File:" in result.system_message
+    assert "/tmp/gemini/sessions/20260201-16-abc12345.json" in result.system_message
+    assert f"Version: {state.version}" in result.system_message
 
 
 # TODO: The following tests need to be rewritten for the current gate architecture
