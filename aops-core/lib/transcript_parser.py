@@ -2226,7 +2226,7 @@ class SessionProcessor:
                         markdown += f"```markdown\n{user_message}\n```\n\n"
                     else:
                         if len(user_message) > 500:
-                            display_content = user_message[:500] + "\n... (truncated)"
+                            display_content = user_message[:500] + "... [truncated]"
                         else:
                             display_content = user_message
                         markdown += f"```markdown\n{display_content}\n```\n\n"
@@ -2236,8 +2236,8 @@ class SessionProcessor:
                     if len(summary) > 60:
                         summary = summary[:57] + "..."
 
-                    if len(user_message) > 500:
-                        markdown += f"## User (Turn {turn_number}{timing_str}) - {summary}\n\n{user_message[:500]}\n\n"
+                    if not full_mode and len(user_message) > 500:
+                        markdown += f"## User (Turn {turn_number}{timing_str}) - {summary}\n\n{user_message[:500]}... [truncated]\n\n"
                     else:
                         markdown += f"## User (Turn {turn_number}{timing_str}) - {summary}\n\n{user_message}\n\n"
 
