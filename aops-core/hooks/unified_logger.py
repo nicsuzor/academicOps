@@ -67,7 +67,7 @@ def log_hook_event(
             hook_event=ctx.hook_event,
             logged_at=datetime.now().astimezone().replace(microsecond=0).isoformat(),
             exit_code=exit_code,
-            output=ctx.model_dump(exclude={"framework_content", "session_id"}),
+            **ctx.model_dump(exclude={"framework_content", "session_id"}),
         )
 
         # Add debug metrics to metadata

@@ -32,21 +32,21 @@ Complete lifecycle for non-interactive agent operation: task selection through P
 
 ### States
 
-| Status | Phase | Meaning |
-|--------|-------|---------|
-| `pending` | - | In queue, not claimed |
-| `active` | 1 | Agent claimed, beginning work |
-| `decomposing` | 1 | Effectual planner iterating |
-| `consensus` | 2 | Multi-agent review in progress |
-| `waiting` | 3 | Awaiting user decision |
-| `in_progress` | 4 | Worker executing approved plan |
-| `review` | 5 | PR filed, awaiting review consensus |
-| `merge_ready` | 5 | Reviews done, awaiting merge approval |
-| `done` | 6 | Merged, knowledge captured |
-| `blocked` | any | External dependency, with unblock condition |
-| `dormant` | - | User-initiated backburner |
-| `failed` | any | Unrecoverable error, with diagnostic |
-| `cancelled` | - | Abandoned, with reason |
+| Status        | Phase | Meaning                                     |
+| ------------- | ----- | ------------------------------------------- |
+| `pending`     | -     | In queue, not claimed                       |
+| `active`      | 1     | Agent claimed, beginning work               |
+| `decomposing` | 1     | Effectual planner iterating                 |
+| `consensus`   | 2     | Multi-agent review in progress              |
+| `waiting`     | 3     | Awaiting user decision                      |
+| `in_progress` | 4     | Worker executing approved plan              |
+| `review`      | 5     | PR filed, awaiting review consensus         |
+| `merge_ready` | 5     | Reviews done, awaiting merge approval       |
+| `done`        | 6     | Merged, knowledge captured                  |
+| `blocked`     | any   | External dependency, with unblock condition |
+| `dormant`     | -     | User-initiated backburner                   |
+| `failed`      | any   | Unrecoverable error, with diagnostic        |
+| `cancelled`   | -     | Abandoned, with reason                      |
 
 ### Transition Table
 
@@ -118,16 +118,17 @@ Polecat worker calls `claim_next_task()` with atomic lock.
 
 ### Timeout Policy
 
-| Operation | Timeout | On Timeout |
-|-----------|---------|------------|
-| Lock acquisition | 30s | Retry 3x, then skip task |
-| Hydration | 60s | -> `failed` |
-| Single decomposition iteration | 10min | -> `failed` |
-| Total decomposition | 2h | Force checkpoint, surface to user |
+| Operation                      | Timeout | On Timeout                        |
+| ------------------------------ | ------- | --------------------------------- |
+| Lock acquisition               | 30s     | Retry 3x, then skip task          |
+| Hydration                      | 60s     | -> `failed`                       |
+| Single decomposition iteration | 10min   | -> `failed`                       |
+| Total decomposition            | 2h      | Force checkpoint, surface to user |
 
 ### PR-Sized Definition
 
 A task is PR-sized when ALL of:
+
 - Estimated effort ≤ 4 hours (agent time)
 - Touches ≤ 10 files
 - Single logical unit (one "why")
@@ -137,6 +138,7 @@ A task is PR-sized when ALL of:
 ### Decomposition Depth Limit
 
 MAX_DEPTH = 10 iterations. If exceeded:
+
 - Task -> `failed` with diagnostic "irreducible after 10 iterations"
 - Surfaces to user with full decomposition history
 - User can: manually decompose, mark as `blocked`, or `cancel`
@@ -149,23 +151,28 @@ Appended to task body:
 ## Decomposition Proposal v{iteration}
 
 ### Subtasks
-| ID | Title | Estimate | Confidence |
-|----|-------|----------|------------|
-| subtask-1 | Description | 2h | medium |
-| subtask-2 | Description | 1h | high |
+
+| ID        | Title       | Estimate | Confidence |
+| --------- | ----------- | -------- | ---------- |
+| subtask-1 | Description | 2h       | medium     |
+| subtask-2 | Description | 1h       | high       |
 
 ### Dependency Graph
+
 subtask-1 -> subtask-2 (blocks)
 subtask-1 ~> subtask-3 (informs)
 
 ### Information Spikes (must resolve first)
+
 - [ ] spike-1: Question we need answered
 
 ### Assumptions (load-bearing, untested)
+
 - Assumption 1
 - Assumption 2
 
 ### Risks
+
 - Risk 1 (mitigation: ...)
 ```
 
@@ -175,11 +182,11 @@ subtask-1 ~> subtask-3 (informs)
 
 ### Reviewers
 
-| Reviewer | Role | Mandatory |
-|----------|------|-----------|
-| Custodiet | Authority check: is task within granted scope? | Yes |
-| Critic | Pedantic review: assumptions, logical errors, missing cases | Yes |
-| Domain specialist | Subject matter expertise | If task.tags intersect specialist.domains |
+| Reviewer          | Role                                                        | Mandatory                                 |
+| ----------------- | ----------------------------------------------------------- | ----------------------------------------- |
+| Custodiet         | Authority check: is task within granted scope?              | Yes                                       |
+| Critic            | Pedantic review: assumptions, logical errors, missing cases | Yes                                       |
+| Domain specialist | Subject matter expertise                                    | If task.tags intersect specialist.domains |
 
 ### Specialist Registry
 
@@ -215,16 +222,17 @@ suggestions: []  # Optional improvements
 
 ### Aggregation Rules
 
-| Condition | Result |
-|-----------|--------|
-| All APPROVE | -> `waiting` |
-| Any BLOCK | -> `decomposing` (with feedback) |
-| Any ESCALATE | -> `waiting` (escalated: true) |
-| Mixed CONCERN (no BLOCK) | -> Debate round |
+| Condition                | Result                           |
+| ------------------------ | -------------------------------- |
+| All APPROVE              | -> `waiting`                     |
+| Any BLOCK                | -> `decomposing` (with feedback) |
+| Any ESCALATE             | -> `waiting` (escalated: true)   |
+| Mixed CONCERN (no BLOCK) | -> Debate round                  |
 
 ### Debate Protocol
 
 Max 2 rounds. Each round:
+
 1. Reviewers see all concerns from previous round
 2. Each reviewer has 5 minutes to respond: WITHDRAW (concede) or MAINTAIN (defend)
 3. If all concerns WITHDRAWN -> `waiting`
@@ -240,11 +248,13 @@ When debate doesn't resolve:
 ## Unresolved Review Concerns
 
 ### Critic says:
+
 [concern text]
 Response: [defender text]
 Resolution: UNRESOLVED - user must decide
 
 ### Custodiet says:
+
 ...
 ```
 
@@ -255,6 +265,7 @@ Resolution: UNRESOLVED - user must decide
 ### Decision States
 
 Task in `waiting` has:
+
 - `approval_type`: `standard` | `escalated`
 - `decision_deadline`: timestamp (7 days from entering `waiting`)
 - `concerns`: list of unresolved concerns (if any)
@@ -267,17 +278,21 @@ Primary interface. Updated by `/daily` skill:
 ## Pending Decisions (3)
 
 ### Standard Approvals
-| Task | Summary | Risk | Age |
-|------|---------|------|-----|
-| [[aops-core-abc123]] | Decompose auth module | Low | 2d |
+
+| Task                 | Summary               | Risk | Age |
+| -------------------- | --------------------- | ---- | --- |
+| [[aops-core-abc123]] | Decompose auth module | Low  | 2d  |
 
 ### Escalated (requires attention)
-| Task | Summary | Concern | Age |
-|------|---------|---------|-----|
-| [[aops-core-def456]] | Refactor DB layer | Critic/Custodiet disagree on scope | 1d |
+
+| Task                 | Summary           | Concern                            | Age |
+| -------------------- | ----------------- | ---------------------------------- | --- |
+| [[aops-core-def456]] | Refactor DB layer | Critic/Custodiet disagree on scope | 1d  |
 ```
 
 ### Alternative: `/decisions` Command
+
+<!-- NS: let's just have one CLI -- merge this and polecat and task together into 'task' -->
 
 ```bash
 aops decisions                    # List all pending
@@ -292,17 +307,18 @@ aops decisions cancel abc123 "out of scope"
 
 ### User Actions
 
-| Action | Task State | Notes |
-|--------|------------|-------|
-| Approve | -> `in_progress` | Subtasks created, first claimed |
-| Request Changes | -> `decomposing` | Feedback attached |
-| Send Back | -> `pending` | Assignee cleared, ready for re-claim |
-| Backburner | -> `dormant` | Preserved but inactive |
-| Cancel | -> `cancelled` | Reason required |
+| Action          | Task State       | Notes                                |
+| --------------- | ---------------- | ------------------------------------ |
+| Approve         | -> `in_progress` | Subtasks created, first claimed      |
+| Request Changes | -> `decomposing` | Feedback attached                    |
+| Send Back       | -> `pending`     | Assignee cleared, ready for re-claim |
+| Backburner      | -> `dormant`     | Preserved but inactive               |
+| Cancel          | -> `cancelled`   | Reason required                      |
 
 ### Timeout Behavior
 
 If 7 days pass without user action:
+
 - Standard approvals: -> `failed` with diagnostic "approval timeout"
 - Escalated: Daily reminder on day 3, 5, 7; then `failed`
 
@@ -363,6 +379,7 @@ def select_worker(task):
 ### No Worker Available
 
 If no worker available after 3 attempts (1 hour apart):
+
 - Task -> `blocked` with `unblock_condition: "worker availability"`
 - Alert in daily note
 - Auto-retry when any worker becomes available
@@ -379,6 +396,7 @@ If no worker available after 3 attempts (1 hour apart):
 ### Progress Tracking
 
 Worker must update task every 30 minutes with:
+
 - Current step
 - Files touched
 - Any blockers discovered
@@ -391,29 +409,30 @@ If no update for 60 minutes: ping worker. If no response for 24 hours: -> `faile
 
 ### GitHub Webhook Integration
 
-| Event | Action |
-|-------|--------|
-| `pull_request.opened` | Trigger review agents |
-| `pull_request.synchronize` | Re-trigger review |
-| `pull_request_review.submitted` | Aggregate verdict |
-| `check_suite.completed` | Update CI status |
-| `pull_request.closed` (merged) | -> Phase 6 |
-| `pull_request.closed` (not merged) | -> `cancelled` |
+| Event                              | Action                |
+| ---------------------------------- | --------------------- |
+| `pull_request.opened`              | Trigger review agents |
+| `pull_request.synchronize`         | Re-trigger review     |
+| `pull_request_review.submitted`    | Aggregate verdict     |
+| `check_suite.completed`            | Update CI status      |
+| `pull_request.closed` (merged)     | -> Phase 6            |
+| `pull_request.closed` (not merged) | -> `cancelled`        |
 
 ### Webhook Reliability
 
 GitHub webhooks are not guaranteed. Mitigation:
+
 - Reconciliation job runs hourly
 - Compares PR state to task state
 - Triggers missed transitions
 
 ### Review Agents
 
-| Agent | Trigger | Timeout |
-|-------|---------|---------|
-| lgtm-bot | Always | 5min |
-| code-reviewer | Always | 30min |
-| sme-reviewer | If domain tags match | 30min |
+| Agent         | Trigger              | Timeout |
+| ------------- | -------------------- | ------- |
+| lgtm-bot      | Always               | 5min    |
+| code-reviewer | Always               | 30min   |
+| sme-reviewer  | If domain tags match | 30min   |
 
 ### Consensus: Same Protocol as Phase 2
 
@@ -429,9 +448,9 @@ Human gate. Daily note shows:
 ```markdown
 ## Ready to Merge (2)
 
-| PR | Task | Tests | Reviews | Summary |
-|----|------|-------|---------|---------|
-| [#123](url) | [[task-abc]] | Pass | 3/3 APPROVE | Added auth module |
+| PR          | Task         | Tests | Reviews     | Summary           |
+| ----------- | ------------ | ----- | ----------- | ----------------- |
+| [#123](url) | [[task-abc]] | Pass  | 3/3 APPROVE | Added auth module |
 ```
 
 User actions: merge (via GitHub) | request changes | close
@@ -451,6 +470,7 @@ Knowledge extraction uses `pr_number` as idempotency key. Re-running is safe.
 ### Data Collection
 
 Sources (with fallbacks):
+
 1. PR description and comments (GitHub API)
 2. Commit messages (git log)
 3. Task body (local markdown)
@@ -511,12 +531,12 @@ learnings:
 
 Rules for auto-creating follow-ups:
 
-| Condition | Follow-up Type | Requires Approval |
-|-----------|----------------|-------------------|
-| TODO comment in merged code | `task` with `tech-debt` tag | No |
-| Reviewer suggests improvement | `task` with `enhancement` tag | Yes |
-| Estimate >50% off | `learn` task to improve estimation | No |
-| Pattern discovered | Link to knowledge, no task | N/A |
+| Condition                     | Follow-up Type                     | Requires Approval |
+| ----------------------------- | ---------------------------------- | ----------------- |
+| TODO comment in merged code   | `task` with `tech-debt` tag        | No                |
+| Reviewer suggests improvement | `task` with `enhancement` tag      | Yes               |
+| Estimate >50% off             | `learn` task to improve estimation | No                |
+| Pattern discovered            | Link to knowledge, no task         | N/A               |
 
 Follow-ups created in `pending` with `parent` set to original task.
 
@@ -524,13 +544,13 @@ Infinite loop prevention: Follow-ups have `depth` field. Max depth = 2. Beyond t
 
 ### Output Locations
 
-| Artifact | Location | Purpose |
-|----------|----------|---------|
-| Full execution log | Task body | Audit trail |
-| Learnings | `data/aops-core/knowledge/` | Knowledge graph |
-| Follow-up tasks | Task queue | Future work |
-| Summary | Daily note "Completed" section | User visibility |
-| Metrics | Overwhelm dashboard | Progress tracking |
+| Artifact           | Location                       | Purpose           |
+| ------------------ | ------------------------------ | ----------------- |
+| Full execution log | Task body                      | Audit trail       |
+| Learnings          | `data/aops-core/knowledge/`    | Knowledge graph   |
+| Follow-up tasks    | Task queue                     | Future work       |
+| Summary            | Daily note "Completed" section | User visibility   |
+| Metrics            | Overwhelm dashboard            | Progress tracking |
 
 ### Daily Note Summary Format
 
@@ -538,6 +558,7 @@ Infinite loop prevention: Follow-ups have `depth` field. Max depth = 2. Beyond t
 ## Completed Today
 
 ### [[aops-core-abc123]] Auth Module Implementation
+
 - **PR**: [#123](url) merged at 10:30
 - **Effort**: 6h (estimated 4h)
 - **Learnings**: 2 patterns, 1 mistake caught
@@ -550,16 +571,17 @@ Infinite loop prevention: Follow-ups have `depth` field. Max depth = 2. Beyond t
 
 ### Retry Policies
 
-| Operation | Max Retries | Backoff | On Exhaustion |
-|-----------|-------------|---------|---------------|
-| Lock acquisition | 3 | 10s, 30s, 60s | Skip task |
-| GitHub API | 3 | 1s, 5s, 30s | Proceed without |
-| Reviewer invocation | 2 | 30s, 60s | Timeout verdict |
-| Worker ping | 3 | 5min, 15min, 30min | -> `failed` |
+| Operation           | Max Retries | Backoff            | On Exhaustion   |
+| ------------------- | ----------- | ------------------ | --------------- |
+| Lock acquisition    | 3           | 10s, 30s, 60s      | Skip task       |
+| GitHub API          | 3           | 1s, 5s, 30s        | Proceed without |
+| Reviewer invocation | 2           | 30s, 60s           | Timeout verdict |
+| Worker ping         | 3           | 5min, 15min, 30min | -> `failed`     |
 
 ### Cleanup on Failure/Cancellation
 
 When task -> `failed` or `cancelled` from `in_progress`:
+
 1. If branch exists: delete branch (or mark for cleanup)
 2. If PR exists: close PR with comment explaining
 3. Release worker lock
@@ -568,6 +590,7 @@ When task -> `failed` or `cancelled` from `in_progress`:
 ### Recovery from `failed`
 
 User can retry a failed task:
+
 1. Task -> `pending`
 2. `diagnostic` from failure preserved in body
 3. `retry_count` incremented
@@ -582,7 +605,15 @@ User can retry a failed task:
 Every state transition logged to `data/aops-core/audit/transitions.jsonl`:
 
 ```json
-{"ts": "2026-02-12T10:30:00Z", "task": "abc123", "from": "consensus", "to": "waiting", "trigger": "all_approve", "actor": "system", "idempotency_key": "abc123-consensus-1707734400"}
+{
+  "ts": "2026-02-12T10:30:00Z",
+  "task": "abc123",
+  "from": "consensus",
+  "to": "waiting",
+  "trigger": "all_approve",
+  "actor": "system",
+  "idempotency_key": "abc123-consensus-1707734400"
+}
 ```
 
 ### Metrics (for dashboard)
@@ -595,12 +626,12 @@ Every state transition logged to `data/aops-core/audit/transitions.jsonl`:
 
 ### Alerts
 
-| Condition | Severity | Channel |
-|-----------|----------|---------|
-| Task stuck > 24h | Warning | Daily note |
-| Task stuck > 72h | Error | Daily note + email |
-| Failure rate > 20% | Error | Immediate |
-| No workers available | Warning | Daily note |
+| Condition            | Severity | Channel            |
+| -------------------- | -------- | ------------------ |
+| Task stuck > 24h     | Warning  | Daily note         |
+| Task stuck > 72h     | Error    | Daily note + email |
+| Failure rate > 20%   | Error    | Immediate          |
+| No workers available | Warning  | Daily note         |
 
 ---
 
