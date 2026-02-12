@@ -165,7 +165,7 @@ def write_temp_file(
         return Path(f.name)
 
 
-def get_session_id(input_data: dict[str, Any]) -> str:
+def get_session_id(input_data: dict[str, Any] | None = None) -> str:
     """Get session ID from hook input data or environment.
 
     Args:
@@ -177,7 +177,10 @@ def get_session_id(input_data: dict[str, Any]) -> str:
     Raises:
         ValueError: If require=True and session_id not found
     """
-    session_id = input_data.get("session_id") or os.environ.get("CLAUDE_SESSION_ID")
+    if input_data:
+        session_id = input_data.get("session_id")
+    if not session_id:
+        session_id = os.environ.get("CLAUDE_SESSION_ID")
     if not session_id:
         raise ValueError(
             "session_id is required in hook input_data or CLAUDE_SESSION_ID env var. "
