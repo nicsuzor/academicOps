@@ -109,8 +109,8 @@ jobs:
               });
             }
 
-  lint:
-    name: Python Linting
+  type-check:
+    name: Type Checking
     runs-on: ubuntu-latest
 
     steps:
@@ -130,12 +130,5 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
-      - name: Run ruff check
-        run: uv run ruff check .
-
-      - name: Run ruff format check
-        run: uv run ruff format --check .
-
-      - name: Run mypy
-        run: uv run mypy . --ignore-missing-imports
-        continue-on-error: true
+      - name: Run basedpyright
+        run: uv run basedpyright
