@@ -45,4 +45,5 @@ install-gemini:
 	@echo "Installing aops plugin for Gemini CLI..."
 	@(command gemini extensions uninstall aops-core 2>/dev/null || echo "Gemini plugin not installed -- skipping removal") && \
 	command gemini extensions install git@github.com:nicsuzor/aops-dist.git --consent --auto-update --pre-release && \
+	command gemini extensions list && \
 	echo "✓ Gemini CLI plugin installed"
