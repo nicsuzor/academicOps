@@ -37,6 +37,7 @@ from lib.session_state import SessionState
 
 # --- Minimal gate configs for testing ---
 
+
 def _make_custodiet_config(threshold: int = 5) -> GateConfig:
     """Minimal custodiet-like gate config for testing."""
     return GateConfig(
@@ -192,8 +193,7 @@ class TestSubagentGateDispatch:
 
         # At least one gate should have incremented ops
         total_ops = sum(
-            gs.ops_since_open for gs in state.gates.values()
-            if gs.status == GateStatus.OPEN
+            gs.ops_since_open for gs in state.gates.values() if gs.status == GateStatus.OPEN
         )
         assert total_ops > 0
 

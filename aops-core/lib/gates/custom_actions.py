@@ -109,8 +109,7 @@ def execute_custom_action(
 
         if not prompt:
             raise RuntimeError(
-                "hydrate_prompt: no prompt found in raw_input "
-                f"(keys: {list(ctx.raw_input.keys())})"
+                f"hydrate_prompt: no prompt found in raw_input (keys: {list(ctx.raw_input.keys())})"
             )
 
         transcript_path = ctx.transcript_path or ctx.raw_input.get("transcript_path")
@@ -135,9 +134,7 @@ def execute_custom_action(
         state.metrics["temp_path"] = str(temp_path)
 
         registry = TemplateRegistry.instance()
-        instruction = registry.render(
-            "custodiet.instruction", {"temp_path": str(temp_path)}
-        )
+        instruction = registry.render("custodiet.instruction", {"temp_path": str(temp_path)})
 
         return GateResult.allow(
             system_message=f"Compliance report ready: {temp_path}",

@@ -1,8 +1,8 @@
 # academicOps: A constitutional automation framework for academic work
 
-- Enforces a logical system: every rule derivable from AXIOMS.md with HEURISTICS.md supported by evidence.
+- Enforces a logical system: every rule derivable from aops-core/AXIOMS.md with aops-core/HEURISTICS.md supported by evidence.
 - Reflexive, self-improving agents must follow a CATEGORICAL IMPERATIVE: every action must be supported by a general rule.
-- Graduated approach to enforcement: enforcement-map.md sets out a full map of rules to enforcement mechanism, from gentle reminders to hard blocks.
+- Graduated approach to enforcement: aops-core/framework/enforcement-map.md sets out a full map of rules to enforcement mechanism, from gentle reminders to hard blocks.
 - Agent autonomy is limited to the authority they were granted: live ultra vires detection loop
 - Direct integration with beads for task memomory, memory mcp for vector search
 - Full personal knowledge base with gardening and continuous remembering skills
@@ -41,7 +41,7 @@ Gemini CLI (warning: auto accept flag below, remove --consent if you're concerne
 
 ## Core Loop
 
-**For detailed specification, see**: [[aops-core/specs/flow.md]]
+**For detailed specification, see**: [[specs/flow.md]]
 
 **Goal**: The minimal viable framework with ONE complete, working loop.
 
@@ -68,12 +68,14 @@ flowchart TD
         SkipCheck -- No --> Context[Context -> Temp File]
         Context --> Hydrator[[prompt-hydrator Subagent]]
         Hydrator --> Plan[/Hydration Plan/]
+        Hydrator --> GateCr[Critic Gate: CLOSED]
 
         Hydrator --- HydrateExpl[Fetches: Task queue, memory server,<br/>WORKFLOWS index, and relevant files]
 
         Plan --> Critic[[critic Subagent]]
         Critic --> CriticCheck{Plan Approved?}
         CriticCheck -- REVISE --> Plan
+        CriticCheck -- PROCEED --> OpenCr[Critic Gate: OPEN]
         Critic --- CriticExpl[Evaluates plan for assumptions,<br/>safety gaps, and logic errors]
     end
 
@@ -82,13 +84,15 @@ flowchart TD
 
         Router3 -.-> GateH[Hydration Gate]
         GateH --> GateT[Task Gate]
+        GateT --> GateCr_Exec[Critic Gate]
 
         GateH --- HExpl[Blocks mutating tools until<br/>an execution plan is generated]
         GateT --- TExpl[Enforces work tracking by requiring<br/>an active task for destructive actions]
+        GateCr_Exec --- CrExpl[Blocks edit tools until plan is reviewed]
 
-        GateT --> ProbCheck{Audit Threshold?}
-        ProbCheck -- Yes ~14% --> GateC[Custodiet Gate]
-        ProbCheck -- No --> Tool[[Execute Tool]]
+        GateCr_Exec --> ThresholdCheck{Audit Threshold?}
+        ThresholdCheck -- Yes ~15 ops --> GateC[Custodiet Gate]
+        ThresholdCheck -- No --> Tool[[Execute Tool]]
 
         GateC --- CExpl[Reviews session history for<br/>principle violations and scope drift]
         GateC --> Tool
@@ -100,22 +104,22 @@ flowchart TD
 
     subgraph Termination [4. Reflection & Close]
         AfterAgent[AfterAgent Event] --> Router5{Universal Router}
-        Router5 -.-> RefCheck[Validate Reflection]
-        RefCheck --- RefExpl[Ensures Framework Reflection includes<br/>all 8 required metadata fields]
+        Router5 -.-> GateHa[Handover Gate]
+        GateHa --- HaExpl[Ensures Framework Reflection includes<br/>all 8 required metadata fields]
 
-        RefCheck --> Stop[Stop Event]
+        GateHa --> Stop[Stop Event]
         Stop --> Router6{Universal Router}
-        Router6 -.-> StopGate[Stop Gate]
-        StopGate --> Commit[Commit & Close]
+        Router6 -.-> GateQ[QA Gate]
+        GateQ --> Commit[Commit & Close]
 
-        StopGate --- StopExpl[Final gate: Mandates independent<br/>QA passage and clean git state]
+        GateQ --- QExpl[Final gate: Mandates independent<br/>QA passage and clean git state]
     end
 
     %% Flow Connections
     Start --> SStart
     State --> UPS
     SkipCheck -- Yes --> PreTool
-    CriticCheck -- PROCEED --> PreTool
+    OpenCr --> PreTool
     Accountant --> AfterAgent
     Commit --> End([Session End])
 
@@ -128,11 +132,11 @@ flowchart TD
     classDef explain fill:none,stroke:#888,stroke-width:1px,color:#888,font-style:italic
 
     class Router1,Router2,Router3,Router4,Router5,Router6,Setup,Accountant,Commit hook
-    class StartGate,SkipCheck,GateH,GateT,GateC,CriticCheck,RefCheck,StopGate,ProbCheck gate
+    class StartGate,SkipCheck,GateH,GateT,GateC,GateCr,OpenCr,GateCr_Exec,GateHa,GateQ,ThresholdCheck gate
     class Hydrator,Critic agent
     class State,Plan,Context state
     class SStart,UPS,PreTool,PostTool,AfterAgent,Stop event
-    class InitExpl,HydrateExpl,CriticExpl,HExpl,TExpl,CExpl,RefExpl,StopExpl explain
+    class InitExpl,HydrateExpl,CriticExpl,HExpl,TExpl,CrExpl,CExpl,HaExpl,QExpl explain
 
     %% Subgraph Styling
     style Initialization fill:none,stroke:#888,stroke-dasharray: 5 5
@@ -147,11 +151,11 @@ flowchart TD
 
 academicOps is built as a **validated logical system**. Every rule traces back to first principles:
 
-| Level | Document               | Contains                    | Status                           |
-| ----- | ---------------------- | --------------------------- | -------------------------------- |
-| 1     | **AXIOMS.md**          | Inviolable principles       | Cannot be violated               |
-| 2     | **HEURISTICS.md**      | Empirically validated rules | Can be revised with evidence     |
-| 3     | **enforcement-map.md** | Enforcement mechanisms      | Maps rules to technical controls |
+| Level | Document                                | Contains                    | Status                           |
+| ----- | --------------------------------------- | --------------------------- | -------------------------------- |
+| 1     | **aops-core/AXIOMS.md**                 | Inviolable principles       | Cannot be violated               |
+| 2     | **aops-core/HEURISTICS.md**             | Empirically validated rules | Can be revised with evidence     |
+| 3     | **aops-core/framework/enforcement-map.md** | Enforcement mechanisms      | Maps rules to technical controls |
 
 **The derivation rule**: Every convention MUST trace to an axiom. If it can't be derived, the convention is invalid.
 
@@ -184,7 +188,7 @@ The framework distinguishes between **what** to do and **how** to do it:
 
 **Workflows** orchestrate those building blocks into coherent processes. A workflow defines the sequence (spec review → implementation → QA), while skills handle each step's mechanics.
 
-For full specification, see [[aops-core/specs/workflow-system-spec]].
+For full specification, see [[specs/workflow-system-spec.md]].
 
 ### Enforcement Levels
 
@@ -231,7 +235,7 @@ The self-improvement cycle has three phases:
 - **Skill compliance**: Which suggested skills were actually invoked
 - **Learning observations**: Mistakes and corrections with root cause categories
 
-See [[specs/framework-observability]] for details
+See [[specs/framework-observability.md]] for details
 
 **2. Analyze** - Humans identify patterns:
 
@@ -245,7 +249,7 @@ See [[specs/framework-observability]] for details
 - Document root cause and intervention in a task
 - Verify improvement in subsequent sessions
 
-See [[specs/feedback-loops]] for the complete improvement workflow.
+See [[specs/feedback-loops.md]] for the complete improvement workflow.
 
 ### Memory Architecture
 
@@ -266,7 +270,7 @@ $ACA_DATA is a **current state machine**—always up to date, always perfect. Th
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Skills (24) | remember, analyst, audit, session-insights, garden, hypervisor, task-viz, etc.                                                                                             |
 | Agents (5)  | prompt-hydrator, critic, custodiet, qa, effectual-planner                                                                                                                  |
-| Hooks (19)  | router.py (Universal Hook Router), unified_logger.py, user_prompt_submit.py, session_env_setup.py, gate_registry.py (hydration, task_required, custodiet, stop_gate, etc.) |
+| Hooks (19)  | router.py (Universal Hook Router), unified_logger.py, user_prompt_submit.py, session_env_setup.py, gate system (hydration, task, critic, custodiet, qa, handover)         |
 | Governance  | 30+ axioms and heuristics with mechanical and instructional enforcement                                                                                                    |
 
 ### Key Agents
@@ -276,7 +280,7 @@ $ACA_DATA is a **current state machine**—always up to date, always perfect. Th
 | **framework**       | opus  | Primary entry point for framework changes. Handles full task lifecycle. |
 | **prompt-hydrator** | haiku | Enriches prompts with context, suggests workflows, applies guardrails   |
 | **critic**          | opus  | Reviews plans for errors and hidden assumptions before execution        |
-| **custodiet**       | haiku | Periodic compliance audits (~14% of tool calls). Detects drift.         |
+| **custodiet**       | haiku | Periodic compliance audits (every 15 tool calls). Detects drift.        |
 | **qa**              | opus  | Independent verification that acceptance criteria are met               |
 
 The **framework agent** embodies the self-reflexive principle—it both executes framework tasks AND proposes improvements to the framework itself.

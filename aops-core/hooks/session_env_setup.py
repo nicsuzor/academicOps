@@ -40,7 +40,7 @@ def set_persistent_env(env_dict: dict[str, str]):
         try:
             with open(env_path, "a") as f:
                 for key, value in env_dict.items():
-                    f.write(f"export {key}={value}\n")
+                    f.write(f'export {key}="{value}"\n')
         except Exception as e:
             print(f"WARNING: Failed to write to CLAUDE_ENV_FILE: {e}", file=sys.stderr)
 
