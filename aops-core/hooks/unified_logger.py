@@ -64,7 +64,6 @@ def log_hook_event(
         # Create log entry from superclass fields + new metadata
         log_entry = HookLogEntry(
             session_id=session_id,
-            hook_event=ctx.hook_event,
             logged_at=datetime.now().astimezone().replace(microsecond=0).isoformat(),
             exit_code=exit_code,
             **ctx.model_dump(exclude={"framework_content", "session_id"}),

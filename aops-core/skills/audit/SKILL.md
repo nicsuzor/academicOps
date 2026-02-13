@@ -354,13 +354,13 @@ Quantitative scan of recent session transcripts to detect operational failures �
 
 **Distinction from Session Effectiveness** (the `session-effectiveness` sub-workflow):
 
-| Aspect              | Transcript QA (Phase 8b)                  | Session Effectiveness                        |
-| ------------------- | ----------------------------------------- | -------------------------------------------- |
-| Scope               | Batch — all sessions in last 48h          | Single session                               |
-| Method              | Mechanical extraction from JSONL errors   | LLM qualitative analysis of full transcript  |
-| Output              | Severity-weighted investigation queue     | 6-dimension evaluation report                |
-| Typical trigger     | Every full audit                          | On-demand or session-end hook                |
-| Detects             | Hydration gaps, stuck loops, tool crashes | Token waste, goal drift, sycophancy patterns |
+| Aspect          | Transcript QA (Phase 8b)                  | Session Effectiveness                        |
+| --------------- | ----------------------------------------- | -------------------------------------------- |
+| Scope           | Batch — all sessions in last 48h          | Single session                               |
+| Method          | Mechanical extraction from JSONL errors   | LLM qualitative analysis of full transcript  |
+| Output          | Severity-weighted investigation queue     | 6-dimension evaluation report                |
+| Typical trigger | Every full audit                          | On-demand or session-end hook                |
+| Detects         | Hydration gaps, stuck loops, tool crashes | Token waste, goal drift, sycophancy patterns |
 
 **Run from `aops-core/` directory:**
 

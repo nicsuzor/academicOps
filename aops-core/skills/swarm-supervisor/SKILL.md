@@ -39,6 +39,7 @@ Orchestrate the complete non-interactive agent workflow: decompose → review �
 The supervisor decomposes large tasks into PR-sized subtasks.
 
 **PR-Sized Definition** (all must be true):
+
 - Estimated effort ≤ 4 hours
 - Touches ≤ 10 files
 - Single logical unit (one "why")
@@ -66,21 +67,26 @@ The supervisor decomposes large tasks into PR-sized subtasks.
 ## Decomposition Proposal
 
 ### Subtasks
-| ID | Title | Estimate | Confidence |
-|----|-------|----------|------------|
-| subtask-1 | Description | 2h | medium |
+
+| ID        | Title       | Estimate | Confidence |
+| --------- | ----------- | -------- | ---------- |
+| subtask-1 | Description | 2h       | medium     |
 
 ### Dependency Graph
+
 subtask-1 -> subtask-2 (blocks)
 subtask-1 ~> subtask-3 (informs)
 
 ### Information Spikes (must resolve first)
+
 - [ ] spike-1: Question we need answered
 
 ### Assumptions (load-bearing, untested)
+
 - Assumption 1
 
 ### Risks
+
 - Risk 1 (mitigation: ...)
 ```
 
@@ -89,11 +95,12 @@ subtask-1 ~> subtask-3 (informs)
 Supervisor invokes reviewer agents and synthesizes their feedback before human approval.
 
 **Reviewers**:
-| Reviewer | Role | Mandatory | Model |
-|----------|------|-----------|-------|
-| Custodiet | Authority check: is task within granted scope? | Yes | haiku |
-| Critic | Pedantic review: assumptions, logical errors, missing cases | Yes | opus |
-| Domain specialist | Subject matter expertise | If task.tags intersect specialist.domains | varies |
+
+| Reviewer          | Role                                                        | Mandatory                                 | Model  |
+| ----------------- | ----------------------------------------------------------- | ----------------------------------------- | ------ |
+| Custodiet         | Authority check: is task within granted scope?              | Yes                                       | haiku  |
+| Critic            | Pedantic review: assumptions, logical errors, missing cases | Yes                                       | opus   |
+| Domain specialist | Subject matter expertise                                    | If task.tags intersect specialist.domains | varies |
 
 ---
 
@@ -107,15 +114,19 @@ Before invoking reviewers, prepare a context document containing:
 # Review Request: <task-id>
 
 ## Original Request
+
 [User's original task description]
 
 ## Decomposition Proposal
+
 [The decomposition from Phase 1]
 
 ## Files/Scope Affected
+
 [List of files the subtasks will touch]
 
 ## Relevant Principles
+
 [Extract relevant AXIOMS/HEURISTICS for this domain]
 ```
 
@@ -185,13 +196,13 @@ Wait for both reviewers (timeout: 5 minutes each).
 
 Parse responses into structured verdicts:
 
-| Critic Verdict | Custodiet Verdict | Combined Result |
-|----------------|-------------------|-----------------|
-| PROCEED | OK | → APPROVED |
-| PROCEED | WARN | → APPROVED (log warning) |
-| REVISE | OK/WARN | → NEEDS_REVISION |
-| HALT | any | → BLOCKED |
-| any | BLOCK | → BLOCKED |
+| Critic Verdict | Custodiet Verdict | Combined Result          |
+| -------------- | ----------------- | ------------------------ |
+| PROCEED        | OK                | → APPROVED               |
+| PROCEED        | WARN              | → APPROVED (log warning) |
+| REVISE         | OK/WARN           | → NEEDS_REVISION         |
+| HALT           | any               | → BLOCKED                |
+| any            | BLOCK             | → BLOCKED                |
 
 ---
 
@@ -205,18 +216,21 @@ Parse responses into structured verdicts:
 **Verdict**: APPROVED
 
 ### Reviewer Summary
-| Reviewer | Verdict | Key Points |
-|----------|---------|------------|
-| Critic | PROCEED | [1-line summary] |
-| Custodiet | OK | Within scope |
+
+| Reviewer  | Verdict | Key Points       |
+| --------- | ------- | ---------------- |
+| Critic    | PROCEED | [1-line summary] |
+| Custodiet | OK      | Within scope     |
 
 ### Minor Suggestions (optional)
+
 - [Any non-blocking improvements from reviewers]
 
 → Proceeding to human approval gate (status='waiting')
 ```
 
 Then:
+
 ```python
 update_task(id=task_id, status='waiting', body=synthesis_markdown)
 ```
@@ -229,6 +243,7 @@ update_task(id=task_id, status='waiting', body=synthesis_markdown)
 **Verdict**: NEEDS_REVISION
 
 ### Issues Requiring Resolution
+
 1. [Issue from critic]: [specific problem]
    - **Suggested fix**: [how to address]
 
@@ -236,6 +251,7 @@ update_task(id=task_id, status='waiting', body=synthesis_markdown)
    - **Suggested fix**: [how to narrow scope]
 
 ### Required Actions
+
 - [ ] Address issue 1
 - [ ] Address issue 2
 - [ ] Re-run review after changes
@@ -244,6 +260,7 @@ update_task(id=task_id, status='waiting', body=synthesis_markdown)
 ```
 
 Then:
+
 ```python
 update_task(id=task_id, status='active', body=synthesis_markdown)
 # Re-enter Phase 1 with reviewer feedback
@@ -257,17 +274,20 @@ update_task(id=task_id, status='active', body=synthesis_markdown)
 **Verdict**: BLOCKED
 
 ### Blocking Issues
-| Reviewer | Issue | Principle Violated |
-|----------|-------|-------------------|
-| [reviewer] | [issue] | [A#X or H#X] |
+
+| Reviewer   | Issue   | Principle Violated |
+| ---------- | ------- | ------------------ |
+| [reviewer] | [issue] | [A#X or H#X]       |
 
 ### Resolution Required
+
 [Specific action needed before this can proceed]
 
 → Escalating to human (status='blocked')
 ```
 
 Then:
+
 ```python
 update_task(id=task_id, status='blocked', body=synthesis_markdown)
 ```
@@ -284,6 +304,7 @@ If reviewers return conflicting verdicts (one PROCEED, one REVISE), initiate a d
 ## Debate Round 1
 
 ### Conflicting Assessments
+
 - **Critic** says PROCEED: "[rationale]"
 - **Custodiet** says WARN: "[concern]"
 
@@ -316,9 +337,9 @@ Respond with:
 
 **Debate Outcomes**:
 
-| Round Result | Action |
-|--------------|--------|
-| Both reviewers align | Use aligned verdict |
+| Round Result                     | Action                        |
+| -------------------------------- | ----------------------------- |
+| Both reviewers align             | Use aligned verdict           |
 | Still conflicting after 2 rounds | Synthesize for human decision |
 
 **Synthesizing Unresolved Debates**:
@@ -337,9 +358,11 @@ Respond with:
 [Their final position]
 
 ### Core Tension
+
 [Supervisor's 1-sentence summary of why they disagree]
 
 ### Options for Human
+
 1. **Proceed as planned**: Accept critic's assessment
 2. **Narrow scope**: Accept custodiet's constraint
 3. **Request more info**: Specific question to resolve
@@ -386,13 +409,14 @@ for domain in matching_domains:
 Task waits for human decision. Surfaced via `/daily` skill in daily note.
 
 **User Actions**:
-| Action | Task State | Notes |
-|--------|------------|-------|
-| Approve | → in_progress | Subtasks created, first claimed |
-| Request Changes | → decomposing | Feedback attached |
-| Send Back | → pending | Assignee cleared |
-| Backburner | → dormant | Preserved but inactive |
-| Cancel | → cancelled | Reason required |
+
+| Action          | Task State    | Notes                           |
+| --------------- | ------------- | ------------------------------- |
+| Approve         | → in_progress | Subtasks created, first claimed |
+| Request Changes | → decomposing | Feedback attached               |
+| Send Back       | → pending     | Assignee cleared                |
+| Backburner      | → dormant     | Preserved but inactive          |
+| Cancel          | → cancelled   | Reason required                 |
 
 ### Phase 4: Worker Execution
 
@@ -407,6 +431,7 @@ Supervisor dispatches workers based on task requirements. This phase transforms 
 > change profiles without editing this skill.
 
 Load worker registry before dispatch. Each worker has:
+
 - **Capabilities**: What task types it can handle
 - **Cost/Speed**: Resource trade-offs (1-5 scale)
 - **Max Concurrent**: Capacity limit for parallel dispatch
@@ -430,9 +455,11 @@ Extract required capabilities from task metadata:
 **Estimated effort**: <from decomposition>
 
 ### Required Capabilities
+
 [Map task characteristics to capabilities]
 
 ### Constraints
+
 - Deadline pressure: [yes/no]
 - Budget sensitivity: [yes/no]
 - Quality criticality: [low/medium/high]
@@ -508,6 +535,7 @@ polecat swarm -c 2 -g 2 -p <project>
 > compositions based on queue size and task mix.
 
 Calculate swarm composition from:
+
 - Number of ready tasks
 - Task complexity/type distribution
 - Current capacity limits
@@ -522,11 +550,13 @@ Calculate swarm composition from:
 **Swarm**: <worker counts by type>
 
 ### Task Assignments
-| Task | Worker Type | Reason |
-|------|-------------|--------|
-| <subtask-id> | <worker> | <selection rule that matched> |
+
+| Task         | Worker Type | Reason                        |
+| ------------ | ----------- | ----------------------------- |
+| <subtask-id> | <worker>    | <selection rule that matched> |
 
 ### Capacity Status
+
 [Per-worker-type: current/max from WORKERS.md]
 ```
 
@@ -540,6 +570,7 @@ Calculate swarm composition from:
 > update frequencies and alert thresholds.
 
 Each worker type has configured:
+
 - **Expected Heartbeat**: How often task status should update
 - **Alert Threshold**: Silence duration that triggers stall detection
 
@@ -569,13 +600,13 @@ polecat reset-stalled --hours 4
    - Check for blocking dependencies that appeared
 3. Action based on diagnosis:
 
-| Diagnosis | Action |
-|-----------|--------|
-| Worker crashed | Reset task to active, re-dispatch |
-| Task blocked | Mark task blocked, append reason |
+| Diagnosis               | Action                             |
+| ----------------------- | ---------------------------------- |
+| Worker crashed          | Reset task to active, re-dispatch  |
+| Task blocked            | Mark task blocked, append reason   |
 | Infinite loop suspected | Reset task, add constraint to body |
-| Resource exhaustion | Wait, retry with same worker type |
-| Unknown | Reset task, flag for human review |
+| Resource exhaustion     | Wait, retry with same worker type  |
+| Unknown                 | Reset task, flag for human review  |
 ```
 
 ---
@@ -588,6 +619,7 @@ polecat reset-stalled --hours 4
 > for exit code meanings and recovery parameters.
 
 Map worker exit codes to supervisor actions:
+
 - **Success (0)**: Proceed to merge phase
 - **Task/Setup failures**: Apply retry/block logic per configuration
 - **Queue empty**: Normal termination, no action needed
@@ -604,26 +636,32 @@ Map worker exit codes to supervisor actions:
 **Error Output**: <last 50 lines>
 
 ### Diagnosis
+
 [Supervisor's analysis of what went wrong]
 
 ### Recovery Action
+
 [One of: RETRY, REASSIGN, BLOCK, ESCALATE]
 
 ### If RETRY:
+
 - Retry count: [n/max per WORKERS.md Retry Limits]
 - Backoff: [per WORKERS.md configuration]
 
 ### If REASSIGN:
+
 - Original worker: <type>
 - New worker: <type>
 - Reason: [capability mismatch, etc.]
 
 ### If BLOCK:
+
 - Blocking reason appended to task body
 - Status set to 'blocked'
 - Surfaced in daily note for human
 
 ### If ESCALATE:
+
 - Task assigned to human (assignee='nic')
 - Full context preserved in task body
 ```
@@ -635,11 +673,13 @@ Map worker exit codes to supervisor actions:
 When multiple workers execute simultaneously, the supervisor ensures:
 
 **Dependency Respect**:
+
 - Workers only claim tasks with satisfied `depends_on`
 - `claim_next_task()` API enforces this automatically
 - Supervisor verifies before dispatch
 
 **Conflict Prevention**:
+
 - Each worker operates in isolated worktree
 - No two workers touch same task (atomic claiming)
 - If decomposition reveals shared files:
@@ -656,21 +696,25 @@ When multiple workers execute simultaneously, the supervisor ensures:
 **Duration**: <elapsed>
 
 ### Completed (ready for merge)
-| Task | Worker | Duration | PR |
-|------|--------|----------|-----|
-| subtask-1 | claude-1 | 23min | #456 |
+
+| Task      | Worker   | Duration | PR   |
+| --------- | -------- | -------- | ---- |
+| subtask-1 | claude-1 | 23min    | #456 |
 
 ### In Progress
-| Task | Worker | Started | Last Update |
-|------|--------|---------|-------------|
-| subtask-2 | gemini-1 | 10min ago | 2min ago |
+
+| Task      | Worker   | Started   | Last Update |
+| --------- | -------- | --------- | ----------- |
+| subtask-2 | gemini-1 | 10min ago | 2min ago    |
 
 ### Pending
-| Task | Blocked By | Est. Start |
-|------|-----------|------------|
-| subtask-3 | subtask-1 | After merge |
+
+| Task      | Blocked By | Est. Start  |
+| --------- | ---------- | ----------- |
+| subtask-3 | subtask-1  | After merge |
 
 ### Summary
+
 - Throughput: 2.6 tasks/hour
 - Completion: 1/5 (20%)
 - Est. remaining: ~1.5 hours
@@ -683,12 +727,13 @@ Human gate. Supervisor surfaces merge-ready tasks in daily note.
 ```markdown
 ## Ready to Merge
 
-| PR | Task | Tests | Reviews | Summary |
-|----|------|-------|---------|---------|
-| [#123](url) | [[task-abc]] | Pass | 3/3 APPROVE | Added auth module |
+| PR          | Task         | Tests | Reviews     | Summary           |
+| ----------- | ------------ | ----- | ----------- | ----------------- |
+| [#123](url) | [[task-abc]] | Pass  | 3/3 APPROVE | Added auth module |
 ```
 
 **Merge via**:
+
 - `gh pr merge --squash --delete-branch`
 - Or GitHub Actions auto-merge for clean PRs
 
@@ -734,12 +779,12 @@ All dispatch decisions are made by this supervisor agent, not by scripts.
 > and cron schedules. See [[WORKERS.md]] for runner types, capabilities,
 > and sizing defaults — the supervisor reads these at dispatch time.
 
-| Hook | Trigger | What it does | Script |
-|------|---------|--------------|--------|
-| `queue-drain` | cron / manual | Checks queue, starts supervisor session | `scripts/hooks/lifecycle/queue-drain.sh` |
-| `post-finish` | polecat finish | Sends completion notification | `scripts/hooks/lifecycle/post-finish.sh` |
-| `stale-check` | cron / manual | Resets tasks stuck beyond threshold | `scripts/hooks/lifecycle/stale-check.sh` |
-| `merge-ready` | cron / manual | Lists merge-ready PRs, notifies | `scripts/hooks/lifecycle/merge-ready.sh` |
+| Hook          | Trigger        | What it does                            | Script                                   |
+| ------------- | -------------- | --------------------------------------- | ---------------------------------------- |
+| `queue-drain` | cron / manual  | Checks queue, starts supervisor session | `scripts/hooks/lifecycle/queue-drain.sh` |
+| `post-finish` | polecat finish | Sends completion notification           | `scripts/hooks/lifecycle/post-finish.sh` |
+| `stale-check` | cron / manual  | Resets tasks stuck beyond threshold     | `scripts/hooks/lifecycle/stale-check.sh` |
+| `merge-ready` | cron / manual  | Lists merge-ready PRs, notifies         | `scripts/hooks/lifecycle/merge-ready.sh` |
 
 **Agent-driven dispatch**: When `queue-drain.sh` starts a supervisor session,
 the supervisor (this skill) reads WORKERS.md, inspects the task queue via

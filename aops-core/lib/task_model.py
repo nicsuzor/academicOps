@@ -38,11 +38,12 @@ import json
 import logging
 import re
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 import yaml
 
@@ -184,18 +185,18 @@ class TransitionError(Exception):
 GuardFunc = Callable[..., tuple[bool, str | None]]
 
 
-def _guard_always_pass(task: "Task", **kwargs: Any) -> tuple[bool, str | None]:
+def _guard_always_pass(task: Task, **kwargs: Any) -> tuple[bool, str | None]:
     """Guard that always passes (no additional requirements)."""
     return True, None
 
 
-def _guard_lock_acquired(task: "Task", **kwargs: Any) -> tuple[bool, str | None]:
+def _guard_lock_acquired(task: Task, **kwargs: Any) -> tuple[bool, str | None]:
     """Guard: lock must be acquired (checked externally, trust caller)."""
     # Lock acquisition is handled at the task manager level, not here
     return True, None
 
 
-def _guard_unblock_condition_set(task: "Task", **kwargs: Any) -> tuple[bool, str | None]:
+def _guard_unblock_condition_set(task: Task, **kwargs: Any) -> tuple[bool, str | None]:
     """Guard: unblock_condition must be provided for BLOCKED status."""
     unblock_condition = kwargs.get("unblock_condition") or task.unblock_condition
     if not unblock_condition:
@@ -203,7 +204,7 @@ def _guard_unblock_condition_set(task: "Task", **kwargs: Any) -> tuple[bool, str
     return True, None
 
 
-def _guard_diagnostic_set(task: "Task", **kwargs: Any) -> tuple[bool, str | None]:
+def _guard_diagnostic_set(task: Task, **kwargs: Any) -> tuple[bool, str | None]:
     """Guard: diagnostic must be provided for FAILED status."""
     diagnostic = kwargs.get("diagnostic") or task.diagnostic
     if not diagnostic:
@@ -211,7 +212,7 @@ def _guard_diagnostic_set(task: "Task", **kwargs: Any) -> tuple[bool, str | None
     return True, None
 
 
-def _guard_depth_under_limit(task: "Task", **kwargs: Any) -> tuple[bool, str | None]:
+def _guard_depth_under_limit(task: Task, **kwargs: Any) -> tuple[bool, str | None]:
     """Guard: depth must be under MAX_DEPTH (10) for decomposing iterations."""
     max_depth = 10
     if task.depth >= max_depth:
@@ -219,7 +220,7 @@ def _guard_depth_under_limit(task: "Task", **kwargs: Any) -> tuple[bool, str | N
     return True, None
 
 
-def _guard_pr_url_set(task: "Task", **kwargs: Any) -> tuple[bool, str | None]:
+def _guard_pr_url_set(task: Task, **kwargs: Any) -> tuple[bool, str | None]:
     """Guard: pr_url must be provided for REVIEW/MERGE_READY status."""
     pr_url = kwargs.get("pr_url") or task.pr_url
     if not pr_url:
@@ -227,7 +228,7 @@ def _guard_pr_url_set(task: "Task", **kwargs: Any) -> tuple[bool, str | None]:
     return True, None
 
 
-def _guard_worker_id_set(task: "Task", **kwargs: Any) -> tuple[bool, str | None]:
+def _guard_worker_id_set(task: Task, **kwargs: Any) -> tuple[bool, str | None]:
     """Guard: worker_id must be provided for IN_PROGRESS status."""
     worker_id = kwargs.get("worker_id") or task.worker_id
     if not worker_id:
@@ -235,7 +236,7 @@ def _guard_worker_id_set(task: "Task", **kwargs: Any) -> tuple[bool, str | None]
     return True, None
 
 
-def _guard_reason_set(task: "Task", **kwargs: Any) -> tuple[bool, str | None]:
+def _guard_reason_set(task: Task, **kwargs: Any) -> tuple[bool, str | None]:
     """Guard: reason must be provided for cancellation."""
     reason = kwargs.get("reason")
     if not reason:
@@ -319,7 +320,7 @@ def _generate_idempotency_key(task_id: str, from_status: TaskStatus, to_status: 
     return f"{task_id}-{from_status.value}-{to_status.value}-{ts}"
 
 
-def _validate_state_invariants(task: "Task", new_status: TaskStatus, **kwargs: Any) -> tuple[bool, str | None]:
+def _validate_state_invariants(task: Task, new_status: TaskStatus, **kwargs: Any) -> tuple[bool, str | None]:
     """Validate state invariants for the target status.
 
     Args:

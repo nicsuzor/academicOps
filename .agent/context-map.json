@@ -16,7 +16,16 @@
       "topic": "axioms",
       "path": "aops-core/AXIOMS.md",
       "description": "Inviolable principles and their logical derivations - fail-fast, DRY, verify-first, no workarounds",
-      "keywords": ["axiom", "principle", "rule", "inviolable", "fail-fast", "verify first", "no workarounds", "categorical imperative"]
+      "keywords": [
+        "axiom",
+        "principle",
+        "rule",
+        "inviolable",
+        "fail-fast",
+        "verify first",
+        "no workarounds",
+        "categorical imperative"
+      ]
     },
     {
       "topic": "heuristics",

@@ -53,6 +53,7 @@ Before ending the session, create follow-up tasks for ANY outstanding work:
 4. **Verification gaps** - Tests that should be run, reviews that should happen
 
 **For each item, create a task**:
+
 ```
 create_task(title="[Category] Brief description", project="[relevant-project]", priority=3)
 ```

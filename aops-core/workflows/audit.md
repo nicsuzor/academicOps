@@ -49,20 +49,20 @@ Skill(skill="audit", args="session-effectiveness /path/to/transcript.md")
 
 The full audit runs 11 phases (see `skills/audit/SKILL.md` for details):
 
-| Phase | Name                      | Purpose                                                         |
-| ----- | ------------------------- | --------------------------------------------------------------- |
-| 0     | Health Metrics            | Run `audit_framework_health.py` for baseline metrics            |
-| 1     | Structure Audit           | Compare filesystem to INDEX.md                                  |
-| 2     | Reference Graph           | Build reference map, find orphans and broken links              |
-| 3     | Skill Content             | Verify size limits (<500 lines) and actionability               |
-| 4     | File Justification        | Ensure files trace to specs                                     |
-| 4b    | Instruction Justification | Verify instructions trace to framework/enforcement-map.md       |
-| 5     | Documentation Accuracy    | Verify README.md flowchart matches hooks                        |
-| 6     | Regenerate Indices        | Rebuild INDEX.md, WORKFLOWS.md, etc.                            |
-| 7     | Other Updates             | Fix violations, update tables                                   |
-| 8     | Persist Report            | Save to `$ACA_DATA/projects/aops/audit/`                        |
+| Phase | Name                      | Purpose                                                          |
+| ----- | ------------------------- | ---------------------------------------------------------------- |
+| 0     | Health Metrics            | Run `audit_framework_health.py` for baseline metrics             |
+| 1     | Structure Audit           | Compare filesystem to INDEX.md                                   |
+| 2     | Reference Graph           | Build reference map, find orphans and broken links               |
+| 3     | Skill Content             | Verify size limits (<500 lines) and actionability                |
+| 4     | File Justification        | Ensure files trace to specs                                      |
+| 4b    | Instruction Justification | Verify instructions trace to framework/enforcement-map.md        |
+| 5     | Documentation Accuracy    | Verify README.md flowchart matches hooks                         |
+| 6     | Regenerate Indices        | Rebuild INDEX.md, WORKFLOWS.md, etc.                             |
+| 7     | Other Updates             | Fix violations, update tables                                    |
+| 8     | Persist Report            | Save to `$ACA_DATA/projects/aops/audit/`                         |
 | 8b    | Transcript QA             | Scan recent sessions for hydration gaps and operational failures |
-| 9     | Create Tasks              | File tasks for actionable findings                              |
+| 9     | Create Tasks              | File tasks for actionable findings                               |
 
 ## Scripts Reference
 

@@ -14,46 +14,46 @@ tags: [framework, enforcement, moc]
 
 ## Axiom → Enforcement Mapping
 
-| Axiom                                       | Rule                            | Enforcement                                                                                  | Point                | Level     |
-| ------------------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------- | -------------------- | --------- |
-| [[no-other-truths]]                         | No Other Truths                 | AXIOMS.md injection                                                                          | SessionStart         |           |
-| [[categorical-imperative]]                  | Categorical Imperative          | prompt-hydrator suggests skills                                                              | UserPromptSubmit     |           |
-| [[dont-make-shit-up]]                       | Don't Make Shit Up              | AXIOMS.md                                                                                    | SessionStart         |           |
-| [[always-cite-sources]]                     | Always Cite Sources             | AXIOMS.md                                                                                    | SessionStart         |           |
-| [[do-one-thing]]                            | Do One Thing                    | TodoWrite visibility, custodiet drift detection, verbatim prompt comparison                  | During execution     |           |
-| [[do-one-thing]]                            | Hydrator Returns Plan Only      | check_subagent_tool_restrictions blocks Edit/Write for prompt-hydrator                       | PreToolUse           | Hard Gate |
-| [[data-boundaries]]                         | Data Boundaries                 | settings.json deny rules                                                                     | PreToolUse           |           |
-| [[project-independence]]                    | Project Independence            | AXIOMS.md                                                                                    | SessionStart         |           |
-| [[fail-fast-code]]                          | Fail-Fast (Code)                | policy_enforcer.py blocks destructive git                                                    | PreToolUse           |           |
-| [[fail-fast-code]]                          | Fail-Fast (Code) - No Fallbacks | check_no_fallbacks.py AST visitor detects `.get(..., "")`, `.get(..., [])`, `or ""` patterns | Pre-commit (active)  |           |
-| [[fail-fast-code]]                          | Fail-Fast (Code) Analysis       | axiom_enforcer (DISABLED)                                                                    | PreToolUse           |           |
-| [[fail-fast-agents]]                        | Fail-Fast (Agents)              | fail_fast_watchdog.py injects reminder                                                       | PostToolUse          |           |
-| [[self-documenting]]                        | Self-Documenting                | policy_enforcer.py blocks *-GUIDE.md                                                         | PreToolUse           |           |
-| [[single-purpose-files]]                    | Single-Purpose Files            | policy_enforcer.py 200-line limit                                                            | PreToolUse           |           |
-| [[dry-modular-explicit]]                    | DRY, Modular, Explicit          | AXIOMS.md                                                                                    | SessionStart         |           |
-| [[use-standard-tools]]                      | Use Standard Tools              | pyproject.toml, pre-commit                                                                   | Config               |           |
-| [[always-dogfooding]]                       | Always Dogfooding               | AXIOMS.md                                                                                    | SessionStart         |           |
-| [[skills-are-read-only]]                    | Skills are Read-Only            | settings.json denies skill writes                                                            | PreToolUse           |           |
-| [[trust-version-control]]                   | Trust Version Control           | policy_enforcer.py blocks backup patterns                                                    | PreToolUse           |           |
-| [[no-workarounds]]                          | No Workarounds                  | fail_fast_watchdog.py                                                                        | PostToolUse          |           |
-| [[verify-first]]                            | Verify First                    | TodoWrite checkpoint                                                                         | During execution     |           |
-| [[verify-first]]                            | Write-Without-Read Check        | axiom_enforcer (DISABLED)                                                                    | PreToolUse           |           |
-| [[verify-first]], [[dont-make-shit-up]]     | Check Existing Automation First | prompt-hydrator-context.md Step 1 (check .github/workflows/ before manual execution)        | UserPromptSubmit     | 1c        |
-| [[no-excuses]]                              | No Excuses                      | AXIOMS.md                                                                                    | SessionStart         |           |
-| [[write-for-long-term]]                     | Write for Long Term             | AXIOMS.md                                                                                    | SessionStart         |           |
-| [[maintain-relational-integrity]]           | Relational Integrity            | wikilink conventions                                                                         | Pre-commit (planned) |           |
-| [[nothing-is-someone-elses-responsibility]] | Nothing Is Someone Else's       | AXIOMS.md                                                                                    | SessionStart         |           |
-| [[acceptance-criteria-own-success]]         | Acceptance Criteria Own Success | /qa skill enforcement                                                                        | Stop                 |           |
-| [[plan-first-development]]                  | Plan-First Development          | EnterPlanMode tool                                                                           | Before coding        |           |
-| [[research-data-immutable]]                 | Research Data Immutable         | settings.json denies records/**                                                              | PreToolUse           |           |
-| [[just-in-time-context]]                    | Just-In-Time Context            | sessionstart_load_axioms.py                                                                  | SessionStart         |           |
-| [[minimal-instructions]]                    | Minimal Instructions            | policy_enforcer.py 200-line limit                                                            | PreToolUse           |           |
-| [[feedback-loops-for-uncertainty]]          | Feedback Loops                  | AXIOMS.md                                                                                    | SessionStart         |           |
-| [[current-state-machine]]                   | Current State Machine           | autocommit_state.py (auto-commit+push)                                                       | PostToolUse          |           |
-| [[one-spec-per-feature]]                    | One Spec Per Feature            | AXIOMS.md                                                                                    | SessionStart         |           |
+| Axiom                                       | Rule                            | Enforcement                                                                                  | Point                  | Level     |
+| ------------------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------- | ---------------------- | --------- |
+| [[no-other-truths]]                         | No Other Truths                 | AXIOMS.md injection                                                                          | SessionStart           |           |
+| [[categorical-imperative]]                  | Categorical Imperative          | prompt-hydrator suggests skills                                                              | UserPromptSubmit       |           |
+| [[dont-make-shit-up]]                       | Don't Make Shit Up              | AXIOMS.md                                                                                    | SessionStart           |           |
+| [[always-cite-sources]]                     | Always Cite Sources             | AXIOMS.md                                                                                    | SessionStart           |           |
+| [[do-one-thing]]                            | Do One Thing                    | TodoWrite visibility, custodiet drift detection, verbatim prompt comparison                  | During execution       |           |
+| [[do-one-thing]]                            | Hydrator Returns Plan Only      | check_subagent_tool_restrictions blocks Edit/Write for prompt-hydrator                       | PreToolUse             | Hard Gate |
+| [[data-boundaries]]                         | Data Boundaries                 | settings.json deny rules                                                                     | PreToolUse             |           |
+| [[project-independence]]                    | Project Independence            | AXIOMS.md                                                                                    | SessionStart           |           |
+| [[fail-fast-code]]                          | Fail-Fast (Code)                | policy_enforcer.py blocks destructive git                                                    | PreToolUse             |           |
+| [[fail-fast-code]]                          | Fail-Fast (Code) - No Fallbacks | check_no_fallbacks.py AST visitor detects `.get(..., "")`, `.get(..., [])`, `or ""` patterns | Pre-commit (active)    |           |
+| [[fail-fast-code]]                          | Fail-Fast (Code) Analysis       | axiom_enforcer (DISABLED)                                                                    | PreToolUse             |           |
+| [[fail-fast-agents]]                        | Fail-Fast (Agents)              | fail_fast_watchdog.py injects reminder                                                       | PostToolUse            |           |
+| [[self-documenting]]                        | Self-Documenting                | policy_enforcer.py blocks *-GUIDE.md                                                         | PreToolUse             |           |
+| [[single-purpose-files]]                    | Single-Purpose Files            | policy_enforcer.py 200-line limit                                                            | PreToolUse             |           |
+| [[dry-modular-explicit]]                    | DRY, Modular, Explicit          | AXIOMS.md                                                                                    | SessionStart           |           |
+| [[use-standard-tools]]                      | Use Standard Tools              | pyproject.toml, pre-commit                                                                   | Config                 |           |
+| [[always-dogfooding]]                       | Always Dogfooding               | AXIOMS.md                                                                                    | SessionStart           |           |
+| [[skills-are-read-only]]                    | Skills are Read-Only            | settings.json denies skill writes                                                            | PreToolUse             |           |
+| [[trust-version-control]]                   | Trust Version Control           | policy_enforcer.py blocks backup patterns                                                    | PreToolUse             |           |
+| [[no-workarounds]]                          | No Workarounds                  | fail_fast_watchdog.py                                                                        | PostToolUse            |           |
+| [[verify-first]]                            | Verify First                    | TodoWrite checkpoint                                                                         | During execution       |           |
+| [[verify-first]]                            | Write-Without-Read Check        | axiom_enforcer (DISABLED)                                                                    | PreToolUse             |           |
+| [[verify-first]], [[dont-make-shit-up]]     | Check Existing Automation First | prompt-hydrator-context.md Step 1 (check .github/workflows/ before manual execution)         | UserPromptSubmit       | 1c        |
+| [[no-excuses]]                              | No Excuses                      | AXIOMS.md                                                                                    | SessionStart           |           |
+| [[write-for-long-term]]                     | Write for Long Term             | AXIOMS.md                                                                                    | SessionStart           |           |
+| [[maintain-relational-integrity]]           | Relational Integrity            | wikilink conventions                                                                         | Pre-commit (planned)   |           |
+| [[nothing-is-someone-elses-responsibility]] | Nothing Is Someone Else's       | AXIOMS.md                                                                                    | SessionStart           |           |
+| [[acceptance-criteria-own-success]]         | Acceptance Criteria Own Success | /qa skill enforcement                                                                        | Stop                   |           |
+| [[plan-first-development]]                  | Plan-First Development          | EnterPlanMode tool                                                                           | Before coding          |           |
+| [[research-data-immutable]]                 | Research Data Immutable         | settings.json denies records/**                                                              | PreToolUse             |           |
+| [[just-in-time-context]]                    | Just-In-Time Context            | sessionstart_load_axioms.py                                                                  | SessionStart           |           |
+| [[minimal-instructions]]                    | Minimal Instructions            | policy_enforcer.py 200-line limit                                                            | PreToolUse             |           |
+| [[feedback-loops-for-uncertainty]]          | Feedback Loops                  | AXIOMS.md                                                                                    | SessionStart           |           |
+| [[current-state-machine]]                   | Current State Machine           | autocommit_state.py (auto-commit+push)                                                       | PostToolUse            |           |
+| [[one-spec-per-feature]]                    | One Spec Per Feature            | AXIOMS.md                                                                                    | SessionStart           |           |
 | [[mandatory-handover]]                      | Mandatory Handover Workflow     | prompt-hydrator-context.md (Session Completion Rules section), handover SKILL.md Step 1.5    | UserPromptSubmit, Stop |           |
-| [[capture-outstanding-work]]                | Capture Outstanding Work        | handover SKILL.md Step 1.5 (create follow-up tasks for incomplete/deferred work)             | Stop                 |           |
-| [[explicit-approval-costly-ops]]            | Costly Operations Approval      | external-batch-submission.md workflow + AskUserQuestion before batch submit                  | During execution     |           |
+| [[capture-outstanding-work]]                | Capture Outstanding Work        | handover SKILL.md Step 1.5 (create follow-up tasks for incomplete/deferred work)             | Stop                   |           |
+| [[explicit-approval-costly-ops]]            | Costly Operations Approval      | external-batch-submission.md workflow + AskUserQuestion before batch submit                  | During execution       |           |
 
 ## Heuristic → Enforcement Mapping
 
@@ -380,15 +380,15 @@ The stop gate requires THREE conditions for session completion:
 
 **Gate (2) Field Validation**: When `## Framework Reflection` is detected in agent response, all 8 required fields must be present:
 
-| Required Field           | Purpose                                     |
-| ------------------------ | ------------------------------------------- |
-| `**Prompts**:`           | Original request                            |
-| `**Guidance received**:` | Hydrator advice (write N/A if none)         |
-| `**Followed**:`          | Yes/No/Partial with explanation             |
-| `**Outcome**:`           | One of: success, partial, failure           |
-| `**Accomplishments**:`   | What was completed                          |
-| `**Friction points**:`   | Issues encountered (write none if none)     |
-| `**Proposed changes**:`  | Framework improvements (write none if none) |
+| Required Field           | Purpose                                          |
+| ------------------------ | ------------------------------------------------ |
+| `**Prompts**:`           | Original request                                 |
+| `**Guidance received**:` | Hydrator advice (write N/A if none)              |
+| `**Followed**:`          | Yes/No/Partial with explanation                  |
+| `**Outcome**:`           | One of: success, partial, failure                |
+| `**Accomplishments**:`   | What was completed                               |
+| `**Friction points**:`   | Issues encountered (write none if none)          |
+| `**Proposed changes**:`  | Framework improvements (write none if none)      |
 | `**Next step**:`         | Task IDs for follow-up work (write none if none) |
 
 **Malformed Reflection Handling**: If `## Framework Reflection` is present but missing required fields:

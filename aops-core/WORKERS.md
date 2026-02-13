@@ -24,11 +24,11 @@ Configuration for worker dispatch in the swarm-supervisor lifecycle.
 Available worker types and their profiles. Add or modify workers here to change
 what the supervisor can dispatch to.
 
-| Worker | Capabilities | Cost | Speed | Max Concurrent | Best For |
-|--------|-------------|------|-------|----------------|----------|
-| `polecat-claude` | code, docs, refactor, test, debug | 3 | 5 | 2 | Most tasks |
-| `polecat-gemini` | code, docs, analysis, bulk-ops | 1 | 3 | 4 | High-volume, simpler tasks |
-| `jules` | deep-code, architecture, complex-refactor | 5 | 1 | 1 | Critical path, complex logic |
+| Worker           | Capabilities                              | Cost | Speed | Max Concurrent | Best For                     |
+| ---------------- | ----------------------------------------- | ---- | ----- | -------------- | ---------------------------- |
+| `polecat-claude` | code, docs, refactor, test, debug         | 3    | 5     | 2              | Most tasks                   |
+| `polecat-gemini` | code, docs, analysis, bulk-ops            | 1    | 3     | 4              | High-volume, simpler tasks   |
+| `jules`          | deep-code, architecture, complex-refactor | 5    | 1     | 1              | Critical path, complex logic |
 
 **Cost/Speed Scale**: 1-5 where 5 is highest. Cost = token/API expense, Speed = tasks/hour.
 
@@ -36,17 +36,17 @@ what the supervisor can dispatch to.
 
 Capabilities that can be assigned to workers. Used for task-to-worker matching.
 
-| Capability | Description |
-|------------|-------------|
-| `code` | Standard implementation work |
-| `docs` | Documentation, comments, README updates |
-| `refactor` | Code restructuring without behavior change |
-| `test` | Test writing and updates |
-| `debug` | Bug investigation and fixes |
-| `analysis` | Code review, spike investigations |
-| `bulk-ops` | Repetitive changes across many files |
-| `deep-code` | Complex algorithms, performance-critical code |
-| `architecture` | System design changes, API contracts |
+| Capability         | Description                                     |
+| ------------------ | ----------------------------------------------- |
+| `code`             | Standard implementation work                    |
+| `docs`             | Documentation, comments, README updates         |
+| `refactor`         | Code restructuring without behavior change      |
+| `test`             | Test writing and updates                        |
+| `debug`            | Bug investigation and fixes                     |
+| `analysis`         | Code review, spike investigations               |
+| `bulk-ops`         | Repetitive changes across many files            |
+| `deep-code`        | Complex algorithms, performance-critical code   |
+| `architecture`     | System design changes, API contracts            |
 | `complex-refactor` | Multi-file refactors with behavior preservation |
 
 ## Selection Rules
@@ -73,32 +73,32 @@ formatting, lint-fix, dependency-bump, rename
 
 ### Complexity Routing
 
-| Complexity Value | Routed To | Rationale |
-|-----------------|-----------|-----------|
-| `needs-decomposition` | jules | Requires architectural thinking |
-| `requires-judgment` | claude | Needs nuanced decision-making |
-| `multi-step` | claude | Complex coordination |
-| `mechanical` | gemini | Straightforward execution |
-| (unset) | claude | Safe default |
+| Complexity Value      | Routed To | Rationale                       |
+| --------------------- | --------- | ------------------------------- |
+| `needs-decomposition` | jules     | Requires architectural thinking |
+| `requires-judgment`   | claude    | Needs nuanced decision-making   |
+| `multi-step`          | claude    | Complex coordination            |
+| `mechanical`          | gemini    | Straightforward execution       |
+| (unset)               | claude    | Safe default                    |
 
 ### Heuristic Thresholds
 
-| Condition | Worker | Rationale |
-|-----------|--------|-----------|
-| files_affected > 10 | gemini | Bulk operations |
-| effort > 2h | claude | Complex work needs judgment |
+| Condition           | Worker | Rationale                   |
+| ------------------- | ------ | --------------------------- |
+| files_affected > 10 | gemini | Bulk operations             |
+| effort > 2h         | claude | Complex work needs judgment |
 
 ## Domain Specialists
 
 Registry of domain-specific reviewer agents. When task tags match these domains,
 the supervisor may invoke the specialist for advisory review.
 
-| Domain | Specialist Agent | Mandatory |
-|--------|-----------------|-----------|
-| security | `aops-core:security-reviewer` | No |
-| database | `aops-core:db-reviewer` | No |
-| api | `aops-core:api-reviewer` | No |
-| frontend | `aops-core:ui-reviewer` | No |
+| Domain   | Specialist Agent              | Mandatory |
+| -------- | ----------------------------- | --------- |
+| security | `aops-core:security-reviewer` | No        |
+| database | `aops-core:db-reviewer`       | No        |
+| api      | `aops-core:api-reviewer`      | No        |
+| frontend | `aops-core:ui-reviewer`       | No        |
 
 **Note**: Domain specialists are advisory only. Their input informs but does not
 block; final synthesis is done by the supervisor alongside mandatory reviewers
@@ -111,51 +111,51 @@ block; final synthesis is done by the supervisor alongside mandatory reviewers
 Expected update frequency and alert thresholds for monitoring worker progress.
 
 | Worker | Expected Heartbeat | Alert Threshold |
-|--------|-------------------|-----------------|
-| claude | 30min | 45min silence |
-| gemini | 20min | 30min silence |
-| jules | 60min | 90min silence |
+| ------ | ------------------ | --------------- |
+| claude | 30min              | 45min silence   |
+| gemini | 20min              | 30min silence   |
+| jules  | 60min              | 90min silence   |
 
 ### Exit Code Semantics
 
 Standard exit codes from `polecat run` and their meanings:
 
-| Exit Code | Meaning | Supervisor Action |
-|-----------|---------|-------------------|
-| 0 | Success | Mark merge_ready, proceed to Phase 5 |
-| 1 | Task failure | Inspect error, mark blocked or retry |
-| 2 | Setup failure | Retry once, then mark blocked |
-| 3 | Queue empty | Normal - no action needed |
-| 4+ | Unknown | Mark blocked, flag for human |
+| Exit Code | Meaning       | Supervisor Action                    |
+| --------- | ------------- | ------------------------------------ |
+| 0         | Success       | Mark merge_ready, proceed to Phase 5 |
+| 1         | Task failure  | Inspect error, mark blocked or retry |
+| 2         | Setup failure | Retry once, then mark blocked        |
+| 3         | Queue empty   | Normal - no action needed            |
+| 4+        | Unknown       | Mark blocked, flag for human         |
 
 ### Retry Limits
 
-| Recovery Action | Max Attempts | Backoff |
-|----------------|--------------|---------|
-| RETRY | 3 | Exponential, starting 5min |
-| REASSIGN | 1 | Immediate |
+| Recovery Action | Max Attempts | Backoff                    |
+| --------------- | ------------ | -------------------------- |
+| RETRY           | 3            | Exponential, starting 5min |
+| REASSIGN        | 1            | Immediate                  |
 
 ## Swarm Sizing Defaults
 
 Recommended swarm composition based on queue characteristics.
 
-| Ready Tasks | Task Mix | Recommended Swarm |
-|-------------|----------|-------------------|
-| 1-2 | Any | `polecat run` (no swarm) |
-| 3-5 | Mostly simple | `-c 1 -g 2` |
-| 3-5 | Mostly complex | `-c 2 -g 1` |
-| 6-10 | Mixed | `-c 2 -g 3` |
-| 10+ | Mixed | `-c 2 -g 4` (max reasonable) |
+| Ready Tasks | Task Mix       | Recommended Swarm            |
+| ----------- | -------------- | ---------------------------- |
+| 1-2         | Any            | `polecat run` (no swarm)     |
+| 3-5         | Mostly simple  | `-c 1 -g 2`                  |
+| 3-5         | Mostly complex | `-c 2 -g 1`                  |
+| 6-10        | Mixed          | `-c 2 -g 3`                  |
+| 10+         | Mixed          | `-c 2 -g 4` (max reasonable) |
 
 ## Capacity Limits
 
 Hard limits on concurrent workers (enforced by swarm supervisor).
 
-| Worker Type | Max Concurrent | Reason |
-|-------------|----------------|--------|
-| claude | 2 | API rate limits, cost |
-| gemini | 4 | Higher throughput, lower cost |
-| jules | 1 | Expensive, serialized work |
+| Worker Type | Max Concurrent | Reason                        |
+| ----------- | -------------- | ----------------------------- |
+| claude      | 2              | API rate limits, cost         |
+| gemini      | 4              | Higher throughput, lower cost |
+| jules       | 1              | Expensive, serialized work    |
 
 ---
 
