@@ -19,7 +19,7 @@ GATE_CONFIGS = [
     GateConfig(
         name="hydration",
         description="Ensures prompts are hydrated with context.",
-        initial_status=GateStatus.CLOSED,
+        initial_status=GateStatus.OPEN,  # Starts open, closes on userpromptsubmit.
         triggers=[
             # Hydrator starts or finishes -> Open
             # DISPATCH: Main agent intends to call hydrator -> Open gate pre-emptively
@@ -41,7 +41,9 @@ GATE_CONFIGS = [
                     hook_event="UserPromptSubmit", custom_check="is_hydratable"
                 ),
                 transition=GateTransition(
-                    target_status=GateStatus.CLOSED, custom_action="hydrate_prompt"
+                    target_status=GateStatus.CLOSED,
+                    custom_action="hydrate_prompt",
+                    system_message_template="💧 Hydration required. Gate CLOSED.",
                 ),
             ),
         ],
