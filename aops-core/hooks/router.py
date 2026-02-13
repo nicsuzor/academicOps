@@ -183,10 +183,7 @@ class HookRouter:
         if gemini_event:
             hook_event = GEMINI_EVENT_MAP.get(gemini_event, gemini_event)
         else:
-            raw_event = raw_input.pop("hook_event_name", {})
-            if not raw_event:
-                # Raise KeyError for backward compatibility with tests
-                raise KeyError("hook_event_name")
+            raw_event = raw_input.pop("hook_event_name")
             hook_event = GEMINI_EVENT_MAP.get(raw_event, raw_event)
 
         # 2. Determine Session ID
@@ -203,14 +200,14 @@ class HookRouter:
             session_id = f"unknown-{str(uuid.uuid4())[:8]}"
 
         # 3. Transcript Path / Temp Root
-        transcript_path = raw_input.pop("transcript_path", {})
+        transcript_path = raw_input.pop("transcript_path", None)
 
         # Persist session data on start
         if hook_event == "SessionStart":
             persist_session_data({"session_id": session_id})
 
         # Request Tracing (aops-32068a2e)
-        trace_id = raw_input.pop("trace_id", {}) or str(uuid.uuid4())
+        trace_id = raw_input.pop("trace_id", None) or str(uuid.uuid4())
 
         # 4. Normalize JSON string fields from Gemini
         tool_input = self._normalize_json_field(raw_input.pop("tool_input", {}))
@@ -220,10 +217,10 @@ class HookRouter:
         # Normalize tool_result and toolResult in raw_input (for PostToolUse/SubagentStop)
         tool_output = {}
         raw_tool_output = (
-            raw_input.pop("tool_result", {})
-            or raw_input.pop("toolResult", {})
-            or raw_input.pop("tool_response", {})
-            or raw_input.pop("subagent_result", {})
+            raw_input.pop("tool_result", None)
+            or raw_input.pop("toolResult", None)
+            or raw_input.pop("tool_response", None)
+            or raw_input.pop("subagent_result", None)
         )
         if raw_tool_output:
             tool_output = self._normalize_json_field(raw_tool_output)
@@ -231,7 +228,7 @@ class HookRouter:
         # Precompute values once to avoid redundant calls across gates
         is_subagent = is_subagent_session(raw_input)
         short_hash = get_session_short_hash(session_id)
-        tool_name = raw_input.pop("tool_name", {})
+        tool_name = raw_input.pop("tool_name", None)
 
         # 5. Extract subagent_type
         # Prefer explicit env var (set in subagent session)
@@ -249,10 +246,14 @@ class HookRouter:
 
         # Fallback 2: Extract from raw_input (explicitly provided by some hooks)
         if not subagent_type:
-            subagent_type = raw_input.pop("subagent_type", {}) or raw_input.pop("agent_type", {})
+            subagent_type = raw_input.pop("subagent_type", None) or raw_input.pop(
+                "agent_type", None
+            )
 
         if not is_subagent and (
-            subagent_type or raw_input.pop("is_sidechain", {}) or raw_input.pop("isSidechain", {})
+            subagent_type
+            or raw_input.pop("is_sidechain", None)
+            or raw_input.pop("isSidechain", None)
         ):
             is_subagent = True  # If subagent_type is provided, treat as subagent session
 
@@ -260,8 +261,8 @@ class HookRouter:
             session_id=session_id,
             trace_id=trace_id,
             hook_event=hook_event,
-            agent_id=raw_input.pop("agent_id", {}) or raw_input.pop("agentId", {}),
-            slug=raw_input.pop("slug", {}),
+            agent_id=raw_input.pop("agent_id", None) or raw_input.pop("agentId", None),
+            slug=raw_input.pop("slug", None),
             is_subagent=is_subagent,
             subagent_type=subagent_type,
             # Precomputed values
@@ -271,7 +272,7 @@ class HookRouter:
             tool_input=tool_input,
             tool_output=tool_output,
             transcript_path=transcript_path,
-            cwd=raw_input.pop("cwd", {}),
+            cwd=raw_input.pop("cwd", None),
             raw_input=raw_input,
         )
 
