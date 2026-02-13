@@ -19,7 +19,6 @@ from lib.hook_utils import (
 from lib.hook_utils import (
     write_temp_file as _write_temp,
 )
-from lib.session_paths import get_gate_file_path
 from lib.hydration.context_loaders import (
     get_task_work_state,
     load_environment_variables_context,
@@ -32,6 +31,7 @@ from lib.hydration.context_loaders import (
     load_skills_index,
     load_workflows_index,
 )
+from lib.session_paths import get_gate_file_path
 from lib.session_reader import extract_router_context
 from lib.session_state import SessionState
 from lib.template_loader import load_template
