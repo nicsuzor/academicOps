@@ -69,7 +69,6 @@ GATE_CONFIGS = [
         ],
     ),
     # --- Custodiet ---
-    # Note: temp file reuse is implemented via session hash in write_temp_file() (P#102)
     GateConfig(
         name="custodiet",
         description="Enforces periodic compliance checks.",
@@ -103,7 +102,14 @@ GATE_CONFIGS = [
                 ),
                 verdict=CUSTODIET_GATE_MODE,
                 message_template="Compliance check required ({ops_since_open} ops since last check).\nInvoke 'custodiet' agent.",
-                context_template="Compliance Context: {temp_path}",
+                context_template=(
+                    "**Compliance check required ({ops_since_open} ops since last check).**\n\n"
+                    "You must invoke the **custodiet** agent to load context before proceeding.\n\n"
+                    "**Instruction**:\n"
+                    "Run the custodiet with this command:\n"
+                    "- Gemini: `delegate_to_agent(name='custodiet', query='Validate session using context in {temp_path}')`\n"
+                    "- Claude: `Task(subagent_type='custodiet', prompt='Validate session using context in {temp_path}')`"
+                ),
                 custom_action="prepare_compliance_report",
             ),
             # Stop check (Uncommitted work)

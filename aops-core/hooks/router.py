@@ -77,8 +77,8 @@ GEMINI_EVENT_MAP = {
     "BeforeTool": "PreToolUse",
     "AfterTool": "PostToolUse",
     "BeforeAgent": "UserPromptSubmit",  # Mapped to UPS for unified handling
-    "AfterAgent": "AfterAgent",
-    "SessionEnd": "Stop",  # Map SessionEnd to Stop to trigger stop gates
+    "AfterAgent": "Stop",  # This is the event after the agent returns their final response for a turn.
+    "SessionEnd": "SessionEnd",
     "Notification": "Notification",
     "PreCompress": "PreCompact",
     "SubagentStart": "SubagentStart",  # Explicit mapping if Gemini sends it
@@ -311,7 +311,6 @@ class HookRouter:
             cwd=cwd,
             raw_input=raw_input,
         )
-
 
     def execute_hooks(self, ctx: HookContext) -> CanonicalHookOutput:
         """Run all configured gates for the event and merge results.
