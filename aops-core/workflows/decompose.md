@@ -27,6 +27,10 @@ Break goals into actionable work under genuine uncertainty.
 3. Find affordable probes (cheapest way to validate?)
 4. Create coarse components (don't over-decompose)
 5. Ensure at least one task is actionable NOW
+6. Route task assignments:
+   - **Mechanical work** (create, implement, fix, update, refactor) → `assignee: polecat`
+   - **Judgment-call tasks** (review, evaluate, decide, design choices) → `assignee: null` (unassigned backlog)
+   - **Explicit override** → only assign to `nic` when user explicitly requests it
 
 ## Key Principle
 
