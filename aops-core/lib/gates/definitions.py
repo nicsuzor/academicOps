@@ -10,7 +10,7 @@ from lib.gate_types import (
 )
 
 CUSTODIET_TOOL_CALL_THRESHOLD = int(os.getenv("CUSTODIET_TOOL_CALL_THRESHOLD", 15))
-CUSTODIET_GATE_MODE = os.getenv("CUSTODIET_GATE_MODE", "deny")  # deny or warn
+CUSTODIET_GATE_MODE = os.getenv("CUSTODIET_GATE_MODE", "warn")  # deny or warn
 
 GATE_CONFIGS = [
     # --- Hydration ---

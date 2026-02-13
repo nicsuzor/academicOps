@@ -7,8 +7,6 @@ This module defines:
 3. Subagent bypass rules
 4. Gate modes (block/warn)
 
-Legacy configuration (TOOL_GATE_REQUIREMENTS, etc.) has been migrated to
-individual Gate classes in lib/gates/.
 """
 
 
