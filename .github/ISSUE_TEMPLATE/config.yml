@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Support / Questions
+    url: https://github.com/nicsuzor/academicOps/discussions
+    about: Please use discussions for support and general questions.
