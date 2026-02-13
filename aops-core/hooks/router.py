@@ -41,7 +41,7 @@ try:
         get_session_short_hash,
         get_session_status_dir,
     )
-    from lib.session_state import SessionState
+    from lib.session_state import SessionState, set_persistent_env
 
     # Use relative import if possible, or direct import if run as script
     try:
@@ -259,22 +259,23 @@ class HookRouter:
 
         # Fallback 2: Extract from raw_input (explicitly provided by some hooks)
         if not subagent_type:
-            subagent_type = raw_input.get("subagent_type")
+            subagent_type = raw_input.get("subagent_type") or raw_input.get("agent_type")
 
-        # Fallback 3: Extract from tool_output (for SubagentStop/PostToolUse)
-        if not subagent_type and isinstance(tool_output, dict):
-            subagent_type = tool_output.get("subagent_type")
+        if not is_subagent and (
+            subagent_type or raw_input.get("is_sidechain") or raw_input.get("isSidechain")
+        ):
+            is_subagent = True  # If subagent_type is provided, treat as subagent session
 
         return HookContext(
             session_id=session_id,
             trace_id=trace_id,
             hook_event=hook_event,
-            agent_id=raw_input.get("agentId"),
+            agent_id=raw_input.get("agent_id") or raw_input.get("agentId"),
             slug=raw_input.get("slug"),
-            is_sidechain=is_subagent or raw_input.get("isSidechain"),
+            is_subagent=is_subagent,
+            subagent_type=subagent_type,
             # Precomputed values
             session_short_hash=short_hash,
-            is_subagent=is_subagent,
             # Event Data
             tool_name=tool_name,
             tool_input=tool_input,
@@ -282,7 +283,6 @@ class HookRouter:
             transcript_path=transcript_path,
             cwd=raw_input.get("cwd"),
             raw_input=raw_input,
-            subagent_type=subagent_type,
         )
 
     def execute_hooks(self, ctx: HookContext) -> CanonicalHookOutput:
@@ -307,7 +307,7 @@ class HookRouter:
         self._run_special_handlers(ctx, state, merged_result)
 
         # Skip gate dispatch for subagents (they bypass most gates)
-        if ctx.is_sidechain:
+        if ctx.is_subagent:
             pass  # Special handlers already run, skip gate dispatch
         else:
             # Dispatch to GenericGate methods based on event type
@@ -406,6 +406,14 @@ class HookRouter:
                     ),
                     metadata={"source": "session_start", "error": str(e)},
                 )
+
+        # set persistent env var if we can
+        set_persistent_env(
+            {
+                "AOPS_HOOK_LOG_PATH": str(hook_log_path),
+                "AOPS_SESSION_STATE_PATH": str(state_file_path),
+            }
+        )
 
         # Gemini-specific: validate hydration temp path infrastructure
         transcript_path = ctx.raw_input.get("transcript_path", "") if ctx.raw_input else ""

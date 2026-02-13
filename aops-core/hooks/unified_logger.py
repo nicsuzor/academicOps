@@ -12,7 +12,6 @@ import logging
 import os
 import sys
 import time
-import uuid
 from datetime import UTC, datetime
 from typing import Any
 
@@ -50,7 +49,6 @@ def log_hook_event(
         return
 
     try:
-        # <!-- NS: this should be in state object and already available. -->
         # Build per-session hook log path
         input_data = ctx.raw_input
         date = input_data.get("date")
@@ -63,17 +61,13 @@ def log_hook_event(
         process = psutil.Process(os.getpid())
         mem_info = process.memory_info()
 
-        # Ensure trace_id is always set for consistent log schema
-        trace_id = ctx.trace_id or str(uuid.uuid4())
-
         # Create log entry from superclass fields + new metadata
         log_entry = HookLogEntry(
             session_id=session_id,
-            trace_id=trace_id,
             logged_at=datetime.now().astimezone().replace(microsecond=0).isoformat(),
             exit_code=exit_code,
             output=output.model_dump() if output else None,
-            **ctx.model_dump(exclude={"framework_content", "session_id", "trace_id"}),
+            **ctx.model_dump(exclude={"framework_content", "session_id"}),
         )
 
         # Add debug metrics to metadata
@@ -84,8 +78,6 @@ def log_hook_event(
             "mem_rss_mb": mem_info.rss / (1024 * 1024),
             "mem_vms_mb": mem_info.vms / (1024 * 1024),
             "process_uptime": time.time() - process.create_time(),
-            "subagent_type": os.environ.get("CLAUDE_SUBAGENT_TYPE"),
-            "env_vars": dict(os.environ),
         }
 
         # Append to JSONL file

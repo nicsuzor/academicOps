@@ -29,7 +29,6 @@ class HookContext(BaseModel):
     )
     agent_id: str | None = None
     slug: str | None = None
-    is_sidechain: bool | None = None
 
     # Precomputed values (computed once in router.normalize_input())
     session_short_hash: str = Field(

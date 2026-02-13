@@ -163,6 +163,11 @@ def get_hook_log_path(
     Returns:
         Path to the hook log file
     """
+
+    # if we successfully saved the session state path in env vars, we should use that to ensure consistency across all hooks
+    if env_hook_log_path := os.environ.get("AOPS_HOOK_LOG_PATH"):
+        return Path(env_hook_log_path)
+
     if date is None:
         from datetime import datetime
 
@@ -175,10 +180,6 @@ def get_hook_log_path(
     if _is_gemini_session(session_id, input_data):
         # Gemini: write to logs/ directory in state dir
         logs_dir = get_gemini_logs_dir(input_data)
-        if logs_dir is None:
-            # Fallback: use ~/.gemini/tmp/hooks/ if state dir not detectable
-            logs_dir = Path.home() / ".gemini" / "tmp" / "hooks"
-            logs_dir.mkdir(parents=True, exist_ok=True)
         return logs_dir / f"{date_compact}-{short_hash}-hooks.jsonl"
     else:
         # Claude: ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl

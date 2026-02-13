@@ -19,7 +19,7 @@ if str(aops_core_dir) not in sys.path:
     sys.path.insert(0, str(aops_core_dir))
 
 from hooks.schemas import HookContext
-from hooks.session_env_setup import persist_env_var, run_session_env_setup
+from hooks.session_env_setup import run_session_env_setup
 
 
 class TestSessionEnvSetup:

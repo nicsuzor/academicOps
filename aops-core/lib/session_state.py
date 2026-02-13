@@ -216,7 +216,6 @@ class SessionState(BaseModel):
             gate.last_open_ts = time.time()
             gate.last_open_turn = self.global_turn_count
             gate.ops_since_open = 0
-            # Don't reset ops_since_close, it's irrelevant now
         self.gates[name] = gate
 
     def close_gate(self, name: str):
@@ -228,51 +227,3 @@ class SessionState(BaseModel):
             gate.ops_since_close = 0
         self.gates[name] = gate
 
-
-# --- Legacy Bridge Functions (for test compatibility) ---
-
-
-def create_session_state(session_id: str) -> dict[str, Any]:
-    """Legacy wrapper for SessionState.create()."""
-    return SessionState.create(session_id).model_dump()
-
-
-def save_session_state(session_id: str, state: dict[str, Any]) -> None:
-    """Legacy wrapper for SessionState.save()."""
-    SessionState.model_validate(state).save()
-
-
-def is_hydration_pending(session_id: str) -> bool:
-    """Legacy check for hydration status."""
-    state = SessionState.load(session_id)
-    return state.get_gate("hydration").status == GateStatus.CLOSED
-
-
-def set_hydration_pending(session_id: str, prompt: str) -> None:
-    """Legacy trigger for hydration."""
-    state = SessionState.load(session_id)
-    state.close_gate("hydration")
-    state.get_gate("hydration").metrics["original_prompt"] = prompt
-    state.save()
-
-
-def clear_hydration_pending(session_id: str) -> None:
-    """Legacy clear for hydration."""
-    state = SessionState.load(session_id)
-    state.open_gate("hydration")
-    state.save()
-
-
-def is_custodiet_enabled() -> bool:
-    """Legacy check for custodiet mode."""
-    mode = os.environ.get("CUSTODIET_GATE_MODE", "deny")
-    return mode == "deny"
-
-
-def set_custodiet_block(session_id: str, reason: str) -> None:
-    """Legacy trigger for custodiet block."""
-    state = SessionState.load(session_id)
-    gate = state.get_gate("custodiet")
-    gate.blocked = True
-    gate.block_reason = reason
-    state.save()
