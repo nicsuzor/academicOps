@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-
 from lib.task_model import TaskStatus, TaskType
 from lib.task_storage import TaskStorage
 
@@ -71,9 +70,7 @@ Original body content.
         assert "Updated body content" in raw_content, (
             f"Expected updates in {global_task_file}, but found: {raw_content[:200]}..."
         )
-        assert "in_progress" in raw_content, (
-            f"Expected status update in {global_task_file}"
-        )
+        assert "in_progress" in raw_content, f"Expected status update in {global_task_file}"
 
         # Verify: no duplicate file was created in project location
         project_task_file = project_tasks / f"{task_id}-test-task.md"

@@ -12,7 +12,7 @@ from __future__ import annotations
 import os
 import re
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -364,9 +364,7 @@ class SessionAnalyzer:
             # Extract content between this session and the next
             start_pos = match.end()
             end_pos = (
-                session_matches[i + 1].start()
-                if i + 1 < len(session_matches)
-                else len(content)
+                session_matches[i + 1].start() if i + 1 < len(session_matches) else len(content)
             )
             section = content[start_pos:end_pos]
 
@@ -376,9 +374,7 @@ class SessionAnalyzer:
             if acc_match:
                 acc_lines = acc_match.group(1).strip().split("\n")
                 accomplishments = [
-                    line.strip("- ").strip()
-                    for line in acc_lines
-                    if line.strip().startswith("-")
+                    line.strip("- ").strip() for line in acc_lines if line.strip().startswith("-")
                 ]
 
             # Parse decisions
@@ -387,16 +383,12 @@ class SessionAnalyzer:
             if dec_match:
                 dec_lines = dec_match.group(1).strip().split("\n")
                 decisions = [
-                    line.strip("- ").strip()
-                    for line in dec_lines
-                    if line.strip().startswith("-")
+                    line.strip("- ").strip() for line in dec_lines if line.strip().startswith("-")
                 ]
 
             # Parse topics
             topics = ""
-            topics_match = re.search(
-                r"\*\*Topics:\*\*\s+(.+?)(?:\n\n|\*\*|$)", section, re.DOTALL
-            )
+            topics_match = re.search(r"\*\*Topics:\*\*\s+(.+?)(?:\n\n|\*\*|$)", section, re.DOTALL)
             if topics_match:
                 topics = topics_match.group(1).strip()
 
@@ -482,36 +474,22 @@ class SessionAnalyzer:
         )
         if primary_match:
             result["primary_title"] = primary_match.group(1).strip()
-            result["primary_link"] = (
-                primary_match.group(2) if primary_match.group(2) else None
-            )
+            result["primary_link"] = primary_match.group(2) if primary_match.group(2) else None
 
         # Find all incomplete tasks: - [ ]
         incomplete_pattern = re.compile(r"^-\s*\[ \]\s*(.+)$", re.MULTILINE)
-        result["incomplete"] = [
-            m.group(1).strip() for m in incomplete_pattern.finditer(content)
-        ]
+        result["incomplete"] = [m.group(1).strip() for m in incomplete_pattern.finditer(content)]
 
         # Find all completed tasks: - [x]
-        completed_pattern = re.compile(
-            r"^-\s*\[x\]\s*(.+)$", re.MULTILINE | re.IGNORECASE
-        )
-        result["completed"] = [
-            m.group(1).strip() for m in completed_pattern.finditer(content)
-        ]
+        completed_pattern = re.compile(r"^-\s*\[x\]\s*(.+)$", re.MULTILINE | re.IGNORECASE)
+        result["completed"] = [m.group(1).strip() for m in completed_pattern.finditer(content)]
 
         # Find blockers: lines containing [blocker]
-        blocker_pattern = re.compile(
-            r"^-\s*\[blocker\]\s*(.+)$", re.MULTILINE | re.IGNORECASE
-        )
-        result["blockers"] = [
-            m.group(1).strip() for m in blocker_pattern.finditer(content)
-        ]
+        blocker_pattern = re.compile(r"^-\s*\[blocker\]\s*(.+)$", re.MULTILINE | re.IGNORECASE)
+        result["blockers"] = [m.group(1).strip() for m in blocker_pattern.finditer(content)]
 
         # Also check for **Blockers:** section items
-        blockers_section = re.search(
-            r"\*\*Blockers?:\*\*\n((?:-\s*\[[ x]?\]\s*.+\n?)+)", content
-        )
+        blockers_section = re.search(r"\*\*Blockers?:\*\*\n((?:-\s*\[[ x]?\]\s*.+\n?)+)", content)
         if blockers_section:
             for line in blockers_section.group(1).strip().split("\n"):
                 line = line.strip()
@@ -521,12 +499,8 @@ class SessionAnalyzer:
                         result["blockers"].append(item)
 
         # Find outcomes: lines containing [outcome]
-        outcome_pattern = re.compile(
-            r"^-\s*\[outcome\]\s*(.+)$", re.MULTILINE | re.IGNORECASE
-        )
-        result["outcomes"] = [
-            m.group(1).strip() for m in outcome_pattern.finditer(content)
-        ]
+        outcome_pattern = re.compile(r"^-\s*\[outcome\]\s*(.+)$", re.MULTILINE | re.IGNORECASE)
+        result["outcomes"] = [m.group(1).strip() for m in outcome_pattern.finditer(content)]
 
         # First incomplete task under PRIMARY becomes next_action
         # Prefer tasks from "Today's subtasks:" section, fall back to any incomplete
@@ -534,9 +508,7 @@ class SessionAnalyzer:
             primary_start = primary_match.end()
             # Find next ### or ## or end
             next_section = re.search(r"\n##", content[primary_start:])
-            primary_end = (
-                primary_start + next_section.start() if next_section else len(content)
-            )
+            primary_end = primary_start + next_section.start() if next_section else len(content)
             primary_section = content[primary_start:primary_end]
 
             # First look in Today's subtasks section
@@ -545,17 +517,13 @@ class SessionAnalyzer:
             )
             if subtasks_match:
                 subtasks_text = subtasks_match.group(1)
-                first_subtask = re.search(
-                    r"^-\s*\[ \]\s*(.+)$", subtasks_text, re.MULTILINE
-                )
+                first_subtask = re.search(r"^-\s*\[ \]\s*(.+)$", subtasks_text, re.MULTILINE)
                 if first_subtask:
                     result["next_action"] = first_subtask.group(1).strip()
 
             # Fall back to first incomplete in section if no subtask found
             if not result["next_action"]:
-                first_incomplete = re.search(
-                    r"^-\s*\[ \]\s*(.+)$", primary_section, re.MULTILINE
-                )
+                first_incomplete = re.search(r"^-\s*\[ \]\s*(.+)$", primary_section, re.MULTILINE)
                 if first_incomplete:
                     result["next_action"] = first_incomplete.group(1).strip()
 
@@ -627,9 +595,7 @@ class SessionAnalyzer:
         lines.append(f"# Session: {session_data.session_id[:8]}")
         lines.append(f"**Project**: {session_data.project}")
         if session_data.start_time:
-            lines.append(
-                f"**Started**: {session_data.start_time.strftime('%Y-%m-%d %H:%M')}"
-            )
+            lines.append(f"**Started**: {session_data.start_time.strftime('%Y-%m-%d %H:%M')}")
         if outcomes.duration_minutes:
             lines.append(f"**Duration**: {outcomes.duration_minutes:.0f} minutes")
         lines.append(f"**Turns**: {session_data.turn_count}")
@@ -682,9 +648,7 @@ class SessionAnalyzer:
 
         # WORK IN PROGRESS - what's still pending
         if outcomes.todos_final:
-            in_progress = [
-                t for t in outcomes.todos_final if t.get("status") == "in_progress"
-            ]
+            in_progress = [t for t in outcomes.todos_final if t.get("status") == "in_progress"]
             pending = [t for t in outcomes.todos_final if t.get("status") == "pending"]
             if in_progress or pending:
                 lines.append("## Still In Progress")
@@ -717,9 +681,7 @@ class SessionAnalyzer:
         # USER PROMPTS - the conversation arc
         lines.append("## User Prompts (Conversation Arc)")
         lines.append("")
-        lines.append(
-            "*Read these to understand what was requested and the flow of work:*"
-        )
+        lines.append("*Read these to understand what was requested and the flow of work:*")
         lines.append("")
         for i, prompt in enumerate(session_data.prompts, 1):
             # Truncate long prompts for analysis context
@@ -739,9 +701,7 @@ class SessionAnalyzer:
         lines.append("## Analysis Instructions")
         lines.append("")
         lines.append("Based on the above, extract:")
-        lines.append(
-            "1. **Accomplishments**: What concrete work was completed? (not just started)"
-        )
+        lines.append("1. **Accomplishments**: What concrete work was completed? (not just started)")
         lines.append("2. **Decisions**: What choices or design decisions were made?")
         lines.append("3. **Topics**: What areas/systems were worked on?")
         lines.append("4. **Blockers**: What issues remain unresolved?")
@@ -774,9 +734,7 @@ def progress_bar(completed: int, total: int, width: int = 20) -> str:
 class SectionProgress:
     """Progress data for a single priority section."""
 
-    heading: (
-        str  # Full heading line (e.g., "## 🎯 PRIMARY: TJA Paper → [[projects/tja]]")
-    )
+    heading: str  # Full heading line (e.g., "## 🎯 PRIMARY: TJA Paper → [[projects/tja]]")
     completed: int
     total: int
     start_pos: int  # Position in file where heading starts
@@ -800,9 +758,7 @@ def parse_priority_sections(content: str) -> list[SectionProgress]:
 
     # Find where Session Details starts (boundary of user zone)
     session_details_match = re.search(r"^## Session Details", content, re.MULTILINE)
-    user_zone_end = (
-        session_details_match.start() if session_details_match else len(content)
-    )
+    user_zone_end = session_details_match.start() if session_details_match else len(content)
 
     # Find all ## headings in user zone
     heading_pattern = re.compile(r"^(## .+)$", re.MULTILINE)
@@ -821,9 +777,7 @@ def parse_priority_sections(content: str) -> list[SectionProgress]:
         section_content = content[start_pos:end_pos]
 
         # Count tasks in this section
-        completed = len(
-            re.findall(r"^-\s*\[x\]", section_content, re.MULTILINE | re.IGNORECASE)
-        )
+        completed = len(re.findall(r"^-\s*\[x\]", section_content, re.MULTILINE | re.IGNORECASE))
         incomplete = len(re.findall(r"^-\s*\[ \]", section_content, re.MULTILINE))
         total = completed + incomplete
 
@@ -916,13 +870,11 @@ def get_recent_sessions(
     Returns:
         List of SessionData for matching sessions
     """
-    since = datetime.now(timezone.utc).replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )
+    since = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
     if hours < 24:
         from datetime import timedelta
 
-        since = datetime.now(timezone.utc) - timedelta(hours=hours)
+        since = datetime.now(UTC) - timedelta(hours=hours)
 
     sessions = find_sessions(project=project, since=since)
     analyzer = SessionAnalyzer()

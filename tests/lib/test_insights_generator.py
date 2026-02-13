@@ -3,7 +3,6 @@
 import json
 
 import pytest
-
 from lib.insights_generator import (
     InsightsValidationError,
     extract_json_from_response,
@@ -116,9 +115,7 @@ class TestSchemaValidation:
             "project": "test",
             # Missing: summary, outcome, accomplishments
         }
-        with pytest.raises(
-            InsightsValidationError, match="Missing required field: summary"
-        ):
+        with pytest.raises(InsightsValidationError, match="Missing required field: summary"):
             validate_insights_schema(insights)
 
     def test_invalid_outcome_value(self):
@@ -131,9 +128,7 @@ class TestSchemaValidation:
             "outcome": "invalid",
             "accomplishments": [],
         }
-        with pytest.raises(
-            InsightsValidationError, match="outcome.*must be one of.*success"
-        ):
+        with pytest.raises(InsightsValidationError, match="outcome.*must be one of.*success"):
             validate_insights_schema(insights)
 
     def test_invalid_date_format(self):
@@ -146,9 +141,7 @@ class TestSchemaValidation:
             "outcome": "success",
             "accomplishments": [],
         }
-        with pytest.raises(
-            InsightsValidationError, match="date.*must be ISO 8601 format"
-        ):
+        with pytest.raises(InsightsValidationError, match="date.*must be ISO 8601 format"):
             validate_insights_schema(insights)
 
     def test_invalid_field_type(self):
@@ -161,9 +154,7 @@ class TestSchemaValidation:
             "outcome": "success",
             "accomplishments": "not an array",  # Should be list
         }
-        with pytest.raises(
-            InsightsValidationError, match="accomplishments.*must be list"
-        ):
+        with pytest.raises(InsightsValidationError, match="accomplishments.*must be list"):
             validate_insights_schema(insights)
 
     def test_user_mood_out_of_range(self):
@@ -237,9 +228,7 @@ class TestSchemaValidation:
             "accomplishments": [],
             "worker_name": ["list", "not", "string"],  # Should be string
         }
-        with pytest.raises(
-            InsightsValidationError, match="worker_name.*must be a string or null"
-        ):
+        with pytest.raises(InsightsValidationError, match="worker_name.*must be a string or null"):
             validate_insights_schema(insights)
 
 
@@ -255,14 +244,10 @@ class TestInsightsFilePath:
 
     def test_file_path_format_with_project(self):
         """Test that file path includes project name when provided."""
-        path = get_insights_file_path(
-            "2026-01-13", "a1b2c3d4", project="writing", hour="14"
-        )
+        path = get_insights_file_path("2026-01-13", "a1b2c3d4", project="writing", hour="14")
         # With project: YYYYMMDD-HH-project-session_id.json
         assert path.name == "20260113-14-writing-a1b2c3d4.json"
-        assert str(path).endswith(
-            "sessions/summaries/20260113-14-writing-a1b2c3d4.json"
-        )
+        assert str(path).endswith("sessions/summaries/20260113-14-writing-a1b2c3d4.json")
 
     def test_file_path_format_with_project_and_slug(self):
         """Test that file path includes project and slug."""
@@ -274,25 +259,19 @@ class TestInsightsFilePath:
 
     def test_file_path_sanitizes_project_name(self):
         """Test that project name is sanitized for filesystem safety."""
-        path = get_insights_file_path(
-            "2026-01-13", "a1b2c3d4", project="My Project!", hour="23"
-        )
+        path = get_insights_file_path("2026-01-13", "a1b2c3d4", project="My Project!", hour="23")
         # Special chars removed, lowercase
         assert path.name == "20260113-23-my-project-a1b2c3d4.json"
 
     def test_file_path_uses_centralized_location(self):
         """Test that file path uses centralized ~/writing/sessions/summaries/ location."""
-        path = get_insights_file_path(
-            "2026-01-13", "a1b2c3d4", project="test", hour="08"
-        )
+        path = get_insights_file_path("2026-01-13", "a1b2c3d4", project="test", hour="08")
         # Centralized location, no env var dependency
         assert "writing/sessions/summaries" in str(path)
 
     def test_file_path_extracts_hour_from_iso8601(self):
         """Test that hour is extracted from ISO 8601 date format."""
-        path = get_insights_file_path(
-            "2026-01-13T15:30:00+10:00", "a1b2c3d4", project="test"
-        )
+        path = get_insights_file_path("2026-01-13T15:30:00+10:00", "a1b2c3d4", project="test")
         # Hour extracted from ISO 8601 timestamp
         assert path.name == "20260113-15-test-a1b2c3d4.json"
 
@@ -495,17 +474,13 @@ class TestTokenMetricsValidation:
     def test_token_metrics_must_be_dict(self):
         """Test that token_metrics must be a dict if present."""
         insights = self._minimal_insights(token_metrics="not a dict")
-        with pytest.raises(
-            InsightsValidationError, match="token_metrics.*must be a dict"
-        ):
+        with pytest.raises(InsightsValidationError, match="token_metrics.*must be a dict"):
             validate_insights_schema(insights)
 
     def test_token_metrics_totals_must_be_dict(self):
         """Test that token_metrics.totals must be a dict."""
         insights = self._minimal_insights(token_metrics={"totals": "not a dict"})
-        with pytest.raises(
-            InsightsValidationError, match="token_metrics.totals.*must be a dict"
-        ):
+        with pytest.raises(InsightsValidationError, match="token_metrics.totals.*must be a dict"):
             validate_insights_schema(insights)
 
     def test_token_metrics_totals_numeric_fields(self):
@@ -521,19 +496,13 @@ class TestTokenMetricsValidation:
 
     def test_token_metrics_by_model_must_be_dict(self):
         """Test that token_metrics.by_model must be a dict."""
-        insights = self._minimal_insights(
-            token_metrics={"by_model": ["list", "not", "dict"]}
-        )
-        with pytest.raises(
-            InsightsValidationError, match="token_metrics.by_model.*must be a dict"
-        ):
+        insights = self._minimal_insights(token_metrics={"by_model": ["list", "not", "dict"]})
+        with pytest.raises(InsightsValidationError, match="token_metrics.by_model.*must be a dict"):
             validate_insights_schema(insights)
 
     def test_token_metrics_by_model_entries_must_be_dict(self):
         """Test that each by_model entry must be a dict."""
-        insights = self._minimal_insights(
-            token_metrics={"by_model": {"claude-opus": "not a dict"}}
-        )
+        insights = self._minimal_insights(token_metrics={"by_model": {"claude-opus": "not a dict"}})
         with pytest.raises(
             InsightsValidationError,
             match="token_metrics.by_model.claude-opus.*must be a dict",
@@ -543,16 +512,12 @@ class TestTokenMetricsValidation:
     def test_token_metrics_by_agent_must_be_dict(self):
         """Test that token_metrics.by_agent must be a dict."""
         insights = self._minimal_insights(token_metrics={"by_agent": 123})
-        with pytest.raises(
-            InsightsValidationError, match="token_metrics.by_agent.*must be a dict"
-        ):
+        with pytest.raises(InsightsValidationError, match="token_metrics.by_agent.*must be a dict"):
             validate_insights_schema(insights)
 
     def test_token_metrics_by_agent_entries_must_be_dict(self):
         """Test that each by_agent entry must be a dict."""
-        insights = self._minimal_insights(
-            token_metrics={"by_agent": {"main": [1, 2, 3]}}
-        )
+        insights = self._minimal_insights(token_metrics={"by_agent": {"main": [1, 2, 3]}})
         with pytest.raises(
             InsightsValidationError, match="token_metrics.by_agent.main.*must be a dict"
         ):
@@ -579,9 +544,7 @@ class TestTokenMetricsValidation:
 
     def test_token_metrics_cache_hit_rate_range(self):
         """Test that cache_hit_rate must be between 0.0 and 1.0."""
-        insights = self._minimal_insights(
-            token_metrics={"efficiency": {"cache_hit_rate": 1.5}}
-        )
+        insights = self._minimal_insights(token_metrics={"efficiency": {"cache_hit_rate": 1.5}})
         with pytest.raises(
             InsightsValidationError, match="cache_hit_rate.*must be between 0.0 and 1.0"
         ):
@@ -590,15 +553,11 @@ class TestTokenMetricsValidation:
     def test_token_metrics_cache_hit_rate_valid_bounds(self):
         """Test that cache_hit_rate at boundaries (0.0 and 1.0) passes."""
         # Test 0.0
-        insights = self._minimal_insights(
-            token_metrics={"efficiency": {"cache_hit_rate": 0.0}}
-        )
+        insights = self._minimal_insights(token_metrics={"efficiency": {"cache_hit_rate": 0.0}})
         validate_insights_schema(insights)  # Should not raise
 
         # Test 1.0
-        insights = self._minimal_insights(
-            token_metrics={"efficiency": {"cache_hit_rate": 1.0}}
-        )
+        insights = self._minimal_insights(token_metrics={"efficiency": {"cache_hit_rate": 1.0}})
         validate_insights_schema(insights)  # Should not raise
 
     def test_token_metrics_with_null_sub_fields(self):
@@ -689,17 +648,13 @@ class TestFrameworkReflectionsValidation:
     def test_followed_rejects_invalid_string(self):
         """Test that followed rejects unrecognized string values."""
         insights = self._minimal_insights(framework_reflections=[{"followed": "maybe"}])
-        with pytest.raises(
-            InsightsValidationError, match="cannot be coerced to boolean"
-        ):
+        with pytest.raises(InsightsValidationError, match="cannot be coerced to boolean"):
             validate_insights_schema(insights)
 
     def test_followed_rejects_invalid_type(self):
         """Test that followed rejects non-coercible types like lists."""
         insights = self._minimal_insights(framework_reflections=[{"followed": [True]}])
-        with pytest.raises(
-            InsightsValidationError, match="must be a boolean or coercible value"
-        ):
+        with pytest.raises(InsightsValidationError, match="must be a boolean or coercible value"):
             validate_insights_schema(insights)
 
     def test_followed_accepts_null(self):

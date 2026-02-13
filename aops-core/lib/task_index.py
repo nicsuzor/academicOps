@@ -47,7 +47,7 @@ from pathlib import Path
 from typing import Any
 
 from lib.paths import get_data_root
-from lib.task_model import Task, TaskStatus
+from lib.task_model import Task, TaskStatus, TaskType
 from lib.task_storage import TaskStorage
 
 logger = logging.getLogger(__name__)
@@ -70,12 +70,8 @@ class TaskIndexEntry:
     children: list[str]  # Computed: inverse of parent
     depends_on: list[str]
     blocks: list[str]  # Computed: inverse of depends_on
-    soft_depends_on: list[str] = field(
-        default_factory=list
-    )  # Non-blocking context hints
-    soft_blocks: list[str] = field(
-        default_factory=list
-    )  # Computed: inverse of soft_depends_on
+    soft_depends_on: list[str] = field(default_factory=list)  # Non-blocking context hints
+    soft_blocks: list[str] = field(default_factory=list)  # Computed: inverse of soft_depends_on
     depth: int = 0
     leaf: bool = True
     project: str | None = None
@@ -181,12 +177,7 @@ def _find_fast_indexer() -> Path | None:
     # 2. Relative to module (development location)
     module_dir = Path(__file__).parent
     dev_binary = (
-        module_dir.parent.parent
-        / "lib"
-        / "fast-indexer"
-        / "target"
-        / "release"
-        / "fast-indexer"
+        module_dir.parent.parent / "lib" / "fast-indexer" / "target" / "release" / "fast-indexer"
     )
     if dev_binary.exists():
         return dev_binary
@@ -213,6 +204,14 @@ class TaskIndex:
     """
 
     VERSION = 2
+
+    # Task types that can be claimed by workers (actionable work items)
+    CLAIMABLE_TYPES = {
+        TaskType.TASK.value,
+        TaskType.ACTION.value,
+        TaskType.BUG.value,
+        TaskType.FEATURE.value,
+    }
 
     def __init__(self, data_root: Path | None = None):
         """Initialize task index.
@@ -274,7 +273,7 @@ class TaskIndex:
         # A task is a leaf only if:
         # 1. It has no computed children, AND
         # 2. Its frontmatter says leaf=True (respects explicit non-leaf declarations)
-        for task_id, entry in self._tasks.items():
+        for _task_id, entry in self._tasks.items():
             has_children = len(entry.children) > 0
             # If frontmatter said leaf=False, keep it False (declared parent)
             # If we found children, set to False
@@ -291,16 +290,12 @@ class TaskIndex:
         # Identify roots (no parent OR parent doesn't exist in index)
         # Orphan tasks (with non-existent parents) are treated as roots
         self._roots = [
-            tid
-            for tid, e in self._tasks.items()
-            if e.parent is None or e.parent not in self._tasks
+            tid for tid, e in self._tasks.items() if e.parent is None or e.parent not in self._tasks
         ]
 
         # Compute ready and blocked
         completed_statuses = {TaskStatus.DONE.value, TaskStatus.CANCELLED.value}
-        completed_ids = {
-            tid for tid, e in self._tasks.items() if e.status in completed_statuses
-        }
+        completed_ids = {tid for tid, e in self._tasks.items() if e.status in completed_statuses}
 
         for task_id, entry in self._tasks.items():
             # Skip completed tasks
@@ -311,7 +306,11 @@ class TaskIndex:
             unmet_deps = [d for d in entry.depends_on if d not in completed_ids]
             if unmet_deps or entry.status == TaskStatus.BLOCKED.value:
                 self._blocked.append(task_id)
-            elif entry.leaf and entry.status == TaskStatus.ACTIVE.value:
+            elif (
+                entry.leaf
+                and entry.status == TaskStatus.ACTIVE.value
+                and entry.type in self.CLAIMABLE_TYPES
+            ):
                 self._ready.append(task_id)
 
         # Sort ready by priority
@@ -424,8 +423,7 @@ class TaskIndex:
 
             self._generated = data.get("generated")
             self._tasks = {
-                tid: TaskIndexEntry.from_dict(entry)
-                for tid, entry in data.get("tasks", {}).items()
+                tid: TaskIndexEntry.from_dict(entry) for tid, entry in data.get("tasks", {}).items()
             }
             self._by_project = data.get("by_project", {})
             self._roots = data.get("roots", [])
@@ -525,7 +523,7 @@ class TaskIndex:
             return ancestors[-1]
         return self._tasks.get(task_id)
 
-    # Tags that indicate human-assigned tasks (excluded when caller is 'bot')
+    # Tags that indicate human-assigned tasks (excluded when caller is 'polecat')
     HUMAN_TAGS = {"nic", "human"}
 
     def get_ready_tasks(
@@ -537,7 +535,7 @@ class TaskIndex:
             project: Filter by project
             caller: Filter by assignee - returns tasks where assignee is None
                     or assignee matches caller. If caller is None, returns all.
-                    When caller is 'bot', also excludes tasks with human tags
+                    When caller is 'polecat', also excludes tasks with human tags
                     ('nic', 'human') in their tags list.
 
         Returns:
@@ -552,8 +550,8 @@ class TaskIndex:
         if caller is not None:
             entries = [e for e in entries if e.assignee is None or e.assignee == caller]
 
-            # When caller is 'bot', also exclude tasks with human tags
-            if caller == "bot":
+            # When caller is 'polecat', also exclude tasks with human tags
+            if caller == "polecat":
                 entries = [e for e in entries if not (set(e.tags) & self.HUMAN_TAGS)]
 
         # Sort by priority (lower is higher priority), then order, then title

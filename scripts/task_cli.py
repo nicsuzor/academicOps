@@ -19,19 +19,19 @@ from pathlib import Path
 
 import click
 from rich.console import Console
-from rich.table import Table
-from rich.tree import Tree
 from rich.panel import Panel
+from rich.table import Table
 from rich.text import Text
+from rich.tree import Tree
 
 # Add aops-core to path for lib imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
 REPO_ROOT = SCRIPT_DIR.parent
 sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
+from lib.task_index import TaskIndex, TaskIndexEntry  # noqa: E402
 from lib.task_model import TaskStatus, TaskType  # noqa: E402
 from lib.task_storage import TaskStorage  # noqa: E402
-from lib.task_index import TaskIndex, TaskIndexEntry  # noqa: E402
 
 console = Console()
 
@@ -159,9 +159,7 @@ def main():
 @main.command(name="list")
 @click.option("--status", "-s", help="Filter by status (inbox, active, done, etc.)")
 @click.option("--project", "-p", help="Filter by project")
-@click.option(
-    "--type", "-t", "task_type", help="Filter by type (goal, project, task, action)"
-)
+@click.option("--type", "-t", "task_type", help="Filter by type (goal, project, task, action)")
 @click.option(
     "--all",
     "-a",
@@ -188,27 +186,25 @@ def list_tasks(
     if status:
         try:
             status_filter = TaskStatus(status)
-        except ValueError:
+        except ValueError as e:
             console.print(f"[red]Invalid status: {status}[/red]")
             console.print(f"Valid values: {', '.join(s.value for s in TaskStatus)}")
-            raise SystemExit(1)
+            raise SystemExit(1) from e
 
     type_filter = None
     if task_type:
         try:
             type_filter = TaskType(task_type)
-        except ValueError:
+        except ValueError as e:
             console.print(f"[red]Invalid type: {task_type}[/red]")
             console.print(f"Valid values: {', '.join(t.value for t in TaskType)}")
-            raise SystemExit(1)
+            raise SystemExit(1) from e
 
     tasks = storage.list_tasks(project=project, status=status_filter, type=type_filter)
 
     # Filter out done/cancelled unless showing all or specifically asked for that status
     if not show_all and not status:
-        tasks = [
-            t for t in tasks if t.status not in (TaskStatus.DONE, TaskStatus.CANCELLED)
-        ]
+        tasks = [t for t in tasks if t.status not in (TaskStatus.DONE, TaskStatus.CANCELLED)]
 
     if not tasks:
         console.print("[dim]No tasks found.[/dim]")
@@ -254,9 +250,7 @@ def list_tasks(
 @main.command()
 @click.option("--project", "-p", help="Filter by project")
 @click.option("--all", "-a", "show_all", is_flag=True, help="Show completed tasks too")
-@click.option(
-    "--roots-only", "-r", is_flag=True, help="Only show root-level tasks (no full tree)"
-)
+@click.option("--roots-only", "-r", is_flag=True, help="Only show root-level tasks (no full tree)")
 def tree(project: str | None, show_all: bool, roots_only: bool):
     """Show tasks in hierarchical tree view.
 
@@ -303,9 +297,7 @@ def tree(project: str | None, show_all: bool, roots_only: bool):
         label.append(f"[{root.id}] ", style="dim")
         label.append(f"{icon} ", style=style)
         label.append(f"{type_icon} ", style="dim")
-        label.append(
-            root.title, style="bold" if root.type in ("goal", "project") else "white"
-        )
+        label.append(root.title, style="bold" if root.type in ("goal", "project") else "white")
         label.append("  ", style="dim")
         label.append(pri_label, style=pri_style)
 
@@ -325,9 +317,7 @@ def tree(project: str | None, show_all: bool, roots_only: bool):
     stats = index.stats()
     console.print()
     console.print(
-        f"[dim]{stats['total']} total · "
-        f"{stats['ready']} ready · "
-        f"{stats['blocked']} blocked[/dim]"
+        f"[dim]{stats['total']} total · {stats['ready']} ready · {stats['blocked']} blocked[/dim]"
     )
 
 
@@ -342,9 +332,7 @@ def tree(project: str | None, show_all: bool, roots_only: bool):
     help="Task type (goal, project, epic, task, action)",
 )
 @click.option("--parent", help="Parent task ID for hierarchy")
-@click.option(
-    "--priority", type=int, default=2, help="Priority 0-4 (0=critical, 4=someday)"
-)
+@click.option("--priority", type=int, default=2, help="Priority 0-4 (0=critical, 4=someday)")
 @click.option("--assignee", "-a", help="Assign to actor (nic/bot)")
 @click.option("--complexity", "-c", help="Task complexity")
 @click.option("--tags", help="Comma-separated tags")
@@ -369,10 +357,10 @@ def create(
 
     try:
         type_enum = TaskType(task_type)
-    except ValueError:
+    except ValueError as e:
         console.print(f"[red]Invalid type: {task_type}[/red]")
         console.print(f"Valid values: {', '.join(t.value for t in TaskType)}")
-        raise SystemExit(1)
+        raise SystemExit(1) from e
 
     # Parse complexity
     task_complexity = None
@@ -381,18 +369,16 @@ def create(
             from lib.task_model import TaskComplexity
 
             task_complexity = TaskComplexity(complexity)
-        except ValueError:
+        except ValueError as e:
             console.print(f"[red]Invalid complexity: {complexity}[/red]")
-            raise SystemExit(1)
+            raise SystemExit(1) from e
 
     # Parse tags
     tag_list = [t.strip() for t in tags.split(",")] if tags else []
 
     # Parse dependencies
     dep_list = [d.strip() for d in depends_on.split(",")] if depends_on else []
-    soft_dep_list = (
-        [d.strip() for d in soft_depends_on.split(",")] if soft_depends_on else []
-    )
+    soft_dep_list = [d.strip() for d in soft_depends_on.split(",")] if soft_depends_on else []
 
     # P#62: Inherit project from parent if not explicitly specified
     effective_project = project
@@ -496,9 +482,7 @@ def show(task_id: str):
         children = index.get_children(task_id)
         for child in children:
             c_icon, c_style = STATUS_STYLE.get(child.status, ("•", "white"))
-            console.print(
-                f"  {c_icon} {child.title} [dim]({child.id})[/dim]", style=c_style
-            )
+            console.print(f"  {c_icon} {child.title} [dim]({child.id})[/dim]", style=c_style)
 
     # Body content
     if task.body:
@@ -544,7 +528,7 @@ def decompose(task_id: str, titles: list[str]):
             console.print(f"  [dim]• {child.id}[/dim] {child.title}")
     except ValueError as e:
         console.print(f"[red]{e}[/red]")
-        raise SystemExit(1)
+        raise SystemExit(1) from e
 
 
 @main.command()
@@ -600,9 +584,9 @@ def update(
         try:
             task.status = TaskStatus(status)
             changes.append(f"status → {status}")
-        except ValueError:
+        except ValueError as e:
             console.print(f"[red]Invalid status: {status}[/red]")
-            raise SystemExit(1)
+            raise SystemExit(1) from e
 
     if title:
         task.title = title
@@ -630,9 +614,9 @@ def update(
 
                 task.complexity = TaskComplexity(complexity)
                 changes.append(f"complexity → {complexity}")
-            except ValueError:
+            except ValueError as e:
                 console.print(f"[red]Invalid complexity: {complexity}[/red]")
-                raise SystemExit(1)
+                raise SystemExit(1) from e
 
     if parent is not None:
         task.parent = parent if parent else None
@@ -647,9 +631,9 @@ def update(
         try:
             task.type = TaskType(task_type)
             changes.append(f"type → {task_type}")
-        except ValueError:
+        except ValueError as e:
             console.print(f"[red]Invalid type: {task_type}[/red]")
-            raise SystemExit(1)
+            raise SystemExit(1) from e
 
     if due is not None:
         if due == "":
@@ -661,9 +645,9 @@ def update(
 
                 task.due = datetime.fromisoformat(due.replace("Z", "+00:00"))
                 changes.append(f"due → {due}")
-            except ValueError:
+            except ValueError as e:
                 console.print(f"[red]Invalid due date format: {due}[/red]")
-                raise SystemExit(1)
+                raise SystemExit(1) from e
 
     if order is not None:
         task.order = order
@@ -675,9 +659,7 @@ def update(
         changes.append(f"depends_on → {depends_on or 'none'}")
 
     if soft_depends_on is not None:
-        soft_dep_list = (
-            [d.strip() for d in soft_depends_on.split(",")] if soft_depends_on else []
-        )
+        soft_dep_list = [d.strip() for d in soft_depends_on.split(",")] if soft_depends_on else []
         task.soft_depends_on = soft_dep_list
         changes.append(f"soft_depends_on → {soft_depends_on or 'none'}")
 
@@ -769,9 +751,7 @@ def ready(project: str, caller: str | None, limit: int):
         console.print(
             f"\n[dim]{len(tasks)} ready task(s) total, showing top {min(limit, len(tasks))}[/dim]"
         )
-        console.print(
-            "[dim]Use --claim CALLER to claim the highest-priority task[/dim]"
-        )
+        console.print("[dim]Use --claim CALLER to claim the highest-priority task[/dim]")
         return
 
     # Try to claim tasks in priority order
@@ -807,9 +787,7 @@ def ready(project: str, caller: str | None, limit: int):
 
                     # Rich output
                     type_icon = TYPE_ICON.get(fresh_task.type.value, "•")
-                    pri_label, pri_style = PRIORITY_STYLE.get(
-                        fresh_task.priority, ("P?", "white")
-                    )
+                    pri_label, pri_style = PRIORITY_STYLE.get(fresh_task.priority, ("P?", "white"))
                     proj = fresh_task.project or "inbox"
 
                     console.print(
@@ -833,9 +811,7 @@ def ready(project: str, caller: str | None, limit: int):
             except Exception:
                 pass
 
-    console.print(
-        "[dim]No tasks available to claim (all locked or already assigned)[/dim]"
-    )
+    console.print("[dim]No tasks available to claim (all locked or already assigned)[/dim]")
 
 
 @main.command()
@@ -877,9 +853,7 @@ def stats():
 
 
 @main.command()
-@click.option(
-    "--force", "-f", is_flag=True, help="Force rebuild even if index is fresh"
-)
+@click.option("--force", "-f", is_flag=True, help="Force rebuild even if index is fresh")
 def reindex(force: bool):
     """Rebuild the task index."""
     index = TaskIndex()
@@ -898,9 +872,7 @@ def reindex(force: bool):
 
 
 @main.command(name="dedup")
-@click.option(
-    "--delete", "-d", is_flag=True, help="Delete duplicates (keeps newest or done)"
-)
+@click.option("--delete", "-d", is_flag=True, help="Delete duplicates (keeps newest or done)")
 @click.option("--plain", is_flag=True, help="Plain output for scripting")
 def find_duplicates(delete: bool, plain: bool):
     """Find and optionally remove duplicate tasks.
@@ -924,14 +896,10 @@ def find_duplicates(delete: bool, plain: bool):
         by_id[task.id].append(task)
 
     # Find title duplicates (same title, different files)
-    title_duplicates = {
-        title: tasks for title, tasks in by_title.items() if len(tasks) > 1
-    }
+    title_duplicates = {title: tasks for title, tasks in by_title.items() if len(tasks) > 1}
 
     # Find ID duplicates (same frontmatter id in different files) - MORE SERIOUS
-    id_duplicates = {
-        task_id: tasks for task_id, tasks in by_id.items() if len(tasks) > 1
-    }
+    id_duplicates = {task_id: tasks for task_id, tasks in by_id.items() if len(tasks) > 1}
 
     # Merge: ID duplicates take precedence (use "ID: {id}" as key to distinguish)
     duplicates: dict[str, list] = {}
@@ -990,9 +958,7 @@ def find_duplicates(delete: bool, plain: bool):
         else:
             console.print(f"[bold]{title}[/bold]")
             icon, style = STATUS_STYLE.get(keep.status.value, ("•", "white"))
-            console.print(
-                f"  [green]keep[/green]  {icon} {keep.id} ({keep.status.value})"
-            )
+            console.print(f"  [green]keep[/green]  {icon} {keep.id} ({keep.status.value})")
             for t in remove:
                 icon, style = STATUS_STYLE.get(t.status.value, ("•", "white"))
                 console.print(f"  [red]dup[/red]   {icon} {t.id} ({t.status.value})")
@@ -1016,9 +982,7 @@ def find_duplicates(delete: bool, plain: bool):
 
         console.print(f"[green]✓[/green] Deleted {deleted_count} duplicate(s)")
     elif not delete and to_delete:
-        console.print(
-            f"[dim]Use --delete to remove {len(to_delete)} duplicate(s)[/dim]"
-        )
+        console.print(f"[dim]Use --delete to remove {len(to_delete)} duplicate(s)[/dim]")
 
 
 if __name__ == "__main__":

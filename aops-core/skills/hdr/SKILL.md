@@ -20,6 +20,7 @@ Manage HDR (Higher Degree Research) student-related tasks including supervision,
 ## Path Resolution
 
 **CRITICAL**: This skill requires the `$ACA_DATA` environment variable to be set.
+
 - `$ACA_DATA` points to the user's data directory
 
 HDR data location: `$ACA_DATA/hdr/`
@@ -63,6 +64,7 @@ $ACA_DATA/hdr/
 ```
 
 **When to create student directory**:
+
 - Reference letters (stored as `{student}/reference-{purpose}-{year}.md`)
 - Annual planning documents
 - Thesis drafts or chapters for review
@@ -108,13 +110,13 @@ See `[[workflows/reference-letter]]` for the complete workflow.
 
 ## HDR Task Types
 
-| Task Type | Description | Typical Assignee |
-|-----------|-------------|------------------|
-| Reference letter | Write recommendation for student | nic |
-| Dissertation review | Review chapter/draft | nic |
-| Supervision inquiry | Respond to prospective student | nic |
-| Final seminar | Schedule and attend | nic |
-| Annual planning | Review annual plan with student | nic |
+| Task Type           | Description                      | Typical Assignee |
+| ------------------- | -------------------------------- | ---------------- |
+| Reference letter    | Write recommendation for student | nic              |
+| Dissertation review | Review chapter/draft             | nic              |
+| Supervision inquiry | Respond to prospective student   | nic              |
+| Final seminar       | Schedule and attend              | nic              |
+| Annual planning     | Review annual plan with student  | nic              |
 
 **Note**: Most HDR tasks are `assignee=nic` because they require human judgment and relationship management.
 
@@ -127,13 +129,16 @@ See `[[workflows/reference-letter]]` for the complete workflow.
 ## Error Handling
 
 **Wrong project used**:
+
 - If task created with `project=supervision` or `project=academic`: Update to `project=hdr`
 - Move task file to correct location if needed
 
 **Student directory missing**:
+
 - Create `$ACA_DATA/hdr/{student}/` on first use
 - Use lowercase first name only
 
 **Google Doc inaccessible**:
+
 - Note in task body that access requires user authentication
 - Ask user to export/share content if agent needs to process it

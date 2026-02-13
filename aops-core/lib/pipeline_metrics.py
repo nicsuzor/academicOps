@@ -23,7 +23,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -48,9 +48,7 @@ def _atomic_write_json(path: Path, data: dict[str, Any]) -> None:
     """Atomically write JSON file using temp file + rename."""
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    fd, temp_path_str = tempfile.mkstemp(
-        suffix=".json", prefix="metrics-", dir=str(path.parent)
-    )
+    fd, temp_path_str = tempfile.mkstemp(suffix=".json", prefix="metrics-", dir=str(path.parent))
     temp_path = Path(temp_path_str)
     fd_closed = False
 
@@ -106,7 +104,7 @@ class PipelineMetrics:
         Args:
             trigger: What triggered the run
         """
-        self._run_start = datetime.now(timezone.utc)
+        self._run_start = datetime.now(UTC)
         self._run_trigger = trigger
 
         # Reset counters
@@ -190,9 +188,7 @@ class PipelineMetrics:
             return "partial"
         return "success"
 
-    def end_run(
-        self, status: RunStatus | None = None, error: str | None = None
-    ) -> dict[str, Any]:
+    def end_run(self, status: RunStatus | None = None, error: str | None = None) -> dict[str, Any]:
         """End the current run and persist metrics.
 
         Args:
@@ -203,9 +199,9 @@ class PipelineMetrics:
             Current run metrics dict
         """
         if self._run_start is None:
-            self._run_start = datetime.now(timezone.utc)
+            self._run_start = datetime.now(UTC)
 
-        run_end = datetime.now(timezone.utc)
+        run_end = datetime.now(UTC)
         run_duration_ms = int((run_end - self._run_start).total_seconds() * 1000)
 
         final_status = status or self._determine_status()
@@ -255,9 +251,7 @@ class PipelineMetrics:
 
         old_avg_duration = metrics["cumulative"]["avg_run_duration_ms"]
         metrics["cumulative"]["avg_run_duration_ms"] = int(
-            (old_avg_duration * (n - 1) + run_duration_ms) / n
-            if n > 0
-            else run_duration_ms
+            (old_avg_duration * (n - 1) + run_duration_ms) / n if n > 0 else run_duration_ms
         )
 
         # Update health
@@ -293,7 +287,7 @@ class PipelineMetrics:
         # Initialize with empty structure
         return {
             "$schema": "session-insights-metrics-schema/v1",
-            "last_updated": datetime.now(timezone.utc).isoformat(),
+            "last_updated": datetime.now(UTC).isoformat(),
             "current_run": None,
             "cumulative": {
                 "total_runs": 0,
@@ -483,9 +477,7 @@ def check_alerts(metrics: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     last_success = health["last_successful_run"]
     if last_success:
         last_success_dt = datetime.fromisoformat(last_success)
-        hours_since = (
-            datetime.now(timezone.utc) - last_success_dt
-        ).total_seconds() / 3600
+        hours_since = (datetime.now(UTC) - last_success_dt).total_seconds() / 3600
         if hours_since >= ALERT_THRESHOLDS["hours_since_success"]["critical"]:
             alerts.append(
                 {

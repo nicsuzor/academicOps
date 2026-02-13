@@ -22,11 +22,11 @@ This is non-negotiable. The user cannot audit or revert archive operations witho
 ```markdown
 ## Archive Receipt Log (N emails)
 
-| # | Date | From | Subject |
-|---|------|------|---------|
-| 1 | 2025-11-19 | Email Quarantine | End User Digest: 7 New Messages |
-| 2 | 2025-11-19 | QUT Travel | Your Travel (#893940) has concluded |
-...
+| #   | Date       | From             | Subject                             |
+| --- | ---------- | ---------------- | ----------------------------------- |
+| 1   | 2025-11-19 | Email Quarantine | End User Digest: 7 New Messages     |
+| 2   | 2025-11-19 | QUT Travel       | Your Travel (#893940) has concluded |
+| ... |            |                  |                                     |
 
 All N emails moved to [Archive Folder] folder.
 ```
@@ -34,6 +34,7 @@ All N emails moved to [Archive Folder] folder.
 ### Concurrent Write Pattern
 
 **WRONG** (batch at end - data loss risk):
+
 ```
 1. Archive email 1
 2. Archive email 2
@@ -43,6 +44,7 @@ N+1. Write all receipts to task body  # If this fails, ALL receipts lost
 ```
 
 **RIGHT** (concurrent - partial receipt on failure):
+
 ```
 1. Archive email 1 → immediately append receipt to task body
 2. Archive email 2 → immediately append receipt to task body
@@ -104,17 +106,26 @@ emails = mcp__outlook__messages_search(
 
 **Classification categories** (semantic, not keyword-based):
 
-| Category | Description | Action |
-|----------|-------------|--------|
-| **Task** | Requires action, response, or decision | Create task |
-| **FYI** | Useful information, no action needed | Read and archive |
+| Category | Description                            | Action              |
+| -------- | -------------------------------------- | ------------------- |
+| **Task** | Requires action, response, or decision | Create task         |
+| **FYI**  | Useful information, no action needed   | Read and archive    |
 | **Skip** | Spam, irrelevant, auto-generated noise | Archive immediately |
+
+**Reply-waiting signals** (ALWAYS Task, never FYI):
+
+- "following up", "checking in", "any update", "wanted to touch base"
+- "haven't heard back", "just checking", "circling back"
+- Questions awaiting answer from a previous thread
+- External parties waiting for scheduling, confirmation, or decision
+- PhD/collaboration inquiries requesting supervision or meeting
 
 ### Step 4: User Checkpoint Before Archive
 
 **MANDATORY**: Get user approval before archiving.
 
 Use `AskUserQuestion` to present:
+
 1. Count of emails per category
 2. Sample subjects from each category
 3. Confirmation to proceed with archive
@@ -139,6 +150,7 @@ AskUserQuestion(
 **For each email to archive:**
 
 1. Move the email:
+
 ```python
 mcp__outlook__messages_move(
     entry_id=email["entry_id"],
@@ -147,6 +159,7 @@ mcp__outlook__messages_move(
 ```
 
 2. **IMMEDIATELY** append receipt to task body:
+
 ```python
 mcp__plugin_aops-core_task_manager__update_task(
     id=task_id,
@@ -207,12 +220,12 @@ Task(
 
 ## Error Handling
 
-| Error | Response |
-|-------|----------|
-| Archive fails mid-batch | Task body contains partial receipt up to failure point - audit trail preserved |
-| Task update fails | HALT immediately. Log error. Do NOT continue archiving without receipt persistence |
-| Outlook unavailable | HALT. Do not proceed without email access |
-| No task bound | HALT. Create or specify task before any archive operations |
+| Error                   | Response                                                                           |
+| ----------------------- | ---------------------------------------------------------------------------------- |
+| Archive fails mid-batch | Task body contains partial receipt up to failure point - audit trail preserved     |
+| Task update fails       | HALT immediately. Log error. Do NOT continue archiving without receipt persistence |
+| Outlook unavailable     | HALT. Do not proceed without email access                                          |
+| No task bound           | HALT. Create or specify task before any archive operations                         |
 
 ## Quality Gates
 
@@ -232,13 +245,13 @@ Task body after successful triage:
 
 ## Archive Receipt Log (188 emails)
 
-| # | Date | From | Subject |
-|---|------|------|---------|
-| 1 | 2025-11-19 | Email Quarantine | End User Digest: 7 New Messages |
-| 2 | 2025-11-19 | QUT Travel | Your Travel (#893940) has concluded |
-| 3 | 2025-11-18 | QUT DVC Research | Read and Publish Agreement Update |
-...
-| 188 | 2026-02-01 | alerts-noreply@clarivate.com | Web of Science Alert |
+| #   | Date       | From                         | Subject                             |
+| --- | ---------- | ---------------------------- | ----------------------------------- |
+| 1   | 2025-11-19 | Email Quarantine             | End User Digest: 7 New Messages     |
+| 2   | 2025-11-19 | QUT Travel                   | Your Travel (#893940) has concluded |
+| 3   | 2025-11-18 | QUT DVC Research             | Read and Publish Agreement Update   |
+| ... |            |                              |                                     |
+| 188 | 2026-02-01 | alerts-noreply@clarivate.com | Web of Science Alert                |
 
 All 188 emails moved to QUT Archive folder.
 ```

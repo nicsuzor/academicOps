@@ -107,9 +107,7 @@ class TestHookLogsDemo:
                         invalid_count += 1
                         # Only show first error per file
                         if invalid_count == 1:
-                            print(
-                                f"  ! {hook_file.name}:{line_num} - JSONDecodeError: {e}"
-                            )
+                            print(f"  ! {hook_file.name}:{line_num} - JSONDecodeError: {e}")
 
                 if valid_count == 0 and invalid_count == 0:
                     empty_files.append(hook_file.name)
@@ -117,9 +115,7 @@ class TestHookLogsDemo:
                     fully_valid_files.append((hook_file.name, valid_count))
                     total_lines_parsed += valid_count
                 else:
-                    partially_valid_files.append(
-                        (hook_file.name, valid_count, invalid_count)
-                    )
+                    partially_valid_files.append((hook_file.name, valid_count, invalid_count))
                     total_lines_parsed += valid_count
                     total_lines_failed += invalid_count
 
@@ -136,9 +132,7 @@ class TestHookLogsDemo:
         print(f"   Total valid JSON lines: {total_lines_parsed:,}")
         print(f"   Total invalid lines: {total_lines_failed:,}")
         if total_lines_parsed + total_lines_failed > 0:
-            success_rate = (
-                total_lines_parsed / (total_lines_parsed + total_lines_failed) * 100
-            )
+            success_rate = total_lines_parsed / (total_lines_parsed + total_lines_failed) * 100
             print(f"   Success rate: {success_rate:.2f}%")
 
         # Show sample of fully valid files
@@ -165,9 +159,7 @@ class TestHookLogsDemo:
 
         # Read a few events from the first valid file to show structure
         if fully_valid_files:
-            sample_file = next(
-                f for f in hook_files if f.name == fully_valid_files[0][0]
-            )
+            sample_file = next(f for f in hook_files if f.name == fully_valid_files[0][0])
             print(f"From: {sample_file.name}")
 
             events_shown = 0
@@ -179,9 +171,7 @@ class TestHookLogsDemo:
                         event = json.loads(line)
                         # Show key fields
                         hook_event = event.get("hook_event", "unknown")
-                        tool_name = event.get(
-                            "tool_name", event.get("event_type", "N/A")
-                        )
+                        tool_name = event.get("tool_name", event.get("event_type", "N/A"))
                         timestamp = event.get("timestamp", "N/A")
                         print(f"\n   Event: {hook_event}")
                         print(f"   Tool/Type: {tool_name}")

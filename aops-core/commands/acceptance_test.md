@@ -1,36 +1,42 @@
-  Add a new acceptance test to tests/acceptance/v1.1-release.md. Follow the template in the "Adding New Tests" section. Remember:
-  1. Pass criteria must be semantic (QA agent judges meaning), not pattern-based ("output contains X")
-  2. Test the correct component - if testing hydrator, test its workflow recommendations, not downstream tool execution
-  3. Include clear evaluation instructions for the QA agent
+Add a new acceptance test to tests/acceptance/v1.1-release.md. Follow the template in the "Adding New Tests" section. Remember:
 
-  The template in the file:
+1. Pass criteria must be semantic (QA agent judges meaning), not pattern-based ("output contains X")
+2. Test the correct component - if testing hydrator, test its workflow recommendations, not downstream tool execution
+3. Include clear evaluation instructions for the QA agent
 
-  ### TEST-NNN: <Short Description>
+The template in the file:
 
-  **ID**: `v1.1-<kebab-case-id>`
+### TEST-NNN: <Short Description>
 
-  **Description**: <What this test validates>
+**ID**: `v1.1-<kebab-case-id>`
 
-  **User Input**:
-  Expected Behavior:
-  1. <Step 1>
-  2. <Step 2>
+**Description**: <What this test validates>
 
-  Invocation Method: hydrator-only | full-session
+**User Input**:
+Expected Behavior:
 
-  Pass Criteria (QA agent evaluates semantically):
-  1. <Semantic criterion - what QA should verify>
+1. <Step 1>
+2. <Step 2>
 
-  Why This Matters:
+Invocation Method: hydrator-only | full-session
 
-  Related:
-  - <Links to related workflows, skills, docs>
+Pass Criteria (QA agent evaluates semantically):
 
-  **Example good criteria:**
-  - "Hydrator recommends the analyst skill for data work"
-  - "QA verifies output includes task creation steps"
-  - "Agent response demonstrates understanding of email triage workflow"
+1. <Semantic criterion - what QA should verify>
 
-  **Example bad criteria (violates P#49):**
-  - "Output contains 'analyst'"
-  - "Response includes the word 'task'"
+Why This Matters:
+
+Related:
+
+- <Links to related workflows, skills, docs>
+
+**Example good criteria:**
+
+- "Hydrator recommends the analyst skill for data work"
+- "QA verifies output includes task creation steps"
+- "Agent response demonstrates understanding of email triage workflow"
+
+**Example bad criteria (violates P#49):**
+
+- "Output contains 'analyst'"
+- "Response includes the word 'task'"

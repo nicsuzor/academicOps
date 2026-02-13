@@ -89,8 +89,7 @@ class TestReflexiveLoopDemo:
         custodiet_calls = [
             c
             for c in tool_calls
-            if c["name"] == "Task"
-            and c.get("input", {}).get("subagent_type") == "custodiet"
+            if c["name"] == "Task" and c.get("input", {}).get("subagent_type") == "custodiet"
         ]
         print(f"\n--- Custodiet Invocations: {len(custodiet_calls)} ---")
 

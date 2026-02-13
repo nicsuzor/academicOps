@@ -11,6 +11,14 @@ tags: [audit, governance, validation, framework-health]
 
 **Purpose**: Defines what constitutes a "complete audit" of the aops-core framework and the standards for audit execution and reporting.
 
+## Giving Effect
+
+- [[skills/audit/SKILL.md]] - Audit skill with structure and justification checking
+- [[skills/audit/workflows/session-effectiveness.md]] - Session effectiveness audit workflow
+- [[skills/audit/references/report-format.md]] - Audit report format template
+- [[skills/audit/references/output-targets.md]] - Output targets for audit results
+- [[workflows/audit.md]] - Audit workflow in workflow system
+
 ## Audit Scope
 
 A complete framework audit validates three dimensions:
@@ -20,6 +28,7 @@ A complete framework audit validates three dimensions:
 **Definition**: Verify filesystem organization matches documented indices.
 
 **Validation targets**:
+
 - INDEX.md accurately reflects directory structure
 - README.md tables reference existing components
 - All cross-references (`→`, `[[wikilinks]]`) resolve to existing files
@@ -32,12 +41,14 @@ A complete framework audit validates three dimensions:
 **Definition**: Verify each framework component traces to a governing specification or core document.
 
 **Traceability hierarchy** (checked in order):
+
 1. **Explicit spec**: Component has dedicated spec in `specs/`
 2. **README.md reference**: Component documented in Core Loop or architecture sections
 3. **Core doc reference**: Referenced in README.md, INDEX.md, or AGENTS.md
 4. **Inline documentation**: Component has frontmatter/docstring explaining purpose
 
 **Classification**:
+
 - **Justified**: Found in specs/ with dedicated documentation
 - **Implicit**: Referenced in core docs without dedicated spec (acceptable for support files)
 - **Orphan**: No traceability found (requires action)
@@ -49,18 +60,21 @@ A complete framework audit validates three dimensions:
 **Definition**: Audit actively fixes discrepancies and reports items requiring human decision.
 
 **Automated fixes**:
+
 - Regenerate index files (INDEX.md, enforcement-map.md, WORKFLOWS.md, SKILLS.md)
 - Update README.md Core Loop flowchart from hook architecture
 - Update README.md tables with current component lists
 - Add missing entries to indices
 
 **Human review required**:
+
 - Orphaned files (delete or create spec?)
 - Over-sized skills (refactor or document exception?)
 - Hook/axiom mismatches (update hook or enforcement-map.md?)
 - Broken links to archived/deleted files
 
 **Output**: Structured report with:
+
 - Actions taken (automated fixes)
 - Items requiring human review (with recommended actions)
 - Issues created in bd for follow-up
@@ -127,7 +141,7 @@ Audits follow the phased workflow defined in `skills/audit/SKILL.md`:
 2. Reference graph and link validation
 3. Skill content audit
 4. File justification audit
-4b. Instruction justification audit
+   4b. Instruction justification audit
 5. Documentation accuracy (FLOW.md vs hooks)
 6. Regenerate indices
 7. Other updates (README.md, etc.)

@@ -15,6 +15,7 @@ from pathlib import Path
 
 
 # <!-- @NS: This seems to violate DRY -- I think we already have this script. merge them -->
+# <!-- @claude 2026-02-07: Confirmed DRY violation. Similar functions: hooks/user_prompt_submit.py:_strip_frontmatter (body only), skills/hypervisor/scripts/batch_worker.py:parse_frontmatter. No canonical lib exists yet. Task aops-411ba25a: create lib/frontmatter.py with both strip_frontmatter() and parse_frontmatter() functions. -->
 def extract_frontmatter(content: str) -> tuple[dict, str]:
     """
     Extract YAML frontmatter and body from markdown content.
@@ -102,17 +103,9 @@ def convert_command(md_path: Path) -> str:
 
     literal_body = escape_toml_literal(body)
     if literal_body is not None:
-        toml_lines.extend([
-            "prompt = '''",
-            literal_body,
-            "'''"
-        ])
+        toml_lines.extend(["prompt = '''", literal_body, "'''"])
     else:
-        toml_lines.extend([
-            'prompt = """',
-            escape_toml_basic_multiline(body),
-            '"""'
-        ])
+        toml_lines.extend(['prompt = """', escape_toml_basic_multiline(body), '"""'])
 
     return "\n".join(toml_lines)
 

@@ -48,9 +48,7 @@ class TestHooksDiscovery:
             "router",
             "gate",
         ]
-        has_hook_awareness = any(
-            indicator in response_text for indicator in hook_indicators
-        )
+        has_hook_awareness = any(indicator in response_text for indicator in hook_indicators)
 
         assert has_hook_awareness, (
             f"Claude should demonstrate awareness of hooks. "
@@ -96,9 +94,7 @@ class TestHooksDiscovery:
             "gate",
             "aops-router",
         ]
-        has_hook_awareness = any(
-            indicator in response_text for indicator in hook_indicators
-        )
+        has_hook_awareness = any(indicator in response_text for indicator in hook_indicators)
 
         assert has_hook_awareness, (
             f"Gemini should demonstrate awareness of hooks. "
@@ -140,8 +136,7 @@ class TestHooksRegistryStatus:
         ]
 
         has_hook_evidence = any(
-            indicator in raw_output or indicator in response_text
-            for indicator in hook_evidence
+            indicator in raw_output or indicator in response_text for indicator in hook_evidence
         )
 
         assert has_hook_evidence, (
@@ -224,6 +219,5 @@ class TestCrossplatformHooksDiscovery:
 
         # Both platforms should mention hooks
         assert "hook" in response_text, (
-            f"{platform} should mention hooks in response. "
-            f"Response: {response_text[:300]}"
+            f"{platform} should mention hooks in response. Response: {response_text[:300]}"
         )

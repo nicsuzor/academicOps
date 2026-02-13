@@ -10,7 +10,6 @@ import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-
 from lib.session_context import (
     SessionContext,
     extract_context_from_session_state,
@@ -227,9 +226,7 @@ class TestExtractSessionContext:
         entries = [
             _create_user_entry("Do the thing", offset=0),
             _create_assistant_entry("Doing the thing.", offset=1),
-            _create_user_entry(
-                "<system-reminder>This is injected</system-reminder>", offset=100
-            ),
+            _create_user_entry("<system-reminder>This is injected</system-reminder>", offset=100),
             _create_user_entry("Actually do this instead", offset=200),
         ]
 
@@ -248,9 +245,7 @@ class TestExtractSessionContext:
         transcript = tmp_path / "session.jsonl"
         transcript.write_text("")
 
-        ctx = extract_session_context(
-            transcript, session_id="empty-123", project="test"
-        )
+        ctx = extract_session_context(transcript, session_id="empty-123", project="test")
 
         assert ctx.session_id == "empty-123"
         assert ctx.project == "test"

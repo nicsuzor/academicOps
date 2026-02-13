@@ -28,9 +28,7 @@ class TestPluginDiscovery:
         """Plugin symlink must exist at ~/.claude/plugins/aops-core."""
         symlink = Path.home() / ".claude" / "plugins" / "aops-core"
         if not symlink.exists():
-            pytest.skip(
-                "Plugin symlink not installed (expected for CI/fresh environments)"
-            )
+            pytest.skip("Plugin symlink not installed (expected for CI/fresh environments)")
         assert symlink.is_symlink(), f"Not a symlink: {symlink}"
 
     @pytest.mark.integration
@@ -38,14 +36,10 @@ class TestPluginDiscovery:
         """Plugin symlink must point to valid directory."""
         symlink = Path.home() / ".claude" / "plugins" / "aops-core"
         if not symlink.exists():
-            pytest.skip(
-                "Plugin symlink not installed (expected for CI/fresh environments)"
-            )
+            pytest.skip("Plugin symlink not installed (expected for CI/fresh environments)")
         target = symlink.resolve()
         assert target.is_dir(), f"Symlink target not a directory: {target}"
-        assert (target / ".claude-plugin" / "plugin.json").exists(), (
-            "Missing plugin.json"
-        )
+        assert (target / ".claude-plugin" / "plugin.json").exists(), "Missing plugin.json"
 
 
 class TestPluginLoading:
@@ -53,9 +47,7 @@ class TestPluginLoading:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_skills_available_from_tmp(
-        self, claude_headless_tracked, tmp_workdir: Path
-    ) -> None:
+    def test_skills_available_from_tmp(self, claude_headless_tracked, tmp_workdir: Path) -> None:
         """Core skills should be available when running from /tmp."""
         result, session_id, tool_calls = claude_headless_tracked(
             "List the available skills. Mention: tasks, remember, python-dev, "
@@ -97,15 +89,12 @@ class TestPluginLoading:
 
         # Check Skill tool was called
         assert skill_was_invoked(tool_calls, "tasks"), (
-            f"Expected Skill(tasks) invocation. Tool calls: "
-            f"{[c['name'] for c in tool_calls]}"
+            f"Expected Skill(tasks) invocation. Tool calls: {[c['name'] for c in tool_calls]}"
         )
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_agents_registered(
-        self, claude_headless_tracked, tmp_workdir: Path
-    ) -> None:
+    def test_agents_registered(self, claude_headless_tracked, tmp_workdir: Path) -> None:
         """Core agents should be registered as subagent types."""
         result, session_id, tool_calls = claude_headless_tracked(
             "What subagent types are available for the Task tool? "
@@ -119,11 +108,7 @@ class TestPluginLoading:
 
         # Check core agents mentioned
         core_agents = ["planner", "prompt-hydrator", "critic", "custodiet"]
-        found = [
-            a
-            for a in core_agents
-            if a.replace("-", "") in response_lower.replace("-", "")
-        ]
+        found = [a for a in core_agents if a.replace("-", "") in response_lower.replace("-", "")]
 
         assert len(found) >= 2, (
             f"Expected at least 2 core agents mentioned, found {len(found)}: {found}. "
@@ -136,9 +121,7 @@ class TestHookFunctionality:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_session_completes_from_tmp(
-        self, claude_headless, tmp_workdir: Path
-    ) -> None:
+    def test_session_completes_from_tmp(self, claude_headless, tmp_workdir: Path) -> None:
         """Session should complete without hook errors when run from /tmp."""
         result = claude_headless(
             "What is 2+2? Answer with just the number.",

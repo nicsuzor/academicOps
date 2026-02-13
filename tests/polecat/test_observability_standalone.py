@@ -1,6 +1,7 @@
-import sys
 import io
+import sys
 from contextlib import redirect_stderr
+
 from polecat.observability import PolecatMetrics
 
 

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-import sys
-import time
 import argparse
 import logging
+import sys
+import time
 from pathlib import Path
-from watchdog.observers import Observer
+
 from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
 
 # Add project root to path
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -33,7 +34,7 @@ class IncomingHandler(FileSystemEventHandler):
         if event.is_directory:
             return
         logger.info(f"New file detected: {event.src_path}")
-        self.process_file(Path(event.src_path))
+        self.process_file(Path(str(event.src_path)))
 
     def process_file(self, file_path):
         process_incoming_file(file_path)

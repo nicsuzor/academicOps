@@ -11,7 +11,6 @@ contains the necessary guidance to prevent false positives.
 
 from pathlib import Path
 
-
 # Template location
 CUSTODIET_CONTEXT_TEMPLATE = (
     Path(__file__).parent.parent.parent
@@ -75,9 +74,7 @@ def test_custodiet_template_documents_other_authority_skills() -> None:
     )
 
     # /dump has broad authority
-    assert "/dump" in content, (
-        "Custodiet template should document /dump implicit authority"
-    )
+    assert "/dump" in content, "Custodiet template should document /dump implicit authority"
 
 
 def test_custodiet_template_links_bd_update_to_pull() -> None:

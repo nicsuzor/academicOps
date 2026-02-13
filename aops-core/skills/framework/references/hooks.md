@@ -89,6 +89,7 @@ $AOPS/aops-core/hooks/ → $AOPS/dist/aops-core/hooks/
 ```
 
 Key behaviors:
+
 - Hooks are **copied**, not symlinked (avoids source pollution)
 - `gemini/` subdirectory is **not copied** (uses unified router)
 - `router.py` is the single entry point for all hook events
@@ -136,13 +137,13 @@ Hooks are registered in the extension manifest, **not** in settings.json:
 
 **Key differences from standard Claude Code:**
 
-| Aspect | Standard Claude Code | academicOps |
-|--------|---------------------|-------------|
-| Config location | `settings.json` | `gemini-extension.json` |
-| Hook paths | Absolute paths or `$CLAUDE_PROJECT_DIR` | `${AOPS}/dist/aops-core/hooks/router.py` |
-| Installation | Manual settings edit | `gemini extensions link` |
-| Hook scripts | Individual scripts per event | Single router dispatches all |
-| Rebuild needed | No (settings hot-reload) | Yes (`setup.sh` after changes) |
+| Aspect          | Standard Claude Code                    | academicOps                              |
+| --------------- | --------------------------------------- | ---------------------------------------- |
+| Config location | `settings.json`                         | `gemini-extension.json`                  |
+| Hook paths      | Absolute paths or `$CLAUDE_PROJECT_DIR` | `${AOPS}/dist/aops-core/hooks/router.py` |
+| Installation    | Manual settings edit                    | `gemini extensions link`                 |
+| Hook scripts    | Individual scripts per event            | Single router dispatches all             |
+| Rebuild needed  | No (settings hot-reload)                | Yes (`setup.sh` after changes)           |
 
 ### Workflow: Adding or Modifying Hooks
 
@@ -155,13 +156,13 @@ Hooks are registered in the extension manifest, **not** in settings.json:
 
 Gemini CLI uses different event names than Claude Code:
 
-| Claude Code | Gemini CLI |
-|-------------|------------|
-| SessionStart | SessionStart |
-| PreToolUse | BeforeTool |
-| PostToolUse | AfterTool |
-| UserPromptSubmit | BeforeAgent |
-| Stop | SessionEnd |
+| Claude Code      | Gemini CLI   |
+| ---------------- | ------------ |
+| SessionStart     | SessionStart |
+| PreToolUse       | BeforeTool   |
+| PostToolUse      | AfterTool    |
+| UserPromptSubmit | BeforeAgent  |
+| Stop             | SessionEnd   |
 
 The router handles this mapping transparently - register hooks using Claude Code event names in `HOOK_REGISTRY`, and the router translates for Gemini
 
@@ -500,19 +501,19 @@ Gemini CLI now has a **full hook system** mirroring Claude Code's capabilities. 
 
 ### Gemini CLI Hook Events
 
-| Event | Description | Blocking? |
-|-------|-------------|-----------|
-| **SessionStart** | On startup/resume/clear | No (advisory) |
-| **SessionEnd** | On exit | No (advisory) |
-| **BeforeTool** | Before tool invocation | Yes (exit 2) |
-| **AfterTool** | After tool execution | Yes (exit 2) |
-| **BeforeAgent** | After user prompt, before planning | Yes (exit 2) |
-| **AfterAgent** | After model generates response | Yes (exit 2) |
-| **BeforeModel** | Before LLM request | Yes (exit 2) |
-| **AfterModel** | After LLM response chunk | Yes (exit 2) |
-| **BeforeToolSelection** | Before tool decision | No (config only) |
-| **Notification** | System alerts | No (advisory) |
-| **PreCompress** | Before history compression | No (advisory) |
+| Event                   | Description                        | Blocking?        |
+| ----------------------- | ---------------------------------- | ---------------- |
+| **SessionStart**        | On startup/resume/clear            | No (advisory)    |
+| **SessionEnd**          | On exit                            | No (advisory)    |
+| **BeforeTool**          | Before tool invocation             | Yes (exit 2)     |
+| **AfterTool**           | After tool execution               | Yes (exit 2)     |
+| **BeforeAgent**         | After user prompt, before planning | Yes (exit 2)     |
+| **AfterAgent**          | After model generates response     | Yes (exit 2)     |
+| **BeforeModel**         | Before LLM request                 | Yes (exit 2)     |
+| **AfterModel**          | After LLM response chunk           | Yes (exit 2)     |
+| **BeforeToolSelection** | Before tool decision               | No (config only) |
+| **Notification**        | System alerts                      | No (advisory)    |
+| **PreCompress**         | Before history compression         | No (advisory)    |
 
 ### Gemini CLI Output Schema
 
@@ -534,6 +535,7 @@ Gemini CLI now has a **full hook system** mirroring Claude Code's capabilities. 
 ```
 
 **Critical field semantics:**
+
 - `reason`: For explaining **denial decisions only**, NOT for context injection
 - `hookSpecificOutput.additionalContext`: For **injecting context into the agent's prompt**
 - Exit code 2: "Emergency brake" - stderr shown to agent, operation blocked
@@ -542,24 +544,24 @@ Gemini CLI now has a **full hook system** mirroring Claude Code's capabilities. 
 
 The router normalizes Gemini events to Claude Code equivalents internally:
 
-| Gemini CLI | Claude Code (internal) |
-|------------|------------------------|
-| SessionStart | SessionStart |
-| BeforeTool | PreToolUse |
-| AfterTool | PostToolUse |
-| BeforeAgent | UserPromptSubmit |
-| AfterAgent | AfterAgent |
-| SessionEnd | Stop |
+| Gemini CLI   | Claude Code (internal) |
+| ------------ | ---------------------- |
+| SessionStart | SessionStart           |
+| BeforeTool   | PreToolUse             |
+| AfterTool    | PostToolUse            |
+| BeforeAgent  | UserPromptSubmit       |
+| AfterAgent   | AfterAgent             |
+| SessionEnd   | Stop                   |
 
 ### Configuration Comparison
 
-| Aspect | Claude Code CLI | Gemini CLI |
-|--------|-----------------|------------|
-| **Hooks system** | 8 lifecycle events | 11 lifecycle events |
-| **Configuration** | `~/.claude/settings.json` | `~/.gemini/settings.json` or extension manifest |
-| **Context/memory** | `CLAUDE.md` | `GEMINI.md` |
-| **MCP servers** | Separate `.mcp.json` | In main settings.json |
-| **Extension system** | Plugins (beta) | Extensions (`gemini extensions link`) |
+| Aspect               | Claude Code CLI           | Gemini CLI                                      |
+| -------------------- | ------------------------- | ----------------------------------------------- |
+| **Hooks system**     | 8 lifecycle events        | 11 lifecycle events                             |
+| **Configuration**    | `~/.claude/settings.json` | `~/.gemini/settings.json` or extension manifest |
+| **Context/memory**   | `CLAUDE.md`               | `GEMINI.md`                                     |
+| **MCP servers**      | Separate `.mcp.json`      | In main settings.json                           |
+| **Extension system** | Plugins (beta)            | Extensions (`gemini extensions link`)           |
 
 **Both CLIs can coexist** on the same system without conflicts—they use different configuration directories and context files. MCP servers are fully compatible since both implement the Model Context Protocol standard.
 
@@ -794,21 +796,22 @@ All hooks receive JSON on stdin with these common fields:
 
 **Field visibility:**
 
-| Field | Shown to | Purpose |
-| --- | --- | --- |
-| `reason` | **Claude only** | Instructions for the agent when blocked |
-| `stopReason` | **User only** | Explains why session was blocked |
-| `systemMessage` | **User only** | Warning message (optional) |
+| Field           | Shown to        | Purpose                                 |
+| --------------- | --------------- | --------------------------------------- |
+| `reason`        | **Claude only** | Instructions for the agent when blocked |
+| `stopReason`    | **User only**   | Explains why session was blocked        |
+| `systemMessage` | **User only**   | Warning message (optional)              |
 
 **Exit codes (CRITICAL):**
 
-| Exit | JSON processed? | Result |
-| --- | --- | --- |
-| `0` | ✅ Yes | `decision: "block"` blocks, `reason` shown to Claude |
-| `1` | ❌ No | Warn but allow, stderr shown to user |
-| `2` | ❌ **No - JSON ignored!** | Only stderr used, agent sees stderr text |
+| Exit | JSON processed?           | Result                                               |
+| ---- | ------------------------- | ---------------------------------------------------- |
+| `0`  | ✅ Yes                    | `decision: "block"` blocks, `reason` shown to Claude |
+| `1`  | ❌ No                     | Warn but allow, stderr shown to user                 |
+| `2`  | ❌ **No - JSON ignored!** | Only stderr used, agent sees stderr text             |
 
 **IMPORTANT**: Exit code 2 completely ignores stdout JSON. If you want Claude to see your message, you MUST:
+
 1. Use `"decision": "block"` with `"reason": "..."` in JSON
 2. Exit with code 0 (not 2!)
 
@@ -1114,6 +1117,7 @@ class GateResult:
 **Purpose**: Return type for individual gate check functions.
 
 **Characteristics**:
+
 - Simple Python dataclass (fast, minimal dependencies)
 - Uses `GateVerdict` enum for type safety
 - No serialization logic - gates don't know about JSON
@@ -1133,6 +1137,7 @@ class CanonicalHookOutput(BaseModel):
 **Purpose**: Internal format for the router to merge multiple gate results.
 
 **Characteristics**:
+
 - Pydantic model (validation, serialization)
 - Uses string literals for verdict (JSON-friendly)
 - Has `updated_input` field (for command interception)

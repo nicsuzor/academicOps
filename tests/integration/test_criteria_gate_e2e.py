@@ -58,9 +58,7 @@ def temp_repo():
             check=True,
         )
         (repo_dir / "test.txt").write_text("test")
-        subprocess.run(
-            ["git", "add", "."], cwd=repo_dir, capture_output=True, check=True
-        )
+        subprocess.run(["git", "add", "."], cwd=repo_dir, capture_output=True, check=True)
         subprocess.run(
             ["git", "commit", "-m", "initial"],
             cwd=repo_dir,
@@ -103,9 +101,7 @@ class TestCriteriaGateDemo:
     2. Gate allows read-only operations (git status)
     """
 
-    def test_demo_blocks_destructive_bash_without_gate(
-        self, claude_test, temp_repo
-    ) -> None:
+    def test_demo_blocks_destructive_bash_without_gate(self, claude_test, temp_repo) -> None:
         """Demo: Destructive Bash commands blocked without criteria gate.
 
         REAL SCENARIO: Agent tries to run rm command without
@@ -172,9 +168,7 @@ class TestCriteriaGateDemo:
         all_passed = print_validation_results(checks)
         assert all_passed, "Gate did not block rm as expected - see output above"
 
-    def test_demo_allows_readonly_bash_without_gate(
-        self, claude_test, temp_repo
-    ) -> None:
+    def test_demo_allows_readonly_bash_without_gate(self, claude_test, temp_repo) -> None:
         """Demo: Read-only Bash commands allowed without criteria gate.
 
         REAL SCENARIO: Agent runs git status to check repository state.
@@ -186,9 +180,7 @@ class TestCriteriaGateDemo:
         print_demo_header("READ-ONLY BASH ALLOWED WITHOUT GATE (H37a/H37b)")
 
         # REAL framework prompt - checking git status (common workflow)
-        prompt = (
-            "Run 'git status' to check the repository state and tell me what you see."
-        )
+        prompt = "Run 'git status' to check the repository state and tell me what you see."
 
         print(f"\nPrompt (REAL FRAMEWORK TASK):\n{prompt}")
         print(f"\nRepository: {temp_repo}")

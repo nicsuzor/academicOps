@@ -20,6 +20,7 @@ from pathlib import Path
 
 import pytest
 
+from lib import hook_utils
 
 # Custodiet threshold from hooks/custodiet_gate.py
 TOOL_CALL_THRESHOLD = 5
@@ -29,9 +30,15 @@ TOOL_CALL_THRESHOLD = 5
 SKIP_TOOLS = {"Read", "Glob", "Grep", "mcp__memory__retrieve_memory"}
 
 
+def get_audit_temp_dir() -> Path:
+    """Get the audit temp directory using shared logic."""
+    # Align with the new consolidated "hydrator" category
+    return hook_utils.get_hook_temp_dir("hydrator")
+
+
 def find_recent_audit_files(max_age_seconds: int = 300) -> list[Path]:
     """Find audit files created in the last N seconds."""
-    temp_dir = Path("/tmp/claude-compliance")
+    temp_dir = get_audit_temp_dir()
     if not temp_dir.exists():
         return []
 
@@ -50,7 +57,7 @@ def test_custodiet_temp_file_created_on_threshold(claude_headless) -> None:
     Per H37c: Execution over inspection - we verify actual file creation.
     """
     # Record existing files before test
-    temp_dir = Path("/tmp/claude-compliance")
+    temp_dir = get_audit_temp_dir()
     files_before = set(temp_dir.glob("audit_*.md")) if temp_dir.exists() else set()
 
     # Prompt that triggers 7 separate BASH tool calls (not Read - those are skipped)
@@ -113,16 +120,13 @@ def test_custodiet_task_spawned(claude_headless_tracked) -> None:
         "7. echo 'test 7'"
     )
 
-    result, session_id, tool_calls = claude_headless_tracked(
-        prompt, timeout_seconds=180
-    )
+    result, session_id, tool_calls = claude_headless_tracked(prompt, timeout_seconds=180)
 
     # Find custodiet Task calls
     custodiet_calls = [
         call
         for call in tool_calls
-        if call["name"] == "Task"
-        and call.get("input", {}).get("subagent_type") == "custodiet"
+        if call["name"] == "Task" and call.get("input", {}).get("subagent_type") == "custodiet"
     ]
 
     # Count only non-skipped tools
@@ -139,9 +143,8 @@ def test_custodiet_task_spawned(claude_headless_tracked) -> None:
     custodiet_input = custodiet_calls[0].get("input", {})
     custodiet_prompt = custodiet_input.get("prompt", "")
 
-    assert "/tmp/claude-compliance/audit_" in custodiet_prompt, (
-        f"Custodiet prompt should reference temp file path. "
-        f"Got: {custodiet_prompt[:200]}..."
+    assert "/hydrator/audit_" in custodiet_prompt, (
+        f"Custodiet prompt should reference temp file path. Got: {custodiet_prompt[:200]}..."
     )
 
 
@@ -170,16 +173,13 @@ def test_custodiet_subagent_file_access(claude_headless_tracked) -> None:
         "7. echo 'g'"
     )
 
-    result, session_id, tool_calls = claude_headless_tracked(
-        prompt, timeout_seconds=180
-    )
+    result, session_id, tool_calls = claude_headless_tracked(prompt, timeout_seconds=180)
 
     # Find custodiet Task calls
     custodiet_calls = [
         call
         for call in tool_calls
-        if call["name"] == "Task"
-        and call.get("input", {}).get("subagent_type") == "custodiet"
+        if call["name"] == "Task" and call.get("input", {}).get("subagent_type") == "custodiet"
     ]
 
     if not custodiet_calls:
@@ -225,14 +225,12 @@ def test_custodiet_temp_file_structure() -> None:
 
     Reads existing temp files to verify structure - no Claude session needed.
     """
-    temp_dir = Path("/tmp/claude-compliance")
+    temp_dir = get_audit_temp_dir()
 
     if not temp_dir.exists():
         pytest.skip("No custodiet temp directory - run a Claude session first")
 
-    temp_files = sorted(
-        temp_dir.glob("audit_*.md"), key=lambda f: f.stat().st_mtime, reverse=True
-    )
+    temp_files = sorted(temp_dir.glob("audit_*.md"), key=lambda f: f.stat().st_mtime, reverse=True)
 
     if not temp_files:
         pytest.skip("No custodiet temp files found")
@@ -284,9 +282,7 @@ class TestCustodietDemo:
         print(f"\nPrompt: {prompt[:80]}...")
         print("\nExecuting tracked headless session...")
 
-        result, session_id, tool_calls = claude_headless_tracked(
-            prompt, timeout_seconds=180
-        )
+        result, session_id, tool_calls = claude_headless_tracked(prompt, timeout_seconds=180)
 
         print(f"\nSession ID: {session_id}")
         print(f"Success: {result['success']}")
@@ -326,9 +322,7 @@ class TestCustodietDemo:
 
         # Check for custodiet
         custodiet_calls = [
-            c
-            for c in task_calls
-            if c.get("input", {}).get("subagent_type") == "custodiet"
+            c for c in task_calls if c.get("input", {}).get("subagent_type") == "custodiet"
         ]
 
         print("\n--- CUSTODIET VERIFICATION ---")

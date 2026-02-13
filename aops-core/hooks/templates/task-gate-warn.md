@@ -9,11 +9,15 @@ description: |
     {hydrator_invoked_status} - Gate status indicator (checks plan_mode_invoked)
     {critic_invoked_status} - Gate status indicator (✓ or ✗)
 ---
-⚠️ **TASK GATE (warn)**: Missing gate compliance.
 
-Gate status:
+📝 **Note**: No task bound (warn mode)
+
+Proceeding, but consider binding a task for better tracking:
+
 - Task bound: {task_bound_status}
 - Hydrator invoked: {hydrator_invoked_status}
 - Critic invoked: {critic_invoked_status}
 
-Proceeding in warn mode. For full enforcement, set `TASK_GATE_MODE=block`.
+**Quick bind**: `mcp__plugin_aops-core_task_manager__create_task(task_title="...", type="task")`
+
+Task binding enables progress visibility, clean handovers, and QA verification.

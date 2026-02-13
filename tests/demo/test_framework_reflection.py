@@ -197,8 +197,7 @@ class TestFrameworkReflectionDemo:
         framework_agent_calls = [
             c
             for c in tool_calls
-            if c["name"] == "Task"
-            and "framework" in c.get("input", {}).get("subagent_type", "")
+            if c["name"] == "Task" and "framework" in c.get("input", {}).get("subagent_type", "")
         ]
 
         log_skill_called = any(

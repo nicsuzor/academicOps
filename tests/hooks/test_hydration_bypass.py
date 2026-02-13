@@ -12,7 +12,6 @@ Related:
 import sys
 from pathlib import Path
 
-
 # Add aops-core to path for hook imports
 AOPS_CORE = Path(__file__).parent.parent.parent / "aops-core"
 if str(AOPS_CORE) not in sys.path:
@@ -39,9 +38,7 @@ class TestHydrationBypass:
 
     def test_agent_notification_bypasses_hydration(self):
         """Agent notifications should bypass hydration."""
-        assert should_skip_hydration(
-            "<agent-notification>task complete</agent-notification>"
-        )
+        assert should_skip_hydration("<agent-notification>task complete</agent-notification>")
         assert should_skip_hydration("<task-notification>result</task-notification>")
 
     def test_normal_prompts_do_not_bypass(self):

@@ -36,7 +36,7 @@ repos:
   # Python linting (check-only, no auto-fix)
   # Run `./scripts/format.sh` to format files before staging
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.9
+    rev: v0.9.4
     hooks:
       - id: ruff
         exclude: '^archived/'
@@ -44,13 +44,14 @@ repos:
         args: [--check]
         exclude: '^archived/'
 
-  # Type checking
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.8.0
+  # Type checking (basedpyright - faster pyright fork)
+  - repo: local
     hooks:
-      - id: mypy
-        additional_dependencies: [types-PyYAML]
-        args: [--ignore-missing-imports]
+      - id: basedpyright
+        name: basedpyright
+        entry: uv run basedpyright
+        language: system
+        types: [python]
         exclude: '^(tests/|archived/)'
 
   # Framework health checks (local)
@@ -77,45 +78,9 @@ repos:
         verbose: true
         stages: [pre-commit]
 
-      # File taxonomy check - validates category frontmatter
-      - id: check-file-taxonomy
-        name: Check file taxonomy categories
-        entry: uv run python scripts/check_file_taxonomy.py
-        language: system
-        pass_filenames: false
-        always_run: true
-        verbose: true
-        stages: [pre-commit]
-
-      # Namespace collision check - per H8, framework objects must have unique names
-      - id: check-namespace-collision
-        name: Check namespace collisions
-        entry: uv run python scripts/check_namespace_collision.py
-        language: system
-        pass_filenames: false
-        always_run: true
-        verbose: true
-        stages: [pre-commit]
-
-      # Demo test location check - per ns-0p7, demo tests must be in tests/demo/
-      - id: check-demo-test-location
-        name: Check demo test locations
-        entry: uv run python scripts/check_demo_test_location.py
-        language: system
-        pass_filenames: false
-        always_run: true
-        verbose: true
-        stages: [pre-commit]
-
-      # Framework paths validation - ensures .agent/PATHS.md exists and is current
-      - id: validate-framework-paths
-        name: Validate .agent/PATHS.md
-        entry: python3 aops-core/hooks/pre_commit_validate_paths.py
-        language: system
-        pass_filenames: false
-        always_run: true
-        verbose: true
-        stages: [pre-commit]
+      # Note: check-file-taxonomy, check-namespace-collision, check-demo-test-location,
+      # and validate-framework-paths have been removed as their underlying scripts
+      # were archived/deleted during framework refactoring.
 
 # Note: These checks are disabled by default (too slow for every commit)
 # Run manually with: uv run python scripts/audit_framework_health.py -m

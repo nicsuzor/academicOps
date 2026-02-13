@@ -56,6 +56,7 @@ Check all three dimensions (Output Quality, Process Compliance, Semantic Correct
 ## Output
 
 The QA agent produces a verification report with:
+
 - **Verdict**: VERIFIED or ISSUES
 - **Verification Summary**: Pass/fail for each dimension
 - **Issues Found**: If any, with severity and fix recommendations

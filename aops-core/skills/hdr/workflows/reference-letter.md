@@ -95,6 +95,7 @@ Yours sincerely,
 ```
 
 **File naming**: `reference-{purpose}-{year}.md`
+
 - Examples: `oii-reference-2026.md`, `rental-reference-2024.md`, `job-reference-2026.md`
 
 ### Step 3: Link Task to Draft
@@ -126,6 +127,7 @@ Add relevant context to draft file to assist human writer.
 ### Step 5: Human Review and Completion
 
 **Agent boundary**: The agent prepares the task and draft. The human:
+
 - Writes/edits the reference content
 - Signs the letter
 - Sends via email or portal
@@ -148,13 +150,13 @@ sent_date: {date}
 
 ## Reference Letter Types
 
-| Type | Purpose | Typical Deadline |
-|------|---------|------------------|
-| Academic program | Summer school, PhD application, postdoc | 2-4 weeks |
-| Scholarship | Funding applications | 2-4 weeks |
-| Employment | Job applications | 1-2 weeks |
-| Rental | Housing applications | 3-5 days |
-| Award nomination | Professional recognition | 2-4 weeks |
+| Type             | Purpose                                 | Typical Deadline |
+| ---------------- | --------------------------------------- | ---------------- |
+| Academic program | Summer school, PhD application, postdoc | 2-4 weeks        |
+| Scholarship      | Funding applications                    | 2-4 weeks        |
+| Employment       | Job applications                        | 1-2 weeks        |
+| Rental           | Housing applications                    | 3-5 days         |
+| Award nomination | Professional recognition                | 2-4 weeks        |
 
 ## Quality Checklist
 

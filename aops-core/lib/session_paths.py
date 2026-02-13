@@ -9,7 +9,7 @@ where HH is the 24-hour local time when the session was created.
 
 import hashlib
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -39,17 +39,26 @@ def get_claude_project_folder() -> str:
 
 
 def get_session_short_hash(session_id: str) -> str:
-    """Get 8-character hash from session ID.
+    """Get 8-character identifier from session ID.
 
-    Uses SHA-256 and takes first 8 hex characters for brevity.
-    Provides 2^32 (~4 billion) unique combinations.
+    Standardizes on the first 8 characters of the session ID (UUID prefix)
+    to match Gemini CLI transcript naming. Falls back to SHA-256 hash for
+    brevity if the session ID is short or non-standard.
 
     Args:
         session_id: Full session identifier
 
     Returns:
-        8-character hex string
+        8-character string
     """
+    # 1. If it's a standard UUID or long enough, use the prefix (matches transcript)
+    if len(session_id) >= 8:
+        # Check if first 8 are valid hex or alphanumeric
+        prefix = session_id[:8].lower()
+        if all(c in "0123456789abcdefghijklmnopqrstuvwxyz" for c in prefix):
+            return prefix
+
+    # 2. Fallback to SHA-256 for short/complex IDs
     return hashlib.sha256(session_id.encode()).hexdigest()[:8]
 
 
@@ -57,8 +66,9 @@ def _is_gemini_session(session_id: str | None, input_data: dict | None) -> bool:
     """Detect if this is a Gemini CLI session.
 
     Detection methods:
-    1. session_id starts with "gemini-"
-    2. transcript_path contains "/.gemini/"
+    1. GEMINI_SESSION_ID env var is set (Gemini CLI always provides this)
+    2. session_id starts with "gemini-"
+    3. transcript_path contains "/.gemini/"
 
     Args:
         session_id: Session ID (may have "gemini-" prefix)
@@ -67,6 +77,10 @@ def _is_gemini_session(session_id: str | None, input_data: dict | None) -> bool:
     Returns:
         True if this is a Gemini session
     """
+    # Gemini CLI always sets GEMINI_SESSION_ID - most reliable detection
+    if os.environ.get("GEMINI_SESSION_ID"):
+        return True
+
     if session_id is not None and session_id.startswith("gemini-"):
         return True
 
@@ -150,9 +164,9 @@ def get_hook_log_path(
         Path to the hook log file
     """
     if date is None:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        date = datetime.now(UTC).strftime("%Y-%m-%d")
 
     short_hash = get_session_short_hash(session_id)
     date_compact = date.replace("-", "")  # YYYY-MM-DD -> YYYYMMDD
@@ -174,9 +188,7 @@ def get_hook_log_path(
         return claude_projects_dir / f"{date_compact}-{short_hash}-hooks.jsonl"
 
 
-def get_session_status_dir(
-    session_id: str | None = None, input_data: dict | None = None
-) -> Path:
+def get_session_status_dir(session_id: str | None = None, input_data: dict | None = None) -> Path:
     """Get session status directory from AOPS_SESSION_STATE_DIR or auto-detect.
 
     This env var is set by the router at SessionStart:
@@ -210,8 +222,12 @@ def get_session_status_dir(
             gemini_dir.mkdir(parents=True, exist_ok=True)
             return gemini_dir
 
-        # Fallback: use hash-based path from cwd
-        project_root = str(Path.cwd().resolve())
+        # Fallback: use hash-based path from GEMINI_PROJECT_DIR (provided by Gemini CLI)
+        project_root = (
+            os.environ.get("GEMINI_PROJECT_DIR")
+            or os.environ.get("CLAUDE_PROJECT_DIR")  # Gemini also provides this alias
+            or str(Path.cwd().resolve())
+        )
         project_hash = hashlib.sha256(project_root.encode()).hexdigest()
         gemini_tmp = Path.home() / ".gemini" / "tmp" / project_hash
         gemini_tmp.mkdir(parents=True, exist_ok=True)
@@ -258,8 +274,7 @@ def get_session_file_path(
     short_hash = get_session_short_hash(session_id)
 
     return (
-        get_session_status_dir(session_id, input_data)
-        / f"{date_compact}-{hour}-{short_hash}.json"
+        get_session_status_dir(session_id, input_data) / f"{date_compact}-{hour}-{short_hash}.json"
     )
 
 

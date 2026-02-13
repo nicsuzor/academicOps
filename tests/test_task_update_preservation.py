@@ -1,5 +1,5 @@
-from lib.task_storage import TaskStorage
 from lib.task_model import TaskStatus
+from lib.task_storage import TaskStorage
 
 
 def test_save_task_preserves_user_edits(tmp_path):

@@ -4,13 +4,13 @@ Build script for AcademicOps Gemini extensions.
 Generates dist/aops-core and dist/antigravity.
 """
 
-import os
-import sys
-import shutil
+import argparse
 import json
+import os
+import shutil
 import subprocess
+import sys
 import tarfile
-import zipfile
 from pathlib import Path
 
 # Add shared lib to path (assuming scripts/lib exists)
@@ -19,11 +19,11 @@ sys.path.append(str(SCRIPT_DIR / "lib"))
 
 try:
     from build_utils import (
-        convert_mcp_to_gemini,
         convert_gemini_to_antigravity,
-        safe_symlink,
-        safe_copy,
+        convert_mcp_to_gemini,
         get_git_commit_sha,
+        safe_copy,
+        safe_symlink,
         write_plugin_version,
     )
 except ImportError as e:
@@ -53,25 +53,46 @@ CLAUDE_TO_GEMINI_EVENTS = {
 }
 
 
+def sanitize_version(version: str) -> str:
+    """Sanitize version for PEP 440 compliance (uv is strict)."""
+    # Replace -testing.N with .devN
+    if "-testing." in version:
+        return version.replace("-testing.", ".dev")
+    return version
+
+
 def get_project_version(aops_root: Path) -> str:
-    """Extract the version from pyproject.toml."""
-    pyproject_path = aops_root / "pyproject.toml"
-    if pyproject_path.exists():
-        try:
-            import tomllib
+    """Get latest stable version from git tags.
 
-            with open(pyproject_path, "rb") as f:
-                data = tomllib.load(f)
-                return data.get("project", {}).get("version", "0.1.0")
-        except (ImportError, Exception):
-            # Fallback regex if tomllib is missing or fails
-            import re
-
-            content = pyproject_path.read_text()
-            match = re.search(r'version\s*=\s*"([^"]+)"', content)
-            if match:
-                return match.group(1)
-    return "0.1.0"
+    Filters out dev/testing/pre-release tags so that the returned version
+    is always a clean X.Y.Z release.  Git's version sort disagrees with
+    PEP 440 on dev suffixes (git ranks 0.1.57.dev1 > 0.1.56, while
+    PEP 440 ranks it < 0.1.57), so we must exclude them explicitly.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "tag", "--merged", "HEAD", "--sort=-v:refname", "--list", "v0.*"],
+            cwd=aops_root,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        tags = [t.strip() for t in result.stdout.split("\n") if t.strip()]
+        # Only consider stable release tags (vX.Y.Z with no suffix)
+        stable_tags = [
+            t
+            for t in tags
+            if not any(s in t for s in ["-testing", ".dev", "-beta", "-rc", "-alpha"])
+        ]
+        if stable_tags:
+            return stable_tags[0].lstrip("v")
+        if tags:
+            # Fall back to latest tag if no stable tags exist
+            return sanitize_version(tags[0].lstrip("v"))
+        return "0.1.0"
+    except subprocess.CalledProcessError:
+        print("Warning: No git tags found, using fallback version 0.1.0")
+        return "0.1.0"
 
 
 # Template for aops-core pyproject.toml - version is injected at build time
@@ -209,9 +230,7 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
                         if "command" in new_hook:
                             # Replace Claude variable with Gemini variable
                             cmd = new_hook["command"]
-                            cmd = cmd.replace(
-                                "${CLAUDE_PLUGIN_ROOT}", "${extensionPath}"
-                            )
+                            cmd = cmd.replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
 
                             # Ensure we use the correct client flag for Gemini
                             cmd = cmd.replace("--client claude", "--client gemini")
@@ -229,7 +248,9 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
                                     "uv run",
                                     "env -u VIRTUAL_ENV uv run",
                                 )
-                            new_hook["command"] = cmd
+                            # Gemini CLI doesn't pass hook_event_name in stdin payload like Claude does,
+                            # so we append it as a CLI argument for router.py to detect the event type
+                            new_hook["command"] = f"{cmd} {gemini_event}"
                         new_hooks.append(new_hook)
                     new_entry[key] = new_hooks
                 else:
@@ -245,10 +266,93 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
     print(f"  ✓ Generated Gemini hooks.json with {len(gemini_hooks)} events")
 
 
-def transform_agent_for_platform(content: str, platform: str) -> str:
+def validate_gemini_agent_schema(frontmatter: dict, filename: str) -> dict:
+    """Validate and transform frontmatter to comply with Gemini agent schema.
+
+    Gemini CLI agent schema requires:
+    - name (required): slug format (lowercase, numbers, hyphens, underscores)
+    - description (required): short description
+    - kind: "local" or "remote" (default: "local")
+    - tools: array of tool names
+    - model: specific model or "inherit" (default: "inherit")
+    - temperature: 0.0-2.0 (optional)
+    - max_turns: number (default: 15)
+    - timeout_mins: number (default: 5)
+
+    Raises ValueError if required fields are missing or invalid.
+    """
+    import re
+
+    errors = []
+
+    # Validate required fields
+    if "name" not in frontmatter or not frontmatter["name"]:
+        errors.append("Missing required field: name")
+    else:
+        name = frontmatter["name"]
+        # Validate slug format: lowercase letters, numbers, hyphens, underscores
+        if not re.match(r"^[a-z0-9_-]+$", name):
+            errors.append(
+                f"Invalid name '{name}': must be lowercase with only letters, "
+                "numbers, hyphens, and underscores"
+            )
+
+    if "description" not in frontmatter or not frontmatter["description"]:
+        errors.append("Missing required field: description")
+
+    if errors:
+        raise ValueError(
+            f"Agent '{filename}' schema validation failed:\n  - " + "\n  - ".join(errors)
+        )
+
+    # Set defaults for optional fields
+    if "kind" not in frontmatter:
+        frontmatter["kind"] = "local"
+    elif frontmatter["kind"] not in ("local", "remote"):
+        raise ValueError(
+            f"Agent '{filename}': kind must be 'local' or 'remote', got '{frontmatter['kind']}'"
+        )
+
+    # Model mapping: Claude model names -> Gemini model names
+    CLAUDE_TO_GEMINI_MODEL = {
+        "opus": "gemini-3-pro-preview",
+        "sonnet": "gemini-3-flash-preview",
+        "haiku": "gemini-3-flash-preview",
+        "claude-opus-4-5-20251101": "gemini-3-pro-preview",
+        "claude-sonnet-4-20250514": "gemini-3-flash-preview",
+    }
+
+    if "model" not in frontmatter:
+        frontmatter["model"] = "inherit"
+    else:
+        model = frontmatter["model"]
+        # Map Claude model names to Gemini equivalents
+        if model in CLAUDE_TO_GEMINI_MODEL:
+            frontmatter["model"] = CLAUDE_TO_GEMINI_MODEL[model]
+
+    # Set defaults for optional numeric fields
+    if "max_turns" not in frontmatter:
+        frontmatter["max_turns"] = 15
+
+    if "timeout_mins" not in frontmatter:
+        frontmatter["timeout_mins"] = 5
+
+    # Temperature is optional, only validate if present
+    if "temperature" in frontmatter:
+        temp = frontmatter["temperature"]
+        if not isinstance(temp, int | float) or temp < 0 or temp > 2:
+            raise ValueError(
+                f"Agent '{filename}': temperature must be between 0.0 and 2.0, got {temp}"
+            )
+
+    return frontmatter
+
+
+def transform_agent_for_platform(content: str, platform: str, filename: str = "agent") -> str:
     """Transform agent markdown for a specific platform.
 
-    For Gemini: filters out mcp__* tools from frontmatter since they're Claude-specific.
+    For Gemini: renames mcp__* tools from frontmatter by stripping prefix,
+                and validates/applies Gemini agent schema with defaults.
     For Claude: converts YAML array tools to comma-separated string with PascalCase names.
     """
     # Split frontmatter from body
@@ -263,7 +367,7 @@ def transform_agent_for_platform(content: str, platform: str) -> str:
     except yaml.YAMLError:
         return content
 
-    if not frontmatter or "tools" not in frontmatter:
+    if not frontmatter:
         return content
 
     original_tools = frontmatter.get("tools", [])
@@ -271,27 +375,24 @@ def transform_agent_for_platform(content: str, platform: str) -> str:
     # Handle case where tools is already a string (no transformation needed for format)
     if isinstance(original_tools, str):
         if platform == "gemini":
-            # Filter mcp__ tools from comma-separated string
+            # Strip mcp__ prefix from comma-separated string tools
             tools_list = [t.strip() for t in original_tools.split(",")]
-            filtered = [t for t in tools_list if not t.startswith("mcp__")]
-            if filtered != tools_list:
-                frontmatter["tools"] = ", ".join(filtered)
-                new_frontmatter = yaml.dump(
-                    frontmatter, default_flow_style=False, sort_keys=False
-                )
-                return f"---\n{new_frontmatter}---{parts[2]}"
+            filtered = [t[5:] if t.startswith("mcp__") else t for t in tools_list]
+            frontmatter["tools"] = filtered  # Convert to list for Gemini schema
+            # Validate and apply Gemini schema defaults
+            frontmatter = validate_gemini_agent_schema(frontmatter, filename)
+            new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
+            return f"---\n{new_frontmatter}---{parts[2]}"
         return content
 
     if platform == "gemini":
-        # Filter out mcp__* tools (Claude-specific MCP tool names)
-        filtered_tools = [t for t in original_tools if not t.startswith("mcp__")]
-        if filtered_tools != original_tools:
-            frontmatter["tools"] = filtered_tools
-            new_frontmatter = yaml.dump(
-                frontmatter, default_flow_style=False, sort_keys=False
-            )
-            return f"---\n{new_frontmatter}---{parts[2]}"
-        return content
+        # Strip mcp__ prefix from tool names for Gemini
+        filtered_tools = [t[5:] if t.startswith("mcp__") else t for t in original_tools]
+        frontmatter["tools"] = filtered_tools
+        # Validate and apply Gemini schema defaults
+        frontmatter = validate_gemini_agent_schema(frontmatter, filename)
+        new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
+        return f"---\n{new_frontmatter}---{parts[2]}"
 
     elif platform == "claude":
         # Claude Code requires:
@@ -300,6 +401,7 @@ def transform_agent_for_platform(content: str, platform: str) -> str:
 
         # Tool name mapping: generic/Gemini -> Claude Code
         TOOL_NAME_MAP = {
+            # File operations
             "read_file": "Read",
             "write_file": "Write",
             "replace": "Edit",
@@ -307,9 +409,12 @@ def transform_agent_for_platform(content: str, platform: str) -> str:
             "glob": "Glob",
             "grep": "Grep",
             "search_file_content": "Grep",
+            # Shell execution
             "bash": "Bash",
             "run_shell_command": "Bash",
+            # Skills/Agents
             "activate_skill": "Skill",
+            # Web operations
             "web_fetch": "WebFetch",
             "web_search": "WebSearch",
             # Already correct names (passthrough)
@@ -343,9 +448,7 @@ def transform_agent_for_platform(content: str, platform: str) -> str:
         frontmatter["tools"] = tools_string
 
         # Rebuild the content with the new frontmatter
-        new_frontmatter = yaml.dump(
-            frontmatter, default_flow_style=False, sort_keys=False
-        )
+        new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
         return f"---\n{new_frontmatter}---{parts[2]}"
 
     return content
@@ -476,8 +579,8 @@ def build_aops_core(
                 dst.mkdir(parents=True, exist_ok=True)
                 for agent_file in src.glob("*.md"):
                     content = agent_file.read_text()
-                    # Transform frontmatter (filter mcp__ tools for Gemini)
-                    content = transform_agent_for_platform(content, platform)
+                    # Transform frontmatter (filter mcp__ tools for Gemini, apply schema)
+                    content = transform_agent_for_platform(content, platform, agent_file.name)
                     # Translate tool calls in body text
                     content = translate_tool_calls(content, platform)
                     (dst / agent_file.name).write_text(content)
@@ -616,7 +719,7 @@ def build_aops_core(
                 gemini_mcps = convert_mcp_to_gemini(gemini_servers_config)
 
                 if dist_extension_json.exists():
-                    with open(dist_extension_json, "r") as f:
+                    with open(dist_extension_json) as f:
                         manifest = json.load(f)
                     current_mcps = manifest.get("mcpServers", {})
                     manifest["mcpServers"] = {**current_mcps, **gemini_mcps}
@@ -632,32 +735,7 @@ def build_aops_core(
             print(f"Error processing template {template_path}: {e}", file=sys.stderr)
             raise
 
-    # 5. Build Sub-Agents (Skills)
-    if platform == "gemini":
-        agents_dir = src_dir / "agents"
-        if agents_dir.exists():
-            for agent_file in agents_dir.glob("*.md"):
-                try:
-                    content = agent_file.read_text()
-                    parts = content.split("---", 2)
-                    if len(parts) >= 3:
-                        import yaml
-
-                        frontmatter = yaml.safe_load(parts[1])
-                        if "name" in frontmatter:
-                            agent_name = frontmatter["name"]
-                            skill_dir = content_dir / "skills" / agent_name
-                            skill_dir.mkdir(parents=True, exist_ok=True)
-
-                            text = agent_file.read_text()
-                            text = translate_tool_calls(text, "gemini")
-
-                            with open(skill_dir / "SKILL.md", "w") as f:
-                                f.write(text)
-                except Exception as e:
-                    print(f"Warning: Failed to parse agent {agent_file}: {e}")
-
-    # 6. Commands (Gemini only for now as they use .toml)
+    # 5. Commands (Gemini only for now as they use .toml)
     if platform == "gemini":
         commands_dist = content_dir / "commands"
         convert_script = aops_root / "scripts" / "convert_commands_to_toml.py"
@@ -677,7 +755,7 @@ def build_aops_core(
             md_file.unlink()
             print(f"  - Removed {md_file.name} (Gemini uses TOML)")
 
-    # 7. Generate FILES.md dynamically
+    # 6. Generate FILES.md dynamically
     generate_files_md(dist_dir, platform)
 
     print(f"✓ Built {plugin_name} ({platform})")
@@ -729,6 +807,21 @@ def build_antigravity(aops_root: Path, dist_root: Path, all_mcps: dict):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Build script for AcademicOps Gemini extensions.")
+    parser.add_argument("--version", action="store_true", help="Print detected version and exit")
+    parser.add_argument(
+        "--set-version",
+        type=str,
+        default=None,
+        help="Override the auto-detected version (e.g. '0.1.15-testing.42')",
+    )
+    args = parser.parse_args()
+
+    aops_root = Path(__file__).parent.parent.resolve()
+    if args.version:
+        print(get_project_version(aops_root))
+        sys.exit(0)
+
     aca_data_path = os.environ.get("ACA_DATA")
 
     if not aca_data_path:
@@ -740,8 +833,12 @@ def main():
     print(f"Info: aops_root inferred to {aops_root}")
     dist_root = aops_root / "dist"
 
-    # Get version from pyproject.toml
-    version = get_project_version(aops_root)
+    # Get version: use --set-version override or detect from git tags
+    if args.set_version:
+        version = sanitize_version(args.set_version)
+        print(f"Using override version: v{version}")
+    else:
+        version = get_project_version(aops_root)
     print(f"Building AcademicOps v{version}...")
 
     # Clean/Create dist
@@ -749,9 +846,7 @@ def main():
         dist_root.mkdir()
 
     # Build components (Gemini)
-    core_mcps_gemini = build_aops_core(
-        aops_root, dist_root, aca_data_path, "gemini", version
-    )
+    core_mcps_gemini = build_aops_core(aops_root, dist_root, aca_data_path, "gemini", version)
 
     # Build components (Claude)
     build_aops_core(aops_root, dist_root, aca_data_path, "claude", version)
@@ -823,7 +918,7 @@ def create_git_tags(aops_root: Path, version: str):
     """Create git tags for release: v{version} and latest.
 
     Tags are created pointing to HEAD. If tags already exist, they are updated.
-    Note: Tags are local only - push with `git push origin v{version} latest` to publish.
+    Note: Tags are local only - push atomically with the branch (e.g., `git push origin main v{version} latest`) to publish.
     """
     print("\nCreating git tags...")
 
@@ -849,11 +944,18 @@ def create_git_tags(aops_root: Path, version: str):
         text=True,
     )
     if result.returncode == 0:
-        print(f"  ✓ Created tag: latest")
+        print("  ✓ Created tag: latest")
     else:
         print(f"  ✗ Failed to create tag latest: {result.stderr}")
 
-    print("  Note: Push tags with: git push origin --tags")
+    branch = subprocess.run(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+        cwd=aops_root,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+    print(f"  Note: Push atomically with: git push origin {branch} {version_tag} latest")
 
 
 if __name__ == "__main__":

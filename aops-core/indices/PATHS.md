@@ -17,16 +17,16 @@ Standard paths used within the academicOps ecosystem.
 
 ## Key Directories
 
-| Path | Purpose | SSoT Reference |
-|------|---------|----------------|
-| `aops-core/skills/` | Framework skill definitions | [[SKILLS.md]] |
-| `aops-core/agents/` | Agent frontmatter and instructions | [[AGENTS.md]] |
+| Path                   | Purpose                               | SSoT Reference   |
+| ---------------------- | ------------------------------------- | ---------------- |
+| `aops-core/skills/`    | Framework skill definitions           | [[SKILLS.md]]    |
+| `aops-core/agents/`    | Agent frontmatter and instructions    | [[AGENTS.md]]    |
 | `aops-core/workflows/` | Procedural logic and step definitions | [[WORKFLOWS.md]] |
-| `specs/` | Feature and workflow specifications | `specs/INDEX.md` |
-| `$ACA_DATA/tasks/` | Active and pending tasks (JSON) | - |
-| `$ACA_DATA/goals/` | Strategic goals (Markdown) | - |
-| `$ACA_DATA/projects/` | Project definitions (Markdown) | - |
-| `$ACA_DATA/sessions/` | Session summaries and insights | - |
+| `specs/`               | Feature and workflow specifications   | `specs/INDEX.md` |
+| `$ACA_DATA/tasks/`     | Active and pending tasks (JSON)       | -                |
+| `$ACA_DATA/goals/`     | Strategic goals (Markdown)            | -                |
+| `$ACA_DATA/projects/`  | Project definitions (Markdown)        | -                |
+| `$ACA_DATA/sessions/`  | Session summaries and insights        | -                |
 
 ## Data Persistence
 

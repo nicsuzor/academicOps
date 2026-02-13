@@ -154,9 +154,7 @@ def parse_custodiet_transcript(transcript_path: Path) -> dict:
                             result["full_response"] = text
 
                             # Determine verdict
-                            if "```text\nOK\n```" in text or text.strip().endswith(
-                                "OK"
-                            ):
+                            if "```text\nOK\n```" in text or text.strip().endswith("OK"):
                                 result["verdict"] = "OK"
                             elif "ATTENTION" in text:
                                 result["verdict"] = "ATTENTION"
@@ -256,9 +254,7 @@ class TestCustodietTranscriptDemo:
         print("Verdicts:")
         print(f"  - OK (compliant): {ok_count}")
         print(f"  - ATTENTION (violations): {attention_count}")
-        print(
-            f"  - Unknown/parsing failed: {len(transcripts) - ok_count - attention_count}"
-        )
+        print(f"  - Unknown/parsing failed: {len(transcripts) - ok_count - attention_count}")
 
         # === STEP 4: Show What Custodiet Receives ===
         print("\n" + "=" * 80)

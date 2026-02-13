@@ -1,9 +1,9 @@
-import unittest
-from unittest.mock import patch
+import hashlib
 import os
 import sys
+import unittest
 from pathlib import Path
-import hashlib
+from unittest.mock import patch
 
 # Add aops-core to path
 AOPS_CORE_DIR = Path(__file__).resolve().parent.parent
@@ -29,9 +29,7 @@ class TestSessionPaths(unittest.TestCase):
             # Create a fake gemini tmp structure
             project_root = Path(tmpdir) / "project"
             project_root.mkdir(parents=True, exist_ok=True)
-            project_hash = hashlib.sha256(
-                str(project_root.resolve()).encode()
-            ).hexdigest()
+            project_hash = hashlib.sha256(str(project_root.resolve()).encode()).hexdigest()
             gemini_tmp = Path(tmpdir) / ".gemini" / "tmp" / project_hash
 
             # Patch Path.home() and Path.cwd() - cwd must return a real path for resolve()
@@ -72,9 +70,7 @@ class TestSessionPaths(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create a fake gemini tmp structure with chats subdirectory
-            gemini_hash = (
-                "02446fdfe96b1eb171c290b1b3da4c0aafff4108395fdefaac4dd1a188242b94"
-            )
+            gemini_hash = "02446fdfe96b1eb171c290b1b3da4c0aafff4108395fdefaac4dd1a188242b94"
             gemini_base = Path(tmpdir) / ".gemini" / "tmp" / gemini_hash
             gemini_chats = gemini_base / "chats"
             gemini_chats.mkdir(parents=True, exist_ok=True)

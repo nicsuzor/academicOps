@@ -66,9 +66,7 @@ def git_sync():
             return
 
         commit_msg = "Auto-commit: session transcripts and insights updated"
-        subprocess.run(
-            ["git", "commit", "-m", commit_msg], cwd=str(writing_root), check=True
-        )
+        subprocess.run(["git", "commit", "-m", commit_msg], cwd=str(writing_root), check=True)
         print("✅ Committed changes.")
 
         # Try to push

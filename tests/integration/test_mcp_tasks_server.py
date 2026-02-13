@@ -1,7 +1,8 @@
 import sys
 from pathlib import Path
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Add framework roots to path for lib imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -141,9 +142,7 @@ def test_get_graph_metrics_task_id_scope(mock_task_index):
 
 def test_get_graph_metrics_no_tasks_in_scope(mock_task_index):
     with patch("mcp_servers.tasks_server._get_index", return_value=mock_task_index):
-        result = tasks_server.get_graph_metrics.fn(
-            scope="project", scope_id="nonexistent"
-        )
+        result = tasks_server.get_graph_metrics.fn(scope="project", scope_id="nonexistent")
 
         assert result["success"] is True
         assert result["message"] == "No tasks found in scope."

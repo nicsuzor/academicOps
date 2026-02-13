@@ -19,9 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -35,7 +33,7 @@ def get_summaries_dir() -> Path:
     return Path.home() / "writing" / "sessions" / "summaries"
 
 
-def parse_summary_filename(filename: str) -> dict[str, str] | None:
+def parse_summary_filename(filename: str) -> dict[str, str | None] | None:
     """Parse summary filename to extract metadata.
 
     Filename formats:
@@ -108,7 +106,7 @@ def scan_summaries(
         return []
 
     # Calculate date range
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     cutoff = today - timedelta(days=days - 1)  # Include today
     cutoff_str = cutoff.strftime("%Y%m%d")
 
@@ -125,7 +123,8 @@ def scan_summaries(
             continue
 
         # Date filter
-        if file_meta["date"] < cutoff_str:
+        date_val = file_meta["date"]
+        if date_val and date_val < cutoff_str:
             continue
 
         # Project filter

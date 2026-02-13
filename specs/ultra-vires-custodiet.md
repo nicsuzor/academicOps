@@ -18,6 +18,15 @@ created: 2025-12-30
 **Current**: Custodiet agent available for manual invocation via `agents/custodiet.md`
 **Archived**: Automated PostToolUse gate (`custodiet_gate.py`) moved to `archived/hooks/`
 
+## Giving Effect
+
+- [[agents/custodiet.md]] - Haiku agent that reads transcript and evaluates authority compliance
+- [[hooks/overdue_enforcement.py]] - PostToolUse hook that triggers custodiet every N tool calls
+- [[hooks/data/reminders.txt]] - Soft-tissue file with editable reminder lines
+- [[hooks/templates/custodiet-context.j2]] - Jinja2 context template (conditional axiom/heuristic injection)
+- [[hooks/templates/custodiet-instruction.md]] - Short instruction template
+- [[archived/hooks/custodiet_gate.py]] - Original automated gate (archived)
+
 ## Purpose
 
 Detect when agents act **ultra vires** - beyond the authority granted by the user's request.

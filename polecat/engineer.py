@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-import sys
 import subprocess
+import sys
 import time
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 # Add aops-core to path
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -36,9 +36,7 @@ class Engineer:
         # Check if another task is already merging (merge slot occupied)
         merging_tasks = self.storage.list_tasks(status=TaskStatus.MERGING)
         if merging_tasks:
-            print(
-                f"Merge slot occupied by {merging_tasks[0].id}. Waiting for it to complete."
-            )
+            print(f"Merge slot occupied by {merging_tasks[0].id}. Waiting for it to complete.")
             metrics.record_queue_depth("merging", count=len(merging_tasks))
             return
 
@@ -115,8 +113,7 @@ class Engineer:
         # 0. Pre-flight checks
         if self._is_dirty(repo_path):
             raise RuntimeError(
-                f"Repository has uncommitted changes. Run:\n"
-                f"  cd {repo_path} && git stash"
+                f"Repository has uncommitted changes. Run:\n  cd {repo_path} && git stash"
             )
 
         # 1. Fetch & Verify
@@ -131,9 +128,9 @@ class Engineer:
             )
 
         remote_branch = f"origin/{branch_name}"
-        if not self._branch_exists(
-            repo_path, remote_branch
-        ) and not self._branch_exists(repo_path, branch_name):
+        if not self._branch_exists(repo_path, remote_branch) and not self._branch_exists(
+            repo_path, branch_name
+        ):
             raise ValueError(f"Branch {branch_name} not found locally or on origin")
 
         # 2. Checkout Target
@@ -145,9 +142,9 @@ class Engineer:
         print(f"  Attempting squash merge of {branch_name}...")
         try:
             self._run_git(repo_path, ["merge", "--squash", branch_name])
-        except subprocess.CalledProcessError:
+        except subprocess.CalledProcessError as e:
             self._run_git(repo_path, ["merge", "--abort"])
-            raise RuntimeError("Merge conflicts detected")
+            raise RuntimeError("Merge conflicts detected") from e
 
         # 4. Run Tests
         if not (repo_path / "pyproject.toml").exists():
@@ -163,9 +160,7 @@ class Engineer:
         except subprocess.CalledProcessError as e:
             self._run_git(repo_path, ["reset", "--hard", "HEAD"])
             # Include stdout/stderr in error message
-            raise RuntimeError(
-                f"Tests failed:\n{e.stdout.decode()}\n{e.stderr.decode()}"
-            )
+            raise RuntimeError(f"Tests failed:\n{e.stdout.decode()}\n{e.stderr.decode()}") from e
 
         # 5. Commit & Push
         print("  Committing and Pushing...")
@@ -176,9 +171,7 @@ class Engineer:
         # 6. Cleanup Branches
         print("  Cleaning up branch...")
         self._run_git(repo_path, ["branch", "-D", branch_name], check=False)
-        self._run_git(
-            repo_path, ["push", "origin", "--delete", branch_name], check=False
-        )
+        self._run_git(repo_path, ["push", "origin", "--delete", branch_name], check=False)
 
         # 7. Update Task (Success)
         print("  Marking task as DONE...")
@@ -220,9 +213,7 @@ class Engineer:
 
     def _get_unpushed_count(self, cwd, branch="main"):
         """Count commits ahead of origin."""
-        res = self._run_git(
-            cwd, ["rev-list", "--count", f"origin/{branch}..{branch}"], check=False
-        )
+        res = self._run_git(cwd, ["rev-list", "--count", f"origin/{branch}..{branch}"], check=False)
         if res.returncode == 0:
             return int(res.stdout.decode().strip())
         return 0

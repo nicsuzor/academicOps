@@ -1,13 +1,14 @@
-import streamlit as st
-import pandas as pd
 from datetime import datetime
+
+import pandas as pd
+import streamlit as st
+from lib.paths import get_data_root
+from lib.task_index import TaskIndex
+from lib.task_model import Task, TaskComplexity, TaskStatus, TaskType
 
 # Add aOps root to path if not already there (dashboard.py does this, but good for standalone testing)
 # We assume this is imported by dashboard.py which sets up sys.path
 from lib.task_storage import TaskStorage
-from lib.task_model import Task, TaskStatus, TaskType, TaskComplexity
-from lib.task_index import TaskIndex
-from lib.paths import get_data_root
 
 
 def _get_storage():
@@ -95,9 +96,7 @@ def render_task_manager():
         filtered_tasks.append(t)
 
     # Sort: Project -> Priority (asc) -> Order -> Title
-    filtered_tasks.sort(
-        key=lambda t: (t.project or "zzz", t.priority, t.order, t.title)
-    )
+    filtered_tasks.sort(key=lambda t: (t.project or "zzz", t.priority, t.order, t.title))
 
     # --- Main Layout ---
 
@@ -177,9 +176,7 @@ def render_task_manager():
                             try:
                                 t = storage.create_task(
                                     title=new_title,
-                                    project=new_project
-                                    if new_project != "All"
-                                    else None,
+                                    project=new_project if new_project != "All" else None,
                                     type=TaskType(new_type),
                                     parent=new_parent if new_parent else None,
                                 )
@@ -257,9 +254,7 @@ def render_task_editor(task: Task, storage: TaskStorage):
         curr_complexity = task.complexity.value if task.complexity else "None"
         complexity_opts = ["None"] + [c.value for c in TaskComplexity]
         complexity_idx = (
-            complexity_opts.index(curr_complexity)
-            if curr_complexity in complexity_opts
-            else 0
+            complexity_opts.index(curr_complexity) if curr_complexity in complexity_opts else 0
         )
         complexity = c9.selectbox("Complexity", complexity_opts, index=complexity_idx)
 

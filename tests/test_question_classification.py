@@ -5,9 +5,10 @@ should skip the full hydration process (for notifications, skills, etc.) or
 go through full hydration.
 """
 
-import pytest
 import sys
 from pathlib import Path
+
+import pytest
 
 # Add hooks directory to path for import
 sys.path.insert(0, str(Path(__file__).parent.parent / "hooks"))
@@ -21,18 +22,13 @@ class TestSkipHydrationNotifications:
     def test_agent_notification(self):
         """Agent completion notifications should skip hydration."""
         assert (
-            should_skip_hydration(
-                "<agent-notification>Task completed</agent-notification>"
-            )
-            is True
+            should_skip_hydration("<agent-notification>Task completed</agent-notification>") is True
         )
 
     def test_task_notification(self):
         """Task completion notifications should skip hydration."""
         assert (
-            should_skip_hydration(
-                "<task-notification>aops-123 completed</task-notification>"
-            )
+            should_skip_hydration("<task-notification>aops-123 completed</task-notification>")
             is True
         )
 
@@ -94,10 +90,7 @@ class TestEdgeCases:
 
     def test_notification_with_whitespace(self):
         """Notification with leading whitespace should still skip hydration."""
-        assert (
-            should_skip_hydration("  <agent-notification>text</agent-notification>")
-            is True
-        )
+        assert should_skip_hydration("  <agent-notification>text</agent-notification>") is True
 
     def test_slash_with_whitespace(self):
         """Slash command with leading whitespace should still skip."""

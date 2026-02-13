@@ -1,7 +1,7 @@
 ---
 id: batch-processing
 category: operations
-bases: [base-task-tracking]
+bases: [base-task-tracking, base-batch]
 ---
 
 # Batch Processing
@@ -56,6 +56,7 @@ $SCRATCHPAD/batch-[task-id]/
 ### User Checkpoints
 
 After each chunk:
+
 1. Present summary (counts by category)
 2. Show sample items per category
 3. **AskUserQuestion** before:
@@ -82,3 +83,48 @@ mcp__plugin_aops-core_task_manager__update_task(id='[task-id]', body='- Archived
 ## Key Principle
 
 **Smart subagent, dumb supervisor.** Supervisor writes ONE smart prompt; worker discovers, processes, reports.
+
+## Task Queue Specialization
+
+When batch processing tasks from the queue (swarm pattern):
+
+### Worker Spawning
+
+```
+Task(subagent_type="aops-core:worker", run_in_background=true,
+     prompt="Pull and complete a task. Use MCP task tools directly...")
+```
+
+Spawn up to 8 workers in parallel. Workers MUST use MCP tools directly, NOT Skills (Skills require interactive prompts which are auto-denied in background mode).
+
+### Worker Instructions
+
+Workers use MCP tools directly:
+
+1. `mcp__plugin_aops-core_task_manager__list_tasks(status="active")`
+2. `mcp__plugin_aops-core_task_manager__update_task(id="...", status="in_progress", assignee="polecat")`
+3. Execute the claimed task
+4. `mcp__plugin_aops-core_task_manager__complete_task(id="...")`
+
+### Fire-and-Forget Pattern
+
+> ⚠️ Background agent notifications are unreliable (P#86). Never use `TaskOutput(block=true)` - it can deadlock.
+
+1. Spawn all workers with `run_in_background=true`
+2. **Continue other work** - don't wait for notifications
+3. Periodically poll task completion via MCP: `list_tasks(status="done")`
+4. Workers update task status to `done` when they complete
+
+### Known Limitations
+
+| Issue                    | Workaround                            |
+| ------------------------ | ------------------------------------- |
+| Skill tool denied        | Use MCP tools directly                |
+| Can't kill agents        | Wait for natural completion           |
+| Race conditions          | Check status/assignee before claiming |
+| Notifications unreliable | Use fire-and-forget + MCP polling     |
+
+### References
+
+- P#86: Background Agent Notifications Are Unreliable
+- P#77: CLI-MCP Interface Parity (workers use MCP, not CLI)

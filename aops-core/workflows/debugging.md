@@ -1,3 +1,9 @@
+---
+id: debugging
+category: development
+bases: [base-task-tracking, base-verification]
+---
+
 # Debugging Workflow
 
 Understand the problem before fixing it.
@@ -7,11 +13,13 @@ Extends: base-task-tracking, base-verification
 ## When to Use
 
 Use this workflow when:
+
 - Asking "why doesn't this work?"
 - Investigating unexpected behavior
 - Facing a bug where the cause is unknown
 
 Do NOT use for:
+
 - Cause already known (use design)
 
 ## User-Specified Methodology (MANDATORY)
@@ -19,6 +27,7 @@ Do NOT use for:
 **When the user or task specifies a debugging methodology, FOLLOW THAT METHODOLOGY EXACTLY.**
 
 This is non-negotiable. Do not:
+
 - Substitute your own "faster" approach
 - Skip steps because you think you know the answer
 - Conclude the opposite of user observations without evidence
@@ -46,6 +55,7 @@ See P#74: "When user makes specific assertions about their own system, trust the
 ### Exit Routing
 
 After debugging completes, route to the appropriate workflow:
+
 - Fix identified → use design
 - If unsure → ask the user
 
@@ -71,6 +81,7 @@ After debugging completes, route to the appropriate workflow:
 ### Hook Loading Issues (Gemini)
 
 For hook initialization problems, use the quick hook test:
+
 ```bash
 gemini -p "what hooks do you have enabled?"
 ```

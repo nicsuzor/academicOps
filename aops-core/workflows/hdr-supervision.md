@@ -1,6 +1,8 @@
 ---
+id: hdr-supervision
 name: hdr-supervision
 category: academic
+bases: [base-task-tracking]
 description: Conventions and workflows for HDR student supervision and administration.
 tags: [academic, hdr, supervision, conventions]
 ---

@@ -43,9 +43,7 @@ def test_task_skill_scripts_discoverable(claude_headless, data_dir):
     )
 
     # Basic success check
-    assert result["success"], (
-        f"Claude execution failed: {result.get('error', 'Unknown error')}"
-    )
+    assert result["success"], f"Claude execution failed: {result.get('error', 'Unknown error')}"
 
     # Get the full response text
     output = result["output"]
@@ -56,8 +54,7 @@ def test_task_skill_scripts_discoverable(claude_headless, data_dir):
 
     # Should mention tasks or successful execution
     assert any(
-        keyword in response_text
-        for keyword in ["task", "success", "inbox", "using data_dir"]
+        keyword in response_text for keyword in ["task", "success", "inbox", "using data_dir"]
     ), "Response should indicate task script was executed"
 
     # Should NOT indicate script not found
@@ -94,9 +91,7 @@ def test_skill_scripts_exist_via_symlink():
     required_scripts = ["task_view.py", "task_add.py", "task_archive.py"]
     for script_name in required_scripts:
         script_path = scripts_path / script_name
-        assert script_path.exists(), (
-            f"Script {script_name} should exist at {script_path}"
-        )
+        assert script_path.exists(), f"Script {script_name} should exist at {script_path}"
 
 
 @pytest.mark.integration
@@ -139,9 +134,7 @@ def test_task_script_runs_from_writing_repo(data_dir):
 
     # Should succeed
     assert result.returncode == 0, (
-        f"Script should execute successfully\n"
-        f"stdout: {result.stdout}\n"
-        f"stderr: {result.stderr}"
+        f"Script should execute successfully\nstdout: {result.stdout}\nstderr: {result.stderr}"
     )
 
     # Should show data directory from writing repo
@@ -179,9 +172,7 @@ def test_claude_finds_scripts_without_search(claude_headless, data_dir):
         permission_mode="plan",
     )
 
-    assert result["success"], (
-        f"Claude execution failed: {result.get('error', 'Unknown error')}"
-    )
+    assert result["success"], f"Claude execution failed: {result.get('error', 'Unknown error')}"
 
     # Parse response
     output = result["output"]

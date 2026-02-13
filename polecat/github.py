@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-import sys
 import re
 import subprocess
+import sys
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from lib.task_model import Task
 
 # Add aops-core to path
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -13,8 +16,9 @@ sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 try:
     from lib.task_model import Task
 except ImportError:
-    # For type hints only if running in isolation without paths set up correctly
-    Task = Any
+    # Fallback for runtime if paths not set
+    if "Task" not in locals() and "Task" not in globals():
+        Task = Any  # type: ignore
 
 
 def generate_pr_body(task: Task) -> str:

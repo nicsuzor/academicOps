@@ -11,7 +11,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
 from lib.hook_utils import get_hook_temp_dir
 
 
@@ -37,9 +36,7 @@ class TestGeminiTempPathFromTranscript:
             os.environ.pop("AOPS_GEMINI_TEMP_ROOT", None)
 
             # Mock cwd to NOT have .gemini
-            with patch(
-                "lib.hook_utils.Path.cwd", return_value=Path("/some/other/path")
-            ):
+            with patch("lib.hook_utils.Path.cwd", return_value=Path("/some/other/path")):
                 result = get_hook_temp_dir("hydrator", input_data)
 
         # Should resolve to gemini_tmp/hydrator, NOT Claude's path
@@ -127,9 +124,7 @@ class TestGeminiTempPathFromTranscript:
 
         input_data = {"transcript_path": str(transcript_file)}
 
-        with patch.dict(
-            os.environ, {"AOPS_GEMINI_TEMP_ROOT": str(explicit_root)}, clear=True
-        ):
+        with patch.dict(os.environ, {"AOPS_GEMINI_TEMP_ROOT": str(explicit_root)}, clear=True):
             result = get_hook_temp_dir("hydrator", input_data)
 
         # Explicit root should take priority
@@ -147,9 +142,7 @@ class TestGeminiTempPathEdgeCases:
         no fallback to Claude paths, no silent directory creation.
         """
         # Transcript path where hash dir doesn't exist
-        fake_path = (
-            tmp_path / ".gemini" / "tmp" / "nonexistent" / "chats" / "session.json"
-        )
+        fake_path = tmp_path / ".gemini" / "tmp" / "nonexistent" / "chats" / "session.json"
 
         input_data = {"transcript_path": str(fake_path)}
 

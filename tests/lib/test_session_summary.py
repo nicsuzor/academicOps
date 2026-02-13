@@ -5,8 +5,8 @@ TDD tests for lib/session_summary.py - write tests first, then implementation.
 
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 from pathlib import Path
 
 import pytest
@@ -15,9 +15,7 @@ import pytest
 class TestSessionSummaryPaths:
     """Test path resolution functions."""
 
-    def test_get_session_summary_dir_uses_aca_data(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_get_session_summary_dir_uses_aca_data(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Session summary dir should be under $ACA_DATA/dashboard/sessions/."""
         monkeypatch.setenv("ACA_DATA", "/home/test/data")
 
@@ -41,10 +39,11 @@ class TestSessionSummaryPaths:
         """Task contributions file uses session_id as key."""
         monkeypatch.setenv("ACA_DATA", "/home/test/data")
 
+        from lib.session_paths import get_session_short_hash
         from lib.session_summary import get_task_contributions_path
 
         sid = "abc12345-uuid-here"
-        h = hashlib.sha256(sid.encode()).hexdigest()[:8]
+        h = get_session_short_hash(sid)
         result = get_task_contributions_path(sid)
         assert result == Path(f"/home/test/data/dashboard/sessions/{h}.tasks.json")
 
@@ -52,10 +51,11 @@ class TestSessionSummaryPaths:
         """Session summary file uses session_id as key."""
         monkeypatch.setenv("ACA_DATA", "/home/test/data")
 
+        from lib.session_paths import get_session_short_hash
         from lib.session_summary import get_session_summary_path
 
         sid = "abc12345-uuid-here"
-        h = hashlib.sha256(sid.encode()).hexdigest()[:8]
+        h = get_session_short_hash(sid)
         result = get_session_summary_path(sid)
         assert result == Path(f"/home/test/data/dashboard/sessions/{h}.summary.json")
 
@@ -98,9 +98,7 @@ class TestTaskContributions:
         assert len(data["tasks"]) == 1
         assert data["tasks"][0]["request"] == "Create stub spec"
 
-    def test_append_task_contribution_appends_to_existing(
-        self, temp_aca_data: Path
-    ) -> None:
+    def test_append_task_contribution_appends_to_existing(self, temp_aca_data: Path) -> None:
         """Subsequent contributions append to existing file."""
         from lib.session_summary import append_task_contribution
 
@@ -132,9 +130,7 @@ class TestTaskContributions:
         assert data["tasks"][0]["request"] == "Task 1"
         assert data["tasks"][1]["request"] == "Task 2"
 
-    def test_append_task_contribution_includes_timestamp(
-        self, temp_aca_data: Path
-    ) -> None:
+    def test_append_task_contribution_includes_timestamp(self, temp_aca_data: Path) -> None:
         """Each contribution gets a timestamp."""
         from lib.session_summary import append_task_contribution
 
@@ -161,9 +157,7 @@ class TestTaskContributions:
         tasks = load_task_contributions("test-session-123")
         assert len(tasks) == 2
 
-    def test_load_task_contributions_returns_empty_for_missing(
-        self, temp_aca_data: Path
-    ) -> None:
+    def test_load_task_contributions_returns_empty_for_missing(self, temp_aca_data: Path) -> None:
         """Returns empty list if no contributions file exists."""
         from lib.session_summary import load_task_contributions
 
@@ -198,9 +192,7 @@ class TestSessionSynthesis:
         )
 
         # Synthesize
-        summary = synthesize_session(
-            "test-session-123", project="writing", date="2026-01-08"
-        )
+        summary = synthesize_session("test-session-123", project="writing", date="2026-01-08")
 
         assert summary["session_id"] == "test-session-123"
         assert summary["project"] == "writing"
@@ -208,9 +200,7 @@ class TestSessionSynthesis:
         assert len(summary["tasks"]) == 1
         assert "Created unified session summary spec" in summary["accomplishments"]
 
-    def test_synthesize_session_extracts_accomplishments(
-        self, temp_aca_data: Path
-    ) -> None:
+    def test_synthesize_session_extracts_accomplishments(self, temp_aca_data: Path) -> None:
         """Accomplishments extracted from successful tasks."""
         from lib.session_summary import append_task_contribution, synthesize_session
 
@@ -246,9 +236,7 @@ class TestSessionSynthesis:
         assert "Accomplishment B" in summary["accomplishments"]
         assert len(summary["accomplishments"]) == 2
 
-    def test_synthesize_session_without_contributions(
-        self, temp_aca_data: Path
-    ) -> None:
+    def test_synthesize_session_without_contributions(self, temp_aca_data: Path) -> None:
         """Synthesis works even without task contributions (for fallback)."""
         from lib.session_summary import synthesize_session
 
@@ -265,9 +253,7 @@ class TestSessionSynthesis:
         assert summary["accomplishments"] == ["Mining-derived accomplishment"]
         assert summary["tasks"] == []  # No task contributions
 
-    def test_synthesize_session_merges_additional_data(
-        self, temp_aca_data: Path
-    ) -> None:
+    def test_synthesize_session_merges_additional_data(self, temp_aca_data: Path) -> None:
         """Additional data from Gemini mining merges with task contributions."""
         from lib.session_summary import append_task_contribution, synthesize_session
 
@@ -283,9 +269,7 @@ class TestSessionSynthesis:
         summary = synthesize_session(
             "test-session-123",
             project="writing",
-            learning_observations=[
-                {"category": "user_correction", "evidence": "quote"}
-            ],
+            learning_observations=[{"category": "user_correction", "evidence": "quote"}],
             skill_compliance={
                 "suggested": ["framework"],
                 "invoked": [],
@@ -301,7 +285,7 @@ class TestSessionSynthesis:
 
     def test_save_session_summary_persists(self, temp_aca_data: Path) -> None:
         """Saving session summary writes to disk."""
-        from lib.session_summary import save_session_summary, get_session_summary_path
+        from lib.session_summary import get_session_summary_path, save_session_summary
 
         summary = {
             "session_id": "test-session-123",
@@ -399,9 +383,9 @@ class TestIntegration:
         """Full workflow: task contributions → synthesis → saved summary."""
         from lib.session_summary import (
             append_task_contribution,
-            synthesize_session,
-            save_session_summary,
             get_session_summary_path,
+            save_session_summary,
+            synthesize_session,
         )
 
         session_id = "integration-test-session"
@@ -471,6 +455,8 @@ class TestIntegration:
         tasks_a = load_task_contributions(session_a)
         tasks_b = load_task_contributions(session_b)
 
+        # Note: If they share the same project and base dir, they may append to same file
+        # unless session_id is part of the filename (which it is via get_session_short_hash)
         assert len(tasks_a) == 2
         assert len(tasks_b) == 1
         assert tasks_a[0]["request"] == "Task from terminal 1"

@@ -213,9 +213,7 @@ class TestQAGatesDemo:
                 f"  Agent attempted implementation: {'YES (BAD - should respect HALT)' if attempted_implementation else 'NO (GOOD)'}"
             )
 
-            issues_detected = (critic_issues_found >= 2) or (
-                custodiet_issues_found >= 1
-            )
+            issues_detected = (critic_issues_found >= 2) or (custodiet_issues_found >= 1)
 
         except Exception as e:
             print(f"  Could not extract response: {e}")

@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
-import sys
-import os
 import fcntl
-import subprocess
+import os
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import yaml
-
-from validation import validate_task_id_or_raise
 from observability import metrics
+from validation import validate_task_id_or_raise
 
 # Add aops-core to path for lib imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -205,9 +204,7 @@ class PolecatManager:
             Path to the crew worktree
         """
         if project not in self.projects:
-            raise ValueError(
-                f"Unknown project: {project}. Known: {list(self.projects.keys())}"
-            )
+            raise ValueError(f"Unknown project: {project}. Known: {list(self.projects.keys())}")
 
         # Get project config - use local repo path directly
         project_config = self.projects[project]
@@ -227,9 +224,7 @@ class PolecatManager:
             # Already exists, just return it
             return worktree_path
 
-        print(
-            f"Creating crew worktree at {worktree_path} from local repo {local_repo_path}..."
-        )
+        print(f"Creating crew worktree at {worktree_path} from local repo {local_repo_path}...")
 
         # Check if branch already exists in local repo
         if self._branch_exists(local_repo_path, branch_name):
@@ -351,9 +346,7 @@ class PolecatManager:
             subprocess.CalledProcessError: If git operations fail
         """
         if project not in self.projects:
-            raise ValueError(
-                f"Unknown project: {project}. Known: {list(self.projects.keys())}"
-            )
+            raise ValueError(f"Unknown project: {project}. Known: {list(self.projects.keys())}")
 
         config = self.projects[project]
         source_path = config["path"]
@@ -393,6 +386,9 @@ class PolecatManager:
         Unlike ensure_repo_mirror() which uses --prune, this method only fetches
         new commits. Safe to run while worktrees are active.
 
+        Fetches from both origin (remote) and local repo to ensure mirror has
+        all commits, including unpushed local changes.
+
         Args:
             project: Project slug
 
@@ -406,11 +402,40 @@ class PolecatManager:
             print(f"⚠ No mirror for {project} - skipping sync")
             return False
 
+        if project not in self.projects:
+            print(f"⚠ Unknown project {project} - skipping sync")
+            return False
+
+        local_path = self.projects[project]["path"]
+
         try:
             print(f"Syncing {project} mirror (safe mode)...")
             with metrics.time_operation("sync", project=project, mode="safe"):
+                # Prune stale worktree refs first - prevents "refusing to fetch into
+                # branch checked out" errors when worktree dirs were deleted externally
                 subprocess.run(
-                    ["git", "fetch", "--all"],  # NO --prune flag
+                    ["git", "worktree", "prune"],
+                    cwd=mirror_path,
+                    check=True,
+                    capture_output=True,
+                )
+
+                # Ensure 'local' remote exists pointing to local repo
+                # This allows fetching unpushed commits from local working copy
+                self._ensure_local_remote(mirror_path, local_path)
+
+                # Fetch from origin (may fail if offline - that's OK)
+                origin_result = subprocess.run(
+                    ["git", "fetch", "origin"],
+                    cwd=mirror_path,
+                    capture_output=True,
+                )
+                if origin_result.returncode != 0:
+                    print("  ⚠ Origin fetch failed (offline?) - continuing with local")
+
+                # Fetch from local repo (should always succeed)
+                subprocess.run(
+                    ["git", "fetch", "local"],
                     cwd=mirror_path,
                     check=True,
                     capture_output=True,
@@ -423,6 +448,56 @@ class PolecatManager:
             # Network errors, etc - non-fatal for offline operation
             print(f"⚠ Mirror sync failed for {project}: {e}", file=sys.stderr)
             return False
+
+    def _ensure_local_remote(self, mirror_path: Path, local_path: Path) -> None:
+        """Ensure mirror has a 'local' remote pointing to local repo.
+
+        This allows the mirror to fetch unpushed commits from the local working copy,
+        ensuring worktrees are created from the latest local state.
+
+        Args:
+            mirror_path: Path to bare mirror repo
+            local_path: Path to local repo
+        """
+        # Check if 'local' remote already exists
+        result = subprocess.run(
+            ["git", "remote", "get-url", "local"],
+            cwd=mirror_path,
+            capture_output=True,
+            text=True,
+        )
+
+        if result.returncode == 0:
+            # Remote exists - check if URL matches
+            current_url = result.stdout.strip()
+            if current_url != str(local_path):
+                # URL changed - update it
+                subprocess.run(
+                    ["git", "remote", "set-url", "local", str(local_path)],
+                    cwd=mirror_path,
+                    check=True,
+                    capture_output=True,
+                )
+        else:
+            # Remote doesn't exist - add it
+            subprocess.run(
+                ["git", "remote", "add", "local", str(local_path)],
+                cwd=mirror_path,
+                check=True,
+                capture_output=True,
+            )
+            # Configure fetch refspec to get all branches from local
+            subprocess.run(
+                [
+                    "git",
+                    "config",
+                    "remote.local.fetch",
+                    "+refs/heads/*:refs/remotes/local/*",
+                ],
+                cwd=mirror_path,
+                check=True,
+                capture_output=True,
+            )
 
     def check_mirror_freshness(self, project: str) -> tuple[bool, str]:
         """Checks if mirror is up-to-date with local repo, attempting fast-forward if stale.
@@ -516,15 +591,16 @@ class PolecatManager:
         mirror_head: str,
         local_head: str,
     ) -> tuple[bool, str]:
-        """Attempt to fast-forward mirror's branch to match local repo.
+        """Update mirror's branch to match local repo.
 
-        This allows the mirror to stay current with local commits without
-        requiring a network fetch from origin.
+        Prefers fast-forward when possible, but force-updates if histories have
+        diverged. Local repo is always treated as source of truth - polecat workers
+        should work on the same code the user has locally.
 
         Args:
             mirror_path: Path to bare mirror repo
             local_path: Path to local repo
-            branch: Branch name to fast-forward
+            branch: Branch name to update
             mirror_head: Current mirror HEAD SHA
             local_head: Target local HEAD SHA
 
@@ -539,13 +615,18 @@ class PolecatManager:
                 capture_output=True,
             )
 
-            if merge_base_result.returncode != 0:
-                # Not a fast-forward - histories have diverged
-                return False, "divergent history"
+            is_fast_forward = merge_base_result.returncode == 0
 
-            # Fast-forward is possible - update mirror's branch ref
-            # In a bare repo, we update the ref directly
-            print(f"  Fast-forwarding mirror {branch} to {local_head[:8]}...")
+            if is_fast_forward:
+                print(f"  Fast-forwarding mirror {branch} to {local_head[:8]}...")
+            else:
+                # Histories diverged - force update to match local
+                # This is safe: local is source of truth, mirror is just a cache
+                print(
+                    f"  Force-updating mirror {branch} to {local_head[:8]} (diverged from {mirror_head[:8]})..."
+                )
+
+            # Update mirror's branch ref to match local
             subprocess.run(
                 ["git", "update-ref", f"refs/heads/{branch}", local_head],
                 cwd=mirror_path,
@@ -553,7 +634,10 @@ class PolecatManager:
                 capture_output=True,
             )
 
-            return True, f"Mirror fast-forwarded to {local_head[:8]}"
+            if is_fast_forward:
+                return True, f"Mirror fast-forwarded to {local_head[:8]}"
+            else:
+                return True, f"Mirror force-updated to {local_head[:8]} (was diverged)"
 
         except subprocess.CalledProcessError as e:
             return False, f"git error: {e}"
@@ -650,7 +734,7 @@ class PolecatManager:
                     finally:
                         fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
-            except (OSError, IOError) as e:
+            except OSError as e:
                 print(f"Warning: Failed to claim {task.id}: {e}", file=sys.stderr)
                 continue
             finally:
@@ -713,7 +797,7 @@ class PolecatManager:
                         raise TimeoutError(
                             f"Could not acquire worktree creation lock within {lock_timeout}s. "
                             f"Another polecat may be creating a worktree."
-                        )
+                        ) from None
                     time.sleep(0.1)  # Brief sleep before retry
 
             # Record lock wait time (time from start to acquisition)
@@ -732,19 +816,28 @@ class PolecatManager:
                 fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
     def _do_setup_worktree(self, task):
-        """Actual worktree creation logic (called under lock)."""
+        """Actual worktree creation logic (called under lock).
+
+        Containerization-aware: Assumes fresh clone/worktree each time.
+        Always syncs before work to handle stateless environments.
+        """
 
         project = task.project if task.project else "aops"
 
-        # Safe sync before worktree creation (non-fatal for offline operation)
+        # --- SYNC BEFORE WORK ---
+        # Critical for containerized/stateless environments where workers start fresh.
+        # Even for persistent environments, ensures we have latest code.
         mirror_path = self.repos_dir / f"{project}.git"
         if mirror_path.exists():
+            print(f"🔄 Syncing {project} mirror before worktree setup...")
             self.safe_sync_mirror(project)
 
             # Check freshness and warn if stale
             is_fresh, message = self.check_mirror_freshness(project)
             if not is_fresh:
                 print(f"⚠ {message}", file=sys.stderr)
+            else:
+                print("  ✅ Mirror is fresh")
 
         repo_path = self.get_repo_path(task)
         if not repo_path.exists():
@@ -752,9 +845,7 @@ class PolecatManager:
 
         worktree_path = self.polecats_dir / task.id
         branch_name = f"polecat/{task.id}"
-        default_branch = self.projects.get(task.project or "aops", {}).get(
-            "default_branch", "main"
-        )
+        default_branch = self.projects.get(task.project or "aops", {}).get("default_branch", "main")
 
         if worktree_path.exists():
             # Validate it's actually a git worktree (has .git file pointing to parent repo)
@@ -805,12 +896,8 @@ class PolecatManager:
             if self._branch_exists(repo_path, branch_name):
                 # Branch exists - delete it if orphan, then recreate
                 if self._is_orphan_branch(repo_path, branch_name):
-                    print(
-                        f"Branch {branch_name} is orphan, deleting...", file=sys.stderr
-                    )
-                    subprocess.run(
-                        ["git", "branch", "-D", branch_name], cwd=repo_path, check=False
-                    )
+                    print(f"Branch {branch_name} is orphan, deleting...", file=sys.stderr)
+                    subprocess.run(["git", "branch", "-D", branch_name], cwd=repo_path, check=False)
                     # Recreate with -b flag from default_branch
                     subprocess.run(cmd, cwd=repo_path, check=True)
                 else:
@@ -836,12 +923,8 @@ class PolecatManager:
             # Clean up and fail
             shutil.rmtree(worktree_path)
             subprocess.run(["git", "worktree", "prune"], cwd=repo_path, check=False)
-            subprocess.run(
-                ["git", "branch", "-D", branch_name], cwd=repo_path, check=False
-            )
-            raise RuntimeError(
-                "Failed to create valid worktree - orphan branch detected"
-            )
+            subprocess.run(["git", "branch", "-D", branch_name], cwd=repo_path, check=False)
+            raise RuntimeError("Failed to create valid worktree - orphan branch detected")
 
         # Configure git identity if specified in config
         identity = self.config.get("git_identity", {})
@@ -862,7 +945,71 @@ class PolecatManager:
                     check=True,
                 )
 
+        # --- WORKTREE VERIFICATION ---
+        # Verify the worktree is correctly set up for PR workflow
+        self._verify_worktree_setup(worktree_path, branch_name, default_branch)
+
         return worktree_path
+
+    def _verify_worktree_setup(self, worktree_path: Path, branch_name: str, default_branch: str):
+        """Verify worktree is correctly set up for the PR workflow.
+
+        Checks:
+        1. Branch exists and has valid history
+        2. Branch is based on current main (not stale)
+        3. Remote tracking is configured correctly
+
+        Args:
+            worktree_path: Path to the worktree
+            branch_name: Expected branch name (e.g., 'polecat/task-id')
+            default_branch: The main branch name (e.g., 'main')
+        """
+        # 1. Verify branch name
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=worktree_path,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0 or result.stdout.strip() != branch_name:
+            print(
+                f"⚠ Branch verification: expected {branch_name}, "
+                f"got {result.stdout.strip() if result.returncode == 0 else 'error'}",
+                file=sys.stderr,
+            )
+
+        # 2. Verify branch is based on recent main
+        # Get the merge-base between our branch and origin/main (if available)
+        merge_base_result = subprocess.run(
+            ["git", "merge-base", "HEAD", f"origin/{default_branch}"],
+            cwd=worktree_path,
+            capture_output=True,
+            text=True,
+        )
+        if merge_base_result.returncode == 0:
+            # Check how many commits behind origin/main we are
+            commits_behind = subprocess.run(
+                [
+                    "git",
+                    "rev-list",
+                    "--count",
+                    f"{merge_base_result.stdout.strip()}..origin/{default_branch}",
+                ],
+                cwd=worktree_path,
+                capture_output=True,
+                text=True,
+            )
+            if commits_behind.returncode == 0 and int(commits_behind.stdout.strip()) > 10:
+                print(
+                    f"⚠ Worktree is {commits_behind.stdout.strip()} commits behind "
+                    f"origin/{default_branch}. Consider rebasing.",
+                    file=sys.stderr,
+                )
+
+        # Note: Worktrees inherit the mirror's remotes, which already have
+        # the correct origin push URL (git@github.com:...). No need to
+        # reconfigure here. (A previous attempt to set-url --push here
+        # had a bug that corrupted the push URL to the literal string "origin".)
 
     def _branch_exists(self, repo_path, branch_name):
         res = subprocess.run(
@@ -886,9 +1033,7 @@ class PolecatManager:
         )
         return result.returncode != 0
 
-    def _is_branch_merged(
-        self, repo_path: Path, branch_name: str, target: str = "main"
-    ) -> bool:
+    def _is_branch_merged(self, repo_path: Path, branch_name: str, target: str = "main") -> bool:
         """Check if branch has been merged into target branch."""
         # Check if any commits in branch are NOT in target
         result = subprocess.run(
@@ -963,6 +1108,4 @@ class PolecatManager:
 
         if self._branch_exists(repo_path, branch_name):
             print(f"Deleting branch {branch_name}...")
-            subprocess.run(
-                ["git", "branch", "-D", branch_name], cwd=repo_path, check=False
-            )
+            subprocess.run(["git", "branch", "-D", branch_name], cwd=repo_path, check=False)

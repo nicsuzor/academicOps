@@ -6,9 +6,19 @@ status: draft
 created: 2026-01-25
 ---
 
-## Purpose
+# Command Intercept
 
-A modular PreToolUse hook that intercepts and transforms tool calls before execution. Designed to be a **no-op by default** with configurable behaviors registered per tool.
+## Giving Effect
+
+- [[hooks/command_intercept.py]] - PreToolUse hook that intercepts and transforms tool calls
+- [[hooks/gate_registry.py]] - Registry for tool-specific intercept behaviors
+- [[hooks/gate_config.py]] - Configuration for intercept rules
+
+## Feature Purpose
+
+A modular PreToolUse hook
+
+that intercepts and transforms tool calls before execution. Designed to be a **no-op by default** with configurable behaviors registered per tool.
 
 ### Problem Statement
 
@@ -19,6 +29,7 @@ Claude Code's built-in tools (Glob, Grep, etc.) have fixed behaviors that someti
 - Other tools may need parameter normalization or augmentation
 
 Currently, the only options are:
+
 1. Block the tool entirely (too restrictive)
 2. Accept the default behavior (wastes context on noise)
 
@@ -101,9 +112,11 @@ When no config file exists or a tool has no registered transformers: **pass thro
 
 ## First Transformer: `exclude_directories`
 
-### Purpose
+### Transformer Purpose
 
-Add exclusion patterns to Glob calls to filter out directories that should not be searched.
+Add exclusion patterns
+
+to Glob calls to filter out directories that should not be searched.
 
 ### Implementation
 

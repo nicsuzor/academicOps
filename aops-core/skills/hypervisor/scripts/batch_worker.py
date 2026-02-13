@@ -27,7 +27,6 @@ from typing import Any
 
 import yaml
 
-
 # Configurable paths - override via environment or edit here
 BATCH_DIR = Path("/tmp/task-batch")
 QUEUE_FILE = BATCH_DIR / "queue.txt"
@@ -79,9 +78,7 @@ def parse_frontmatter(content: str) -> tuple[dict[str, Any], str]:
 
 def serialize_frontmatter(fm: dict[str, Any], body: str) -> str:
     """Serialize frontmatter and body back to markdown."""
-    fm_str = yaml.dump(
-        fm, default_flow_style=False, allow_unicode=True, sort_keys=False
-    )
+    fm_str = yaml.dump(fm, default_flow_style=False, allow_unicode=True, sort_keys=False)
     return f"---\n{fm_str}---\n{body}"
 
 
@@ -119,9 +116,7 @@ def determine_complexity(
     word_count = len(body.split())
     has_checklist = "- [ ]" in body or "- [x]" in body
     has_file_paths = bool(re.search(r"[/\\][\w.-]+\.(py|ts|js|md|yaml|json)", body))
-    has_acceptance = (
-        "## acceptance" in body_lower or "acceptance criteria" in body_lower
-    )
+    has_acceptance = "## acceptance" in body_lower or "acceptance criteria" in body_lower
 
     # Already set - respect existing value
     if fm.get("complexity"):
@@ -208,7 +203,7 @@ def determine_assignee(body: str, fm: dict[str, Any], title: str) -> str:
 
     # Bot-friendly patterns (clear, automatable)
     if "bot-assigned" in tags:
-        return "bot"
+        return "polecat"
 
     bot_patterns = [
         r"\bimplement\b.*\b(function|method|class|script)\b",
@@ -220,11 +215,11 @@ def determine_assignee(body: str, fm: dict[str, Any], title: str) -> str:
     ]
     for pattern in bot_patterns:
         if re.search(pattern, combined_text):
-            return "bot"
+            return "polecat"
 
     # Default: if task has clear structure, assign to bot
     if "## acceptance" in body_lower or "- [ ]" in body:
-        return "bot"
+        return "polecat"
 
     return "nic"
 
@@ -283,7 +278,7 @@ def process_task(task_path: str, has_children: bool = False) -> dict[str, Any]:
         if complexity == "blocked-human":
             assignee = "nic"
         elif complexity == "mechanical":
-            assignee = "bot"
+            assignee = "polecat"
         else:
             assignee = determine_assignee(body, fm, title)
 
@@ -346,9 +341,7 @@ def get_stats() -> dict[str, int]:
     """Get processing statistics."""
     locks = list(LOCKS_DIR.glob("*")) if LOCKS_DIR.exists() else []
     results = list(RESULTS_DIR.glob("*.yaml")) if RESULTS_DIR.exists() else []
-    queue_size = (
-        len(QUEUE_FILE.read_text().strip().split("\n")) if QUEUE_FILE.exists() else 0
-    )
+    queue_size = len(QUEUE_FILE.read_text().strip().split("\n")) if QUEUE_FILE.exists() else 0
 
     return {
         "queue_total": queue_size,

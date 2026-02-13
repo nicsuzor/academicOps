@@ -27,8 +27,8 @@ Draft email replies. Agent drafts, user sends.
 
 ## Complexity Routing
 
-| Type | Action |
-|------|--------|
-| Simple ack | Direct reply |
-| Scheduling, requests | Agent drafts |
+| Type                   | Action         |
+| ---------------------- | -------------- |
+| Simple ack             | Direct reply   |
+| Scheduling, requests   | Agent drafts   |
 | Sensitive, negotiation | Block for user |

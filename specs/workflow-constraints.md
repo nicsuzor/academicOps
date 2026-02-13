@@ -9,9 +9,17 @@ related: [workflow-system-spec, prompt-hydration, enforcement]
 
 # Workflow Constraints Specification
 
+## Giving Effect
+
+- [[workflows/constraint-check.md]] - Constraint checking workflow in hydrator
+- [[specs/constraint-checking-tests.md]] - Test spec for constraint validation
+- [[specs/predicate-registry.md]] - Registry of available predicates
+- [[commands/pull.md]] - Dispositor pattern: `/pull` executes enqueued work
+
 ## Purpose
 
 This spec defines two architectural changes:
+
 1. **Logical-statement workflow format** - Express workflows as constraints, not procedures
 2. **Dispositor pattern** - Main agent enqueues work; `/pull` executes it
 
@@ -23,6 +31,7 @@ Workflows are procedural instructions:
 
 ```markdown
 ## Steps
+
 1. Capture user story
 2. Analyze requirements
 3. Write failing tests
@@ -32,6 +41,7 @@ Workflows are procedural instructions:
 ```
 
 **Problems:**
+
 - Agents skip steps (verification, planning, tests)
 - Order is rigid but work is often non-linear
 - Hard to compose or check compliance
@@ -39,18 +49,18 @@ Workflows are procedural instructions:
 
 ### Proposed State (Constraint-Based)
 
-Workflows become constraint specifications. The hydrator generates task sequences that *satisfy* the constraints; agents cannot generate valid work that violates them.
+Workflows become constraint specifications. The hydrator generates task sequences that _satisfy_ the constraints; agents cannot generate valid work that violates them.
 
 #### Rule Types
 
-| Type | Syntax | Meaning | Example |
-|------|--------|---------|---------|
-| **PRECONDITION** | `BEFORE X: Y` | Y must be satisfied before X | `BEFORE commit: tests_pass` |
-| **POSTCONDITION** | `AFTER X: Y` | Y must be satisfied after X | `AFTER implement: run_tests` |
-| **INVARIANT** | `ALWAYS: X` | X must hold throughout | `ALWAYS: one_task_in_progress` |
-| **PROHIBITION** | `NEVER: X` | X must not occur | `NEVER: commit_failing_tests` |
-| **CONDITIONAL** | `IF X THEN Y` | When X is true, Y required | `IF modifying_python THEN run_pytest` |
-| **TRIGGER** | `ON X: INVOKE Y` | X triggers skill/action Y | `ON tests_fail: INVOKE halt` |
+| Type              | Syntax           | Meaning                      | Example                               |
+| ----------------- | ---------------- | ---------------------------- | ------------------------------------- |
+| **PRECONDITION**  | `BEFORE X: Y`    | Y must be satisfied before X | `BEFORE commit: tests_pass`           |
+| **POSTCONDITION** | `AFTER X: Y`     | Y must be satisfied after X  | `AFTER implement: run_tests`          |
+| **INVARIANT**     | `ALWAYS: X`      | X must hold throughout       | `ALWAYS: one_task_in_progress`        |
+| **PROHIBITION**   | `NEVER: X`       | X must not occur             | `NEVER: commit_failing_tests`         |
+| **CONDITIONAL**   | `IF X THEN Y`    | When X is true, Y required   | `IF modifying_python THEN run_pytest` |
+| **TRIGGER**       | `ON X: INVOKE Y` | X triggers skill/action Y    | `ON tests_fail: INVOKE halt`          |
 
 #### Constraint Format
 
@@ -120,8 +130,10 @@ predicates:
 #### Comparison: Procedural vs Constraint
 
 **Procedural (current tdd-cycle.md):**
+
 ```markdown
 ## Core Cycle
+
 1. Red: Write failing test for ONE thing
 2. Verify failure: Confirm test fails
 3. Green: Minimal implementation to pass
@@ -132,6 +144,7 @@ predicates:
 ```
 
 **Constraint (proposed):**
+
 ```yaml
 workflow: tdd-cycle
 description: Red-green-refactor cycle
@@ -155,15 +168,15 @@ triggers:
 
 Predicates are evaluated by the hydrator using available context:
 
-| Predicate Type | Evaluation Method |
-|----------------|-------------------|
-| File content | Grep/Read tool results |
-| Command output | Bash exit codes, stdout |
-| Task state | MCP task tools |
-| Session state | Session state reader |
+| Predicate Type | Evaluation Method                |
+| -------------- | -------------------------------- |
+| File content   | Grep/Read tool results           |
+| Command output | Bash exit codes, stdout          |
+| Task state     | MCP task tools                   |
+| Session state  | Session state reader             |
 | User statement | Pattern match on recent messages |
 
-**Important limitation:** Hydrator performs constraint-*checking*, not constraint-*solving*. It verifies that a proposed action sequence satisfies constraints; it doesn't synthesize sequences from scratch.
+**Important limitation:** Hydrator performs constraint-_checking_, not constraint-_solving_. It verifies that a proposed action sequence satisfies constraints; it doesn't synthesize sequences from scratch.
 
 ### Workflow Composition via Constraint Inheritance
 
@@ -198,6 +211,7 @@ User prompt → Hydrator → Main agent executes immediately
 Main agent does everything: classifies, plans, executes, commits.
 
 **Problems:**
+
 - No queue visibility (what work is pending?)
 - No interruptibility (user can't reprioritize mid-work)
 - Complex work blocks simple interactions
@@ -214,6 +228,7 @@ Main agent becomes "dispositor" - it receives, classifies, and routes work but d
 #### Core Principle
 
 **Separation of concerns:**
+
 - **Dispositor (main agent):** Understand intent, check constraints, create/update tasks, respond to questions
 - **Executor (/pull):** Claim task, execute work, verify completion
 
@@ -221,15 +236,16 @@ Main agent becomes "dispositor" - it receives, classifies, and routes work but d
 
 Not everything goes through the queue. These bypass and execute immediately:
 
-| Path | Why Direct | Example |
-|------|------------|---------|
-| `/command` invocations | User explicitly requests action | `/commit`, `/help` |
-| Skill invocations | User explicitly invokes skill | `/pdf`, `/daily` |
-| Simple questions | No state changes, immediate answer | "What is X?" |
-| Conversational | Dialog, not work | "Thanks", "Can you..." |
-| `/pull` itself | This IS the execution path | `/pull` |
+| Path                   | Why Direct                         | Example                |
+| ---------------------- | ---------------------------------- | ---------------------- |
+| `/command` invocations | User explicitly requests action    | `/commit`, `/help`     |
+| Skill invocations      | User explicitly invokes skill      | `/pdf`, `/daily`       |
+| Simple questions       | No state changes, immediate answer | "What is X?"           |
+| Conversational         | Dialog, not work                   | "Thanks", "Can you..." |
+| `/pull` itself         | This IS the execution path         | `/pull`                |
 
 **Detection heuristic for direct execution:**
+
 1. Starts with `/` → direct (command or skill)
 2. Hydrator classifies as `simple-question` → direct
 3. No file modifications implied → likely direct
@@ -284,6 +300,7 @@ Run `/pull` to execute, or continue with other work.
 ```
 
 **Key behaviors:**
+
 - Acknowledges the request was understood
 - Shows task was created (with ID for reference)
 - Indicates workflow/constraints that will apply
@@ -311,12 +328,14 @@ User: "No, just implement it now, don't create a task"
 **Dispositor response options:**
 
 A. **Comply with acknowledgment** (for simple work):
+
 ```
 Proceeding directly. Note: work won't be tracked in task system.
 [executes]
 ```
 
 B. **Gentle redirect** (for complex work):
+
 ```
 This work has dependencies and verification requirements that
 the task system helps track. I've created task aops-abc123.
@@ -324,6 +343,7 @@ Run `/pull aops-abc123` to execute with proper tracking.
 ```
 
 C. **Explain trade-offs** (if user insists):
+
 ```
 Direct execution means:
 - No constraint verification
@@ -423,9 +443,10 @@ Hydrator output gains `execution_path` field:
 
 **Intent**: Add dark mode toggle
 **Workflow**: feature-dev
-**Execution Path**: enqueue  ← NEW
+**Execution Path**: enqueue ← NEW
 
 ### Task Specification
+
 [details for task creation]
 ```
 
@@ -437,6 +458,7 @@ Main agent system prompt includes:
 ## Role: Dispositor
 
 You are a work router, not a worker. Your responsibilities:
+
 1. Understand user intent
 2. Select appropriate workflow
 3. Create tasks with full context
@@ -444,12 +466,14 @@ You are a work router, not a worker. Your responsibilities:
 5. Direct user to `/pull` for execution
 
 You do NOT:
+
 - Modify code files
 - Run tests
 - Make commits
 - Execute implementation work
 
 Exceptions (direct execution allowed):
+
 - Commands: `/commit`, `/help`, etc.
 - Skills: `/pdf`, `/daily`, etc.
 - Questions: No state changes needed
@@ -467,7 +491,7 @@ Exceptions (direct execution allowed):
 5. [x] Predicate evaluation methods specified
 6. [x] Composition via inheritance defined
 
-### Part 2: Dispositor Pattern
+### Part 2: Dispositor Pattern Acceptance Criteria
 
 1. [x] Separation of enqueue vs execute clearly defined
 2. [x] Direct execution paths enumerated with detection heuristics

@@ -104,13 +104,9 @@ class TestCliComplete:
 
     def test_complete_nonexistent_task(self, tmp_path):
         """'task complete nonexistent-id' shows error."""
-        result = run_cli(
-            "complete", "nonexistent-task-id", env={"ACA_DATA": str(tmp_path)}
-        )
+        result = run_cli("complete", "nonexistent-task-id", env={"ACA_DATA": str(tmp_path)})
         assert result.returncode != 0
-        assert (
-            "not found" in result.stdout.lower() or "not found" in result.stderr.lower()
-        )
+        assert "not found" in result.stdout.lower() or "not found" in result.stderr.lower()
 
     def test_complete_existing_task(self, tmp_path):
         """'task complete <id>' marks task as done."""

@@ -5,22 +5,22 @@
 
 ## Versions Tested
 
-| Component | Version |
-|-----------|---------|
-| AcademicOps Framework | v1.1 |
-| Claude Code | 2.1.15 |
-| Gemini CLI | 0.26.0 |
-| uv | 0.9.10 |
+| Component             | Version |
+| --------------------- | ------- |
+| AcademicOps Framework | v1.1    |
+| Claude Code           | 2.1.15  |
+| Gemini CLI            | 0.26.0  |
+| uv                    | 0.9.10  |
 
 ## Test Results Summary
 
-| Test | Status | Notes |
-|------|--------|-------|
-| Prerequisites Check | PASS | `$AOPS` set, `uv` available |
-| Installation (setup.sh) | PASS | 42 workflows, 12 skills, 9 commands installed |
-| Test A: Gemini Headless | PASS | Task aops-9e78192b completed successfully |
-| Test B: Claude Headless | PASS | Task aops-64a8071a completed successfully |
-| Artifact Validation | PASS | Transcripts generated with task context |
+| Test                    | Status | Notes                                         |
+| ----------------------- | ------ | --------------------------------------------- |
+| Prerequisites Check     | PASS   | `$AOPS` set, `uv` available                   |
+| Installation (setup.sh) | PASS   | 42 workflows, 12 skills, 9 commands installed |
+| Test A: Gemini Headless | PASS   | Task aops-9e78192b completed successfully     |
+| Test B: Claude Headless | PASS   | Task aops-64a8071a completed successfully     |
+| Artifact Validation     | PASS   | Transcripts generated with task context       |
 
 **Overall Result**: ALL TESTS PASSED
 

@@ -86,9 +86,7 @@ class TestSkillDiscoveryDemo:
                 "01-",
                 "02-",
             ]
-            found_indicators = [
-                ind for ind in workflow_indicators if ind in response_lower
-            ]
+            found_indicators = [ind for ind in workflow_indicators if ind in response_lower]
             print(f"    Workflow indicators found: {found_indicators}")
 
             # Show response for human validation

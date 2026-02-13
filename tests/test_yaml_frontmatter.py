@@ -60,9 +60,7 @@ class TestYamlFrontmatterParsing:
             "double_quoted_multiple_colons_valid",
         ],
     )
-    def test_yaml_title_validity(
-        self, title: str, yaml_content: str, expected_valid: bool
-    ) -> None:
+    def test_yaml_title_validity(self, title: str, yaml_content: str, expected_valid: bool) -> None:
         """Test YAML parsing behavior with special characters in titles.
 
         Args:

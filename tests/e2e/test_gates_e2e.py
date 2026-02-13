@@ -1,5 +1,6 @@
-import pytest
 import json
+
+import pytest
 
 # NOTE: These tests use the `cli_headless` fixture from tests/conftest.py
 # which supports both 'claude' and 'gemini' params.
@@ -69,9 +70,7 @@ def test_gate_enforcement_e2e(cli_headless, gate, instruction, expected_behavior
 
         if not is_blocked:
             # Fallback: check if the model says "I cannot" or "blocked"
-            is_blocked = (
-                "block" in output_text.lower() or "denied" in output_text.lower()
-            )
+            is_blocked = "block" in output_text.lower() or "denied" in output_text.lower()
 
         if not is_blocked:
             print(f"DEBUG: Full Output:\n{result['output']}")
@@ -99,7 +98,9 @@ def test_hydrator_bypass_e2e(cli_headless):
     # Instruction: Activate the prompt-hydrator skill
     instruction = "activate_skill name='prompt-hydrator' prompt='test plan'"
     if platform == "claude":
-        instruction = "Use the Skill tool to activate 'aops-core:prompt-hydrator' with prompt 'test plan'"
+        instruction = (
+            "Use the Skill tool to activate 'aops-core:prompt-hydrator' with prompt 'test plan'"
+        )
 
     result = runner(instruction, model=model)
 

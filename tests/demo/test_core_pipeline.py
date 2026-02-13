@@ -25,9 +25,7 @@ import pytest
 class TestCorePipelineDemo:
     """Demo test for the core prompt hydration pipeline."""
 
-    def test_demo_core_pipeline_hydration_to_execution(
-        self, claude_headless_tracked
-    ) -> None:
+    def test_demo_core_pipeline_hydration_to_execution(self, claude_headless_tracked) -> None:
         """Demo: Prompt hydration produces executable plan that completes.
 
         Strategy: Give agent a straightforward Python task that should trigger:
@@ -87,8 +85,7 @@ class TestCorePipelineDemo:
         hydrator_calls = [
             c
             for c in tool_calls
-            if c["name"] == "Task"
-            and c.get("input", {}).get("subagent_type") == "prompt-hydrator"
+            if c["name"] == "Task" and c.get("input", {}).get("subagent_type") == "prompt-hydrator"
         ]
         print(f"\n--- Stage 1: Hydrator Invocations: {len(hydrator_calls)} ---")
         hydrator_invoked = len(hydrator_calls) >= 1
@@ -114,8 +111,7 @@ class TestCorePipelineDemo:
             print(f"    - {skill_name}")
         # For this task, python-dev should be invoked
         python_dev_invoked = any(
-            "python" in call.get("input", {}).get("skill", "").lower()
-            for call in skill_calls
+            "python" in call.get("input", {}).get("skill", "").lower() for call in skill_calls
         )
 
         # Stage 4: Code written (Write tool used)

@@ -8,13 +8,12 @@ Tests the graph neighborhood data access tool per P#78 (Dumb Server, Smart Agent
 
 from __future__ import annotations
 
+# Add framework roots to path for lib imports
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
-# Add framework roots to path for lib imports
-import sys
 
 TESTS_DIR = Path(__file__).parent.resolve()
 AOPS_CORE_ROOT = TESTS_DIR.parent
@@ -155,9 +154,7 @@ class TestGetTaskNeighborhood:
         assert result["task"] is None
         assert "not found" in result["message"].lower()
 
-    def test_returns_task_data(
-        self, tmp_path: Path, storage_with_tasks: TaskStorage
-    ) -> None:
+    def test_returns_task_data(self, tmp_path: Path, storage_with_tasks: TaskStorage) -> None:
         """Returns full task data for the requested task."""
         from mcp_servers import tasks_server
 
@@ -166,9 +163,7 @@ class TestGetTaskNeighborhood:
 
         target_id = storage_with_tasks._test_ids["target"]
 
-        with patch.object(
-            tasks_server, "_get_storage", return_value=storage_with_tasks
-        ):
+        with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
             with patch.object(tasks_server, "_get_index", return_value=index):
                 result = tasks_server.get_task_neighborhood.fn(target_id)
 
@@ -190,9 +185,7 @@ class TestGetTaskNeighborhood:
         target_id = storage_with_tasks._test_ids["target"]
         parent_id = storage_with_tasks._test_ids["parent"]
 
-        with patch.object(
-            tasks_server, "_get_storage", return_value=storage_with_tasks
-        ):
+        with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
             with patch.object(tasks_server, "_get_index", return_value=index):
                 result = tasks_server.get_task_neighborhood.fn(target_id)
 
@@ -214,9 +207,7 @@ class TestGetTaskNeighborhood:
         target_id = storage_with_tasks._test_ids["target"]
         child_id = storage_with_tasks._test_ids["child"]
 
-        with patch.object(
-            tasks_server, "_get_storage", return_value=storage_with_tasks
-        ):
+        with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
             with patch.object(tasks_server, "_get_index", return_value=index):
                 result = tasks_server.get_task_neighborhood.fn(target_id)
 
@@ -238,9 +229,7 @@ class TestGetTaskNeighborhood:
         target_id = storage_with_tasks._test_ids["target"]
         dependency_id = storage_with_tasks._test_ids["dependency"]
 
-        with patch.object(
-            tasks_server, "_get_storage", return_value=storage_with_tasks
-        ):
+        with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
             with patch.object(tasks_server, "_get_index", return_value=index):
                 result = tasks_server.get_task_neighborhood.fn(target_id)
 
@@ -262,9 +251,7 @@ class TestGetTaskNeighborhood:
         target_id = storage_with_tasks._test_ids["target"]
         dependent_id = storage_with_tasks._test_ids["dependent"]
 
-        with patch.object(
-            tasks_server, "_get_storage", return_value=storage_with_tasks
-        ):
+        with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
             with patch.object(tasks_server, "_get_index", return_value=index):
                 result = tasks_server.get_task_neighborhood.fn(target_id)
 
@@ -286,9 +273,7 @@ class TestGetTaskNeighborhood:
         target_id = storage_with_tasks._test_ids["target"]
         soft_dependent_id = storage_with_tasks._test_ids["soft_dependent"]
 
-        with patch.object(
-            tasks_server, "_get_storage", return_value=storage_with_tasks
-        ):
+        with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
             with patch.object(tasks_server, "_get_index", return_value=index):
                 result = tasks_server.get_task_neighborhood.fn(target_id)
 
@@ -309,9 +294,7 @@ class TestGetTaskNeighborhood:
 
         target_id = storage_with_tasks._test_ids["target"]
 
-        with patch.object(
-            tasks_server, "_get_storage", return_value=storage_with_tasks
-        ):
+        with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
             with patch.object(tasks_server, "_get_index", return_value=index):
                 result = tasks_server.get_task_neighborhood.fn(target_id)
 
@@ -338,9 +321,7 @@ class TestGetTaskNeighborhood:
         ]:
             assert storage_with_tasks._test_ids[key] in task_ids
 
-    def test_returns_orphan_tasks(
-        self, tmp_path: Path, storage_with_tasks: TaskStorage
-    ) -> None:
+    def test_returns_orphan_tasks(self, tmp_path: Path, storage_with_tasks: TaskStorage) -> None:
         """Returns tasks with no parent AND no dependencies."""
         from mcp_servers import tasks_server
 
@@ -350,9 +331,7 @@ class TestGetTaskNeighborhood:
         target_id = storage_with_tasks._test_ids["target"]
         orphan_id = storage_with_tasks._test_ids["orphan"]
 
-        with patch.object(
-            tasks_server, "_get_storage", return_value=storage_with_tasks
-        ):
+        with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
             with patch.object(tasks_server, "_get_index", return_value=index):
                 result = tasks_server.get_task_neighborhood.fn(target_id)
 
@@ -366,9 +345,7 @@ class TestGetTaskNeighborhood:
         # Target should NOT be in orphans (even if it has no parent in some cases)
         assert target_id not in orphan_ids
 
-    def test_no_similarity_scoring(
-        self, tmp_path: Path, storage_with_tasks: TaskStorage
-    ) -> None:
+    def test_no_similarity_scoring(self, tmp_path: Path, storage_with_tasks: TaskStorage) -> None:
         """Verify no similarity scores are returned (P#78 compliance)."""
         from mcp_servers import tasks_server
 
@@ -377,9 +354,7 @@ class TestGetTaskNeighborhood:
 
         target_id = storage_with_tasks._test_ids["target"]
 
-        with patch.object(
-            tasks_server, "_get_storage", return_value=storage_with_tasks
-        ):
+        with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
             with patch.object(tasks_server, "_get_index", return_value=index):
                 result = tasks_server.get_task_neighborhood.fn(target_id)
 
@@ -394,7 +369,7 @@ class TestGetTaskNeighborhood:
 
         # Also check nested structures
         if result["existing_relationships"]:
-            for key, value in result["existing_relationships"].items():
+            for _key, value in result["existing_relationships"].items():
                 if isinstance(value, list):
                     for item in value:
                         assert "similarity" not in item

@@ -12,6 +12,8 @@ Key patterns tested:
 
 import pytest
 
+from tests.conftest import count_task_calls, extract_task_calls
+
 pytestmark = [
     pytest.mark.integration,
     pytest.mark.slow,
@@ -20,45 +22,8 @@ pytestmark = [
 
 
 def _task_tool_used(tool_calls: list) -> bool:
-    """Check if Task tool was used to spawn a subagent.
-
-    Args:
-        tool_calls: List of parsed tool calls from session
-
-    Returns:
-        True if Task tool was invoked
-    """
-    return any(c["name"] == "Task" for c in tool_calls)
-
-
-def _task_tool_with_type(tool_calls: list, subagent_type: str) -> bool:
-    """Check if Task tool was used with specific subagent type.
-
-    Args:
-        tool_calls: List of parsed tool calls from session
-        subagent_type: Expected subagent_type value
-
-    Returns:
-        True if Task tool was called with matching subagent_type
-    """
-    for call in tool_calls:
-        if call["name"] == "Task":
-            input_data = call.get("input", {})
-            if input_data.get("subagent_type") == subagent_type:
-                return True
-    return False
-
-
-def _count_task_calls(tool_calls: list) -> int:
-    """Count number of Task tool invocations.
-
-    Args:
-        tool_calls: List of parsed tool calls from session
-
-    Returns:
-        Number of Task tool calls
-    """
-    return sum(1 for c in tool_calls if c["name"] == "Task")
+    """Check if Task tool was used to spawn a subagent."""
+    return len(extract_task_calls(tool_calls)) > 0
 
 
 @pytest.mark.integration
@@ -157,8 +122,7 @@ def test_plan_agent_spawns(claude_headless_tracked) -> None:
     Note: Plan agent often times out due to complexity - marked skip.
     """
     result, session_id, tool_calls = claude_headless_tracked(
-        "Use the Task tool to spawn a Plan agent to design how we would "
-        "add a new hook for logging",
+        "Use the Task tool to spawn a Plan agent to design how we would add a new hook for logging",
         timeout_seconds=300,  # Plan agent needs more time
     )
 
@@ -200,7 +164,7 @@ def test_parallel_agent_spawn(claude_headless_tracked) -> None:
     assert tool_calls, f"No tool calls recorded for session {session_id}"
 
     # Count Task tool calls - should be at least 2 for parallel
-    task_count = _count_task_calls(tool_calls)
+    task_count = count_task_calls(tool_calls)
 
     if task_count < 2:
         tool_names = [c["name"] for c in tool_calls]

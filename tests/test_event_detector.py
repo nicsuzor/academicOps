@@ -1,6 +1,6 @@
 """Tests for centralized event detection module."""
 
-from lib.event_detector import detect_tool_state_changes, StateChange
+from lib.event_detector import StateChange, detect_tool_state_changes
 
 
 class TestEventDetector:
@@ -20,38 +20,28 @@ class TestEventDetector:
 
     def test_task_binding_update_task_active_ignored(self):
         # Setting to active (ready) is NOT claiming
-        changes = detect_tool_state_changes(
-            "update_task", {"status": "active", "id": "task-1"}
-        )
+        changes = detect_tool_state_changes("update_task", {"status": "active", "id": "task-1"})
         assert StateChange.BIND_TASK not in changes
 
     def test_task_unbinding_complete_task_success(self):
         # Regular completion
-        changes = detect_tool_state_changes(
-            "complete_task", {"id": "task-1"}, {"success": True}
-        )
+        changes = detect_tool_state_changes("complete_task", {"id": "task-1"}, {"success": True})
         assert StateChange.UNBIND_TASK in changes
 
     def test_task_unbinding_complete_task_failure(self):
         # Failed completion should not unbind
-        changes = detect_tool_state_changes(
-            "complete_task", {"id": "task-1"}, {"success": False}
-        )
+        changes = detect_tool_state_changes("complete_task", {"id": "task-1"}, {"success": False})
         assert StateChange.UNBIND_TASK not in changes
 
     def test_task_unbinding_update_task_done(self):
         # Marking done via update_task (bug fix case)
-        changes = detect_tool_state_changes(
-            "update_task", {"status": "done", "id": "task-1"}
-        )
+        changes = detect_tool_state_changes("update_task", {"status": "done", "id": "task-1"})
         assert StateChange.UNBIND_TASK in changes
         assert StateChange.BIND_TASK not in changes
 
     def test_task_unbinding_update_task_cancelled(self):
         # Marking cancelled via update_task
-        changes = detect_tool_state_changes(
-            "update_task", {"status": "cancelled", "id": "task-1"}
-        )
+        changes = detect_tool_state_changes("update_task", {"status": "cancelled", "id": "task-1"})
         assert StateChange.UNBIND_TASK in changes
 
     def test_gemini_json_result_parsing(self):

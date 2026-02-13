@@ -39,7 +39,7 @@ def test_extract_subagent_tool_calls_single_skill():
     result = extract_subagent_tool_calls(tool_calls)
 
     assert len(result) == 1
-    assert result[0]["skill"] == "framework"
+    assert result[0]["name"] == "framework"
     assert result[0]["args"] == "some-argument"
     assert result[0]["index"] == 1
     assert "input" in result[0]
@@ -66,11 +66,11 @@ def test_extract_subagent_tool_calls_multiple_skills():
     result = extract_subagent_tool_calls(tool_calls)
 
     assert len(result) == 3
-    assert result[0]["skill"] == "framework"
+    assert result[0]["name"] == "framework"
     assert result[0]["index"] == 1
-    assert result[1]["skill"] == "learn"
+    assert result[1]["name"] == "learn"
     assert result[1]["index"] == 3
-    assert result[2]["skill"] == "audit"
+    assert result[2]["name"] == "audit"
     assert result[2]["index"] == 4
 
 
@@ -97,7 +97,7 @@ def test_extract_subagent_tool_calls_malformed_skill():
 
     # Only the valid skill should be extracted
     assert len(result) == 1
-    assert result[0]["skill"] == "framework"
+    assert result[0]["name"] == "framework"
 
 
 def test_extract_subagent_tool_calls_no_args():
@@ -111,7 +111,7 @@ def test_extract_subagent_tool_calls_no_args():
     result = extract_subagent_tool_calls(tool_calls)
 
     assert len(result) == 1
-    assert result[0]["skill"] == "framework"
+    assert result[0]["name"] == "framework"
     assert result[0]["args"] == ""
 
 
@@ -150,8 +150,8 @@ def test_extract_subagent_tool_calls_with_fixture(extract_subagent_calls):
     result = extract_subagent_calls(tool_calls)
 
     assert len(result) == 2
-    framework_calls = [c for c in result if c["skill"] == "framework"]
-    learn_calls = [c for c in result if c["skill"] == "learn"]
+    framework_calls = [c for c in result if c["name"] == "framework"]
+    learn_calls = [c for c in result if c["name"] == "learn"]
 
     assert len(framework_calls) == 1
     assert len(learn_calls) == 1
@@ -180,7 +180,7 @@ def test_extract_subagent_tool_calls_realistic_pattern(extract_subagent_calls):
     subagent_calls = extract_subagent_calls(tool_calls)
 
     assert len(subagent_calls) == 2
-    assert subagent_calls[0]["skill"] == "audit"
+    assert subagent_calls[0]["name"] == "audit"
     assert subagent_calls[0]["index"] == 2
-    assert subagent_calls[1]["skill"] == "framework"
+    assert subagent_calls[1]["name"] == "framework"
     assert subagent_calls[1]["index"] == 4

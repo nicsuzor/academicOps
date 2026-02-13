@@ -101,9 +101,7 @@ class TestRouterClaudeFormat:
         output, stderr = run_router_claude(input_data)
 
         # Claude SessionStart should have hookSpecificOutput structure
-        assert "hookSpecificOutput" in output, (
-            f"Missing hookSpecificOutput. Output: {output}"
-        )
+        assert "hookSpecificOutput" in output, f"Missing hookSpecificOutput. Output: {output}"
         hso = output["hookSpecificOutput"]
         assert hso["hookEventName"] == "SessionStart"
         assert "permissionDecision" in hso
@@ -236,9 +234,7 @@ class TestRouterEventMapping:
 
         # The gate messages should reference PreToolUse behavior
         # Hydration gate blocks read operations on unhydrated sessions
-        assert output["decision"] == "deny", (
-            f"Expected deny. Output: {output}, Stderr: {stderr}"
-        )
+        assert output["decision"] == "deny", f"Expected deny. Output: {output}, Stderr: {stderr}"
 
     def test_session_end_maps_to_stop(self) -> None:
         """Gemini SessionEnd maps to internal Stop event."""

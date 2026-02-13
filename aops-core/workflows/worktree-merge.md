@@ -12,9 +12,11 @@ Merge completed work from polecat worktrees into the main branch.
 ## Quick Reference (for "merge polecats" requests)
 
 **Primary method** — run the CLI:
+
 ```bash
 polecat merge
 ```
+
 This handles discovery, merge, tests, and cleanup automatically.
 
 **If CLI unavailable** — manual checklist (strict order):
@@ -55,6 +57,7 @@ This handles discovery, merge, tests, and cleanup automatically.
 ## When to Use
 
 Use this workflow when:
+
 - A polecat worker has completed its task in a worktree
 - Task status is `merge_ready` or `done` and branch exists
 - You need to integrate worktree changes into main
@@ -124,6 +127,7 @@ For non-trivial merges, the engineer (human or reviewing agent) performs first-p
 4. **Decision gate**: Human approves, rejects, or requests changes
 
 **Rejection workflow**:
+
 - Create task documenting rejection rationale
 - Assign task back to the polecat (e.g., `assignee: audre`)
 - Include specific fix instructions in task body
@@ -159,6 +163,7 @@ uv run pytest
 ```
 
 If tests fail:
+
 - `git reset --hard HEAD~1` to undo the merge commit
 - Investigate the failure in the original worktree
 - Mark task as `blocked` with failure details
@@ -282,28 +287,32 @@ mcp__plugin_aops-core_task_manager__search_tasks(query="polecat")
 ```
 
 **When to merge review vs merge_ready:**
+
 - `merge_ready`: Pre-approved work, merge immediately
 - `review`: Requires engineer inspection first. Review the work, then either:
   - Merge if acceptable (update status to done after merge)
   - Reject with feedback (create follow-up task, assign back to polecat)
 
 **User intent clarification**: When user says "merge ready tasks in", they typically mean "process `review` status tasks with oversight". The workflow is:
+
 1. Agent reviews each `review` task
 2. Simple/mechanical tasks: agent approves and marks done
 3. Complex/judgment tasks: agent asks user for resolution before proceeding
 
-**Note**: Task assignees use `nic` (human) or `bot` (agent), not "engineer".
+**Note**: Task assignees use `nic` (human) or `polecat` (agent), not "engineer".
 
 ## Edge Cases
 
 ### Branch Already Merged
 
 If `git log main..polecat/{task-id}` returns empty:
+
 - Branch commits are already in main
 - Skip merge, proceed directly to cleanup
 - This happens when work was cherry-picked or merged manually
 
 Use `git cherry` to detect commits merged via different SHAs:
+
 ```bash
 git cherry main polecat/{task-id}
 # - = already in main (safe to delete branch)
@@ -320,6 +329,7 @@ git log --oneline polecat/{task-id}..main | wc -l
 ```
 
 **If branch is significantly behind** (e.g., 60+ commits):
+
 1. Check `git cherry` first - work may already be in main
 2. If work needs merging: rebase or merge main into branch, then proceed
 3. If work is obsolete: delete branch, no merge needed
@@ -329,6 +339,7 @@ git log --oneline polecat/{task-id}..main | wc -l
 ### Merge Conflicts
 
 If squash merge fails with conflicts:
+
 1. `git merge --abort`
 2. Set task status to `blocked`
 3. Add conflict details to task body
@@ -337,6 +348,7 @@ If squash merge fails with conflicts:
 ### Missing Worktree
 
 If the worktree directory doesn't exist but branch does:
+
 - Worktree was already removed
 - Proceed with branch merge and cleanup
 - This is normal for completed tasks
@@ -344,13 +356,15 @@ If the worktree directory doesn't exist but branch does:
 ### Failed Merge / No Branch (Review Status)
 
 If task is in `review` status but has no branch:
+
 - Refinery may have failed (`git fetch` error, merge conflict, etc.)
 - Check task body for "🏭 Refinery Report" section with failure details
 - **Work was never completed** - this is NOT a merge candidate
 
 **Resolution**:
+
 1. Reset task to `active` status
-2. Reassign to `bot` for fresh attempt
+2. Reassign to `polecat` for fresh attempt
 3. Add triage note explaining the reset
 
 This commonly occurs when polecat sessions hit blocking bugs (e.g., hydration gate) and refinery couldn't process.

@@ -35,9 +35,9 @@ mock_hook_utils = <MagicMock name='hook_utils' id='131511095932448'>
             "tool_name": "Task",
             "tool_input": {"subagent_type": "prompt-hydrator"}
         })
-    
+
         check_result = post_hydration_trigger(ctx)
-    
+
         mock_session_state.update_hydration_metrics.assert_called_with("sess1", turns_since_hydration=0)
         mock_session_state.clear_hydration_pending.assert_called_with("sess1")
         assert check_result.verdict == GateVerdict.ALLOW
@@ -55,17 +55,17 @@ monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x779bc90ceed0>
 
     def test_missing_state_file_should_block(self, tmp_path, monkeypatch):
         """If session state file doesn't exist, gate should DENY (fail-closed).
-    
+
         This may be the actual bug: state file isn't being created/found for Gemini.
         """
         from hooks.gate_registry import check_hydration_gate, GateContext
-    
+
         # Set up empty state dir (no state file)
         state_dir = tmp_path / "empty_state"
         state_dir.mkdir()
         monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(state_dir))
         monkeypatch.setenv("HYDRATION_GATE_MODE", "block")
-    
+
         ctx = GateContext(
             session_id="nonexistent-session",
             event_name="PreToolUse",
@@ -74,9 +74,9 @@ monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x779bc90ceed0>
                 "tool_input": {"file_path": "/tmp/test.txt", "content": "test"},
             },
         )
-    
+
         result = check_hydration_gate(ctx)
-    
+
         # Fail-closed: missing state file should mean DENY
 >       assert result is not None, (
             "Hydration gate should DENY when state file missing (fail-closed)"
@@ -92,12 +92,12 @@ self = <test_userpromptsubmit_first_prompt.TestFirstPromptHydration object at 0x
 
     def test_context_template_loads_without_format_error(self):
         """Verify context template can be formatted without KeyError.
-    
+
         Regression: The template contained {content: which .format() treated
         as an undefined placeholder, causing silent failures.
         """
         template = load_template(CONTEXT_TEMPLATE_FILE)
-    
+
         # Provide all expected placeholders
         test_values = {
             "prompt": "test user prompt",
@@ -111,7 +111,7 @@ self = <test_userpromptsubmit_first_prompt.TestFirstPromptHydration object at 0x
             "relevant_files": "",
             "axioms": "",
         }
-    
+
         # This should NOT raise KeyError
         try:
 >           result = template.format(**test_values)
@@ -126,12 +126,12 @@ self = <test_userpromptsubmit_first_prompt.TestFirstPromptHydration object at 0x
 
     def test_context_template_loads_without_format_error(self):
         """Verify context template can be formatted without KeyError.
-    
+
         Regression: The template contained {content: which .format() treated
         as an undefined placeholder, causing silent failures.
         """
         template = load_template(CONTEXT_TEMPLATE_FILE)
-    
+
         # Provide all expected placeholders
         test_values = {
             "prompt": "test user prompt",
@@ -145,7 +145,7 @@ self = <test_userpromptsubmit_first_prompt.TestFirstPromptHydration object at 0x
             "relevant_files": "",
             "axioms": "",
         }
-    
+
         # This should NOT raise KeyError
         try:
             result = template.format(**test_values)
@@ -165,12 +165,12 @@ self = <test_userpromptsubmit_first_prompt.TestFirstPromptHydration object at 0x
 
     def test_context_template_preserves_structure_after_formatting(self):
         """Verify template structure is preserved after formatting.
-    
+
         The template should format correctly with all placeholders and preserve
         the expected output structure including sections and code blocks.
         """
         template = load_template(CONTEXT_TEMPLATE_FILE)
-    
+
         test_values = {
             "prompt": "test",
             "session_context": "",
@@ -183,7 +183,7 @@ self = <test_userpromptsubmit_first_prompt.TestFirstPromptHydration object at 0x
             "relevant_files": "",
             "axioms": "",
         }
-    
+
 >       result = template.format(**test_values)
                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 E       KeyError: 'mcp_tools'
@@ -207,7 +207,7 @@ mock_is_subagent = <MagicMock name='_hydration_is_subagent_session' id='12327892
         mock_is_pending.return_value = True
         mock_is_hydrator_active.return_value = False
         mock_is_subagent.return_value = False
-    
+
         # 1. Block ReadFile (previously allowed)
         ctx = GateContext(
             "s1",

@@ -1,13 +1,14 @@
-import pytest
 import sys
 from pathlib import Path
+
+import pytest
 
 # Add aops-core to path
 AOPS_CORE_DIR = Path(__file__).parent.parent.parent / "aops-core"
 if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
-from hooks.router import HookRouter, CanonicalHookOutput
+from hooks.router import CanonicalHookOutput, HookRouter
 
 
 class TestRouterFormatting:

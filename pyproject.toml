@@ -1,6 +1,6 @@
 [project]
 name = "academicops"
-version = "0.1.17"
+dynamic = ["version"]
 description = "Academic Operations Framework"
 requires-python = ">=3.11"
 dependencies = [
@@ -17,6 +17,8 @@ dependencies = [
   "python-ntfy>=0.1.0",
   "streamlit>=1.54.0",
   "scipy>=1.17.0",
+  "bump-my-version[dev]>=1.2.6",
+  "networkx>=3.6.1",
 ]
 
 [project.optional-dependencies]
@@ -28,9 +30,7 @@ viz = [
   "matplotlib>=3.10.8",
 ]
 # Anthropic API for skills that call Claude directly
-anthropic = [
-  "anthropic>=0.75.0",
-]
+anthropic = ["anthropic>=0.75.0"]
 
 [project.scripts]
 task = "scripts.task_cli:main"
@@ -38,9 +38,22 @@ task = "scripts.task_cli:main"
 [tool.hatch.build.targets.wheel]
 packages = ["lib", "skills", "tests", "scripts"]
 
+# Dynamic versioning from:
+# https://github.com/ninoseki/uv-dynamic-versioning/
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "uv-dynamic-versioning"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+# Note JSON schemas don't seem to be right for tool.hatch.version.source so
+# this may cause false warnings in IDEs.
+# https://github.com/ninoseki/uv-dynamic-versioning/issues/21
+[tool.uv-dynamic-versioning]
+vcs = "git"
+style = "pep440"
+bump = true
 
 [dependency-groups]
 dev = [
@@ -50,43 +63,108 @@ dev = [
   "pytest-cov>=7.0.0",
   "pytest-timeout>=2.4.0",
   # Linting & type checking
-  "mypy>=1.19.1",
+  "basedpyright>=1.29.0",
   "ruff>=0.14.10",
-  "types-pyyaml>=6.0.12.20250915",
   # Git hooks
   "pre-commit>=4.5.1",
+  "bump-my-version>=1.2.6",
 ]
 
+# ---- Settings ----
 [tool.ruff]
-# Exclude archived files from linting - they are legacy code kept for reference
-exclude = ["archived/**"]
+# Set as desired, typically 88 (black standard) or 100 (wide).
+line-length = 100
 
-[tool.ruff.lint.per-file-ignores]
-# E402: Module level import not at top of file
-# These files need sys.path manipulation before imports for the hook system
-"aops-core/hooks/*.py" = ["E402"]
-"aops-core/mcp_servers/*.py" = ["E402"]
-"aops-core/scripts/*.py" = ["E402"]
-"tests/**/*.py" = ["E402"]
-"scripts/*.py" = ["E402"]
-"polecat/*.py" = ["E402"]
-"lib/overwhelm/*.py" = ["E402"]
+[tool.ruff.lint]
+select = [
+  # See: https://docs.astral.sh/ruff/rules/
+  # Basic list from: https://docs.astral.sh/ruff/linter/#rule-selection
+  "E", # https://docs.astral.sh/ruff/rules/#error-e
+  "F", # https://docs.astral.sh/ruff/rules/#pyflakes-f
+  "UP", # https://docs.astral.sh/ruff/rules/#pyupgrade-up
+  "B", # https://docs.astral.sh/ruff/rules/#flake8-bugbear-b
+  "I", # https://docs.astral.sh/ruff/rules/#isort-i
+  # Other possibilities:
+  # "D", # https://docs.astral.sh/ruff/rules/#pydocstyle-d
+  # "Q", # https://docs.astral.sh/ruff/rules/#flake8-quotes-q
+  # "COM", # https://docs.astral.sh/ruff/rules/#flake8-commas-com
+  # "SIM", # https://docs.astral.sh/ruff/rules/#flake8-simplify-sim
+]
+ignore = [
+  # Disable some rules that are overly pedantic. Add/remove as desired:
+  "E501", # https://docs.astral.sh/ruff/rules/line-too-long/
+  "E402", # https://docs.astral.sh/ruff/rules/module-import-not-at-top-of-file/
+  "E731", # https://docs.astral.sh/ruff/rules/lambda-assignment/
+  # We use both ruff formatter and linter so some rules should always be disabled.
+  # See: https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules
+  "W191", # https://docs.astral.sh/ruff/rules/tab-indentation/
+  "E111", # https://docs.astral.sh/ruff/rules/indentation-with-invalid-multiple/
+  "E114", # https://docs.astral.sh/ruff/rules/indentation-with-invalid-multiple-comment/
+  "E117", # https://docs.astral.sh/ruff/rules/over-indented/
+  "D206", # https://docs.astral.sh/ruff/rules/docstring-tab-indentation/
+  "D300", # https://docs.astral.sh/ruff/rules/triple-single-quotes/
+  "Q000", # https://docs.astral.sh/ruff/rules/bad-quotes-inline-string/
+  "Q001", # https://docs.astral.sh/ruff/rules/bad-quotes-multiline-string/
+  "Q002", # https://docs.astral.sh/ruff/rules/bad-quotes-docstring/
+  "Q003", # https://docs.astral.sh/ruff/rules/avoidable-escaped-quote/
+  "COM812", # https://docs.astral.sh/ruff/rules/missing-trailing-comma/
+  "COM819", # https://docs.astral.sh/ruff/rules/prohibited-trailing-comma/
+  "ISC002", # https://docs.astral.sh/ruff/rules/multi-line-implicit-string-concatenation/
+]
 
-[tool.mypy]
+[tool.basedpyright]
 # Exclude archived files from type checking - they are legacy code kept for reference
-exclude = ["archived/"]
+exclude = [
+  "archived/",
+  "tests/",
+  "**/__pycache__",
+  "**/.mypy_cache",
+  "**/.pytest_cache",
+  "**/.ruff_cache",
+  "**/build",
+  "**/dist",
+  "**/.venv",
+  "**/venv",
+]
+ignore = ["**/site-packages"]
+venv = ".venv"
+# Use basic mode for gradual adoption - standard is too strict initially
+typeCheckingMode = "basic"
+# Python path for internal imports
+extraPaths = ["aops-core", "aops-core/hooks", "aops-core/lib"]
+# By default BasedPyright is very strict, so you almost certainly want to disable
+# some of the rules.
+# First, these turn off warnings about (yes) how you ignore warnings:
+reportIgnoreCommentWithoutRule = false
+reportUnnecessaryTypeIgnoreComment = false
+# A few typically noisy warnings are next.
+# How many you enable is up to you. The first few are off by default, but you can
+# comment/uncomment these as desired:
+reportUnusedCallResult = false
+reportAny = false
+reportExplicitAny = false
+reportImplicitStringConcatenation = false
+reportUnreachable = false
+# Ignore missing imports for third-party packages without stubs
+reportMissingImports = false
+reportMissingTypeStubs = false
 
+# reportPrivateImportUsage = false
+# reportPrivateLocalImportUsage = false
+# reportMissingImports = false
+# reportUnnecessaryIsInstance = false
+# reportUnknownVariableType = false
+# reportUnknownArgumentType = false
 [tool.pytest.ini_options]
 testpaths = ["tests", "aops-core/tests"]
 pythonpath = [".", "aops-core", "aops-core/hooks", "aops-core/lib"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-n 4 -m 'not slow'"
+addopts = "-n 16 -m 'not slow'"
 markers = [
   "slow: marks tests as slow (run with '-m slow')",
   "integration: marks tests as integration tests",
   "metrics: observability tests that report metrics (run with '-m metrics')",
   "demo: demo tests showing real behavior (run with '-k demo -v -s -n 0')",
-  "endtoend: tests requiring real API credentials (run with '-m endtoend')",
 ]

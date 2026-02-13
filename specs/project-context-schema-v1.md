@@ -7,6 +7,13 @@ description: Schema for CORE.md files that provide project-specific context to w
 
 # Project Context Schema v1
 
+## Giving Effect
+
+- [[.agent/CORE.md]] - Project-specific context file (when present)
+- [[hooks/user_prompt_submit.py]] - Hook that injects CORE.md via Tier 2 loading
+- [[specs/session-start-injection.md]] - Three-tier architecture this fits into
+- [[agents/prompt-hydrator.md]] - Hydrator that uses CORE.md for project context
+
 **Goal**: Define a schema for project `CORE.md` files that give worker agents (~16K token budget) the project-specific context they need to execute single tasks without wasting tokens on exploration.
 
 ## Problem Statement
@@ -24,15 +31,15 @@ Without this context, agents waste tokens on broad exploration ("mewling baby gr
 
 CORE.md must fit within worker context alongside other elements:
 
-| Component | Target Tokens |
-|-----------|---------------|
-| Worker instructions | ~2-3K |
-| Task details | ~1-2K |
-| Relevant files | ~4-6K |
-| Workflow reference | ~1K |
-| **CORE.md** | **~2-3K** |
-| Buffer | ~2-3K |
-| **Total** | **~16K** |
+| Component           | Target Tokens |
+| ------------------- | ------------- |
+| Worker instructions | ~2-3K         |
+| Task details        | ~1-2K         |
+| Relevant files      | ~4-6K         |
+| Workflow reference  | ~1K           |
+| **CORE.md**         | **~2-3K**     |
+| Buffer              | ~2-3K         |
+| **Total**           | **~16K**      |
 
 **Hard constraint**: CORE.md should be 1000-1500 words max.
 
@@ -63,8 +70,8 @@ primary_language: python|typescript|rust|etc
 
 ## Domain Concepts
 
-| Term | Definition |
-|------|------------|
+| Term    | Definition          |
+| ------- | ------------------- |
 | <term1> | <1-line definition> |
 | <term2> | <1-line definition> |
 | <term3> | <1-line definition> |
@@ -74,6 +81,7 @@ Keep to 3-7 terms. Only include domain-specific vocabulary that appears in task 
 ## Architecture
 
 <2-4 sentences describing:>
+
 - Directory structure pattern
 - Key architectural decisions
 - Important boundaries/constraints
@@ -89,16 +97,16 @@ Keep to 3-7 terms. Only include domain-specific vocabulary that appears in task 
 
 Skills that work in this project context:
 
-| Skill | When to Use |
-|-------|-------------|
+| Skill        | When to Use         |
+| ------------ | ------------------- |
 | <skill-name> | <trigger condition> |
 
 Only list skills that are project-relevant, not global skills.
 
 ## Key Files
 
-| Path | Purpose |
-|------|---------|
+| Path            | Purpose              |
+| --------------- | -------------------- |
 | <relative-path> | <1-line description> |
 
 5-10 files max. Include entry points, configs, and frequently-modified files.
@@ -116,24 +124,24 @@ For deeper context, reference (don't inline):
 
 #### Frontmatter (Required)
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `project` | string | URL-safe slug (e.g., "buttermilk", "tja", "aops-core") |
-| `root` | string | Absolute path to project root |
-| `type` | enum | One of: library, service, cli, framework, monorepo |
-| `primary_language` | string | Primary programming language |
+| Field              | Type   | Description                                            |
+| ------------------ | ------ | ------------------------------------------------------ |
+| `project`          | string | URL-safe slug (e.g., "buttermilk", "tja", "aops-core") |
+| `root`             | string | Absolute path to project root                          |
+| `type`             | enum   | One of: library, service, cli, framework, monorepo     |
+| `primary_language` | string | Primary programming language                           |
 
 #### Sections
 
-| Section | Required | Token Budget | Purpose |
-|---------|----------|--------------|---------|
-| Summary | Yes | ~50 | What is this project? |
-| Domain Concepts | Yes | ~200 | Vocabulary for task understanding |
-| Architecture | Yes | ~150 | Structural orientation |
-| Debugging | Yes | ~200 | How to troubleshoot |
-| Skills | No | ~150 | Available project skills |
-| Key Files | Yes | ~200 | Navigation shortcuts |
-| Context References | No | ~100 | Pointers for deep dives |
+| Section            | Required | Token Budget | Purpose                           |
+| ------------------ | -------- | ------------ | --------------------------------- |
+| Summary            | Yes      | ~50          | What is this project?             |
+| Domain Concepts    | Yes      | ~200         | Vocabulary for task understanding |
+| Architecture       | Yes      | ~150         | Structural orientation            |
+| Debugging          | Yes      | ~200         | How to troubleshoot               |
+| Skills             | No       | ~150         | Available project skills          |
+| Key Files          | Yes      | ~200         | Navigation shortcuts              |
+| Context References | No       | ~100         | Pointers for deep dives           |
 
 ## Decision Tree: What Goes in CORE.md?
 
@@ -182,6 +190,7 @@ CORE.md is loaded by the hydrator when generating worker context. It becomes a n
 ```
 
 The hydrator:
+
 1. Locates CORE.md from task's project field (checks `.agent/CORE.md` first, then `CORE.md`)
 2. Reads and strips frontmatter
 3. Inserts as "Project Context" section
@@ -213,13 +222,13 @@ A Python library for building agentic AI workflows with structured output valida
 
 ## Domain Concepts
 
-| Term | Definition |
-|------|------------|
-| Flow | A composable workflow unit that processes inputs and produces typed outputs |
-| Step | A single operation within a flow (LLM call, tool use, transform) |
-| Trace | Debug record of flow execution including all step inputs/outputs |
-| TJA | "Trace JSON Archive" - serialized trace format for debugging |
-| Runner | Execution engine that runs flows with concurrency and retry logic |
+| Term   | Definition                                                                  |
+| ------ | --------------------------------------------------------------------------- |
+| Flow   | A composable workflow unit that processes inputs and produces typed outputs |
+| Step   | A single operation within a flow (LLM call, tool use, transform)            |
+| Trace  | Debug record of flow execution including all step inputs/outputs            |
+| TJA    | "Trace JSON Archive" - serialized trace format for debugging                |
+| Runner | Execution engine that runs flows with concurrency and retry logic           |
 
 ## Architecture
 
@@ -236,21 +245,21 @@ Key boundary: Flows must be stateless. State lives in the trace, not the flow.
 
 ## Skills
 
-| Skill | When to Use |
-|-------|-------------|
+| Skill  | When to Use                                   |
+| ------ | --------------------------------------------- |
 | /trace | Analyze TJA files for debugging flow failures |
-| /flow | Generate new flow from specification |
+| /flow  | Generate new flow from specification          |
 
 ## Key Files
 
-| Path | Purpose |
-|------|---------|
-| src/buttermilk/core/runner.py | Flow execution engine |
-| src/buttermilk/core/flow.py | Base Flow class definition |
-| src/buttermilk/steps/ | Step implementations |
-| src/buttermilk/flows/ | Flow definitions |
-| tests/ | Test suite |
-| pyproject.toml | Dependencies and config |
+| Path                          | Purpose                    |
+| ----------------------------- | -------------------------- |
+| src/buttermilk/core/runner.py | Flow execution engine      |
+| src/buttermilk/core/flow.py   | Base Flow class definition |
+| src/buttermilk/steps/         | Step implementations       |
+| src/buttermilk/flows/         | Flow definitions           |
+| tests/                        | Test suite                 |
+| pyproject.toml                | Dependencies and config    |
 
 ## Context References
 
@@ -261,11 +270,11 @@ Key boundary: Flows must be stateless. State lives in the trace, not the flow.
 
 ## Relationship to Other Context Files
 
-| File | Purpose | Loaded When |
-|------|---------|-------------|
-| CLAUDE.md | Global user preferences | Every session |
-| AGENTS.md | Framework rules | Every agent |
-| CORE.md | Project-specific context | Worker task injection |
+| File      | Purpose                  | Loaded When           |
+| --------- | ------------------------ | --------------------- |
+| CLAUDE.md | Global user preferences  | Every session         |
+| AGENTS.md | Framework rules          | Every agent           |
+| CORE.md   | Project-specific context | Worker task injection |
 
 CORE.md complements but does not replace CLAUDE.md. They serve different purposes:
 

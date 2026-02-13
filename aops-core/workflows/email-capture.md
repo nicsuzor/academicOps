@@ -1,6 +1,8 @@
 ---
+id: email-capture
 name: email-task-capture
 category: instruction
+bases: [base-task-tracking]
 description: Extract action items from emails and create "ready for action" tasks with summaries, downloaded documents, and clear response requirements
 permalink: skills/tasks/workflows/email-capture
 tags: [workflow, email, task-capture, automation, memory, documents]
@@ -16,6 +18,7 @@ backend: scripts
 **When to invoke**: User says "check my email for tasks", "process emails", "any new tasks from email?", or similar phrases indicating email-to-task workflow.
 
 **Example triggers**:
+
 - "check my email for tasks"
 - "process emails"
 - "any new tasks from email?"
@@ -437,6 +440,7 @@ mcp__plugin_aops-core_task_manager__create_task(
 ```
 
 **Body format** - MUST include (in this order):
+
 - **entry_id**: `<entry_id>` (REQUIRED - enables direct email lookup, must be first line)
 - **From**: Sender name and email
 - **Date**: When received
@@ -446,9 +450,11 @@ mcp__plugin_aops-core_task_manager__create_task(
 - **Associated Documents**: Links to downloaded/converted files (if any)
 
 **CRITICAL**: The `entry_id` line must use exactly this format for parsing:
+
 ```
 **entry_id**: `000000009A3C5E42...`
 ```
+
 This enables `/pull` to retrieve the email in 1 API call instead of searching.
 
 **Duplicate prevention**: Search existing tasks for matching entry_id before creating.

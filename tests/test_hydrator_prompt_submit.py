@@ -1,4 +1,5 @@
 from unittest.mock import patch
+
 from hooks.router import HookRouter
 
 
@@ -15,9 +16,7 @@ def test_hydrator_hook_with_specific_input(
     """
     # Setup mocks
     mock_should_skip.return_value = False
-    mock_build_instruction.return_value = (
-        "Run prompt-hydrator with /tmp/hydrator/instruction.md"
-    )
+    mock_build_instruction.return_value = "Run prompt-hydrator with /tmp/hydrator/instruction.md"
 
     # Specific input from request
     raw_input = {
@@ -44,10 +43,7 @@ def test_hydrator_hook_with_specific_input(
     # Assertions
     # The gate logic returns ALLOW with context_injection
     assert result.verdict == "allow"
-    assert (
-        result.context_injection
-        == "Run prompt-hydrator with /tmp/hydrator/instruction.md"
-    )
+    assert result.context_injection == "Run prompt-hydrator with /tmp/hydrator/instruction.md"
 
     # Verify build_hydration_instruction was called with correct args
     mock_build_instruction.assert_called_with(

@@ -61,6 +61,17 @@
         ]
       }
     ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --directory ${CLAUDE_PLUGIN_ROOT} python hooks/router.py --client claude",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
     "SubagentStop": [
       {
         "hooks": [

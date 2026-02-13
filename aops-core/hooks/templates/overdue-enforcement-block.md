@@ -7,6 +7,6 @@ description: |
   Variables:
     {temp_path} - compliance file path
     {tool_calls} - Number of tool calls since last compliance check
-
 ---
-Compliance check overdue ({tool_calls} tool calls since last check). Run 'custodiet' skill with argument: {temp_path} 
+
+Compliance check overdue ({tool_calls} tool calls since last check). Run 'custodiet' skill with argument: {temp_path}

@@ -97,7 +97,7 @@ def load_mcp_config(path: Path) -> dict[str, Any]:
         with open(path) as f:
             data = json.load(f)
         return data.get("mcpServers", {})
-    except (json.JSONDecodeError, IOError) as e:
+    except (OSError, json.JSONDecodeError) as e:
         print(f"  ⚠️  Failed to load {path}: {e}", file=sys.stderr)
         return {}
 
@@ -169,9 +169,7 @@ def main() -> int:
     # Merge: plugins take precedence over global
     all_servers = {**global_servers, **plugin_servers}
 
-    print(
-        f"\nConverting {len(all_servers)} servers to Gemini format...", file=sys.stderr
-    )
+    print(f"\nConverting {len(all_servers)} servers to Gemini format...", file=sys.stderr)
     gemini_config = convert_mcp_config(all_servers)
 
     # Output

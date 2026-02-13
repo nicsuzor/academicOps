@@ -149,6 +149,21 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         keywords=("feature", "feature-dev", "development", "implement", "new feature"),
     ),
     FileEntry(
+        path="workflows/design.md",
+        description="Planning/designing known work",
+        keywords=("design", "designing", "architecture", "plan"),
+    ),
+    FileEntry(
+        path="workflows/collaborate.md",
+        description="Interactive exploration/brainstorming",
+        keywords=("collaborate", "brainstorm", "explore", "interactive"),
+    ),
+    FileEntry(
+        path="workflows/batch-processing.md",
+        description="Multiple independent items processing",
+        keywords=("batch", "process all", "bulk"),
+    ),
+    FileEntry(
         path="workflows/debugging.md",
         description="Debugging workflow",
         keywords=("debug", "debugging", "investigate", "bug", "error", "fix"),
@@ -436,18 +451,6 @@ def _normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", text.lower().strip())
 
 
-def _extract_keywords_from_prompt(prompt: str) -> set[str]:
-    """Extract potential keywords from prompt for matching."""
-    normalized = _normalize_text(prompt)
-
-    # Split into words and bigrams for matching
-    words = set(normalized.split())
-
-    # Also check for multi-word phrases
-    # This allows matching "prompt hydrator" as a phrase
-    return words | {normalized}
-
-
 def get_relevant_file_paths(prompt: str, max_files: int = 10) -> list[dict[str, str]]:
     """
     Get file paths relevant to the given prompt.
@@ -487,7 +490,7 @@ def get_relevant_file_paths(prompt: str, max_files: int = 10) -> list[dict[str, 
 
     # Take top entries up to max_files
     results: list[dict[str, str]] = []
-    for score, entry in scored_entries[:max_files]:
+    for _score, entry in scored_entries[:max_files]:
         try:
             abs_path = str(entry.absolute_path())
         except RuntimeError:

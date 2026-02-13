@@ -31,7 +31,7 @@ def load_template(template_path: Path, variables: dict[str, str] | None = None) 
         >>> content = load_template(Path("hooks/templates/block-message.md"))
         >>> formatted = load_template(
         ...     Path("hooks/templates/instruction.md"),
-        ...     {"temp_path": "/tmp/foo.md"}
+        ...     {"temp_path": "/path/to/ctx.md"}
         ... )
     """
     if not template_path.exists():

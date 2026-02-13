@@ -1,12 +1,10 @@
 # Daily Progress Sync Workflow
 
-Update daily note from session JSON files.
+Update daily note from session JSON files and GitHub merge data.
 
-**Invocation**:
-- **Auto-sync**: Runs automatically as part of Morning/Refresh modes (steps 4.1-4.7, skips 4.8 approval)
-- **Full sync**: `/daily sync` runs section 4 only with user approval (4.8)
+**Invocation**: This workflow runs as part of every `/daily` invocation (section 4 of the pipeline). There are no separate sync modes — every run processes all new data incrementally.
 
-**Incremental behavior**: Each sync run is additive—it processes only NEW session JSONs since the last sync. Previously processed sessions are identified by their presence in the Session Log table.
+**Incremental behavior**: Each sync run is additive — it processes only NEW session JSONs since the last sync. Previously processed sessions are identified by their presence in the Session Log table. Merged PRs are always refreshed from the GitHub API.
 
 ## Step 4.1: Find Session JSONs
 
@@ -24,7 +22,7 @@ Fetch recently completed tasks to provide context for today's story synthesis:
 mcp__plugin_aops-core_task_manager__list_tasks(status="done", limit=20)
 ```
 
-**Purpose**: Completed tasks represent work that may not appear in session JSONs (e.g., tasks completed in previous sessions, or completed without a dedicated session). This context enriches the daily narrative.
+**Purpose**: Completed tasks represent work that may not appear in session JSONs. This context enriches the daily narrative.
 
 **Extract from completed tasks**:
 
@@ -44,6 +42,39 @@ Read each session JSON. Extract:
 - Skill compliance metrics
 - Framework feedback: workflow_improvements, jit_context_needed, context_distractions, user_mood
 
+## Step 4.2.5: Query Merged PRs
+
+Fetch today's merged PRs from the current repository:
+
+```bash
+gh pr list --state merged --json number,title,author,mergedAt,headRefName,url --limit 50 2>/dev/null
+```
+
+**Post-filter**: From the JSON output, filter to PRs where `mergedAt` falls on today's date (YYYY-MM-DD).
+
+**Format in daily note** (fully replace the `## Merged PRs` section):
+
+```markdown
+## Merged PRs
+
+| PR          | Title                        | Author                  | Merged |
+| ----------- | ---------------------------- | ----------------------- | ------ |
+| [#123](url) | Fix authentication bug       | @nicsuzor               | 10:15  |
+| [#124](url) | Add daily skill merge review | @claude-for-github[bot] | 14:30  |
+
+_N PRs merged today_
+```
+
+**Empty state**: If no PRs merged today:
+
+```markdown
+## Merged PRs
+
+No PRs merged today.
+```
+
+**Error handling**: If `gh` CLI is unavailable or authentication fails, skip this section and note "GitHub CLI unavailable — skipped merge review" in the section.
+
 ## Step 4.3: Verify Descriptions
 
 **CRITICAL**: Gemini mining may hallucinate. Cross-check accomplishment descriptions against actual changes (git log, file content). Per AXIOMS #2, do not propagate fabricated descriptions.
@@ -52,17 +83,11 @@ Read each session JSON. Extract:
 
 Using **Edit tool** (not Write) to preserve existing content:
 
-**Today's Story**: Synthesize narrative from session summaries AND closed issues.
+**Session Log**: Add/update session entries (fully replace table).
 
-- Format in dot points, but use prose to provide detail
-- Include recently closed issues from Step 4.1.5 as context (e.g., "Closed [ns-xyz] completing the X feature")
-- Deduplicate: If a closed issue also appears as a session accomplishment, mention it once with session context
+**Session Timeline**: Build from conversation_flow timestamps (fully replace table).
 
-**Session Log**: Add/update session entries.
-
-**Session Timeline**: Build from conversation_flow timestamps.
-
-**Project Accomplishments**: Add `[x]` items under project headers.
+**Project Accomplishments**: Add `[x]` items under project headers. Preserve any user-added notes below items.
 
 **Progress metrics** per project:
 
@@ -72,14 +97,10 @@ Using **Edit tool** (not Write) to preserve existing content:
 
 ## Step 4.4.5: Generate Goals vs. Achieved Reflection
 
-If the daily note contains a goals section (e.g., "## Things I want to achieve today", "## Focus", or similar), generate a reflection comparing stated intentions against actual outcomes.
-
-**Check for goals section**: Look for sections like:
-- `## Things I want to achieve today`
-- `## Focus` (the task recommendations from morning planning)
-- `## Today's Work Queue` (scheduled tasks)
+If the daily note contains a goals section (e.g., "## Things I want to achieve today", "## Focus", "### My priorities"), generate a reflection comparing stated intentions against actual outcomes.
 
 **For each stated goal/priority**:
+
 1. Check if corresponding work appears in session accomplishments
 2. Check if related tasks were completed (from Step 4.1.5)
 3. Classify as: Achieved | Partially/Spawned | Not achieved
@@ -91,19 +112,20 @@ If the daily note contains a goals section (e.g., "## Things I want to achieve t
 
 **Goals from "[section name]":**
 
-| Goal | Status | Notes |
-|------|--------|-------|
-| [Goal 1] | Achieved | Completed in session [id] |
-| [Goal 2] | Partially | Task created but no completion data |
-| [Goal 3] | Not achieved | No matching work found |
+| Goal     | Status       | Notes                               |
+| -------- | ------------ | ----------------------------------- |
+| [Goal 1] | Achieved     | Completed in session [id]           |
+| [Goal 2] | Partially    | Task created but no completion data |
+| [Goal 3] | Not achieved | No matching work found              |
 
 **Unplanned work that consumed the day:**
+
 - [Major unplanned item] (~Xh) - [brief explanation]
 
 **Key insight**: [One-sentence observation about drift, priorities, or patterns]
 ```
 
-**Purpose**: This reflection reveals intention drift and helps understand why plans diverge from reality. Tracking "unplanned work that consumed the day" explains goal displacement.
+**Purpose**: This reflection reveals intention drift and helps understand why plans diverge from reality.
 
 ## Step 4.5: Task Matching (Session -> Task Sync)
 
@@ -129,31 +151,26 @@ candidates = mcp__memory__retrieve_memory(
 For each accomplishment with candidates:
 
 1. **High confidence match** (agent is certain):
-   - Accomplishment clearly relates to a specific task
-   - Example: "Implemented session-sync" matches task "Add session-end sync feature"
    - Action: Update task file (Step 4.6) + add task link to daily.md
 
 2. **Low confidence match** (possible but uncertain):
-   - Accomplishment might relate to a task but agent is unsure
    - Action: Note in daily.md as "possibly related to [[task]]?" - NO task file update
 
 3. **No match** (no relevant candidates):
-   - Accomplishment in daily.md only, no link
    - Action: Continue to next accomplishment
 
 **Matching heuristics**:
+
 - Prefer no match over wrong match (conservative)
 - Consider task title, body, project alignment
-- "Implemented X" accomplishment matches "Add X feature" or "X" task
-- Framework work -> framework tasks; project work -> project tasks
 
 ### 4.5.3: Graceful Degradation
 
-| Scenario | Behavior |
-|----------|----------|
+| Scenario                  | Behavior                                    |
+| ------------------------- | ------------------------------------------- |
 | Memory server unavailable | Skip semantic matching, continue processing |
-| Task file not found | Log warning, continue to next |
-| Unexpected task format | Skip that task, log warning |
+| Task file not found       | Log warning, continue to next               |
+| Unexpected task format    | Skip that task, log warning                 |
 
 ## Step 4.6: Update Task Files (Cross-Linking)
 
@@ -165,15 +182,16 @@ If accomplishment matches a specific checklist item in the task:
 
 ```markdown
 # Before
+
 - [ ] Implement feature X
 
 # After
+
 - [x] Implement feature X [completion:: 2026-01-19]
 ```
 
-Use Edit tool to add `[x]` and `[completion:: YYYY-MM-DD]`.
-
 **Constraints**:
+
 - Mark sub-task checklist items complete
 - NEVER mark parent tasks complete automatically
 - NEVER delete any task content
@@ -197,8 +215,8 @@ In the Project Accomplishments section, add task links:
 ```markdown
 ### [[academicOps]] -> [[projects/aops]]
 
-- [x] Implemented session-sync -> [[tasks/inbox/ns-whue-impl-aggregate-session-insights-to-dailymd.md]]
-- [x] Fixed authentication bug (possibly related to [[tasks/inbox/ns-abc-auth-refactor.md]]?)
+- [x] Implemented session-sync -> [[tasks/inbox/ns-whue-impl.md]]
+- [x] Fixed authentication bug (possibly related to [[tasks/inbox/ns-abc.md]]?)
 - [x] Added new endpoint (no task match)
 ```
 
@@ -221,6 +239,10 @@ Write `$ACA_DATA/dashboard/synthesis.json`:
     "summary": "brief text",
     "items": [{"project": "aops", "item": "Completed X"}]
   },
+  "merged_prs": {
+    "count": N,
+    "items": [{"number": 123, "title": "...", "author": "..."}]
+  },
   "next_action": {"task": "P0 task", "reason": "Highest priority"},
   "alignment": {"status": "on_track|blocked|drifted", "note": "..."},
   "waiting_on": [{"task": "...", "blocker": "..."}],
@@ -235,60 +257,3 @@ Write `$ACA_DATA/dashboard/synthesis.json`:
   "session_timeline": [{"time": "10:15", "session": "...", "activity": "..."}]
 }
 ```
-
-## Step 4.8: User Approval of Synthesis (Full Sync Only)
-
-**Mode check**: Skip this step entirely when running as auto-sync (part of Morning/Refresh modes). Auto-sync processes session data silently without interrupting the flow.
-
-**For Full Sync mode** (`/daily sync`): Do NOT consider daily progress sync complete without user approval.
-
-After updating the daily note and synthesis.json, present a summary to the user for approval:
-
-### 4.8.1: Present Synthesis Summary
-
-Output the key synthesized content for review:
-
-```markdown
-## Daily Progress Synthesis - Review Required
-
-**Today's Story** (synthesized narrative):
-> [The narrative text from Today's Story section]
-
-**Sessions Processed**: [N] sessions across [projects]
-
-**Accomplishments** ([count] items):
-- [First 3-5 accomplishments listed]
-- ...
-
-**Task Matches Made**:
-- [List of high-confidence task matches, if any]
-```
-
-### 4.8.2: Request Approval
-
-Use `AskUserQuestion` to get explicit approval:
-
-```python
-AskUserQuestion(
-    questions=[{
-        "question": "Does this synthesis accurately capture today's progress?",
-        "header": "Synthesis",
-        "options": [
-            {"label": "Looks good", "description": "Synthesis is accurate, proceed to save"},
-            {"label": "Needs edits", "description": "I'll make manual corrections to the daily note"},
-            {"label": "Regenerate", "description": "Re-run synthesis with different approach"}
-        ],
-        "multiSelect": false
-    }]
-)
-```
-
-### 4.8.3: Handle Response
-
-| Response | Action |
-|----------|--------|
-| "Looks good" | Proceed to completion, output "Daily sync complete." |
-| "Needs edits" | Output "Daily note ready for your edits at [path]. Run `/daily` again after editing to re-sync." HALT without marking complete. |
-| "Regenerate" | Ask what should change, then re-run Steps 4.4-4.7 |
-
-**Rationale**: Per AXIOM #3 (Don't Make Shit Up), Gemini-mined accomplishments may contain inaccuracies. User approval catches hallucinations before they persist in the daily record.

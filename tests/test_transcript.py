@@ -40,10 +40,7 @@ class TestTranscriptCLI:
             timeout=10,
         )
         assert result.returncode == 0
-        assert (
-            "Convert Claude Code JSONL" in result.stdout
-            or "transcript" in result.stdout.lower()
-        )
+        assert "Convert Claude Code JSONL" in result.stdout or "transcript" in result.stdout.lower()
         assert "session" in result.stdout.lower()
         assert "--output" in result.stdout or "-o" in result.stdout
 
@@ -93,17 +90,10 @@ class TestTranscriptFunctions:
 
         processor = SessionProcessor()
         entries = [
-            Entry(
-                type="user", message={"content": "Fix the authentication bug in login"}
-            ),
+            Entry(type="user", message={"content": "Fix the authentication bug in login"}),
         ]
         slug = processor.generate_session_slug(entries)
-        assert (
-            "fix" in slug
-            or "authentication" in slug
-            or "bug" in slug
-            or "login" in slug
-        )
+        assert "fix" in slug or "authentication" in slug or "bug" in slug or "login" in slug
 
     def test_generate_session_slug_skips_commands(self, transcript_module) -> None:
         """generate_session_slug skips command invocations."""
@@ -111,21 +101,12 @@ class TestTranscriptFunctions:
 
         processor = SessionProcessor()
         entries = [
-            Entry(
-                type="user", message={"content": "<command-name>/commit</command-name>"}
-            ),
-            Entry(
-                type="user", message={"content": "Update the session storage module"}
-            ),
+            Entry(type="user", message={"content": "<command-name>/commit</command-name>"}),
+            Entry(type="user", message={"content": "Update the session storage module"}),
         ]
         slug = processor.generate_session_slug(entries)
         # Should skip the command and use the second message
-        assert (
-            "session" in slug
-            or "storage" in slug
-            or "update" in slug
-            or "module" in slug
-        )
+        assert "session" in slug or "storage" in slug or "update" in slug or "module" in slug
 
     def test_generate_session_slug_fallback(self, transcript_module) -> None:
         """generate_session_slug returns 'session' when no meaningful content."""
@@ -210,9 +191,7 @@ class TestOutputPathHandling:
 {"type":"assistant","message":{"content":"I'll fix that bug now."}}
 """
         with tempfile.TemporaryDirectory() as output_dir:
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".jsonl", delete=False
-            ) as f:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
                 f.write(session_content)
                 session_path = f.name
 
@@ -309,9 +288,7 @@ class TestReflectionExtraction:
         assert len(result.get("friction_points", [])) == 2
         assert "Completed task A" in result["accomplishments"]
 
-    def test_parse_framework_reflection_missing_returns_none(
-        self, parser_module
-    ) -> None:
+    def test_parse_framework_reflection_missing_returns_none(self, parser_module) -> None:
         """parse_framework_reflection returns None for text without reflection."""
         text = """
 # Regular Session Content
@@ -387,9 +364,7 @@ More content here.
             "failed to extract any reflections. Parser may be broken."
         )
         # Log what we found for visibility
-        print(
-            f"\n✅ Successfully extracted reflections from {successful_extractions} live logs:"
-        )
+        print(f"\n✅ Successfully extracted reflections from {successful_extractions} live logs:")
         for detail in extraction_details:
             print(f"   {detail}")
 
@@ -449,9 +424,7 @@ class TestReflectionToInsights:
         assert "outcome" in result
         assert "accomplishments" in result
 
-    def test_reflection_to_insights_framework_reflections_nested(
-        self, parser_module
-    ) -> None:
+    def test_reflection_to_insights_framework_reflections_nested(self, parser_module) -> None:
         """Framework Reflection data is nested in framework_reflections array."""
         reflection = {
             "prompts": "Implement feature X",
@@ -489,9 +462,7 @@ class TestReflectionToInsights:
         assert nested["proposed_changes"] == ["Add build cache"]
         assert nested["next_step"] == "Continue tomorrow"
 
-    def test_reflection_to_insights_no_top_level_reflection_fields(
-        self, parser_module
-    ) -> None:
+    def test_reflection_to_insights_no_top_level_reflection_fields(self, parser_module) -> None:
         """Top-level should NOT have reflection-specific fields."""
         reflection = {
             "prompts": "Test prompt",
@@ -596,8 +567,7 @@ class TestExitCodeExtraction:
         for content, is_error, expected_code in test_cases:
             result = parser_module._extract_exit_code_from_content(content, is_error)
             assert result == expected_code, (
-                f"Failed for content: {content[:50]}, "
-                f"expected {expected_code}, got {result}"
+                f"Failed for content: {content[:50]}, expected {expected_code}, got {result}"
             )
 
     def test_tool_result_info_includes_exit_code(self, parser_module) -> None:

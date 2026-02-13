@@ -1,22 +1,34 @@
 # MCP Decomposition Tools v2: Data Access Layer Specification
 
+## Giving Effect
+
+- [[aops-tools/tasks_server.py]] - MCP server with 18 thin data-access tools following "Dumb Server, Smart Agent" pattern
+- [[mcp__plugin_aops-core_task_manager__get_task_tree]] - Tree retrieval for decomposition
+- [[mcp__plugin_aops-core_task_manager__get_task_neighborhood]] - Graph neighborhood for relationship discovery
+- [[mcp__plugin_aops-core_task_manager__decompose_task]] - Atomic decomposition tool
+- [[mcp__plugin_aops-core_task_manager__get_tasks_with_topology]] - Topology metrics for agent analysis
+- [[mcp__plugin_aops-core_task_manager__get_graph_metrics]] - Raw graph metrics for health analysis
+
 ## Architectural Principle
 
 **Dumb Server, Smart Agent**
 
 The MCP server is a **data access layer only**. It exposes raw data structures that enable LLM agents (effectual-planner, decomposition agents) to reason and make decisions. The server does NOT:
+
 - Make recommendations
 - Score or rank tasks by "value"
 - Generate proposals or suggestions
 - Perform semantic analysis
 
 The server DOES:
+
 - Compute deterministic metrics (counts, depths, degrees)
 - Return structured data
 - Apply mechanical filters (status, project, type)
 - Expose graph topology
 
 The server does NOT:
+
 - Compute similarity (no word overlap, no NLP)
 - Apply hardcoded thresholds (agent decides what's "deep" or "stale")
 - Select "candidates" (return all data, agent filters)
@@ -32,13 +44,16 @@ Reference: `tasks_server.py` already follows this pattern with 18 thin data-acce
 ### 1. analyze_graph_health() → `get_graph_metrics()`
 
 **Original Conception (WRONG):**
+
 ```python
 async def analyze_graph_health() -> GraphHealthReport:
     """Returns: readiness_ratio, bottlenecks, orphans, etc."""
 ```
+
 Server analyzes health, identifies "bottlenecks" (a judgment).
 
 **New Conception (CORRECT):**
+
 ```python
 @mcp.tool()
 def get_graph_metrics(
@@ -76,13 +91,16 @@ def get_graph_metrics(
 ### 2. identify_high_voi_tasks() → `get_task_scoring_factors()`
 
 **Original Conception (WRONG):**
+
 ```python
 async def identify_high_voi_tasks(limit: int = 10) -> List[ScoredTask]:
     """Find tasks with highest information value."""
 ```
+
 Server decides which tasks are "high VOI" using embedded scoring logic.
 
 **New Conception (CORRECT):**
+
 ```python
 @mcp.tool()
 def get_task_scoring_factors(
@@ -117,13 +135,16 @@ def get_task_scoring_factors(
 ### 3. propose_decomposition() → `get_decomposition_context()`
 
 **Original Conception (WRONG):**
+
 ```python
 async def propose_decomposition(rough_idea: str) -> DecompositionProposal:
     """Generate a proposed task decomposition."""
 ```
+
 Server does LLM calls, generates proposals.
 
 **New Conception (CORRECT):**
+
 ```python
 @mcp.tool()
 def get_decomposition_context(
@@ -145,6 +166,7 @@ def get_decomposition_context(
 ```
 
 **What moved to agent:**
+
 - Finding "similar" tasks (LLM reads titles, decides similarity)
 - Generating decomposition proposal
 - Deciding subtask structure
@@ -156,13 +178,16 @@ def get_decomposition_context(
 ### 4. suggest_relationships() → `get_task_neighborhood()`
 
 **Original Conception (WRONG):**
+
 ```python
 async def suggest_relationships(task_id: str) -> List[RelationshipSuggestion]:
     """Suggest potential relationships with confidence scores."""
 ```
+
 Server does semantic analysis, generates suggestions with confidence.
 
 **New Conception (CORRECT):**
+
 ```python
 @mcp.tool()
 def get_task_neighborhood(
@@ -184,6 +209,7 @@ def get_task_neighborhood(
 ```
 
 **What moved to agent:**
+
 - Deciding which tasks are "similar" (LLM reads titles)
 - Suggesting relationship types
 - Identifying "candidates" (agent reviews same_project_tasks list)
@@ -195,13 +221,16 @@ def get_task_neighborhood(
 ### 5. identify_refactoring_opportunities() → `get_tasks_with_topology()`
 
 **Original Conception (WRONG):**
+
 ```python
 async def identify_refactoring_opportunities() -> List[RefactoringOpportunity]:
     """Find structural issues, return actionable recommendations."""
 ```
+
 Server identifies issues and recommends actions.
 
 **New Conception (CORRECT):**
+
 ```python
 @mcp.tool()
 def get_tasks_with_topology(
@@ -228,6 +257,7 @@ def get_tasks_with_topology(
 ```
 
 **What moved to agent:**
+
 - Deciding what depth is "too deep" (agent passes min_depth if desired)
 - Deciding what blocking count is "high fanout" (agent passes min_blocking_count)
 - Identifying "similar titles" (agent reads titles, uses LLM for similarity)
@@ -240,13 +270,16 @@ def get_tasks_with_topology(
 ### 6. daily_graph_review() → `get_review_snapshot()`
 
 **Original Conception (WRONG):**
+
 ```python
 async def daily_graph_review() -> ReviewReport:
     """Periodic health check that flags issues proactively."""
 ```
+
 Server performs review, generates flags/recommendations.
 
 **New Conception (CORRECT):**
+
 ```python
 @mcp.tool()
 def get_review_snapshot(
@@ -281,6 +314,7 @@ def get_review_snapshot(
 ### Shared Helper Functions
 
 These existing helpers in tasks_server.py can be reused:
+
 - `_get_index()` - Load task index
 - `_get_storage()` - Get storage instance
 - `_task_to_dict()` - Convert Task to dict
@@ -312,12 +346,14 @@ def _compute_ready_days(task: Task) -> float | None:
 ## Agent Integration
 
 The effectual-planner agent will:
+
 1. Call these data tools to gather context
 2. Apply judgment and reasoning over the raw data
 3. Generate recommendations/proposals
 4. Present to human for review
 
 Example flow for VOI prioritization:
+
 ```
 1. Agent calls get_task_scoring_factors(ready_only=True)
 2. Agent applies VOI heuristics: blocking_count * 2 + (7 - created_age_days) + ...
@@ -330,6 +366,7 @@ Example flow for VOI prioritization:
 ## Affected Tasks
 
 These 6 P0 tasks need body updates to reflect the new conception:
+
 - aops-ec26e932 → get_graph_metrics()
 - aops-50b9c259 → get_task_scoring_factors()
 - aops-7eaa5f3e → get_decomposition_context()
@@ -341,14 +378,14 @@ These 6 P0 tasks need body updates to reflect the new conception:
 
 ## Summary Table
 
-| Original Name | New Name | Server Does | Agent Does |
-|--------------|----------|-------------|------------|
-| analyze_graph_health() | get_graph_metrics() | Compute counts/metrics | Interpret health |
-| identify_high_voi_tasks() | get_task_scoring_factors() | Return raw factors | Compute VOI, rank |
-| propose_decomposition() | get_decomposition_context() | Return task + project tasks | Find similar, propose breakdown |
-| suggest_relationships() | get_task_neighborhood() | Return graph neighborhood | Decide similarity, suggest links |
-| identify_refactoring_opportunities() | get_tasks_with_topology() | Return tasks + metrics | Apply thresholds, identify issues |
-| daily_graph_review() | get_review_snapshot() | Return snapshot data | Generate report |
+| Original Name                        | New Name                    | Server Does                 | Agent Does                        |
+| ------------------------------------ | --------------------------- | --------------------------- | --------------------------------- |
+| analyze_graph_health()               | get_graph_metrics()         | Compute counts/metrics      | Interpret health                  |
+| identify_high_voi_tasks()            | get_task_scoring_factors()  | Return raw factors          | Compute VOI, rank                 |
+| propose_decomposition()              | get_decomposition_context() | Return task + project tasks | Find similar, propose breakdown   |
+| suggest_relationships()              | get_task_neighborhood()     | Return graph neighborhood   | Decide similarity, suggest links  |
+| identify_refactoring_opportunities() | get_tasks_with_topology()   | Return tasks + metrics      | Apply thresholds, identify issues |
+| daily_graph_review()                 | get_review_snapshot()       | Return snapshot data        | Generate report                   |
 
 ## P#78 Compliance Checklist
 

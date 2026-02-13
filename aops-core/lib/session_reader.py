@@ -31,9 +31,7 @@ from lib.transcript_parser import (
 # Configuration constants for router context extraction
 _MAX_TURNS = 5
 _SKILL_LOOKBACK = 10
-_PROMPT_TRUNCATE = (
-    400  # Increased from 100 to preserve more context (validated 2026-01-11)
-)
+_PROMPT_TRUNCATE = 400  # Increased from 100 to preserve more context (validated 2026-01-11)
 _MAX_TOOL_CALLS = 10  # Max recent tool calls to include in context
 
 
@@ -190,9 +188,7 @@ def _extract_and_expand_prompts(turns: list, max_turns: int) -> list[str]:
     """Extracts user prompts from turns, expanding command invocations."""
     prompts = []
     for turn in turns:
-        user_message = (
-            turn.get("user_message") if isinstance(turn, dict) else turn.user_message
-        )
+        user_message = turn.get("user_message") if isinstance(turn, dict) else turn.user_message
         is_meta = turn.get("is_meta") if isinstance(turn, dict) else turn.is_meta
 
         if not user_message or is_meta:
@@ -207,14 +203,10 @@ def _extract_and_expand_prompts(turns: list, max_turns: int) -> list[str]:
         args = ""
 
         # Case 1: XML-wrapped command
-        command_name_match = re.search(
-            r"<command-name>(.*?)</command-name>", text, re.DOTALL
-        )
+        command_name_match = re.search(r"<command-name>(.*?)</command-name>", text, re.DOTALL)
         if command_name_match:
             command_name = command_name_match.group(1).strip()
-            args_match = re.search(
-                r"<command-args>(.*?)</command-args>", text, re.DOTALL
-            )
+            args_match = re.search(r"<command-args>(.*?)</command-args>", text, re.DOTALL)
             if args_match:
                 args = f" {args_match.group(1).strip()}"
         # Case 2: Simple command prefix
@@ -278,9 +270,7 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
     # We iterate turns reversed
     for turn in reversed(turns):
         assistant_sequence = (
-            turn.get("assistant_sequence")
-            if isinstance(turn, dict)
-            else turn.assistant_sequence
+            turn.get("assistant_sequence") if isinstance(turn, dict) else turn.assistant_sequence
         )
         if not assistant_sequence:
             continue
@@ -289,11 +279,7 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
         # IMPORTANT: We iterate reversed, so first responses found are MOST RECENT
         if len(agent_responses) < 3:
             # Join text parts
-            texts = [
-                item["content"]
-                for item in assistant_sequence
-                if item.get("type") == "text"
-            ]
+            texts = [item["content"] for item in assistant_sequence if item.get("type") == "text"]
             if texts:
                 full_text = " ".join(texts)
                 # Extract questions from this agent response (especially important for most recent)
@@ -379,9 +365,7 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
         for i, prompt in enumerate(recent_prompts, 1):
             # Truncate long prompts
             truncated = (
-                prompt[:_PROMPT_TRUNCATE] + "..."
-                if len(prompt) > _PROMPT_TRUNCATE
-                else prompt
+                prompt[:_PROMPT_TRUNCATE] + "..." if len(prompt) > _PROMPT_TRUNCATE else prompt
             )
             # Escape backticks
             truncated = truncated.replace("```", "'''")
@@ -458,6 +442,350 @@ def extract_gate_context(
         return {}
 
 
+def build_rich_session_context(transcript_path: Path | str, max_turns: int = 15) -> str:
+    """Build rich session context for compliance checks.
+
+    Extracts recent conversation history, tool usage, files modified,
+    and any errors to provide context for compliance evaluation.
+
+    Args:
+        transcript_path: Path to session transcript JSONL file
+        max_turns: Number of recent turns to include (default 15)
+
+    Returns:
+        Formatted markdown context or error message
+    """
+    path = Path(transcript_path)
+    if not path.exists():
+        return "(No transcript path available)"
+
+    lines: list[str] = []
+
+    # Extract using library
+    gate_ctx = extract_gate_context(
+        path,
+        include={"prompts", "errors", "tools", "files", "conversation", "skill"},
+        max_turns=max_turns,
+    )
+
+    # ALL user requests (chronological) - enables scope drift detection
+    prompts = gate_ctx.get("prompts", [])
+    if prompts:
+        lines.append("**All User Requests** (chronological):")
+        for i, prompt in enumerate(prompts, 1):
+            # Truncate very long prompts but preserve enough for scope checking
+            truncated = prompt[:500] + "..." if len(prompt) > 500 else prompt
+            lines.append(f"  {i}. {truncated}")
+        lines.append("")
+        # Also highlight the most recent for quick reference
+        lines.append("**Most Recent User Request**:")
+        lines.append(f"> {prompts[-1][:500]}")
+        lines.append("")
+
+    # Active skill context (if any)
+    skill = gate_ctx.get("skill")
+    if skill:
+        lines.append(f"**Active Skill**: {skill}")
+        lines.append("")
+
+    # Recent tool usage WITH ARGUMENTS - enables action verification
+    tools = gate_ctx.get("tools", [])
+    if tools:
+        lines.append("**Recent Tool Calls** (with arguments):")
+        for tool in tools[-10:]:  # Last 10 tools
+            tool_name = tool["name"]  # Required field - fail if missing
+            tool_input = tool.get("input") or {}
+            # Format tool arguments, truncate at 200 chars
+            if tool_input:
+                # Summarize key arguments
+                arg_parts = []
+                for k, v in list(tool_input.items())[:5]:  # Max 5 args shown
+                    v_str = str(v)
+                    if len(v_str) > 50:
+                        v_str = v_str[:50] + "..."
+                    arg_parts.append(f"{k}={v_str}")
+                args_str = ", ".join(arg_parts)
+                if len(args_str) > 200:
+                    args_str = args_str[:200] + "..."
+                lines.append(f"  - {tool_name}({args_str})")
+            else:
+                lines.append(f"  - {tool_name}()")
+        lines.append("")
+
+    # Files modified/read
+    files = gate_ctx.get("files", [])
+    if files:
+        lines.append("**Files Accessed**:")
+        for f in files[-10:]:  # Last 10 files
+            # Handle both legacy list[str] shape and newer list[dict] shape
+            if isinstance(f, dict) and "action" in f and "path" in f:
+                lines.append(f"  - [{f['action']}] {f['path']}")
+            else:
+                path_str = str(f)
+                if path_str:
+                    lines.append(f"  - {path_str}")
+        lines.append("")
+
+    # Tool errors (important for compliance - Type A detection)
+    errors = gate_ctx.get("errors", [])
+    if errors:
+        lines.append("**Tool Errors** (check for workaround attempts after these):")
+        for e in errors[-5:]:
+            lines.append(f"  - {e['tool_name']}: {e['error']}")
+        lines.append("")
+
+    # FULL agent responses for last 3 turns - enables phrase pattern detection
+    # ("I'll just...", "While I'm at it...", etc.)
+    conversation = gate_ctx.get("conversation", [])
+    if conversation:
+        lines.append("**Recent Agent Responses** (full text for phrase detection):")
+        # Extract only agent responses, show last 3 with more content
+        agent_responses = [
+            turn for turn in conversation if (isinstance(turn, str) and turn.startswith("[Agent]:"))
+        ]
+        for turn in agent_responses[-3:]:  # Last 3 agent responses
+            # String format: "[Agent]: content"
+            content = turn[8:] if turn.startswith("[Agent]:") else turn
+            # Allow up to 1000 chars per response for phrase detection
+            if len(content) > 1000:
+                content = content[:1000] + "..."
+            if content.strip():
+                lines.append(f"  {content.strip()}")
+                lines.append("")
+
+        # Also show recent conversation flow (condensed)
+        lines.append("**Recent Conversation Summary**:")
+        for turn in conversation[-5:]:
+            # Handle both string and dict formats
+            if isinstance(turn, dict):
+                role = turn["role"]  # Required - fail if missing
+                content = turn["content"][:200]  # Required - fail if missing
+                lines.append(f"  [{role}]: {content}...")
+            else:
+                # String format - role unknown
+                content = str(turn)[:200]
+                if content:
+                    lines.append(f"  [unknown]: {content}...")
+        lines.append("")
+
+    if not lines:
+        return "(No session context extracted)"
+
+    return "\n".join(lines)
+
+
+def build_critic_session_context(transcript_path: Path | str) -> str:
+    """Build deep session context for critic agent review.
+
+    Unlike build_rich_session_context (designed for scope-drift detection with
+    thin, wide context), this produces a chronological narrative of the entire
+    session: user requests, agent reasoning, tool calls with results, and
+    decisions made. The critic needs to see what actually happened to provide
+    a grounded verdict.
+
+    Design choices:
+    - ALL turns included (no max_turns cap) — critic must see full history
+    - Agent reasoning text preserved at length (2000 chars) — critic needs
+      to see *why* decisions were made, not just what tools were called
+    - Task/subagent prompts and results shown — these are major decision points
+    - Edit diffs summarized — what changed matters for review
+    - Noise filtered: TodoWrite, system-reminders, hook internals excluded
+    - Tool results included for key tools (Task, Bash) — outcomes matter
+
+    Args:
+        transcript_path: Path to session transcript JSONL file
+
+    Returns:
+        Formatted markdown context suitable for critic agent consumption
+    """
+    path = Path(transcript_path)
+    if not path.exists():
+        return "(No transcript path available)"
+
+    processor = SessionProcessor()
+    _, entries, _ = processor.parse_session_file(path, load_agents=False, load_hooks=False)
+
+    if not entries:
+        return "(Empty session)"
+
+    turns = processor.group_entries_into_turns(entries, full_mode=True)
+    if not turns:
+        return "(No conversation turns found)"
+
+    lines: list[str] = []
+    turn_num = 0
+
+    # Noise tools the critic doesn't need to see individually
+    _SKIP_TOOLS = {"TodoWrite", "Skill"}
+    # Max chars for agent reasoning text per turn
+    _AGENT_TEXT_LIMIT = 2000
+    # Max chars for tool arguments
+    _TOOL_ARG_LIMIT = 300
+    # Max chars for tool results
+    _TOOL_RESULT_LIMIT = 1000
+
+    for turn in turns:
+        # Skip non-conversation turns (hooks, summaries)
+        turn_type = turn.get("type") if isinstance(turn, dict) else None
+        if turn_type in ("hook_context", "summary"):
+            continue
+
+        user_msg = turn.get("user_message") if isinstance(turn, dict) else turn.user_message
+        is_meta = turn.get("is_meta") if isinstance(turn, dict) else turn.is_meta
+        assistant_sequence = (
+            turn.get("assistant_sequence") if isinstance(turn, dict) else turn.assistant_sequence
+        )
+
+        # Skip meta-only turns (system injections without user content)
+        if is_meta and not assistant_sequence:
+            continue
+
+        turn_num += 1
+
+        # --- User message ---
+        if user_msg and not is_meta:
+            msg = user_msg.strip()
+            # Clean command XML markup
+            msg = _clean_prompt_text(msg)
+            # Filter out system-injected context
+            if not _is_system_injected_context(msg):
+                # Generous truncation — user intent matters
+                if len(msg) > 1000:
+                    msg = msg[:1000] + "..."
+                lines.append(f"### Turn {turn_num}")
+                lines.append(f"**User**: {msg}")
+                lines.append("")
+
+        # --- Assistant sequence ---
+        if not assistant_sequence:
+            continue
+
+        # Collect agent text blocks (reasoning/communication)
+        text_parts: list[str] = []
+        tool_entries: list[str] = []
+
+        for item in assistant_sequence:
+            item_type = item.get("type")
+
+            if item_type == "text":
+                content = item.get("content", "").strip()
+                if content:
+                    text_parts.append(content)
+
+            elif item_type == "tool":
+                tool_name = item.get("tool_name", "")
+                tool_input = item.get("tool_input", {})
+
+                if tool_name in _SKIP_TOOLS:
+                    continue
+
+                # Format tool call with meaningful detail
+                if tool_name == "Task":
+                    # Subagent calls are major decision points — show full prompt
+                    desc = tool_input.get("description", "")
+                    subagent = tool_input.get("subagent_type", "")
+                    prompt = tool_input.get("prompt", "")
+                    if len(prompt) > _TOOL_ARG_LIMIT:
+                        prompt = prompt[:_TOOL_ARG_LIMIT] + "..."
+                    tool_line = f"  - **Task**({subagent}): {desc}"
+                    if prompt:
+                        tool_line += f"\n    > {prompt}"
+                    # Show result if available
+                    result = item.get("result", "")
+                    if result:
+                        result_str = str(result)
+                        if len(result_str) > _TOOL_RESULT_LIMIT:
+                            result_str = result_str[:_TOOL_RESULT_LIMIT] + "..."
+                        tool_line += f"\n    Result: {result_str}"
+
+                elif tool_name in ("Edit", "Write"):
+                    file_path = tool_input.get("file_path", "")
+                    if tool_name == "Edit":
+                        old = tool_input.get("old_string", "")
+                        new = tool_input.get("new_string", "")
+                        if len(old) > 200:
+                            old = old[:200] + "..."
+                        if len(new) > 200:
+                            new = new[:200] + "..."
+                        tool_line = f"  - **Edit** `{file_path}`"
+                        if old or new:
+                            tool_line += f"\n    `{old}` → `{new}`"
+                    else:
+                        tool_line = f"  - **Write** `{file_path}`"
+
+                elif tool_name == "Read":
+                    file_path = tool_input.get("file_path", "")
+                    tool_line = f"  - **Read** `{file_path}`"
+
+                elif tool_name == "Bash":
+                    cmd = tool_input.get("command", "")
+                    desc = tool_input.get("description", "")
+                    if len(cmd) > _TOOL_ARG_LIMIT:
+                        cmd = cmd[:_TOOL_ARG_LIMIT] + "..."
+                    tool_line = f"  - **Bash**: `{cmd}`"
+                    if desc:
+                        tool_line += f" ({desc})"
+                    # Show result/errors for bash
+                    result = item.get("result", "")
+                    if result:
+                        result_str = str(result)
+                        if len(result_str) > _TOOL_RESULT_LIMIT:
+                            result_str = result_str[:_TOOL_RESULT_LIMIT] + "..."
+                        tool_line += f"\n    Output: {result_str}"
+                    if item.get("is_error"):
+                        error = item.get("error", "")
+                        if error:
+                            tool_line += f"\n    ERROR: {error[:500]}"
+
+                elif tool_name in ("Grep", "Glob"):
+                    pattern = tool_input.get("pattern", "")
+                    search_path = tool_input.get("path", "")
+                    tool_line = f"  - **{tool_name}**(`{pattern}`"
+                    if search_path:
+                        tool_line += f", path={search_path}"
+                    tool_line += ")"
+
+                elif tool_name == "AskUserQuestion":
+                    questions = tool_input.get("questions", [])
+                    if questions:
+                        q_text = questions[0].get("question", "") if questions else ""
+                        tool_line = f"  - **AskUserQuestion**: {q_text}"
+                    else:
+                        tool_line = "  - **AskUserQuestion**"
+
+                else:
+                    # Generic tool — show name and key args
+                    arg_parts = []
+                    for k, v in list(tool_input.items())[:4]:
+                        v_str = str(v)
+                        if len(v_str) > 80:
+                            v_str = v_str[:80] + "..."
+                        arg_parts.append(f"{k}={v_str}")
+                    args_str = ", ".join(arg_parts)
+                    tool_line = f"  - **{tool_name}**({args_str})"
+
+                tool_entries.append(tool_line)
+
+        # Emit agent reasoning (joined, with generous limit)
+        if text_parts:
+            full_text = "\n".join(text_parts)
+            if len(full_text) > _AGENT_TEXT_LIMIT:
+                full_text = full_text[:_AGENT_TEXT_LIMIT] + "..."
+            lines.append(f"**Agent**: {full_text}")
+            lines.append("")
+
+        # Emit tool calls
+        if tool_entries:
+            lines.append("Tools:")
+            lines.extend(tool_entries)
+            lines.append("")
+
+    if not lines:
+        return "(No meaningful session content extracted)"
+
+    return "\n".join(lines)
+
+
 def _extract_gate_context_impl(
     transcript_path: Path,
     include: set[str],
@@ -528,11 +856,7 @@ def _extract_gate_context_impl(
         # Linear pass chronological
         chronological_lines = []
         for turn in turns:
-            user_msg = (
-                turn.get("user_message")
-                if isinstance(turn, dict)
-                else turn.user_message
-            )
+            user_msg = turn.get("user_message") if isinstance(turn, dict) else turn.user_message
             is_meta = turn.get("is_meta") if isinstance(turn, dict) else turn.is_meta
 
             if user_msg and not is_meta:
@@ -581,11 +905,7 @@ def _extract_gate_context_impl(
         final_log = []
         for turn in processed_turns:
             # User
-            user_msg = (
-                turn.get("user_message")
-                if isinstance(turn, dict)
-                else turn.user_message
-            )
+            user_msg = turn.get("user_message") if isinstance(turn, dict) else turn.user_message
             is_meta = turn.get("is_meta") if isinstance(turn, dict) else turn.is_meta
             if user_msg and not is_meta:
                 msg = user_msg.strip()
@@ -633,9 +953,7 @@ def _extract_gate_context_impl(
                                 display_args = display_args[2:]
 
                             if tool_name and display_args.startswith(tool_name):
-                                display_args = (
-                                    display_args[len(tool_name) :].strip().strip("()")
-                                )
+                                display_args = display_args[len(tool_name) :].strip().strip("()")
 
                             if len(display_args) > 100:
                                 display_args = display_args[:100] + "..."
@@ -653,9 +971,7 @@ def _extract_recent_skill(entries: list[Any]) -> str | None:
         if etype != "assistant":
             continue
 
-        message = (
-            entry.message if hasattr(entry, "message") else entry.get("message", {})
-        )
+        message = entry.message if hasattr(entry, "message") else entry.get("message", {})
         content = message.get("content", [])
         if not isinstance(content, list):
             continue
@@ -747,7 +1063,7 @@ def _extract_skill_scope_from_file(path: Path) -> str | None:
     return "\n".join(lines)
 
 
-def _extract_todos(entries: list[dict]) -> dict[str, Any] | None:
+def _extract_todos(entries: list[Any]) -> dict[str, Any] | None:
     """Extract current TodoWrite state with full todo list.
 
     Returns complete todo information for compliance checking,
@@ -776,9 +1092,7 @@ def _extract_errors(entries: list[Any], max_turns: int) -> list[dict[str, Any]]:
         etype = entry.type if hasattr(entry, "type") else entry.get("type")
         if etype != "assistant":
             continue
-        message = (
-            entry.message if hasattr(entry, "message") else entry.get("message", {})
-        )
+        message = entry.message if hasattr(entry, "message") else entry.get("message", {})
         content = message.get("content", [])
         if not isinstance(content, list):
             continue
@@ -788,9 +1102,7 @@ def _extract_errors(entries: list[Any], max_turns: int) -> list[dict[str, Any]]:
                 if tool_id:
                     tool_input = block.get("input", {})
                     # Extract key input for context
-                    input_summary = _summarize_tool_input(
-                        block.get("name", ""), tool_input
-                    )
+                    input_summary = _summarize_tool_input(block.get("name", ""), tool_input)
                     tool_use_map[tool_id] = {
                         "name": block.get("name", "unknown"),
                         "input_summary": input_summary,
@@ -803,9 +1115,7 @@ def _extract_errors(entries: list[Any], max_turns: int) -> list[dict[str, Any]]:
         if etype != "user":
             continue
 
-        message = (
-            entry.message if hasattr(entry, "message") else entry.get("message", {})
-        )
+        message = entry.message if hasattr(entry, "message") else entry.get("message", {})
         content = message.get("content", [])
         if not isinstance(content, list):
             continue
@@ -841,9 +1151,7 @@ def _extract_files_modified(entries: list[Any]) -> list[str]:
         if etype != "assistant":
             continue
 
-        message = (
-            entry.message if hasattr(entry, "message") else entry.get("message", {})
-        )
+        message = entry.message if hasattr(entry, "message") else entry.get("message", {})
         content = message.get("content", [])
         if not isinstance(content, list):
             continue
@@ -1008,9 +1316,7 @@ def find_sessions(
                     continue
 
                 # Get modification time from most recently modified .md file
-                mtime = max(
-                    datetime.fromtimestamp(f.stat().st_mtime, tz=UTC) for f in md_files
-                )
+                mtime = max(datetime.fromtimestamp(f.stat().st_mtime, tz=UTC) for f in md_files)
 
                 # Filter by time if specified
                 if since and mtime < since:

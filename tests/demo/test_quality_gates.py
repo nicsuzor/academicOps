@@ -90,9 +90,7 @@ class TestQualityGatesDemo:
                 "staging",
                 "rollback",
             ]
-            found_concerns = [
-                ind for ind in concern_indicators if ind in response_lower
-            ]
+            found_concerns = [ind for ind in concern_indicators if ind in response_lower]
             print(f"    Concern indicators found: {found_concerns}")
 
             # Critic should identify testing/staging issues with the flawed plan

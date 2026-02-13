@@ -23,7 +23,7 @@ import os
 import re
 import sys
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -109,15 +109,13 @@ class HealthMetrics:
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
         return {
-            "generated": datetime.now(timezone.utc).isoformat(),
+            "generated": datetime.now(UTC).isoformat(),
             "summary": {
                 "files_not_in_index": len(self.files_not_in_index),
                 "files_missing": len(self.files_in_index_but_missing),
                 "skills_without_specs": len(self.skills_without_specs),
                 "axioms_without_enforcement": len(self.axioms_without_enforcement),
-                "heuristics_without_enforcement": len(
-                    self.heuristics_without_enforcement
-                ),
+                "heuristics_without_enforcement": len(self.heuristics_without_enforcement),
                 "orphan_files": len(self.orphan_files),
                 "broken_wikilinks": len(self.broken_wikilinks),
                 "oversized_skills": len(self.oversized_skills),
@@ -272,9 +270,7 @@ def check_enforcement_mapping(root: Path, metrics: HealthMetrics) -> None:
         heuristics_content = heuristics_path.read_text()
         # Match patterns like "## H1:" or "## H23:"
         heuristic_pattern = re.compile(r"^##\s+H(\d+):", re.MULTILINE)
-        heuristic_nums = [
-            int(m.group(1)) for m in heuristic_pattern.finditer(heuristics_content)
-        ]
+        heuristic_nums = [int(m.group(1)) for m in heuristic_pattern.finditer(heuristics_content)]
 
         for h in heuristic_nums:
             patterns = [f"h#{h}", f"h{h}", f"heuristic #{h}", f"heuristic {h}"]
@@ -282,7 +278,9 @@ def check_enforcement_mapping(root: Path, metrics: HealthMetrics) -> None:
                 metrics.heuristics_without_enforcement.append(f"H#{h}")
 
 
-def normalize_wikilink_target(target: str, root: Path, source_path: Path | None = None) -> str | None:
+def normalize_wikilink_target(
+    target: str, root: Path, source_path: Path | None = None
+) -> str | None:
     """Normalize a wikilink target to canonical form (with .md extension).
 
     Returns the canonical path if it resolves to a file, None otherwise.
@@ -594,7 +592,6 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "task-output-includes-ids",
         "internal-records-before-external-apis",
         "local-agents-md-over-central-docs",
-        "indices-before-exploration",
         "never-bypass-locks-without-user-direction",
         # Workflow placeholders and internal references
         "qa-demo",
@@ -684,6 +681,107 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "constraint-check",
         # Agent directory paths (may not exist in all configurations)
         ".agent/PATHS.md",
+        # MCP tool references (conceptual links to tool documentation)
+        "mcp__plugin_aops-core_task_manager__claim_next_task",
+        "mcp__plugin_aops-core_task_manager__create_task",
+        "mcp__plugin_aops-core_task_manager__update_task",
+        "mcp__plugin_aops-core_task_manager__list_tasks",
+        "mcp__plugin_aops-core_task_manager__complete_task",
+        "mcp__plugin_aops-core_task_manager__get_blocked_tasks",
+        "mcp__plugin_aops-core_task_manager__get_task_tree",
+        "mcp__plugin_aops-core_task_manager__get_graph_metrics",
+        "mcp__plugin_aops-core_task_manager__get_task_neighborhood",
+        "mcp__plugin_aops-core_task_manager__rebuild_index",
+        "mcp__plugin_aops-core_task_manager__decompose_task",
+        "mcp__plugin_aops-core_task_manager__get_tasks_with_topology",
+        # Template/example placeholders in specs
+        "path/to/implementation.py",
+        "path/to/agent.md",
+        "path/to/workflow.md",
+        # Deleted/renamed workflows (conceptual references to former workflows)
+        "critic-fast",
+        "critic-detailed",
+        "qa-test",
+        "prove-feature",
+        "qa-design",
+        "batch-task-processing",
+        "triage-email",
+        "email-classify",
+        "dogfooding",
+        "skill-pilot",
+        "manual-qa",
+        # Enforcement map conceptual references
+        "subagent-verdicts-binding",
+        "qa-tests-black-box",
+        "cli-testing-extended-timeouts",
+        "plans-get-critic-review",
+        # Daily workflow conceptual references
+        "session-sync-user-story",
+        # Skill internal references
+        "output/aggregation",
+        # Deleted hooks (references may exist in specs)
+        "hooks/hydration_gate.py",
+        "hooks/overdue_enforcement.py",
+        "hooks/command_intercept.py",
+        "hooks/data/reminders.txt",
+        "hooks/templates/custodiet-context.j2",
+        "archived/hooks/custodiet_gate.py",
+        # Old aops-tools paths (now merged into aops-core)
+        "aops-tools/tasks_server.py",
+        "aops-tools/fast_indexer/",
+        "aops-tools/skills/",
+        "aops-tools/.mcp.json",
+        "aops-core/.mcp.json",
+        # Cross-vault/project-specific paths
+        ".agent/CORE.md",
+        "STYLE.md",
+        # Path references within specs (relative to aops-core)
+        "skills/session-insights/SKILL.md",
+        "skills/task-viz/SKILL.md",
+        "skills/hypervisor/SKILL.md",
+        "skills/swarm-supervisor/SKILL.md",
+        "skills/decision-extract/SKILL.md",
+        "skills/decision-apply/SKILL.md",
+        "skills/audit/workflows/session-effectiveness.md",
+        "skills/audit/references/report-format.md",
+        "skills/audit/references/output-targets.md",
+        "workflows/feature-dev.md",
+        "workflows/decompose.md",
+        "workflows/tdd-cycle.md",
+        "workflows/constraint-check.md",
+        "workflows/framework-gate.md",
+        "workflows/collaborate.md",
+        "workflows/strategy.md",
+        "workflows/design.md",
+        "workflows/debugging.md",
+        "workflows/base-task-tracking.md",
+        "workflows/base-tdd.md",
+        "workflows/audit.md",
+        "workflows/hydrate.md",
+        "agents/custodiet.md",
+        "agents/prompt-hydrator.md",
+        "agents/effectual-planner.md",
+        "agents/qa.md",
+        "agents/critic.md",
+        "commands/pull.md",
+        "commands/q.md",
+        "commands/learn.md",
+        "commands/log.md",
+        "hooks/session_env_setup.py",
+        "hooks/user_prompt_submit.py",
+        "hooks/router.py",
+        "hooks/hooks.json",
+        "hooks/gate_registry.py",
+        "hooks/gate_config.py",
+        "hooks/unified_logger.py",
+        "hooks/policy_enforcer.py",
+        "hooks/session_end_commit_check.py",
+        "hooks/task_binding.py",
+        "hooks/templates/prompt-hydrator-context.md",
+        "hooks/templates/custodiet-instruction.md",
+        "lib/file_index.py",
+        "lib/session_reader.py",
+        "lib/session_state.py",
     }
 
     # Hook and script files (these are correctly linked by filename in Obsidian)
@@ -843,7 +941,14 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
             # Check relative paths (references/*, instructions/*, workflows/*)
             # These resolve within the same skill directory in Obsidian
             if not resolved and target.startswith(
-                ("references/", "instructions/", "workflows/", "templates/", "scripts/", "checks/")
+                (
+                    "references/",
+                    "instructions/",
+                    "workflows/",
+                    "templates/",
+                    "scripts/",
+                    "checks/",
+                )
             ):
                 # First, try to resolve relative to the source file's directory
                 # (e.g., if source is aops-core/skills/analyst/SKILL.md, check aops-core/skills/analyst/references/...)
@@ -903,6 +1008,7 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
 
     # Find orphans (files with no incoming references)
     # Exclude expected orphans (entry points, commands, utility files, etc.)
+    # Include both root paths and aops-core/ prefixed paths
     expected_orphan_prefixes = [
         "commands/",  # Commands are invoked, not linked
         "agents/",  # Agents are invoked, not linked
@@ -911,6 +1017,18 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "tests/",  # Tests are run, not linked
         "lib/",  # Lib modules are imported, not linked
         ".claude/",  # Config files
+        "aops-core/commands/",  # Commands in plugin
+        "aops-core/agents/",  # Agents in plugin
+        "aops-core/hooks/",  # Hooks in plugin
+        "aops-core/scripts/",  # Scripts in plugin
+        "aops-core/tests/",  # Tests in plugin
+        "aops-core/workflows/",  # Root-level workflows are entry points
+        "aops-core/indices/",  # Index files are entry points
+        "aops-core/framework/",  # Framework files
+        "specs/",  # Specs are reference docs, don't need linking
+        "docs/",  # Docs are reference docs
+        "example/",  # Example files
+        "data/",  # Data files
     ]
     # Skill subdirectories are linked via relative paths from their SKILL.md
     # The reference counter doesn't resolve these properly yet (TODO: fix)
@@ -922,6 +1040,8 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "/scripts/",
         "/tests/",
         "/resources/",  # Additional skill internal dirs
+        "/checks/",  # Health check subdirs
+        "/prompts/",  # Prompt templates
     ]
     expected_orphan_names = [
         "README.md",
@@ -936,6 +1056,17 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "SKILL.md",
         "SKILL",
         "README",  # Skill entry points
+        "INSTALL.md",
+        "INSTALLATION.md",
+        "METHODOLOGY.md",
+        "skill.md",  # Alternate skill entry point name
+        "SPEC-TEMPLATE.md",  # Skill-level templates
+        "conventions-summary.md",  # Reference summaries
+    ]
+    # Root-level files that are expected orphans
+    expected_orphan_files = [
+        "agents.md",
+        "coverage_report_v1.1.md",
     ]
 
     for file_path, ref_count in incoming_refs.items():
@@ -948,8 +1079,11 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
                     break
             if Path(file_path).name in expected_orphan_names:
                 is_expected = True
+            if file_path in expected_orphan_files:
+                is_expected = True
             # Check if it's a skill subdirectory file (linked via relative paths)
-            if file_path.startswith("skills/"):
+            # Match both "skills/" and "aops-core/skills/"
+            if "/skills/" in file_path or file_path.startswith("skills/"):
                 for subdir in expected_orphan_skill_subdirs:
                     if subdir in file_path:
                         is_expected = True

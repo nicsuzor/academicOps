@@ -23,7 +23,6 @@ Related:
 from pathlib import Path
 
 import pytest
-
 from lib.session_analyzer import SessionAnalyzer
 
 
@@ -61,9 +60,7 @@ class TestSessionDashboardDemo:
         session_files = list(projects_dir.rglob("*.jsonl"))
 
         # Filter out hook files (they have different format)
-        session_files = [
-            f for f in session_files if not f.name.endswith("-hooks.jsonl")
-        ]
+        session_files = [f for f in session_files if not f.name.endswith("-hooks.jsonl")]
 
         if not session_files:
             pytest.skip(f"No session files found in {projects_dir}")
@@ -136,9 +133,7 @@ class TestSessionDashboardDemo:
             actual_type = type(value).__name__
             matches = isinstance(value, expected_type)
             status = "OK" if matches else "FAIL"
-            print(
-                f"  [{status}] {field}: {actual_type} (expected {expected_type.__name__})"
-            )
+            print(f"  [{status}] {field}: {actual_type} (expected {expected_type.__name__})")
             assert matches, f"{field} has wrong type: {actual_type}"
 
         # todos can be None or list
@@ -169,7 +164,7 @@ class TestSessionDashboardDemo:
         # Todos
         print("\n📋 Todos:")
         if result["todos"]:
-            for i, todo in enumerate(result["todos"][:5]):  # Show first 5
+            for _i, todo in enumerate(result["todos"][:5]):  # Show first 5
                 status = todo.get("status", "unknown")
                 content = todo.get("content", "")[:50]
                 print(f"   [{status}] {content}...")

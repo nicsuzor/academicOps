@@ -15,7 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 # Add aops-core to path for imports
@@ -34,7 +34,7 @@ def format_timestamp(ts: str | None) -> str:
         return "Never"
     try:
         dt = datetime.fromisoformat(ts)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         delta = now - dt
         if delta.total_seconds() < 60:
             return "Just now"
@@ -121,19 +121,10 @@ def display_dashboard(metrics: dict) -> None:
         print(
             f"  Sessions: {current_run['sessions_processed']} processed, {current_run['sessions_failed']} failed"
         )
-        if (
-            current_run["sessions_with_task_match"]
-            + current_run["sessions_no_task_match"]
-            > 0
-        ):
-            total = (
-                current_run["sessions_with_task_match"]
-                + current_run["sessions_no_task_match"]
-            )
+        if current_run["sessions_with_task_match"] + current_run["sessions_no_task_match"] > 0:
+            total = current_run["sessions_with_task_match"] + current_run["sessions_no_task_match"]
             rate = current_run["sessions_with_task_match"] / total
-            print(
-                f"  Task Match: {current_run['sessions_with_task_match']}/{total} ({rate:.0%})"
-            )
+            print(f"  Task Match: {current_run['sessions_with_task_match']}/{total} ({rate:.0%})")
         print()
 
     # Alerts
@@ -152,9 +143,7 @@ def display_dashboard(metrics: dict) -> None:
 
 def main() -> int:
     """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="Display session insights pipeline status"
-    )
+    parser = argparse.ArgumentParser(description="Display session insights pipeline status")
     parser.add_argument(
         "--json",
         action="store_true",

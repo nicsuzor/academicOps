@@ -3,8 +3,8 @@ import argparse
 import os
 import shutil
 import subprocess
-import tempfile
 import sys
+import tempfile
 
 
 def have(cmd):
@@ -62,7 +62,7 @@ def main():
 
         # Light page split heuristics
         for f in (layout_html, simple_html):
-            with open(f, "r", encoding="utf-8") as r:
+            with open(f, encoding="utf-8") as r:
                 h = r.read()
             out = []
             first = True
@@ -109,7 +109,7 @@ def main():
         )
 
         def density(p):
-            with open(p, "r", encoding="utf-8") as r:
+            with open(p, encoding="utf-8") as r:
                 return len("".join(r.read().split()))
 
         best = layout_md if density(layout_md) >= density(simple_md) else simple_md

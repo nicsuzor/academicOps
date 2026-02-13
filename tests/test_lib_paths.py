@@ -2,11 +2,12 @@
 """Tests for lib/paths.py module."""
 
 import os
-import pytest
-from pathlib import Path
 
 # Add lib to path
 import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 

@@ -20,6 +20,7 @@ import json
 import os
 import subprocess
 import sys
+from datetime import UTC
 from pathlib import Path
 
 import pytest
@@ -101,8 +102,7 @@ sys.exit(0)
         # With real hooks, this depends on hook behavior
         # But we verify the router itself works
         assert result.returncode in (0, 1, 2), (
-            f"Router returned unexpected exit code {result.returncode}. "
-            f"stderr: {result.stderr}"
+            f"Router returned unexpected exit code {result.returncode}. stderr: {result.stderr}"
         )
 
     def test_router_forwards_stderr_on_block(self, router_path: Path):
@@ -134,8 +134,7 @@ sys.exit(0)
         # If hydration gate blocked (exit 2), stderr should have the message
         if result.returncode == 2:
             assert result.stderr.strip(), (
-                "Router exit 2 but stderr is empty - "
-                "block message not forwarded to Claude Code!"
+                "Router exit 2 but stderr is empty - block message not forwarded to Claude Code!"
             )
 
 
@@ -150,16 +149,14 @@ class TestRouterBlockOutputFormat:
             pytest.skip("AOPS environment variable not set")
         return Path(aops) / "aops-core" / "hooks" / "router.py"
 
-    def test_router_stdout_is_valid_json_on_block(
-        self, router_path: Path, tmp_path: Path
-    ):
+    def test_router_stdout_is_valid_json_on_block(self, router_path: Path, tmp_path: Path):
         """Even on exit 2, router stdout should be valid JSON.
 
         Claude Code spec says exit 2 = only stderr read, but the router
         should still produce valid output to avoid parse errors.
         """
         import hashlib
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         # Set up session state to trigger block
         sessions_dir = tmp_path / "sessions" / "status"
@@ -168,13 +165,13 @@ class TestRouterBlockOutputFormat:
         session_id = "test-format-session"
         # Session file uses hash of session_id
         short_hash = hashlib.sha256(session_id.encode()).hexdigest()[:8]
-        today = datetime.now(timezone.utc).strftime("%Y%m%d")
+        today = datetime.now(UTC).strftime("%Y%m%d")
         session_file = sessions_dir / f"{today}-{short_hash}.json"
 
         session_state = {
             "session_id": session_id,
-            "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-            "started_at": datetime.now(timezone.utc).isoformat(),
+            "date": datetime.now(UTC).strftime("%Y-%m-%d"),
+            "started_at": datetime.now(UTC).isoformat(),
             "state": {"hydration_pending": True},
             "hydration": {},
             "main_agent": {},
@@ -210,9 +207,7 @@ class TestRouterBlockOutputFormat:
                 parsed = json.loads(result.stdout)
                 assert isinstance(parsed, dict), "Router output should be a JSON object"
             except json.JSONDecodeError as e:
-                pytest.fail(
-                    f"Router stdout is not valid JSON: {e}. Got: {result.stdout!r}"
-                )
+                pytest.fail(f"Router stdout is not valid JSON: {e}. Got: {result.stdout!r}")
 
 
 # --- Full Claude Code E2E tests ---
@@ -244,8 +239,7 @@ class TestClaudeCodeBlockEnforcement:
         hydrator_calls = [
             c
             for c in tool_calls
-            if c["name"] == "Task"
-            and c.get("input", {}).get("subagent_type") == "prompt-hydrator"
+            if c["name"] == "Task" and c.get("input", {}).get("subagent_type") == "prompt-hydrator"
         ]
 
         # Valid outcomes:
@@ -270,9 +264,7 @@ class TestClaudeCodeBlockEnforcement:
                     if c["name"] == "Task"
                     and c.get("input", {}).get("subagent_type") == "prompt-hydrator"
                 )
-                bash_idx = next(
-                    i for i, c in enumerate(tool_calls) if c["name"] == "Bash"
-                )
+                bash_idx = next(i for i, c in enumerate(tool_calls) if c["name"] == "Bash")
                 assert hydrator_idx < bash_idx, (
                     f"Hydrator (idx {hydrator_idx}) should come before Bash (idx {bash_idx})"
                 )
@@ -302,8 +294,7 @@ class TestClaudeCodeBlockEnforcement:
         hydrator_calls = [
             c
             for c in tool_calls
-            if c["name"] == "Task"
-            and c.get("input", {}).get("subagent_type") == "prompt-hydrator"
+            if c["name"] == "Task" and c.get("input", {}).get("subagent_type") == "prompt-hydrator"
         ]
 
         if hydrator_calls:
@@ -328,8 +319,7 @@ class TestClaudeCodeBlockEnforcement:
         bypass_hydrator_calls = [
             c
             for c in tool_calls
-            if c["name"] == "Task"
-            and c.get("input", {}).get("subagent_type") == "prompt-hydrator"
+            if c["name"] == "Task" and c.get("input", {}).get("subagent_type") == "prompt-hydrator"
         ]
 
         if result["success"] and not bypass_hydrator_calls:

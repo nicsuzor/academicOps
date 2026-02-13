@@ -9,7 +9,6 @@ persisted for the duration of the Claude Code session using CLAUDE_ENV_FILE.
 import os
 import sys
 from pathlib import Path
-from typing import Optional
 
 # Ensure aops-core is in path for imports
 HOOK_DIR = Path(__file__).parent
@@ -17,9 +16,14 @@ AOPS_CORE_DIR = HOOK_DIR.parent
 if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
-from lib.session_paths import get_session_status_dir
 from lib.gate_model import GateResult, GateVerdict
+from lib.session_paths import get_session_status_dir
+
 from hooks.schemas import HookContext
+
+# Gate enforcement mode environment variables
+GATE_MODE_VARS = ("CUSTODIET_MODE", "TASK_GATE_MODE", "HYDRATION_GATE_MODE")
+DEFAULT_GATE_MODE = "warn"
 
 
 def persist_env_var(name: str, value: str) -> None:
@@ -44,7 +48,7 @@ def persist_env_var(name: str, value: str) -> None:
         print(f"WARNING: Failed to write to CLAUDE_ENV_FILE: {e}", file=sys.stderr)
 
 
-def run_session_env_setup(ctx: HookContext) -> Optional[GateResult]:
+def run_session_env_setup(ctx: HookContext) -> GateResult | None:
     """
     Logic from session_env_setup.sh migrated to Python.
 
@@ -79,8 +83,10 @@ def run_session_env_setup(ctx: HookContext) -> Optional[GateResult]:
         print(f"WARNING: Failed to determine session status dir: {e}", file=sys.stderr)
 
     # 4. Default Enforcement Modes (fail-safe defaults to "warn" if not set)
-    for mode_var in ["CUSTODIET_MODE", "TASK_GATE_MODE", "HYDRATION_GATE_MODE"]:
-        current_val = os.environ.get(mode_var, "warn")
+    # <!-- NS: no magic literals. -->
+    # <!-- @claude 2026-02-07: Fixed. Extracted to GATE_MODE_VARS and DEFAULT_GATE_MODE constants at module level. -->
+    for mode_var in GATE_MODE_VARS:
+        current_val = os.environ.get(mode_var, DEFAULT_GATE_MODE)
         persist_env_var(mode_var, current_val)
 
     # 5. Placeholder variables from original script
@@ -92,6 +98,4 @@ def run_session_env_setup(ctx: HookContext) -> Optional[GateResult]:
     if "./node_modules/.bin" not in current_path:
         persist_env_var("PATH", f"{current_path}:./node_modules/.bin")
 
-    return GateResult(
-        verdict=GateVerdict.ALLOW, metadata={"source": "session_env_setup"}
-    )
+    return GateResult(verdict=GateVerdict.ALLOW, metadata={"source": "session_env_setup"})

@@ -381,9 +381,9 @@ def test_feature_dev_has_coverage():
 
     for pattern in key_patterns:
         found = any(pattern in c for c in constraints_tested)
-        assert found or any(
-            pattern in tc["scenario"].lower() for tc in FEATURE_DEV_TEST_CASES
-        ), f"Feature-dev test cases missing coverage for: {pattern}"
+        assert found or any(pattern in tc["scenario"].lower() for tc in FEATURE_DEV_TEST_CASES), (
+            f"Feature-dev test cases missing coverage for: {pattern}"
+        )
 
 
 def test_decompose_has_coverage():
@@ -401,9 +401,9 @@ def test_decompose_has_coverage():
 
     for pattern in key_patterns:
         found = any(pattern in c for c in constraints_tested)
-        assert found or any(
-            pattern in tc["scenario"].lower() for tc in DECOMPOSE_TEST_CASES
-        ), f"Decompose test cases missing coverage for: {pattern}"
+        assert found or any(pattern in tc["scenario"].lower() for tc in DECOMPOSE_TEST_CASES), (
+            f"Decompose test cases missing coverage for: {pattern}"
+        )
 
 
 def test_tdd_cycle_has_coverage():
@@ -421,9 +421,9 @@ def test_tdd_cycle_has_coverage():
 
     for pattern in key_patterns:
         found = any(pattern in c for c in constraints_tested)
-        assert found or any(
-            pattern in tc["scenario"].lower() for tc in TDD_CYCLE_TEST_CASES
-        ), f"TDD-cycle test cases missing coverage for: {pattern}"
+        assert found or any(pattern in tc["scenario"].lower() for tc in TDD_CYCLE_TEST_CASES), (
+            f"TDD-cycle test cases missing coverage for: {pattern}"
+        )
 
 
 # ============================================================================
@@ -446,9 +446,7 @@ def test_constraint_violation_reported_in_hydration(claude_headless_tracked):
         "I'll start coding right away and add tests later."
     )
 
-    result, session_id, tool_calls = claude_headless_tracked(
-        prompt, timeout_seconds=180
-    )
+    result, session_id, tool_calls = claude_headless_tracked(prompt, timeout_seconds=180)
 
     if not result["success"]:
         pytest.skip(f"Session failed: {result.get('error')}")
@@ -479,9 +477,7 @@ def test_constraint_violation_reported_in_hydration(claude_headless_tracked):
         "failing test",
     ]
 
-    found_indicator = any(
-        indicator in output.lower() for indicator in constraint_indicators
-    )
+    found_indicator = any(indicator in output.lower() for indicator in constraint_indicators)
 
     # This is a soft assertion - the hydrator might handle this different ways
     if not found_indicator:
@@ -506,9 +502,7 @@ def test_valid_plan_passes_constraint_check(claude_headless_tracked):
         "then refactor before committing."
     )
 
-    result, session_id, tool_calls = claude_headless_tracked(
-        prompt, timeout_seconds=180
-    )
+    result, session_id, tool_calls = claude_headless_tracked(prompt, timeout_seconds=180)
 
     if not result["success"]:
         pytest.skip(f"Session failed: {result.get('error')}")
@@ -533,9 +527,7 @@ def test_valid_plan_passes_constraint_check(claude_headless_tracked):
         "remediation",
     ]
 
-    found_violation = any(
-        indicator in output.lower() for indicator in violation_indicators
-    )
+    found_violation = any(indicator in output.lower() for indicator in violation_indicators)
 
     if found_violation:
         print(

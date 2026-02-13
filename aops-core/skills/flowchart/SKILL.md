@@ -164,12 +164,12 @@ Every visual element needs an explicit fill color for theme safety.
 
 ### Choose Direction Based on Content
 
-| Content Type              | Direction                          | When to Use                          | Result |
-| ------------------------- | ---------------------------------- | ------------------------------------ | ------ |
-| Linear process (≤8 steps) | `LR`                               | Simple pipelines, single thread | 1 tall row, many columns (BEST) |
-| Branching/decisions       | `TD`                               | Multiple branches, complex logic | Wider at branch points |
-| Parallel workflows        | `LR` with `direction TB` subgraphs | Phases left-to-right, steps top-down | Compact horizontal grouping |
-| Complex systems (>15)     | `LR` + ELK layout                  | Systems with cross-links, multi-layer | Optimal automatic distribution |
+| Content Type              | Direction                          | When to Use                           | Result                          |
+| ------------------------- | ---------------------------------- | ------------------------------------- | ------------------------------- |
+| Linear process (≤8 steps) | `LR`                               | Simple pipelines, single thread       | 1 tall row, many columns (BEST) |
+| Branching/decisions       | `TD`                               | Multiple branches, complex logic      | Wider at branch points          |
+| Parallel workflows        | `LR` with `direction TB` subgraphs | Phases left-to-right, steps top-down  | Compact horizontal grouping     |
+| Complex systems (>15)     | `LR` + ELK layout                  | Systems with cross-links, multi-layer | Optimal automatic distribution  |
 
 **PRINCIPLE: Prefer LR layout for 80% of use cases.** It naturally spreads horizontally, matching screen dimensions.
 
@@ -298,12 +298,12 @@ linkStyle default stroke:#718096,stroke-width:1.5px
 
 **Spacing Configuration Strategy**:
 
-| Layout | nodeSpacing | rankSpacing | Rationale |
-|--------|-------------|-------------|-----------|
-| **LR (left-right)** | 60-80 | 70-90 | Horizontal space for nodes, vertical for ranks |
-| **TD (top-down)** | 50-70 | 60-80 | Vertical space for nodes, horizontal for ranks |
-| **Dense LR** | 40-50 | 50-60 | For 6-8 node chains |
-| **Spacious LR** | 80-100 | 100+ | For complex systems (>15 nodes) |
+| Layout              | nodeSpacing | rankSpacing | Rationale                                      |
+| ------------------- | ----------- | ----------- | ---------------------------------------------- |
+| **LR (left-right)** | 60-80       | 70-90       | Horizontal space for nodes, vertical for ranks |
+| **TD (top-down)**   | 50-70       | 60-80       | Vertical space for nodes, horizontal for ranks |
+| **Dense LR**        | 40-50       | 50-60       | For 6-8 node chains                            |
+| **Spacious LR**     | 80-100      | 100+        | For complex systems (>15 nodes)                |
 
 **Spacing guidelines - ALWAYS**:
 

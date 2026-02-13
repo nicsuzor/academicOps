@@ -7,6 +7,16 @@ status: DRAFT - PENDING APPROVAL (v2)
 
 # v1.0 Core Loop
 
+## Giving Effect
+
+- [[hooks/session_env_setup.py]] - SessionStart hook: creates session file, sets environment
+- [[hooks/user_prompt_submit.py]] - UserPromptSubmit hook: triggers hydration
+- [[agents/prompt-hydrator.md]] - Prompt hydration agent
+- [[agents/qa.md]] - QA verification agent
+- [[hooks/session_end_commit_check.py]] - Stop hook: uncommitted work check
+- [[WORKFLOWS.md]] - Workflow catalog
+- [[workflows/]] - Workflow definitions
+
 **Goal**: The minimal viable framework with ONE complete, working loop.
 
 **Philosophy**: Users don't have to use aops. But if they do, it's slow and thorough. The full workflow is MANDATORY.
@@ -116,13 +126,13 @@ status: DRAFT - PENDING APPROVAL (v2)
 
 ### Agents (5)
 
-| Agent               | Model  | Purpose                                               | Trigger                                      |
-| ------------------- | ------ | ----------------------------------------------------- | -------------------------------------------- |
-| **prompt-hydrator** | haiku  | Transform prompts → execution plans                   | UserPromptSubmit hook instruction            |
-| **critic**          | opus   | Review plans BEFORE execution                         | Main agent after hydrator returns            |
-| **custodiet**       | haiku  | Detect scope drift, BLOCK on violation                | PostToolUse hook (periodic)                  |
-| **qa**              | opus   | Independent end-to-end verification                   | TodoWrite step before commit                 |
-| **framework**       | sonnet | Stateful framework understanding, manages reflections | Before session close                         |
+| Agent               | Model  | Purpose                                               | Trigger                           |
+| ------------------- | ------ | ----------------------------------------------------- | --------------------------------- |
+| **prompt-hydrator** | haiku  | Transform prompts → execution plans                   | UserPromptSubmit hook instruction |
+| **critic**          | opus   | Review plans BEFORE execution                         | Main agent after hydrator returns |
+| **custodiet**       | haiku  | Detect scope drift, BLOCK on violation                | PostToolUse hook (periodic)       |
+| **qa**              | opus   | Independent end-to-end verification                   | TodoWrite step before commit      |
+| **framework**       | sonnet | Stateful framework understanding, manages reflections | Before session close              |
 
 ### Tools Required
 
@@ -136,23 +146,24 @@ status: DRAFT - PENDING APPROVAL (v2)
 
 ### Hooks (5 + router)
 
-| Hook                        | Event            | Purpose                                              |
-| --------------------------- | ---------------- | ---------------------------------------------------- |
-| **router.py**               | All              | Central dispatcher, checks custodiet block flag      |
-| **user_prompt_submit.py**   | UserPromptSubmit | Write context + bd state + vector memory to temp     |
-| **unified_logger.py**       | All              | Log events to session file                           |
-| **session_env_setup.sh**    | SessionStart     | Set $AOPS, $PYTHONPATH                               |
-| **custodiet_gate.py**       | PostToolUse      | Periodic compliance check, triggers custodiet agent  |
-| **overdue_enforcement.py**  | PreToolUse       | Blocks mutating tools when compliance check overdue  |
+| Hook                       | Event            | Purpose                                             |
+| -------------------------- | ---------------- | --------------------------------------------------- |
+| **router.py**              | All              | Central dispatcher, checks custodiet block flag     |
+| **user_prompt_submit.py**  | UserPromptSubmit | Write context + bd state + vector memory to temp    |
+| **unified_logger.py**      | All              | Log events to session file                          |
+| **session_env_setup.sh**   | SessionStart     | Set $AOPS, $PYTHONPATH                              |
+| **custodiet_gate.py**      | PostToolUse      | Periodic compliance check, triggers custodiet agent |
+| **overdue_enforcement.py** | PreToolUse       | Blocks mutating tools when compliance check overdue |
 
 ### Execution State (Session File)
 
-**Execution state in ~/.claude/projects**, organized by date and session hash: 
-- `~/.claude/projects/<project>/{YYYYMMDD}-{hash}/session-state.json`.
+**Execution state in ~/.claude/projects**, organized by date and session hash:
 
+- `~/.claude/projects/<project>/{YYYYMMDD}-{hash}/session-state.json`.
 
 <!-- NS: schema should be in separate spec for session state management -->
 <!-- @claude 2026-01-22: Agreed. Session state schema should move to a dedicated spec (e.g., specs/session-state.md). Task created. -->
+
 ```json
 {
   "session_id": "abc123",
@@ -191,10 +202,10 @@ status: DRAFT - PENDING APPROVAL (v2)
 }
 ```
 
-
 ## Composable Workflow System (LLM-Native Design)
 
 **Status**:
+
 - Phase 1 (Foundation) - COMPLETE
 - Phase 2 (LLM-Native Composition) - NEXT
 
@@ -350,6 +361,7 @@ See `aops-core/specs/session-insights-prompt.md` for full schema specification.
 ### Workflow A: Agent Reflection (MANDATORY)
 
 At the end of every session, the agent MUST output Framework Reflection (see [[aops-core/commands/dump.md]]):
+
 - Summary of what was accomplished
 - Outcome (success/partial/failure)
 - Friction points observed
@@ -364,6 +376,7 @@ Gemini uses the **same prompt** as Workflow A (Claude in-stream) to generate ric
 
 <!-- NS: invocation may be different now -->
 <!-- @claude 2026-01-22: Verified. Current invocation is Skill(skill="session-insights") or the /session-insights command. Examples below are current. -->
+
 User invokes `/session-insights` skill to analyze transcripts with Gemini:
 
 ```bash
@@ -371,7 +384,6 @@ User invokes `/session-insights` skill to analyze transcripts with Gemini:
 /session-insights              # Current session
 /session-insights batch        # Process multiple
 ```
-
 
 ## Hook Event Flow
 

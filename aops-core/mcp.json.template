@@ -6,6 +6,9 @@
         "url": "http://services.stoat-musical.ts.net:8026/mcp",
         "headers": {
           "Authorization": "Bearer $MCP_MEMORY_API_KEY"
+        },
+        "env": {
+          "MCP_MEMORY_API_KEY": "${MCP_MEMORY_API_KEY}"
         }
       },
       "task_manager": {
@@ -33,6 +36,9 @@
         "url": "http://services.stoat-musical.ts.net:8026/mcp",
         "headers": {
           "Authorization": "Bearer $MCP_MEMORY_API_KEY"
+        },
+        "env": {
+          "MCP_MEMORY_API_KEY": "${MCP_MEMORY_API_KEY}"
         }
       },
       "task_manager": {

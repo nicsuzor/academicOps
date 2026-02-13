@@ -21,6 +21,19 @@ Persist knowledge to markdown + memory server. **Both writes required** for sema
 - If you must read multiple files or piece together history to understand truth, it's not properly synthesized
 - Git history preserves the record; `$ACA_DATA` reflects only what's current
 
+## Storage Hierarchy (Critical)
+
+**Memory MCP is the universal index.** Write to your primary storage AND memory MCP for semantic search retrieval.
+
+| What                  | Primary Storage                                      | Also Sync To |
+| --------------------- | ---------------------------------------------------- | ------------ |
+| **Epics/projects**    | Task Manager MCP (`type="epic"` or `type="project"`) | Memory MCP   |
+| **Tasks/issues**      | GitHub Issues (`gh issue create`)                    | Memory MCP   |
+| **Durable knowledge** | `$ACA_DATA/` markdown files                          | Memory MCP   |
+| **Session findings**  | Task body updates                                    | Memory MCP   |
+
+See [[base-memory-capture]] workflow for when and how to invoke this skill.
+
 ## Decision Tree
 
 ```
@@ -103,11 +116,11 @@ Use memory server semantic search for `$ACA_DATA/` content. Never grep for markd
 
 When capturing learnings from debugging/development sessions, **prefer generalizable patterns over implementation specifics**.
 
-| ❌ Too Specific | ✅ Generalizable |
-|----------------|------------------|
+| ❌ Too Specific                                                       | ✅ Generalizable                                                   |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | "AOPS_SESSION_STATE_DIR env var set at SessionStart in router.py:350" | "Configuration should be set once at initialization, no fallbacks" |
-| "Fixed bug in session_paths.py on 2026-01-28" | "Single source of truth prevents cascading ambiguity" |
-| "Gemini uses ~/.gemini/tmp/<hash>/ for state" | "Derive paths from authoritative input, don't hardcode locations" |
+| "Fixed bug in session_paths.py on 2026-01-28"                         | "Single source of truth prevents cascading ambiguity"              |
+| "Gemini uses ~/.gemini/tmp/<hash>/ for state"                         | "Derive paths from authoritative input, don't hardcode locations"  |
 
 **Why this matters**: Specific implementation details are only useful for one code path. Generalizable patterns apply across all future framework work. We're dogfooding - capture what helps NEXT session, not what happened THIS session.
 

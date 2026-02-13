@@ -1,9 +1,10 @@
-import pytest
+import json
 import os
 import sys
-import json
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Add aops-core to path
 AOPS_ROOT = Path(__file__).parent.parent.parent
@@ -34,7 +35,24 @@ class SessionStateMocks:
     def __init__(self, cfg: dict):
         self.cfg = cfg
         gates = {**DEFAULT_STATE["gates"], **cfg.get("gates", {})}
-        state = {"state": {}, "hydration": {"temp_path": "/tmp/hydrator"}}
+        # Session state must include gates in the expected structure for tool_gate
+        state = {
+            "state": {
+                "gates": {
+                    "hydration": "open",
+                    "task": "open",
+                    "critic": "open",
+                    "qa": "open",
+                    "handover": "open",
+                },
+                "hydration_pending": cfg["is_hydration_pending"],
+            },
+            "hydration": {"temp_path": "/tmp/hydrator"},
+            "main_agent": {"current_task": "test-task-123"},
+        }
+
+        # Passed gates for tool_gate check
+        passed_gates = {"hydration", "task", "critic", "qa", "handover"}
 
         self.is_hydration_pending = MagicMock(return_value=cfg["is_hydration_pending"])
         self.check_all_gates = MagicMock(return_value=gates)
@@ -47,6 +65,7 @@ class SessionStateMocks:
         self.clear_hydration_pending = MagicMock(return_value=None)
         self.set_hydrator_active = MagicMock(return_value=None)
         self.update_hydration_metrics = MagicMock(return_value=None)
+        self.get_passed_gates = MagicMock(return_value=passed_gates)
 
     def patch_context(self):
         return patch.multiple(
@@ -62,6 +81,7 @@ class SessionStateMocks:
             clear_hydration_pending=self.clear_hydration_pending,
             set_hydrator_active=self.set_hydrator_active,
             update_hydration_metrics=self.update_hydration_metrics,
+            get_passed_gates=self.get_passed_gates,
         )
 
 
@@ -149,6 +169,7 @@ TEST_CASES = [
             hook_event_name="PostToolUse",
             tool_name="prompt-hydrator",
             tool_input={"query": "Read and comment on /tmp/file.md"},
+            tool_result={"returnDisplay": "## HYDRATION RESULT\nIntent: test"},
         ),
         "expected_decision": "allow",
         "state_overrides": {"is_hydration_pending": True},
@@ -201,9 +222,7 @@ def test_hook_json_io(case):
             output_dict = json.loads(output.model_dump_json(exclude_none=True))
             # Claude PreToolUse puts decision in hookSpecificOutput
             if "hookSpecificOutput" in output_dict:
-                actual_decision = output_dict["hookSpecificOutput"].get(
-                    "permissionDecision"
-                )
+                actual_decision = output_dict["hookSpecificOutput"].get("permissionDecision")
                 assert actual_decision == expected_decision, description
             else:
                 # Stop event

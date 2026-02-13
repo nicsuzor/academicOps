@@ -1,11 +1,11 @@
 """Tests for pipeline metrics collection library."""
 
 import json
+from datetime import UTC
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
 from lib.pipeline_metrics import (
     ALERT_THRESHOLDS,
     PipelineMetrics,
@@ -317,18 +317,20 @@ class TestAlertThresholds:
 
     def test_check_alerts_no_metrics(self):
         """Test check_alerts with no metrics returns empty list."""
-        alerts = check_alerts(None)
+        # Mock load_pipeline_metrics to return None (no metrics file)
+        with patch("lib.pipeline_metrics.load_pipeline_metrics", return_value=None):
+            alerts = check_alerts(None)
         assert alerts == []
 
     def test_check_alerts_healthy_metrics(self):
         """Test check_alerts with healthy metrics."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         metrics = {
             "health": {
                 "consecutive_failures": 0,
                 "uptime_24h": 1.0,
-                "last_successful_run": datetime.now(timezone.utc).isoformat(),
+                "last_successful_run": datetime.now(UTC).isoformat(),
             },
             "current_run": {
                 "sessions_with_task_match": 3,
@@ -342,13 +344,13 @@ class TestAlertThresholds:
 
     def test_check_alerts_consecutive_failures_warning(self):
         """Test warning alert for consecutive failures."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         metrics = {
             "health": {
                 "consecutive_failures": 3,
                 "uptime_24h": 0.9,
-                "last_successful_run": datetime.now(timezone.utc).isoformat(),
+                "last_successful_run": datetime.now(UTC).isoformat(),
             },
             "current_run": None,
         }
@@ -359,13 +361,13 @@ class TestAlertThresholds:
 
     def test_check_alerts_consecutive_failures_critical(self):
         """Test critical alert for consecutive failures."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         metrics = {
             "health": {
                 "consecutive_failures": 5,
                 "uptime_24h": 0.9,
-                "last_successful_run": datetime.now(timezone.utc).isoformat(),
+                "last_successful_run": datetime.now(UTC).isoformat(),
             },
             "current_run": None,
         }
@@ -376,13 +378,13 @@ class TestAlertThresholds:
 
     def test_check_alerts_low_uptime(self):
         """Test alert for low uptime."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         metrics = {
             "health": {
                 "consecutive_failures": 0,
                 "uptime_24h": 0.4,
-                "last_successful_run": datetime.now(timezone.utc).isoformat(),
+                "last_successful_run": datetime.now(UTC).isoformat(),
             },
             "current_run": None,
         }
@@ -393,13 +395,13 @@ class TestAlertThresholds:
 
     def test_check_alerts_low_task_match_rate(self):
         """Test alert for low task match rate."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         metrics = {
             "health": {
                 "consecutive_failures": 0,
                 "uptime_24h": 1.0,
-                "last_successful_run": datetime.now(timezone.utc).isoformat(),
+                "last_successful_run": datetime.now(UTC).isoformat(),
             },
             "current_run": {
                 "sessions_with_task_match": 1,
@@ -415,13 +417,13 @@ class TestAlertThresholds:
 
     def test_check_alerts_validation_errors(self):
         """Test info alert for validation errors."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         metrics = {
             "health": {
                 "consecutive_failures": 0,
                 "uptime_24h": 1.0,
-                "last_successful_run": datetime.now(timezone.utc).isoformat(),
+                "last_successful_run": datetime.now(UTC).isoformat(),
             },
             "current_run": {
                 "sessions_with_task_match": 5,
