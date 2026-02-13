@@ -26,7 +26,7 @@ sys.path.insert(
     ),
 )
 
-from batch_worker import determine_assignee, determine_complexity, process_task
+from batch_worker import determine_assignee, process_task
 
 
 class TestDetermineAssigneeJudgmentTasks:
