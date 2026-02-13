@@ -854,7 +854,7 @@ def _fetch_github_issue(issue_ref: str, project: str | None) -> dict:
         "id": task_id,
         "title": data.get("title", f"Issue #{number}"),
         "body": data.get("body", ""),
-        "project": project or "aops",
+        "project": project,
         "number": int(number),
         "url": data.get("url", ""),
         "repo": repo,
