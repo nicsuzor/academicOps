@@ -250,6 +250,8 @@ def is_subagent_session(input_data: dict[str, Any] | None = None) -> bool:
     try:
         paths_to_check.append(os.getcwd())
     except OSError:
+        # Best-effort CWD detection; if the working directory is missing or
+        # inaccessible, we can safely continue without adding it.
         pass
 
     for path in paths_to_check:
