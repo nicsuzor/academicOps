@@ -894,16 +894,12 @@ class PolecatManager:
                 file=sys.stderr,
             )
             if self._branch_exists(repo_path, branch_name):
-                # Branch exists - delete it if orphan, then recreate
-                if self._is_orphan_branch(repo_path, branch_name):
-                    print(f"Branch {branch_name} is orphan, deleting...", file=sys.stderr)
-                    subprocess.run(["git", "branch", "-D", branch_name], cwd=repo_path, check=False)
-                    # Recreate with -b flag from default_branch
-                    subprocess.run(cmd, cwd=repo_path, check=True)
-                else:
-                    # Branch exists with commits - use it
-                    cmd = ["git", "worktree", "add", str(worktree_path), branch_name]
-                    subprocess.run(cmd, cwd=repo_path, check=True)
+                # Branch exists from a previous run - delete and recreate fresh from main.
+                # Polecat branches are disposable work branches; reusing stale branches
+                # leads to worktrees that are many commits behind main.
+                print(f"Branch {branch_name} exists from previous run, deleting and recreating fresh...", file=sys.stderr)
+                subprocess.run(["git", "branch", "-D", branch_name], cwd=repo_path, check=False)
+                subprocess.run(cmd, cwd=repo_path, check=True)
             else:
                 raise e
 
