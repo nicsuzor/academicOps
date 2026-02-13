@@ -297,8 +297,9 @@ def _load_project_workflows(prompt: str = "") -> str:
 
 def _load_global_workflow_content(prompt: str = "") -> str:
     """Selectively load the content of relevant global workflows and their bases."""
-    from lib.file_index import get_relevant_file_paths
     import yaml
+
+    from lib.file_index import get_relevant_file_paths
 
     relevant_paths = get_relevant_file_paths(prompt, max_files=20)
     workflow_paths = [p for p in relevant_paths if p["path"].startswith("workflows/")]
