@@ -62,16 +62,12 @@ class TestSessionIdPattern:
 
     def test_full_uuid_not_subagent(self):
         """Full UUID session IDs are main sessions."""
-        result = is_subagent_session(
-            {"session_id": "f4e3f1cb-775c-4aaf-8bf6-4e18a18dad3d"}
-        )
+        result = is_subagent_session({"session_id": "f4e3f1cb-775c-4aaf-8bf6-4e18a18dad3d"})
         assert result is False
 
     def test_gemini_session_id_not_subagent(self):
         """Gemini session IDs with timestamps are not subagent."""
-        result = is_subagent_session(
-            {"session_id": "gemini-20260213-143000-abc12345"}
-        )
+        result = is_subagent_session({"session_id": "gemini-20260213-143000-abc12345"})
         assert result is False
 
 
@@ -95,24 +91,26 @@ class TestTranscriptPathDetection:
     """Method 4: Transcript path containing /subagents/ or /agent-."""
 
     def test_subagents_in_transcript_path(self):
-        assert is_subagent_session(
-            {"transcript_path": "/home/user/.claude/subagents/abc123/transcript.jsonl"}
-        ) is True
+        assert (
+            is_subagent_session(
+                {"transcript_path": "/home/user/.claude/subagents/abc123/transcript.jsonl"}
+            )
+            is True
+        )
 
     def test_agent_dash_in_transcript_path(self):
-        assert is_subagent_session(
-            {"transcript_path": "/tmp/agent-explorer/output.json"}
-        ) is True
+        assert is_subagent_session({"transcript_path": "/tmp/agent-explorer/output.json"}) is True
 
     def test_subagents_in_cwd(self):
-        assert is_subagent_session(
-            {"cwd": "/home/user/.claude/subagents/def456"}
-        ) is True
+        assert is_subagent_session({"cwd": "/home/user/.claude/subagents/def456"}) is True
 
     def test_normal_path_not_detected(self):
-        assert is_subagent_session(
-            {"transcript_path": "/home/user/.claude/sessions/main/transcript.jsonl"}
-        ) is False
+        assert (
+            is_subagent_session(
+                {"transcript_path": "/home/user/.claude/sessions/main/transcript.jsonl"}
+            )
+            is False
+        )
 
 
 class TestNoneAndEmptyInputs:

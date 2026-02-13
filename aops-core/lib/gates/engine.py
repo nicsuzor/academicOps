@@ -290,8 +290,8 @@ class GenericGate:
         self, context: HookContext, session_state: SessionState
     ) -> GateResult | None:
         """Evaluate only triggers (state updates), ignoring policies.
-        
-        Use this when bypassing gates for compliance subagents while still 
+
+        Use this when bypassing gates for compliance subagents while still
         needing to update gate states.
         """
         return self._evaluate_triggers(context, session_state)

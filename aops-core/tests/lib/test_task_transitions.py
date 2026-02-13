@@ -1,16 +1,10 @@
 #!/usr/bin/env python3
 """Tests for Task state transitions and guards."""
 
-from datetime import UTC, datetime
-
 import pytest
-
 from lib.task_model import (
-    ApprovalType,
     Task,
     TaskStatus,
-    TaskType,
-    TransitionResult,
 )
 
 

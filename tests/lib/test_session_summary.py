@@ -4,8 +4,6 @@
 Tests task aggregation and summary generation logic.
 """
 
-import json
-from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -83,12 +81,15 @@ class TestSessionSummaryGeneration:
     def test_synthesize_session_single_task(self, temp_aca_data: Path) -> None:
         """Summary for single task."""
         session_id = "single-task-session"
-        append_task_contribution(session_id, {
-            "request": "Fix bug in login",
-            "task_id": "bug-123",
-            "outcome": "success",
-            "accomplishment": "Fixed login bug"
-        })
+        append_task_contribution(
+            session_id,
+            {
+                "request": "Fix bug in login",
+                "task_id": "bug-123",
+                "outcome": "success",
+                "accomplishment": "Fixed login bug",
+            },
+        )
 
         summary = synthesize_session(session_id)
         assert len(summary["tasks"]) == 1

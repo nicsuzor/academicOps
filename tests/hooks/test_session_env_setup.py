@@ -36,7 +36,12 @@ class TestSessionEnvSetup:
 
     def test_run_session_env_setup_persists_variables(self, temp_env_file):
         """Test that run_session_env_setup persists required variables."""
-        ctx = HookContext(session_id="test-session-123", session_short_hash="abc12345", hook_event="SessionStart", raw_input={})
+        ctx = HookContext(
+            session_id="test-session-123",
+            session_short_hash="abc12345",
+            hook_event="SessionStart",
+            raw_input={},
+        )
 
         # We need to mock get_session_status_dir to return a consistent path
         state = SessionState.create(ctx.session_id)
@@ -65,7 +70,12 @@ class TestSessionEnvSetup:
 
     def test_run_session_env_setup_ignored_for_other_events(self, temp_env_file):
         """Verify setup is ignored for non-SessionStart events."""
-        ctx = HookContext(session_id="test-session-123", session_short_hash="abc12345", hook_event="PreToolUse", raw_input={})
+        ctx = HookContext(
+            session_id="test-session-123",
+            session_short_hash="abc12345",
+            hook_event="PreToolUse",
+            raw_input={},
+        )
 
         state = SessionState.create(ctx.session_id)
         result = run_session_env_setup(ctx, state)

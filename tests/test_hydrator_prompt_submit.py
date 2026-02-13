@@ -28,6 +28,7 @@ def test_hydrator_hook_with_specific_input(
             # Ensure hydration gate state exists
             if "hydration" not in state.gates:
                 from lib.gate_types import GateState
+
                 state.gates["hydration"] = GateState()
             state.gates["hydration"].metrics["temp_path"] = "/tmp/hydrator/hydrate_da2ab2cf.md"
         return "Run prompt-hydrator with /tmp/hydrator/instruction.md"

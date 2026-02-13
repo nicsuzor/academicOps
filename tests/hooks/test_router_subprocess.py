@@ -173,9 +173,7 @@ class TestRouterGeminiFormat:
         assert "decision" in output, f"Missing decision. Output: {output}"
         assert output["decision"] in ["allow", "deny"]
         # Should be allowed (gate now starts OPEN)
-        assert output["decision"] == "allow", (
-            f"Expected allow. Output: {output}, Stderr: {stderr}"
-        )
+        assert output["decision"] == "allow", f"Expected allow. Output: {output}, Stderr: {stderr}"
 
     def test_after_tool_output_format(self) -> None:
         """AfterTool returns correct Gemini format."""

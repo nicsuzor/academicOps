@@ -1,7 +1,6 @@
 """Tests for transcript parsing and reflection extraction."""
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -77,7 +76,6 @@ Some conversation...
         This test finds recent session logs that contain reflections and
         verifies the extraction pipeline works end-to-end.
         """
-        from pathlib import Path
 
         # Find session transcripts with Framework Reflections
         sessions_dir = Path.home() / "writing" / "sessions" / "claude"
@@ -100,6 +98,7 @@ Some conversation...
         # We must have at least one session with a reflection to test against
         if len(reflection_files) == 0:
             import pytest
+
             pytest.skip(
                 f"No live session logs with Framework Reflections found in {sessions_dir}. "
                 "Skipping live log extraction test."
