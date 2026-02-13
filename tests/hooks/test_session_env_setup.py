@@ -20,6 +20,7 @@ if str(aops_core_dir) not in sys.path:
 
 from hooks.schemas import HookContext
 from hooks.session_env_setup import run_session_env_setup
+from lib.session_state import SessionState
 
 
 class TestSessionEnvSetup:
@@ -35,14 +36,20 @@ class TestSessionEnvSetup:
 
     def test_run_session_env_setup_persists_variables(self, temp_env_file):
         """Test that run_session_env_setup persists required variables."""
-        ctx = HookContext(session_id="test-session-123", hook_event="SessionStart", raw_input={})
+        ctx = HookContext(
+            session_id="test-session-123",
+            session_short_hash="abc12345",
+            hook_event="SessionStart",
+            raw_input={},
+        )
 
         # We need to mock get_session_status_dir to return a consistent path
+        state = SessionState.create(ctx.session_id)
         with patch(
             "hooks.session_env_setup.get_session_status_dir",
             return_value="/tmp/aops/sessions",
         ):
-            run_session_env_setup(ctx)
+            run_session_env_setup(ctx, state)
 
         content = temp_env_file.read_text()
 
@@ -63,9 +70,15 @@ class TestSessionEnvSetup:
 
     def test_run_session_env_setup_ignored_for_other_events(self, temp_env_file):
         """Verify setup is ignored for non-SessionStart events."""
-        ctx = HookContext(session_id="test-session-123", hook_event="PreToolUse", raw_input={})
+        ctx = HookContext(
+            session_id="test-session-123",
+            session_short_hash="abc12345",
+            hook_event="PreToolUse",
+            raw_input={},
+        )
 
-        result = run_session_env_setup(ctx)
+        state = SessionState.create(ctx.session_id)
+        result = run_session_env_setup(ctx, state)
         assert result is None
 
         content = temp_env_file.read_text()

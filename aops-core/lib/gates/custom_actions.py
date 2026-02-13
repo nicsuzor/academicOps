@@ -85,9 +85,7 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:
 
     # Write to temp — fail fast on disk errors
     temp_dir = hook_utils.get_hook_temp_dir(category, ctx.raw_input)
-    return hook_utils.write_temp_file(
-        content, temp_dir, f"audit_{gate}_", session_id=session_id
-    )
+    return hook_utils.write_temp_file(content, temp_dir, f"audit_{gate}_", session_id=session_id)
 
 
 def execute_custom_action(
@@ -107,8 +105,7 @@ def execute_custom_action(
 
         if not prompt:
             raise RuntimeError(
-                "hydrate_prompt: no prompt found in raw_input "
-                f"(keys: {list(ctx.raw_input.keys())})"
+                f"hydrate_prompt: no prompt found in raw_input (keys: {list(ctx.raw_input.keys())})"
             )
 
         transcript_path = ctx.transcript_path or ctx.raw_input.get("transcript_path")
@@ -133,9 +130,7 @@ def execute_custom_action(
         state.metrics["temp_path"] = str(temp_path)
 
         registry = TemplateRegistry.instance()
-        instruction = registry.render(
-            "custodiet.instruction", {"temp_path": str(temp_path)}
-        )
+        instruction = registry.render("custodiet.instruction", {"temp_path": str(temp_path)})
 
         return GateResult.allow(
             system_message=f"Compliance report ready: {temp_path}",

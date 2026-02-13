@@ -159,7 +159,7 @@ class TestRouterGeminiFormat:
         assert output["decision"] in ["allow", "deny"]
 
     def test_before_tool_output_format(self) -> None:
-        """BeforeTool returns correct Gemini format with deny for unhydrated."""
+        """BeforeTool returns correct Gemini format."""
         # Use unique session_id to avoid state pollution from parallel tests
         input_data = {
             "tool_name": "shell",
@@ -167,24 +167,13 @@ class TestRouterGeminiFormat:
             "session_id": f"test-{uuid.uuid4()}",
         }
 
-        # Force block mode for hydration gate
-        with pytest.MonkeyPatch.context() as mp:
-            mp.setenv("HYDRATION_GATE_MODE", "block")
-            # We need to set this in the actual OS environ because run_router_gemini copies it
-            os.environ["HYDRATION_GATE_MODE"] = "block"
-            try:
-                output, stderr = run_router_gemini(input_data, "BeforeTool")
-            finally:
-                del os.environ["HYDRATION_GATE_MODE"]
+        output, stderr = run_router_gemini(input_data, "BeforeTool")
 
         # Gemini format has top-level decision
         assert "decision" in output, f"Missing decision. Output: {output}"
         assert output["decision"] in ["allow", "deny"]
-        # Should be denied due to hydration gate
-        assert output["decision"] == "deny", (
-            f"Expected deny due to hydration gate. Output: {output}, Stderr: {stderr}"
-        )
-        assert "reason" in output, "Should have reason for deny"
+        # Should be allowed (gate now starts OPEN)
+        assert output["decision"] == "allow", f"Expected allow. Output: {output}, Stderr: {stderr}"
 
     def test_after_tool_output_format(self) -> None:
         """AfterTool returns correct Gemini format."""
@@ -223,18 +212,11 @@ class TestRouterEventMapping:
             "session_id": f"test-{uuid.uuid4()}",
         }
 
-        # Force block mode for hydration gate
-        with pytest.MonkeyPatch.context() as mp:
-            mp.setenv("HYDRATION_GATE_MODE", "block")
-            os.environ["HYDRATION_GATE_MODE"] = "block"
-            try:
-                output, stderr = run_router_gemini(input_data, "BeforeTool")
-            finally:
-                del os.environ["HYDRATION_GATE_MODE"]
+        output, stderr = run_router_gemini(input_data, "BeforeTool")
 
         # The gate messages should reference PreToolUse behavior
-        # Hydration gate blocks read operations on unhydrated sessions
-        assert output["decision"] == "deny", f"Expected deny. Output: {output}, Stderr: {stderr}"
+        # Hydration gate is OPEN by default, so it should allow
+        assert output["decision"] == "allow", f"Expected allow. Output: {output}, Stderr: {stderr}"
 
     def test_session_end_maps_to_stop(self) -> None:
         """Gemini SessionEnd maps to internal Stop event."""

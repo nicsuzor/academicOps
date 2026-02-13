@@ -14,15 +14,19 @@ if str(AOPS_CORE) not in sys.path:
 
 
 from hooks.gate_config import TOOL_CATEGORIES, get_tool_category
-from hooks.gates import check_tool_gate
+from hooks.router import HookRouter
 from hooks.schemas import HookContext
 from lib.gate_model import GateVerdict
+from lib.gates.registry import GateRegistry
 from lib.session_state import SessionState
 
 
 # Helper to mock session state loading
 @pytest.fixture
 def mock_session_state():
+    # Ensure gates are initialized
+    GateRegistry.initialize()
+
     with patch("lib.session_state.SessionState.load") as mock_load:
         # Create a real Pydantic object
         state = SessionState.create("test-session-123")
@@ -84,21 +88,15 @@ class TestAskUserQuestionAlwaysAvailable:
             },
         )
 
-        # check_tool_gate no longer takes state argument when called via import?
-        # Wait, check_tool_gate in hooks/gates.py takes (ctx, state) or just ctx?
-        # In my refactor: `def check_tool_gate(ctx: HookContext) -> GateResult:`
-        # It calls `session_state.load_session_state(ctx.session_id)`.
-        # BUT I changed it to `def check_tool_gate(ctx: HookContext) -> GateResult:` in the *legacy* dispatcher signature?
-        # NO, I changed it to `def check_tool_gate(ctx: HookContext, state: SessionState) -> GateResult:` in the *new* dispatcher.
-        # But wait, `router.py` calls it with `(ctx, state)`.
+        router = HookRouter()
+        result = router._dispatch_gates(ctx, state)
 
-        # However, `gate_registry.py` imports it.
-        # If I import it directly from `hooks.gates`, I need to pass state.
-
-        result = check_tool_gate(ctx, state)
-
-        # Should allow because AskUserQuestion is always_available
-        assert result.verdict == GateVerdict.ALLOW
+        # Should allow (None means allow in _dispatch_gates) or explict Allow
+        if result:
+            assert result.verdict == GateVerdict.ALLOW
+        else:
+            # None implies ALLOW
+            pass
 
 
 class TestActivateSkillNeverBlocked:
@@ -120,10 +118,11 @@ class TestActivateSkillNeverBlocked:
         state.gates["hydration"].status = "closed"
         state.state["hydration_pending"] = True
 
-        result = check_tool_gate(mock_context, state)
+        router = HookRouter()
+        result = router._dispatch_gates(mock_context, state)
 
-        # Should allow because activate_skill is always_available
-        assert result.verdict == GateVerdict.ALLOW
+        if result:
+            assert result.verdict == GateVerdict.ALLOW
 
     def test_activate_skill_allowed_when_hydration_pending(self, mock_context, mock_session_state):
         """activate_skill should be allowed even when hydration is pending."""
@@ -131,9 +130,11 @@ class TestActivateSkillNeverBlocked:
         state.gates["hydration"].status = "closed"
         state.state["hydration_pending"] = True
 
-        result = check_tool_gate(mock_context, state)
+        router = HookRouter()
+        result = router._dispatch_gates(mock_context, state)
 
-        assert result.verdict == GateVerdict.ALLOW
+        if result:
+            assert result.verdict == GateVerdict.ALLOW
 
 
 class TestHydratorActiveBypass:
@@ -151,9 +152,11 @@ class TestHydratorActiveBypass:
             tool_input={"file_path": "/some/file.py"},
         )
 
-        result = check_tool_gate(ctx, state)
+        router = HookRouter()
+        result = router._dispatch_gates(ctx, state)
 
-        assert result.verdict == GateVerdict.ALLOW
+        if result:
+            assert result.verdict == GateVerdict.ALLOW
 
     def test_write_tool_allowed_when_hydrator_active(self, mock_session_state):
         """Write tool should be allowed when hydrator is active."""
@@ -167,9 +170,11 @@ class TestHydratorActiveBypass:
             tool_input={"file_path": "/some/file.py", "content": "test"},
         )
 
-        result = check_tool_gate(ctx, state)
+        router = HookRouter()
+        result = router._dispatch_gates(ctx, state)
 
-        assert result.verdict == GateVerdict.ALLOW
+        if result:
+            assert result.verdict == GateVerdict.ALLOW
 
 
 class TestTaskHydratorSpawn:
@@ -190,9 +195,11 @@ class TestTaskHydratorSpawn:
             },
         )
 
-        result = check_tool_gate(ctx, state)
+        router = HookRouter()
+        result = router._dispatch_gates(ctx, state)
 
-        assert result.verdict == GateVerdict.ALLOW
+        if result:
+            assert result.verdict == GateVerdict.ALLOW
         # Note: Task is always_available so it bypasses all gates.
         # Gate opens later on SubagentStop when hydrator finishes.
 
@@ -204,6 +211,8 @@ class TestReadToolBlockedWithoutHydration:
         """Read should be blocked when hydration gate is not passed."""
         state, _ = mock_session_state
         state.close_gate("hydration")
+        # Ensure temp_path is present in metrics for template rendering
+        state.gates["hydration"].metrics["temp_path"] = "/tmp/fake/instruction.md"
         state.state["hydrator_active"] = False
         state.state["hydration_pending"] = True
 
@@ -214,9 +223,13 @@ class TestReadToolBlockedWithoutHydration:
             tool_input={"file_path": "/some/file.py"},
         )
 
-        result = check_tool_gate(ctx, state)
+        router = HookRouter()
+
+        # Mock hydration gate mode to deny if needed, but defaults to DENY in policy
+        result = router._dispatch_gates(ctx, state)
 
         # Should block or warn because hydration is required for read_only
+        assert result
         assert result.verdict in (GateVerdict.DENY, GateVerdict.WARN)
 
     def test_read_allowed_when_hydration_passed(self, mock_session_state):
@@ -233,6 +246,8 @@ class TestReadToolBlockedWithoutHydration:
             tool_input={"file_path": "/some/file.py"},
         )
 
-        result = check_tool_gate(ctx, state)
+        router = HookRouter()
+        result = router._dispatch_gates(ctx, state)
 
-        assert result.verdict == GateVerdict.ALLOW
+        if result:
+            assert result.verdict == GateVerdict.ALLOW
