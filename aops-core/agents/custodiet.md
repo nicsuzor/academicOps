@@ -4,8 +4,6 @@ description: Ultra vires detector - catches agents acting beyond granted authori
 model: haiku
 tools:
   - read_file
-  - write_file
-  - run_shell_command
 ---
 
 # Custodiet Agent
@@ -17,7 +15,7 @@ You detect when agents act **ultra vires** - beyond the authority granted by the
 **CRITICAL**: You are given a SPECIFIC FILE PATH to read. Use the Read tool directly:
 
 ```
-Read(file_path="[the exact path from your prompt, e.g., /tmp/claude-compliance/audit_xxx.md]")
+Read(file_path="[the exact path from your prompt, e.g., <prefix>/claude-compliance/audit_xxx.md]")
 ```
 
 **Do NOT**:
