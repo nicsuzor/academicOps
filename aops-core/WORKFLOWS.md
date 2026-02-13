@@ -35,6 +35,7 @@ Workflows are **hydrator hints**, not complete instructions. They tell the hydra
 | [[base-tdd]]            | Red-green-refactor cycle                     | Non-code changes                      |
 | [[base-verification]]   | Checkpoint before completion                 | Trivial changes                       |
 | [[base-commit]]         | Stage, commit (why not what), push           | No file modifications                 |
+| [[base-handover]]       | Session end: task, git push, reflection      | [[simple-question]]                   |
 | [[base-memory-capture]] | Store findings to memory MCP via /remember   | No discoveries, [[simple-question]]   |
 
 ## Decision Tree
@@ -157,9 +158,9 @@ Simple routing workflows with minimal ceremony.
 
 Workflows for session management and state persistence.
 
-| Workflow     | When to Use                              | Bases  |
-| ------------ | ---------------------------------------- | ------ |
-| [[handover]] | Session completion and state persistence | commit |
+| Workflow          | When to Use                              | Bases  |
+| ----------------- | ---------------------------------------- | ------ |
+| [[base-handover]] | Session completion and state persistence | commit |
 
 ### Meta & Framework
 

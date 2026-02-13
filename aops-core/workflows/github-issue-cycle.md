@@ -233,32 +233,6 @@ Action:
 
 **Note**: Authorization is currently implicit via GitHub Actions permissions. The workflow runs for any comment matching the trigger phrases. To restrict to authorized reviewers, add a condition checking `github.event.comment.user.login` or require the "agent-ready" label.
 
----
-
-## Dogfooding Notes
-
-This workflow is being developed through use on bug #394 (hook system_message/context_injection separation).
-
-### Session log
-
-**2026-02-11 Session 1**: Workflow creation + plan verification
-
-- Created this workflow file
-- Demonstrated hydration process: fetch issue → check comments → verify audit tables
-- Posted `[PLAN VERIFIED]` comment to issue #394
-- Created task `aops-e103b512` for future automated trigger
-- **Learning**: Verification step is critical — agent must run critic-requested greps and compare against audit tables before declaring plan complete
-- **Next**: Implementation phase (Step 1: Fix custom_actions.py)
-
-**2026-02-12 Session 2**: Automated trigger implementation (task `aops-e103b512`)
-
-- Created `.github/workflows/polecat-issue-trigger.yml`
-- Modeled after existing `claude.yml` pattern for consistency
-- Features: issue_comment + PR review triggers, workflow_dispatch for manual testing, concurrency control
-- Trigger phrases: `@polecat`, `ready for agent` (case-insensitive)
-- Updated this documentation to reflect implementation
-- **Learning**: Follow existing patterns (claude.yml) rather than inventing new approaches
-
 ### Open Questions
 
 1. **Comment conventions**: Are `[PLAN VERIFIED]`, `[READY FOR REVIEW]`, `[BLOCKED]` sufficient? What other signals needed?

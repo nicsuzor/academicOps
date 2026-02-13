@@ -45,6 +45,8 @@ Skill(skill="audit")
 Skill(skill="audit", args="session-effectiveness /path/to/transcript.md")
 ```
 
+<!-- check for duplication and remove anything here that is covered in the skill. -->
+
 ## Workflow Phases
 
 The full audit runs 11 phases (see `skills/audit/SKILL.md` for details):

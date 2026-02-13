@@ -1,19 +1,9 @@
 ---
-id: handover
-title: Handover Workflow
-type: automation
-category: instruction
+id: base-handover
+title: "Base: Handover"
+category: base
 bases: [base-commit]
-permalink: handover-workflow
-tags:
-  - dump
-  - handover
-  - workflow
-  - emergency-handover-workflow
 ---
-
-<!-- NS: make this a 'base' workflow and require just about EVERY task to go through the session end process. MANDATORY. also add git commit and cleanup. -->
-<!-- @claude 2026-02-07: Agreed. This should become base-handover and be composed into all file-modifying workflows. Current MANDATORY section already covers git commit/push. Task created: aops-54ff7ab0. Will: (1) rename to base-handover.md, (2) add to bases: array in all relevant workflows, (3) ensure hydrator always includes handover steps. -->
 
 # Landing the Plane (Session Completion)
 
@@ -59,9 +49,6 @@ If you DID NOT claim a task AND you did meaningful work:
 - You shouldn't have, but fix that now by creating a task to document your work.
 
 Update your claimed task with progress and release it.
-
-<!--@NS: add proper syntax here for updating and releasing the task. -->
-<!-- @claude 2026-02-07: Done. Updated with complete syntax including body append and status change. -->
 
 ```
 mcp__plugin_aops-core_task_manager__update_task(

@@ -26,29 +26,13 @@ backend: scripts
 - "clean up my inbox"
 - `/email`
 
-**Backend**: Pluggable - uses task scripts (Phase 1-2) or Tasks MCP (Phase 3+). Falls back gracefully if primary backend unavailable.
+**Backend**: Pluggable - uses task scripts (Phase 1-2) or Tasks MCP (Phase 3+). 
 
 ## Core Workflow
 
 ### Step 0: Check Existing Tasks (MANDATORY FIRST)
 
 **Before fetching emails**, check existing tasks to prevent duplicates. Emails persist in inbox and get re-read by this workflow.
-
-**Use memory server semantic search** (preferred over grep):
-
-```
-mcp__memory__retrieve_memory(query="email subject keywords")
-```
-
-**Fallback to file search if memory server unavailable**:
-
-```bash
-# Search inbox tasks
-grep -li "SEARCH_TERM" $ACA_DATA/tasks/inbox/*.md
-
-# Search archived tasks (already completed)
-grep -li "SEARCH_TERM" $ACA_DATA/tasks/archived/*.md
-```
 
 **When duplicate detected**:
 
