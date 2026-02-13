@@ -253,14 +253,26 @@ TRANSITION_TABLE: dict[tuple[TaskStatus, TaskStatus], tuple[GuardFunc, str]] = {
     # From ACTIVE (pending in spec is our ACTIVE)
     (TaskStatus.ACTIVE, TaskStatus.DECOMPOSING): (_guard_always_pass, "begin_breakdown"),
     (TaskStatus.ACTIVE, TaskStatus.IN_PROGRESS): (_guard_worker_id_set, "worker_claims"),
-    (TaskStatus.ACTIVE, TaskStatus.BLOCKED): (_guard_unblock_condition_set, "dependency_discovered"),
+    (TaskStatus.ACTIVE, TaskStatus.BLOCKED): (
+        _guard_unblock_condition_set,
+        "dependency_discovered",
+    ),
     (TaskStatus.ACTIVE, TaskStatus.FAILED): (_guard_diagnostic_set, "claim_timeout"),
     (TaskStatus.ACTIVE, TaskStatus.CANCELLED): (_guard_reason_set, "user_cancels"),
     # From DECOMPOSING
-    (TaskStatus.DECOMPOSING, TaskStatus.DECOMPOSING): (_guard_depth_under_limit, "iteration_complete"),
+    (TaskStatus.DECOMPOSING, TaskStatus.DECOMPOSING): (
+        _guard_depth_under_limit,
+        "iteration_complete",
+    ),
     (TaskStatus.DECOMPOSING, TaskStatus.CONSENSUS): (_guard_always_pass, "proposal_ready"),
-    (TaskStatus.DECOMPOSING, TaskStatus.BLOCKED): (_guard_unblock_condition_set, "external_dependency_found"),
-    (TaskStatus.DECOMPOSING, TaskStatus.FAILED): (_guard_diagnostic_set, "exception_or_depth_exceeded"),
+    (TaskStatus.DECOMPOSING, TaskStatus.BLOCKED): (
+        _guard_unblock_condition_set,
+        "external_dependency_found",
+    ),
+    (TaskStatus.DECOMPOSING, TaskStatus.FAILED): (
+        _guard_diagnostic_set,
+        "exception_or_depth_exceeded",
+    ),
     (TaskStatus.DECOMPOSING, TaskStatus.CANCELLED): (_guard_reason_set, "user_cancels"),
     # From CONSENSUS
     (TaskStatus.CONSENSUS, TaskStatus.WAITING): (_guard_always_pass, "all_reviewers_approve"),
@@ -276,13 +288,19 @@ TRANSITION_TABLE: dict[tuple[TaskStatus, TaskStatus], tuple[GuardFunc, str]] = {
     (TaskStatus.WAITING, TaskStatus.FAILED): (_guard_diagnostic_set, "approval_timeout"),
     # From IN_PROGRESS
     (TaskStatus.IN_PROGRESS, TaskStatus.REVIEW): (_guard_pr_url_set, "pr_filed"),
-    (TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED): (_guard_unblock_condition_set, "dependency_discovered"),
+    (TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED): (
+        _guard_unblock_condition_set,
+        "dependency_discovered",
+    ),
     (TaskStatus.IN_PROGRESS, TaskStatus.FAILED): (_guard_diagnostic_set, "worker_crash_or_timeout"),
     (TaskStatus.IN_PROGRESS, TaskStatus.CANCELLED): (_guard_reason_set, "user_cancels"),
     # From REVIEW
     (TaskStatus.REVIEW, TaskStatus.MERGE_READY): (_guard_always_pass, "review_consensus_reached"),
     (TaskStatus.REVIEW, TaskStatus.IN_PROGRESS): (_guard_worker_id_set, "changes_requested"),
-    (TaskStatus.REVIEW, TaskStatus.BLOCKED): (_guard_unblock_condition_set, "dependency_discovered"),
+    (TaskStatus.REVIEW, TaskStatus.BLOCKED): (
+        _guard_unblock_condition_set,
+        "dependency_discovered",
+    ),
     (TaskStatus.REVIEW, TaskStatus.FAILED): (_guard_diagnostic_set, "review_timeout"),
     (TaskStatus.REVIEW, TaskStatus.CANCELLED): (_guard_reason_set, "pr_closed_without_merge"),
     # From MERGE_READY
@@ -320,7 +338,9 @@ def _generate_idempotency_key(task_id: str, from_status: TaskStatus, to_status: 
     return f"{task_id}-{from_status.value}-{to_status.value}-{ts}"
 
 
-def _validate_state_invariants(task: Task, new_status: TaskStatus, **kwargs: Any) -> tuple[bool, str | None]:
+def _validate_state_invariants(
+    task: Task, new_status: TaskStatus, **kwargs: Any
+) -> tuple[bool, str | None]:
     """Validate state invariants for the target status.
 
     Args:
@@ -913,9 +933,7 @@ class Task:
             List of valid target statuses
         """
         return [
-            to_status
-            for (from_status, to_status) in TRANSITION_TABLE
-            if from_status == self.status
+            to_status for (from_status, to_status) in TRANSITION_TABLE if from_status == self.status
         ]
 
     def transition_to(
@@ -962,8 +980,13 @@ class Task:
         """
         from_status = self.status
 
-        # Check if already at target status (no-op)
-        if from_status == new_status:
+        # Check if transition is explicitly defined in table (even if self-transition)
+        transition_key = (from_status, new_status)
+        is_explicit = transition_key in TRANSITION_TABLE
+
+        # Check if already at target status (no-op), unless it's an explicit self-transition
+        # (like DECOMPOSING -> DECOMPOSING iteration) which must run guards.
+        if from_status == new_status and not is_explicit:
             return TransitionResult(
                 success=True,
                 from_status=from_status,
@@ -1024,9 +1047,7 @@ class Task:
             )
 
         # Validate state invariants
-        invariant_valid, invariant_error = _validate_state_invariants(
-            self, new_status, **kwargs
-        )
+        invariant_valid, invariant_error = _validate_state_invariants(self, new_status, **kwargs)
         if not invariant_valid:
             return TransitionResult(
                 success=False,
@@ -1064,9 +1085,22 @@ class Task:
             # Keep diagnostic for history when retrying
             pass
         # Keep worker_id and pr_url for audit trail on terminal states
-        if new_status not in (TaskStatus.IN_PROGRESS, TaskStatus.DONE, TaskStatus.CANCELLED, TaskStatus.REVIEW, TaskStatus.MERGE_READY, TaskStatus.MERGING):
+        if new_status not in (
+            TaskStatus.IN_PROGRESS,
+            TaskStatus.DONE,
+            TaskStatus.CANCELLED,
+            TaskStatus.REVIEW,
+            TaskStatus.MERGE_READY,
+            TaskStatus.MERGING,
+        ):
             self.worker_id = None
-        if new_status not in (TaskStatus.REVIEW, TaskStatus.MERGE_READY, TaskStatus.MERGING, TaskStatus.DONE, TaskStatus.CANCELLED):
+        if new_status not in (
+            TaskStatus.REVIEW,
+            TaskStatus.MERGE_READY,
+            TaskStatus.MERGING,
+            TaskStatus.DONE,
+            TaskStatus.CANCELLED,
+        ):
             self.pr_url = None
         if new_status not in (TaskStatus.WAITING,):
             self.approval_type = None

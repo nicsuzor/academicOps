@@ -18,6 +18,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import re
 import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -37,6 +38,9 @@ from lib.paths import get_data_root
 from lib.task_index import TaskIndex, TaskIndexEntry
 from lib.task_model import Task, TaskComplexity, TaskStatus, TaskType
 from lib.task_storage import TaskStorage
+
+# Pre-compile regex pattern for performance
+_INCOMPLETE_MARKER_PATTERN = re.compile(r"^-\s*\[ \]\s*(.+)$", re.MULTILINE)
 
 
 def _resolve_status_alias(status: str) -> str:
@@ -236,6 +240,39 @@ def _format_tree(node: dict[str, Any], indent: int = 0) -> str:
         lines.append(_format_tree(child, indent + 1))
 
     return "\n".join(lines)
+
+
+def _check_incomplete_markers(body: str) -> list[str]:
+    """Check for incomplete checklist markers in the task body.
+
+    Looks for lines starting with '- [ ]'.
+
+    Args:
+        body: Task body markdown
+
+    Returns:
+        List of incomplete items found
+    """
+    if not body:
+        return []
+
+    return [m.group(1).strip() for m in _INCOMPLETE_MARKER_PATTERN.finditer(body)]
+
+
+def _format_incomplete_items_error(incomplete: list[str]) -> str:
+    """Format error message for incomplete checklist items.
+
+    Args:
+        incomplete: List of incomplete item descriptions
+
+    Returns:
+        Formatted error message
+    """
+    return (
+        f"Cannot complete task with {len(incomplete)} incomplete items: "
+        f"{', '.join(incomplete[:3])}{'...' if len(incomplete) > 3 else ''}. "
+        "Mark items as [x] or use force=True to bypass."
+    )
 
 
 # =============================================================================
@@ -471,6 +508,7 @@ def update_task(
     replace_body: bool = False,
     assignee: str | None = None,
     complexity: str | None = None,
+    force: bool = False,
 ) -> dict[str, Any]:
     """Update an existing task.
 
@@ -496,6 +534,7 @@ def update_task(
         assignee: Task owner - 'nic' or 'polecat' (or "" to clear)
         complexity: Task complexity - "mechanical", "requires-judgment", "multi-step",
             "needs-decomposition", or "blocked-human" (or "" to clear)
+        force: If True, bypass validation checks when setting status=done (default: False)
 
     Returns:
         Dictionary with:
@@ -559,6 +598,26 @@ def update_task(
                                 f"(status: in_progress since {task.modified.isoformat()}). "
                                 f"Cannot claim for '{new_assignee}'."
                             ),
+                        }
+
+                # Validation: Check for incomplete checklist markers when marking DONE
+                if new_status == TaskStatus.DONE and not force:
+                    # Note: we check current task body. If body is also being updated in this
+                    # same call, we should ideally check the combined body.
+                    combined_body = task.body
+                    if body is not None:
+                        if replace_body or not task.body:
+                            combined_body = body
+                        else:
+                            combined_body = task.body + "\n\n" + body
+
+                    incomplete = _check_incomplete_markers(combined_body)
+                    if incomplete:
+                        return {
+                            "success": False,
+                            "task": _task_to_dict(task),
+                            "modified_fields": [],
+                            "message": _format_incomplete_items_error(incomplete),
                         }
 
                 task.status = new_status
@@ -744,13 +803,16 @@ def claim_next_task(
 
 
 @mcp.tool()
-def complete_task(id: str) -> dict[str, Any]:
+def complete_task(id: str, force: bool = False) -> dict[str, Any]:
     """Mark a task as done.
 
     Updates status to "done" and sets modified timestamp.
+    Validates that there are no incomplete checklist markers in the body
+    unless force=True is provided.
 
     Args:
         id: Task ID to complete
+        force: If True, bypass validation checks (default: False)
 
     Returns:
         Dictionary with:
@@ -768,6 +830,16 @@ def complete_task(id: str) -> dict[str, Any]:
                 "task": None,
                 "message": f"Task not found: {id}",
             }
+
+        # Validation: Check for incomplete checklist markers
+        if not force:
+            incomplete = _check_incomplete_markers(task.body)
+            if incomplete:
+                return {
+                    "success": False,
+                    "task": _task_to_dict(task),
+                    "message": _format_incomplete_items_error(incomplete),
+                }
 
         task.complete()
         storage.save_task(task)

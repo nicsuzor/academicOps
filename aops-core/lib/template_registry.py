@@ -162,6 +162,19 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         optional_vars=("session_id", "gate_name", "custodiet_mode", "skills_content"),
         description="Deep session context for critic review (full narrative)",
     ),
+    "qa.context": TemplateSpec(
+        name="qa.context",
+        category=TemplateCategory.SUBAGENT_INSTRUCTION,
+        filename="qa-context.md",
+        required_vars=(
+            "session_context",
+            "tool_name",
+            "axioms_content",
+            "heuristics_content",
+        ),
+        optional_vars=("session_id", "gate_name", "custodiet_mode", "skills_content"),
+        description="Session context for QA verification before exit",
+    ),
     "custodiet.instruction": TemplateSpec(
         name="custodiet.instruction",
         category=TemplateCategory.CONTEXT_INJECTION,

@@ -170,8 +170,14 @@ def determine_complexity(
     return "requires-judgment"
 
 
-def determine_assignee(body: str, fm: dict[str, Any], title: str) -> str:
-    """Determine if task should go to nic or bot."""
+def determine_assignee(body: str, fm: dict[str, Any], title: str) -> str | None:
+    """Determine task assignee based on content analysis.
+
+    Returns:
+        'polecat' for mechanical/automatable work (swarm-claimable)
+        None for judgment-call tasks (unassigned backlog)
+        Explicit assignee if already set in frontmatter
+    """
     title_lower = title.lower()
     body_lower = body.lower()
     tags = fm.get("tags", []) or []
@@ -179,29 +185,7 @@ def determine_assignee(body: str, fm: dict[str, Any], title: str) -> str:
     if fm.get("assignee"):
         return fm["assignee"]
 
-    # Nic-required patterns (judgment, human interaction) - check first
-    nic_patterns = [
-        r"\breview\b",
-        r"\brespond\b.*\b(email|to)\b",
-        r"\bmeeting\b",
-        r"\bdecision\b",
-        r"\bdesign\b.*\b(decision|choice)\b",
-        r"\bapprove\b",
-        r"\bfinance\b",
-        r"\breceipt\b",
-        r"\bpeer.?review\b",
-    ]
-    nic_keywords = ["requires human", "underspecified", "needs clarification"]
-
-    combined_text = f"{body_lower} {title_lower}"
-    for pattern in nic_patterns:
-        if re.search(pattern, combined_text):
-            return "nic"
-    for keyword in nic_keywords:
-        if keyword in body_lower:
-            return "nic"
-
-    # Bot-friendly patterns (clear, automatable)
+    # Bot-friendly patterns (clear, automatable) → polecat
     if "bot-assigned" in tags:
         return "polecat"
 
@@ -212,16 +196,19 @@ def determine_assignee(body: str, fm: dict[str, Any], title: str) -> str:
         r"\brefactor\b",
         r"\bupdate\b.*\b(config|schema|spec)\b",
         r"\badd\b.*\b(field|parameter|option)\b",
+        r"\bcreate\b.*\b(skill|hook|workflow|script)\b",
     ]
+    combined_text = f"{body_lower} {title_lower}"
     for pattern in bot_patterns:
         if re.search(pattern, combined_text):
             return "polecat"
 
-    # Default: if task has clear structure, assign to bot
+    # Structured tasks with clear acceptance criteria → polecat
     if "## acceptance" in body_lower or "- [ ]" in body:
         return "polecat"
 
-    return "nic"
+    # Default: unassigned backlog for judgment-call tasks
+    return None
 
 
 def ensure_wikilink(body: str, fm: dict[str, Any]) -> str:
@@ -274,16 +261,21 @@ def process_task(task_path: str, has_children: bool = False) -> dict[str, Any]:
             result["changes"].append(f"complexity->{complexity}")
         result["complexity"] = complexity
 
-        # Assign based on complexity
-        if complexity == "blocked-human":
-            assignee = "nic"
+        # Assign based on complexity (respect explicit frontmatter assignee)
+        if fm.get("assignee"):
+            assignee = fm["assignee"]  # explicit assignee always wins
+        elif complexity == "blocked-human":
+            assignee = None  # judgment-call: unassigned backlog
         elif complexity == "mechanical":
             assignee = "polecat"
         else:
             assignee = determine_assignee(body, fm, title)
 
         if fm.get("assignee") != assignee:
-            fm["assignee"] = assignee
+            if assignee is None:
+                fm.pop("assignee", None)
+            else:
+                fm["assignee"] = assignee
             result["changes"].append(f"assignee->{assignee}")
         result["action"] = f"assign:{assignee}"
 

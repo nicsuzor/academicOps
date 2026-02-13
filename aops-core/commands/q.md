@@ -38,8 +38,9 @@ If a related task exists with status != "done":
 
 **Determine assignee**:
 
-- `polecat`: Mechanical work, code changes, documentation (swarm-claimable)
-- `nic`: Requires human judgment, external communication, decisions
+- `polecat`: Mechanical work, code changes, documentation, create skill/hook (swarm-claimable)
+- `null` (unassigned): Judgment-call tasks - review, evaluate, decide, design choices (backlog for nic to claim)
+- Explicit override: User specifies `/q nic: <description>` → `assignee="nic"`
 
 **Determine priority**:
 
@@ -56,7 +57,7 @@ mcp__plugin_aops-tools_task_manager__create_task(
   type="task",  # or: bug, feature, learn
   project="<infer from context>",
   priority=2,
-  assignee="polecat",  # or "nic" for human tasks
+  assignee="polecat",  # or null for judgment tasks, "nic" only if explicitly requested
   tags=["<relevant>", "<tags>"],
   body="""# <Title>
 
@@ -78,9 +79,9 @@ mcp__plugin_aops-tools_task_manager__create_task(
 
 ### Step 3: Confirm and HALT
 
-Report: "Queued: [task-id] - [title] (assignee: polecat, P2)"
+Report: "Queued: [task-id] - [title] (assignee: polecat, P2)" or "Queued: [task-id] - [title] (unassigned, P2)"
 
-The task is queued. Swarm will claim if assignee=polecat.
+The task is queued. Swarm will claim if assignee=polecat. Unassigned tasks stay in backlog for nic to claim or delegate.
 
 ## Task Body Template
 
@@ -108,10 +109,11 @@ Good task bodies help workers succeed:
 
 ## Arguments
 
-- `/q <description>` - Create task with description as title
+- `/q <description>` - Create task with description as title (auto-route: mechanical→polecat, judgment→unassigned)
 - `/q` (no args) - Prompt user for task details
 - `/q P0 <description>` - Create high-priority task
 - `/q bot <description>` - Explicitly assign to swarm
+- `/q nic: <description>` - Explicitly assign to nic (override default routing)
 
 ## Meta-Workflow: Commission Don't Code
 

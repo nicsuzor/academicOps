@@ -8,18 +8,15 @@ from lib.gate_model import GateResult, GateVerdict
 from session_env_setup import run_session_env_setup
 
 
-@patch("hooks.gates.session_paths.get_session_short_hash")
-@patch("hooks.gates.get_hook_log_path")
-@patch("hooks.gates.session_paths.get_session_file_path")
-@patch("hooks.gates.GateRegistry.get_all_gates")
+@patch("session_env_setup.get_hook_log_path")
+@patch("session_env_setup.get_session_file_path")
+@patch("lib.gates.registry.GateRegistry.get_all_gates")
 def test_session_start_message_generation(
     mock_get_all_gates,
     mock_get_file_path,
     mock_get_log_path,
-    mock_get_hash,
 ):
     """Verify SessionStart gate generates the correct info message."""
-    mock_get_hash.return_value = "abc12345"
     mock_get_log_path.return_value = "/tmp/gemini/sessions/hooks.log"
 
     # Create a mock Path that has exists() return True
@@ -44,6 +41,7 @@ def test_session_start_message_generation(
 
     ctx = HookContext(
         session_id="session-123",
+        session_short_hash="abc12345",
         hook_event="SessionStart",
         raw_input={"session_id": "session-123"},
     )

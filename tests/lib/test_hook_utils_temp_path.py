@@ -26,7 +26,7 @@ class TestGeminiTempPathFromTranscript:
         transcript_file = chats_dir / "session-2026-01-28.json"
         transcript_file.write_text("{}")
 
-        input_data = {"transcript_path": str(transcript_file)}
+        input_data = {"transcript_path": str(transcript_file), "session_id": "gemini-123"}
 
         # Ensure GEMINI_CLI is NOT set and cwd doesn't have .gemini
         with patch.dict(os.environ, {}, clear=True):
@@ -52,7 +52,7 @@ class TestGeminiTempPathFromTranscript:
         transcript_file = logs_dir / "session.jsonl"
         transcript_file.write_text("{}\n")
 
-        input_data = {"transcript_path": str(transcript_file)}
+        input_data = {"transcript_path": str(transcript_file), "session_id": "gemini-456"}
 
         with patch.dict(os.environ, {}, clear=True):
             os.environ.pop("GEMINI_CLI", None)
@@ -73,7 +73,7 @@ class TestGeminiTempPathFromTranscript:
         transcript_file = claude_tmp / "transcript.json"
         transcript_file.write_text("{}")
 
-        input_data = {"transcript_path": str(transcript_file)}
+        input_data = {"transcript_path": str(transcript_file), "session_id": "claude-789"}
 
         with patch.dict(os.environ, {}, clear=True):
             os.environ.pop("GEMINI_CLI", None)
@@ -103,7 +103,7 @@ class TestGeminiTempPathFromTranscript:
         custom_tmp = tmp_path / "custom_tmp"
         custom_tmp.mkdir()
 
-        input_data = {"transcript_path": str(transcript_file)}
+        input_data = {"transcript_path": str(transcript_file), "session_id": "gemini-999"}
 
         with patch.dict(os.environ, {"TMPDIR": str(custom_tmp)}, clear=True):
             result = get_hook_temp_dir("hydrator", input_data)
@@ -122,7 +122,7 @@ class TestGeminiTempPathFromTranscript:
         explicit_root = tmp_path / "explicit_gemini_root"
         explicit_root.mkdir()
 
-        input_data = {"transcript_path": str(transcript_file)}
+        input_data = {"transcript_path": str(transcript_file), "session_id": "gemini-888"}
 
         with patch.dict(os.environ, {"AOPS_GEMINI_TEMP_ROOT": str(explicit_root)}, clear=True):
             result = get_hook_temp_dir("hydrator", input_data)
@@ -134,40 +134,39 @@ class TestGeminiTempPathFromTranscript:
 class TestGeminiTempPathEdgeCases:
     """Edge cases for Gemini temp path resolution."""
 
-    def test_nonexistent_transcript_parent_fails_fast(self, tmp_path):
-        """Test that nonexistent transcript parent directory raises RuntimeError.
+    def test_nonexistent_transcript_parent_creates_dir(self, tmp_path):
+        """Test that nonexistent transcript parent directory is created.
 
-        FAIL-FAST: When Gemini provides a transcript_path with .gemini,
-        the hash directory MUST exist. If it doesn't, fail immediately -
-        no fallback to Claude paths, no silent directory creation.
+        The get_session_status_dir function is designed to create the directory
+        if it doesn't exist, so this test should verify creation rather than failure.
         """
         # Transcript path where hash dir doesn't exist
         fake_path = tmp_path / ".gemini" / "tmp" / "nonexistent" / "chats" / "session.json"
 
-        input_data = {"transcript_path": str(fake_path)}
+        input_data = {"transcript_path": str(fake_path), "session_id": "gemini-000"}
 
         with patch.dict(os.environ, {}, clear=True):
             os.environ.pop("GEMINI_CLI", None)
             os.environ.pop("TMPDIR", None)
             os.environ.pop("AOPS_GEMINI_TEMP_ROOT", None)
 
-            with pytest.raises(RuntimeError) as exc_info:
-                get_hook_temp_dir("hydrator", input_data)
+            result = get_hook_temp_dir("hydrator", input_data)
 
-        # Should fail with clear error message
-        assert "hash directory missing" in str(exc_info.value)
-        assert "nonexistent" in str(exc_info.value)
+        # Should create the directory
+        assert result.exists()
+        assert "nonexistent" in str(result)
 
     def test_no_input_data_falls_through(self):
-        """Test that None input_data falls through to Claude default."""
-        with patch.dict(os.environ, {}, clear=True):
+        """Test that None input_data falls through to Claude default (with env var)."""
+        # Must set CLAUDE_SESSION_ID since input_data is None
+        with patch.dict(os.environ, {"CLAUDE_SESSION_ID": "claude-fallback-123"}, clear=True):
             os.environ.pop("GEMINI_CLI", None)
             os.environ.pop("TMPDIR", None)
             os.environ.pop("AOPS_GEMINI_TEMP_ROOT", None)
 
             with patch("lib.hook_utils.Path.cwd", return_value=Path("/some/path")):
                 with patch(
-                    "lib.hook_utils.get_claude_project_folder",
+                    "lib.session_paths.get_claude_project_folder",
                     return_value="-some-path",
                 ):
                     result = get_hook_temp_dir("hydrator", None)

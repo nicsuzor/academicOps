@@ -897,7 +897,10 @@ class PolecatManager:
                 # Branch exists from a previous run - delete and recreate fresh from main.
                 # Polecat branches are disposable work branches; reusing stale branches
                 # leads to worktrees that are many commits behind main.
-                print(f"Branch {branch_name} exists from previous run, deleting and recreating fresh...", file=sys.stderr)
+                print(
+                    f"Branch {branch_name} exists from previous run, deleting and recreating fresh...",
+                    file=sys.stderr,
+                )
                 subprocess.run(["git", "branch", "-D", branch_name], cwd=repo_path, check=False)
                 subprocess.run(cmd, cwd=repo_path, check=True)
             else:

@@ -1,7 +1,6 @@
 import logging
 import re
 import time
-from collections import defaultdict
 from typing import Any
 
 from hooks.schemas import HookContext
@@ -131,17 +130,17 @@ class GenericGate:
             **state.metrics,
         }
 
-        # Safe format using format_map with default for missing keys
+        # Fail fast on missing template variables. The old defaultdict fallback
+        # silently produced "(not set)" which caused gates to pass broken
+        # instructions to agents (e.g. temp_path not in metrics).
         try:
-            return template.format_map(defaultdict(lambda: "(not set)", variables))
-        except (KeyError, ValueError, IndexError):
-            # Fallback: simple replacement with default for missing keys
-            result = template
-            for key, val in variables.items():
-                result = result.replace(f"{{{key}}}", str(val))
-            # Replace any remaining {placeholder} with "(not set)"
-            result = re.sub(r"\{(\w+)\}", "(not set)", result)
-            return result
+            return template.format_map(variables)
+        except KeyError as e:
+            raise RuntimeError(
+                f"Gate '{self.name}' template has unresolved variable {e}. "
+                f"Available variables: {sorted(variables.keys())}. "
+                f"Template: {template[:200]!r}"
+            ) from e
 
     def _apply_transition(
         self,
@@ -291,8 +290,8 @@ class GenericGate:
         self, context: HookContext, session_state: SessionState
     ) -> GateResult | None:
         """Evaluate only triggers (state updates), ignoring policies.
-        
-        Use this when bypassing gates for compliance subagents while still 
+
+        Use this when bypassing gates for compliance subagents while still
         needing to update gate states.
         """
         return self._evaluate_triggers(context, session_state)

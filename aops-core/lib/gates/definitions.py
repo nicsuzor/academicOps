@@ -19,7 +19,7 @@ GATE_CONFIGS = [
     GateConfig(
         name="hydration",
         description="Ensures prompts are hydrated with context.",
-        initial_status=GateStatus.CLOSED,
+        initial_status=GateStatus.OPEN,  # Starts open, closes on userpromptsubmit.
         triggers=[
             # Hydrator starts or finishes -> Open
             # DISPATCH: Main agent intends to call hydrator -> Open gate pre-emptively
@@ -41,7 +41,9 @@ GATE_CONFIGS = [
                     hook_event="UserPromptSubmit", custom_check="is_hydratable"
                 ),
                 transition=GateTransition(
-                    target_status=GateStatus.CLOSED, custom_action="hydrate_prompt"
+                    target_status=GateStatus.CLOSED,
+                    custom_action="hydrate_prompt",
+                    system_message_template="💧 Hydration required. Gate CLOSED.",
                 ),
             ),
         ],
@@ -58,12 +60,10 @@ GATE_CONFIGS = [
                 message_template="⛔ Hydration required: invoke prompt-hydrator before proceeding",
                 # Full agent instructions
                 context_template=(
-                    "**HYDRATION REQUIRED**\n\n"
-                    "You must invoke the **prompt-hydrator** agent to load context before proceeding.\n\n"
-                    "**Instruction**:\n"
+                    "**User prompt hydration required.** Invoke the **prompt-hydrator** agent with the file path argument: `{temp_path}`\n"
                     "Run the hydrator with this command:\n"
-                    "- Gemini: `delegate_to_agent(name='prompt-hydrator', query='Transform user prompt using context in {temp_path}')`\n"
-                    "- Claude: `Task(subagent_type='prompt-hydrator', prompt='Transform user prompt using context in {temp_path}')`"
+                    "- Gemini: `delegate_to_agent(name='prompt-hydrator', query='{temp_path}')`\n"
+                    "- Claude: `Task(subagent_type='prompt-hydrator', prompt='{temp_path}')`"
                 ),
             )
         ],
@@ -81,14 +81,18 @@ GATE_CONFIGS = [
                     subagent_type_pattern="custodiet",
                 ),
                 transition=GateTransition(
-                    reset_ops_counter=True, system_message_template="🛡️ Compliance verified."
+                    reset_ops_counter=True,
+                    system_message_template="🛡️ Compliance verified.",
+                    context_template="🛡️ Compliance verified.",
                 ),
             ),
             # Direct tool call fallback
             GateTrigger(
                 condition=GateCondition(hook_event="PostToolUse", tool_name_pattern="custodiet"),
                 transition=GateTransition(
-                    reset_ops_counter=True, system_message_template="🛡️ Compliance verified."
+                    reset_ops_counter=True,
+                    system_message_template="🛡️ Compliance verified.",
+                    context_template="🛡️ Compliance verified.",
                 ),
             ),
         ],
@@ -101,10 +105,9 @@ GATE_CONFIGS = [
                     excluded_tool_categories=["always_available", "read_only"],
                 ),
                 verdict=CUSTODIET_GATE_MODE,
-                message_template="Compliance check required ({ops_since_open} ops since last check).\nInvoke 'custodiet' agent.",
+                message_template="Periodic compliance check required ({ops_since_open} ops since last check).\nInvoke 'custodiet' agent.",
                 context_template=(
-                    "**Compliance check required ({ops_since_open} ops since last check).**\n\n"
-                    "You must invoke the **custodiet** agent to load context before proceeding:\n"
+                    "**Periodic compliance check required ({ops_since_open} ops since last check).** Invoke the **custodiet** agent with the file path argument: `{temp_path}`\n"
                     "- Gemini: `delegate_to_agent(name='custodiet', query='{temp_path}')`\n"
                     "- Claude: `Task(subagent_type='custodiet', prompt='{temp_path}')`"
                 ),
@@ -183,14 +186,15 @@ GATE_CONFIGS = [
                     excluded_tool_categories=["always_available"],
                 ),
                 verdict="deny",
+                custom_action="prepare_critic_review",
                 message_template="⛔ Critic review required before editing. Invoke critic agent first.",
                 context_template=(
                     "**CRITIC REVIEW REQUIRED**\n\n"
                     "You must invoke the **critic** agent to review your plan before making edits.\n\n"
                     "**Instruction**:\n"
                     "Run the critic with this command:\n"
-                    "- Gemini: `delegate_to_agent(name='aops-core:critic', query='Review the plan in the hydration output')`\n"
-                    "- Claude: `Task(subagent_type='aops-core:critic', prompt='Review the plan in the hydration output')`\n"
+                    "- Gemini: `delegate_to_agent(name='aops-core:critic', query='{temp_path}')`\n"
+                    "- Claude: `Task(subagent_type='aops-core:critic', prompt='{temp_path}')`\n"
                     "- Make sure you obey the instructions the tool or subagent produces, but do not print the output to the user -- it just clutters up the conversation."
                 ),
             ),
@@ -237,14 +241,15 @@ GATE_CONFIGS = [
                     hook_event="Stop",
                 ),
                 verdict="deny",
+                custom_action="prepare_qa_review",
                 message_template="⛔ QA verification required before exit. Invoke QA agent first.",
                 context_template=(
                     "**QA VERIFICATION REQUIRED**\n\n"
                     "You must invoke the **qa** agent to verify planned requirements before exiting.\n\n"
                     "**Instruction**:\n"
                     "Run the qa with this command:\n"
-                    "- Gemini: `delegate_to_agent(name='aops-core:qa', query='Verify planned requirements are met')`\n"
-                    "- Claude: `Task(subagent_type='aops-core:qa', prompt='Verify planned requirements are met')`\n"
+                    "- Gemini: `delegate_to_agent(name='aops-core:qa', query='{temp_path}')`\n"
+                    "- Claude: `Task(subagent_type='aops-core:qa', prompt='{temp_path}')`\n"
                     "- Make sure you obey the instructions the tool or subagent produces, but do not print the output to the user -- it just clutters up the conversation."
                 ),
             ),
