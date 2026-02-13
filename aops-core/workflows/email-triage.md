@@ -1,7 +1,7 @@
 ---
 id: email-triage
 category: operations
-bases: [base-task-tracking]
+bases: [base-task-tracking, base-handover]
 ---
 
 # Email Triage

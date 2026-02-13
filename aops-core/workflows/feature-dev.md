@@ -1,7 +1,7 @@
 ---
 id: feature-dev
 category: development
-bases: [base-task-tracking, base-tdd, base-verification, base-commit]
+bases: [base-task-tracking, base-tdd, base-verification, base-handover]
 ---
 
 # Feature Development Workflow

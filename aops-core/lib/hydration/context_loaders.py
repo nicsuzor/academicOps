@@ -296,8 +296,9 @@ def _load_project_workflows(prompt: str = "") -> str:
 
 
 def _load_global_workflow_content(prompt: str = "") -> str:
-    """Selectively load the content of relevant global workflows."""
+    """Selectively load the content of relevant global workflows and their bases."""
     from lib.file_index import get_relevant_file_paths
+    import yaml
 
     relevant_paths = get_relevant_file_paths(prompt, max_files=20)
     workflow_paths = [p for p in relevant_paths if p["path"].startswith("workflows/")]
@@ -306,21 +307,55 @@ def _load_global_workflow_content(prompt: str = "") -> str:
         return ""
 
     plugin_root = get_plugin_root()
-    included_content = []
+    included_content = {}  # Use dict to avoid duplicates: name -> content
 
-    for wp in workflow_paths:
-        path = plugin_root / wp["path"]
-        if path.exists():
-            try:
-                content = path.read_text()
-                wf_name = Path(wp["path"]).stem
-                included_content.append(
-                    f"\n\n### Global Workflow: {wf_name}\n\n{_strip_frontmatter(content)}"
-                )
-            except OSError:
-                pass
+    # Use a queue for breadth-first traversal of bases
+    queue = [p["path"] for p in workflow_paths]
+    processed = set()
 
-    return "".join(included_content)
+    while queue:
+        rel_path = queue.pop(0)
+        if rel_path in processed:
+            continue
+        processed.add(rel_path)
+
+        path = plugin_root / rel_path
+        if not path.exists():
+            continue
+
+        try:
+            raw_content = path.read_text()
+            wf_name = Path(rel_path).stem
+
+            # Parse frontmatter to find bases
+            if raw_content.startswith("---"):
+                parts = raw_content.split("---", 2)
+                if len(parts) >= 3:
+                    try:
+                        fm = yaml.safe_load(parts[1])
+                        if isinstance(fm, dict):
+                            bases = fm.get("bases", [])
+                            if isinstance(bases, list):
+                                for base in bases:
+                                    # Convert base ID to path (e.g. base-commit -> workflows/base-commit.md)
+                                    base_path = f"workflows/{base}.md"
+                                    if base_path not in processed:
+                                        queue.append(base_path)
+                    except Exception:
+                        pass
+
+            included_content[wf_name] = _strip_frontmatter(raw_content)
+        except OSError:
+            pass
+
+    # Format output
+    result = []
+    # Reverse order so bases appear before the workflows that use them (or vice versa, 
+    # but breadth-first queue gives us workflows then bases)
+    for name, content in included_content.items():
+        result.append(f"\n\n### Workflow: {name}\n\n{content}")
+
+    return "".join(result)
 
 
 def load_workflows_index(prompt: str = "") -> str:

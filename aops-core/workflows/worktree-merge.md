@@ -1,7 +1,7 @@
 ---
 id: worktree-merge
 category: integration
-bases: [base-commit]
+bases: [base-handover]
 triggers: ["merge polecat", "merge polecats", "merge worktrees", "merge outstanding tasks", "merge ready tasks", "merge branches"]
 ---
 
@@ -379,5 +379,5 @@ This commonly occurs when polecat sessions hit blocking bugs (e.g., hydration ga
 ## Related
 
 - [[batch-task-processing]] - Spawning polecat workers
-- [[handover]] - Session handover includes merge check
+- [[base-handover]] - Session handover includes merge check
 - `refinery/refinery/engineer.py` - Automated merge implementation

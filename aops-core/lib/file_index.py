@@ -210,6 +210,11 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         keywords=("task", "tasks", "work management", "task system", "task lifecycle"),
     ),
     FileEntry(
+        path="workflows/base-handover.md",
+        description="Handover base pattern (session end, task update, git push)",
+        keywords=("handover", "session end", "exit", "reflection", "git push", "dump"),
+    ),
+    FileEntry(
         path="lib/task_storage.py",
         description="Task file storage implementation",
         keywords=("task storage", "task file", "task persistence"),

@@ -1,7 +1,7 @@
 ---
 id: qa
 category: quality-assurance
-bases: [base-task-tracking, base-qa]
+bases: [base-task-tracking, base-qa, base-handover]
 ---
 
 # QA

@@ -2,7 +2,7 @@
 id: email-capture
 name: email-task-capture
 category: instruction
-bases: [base-task-tracking]
+bases: [base-task-tracking, base-handover]
 description: Extract action items from emails and create "ready for action" tasks with summaries, downloaded documents, and clear response requirements
 permalink: skills/tasks/workflows/email-capture
 tags: [workflow, email, task-capture, automation, memory, documents]

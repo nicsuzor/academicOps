@@ -1,7 +1,7 @@
 ---
 id: decompose
 category: planning
-bases: [base-task-tracking]
+bases: [base-task-tracking, base-handover]
 ---
 
 # Decompose

@@ -1,7 +1,7 @@
 ---
 id: github-issue-cycle
 category: operations
-bases: [base-task-tracking]
+bases: [base-task-tracking, base-handover]
 status: draft
 ---
 

@@ -1,7 +1,7 @@
 ---
 id: peer-review
 category: operations
-bases: [base-task-tracking]
+bases: [base-task-tracking, base-handover]
 ---
 
 # Peer Review

@@ -1,7 +1,7 @@
 ---
 id: email-reply
 category: operations
-bases: [base-task-tracking]
+bases: [base-task-tracking, base-handover]
 ---
 
 # Email Reply

@@ -1,7 +1,7 @@
 ---
 id: meta-improvement
 category: meta
-bases: [base-task-tracking]
+bases: [base-task-tracking, base-handover]
 ---
 
 # Meta Improvement
