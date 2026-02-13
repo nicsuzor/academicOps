@@ -30,6 +30,11 @@ tags: [framework, hooks, lifecycle, swarm, index]
 
 Scripts live in `scripts/hooks/lifecycle/`.
 
+> **Note**: Protocol retrospection is NOT a hook. It is a workflow step
+> within the supervisor's post-merge phase (Phase 6b in the workflow spec).
+> The supervisor already has access to transcripts and task bodies — it
+> doesn't need a separate script to gather them.
+
 ## Decision Boundary
 
 What shell hooks do vs what the supervisor agent does:
@@ -43,6 +48,8 @@ What shell hooks do vs what the supervisor agent does:
 | Send notifications? | Yes (mechanical) | No |
 | Reset stale tasks? | Yes (threshold check) | No |
 | Merge PRs? | No | Human or supervisor session |
+| Identify process friction? | No | Yes (Phase 6b retrospection) |
+| Improve own protocol? | No | Yes (delegates to /learn) |
 
 ## Notification Configuration
 
@@ -70,6 +77,7 @@ The only configuration these hooks need — how to notify humans.
 
 # Surface merge-ready PRs every hour
 0 * * * *          $AOPS/scripts/hooks/lifecycle/merge-ready.sh
+
 ```
 
 ## Manual Invocation
@@ -90,6 +98,7 @@ The only configuration these hooks need — how to notify humans.
 
 # List merge-ready PRs
 ./scripts/hooks/lifecycle/merge-ready.sh
+
 ```
 
 ## Adding a New Hook
