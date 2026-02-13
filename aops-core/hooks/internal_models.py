@@ -149,11 +149,13 @@ class HookLogEntry(HookContext):
 
     Attributes:
         hook_event: Name of the hook event (e.g., UserPromptSubmit)
+        trace_id: Unique ID for this specific hook invocation
         logged_at: ISO timestamp when event was logged
         exit_code: Exit code of the hook (0 = success)
     """
 
     hook_event: str
+    trace_id: str | None = None
     logged_at: str
     exit_code: int = 0
     output: dict | None = None

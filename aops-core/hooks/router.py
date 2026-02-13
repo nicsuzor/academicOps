@@ -218,6 +218,9 @@ class HookRouter:
         if hook_event == "SessionStart":
             persist_session_data({"session_id": session_id})
 
+        # Request Tracing (aops-32068a2e)
+        trace_id = raw_input.get("trace_id") or str(uuid.uuid4())
+
         # 4. Normalize JSON string fields from Gemini
         tool_input = self._normalize_json_field(raw_input.get("tool_input", {}))
         if not isinstance(tool_input, dict):
@@ -263,8 +266,9 @@ class HookRouter:
             subagent_type = tool_output.get("subagent_type")
 
         return HookContext(
-            session_id=str(session_id),
-            hook_event=str(hook_event),
+            session_id=session_id,
+            trace_id=trace_id,
+            hook_event=hook_event,
             agent_id=raw_input.get("agentId"),
             slug=raw_input.get("slug"),
             is_sidechain=is_subagent or raw_input.get("isSidechain"),

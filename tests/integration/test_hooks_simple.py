@@ -55,7 +55,6 @@ class SessionStateMocks:
         passed_gates = {"hydration", "task", "critic", "qa", "handover"}
 
         self.is_hydration_pending = MagicMock(return_value=cfg["is_hydration_pending"])
-        self.check_all_gates = MagicMock(return_value=gates)
         self.is_hydrator_active = MagicMock(return_value=cfg["is_hydrator_active"])
         self.get_hydration_temp_path = MagicMock(return_value="/tmp/hydrator")
         self.load_session_state = MagicMock(return_value=state)
@@ -71,7 +70,6 @@ class SessionStateMocks:
         return patch.multiple(
             "lib.session_state",
             is_hydration_pending=self.is_hydration_pending,
-            check_all_gates=self.check_all_gates,
             is_hydrator_active=self.is_hydrator_active,
             get_hydration_temp_path=self.get_hydration_temp_path,
             load_session_state=self.load_session_state,
