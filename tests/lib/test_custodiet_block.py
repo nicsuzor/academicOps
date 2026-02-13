@@ -147,6 +147,7 @@ class TestCustodietBlockIntegration:
 
         # Read and verify the state directly
         state = json.loads(session_files[0].read_text())
+        # <!-- NS: these tests need to be refactored for the new pydantic objects. -->
         assert state["state"]["custodiet_blocked"] is True
         assert state["state"]["custodiet_block_reason"] == "Policy violation reason"
 
