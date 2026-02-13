@@ -183,14 +183,14 @@ class HookRouter:
         if gemini_event:
             hook_event = GEMINI_EVENT_MAP.get(gemini_event, gemini_event)
         else:
-            raw_event = raw_input.get("hook_event_name")
+            raw_event = raw_input.pop("hook_event_name", {})
             if not raw_event:
                 # Raise KeyError for backward compatibility with tests
                 raise KeyError("hook_event_name")
             hook_event = GEMINI_EVENT_MAP.get(raw_event, raw_event)
 
         # 2. Determine Session ID
-        session_id = raw_input.get("session_id")
+        session_id = raw_input.pop("session_id", {})
         if not session_id:
             session_id = self.session_data.get("session_id") or os.environ.get("CLAUDE_SESSION_ID")
 
@@ -203,36 +203,35 @@ class HookRouter:
             session_id = f"unknown-{str(uuid.uuid4())[:8]}"
 
         # 3. Transcript Path / Temp Root
-        transcript_path = raw_input.get("transcript_path")
+        transcript_path = raw_input.pop("transcript_path", {})
 
         # Persist session data on start
         if hook_event == "SessionStart":
             persist_session_data({"session_id": session_id})
 
         # Request Tracing (aops-32068a2e)
-        trace_id = raw_input.get("trace_id") or str(uuid.uuid4())
+        trace_id = raw_input.pop("trace_id", {}) or str(uuid.uuid4())
 
         # 4. Normalize JSON string fields from Gemini
-        tool_input = self._normalize_json_field(raw_input.get("tool_input", {}))
+        tool_input = self._normalize_json_field(raw_input.pop("tool_input", {}))
         if not isinstance(tool_input, dict):
             tool_input = {}
 
         # Normalize tool_result and toolResult in raw_input (for PostToolUse/SubagentStop)
         tool_output = {}
         raw_tool_output = (
-            raw_input.get("tool_result")
-            or raw_input.get("toolResult")
-            or raw_input.get("tool_response", {})
+            raw_input.pop("tool_result", {})
+            or raw_input.pop("toolResult", {})
+            or raw_input.pop("tool_response", {})
+            or raw_input.pop("subagent_result", {})
         )
         if raw_tool_output:
             tool_output = self._normalize_json_field(raw_tool_output)
-        elif "subagent_result" in raw_input:
-            tool_output = self._normalize_json_field(raw_input["subagent_result"])
 
         # Precompute values once to avoid redundant calls across gates
         is_subagent = is_subagent_session(raw_input)
         short_hash = get_session_short_hash(session_id)
-        tool_name = raw_input.get("tool_name")
+        tool_name = raw_input.pop("tool_name", {})
 
         # 5. Extract subagent_type
         # Prefer explicit env var (set in subagent session)
@@ -250,10 +249,10 @@ class HookRouter:
 
         # Fallback 2: Extract from raw_input (explicitly provided by some hooks)
         if not subagent_type:
-            subagent_type = raw_input.get("subagent_type") or raw_input.get("agent_type")
+            subagent_type = raw_input.pop("subagent_type", {}) or raw_input.pop("agent_type", {})
 
         if not is_subagent and (
-            subagent_type or raw_input.get("is_sidechain") or raw_input.get("isSidechain")
+            subagent_type or raw_input.pop("is_sidechain", {}) or raw_input.pop("isSidechain", {})
         ):
             is_subagent = True  # If subagent_type is provided, treat as subagent session
 
@@ -261,8 +260,8 @@ class HookRouter:
             session_id=session_id,
             trace_id=trace_id,
             hook_event=hook_event,
-            agent_id=raw_input.get("agent_id") or raw_input.get("agentId"),
-            slug=raw_input.get("slug"),
+            agent_id=raw_input.pop("agent_id", {}) or raw_input.pop("agentId", {}),
+            slug=raw_input.pop("slug", {}),
             is_subagent=is_subagent,
             subagent_type=subagent_type,
             # Precomputed values
@@ -272,7 +271,7 @@ class HookRouter:
             tool_input=tool_input,
             tool_output=tool_output,
             transcript_path=transcript_path,
-            cwd=raw_input.get("cwd"),
+            cwd=raw_input.pop("cwd", {}),
             raw_input=raw_input,
         )
 

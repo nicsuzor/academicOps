@@ -12,6 +12,8 @@ from lib.gate_types import (
 CUSTODIET_TOOL_CALL_THRESHOLD = int(os.getenv("CUSTODIET_TOOL_CALL_THRESHOLD", 15))
 CUSTODIET_GATE_MODE = os.getenv("CUSTODIET_GATE_MODE", "warn")  # deny or warn
 
+# Note: We have had to add SubagentStart to multiple triggers as a workaround for hooks not recognising subagents in tool calls. This means many gates open as soon as the subagent is called, rather than when the subagent finishes. This is particularly important because we cannot otherwise allow the subagent to run when its gate is blocked.
+
 GATE_CONFIGS = [
     # --- Hydration ---
     GateConfig(
@@ -19,15 +21,18 @@ GATE_CONFIGS = [
         description="Ensures prompts are hydrated with context.",
         initial_status=GateStatus.CLOSED,
         triggers=[
-            # Hydrator finishes -> Open
+            # Hydrator starts or finishes -> Open
+            # DISPATCH: Main agent intends to call hydrator -> Open gate pre-emptively
+            # This allows the hydrator subagent to use its tools without being blocked.
             GateTrigger(
                 condition=GateCondition(
-                    hook_event="^(SubagentStop|PostToolUse)$", subagent_type_pattern="hydrator"
+                    hook_event="^(SubagentStart|PreToolUse|SubagentStop|PostToolUse)$",
+                    subagent_type_pattern="hydrator",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
                     reset_ops_counter=True,
-                    system_message_template="💧 Hydration complete. Gate OPEN.",
+                    system_message_template="💧 Hydration called. Gate OPEN.",
                 ),
             ),
             # User Prompt (not ignored) -> Close
@@ -38,14 +43,6 @@ GATE_CONFIGS = [
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED, custom_action="hydrate_prompt"
                 ),
-            ),
-            # DISPATCH: Main agent intends to call hydrator -> Open gate pre-emptively
-            # This allows the hydrator subagent to use its tools without being blocked.
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="PreToolUse", subagent_type_pattern="hydrator"
-                ),
-                transition=GateTransition(target_status=GateStatus.OPEN, reset_ops_counter=True),
             ),
         ],
         policies=[
@@ -81,7 +78,8 @@ GATE_CONFIGS = [
             # Custodiet check -> Reset
             GateTrigger(
                 condition=GateCondition(
-                    hook_event="^(SubagentStop|PostToolUse)$", subagent_type_pattern="custodiet"
+                    hook_event="^(SubagentStart|PreToolUse|SubagentStop|PostToolUse)$",
+                    subagent_type_pattern="custodiet",
                 ),
                 transition=GateTransition(
                     reset_ops_counter=True, system_message_template="🛡️ Compliance verified."
@@ -158,7 +156,8 @@ GATE_CONFIGS = [
             # Critic review completes with PROCEED -> Open gate
             GateTrigger(
                 condition=GateCondition(
-                    hook_event="^(SubagentStop|PostToolUse)$", subagent_type_pattern="critic"
+                    hook_event="^(SubagentStart|SubagentStop|PostToolUse)$",
+                    subagent_type_pattern="critic",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
@@ -206,7 +205,8 @@ GATE_CONFIGS = [
             # QA agent verifies requirements -> Open gate
             GateTrigger(
                 condition=GateCondition(
-                    hook_event="^(SubagentStop|PostToolUse)$", subagent_type_pattern="qa"
+                    hook_event="^(SubagentStart|SubagentStop|PostToolUse)$",
+                    subagent_type_pattern="qa",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
@@ -215,9 +215,7 @@ GATE_CONFIGS = [
             ),
             # Critic, once called, requires QA review to ensure compliance before exit
             GateTrigger(
-                condition=GateCondition(
-                    hook_event="PostToolUse", subagent_type_pattern="critic"
-                ),
+                condition=GateCondition(hook_event="PostToolUse", subagent_type_pattern="critic"),
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
                     reset_ops_counter=False,
