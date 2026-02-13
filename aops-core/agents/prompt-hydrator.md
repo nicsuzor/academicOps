@@ -73,7 +73,7 @@ Your output MUST be valid Markdown following this structure.
 
 1. **Task**: [Claim existing task ID or create new task]
 2. **TodoWrite Plan**:
-```javascript
+```python
 TodoWrite(todos=[
   { "id": "1", "content": "Step 1: [Task claim/create]", "status": "todo" },
   { "id": "2", "content": "Step 2: [Integrated workflow step]", "status": "todo" },
