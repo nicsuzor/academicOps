@@ -148,8 +148,8 @@ class TestCustodietBlockIntegration:
         # Read and verify the state directly
         state = json.loads(session_files[0].read_text())
         # <!-- NS: these tests need to be refactored for the new pydantic objects. -->
-        assert state["state"]["custodiet_blocked"] is True
-        assert state["state"]["custodiet_block_reason"] == "Policy violation reason"
+        assert state["gates"]["custodiet"]["blocked"] is True
+        assert state["gates"]["custodiet"]["block_reason"] == "Policy violation reason"
 
     def test_block_recorded_even_when_disabled(self, tmp_path: Path) -> None:
         """Block is recorded even when CUSTODIET_DISABLED=1 (just not enforced)."""
@@ -184,5 +184,5 @@ class TestCustodietBlockIntegration:
         assert len(session_files) == 1
 
         state = json.loads(session_files[0].read_text())
-        assert state["state"]["custodiet_blocked"] is True
-        assert state["state"]["custodiet_block_reason"] == "Recorded but not enforced"
+        assert state["gates"]["custodiet"]["blocked"] is True
+        assert state["gates"]["custodiet"]["block_reason"] == "Recorded but not enforced"

@@ -30,8 +30,7 @@ class TestUserPromptSubmit(unittest.TestCase):
         # New global turn count
         self.mock_state.global_turn_count = 0
 
-    @patch("lib.hydration.builder.get_hydration_temp_dir")
-    @patch("lib.hydration.builder.write_temp_file")
+    @patch("lib.hydration.builder.get_gate_file_path")
     @patch("lib.hydration.builder.cleanup_old_temp_files")
     @patch("lib.hydration.builder.load_framework_paths")
     @patch("lib.hydration.builder.load_mcp_tools_context")
@@ -64,12 +63,14 @@ class TestUserPromptSubmit(unittest.TestCase):
         mock_load_mcp,
         mock_load_framework,
         mock_cleanup,
-        mock_write_temp_file,
-        mock_get_hydration_temp_dir,
+        mock_get_gate_file_path,
     ):
         # Mock setup
         mock_load.return_value = self.mock_state
-        mock_write_temp_file.return_value = self.temp_path
+        mock_gate_path = MagicMock()
+        mock_gate_path.__str__ = lambda self: "/tmp/hydrate_123.md"
+        mock_gate_path.parent = MagicMock()
+        mock_get_gate_file_path.return_value = mock_gate_path
 
         # Determine return value based on file argument
         def side_effect(filepath):
@@ -86,6 +87,10 @@ class TestUserPromptSubmit(unittest.TestCase):
 
         # Verification
         self.assertIn(self.temp_path, result)
+
+        # Verify gate file path was used
+        mock_get_gate_file_path.assert_called_once()
+        mock_gate_path.write_text.assert_called_once()
 
         # Verify SessionState interactions
         mock_load.assert_called_with(self.session_id)

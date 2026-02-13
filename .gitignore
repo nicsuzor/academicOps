@@ -1,6 +1,7 @@
 # Claude code
 .claude/
 .gemini/
+.aops/
 !.agent/commands/
 !.agent/skills/
 !.agent/rules

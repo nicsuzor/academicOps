@@ -26,7 +26,7 @@ backend: scripts
 - "clean up my inbox"
 - `/email`
 
-**Backend**: Pluggable - uses task scripts (Phase 1-2) or Tasks MCP (Phase 3+). 
+**Backend**: Pluggable - uses task scripts (Phase 1-2) or Tasks MCP (Phase 3+).
 
 ## Core Workflow
 

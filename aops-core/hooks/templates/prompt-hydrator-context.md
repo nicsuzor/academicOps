@@ -131,6 +131,12 @@ You may bypass task queue ONLY when ANY is true:
 Return this EXACT structure:
 
 ```markdown
+<thought>
+[Explain your understanding of intent and workflow selection rationale]
+</thought>
+
+<hydration_result>
+
 ## HYDRATION RESULT
 
 **Intent**: [what user actually wants, in clear terms]
@@ -166,5 +172,7 @@ Return this EXACT structure:
 - **Capture deferred work**: create task for outstanding and follow up work
 - Output Framework Reflection in the required form.
 
-**Gemini CLI agents** MUST call `complete_task` with your final formatted response.
+</hydration_result>
 ```
+
+**Gemini CLI agents** MUST call `complete_task` with your final formatted response.

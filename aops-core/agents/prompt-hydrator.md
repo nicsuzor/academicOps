@@ -49,9 +49,18 @@ You transform terse user prompts into execution plans. Your key metric is **SPEE
 
 ## Output Format
 
-Your output MUST be valid Markdown following this structure.
+Your output MUST be valid Markdown wrapped in structured tags.
+
+1.  **Thinking**: Wrap your internal reasoning and workflow selection logic in `<thought>` tags.
+2.  **Result**: Wrap your final execution plan in `<hydration_result>` tags.
 
 ```markdown
+<thought>
+[Explain your understanding of intent and workflow selection rationale]
+</thought>
+
+<hydration_result>
+
 ## HYDRATION RESULT
 
 **Intent**: [1 sentence summary]
@@ -73,6 +82,8 @@ Your output MUST be valid Markdown following this structure.
 2. [Workflow steps from your input]
 3. [Verification checkpoint]
 4. [Completion step]
+
+</hydration_result>
 ```
 
 **Critical**: Progress updates are NOT "simple-question" - they contain valuable episodic data that should be captured. The user sharing progress implies intent to record it.

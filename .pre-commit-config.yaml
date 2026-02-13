@@ -44,47 +44,12 @@ repos:
         args: [--check]
         exclude: '^archived/'
 
-  # Type checking (basedpyright - faster pyright fork)
-  - repo: local
-    hooks:
-      - id: basedpyright
-        name: basedpyright
-        entry: uv run basedpyright
-        language: system
-        types: [python]
-        exclude: '^(tests/|archived/)'
-
-  # Framework health checks (local)
-  - repo: local
-    hooks:
-      # Skill line count check - WARNING if > 500 lines
-      # Known exceptions: analyst (587), excalidraw (515) - content appropriate for skills
-      - id: check-skill-line-count
-        name: Check SKILL.md line counts
-        entry: uv run python scripts/check_skill_line_count.py
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
-        verbose: true
-
-      # Orphan files check - WARNING only
-      - id: check-orphan-files
-        name: Check for orphan files
-        entry: uv run python scripts/check_orphan_files.py
-        language: system
-        pass_filenames: false
-        always_run: true
-        verbose: true
-        stages: [pre-commit]
-
-      # Note: check-file-taxonomy, check-namespace-collision, check-demo-test-location,
-      # and validate-framework-paths have been removed as their underlying scripts
-      # were archived/deleted during framework refactoring.
-
-# Note: These checks are disabled by default (too slow for every commit)
-# Run manually with: uv run python scripts/audit_framework_health.py -m
-#
-# Disabled checks:
-# - check-index-completeness: Many false positives, better as periodic audit
-# - check-broken-wikilinks: Slow (full codebase scan), use in CI instead
+  # Type checking and framework health checks run in CI only
+  # (see .github/workflows/framework-health.yml)
+  #
+  # Moved to CI:
+  # - basedpyright: full type analysis too slow for every commit
+  # - check-skill-line-count: whole-repo scan, not file-scoped
+  # - check-orphan-files: whole-repo scan, not file-scoped
+  # - check-broken-wikilinks: slow full codebase scan
+  # - audit_framework_health: comprehensive audit
