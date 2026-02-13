@@ -25,12 +25,12 @@ Persist knowledge to markdown + memory server. **Both writes required** for sema
 
 **Memory MCP is the universal index.** Write to your primary storage AND memory MCP for semantic search retrieval.
 
-| What | Primary Storage | Also Sync To |
-|------|-----------------|--------------|
-| **Epics/projects** | Task Manager MCP (`type="epic"` or `type="project"`) | Memory MCP |
-| **Tasks/issues** | GitHub Issues (`gh issue create`) | Memory MCP |
-| **Durable knowledge** | `$ACA_DATA/` markdown files | Memory MCP |
-| **Session findings** | Task body updates | Memory MCP |
+| What                  | Primary Storage                                      | Also Sync To |
+| --------------------- | ---------------------------------------------------- | ------------ |
+| **Epics/projects**    | Task Manager MCP (`type="epic"` or `type="project"`) | Memory MCP   |
+| **Tasks/issues**      | GitHub Issues (`gh issue create`)                    | Memory MCP   |
+| **Durable knowledge** | `$ACA_DATA/` markdown files                          | Memory MCP   |
+| **Session findings**  | Task body updates                                    | Memory MCP   |
 
 See [[base-memory-capture]] workflow for when and how to invoke this skill.
 

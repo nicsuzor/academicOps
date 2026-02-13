@@ -57,12 +57,12 @@ gh pr list --state merged --json number,title,author,mergedAt,headRefName,url --
 ```markdown
 ## Merged PRs
 
-| PR | Title | Author | Merged |
-|----|-------|--------|--------|
-| [#123](url) | Fix authentication bug | @nicsuzor | 10:15 |
-| [#124](url) | Add daily skill merge review | @claude-for-github[bot] | 14:30 |
+| PR          | Title                        | Author                  | Merged |
+| ----------- | ---------------------------- | ----------------------- | ------ |
+| [#123](url) | Fix authentication bug       | @nicsuzor               | 10:15  |
+| [#124](url) | Add daily skill merge review | @claude-for-github[bot] | 14:30  |
 
-*N PRs merged today*
+_N PRs merged today_
 ```
 
 **Empty state**: If no PRs merged today:
@@ -182,9 +182,11 @@ If accomplishment matches a specific checklist item in the task:
 
 ```markdown
 # Before
+
 - [ ] Implement feature X
 
 # After
+
 - [x] Implement feature X [completion:: 2026-01-19]
 ```
 

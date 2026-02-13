@@ -72,11 +72,11 @@ Transcript QA: N sessions scanned, M errors across K patterns.
 
 **Top Issues by Weighted Score**:
 
-| Rank | Category      | Pattern                    | Sessions | Weighted Score | Severity |
-| ---- | ------------- | -------------------------- | -------- | -------------- | -------- |
-| 1    | hydration_gap | Read tool / config.yaml    | 4        | 12             | high     |
-| 2    | stuck_pattern | Glob tool / *.test.ts      | 2        | 8              | critical |
-| 3    | tool_failure  | Bash tool / npm build      | 3        | 6              | medium   |
+| Rank | Category      | Pattern                 | Sessions | Weighted Score | Severity |
+| ---- | ------------- | ----------------------- | -------- | -------------- | -------- |
+| 1    | hydration_gap | Read tool / config.yaml | 4        | 12             | high     |
+| 2    | stuck_pattern | Glob tool / *.test.ts   | 2        | 8              | critical |
+| 3    | tool_failure  | Bash tool / npm build   | 3        | 6              | medium   |
 
 **Task-eligible patterns** (recurring in 2+ sessions or weighted_score >= 6): N patterns flagged for Phase 9.
 

@@ -1,16 +1,14 @@
 
-import os
-import pytest
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-from lib.gate_model import GateVerdict
-from lib.gates.engine import GenericGate
-from lib.gates.definitions import GATE_CONFIGS
-from lib.gate_types import GateStatus
-from lib.session_state import SessionState
-from hooks.schemas import HookContext
+import pytest
 from hooks.router import HookRouter
+from hooks.schemas import HookContext
+from lib.gate_types import GateStatus
+from lib.gates.definitions import GATE_CONFIGS
+from lib.gates.engine import GenericGate
+from lib.session_state import SessionState
+
 
 @pytest.fixture
 def router():

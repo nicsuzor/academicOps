@@ -19,12 +19,12 @@ At session end or before task completion:
 
 All findings flow through this hierarchy:
 
-| What | Primary Storage | Also Store To |
-|------|-----------------|---------------|
-| **Epics/projects** | Task Manager MCP (`type="epic"` or `type="project"`) | Memory MCP |
-| **Tasks/issues** | GitHub Issues (`gh issue create`) | Memory MCP |
-| **Durable knowledge** | `$ACA_DATA/` markdown files | Memory MCP |
-| **Session findings** | Task body updates | Memory MCP |
+| What                  | Primary Storage                                      | Also Store To |
+| --------------------- | ---------------------------------------------------- | ------------- |
+| **Epics/projects**    | Task Manager MCP (`type="epic"` or `type="project"`) | Memory MCP    |
+| **Tasks/issues**      | GitHub Issues (`gh issue create`)                    | Memory MCP    |
+| **Durable knowledge** | `$ACA_DATA/` markdown files                          | Memory MCP    |
+| **Session findings**  | Task body updates                                    | Memory MCP    |
 
 **Key principle**: Memory MCP is the **universal index** for semantic search. Write to your primary storage AND memory MCP.
 
@@ -37,6 +37,7 @@ Skill(skill="remember")
 ```
 
 The skill ensures:
+
 - Markdown written to correct `$ACA_DATA` location
 - Memory MCP synced for semantic retrieval
 - Wikilinks created for graph connectivity

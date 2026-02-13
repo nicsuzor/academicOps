@@ -11,15 +11,11 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
-import pytest
-
 from lib.task_model import (
+    TRANSITION_TABLE,
     ApprovalType,
     Task,
     TaskStatus,
-    TaskType,
-    TransitionResult,
-    TRANSITION_TABLE,
     get_all_transitions,
     get_transition_info,
 )

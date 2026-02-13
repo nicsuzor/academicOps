@@ -18,7 +18,7 @@ tags:
 
 Complete lifecycle for non-interactive agent operation: task selection through PR merge and knowledge capture.
 
-> **ARCHITECTURE PIVOT (2026-02-12)**: This spec has been revised from programmatic infrastructure to agent-based prompts. The lifecycle phases below remain valid as *concepts*, but their implementation is prompt-driven, not code-driven. Agents make all decisions; code is limited to hooks (triggers) and MCP tools (task state). See project task `aops-core-e89cdca4` for the revised plan.
+> **ARCHITECTURE PIVOT (2026-02-12)**: This spec has been revised from programmatic infrastructure to agent-based prompts. The lifecycle phases below remain valid as _concepts_, but their implementation is prompt-driven, not code-driven. Agents make all decisions; code is limited to hooks (triggers) and MCP tools (task state). See project task `aops-core-e89cdca4` for the revised plan.
 
 ## Design Principles — Revised
 
@@ -30,18 +30,18 @@ Complete lifecycle for non-interactive agent operation: task selection through P
 
 ## What Is Code vs What Is Prompt
 
-| Concern | Implementation | Rationale |
-|---|---|---|
-| Task state transitions | Code (MCP tools + guards) | Deterministic, already built |
-| Trigger: "check for ready tasks" | Code (shell hook / cron) | Mechanical trigger |
-| Trigger: "post-merge capture" | Code (git hook) | Mechanical trigger |
-| Decomposition strategy | Prompt (supervisor skill) | Requires judgment |
-| Reviewer selection & synthesis | Prompt (supervisor skill) | Requires judgment |
-| Worker selection & dispatch | Prompt (supervisor skill) | Requires judgment |
-| Knowledge extraction | Prompt (/remember skill) | Already exists |
-| Consensus & debate | Prompt (supervisor skill) | Requires judgment |
-| Decision surfacing | Prompt (/daily skill) | Already exists |
-| PR lifecycle monitoring | Prompt (agent uses `gh` CLI) | On-demand, not infrastructure |
+| Concern                          | Implementation               | Rationale                     |
+| -------------------------------- | ---------------------------- | ----------------------------- |
+| Task state transitions           | Code (MCP tools + guards)    | Deterministic, already built  |
+| Trigger: "check for ready tasks" | Code (shell hook / cron)     | Mechanical trigger            |
+| Trigger: "post-merge capture"    | Code (git hook)              | Mechanical trigger            |
+| Decomposition strategy           | Prompt (supervisor skill)    | Requires judgment             |
+| Reviewer selection & synthesis   | Prompt (supervisor skill)    | Requires judgment             |
+| Worker selection & dispatch      | Prompt (supervisor skill)    | Requires judgment             |
+| Knowledge extraction             | Prompt (/remember skill)     | Already exists                |
+| Consensus & debate               | Prompt (supervisor skill)    | Requires judgment             |
+| Decision surfacing               | Prompt (/daily skill)        | Already exists                |
+| PR lifecycle monitoring          | Prompt (agent uses `gh` CLI) | On-demand, not infrastructure |
 
 ---
 
@@ -606,6 +606,7 @@ This is how the supervisor improves its own protocol over time — conservativel
 ### Trigger
 
 `retrospect.sh` lifecycle hook, typically:
+
 - Cron: daily end-of-day
 - Manual: after a batch of merges
 - Post-merge: chained from Phase 6
@@ -669,22 +670,23 @@ workflow might force all workflows into that shape. Guard against this:
 
 ### What Retrospector Owns vs What /learn Owns
 
-| Concern | Retrospector | /learn |
-|---------|-------------|--------|
-| Transcript aggregation | Yes | No (single-session) |
-| Cross-workflow pattern detection | Yes | No |
-| Flexibility gate | Yes | No |
-| Pattern accumulator | Yes | No |
-| Root cause analysis | No | Yes |
-| Graduated intervention ladder | No | Yes |
-| Experiment tracking | No | Yes |
-| Fix application + tests | No | Yes |
+| Concern                          | Retrospector | /learn              |
+| -------------------------------- | ------------ | ------------------- |
+| Transcript aggregation           | Yes          | No (single-session) |
+| Cross-workflow pattern detection | Yes          | No                  |
+| Flexibility gate                 | Yes          | No                  |
+| Pattern accumulator              | Yes          | No                  |
+| Root cause analysis              | No           | Yes                 |
+| Graduated intervention ladder    | No           | Yes                 |
+| Experiment tracking              | No           | Yes                 |
+| Fix application + tests          | No           | Yes                 |
 
 ### Pattern Accumulator
 
 File: `$WRITING/data/aops/patterns/pending.md`
 
 Simple append-only log. Each entry:
+
 - Date, session ID, workflow type, observation text, count
 
 When an entry hits threshold (3+ occurrences, 2+ workflow types),
@@ -693,6 +695,7 @@ it gets handed to /learn and marked as `DELEGATED` in the log.
 ### Output
 
 The retrospector produces no direct framework changes. It either:
+
 - Logs an observation to the pattern accumulator (most runs), or
 - Invokes /learn when a pattern crosses threshold (rare)
 

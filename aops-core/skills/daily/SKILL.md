@@ -45,17 +45,17 @@ Every `/daily` invocation runs the **full pipeline** and updates the daily note 
 
 ## Section Ownership
 
-| Section                 | Owner    | Updated By                                  |
-| ----------------------- | -------- | ------------------------------------------- |
-| Focus                   | `/daily` | Task data + user priorities (mixed)         |
-| Task Tree               | `/daily` | Task hierarchy snapshot (machine)           |
-| Today's Story           | `/daily` | Synthesis from merges + sessions + tasks    |
-| FYI                     | `/daily` | Email triage (mixed)                        |
-| Merged PRs              | `/daily` | GitHub API query (machine)                  |
-| Session Log/Timeline    | `/daily` | Session JSON synthesis (machine)            |
-| Project Accomplishments | `/daily` | Session JSON synthesis (mixed)              |
-| Reflection              | `/daily` | Goals vs achieved analysis (machine)        |
-| Abandoned Todos         | `/daily` | End-of-day (user)                           |
+| Section                 | Owner    | Updated By                               |
+| ----------------------- | -------- | ---------------------------------------- |
+| Focus                   | `/daily` | Task data + user priorities (mixed)      |
+| Task Tree               | `/daily` | Task hierarchy snapshot (machine)        |
+| Today's Story           | `/daily` | Synthesis from merges + sessions + tasks |
+| FYI                     | `/daily` | Email triage (mixed)                     |
+| Merged PRs              | `/daily` | GitHub API query (machine)               |
+| Session Log/Timeline    | `/daily` | Session JSON synthesis (machine)         |
+| Project Accomplishments | `/daily` | Session JSON synthesis (mixed)           |
+| Reflection              | `/daily` | Goals vs achieved analysis (machine)     |
+| Abandoned Todos         | `/daily` | End-of-day (user)                        |
 
 ## Formatting Rules
 
@@ -238,8 +238,8 @@ This provides a bird's eye view of active project hierarchy. The tree:
 ```
 
 [project-id] Project Name (status)
-  [task-id] Task title (status)
-    [subtask-id] Subtask title (status)
+[task-id] Task title (status)
+[subtask-id] Subtask title (status)
 
 ```
 *Active projects with depth 2, excluding done/cancelled tasks*
@@ -447,12 +447,12 @@ gh pr list --state merged --json number,title,author,mergedAt,headRefName,url --
 ```markdown
 ## Merged PRs
 
-| PR | Title | Author | Merged |
-|----|-------|--------|--------|
-| [#123](url) | Fix authentication bug | @nicsuzor | 10:15 |
-| [#124](url) | Add daily skill merge review | @claude-for-github[bot] | 14:30 |
+| PR          | Title                        | Author                  | Merged |
+| ----------- | ---------------------------- | ----------------------- | ------ |
+| [#123](url) | Fix authentication bug       | @nicsuzor               | 10:15  |
+| [#124](url) | Add daily skill merge review | @claude-for-github[bot] | 14:30  |
 
-*N PRs merged today*
+_N PRs merged today_
 ```
 
 **Empty state**: If no PRs merged today:
@@ -568,9 +568,11 @@ If accomplishment matches a specific checklist item in the task:
 
 ```markdown
 # Before
+
 - [ ] Implement feature X
 
 # After
+
 - [x] Implement feature X [completion:: 2026-01-19]
 ```
 

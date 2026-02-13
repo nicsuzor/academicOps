@@ -36,14 +36,14 @@ P3 ██░░░░░░░░ 15/85
 ```
 
 [aops] AcademicOps (in_progress)
-  [aops-79edb5a4] Daily Goals - Session Review... (active)
-  [aops-b1854175] Add ASCII task tree to daily note (in_progress)
+[aops-79edb5a4] Daily Goals - Session Review... (active)
+[aops-b1854175] Add ASCII task tree to daily note (in_progress)
 
 [arc-future-fellowship] ARC Future Fellowship (active)
-  [arc-ft-reviews] Complete FT26 Reviews (in_progress)
+[arc-ft-reviews] Complete FT26 Reviews (in_progress)
 
 [writing] Writing Projects (active)
-  [toxicity] Toxicity paper (in_progress)
+[toxicity] Toxicity paper (in_progress)
 
 ```
 *Active projects with depth 2, excluding done/cancelled tasks*

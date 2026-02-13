@@ -90,11 +90,11 @@ Pre-execution review uses a multi-agent protocol (see swarm-supervisor SKILL.md 
 
 Before worker dispatch, the supervisor invokes mandatory reviewers in parallel:
 
-| Reviewer | Role | Model |
-|----------|------|-------|
-| Critic | Pedantic review: assumptions, logic errors, missing cases | opus |
-| Custodiet | Authority check: is task within granted scope? | haiku |
-| Domain specialist | Subject matter expertise (if task tags match) | varies |
+| Reviewer          | Role                                                      | Model  |
+| ----------------- | --------------------------------------------------------- | ------ |
+| Critic            | Pedantic review: assumptions, logic errors, missing cases | opus   |
+| Custodiet         | Authority check: is task within granted scope?            | haiku  |
+| Domain specialist | Subject matter expertise (if task tags match)             | varies |
 
 Reviewers return verdicts (PROCEED/REVISE/HALT and OK/WARN/BLOCK). The supervisor
 synthesizes these into a combined result and either proceeds to human approval,
@@ -155,14 +155,14 @@ Full lifecycle status flow (see swarm-supervisor SKILL.md for detailed phase des
 This spec describes the **architecture and protocols** (hard). Deployment-specific
 parameters are in **[[WORKERS.md]]** (soft):
 
-| Concern | Spec (hard) | WORKERS.md (soft) |
-|---------|------------|-------------------|
-| Worker types | Architecture, lifecycle | Names, capabilities, cost/speed |
-| Selection | Decision tree structure | Tag lists, complexity mappings, thresholds |
-| Monitoring | Stall detection protocol | Heartbeat intervals, alert thresholds |
-| Failure handling | Recovery protocol structure | Exit codes, retry limits, backoff |
-| Review routing | Engineer trigger logic | Which complexity values trigger review |
-| Domain review | Specialist invocation protocol | Specialist registry, domain mappings |
+| Concern          | Spec (hard)                    | WORKERS.md (soft)                          |
+| ---------------- | ------------------------------ | ------------------------------------------ |
+| Worker types     | Architecture, lifecycle        | Names, capabilities, cost/speed            |
+| Selection        | Decision tree structure        | Tag lists, complexity mappings, thresholds |
+| Monitoring       | Stall detection protocol       | Heartbeat intervals, alert thresholds      |
+| Failure handling | Recovery protocol structure    | Exit codes, retry limits, backoff          |
+| Review routing   | Engineer trigger logic         | Which complexity values trigger review     |
+| Domain review    | Specialist invocation protocol | Specialist registry, domain mappings       |
 
 To customize for a different deployment, modify WORKERS.md only.
 
@@ -177,13 +177,13 @@ See [[LIFECYCLE-HOOKS.md]] for hook registry, configuration, and cron schedules.
 
 **Design principle**: Agents decide, code triggers.
 
-| Concern | Shell hooks do | Supervisor agent does |
-|---------|---------------|----------------------|
-| Queue non-empty? | Yes | No |
-| Which/how many runners? | No | Yes (reads WORKERS.md) |
-| Task-to-worker routing? | No | Yes (reads tags + complexity) |
-| Notifications? | Yes (mechanical) | No |
-| Reset stale tasks? | Yes (threshold) | No |
+| Concern                 | Shell hooks do   | Supervisor agent does         |
+| ----------------------- | ---------------- | ----------------------------- |
+| Queue non-empty?        | Yes              | No                            |
+| Which/how many runners? | No               | Yes (reads WORKERS.md)        |
+| Task-to-worker routing? | No               | Yes (reads tags + complexity) |
+| Notifications?          | Yes (mechanical) | No                            |
+| Reset stale tasks?      | Yes (threshold)  | No                            |
 
 ## 7. Future Work
 

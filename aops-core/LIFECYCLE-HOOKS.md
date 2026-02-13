@@ -21,12 +21,12 @@ tags: [framework, hooks, lifecycle, swarm, index]
 
 ## Hook Registry
 
-| Hook | Script | Trigger | Purpose |
-|------|--------|---------|---------|
-| `queue-drain` | `queue-drain.sh` | cron, manual | Start supervisor session if tasks are ready |
-| `post-finish` | `post-finish.sh` | polecat finish | Notify on task completion/failure |
-| `stale-check` | `stale-check.sh` | cron, manual | Detect and reset stalled tasks |
-| `merge-ready` | `merge-ready.sh` | cron, manual | List merge-ready PRs and notify |
+| Hook          | Script           | Trigger        | Purpose                                     |
+| ------------- | ---------------- | -------------- | ------------------------------------------- |
+| `queue-drain` | `queue-drain.sh` | cron, manual   | Start supervisor session if tasks are ready |
+| `post-finish` | `post-finish.sh` | polecat finish | Notify on task completion/failure           |
+| `stale-check` | `stale-check.sh` | cron, manual   | Detect and reset stalled tasks              |
+| `merge-ready` | `merge-ready.sh` | cron, manual   | List merge-ready PRs and notify             |
 
 Scripts live in `scripts/hooks/lifecycle/`.
 
@@ -39,32 +39,32 @@ Scripts live in `scripts/hooks/lifecycle/`.
 
 What shell hooks do vs what the supervisor agent does:
 
-| Concern | Shell hooks | Supervisor agent |
-|---------|-------------|------------------|
-| Is queue empty? | Yes (grep task files) | No |
-| Which runners to use? | No | Yes (reads WORKERS.md) |
-| How many workers? | No | Yes (reads queue depth + task mix) |
-| Which tasks get which worker? | No | Yes (reads task tags + complexity) |
-| Send notifications? | Yes (mechanical) | No |
-| Reset stale tasks? | Yes (threshold check) | No |
-| Merge PRs? | No | Human or supervisor session |
-| Identify process friction? | No | Yes (Phase 6b retrospection) |
-| Improve own protocol? | No | Yes (delegates to /learn) |
+| Concern                       | Shell hooks           | Supervisor agent                   |
+| ----------------------------- | --------------------- | ---------------------------------- |
+| Is queue empty?               | Yes (grep task files) | No                                 |
+| Which runners to use?         | No                    | Yes (reads WORKERS.md)             |
+| How many workers?             | No                    | Yes (reads queue depth + task mix) |
+| Which tasks get which worker? | No                    | Yes (reads task tags + complexity) |
+| Send notifications?           | Yes (mechanical)      | No                                 |
+| Reset stale tasks?            | Yes (threshold check) | No                                 |
+| Merge PRs?                    | No                    | Human or supervisor session        |
+| Identify process friction?    | No                    | Yes (Phase 6b retrospection)       |
+| Improve own protocol?         | No                    | Yes (delegates to /learn)          |
 
 ## Notification Configuration
 
 The only configuration these hooks need — how to notify humans.
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
+| Parameter    | Default       | Description                                             |
+| ------------ | ------------- | ------------------------------------------------------- |
 | `NOTIFY_CMD` | `notify-send` | Notification command (`notify-send`, `ntfy`, or custom) |
-| `NTFY_TOPIC` | `polecat` | Topic for ntfy.sh notifications |
+| `NTFY_TOPIC` | `polecat`     | Topic for ntfy.sh notifications                         |
 
 ## Stale Check Configuration
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `STALE_THRESHOLD_HOURS` | `4` | Hours before task considered stale |
+| Parameter               | Default | Description                        |
+| ----------------------- | ------- | ---------------------------------- |
+| `STALE_THRESHOLD_HOURS` | `4`     | Hours before task considered stale |
 
 ## Cron Schedule (Example)
 
@@ -77,7 +77,6 @@ The only configuration these hooks need — how to notify humans.
 
 # Surface merge-ready PRs every hour
 0 * * * *          $AOPS/scripts/hooks/lifecycle/merge-ready.sh
-
 ```
 
 ## Manual Invocation
@@ -98,7 +97,6 @@ The only configuration these hooks need — how to notify humans.
 
 # List merge-ready PRs
 ./scripts/hooks/lifecycle/merge-ready.sh
-
 ```
 
 ## Adding a New Hook
