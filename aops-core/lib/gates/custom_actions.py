@@ -20,8 +20,6 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:
     Raises:
         RuntimeError: If template rendering or file write fails.
     """
-    category = gate
-
     transcript_path = ctx.transcript_path or ctx.raw_input.get("transcript_path")
     session_context = ""
     if transcript_path:
