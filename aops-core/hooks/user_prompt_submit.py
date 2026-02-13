@@ -15,12 +15,18 @@ from pathlib import Path
 
 from lib.file_index import get_formatted_relevant_paths
 from lib.hook_utils import write_temp_file as _write_temp
-from lib.session_reader import extract_router_context
-from lib.session_state import SessionState
-from lib.template_loader import load_template
 
 # Re-export main functions from lib/hydration/
 from lib.hydration import build_hydration_instruction, should_skip_hydration
+
+# Re-export builder utilities
+from lib.hydration.builder import (
+    FILE_PREFIX,
+    TEMP_CATEGORY,
+    cleanup_old_temp_files,
+    get_hydration_temp_dir,
+    write_temp_file,
+)
 
 # Re-export context loaders for backwards compatibility
 from lib.hydration.context_loaders import (
@@ -39,15 +45,9 @@ from lib.hydration.context_loaders import (
     load_tools_index,
     load_workflows_index,
 )
-
-# Re-export builder utilities
-from lib.hydration.builder import (
-    TEMP_CATEGORY,
-    FILE_PREFIX,
-    cleanup_old_temp_files,
-    get_hydration_temp_dir,
-    write_temp_file,
-)
+from lib.session_reader import extract_router_context
+from lib.session_state import SessionState
+from lib.template_loader import load_template
 
 # Paths (kept for backwards compatibility)
 HOOK_DIR = Path(__file__).parent

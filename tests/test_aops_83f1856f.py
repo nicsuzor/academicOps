@@ -7,6 +7,7 @@ Verifies that:
 - Truncation is indicated with '... [truncated]' suffix
 - Full mode still shows complete content
 """
+
 import sys
 from pathlib import Path
 
