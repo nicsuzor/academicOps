@@ -270,8 +270,14 @@ class HookRouter:
         if hook_event == "SessionStart":
             persist_session_data({"session_id": session_id})
 
+        # Request Tracing (aops-32068a2e)
+        trace_id = raw_input.get("trace_id")
+        if not trace_id:
+            trace_id = str(uuid.uuid4())
+
         return HookContext(
             session_id=session_id,
+            trace_id=trace_id,
             hook_event=hook_event,
             agent_id=raw_input.get("agentId"),
             slug=raw_input.get("slug"),

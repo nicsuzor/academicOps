@@ -151,6 +151,7 @@ class HookLogEntry(BaseModel):
 
     Attributes:
         hook_event: Name of the hook event (e.g., UserPromptSubmit)
+        trace_id: Unique ID for this specific hook invocation
         logged_at: ISO timestamp when event was logged
         exit_code: Exit code of the hook (0 = success)
         agent_id: The unique ID for the specific agent instance
@@ -161,6 +162,7 @@ class HookLogEntry(BaseModel):
     """
 
     hook_event: str
+    trace_id: str | None = None
     logged_at: str
     exit_code: int = 0
     agent_id: str | None = None

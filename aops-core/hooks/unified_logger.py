@@ -83,6 +83,7 @@ def log_hook_event(
         # Create log entry using typed model
         log_entry = HookLogEntry(
             hook_event=ctx.hook_event,
+            trace_id=ctx.trace_id,
             logged_at=datetime.now().astimezone().replace(microsecond=0).isoformat(),
             exit_code=exit_code,
             agent_id=ctx.agent_id,
@@ -181,7 +182,10 @@ def handle_subagent_stop(session_id: str, input_data: dict[str, Any]) -> None:
     # The full output is already logged to the per-session hooks.jsonl audit trail.
     # Storing large strings in the shared state file causes memory-bloat in hooks.
     if isinstance(subagent_result, str):
-        result_data = {"output": subagent_result[:1000] + "... [TRUNCATED]"}
+        if len(subagent_result) > 1000:
+            result_data = {"output": subagent_result[:1000] + "... [TRUNCATED]"}
+        else:
+            result_data = {"output": subagent_result}
     elif isinstance(subagent_result, dict):
         # Strip large fields but preserve keys for gate logic (verdict, etc.)
         result_data = {

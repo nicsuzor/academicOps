@@ -11,6 +11,7 @@ class HookContext(BaseModel):
 
     # Core Identity
     session_id: str = Field(..., description="The unique session identifier.")
+    trace_id: Optional[str] = Field(None, description="The unique ID for the specific hook invocation (tracing).")
     hook_event: str = Field(
         ..., description="The normalized event name (e.g., SessionStart, PreToolUse)."
     )
