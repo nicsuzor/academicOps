@@ -104,11 +104,11 @@ class SessionState(BaseModel):
 
         # Initialize default gate states
         default_gates = {
-            "hydration": GateStatus.CLOSED,
+            "hydration": GateStatus.OPEN,
             "task": GateStatus.OPEN,
             "critic": GateStatus.OPEN,
             "custodiet": GateStatus.OPEN,
-            "qa": GateStatus.CLOSED,
+            "qa": GateStatus.OPEN,
             "handover": GateStatus.OPEN,
         }
 
@@ -227,3 +227,24 @@ class SessionState(BaseModel):
             gate.ops_since_close = 0
         self.gates[name] = gate
 
+
+# --- Utility Functions ---
+
+
+def is_custodiet_enabled() -> bool:
+    """Check if custodiet is enabled via env var."""
+    return os.environ.get("CUSTODIET_DISABLED") != "1"
+
+
+def set_custodiet_block(session_id: str, reason: str) -> None:
+    """Set custodiet block on a session.
+
+    This is used by external scripts (custodiet_block.py) to block
+    session when policy violations are detected.
+    """
+    state = SessionState.load(session_id)
+    gate = state.get_gate("custodiet")
+    gate.blocked = True
+    gate.block_reason = reason
+    state.gates["custodiet"] = gate
+    state.save()

@@ -962,8 +962,13 @@ class Task:
         """
         from_status = self.status
 
-        # Check if already at target status (no-op)
-        if from_status == new_status:
+        # Check if transition is explicitly defined in table (even if self-transition)
+        transition_key = (from_status, new_status)
+        is_explicit = transition_key in TRANSITION_TABLE
+
+        # Check if already at target status (no-op), unless it's an explicit self-transition
+        # (like DECOMPOSING -> DECOMPOSING iteration) which must run guards.
+        if from_status == new_status and not is_explicit:
             return TransitionResult(
                 success=True,
                 from_status=from_status,

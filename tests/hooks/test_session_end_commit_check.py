@@ -464,10 +464,10 @@ class TestGetGitPushStatus:
 class TestCheckUncommittedWork:
     """Test uncommitted work detection logic."""
 
-    @patch("session_end_commit_check.extract_recent_messages")
-    @patch("session_end_commit_check.has_framework_reflection")
-    @patch("session_end_commit_check.has_test_success")
-    @patch("session_end_commit_check.get_git_status")
+    @patch("lib.commit_check.extract_recent_messages")
+    @patch("lib.commit_check.has_framework_reflection")
+    @patch("lib.commit_check.has_test_success")
+    @patch("lib.commit_check.get_git_status")
     def test_reflection_with_uncommitted_changes(
         self,
         mock_git_status,
@@ -492,10 +492,10 @@ class TestCheckUncommittedWork:
         assert result.has_reflection is True
         assert "uncommitted changes" in result.message.lower()
 
-    @patch("session_end_commit_check.extract_recent_messages")
-    @patch("session_end_commit_check.has_framework_reflection")
-    @patch("session_end_commit_check.has_test_success")
-    @patch("session_end_commit_check.get_git_status")
+    @patch("lib.commit_check.extract_recent_messages")
+    @patch("lib.commit_check.has_framework_reflection")
+    @patch("lib.commit_check.has_test_success")
+    @patch("lib.commit_check.get_git_status")
     def test_test_success_with_uncommitted_changes(
         self,
         mock_git_status,
@@ -519,10 +519,10 @@ class TestCheckUncommittedWork:
         assert result.should_block is True
         assert result.has_test_success is True
 
-    @patch("session_end_commit_check.extract_recent_messages")
-    @patch("session_end_commit_check.has_framework_reflection")
-    @patch("session_end_commit_check.has_test_success")
-    @patch("session_end_commit_check.get_git_status")
+    @patch("lib.commit_check.extract_recent_messages")
+    @patch("lib.commit_check.has_framework_reflection")
+    @patch("lib.commit_check.has_test_success")
+    @patch("lib.commit_check.get_git_status")
     def test_clean_working_directory(
         self,
         mock_git_status,
@@ -545,11 +545,11 @@ class TestCheckUncommittedWork:
         result = check_uncommitted_work("session123", "/tmp/transcript.jsonl")
         assert result.should_block is False
 
-    @patch("session_end_commit_check.extract_recent_messages")
-    @patch("session_end_commit_check.has_framework_reflection")
-    @patch("session_end_commit_check.has_test_success")
-    @patch("session_end_commit_check.has_qa_invocation")
-    @patch("session_end_commit_check.get_git_status")
+    @patch("lib.commit_check.extract_recent_messages")
+    @patch("lib.commit_check.has_framework_reflection")
+    @patch("lib.commit_check.has_test_success")
+    @patch("lib.commit_check.has_qa_invocation")
+    @patch("lib.commit_check.get_git_status")
     def test_no_reflection_or_tests_but_tracked_changes(
         self,
         mock_git_status,
@@ -580,11 +580,11 @@ class TestCheckUncommittedWork:
         assert result.should_block is True
         assert "Uncommitted changes detected" in result.message
 
-    @patch("session_end_commit_check.extract_recent_messages")
-    @patch("session_end_commit_check.has_framework_reflection")
-    @patch("session_end_commit_check.has_test_success")
-    @patch("session_end_commit_check.has_qa_invocation")
-    @patch("session_end_commit_check.get_git_status")
+    @patch("lib.commit_check.extract_recent_messages")
+    @patch("lib.commit_check.has_framework_reflection")
+    @patch("lib.commit_check.has_test_success")
+    @patch("lib.commit_check.has_qa_invocation")
+    @patch("lib.commit_check.get_git_status")
     def test_untracked_only_no_block(
         self,
         mock_git_status,
@@ -614,11 +614,11 @@ class TestCheckUncommittedWork:
         # Should NOT block - only untracked files, no tracked changes
         assert result.should_block is False
 
-    @patch("session_end_commit_check.extract_recent_messages")
-    @patch("session_end_commit_check.has_framework_reflection")
-    @patch("session_end_commit_check.has_test_success")
-    @patch("session_end_commit_check.get_git_status")
-    @patch("session_end_commit_check.attempt_auto_commit")
+    @patch("lib.commit_check.extract_recent_messages")
+    @patch("lib.commit_check.has_framework_reflection")
+    @patch("lib.commit_check.has_test_success")
+    @patch("lib.commit_check.get_git_status")
+    @patch("lib.commit_check.attempt_auto_commit")
     def test_staged_changes_with_reflection(
         self,
         mock_auto_commit,
@@ -644,11 +644,11 @@ class TestCheckUncommittedWork:
         assert result.should_block is True
         assert "staged" in result.message.lower()
 
-    @patch("session_end_commit_check.extract_recent_messages")
-    @patch("session_end_commit_check.has_framework_reflection")
-    @patch("session_end_commit_check.has_test_success")
-    @patch("session_end_commit_check.get_git_status")
-    @patch("session_end_commit_check.get_git_push_status")
+    @patch("lib.commit_check.extract_recent_messages")
+    @patch("lib.commit_check.has_framework_reflection")
+    @patch("lib.commit_check.has_test_success")
+    @patch("lib.commit_check.get_git_status")
+    @patch("lib.commit_check.get_git_push_status")
     def test_unpushed_commits_reminder(
         self,
         mock_push_status,
