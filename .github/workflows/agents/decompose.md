@@ -28,6 +28,10 @@ Break goals into actionable work under genuine uncertainty.
 4. Create coarse components (don't over-decompose)
 5. Ensure at least one task is actionable NOW
 6. Create REVIEW task that blocks subtasks (human approves before work starts)
+7. Route task assignments:
+   - **Mechanical work** (create, implement, fix, update, refactor) → `assignee: polecat`
+   - **Judgment-call tasks** (review, evaluate, decide, design choices) → `assignee: null` (unassigned backlog)
+   - **Explicit override** → only assign to `nic` when user explicitly requests it
 
 ## Key Principle
 

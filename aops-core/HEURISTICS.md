@@ -735,3 +735,26 @@ mcp__task_manager__complete_task(id=batch_task_id)
 - Use Epics to group related work even across different physical projects if logically connected.
 
 **Derivation**: Flat lists of 50+ tasks are unmanageable. Deep nesting provides context and focus.
+
+---
+
+## Judgment Tasks Default Unassigned (P#102)
+
+**Statement**: Tasks requiring human judgment (review, evaluate, decide, design choices) default to `assignee: null` (unassigned backlog). Only mechanical/automatable work defaults to `assignee: polecat`. Assigning to `nic` requires explicit user instruction (e.g., `/q nic: <description>`).
+
+**Routing rules**:
+
+| Task Type | Default Assignee | Examples |
+| --- | --- | --- |
+| Mechanical work | `polecat` | create skill, fix bug, update docs, refactor code |
+| Judgment-call | `null` (unassigned) | re-evaluate metrics, review design, approve plan |
+| Explicit override | as specified | `/q nic: respond to email` |
+
+**Corollaries**:
+
+- Auto-assigning judgment tasks to `nic` creates unnecessary noise in nic's queue
+- Unassigned judgment tasks remain in backlog for nic to claim or delegate as needed
+- The `/q` and decompose workflows apply these routing rules when creating tasks
+- `blocked-human` complexity also defaults to unassigned (not auto-assigned to nic)
+
+**Derivation**: Human attention is the scarcest resource. Auto-assigning every judgment task to `nic` defeats the purpose of a backlog - it turns the backlog into nic's inbox. Tasks should be pulled (claimed) rather than pushed (assigned) unless explicitly requested.
