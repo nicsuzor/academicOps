@@ -18,7 +18,34 @@ tags:
 
 Complete lifecycle for non-interactive agent operation: task selection through PR merge and knowledge capture.
 
-## Design Principles
+> **ARCHITECTURE PIVOT (2026-02-12)**: This spec has been revised from programmatic infrastructure to agent-based prompts. The lifecycle phases below remain valid as *concepts*, but their implementation is prompt-driven, not code-driven. Agents make all decisions; code is limited to hooks (triggers) and MCP tools (task state). See project task `aops-core-e89cdca4` for the revised plan.
+
+## Design Principles — Revised
+
+1. **Agents decide, code triggers** - Hooks start agent work; agents make all substantive decisions via prompts
+2. **Minimal code surface** - A few hooks, a few MCP tools, everything else is prompt text
+3. **Fail loudly** - No silent failures; every error surfaces to observable state
+4. **Human-in-the-loop gates** - Automation proposes, humans approve (at PR, not at plan)
+5. **Task body is the audit trail** - No separate observability infrastructure; agents append to task bodies as they work
+
+## What Is Code vs What Is Prompt
+
+| Concern | Implementation | Rationale |
+|---|---|---|
+| Task state transitions | Code (MCP tools + guards) | Deterministic, already built |
+| Trigger: "check for ready tasks" | Code (shell hook / cron) | Mechanical trigger |
+| Trigger: "post-merge capture" | Code (git hook) | Mechanical trigger |
+| Decomposition strategy | Prompt (supervisor skill) | Requires judgment |
+| Reviewer selection & synthesis | Prompt (supervisor skill) | Requires judgment |
+| Worker selection & dispatch | Prompt (supervisor skill) | Requires judgment |
+| Knowledge extraction | Prompt (/remember skill) | Already exists |
+| Consensus & debate | Prompt (supervisor skill) | Requires judgment |
+| Decision surfacing | Prompt (/daily skill) | Already exists |
+| PR lifecycle monitoring | Prompt (agent uses `gh` CLI) | On-demand, not infrastructure |
+
+---
+
+## Original Design Principles (Superseded)
 
 1. **Fail loudly** - No silent failures; every error surfaces to observable state
 2. **Idempotent by default** - All state transitions include idempotency keys
@@ -564,6 +591,112 @@ Infinite loop prevention: Follow-ups have `depth` field. Max depth = 2. Beyond t
 - **Learnings**: 2 patterns, 1 mistake caught
 - **Follow-ups**: 1 tech-debt task created
 ```
+
+---
+
+## Phase 6b: Protocol Retrospection (Self-Improvement)
+
+### Purpose
+
+Phase 6 captures **task-specific** knowledge (patterns from the work itself).
+Phase 6b captures **process-level** knowledge (friction in how the system operated).
+
+This is how the supervisor improves its own protocol over time — conservatively.
+
+### Trigger
+
+`retrospect.sh` lifecycle hook, typically:
+- Cron: daily end-of-day
+- Manual: after a batch of merges
+- Post-merge: chained from Phase 6
+
+### Design Constraint: Flexibility Over Optimization
+
+Agents are eager optimizers. A supervisor that learns from one successful writing
+workflow might force all workflows into that shape. Guard against this:
+
+- **Observe, don't fix** — the retrospector logs observations, not recommendations
+- **Flexibility gate** — changes must benefit 2+ workflow types (code, writing, analysis)
+- **Pattern threshold** — single observations don't trigger changes; need 3+ occurrences
+- **Human gate** — all protocol changes create `status: review` tasks
+- **Scope limit** — retrospector proposes changes to supervisor behavior only,
+  not to worker skills or task schema
+
+### Process
+
+```
+1. GATHER
+   - Read recent session transcripts (abridged)
+   - Read task completion notes (task bodies of recently done tasks)
+   - Read PR comments (gh pr view --comments)
+
+2. SCAN for friction signals
+   - Explicit: "had to retry", "misunderstood", "wrong file"
+   - Structural: review→revision loops, blocked→unblocked churn
+   - Timing: unusually long phases, repeated state transitions
+
+3. EXTRACT observations (NOT fixes)
+   For each friction signal:
+   - What happened (factual, 1-2 sentences)
+   - Which workflow type (code | writing | analysis | admin)
+   - Which phase it occurred in (decompose | review | execute | merge)
+
+4. FLEXIBILITY GATE
+   For each observation, ask:
+   - Would a fix help code workflows?
+   - Would a fix help writing workflows?
+   - Would a fix help analysis workflows?
+
+   If ≥2 workflow types: proceed to step 5
+   If <2: append to pattern accumulator, wait for more data
+
+5. PATTERN ACCUMULATOR CHECK
+   Read $WRITING/data/aops/patterns/pending.md
+   - If this observation matches an existing pending pattern:
+     increment count, add workflow type
+   - If count ≥ 3 AND workflow types ≥ 2:
+     → Invoke /learn with the accumulated observation
+   - Otherwise: log and wait
+
+6. DELEGATE TO /learn
+   When threshold met, invoke /learn with:
+   - The accumulated observation (all instances)
+   - The workflow types affected
+   - The phase where friction occurs
+   /learn handles: root cause analysis, intervention level,
+   experiment tracking, fix application, regression tests
+```
+
+### What Retrospector Owns vs What /learn Owns
+
+| Concern | Retrospector | /learn |
+|---------|-------------|--------|
+| Transcript aggregation | Yes | No (single-session) |
+| Cross-workflow pattern detection | Yes | No |
+| Flexibility gate | Yes | No |
+| Pattern accumulator | Yes | No |
+| Root cause analysis | No | Yes |
+| Graduated intervention ladder | No | Yes |
+| Experiment tracking | No | Yes |
+| Fix application + tests | No | Yes |
+
+### Pattern Accumulator
+
+File: `$WRITING/data/aops/patterns/pending.md`
+
+Simple append-only log. Each entry:
+- Date, session ID, workflow type, observation text, count
+
+When an entry hits threshold (3+ occurrences, 2+ workflow types),
+it gets handed to /learn and marked as `DELEGATED` in the log.
+
+### Output
+
+The retrospector produces no direct framework changes. It either:
+- Logs an observation to the pattern accumulator (most runs), or
+- Invokes /learn when a pattern crosses threshold (rare)
+
+This deliberate indirection prevents over-reaction to single incidents.
 
 ---
 

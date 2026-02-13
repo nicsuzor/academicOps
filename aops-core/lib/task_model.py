@@ -6,6 +6,7 @@ Implements the Task model per specs/tasks-v2.md with:
 - Hierarchical decomposition (goal → project → task → action)
 - YAML frontmatter serialization
 - Validation and type safety
+- State transition guards and logging (per non-interactive-agent-workflow-spec.md)
 
 Usage:
     from lib.task_model import Task, TaskType, TaskStatus, TaskComplexity
@@ -19,10 +20,21 @@ Usage:
     task.to_file(path)
 
     loaded = Task.from_file(path)
+
+    # State transitions with guards
+    result = task.transition_to(
+        TaskStatus.IN_PROGRESS,
+        trigger="worker_claims",
+        actor="polecat-claude",
+        worker_id="polecat-claude-1",
+    )
+    if not result.success:
+        print(f"Transition failed: {result.error}")
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 import uuid
@@ -30,7 +42,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import Any, Callable, TypeVar
 
 import yaml
 
@@ -53,18 +65,40 @@ class TaskType(Enum):
 
 
 class TaskStatus(Enum):
-    """Task lifecycle states."""
+    """Task lifecycle states.
 
+    See specs/non-interactive-agent-workflow-spec.md for full state machine.
+    """
+
+    # Pre-work states
     INBOX = "inbox"  # New task, not yet triaged
     ACTIVE = "active"  # Ready to be claimed (no blockers)
-    IN_PROGRESS = "in_progress"  # Currently being worked on (claimed)
-    BLOCKED = "blocked"  # Waiting on dependencies
-    WAITING = "waiting"  # Waiting on external input
-    REVIEW = "review"  # Requires human review before proceeding
-    MERGE_READY = "merge_ready"  # Work complete, ready for automated merge/integration
-    MERGING = "merging"  # Currently being merged (merge slot - only one task at a time)
-    DONE = "done"  # Completed
-    CANCELLED = "cancelled"  # Abandoned
+
+    # Decomposition phase (Phase 1)
+    DECOMPOSING = "decomposing"  # Effectual planner iterating on breakdown
+
+    # Review phase (Phase 2)
+    CONSENSUS = "consensus"  # Multi-agent review in progress
+
+    # Approval phase (Phase 3)
+    WAITING = "waiting"  # Awaiting user decision
+
+    # Execution phase (Phase 4)
+    IN_PROGRESS = "in_progress"  # Worker executing approved plan
+
+    # PR phase (Phase 5)
+    REVIEW = "review"  # PR filed, awaiting review consensus
+    MERGE_READY = "merge_ready"  # Reviews done, awaiting merge approval
+    MERGING = "merging"  # Currently being merged (merge slot)
+
+    # Terminal states
+    DONE = "done"  # Completed (Phase 6: knowledge captured)
+    CANCELLED = "cancelled"  # Abandoned, with reason
+
+    # Special states
+    BLOCKED = "blocked"  # External dependency, with unblock_condition
+    DORMANT = "dormant"  # User-initiated backburner
+    FAILED = "failed"  # Unrecoverable error, with diagnostic
 
 
 class TaskComplexity(Enum):
@@ -81,6 +115,243 @@ class TaskComplexity(Enum):
     MULTI_STEP = "multi-step"  # Multi-session orchestration
     NEEDS_DECOMPOSITION = "needs-decomposition"  # Must break down first
     BLOCKED_HUMAN = "blocked-human"  # Requires human decision/input
+
+
+class ApprovalType(Enum):
+    """Approval type for tasks in WAITING status.
+
+    Used to differentiate standard approvals from escalated ones
+    that require immediate attention due to unresolved reviewer concerns.
+    """
+
+    STANDARD = "standard"  # Normal approval flow
+    ESCALATED = "escalated"  # Has unresolved concerns from review
+
+
+# =============================================================================
+# State Transition System
+# =============================================================================
+
+
+@dataclass
+class TransitionResult:
+    """Result of a state transition attempt."""
+
+    success: bool
+    from_status: TaskStatus
+    to_status: TaskStatus
+    error: str | None = None
+    idempotency_key: str | None = None
+
+
+@dataclass
+class TransitionLogEntry:
+    """Audit log entry for a state transition."""
+
+    ts: datetime
+    task: str
+    from_status: str
+    to_status: str
+    trigger: str
+    actor: str
+    idempotency_key: str
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "ts": self.ts.isoformat(),
+            "task": self.task,
+            "from": self.from_status,
+            "to": self.to_status,
+            "trigger": self.trigger,
+            "actor": self.actor,
+            "idempotency_key": self.idempotency_key,
+        }
+
+
+class TransitionError(Exception):
+    """Raised when a state transition is invalid."""
+
+    def __init__(self, message: str, from_status: TaskStatus, to_status: TaskStatus):
+        super().__init__(message)
+        self.from_status = from_status
+        self.to_status = to_status
+
+
+# Type alias for guard functions
+# Guard functions take (task, **kwargs) and return (bool, str | None)
+# where str is the error message if guard fails
+GuardFunc = Callable[..., tuple[bool, str | None]]
+
+
+def _guard_always_pass(task: "Task", **kwargs: Any) -> tuple[bool, str | None]:
+    """Guard that always passes (no additional requirements)."""
+    return True, None
+
+
+def _guard_lock_acquired(task: "Task", **kwargs: Any) -> tuple[bool, str | None]:
+    """Guard: lock must be acquired (checked externally, trust caller)."""
+    # Lock acquisition is handled at the task manager level, not here
+    return True, None
+
+
+def _guard_unblock_condition_set(task: "Task", **kwargs: Any) -> tuple[bool, str | None]:
+    """Guard: unblock_condition must be provided for BLOCKED status."""
+    unblock_condition = kwargs.get("unblock_condition") or task.unblock_condition
+    if not unblock_condition:
+        return False, "unblock_condition is required for BLOCKED status"
+    return True, None
+
+
+def _guard_diagnostic_set(task: "Task", **kwargs: Any) -> tuple[bool, str | None]:
+    """Guard: diagnostic must be provided for FAILED status."""
+    diagnostic = kwargs.get("diagnostic") or task.diagnostic
+    if not diagnostic:
+        return False, "diagnostic is required for FAILED status"
+    return True, None
+
+
+def _guard_depth_under_limit(task: "Task", **kwargs: Any) -> tuple[bool, str | None]:
+    """Guard: depth must be under MAX_DEPTH (10) for decomposing iterations."""
+    max_depth = 10
+    if task.depth >= max_depth:
+        return False, f"depth ({task.depth}) exceeds MAX_DEPTH ({max_depth})"
+    return True, None
+
+
+def _guard_pr_url_set(task: "Task", **kwargs: Any) -> tuple[bool, str | None]:
+    """Guard: pr_url must be provided for REVIEW/MERGE_READY status."""
+    pr_url = kwargs.get("pr_url") or task.pr_url
+    if not pr_url:
+        return False, "pr_url is required for REVIEW/MERGE_READY status"
+    return True, None
+
+
+def _guard_worker_id_set(task: "Task", **kwargs: Any) -> tuple[bool, str | None]:
+    """Guard: worker_id must be provided for IN_PROGRESS status."""
+    worker_id = kwargs.get("worker_id") or task.worker_id
+    if not worker_id:
+        return False, "worker_id is required for IN_PROGRESS status"
+    return True, None
+
+
+def _guard_reason_set(task: "Task", **kwargs: Any) -> tuple[bool, str | None]:
+    """Guard: reason must be provided for cancellation."""
+    reason = kwargs.get("reason")
+    if not reason:
+        return False, "reason is required for CANCELLED status"
+    return True, None
+
+
+# Transition table: (from_status, to_status) -> (guard_func, trigger_description)
+# Per non-interactive-agent-workflow-spec.md Section "Transition Table"
+TRANSITION_TABLE: dict[tuple[TaskStatus, TaskStatus], tuple[GuardFunc, str]] = {
+    # From INBOX
+    (TaskStatus.INBOX, TaskStatus.ACTIVE): (_guard_always_pass, "triaged"),
+    (TaskStatus.INBOX, TaskStatus.CANCELLED): (_guard_reason_set, "user_cancels"),
+    # From ACTIVE (pending in spec is our ACTIVE)
+    (TaskStatus.ACTIVE, TaskStatus.DECOMPOSING): (_guard_always_pass, "begin_breakdown"),
+    (TaskStatus.ACTIVE, TaskStatus.IN_PROGRESS): (_guard_worker_id_set, "worker_claims"),
+    (TaskStatus.ACTIVE, TaskStatus.BLOCKED): (_guard_unblock_condition_set, "dependency_discovered"),
+    (TaskStatus.ACTIVE, TaskStatus.FAILED): (_guard_diagnostic_set, "claim_timeout"),
+    (TaskStatus.ACTIVE, TaskStatus.CANCELLED): (_guard_reason_set, "user_cancels"),
+    # From DECOMPOSING
+    (TaskStatus.DECOMPOSING, TaskStatus.DECOMPOSING): (_guard_depth_under_limit, "iteration_complete"),
+    (TaskStatus.DECOMPOSING, TaskStatus.CONSENSUS): (_guard_always_pass, "proposal_ready"),
+    (TaskStatus.DECOMPOSING, TaskStatus.BLOCKED): (_guard_unblock_condition_set, "external_dependency_found"),
+    (TaskStatus.DECOMPOSING, TaskStatus.FAILED): (_guard_diagnostic_set, "exception_or_depth_exceeded"),
+    (TaskStatus.DECOMPOSING, TaskStatus.CANCELLED): (_guard_reason_set, "user_cancels"),
+    # From CONSENSUS
+    (TaskStatus.CONSENSUS, TaskStatus.WAITING): (_guard_always_pass, "all_reviewers_approve"),
+    (TaskStatus.CONSENSUS, TaskStatus.DECOMPOSING): (_guard_always_pass, "any_reviewer_blocks"),
+    (TaskStatus.CONSENSUS, TaskStatus.FAILED): (_guard_diagnostic_set, "all_reviewers_unavailable"),
+    (TaskStatus.CONSENSUS, TaskStatus.CANCELLED): (_guard_reason_set, "user_cancels"),
+    # From WAITING
+    (TaskStatus.WAITING, TaskStatus.IN_PROGRESS): (_guard_worker_id_set, "user_approves"),
+    (TaskStatus.WAITING, TaskStatus.DECOMPOSING): (_guard_always_pass, "user_requests_changes"),
+    (TaskStatus.WAITING, TaskStatus.ACTIVE): (_guard_always_pass, "user_sends_back"),
+    (TaskStatus.WAITING, TaskStatus.DORMANT): (_guard_always_pass, "user_backburners"),
+    (TaskStatus.WAITING, TaskStatus.CANCELLED): (_guard_reason_set, "user_cancels"),
+    (TaskStatus.WAITING, TaskStatus.FAILED): (_guard_diagnostic_set, "approval_timeout"),
+    # From IN_PROGRESS
+    (TaskStatus.IN_PROGRESS, TaskStatus.REVIEW): (_guard_pr_url_set, "pr_filed"),
+    (TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED): (_guard_unblock_condition_set, "dependency_discovered"),
+    (TaskStatus.IN_PROGRESS, TaskStatus.FAILED): (_guard_diagnostic_set, "worker_crash_or_timeout"),
+    (TaskStatus.IN_PROGRESS, TaskStatus.CANCELLED): (_guard_reason_set, "user_cancels"),
+    # From REVIEW
+    (TaskStatus.REVIEW, TaskStatus.MERGE_READY): (_guard_always_pass, "review_consensus_reached"),
+    (TaskStatus.REVIEW, TaskStatus.IN_PROGRESS): (_guard_worker_id_set, "changes_requested"),
+    (TaskStatus.REVIEW, TaskStatus.BLOCKED): (_guard_unblock_condition_set, "dependency_discovered"),
+    (TaskStatus.REVIEW, TaskStatus.FAILED): (_guard_diagnostic_set, "review_timeout"),
+    (TaskStatus.REVIEW, TaskStatus.CANCELLED): (_guard_reason_set, "pr_closed_without_merge"),
+    # From MERGE_READY
+    (TaskStatus.MERGE_READY, TaskStatus.MERGING): (_guard_always_pass, "merge_started"),
+    (TaskStatus.MERGE_READY, TaskStatus.DONE): (_guard_always_pass, "user_approves_merge"),
+    (TaskStatus.MERGE_READY, TaskStatus.REVIEW): (_guard_always_pass, "last_minute_concern"),
+    (TaskStatus.MERGE_READY, TaskStatus.CANCELLED): (_guard_reason_set, "user_declines"),
+    # From MERGING
+    (TaskStatus.MERGING, TaskStatus.DONE): (_guard_always_pass, "merge_complete"),
+    (TaskStatus.MERGING, TaskStatus.FAILED): (_guard_diagnostic_set, "merge_failed"),
+    # From BLOCKED
+    (TaskStatus.BLOCKED, TaskStatus.ACTIVE): (_guard_always_pass, "unblock_condition_met"),
+    (TaskStatus.BLOCKED, TaskStatus.DECOMPOSING): (_guard_always_pass, "unblock_condition_met"),
+    (TaskStatus.BLOCKED, TaskStatus.IN_PROGRESS): (_guard_worker_id_set, "unblock_condition_met"),
+    (TaskStatus.BLOCKED, TaskStatus.REVIEW): (_guard_pr_url_set, "unblock_condition_met"),
+    (TaskStatus.BLOCKED, TaskStatus.FAILED): (_guard_diagnostic_set, "blocked_timeout"),
+    (TaskStatus.BLOCKED, TaskStatus.CANCELLED): (_guard_reason_set, "user_cancels"),
+    # From DORMANT
+    (TaskStatus.DORMANT, TaskStatus.ACTIVE): (_guard_always_pass, "user_reactivates"),
+    (TaskStatus.DORMANT, TaskStatus.CANCELLED): (_guard_reason_set, "user_cancels"),
+    # From FAILED
+    (TaskStatus.FAILED, TaskStatus.ACTIVE): (_guard_always_pass, "user_retries"),
+    (TaskStatus.FAILED, TaskStatus.CANCELLED): (_guard_reason_set, "user_abandons"),
+    # Terminal states - only explicit transitions allowed
+    # DONE and CANCELLED are terminal - no outgoing transitions
+}
+
+
+def _generate_idempotency_key(task_id: str, from_status: TaskStatus, to_status: TaskStatus) -> str:
+    """Generate an idempotency key for a state transition.
+
+    Format: {task_id}-{from_status}-{to_status}-{timestamp_epoch}
+    """
+    ts = int(datetime.now(UTC).timestamp())
+    return f"{task_id}-{from_status.value}-{to_status.value}-{ts}"
+
+
+def _validate_state_invariants(task: "Task", new_status: TaskStatus, **kwargs: Any) -> tuple[bool, str | None]:
+    """Validate state invariants for the target status.
+
+    Args:
+        task: The task being transitioned
+        new_status: The target status
+        **kwargs: Additional fields being set
+
+    Returns:
+        (is_valid, error_message)
+    """
+    # Check invariants based on target status
+    if new_status == TaskStatus.BLOCKED:
+        unblock_condition = kwargs.get("unblock_condition") or task.unblock_condition
+        if not unblock_condition:
+            return False, "BLOCKED status requires unblock_condition field"
+
+    if new_status == TaskStatus.FAILED:
+        diagnostic = kwargs.get("diagnostic") or task.diagnostic
+        if not diagnostic:
+            return False, "FAILED status requires diagnostic field"
+
+    if new_status == TaskStatus.IN_PROGRESS:
+        worker_id = kwargs.get("worker_id") or task.worker_id
+        if not worker_id:
+            return False, "IN_PROGRESS status requires worker_id field"
+
+    if new_status in (TaskStatus.REVIEW, TaskStatus.MERGE_READY):
+        pr_url = kwargs.get("pr_url") or task.pr_url
+        if not pr_url:
+            return False, f"{new_status.value} status requires pr_url field"
+
+    return True, None
 
 
 def _safe_parse_enum(
@@ -156,6 +427,16 @@ class Task:
     context: str | None = None  # @home, @computer, etc.
     assignee: str | None = None  # Task owner: 'nic' or 'polecat'
     complexity: TaskComplexity | None = None  # Routing classification (set by hydrator)
+
+    # Workflow state fields (per non-interactive-agent-workflow-spec.md)
+    unblock_condition: str | None = None  # Required when status=BLOCKED
+    diagnostic: str | None = None  # Required when status=FAILED
+    pr_url: str | None = None  # Required when status=REVIEW or MERGE_READY
+    worker_id: str | None = None  # Required when status=IN_PROGRESS
+    approval_type: ApprovalType | None = None  # Set when status=WAITING
+    decision_deadline: datetime | None = None  # Set when status=WAITING
+    retry_count: int = 0  # Incremented on each retry from FAILED
+    idempotency_key: str | None = None  # For state transition deduplication
 
     # Body content (markdown below frontmatter)
     body: str = ""
@@ -267,6 +548,24 @@ class Task:
         if self.complexity:
             fm["complexity"] = self.complexity.value
 
+        # Workflow state fields (only include if set)
+        if self.unblock_condition:
+            fm["unblock_condition"] = self.unblock_condition
+        if self.diagnostic:
+            fm["diagnostic"] = self.diagnostic
+        if self.pr_url:
+            fm["pr_url"] = self.pr_url
+        if self.worker_id:
+            fm["worker_id"] = self.worker_id
+        if self.approval_type:
+            fm["approval_type"] = self.approval_type.value
+        if self.decision_deadline:
+            fm["decision_deadline"] = self.decision_deadline.isoformat()
+        if self.retry_count:
+            fm["retry_count"] = self.retry_count
+        if self.idempotency_key:
+            fm["idempotency_key"] = self.idempotency_key
+
         return fm
 
     # Status aliases for convenience (hyphenated forms)
@@ -312,6 +611,10 @@ class Task:
         if isinstance(planned, str):
             planned = datetime.fromisoformat(planned)
 
+        decision_deadline = fm.get("decision_deadline")
+        if isinstance(decision_deadline, str):
+            decision_deadline = datetime.fromisoformat(decision_deadline)
+
         # Parse type - require explicit type field (skip non-task files)
         task_type_str = fm.get("type")
         if task_type_str is None:
@@ -353,6 +656,24 @@ class Task:
                     task_id,
                 )
 
+        # Parse approval_type (optional field - None is valid)
+        approval_type_str = fm.get("approval_type")
+        approval_type: ApprovalType | None = None
+        if approval_type_str is not None:
+            try:
+                approval_type = ApprovalType(approval_type_str)
+            except ValueError:
+                logger.warning(
+                    "Invalid approval_type '%s' (task: %s), ignoring",
+                    approval_type_str,
+                    task_id,
+                )
+
+        # Parse retry_count (defaults to 0)
+        retry_count = fm.get("retry_count", 0)
+        if isinstance(retry_count, str):
+            retry_count = int(retry_count) if retry_count.isdigit() else 0
+
         return cls(
             id=task_id,
             title=fm["title"],
@@ -375,6 +696,15 @@ class Task:
             context=fm.get("context"),
             assignee=fm.get("assignee"),
             complexity=complexity,
+            # Workflow state fields
+            unblock_condition=fm.get("unblock_condition"),
+            diagnostic=fm.get("diagnostic"),
+            pr_url=fm.get("pr_url"),
+            worker_id=fm.get("worker_id"),
+            approval_type=approval_type,
+            decision_deadline=decision_deadline,
+            retry_count=retry_count,
+            idempotency_key=fm.get("idempotency_key"),
             body=body,
         )
 
@@ -558,5 +888,293 @@ class Task:
         self.status = TaskStatus.DONE
         self.modified = datetime.now(UTC)
 
+    # =========================================================================
+    # State Transition System
+    # =========================================================================
+
+    def can_transition_to(self, new_status: TaskStatus) -> bool:
+        """Check if a transition to the given status is valid.
+
+        Only checks if the transition exists in the table, not guards.
+
+        Args:
+            new_status: Target status
+
+        Returns:
+            True if transition is valid
+        """
+        return (self.status, new_status) in TRANSITION_TABLE
+
+    def get_valid_transitions(self) -> list[TaskStatus]:
+        """Get list of valid target statuses from current status.
+
+        Returns:
+            List of valid target statuses
+        """
+        return [
+            to_status
+            for (from_status, to_status) in TRANSITION_TABLE
+            if from_status == self.status
+        ]
+
+    def transition_to(
+        self,
+        new_status: TaskStatus,
+        *,
+        trigger: str = "manual",
+        actor: str = "system",
+        audit_log_path: Path | None = None,
+        # Optional fields to set during transition
+        unblock_condition: str | None = None,
+        diagnostic: str | None = None,
+        pr_url: str | None = None,
+        worker_id: str | None = None,
+        approval_type: ApprovalType | None = None,
+        decision_deadline: datetime | None = None,
+        reason: str | None = None,
+    ) -> TransitionResult:
+        """Attempt a state transition with guard validation and logging.
+
+        Args:
+            new_status: Target status
+            trigger: What triggered this transition (for audit)
+            actor: Who/what is performing the transition (for audit)
+            audit_log_path: Path to JSONL audit log (optional)
+            unblock_condition: Set when transitioning to BLOCKED
+            diagnostic: Set when transitioning to FAILED
+            pr_url: Set when transitioning to REVIEW/MERGE_READY
+            worker_id: Set when transitioning to IN_PROGRESS
+            approval_type: Set when transitioning to WAITING
+            decision_deadline: Set when transitioning to WAITING
+            reason: Set when transitioning to CANCELLED
+
+        Returns:
+            TransitionResult indicating success/failure
+
+        Example:
+            result = task.transition_to(
+                TaskStatus.IN_PROGRESS,
+                trigger="worker_claims",
+                actor="polecat-claude",
+                worker_id="polecat-claude-1",
+            )
+        """
+        from_status = self.status
+
+        # Check if already at target status (no-op)
+        if from_status == new_status:
+            return TransitionResult(
+                success=True,
+                from_status=from_status,
+                to_status=new_status,
+                idempotency_key=self.idempotency_key,
+            )
+
+        # Check idempotency - if same transition with same key, return success
+        if self.idempotency_key:
+            # Parse existing key: {task_id}-{from}-{to}-{ts}
+            parts = self.idempotency_key.rsplit("-", 3)
+            if len(parts) >= 3:
+                existing_from = parts[-3] if len(parts) > 3 else parts[0]
+                existing_to = parts[-2]
+                if existing_from == from_status.value and existing_to == new_status.value:
+                    # Idempotent - same transition already applied
+                    return TransitionResult(
+                        success=True,
+                        from_status=from_status,
+                        to_status=new_status,
+                        idempotency_key=self.idempotency_key,
+                    )
+
+        # Check if transition is valid
+        transition_key = (from_status, new_status)
+        if transition_key not in TRANSITION_TABLE:
+            valid_targets = self.get_valid_transitions()
+            valid_names = [s.value for s in valid_targets]
+            return TransitionResult(
+                success=False,
+                from_status=from_status,
+                to_status=new_status,
+                error=f"Invalid transition: {from_status.value} -> {new_status.value}. "
+                f"Valid targets: {valid_names}",
+            )
+
+        guard_func, _ = TRANSITION_TABLE[transition_key]
+
+        # Build kwargs for guard
+        kwargs: dict[str, Any] = {
+            "unblock_condition": unblock_condition,
+            "diagnostic": diagnostic,
+            "pr_url": pr_url,
+            "worker_id": worker_id,
+            "approval_type": approval_type,
+            "decision_deadline": decision_deadline,
+            "reason": reason,
+        }
+
+        # Run guard
+        guard_passed, guard_error = guard_func(self, **kwargs)
+        if not guard_passed:
+            return TransitionResult(
+                success=False,
+                from_status=from_status,
+                to_status=new_status,
+                error=f"Guard failed: {guard_error}",
+            )
+
+        # Validate state invariants
+        invariant_valid, invariant_error = _validate_state_invariants(
+            self, new_status, **kwargs
+        )
+        if not invariant_valid:
+            return TransitionResult(
+                success=False,
+                from_status=from_status,
+                to_status=new_status,
+                error=f"State invariant violated: {invariant_error}",
+            )
+
+        # Generate idempotency key
+        idempotency_key = _generate_idempotency_key(self.id, from_status, new_status)
+
+        # Apply transition
+        self.status = new_status
+        self.modified = datetime.now(UTC)
+        self.idempotency_key = idempotency_key
+
+        # Set optional fields
+        if unblock_condition is not None:
+            self.unblock_condition = unblock_condition
+        if diagnostic is not None:
+            self.diagnostic = diagnostic
+        if pr_url is not None:
+            self.pr_url = pr_url
+        if worker_id is not None:
+            self.worker_id = worker_id
+        if approval_type is not None:
+            self.approval_type = approval_type
+        if decision_deadline is not None:
+            self.decision_deadline = decision_deadline
+
+        # Clear fields that don't apply to new status
+        if new_status not in (TaskStatus.BLOCKED,):
+            self.unblock_condition = None
+        if new_status not in (TaskStatus.FAILED,):
+            # Keep diagnostic for history when retrying
+            pass
+        # Keep worker_id and pr_url for audit trail on terminal states
+        if new_status not in (TaskStatus.IN_PROGRESS, TaskStatus.DONE, TaskStatus.CANCELLED, TaskStatus.REVIEW, TaskStatus.MERGE_READY, TaskStatus.MERGING):
+            self.worker_id = None
+        if new_status not in (TaskStatus.REVIEW, TaskStatus.MERGE_READY, TaskStatus.MERGING, TaskStatus.DONE, TaskStatus.CANCELLED):
+            self.pr_url = None
+        if new_status not in (TaskStatus.WAITING,):
+            self.approval_type = None
+            self.decision_deadline = None
+
+        # Increment retry count if transitioning from FAILED
+        if from_status == TaskStatus.FAILED and new_status == TaskStatus.ACTIVE:
+            self.retry_count += 1
+
+        # Log transition
+        log_entry = TransitionLogEntry(
+            ts=datetime.now(UTC),
+            task=self.id,
+            from_status=from_status.value,
+            to_status=new_status.value,
+            trigger=trigger,
+            actor=actor,
+            idempotency_key=idempotency_key,
+        )
+
+        # Write to audit log if path provided
+        if audit_log_path:
+            self._write_audit_log(log_entry, audit_log_path)
+
+        # Also log to Python logger
+        logger.info(
+            "Task %s: %s -> %s (trigger=%s, actor=%s)",
+            self.id,
+            from_status.value,
+            new_status.value,
+            trigger,
+            actor,
+        )
+
+        return TransitionResult(
+            success=True,
+            from_status=from_status,
+            to_status=new_status,
+            idempotency_key=idempotency_key,
+        )
+
+    def _write_audit_log(self, entry: TransitionLogEntry, log_path: Path) -> None:
+        """Write a transition log entry to the audit log.
+
+        Args:
+            entry: Log entry to write
+            log_path: Path to JSONL audit log file
+        """
+        try:
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            with log_path.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(entry.to_dict()) + "\n")
+        except OSError as e:
+            logger.warning("Failed to write audit log: %s", e)
+
+    @classmethod
+    def get_default_audit_log_path(cls) -> Path:
+        """Get the default audit log path.
+
+        Returns:
+            Path to data/aops-core/audit/transitions.jsonl
+        """
+        # Assuming we're in the aops-core directory structure
+        return Path("data/aops-core/audit/transitions.jsonl")
+
     def __repr__(self) -> str:
         return f"Task(id={self.id!r}, title={self.title!r}, type={self.type.value})"
+
+
+# =============================================================================
+# Utility Functions
+# =============================================================================
+
+
+def get_transition_info(from_status: TaskStatus, to_status: TaskStatus) -> dict[str, Any] | None:
+    """Get information about a specific transition.
+
+    Args:
+        from_status: Source status
+        to_status: Target status
+
+    Returns:
+        Dict with guard and trigger info, or None if transition is invalid
+    """
+    key = (from_status, to_status)
+    if key not in TRANSITION_TABLE:
+        return None
+
+    guard_func, trigger = TRANSITION_TABLE[key]
+    return {
+        "from": from_status.value,
+        "to": to_status.value,
+        "trigger": trigger,
+        "guard": guard_func.__name__,
+    }
+
+
+def get_all_transitions() -> list[dict[str, Any]]:
+    """Get all valid transitions.
+
+    Returns:
+        List of transition info dicts
+    """
+    return [
+        {
+            "from": from_status.value,
+            "to": to_status.value,
+            "trigger": trigger,
+            "guard": guard_func.__name__,
+        }
+        for (from_status, to_status), (guard_func, trigger) in TRANSITION_TABLE.items()
+    ]
