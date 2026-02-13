@@ -144,14 +144,11 @@ def execute_custom_action(
             context_injection=instruction,
         )
 
-    if name == "prepare_critic_review":
-        temp_path = create_audit_file(ctx.session_id, "critic", ctx)
+    if name in ("prepare_critic_review", "prepare_qa_review"):
+        gate_name = name.replace("prepare_", "").replace("_review", "")
+        temp_path = create_audit_file(ctx.session_id, gate_name, ctx)
         state.metrics["temp_path"] = str(temp_path)
         return None
 
-    if name == "prepare_qa_review":
-        temp_path = create_audit_file(ctx.session_id, "qa", ctx)
-        state.metrics["temp_path"] = str(temp_path)
-        return None
 
     return None
