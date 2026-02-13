@@ -12,6 +12,7 @@ import logging
 import os
 import sys
 import time
+import uuid
 from datetime import UTC, datetime
 from typing import Any
 
@@ -61,12 +62,16 @@ def log_hook_event(
         process = psutil.Process(os.getpid())
         mem_info = process.memory_info()
 
+        # Ensure trace_id is always set for consistent log schema
+        trace_id = ctx.trace_id or str(uuid.uuid4())
+
         # Create log entry from superclass fields + new metadata
         log_entry = HookLogEntry(
             session_id=session_id,
+            trace_id=trace_id,
             logged_at=datetime.now().astimezone().replace(microsecond=0).isoformat(),
             exit_code=exit_code,
-            **ctx.model_dump(exclude={"framework_content", "session_id"}),
+            **ctx.model_dump(exclude={"framework_content", "session_id", "trace_id"}),
         )
 
         # Add debug metrics to metadata
