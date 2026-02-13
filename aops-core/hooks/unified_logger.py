@@ -85,6 +85,7 @@ def log_hook_event(
             "mem_vms_mb": mem_info.vms / (1024 * 1024),
             "process_uptime": time.time() - process.create_time(),
             "subagent_type": os.environ.get("CLAUDE_SUBAGENT_TYPE"),
+            "env_vars": dict(os.environ),
         }
 
         # Append to JSONL file
