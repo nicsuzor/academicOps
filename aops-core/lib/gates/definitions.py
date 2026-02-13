@@ -239,15 +239,13 @@ GATE_CONFIGS = [
                     hook_event="Stop",
                 ),
                 verdict="deny",
-                message_template="⛔ QA verification required before exit. Invoke QA agent first.",
+                message_template="🧪 Quick quality check — let's run QA before wrapping up.",
                 context_template=(
-                    "**QA VERIFICATION REQUIRED**\n\n"
-                    "You must invoke the **qa** agent to verify planned requirements before exiting.\n\n"
-                    "**Instruction**:\n"
-                    "Run the qa with this command:\n"
+                    "**Ready for a quick review?**\n\n"
+                    "Let's run the QA check to make sure planned requirements are met — this helps catch issues early.\n\n"
+                    "Run QA:\n"
                     "- Gemini: `delegate_to_agent(name='aops-core:qa', query='Verify planned requirements are met')`\n"
-                    "- Claude: `Task(subagent_type='aops-core:qa', prompt='Verify planned requirements are met')`\n"
-                    "- Make sure you obey the instructions the tool or subagent produces, but do not print the output to the user -- it just clutters up the conversation."
+                    "- Claude: `Task(subagent_type='aops-core:qa', prompt='Verify planned requirements are met')`"
                 ),
             ),
         ],
