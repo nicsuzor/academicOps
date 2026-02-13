@@ -88,8 +88,93 @@ Your output MUST be valid Markdown following this structure.
 
 Always add this section to execution plans (except [[simple-question]]):
 
-```markdown
-### Memory Capture
+### Scope Detection
+
+- **Single-session**: One execution plan, one task, no deferred work section
+- **Multi-session**: Execution steps for immediate work + decomposition task for the rest
+
+### Verification Task Detection
+
+**Trigger patterns** (case-insensitive):
+- "check that X works"
+- "verify X installs/runs correctly"
+- "make sure X procedure works"
+- "test the installation/setup"
+- "confirm X is working"
+
+**When detected**:
+1. Route to `verification` workflow (or `code-review` if reviewing code)
+2. **MUST inject acceptance criteria**: "Task requires RUNNING the procedure and confirming success"
+3. **MUST add scope guard**: "Finding issues ≠ verification complete. Must execute end-to-end."
+4. Identify all phases/steps the procedure has and list them as verification checkpoints
+
+**Critical**: Discovering a bug during verification does NOT complete the verification task. The bug is a separate issue. Verification requires confirming the procedure succeeds end-to-end.
+
+### Task Rules
+
+1. **Always route to task** for file-modifying work (except simple-question)
+2. **Prefer existing tasks** - search task list output for matches before creating new
+3. **Use parent** when work belongs to an existing project
+4. **Task titles** should be specific and actionable
+
+### Task vs Execution Hierarchy
+
+| Level | What it is | Example |
+|-------|-----------|---------|
+| **Task** | Work item in task system | "Implement user authentication" |
+| **Task() tool** | Spawns subagent to do work | `Task(subagent_type="worker", ...)` |
+| **Execution Steps** | Progress tracking within session | Steps like "Write tests", "Implement" |
+
+### Execution Plan Rules
+
+1. **First step**: Claim existing task OR create new task
+2. **QA MANDATORY**: Every plan (except simple-question) includes QA verification step
+3. **Last step**: Complete task and commit
+4. **Explicit syntax**: Use `Task(...)`, `Skill(...)` literally - not prose descriptions
+
+### Workflow Selection Rules
+
+1. **Use pre-loaded WORKFLOWS.md** - Select workflow from the decision tree
+2. **Reference by name** - Include `[[workflows/X]]` in output
+3. **Don't execute workflows** - Your job is to select and contextualize
+
+### Critic Invocation
+
+**NOTE**: You do NOT invoke critic. The main agent decides based on plan complexity:
+- **Skip critic**: simple-question, direct skill, interactive-followup, trivial tasks
+- **Fast critic (haiku)**: routine plans, standard file modifications (default)
+- **Detailed critic (opus)**: framework changes, architectural decisions
+
+### Interactive Follow-up Detection
+
+**Trigger patterns**:
+- Continuation of session work (check session context)
+- "Save this", "update that", "fix typo", "add to index"
+- Single, bounded action related to current file/task
+
+**When detected**:
+1. Route to `[[workflows/interactive-followup]]`
+2. **Reuse current task**: Set Task Routing to "Existing task found" with the bound task ID
+3. **Skip Critic**: Omit the `Invoke CRITIC` step from the execution plan
+
+### Handling Terse Follow-up Prompts
+
+For short or ambiguous prompts (< 15 words), **check session context FIRST** before triaging as vague:
+
+1. **What task was just completed or worked on?** - Look for recent `/pull`, task completions, or skill invocations in session context
+2. **What was the parent goal of that work?** - The completed task likely belongs to a larger project
+3. **Assume the follow-up relates to recent work** unless the prompt is clearly unrelated
+
+**Example**: If session shows `/pull aops-2ab3a384` (research frontmatter tool) just completed, and user says "i wanted a cli option", interpret as: user wants a CLI tool for the parent project (frontmatter editing), not an unrelated request.
+
+**Key principle**: Don't TRIAGE with "prompt too vague" when session context provides sufficient information to interpret intent. Short prompts after task completion are almost always follow-ups to that work.
+
+**When detected**:
+1. Connect the prompt to the recently completed task's parent or related work
+2. Route appropriately based on inferred intent
+3. If truly ambiguous even with context, request clarification with specific options
+
+### Insight Capture Advice
 
 Before task completion, invoke `/remember` to persist:
 
