@@ -160,6 +160,22 @@ def persist_session_data(data: dict[str, Any]) -> None:
 
 
 class HookRouter:
+    # Global bypass for compliance subagents (POLICIES ONLY)
+    # We still run triggers for these agents so gate states update correctly.
+    _COMPLIANCE_SUBAGENT_TYPES = frozenset({
+        "hydrator",
+        "prompt-hydrator",
+        "aops-core:prompt-hydrator",
+        "custodiet",
+        "aops-core:custodiet",
+        "qa",
+        "aops-core:qa",
+        "audit",
+        "aops-core:audit",
+        "aops-core:butler",
+        "butler",
+    })
+
     def __init__(self):
         self.session_data = get_session_data()
         self._execution_timestamps = deque(maxlen=20)  # Store last 20 timestamps
@@ -500,21 +516,8 @@ class HookRouter:
         - AfterAgent -> gate.on_after_agent()
         - SubagentStop -> gate.on_subagent_stop()
         """
-        # Global bypass for compliance subagents (POLICIES ONLY)
-        # We still run triggers for these agents so gate states update correctly.
-        _COMPLIANCE_SUBAGENT_TYPES = {
-            "hydrator",
-            "prompt-hydrator",
-            "aops-core:prompt-hydrator",
-            "custodiet",
-            "aops-core:custodiet",
-            "qa",
-            "aops-core:qa",
-            "aops-core:butler",
-            "butler",
-        }
         is_compliance_agent = ctx.is_subagent and (
-            state.state.get("hydrator_active") or ctx.subagent_type in _COMPLIANCE_SUBAGENT_TYPES
+            state.state.get("hydrator_active") or ctx.subagent_type in self._COMPLIANCE_SUBAGENT_TYPES
         )
 
         messages = []
