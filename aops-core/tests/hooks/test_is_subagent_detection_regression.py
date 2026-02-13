@@ -10,7 +10,6 @@ raw_input dict (as they would receive from the router after the fix).
 import os
 from unittest.mock import patch
 
-import pytest
 from lib.hook_utils import is_subagent_session
 
 
@@ -111,11 +110,9 @@ class TestTranscriptPathDetection:
         ) is True
 
     def test_normal_path_not_detected(self):
-        result = is_subagent_session(
+        assert is_subagent_session(
             {"transcript_path": "/home/user/.claude/sessions/main/transcript.jsonl"}
-        )
-        # May still be False unless other methods detect
-        # (depends on env vars, session_id, etc.)
+        ) is False
 
 
 class TestNoneAndEmptyInputs:
