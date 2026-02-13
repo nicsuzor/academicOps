@@ -3,9 +3,9 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from hooks.gates import on_session_start
 from hooks.schemas import HookContext
 from lib.gate_model import GateResult, GateVerdict
+from session_env_setup import run_session_env_setup
 
 
 @patch("hooks.gates.session_paths.get_session_short_hash")
@@ -48,7 +48,7 @@ def test_session_start_message_generation(
         raw_input={"session_id": "session-123"},
     )
 
-    result = on_session_start(ctx, state)
+    result = run_session_env_setup(ctx, state)
 
     assert result is not None
     assert isinstance(result, GateResult)

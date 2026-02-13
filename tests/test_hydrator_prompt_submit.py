@@ -6,7 +6,6 @@ from hooks.router import HookRouter
 @patch("hooks.user_prompt_submit.build_hydration_instruction")
 @patch("hooks.user_prompt_submit.write_initial_hydrator_state")
 @patch("hooks.user_prompt_submit.should_skip_hydration")
-@patch("hooks.gate_registry.session_state")
 def test_hydrator_hook_with_specific_input(
     mock_session_state, mock_should_skip, mock_write_state, mock_build_instruction
 ):

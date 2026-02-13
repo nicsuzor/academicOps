@@ -83,7 +83,7 @@ class TestGeminiTempPathFromTranscript:
             # Mock cwd to not have .gemini and mock get_claude_project_folder
             with patch("lib.hook_utils.Path.cwd", return_value=Path("/some/path")):
                 with patch(
-                    "lib.hook_utils.get_claude_project_folder",
+                    "lib.session_paths.get_claude_project_folder",
                     return_value="-some-path",
                 ):
                     result = get_hook_temp_dir("hydrator", input_data)

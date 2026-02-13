@@ -17,7 +17,8 @@ if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
 from lib.gate_model import GateResult, GateVerdict
-from lib.session_paths import get_session_status_dir
+from lib.session_paths import get_hook_log_path, get_session_file_path, get_session_status_dir
+from lib.session_state import SessionState
 
 from hooks.schemas import HookContext
 
@@ -39,9 +40,9 @@ def set_persistent_env(env_dict: dict[str, str]):
             print(f"WARNING: Failed to write to CLAUDE_ENV_FILE: {e}", file=sys.stderr)
 
 
-def run_session_env_setup(ctx: HookContext) -> GateResult | None:
-    """
-    Logic from session_env_setup.sh migrated to Python.
+def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult | None:
+    """Session start initialization - fail-fast checks and user messages.
+
 
     Sets:
     - CLAUDE_SESSION_ID
@@ -50,11 +51,74 @@ def run_session_env_setup(ctx: HookContext) -> GateResult | None:
     - AOPS_HOOK_LOG_PATH
     - Default gate enforcement modes (CUSTODIET_MODE, TASK_GATE_MODE, HYDRATION_GATE_MODE)
     - Other placeholder variables from original script
+
     """
+
+    from lib import hook_utils
+
     if ctx.hook_event != "SessionStart":
         return None
 
     persist = {}
+
+    # Use precomputed short_hash from context
+    short_hash = ctx.session_short_hash
+    hook_log_path = get_hook_log_path(ctx.session_id, ctx.raw_input)
+    state_file_path = get_session_file_path(ctx.session_id, input_data=ctx.raw_input)
+    status_dir = get_session_status_dir(ctx.session_id, ctx.raw_input)
+
+    # Fail-fast: ensure state file can be written
+    if not state_file_path.exists():
+        try:
+            state.save()
+        except OSError as e:
+            return GateResult(
+                verdict=GateVerdict.DENY,
+                system_message=(
+                    f"FAIL-FAST: Cannot write session state file.\n"
+                    f"Path: {state_file_path}\n"
+                    f"Error: {e}\n"
+                    f"Fix: Check directory permissions and disk space."
+                ),
+                metadata={"source": "session_start", "error": str(e)},
+            )
+
+    # Gemini-specific: validate hydration temp path infrastructure
+    transcript_path = ctx.raw_input.get("transcript_path", "") if ctx.raw_input else ""
+    if transcript_path and ".gemini" in str(transcript_path):
+        try:
+            hydration_temp_dir = hook_utils.get_hook_temp_dir("hydrator", ctx.raw_input)
+            if not hydration_temp_dir.exists():
+                hydration_temp_dir.mkdir(parents=True, exist_ok=True)
+        except RuntimeError as e:
+            return GateResult(
+                verdict=GateVerdict.DENY,
+                system_message=(
+                    f"STATE ERROR: Hydration temp path missing from session state.\n\n"
+                    f"Details: {e}\n\n"
+                    f"Fix: Ensure Gemini CLI has initialized the project directory."
+                ),
+                metadata={"source": "session_start", "error": "gemini_temp_dir_missing"},
+            )
+        except OSError as e:
+            return GateResult(
+                verdict=GateVerdict.DENY,
+                system_message=(
+                    f"STATE ERROR: Cannot create hydration temp directory.\n\n"
+                    f"Error: {e}\n\n"
+                    f"Fix: Check directory permissions for ~/.gemini/tmp/"
+                ),
+                metadata={"source": "session_start", "error": "gemini_temp_dir_permission"},
+            )
+
+    # Session started messages
+    messages = [
+        f"Session Started: {ctx.session_id} ({short_hash})",
+        f"Version: {state.version}",
+        f"State File: {state_file_path}",
+        f"Hooks log: {hook_log_path}",
+        f"Transcript: {transcript_path}",
+    ]
 
     # 1. Persist Session ID
     if ctx.session_id:
@@ -68,26 +132,25 @@ def run_session_env_setup(ctx: HookContext) -> GateResult | None:
         new_pythonpath = f"{aops_core}:{current_pythonpath}".strip(":")
         persist["PYTHONPATH"] = new_pythonpath
 
-    # 3. Persist AOPS_SESSION_STATE_DIR
+    # 3. Persist gate mode environment variables
+    for mode_var in GATE_MODE_VARS:
+        current_val = os.environ.get(mode_var, DEFAULT_GATE_MODE)
+        persist[mode_var] = current_val
 
-    # Use centralized resolution from session_paths.py
+    # 4. Persist paths
     try:
-        status_dir = get_session_status_dir(ctx.session_id, ctx.raw_input)
         persist["AOPS_SESSION_STATE_DIR"] = str(status_dir)
     except Exception as e:
         print(f"WARNING: Failed to determine session status dir: {e}", file=sys.stderr)
 
-    # 4. Default Enforcement Modes (fail-safe defaults to "warn" if not set)
-    # <!-- NS: no magic literals. -->
-    # <!-- @claude 2026-02-07: Fixed. Extracted to GATE_MODE_VARS and DEFAULT_GATE_MODE constants at module level. -->
-    for mode_var in GATE_MODE_VARS:
-        current_val = os.environ.get(mode_var, DEFAULT_GATE_MODE)
-        persist[mode_var] = current_val
+    persist["AOPS_HOOK_LOG_PATH"] = str(hook_log_path)
+    persist["AOPS_SESSION_STATE_PATH"] = str(state_file_path)
 
     # Persist all environment variables
     set_persistent_env(persist)
 
     return GateResult(
         verdict=GateVerdict.ALLOW,
+        system_message="\n".join(messages),
         metadata={"source": "session_env_setup", "persisted_vars": persist},
     )

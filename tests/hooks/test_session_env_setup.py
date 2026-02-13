@@ -33,12 +33,6 @@ class TestSessionEnvSetup:
         with patch.dict("os.environ", {"CLAUDE_ENV_FILE": str(env_file)}):
             yield env_file
 
-    def test_persist_env_var(self, temp_env_file):
-        """Test that persist_env_var writes to CLAUDE_ENV_FILE."""
-        persist_env_var("TEST_VAR", "test_value")
-        content = temp_env_file.read_text()
-        assert 'export TEST_VAR="test_value"' in content
-
     def test_run_session_env_setup_persists_variables(self, temp_env_file):
         """Test that run_session_env_setup persists required variables."""
         ctx = HookContext(session_id="test-session-123", hook_event="SessionStart", raw_input={})
