@@ -104,11 +104,9 @@ GATE_CONFIGS = [
                 message_template="Compliance check required ({ops_since_open} ops since last check).\nInvoke 'custodiet' agent.",
                 context_template=(
                     "**Compliance check required ({ops_since_open} ops since last check).**\n\n"
-                    "You must invoke the **custodiet** agent to load context before proceeding.\n\n"
-                    "**Instruction**:\n"
-                    "Run the custodiet with this command:\n"
-                    "- Gemini: `delegate_to_agent(name='custodiet', query='Validate session using context in {temp_path}')`\n"
-                    "- Claude: `Task(subagent_type='custodiet', prompt='Validate session using context in {temp_path}')`"
+                    "You must invoke the **custodiet** agent to load context before proceeding:\n"
+                    "- Gemini: `delegate_to_agent(name='custodiet', query='{temp_path}')`\n"
+                    "- Claude: `Task(subagent_type='custodiet', prompt='{temp_path}')`"
                 ),
                 custom_action="prepare_compliance_report",
             ),
@@ -117,12 +115,14 @@ GATE_CONFIGS = [
                 condition=GateCondition(hook_event="Stop", custom_check="has_uncommitted_work"),
                 verdict="warn",
                 message_template="{block_reason}",
+                context_template="{block_reason}",
             ),
             # Stop warning (Unpushed commits)
             GatePolicy(
                 condition=GateCondition(hook_event="Stop", custom_check="has_unpushed_commits"),
                 verdict="warn",
                 message_template="{warning_message}",
+                context_template="{warning_message}",
             ),
         ],
     ),
