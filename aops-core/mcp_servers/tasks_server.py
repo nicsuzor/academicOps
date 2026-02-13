@@ -39,6 +39,9 @@ from lib.task_index import TaskIndex, TaskIndexEntry
 from lib.task_model import Task, TaskComplexity, TaskStatus, TaskType
 from lib.task_storage import TaskStorage
 
+# Pre-compile regex pattern for performance
+_INCOMPLETE_MARKER_PATTERN = re.compile(r"^-\s*\[ \]\s*(.+)$", re.MULTILINE)
+
 
 def _resolve_status_alias(status: str) -> str:
     """Resolve status aliases to canonical status values."""
@@ -253,10 +256,23 @@ def _check_incomplete_markers(body: str) -> list[str]:
     if not body:
         return []
 
-    # Match lines starting with '- [ ]'
-    # We use re.MULTILINE to allow ^ to match start of lines within the body
-    incomplete_pattern = re.compile(r"^-\s*\[ \]\s*(.+)$", re.MULTILINE)
-    return [m.group(1).strip() for m in incomplete_pattern.finditer(body)]
+    return [m.group(1).strip() for m in _INCOMPLETE_MARKER_PATTERN.finditer(body)]
+
+
+def _format_incomplete_items_error(incomplete: list[str]) -> str:
+    """Format error message for incomplete checklist items.
+
+    Args:
+        incomplete: List of incomplete item descriptions
+
+    Returns:
+        Formatted error message
+    """
+    return (
+        f"Cannot complete task with {len(incomplete)} incomplete items: "
+        f"{', '.join(incomplete[:3])}{'...' if len(incomplete) > 3 else ''}. "
+        "Mark items as [x] or use force=True to bypass."
+    )
 
 
 # =============================================================================
@@ -601,9 +617,7 @@ def update_task(
                             "success": False,
                             "task": _task_to_dict(task),
                             "modified_fields": [],
-                            "message": f"Cannot complete task with {len(incomplete)} incomplete items: "
-                            f"{', '.join(incomplete[:3])}{'...' if len(incomplete) > 3 else ''}. "
-                            "Mark items as [x] or use force=True to bypass.",
+                            "message": _format_incomplete_items_error(incomplete),
                         }
 
                 task.status = new_status
@@ -824,9 +838,7 @@ def complete_task(id: str, force: bool = False) -> dict[str, Any]:
                 return {
                     "success": False,
                     "task": _task_to_dict(task),
-                    "message": f"Cannot complete task with {len(incomplete)} incomplete items: "
-                    f"{', '.join(incomplete[:3])}{'...' if len(incomplete) > 3 else ''}. "
-                    "Mark items as [x] or use force=True to bypass.",
+                    "message": _format_incomplete_items_error(incomplete),
                 }
 
         task.complete()
