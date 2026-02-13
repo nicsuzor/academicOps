@@ -51,9 +51,14 @@ class GenericGate:
 
         # 1. Hook Event Match
         if condition.hook_event:
-            # Simple equality check
-            if condition.hook_event != ctx.hook_event:
-                return False
+            # Match regex if it starts with ^ or ends with $ or contains |
+            if any(c in condition.hook_event for c in "^$|[]()"):
+                if not re.search(condition.hook_event, ctx.hook_event):
+                    return False
+            else:
+                # Simple equality check for backward compatibility and speed
+                if condition.hook_event != ctx.hook_event:
+                    return False
 
         # 2. Tool Name Pattern
         if condition.tool_name_pattern:

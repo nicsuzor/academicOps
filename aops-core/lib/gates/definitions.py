@@ -22,7 +22,7 @@ GATE_CONFIGS = [
             # Hydrator finishes -> Open
             GateTrigger(
                 condition=GateCondition(
-                    hook_event="SubagentStop", subagent_type_pattern="hydrator"
+                    hook_event="^(SubagentStop|PostToolUse)$", subagent_type_pattern="hydrator"
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
@@ -30,18 +30,7 @@ GATE_CONFIGS = [
                     system_message_template="💧 Hydration complete. Gate OPEN.",
                 ),
             ),
-            # Task tool completes (fallback if not subagent)
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="PostToolUse",
-                    tool_name_pattern="Task",
-                    tool_input_pattern="hydrator",
-                ),
-                transition=GateTransition(target_status=GateStatus.OPEN, reset_ops_counter=True),
-            ),
             # User Prompt (not ignored) -> Close
-            # Note: user_prompt_submit.py hook script also closes the gate and sets metrics.
-            # This trigger ensures consistent state machine behavior.
             GateTrigger(
                 condition=GateCondition(
                     hook_event="UserPromptSubmit", custom_check="is_hydratable"
@@ -54,27 +43,7 @@ GATE_CONFIGS = [
             # This allows the hydrator subagent to use its tools without being blocked.
             GateTrigger(
                 condition=GateCondition(
-                    hook_event="PreToolUse", tool_name_pattern="Task", tool_input_pattern="hydrator"
-                ),
-                transition=GateTransition(target_status=GateStatus.OPEN, reset_ops_counter=True),
-            ),
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="PreToolUse",
-                    tool_name_pattern="Skill",
-                    tool_input_pattern="hydrator",
-                ),
-                transition=GateTransition(target_status=GateStatus.OPEN, reset_ops_counter=True),
-            ),
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="PreToolUse", tool_name_pattern="prompt-hydrator"
-                ),
-                transition=GateTransition(target_status=GateStatus.OPEN, reset_ops_counter=True),
-            ),
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="PreToolUse", tool_input_pattern="aops-core:prompt-hydrator"
+                    hook_event="PreToolUse", subagent_type_pattern="hydrator"
                 ),
                 transition=GateTransition(target_status=GateStatus.OPEN, reset_ops_counter=True),
             ),
@@ -111,27 +80,19 @@ GATE_CONFIGS = [
         triggers=[
             # Custodiet check -> Reset
             GateTrigger(
+                condition=GateCondition(
+                    hook_event="^(SubagentStop|PostToolUse)$", subagent_type_pattern="custodiet"
+                ),
+                transition=GateTransition(
+                    reset_ops_counter=True, system_message_template="🛡️ Compliance verified."
+                ),
+            ),
+            # Direct tool call fallback
+            GateTrigger(
                 condition=GateCondition(hook_event="PostToolUse", tool_name_pattern="custodiet"),
                 transition=GateTransition(
                     reset_ops_counter=True, system_message_template="🛡️ Compliance verified."
                 ),
-            ),
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="SubagentStop", subagent_type_pattern="custodiet"
-                ),
-                transition=GateTransition(
-                    reset_ops_counter=True, system_message_template="🛡️ Compliance verified."
-                ),
-            ),
-            # Also reset if Task tool calls custodiet
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="PostToolUse",
-                    tool_name_pattern="Task",
-                    tool_input_pattern="custodiet",
-                ),
-                transition=GateTransition(reset_ops_counter=True),
             ),
         ],
         policies=[
@@ -196,35 +157,13 @@ GATE_CONFIGS = [
             ),
             # Critic review completes with PROCEED -> Open gate
             GateTrigger(
-                condition=GateCondition(hook_event="SubagentStop", subagent_type_pattern="critic"),
+                condition=GateCondition(
+                    hook_event="^(SubagentStop|PostToolUse)$", subagent_type_pattern="critic"
+                ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
                     reset_ops_counter=True,
                     system_message_template="👁️ Critic review complete. Editing allowed.",
-                ),
-            ),
-            # Task tool calls critic (fallback)
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="PostToolUse",
-                    tool_name_pattern="Task",
-                    tool_input_pattern=r"\bcritic\b",
-                ),
-                transition=GateTransition(
-                    target_status=GateStatus.OPEN,
-                    reset_ops_counter=True,
-                ),
-            ),
-            # Skill tool calls critic (fallback)
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="PostToolUse",
-                    tool_name_pattern="Skill",
-                    tool_input_pattern="critic",
-                ),
-                transition=GateTransition(
-                    target_status=GateStatus.OPEN,
-                    reset_ops_counter=True,
                 ),
             ),
         ],
@@ -266,7 +205,9 @@ GATE_CONFIGS = [
             ),
             # QA agent verifies requirements -> Open gate
             GateTrigger(
-                condition=GateCondition(hook_event="SubagentStop", subagent_type_pattern="qa"),
+                condition=GateCondition(
+                    hook_event="^(SubagentStop|PostToolUse)$", subagent_type_pattern="qa"
+                ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
                     system_message_template="🧪 QA complete. Requirements verified.",
@@ -275,48 +216,11 @@ GATE_CONFIGS = [
             # Critic, once called, requires QA review to ensure compliance before exit
             GateTrigger(
                 condition=GateCondition(
-                    hook_event="PostToolUse",
-                    tool_name_pattern="Task",
-                    tool_input_pattern=r"\bcritic\b",
+                    hook_event="PostToolUse", subagent_type_pattern="critic"
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
                     reset_ops_counter=False,
-                    system_message_template="🧪 QA complete. Requirements verified.",
-                ),
-            ),
-            # Task tool calls QA (fallback)
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="PostToolUse",
-                    tool_name_pattern="Task",
-                    tool_input_pattern=r"\bqa\b",
-                ),
-                transition=GateTransition(
-                    target_status=GateStatus.OPEN,
-                    system_message_template="🧪 QA complete. Requirements verified.",
-                ),
-            ),
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="PreToolUse",
-                    tool_name_pattern="Task",
-                    tool_input_pattern=r"\bqa\b",
-                ),
-                transition=GateTransition(
-                    target_status=GateStatus.OPEN,
-                    system_message_template="🧪 QA complete. Requirements verified.",
-                ),
-            ),
-            # Skill tool calls QA (fallback)
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="PostToolUse",
-                    tool_name_pattern="Skill",
-                    tool_input_pattern=r"\bqa\b",
-                ),
-                transition=GateTransition(
-                    target_status=GateStatus.OPEN,
                     system_message_template="🧪 QA complete. Requirements verified.",
                 ),
             ),

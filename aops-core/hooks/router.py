@@ -43,16 +43,30 @@ try:
     )
     from lib.session_state import SessionState
 
-    from hooks.schemas import (
-        CanonicalHookOutput,
-        ClaudeGeneralHookOutput,
-        ClaudeHookOutput,
-        ClaudeHookSpecificOutput,
-        ClaudeStopHookOutput,
-        GeminiHookOutput,
-        GeminiHookSpecificOutput,
-        HookContext,
-    )
+    # Use relative import if possible, or direct import if run as script
+    try:
+        from hooks.schemas import (
+            CanonicalHookOutput,
+            ClaudeGeneralHookOutput,
+            ClaudeHookOutput,
+            ClaudeHookSpecificOutput,
+            ClaudeStopHookOutput,
+            GeminiHookOutput,
+            GeminiHookSpecificOutput,
+            HookContext,
+        )
+    except ImportError:
+        from schemas import (
+            CanonicalHookOutput,
+            ClaudeGeneralHookOutput,
+            ClaudeHookOutput,
+            ClaudeHookSpecificOutput,
+            ClaudeStopHookOutput,
+            GeminiHookOutput,
+            GeminiHookSpecificOutput,
+            HookContext,
+        )
+
     from hooks.unified_logger import log_event_to_session, log_hook_event
 except ImportError as e:
     # Fail fast if schemas missing
@@ -223,8 +237,30 @@ class HookRouter:
 
         # Precompute values once to avoid redundant calls across gates
         is_subagent = is_subagent_session(raw_input)
-        subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE")
         short_hash = get_session_short_hash(session_id)
+        tool_name = raw_input.get("tool_name")
+
+        # 5. Extract subagent_type
+        # Prefer explicit env var (set in subagent session)
+        subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE")
+
+        # Fallback 1: Extract from tool_input if this is a subagent-spawning tool call
+        if not subagent_type and tool_name in (
+            "Task",
+            "delegate_to_agent",
+            "Skill",
+            "activate_skill",
+        ):
+            if isinstance(tool_input, dict):
+                subagent_type = tool_input.get("subagent_type") or tool_input.get("agent_name")
+
+        # Fallback 2: Extract from raw_input (explicitly provided by some hooks)
+        if not subagent_type:
+            subagent_type = raw_input.get("subagent_type")
+
+        # Fallback 3: Extract from tool_output (for SubagentStop/PostToolUse)
+        if not subagent_type and isinstance(tool_output, dict):
+            subagent_type = tool_output.get("subagent_type")
 
         return HookContext(
             session_id=str(session_id),
@@ -236,7 +272,7 @@ class HookRouter:
             session_short_hash=short_hash,
             is_subagent=is_subagent,
             # Event Data
-            tool_name=raw_input.get("tool_name"),
+            tool_name=tool_name,
             tool_input=tool_input,
             tool_output=tool_output,
             transcript_path=transcript_path,

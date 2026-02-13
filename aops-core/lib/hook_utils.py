@@ -211,6 +211,7 @@ def is_subagent_session(input_data: dict[str, Any] | None = None) -> bool:
     2. Session ID is a short hex string (subagent IDs like aafdeee vs main session UUIDs)
     3. agent_id/agent_type fields in hook payload
     4. Transcript path contains /subagents/ or /agent-
+    5. Parent session ID is present
 
     Args:
         input_data: Hook input data containing session_id, transcript_path, etc.
@@ -228,14 +229,19 @@ def is_subagent_session(input_data: dict[str, Any] | None = None) -> bool:
     # Method 2: Check if session_id matches the short hex format of subagent IDs.
     # Main sessions use full UUIDs (e.g., f4e3f1cb-775c-4aaf-8bf6-4e18a18dad3d).
     # Subagent sessions use short hex IDs (e.g., aafdeee, adc71f1).
-    session_id = get_session_id(input_data)
-    if _SUBAGENT_ID_RE.match(session_id):
-        return True
+    try:
+        session_id = get_session_id(input_data)
+        if _SUBAGENT_ID_RE.match(session_id):
+            return True
+    except ValueError:
+        pass
 
     # Method 3: Env vars (check all known variants)
     if os.environ.get("CLAUDE_AGENT_TYPE"):
         return True
     if os.environ.get("CLAUDE_SUBAGENT_TYPE"):
+        return True
+    if os.environ.get("CLAUDE_PARENT_SESSION_ID"):
         return True
 
     # Method 4: Check transcript path or CWD for /subagents/ directory
