@@ -782,10 +782,113 @@ def list_crew(ctx):
         print(f"  {name}: {', '.join(projects)}")
 
 
+def _fetch_github_issue(issue_ref: str, project: str | None) -> dict:
+    """Fetch a GitHub issue and return a dict with task-like fields.
+
+    Args:
+        issue_ref: GitHub issue reference. Accepted formats:
+            - "owner/repo#123"
+            - "https://github.com/owner/repo/issues/123"
+            - "#123" or "123" (requires --project to resolve the repo)
+        project: Polecat project slug, used to resolve bare issue numbers.
+
+    Returns:
+        Dict with keys: id, title, body, project, repo, number, url
+    """
+    import json
+    import re
+    import subprocess
+
+    repo = None
+    number = None
+
+    # Full URL: https://github.com/owner/repo/issues/123
+    url_match = re.match(r"https?://github\.com/([^/]+/[^/]+)/issues/(\d+)", issue_ref)
+    if url_match:
+        repo = url_match.group(1)
+        number = url_match.group(2)
+
+    # owner/repo#123
+    if not repo:
+        ref_match = re.match(r"([^/]+/[^#]+)#(\d+)", issue_ref)
+        if ref_match:
+            repo = ref_match.group(1)
+            number = ref_match.group(2)
+
+    # Bare #123 or 123
+    if not repo:
+        bare_match = re.match(r"#?(\d+)$", issue_ref)
+        if bare_match:
+            number = bare_match.group(1)
+            if not project:
+                print(
+                    f"Error: Bare issue number '{issue_ref}' requires --project to resolve the repo.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+
+    if number is None:
+        print(f"Error: Could not parse issue reference: {issue_ref}", file=sys.stderr)
+        sys.exit(1)
+
+    gh_args = ["gh", "issue", "view", number, "--json", "title,body,number,url"]
+    if repo:
+        gh_args.extend(["--repo", repo])
+
+    try:
+        result = subprocess.run(gh_args, capture_output=True, text=True, check=True)
+    except FileNotFoundError:
+        print("Error: 'gh' CLI not found. Install: https://cli.github.com/", file=sys.stderr)
+        sys.exit(1)
+    except subprocess.CalledProcessError as e:
+        print(f"Error fetching issue: {e.stderr.strip()}", file=sys.stderr)
+        sys.exit(1)
+
+    data = json.loads(result.stdout)
+
+    # Synthesize a safe task ID for worktree/branch naming
+    repo_slug = repo.replace("/", "-") if repo else (project or "gh")
+    task_id = f"gh-{repo_slug}-{number}"
+
+    return {
+        "id": task_id,
+        "title": data.get("title", f"Issue #{number}"),
+        "body": data.get("body", ""),
+        "project": project or "aops",
+        "number": int(number),
+        "url": data.get("url", ""),
+        "repo": repo,
+    }
+
+
+class _IssueTask:
+    """Lightweight task-like object for GitHub issues.
+
+    Duck-types the attributes that setup_worktree and prompt_template need.
+    """
+
+    def __init__(self, issue_data: dict):
+        self.id = issue_data["id"]
+        self.title = issue_data["title"]
+        self.body = issue_data["body"]
+        self.project = issue_data["project"]
+        self.type = "task"
+        self.status = None
+        self.parent = None
+        self.priority = None
+        self.tags = []
+        self.soft_depends_on = []
+        self.assignee = None
+        self.issue_url = issue_data.get("url", "")
+        self.issue_number = issue_data.get("number")
+        self.issue_repo = issue_data.get("repo")
+
+
 @main.command()
 @click.option("--project", "-p", help="Project to claim tasks from")
 @click.option("--caller", "-c", default="polecat", help="Identity claiming the task")
 @click.option("--task-id", "-t", help="Specific task ID to run (skips claim)")
+@click.option("--issue", help="GitHub issue to run (owner/repo#N, URL, or #N with --project)")
 @click.option("--no-finish", is_flag=True, hidden=True, help="(Deprecated, no-op)")
 @click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
 @click.option("--interactive", "-i", is_flag=True, help="Run in interactive mode (not headless)")
@@ -795,7 +898,7 @@ def list_crew(ctx):
     help="Skip automatic 'polecat finish' on successful completion",
 )
 @click.pass_context
-def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_finish):
+def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no_auto_finish):
     """Run a polecat cycle: claim → setup → work → finish.
 
     Claims a task, spawns a worktree, and runs claude with the task context.
@@ -804,14 +907,27 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
     Examples:
         polecat run -p aops              # Run next ready task from aops project
         polecat run -t task-123          # Run specific task
+        polecat run --issue owner/repo#42  # Run a GitHub issue
+        polecat run --issue 42 -p writing  # Run issue #42 from writing project repo
         polecat run -p aops --no-auto-finish  # Skip auto-finish on success
     """
     import subprocess
 
+    if issue and task_id:
+        print("Error: --issue and --task-id are mutually exclusive.", file=sys.stderr)
+        sys.exit(1)
+
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
 
-    # Step 1: Get/claim task
-    if task_id:
+    # Step 1: Get/claim task (or fetch GitHub issue)
+    is_issue = False
+    if issue:
+        # GitHub issue path — fetch metadata, create lightweight task object
+        print(f"Fetching GitHub issue: {issue}...")
+        issue_data = _fetch_github_issue(issue, project)
+        task = _IssueTask(issue_data)
+        is_issue = True
+    elif task_id:
         # Validate task ID before any operations
         try:
             validate_task_id_or_raise(task_id)
@@ -840,7 +956,10 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
             print("No ready tasks found.")
             sys.exit(3)  # Exit 3 = queue empty. Swarm treats non-zero as "stop worker".
 
-    print(f"🎯 Task: {task.title} ({task.id})")
+    if is_issue:
+        print(f"🎯 Issue: {task.title} ({task.issue_url or task.id})")
+    else:
+        print(f"🎯 Task: {task.title} ({task.id})")
 
     # Step 2: Setup worktree
     try:
@@ -850,8 +969,42 @@ def run(ctx, project, caller, task_id, no_finish, gemini, interactive, no_auto_f
         print(f"Error setting up worktree: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # Step 3: Build prompt from task
-    prompt = f"/pull {task.id}"
+    # Step 3: Build prompt from task context (self-contained, no /pull needed)
+    from polecat.prompt_template import build_polecat_prompt
+
+    # Build task body — for issues, prepend the issue URL for reference
+    task_body = task.body or ""
+    if is_issue and task.issue_url:
+        task_body = f"**GitHub Issue**: {task.issue_url}\n\n{task_body}"
+
+    # Resolve soft dependencies for context injection (local tasks only)
+    soft_deps = None
+    if not is_issue and task.soft_depends_on:
+        soft_deps = []
+        for dep_id in task.soft_depends_on:
+            dep_task = manager.storage.get_task(dep_id)
+            if dep_task:
+                soft_deps.append({
+                    "id": dep_task.id,
+                    "title": dep_task.title,
+                    "status": dep_task.status.value if hasattr(dep_task.status, "value") else str(dep_task.status),
+                    "body": dep_task.body or "",
+                })
+
+    prompt = build_polecat_prompt(
+        task_id=task.id,
+        task_title=task.title,
+        task_type=task.type.value if hasattr(task.type, "value") else str(task.type),
+        task_project=task.project or "",
+        task_body=task_body,
+        task_meta={
+            "parent": task.parent,
+            "priority": task.priority,
+            "tags": task.tags,
+        },
+        soft_deps=soft_deps,
+        is_issue=is_issue,
+    )
 
     # Step 4: Run agent in the worktree
     # Choose CLI tool based on --gemini flag
