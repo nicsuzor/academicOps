@@ -287,6 +287,16 @@ class GenericGate:
 
     # --- Hook Interface ---
 
+    def evaluate_triggers(
+        self, context: HookContext, session_state: SessionState
+    ) -> GateResult | None:
+        """Evaluate only triggers (state updates), ignoring policies.
+        
+        Use this when bypassing gates for compliance subagents while still 
+        needing to update gate states.
+        """
+        return self._evaluate_triggers(context, session_state)
+
     def check(self, context: HookContext, session_state: SessionState) -> GateResult | None:
         """PreToolUse: Check policies."""
         # Run triggers first to allow JIT state transitions (e.g. unblocking hydrator)

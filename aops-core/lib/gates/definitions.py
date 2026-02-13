@@ -94,12 +94,12 @@ GATE_CONFIGS = [
             ),
         ],
         policies=[
-            # Threshold check (except always_available tools)
+            # Threshold check (except always_available and read_only tools)
             GatePolicy(
                 condition=GateCondition(
                     hook_event="PreToolUse",
                     min_ops_since_open=CUSTODIET_TOOL_CALL_THRESHOLD,
-                    excluded_tool_categories=["always_available"],
+                    excluded_tool_categories=["always_available", "read_only"],
                 ),
                 verdict=CUSTODIET_GATE_MODE,
                 message_template="Compliance check required ({ops_since_open} ops since last check).\nInvoke 'custodiet' agent.",

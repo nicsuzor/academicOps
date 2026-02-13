@@ -183,11 +183,11 @@ class HookRouter:
         if gemini_event:
             hook_event = GEMINI_EVENT_MAP.get(gemini_event, gemini_event)
         else:
-            raw_event = raw_input.pop("hook_event_name")
+            raw_event = raw_input.get("hook_event_name")
             hook_event = GEMINI_EVENT_MAP.get(raw_event, raw_event)
 
         # 2. Determine Session ID
-        session_id = raw_input.pop("session_id", {})
+        session_id = raw_input.get("session_id")
         if not session_id:
             session_id = self.session_data.get("session_id") or os.environ.get("CLAUDE_SESSION_ID")
 
@@ -199,42 +199,39 @@ class HookRouter:
         if not session_id:
             session_id = f"unknown-{str(uuid.uuid4())[:8]}"
 
-        # 3. Transcript Path / Temp Root
-        transcript_path = raw_input.pop("transcript_path", None)
+        # 3. Determine Agent ID and Subagent Type
+        # Check both payload and persisted session data (for subagent tool calls)
+        agent_id = raw_input.get("agent_id") or raw_input.get("agentId") or self.session_data.get("agent_id")
+        subagent_type = raw_input.get("subagent_type") or raw_input.get("agent_type") or self.session_data.get("subagent_type")
 
-        # Persist session data on start
-        if hook_event == "SessionStart":
-            persist_session_data({"session_id": session_id})
+        # Prefer explicit env var if set
+        if not subagent_type:
+            subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE")
+
+        # 4. Transcript Path / Temp Root
+        transcript_path = raw_input.get("transcript_path")
 
         # Request Tracing (aops-32068a2e)
-        trace_id = raw_input.pop("trace_id", None) or str(uuid.uuid4())
+        trace_id = raw_input.get("trace_id") or str(uuid.uuid4())
 
-        # 4. Normalize JSON string fields from Gemini
-        tool_input = self._normalize_json_field(raw_input.pop("tool_input", {}))
+        # 5. Tool Data
+        tool_name = raw_input.get("tool_name")
+        tool_input = self._normalize_json_field(raw_input.get("tool_input", {}))
         if not isinstance(tool_input, dict):
             tool_input = {}
 
         # Normalize tool_result and toolResult in raw_input (for PostToolUse/SubagentStop)
         tool_output = {}
         raw_tool_output = (
-            raw_input.pop("tool_result", None)
-            or raw_input.pop("toolResult", None)
-            or raw_input.pop("tool_response", None)
-            or raw_input.pop("subagent_result", None)
+            raw_input.get("tool_result")
+            or raw_input.get("toolResult")
+            or raw_input.get("tool_response")
+            or raw_input.get("subagent_result")
         )
         if raw_tool_output:
             tool_output = self._normalize_json_field(raw_tool_output)
 
-        # Precompute values once to avoid redundant calls across gates
-        is_subagent = is_subagent_session(raw_input)
-        short_hash = get_session_short_hash(session_id)
-        tool_name = raw_input.pop("tool_name", None)
-
-        # 5. Extract subagent_type
-        # Prefer explicit env var (set in subagent session)
-        subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE")
-
-        # Fallback 1: Extract from tool_input if this is a subagent-spawning tool call
+        # 6. Extract subagent_type from spawning tools
         if not subagent_type and tool_name in (
             "Task",
             "delegate_to_agent",
@@ -244,25 +241,64 @@ class HookRouter:
             if isinstance(tool_input, dict):
                 subagent_type = tool_input.get("subagent_type") or tool_input.get("agent_name")
 
-        # Fallback 2: Extract from raw_input (explicitly provided by some hooks)
-        if not subagent_type:
-            subagent_type = raw_input.pop("subagent_type", None) or raw_input.pop(
-                "agent_type", None
-            )
+        # 7. Detect Subagent Session
+        # Call is_subagent_session BEFORE popping fields from raw_input
+        is_subagent = is_subagent_session(raw_input)
 
+        # If we have subagent info from PID map or spawning tool, treat as subagent
         if not is_subagent and (
             subagent_type
-            or raw_input.pop("is_sidechain", None)
-            or raw_input.pop("isSidechain", None)
+            or agent_id
+            or raw_input.get("is_sidechain")
+            or raw_input.get("isSidechain")
         ):
-            is_subagent = True  # If subagent_type is provided, treat as subagent session
+            is_subagent = True
+
+        # 8. Persist session data on start or subagent start
+        if hook_event in ("SessionStart", "SubagentStart"):
+            persist_session_data({
+                "session_id": session_id,
+                "agent_id": agent_id,
+                "subagent_type": subagent_type
+            })
+
+        # 9. Precompute values
+        short_hash = get_session_short_hash(session_id)
+
+        # 10. Build Context and POP processed fields from raw_input
+        # We pop now so the remainder in ctx.raw_input is "extra" data
+        processed_fields = [
+            "hook_event_name",
+            "session_id",
+            "transcript_path",
+            "trace_id",
+            "tool_name",
+            "tool_input",
+            "tool_result",
+            "toolResult",
+            "tool_response",
+            "subagent_result",
+            "agent_id",
+            "agentId",
+            "slug",
+            "cwd",
+            "is_sidechain",
+            "isSidechain",
+            "subagent_type",
+            "agent_type",
+        ]
+        slug = raw_input.get("slug")
+        cwd = raw_input.get("cwd")
+
+        for field in processed_fields:
+            raw_input.pop(field, None)
 
         return HookContext(
             session_id=session_id,
             trace_id=trace_id,
             hook_event=hook_event,
-            agent_id=raw_input.pop("agent_id", None) or raw_input.pop("agentId", None),
-            slug=raw_input.pop("slug", None),
+            agent_id=agent_id,
+            slug=slug,
             is_subagent=is_subagent,
             subagent_type=subagent_type,
             # Precomputed values
@@ -272,9 +308,10 @@ class HookRouter:
             tool_input=tool_input,
             tool_output=tool_output,
             transcript_path=transcript_path,
-            cwd=raw_input.pop("cwd", None),
+            cwd=cwd,
             raw_input=raw_input,
         )
+
 
     def execute_hooks(self, ctx: HookContext) -> CanonicalHookOutput:
         """Run all configured gates for the event and merge results.
@@ -297,15 +334,13 @@ class HookRouter:
         # Run special handlers first (unified_logger, ntfy, etc.) then gates
         self._run_special_handlers(ctx, state, merged_result)
 
-        # Skip gate dispatch for subagents (they bypass most gates)
-        if ctx.is_subagent:
-            pass  # Special handlers already run, skip gate dispatch
-        else:
-            # Dispatch to GenericGate methods based on event type
-            result = self._dispatch_gates(ctx, state)
-            if result:
-                hook_output = self._gate_result_to_canonical(result)
-                self._merge_result(merged_result, hook_output)
+        # Dispatch to GenericGate methods based on event type
+        # We now dispatch for ALL sessions, including subagents, to ensure
+        # that gate triggers (state transitions) always run.
+        result = self._dispatch_gates(ctx, state)
+        if result:
+            hook_output = self._gate_result_to_canonical(result)
+            self._merge_result(merged_result, hook_output)
 
         # Append gate status icons to system message
         try:
@@ -460,7 +495,8 @@ class HookRouter:
         - AfterAgent -> gate.on_after_agent()
         - SubagentStop -> gate.on_subagent_stop()
         """
-        # Global bypass for compliance subagents
+        # Global bypass for compliance subagents (POLICIES ONLY)
+        # We still run triggers for these agents so gate states update correctly.
         _COMPLIANCE_SUBAGENT_TYPES = {
             "hydrator",
             "prompt-hydrator",
@@ -472,8 +508,9 @@ class HookRouter:
             "aops-core:butler",
             "butler",
         }
-        if state.state.get("hydrator_active") or ctx.subagent_type in _COMPLIANCE_SUBAGENT_TYPES:
-            return GateResult.allow()
+        is_compliance_agent = ctx.is_subagent and (
+            state.state.get("hydrator_active") or ctx.subagent_type in _COMPLIANCE_SUBAGENT_TYPES
+        )
 
         messages = []
         context_injections = []
@@ -481,7 +518,12 @@ class HookRouter:
 
         for gate in GateRegistry.get_all_gates():
             try:
-                result = self._call_gate_method(gate, ctx, state)
+                # If compliance agent, only evaluate triggers for PreToolUse and Stop
+                # (other events only run triggers anyway)
+                if is_compliance_agent and ctx.hook_event in ("PreToolUse", "Stop"):
+                    result = gate.evaluate_triggers(ctx, state)
+                else:
+                    result = self._call_gate_method(gate, ctx, state)
 
                 if result:
                     if result.system_message:
@@ -490,11 +532,16 @@ class HookRouter:
                         context_injections.append(result.context_injection)
 
                     # Verdict precedence: DENY > WARN > ALLOW
-                    if result.verdict == GateVerdict.DENY:
-                        final_verdict = GateVerdict.DENY
-                        break  # First deny wins
-                    elif result.verdict == GateVerdict.WARN and final_verdict != GateVerdict.DENY:
-                        final_verdict = GateVerdict.WARN
+                    # Compliance agents ALWAYS return ALLOW verdict because they bypass policies
+                    if not is_compliance_agent:
+                        if result.verdict == GateVerdict.DENY:
+                            final_verdict = GateVerdict.DENY
+                            break  # First deny wins
+                        elif (
+                            result.verdict == GateVerdict.WARN
+                            and final_verdict != GateVerdict.DENY
+                        ):
+                            final_verdict = GateVerdict.WARN
 
             except Exception as e:
                 import traceback

@@ -207,6 +207,7 @@ def is_subagent_session(input_data: dict[str, Any] | None = None) -> bool:
     """Check if this is a subagent session.
 
     Uses multiple detection methods since env vars may not be passed to hook subprocesses:
+    0. Explicit 'is_subagent' flag in input_data
     1. CLAUDE_AGENT_TYPE / CLAUDE_SUBAGENT_TYPE env var
     2. Session ID is a short hex string (subagent IDs like aafdeee vs main session UUIDs)
     3. agent_id/agent_type fields in hook payload
@@ -219,6 +220,9 @@ def is_subagent_session(input_data: dict[str, Any] | None = None) -> bool:
     Returns:
         True if this appears to be a subagent session
     """
+    if input_data and input_data.get("is_subagent"):
+        return True
+
     # Method 1: Check for agent_id/agent_type fields in hook payload.
     if input_data:
         if input_data.get("agent_id") or input_data.get("agentId"):
