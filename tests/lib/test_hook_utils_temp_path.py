@@ -7,12 +7,10 @@ Specifically tests that Gemini CLI temp paths are correctly resolved when:
 """
 
 import os
-import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
 from lib.hook_utils import get_hook_temp_dir
 
 
@@ -126,9 +124,7 @@ class TestGeminiTempPathFromTranscript:
 
         input_data = {"transcript_path": str(transcript_file)}
 
-        with patch.dict(
-            os.environ, {"AOPS_GEMINI_TEMP_ROOT": str(explicit_root)}, clear=True
-        ):
+        with patch.dict(os.environ, {"AOPS_GEMINI_TEMP_ROOT": str(explicit_root)}, clear=True):
             result = get_hook_temp_dir("hydrator", input_data)
 
         # Explicit root should take priority
@@ -138,9 +134,14 @@ class TestGeminiTempPathFromTranscript:
 class TestGeminiTempPathEdgeCases:
     """Edge cases for Gemini temp path resolution."""
 
-    def test_nonexistent_transcript_parent_falls_through(self, tmp_path):
-        """Test that nonexistent transcript parent directory falls through."""
-        # Transcript path that doesn't exist
+    def test_nonexistent_transcript_parent_fails_fast(self, tmp_path):
+        """Test that nonexistent transcript parent directory raises RuntimeError.
+
+        FAIL-FAST: When Gemini provides a transcript_path with .gemini,
+        the hash directory MUST exist. If it doesn't, fail immediately -
+        no fallback to Claude paths, no silent directory creation.
+        """
+        # Transcript path where hash dir doesn't exist
         fake_path = tmp_path / ".gemini" / "tmp" / "nonexistent" / "chats" / "session.json"
 
         input_data = {"transcript_path": str(fake_path)}
@@ -150,15 +151,12 @@ class TestGeminiTempPathEdgeCases:
             os.environ.pop("TMPDIR", None)
             os.environ.pop("AOPS_GEMINI_TEMP_ROOT", None)
 
-            with patch("lib.hook_utils.Path.cwd", return_value=Path("/other")):
-                with patch(
-                    "lib.hook_utils.get_claude_project_folder",
-                    return_value="-other",
-                ):
-                    result = get_hook_temp_dir("hydrator", input_data)
+            with pytest.raises(RuntimeError) as exc_info:
+                get_hook_temp_dir("hydrator", input_data)
 
-        # Should fall through to Claude default since parent doesn't exist
-        assert ".claude" in str(result)
+        # Should fail with clear error message
+        assert "hash directory missing" in str(exc_info.value)
+        assert "nonexistent" in str(exc_info.value)
 
     def test_no_input_data_falls_through(self):
         """Test that None input_data falls through to Claude default."""

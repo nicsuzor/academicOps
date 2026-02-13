@@ -24,8 +24,8 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
-from lib.task_storage import TaskStorage
 from lib.task_model import Task
+from lib.task_storage import TaskStorage
 
 
 @dataclass
@@ -159,9 +159,7 @@ class TaskSyncService:
         # Update task
         try:
             marked_items = self._mark_checklist_items(task, text)
-            progress_added = self._add_progress_entry(
-                task, text, session_id, session_date
-            )
+            progress_added = self._add_progress_entry(task, text, session_id, session_date)
 
             # Save task
             self.storage.save_task(task)
@@ -344,7 +342,7 @@ class TaskSyncService:
             in_progress = False
             entry_added = False
 
-            for i, line in enumerate(lines):
+            for _i, line in enumerate(lines):
                 new_lines.append(line)
                 if line.strip() == "## Progress":
                     in_progress = True

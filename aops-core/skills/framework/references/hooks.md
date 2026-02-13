@@ -89,6 +89,7 @@ $AOPS/aops-core/hooks/ → $AOPS/dist/aops-core/hooks/
 ```
 
 Key behaviors:
+
 - Hooks are **copied**, not symlinked (avoids source pollution)
 - `gemini/` subdirectory is **not copied** (uses unified router)
 - `router.py` is the single entry point for all hook events
@@ -136,13 +137,13 @@ Hooks are registered in the extension manifest, **not** in settings.json:
 
 **Key differences from standard Claude Code:**
 
-| Aspect | Standard Claude Code | academicOps |
-|--------|---------------------|-------------|
-| Config location | `settings.json` | `gemini-extension.json` |
-| Hook paths | Absolute paths or `$CLAUDE_PROJECT_DIR` | `${AOPS}/dist/aops-core/hooks/router.py` |
-| Installation | Manual settings edit | `gemini extensions link` |
-| Hook scripts | Individual scripts per event | Single router dispatches all |
-| Rebuild needed | No (settings hot-reload) | Yes (`setup.sh` after changes) |
+| Aspect          | Standard Claude Code                    | academicOps                              |
+| --------------- | --------------------------------------- | ---------------------------------------- |
+| Config location | `settings.json`                         | `gemini-extension.json`                  |
+| Hook paths      | Absolute paths or `$CLAUDE_PROJECT_DIR` | `${AOPS}/dist/aops-core/hooks/router.py` |
+| Installation    | Manual settings edit                    | `gemini extensions link`                 |
+| Hook scripts    | Individual scripts per event            | Single router dispatches all             |
+| Rebuild needed  | No (settings hot-reload)                | Yes (`setup.sh` after changes)           |
 
 ### Workflow: Adding or Modifying Hooks
 
@@ -155,13 +156,13 @@ Hooks are registered in the extension manifest, **not** in settings.json:
 
 Gemini CLI uses different event names than Claude Code:
 
-| Claude Code | Gemini CLI |
-|-------------|------------|
-| SessionStart | SessionStart |
-| PreToolUse | BeforeTool |
-| PostToolUse | AfterTool |
-| UserPromptSubmit | BeforeAgent |
-| Stop | SessionEnd |
+| Claude Code      | Gemini CLI   |
+| ---------------- | ------------ |
+| SessionStart     | SessionStart |
+| PreToolUse       | BeforeTool   |
+| PostToolUse      | AfterTool    |
+| UserPromptSubmit | BeforeAgent  |
+| Stop             | SessionEnd   |
 
 The router handles this mapping transparently - register hooks using Claude Code event names in `HOOK_REGISTRY`, and the router translates for Gemini
 
@@ -494,29 +495,77 @@ This configuration in your user-level settings will run for every project withou
 
 The SessionStart hook script can then load external instruction files into context programmatically.
 
-## Gemini CLI compatibility and differences
+## Gemini CLI Hook System (Updated February 2026)
 
-Gemini CLI **does not currently have a SessionStart hook system**. This is a fundamental architectural difference and the most significant compatibility gap. GitHub issues #2779 and #9070 track feature requests for hooks in Gemini CLI, with #9070 proposing a comprehensive design that would mirror Claude Code's JSON-over-stdin contract and exit code semantics, including migration tooling to convert Claude Code hooks. As of October 2025, this remains unimplemented.
+Gemini CLI now has a **full hook system** mirroring Claude Code's capabilities. The implementation landed in late 2025 following GitHub issue #9070.
 
-**Configuration comparison:**
+### Gemini CLI Hook Events
 
-| Aspect                   | Claude Code CLI                                      | Gemini CLI                            |
-| ------------------------ | ---------------------------------------------------- | ------------------------------------- |
-| **Hooks system**         | 8 lifecycle events implemented                       | Not implemented (requested)           |
-| **SessionStart**         | Fully functional                                     | Not available                         |
-| **Configuration file**   | `~/.claude/settings.json`                            | `~/.gemini/settings.json`             |
-| **Context/memory**       | `CLAUDE.md`                                          | `GEMINI.md`                           |
-| **MCP servers**          | Separate `.mcp.json` (git-friendly)                  | In main settings.json                 |
-| **Discovery precedence** | Enterprise → Project local → Project → User → Legacy | System → User → Project → Environment |
-| **Philosophy**           | Hybrid deterministic + probabilistic                 | Purely probabilistic context-driven   |
+| Event                   | Description                        | Blocking?        |
+| ----------------------- | ---------------------------------- | ---------------- |
+| **SessionStart**        | On startup/resume/clear            | No (advisory)    |
+| **SessionEnd**          | On exit                            | No (advisory)    |
+| **BeforeTool**          | Before tool invocation             | Yes (exit 2)     |
+| **AfterTool**           | After tool execution               | Yes (exit 2)     |
+| **BeforeAgent**         | After user prompt, before planning | Yes (exit 2)     |
+| **AfterAgent**          | After model generates response     | Yes (exit 2)     |
+| **BeforeModel**         | Before LLM request                 | Yes (exit 2)     |
+| **AfterModel**          | After LLM response chunk           | Yes (exit 2)     |
+| **BeforeToolSelection** | Before tool decision               | No (config only) |
+| **Notification**        | System alerts                      | No (advisory)    |
+| **PreCompress**         | Before history compression         | No (advisory)    |
 
-Gemini CLI relies entirely on **probabilistic AI following instructions** in GEMINI.md files rather than guaranteed deterministic hook execution. This makes it suitable for exploratory work and individual development but less reliable for production automation requiring guaranteed actions like formatting, linting, or quality gates.
+### Gemini CLI Output Schema
 
-**Both CLIs can coexist** on the same system without conflicts—they use different configuration directories (`~/.claude/` vs `~/.gemini/`), different context files, and different command namespaces. MCP servers are fully compatible since both implement the Model Context Protocol standard; the same server works with both CLIs despite different configuration formats.
+```json
+{
+  "systemMessage": "string (user-facing)",
+  "decision": "allow | deny | block",
+  "reason": "string (explanation for denial)",
+  "hookSpecificOutput": {
+    "hookEventName": "string",
+    "additionalContext": "string (injected into prompt)",
+    "toolConfig": { "mode": "AUTO|ANY|NONE", "allowedFunctionNames": [] },
+    "clearContext": true
+  },
+  "suppressOutput": true,
+  "continue": true,
+  "stopReason": "string"
+}
+```
 
-**Migration path**: Currently manual. When Gemini implements hooks, the proposed design includes a `gemini hooks migrate --from-claude` command for automatic conversion of hook configurations and environment variable mappings.
+**Critical field semantics:**
 
-**When to use each**: Choose Claude Code for production environments requiring deterministic automation, team collaboration with shared configurations, CI/CD integration, and quality gate enforcement. Choose Gemini CLI for exploratory development, personal projects, situations where the generous free tier matters, or when you prefer open-source tools (Gemini CLI is Apache 2.0 licensed). The fundamental trade-off is deterministic control vs. probabilistic instruction-following.
+- `reason`: For explaining **denial decisions only**, NOT for context injection
+- `hookSpecificOutput.additionalContext`: For **injecting context into the agent's prompt**
+- Exit code 2: "Emergency brake" - stderr shown to agent, operation blocked
+
+### Event Name Mapping (academicOps Router)
+
+The router normalizes Gemini events to Claude Code equivalents internally:
+
+| Gemini CLI   | Claude Code (internal) |
+| ------------ | ---------------------- |
+| SessionStart | SessionStart           |
+| BeforeTool   | PreToolUse             |
+| AfterTool    | PostToolUse            |
+| BeforeAgent  | UserPromptSubmit       |
+| AfterAgent   | AfterAgent             |
+| SessionEnd   | Stop                   |
+
+### Configuration Comparison
+
+| Aspect               | Claude Code CLI           | Gemini CLI                                      |
+| -------------------- | ------------------------- | ----------------------------------------------- |
+| **Hooks system**     | 8 lifecycle events        | 11 lifecycle events                             |
+| **Configuration**    | `~/.claude/settings.json` | `~/.gemini/settings.json` or extension manifest |
+| **Context/memory**   | `CLAUDE.md`               | `GEMINI.md`                                     |
+| **MCP servers**      | Separate `.mcp.json`      | In main settings.json                           |
+| **Extension system** | Plugins (beta)            | Extensions (`gemini extensions link`)           |
+
+**Both CLIs can coexist** on the same system without conflicts—they use different configuration directories and context files. MCP servers are fully compatible since both implement the Model Context Protocol standard.
+
+**academicOps unified router**: The `hooks/router.py` handles both Claude Code and Gemini CLI through a single codebase, normalizing inputs and outputs for each platform.
 
 ## Known limitations and issues
 
@@ -747,21 +796,22 @@ All hooks receive JSON on stdin with these common fields:
 
 **Field visibility:**
 
-| Field | Shown to | Purpose |
-| --- | --- | --- |
-| `reason` | **Claude only** | Instructions for the agent when blocked |
-| `stopReason` | **User only** | Explains why session was blocked |
-| `systemMessage` | **User only** | Warning message (optional) |
+| Field           | Shown to        | Purpose                                 |
+| --------------- | --------------- | --------------------------------------- |
+| `reason`        | **Claude only** | Instructions for the agent when blocked |
+| `stopReason`    | **User only**   | Explains why session was blocked        |
+| `systemMessage` | **User only**   | Warning message (optional)              |
 
 **Exit codes (CRITICAL):**
 
-| Exit | JSON processed? | Result |
-| --- | --- | --- |
-| `0` | ✅ Yes | `decision: "block"` blocks, `reason` shown to Claude |
-| `1` | ❌ No | Warn but allow, stderr shown to user |
-| `2` | ❌ **No - JSON ignored!** | Only stderr used, agent sees stderr text |
+| Exit | JSON processed?           | Result                                               |
+| ---- | ------------------------- | ---------------------------------------------------- |
+| `0`  | ✅ Yes                    | `decision: "block"` blocks, `reason` shown to Claude |
+| `1`  | ❌ No                     | Warn but allow, stderr shown to user                 |
+| `2`  | ❌ **No - JSON ignored!** | Only stderr used, agent sees stderr text             |
 
 **IMPORTANT**: Exit code 2 completely ignores stdout JSON. If you want Claude to see your message, you MUST:
+
 1. Use `"decision": "block"` with `"reason": "..."` in JSON
 2. Exit with code 0 (not 2!)
 
@@ -1048,3 +1098,132 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
 - [ ] Using `lib.paths` (no hardcoded paths)
 - [ ] Added to `HOOK_REGISTRY` in router.py
 - [ ] Tested with sample input
+
+## Design Rationale: GateResult vs CanonicalHookOutput
+
+The academicOps hook system uses two distinct data structures for hook outputs. This is intentional.
+
+### GateResult (lib/gate_model.py)
+
+```python
+@dataclass
+class GateResult:
+    verdict: GateVerdict  # Enum: ALLOW, DENY, WARN, ASK
+    system_message: Optional[str] = None
+    context_injection: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+```
+
+**Purpose**: Return type for individual gate check functions.
+
+**Characteristics**:
+
+- Simple Python dataclass (fast, minimal dependencies)
+- Uses `GateVerdict` enum for type safety
+- No serialization logic - gates don't know about JSON
+- Returned by functions in `gate_registry.py`
+
+### CanonicalHookOutput (hooks/schemas.py)
+
+```python
+class CanonicalHookOutput(BaseModel):
+    system_message: Optional[str] = None
+    verdict: Optional[Literal["allow", "deny", "ask", "warn"]] = "allow"
+    context_injection: Optional[str] = None
+    updated_input: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+```
+
+**Purpose**: Internal format for the router to merge multiple gate results.
+
+**Characteristics**:
+
+- Pydantic model (validation, serialization)
+- Uses string literals for verdict (JSON-friendly)
+- Has `updated_input` field (for command interception)
+- Designed for merging (router accumulates results)
+
+### Why Two Structures?
+
+```
+┌─────────────┐     ┌─────────────────────┐     ┌──────────────────┐
+│ Gate Check  │────►│ CanonicalHookOutput │────►│ Claude/Gemini    │
+│ (GateResult)│     │ (merged, validated) │     │ Output Schema    │
+└─────────────┘     └─────────────────────┘     └──────────────────┘
+```
+
+1. **Separation of concerns**: Gates are simple, focused checks. They shouldn't know about output formats, merging, or serialization.
+
+2. **Merging capability**: Multiple gates run per event. The router needs to merge their outputs (first deny wins, context concatenates, etc.). CanonicalHookOutput is the accumulator.
+
+3. **Provider agnosticism**: CanonicalHookOutput is the universal internal format. It gets converted to either `ClaudeHookOutput` or `GeminiHookOutput` at the final step.
+
+4. **Validation vs speed**: Pydantic models provide validation for the merged output. Dataclasses are faster for the hot path (individual gate checks).
+
+### Data Flow
+
+```python
+# 1. Gate returns GateResult
+result = check_hydration(gate_ctx)  # Returns GateResult
+
+# 2. Router converts to CanonicalHookOutput
+hook_output = router._gate_result_to_canonical(result)
+
+# 3. Router merges into accumulated output
+router._merge_result(merged_result, hook_output)
+
+# 4. Final conversion to provider-specific format
+if client == "gemini":
+    output = router.output_for_gemini(merged_result, event)
+else:
+    output = router.output_for_claude(merged_result, event)
+```
+
+### Adding a New Gate
+
+1. **Implement** in `gate_registry.py` - return `GateResult`
+2. **Register** in `GATE_CHECKS` dictionary
+3. **Activate** in `router.py` `GATE_CONFIG` for relevant events
+
+The gate function only deals with `GateResult`. The router handles all conversion and merging.
+
+## Gate Architecture (academicOps)
+
+The aops-core hook system uses a centralized router that delegates to specialized gate functions.
+
+```mermaid
+graph LR
+    Router[hooks/router.py] --> Gates[GATE_CONFIG]
+    Gates --> Registry[gate_registry.py]
+    Registry --> Check1[check_hydration]
+    Registry --> Check2[check_custodiet]
+    Registry --> Check3[check_task_required]
+```
+
+### The Registration Triad
+
+A gate only runs if it is:
+
+1. **Implemented** in `gate_registry.py` (function exists)
+2. **Mapped** in `GATE_CHECKS` dictionary (function registered)
+3. **Activated** in `GATE_CONFIG` in `router.py` (event → gate list)
+
+**Common bug**: Forgetting step 3. The gate is implemented and registered but never runs because it's not in `GATE_CONFIG`.
+
+### Robust Event Detection
+
+When detecting triggers in text (like "HYDRATION RESULT"), use regex:
+
+```python
+# ❌ Bad: Misses casing, bolding, missing markdown
+if "## HYDRATION RESULT" in text:
+
+# ✅ Good: Handles variations
+re.search(r"(?:##\s*|\*\*)?HYDRATION RESULT", text, re.IGNORECASE)
+```
+
+### Debugging
+
+- **Hook logs**: `~/.claude/projects/<project>/<date>-<hash>-hooks.jsonl`
+- **Gemini logs**: `~/.gemini/tmp/academicOps-hooks.log`
+- **Debug mode**: `claude --debug` or `gemini --debug`

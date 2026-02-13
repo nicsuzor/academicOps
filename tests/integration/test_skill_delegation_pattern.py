@@ -140,8 +140,7 @@ def test_framework_before_python_for_framework_python(
     This tests the delegation pattern is followed.
     """
     result, session_id, tool_calls = claude_headless_tracked(
-        "I want to add a new Python hook to the framework. "
-        "What conventions should I follow?",
+        "I want to add a new Python hook to the framework. What conventions should I follow?",
         timeout_seconds=180,
     )
 
@@ -228,9 +227,7 @@ def test_tasks_skill_invoked_for_task_queries(
 
     # tasks skill OR direct MCP tools should be used
     tasks_invoked = _skill_invoked(tool_calls, "tasks")
-    mcp_tasks_used = any(
-        c["name"].startswith("mcp__task_manager__") for c in tool_calls
-    )
+    mcp_tasks_used = any(c["name"].startswith("mcp__task_manager__") for c in tool_calls)
 
     if not tasks_invoked and not mcp_tasks_used:
         tool_names = [c["name"] for c in tool_calls]

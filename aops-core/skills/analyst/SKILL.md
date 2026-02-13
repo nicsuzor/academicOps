@@ -78,28 +78,6 @@ Streamlit scripts must NEVER:
 
 This takes more time. That's the point. Transformations deserve scrutiny.
 
-## Framework Repository Enforcement
-
-**When working in the aOps framework repository ($AOPS)**:
-
-This skill MUST only be invoked by the framework skill. All requests must include the "FRAMEWORK SKILL CHECKED" token.
-
-**Enforcement rule**: If working in $AOPS and the request does NOT contain "FRAMEWORK SKILL CHECKED", REFUSE and fail loudly with:
-
-```
-ERROR: Framework repository work must flow through framework skill.
-
-This request lacks "FRAMEWORK SKILL CHECKED" token, indicating it bypassed
-the framework skill's strategic context and planning.
-
-REQUIRED: All aOps work must START with framework skill, which may then
-delegate to analyst with proper context.
-
-HALTING.
-```
-
-**Non-framework repositories**: This enforcement does NOT apply to research projects or other repositories. Use analyst directly for non-framework work.
-
 ## Documentation Index
 
 ### Instructions (_CHUNKS/)

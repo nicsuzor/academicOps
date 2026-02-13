@@ -8,6 +8,14 @@ created: 2026-01-21
 
 # Overwhelm Dashboard
 
+## Giving Effect
+
+- [[aops-tools/fast_indexer/]] - Rust binary for fast task indexing
+- [[skills/task-viz/SKILL.md]] - Task visualization skill (JSON, GraphML, DOT output)
+- [[skills/dashboard/SKILL.md]] - Cognitive Load Dashboard skill
+- [[mcp__plugin_aops-core_task_manager__get_graph_metrics]] - Graph metrics for dashboard
+- [[mcp__plugin_aops-core_task_manager__rebuild_index]] - Index rebuild using fast-indexer
+
 Single system for task visibility and cognitive load management.
 
 ## Architecture
@@ -53,6 +61,7 @@ Task state is scattered and not visible where needed. User returns to terminal a
 The dashboard is designed for a specific user pattern:
 
 ### Daily Activities
+
 - **Long-running agents**: Multiple terminals with "crew" agents working on tasks
 - **Ad-hoc work**: Direct interaction with agents for one-off tasks
 - **Polecat batches**: Invoking batch processes and overseeing merge workflows
@@ -60,6 +69,7 @@ The dashboard is designed for a specific user pattern:
 - **Email and prioritization**: Triage and task management
 
 ### Pain Points (What the Dashboard Solves)
+
 1. **Overwhelm from simultaneous tasks** - Too many things running, can't see the big picture
 2. **Losing track of progress** - What got done? What's still pending?
 3. **Context switching difficulty**:
@@ -68,7 +78,9 @@ The dashboard is designed for a specific user pattern:
    - Not clear what they planned to do next when they resumed
 
 ### What the User Needs to Know
+
 When returning to work, the user needs to answer:
+
 - **"What terminal is this?"** → Session identity from initial prompt
 - **"What was I trying to do?"** → User intent, not agent state
 - **"What's the next step?"** → Planned action when resuming
@@ -76,20 +88,24 @@ When returning to work, the user needs to answer:
 The dashboard must surface these answers directly, not require the user to reconstruct them from raw agent metadata.
 
 ## Streamlit Dashboard
+
 ### Data source
+
 index.json (created by [[fast-indexer]])
 **Consumers**:
+
 - [[Task MCP server]] - `rebuild_index()` wraps fast-indexer
 - [[Overwhelm dashboard]] - reads index.json directly
 - [[task-viz]] - generates graph visualizations
 
-### Streamlit Dashboard
+### Dashboard Implementation Details
 
 Location: `aops/lib/overwhelm/`
 
 Renders task state and session context. No LLM calls in render path.
 
 **Invocation**:
+
 ```bash
 cd $AOPS && uv run streamlit run lib/overwhelm/dashboard.py
 ```
@@ -153,67 +169,101 @@ Single-page layout (no tabs). Content flows top-to-bottom:
 Interactive force-directed graph at the top of the page.
 
 **Renderer**: Force-Graph (WebGL/Canvas)
+
 - Replaced vis.js (slow) and Cytoscape (removed for simplicity)
 - GPU-accelerated, handles large graphs smoothly
 
 **Controls**:
 
-| Control | Options |
-|---------|---------|
-| **View** | Tasks, Knowledge Base |
+| Control    | Options                                     |
+| ---------- | ------------------------------------------- |
+| **View**   | Tasks, Knowledge Base                       |
 | **Layout** | ↓ Top-Down, → Left-Right, ◎ Radial, ⚛ Force |
 
 **Visual Settings** (in collapsible expander):
 
-| Setting | Range | Default | Purpose |
-|---------|-------|---------|---------|
-| Node Size | 1-20 | 6 | Size of node circles |
-| Link Width | 0.5-5.0 | 1.0 | Thickness of edges |
-| Text Size | 6-24 | 12 | Base font size for labels |
-| Link Opacity | 0.1-1.0 | 0.6 | Edge transparency |
-| Repulsion | -500 to -10 | -100 | Node repulsion strength |
-| Show Labels | checkbox | On | Toggle label visibility |
-| Hide Orphans | checkbox | Off | Remove nodes with no connections |
+| Setting      | Range       | Default | Purpose                          |
+| ------------ | ----------- | ------- | -------------------------------- |
+| Node Size    | 1-20        | 6       | Size of node circles             |
+| Link Width   | 0.5-5.0     | 1.0     | Thickness of edges               |
+| Text Size    | 6-24        | 12      | Base font size for labels        |
+| Link Opacity | 0.1-1.0     | 0.6     | Edge transparency                |
+| Repulsion    | -500 to -10 | -100    | Node repulsion strength          |
+| Show Labels  | checkbox    | On      | Toggle label visibility          |
+| Hide Orphans | checkbox    | Off     | Remove nodes with no connections |
 
 **Filter** (in collapsible expander):
 
-| Setting | Type | Purpose |
-|---------|------|---------|
+| Setting    | Type        | Purpose                          |
+| ---------- | ----------- | -------------------------------- |
 | Show Types | multiselect | Filter nodes by frontmatter type |
 
 **Layout modes** (DAG layouts for hierarchical task trees):
+
 - `td` - Top-down: goals at top, actions at bottom
 - `lr` - Left-right: horizontal hierarchy
 - `radial-out` - Radial: goals in center, tasks radiate outward
 - `force` - Organic force-directed (default)
 
 **Data Sources**:
+
 - Tasks view: `$ACA_DATA/outputs/graph.json`
 - Knowledge Base view: `$ACA_DATA/outputs/knowledge-graph.json`
 
 **Default Type Filtering**:
+
 - Tasks view defaults to: `goal`, `project`, `epic`, `task`, `action`, `bug`, `feature`, `learn`
 - Knowledge Base view defaults to: all types
 - Users can adjust via the Filter expander
 
 **Node colors** (Tasks view by status):
+
 - Blue: active
 - Green: done
 - Red: blocked
 - Yellow: waiting
 - Purple: review
 
+### Recent Prompts Section
+
+Displays user prompts from session summaries for quick context recovery.
+
+**Data Source**: `~/writing/sessions/summaries/*.json` - `prompts` field
+
+**Placement**: After "Where You Left Off" section, before Project Boxes.
+
+**Display**:
+
+- Reverse chronological by session date
+- Grouped by session ID
+- Each session shows: project badge, session ID, date, prompts list
+- `st.expander` for collapsible display
+- `st.code()` blocks for copy functionality (built-in copyable behavior)
+
+**Prompts field parsing**:
+
+- `null` → skip session (no prompts captured)
+- `"[\"prompt1\", \"prompt2\"]"` → `json.loads()` to get array
+- Plain string → wrap in array
+
+**Function**: `get_recent_prompts(days: int = 7) -> list[dict]`
+
+- Scans session summary files
+- Parses prompts field (handles null, JSON string, plain string)
+- Returns list of session dicts with prompts, sorted by date descending
+
 ### Project Boxes
 
 Grid of project cards below the graph. Each box contains:
 
-| Section | Content | Data Source |
-|---------|---------|-------------|
+| Section            | Content                                   | Data Source         |
+| ------------------ | ----------------------------------------- | ------------------- |
 | **⚡ WORKING NOW** | Active sessions with conversation context | Session state files |
-| **📌 UP NEXT** | Top 3 priority tasks | index.json |
-| **✅ RECENTLY** | Recent accomplishments | Daily notes |
+| **📌 UP NEXT**     | Top 3 priority tasks                      | index.json          |
+| **✅ RECENTLY**    | Recent accomplishments                    | Daily notes         |
 
 **Sorting**: Projects sorted by activity score:
+
 - +1000 per active session
 - +100 if has P0 task
 - +recency bonus
@@ -227,6 +277,7 @@ Grid of project cards below the graph. Each box contains:
 ### What Makes a Session Identifiable
 
 The user identifies "which terminal is this?" by:
+
 1. **Initial prompt** - What they first asked the agent to do
 2. **Follow-up prompts** - Subsequent requests that shaped the work
 3. **Working directory/project** - Secondary context
@@ -255,6 +306,7 @@ Each displayed session MUST include:
 ### Session Display
 
 **Good** (conversation-centric):
+
 ```
 📍 academicOps (2h ago)
    Started: "Review PR #42 for fast-indexer changes"
@@ -263,6 +315,7 @@ Each displayed session MUST include:
 ```
 
 **Bad** (agent-centric - REJECTED):
+
 ```
 🤖 unknown: No specific task (started 165h ago)
 ```
@@ -270,6 +323,7 @@ Each displayed session MUST include:
 ### Minimum Viable Context
 
 A session MUST have at least:
+
 - Initial prompt OR current task status
 - If neither exists, session is not displayed (hidden as "unidentified")
 
@@ -280,11 +334,13 @@ Sessions showing "unknown: No specific task" provide zero value and MUST be filt
 ### Context Recovery, Not Decision Support
 
 The dashboard answers:
+
 - **What's running where?** - Multiple terminals, multiple projects
 - **Where did I leave off?** - Per-project context recovery
 - **What's the state of X?** - Quick status check
 
 It does NOT try to:
+
 - Recommend ONE thing to do
 - Hide options or force single-focus mode
 - Make decisions for the user
@@ -293,10 +349,10 @@ It does NOT try to:
 
 The problem changes at scale:
 
-| Session Count | Primary Problem | Solution |
-|--------------|-----------------|----------|
-| 1-10 sessions | **Memory**: "What was I doing?" | Context recovery (current design) |
-| 10+ sessions | **Prioritization**: "Which one matters?" | Session triage (see below) |
+| Session Count | Primary Problem                          | Solution                          |
+| ------------- | ---------------------------------------- | --------------------------------- |
+| 1-10 sessions | **Memory**: "What was I doing?"          | Context recovery (current design) |
+| 10+ sessions  | **Prioritization**: "Which one matters?" | Session triage (see below)        |
 
 At 10+ active sessions, displaying a flat list creates decision paralysis. The dashboard must shift from pure context recovery to **context recovery with triage assistance**.
 
@@ -304,11 +360,11 @@ At 10+ active sessions, displaying a flat list creates decision paralysis. The d
 
 **Always apply** recency-based triage (not just at 10+ sessions):
 
-| Bucket | Definition | Display |
-|--------|-----------|---------|
-| **Active Now** | Activity within 4 hours | Full session cards with conversation context |
-| **Paused** | 4-24 hours since activity | Collapsed cards, click to expand |
-| **Stale** | >24 hours since activity | Auto-archive prompt (see below) |
+| Bucket         | Definition                | Display                                      |
+| -------------- | ------------------------- | -------------------------------------------- |
+| **Active Now** | Activity within 4 hours   | Full session cards with conversation context |
+| **Paused**     | 4-24 hours since activity | Collapsed cards, click to expand             |
+| **Stale**      | >24 hours since activity  | Auto-archive prompt (see below)              |
 
 Within buckets, group by project for orientation.
 
@@ -335,12 +391,14 @@ Sessions >24h without activity are **not displayed in the main list**. Instead:
 ### Anti-Patterns
 
 **Decision-support anti-patterns:**
+
 - GPS/directive mode that hides options
 - Single-focus design that ignores multitasking reality
-- Over-indexing on "recommend ONE thing" *at baseline scale*
-- Assuming decision paralysis when the problem is memory *at baseline scale*
+- Over-indexing on "recommend ONE thing" _at baseline scale_
+- Assuming decision paralysis when the problem is memory _at baseline scale_
 
 **Display anti-patterns:**
+
 - **Agent-centric display**: Showing "499 agents running" instead of meaningful session context
 - **Unknown/empty sessions**: Displaying "unknown: No specific task" provides zero value
 - **Flat lists at scale**: 499 items in a list creates paralysis, not orientation
@@ -361,11 +419,11 @@ Sessions >24h without activity are **not displayed in the main list**. Instead:
 
 Quick wins that don't change UI structure:
 
-| Change | File | Line | Effort |
-|--------|------|------|--------|
-| Truncation 60→120 chars | `dashboard.py` | 1782 | 1 line |
-| Time window 24h→4h | `dashboard.py` | 1916 | 1 line |
-| Kill "Local activity" fallback | `dashboard.py` | 604 | Replace with `""` or git context |
+| Change                         | File           | Line | Effort                           |
+| ------------------------------ | -------------- | ---- | -------------------------------- |
+| Truncation 60→120 chars        | `dashboard.py` | 1782 | 1 line                           |
+| Time window 24h→4h             | `dashboard.py` | 1916 | 1 line                           |
+| Kill "Local activity" fallback | `dashboard.py` | 604  | Replace with `""` or git context |
 
 ### Phase 2: Session Triage UI (Breaking)
 
@@ -389,6 +447,7 @@ If Phase 1 fallback removal leaves too many empty cards:
 The graph section includes a View toggle to switch between Tasks and Knowledge Base.
 
 **Node colors** (Knowledge Base view by type):
+
 - Red: goal
 - Purple: project
 - Blue: task
@@ -399,6 +458,7 @@ The graph section includes a View toggle to switch between Tasks and Knowledge B
 - Sky: spec
 
 The Knowledge Base graph visualizes:
+
 - Notes and documents as nodes
 - Wikilinks as edges
 - Color-coded by frontmatter `type` field
@@ -409,13 +469,13 @@ CRUD operations for tasks directly through the dashboard UI.
 
 ### Required Operations
 
-| Operation | UI Element | Backend |
-|-----------|------------|---------|
-| **Create** | Quick task form in sidebar | Task MCP `create_task` |
-| **Read** | Task details on node click | Task MCP `get_task` |
-| **Update** | Inline edit on task card | Task MCP `update_task` |
-| **Delete** | Delete button with confirmation | Task MCP `delete_task` |
-| **Complete** | Checkbox/button on task card | Task MCP `complete_task` |
+| Operation    | UI Element                      | Backend                  |
+| ------------ | ------------------------------- | ------------------------ |
+| **Create**   | Quick task form in sidebar      | Task MCP `create_task`   |
+| **Read**     | Task details on node click      | Task MCP `get_task`      |
+| **Update**   | Inline edit on task card        | Task MCP `update_task`   |
+| **Delete**   | Delete button with confirmation | Task MCP `delete_task`   |
+| **Complete** | Checkbox/button on task card    | Task MCP `complete_task` |
 
 ### Inline Task Editor
 
@@ -439,7 +499,7 @@ When a task node is clicked or a task card is selected:
 └──────────────────────────────────────────────────┘
 ```
 
-### Design Principles
+### Task Operations Design Principles
 
 - **Non-blocking**: Task operations should not freeze the UI
 - **Optimistic updates**: Show changes immediately, sync in background
@@ -449,6 +509,7 @@ When a task node is clicked or a task card is selected:
 ## Acceptance Criteria
 
 ### Core Rendering
+
 - [x] fast-indexer generates valid index.json from task files
 - [ ] Dashboard renders index.json without errors
 - [ ] Cross-machine prompts visible via R2 integration
@@ -457,6 +518,7 @@ When a task node is clicked or a task card is selected:
 - [ ] No LLM calls in render path (pre-computed synthesis only)
 
 ### Session Display (Critical)
+
 - [ ] Each session shows initial prompt (what user asked)
 - [ ] Each session shows current status or planned next step
 - [ ] Sessions without meaningful context are hidden (not "unknown: No specific task")
@@ -465,7 +527,8 @@ When a task node is clicked or a task card is selected:
 - [ ] Stale sessions trigger auto-archive prompt, not flat list display
 - [ ] User can answer "what was I doing?" for every displayed session
 
-### Session Triage
+### Session Triage Acceptance Criteria
+
 - [ ] Active sessions (last 4h) shown with full conversation context
 - [ ] Paused sessions (4-24h) shown collapsed, expandable
 - [ ] Stale sessions (>24h) show archive prompt with count
@@ -473,17 +536,101 @@ When a task node is clicked or a task card is selected:
 - [ ] Review action expands stale sessions for selective archival
 
 ### Graph Visualization
+
 - [ ] Task graph renders without freezing browser
 - [ ] Knowledge Base graph view displays notes and wikilinks
 - [ ] Graph loads within 2 seconds for typical data size
 - [ ] Node selection shows task/note details
 
 ### Task Management
+
 - [ ] Create task from dashboard UI
 - [ ] Edit task inline (title, status, priority, project)
 - [ ] Complete task with single click
 - [ ] Delete task with confirmation
 - [ ] Changes sync to task files immediately
+
+## Path Reconstruction
+
+### Problem
+
+User runs parallel sessions, gets sidetracked by bugs, and loses their thread. After 30 minutes they can't remember what they were doing or what to do next. Two specific problems:
+
+1. **Session display shows agent output, not user intent** — WLO cards show "Successfully completed: Standardized session short hashes..." instead of the user's initial prompt
+2. **No plan-level tracking** — no way to see across sessions what path was taken, what deviated, what was dropped
+
+### Path Reconstruction Architecture
+
+**Data flow:**
+
+```
+Raw JSONL sessions
+    ↓ (transcript.py — existing processing pass)
+    ↓ extract_timeline_events() during processing
+    ↓
+Session summary JSONs (enriched with timeline_events)
+    ↓
+path_reconstructor.py (reads JSONs, assembles cross-session view)
+    ↓
+Dashboard rendering (HTML/CSS in dashboard.py)
+```
+
+**Key principle:** No double-handling. The existing `SessionProcessor` already parses tool calls from JSONL into `ConversationTurn` objects with `assistant_sequence` items containing `tool_name`, `tool_input`, and timestamps. Timeline events are extracted from this already-parsed data and saved to the summary JSON.
+
+### Event Types
+
+| Event           | Source                                         | Description                    |
+| --------------- | ---------------------------------------------- | ------------------------------ |
+| `user_prompt`   | User message in turn                           | First ~120 chars of user input |
+| `task_create`   | `task_manager__create_task` tool call          | Task title and project         |
+| `task_complete` | `task_manager__complete_task` tool call        | Task ID completed              |
+| `task_claim`    | `task_manager__claim_next_task` tool call      | Task claimed from queue        |
+| `task_update`   | `task_manager__update_task` with status change | New status value               |
+
+### Display Design
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  YOUR PATH (what actually happened)                      │
+│                                                          │
+│ ⚠ DROPPED THREADS (started but not finished)             │
+│   □ "Investigate daily skill bug" (aops-6c93)            │
+│   □ "Design light-touch QA gate" (aops-f67d)             │
+│                                                          │
+│ academicOps (cd6a8da0)  │ gemini (4b0ecf85)  │ writing  │
+│ ● 07:21 Started:        │ ● 07:18 Started:   │ (f36b6d)│
+│   "dogfood polecats..."  │   "learn session"  │ ● 07:25 │
+│ ○ 07:25 Created task    │ ○ 07:22 Created    │   daily  │
+│   aops-84c88881          │   learn task        │   notes  │
+│ ✓ 07:45 Done             │ ✓ 07:40 Done       │ ✓ Done   │
+└──────────────────────────┴────────────────────┴─────────┘
+```
+
+- **DROPPED THREADS first** — most actionable info for someone who's lost
+- **Parallel columns** — visual layout communicates concurrent work
+- **HH:MM timestamps** — scannable, not ISO noise
+- **Colored dots** — status at a glance without reading
+
+### ADHD Accommodation Notes
+
+- Dropped threads shown first because that's the most actionable information for context recovery
+- Timeline is scannable — events are one line each, not paragraphs
+- Reactive design — reconstructs from existing data, no pre-planning required from user
+- Directive framing — "YOUR PATH" not "Session History"
+
+### Future: Proactive Deviation Tracking
+
+Agents should eventually detect scope-escape and do task bookkeeping (e.g., when a user says "actually fix this bug first", the agent creates a deviation event). This is not yet implemented — current design is purely reactive reconstruction from transcript data.
+
+### Path Reconstruction Giving Effect
+
+- `aops-core/lib/transcript_parser.py`
+
+— `extract_timeline_events()` function
+
+- `aops-core/scripts/transcript.py` — calls extractor, saves to summary JSON
+- `aops-core/lib/path_reconstructor.py` — reads summary JSONs, assembles path
+- `lib/overwhelm/dashboard.py` — CSS + rendering for path section
 
 ## Related
 

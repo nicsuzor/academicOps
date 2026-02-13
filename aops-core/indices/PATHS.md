@@ -1,67 +1,35 @@
 ---
-name: framework-paths
-title: Framework Paths (Generated)
-category: reference
-type: reference
-description: Resolved absolute paths for this framework instance (generated from paths.py)
-audience: agents
-generated: 2026-01-24T01:47:41.796000+00:00
-permalink: framework-paths
-tags:
-  - framework
-  - paths
-  - generated
+name: paths-index
+title: Framework Paths Index
+type: index
+category: framework
+description: Index of standard framework paths and their purposes.
 ---
 
-# Framework Paths
+# Framework Paths Index
 
-**⚠️ GENERATED FILE - DO NOT EDIT MANUALLY**
+Standard paths used within the academicOps ecosystem.
 
-Generated: 2026-01-24 01:47:41 UTC
-Source: `aops-core/lib/paths.py`
+## Environment Variables
 
-This file provides resolved absolute paths for agent use during sessions.
-All paths are expanded to absolute values at generation time.
+- `$AOPS`: Root of the academicOps framework repo.
+- `$ACA_DATA`: Root of the personal knowledge base (writing/data).
 
-## Resolved Paths
+## Key Directories
 
-These are the concrete absolute paths for this framework instance:
+| Path                   | Purpose                               | SSoT Reference   |
+| ---------------------- | ------------------------------------- | ---------------- |
+| `aops-core/skills/`    | Framework skill definitions           | [[SKILLS.md]]    |
+| `aops-core/agents/`    | Agent frontmatter and instructions    | [[AGENTS.md]]    |
+| `aops-core/workflows/` | Procedural logic and step definitions | [[WORKFLOWS.md]] |
+| `specs/`               | Feature and workflow specifications   | `specs/INDEX.md` |
+| `$ACA_DATA/tasks/`     | Active and pending tasks (JSON)       | -                |
+| `$ACA_DATA/goals/`     | Strategic goals (Markdown)            | -                |
+| `$ACA_DATA/projects/`  | Project definitions (Markdown)        | -                |
+| `$ACA_DATA/sessions/`  | Session summaries and insights        | -                |
 
-| Path Variable | Resolved Path |
-|--------------|---------------|
-| $AOPS        | /home/nic/writing/aops   |
-| $ACA_DATA    | /home/nic/writing/data   |
+## Data Persistence
 
-## Framework Directories
-
-Framework component directories within $AOPS:
-
-| Directory | Absolute Path |
-|-----------|---------------|
-| Specs     | /home/nic/writing/aops/specs   |
-| Workflows | /home/nic/writing/aops/aops-core/workflows |
-| Skills    | /home/nic/writing/aops/aops-core/skills  |
-| Hooks     | /home/nic/writing/aops/aops-core/hooks   |
-| Commands  | /home/nic/writing/aops/aops-core/commands |
-| Agents    | /home/nic/writing/aops/aops-core/agents  |
-| Tests     | /home/nic/writing/aops/tests   |
-| Config    | /home/nic/writing/aops/config  |
-
-## Data Directories
-
-User data directories within $ACA_DATA:
-
-| Directory | Absolute Path |
-|-----------|---------------|
-| Sessions  | /home/nic/writing/sessions |
-| Projects  | /home/nic/writing/data/projects |
-| Logs      | /home/nic/writing/data/logs     |
-| Context   | /home/nic/writing/data/context  |
-| Goals     | /home/nic/writing/data/goals    |
-
----
-
-**Generation Command**: `python3 aops-core/scripts/generate_framework_paths.py`
-
-Run this script after changing $AOPS or $ACA_DATA environment variables,
-or after modifying the framework directory structure.
+- `data/aops/`: Local cache and operational data.
+- `data/transcripts/`: Raw session transcripts.
+- `data/outputs/`: Generated artifacts (diagrams, PDFs).

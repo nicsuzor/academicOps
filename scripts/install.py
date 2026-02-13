@@ -4,12 +4,11 @@ Installation script for AcademicOps Gemini framework.
 Replaces setup.sh logic.
 """
 
-import os
-import sys
-import shutil
-import json
-import subprocess
 import argparse
+import os
+import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 # Add shared lib to path
@@ -18,10 +17,10 @@ sys.path.append(str(SCRIPT_DIR / "lib"))
 
 try:
     from build_utils import (
-        safe_symlink,
-        get_git_commit_sha,
         check_installed_plugin_version,
         emit_version_mismatch_warning,
+        get_git_commit_sha,
+        safe_symlink,
     )
 except ImportError:
     print("Error: Could not import build_utils.", file=sys.stderr)
@@ -71,12 +70,9 @@ def install_cron_jobs(aops_path: Path, aca_data_path: str):
     for line in current_crontab.splitlines():
         if "# aOps task index" in line or "scripts/regenerate_task_index.py" in line:
             continue
-        if "# aOps transcripts" in line or "scripts/transcript.py" in line:
+        if "# aOps transcripts" in line or "scripts/transcript_push.py" in line:
             continue
-        if (
-            "# aOps session insights" in line
-            or "scripts/cron_session_insights.sh" in line
-        ):
+        if "# aOps session insights" in line or "scripts/cron_session_insights.sh" in line:
             continue
         new_crontab_lines.append(line)
 
@@ -85,8 +81,12 @@ def install_cron_jobs(aops_path: Path, aca_data_path: str):
     new_crontab_lines.append(cron_cmd)
 
     new_crontab_lines.append("# aOps transcripts")
-    transcript_cmd = f"*/30 * * * * cd {aops_path} && ACA_DATA={aca_data_path} uv run python aops-core/scripts/transcript.py --recent >> /tmp/aops-transcripts.log 2>&1"
+    transcript_cmd = f"*/30 * * * * cd {aops_path} && ACA_DATA={aca_data_path} uv run python aops-core/scripts/transcript_push.py --recent >> /tmp/aops-transcripts.log 2>&1"
     new_crontab_lines.append(transcript_cmd)
+
+    new_crontab_lines.append("# aOps refinery")
+    refinery_cmd = f"*/5 * * * * cd {aops_path} && ACA_DATA={aca_data_path} uv run python scripts/refinery.py >> /tmp/aops-refinery.log 2>&1"
+    new_crontab_lines.append(refinery_cmd)
 
     new_crontab = "\n".join(new_crontab_lines) + "\n"
 
@@ -106,17 +106,17 @@ def uninstall_framework(aops_path: Path):
         ).decode()
         new_lines = []
         for line in current_crontab.splitlines():
-            if (
-                "# aOps task index" in line
-                or "scripts/regenerate_task_index.py" in line
-            ):
-                continue
-            if "# aOps transcripts" in line or "scripts/transcript.py" in line:
+            if "# aOps task index" in line or "scripts/regenerate_task_index.py" in line:
                 continue
             if (
-                "# aOps session insights" in line
-                or "scripts/cron_session_insights.sh" in line
+                "# aOps transcripts" in line
+                or "scripts/transcript_push.py" in line
+                or "scripts/transcript.py" in line
             ):
+                continue
+            if "# aOps session insights" in line or "scripts/cron_session_insights.sh" in line:
+                continue
+            if "# aOps refinery" in line or "scripts/refinery.py" in line:
                 continue
             new_lines.append(line)
 
@@ -129,8 +129,7 @@ def uninstall_framework(aops_path: Path):
 
     # 2. Gemini Extensions
     if shutil.which("gemini"):
-        for ext in ["aops-core", "aops-tools"]:
-            run_command(["gemini", "extensions", "uninstall", ext], check=False)
+        run_command(["gemini", "extensions", "uninstall", "aops-core"], check=False)
         print("✓ Gemini extensions uninstalled")
 
     # 3. Cleanup Files
@@ -169,9 +168,7 @@ def generate_paths_md(aops_root: Path):
 
 def main():
     parser = argparse.ArgumentParser(description="Install AcademicOps Gemini Framework")
-    parser.add_argument(
-        "--disable", action="store_true", help="Disable/Uninstall framework"
-    )
+    parser.add_argument("--disable", action="store_true", help="Disable/Uninstall framework")
     args = parser.parse_args()
 
     aops_path_str = os.environ.get("AOPS")
@@ -190,11 +187,12 @@ def main():
 
     # 1. Run Build
     print("=== Phase 1: Build ===")
-    run_command(
-        [sys.executable, str(aops_root / "scripts" / "build.py")], env=os.environ
-    )
+    run_command([sys.executable, str(aops_root / "scripts" / "build.py")], env=os.environ)
 
     print("\n=== Phase 2: Install ===")
+
+    # Install Cron Jobs
+    install_cron_jobs(aops_root, str(aca_data_path))
 
     generate_paths_md(aops_root)
 
@@ -203,11 +201,8 @@ def main():
 
     src_gemini_md = aops_root / "aops-core" / "GEMINI.md"
     if src_gemini_md.exists():
-        content = src_gemini_md.read_text()
-        content = content.replace("${AOPS}", str(aops_root))
-        content = content.replace("${ACA_DATA}", str(aca_data_path))
-        (gemini_dir / "GEMINI.md").write_text(content)
-        print("✓ Generated ~/.gemini/GEMINI.md")
+        shutil.copy2(src_gemini_md, gemini_dir / "GEMINI.md")
+        print("✓ Copied GEMINI.md to ~/.gemini/GEMINI.md")
 
     ag_dir = gemini_dir / "antigravity"
     ag_dir.mkdir(parents=True, exist_ok=True)
@@ -219,11 +214,22 @@ def main():
     print("Installing Skills...")
     global_skills = ag_dir / "global_skills"
     global_skills.mkdir(exist_ok=True)
-    skills_src = aops_root / "aops-core" / "skills"
-    if skills_src.exists():
-        for item in skills_src.iterdir():
-            if item.is_dir() and not item.name.startswith("."):
-                safe_symlink(item, global_skills / item.name)
+    # Link from dist to ensure auto-generated agent skills are included.
+    # New build naming uses 'aops-...' (aops-claude, aops-gemini, aops-antigravity)
+    # Fall back to legacy 'aops-core' layout if present.
+    candidate_skill_dirs = [
+        aops_root / "dist" / "aops" / "skills",
+        aops_root / "dist" / "aops-core" / "skills",
+        aops_root / "dist" / "aops-claude" / "skills",
+        aops_root / "dist" / "aops-gemini" / "skills",
+        aops_root / "dist" / "aops-antigravity" / "skills",
+    ]
+    for skills_src in candidate_skill_dirs:
+        if skills_src.exists() and skills_src.is_dir():
+            for item in skills_src.iterdir():
+                if item.is_dir() and not item.name.startswith("."):
+                    safe_symlink(item, global_skills / item.name)
+            break
 
     # Install Workflows
     print("Installing Workflows...")
@@ -252,36 +258,40 @@ def main():
             if item.is_file() and not item.name.startswith("."):
                 safe_symlink(item, global_commands / item.name)
 
-    dist_mcp_config = aops_root / "dist" / "antigravity" / "mcp_config.json"
-    if dist_mcp_config.exists():
-        safe_symlink(dist_mcp_config, ag_dir / "mcp_config.json")
+    # mcp_config may be under dist/antigravity or dist/aops-antigravity depending on build
+    for candidate in (
+        aops_root / "dist" / "antigravity" / "mcp_config.json",
+        aops_root / "dist" / "aops-antigravity" / "mcp_config.json",
+    ):
+        if candidate.exists():
+            safe_symlink(candidate, ag_dir / "mcp_config.json")
+            break
 
     # Check for version mismatches with installed Claude plugins
     print("\n=== Version Check ===")
     source_commit = get_git_commit_sha(aops_root)
     if source_commit:
-        for plugin_name in ["aops-core", "aops-tools"]:
-            matches, installed_commit = check_installed_plugin_version(
-                plugin_name, source_commit
-            )
-            if not matches and installed_commit:
-                emit_version_mismatch_warning(
-                    plugin_name, source_commit, installed_commit
-                )
-        if all(
-            check_installed_plugin_version(p, source_commit)[0]
-            for p in ["aops-core", "aops-tools"]
-        ):
-            print(f"✓ Source commit {source_commit} matches installed plugins")
+        matches, installed_commit = check_installed_plugin_version("aops-core", source_commit)
+        if not matches and installed_commit:
+            emit_version_mismatch_warning("aops-core", source_commit, installed_commit)
+        if matches:
+            print(f"✓ Source commit {source_commit} matches installed plugin")
     else:
         print("⚠️  Could not determine source commit (not a git repo?)")
 
     print("\n=== Phase 3: Link Extensions ===")
     if shutil.which("gemini"):
-        # Link aops-core
-        dist_core = aops_root / "dist" / "aops-core"
-        if dist_core.exists():
-            print(f"Installing extension: {dist_core}")
+        # Link Gemini extension. New builds name the directory 'aops-gemini'
+        dist_core_gemini = None
+        for name in ("aops-core-gemini", "aops-gemini"):
+            candidate = aops_root / "dist" / name
+            if candidate.exists():
+                dist_core_gemini = candidate
+                break
+
+        if dist_core_gemini:
+            print(f"Installing Gemini extension from: {dist_core_gemini}")
+            print(f"This sets {dist_core_gemini.name}/ as the extension root.")
             # Uninstall first to avoid "already installed" error
             run_command(["gemini", "extensions", "uninstall", "aops-core"], check=False)
             run_command(
@@ -289,34 +299,13 @@ def main():
                     "gemini",
                     "extensions",
                     "link",
-                    str(dist_core),
+                    str(dist_core_gemini),
                     "--consent",
-                    # "--pre-release",
                 ],
                 check=False,
             )
         else:
-            print(f"Warning: {dist_core} not found. Skipping link.")
-
-        # Link aops-tools
-        dist_tools = aops_root / "dist" / "aops-tools"
-        if dist_tools.exists():
-            print(f"Installing extension: {dist_tools}")
-            # Uninstall first to avoid "already installed" error
-            run_command(
-                ["gemini", "extensions", "uninstall", "aops-tools"], check=False
-            )
-            run_command(
-                [
-                    "gemini",
-                    "extensions",
-                    "link",
-                    str(dist_tools),
-                    "--consent",
-                    # "--pre-release",
-                ],
-                check=False,
-            )
+            print("Warning: Gemini extension dist not found. Skipping link.")
     else:
         print("Warning: 'gemini' executable not found. Skipping extension linking.")
 

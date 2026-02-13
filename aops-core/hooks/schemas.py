@@ -1,107 +1,162 @@
-from typing import Optional, Literal, Union, Dict, Any, List
-from pydantic import BaseModel, Field
+from functools import cached_property
+from typing import Any, Literal
+
+from pydantic import BaseModel, Field, ConfigDict
 
 # --- Input Schemas (Context) ---
+
 
 class HookContext(BaseModel):
     """
     Normalized input context for all hooks.
+
+    Precomputed values (session_short_hash, is_subagent) are computed once
+    during normalize_input() to avoid redundant calculations across gates.
     """
+
+    model_config = ConfigDict(
+        # Allow cached_property to work with Pydantic
+        ignored_types=(cached_property,),
+    )
+
     # Core Identity
     session_id: str = Field(..., description="The unique session identifier.")
-    hook_event: str = Field(..., description="The normalized event name (e.g., SessionStart, PreToolUse).")
+    hook_event: str = Field(
+        ..., description="The normalized event name (e.g., SessionStart, PreToolUse)."
+    )
+    agent_id: str | None = None
+    slug: str | None = None
+    is_sidechain: bool | None = None
+
+    # Precomputed values (computed once in router.normalize_input())
+    session_short_hash: str = Field(
+        default="",
+        description="8-char hash of session_id (computed once at normalization)."
+    )
+    is_subagent: bool = Field(
+        default=False,
+        description="Whether this is a subagent session (computed once at normalization)."
+    )
 
     # Event Data
-    tool_name: Optional[str] = None
-    tool_input: Dict[str, Any] = Field(default_factory=dict)
-    transcript_path: Optional[str] = None
-    cwd: Optional[str] = None
+    tool_name: str | None = None
+    tool_input: dict[str, Any] | list[Any] = Field(default_factory=dict)
+    tool_output: dict[str, Any] | list[Any] = Field(default_factory=dict)
+
+    transcript_path: str | None = None
+    cwd: str | None = None
+
+    subagent_type: str | None = None
 
     # Raw Input (for fallback/passthrough)
-    raw_input: Dict[str, Any] = Field(default_factory=dict)
+    raw_input: dict[str, Any] = Field(default_factory=dict)
+
+    # Cached framework content (lazy loaded)
+    _framework_content_cache: tuple[str, str, str] | None = None
+
+    @cached_property
+    def framework_content(self) -> tuple[str, str, str]:
+        """Lazy-load framework content (axioms, heuristics, skills).
+
+        Returns:
+            tuple: (axioms_text, heuristics_text, skills_text)
+        """
+        from lib.hook_utils import load_framework_content
+        return load_framework_content()
+
 
 # --- Claude Code Hook Schemas ---
+
 
 class ClaudeHookSpecificOutput(BaseModel):
     """
     Nested output structure for Claude Code hooks (used in most events).
     """
-    hookEventName: str = Field(..., description="The name of the event that triggered the hook.")
-    permissionDecision: Optional[Literal["allow", "deny", "ask"]] = Field(
-        None, description="The decision for the hook (allow/deny/ask). Primarily for PreToolUse."
-    )
-    additionalContext: Optional[str] = Field(
-        None, description="Additional context to be provided to the agent. Supported in PreToolUse, PostToolUse, UserPromptSubmit, SessionStart."
-    )
-    updatedInput: Optional[str] = Field(
-        None, description="Updated input for the command. Supported in PreToolUse."
-    )
+
+    hookEventName: str
+    permissionDecision: Literal["allow", "deny", "ask"] | None = None
+    additionalContext: str | None = None
+    updatedInput: str | None = None
+
 
 class ClaudeStopHookOutput(BaseModel):
     """
     Output structure specifically for the Claude 'Stop' event.
     Unlike other events, 'Stop' uses top-level fields instead of hookSpecificOutput.
     """
-    decision: Optional[Literal["approve", "block"]] = Field(
-        None, description="Decision for the Stop event (approve/block)."
-    )
-    reason: Optional[str] = Field(
-        None, description="Reason for the decision (visible to the agent)."
-    )
-    stopReason: Optional[str] = Field(
-        None, description="Reason for the stop (visible to the user)."
-    )
-    systemMessage: Optional[str] = Field(
-        None, description="A message to be displayed to the user."
-    )
+
+    decision: Literal["approve", "block"] | None = None
+    reason: str | None = None
+    stopReason: str | None = None
+    systemMessage: str | None = None
+
 
 class ClaudeGeneralHookOutput(BaseModel):
     """
     Output structure for standard Claude Code hooks (PreToolUse, etc.).
     """
-    systemMessage: Optional[str] = Field(
-        None, description="A message to be displayed to the user."
-    )
-    hookSpecificOutput: Optional[ClaudeHookSpecificOutput] = Field(
-        None, description="Event-specific output data."
-    )
+
+    systemMessage: str | None = None
+    hookSpecificOutput: ClaudeHookSpecificOutput | None = None
+
 
 # Union type for any Claude Hook Output
-ClaudeHookOutput = Union[ClaudeGeneralHookOutput, ClaudeStopHookOutput]
+ClaudeHookOutput = ClaudeGeneralHookOutput | ClaudeStopHookOutput
 
 
 # --- Gemini CLI Hook Schemas ---
 
+
+class GeminiHookSpecificOutput(BaseModel):
+    """
+    Nested output structure for Gemini CLI hooks.
+    Used for context injection and tool configuration.
+
+    Per Gemini CLI docs (2026):
+    - additionalContext: Injected into agent prompt (BeforeAgent, AfterTool)
+    - toolConfig: Override tool selection behavior (BeforeToolSelection)
+    """
+
+    hookEventName: str | None = None
+    additionalContext: str | None = None
+    toolConfig: dict[str, Any] | None = None
+    clearContext: bool | None = None
+
+
 class GeminiHookOutput(BaseModel):
     """
     Output structure for Gemini CLI hooks.
-    Gemini uses a flatter structure compared to Claude.
+
+    Per Gemini CLI docs (2026):
+    - decision: "allow", "deny", or "block" for blocking operations
+    - reason: Explanation for denial (NOT for context injection)
+    - hookSpecificOutput: Contains additionalContext for prompt injection
+    - Exit code 2 is "emergency brake" - stderr shown to agent
     """
-    systemMessage: Optional[str] = Field(
-        None, description="Message to be displayed to the user."
-    )
-    decision: Optional[Literal["allow", "deny"]] = Field(
-        None, description="Permission decision (allow/deny). Required for blocking events."
-    )
-    reason: Optional[str] = Field(
-        None, description="Reason for the decision or context. Used for explanations or agent instructions."
-    )
-    updatedInput: Optional[str] = Field(
-        None, description="Modified input string. Used for command interception."
-    )
+
+    systemMessage: str | None = None
+    decision: Literal["allow", "deny", "block"] | None = None
+    reason: str | None = None
+    hookSpecificOutput: GeminiHookSpecificOutput | None = None
+    suppressOutput: bool | None = None
+    continue_: bool | None = Field(default=None, alias="continue")
+    stopReason: str | None = None
+    updatedInput: str | None = None
     # Metadata for internal tracking/debugging
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Internal metadata.")
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 # --- Canonical Internal Schema ---
+
 
 class CanonicalHookOutput(BaseModel):
     """
     Internal normalized format used by the router to merge multiple hooks.
     All hooks (python scripts) should output this format.
     """
-    system_message: Optional[str] = None
-    verdict: Optional[Literal["allow", "deny", "ask", "warn"]] = "allow"
-    context_injection: Optional[str] = None
-    updated_input: Optional[str] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+    system_message: str | None = None
+    verdict: Literal["allow", "deny", "ask", "warn"] | None = "allow"
+    context_injection: str | None = None
+    updated_input: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)

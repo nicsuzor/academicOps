@@ -40,11 +40,7 @@ class FallbackDetector(ast.NodeVisitor):
     def visit_Call(self, node: ast.Call) -> None:
         """Detect .get(..., empty_value) patterns."""
         # Check for method calls like x.get(key, default)
-        if (
-            isinstance(node.func, ast.Attribute)
-            and node.func.attr == "get"
-            and len(node.args) >= 2
-        ):
+        if isinstance(node.func, ast.Attribute) and node.func.attr == "get" and len(node.args) >= 2:
             default_arg = node.args[1]
             if self._is_empty_fallback(default_arg):
                 self.violations.append(

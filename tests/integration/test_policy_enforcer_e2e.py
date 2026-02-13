@@ -52,9 +52,7 @@ def temp_repo():
             check=True,
         )
         (repo_dir / "test.txt").write_text("test")
-        subprocess.run(
-            ["git", "add", "."], cwd=repo_dir, capture_output=True, check=True
-        )
+        subprocess.run(["git", "add", "."], cwd=repo_dir, capture_output=True, check=True)
         subprocess.run(
             ["git", "commit", "-m", "initial"],
             cwd=repo_dir,
@@ -104,9 +102,7 @@ def test_e2e_blocks_long_markdown_file(claude_test) -> None:
 
         if target_file.exists():
             line_count = len(target_file.read_text().split("\n"))
-            assert (
-                line_count <= 200
-            ), f"File has {line_count} lines but hook should block > 200. "
+            assert line_count <= 200, f"File has {line_count} lines but hook should block > 200. "
 
 
 @pytest.mark.slow
@@ -134,9 +130,7 @@ def test_e2e_allows_normal_markdown_file(claude_test) -> None:
         # pass - those confirm the hook works. Here we just verify no error.
         if target_file.exists():
             content = target_file.read_text()
-            assert (
-                "Test" in content or "#" in content
-            ), "File should have expected content"
+            assert "Test" in content or "#" in content, "File should have expected content"
 
 
 @pytest.mark.slow
@@ -155,9 +149,7 @@ def test_e2e_blocks_git_push_force(claude_test, temp_repo) -> None:
 
     try:
         response = extract_response_text(result).lower()
-        blocked = any(
-            w in response for w in ["block", "cannot", "prevented", "not allowed"]
-        )
+        blocked = any(w in response for w in ["block", "cannot", "prevented", "not allowed"])
         assert blocked, f"Response should indicate block: {response[:200]}"
     except (ValueError, TypeError):
         pass  # Can't verify response content
@@ -178,9 +170,7 @@ def test_e2e_allows_safe_git_commands(claude_test, temp_repo) -> None:
 
     try:
         response = extract_response_text(result).lower()
-        has_git_output = any(
-            w in response for w in ["branch", "commit", "nothing to commit"]
-        )
+        has_git_output = any(w in response for w in ["branch", "commit", "nothing to commit"])
         assert has_git_output, f"Response should show git status: {response[:200]}"
     except (ValueError, TypeError):
         pass

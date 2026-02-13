@@ -149,6 +149,21 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         keywords=("feature", "feature-dev", "development", "implement", "new feature"),
     ),
     FileEntry(
+        path="workflows/design.md",
+        description="Planning/designing known work",
+        keywords=("design", "designing", "architecture", "plan"),
+    ),
+    FileEntry(
+        path="workflows/collaborate.md",
+        description="Interactive exploration/brainstorming",
+        keywords=("collaborate", "brainstorm", "explore", "interactive"),
+    ),
+    FileEntry(
+        path="workflows/batch-processing.md",
+        description="Multiple independent items processing",
+        keywords=("batch", "process all", "bulk"),
+    ),
+    FileEntry(
         path="workflows/debugging.md",
         description="Debugging workflow",
         keywords=("debug", "debugging", "investigate", "bug", "error", "fix"),
@@ -335,24 +350,105 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         description="Path resolution functions",
         keywords=("paths", "path resolution", "directory", "location"),
     ),
+    # --- Acceptance Testing Context (JIT Injection per aops-7c4849dc) ---
+    # Note: paths starting with ../ are relative to project root (parent of aops-core)
+    FileEntry(
+        path="../docs/ACCEPTANCE_TESTING.md",
+        description="Acceptance testing procedures and checklist",
+        keywords=(
+            "acceptance",
+            "acceptance test",
+            "acceptance testing",
+            "testing epic",
+            "v1.1",
+            "release testing",
+            "test harness",
+            "automated test",
+        ),
+    ),
+    FileEntry(
+        path="../scripts/automated_test_harness.py",
+        description="End-to-end test harness for headless agent testing",
+        keywords=(
+            "test harness",
+            "automated test",
+            "headless",
+            "polecat test",
+            "e2e test",
+        ),
+    ),
+    # --- QA Workflow Context (JIT Injection per aops-7c4849dc) ---
+    FileEntry(
+        path="agents/qa.md",
+        description="QA agent purpose, workflow, and verdict patterns (VERIFIED vs ISSUES)",
+        keywords=(
+            "qa",
+            "qa workflow",
+            "qa agent",
+            "verification",
+            "verified",
+            "quality assurance",
+        ),
+    ),
+    FileEntry(
+        path="workflows/qa.md",
+        description="QA verification workflow steps",
+        keywords=("qa workflow", "qa verification", "qa steps", "quality check"),
+    ),
+    # --- Hook/Gate Bug Context (JIT Injection per aops-7c4849dc) ---
+    FileEntry(
+        path="hooks/router.py",
+        description="Hook router with HOOK_REGISTRY structure",
+        keywords=(
+            "hook router",
+            "hook registry",
+            "hook bug",
+            "hook issue",
+            "pretooluse",
+            "posttooluse",
+            "hook dispatch",
+        ),
+    ),
+    FileEntry(
+        path="hooks/gate_registry.py",
+        description="Gate registry configuration for enforcement gates",
+        keywords=(
+            "gate registry",
+            "gate config",
+            "active gates",
+            "gate bug",
+            "gate issue",
+            "enforcement gate",
+        ),
+    ),
+    FileEntry(
+        path="hooks/gates.py",
+        description="ACTIVE_GATES list and gate execution",
+        keywords=(
+            "active gates",
+            "gate list",
+            "gates.py",
+            "gate execution",
+            "gate bug",
+        ),
+    ),
+    FileEntry(
+        path="hooks/session_end_commit_check.py",
+        description="Session end commit enforcement logic",
+        keywords=(
+            "session end",
+            "commit check",
+            "uncommitted",
+            "session end hook",
+            "commit enforcement",
+        ),
+    ),
 )
 
 
 def _normalize_text(text: str) -> str:
     """Normalize text for keyword matching (lowercase, collapse whitespace)."""
     return re.sub(r"\s+", " ", text.lower().strip())
-
-
-def _extract_keywords_from_prompt(prompt: str) -> set[str]:
-    """Extract potential keywords from prompt for matching."""
-    normalized = _normalize_text(prompt)
-
-    # Split into words and bigrams for matching
-    words = set(normalized.split())
-
-    # Also check for multi-word phrases
-    # This allows matching "prompt hydrator" as a phrase
-    return words | {normalized}
 
 
 def get_relevant_file_paths(prompt: str, max_files: int = 10) -> list[dict[str, str]]:
@@ -394,7 +490,7 @@ def get_relevant_file_paths(prompt: str, max_files: int = 10) -> list[dict[str, 
 
     # Take top entries up to max_files
     results: list[dict[str, str]] = []
-    for score, entry in scored_entries[:max_files]:
+    for _score, entry in scored_entries[:max_files]:
         try:
             abs_path = str(entry.absolute_path())
         except RuntimeError:

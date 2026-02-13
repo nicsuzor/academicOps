@@ -11,6 +11,7 @@ Resolve merge conflicts and test failures kicked back from the Refinery.
 ## When to Use
 
 Use this workflow when:
+
 - Task is in `review` status (merge failed, needs human intervention)
 - Task body contains a `🏭 Refinery Report` with failure details
 - Automated merge failed due to conflicts or test failures
@@ -27,11 +28,11 @@ Use this workflow when:
 
 Read the Refinery Report in the task body. Common failure types:
 
-| Error | Cause | Resolution Path |
-|-------|-------|-----------------|
-| "Merge conflicts detected" | Code diverged from main | Resolve conflicts in worktree |
-| "Tests failed" | Feature broke existing tests | Fix code or update tests |
-| "Branch not found" | Branch deleted prematurely | Recreate from backup or abandon |
+| Error                      | Cause                        | Resolution Path                 |
+| -------------------------- | ---------------------------- | ------------------------------- |
+| "Merge conflicts detected" | Code diverged from main      | Resolve conflicts in worktree   |
+| "Tests failed"             | Feature broke existing tests | Fix code or update tests        |
+| "Branch not found"         | Branch deleted prematurely   | Recreate from backup or abandon |
 
 ### 2. Setup Worktree (if needed)
 

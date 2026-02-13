@@ -38,8 +38,6 @@ def test_session_insights_skill_e2e(claude_headless) -> None:
 
     # The skill should mention daily summary
     has_daily_mention = (
-        "daily" in output.lower()
-        or "summary" in output.lower()
-        or "-daily.md" in output.lower()
+        "daily" in output.lower() or "summary" in output.lower() or "-daily.md" in output.lower()
     )
     assert has_daily_mention, "Output doesn't mention daily summary"

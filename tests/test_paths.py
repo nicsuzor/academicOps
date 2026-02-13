@@ -20,59 +20,70 @@ from tests.paths import (
 
 
 class TestGetWritingRoot:
-    """Tests for get_writing_root() function."""
+    """Tests for get_writing_root() function.
 
-    def test_get_writing_root_from_env(self, tmp_path, monkeypatch):
-        """Test get_writing_root() with AOPS env var set."""
-        # Arrange
-        aops_root = tmp_path / "academicOps"
-        aops_root.mkdir()
-        (aops_root / "aops-core").mkdir()  # v1.0: validation checks for aops-core/
-        monkeypatch.setenv("AOPS", str(aops_root))
+    Note: Architecture changed - $AOPS env var is no longer used.
+    get_writing_root() now always returns the plugin root (aops-core directory).
+    """
+
+    def test_get_writing_root_returns_plugin_root(self, monkeypatch):
+        """Test get_writing_root() returns plugin root regardless of env vars.
+
+        In the new plugin-centric architecture, get_writing_root() always returns
+        the aops-core plugin directory, not the $AOPS environment variable.
+        """
+        # Arrange - $AOPS should have no effect
+        monkeypatch.setenv("AOPS", "/some/other/path")
 
         # Act
         result = get_writing_root()
 
-        # Assert
-        assert result == aops_root
+        # Assert - returns plugin root (aops-core), not $AOPS
         assert isinstance(result, Path)
+        assert result.name == "aops-core"
+        assert (result / "lib").exists()  # Sanity check - plugin root has lib/
 
     def test_get_writing_root_fallbacks(self, monkeypatch):
-        """Test get_writing_root() falls back to plugin root without env var."""
+        """Test get_writing_root() returns plugin root without env var."""
         monkeypatch.delenv("AOPS", raising=False)
         # Should return a Path (plugin root)
         result = get_writing_root()
         assert isinstance(result, Path)
+        assert result.name == "aops-core"
 
-    def test_get_writing_root_returns_path_even_if_invalid(self, monkeypatch):
-        """Test get_writing_root returns path even if non-existent (no validation)."""
-        # Arrange
+    def test_get_writing_root_is_always_plugin_root(self, monkeypatch):
+        """Test get_writing_root always returns plugin root (no env var support)."""
+        # Arrange - set bogus AOPS path
         monkeypatch.setenv("AOPS", "/nonexistent/path")
 
         # Act
         result = get_writing_root()
-        
-        # Assert
-        assert result == Path("/nonexistent/path").resolve()
+
+        # Assert - should still be plugin root, ignoring $AOPS
+        assert isinstance(result, Path)
+        assert result.exists()
+        assert result.name == "aops-core"
 
 
 class TestGetBotsDir:
-    """Tests for get_bots_dir() function (backwards compat alias)."""
+    """Tests for get_bots_dir() function (backwards compat alias).
 
-    def test_get_bots_dir(self, tmp_path, monkeypatch):
-        """Test get_bots_dir() returns AOPS root (it's an alias for get_aops_root())."""
-        # Arrange - get_bots_dir is now just an alias for get_aops_root()
-        aops_root = tmp_path / "academicOps"
-        aops_root.mkdir()
-        (aops_root / "aops-core").mkdir()  # v1.0: validation checks for aops-core/
-        monkeypatch.setenv("AOPS", str(aops_root))
+    Note: Architecture changed - get_bots_dir() is now an alias for get_aops_root()
+    which always returns the plugin root (aops-core directory).
+    """
+
+    def test_get_bots_dir(self, monkeypatch):
+        """Test get_bots_dir() returns plugin root (alias for get_aops_root())."""
+        # Arrange - $AOPS should have no effect (architecture changed)
+        monkeypatch.setenv("AOPS", "/some/ignored/path")
 
         # Act
         result = get_bots_dir()
 
-        # Assert - Returns framework root (no /bots/ subdirectory)
-        assert result == aops_root
+        # Assert - Returns plugin root (aops-core)
         assert isinstance(result, Path)
+        assert result.name == "aops-core"
+        assert result.exists()
 
 
 class TestGetDataDir:
@@ -194,9 +205,7 @@ class TestPathsUsePathlib:
         hook_script_result = get_hook_script("test_hook.py")
 
         # Assert
-        assert isinstance(
-            writing_root_result, Path
-        ), "get_writing_root must return Path"
+        assert isinstance(writing_root_result, Path), "get_writing_root must return Path"
         assert isinstance(bots_dir_result, Path), "get_bots_dir must return Path"
         assert isinstance(data_dir_result, Path), "get_data_dir must return Path"
         assert isinstance(hooks_dir_result, Path), "get_hooks_dir must return Path"

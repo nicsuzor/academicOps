@@ -5,12 +5,11 @@ Tests the session-end enforcement hook that detects uncommitted work
 after Framework Reflection or passing tests, and enforces auto-commit.
 """
 
-import json
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -18,15 +17,14 @@ import pytest
 HOOKS_DIR = Path(__file__).parent.parent.parent / "hooks"
 sys.path.insert(0, str(HOOKS_DIR))
 
+from hooks.internal_models import GitPushStatus, GitStatus
 from session_end_commit_check import (
-    extract_recent_messages,
+    check_uncommitted_work,
+    get_git_push_status,
+    get_git_status,
     has_framework_reflection,
     has_test_success,
-    get_git_status,
-    get_git_push_status,
-    check_uncommitted_work,
 )
-from hooks.internal_models import GitStatus, GitPushStatus
 
 
 class TestHasFrameworkReflection:
@@ -550,35 +548,80 @@ class TestCheckUncommittedWork:
     @patch("session_end_commit_check.extract_recent_messages")
     @patch("session_end_commit_check.has_framework_reflection")
     @patch("session_end_commit_check.has_test_success")
+    @patch("session_end_commit_check.has_qa_invocation")
     @patch("session_end_commit_check.get_git_status")
-    def test_no_reflection_or_tests(
+    def test_no_reflection_or_tests_but_tracked_changes(
         self,
         mock_git_status,
+        mock_qa_invocation,
         mock_test_success,
         mock_reflection,
         mock_extract,
     ) -> None:
-        """Should not block if neither reflection nor test success found."""
+        """Should block if tracked changes exist, even without reflection/tests.
+
+        Fix for aops-579dcaeb: sessions that modify code but lack reflection/tests
+        should still be blocked to prevent uncommitted work loss.
+        """
         mock_extract.return_value = ["message"]
         mock_reflection.return_value = False
         mock_test_success.return_value = False
+        mock_qa_invocation.return_value = False
         mock_git_status.return_value = GitStatus(
             has_changes=True,
             staged_changes=False,
-            unstaged_changes=True,
+            unstaged_changes=True,  # Tracked file modified
             untracked_files=False,
             status_output="M file.txt",
         )
 
         result = check_uncommitted_work("session123", "/tmp/transcript.jsonl")
+        # Now blocks because has_tracked_changes triggers blocking (fix for aops-579dcaeb)
+        assert result.should_block is True
+        assert "Uncommitted changes detected" in result.message
+
+    @patch("session_end_commit_check.extract_recent_messages")
+    @patch("session_end_commit_check.has_framework_reflection")
+    @patch("session_end_commit_check.has_test_success")
+    @patch("session_end_commit_check.has_qa_invocation")
+    @patch("session_end_commit_check.get_git_status")
+    def test_untracked_only_no_block(
+        self,
+        mock_git_status,
+        mock_qa_invocation,
+        mock_test_success,
+        mock_reflection,
+        mock_extract,
+    ) -> None:
+        """Should NOT block if only untracked files exist without reflection/tests.
+
+        Untracked files alone don't indicate the session did work - they could be
+        pre-existing or unrelated to the session.
+        """
+        mock_extract.return_value = ["message"]
+        mock_reflection.return_value = False
+        mock_test_success.return_value = False
+        mock_qa_invocation.return_value = False
+        mock_git_status.return_value = GitStatus(
+            has_changes=True,
+            staged_changes=False,
+            unstaged_changes=False,  # No tracked changes
+            untracked_files=True,  # Only untracked
+            status_output="?? newfile.txt",
+        )
+
+        result = check_uncommitted_work("session123", "/tmp/transcript.jsonl")
+        # Should NOT block - only untracked files, no tracked changes
         assert result.should_block is False
 
     @patch("session_end_commit_check.extract_recent_messages")
     @patch("session_end_commit_check.has_framework_reflection")
     @patch("session_end_commit_check.has_test_success")
     @patch("session_end_commit_check.get_git_status")
+    @patch("session_end_commit_check.attempt_auto_commit")
     def test_staged_changes_with_reflection(
         self,
+        mock_auto_commit,
         mock_git_status,
         mock_test_success,
         mock_reflection,
@@ -595,6 +638,7 @@ class TestCheckUncommittedWork:
             untracked_files=False,
             status_output="M file.txt",
         )
+        mock_auto_commit.return_value = False
 
         result = check_uncommitted_work("session123", "/tmp/transcript.jsonl")
         assert result.should_block is True
@@ -655,7 +699,7 @@ class TestHookIntegration:
 
     def test_no_transcript_path(self) -> None:
         """Should handle missing transcript path gracefully."""
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory():
             result = check_uncommitted_work("session123", None)
             assert result.should_block is False
             assert result.has_reflection is False

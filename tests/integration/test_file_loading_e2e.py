@@ -141,9 +141,7 @@ def test_agent_knows_axioms_without_reading(claude_headless: Any) -> None:
     # Claude should know AXIOM #1 content if it was loaded at session start
     # AXIOM #1 is "categorical-imperative" - universal rule, justifiable
     knows_axiom = (
-        "categorical" in response
-        or "universal rule" in response
-        or "justifiable" in response
+        "categorical" in response or "universal rule" in response or "justifiable" in response
     )
     didnt_know = "i don't know" in response or "don't have" in response
 

@@ -146,9 +146,9 @@ async def code_review_prompt(
     """
     return f"""Review this {language} code:
 
-```{language}
+```
 {code}
-````
+```
 
 Provide:
 
@@ -156,7 +156,10 @@ Provide:
 2. Potential bugs or issues
 3. Suggestions for improvement """
 
-@mcp.prompt("summarize") async def summarize_prompt(text: str, max_words: int = 100) -> list[dict]: """Generate summarization prompt with context.
+```python
+@mcp.prompt("summarize")
+async def summarize_prompt(text: str, max_words: int = 100) -> list[dict]:
+    """Generate summarization prompt with context.
 
     Args:
         text: Text to summarize
@@ -168,8 +171,8 @@ Provide:
             "content": f"Summarize in {max_words} words or less:\n\n{text}"
         }
     ]
+```
 
-````
 ## Context Management
 
 ```python
@@ -475,7 +478,7 @@ async def call_external_api(
 5. **Dependency injection** - Reuse resources through dependencies
 6. **Testing** - Use MCPTestClient for integration tests
 
-## Resources
+## Additional Resources
 
 - GitHub: https://github.com/jlowin/fastmcp
 - MCP Specification: https://spec.modelcontextprotocol.io/

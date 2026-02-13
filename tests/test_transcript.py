@@ -40,10 +40,7 @@ class TestTranscriptCLI:
             timeout=10,
         )
         assert result.returncode == 0
-        assert (
-            "Convert Claude Code JSONL" in result.stdout
-            or "transcript" in result.stdout.lower()
-        )
+        assert "Convert Claude Code JSONL" in result.stdout or "transcript" in result.stdout.lower()
         assert "session" in result.stdout.lower()
         assert "--output" in result.stdout or "-o" in result.stdout
 
@@ -93,17 +90,10 @@ class TestTranscriptFunctions:
 
         processor = SessionProcessor()
         entries = [
-            Entry(
-                type="user", message={"content": "Fix the authentication bug in login"}
-            ),
+            Entry(type="user", message={"content": "Fix the authentication bug in login"}),
         ]
         slug = processor.generate_session_slug(entries)
-        assert (
-            "fix" in slug
-            or "authentication" in slug
-            or "bug" in slug
-            or "login" in slug
-        )
+        assert "fix" in slug or "authentication" in slug or "bug" in slug or "login" in slug
 
     def test_generate_session_slug_skips_commands(self, transcript_module) -> None:
         """generate_session_slug skips command invocations."""
@@ -111,21 +101,12 @@ class TestTranscriptFunctions:
 
         processor = SessionProcessor()
         entries = [
-            Entry(
-                type="user", message={"content": "<command-name>/commit</command-name>"}
-            ),
-            Entry(
-                type="user", message={"content": "Update the session storage module"}
-            ),
+            Entry(type="user", message={"content": "<command-name>/commit</command-name>"}),
+            Entry(type="user", message={"content": "Update the session storage module"}),
         ]
         slug = processor.generate_session_slug(entries)
         # Should skip the command and use the second message
-        assert (
-            "session" in slug
-            or "storage" in slug
-            or "update" in slug
-            or "module" in slug
-        )
+        assert "session" in slug or "storage" in slug or "update" in slug or "module" in slug
 
     def test_generate_session_slug_fallback(self, transcript_module) -> None:
         """generate_session_slug returns 'session' when no meaningful content."""
@@ -173,6 +154,8 @@ class TestMarkdownTranscript:
 
     def test_process_empty_session_skips(self) -> None:
         """Processing a file with no meaningful content should return exit code 2."""
+        import os
+
         with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
             f.write("# Existing Transcript\n\nContent here")
             temp_path = f.name
@@ -183,6 +166,7 @@ class TestMarkdownTranscript:
                 capture_output=True,
                 text=True,
                 timeout=10,
+                env=os.environ,
             )
             # Exit code 2 means skipped (no meaningful content)
             # This is expected behavior for non-JSONL files
@@ -198,6 +182,8 @@ class TestOutputPathHandling:
 
     def test_output_directory_generates_filename(self) -> None:
         """When -o is a directory, should auto-generate filename in that directory."""
+        import os
+
         # Create a minimal valid JSONL session
         session_content = """{"type":"user","message":{"content":"Hello world"}}
 {"type":"assistant","message":{"content":"Hi there! How can I help?"}}
@@ -205,9 +191,7 @@ class TestOutputPathHandling:
 {"type":"assistant","message":{"content":"I'll fix that bug now."}}
 """
         with tempfile.TemporaryDirectory() as output_dir:
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".jsonl", delete=False
-            ) as f:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
                 f.write(session_content)
                 session_path = f.name
 
@@ -217,6 +201,7 @@ class TestOutputPathHandling:
                     capture_output=True,
                     text=True,
                     timeout=30,
+                    env=os.environ,
                 )
 
                 # Should succeed
@@ -253,6 +238,7 @@ class TestReflectionExtraction:
         sys.path.insert(0, str(framework_root))
         sys.path.insert(0, str(aops_core_root))
         from lib import transcript_parser
+
         return transcript_parser
 
     def test_parse_framework_reflection_basic(self, parser_module) -> None:
@@ -334,7 +320,6 @@ More content here.
         This test finds recent session logs that contain reflections and
         verifies the extraction pipeline works end-to-end.
         """
-        import glob
         from pathlib import Path
 
         # Find session transcripts with Framework Reflections
@@ -345,7 +330,10 @@ More content here.
             for md_file in sessions_dir.glob("*-full.md"):
                 try:
                     content = md_file.read_text(encoding="utf-8")
-                    if "## Framework Reflection" in content or "## framework reflection" in content.lower():
+                    if (
+                        "## Framework Reflection" in content
+                        or "## framework reflection" in content.lower()
+                    ):
                         reflection_files.append(md_file)
                         if len(reflection_files) >= 3:
                             break
@@ -397,6 +385,7 @@ class TestReflectionToInsights:
         sys.path.insert(0, str(framework_root))
         sys.path.insert(0, str(aops_core_root))
         from lib import transcript_parser
+
         return transcript_parser
 
     @pytest.fixture
@@ -407,6 +396,7 @@ class TestReflectionToInsights:
         sys.path.insert(0, str(framework_root))
         sys.path.insert(0, str(aops_core_root))
         from lib import insights_generator
+
         return insights_generator
 
     def test_reflection_to_insights_has_required_fields(self, parser_module) -> None:
@@ -577,8 +567,7 @@ class TestExitCodeExtraction:
         for content, is_error, expected_code in test_cases:
             result = parser_module._extract_exit_code_from_content(content, is_error)
             assert result == expected_code, (
-                f"Failed for content: {content[:50]}, "
-                f"expected {expected_code}, got {result}"
+                f"Failed for content: {content[:50]}, expected {expected_code}, got {result}"
             )
 
     def test_tool_result_info_includes_exit_code(self, parser_module) -> None:

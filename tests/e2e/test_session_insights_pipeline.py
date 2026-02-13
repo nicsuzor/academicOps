@@ -12,16 +12,14 @@ Test scenarios:
 Run with: pytest tests/e2e/test_session_insights_pipeline.py -v
 """
 
-import json
-import pytest
 import tempfile
-from datetime import date
 from pathlib import Path
 
-from lib.task_sync import TaskSyncService, SyncResult, TaskSyncReport
+import pytest
+from lib.insights_generator import InsightsValidationError, validate_insights_schema
+from lib.task_model import TaskType
 from lib.task_storage import TaskStorage
-from lib.task_model import Task, TaskType, TaskStatus
-from lib.insights_generator import validate_insights_schema, InsightsValidationError
+from lib.task_sync import TaskSyncService
 
 
 class TestScenario1_HappyPath:
@@ -77,9 +75,7 @@ This task validates the complete session insights pipeline end-to-end.
             "project": "framework",
             "summary": "Completed E2E test implementation",
             "outcome": "success",
-            "accomplishments": [
-                f"Wrote happy path test scenario for [[{sample_task.id}]]"
-            ],
+            "accomplishments": [f"Wrote happy path test scenario for [[{sample_task.id}]]"],
             "friction_points": [],
             "proposed_changes": [],
         }
@@ -190,9 +186,7 @@ class TestScenario2_NoMatch:
             "project": "framework",
             "summary": "Referenced missing task",
             "outcome": "partial",
-            "accomplishments": [
-                "Fixed bug in [[nonexistent-12345678]] module"
-            ],
+            "accomplishments": ["Fixed bug in [[nonexistent-12345678]] module"],
             "friction_points": [],
             "proposed_changes": [],
         }
@@ -257,9 +251,7 @@ Configuration update needed for new environment.
             "project": "framework",
             "summary": "Worked on configuration",
             "outcome": "success",
-            "accomplishments": [
-                f"Reviewed the existing configuration files [[{sample_task.id}]]"
-            ],
+            "accomplishments": [f"Reviewed the existing configuration files [[{sample_task.id}]]"],
             "friction_points": [],
             "proposed_changes": [],
         }
@@ -280,9 +272,7 @@ Configuration update needed for new environment.
             "project": "framework",
             "summary": "Worked on something else",
             "outcome": "success",
-            "accomplishments": [
-                f"Fixed completely unrelated bug [[{sample_task.id}]]"
-            ],
+            "accomplishments": [f"Fixed completely unrelated bug [[{sample_task.id}]]"],
             "friction_points": [],
             "proposed_changes": [],
         }
@@ -330,9 +320,7 @@ class TestScenario4_TaskFormatError:
             "project": "framework",
             "summary": "Tried to update malformed task",
             "outcome": "partial",
-            "accomplishments": [
-                f"Worked on [[{fake_task_id}]] issue"
-            ],
+            "accomplishments": [f"Worked on [[{fake_task_id}]] issue"],
             "friction_points": [],
             "proposed_changes": [],
         }
@@ -395,7 +383,10 @@ class TestScenario5_MemoryServerUnavailable:
             "summary": "Completed task without semantic search",
             "outcome": "success",
             "accomplishments": [
-                {"task_id": sample_task.id, "text": "Completed task without semantic search"}
+                {
+                    "task_id": sample_task.id,
+                    "text": "Completed task without semantic search",
+                }
             ],
             "friction_points": [],
             "proposed_changes": [],
@@ -463,9 +454,7 @@ Testing backfill without duplication.
             "project": "test",
             "summary": "First session work",
             "outcome": "success",
-            "accomplishments": [
-                f"Completed initial work [[{sample_task.id}]]"
-            ],
+            "accomplishments": [f"Completed initial work [[{sample_task.id}]]"],
             "friction_points": [],
             "proposed_changes": [],
         }
@@ -477,9 +466,7 @@ Testing backfill without duplication.
             "project": "test",
             "summary": "Second session work",
             "outcome": "success",
-            "accomplishments": [
-                f"Completed follow-up work [[{sample_task.id}]]"
-            ],
+            "accomplishments": [f"Completed follow-up work [[{sample_task.id}]]"],
             "friction_points": [],
             "proposed_changes": [],
         }
@@ -491,9 +478,7 @@ Testing backfill without duplication.
             "project": "test",
             "summary": "Third session work",
             "outcome": "success",
-            "accomplishments": [
-                f"Completed initial work [[{sample_task.id}]]"
-            ],
+            "accomplishments": [f"Completed initial work [[{sample_task.id}]]"],
             "friction_points": [],
             "proposed_changes": [],
         }
@@ -527,9 +512,7 @@ Testing backfill without duplication.
         assert "2026-01-23" in updated_task.body
         assert "2026-01-24" in updated_task.body
 
-    def test_same_session_twice_adds_duplicate_entry(
-        self, service, storage, sample_task
-    ):
+    def test_same_session_twice_adds_duplicate_entry(self, service, storage, sample_task):
         """E2E: Same session processed twice adds duplicate progress entries.
 
         Note: Current implementation does NOT deduplicate. This is documented
@@ -541,9 +524,7 @@ Testing backfill without duplication.
             "project": "test",
             "summary": "Work",
             "outcome": "success",
-            "accomplishments": [
-                f"Completed initial work [[{sample_task.id}]]"
-            ],
+            "accomplishments": [f"Completed initial work [[{sample_task.id}]]"],
             "friction_points": [],
             "proposed_changes": [],
         }
@@ -605,9 +586,7 @@ class TestInsightsSchemaValidation:
                     "cache_read_tokens": 800,
                     "cache_create_tokens": 200,
                 },
-                "by_model": {
-                    "claude-opus-4-5-20251101": {"input": 1000, "output": 500}
-                },
+                "by_model": {"claude-opus-4-5-20251101": {"input": 1000, "output": 500}},
                 "by_agent": {
                     "main": {"input": 800, "output": 400},
                     "hydrator": {"input": 200, "output": 100},

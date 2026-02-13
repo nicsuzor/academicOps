@@ -12,7 +12,10 @@ to $AOPS/config/gemini/commands/ (or specified output directory).
 import re
 import sys
 from pathlib import Path
-#<!-- @NS: This seems to violate DRY -- I think we already have this script. merge them -->
+
+
+# <!-- @NS: This seems to violate DRY -- I think we already have this script. merge them -->
+# <!-- @claude 2026-02-07: Confirmed DRY violation. Similar functions: hooks/user_prompt_submit.py:_strip_frontmatter (body only), skills/hypervisor/scripts/batch_worker.py:parse_frontmatter. No canonical lib exists yet. Task aops-411ba25a: create lib/frontmatter.py with both strip_frontmatter() and parse_frontmatter() functions. -->
 def extract_frontmatter(content: str) -> tuple[dict, str]:
     """
     Extract YAML frontmatter and body from markdown content.
@@ -23,8 +26,8 @@ def extract_frontmatter(content: str) -> tuple[dict, str]:
     frontmatter = {}
     body = content
 
-    # Match YAML frontmatter between --- markers
-    match = re.match(r"^---\n(.*?)\n---\n(.*)$\n", content, re.DOTALL)
+    # Match YAML frontmatter between --- markers (with optional leading/trailing whitespace)
+    match = re.match(r"^\s*---\s*\n(.*?)\n---\s*\n?(.*)$", content, re.DOTALL)
     if match:
         yaml_content = match.group(1)
         body = match.group(2).strip()
@@ -32,30 +35,45 @@ def extract_frontmatter(content: str) -> tuple[dict, str]:
         # Simple YAML parsing (no external deps)
         for line in yaml_content.split("\n"):
             line = line.strip()
-            if ":" in line:
-                key, value = line.split(":", 1)
-                key = key.strip()
-                value = value.strip()
-                # Remove quotes if present
-                if value.startswith('"') and value.endswith('"'):
-                    value = value[1:-1]
-                elif value.startswith("'") and value.endswith("'"):
-                    value = value[1:-1]
-                frontmatter[key] = value
+            if not line or ":" not in line:
+                continue
+            key, value = line.split(":", 1)
+            key = key.strip()
+            value = value.strip()
+            # Remove quotes if present
+            if value.startswith('"') and value.endswith('"'):
+                value = value[1:-1]
+            elif value.startswith("'") and value.endswith("'"):
+                value = value[1:-1]
+            frontmatter[key] = value
 
     return frontmatter, body
-
-
-def escape_toml_string(s: str) -> str:
-    """Escape a string for TOML multiline literal."""
-    # For multiline literal strings ('''), we just need to handle '''
-    return s.replace("'''", "'\\\'\'\''")
 
 
 def escape_toml_basic_string(s: str) -> str:
     """Escape a string for TOML basic (double-quoted) string."""
     # Escape backslashes first, then double quotes
     return s.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def escape_toml_literal(s: str) -> str:
+    """Escape a string for TOML multiline literal (''' ... ''')."""
+    # Multiline literal strings in TOML use triple single quotes and do not support escaping,
+    # except for escaping the closing sequence itself.
+    if "'''" in s:
+        # Fallback to multiline basic string and escape accordingly
+        return None
+    return s
+
+
+def escape_toml_basic_multiline(s: str) -> str:
+    """Escape a string for TOML multiline basic string (triple double quotes)."""
+    # In basic multiline, we need to escape \ and "
+    # But specifically avoid escaping newlines
+    s = s.replace("\\", "\\\\").replace('"', '\\"')
+    # TOML multiline basic strings use triple double quotes and need to escape them
+    s = s.replace('"""', '\\"\\"\\"')
+    return s
 
 
 def convert_command(md_path: Path) -> str:
@@ -81,10 +99,13 @@ def convert_command(md_path: Path) -> str:
         "",
         f'description = "{escape_toml_basic_string(description)}"',
         "",
-        "prompt = '''",
-        escape_toml_string(body),
-        "'''",
     ]
+
+    literal_body = escape_toml_literal(body)
+    if literal_body is not None:
+        toml_lines.extend(["prompt = '''", literal_body, "'''"])
+    else:
+        toml_lines.extend(['prompt = """', escape_toml_basic_multiline(body), '"""'])
 
     return "\n".join(toml_lines)
 
@@ -93,7 +114,7 @@ def main():
     """Main entry point."""
     # Determine paths
     aops = Path(__file__).parent.parent
-    
+
     # Default output directory
     output_dir = aops / "config" / "gemini" / "commands"
 
@@ -113,7 +134,7 @@ def main():
 
     # Find all commands directories in aops-* plugins
     command_dirs = list(aops.glob("aops-*/commands"))
-    
+
     # Also check top-level commands (legacy/fallback)
     if (aops / "commands").exists():
         command_dirs.append(aops / "commands")
@@ -124,9 +145,9 @@ def main():
     for cmd_dir in command_dirs:
         if not cmd_dir.is_dir():
             continue
-            
+
         print(f"Scanning {cmd_dir.relative_to(aops)}...", file=sys.stderr)
-        
+
         for md_file in sorted(cmd_dir.glob("*.md")):
             try:
                 toml_content = convert_command(md_file)

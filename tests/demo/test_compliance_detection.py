@@ -110,9 +110,7 @@ class TestComplianceDetectionDemo:
         )
 
         print(f"\nSession ID: {session_id}")
-        session_success = (
-            result.get("success", False) if isinstance(result, dict) else False
-        )
+        session_success = result.get("success", False) if isinstance(result, dict) else False
         print(f"Success: {session_success}")
         print(f"Total tool calls: {len(tool_calls)}")
 
@@ -206,9 +204,7 @@ class TestComplianceDetectionDemo:
                     heur_section = audit_content[heur_idx:next_h1]
                     # Should have H1:, H2:, etc.
                     h_lines = [
-                        line
-                        for line in heur_section.split("\n")
-                        if line.strip().startswith("H")
+                        line for line in heur_section.split("\n") if line.strip().startswith("H")
                     ]
                     if len(h_lines) < 10:
                         semantic_issues.append(

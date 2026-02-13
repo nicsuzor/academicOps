@@ -4,6 +4,7 @@
 import os
 import sys
 from pathlib import Path
+
 import pytest
 
 # Add framework roots to path for lib imports
@@ -21,6 +22,7 @@ from mcp_servers.tasks_server import (
     get_tasks_with_topology,
     update_task,
 )
+
 
 @pytest.fixture(scope="module")
 def task_server_setup(tmp_path_factory):
@@ -50,7 +52,9 @@ def task_server_setup(tmp_path_factory):
     assert p_b_root_res["success"]
     p_b_root_id = p_b_root_res["task"]["id"]
 
-    hub_res = create_task.fn(task_title="Hub Task", project="proj-b", type="task", parent=p_b_root_id)
+    hub_res = create_task.fn(
+        task_title="Hub Task", project="proj-b", type="task", parent=p_b_root_id
+    )
     assert hub_res["success"]
     hub_id = hub_res["task"]["id"]
 
@@ -59,10 +63,10 @@ def task_server_setup(tmp_path_factory):
 
     parent_id = p_b_root_id
     for i in range(5):
-        res = create_task.fn(task_title=f"Deep Task {i+1}", project="proj-b", parent=parent_id)
+        res = create_task.fn(task_title=f"Deep Task {i + 1}", project="proj-b", parent=parent_id)
         assert res["success"]
         parent_id = res["task"]["id"]
-    
+
     create_task.fn(task_title="A done task", project="proj-a", status="done")
     create_task.fn(task_title="Ready Task", project="proj-a", status="active")
 
@@ -127,10 +131,10 @@ class TestGetTasksWithTopology:
         assert hub_task is not None
 
         assert hub_task["depth"] == 1
-        assert hub_task["is_leaf"] is True # It has no children, so it is a leaf
+        assert hub_task["is_leaf"] is True  # It has no children, so it is a leaf
         assert hub_task["child_count"] == 0
-        assert hub_task["blocking_count"] == 2 # Blocks 2 spokes
-        assert hub_task["blocked_by_count"] == 0 # Depends on nothing
+        assert hub_task["blocking_count"] == 2  # Blocks 2 spokes
+        assert hub_task["blocked_by_count"] == 0  # Depends on nothing
 
         p_a_child1_id = task_ids["p_a_child1_id"]
         result_a = get_tasks_with_topology.fn(project="proj-a")
@@ -145,7 +149,7 @@ class TestGetTasksWithTopology:
         """Test that ready_days is calculated for active tasks."""
         result = get_tasks_with_topology.fn(status="active")
         assert result["success"]
-        
+
         ready_task = next((t for t in result["tasks"] if t["title"] == "Ready Task"), None)
         assert ready_task is not None
         assert "ready_days" in ready_task

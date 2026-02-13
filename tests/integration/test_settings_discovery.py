@@ -74,12 +74,14 @@ def test_settings_json_discoverable_by_claude(bots_dir: Path) -> None:
         pytest.skip("settings.json missing 'hooks' section (expected for CI/fresh environments)")
 
     if "SessionStart" not in config["hooks"]:
-        pytest.skip("settings.json missing 'SessionStart' hooks (expected for CI/fresh environments)")
+        pytest.skip(
+            "settings.json missing 'SessionStart' hooks (expected for CI/fresh environments)"
+        )
 
     session_start_hooks = config["hooks"]["SessionStart"]
-    assert isinstance(
-        session_start_hooks, list
-    ), f"SessionStart hooks must be a list, got {type(session_start_hooks).__name__}"
+    assert isinstance(session_start_hooks, list), (
+        f"SessionStart hooks must be a list, got {type(session_start_hooks).__name__}"
+    )
 
     assert len(session_start_hooks) > 0, (
         f"SessionStart hooks list is empty at {settings_path}.\n"

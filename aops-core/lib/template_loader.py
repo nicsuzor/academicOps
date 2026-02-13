@@ -9,9 +9,7 @@ Exit behavior: Functions raise exceptions (fail-fast). Callers handle graceful d
 from pathlib import Path
 
 
-def load_template(
-    template_path: Path, variables: dict[str, str] | None = None
-) -> str:
+def load_template(template_path: Path, variables: dict[str, str] | None = None) -> str:
     """Load template and optionally format with variables.
 
     Templates are markdown files with optional YAML frontmatter.
@@ -33,7 +31,7 @@ def load_template(
         >>> content = load_template(Path("hooks/templates/block-message.md"))
         >>> formatted = load_template(
         ...     Path("hooks/templates/instruction.md"),
-        ...     {"temp_path": "/tmp/foo.md"}
+        ...     {"temp_path": "/path/to/ctx.md"}
         ... )
     """
     if not template_path.exists():

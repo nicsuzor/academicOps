@@ -18,15 +18,12 @@ Usage:
 from __future__ import annotations
 
 import logging
-from dataclasses import asdict
-from datetime import datetime
+import sys
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from fastmcp import FastMCP
-
-import sys
-from pathlib import Path
 
 # Add framework roots to path for lib imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -250,18 +247,18 @@ def _format_tree(node: dict[str, Any], indent: int = 0) -> str:
 def create_task(
     task_title: str,
     type: str = "task",
-    status: Optional[str] = None,
-    project: Optional[str] = None,
-    parent: Optional[str] = None,
-    depends_on: Optional[list[str]] = None,
-    soft_depends_on: Optional[list[str]] = None,
+    status: str | None = None,
+    project: str | None = None,
+    parent: str | None = None,
+    depends_on: list[str] | None = None,
+    soft_depends_on: list[str] | None = None,
     order: int = 0,
     priority: int = 2,
-    due: Optional[str] = None,
-    tags: Optional[list[str]] = None,
+    due: str | None = None,
+    tags: list[str] | None = None,
     body: str = "",
-    assignee: Optional[str] = None,
-    complexity: Optional[str] = None,
+    assignee: str | None = None,
+    complexity: str | None = None,
 ) -> dict[str, Any]:
     """Create a new task in the hierarchical task system.
 
@@ -281,7 +278,7 @@ def create_task(
         due: Due date in ISO format (YYYY-MM-DDTHH:MM:SSZ)
         tags: List of tags for categorization
         body: Markdown body content
-        assignee: Task owner - typically 'nic' (human) or 'bot' (agent)
+        assignee: Task owner - typically 'nic' (human) or 'polecat' (agent)
         complexity: Task complexity for routing - "mechanical", "requires-judgment",
             "multi-step", "needs-decomposition", or "blocked-human" (default: None)
 
@@ -303,6 +300,23 @@ def create_task(
     """
     try:
         storage = _get_storage()
+
+        # Validate title
+        title_stripped = task_title.strip() if task_title else ""
+        if not title_stripped:
+            return {
+                "success": False,
+                "message": "Task title is required and cannot be empty or whitespace-only",
+            }
+
+        # Check slugified title has minimum length
+        slug = Task.slugify_title(title_stripped)
+        if len(slug) < 3:
+            return {
+                "success": False,
+                "message": f"Task title must produce a slug of at least 3 characters. "
+                f"Title '{title_stripped}' produces slug '{slug}' which is too short.",
+            }
 
         # Parse task type
         try:
@@ -440,23 +454,23 @@ def get_task(id: str) -> dict[str, Any]:
 @mcp.tool()
 def update_task(
     id: str,
-    task_title: Optional[str] = None,
-    type: Optional[str] = None,
-    status: Optional[str] = None,
-    priority: Optional[int] = None,
-    order: Optional[int] = None,
-    parent: Optional[str] = None,
-    depends_on: Optional[list[str]] = None,
-    soft_depends_on: Optional[list[str]] = None,
-    due: Optional[str] = None,
-    project: Optional[str] = None,
-    tags: Optional[list[str]] = None,
-    effort: Optional[str] = None,
-    context: Optional[str] = None,
-    body: Optional[str] = None,
+    task_title: str | None = None,
+    type: str | None = None,
+    status: str | None = None,
+    priority: int | None = None,
+    order: int | None = None,
+    parent: str | None = None,
+    depends_on: list[str] | None = None,
+    soft_depends_on: list[str] | None = None,
+    due: str | None = None,
+    project: str | None = None,
+    tags: list[str] | None = None,
+    effort: str | None = None,
+    context: str | None = None,
+    body: str | None = None,
     replace_body: bool = False,
-    assignee: Optional[str] = None,
-    complexity: Optional[str] = None,
+    assignee: str | None = None,
+    complexity: str | None = None,
 ) -> dict[str, Any]:
     """Update an existing task.
 
@@ -479,7 +493,7 @@ def update_task(
         context: New context (or "" to clear)
         body: Body content to append (default) or replace. Appended with double newline separator.
         replace_body: If True, replace body instead of appending (default: False)
-        assignee: Task owner - 'nic' or 'bot' (or "" to clear)
+        assignee: Task owner - 'nic' or 'polecat' (or "" to clear)
         complexity: Task complexity - "mechanical", "requires-judgment", "multi-step",
             "needs-decomposition", or "blocked-human" (or "" to clear)
 
@@ -530,8 +544,7 @@ def update_task(
                 # A task is "claimed" when status=IN_PROGRESS and has an assignee
                 if new_status == TaskStatus.IN_PROGRESS:
                     is_already_claimed = (
-                        task.status == TaskStatus.IN_PROGRESS
-                        and task.assignee is not None
+                        task.status == TaskStatus.IN_PROGRESS and task.assignee is not None
                     )
                     # Determine who is trying to claim
                     new_assignee = assignee if assignee is not None else task.assignee
@@ -655,9 +668,7 @@ def update_task(
             "success": True,
             "task": _task_to_dict(task),
             "modified_fields": modified_fields,
-            "message": f"Updated task: {task.title}"
-            if modified_fields
-            else "No changes made",
+            "message": f"Updated task: {task.title}" if modified_fields else "No changes made",
         }
 
     except Exception as e:
@@ -667,6 +678,68 @@ def update_task(
             "task": None,
             "modified_fields": [],
             "message": f"Failed to update task: {e}",
+        }
+
+
+@mcp.tool()
+def claim_next_task(
+    caller: str = "polecat",
+    project: str | None = None,
+) -> dict[str, Any]:
+    """Atomically claim the next ready task by priority.
+
+    Finds highest priority ready task (leaf, no blockers, status inbox/active)
+    and atomically claims it (sets status="in_progress", assignee=caller).
+    Uses file locking to prevent race conditions.
+
+    Args:
+        caller: Who is claiming the task (default: "polecat")
+        project: Optional project filter
+
+    Returns:
+        Dictionary with:
+        - success: True if task claimed
+        - task: Claimed task data
+        - message: Status message
+    """
+    try:
+        storage = _get_storage()
+        index = _get_index()
+
+        # Get candidates from index
+        # This respects assignee filters (only unassigned or assigned to caller)
+        # and excludes human-tagged tasks if caller is 'polecat'
+        candidates = index.get_ready_tasks(project=project, caller=caller)
+
+        # Try to claim candidates in order
+        for candidate in candidates:
+            # Atomically attempt to claim
+            claimed_task = storage.claim_task(candidate.id, caller)
+            if claimed_task:
+                # Rebuild index to reflect change
+                # Use fast rebuild if available as this is a high-frequency op
+                if not index.rebuild_fast():
+                    index.rebuild()
+
+                logger.info(f"claim_next_task: {caller} claimed {claimed_task.id}")
+                return {
+                    "success": True,
+                    "task": _task_to_dict(claimed_task),
+                    "message": f"Claimed task: {claimed_task.title}",
+                }
+
+        return {
+            "success": False,
+            "task": None,
+            "message": "No ready tasks available to claim",
+        }
+
+    except Exception as e:
+        logger.exception("claim_next_task failed")
+        return {
+            "success": False,
+            "task": None,
+            "message": f"Failed to claim task: {e}",
         }
 
 
@@ -726,14 +799,14 @@ def complete_task(id: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def get_blocked_tasks(project: str, limit: int = 10) -> dict[str, Any]:
+def get_blocked_tasks(project: str, limit: int = 5) -> dict[str, Any]:
     """Get tasks blocked by dependencies.
 
     Returns tasks that have unmet dependencies or status "blocked".
 
     Args:
         project: Filter by project slug, or empty string "" for all projects
-        limit: Maximum number of tasks to return (default: 10, use 0 for unlimited)
+        limit: Maximum number of tasks to return (default: 5, use 0 for unlimited)
 
     Returns:
         Dictionary with:
@@ -779,7 +852,7 @@ def get_blocked_tasks(project: str, limit: int = 10) -> dict[str, Any]:
 
 
 @mcp.tool()
-def get_review_tasks(project: str = "", limit: int = 10) -> dict[str, Any]:
+def get_review_tasks(project: str = "", limit: int = 5) -> dict[str, Any]:
     """Get tasks awaiting human review.
 
     Returns tasks with status "review" that are waiting for human verification
@@ -787,7 +860,7 @@ def get_review_tasks(project: str = "", limit: int = 10) -> dict[str, Any]:
 
     Args:
         project: Filter by project slug, or empty string "" for all projects
-        limit: Maximum number of tasks to return (default: 10, use 0 for unlimited)
+        limit: Maximum number of tasks to return (default: 5, use 0 for unlimited)
 
     Returns:
         Dictionary with:
@@ -798,13 +871,11 @@ def get_review_tasks(project: str = "", limit: int = 10) -> dict[str, Any]:
         - message: Status message
     """
     try:
-        storage = _get_storage()
         index = _get_index()
 
         # Get all tasks in review status
         review_tasks = [
-            entry for entry in index._tasks.values()
-            if entry.status == TaskStatus.REVIEW.value
+            entry for entry in index._tasks.values() if entry.status == TaskStatus.REVIEW.value
         ]
 
         # Filter by project if specified
@@ -843,10 +914,11 @@ def get_review_tasks(project: str = "", limit: int = 10) -> dict[str, Any]:
 
 @mcp.tool()
 def get_task_tree(
-    id: Optional[str] = None,
-    exclude_status: Optional[list[str]] = None,
-    max_depth: Optional[int] = None,
-    project: Optional[str] = None,
+    id: str | None = None,
+    exclude_status: list[str] | None = None,
+    max_depth: int | None = None,
+    project: str | None = None,
+    root_types: list[str] | None = None,
 ) -> dict[str, Any]:
     """Get the decomposition tree for a task, or all root tasks.
 
@@ -858,6 +930,9 @@ def get_task_tree(
         exclude_status: List of statuses to exclude (e.g., ["done", "cancelled"])
         max_depth: Maximum tree depth (0 = roots only, 1 = roots + children, etc.)
         project: Filter roots by project slug (only applies when id is None)
+        root_types: Filter root tasks by type (e.g., ["project"]). Defaults to
+            ["project"] to show project-level grouping. Pass [] or None with
+            explicit empty list to see all root types including goals.
 
     Returns:
         Dictionary with:
@@ -878,7 +953,7 @@ def get_task_tree(
                 return False
             return True
 
-        def build_tree(entry: TaskIndexEntry, depth: int = 0) -> Optional[dict[str, Any]]:
+        def build_tree(entry: TaskIndexEntry, depth: int = 0) -> dict[str, Any] | None:
             """Recursively build tree structure with filtering."""
             if not should_include(entry):
                 return None
@@ -907,6 +982,12 @@ def get_task_tree(
                     "message": "No root tasks found",
                 }
 
+            # Filter roots by type - default to project-level grouping
+            # Use ["project"] as default; pass [] explicitly to see all roots
+            effective_root_types = root_types if root_types is not None else ["project"]
+            if effective_root_types:
+                roots = [r for r in roots if r.type in effective_root_types]
+
             # Filter roots by project if specified
             if project:
                 roots = [r for r in roots if r.project == project]
@@ -919,6 +1000,8 @@ def get_task_tree(
 
             formatted_trees = "\n\n".join(_format_tree(t) for t in trees)
             filters_desc = []
+            if effective_root_types:
+                filters_desc.append(f"root_types={effective_root_types}")
             if exclude_status:
                 filters_desc.append(f"excluding {exclude_status}")
             if max_depth is not None:
@@ -1071,10 +1154,10 @@ def get_dependencies(id: str) -> dict[str, Any]:
 
 @mcp.tool()
 def get_tasks_with_topology(
-    project: Optional[str] = None,
-    status: Optional[str] = None,
-    min_depth: Optional[int] = None,
-    min_blocking_count: Optional[int] = None,
+    project: str | None = None,
+    status: str | None = None,
+    min_depth: int | None = None,
+    min_blocking_count: int | None = None,
 ) -> dict[str, Any]:
     """
     Return tasks with their topology metrics. Agent identifies issues.
@@ -1118,7 +1201,7 @@ def get_tasks_with_topology(
             # The index doesn't store timestamps, so we need to load the full task
             full_task = storage.get_task(entry.id)
             if not full_task:
-                continue # Skip if task file was deleted but index not rebuilt
+                continue  # Skip if task file was deleted but index not rebuilt
 
             ready_days = None
             if entry.status == "active":
@@ -1220,6 +1303,26 @@ def decompose_task(id: str, children: list[dict]) -> dict[str, Any]:
                     "message": f"Child {i} missing required 'title' field",
                 }
 
+            # Validate child title
+            child_title = child["title"].strip() if child["title"] else ""
+            if not child_title:
+                return {
+                    "success": False,
+                    "tasks": [],
+                    "count": 0,
+                    "message": f"Child {i} title is empty or whitespace-only",
+                }
+
+            child_slug = Task.slugify_title(child_title)
+            if len(child_slug) < 3:
+                return {
+                    "success": False,
+                    "tasks": [],
+                    "count": 0,
+                    "message": f"Child {i} title '{child_title}' produces slug '{child_slug}' "
+                    f"which is too short (minimum 3 characters)",
+                }
+
         # Decompose
         created = storage.decompose_task(id, children)
 
@@ -1309,9 +1412,7 @@ def complete_tasks(ids: list[str]) -> dict[str, Any]:
             index = TaskIndex(get_data_root())
             index.rebuild()
 
-        logger.info(
-            f"complete_tasks: {len(completed)} completed, {len(failures)} failed"
-        )
+        logger.info(f"complete_tasks: {len(completed)} completed, {len(failures)} failed")
 
         return {
             "success": len(failures) == 0,
@@ -1332,6 +1433,91 @@ def complete_tasks(ids: list[str]) -> dict[str, Any]:
             "failure_count": len(ids),
             "failures": [{"id": tid, "reason": str(e)} for tid in ids],
             "message": f"Failed to complete tasks: {e}",
+        }
+
+
+@mcp.tool()
+def reset_stalled_tasks(
+    hours: float = 4.0,
+    project: str | None = None,
+    assignee: str | None = None,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    """Reset stalled in_progress tasks back to active.
+
+    Finds tasks that have been in_progress for longer than the specified duration
+    without modification and resets them to active status.
+
+    Args:
+        hours: Hours since last modification to consider stalled (default: 4.0)
+        project: Filter by project (optional)
+        assignee: Filter by assignee (optional)
+        dry_run: If True, only list tasks that would be reset (default: False)
+
+    Returns:
+        Dictionary with:
+        - success: True
+        - tasks: List of reset task IDs
+        - count: Number of tasks reset
+        - message: Status message
+    """
+    try:
+        storage = _get_storage()
+        # Use timezone-aware comparison
+        cutoff = datetime.now(UTC) - timedelta(hours=hours)
+
+        # List all in_progress tasks matching filters
+        candidates = storage.list_tasks(
+            status=TaskStatus.IN_PROGRESS,
+            project=project,
+            assignee=assignee,
+        )
+
+        stalled = []
+        for task in candidates:
+            # Ensure task.modified is timezone-aware or comparable
+            task_mod = task.modified
+            if task_mod.tzinfo is None:
+                task_mod = task_mod.replace(tzinfo=UTC)
+
+            if task_mod < cutoff:
+                stalled.append(task)
+
+        if dry_run:
+            return {
+                "success": True,
+                "tasks": [t.id for t in stalled],
+                "count": len(stalled),
+                "message": f"Found {len(stalled)} stalled tasks (dry run)",
+            }
+
+        reset_ids = []
+        for task in stalled:
+            task.status = TaskStatus.ACTIVE
+            task.assignee = None  # Clear assignee
+            storage.save_task(task)
+            reset_ids.append(task.id)
+
+        # Rebuild index if any tasks changed
+        if reset_ids:
+            _get_index().rebuild_fast()
+
+        logger.info(f"reset_stalled_tasks: reset {len(reset_ids)} tasks")
+
+        return {
+            "success": True,
+            "tasks": reset_ids,
+            "count": len(reset_ids),
+            "message": f"Reset {len(reset_ids)} stalled tasks",
+        }
+
+    except Exception as e:
+        logger.exception("reset_stalled_tasks failed")
+        return {
+            "success": False,
+            "tasks": [],
+            "count": 0,
+            "message": f"Failed to reset stalled tasks: {e}",
         }
 
 
@@ -1407,13 +1593,13 @@ def reorder_children(parent_id: str, order: list[str]) -> dict[str, Any]:
 
 @mcp.tool()
 def list_tasks(
-    project: Optional[str] = None,
-    status: Optional[str] = None,
-    type: Optional[str] = None,
-    priority: Optional[int] = None,
-    priority_max: Optional[int] = None,
-    assignee: Optional[str] = None,
-    limit: int = 10,
+    project: str | None = None,
+    status: str | None = None,
+    type: str | None = None,
+    priority: int | None = None,
+    priority_max: int | None = None,
+    assignee: str | None = None,
+    limit: int = 5,
 ) -> dict[str, Any]:
     """List tasks with optional filters.
 
@@ -1423,8 +1609,8 @@ def list_tasks(
         type: Filter by type - "goal", "project", "epic", "task", "action", "bug", "feature", or "learn"
         priority: Filter by exact priority (0-4)
         priority_max: Filter by priority <= N (e.g. 1 for P0 and P1)
-        assignee: Filter by assignee - typically "bot" (agent) or "nic" (human)
-        limit: Maximum number of tasks to return (default: 10, use 0 for unlimited)
+        assignee: Filter by assignee - typically "polecat" (agent) or "nic" (human)
+        limit: Maximum number of tasks to return (default: 5, use 0 for unlimited)
 
     Returns:
         Dictionary with:
@@ -1552,7 +1738,7 @@ def delete_task(id: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def search_tasks(query: str, limit: int = 20) -> dict[str, Any]:
+def search_tasks(query: str, limit: int = 10) -> dict[str, Any]:
     """Search tasks by text query.
 
     Searches task titles and body content for matching text.
@@ -1560,7 +1746,7 @@ def search_tasks(query: str, limit: int = 20) -> dict[str, Any]:
 
     Args:
         query: Search text to match
-        limit: Maximum number of results (default: 20, use 0 for unlimited)
+        limit: Maximum number of results (default: 10, use 0 for unlimited)
 
     Returns:
         Dictionary with:
@@ -1642,16 +1828,11 @@ def dedup_tasks(delete: bool = False) -> dict[str, Any]:
             by_id[task.id].append((task, path))
 
         # Find title duplicates (same title, different files)
-        title_duplicates = {
-            title: tasks for title, tasks in by_title.items() if len(tasks) > 1
-        }
+        title_duplicates = {title: tasks for title, tasks in by_title.items() if len(tasks) > 1}
 
         # Find ID duplicates (same ID in frontmatter, different files)
         # These are MORE serious - they indicate data corruption
-        id_duplicates = {
-            task_id: tasks for task_id, tasks in by_id.items()
-            if len(tasks) > 1
-        }
+        id_duplicates = {task_id: tasks for task_id, tasks in by_id.items() if len(tasks) > 1}
 
         # Merge: ID duplicates take precedence (use ID as key)
         duplicates: dict[str, list[tuple[Task, Path]]] = {}
@@ -1686,25 +1867,28 @@ def dedup_tasks(delete: bool = False) -> dict[str, Any]:
 
         for key, task_path_pairs in sorted(duplicates.items()):
             # Sort: done status first, then by modified date (newest first)
-            task_path_pairs.sort(key=lambda tp: (
-                0 if tp[0].status.value == "done" else 1,
-                -tp[0].modified.timestamp()
-            ))
+            task_path_pairs.sort(
+                key=lambda tp: (
+                    0 if tp[0].status.value == "done" else 1,
+                    -tp[0].modified.timestamp(),
+                )
+            )
 
             keep_task, keep_path = task_path_pairs[0]
             remove_pairs = task_path_pairs[1:]
             to_delete.extend(remove_pairs)
 
-            result_groups.append({
-                "title": key,
-                "keep": keep_task.id,
-                "keep_path": str(keep_path),
-                "keep_status": keep_task.status.value,
-                "remove": [
-                    {"id": t.id, "path": str(p), "title": t.title}
-                    for t, p in remove_pairs
-                ],
-            })
+            result_groups.append(
+                {
+                    "title": key,
+                    "keep": keep_task.id,
+                    "keep_path": str(keep_path),
+                    "keep_status": keep_task.status.value,
+                    "remove": [
+                        {"id": t.id, "path": str(p), "title": t.title} for t, p in remove_pairs
+                    ],
+                }
+            )
 
         deleted_ids = []
         deleted_paths = []
@@ -1827,9 +2011,7 @@ def get_task_neighborhood(task_id: str) -> dict[str, Any]:
         if task.parent:
             parent_task = storage.get_task(task.parent)
             if parent_task:
-                existing_relationships["parent"] = _task_to_dict(
-                    parent_task, truncate_body=200
-                )
+                existing_relationships["parent"] = _task_to_dict(parent_task, truncate_body=200)
 
         # Children
         children_entries = index.get_children(task_id)
@@ -1882,9 +2064,7 @@ def get_task_neighborhood(task_id: str) -> dict[str, Any]:
                 if proj_entry.id != task_id:
                     proj_task = storage.get_task(proj_entry.id)
                     if proj_task:
-                        same_project_tasks.append(
-                            _task_to_dict(proj_task, truncate_body=100)
-                        )
+                        same_project_tasks.append(_task_to_dict(proj_task, truncate_body=100))
 
         # Orphan tasks: tasks with no parent AND no dependencies
         # These are potential candidates for relationship creation
@@ -2015,7 +2195,7 @@ def get_index_stats(include_projects: bool) -> dict[str, Any]:
 @mcp.tool()
 def get_graph_metrics(
     scope: str = "all",  # "all", "project", or task_id for subtree
-    scope_id: Optional[str] = None,
+    scope_id: str | None = None,
 ) -> dict[str, Any]:
     """
     Return raw graph metrics. Agent interprets health.
@@ -2040,7 +2220,7 @@ def get_graph_metrics(
     """
     try:
         index = _get_index()
-        
+
         tasks = list(index._tasks.values())
 
         if scope == "project" and scope_id:
@@ -2090,7 +2270,7 @@ def get_graph_metrics(
         max_in_degree = 0
         max_out_degree = 0
         in_progress_count = 0
-        
+
         tasks_with_high_out_degree = []
 
         for task in tasks:
@@ -2103,25 +2283,27 @@ def get_graph_metrics(
             total_depth += task.depth
             if task.depth > max_depth:
                 max_depth = task.depth
-            
+
             in_degree = len(task.depends_on)
             total_edges += in_degree
             if in_degree > max_in_degree:
                 max_in_degree = in_degree
-            
+
             out_degree = len(task.blocks)
             if out_degree > max_out_degree:
                 max_out_degree = out_degree
             if out_degree > 0:
-                tasks_with_high_out_degree.append({"id": task.id, "title": task.title, "out_degree": out_degree})
+                tasks_with_high_out_degree.append(
+                    {"id": task.id, "title": task.title, "out_degree": out_degree}
+                )
 
             if task.status == "in_progress":
                 in_progress_count += 1
-        
+
         # Scope-specific root count
         task_ids_in_scope = {t.id for t in tasks}
         root_count = sum(1 for t in tasks if not t.parent or t.parent not in task_ids_in_scope)
-        
+
         # Readiness stats need to be recalculated for the current scope
         completed_statuses = {TaskStatus.DONE.value, TaskStatus.CANCELLED.value}
         completed_ids_in_scope = {t.id for t in tasks if t.status in completed_statuses}
@@ -2131,9 +2313,13 @@ def get_graph_metrics(
         for task in tasks:
             if task.status in completed_statuses:
                 continue
-            
+
             # Check for unmet dependencies *within the scope*
-            unmet_deps = [d for d in task.depends_on if d in task_ids_in_scope and d not in completed_ids_in_scope]
+            unmet_deps = [
+                d
+                for d in task.depends_on
+                if d in task_ids_in_scope and d not in completed_ids_in_scope
+            ]
 
             if unmet_deps or task.status == TaskStatus.BLOCKED.value:
                 blocked_count += 1
@@ -2153,7 +2339,11 @@ def get_graph_metrics(
                 "total_edges": total_edges,
                 "max_in_degree": max_in_degree,
                 "max_out_degree": max_out_degree,
-                "tasks_with_high_out_degree": sorted(tasks_with_high_out_degree, key=lambda x: x['out_degree'], reverse=True),
+                "tasks_with_high_out_degree": sorted(
+                    tasks_with_high_out_degree,
+                    key=lambda x: x["out_degree"],
+                    reverse=True,
+                ),
             },
             "readiness_stats": {
                 "ready_count": ready_count,
@@ -2266,9 +2456,7 @@ def _compute_graph_metrics(
             in_progress_count += 1
 
     # Root count (tasks with no parent within scope)
-    root_count = sum(
-        1 for e in entries if not e.parent or e.parent not in entry_ids
-    )
+    root_count = sum(1 for e in entries if not e.parent or e.parent not in entry_ids)
 
     # Depth stats
     max_depth = max(depths) if depths else 0
@@ -2358,12 +2546,12 @@ def get_review_snapshot(since_days: int = 1) -> dict[str, Any]:
         - message: Status message
     """
     try:
-        from datetime import timedelta, timezone
+        from datetime import timedelta
 
         storage = _get_storage()
         index = _get_index()
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cutoff = now - timedelta(days=since_days)
         velocity_cutoff = now - timedelta(days=7)
 
@@ -2390,12 +2578,12 @@ def get_review_snapshot(since_days: int = 1) -> dict[str, Any]:
             # Created timestamp
             created_ts = task.created
             if created_ts.tzinfo is None:
-                created_ts = created_ts.replace(tzinfo=timezone.utc)
+                created_ts = created_ts.replace(tzinfo=UTC)
 
             # Modified timestamp
             modified_ts = task.modified
             if modified_ts.tzinfo is None:
-                modified_ts = modified_ts.replace(tzinfo=timezone.utc)
+                modified_ts = modified_ts.replace(tzinfo=UTC)
 
             # Changes since cutoff
             if created_ts >= cutoff:

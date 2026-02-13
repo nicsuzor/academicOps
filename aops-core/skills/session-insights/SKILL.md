@@ -19,6 +19,7 @@ Generate comprehensive session insights from transcripts using Gemini Flash 2.0.
 ## Overview
 
 This skill analyzes Claude Code session transcripts to extract structured insights including:
+
 - Summary and accomplishments
 - Learning observations and skill compliance
 - Context gaps and user satisfaction
@@ -76,6 +77,7 @@ fi
 ### Step 2: Locate Transcript
 
 Transcripts are typically stored in:
+
 - `$ACA_DATA/../sessions/claude/{transcript}.md` (Claude sessions)
 - `$ACA_DATA/../sessions/gemini/{transcript}.md` (Gemini sessions)
 
@@ -99,7 +101,7 @@ echo "✓ Found transcript: $(basename "$TRANSCRIPT")"
 
 ### Step 2a: Generate Transcript (if missing)
 
-If transcript doesn't exist, generate it using transcript.py:
+If transcript doesn't exist, generate it using transcript_push.py:
 
 ```bash
 # Find session file in Claude Code session directory
@@ -119,7 +121,7 @@ fi
 echo "Generating transcript from: $SESSION_PATH"
 
 # Generate transcript
-cd "$AOPS" && uv run python aops-core/scripts/transcript.py "$SESSION_PATH"
+cd "$AOPS" && uv run python aops-core/scripts/transcript_push.py "$SESSION_PATH"
 
 # Transcript is now in $ACA_DATA/../sessions/claude/
 TRANSCRIPT=$(find "$ACA_DATA/../sessions/claude" -name "*-${SESSION_ID}-*.md" | head -1)
@@ -142,6 +144,7 @@ echo "✓ Prompt prepared with metadata substituted"
 ```
 
 The prepare_prompt.py script:
+
 - Extracts `session_id`, `date`, `project` from transcript filename
 - Loads shared template from `aops-core/specs/session-insights-prompt.md`
 - Substitutes `{session_id}`, `{date}`, `{project}` placeholders
@@ -177,6 +180,7 @@ result = mcp__gemini__ask_gemini(
 ```
 
 **Error Handling**:
+
 - If timeout (> 120s): Suggest using abridged transcript
 - If API error: Show error message, suggest retry
 - If rate limit: Show message, suggest waiting
@@ -184,7 +188,6 @@ result = mcp__gemini__ask_gemini(
 ### Step 5: Parse and Validate JSON
 
 ```bash
-
 # Extract JSON from Gemini response (may be in markdown fence)
 # Validate and normalize using process_response.py
 
@@ -200,6 +203,7 @@ fi
 ```
 
 If JSON is invalid:
+
 - Save raw response to `$ACA_DATA/../sessions/summaries/YYYYMMDD-{session_id}.debug.txt`
 - Show error message with path to debug file
 - Exit with error
@@ -207,7 +211,6 @@ If JSON is invalid:
 ### Step 6: Update Insights File
 
 ```bash
-
 # Merge and write insights using merge_insights.py
 echo "$INSIGHTS_JSON" | (cd "$AOPS" && PYTHONPATH=aops-core uv run python \
     aops-core/skills/session-insights/scripts/merge_insights.py \
@@ -255,12 +258,14 @@ mcp__memory__store_memory(
 **Why sync to memory**: Enables semantic search for past session learnings (e.g., "what did we learn about testing?" or "sessions where auth was worked on").
 
 **What gets synced**:
+
 - Summary (what was worked on)
 - Accomplishments (concrete deliverables)
 - Learning observations (key insights only, truncated)
 - Proposed changes (framework improvements)
 
 **What stays in JSON only**:
+
 - Full learning observation details
 - Conversation flow
 - Verbatim prompts
@@ -323,6 +328,7 @@ echo "✓ Batch processing complete: $COUNT sessions"
 ## Error Handling
 
 ### Transcript Missing
+
 ```
 ❌ No transcript found for session a1b2c3d4
 
@@ -337,6 +343,7 @@ Continuing with insights generation...
 ```
 
 ### Gemini Timeout
+
 ```
 ❌ Gemini call timed out after 120 seconds
 
@@ -349,6 +356,7 @@ Transcript: /path/to/transcript.md (125 KB)
 ```
 
 ### Invalid JSON Response
+
 ```
 ❌ Gemini returned invalid JSON
 
@@ -361,6 +369,7 @@ Please review and report if this is a bug.
 ```
 
 ### File Exists
+
 ```
 ⚠️  Insights already exist for session a1b2c3d4
 Generated: 2026-01-13
@@ -375,16 +384,19 @@ Aborted. Existing insights preserved.
 ## Tips
 
 **For Large Transcripts**: If Gemini times out, consider:
-- Using abridged transcripts (created by transcript.py - generates both full and abridged versions)
+
+- Using abridged transcripts (created by transcript_push.py - generates both full and abridged versions)
 - Breaking the analysis into chunks
 - Using a faster model (but may sacrifice quality)
 
 **For Better Quality**:
+
 - Ensure transcripts include all context (not truncated)
 - Review generated insights and provide feedback
 - Map corrections to framework heuristics (H2, H3, H4, etc.)
 
 **For Debugging**:
+
 - Check `$ACA_DATA/../sessions/summaries/*.debug.txt` for raw Gemini responses
 - Verify transcript format matches expected structure
 - Ensure ACA_DATA environment variable is set correctly
@@ -392,6 +404,7 @@ Aborted. Existing insights preserved.
 ## Integration with Framework
 
 Generated insights are:
+
 - Used by audit tools to track framework effectiveness
 - Analyzed for trend detection (skill compliance, user satisfaction)
 - Fed into learning loop for framework improvements
@@ -400,6 +413,6 @@ Generated insights are:
 ## See Also
 
 - `/audit` skill - Framework health auditing
-- `aops-core/scripts/transcript.py` - Transcript generation + reflection extraction
+- `aops-core/scripts/transcript_push.py` - Transcript generation + reflection extraction
 - `aops-core/specs/session-insights-prompt.md` - Shared prompt template
 - `aops-core/lib/insights_generator.py` - Generation library

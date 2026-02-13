@@ -10,12 +10,12 @@ Alerts and stops workers that fail (non-zero exit code).
 import argparse
 import multiprocessing
 import os
+import random
+import shutil
+import signal
 import subprocess
 import sys
 import time
-import shutil
-import signal
-from typing import List, Optional
 
 # Global event to signal workers to drain
 STOP_EVENT = multiprocessing.Event()
@@ -23,9 +23,7 @@ STOP_EVENT = multiprocessing.Event()
 
 def signal_handler(signum, frame):
     """Handle SIGINT (Ctrl+C) by setting stop event for graceful drain."""
-    print(
-        "\n🛑 Received stop signal. Enabling drain mode... (Press Ctrl+C again to force quit)"
-    )
+    print("\n🛑 Received stop signal. Enabling drain mode... (Press Ctrl+C again to force quit)")
     STOP_EVENT.set()
 
 
@@ -46,10 +44,11 @@ def alert(message: str):
 
 def worker_loop(
     agent_type: str,
-    cpu_id: Optional[int],
-    project: Optional[str],
+    cpu_id: int | None,
+    project: str | None,
+    caller: str,
     dry_run: bool,
-    home_dir: Optional[str] = None,
+    home_dir: str | None = None,
 ):
     """
     Main loop for a single worker process.
@@ -66,15 +65,19 @@ def worker_loop(
         try:
             os.sched_setaffinity(0, {cpu_id})
         except Exception as e:
-            print(
-                f"[{agent_type}-{os.getpid()}] ⚠️ Failed to set affinity to CPU {cpu_id}: {e}"
-            )
+            print(f"[{agent_type}-{os.getpid()}] ⚠️ Failed to set affinity to CPU {cpu_id}: {e}")
 
     worker_name = f"{agent_type.upper()}-Worker-{os.getpid()}"
     if cpu_id is not None:
         worker_name += f" (CPU {cpu_id})"
 
     print(f"[{worker_name}] 🚀 Started.")
+
+    # Random startup delay to stagger workers and prevent race conditions
+    # when multiple workers try to claim the same task simultaneously
+    startup_delay = random.uniform(0.5, 3.0)
+    print(f"[{worker_name}] ⏳ Waiting {startup_delay:.1f}s before first claim...")
+    time.sleep(startup_delay)
 
     aops_path = os.environ.get("AOPS")
     if not aops_path and not dry_run:
@@ -102,8 +105,8 @@ def worker_loop(
 
             cmd.append("run")
 
-            # Claim tasks assigned to "bot" (the standard assignee for automated work)
-            cmd.extend(["-c", "bot"])
+            # Claim tasks with the specified caller identity
+            cmd.extend(["-c", caller])
 
             if agent_type == "gemini":
                 cmd.append("-g")
@@ -131,6 +134,10 @@ def worker_loop(
             if not dry_run:
                 time.sleep(1)  # Safety buffer
             continue
+        elif exit_code == 3:
+            # Exit 3 = queue empty (normal drain, not a failure)
+            print(f"[{worker_name}] 📭 Queue empty. Stopping worker.")
+            break
         else:
             msg = f"Worker {worker_name} failed with exit code {exit_code}. Stopping this worker."
             print(f"[{worker_name}] 🛑 {msg}")
@@ -142,9 +149,10 @@ def worker_loop(
 def run_swarm(
     claude_count: int,
     gemini_count: int,
-    project: Optional[str] = None,
+    project: str | None = None,
+    caller: str = "polecat",
     dry_run: bool = False,
-    home_dir: Optional[str] = None,
+    home_dir: str | None = None,
 ):
     """Entry point for CLI integration.
 
@@ -152,6 +160,7 @@ def run_swarm(
         claude_count: Number of Claude workers to spawn.
         gemini_count: Number of Gemini workers to spawn.
         project: Optional project filter.
+        caller: Identity claiming the tasks (default: bot).
         dry_run: If True, simulate execution.
         home_dir: Optional polecat home directory override.
     """
@@ -177,9 +186,7 @@ def run_swarm(
 
     # Register signal handler for the main process
     signal.signal(signal.SIGINT, signal_handler)
-    print(
-        "ℹ️  Press Ctrl+C to stop gracefully (finish current items). Press twice to force quit."
-    )
+    print("ℹ️  Press Ctrl+C to stop gracefully (finish current items). Press twice to force quit.")
 
     processes = []
 
@@ -190,7 +197,7 @@ def run_swarm(
     for _ in range(claude_count):
         cpu = available_cpus[cpu_idx % len(available_cpus)]
         p = multiprocessing.Process(
-            target=worker_loop, args=("claude", cpu, project, dry_run, home_dir)
+            target=worker_loop, args=("claude", cpu, project, caller, dry_run, home_dir)
         )
         p.start()
         processes.append(p)
@@ -200,7 +207,7 @@ def run_swarm(
     for _ in range(gemini_count):
         cpu = available_cpus[cpu_idx % len(available_cpus)]
         p = multiprocessing.Process(
-            target=worker_loop, args=("gemini", cpu, project, dry_run, home_dir)
+            target=worker_loop, args=("gemini", cpu, project, caller, dry_run, home_dir)
         )
         p.start()
         processes.append(p)
@@ -224,14 +231,14 @@ def run_swarm(
 
 def main():
     parser = argparse.ArgumentParser(description="Run a swarm of Polecat workers.")
+    parser.add_argument("--claude", "-c", type=int, default=0, help="Number of Claude workers")
+    parser.add_argument("--gemini", "-g", type=int, default=0, help="Number of Gemini workers")
+    parser.add_argument("--project", "-p", type=str, help="Project to focus on (default: all)")
     parser.add_argument(
-        "--claude", "-c", type=int, default=0, help="Number of Claude workers"
-    )
-    parser.add_argument(
-        "--gemini", "-g", type=int, default=0, help="Number of Gemini workers"
-    )
-    parser.add_argument(
-        "--project", "-p", type=str, help="Project to focus on (default: all)"
+        "--caller",
+        type=str,
+        default="polecat",
+        help="Identity claiming the tasks (default: bot)",
     )
     parser.add_argument(
         "--dry-run",
@@ -245,7 +252,7 @@ def main():
     )
 
     args = parser.parse_args()
-    run_swarm(args.claude, args.gemini, args.project, args.dry_run, args.home)
+    run_swarm(args.claude, args.gemini, args.project, args.caller, args.dry_run, args.home)
 
 
 if __name__ == "__main__":

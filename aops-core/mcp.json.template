@@ -1,25 +1,61 @@
 {
-  "mcpServers": {
-    "memory": {
-      "type": "http",
-      "url": "http://services.stoat-musical.ts.net:8026/mcp",
-      "headers": {
-        "Authorization": "Bearer ${MCP_MEMORY_API_KEY}"
+  "claude": {
+    "mcpServers": {
+      "memory": {
+        "type": "http",
+        "url": "http://services.stoat-musical.ts.net:8026/mcp",
+        "headers": {
+          "Authorization": "Bearer $MCP_MEMORY_API_KEY"
+        },
+        "env": {
+          "MCP_MEMORY_API_KEY": "${MCP_MEMORY_API_KEY}"
+        }
+      },
+      "task_manager": {
+        "type": "stdio",
+        "command": "env",
+        "args": [
+          "-u",
+          "VIRTUAL_ENV",
+          "uv",
+          "run",
+          "--directory",
+          "${CLAUDE_PLUGIN_ROOT}",
+          "python",
+          "mcp_servers/tasks_server.py"
+        ],
+        "env": {
+          "ACA_DATA": "${ACA_DATA}"
+        }
       }
-    },
-    "task_manager": {
-      "type": "stdio",
-      "command": "uv",
-      "args": [
-        "run",
-        "--directory",
-        "${CLAUDE_PLUGIN_ROOT}",
-        "python",
-        "mcp_servers/tasks_server.py"
-      ],
-      "env": {
-        "AOPS": "${AOPS}",
-        "ACA_DATA": "${ACA_DATA}"
+    }
+  },
+  "gemini": {
+    "mcpServers": {
+      "memory": {
+        "url": "http://services.stoat-musical.ts.net:8026/mcp",
+        "headers": {
+          "Authorization": "Bearer $MCP_MEMORY_API_KEY"
+        },
+        "env": {
+          "MCP_MEMORY_API_KEY": "${MCP_MEMORY_API_KEY}"
+        }
+      },
+      "task_manager": {
+        "command": "env",
+        "args": [
+          "-u",
+          "VIRTUAL_ENV",
+          "uv",
+          "run",
+          "--directory",
+          "${extensionPath}",
+          "python",
+          "mcp_servers${/}tasks_server.py"
+        ],
+        "env": {
+          "ACA_DATA": "${ACA_DATA}"
+        }
       }
     }
   }

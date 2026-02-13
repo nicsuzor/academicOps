@@ -9,8 +9,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
-
 # Get the script path
 SCRIPT_PATH = Path(__file__).parents[2] / "aops-core" / "scripts" / "custodiet_block.py"
 
@@ -143,7 +141,9 @@ class TestCustodietBlockIntegration:
 
         # Find the session state file (named YYYYMMDD-HH-<hash>.json)
         session_files = list(state_dir.rglob("*.json"))
-        assert len(session_files) == 1, f"Expected 1 session file, found {len(session_files)}: {session_files}"
+        assert len(session_files) == 1, (
+            f"Expected 1 session file, found {len(session_files)}: {session_files}"
+        )
 
         # Read and verify the state directly
         state = json.loads(session_files[0].read_text())

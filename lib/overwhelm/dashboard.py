@@ -2,18 +2,19 @@
 
 from __future__ import annotations
 
-import streamlit as st
-import streamlit.components.v1 as components
-from datetime import datetime, timezone
-from dataclasses import dataclass
-from pathlib import Path
 import json
 import os
-import time
 import sys
-import requests
 import textwrap
+import time
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
 from urllib.parse import quote
+
+import requests
+import streamlit as st
+import streamlit.components.v1 as components
 
 # Add aOps root to path for imports
 aops_root = Path(__file__).resolve().parent.parent.parent
@@ -23,11 +24,15 @@ aops_core = aops_root / "aops-core"
 sys.path.insert(0, str(aops_core))
 
 
-from lib.session_reader import find_sessions
-from lib.session_analyzer import SessionAnalyzer, extract_todowrite_from_session
-from lib.task_storage import TaskStorage
-from lib.task_model import Task, TaskStatus
 from collections import defaultdict
+
+import networkx as nx
+from lib.path_reconstructor import EventType, reconstruct_path
+from lib.session_analyzer import SessionAnalyzer, extract_todowrite_from_session
+from lib.session_context import SessionContext, extract_context_from_session_state
+from lib.session_reader import find_sessions
+from lib.task_model import Task
+from lib.task_storage import TaskStorage
 
 # Add local directory to path for sibling imports
 sys.path.append(str(Path(__file__).parent))
@@ -103,7 +108,7 @@ def find_active_session_states(hours: int = 4) -> list[dict]:
     from datetime import timedelta
 
     results = []
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    cutoff = datetime.now(UTC) - timedelta(hours=hours)
 
     claude_projects = Path.home() / ".claude" / "projects"
     if not claude_projects.exists():
@@ -135,7 +140,7 @@ def find_active_session_states(hours: int = 4) -> list[dict]:
                 continue
 
             # Check file modification time
-            mtime = datetime.fromtimestamp(state_file.stat().st_mtime, tz=timezone.utc)
+            mtime = datetime.fromtimestamp(state_file.stat().st_mtime, tz=UTC)
             if mtime < cutoff:
                 continue
 
@@ -146,14 +151,12 @@ def find_active_session_states(hours: int = 4) -> list[dict]:
 
             session_id = state_data.get("session_id", session_dir.name.split("-")[-1])
             time_ago = _format_time_ago(mtime)
-            minutes_ago = (datetime.now(timezone.utc) - mtime).total_seconds() / 60
+            minutes_ago = (datetime.now(UTC) - mtime).total_seconds() / 60
 
             results.append(
                 {
                     "session_id": session_id,
-                    "session_short": session_id[:8]
-                    if len(session_id) >= 8
-                    else session_id,
+                    "session_short": session_id[:8] if len(session_id) >= 8 else session_id,
                     "project": (state_data.get("insights") or {}).get("project")
                     or state_data.get("project")
                     or project_dir.name,
@@ -175,11 +178,19 @@ def find_active_session_states(hours: int = 4) -> list[dict]:
 
 
 def _format_project_name(project_folder: str) -> str:
-    """Convert folder name to display name.
+    """Convert Claude projects folder name to display name.
 
-    -home-nic-writing -> writing
+    Folder names encode paths with dashes replacing slashes:
+    -home-nic-src-academicOps -> academicOps
+    -home-nic-.aops-aops-008c345f -> aops (skip hash suffix, skip hidden dirs)
     -Users-suzor-src-buttermilk -> buttermilk
-    -home-nic-writing-academicOps-hooks -> academicOps
+    -home-nic-writing-academicOps-hooks -> academicOps (skip -hooks suffix)
+
+    Strategy:
+    1. Convert to path segments
+    2. Skip known non-project segments (home, Users, src, hidden dirs, hashes)
+    3. Skip suffixes like -hooks, -core
+    4. Return the last meaningful segment
     """
     # Remove common suffixes that aren't the main project name
     folder = project_folder
@@ -194,6 +205,25 @@ def _format_project_name(project_folder: str) -> str:
     if not parts or parts == [""]:
         return project_folder.strip("-").split("-")[-1]
 
+    # Filter out non-project segments
+    skip_segments = {"home", "Users", "src", "var", "tmp", "nic", "suzor", ""}
+    meaningful_parts = []
+
+    for part in parts:
+        # Skip standard path components
+        if part.lower() in skip_segments:
+            continue
+        # Skip hidden directories (start with .)
+        if part.startswith("."):
+            continue
+        # Skip hash-like suffixes (8+ hex chars or UUID-like patterns)
+        if len(part) >= 8 and all(c in "0123456789abcdef" for c in part.lower()):
+            continue
+        meaningful_parts.append(part)
+
+    # Return last meaningful part, or fallback to simple last part
+    if meaningful_parts:
+        return meaningful_parts[-1]
     return parts[-1]
 
 
@@ -307,7 +337,7 @@ def get_recent_sessions(hours: int = 24) -> list[dict]:
     if not summaries_dir.exists():
         return []
 
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    cutoff = datetime.now(UTC) - timedelta(hours=hours)
     sessions = []
 
     for json_file in summaries_dir.glob("*.json"):
@@ -326,7 +356,7 @@ def get_recent_sessions(hours: int = 24) -> list[dict]:
 
         # Ensure timezone-aware for comparison
         if session_date.tzinfo is None:
-            session_date = session_date.replace(tzinfo=timezone.utc)
+            session_date = session_date.replace(tzinfo=UTC)
 
         if session_date < cutoff:
             continue
@@ -361,6 +391,87 @@ def get_recent_sessions(hours: int = 24) -> list[dict]:
     return sessions
 
 
+def get_recent_prompts(days: int = 7) -> list[dict]:
+    """Get recent session prompts for quick context recovery.
+
+    Scans ~/writing/sessions/summaries/ for files within the time range.
+
+    Args:
+        days: Only include sessions from the last N days (default: 7)
+
+    Returns:
+        List of session dicts with prompts, sorted by date (most recent first):
+        - session_id: Short session ID
+        - date: Session datetime
+        - project: Project name
+        - prompts: List of prompt strings
+        - time_ago: Human-readable relative time
+    """
+    from datetime import timedelta
+
+    summaries_dir = Path.home() / "writing" / "sessions" / "summaries"
+    if not summaries_dir.exists():
+        return []
+
+    cutoff = datetime.now(UTC) - timedelta(days=days)
+    sessions = []
+
+    for json_file in summaries_dir.glob("*.json"):
+        try:
+            data = json.loads(json_file.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+
+        date_str = data.get("date")
+        if not date_str:
+            continue
+
+        # Parse date
+        session_date = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+        if session_date.tzinfo is None:
+            session_date = session_date.replace(tzinfo=UTC)
+
+        if session_date < cutoff:
+            continue
+
+        # Parse prompts field - can be null, JSON string array, or plain string
+        prompts_raw = data.get("prompts")
+        if prompts_raw is None:
+            continue  # Skip sessions with no prompts
+
+        prompts = []
+        if isinstance(prompts_raw, str):
+            # Try to parse as JSON array
+            try:
+                parsed = json.loads(prompts_raw)
+                if isinstance(parsed, list):
+                    prompts = parsed
+                else:
+                    prompts = [prompts_raw]
+            except json.JSONDecodeError:
+                # Plain string, wrap in array
+                prompts = [prompts_raw]
+        elif isinstance(prompts_raw, list):
+            prompts = prompts_raw
+
+        if not prompts:
+            continue
+
+        sessions.append(
+            {
+                "session_id": data.get("session_id", "unknown"),
+                "date": session_date,
+                "project": data.get("project", "unknown"),
+                "prompts": prompts,
+                "time_ago": _format_time_ago(session_date),
+            }
+        )
+
+    # Sort by date, newest first
+    sessions.sort(key=lambda s: s["date"], reverse=True)
+    return sessions
+
+
 def get_waiting_tasks() -> list[dict]:
     """Get tasks with blocked status from bd."""
     return load_bd_issues(priority_max=4, status="blocked", limit=50)
@@ -378,7 +489,7 @@ def get_recently_completed(project: str | None = None, hours: int = 24) -> list[
     """
     from datetime import timedelta
 
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    cutoff = datetime.now(UTC) - timedelta(hours=hours)
     all_tasks = load_tasks_from_index()
 
     completed = []
@@ -399,7 +510,7 @@ def get_recently_completed(project: str | None = None, hours: int = 24) -> list[
                 modified_str = modified_str[:-1] + "+00:00"
             modified = datetime.fromisoformat(modified_str)
             if modified.tzinfo is None:
-                modified = modified.replace(tzinfo=timezone.utc)
+                modified = modified.replace(tzinfo=UTC)
 
             if modified >= cutoff:
                 t["_modified_dt"] = modified
@@ -439,9 +550,7 @@ def get_next_actions() -> list[dict]:
     issues = load_bd_issues(priority_max=1, status=None, limit=50)
 
     # Filter to actionable statuses (open, in_progress)
-    actionable = [
-        issue for issue in issues if issue.get("status") in ("open", "in_progress")
-    ]
+    actionable = [issue for issue in issues if issue.get("status") in ("open", "in_progress")]
 
     # Sort by priority (0 first, then 1)
     actionable.sort(key=lambda t: t.get("priority", 999))
@@ -455,15 +564,28 @@ class ActiveAgent:
     task_id: str | None
     project: str | None
     started_at: str | None  # ISO format string
+    context: SessionContext | None = None  # Conversation context for display
 
 
-def get_active_agents() -> list[ActiveAgent]:
-    """Parse sessions/status/*.json files to find active sessions."""
+def get_active_agents(max_age_hours: int = 1) -> list[ActiveAgent]:
+    """Parse sessions/status/*.json files to find recent active sessions.
+
+    Enhanced with time filtering per user feedback - only show truly recent activity.
+
+    Args:
+        max_age_hours: Only include sessions started/modified within this many hours (default: 1)
+
+    Returns:
+        List of ActiveAgent objects with meaningful context, sorted by recency.
+    """
+    from datetime import timedelta
+
     agents = []
+    cutoff = datetime.now(UTC) - timedelta(hours=max_age_hours)
+
     # Assumes running from root where sessions/status exists, or check standard locations
-    # Use CWD first as per instructions "files to modify" logic usually implies relative to root
     status_dir = Path("sessions/status")
-    
+
     # Fallback to home dir location if CWD fails (for compatibility)
     if not status_dir.exists():
         status_dir = Path.home() / "writing" / "sessions" / "status"
@@ -473,84 +595,135 @@ def get_active_agents() -> list[ActiveAgent]:
 
     for status_file in status_dir.glob("*.json"):
         try:
+            # Check file modification time first (fast filter)
+            mtime = datetime.fromtimestamp(status_file.stat().st_mtime, tz=UTC)
+            if mtime < cutoff:
+                continue  # Skip stale files
+
             data = json.loads(status_file.read_text())
             if data.get("ended_at") is None:
+                # Double-check recency from started_at
+                started_at = data.get("started_at")
+                if started_at:
+                    try:
+                        start = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+                        if start.tzinfo is None:
+                            start = start.replace(tzinfo=UTC)
+                        # Only include if started within time window
+                        if start < cutoff:
+                            continue
+                    except (ValueError, TypeError):
+                        pass
+
                 # Extract fields with safe fallbacks
                 main_agent = data.get("main_agent", {})
                 insights = data.get("insights") or {}
-                
-                agents.append(ActiveAgent(
-                    session_id=data.get("session_id", status_file.stem),
-                    task_id=main_agent.get("current_task"),
-                    project=insights.get("project"),
-                    started_at=data.get("started_at")
-                ))
+
+                # Extract conversation context from session state
+                context = extract_context_from_session_state(data)
+
+                # session_id is required in valid session state files
+                session_id = data["session_id"] if "session_id" in data else status_file.stem
+                agents.append(
+                    ActiveAgent(
+                        session_id=session_id,
+                        task_id=main_agent.get("current_task"),
+                        project=insights.get("project"),
+                        started_at=data.get("started_at"),
+                        context=context,
+                    )
+                )
         except (json.JSONDecodeError, OSError):
             continue
-            
+
+    # Sort by recency (most recent first)
+    agents.sort(key=lambda a: a.started_at or "", reverse=True)
     return agents
 
 
+def _format_duration(started_at: str | None) -> str:
+    """Format session duration as human-readable string."""
+    if not started_at:
+        return "just started"
+
+    # Handle Z/timezone if present, or naive
+    start = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+    if start.tzinfo is None:
+        start = start.replace(tzinfo=UTC)
+
+    now = datetime.now(UTC)
+    diff = now - start
+
+    mins = int(diff.total_seconds() / 60)
+    if mins < 60:
+        return f"{mins}m ago"
+    hrs = int(mins / 60)
+    return f"{hrs}h ago"
+
+
 def render_agents_working():
-    """Render the 'AGENTS WORKING' section if any agents are active."""
-    agents = get_active_agents()
-    if not agents:
+    """Render compact 'CURRENT ACTIVITY' box showing last hour only.
+
+    Replaces verbose session cards with a compact single-line-per-session format.
+    Only shows sessions from last hour with meaningful context.
+    """
+    # Only fetch last hour of activity
+    agents = get_active_agents(max_age_hours=1)
+
+    # Filter to agents with meaningful context
+    agents_with_context = [
+        a for a in agents if a.context is not None and a.context.has_meaningful_context()
+    ]
+
+    # Also filter out "unknown" projects with no useful context
+    agents_filtered = []
+    for a in agents_with_context:
+        project = a.project or (a.context.project if a.context else None) or "unknown"
+        ctx = a.context
+        # Must have either a real project OR a meaningful initial prompt
+        if project != "unknown" or (ctx and ctx.initial_prompt and len(ctx.initial_prompt) > 20):
+            agents_filtered.append(a)
+
+    if not agents_filtered:
         return
 
-    st.markdown(
-        f"<div class='agent-status-panel'><div class='agent-status-title'>🤖 AGENTS WORKING ({len(agents)} active)</div>",
-        unsafe_allow_html=True
+    # Compact box format
+    html = "<div class='current-activity-box'>"
+    html += (
+        f"<div class='current-activity-header'>⚡ CURRENT ACTIVITY ({len(agents_filtered)})</div>"
     )
 
-    all_tasks_cache = None
+    for agent in agents_filtered[:5]:  # Limit to 5 max
+        duration_str = _format_duration(agent.started_at)
 
-    for agent in agents:
-        # Calculate duration
-        duration_str = "just started"
-        if agent.started_at:
-            try:
-                # Handle Z/timezone if present, or naive
-                start = datetime.fromisoformat(agent.started_at.replace("Z", "+00:00"))
-                if start.tzinfo is None:
-                    start = start.replace(tzinfo=timezone.utc)
-                
-                now = datetime.now(timezone.utc)
-                diff = now - start
-                
-                mins = int(diff.total_seconds() / 60)
-                if mins < 60:
-                    duration_str = f"started {mins}m ago"
-                else:
-                    hrs = int(mins / 60)
-                    duration_str = f"started {hrs}h ago"
-            except Exception:
-                pass
+        # Determine project
+        project = agent.project or (agent.context.project if agent.context else None) or "unknown"
+        if project == "unknown":
+            project = ""  # Don't show "unknown"
 
-        project = agent.project or "unknown"
-        
-        task_display = ""
-        if agent.task_id:
-             task_display = agent.task_id
-             # Try to resolve title
-             if all_tasks_cache is None:
-                 all_tasks_cache = load_tasks_from_index()
-                 
-             t_obj = next((t for t in all_tasks_cache if t["id"] == agent.task_id), None)
-             if t_obj:
-                 task_display += f' "{t_obj.get("title", "")}"'
-        else:
-             task_display = "No specific task"
+        ctx = agent.context
 
-        html = f"""
-        <div class='agent-card'>
-            <span class='agent-project'>{esc(project)}</span>: 
-            <span class='agent-task-name'>{esc(task_display)}</span>
-            <span class='agent-meta'>({esc(duration_str)})</span>
-        </div>
-        """
-        st.markdown(html, unsafe_allow_html=True)
-        
-    st.markdown("</div>", unsafe_allow_html=True)
+        # Get best description: current status > initial prompt
+        description = ""
+        if ctx:
+            if ctx.current_status:
+                description = ctx.current_status
+            elif ctx.initial_prompt:
+                description = ctx.initial_prompt
+
+        # Truncate to fit compact format
+        description = description[:120] + "..." if len(description) > 120 else description
+
+        # Single compact row
+        project_part = f"<span class='ca-project'>{esc(project)}</span>" if project else ""
+        html += "<div class='current-activity-row'>"
+        html += f"<span class='ca-time'>{esc(duration_str)}</span>"
+        html += project_part
+        html += f"<span class='ca-desc'>{esc(description)}</span>"
+        html += "</div>"
+
+    html += "</div>"
+    st.markdown(html, unsafe_allow_html=True)
 
 
 # Project color scheme (matching Peacock)
@@ -724,7 +897,7 @@ def get_todays_accomplishments() -> list[dict]:
 
 def get_activity_status(last_modified: datetime) -> tuple[str, str]:
     """Return (status_emoji, status_text) based on session age."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     age = now - last_modified
     minutes = age.total_seconds() / 60
     hours = age.total_seconds() / 3600
@@ -740,9 +913,7 @@ def get_activity_status(last_modified: datetime) -> tuple[str, str]:
         return "⚪", f"{int(days)}d ago"
 
 
-def post_quick_capture(
-    content: str, tags: str = "dashboard,quick-capture"
-) -> tuple[bool, str]:
+def post_quick_capture(content: str, tags: str = "dashboard,quick-capture") -> tuple[bool, str]:
     """Post a quick capture note to the GitHub webhook.
 
     Uses the same endpoint as the iPhone integration to create notes.
@@ -871,10 +1042,7 @@ def fetch_session_activity(hours: int = 4) -> list[dict]:
 
     # Check cache (60s TTL)
     now = time.time()
-    if (
-        _session_activity_cache["data"]
-        and (now - _session_activity_cache["timestamp"]) < 60
-    ):
+    if _session_activity_cache["data"] and (now - _session_activity_cache["timestamp"]) < 60:
         return _session_activity_cache["data"]
 
     # Fetch R2 prompts
@@ -882,7 +1050,7 @@ def fetch_session_activity(hours: int = 4) -> list[dict]:
 
     # Build session map from R2 data (most recent prompt per session)
     sessions: dict[str, dict] = {}
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    cutoff = datetime.now(UTC) - timedelta(hours=hours)
 
     for p in r2_prompts:
         session_id = p.get("session_id", "")
@@ -931,6 +1099,9 @@ def fetch_session_activity(hours: int = 4) -> list[dict]:
                 if session_file.exists():
                     todowrite = extract_todowrite_from_session(session_file)
                     session_data["todowrite"] = todowrite
+                    # Fix unknown project from local directory name
+                    if session_data.get("project") in (None, "", "unknown"):
+                        session_data["project"] = _format_project_name(project_dir.name)
                     break
 
     # 2. Add local-only active sessions (not in R2)
@@ -1011,9 +1182,7 @@ def fetch_session_activity(hours: int = 4) -> list[dict]:
                 session_file = project_path / f"{sid}.jsonl"
 
                 if session_file.exists():
-                    sessions[sid]["todowrite"] = extract_todowrite_from_session(
-                        session_file
-                    )
+                    sessions[sid]["todowrite"] = extract_todowrite_from_session(session_file)
             except Exception:
                 pass
 
@@ -1021,10 +1190,7 @@ def fetch_session_activity(hours: int = 4) -> list[dict]:
     # User migration: /home/nic/writing/sessions/status/YYYYMMDD-sessionID.json
     status_dirs = [
         Path.home() / "writing" / "sessions" / "status",
-        Path.home()
-        / "writing"
-        / "session"
-        / "status",  # Handle singular typo possibility
+        Path.home() / "writing" / "session" / "status",  # Handle singular typo possibility
     ]
 
     for status_dir in status_dirs:
@@ -1060,11 +1226,11 @@ def fetch_session_activity(hours: int = 4) -> list[dict]:
                 # Based on viewed file: top level "started_at", "ended_at"
 
                 ts_str = state.get("started_at", "")
-                timestamp = ts_str
+                _ = ts_str  # Keep for potential future use
 
                 # Check for recent activity based on file mtime or content
                 mtime = status_file.stat().st_mtime
-                dt_mtime = datetime.fromtimestamp(mtime, tz=timezone.utc)
+                dt_mtime = datetime.fromtimestamp(mtime, tz=UTC)
 
                 # Extract Prompt
                 prompt = ""
@@ -1140,9 +1306,7 @@ def fetch_session_activity(hours: int = 4) -> list[dict]:
                 continue
 
     # Sort by timestamp descending
-    result = sorted(
-        sessions.values(), key=lambda x: x.get("timestamp", ""), reverse=True
-    )
+    result = sorted(sessions.values(), key=lambda x: x.get("timestamp", ""), reverse=True)
 
     # Update cache
     _session_activity_cache["data"] = result
@@ -1153,9 +1317,9 @@ def fetch_session_activity(hours: int = 4) -> list[dict]:
 
 def _format_time_ago(dt: datetime) -> str:
     """Format datetime as human-readable time ago string."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
 
     diff = now - dt
     seconds = diff.total_seconds()
@@ -1221,105 +1385,212 @@ def _classify_session_outcome(session: dict) -> tuple[str, str]:
     return "", "unknown"
 
 
-def get_where_you_left_off(hours: int = 24, limit: int = 5) -> list[dict]:
-    """Get combined active + recent sessions for context recovery.
+def _has_meaningful_context(session: dict) -> bool:
+    """Check if session has enough context to display meaningfully.
 
-    Merges active sessions (from fetch_session_activity) with recent completed
-    sessions (from get_recent_sessions), prioritizing active sessions first.
+    Per spec: "Sessions without meaningful context are hidden"
+    User must be able to answer "what was I doing?" for every displayed session.
+    """
+    project = session.get("project", "")
+    description = session.get("description", "") or session.get("last_prompt", "")
+
+    # Filter out "unknown" projects with no description
+    if project in ("unknown", "", None) and not description:
+        return False
+
+    # Filter out useless descriptions
+    useless_patterns = [
+        "No specific task",
+        "Idle",
+        "New Session",
+        "Waiting for input",
+        "ok",
+        "d...",
+    ]
+    if description:
+        for pattern in useless_patterns:
+            if description.strip().lower() == pattern.lower():
+                return False
+            if description.strip() == pattern:
+                return False
+
+    # Must have either a real project OR a meaningful description
+    return bool(project and project != "unknown") or (description and len(description) > 10)
+
+
+def get_where_you_left_off(hours: int = 24, limit: int = 10) -> dict:
+    """Get sessions organized by recency triage for context recovery.
+
+    Per spec (Session Triage):
+    - Active (<4h): Full session cards with conversation context
+    - Paused (4-24h): Collapsed cards, expandable
+    - Stale (>24h): Archive prompt, NOT in main display
 
     Args:
-        hours: Time window for recent sessions
-        limit: Maximum rows to return
+        hours: Time window for recent sessions (for completed sessions)
+        limit: Maximum rows per bucket
 
     Returns:
-        List of session dicts ready for display:
-        - is_active: True if currently running
-        - time_display: "NOW" for active, relative time for completed
-        - project: Project name
-        - description: Brief description of activity
-        - outcome_text: "→ MERGED", "→ COMPLETE", etc.
-        - outcome_class: CSS class for styling
-        - reentry_link: Obsidian link for re-entry (or None)
+        Dict with triaged sessions:
+        - active: Sessions from last 4h (full cards)
+        - paused: Sessions from 4-24h (collapsed)
+        - stale_count: Number of sessions >24h (for archive prompt)
+        - entries: Flat list of active+paused for backward compatibility
     """
-    results = []
+    from datetime import timedelta
 
-    # 1. Get active sessions first (highest priority)
-    active_sessions = fetch_session_activity(hours=4)
-    for s in active_sessions:
-        # Skip idle sessions
+    active_bucket = []  # <4h
+    paused_bucket = []  # 4-24h
+    stale_count = 0  # >24h
+
+    now = datetime.now(UTC)
+    cutoff_active = now - timedelta(hours=4)
+    cutoff_paused = now - timedelta(hours=24)
+
+    # 1. Get running sessions (active by definition)
+    running_sessions = fetch_session_activity(hours=4)
+    for s in running_sessions:
         last_prompt = s.get("last_prompt")
-        if not last_prompt or last_prompt in ("Idle", "New Session (Waiting for input)"):
+        if not last_prompt or last_prompt in (
+            "Idle",
+            "New Session (Waiting for input)",
+        ):
             continue
 
-        # Build description from prompt or todowrite
-        description = last_prompt
+        # Extract rich context from TodoWrite
         todowrite = s.get("todowrite")
+        goal = None
+        now_task = None
+        next_task = None
+        progress_done = 0
+        progress_total = 0
+        session_type = "interactive"  # Default: needs attention
+
         if todowrite:
-            todos = todowrite.get("todos")
+            todos = todowrite.todos if hasattr(todowrite, "todos") else todowrite.get("todos", [])
+
             if todos:
                 in_progress = [t for t in todos if t.get("status") == "in_progress"]
-                if in_progress and "content" in in_progress[0]:
-                    description = in_progress[0]["content"]
+                pending = [t for t in todos if t.get("status") == "pending"]
+                completed = [t for t in todos if t.get("status") == "completed"]
 
-        project = s.get("project")
-        if not project:
-            project = "unknown"
+                progress_done = len(completed)
+                progress_total = len(todos)
 
-        session_short = s.get("session_short")
-        if not session_short:
-            session_id = s.get("session_id")
-            session_short = session_id[:7] if session_id else ""
+                if in_progress:
+                    now_task = in_progress[0].get("content") or in_progress[0].get("activeForm")
+                    # If there's active TodoWrite work, it's running autonomously
+                    session_type = "running"
 
-        results.append({
+                if pending:
+                    next_task = pending[0].get("content")
+
+                # Goal is the first item (often the main task) or in_progress task
+                if todos:
+                    goal = todos[0].get("content")
+
+        # Fallback to last_prompt if no TodoWrite context
+        if not goal:
+            goal = last_prompt
+            session_type = "interactive"  # No plan = needs attention
+
+        project = s.get("project") or "unknown"
+        session_short = s.get("session_short") or (s.get("session_id", "")[:7])
+
+        entry = {
             "is_active": True,
+            "bucket": "active",
             "time_display": "NOW",
             "project": project,
-            "description": description[:60] + "..." if len(description) > 60 else description,
+            "description": goal[:150] + "..." if len(goal) > 150 else goal,
             "outcome_text": "IN PROGRESS",
             "outcome_class": "active",
-            "reentry_link": None,  # Active sessions don't need re-entry
+            "reentry_link": None,
             "session_id": session_short,
-        })
+            # Rich context for card display
+            "goal": goal[:150] + "..." if len(goal) > 150 else goal,
+            "now_task": now_task[:100] + "..." if now_task and len(now_task) > 100 else now_task,
+            "next_task": next_task[:100] + "..."
+            if next_task and len(next_task) > 100
+            else next_task,
+            "progress_done": progress_done,
+            "progress_total": progress_total,
+            "session_type": session_type,
+        }
 
-    # 2. Get recent completed sessions
-    recent_sessions = get_recent_sessions(hours=hours)
+        if _has_meaningful_context(entry):
+            active_bucket.append(entry)
+
+    # 2. Get completed sessions and triage by age
+    recent_sessions = get_recent_sessions(hours=168)  # Get up to 7 days for stale counting
     for s in recent_sessions:
-        # Skip sessions without meaningful content
         summary = s.get("summary")
         if not summary or summary == "Session completed":
-            # Check if there are accomplishments to use instead
             accomplishments = s.get("accomplishments")
             if accomplishments:
                 summary = accomplishments[0]
             else:
-                continue  # Filter out empty sessions
+                continue
+
+        session_date = s.get("date")
+        if not session_date:
+            continue
+
+        # Determine bucket based on age
+        if session_date >= cutoff_active:
+            bucket = "active"
+        elif session_date >= cutoff_paused:
+            bucket = "paused"
+        else:
+            stale_count += 1
+            continue  # Don't add stale sessions to display
 
         outcome_text, outcome_class = _classify_session_outcome(s)
 
-        # Build Obsidian re-entry link
         reentry_link = None
         session_file = s.get("session_file")
         if session_file:
-            # Obsidian link format: obsidian://open?vault=writing&file=sessions/claude/{filename}
             reentry_link = f"obsidian://open?vault=writing&file=sessions/claude/{session_file}"
 
-        project = s.get("project")
-        if not project:
-            project = "unknown"
+        project = s.get("project") or "unknown"
+        truncated_summary = summary[:120] + "..." if len(summary) > 120 else summary
 
-        results.append({
+        entry = {
             "is_active": False,
+            "bucket": bucket,
             "time_display": s.get("time_ago"),
             "project": project,
-            "description": summary[:60] + "..." if len(summary) > 60 else summary,
+            "description": truncated_summary,
             "outcome_text": outcome_text,
             "outcome_class": outcome_class,
             "reentry_link": reentry_link,
             "session_id": s.get("session_id"),
-        })
+            # Rich context fields (completed sessions have limited context)
+            "goal": truncated_summary,
+            "now_task": None,
+            "next_task": None,
+            "progress_done": 0,
+            "progress_total": 0,
+            "session_type": "completed",
+        }
 
-    # Limit total results
-    return results[:limit]
+        if _has_meaningful_context(entry):
+            if bucket == "active":
+                active_bucket.append(entry)
+            else:
+                paused_bucket.append(entry)
+
+    # Apply limits
+    active_bucket = active_bucket[:limit]
+    paused_bucket = paused_bucket[:limit]
+
+    # Return triaged results
+    return {
+        "active": active_bucket,
+        "paused": paused_bucket,
+        "stale_count": stale_count,
+        "entries": active_bucket + paused_bucket,  # Backward compatibility
+    }
 
 
 def group_sessions_by_project(sessions: list[dict]) -> dict[str, list[dict]]:
@@ -2202,7 +2473,7 @@ st.markdown(
         background-color: var(--bg-card);
         border: 1px solid var(--border-subtle);
         border-radius: 8px;
-        padding: 0; 
+        padding: 0;
         overflow: hidden;
     }
 
@@ -2238,7 +2509,7 @@ st.markdown(
         padding: 6px 0;
         border-bottom: 1px solid rgba(255, 255, 255, 0.03);
     }
-    
+
     .project-task:last-child {
         border-bottom: none;
     }
@@ -2248,7 +2519,7 @@ st.markdown(
         color: var(--text-secondary);
         line-height: 1.4;
     }
-    
+
     .project-task-text strong, .project-task-text b {
         color: var(--text-primary);
         font-weight: 600;
@@ -2265,22 +2536,22 @@ st.markdown(
         letter-spacing: 0.05em;
     }
 
-    .project-task-priority.p0 { 
-        background: rgba(239, 68, 68, 0.2); 
-        color: #ef4444; 
+    .project-task-priority.p0 {
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
         border: 1px solid rgba(239, 68, 68, 0.3);
     }
-    .project-task-priority.p1 { 
-        background: rgba(249, 115, 22, 0.2); 
-        color: #f97316; 
+    .project-task-priority.p1 {
+        background: rgba(249, 115, 22, 0.2);
+        color: #f97316;
         border: 1px solid rgba(249, 115, 22, 0.3);
     }
-    .project-task-priority.p2 { 
-        background: rgba(99, 102, 241, 0.2); 
-        color: #818cf8; 
+    .project-task-priority.p2 {
+        background: rgba(99, 102, 241, 0.2);
+        color: #818cf8;
         border: 1px solid rgba(99, 102, 241, 0.3);
     }
-    
+
     /* Agent Status Panel */
     .agent-status-panel {
         background-color: #0f172a;
@@ -2305,10 +2576,82 @@ st.markdown(
         margin-bottom: 8px;
         border-radius: 0 4px 4px 0;
     }
-    
+
+    .agent-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
     .agent-project { font-weight: 600; color: #e2e8f0; }
     .agent-task-name { color: #cbd5e1; }
     .agent-progress-text { color: #4ade80; font-weight: bold; }
+    .agent-meta { color: #64748b; font-size: 0.85em; }
+
+    /* Session context display (conversation-centric per overwhelm-dashboard.md) */
+    .agent-context {
+        color: #94a3b8;
+        font-size: 0.9em;
+        line-height: 1.4;
+        margin-top: 4px;
+    }
+    .context-label {
+        color: #64748b;
+        font-weight: 500;
+        margin-right: 4px;
+    }
+
+    /* Compact Current Activity Box (replaces verbose agent cards) */
+    .current-activity-box {
+        background: rgba(74, 222, 128, 0.05);
+        border: 1px solid rgba(74, 222, 128, 0.2);
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 16px;
+    }
+
+    .current-activity-header {
+        color: #4ade80;
+        font-weight: 600;
+        font-size: 0.85em;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        margin-bottom: 8px;
+    }
+
+    .current-activity-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 4px 0;
+        font-size: 0.9em;
+        border-bottom: 1px solid rgba(100, 116, 139, 0.1);
+    }
+
+    .current-activity-row:last-child {
+        border-bottom: none;
+    }
+
+    .ca-time {
+        color: #64748b;
+        font-size: 0.85em;
+        min-width: 50px;
+    }
+
+    .ca-project {
+        color: #4ade80;
+        font-weight: 500;
+        min-width: 80px;
+    }
+
+    .ca-desc {
+        color: #cbd5e1;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
 
     /* Project Grid Styles */
     .project-grid {
@@ -2578,6 +2921,360 @@ st.markdown(
         color: var(--text-accent);
     }
 
+    /* Session triage bucket labels */
+    .wlo-bucket-label {
+        font-size: 0.75em;
+        font-weight: 600;
+        color: #4ade80;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 8px 12px 4px;
+        margin-top: 4px;
+    }
+
+    .wlo-paused-label {
+        color: #fbbf24;
+    }
+
+    /* Paused sessions - more subdued */
+    .wlo-paused-list {
+        opacity: 0.75;
+    }
+
+    .where-left-off-row.wlo-paused {
+        font-size: 0.9em;
+        padding: 4px 12px;
+    }
+
+    /* Stale sessions prompt */
+    .stale-sessions-prompt {
+        background: rgba(251, 191, 36, 0.1);
+        border: 1px solid rgba(251, 191, 36, 0.3);
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin: 8px 0;
+        color: #fbbf24;
+        font-size: 0.9em;
+    }
+
+    .stale-hint {
+        display: block;
+        font-size: 0.85em;
+        color: #888;
+        margin-top: 4px;
+    }
+
+    /* Collapsible paused bucket */
+    .wlo-paused-collapsible {
+        border: 1px solid rgba(251, 191, 36, 0.2);
+        border-radius: 6px;
+        margin-top: 8px;
+    }
+
+    .wlo-paused-collapsible summary {
+        cursor: pointer;
+        padding: 10px 14px;
+        background: rgba(251, 191, 36, 0.08);
+        border-radius: 6px;
+        list-style: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .wlo-paused-collapsible summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .wlo-paused-collapsible summary::before {
+        content: '▶';
+        font-size: 0.7em;
+        color: #fbbf24;
+        transition: transform 0.2s;
+    }
+
+    .wlo-paused-collapsible[open] summary::before {
+        transform: rotate(90deg);
+    }
+
+    .wlo-paused-collapsible summary .wlo-bucket-label {
+        margin: 0;
+        padding: 0;
+    }
+
+    .wlo-paused-content {
+        padding: 8px;
+    }
+
+    /* Project grouping within buckets */
+    .wlo-project-group {
+        margin-bottom: 12px;
+    }
+
+    .wlo-project-group:last-child {
+        margin-bottom: 0;
+    }
+
+    .wlo-project-group-label {
+        font-size: 0.75em;
+        font-weight: 600;
+        color: var(--text-accent);
+        text-transform: lowercase;
+        padding: 4px 0;
+        margin-bottom: 4px;
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    /* ==========================================================================
+     * WHERE YOU LEFT OFF - CARD-BASED LAYOUT (v2)
+     * ========================================================================== */
+    .wlo-card {
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: 6px;
+        padding: 10px 14px;
+        margin-bottom: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .wlo-card.running {
+        border-left: 3px solid #22c55e;
+        background-color: rgba(34, 197, 94, 0.06);
+    }
+
+    .wlo-card.interactive {
+        border-left: 3px solid #60a5fa;
+        background-color: rgba(96, 165, 250, 0.06);
+    }
+
+    .wlo-card.completed {
+        border-left: 3px solid var(--text-success);
+        opacity: 0.8;
+    }
+
+    .wlo-card.paused {
+        border-left: 3px solid #fbbf24;
+        opacity: 0.7;
+    }
+
+    .wlo-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .wlo-card-project {
+        color: var(--text-accent);
+        font-weight: 600;
+        font-size: 0.9em;
+        text-transform: lowercase;
+    }
+
+    .wlo-card-time {
+        color: var(--text-muted);
+        font-size: 0.8em;
+        font-family: monospace;
+    }
+
+    .wlo-card-time.now {
+        color: #22c55e;
+        font-weight: 600;
+    }
+
+    .wlo-card-goal {
+        color: var(--text-primary);
+        font-size: 0.95em;
+        font-weight: 500;
+        line-height: 1.3;
+    }
+
+    .wlo-card-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        font-size: 0.85em;
+        color: var(--text-secondary);
+    }
+
+    .wlo-card-progress {
+        color: var(--text-muted);
+    }
+
+    .wlo-card-progress .done {
+        color: #22c55e;
+    }
+
+    .wlo-card-now {
+        color: #60a5fa;
+    }
+
+    .wlo-card-next {
+        color: #a78bfa;
+    }
+
+    .wlo-card-status {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.8em;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .wlo-card-status.running {
+        background: rgba(34, 197, 94, 0.15);
+        color: #22c55e;
+    }
+
+    .wlo-card-status.interactive {
+        background: rgba(96, 165, 250, 0.15);
+        color: #60a5fa;
+    }
+
+    .wlo-card-status.done {
+        background: rgba(147, 197, 253, 0.1);
+        color: var(--text-muted);
+    }
+
+    /* === PATH RECONSTRUCTION === */
+    .path-timeline {
+        background: var(--bg-secondary, #1e1e2e);
+        border: 1px solid var(--border-color, #333);
+        border-radius: 8px;
+        padding: 16px;
+        margin: 16px 0;
+    }
+
+    .path-timeline h3 {
+        margin: 0 0 12px 0;
+        font-size: 1.1em;
+        color: var(--text-primary, #e0e0e0);
+    }
+
+    .path-abandoned {
+        background: rgba(250, 204, 21, 0.08);
+        border: 1px solid rgba(250, 204, 21, 0.3);
+        border-radius: 6px;
+        padding: 10px 14px;
+        margin-bottom: 14px;
+    }
+
+    .path-abandoned-title {
+        font-weight: 600;
+        color: #facc15;
+        margin-bottom: 6px;
+        font-size: 0.9em;
+    }
+
+    .path-abandoned-item {
+        color: var(--text-secondary, #aaa);
+        font-size: 0.85em;
+        padding: 2px 0;
+    }
+
+    .path-project-group {
+        margin-bottom: 24px;
+        background: rgba(255, 255, 255, 0.02);
+        padding: 12px;
+        border-radius: 8px;
+    }
+
+    .path-project-header {
+        font-size: 0.75em;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 14px;
+        padding: 2px 8px;
+        display: inline-block;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .path-threads {
+        display: flex;
+        gap: 20px;
+        overflow-x: auto;
+        padding-bottom: 8px;
+    }
+
+    .path-thread {
+        flex: 0 0 280px;
+        border-left: 2px solid var(--border-color, #333);
+        padding-left: 14px;
+        transition: border-color 0.2s ease;
+    }
+
+    .path-thread:hover {
+        border-left-color: #555;
+    }
+
+    .path-thread-header {
+        font-weight: 600;
+        font-size: 0.85em;
+        color: var(--text-primary, #e0e0e0);
+        margin-bottom: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .path-thread-header .session-hash {
+        color: var(--text-muted, #777);
+        font-weight: 400;
+        font-family: var(--font-mono, monospace);
+        font-size: 0.8em;
+    }
+
+    .path-event {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        padding: 4px 0;
+        font-size: 0.82em;
+        line-height: 1.4;
+        color: var(--text-secondary, #bbb);
+    }
+
+    .path-event.minor {
+        opacity: 0.6;
+        font-size: 0.78em;
+        padding: 2px 0;
+    }
+
+    .path-event .dot {
+        flex-shrink: 0;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-top: 5px;
+        box-shadow: 0 0 4px rgba(0,0,0,0.3);
+    }
+
+    .path-event .dot.prompt { background: #60a5fa; box-shadow: 0 0 6px rgba(96, 165, 250, 0.4); }
+    .path-event .dot.create { background: #818cf8; }
+    .path-event .dot.complete { background: #22c55e; box-shadow: 0 0 6px rgba(34, 197, 94, 0.4); }
+    .path-event .dot.update { background: #f59e0b; }
+    .path-event .dot.claim { background: #06b6d4; }
+    .path-event .dot.abandon { background: #ef4444; }
+    .path-event .dot.start { background: #60a5fa; }
+
+    .path-event .time {
+        flex-shrink: 0;
+        color: var(--text-muted, #777);
+        font-family: var(--font-mono, monospace);
+        font-size: 0.85em;
+        min-width: 38px;
+    }
+
+    .path-event .desc {
+        flex: 1;
+        word-break: break-word;
+    }
+
 </style>
 """,
     unsafe_allow_html=True,
@@ -2604,7 +3301,7 @@ def clean_activity_text(raw_text: str) -> str:
         raw_text: Raw prompt text potentially containing markdown headers and formatting.
 
     Returns:
-        Cleaned text, max 60 characters, with "..." suffix if truncated.
+        Cleaned text, max 120 characters, with "..." suffix if truncated.
     """
     if not raw_text:
         return "Working..."
@@ -2653,6 +3350,7 @@ def load_task_graph() -> dict | None:
 # Default task graph SVG location
 TASK_GRAPH_SVG = (
     Path(os.environ.get("ACA_DATA", str(Path.home() / "writing/data")))
+    / "aops"
     / "outputs"
     / "task-map.svg"
 )
@@ -2705,9 +3403,7 @@ def calculate_graph_health(graph: dict) -> dict:
 
     # 1. Branching factor (average out-degree for non-leaf nodes)
     non_leaf_degrees = [len(children[n["id"]]) for n in nodes if children[n["id"]]]
-    avg_branching = (
-        sum(non_leaf_degrees) / len(non_leaf_degrees) if non_leaf_degrees else 0
-    )
+    avg_branching = sum(non_leaf_degrees) / len(non_leaf_degrees) if non_leaf_degrees else 0
     max_branching = max(non_leaf_degrees) if non_leaf_degrees else 0
 
     # 2. Level width distribution (BFS from goals)
@@ -2744,9 +3440,7 @@ def calculate_graph_health(graph: dict) -> dict:
 
         path.add(start_id)
         try:
-            max_child = max(
-                longest_path_from(c, memo, path) for c in children[start_id]
-            )
+            max_child = max(longest_path_from(c, memo, path) for c in children[start_id])
             memo[start_id] = 1 + max_child
             return memo[start_id]
         finally:
@@ -3137,12 +3831,16 @@ def render_v11_progress():
     children_ids = epic.get("children", [])
     children = [tasks_by_id.get(cid) for cid in children_ids if cid in tasks_by_id]
 
-    status_counts = {"done": 0, "active": 0, "blocked": 0}
+    status_counts = {"done": 0, "in_progress": 0, "blocked": 0}
     for child in children:
         if child:
             status = child.get("status", "active")
-            if status in status_counts:
-                status_counts[status] += 1
+            if status in ("done", "closed"):
+                status_counts["done"] += 1
+            elif status == "blocked":
+                status_counts["blocked"] += 1
+            else:
+                status_counts["in_progress"] += 1
 
     total = len(children)
     done_pct = (status_counts["done"] / total * 100) if total > 0 else 0
@@ -3164,7 +3862,7 @@ def render_v11_progress():
             </div>
             <div class="synthesis-card context">
                 <div class="synthesis-card-title">🔄 In Progress</div>
-                <div class="synthesis-card-content" style="font-size: 1.5em; font-weight: 700;">{status_counts["active"]}</div>
+                <div class="synthesis-card-content" style="font-size: 1.5em; font-weight: 700;">{status_counts["in_progress"]}</div>
             </div>
             <div class="synthesis-card waiting">
                 <div class="synthesis-card-title">🚫 Blocked</div>
@@ -3176,8 +3874,47 @@ def render_v11_progress():
     st.markdown(html, unsafe_allow_html=True)
 
 
+def _get_graph_node_count() -> int:
+    """Get the number of nodes in the task graph for collapse threshold."""
+    graph = load_graph_data("graph.json")
+    if graph:
+        return len(graph.get("nodes", []))
+    return 0
+
+
 def render_graph_section():
-    """Render the task/knowledge graph with tabs."""
+    """Render the task/knowledge graph with tabs, collapsible by default if >50 nodes."""
+    # Determine default expanded state based on node count
+    node_count = _get_graph_node_count()
+    default_expanded = True
+
+    # Check query params for persisted state
+    query_params = st.query_params
+    if "graph" in query_params:
+        # User has explicitly set preference via toggle
+        is_expanded = query_params.get("graph") == "1"
+    else:
+        # Use default based on node count
+        is_expanded = default_expanded
+
+    # Header with toggle button
+    col_title, col_toggle = st.columns([0.85, 0.15])
+    with col_title:
+        status_text = f"({node_count} nodes)" if node_count > 0 else ""
+        st.markdown(f"### 📊 Task Graph {status_text}")
+    with col_toggle:
+        # Toggle button - when clicked, flip state and persist via query param
+        toggle_label = "▼ Hide" if is_expanded else "▶ Show"
+        if st.button(toggle_label, key="graph_toggle", use_container_width=True):
+            new_state = "0" if is_expanded else "1"
+            st.query_params["graph"] = new_state
+            st.rerun()
+
+    # Only render graph content if expanded
+    if not is_expanded:
+        st.caption("Click 'Show' to expand the task graph visualization.")
+        return
+
     tab_svg, tab_interactive = st.tabs(["📊 SVG Graph", "⚛️ Interactive Graph"])
 
     with tab_svg:
@@ -3215,9 +3952,7 @@ def render_graph_section():
             return
 
         # Get available types from graph
-        all_types = sorted(
-            set(n.get("node_type", "unknown") for n in graph.get("nodes", []))
-        )
+        all_types = sorted(set(n.get("node_type", "unknown") for n in graph.get("nodes", [])))
 
         # Default type selection based on view mode
         if view_mode == "Tasks":
@@ -3282,9 +4017,7 @@ def render_graph_section():
                     help="Node repulsion strength (more negative = stronger)",
                     key="fg_repulsion",
                 )
-                show_labels = st.checkbox(
-                    "Show Labels", value=True, key="fg_show_labels"
-                )
+                show_labels = st.checkbox("Show Labels", value=True, key="fg_show_labels")
                 hide_orphans = st.checkbox(
                     "Hide Orphans",
                     value=False,
@@ -3306,9 +4039,7 @@ def render_graph_section():
         if selected_types:
             type_set = set(selected_types)
             nodes = graph.get("nodes", [])
-            filtered_nodes = [
-                n for n in nodes if n.get("node_type", "unknown") in type_set
-            ]
+            filtered_nodes = [n for n in nodes if n.get("node_type", "unknown") in type_set]
             filtered_ids = {n["id"] for n in filtered_nodes}
             filtered_edges = [
                 e
@@ -3344,12 +4075,415 @@ def render_graph_section():
         )
 
 
+_USELESS_PROMPTS = frozenset(
+    {
+        "created:",
+        "created",
+        "/dump",
+        "/help",
+        "/clear",
+        "/commit",
+        "/pull",
+        "/push",
+        "/review",
+        "/q",
+        "y",
+        "n",
+        "yes",
+        "no",
+        "ok",
+        "continue",
+        "done",
+        "thanks",
+        "thank you",
+        "exit",
+        "quit",
+    }
+)
+
+_MIN_PROMPT_LENGTH = 10  # Minimum chars after sanitization to be worth displaying
+
+
+def _sanitize_prompt(text: str) -> str:
+    """Strip HTML/markdown markup from prompt text for clean display.
+
+    Returns empty string for useless/too-short prompts.
+    """
+    import re as _re
+
+    s = text
+    # Remove HTML comments <!-- ... -->
+    s = _re.sub(r"<!--.*?-->", "", s, flags=_re.DOTALL)
+    # Remove HTML tags
+    s = _re.sub(r"<[^>]+>", "", s)
+    # Convert markdown links [text](url) to just text
+    s = _re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", s)
+    # Strip bold/italic markers (** __ * _) but keep content
+    s = _re.sub(r"\*\*(.+?)\*\*", r"\1", s)
+    s = _re.sub(r"__(.+?)__", r"\1", s)
+    s = _re.sub(r"\*(.+?)\*", r"\1", s)
+    s = _re.sub(r"(?<!\w)_(.+?)_(?!\w)", r"\1", s)
+    # Collapse multiple blank lines
+    s = _re.sub(r"\n{3,}", "\n\n", s)
+    s = s.strip()
+
+    # Filter useless prompts: slash commands, single words, confirmations
+    if s.lower() in _USELESS_PROMPTS:
+        return ""
+    if len(s) < _MIN_PROMPT_LENGTH:
+        return ""
+    # Filter slash commands not in the static set
+    if s.startswith("/") and " " not in s:
+        return ""
+
+    return s
+
+
+def render_recent_prompts():
+    """Render Recent Prompts section for quick context recovery.
+
+    Displays user prompts from session summaries in reverse chronological order,
+    grouped by session. Uses st.expander for collapsible display and st.code()
+    blocks for copy functionality.
+    """
+    sessions = get_recent_prompts(days=7)
+
+    if not sessions:
+        return  # No prompts to display
+
+    with st.expander("💬 Recent Prompts (last 7 days)", expanded=False):
+        for session in sessions:
+            project = session["project"]
+            session_id = session["session_id"][:8]
+            time_ago = session["time_ago"]
+            prompts = session["prompts"]
+
+            # Session header with project badge
+            st.markdown(
+                f"**{project}** · `{session_id}` · {time_ago}",
+                unsafe_allow_html=False,
+            )
+
+            # Display each prompt with copy-able code block
+            for prompt in prompts:
+                cleaned = _sanitize_prompt(prompt)
+                if cleaned:
+                    st.code(cleaned, language=None)
+
+            st.markdown("---")
+
+
+def render_session_summary():
+    """Render summary of today's and yesterday's sessions."""
+    from datetime import timedelta
+
+    st.header("📝 Daily Session Summary")
+
+    summaries_dir = Path.home() / "writing" / "sessions" / "summaries"
+    if not summaries_dir.exists():
+        st.info("No summaries directory found.")
+        return
+
+    # Dates
+    now = datetime.now()
+    today_str = now.strftime("%Y%m%d")
+    yesterday_str = (now - timedelta(days=1)).strftime("%Y%m%d")
+
+    # Find files
+    files = list(summaries_dir.glob("*.json"))
+
+    today_sessions = []
+    yesterday_sessions = []
+
+    for f in files:
+        if f.name.startswith(today_str):
+            today_sessions.append(f)
+        elif f.name.startswith(yesterday_str):
+            yesterday_sessions.append(f)
+
+    # Format helper
+    def fmt_tok(n):
+        if n >= 1_000_000:
+            return f"{n / 1_000_000:.1f}M"
+        if n >= 1_000:
+            return f"{n / 1_000:.1f}K"
+        return str(n)
+
+    # Render function for a list of files
+    def render_day(title, file_list):
+        st.subheader(f"{title} ({len(file_list)} sessions)")
+        if not file_list:
+            st.caption("No sessions found.")
+            return
+
+        # Sort by filename (newest first)
+        file_list.sort(key=lambda x: x.name, reverse=True)
+
+        for f in file_list:
+            try:
+                data = json.loads(f.read_text())
+
+                # Extract Data
+                project = data.get("project", "unknown")
+                sid = data.get("session_id", "unknown")[:8]
+                summary = data.get("summary", "No summary")
+                outcome = data.get("outcome", "unknown")
+
+                # Metrics
+                metrics = data.get("token_metrics", {})
+                efficiency = metrics.get("efficiency", {})
+                duration = efficiency.get("session_duration_minutes", 0)
+
+                totals = metrics.get("totals", {})
+                input_tok = totals.get("input_tokens", 0)
+                output_tok = totals.get("output_tokens", 0)
+                cache_read = totals.get("cache_read_tokens", 0)
+                total_tok = input_tok + output_tok + cache_read
+
+                # Friction
+                friction = data.get("friction_points", [])
+
+                # Status Color
+                status_color = (
+                    "green" if outcome == "success" else "orange" if outcome == "partial" else "red"
+                )
+
+                # Render Card
+                with st.expander(
+                    f"**{project}** | {sid} | {duration:.1f}m | :{status_color}[{outcome.upper()}]",
+                    expanded=False,
+                ):
+                    st.markdown(f"**Summary:** {summary}")
+
+                    if friction:
+                        st.markdown("**🛑 Problems:**")
+                        for p in friction:
+                            st.markdown(f"- {p}")
+
+                    st.markdown("**📊 Metrics:**")
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("Duration", f"{duration:.1f}m")
+                    c2.metric("Tokens", fmt_tok(total_tok))
+                    c3.metric("Outcome", outcome)
+
+                    if data.get("accomplishments"):
+                        st.markdown("**✅ Accomplishments:**")
+                        for a in data["accomplishments"]:
+                            st.markdown(f"- {a}")
+
+            except Exception as e:
+                st.error(f"Error reading {f.name}: {e}")
+
+    render_day("Today", today_sessions)
+    st.markdown("---")
+    render_day("Yesterday", yesterday_sessions)
+
+
+def render_network_analysis():
+    """Render network science metrics for the task graph."""
+    st.header("🕸️ Network Analysis")
+
+    # Load tasks
+    all_tasks = load_tasks_from_index()
+    if not all_tasks:
+        st.warning("No tasks found in index.")
+        return
+
+    # Filter out completed/cancelled tasks for network analysis
+    # Historically completed work skews centrality metrics
+    tasks = [t for t in all_tasks if t.get("status") not in ("done", "cancelled")]
+
+    if not tasks:
+        st.info("No active tasks to analyze.")
+        return
+
+    # Build NetworkX DiGraph
+    G = nx.DiGraph()
+
+    # Add nodes with attributes
+    for t in tasks:
+        G.add_node(
+            t["id"],
+            title=t.get("title", ""),
+            status=t.get("status", ""),
+            priority=t.get("priority", 2),
+            project=t.get("project", ""),
+            depth=t.get("depth", 0),
+            leaf=t.get("leaf", True),
+        )
+
+    # Add edges
+    for t in tasks:
+        task_id = t["id"]
+        # Hard dependencies (depends_on)
+        for dep in t.get("depends_on", []):
+            if dep in G:
+                G.add_edge(dep, task_id, edge_type="depends_on")
+        # Soft dependencies
+        for dep in t.get("soft_depends_on", []):
+            if dep in G:
+                G.add_edge(dep, task_id, edge_type="soft_depends_on")
+        # Parent relationship
+        parent = t.get("parent")
+        if parent and parent in G:
+            G.add_edge(parent, task_id, edge_type="parent")
+
+    # === Basic Stats ===
+    st.subheader("📊 Graph Statistics")
+    col1, col2, col3, col4 = st.columns(4)
+
+    col1.metric("Nodes", G.number_of_nodes())
+    col2.metric("Edges", G.number_of_edges())
+
+    # Connected components (treating as undirected for this)
+    undirected = G.to_undirected()
+    num_components = nx.number_connected_components(undirected)
+    col3.metric("Components", num_components)
+
+    # Density
+    density = nx.density(G)
+    col4.metric("Density", f"{density:.4f}")
+
+    # Additional stats row
+    col5, col6, col7, col8 = st.columns(4)
+
+    # Isolates (nodes with no edges)
+    isolates = list(nx.isolates(G))
+    col5.metric("Isolates", len(isolates))
+
+    # Leaf nodes (out-degree 0 in depends_on sense)
+    leaf_count = sum(1 for t in tasks if t.get("leaf", True))
+    col6.metric("Leaf Tasks", leaf_count)
+
+    # Average degree
+    if G.number_of_nodes() > 0:
+        avg_degree = sum(d for n, d in G.degree()) / G.number_of_nodes()
+        col7.metric("Avg Degree", f"{avg_degree:.2f}")
+    else:
+        col7.metric("Avg Degree", "0")
+
+    # Tasks by status
+    status_counts = {}
+    for t in tasks:
+        s = t.get("status", "unknown")
+        status_counts[s] = status_counts.get(s, 0) + 1
+    active_count = status_counts.get("active", 0) + status_counts.get("in_progress", 0)
+    col8.metric("Active Tasks", active_count)
+
+    st.markdown("---")
+
+    # === Centrality Metrics ===
+    st.subheader("🎯 Centrality Analysis")
+
+    # Only compute if graph is not empty
+    if G.number_of_nodes() == 0:
+        st.info("No nodes to analyze.")
+        return
+
+    # Betweenness centrality (bottleneck tasks)
+    col_left, col_right = st.columns(2)
+
+    with col_left:
+        st.markdown("**🔀 Betweenness Centrality (Bottlenecks)**")
+        st.caption("Tasks that many paths pass through - potential bottlenecks")
+
+        try:
+            betweenness = nx.betweenness_centrality(G)
+            top_betweenness = sorted(betweenness.items(), key=lambda x: x[1], reverse=True)[:10]
+
+            if top_betweenness and top_betweenness[0][1] > 0:
+                for task_id, score in top_betweenness:
+                    if score > 0:
+                        node_data = G.nodes[task_id]
+                        title = node_data.get("title", task_id)[:50]
+                        status = node_data.get("status", "")
+                        st.markdown(f"- **{score:.4f}** | `{task_id[:20]}` | {title} ({status})")
+            else:
+                st.caption("No significant betweenness (sparse graph)")
+        except Exception as e:
+            st.error(f"Betweenness calculation error: {e}")
+
+    with col_right:
+        st.markdown("**📈 PageRank (Importance)**")
+        st.caption("Tasks that are important by link structure")
+
+        try:
+            pagerank = nx.pagerank(G, alpha=0.85)
+            top_pagerank = sorted(pagerank.items(), key=lambda x: x[1], reverse=True)[:10]
+
+            for task_id, score in top_pagerank:
+                node_data = G.nodes[task_id]
+                title = node_data.get("title", task_id)[:50]
+                status = node_data.get("status", "")
+                st.markdown(f"- **{score:.4f}** | `{task_id[:20]}` | {title} ({status})")
+        except Exception as e:
+            st.error(f"PageRank calculation error: {e}")
+
+    st.markdown("---")
+
+    # === Actionable Insights ===
+    st.subheader("💡 Actionable Insights")
+
+    col_a, col_b = st.columns(2)
+
+    with col_a:
+        st.markdown("**🚧 High Out-Degree (Blockers)**")
+        st.caption("Tasks blocking many others")
+
+        out_degrees = [(n, G.out_degree(n)) for n in G.nodes()]
+        top_out = sorted(out_degrees, key=lambda x: x[1], reverse=True)[:10]
+
+        for task_id, degree in top_out:
+            if degree > 0:
+                node_data = G.nodes[task_id]
+                title = node_data.get("title", task_id)[:40]
+                status = node_data.get("status", "")
+                st.markdown(f"- **{degree}** deps | `{task_id[:15]}` | {title} ({status})")
+
+    with col_b:
+        st.markdown("**📦 High In-Degree (Dependent)**")
+        st.caption("Tasks with many dependencies")
+
+        in_degrees = [(n, G.in_degree(n)) for n in G.nodes()]
+        top_in = sorted(in_degrees, key=lambda x: x[1], reverse=True)[:10]
+
+        for task_id, degree in top_in:
+            if degree > 0:
+                node_data = G.nodes[task_id]
+                title = node_data.get("title", task_id)[:40]
+                status = node_data.get("status", "")
+                st.markdown(f"- **{degree}** deps | `{task_id[:15]}` | {title} ({status})")
+
+    # Project distribution
+    st.markdown("---")
+    st.subheader("📁 Project Distribution")
+
+    project_counts = {}
+    for t in tasks:
+        proj = t.get("project", "unassigned") or "unassigned"
+        project_counts[proj] = project_counts.get(proj, 0) + 1
+
+    sorted_projects = sorted(project_counts.items(), key=lambda x: x[1], reverse=True)[:15]
+
+    if sorted_projects:
+        # Simple bar display
+        max_count = sorted_projects[0][1] if sorted_projects else 1
+        for proj, count in sorted_projects:
+            bar_width = int((count / max_count) * 20)
+            bar = "█" * bar_width
+            st.markdown(f"`{proj:20}` {bar} {count}")
+
+
 # ============================================================================
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
 # Navigation
-page = st.sidebar.radio("View Mode", ["Dashboard", "Manage Tasks"], index=0)
+page = st.sidebar.radio(
+    "View Mode",
+    ["Dashboard", "Manage Tasks", "Session Summary", "Network Analysis"],
+    index=0,
+)
 
 # Time range filter for "Completed Today" section
 completed_time_range = st.sidebar.selectbox(
@@ -3365,6 +4499,16 @@ completed_hours = COMPLETED_HOURS_MAP.get(completed_time_range, 24)
 if page == "Manage Tasks":
     render_task_manager()
     st.stop()
+
+if page == "Session Summary":
+    render_session_summary()
+    st.stop()
+
+if page == "Network Analysis":
+    render_network_analysis()
+    st.stop()
+
+render_v11_progress()
 
 # Graph section with tabs
 render_graph_section()
@@ -3414,8 +4558,12 @@ if synthesis:
     accomplishments = synthesis.get("accomplishments", {})
     if accomplishments.get("summary"):
         synth_html += "<div class='synthesis-card done'>"
-        synth_html += f"<div class='synthesis-card-title'>✅ DONE ({accomplishments.get('count', 0)})</div>"
-        synth_html += f"<div class='synthesis-card-content'>{esc(accomplishments.get('summary', ''))}</div>"
+        synth_html += (
+            f"<div class='synthesis-card-title'>✅ DONE ({accomplishments.get('count', 0)})</div>"
+        )
+        synth_html += (
+            f"<div class='synthesis-card-content'>{esc(accomplishments.get('summary', ''))}</div>"
+        )
         synth_html += "</div>"
 
     # Alignment card
@@ -3423,9 +4571,7 @@ if synthesis:
     if alignment.get("note"):
         status = alignment.get("status", "drifted")
         status_class = f"alignment {status}"
-        status_icon = (
-            "✅" if status == "on_track" else "⚠️" if status == "drifted" else "🚫"
-        )
+        status_icon = "✅" if status == "on_track" else "⚠️" if status == "drifted" else "🚫"
         synth_html += f"<div class='synthesis-card {status_class}'>"
         synth_html += f"<div class='synthesis-card-title'>{status_icon} ALIGNMENT</div>"
         synth_html += f"<div class='synthesis-card-content'>{esc(alignment.get('note', ''))}</div>"
@@ -3445,10 +4591,10 @@ if synthesis:
     if waiting_on:
         first_blocker = waiting_on[0]
         synth_html += "<div class='synthesis-card waiting'>"
+        synth_html += f"<div class='synthesis-card-title'>⏳ BLOCKED ({len(waiting_on)})</div>"
         synth_html += (
-            f"<div class='synthesis-card-title'>⏳ BLOCKED ({len(waiting_on)})</div>"
+            f"<div class='synthesis-card-content'>{esc(first_blocker.get('task', ''))}</div>"
         )
-        synth_html += f"<div class='synthesis-card-content'>{esc(first_blocker.get('task', ''))}</div>"
         synth_html += "</div>"
 
     # Token usage card
@@ -3474,7 +4620,9 @@ if synthesis:
 
         session_count = token_metrics["session_count"]
         synth_html += "<div class='synthesis-card tokens'>"
-        synth_html += f"<div class='synthesis-card-title'>📊 TOKENS ({session_count} sessions)</div>"
+        synth_html += (
+            f"<div class='synthesis-card-title'>📊 TOKENS ({session_count} sessions)</div>"
+        )
         synth_html += f"<div class='synthesis-card-content'>{tokens_str} total <span class='cache-gauge'><span class='cache-gauge-fill' style='width: {cache_rate:.0f}%; background: {gauge_color};'></span></span> {cache_rate:.0f}% cache</div>"
         synth_html += "</div>"
 
@@ -3506,11 +4654,7 @@ if synthesis:
             synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Successes:</span> <span class='insights-stat-value' style='color: #4ade80;'>{successes}</span></span>"
 
         # Token stats (reuse token_metrics if already loaded, or load now)
-        tm = (
-            token_metrics
-            if "token_metrics" in dir() and token_metrics
-            else load_token_metrics()
-        )
+        tm = token_metrics if "token_metrics" in dir() and token_metrics else load_token_metrics()
         if tm:
             # Format helper for tokens
             def fmt_tokens(n):
@@ -3553,44 +4697,264 @@ activity_hours = st.sidebar.selectbox(
     format_func=lambda h: f"Last {h}h",
 )
 
-where_left_off = get_where_you_left_off(hours=activity_hours, limit=5)
-if where_left_off:
+where_left_off = get_where_you_left_off(hours=activity_hours, limit=10)
+active_sessions_wlo = where_left_off.get("active", [])
+paused_sessions_wlo = where_left_off.get("paused", [])
+stale_count = where_left_off.get("stale_count", 0)
+
+if active_sessions_wlo or paused_sessions_wlo:
     wlo_html = "<div class='where-left-off-panel'>"
     wlo_html += "<div class='where-left-off-header'>📍 WHERE YOU LEFT OFF</div>"
-    wlo_html += "<div class='where-left-off-list'>"
 
-    for entry in where_left_off:
-        outcome_class = entry["outcome_class"]
-        time_display = entry["time_display"]
-        time_class = "now" if entry["is_active"] else ""
+    # Active sessions (<4h) - card-based display with rich context, grouped by project
+    if active_sessions_wlo:
+        wlo_html += "<div class='wlo-bucket-label'>⚡ ACTIVE NOW</div>"
 
-        wlo_html += f"<div class='where-left-off-row {outcome_class}'>"
-        wlo_html += f"<span class='wlo-time {time_class}'>{esc(time_display)}</span>"
-        wlo_html += f"<span class='wlo-project'>{esc(entry['project'])}</span>"
-        wlo_html += f"<span class='wlo-description'>{esc(entry['description'])}</span>"
+        # Group active sessions by project per spec
+        active_by_project: dict[str, list] = {}
+        for entry in active_sessions_wlo:
+            proj = entry["project"]
+            if proj not in active_by_project:
+                active_by_project[proj] = []
+            active_by_project[proj].append(entry)
 
-        # Outcome text with appropriate class
-        outcome_text = entry["outcome_text"]
-        outcome_text_class = outcome_class
-        wlo_html += f"<span class='wlo-outcome {outcome_text_class}'>{esc(outcome_text)}</span>"
+        for project, entries in sorted(active_by_project.items()):
+            if len(active_by_project) > 1:
+                wlo_html += "<div class='wlo-project-group'>"
+                wlo_html += f"<div class='wlo-project-group-label'>{esc(project)}</div>"
 
-        # Re-entry link (if available)
-        reentry_link = entry.get("reentry_link")
-        if reentry_link:
-            wlo_html += f"<a href='{reentry_link}' class='wlo-link' title='Open in Obsidian'>↗</a>"
-        else:
-            wlo_html += "<span class='wlo-link'></span>"
+            for entry in entries:
+                session_type = entry["session_type"]
+                time_display = entry["time_display"]
+                time_class = "now" if entry["is_active"] else ""
 
-        wlo_html += "</div>"
+                wlo_html += f"<div class='wlo-card {session_type}'>"
 
-    wlo_html += "</div></div>"
+                # Header: project (only if single project) + time
+                wlo_html += "<div class='wlo-card-header'>"
+                if len(active_by_project) == 1:
+                    wlo_html += f"<span class='wlo-card-project'>{esc(entry['project'])}</span>"
+                wlo_html += f"<span class='wlo-card-time {time_class}'>{esc(time_display)}</span>"
+                wlo_html += "</div>"
+
+                # Goal line
+                goal = entry["goal"] or entry["description"]
+                wlo_html += f"<div class='wlo-card-goal'>{esc(goal)}</div>"
+
+                # Meta: progress, now, next
+                wlo_html += "<div class='wlo-card-meta'>"
+
+                progress_total = entry["progress_total"]
+                progress_done = entry["progress_done"]
+                if progress_total > 0:
+                    wlo_html += f"<span class='wlo-card-progress'><span class='done'>{progress_done}</span>/{progress_total} steps</span>"
+
+                now_task = entry["now_task"]
+                if now_task:
+                    wlo_html += f"<span class='wlo-card-now'>Now: {esc(now_task)}</span>"
+
+                next_task = entry["next_task"]
+                if next_task:
+                    wlo_html += f"<span class='wlo-card-next'>Next: {esc(next_task)}</span>"
+
+                # Status badge
+                if session_type == "running":
+                    wlo_html += "<span class='wlo-card-status running'>Running</span>"
+                elif session_type == "interactive":
+                    wlo_html += "<span class='wlo-card-status interactive'>Needs You</span>"
+
+                wlo_html += "</div>"  # End meta
+                wlo_html += "</div>"  # End card
+
+            if len(active_by_project) > 1:
+                wlo_html += "</div>"  # End project group
+
+    # Paused sessions (4-24h) - collapsible per spec
+    if paused_sessions_wlo:
+        paused_count = len(paused_sessions_wlo)
+        wlo_html += "<details class='wlo-paused-collapsible'>"
+        wlo_html += f"<summary><span class='wlo-bucket-label wlo-paused-label'>⏸️ PAUSED ({paused_count} session{'s' if paused_count != 1 else ''}, 4-24h ago)</span></summary>"
+        wlo_html += "<div class='wlo-paused-content'>"
+
+        # Group paused sessions by project
+        paused_by_project: dict[str, list] = {}
+        for entry in paused_sessions_wlo:
+            proj = entry["project"]
+            if proj not in paused_by_project:
+                paused_by_project[proj] = []
+            paused_by_project[proj].append(entry)
+
+        for project, entries in sorted(paused_by_project.items()):
+            if len(paused_by_project) > 1:
+                wlo_html += "<div class='wlo-project-group'>"
+                wlo_html += f"<div class='wlo-project-group-label'>{esc(project)}</div>"
+
+            for entry in entries:
+                time_display = entry["time_display"]
+
+                wlo_html += "<div class='wlo-card paused'>"
+                wlo_html += "<div class='wlo-card-header'>"
+                # Only show project in header if not already grouped
+                if len(paused_by_project) == 1:
+                    wlo_html += f"<span class='wlo-card-project'>{esc(entry['project'])}</span>"
+                wlo_html += f"<span class='wlo-card-time'>{esc(time_display)}</span>"
+                wlo_html += "</div>"
+
+                # For paused sessions, show description (usually accomplishment summary)
+                description = entry["description"]
+                wlo_html += f"<div class='wlo-card-goal'>{esc(description)}</div>"
+
+                wlo_html += "<div class='wlo-card-meta'>"
+                outcome_text = entry["outcome_text"]
+                if outcome_text:
+                    wlo_html += f"<span class='wlo-card-status done'>{esc(outcome_text)}</span>"
+
+                reentry_link = entry["reentry_link"]
+                if reentry_link:
+                    wlo_html += f"<a href='{reentry_link}' class='wlo-link' title='Open in Obsidian'>↗ View</a>"
+                wlo_html += "</div>"
+                wlo_html += "</div>"
+
+            if len(paused_by_project) > 1:
+                wlo_html += "</div>"  # End project group
+
+        wlo_html += "</div>"  # End paused content
+        wlo_html += "</details>"
+
+    wlo_html += "</div>"
     st.markdown(wlo_html, unsafe_allow_html=True)
+
+# Stale sessions prompt (>24h) - not in main display per spec
+# Per spec: show archive prompt with action buttons
+if stale_count > 0:
+    st.markdown(
+        f"""<div class='stale-sessions-prompt'>
+            📦 {stale_count} stale session{"s" if stale_count != 1 else ""} (no activity &gt;24h)
+            <span class='stale-hint'>These are hidden from the main display</span>
+        </div>""",
+        unsafe_allow_html=True,
+    )
+
+# === PATH RECONSTRUCTION SECTION ===
+try:
+    path = reconstruct_path(hours=activity_hours)
+    if path.threads:
+        path_html = "<div class='path-timeline'>"
+        path_html += "<h3>YOUR PATH</h3>"
+
+        # Dropped threads callout (most actionable — show first)
+        if path.abandoned_work:
+            path_html += "<div class='path-abandoned'>"
+            path_html += f"<div class='path-abandoned-title'>⚠ DROPPED THREADS ({len(path.abandoned_work)} started but not finished)</div>"
+            path_html += "<div style='display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px;'>"
+            for ab in path.abandoned_work:
+                task_label = esc(ab.task_id or ab.description)
+                proj_color = get_project_color(ab.project)
+                path_html += f"<div class='path-abandoned-item' style='border-left: 2px solid {proj_color}; background: rgba(255,255,255,0.03); padding: 4px 10px; border-radius: 4px; font-size: 0.85em;' title='Project: {esc(ab.project)}'>□ {task_label}</div>"
+            path_html += "</div>"
+            path_html += "</div>"
+
+        # Group threads by project
+        threads_by_project = {}
+        for thread in path.threads:
+            proj = thread.project or "unknown"
+            if proj not in threads_by_project:
+                threads_by_project[proj] = []
+            threads_by_project[proj].append(thread)
+
+        for proj, proj_threads in threads_by_project.items():
+            proj_color = get_project_color(proj)
+            path_html += "<div class='path-project-group'>"
+            path_html += f"<div class='path-project-header' style='color: {proj_color}; border-left: 3px solid {proj_color}'>{esc(proj).upper()}</div>"
+            path_html += "<div class='path-threads'>"
+
+            for thread in proj_threads:
+                # Limit sessions to those with at least one event or meaningful goal
+                if not thread.events and not thread.initial_goal:
+                    continue
+
+                path_html += "<div class='path-thread' style='border-left-color: {proj_color}66'>"
+                sid_display = esc(thread.session_id[:8])
+                goal_display = esc(
+                    thread.initial_goal[:120] + "..."
+                    if len(thread.initial_goal) > 120
+                    else thread.initial_goal
+                )
+                path_html += f"<div class='path-thread-header' title='{esc(thread.initial_goal)}'>{goal_display} <span class='session-hash'>({sid_display})</span></div>"
+
+                # Consolidate consecutive TASK_UPDATE events
+                display_events = []
+                update_buffer = []
+
+                for event in thread.events:
+                    if event.event_type == EventType.TASK_UPDATE:
+                        update_buffer.append(event)
+                    else:
+                        if update_buffer:
+                            # Add the last update from the buffer
+                            display_events.append(update_buffer[-1])
+                            update_buffer = []
+                        display_events.append(event)
+                if update_buffer:
+                    display_events.append(update_buffer[-1])
+
+                for event in display_events:
+                    # Timestamp in HH:MM format
+                    time_str = event.timestamp.strftime("%H:%M") if event.timestamp else ""
+
+                    # Dot color class
+                    dot_class = {
+                        EventType.USER_PROMPT: "prompt",
+                        EventType.TASK_CREATE: "create",
+                        EventType.TASK_COMPLETE: "complete",
+                        EventType.TASK_UPDATE: "update",
+                        EventType.TASK_CLAIM: "claim",
+                        EventType.TASK_ABANDON: "abandon",
+                        EventType.SESSION_START: "start",
+                    }.get(event.event_type, "start")
+
+                    # Event priority/style
+                    is_minor = event.event_type == EventType.TASK_UPDATE
+                    event_class = "path-event minor" if is_minor else "path-event"
+
+                    # Event description
+                    desc = esc(event.description[:100]) if event.description else ""
+                    if event.event_type == EventType.TASK_CREATE:
+                        desc = f"<b>Created:</b> {desc}"
+                    elif event.event_type == EventType.TASK_COMPLETE:
+                        desc = f"<b>✓</b> {desc}"
+                    elif event.event_type == EventType.TASK_UPDATE:
+                        desc = f"→ {desc}"
+                    elif event.event_type == EventType.TASK_CLAIM:
+                        desc = f"<b>Claimed:</b> {desc}"
+
+                    path_html += f"<div class='{event_class}'>"
+                    path_html += f"<span class='dot {dot_class}'></span>"
+                    path_html += f"<span class='time'>{esc(time_str)}</span>"
+                    path_html += f"<span class='desc'>{desc}</span>"
+                    path_html += "</div>"
+
+                path_html += "</div>"  # end path-thread
+
+            path_html += "</div>"  # end path-threads
+            path_html += "</div>"  # end path-project-group
+
+        if path.filtered_session_count > 0:
+            path_html += f"<div style='text-align: center; color: var(--text-muted, #666); font-size: 0.8em; padding: 8px 0; opacity: 0.7;'>{path.filtered_session_count} session{'s' if path.filtered_session_count != 1 else ''} hidden (insufficient context)</div>"
+
+        path_html += "</div>"  # end path-timeline
+        st.markdown(path_html, unsafe_allow_html=True)
+except Exception:
+    pass  # Path reconstruction is non-critical; fail silently
+
+# === RECENT PROMPTS SECTION ===
+render_recent_prompts()
 
 # === PROJECT-CENTRIC DASHBOARD ===
 # Fetch Data
 # Fetch Data
 
-active_sessions = fetch_session_activity(hours=168)
+active_sessions = fetch_session_activity(hours=24)  # Per spec: show only recent sessions
 sessions_by_project = defaultdict(list)
 for s in active_sessions:
     p = s.get("project", "unknown")
@@ -3651,7 +5015,7 @@ try:
     projects: dict[str, dict] = {}
     for session in sessions:
         # Check if session is recent (< 7 days)
-        age = datetime.now(timezone.utc) - session.last_modified
+        age = datetime.now(UTC) - session.last_modified
         if age.total_seconds() > 86400 * 7:
             continue
         if "-tmp" in session.project or "-var-folders" in session.project:
@@ -3715,7 +5079,7 @@ try:
         data = projects.get(p, {})
         last_mod = data.get("last_modified")
         if last_mod:
-            days_ago = (datetime.now(timezone.utc) - last_mod).days
+            days_ago = (datetime.now(UTC) - last_mod).days
             score += max(0, 10 - days_ago)
 
         return score
@@ -3769,9 +5133,7 @@ try:
                 epic_title = epic.get("title", "").replace("Epic: ", "")
                 children_ids = epic.get("children", [])
                 done_count = sum(
-                    1
-                    for cid in children_ids
-                    if tasks_by_id.get(cid, {}).get("status") == "done"
+                    1 for cid in children_ids if tasks_by_id.get(cid, {}).get("status") == "done"
                 )
                 total_count = len(children_ids)
                 pct = (done_count / total_count * 100) if total_count > 0 else 0
@@ -3801,11 +5163,9 @@ try:
 
         # 3. Priority Tasks (Backlog)
         # We only show top 3-5 incomplete tasks to save space
-        incomplete_tasks = [
-            t for t in p_tasks if t.get("status") not in ("done", "closed")
-        ]
+        incomplete_tasks = [t for t in p_tasks if t.get("status") not in ("done", "closed")]
         if incomplete_tasks:
-            card_parts.append(f"<div class='p-section-title'>📌 UP NEXT</div>")
+            card_parts.append("<div class='p-section-title'>📌 UP NEXT</div>")
             for t in incomplete_tasks[:3]:
                 prio = t.get("priority", 2)
                 prio_cls = f"p{prio}" if prio <= 1 else "p2"

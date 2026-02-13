@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Standalone test for skill script discovery - no pytest required.
+"""Standalone test for skill script discovery.
 
 Run directly to validate skill script architecture:
     python3 tests/integration/test_skill_discovery_standalone.py
@@ -13,71 +13,73 @@ from pathlib import Path
 
 def test_symlink_structure():
     """Verify ~/.claude/skills/ symlink structure."""
+    import pytest
+
     print("Testing symlink structure...")
 
     skills_path = Path.home() / ".claude" / "skills"
     if not skills_path.exists():
-        print("❌ FAIL: ~/.claude/skills/ does not exist")
-        return False
+        print("⚠️  SKIP: ~/.claude/skills/ does not exist")
+        pytest.skip("~/.claude/skills/ does not exist - local setup only")
 
     task_scripts = skills_path / "tasks" / "scripts"
     if not task_scripts.exists():
-        print(f"❌ FAIL: {task_scripts} does not exist")
-        return False
+        print(f"⚠️  SKIP: {task_scripts} does not exist")
+        pytest.skip(f"{task_scripts} does not exist - local setup only")
 
     required_scripts = ["task_view.py", "task_add.py", "task_archive.py"]
     for script in required_scripts:
         script_path = task_scripts / script
         if not script_path.exists():
-            print(f"❌ FAIL: {script} not found at {script_path}")
-            return False
+            print(f"⚠️  SKIP: {script} not found at {script_path}")
+            pytest.skip(f"{script} not found - local setup only")
         print(f"  ✓ Found: {script}")
 
     print("✅ PASS: All required scripts exist via symlink")
-    return True
 
 
 def test_aops_env_var():
     """Verify AOPS environment variable is set."""
+    import pytest
+
     print("\nTesting AOPS environment variable...")
 
     aops = os.environ.get("AOPS")
     if not aops:
         print("❌ FAIL: AOPS environment variable not set")
-        return False
+        pytest.fail("AOPS environment variable not set")
 
     aops_path = Path(aops)
     if not aops_path.exists():
         print(f"❌ FAIL: AOPS path does not exist: {aops_path}")
-        return False
+        pytest.fail(f"AOPS path does not exist: {aops_path}")
 
     print(f"  ✓ AOPS={aops}")
     print("✅ PASS: AOPS environment variable valid")
-    return True
 
 
 def test_script_execution_from_writing():
     """Test that scripts can execute from writing repo."""
+    import pytest
+
     print("\nTesting script execution from writing repo...")
 
     # Get writing root
     aca_data = os.environ.get("ACA_DATA")
     if not aca_data:
         print("⚠️  SKIP: ACA_DATA not set, cannot test writing repo")
-        return True
+        pytest.skip("ACA_DATA not set")
 
     data_dir = Path(aca_data)
     if not data_dir.exists():
         print(f"⚠️  SKIP: Writing root does not exist: {data_dir}")
-        return True
+        pytest.skip(f"Writing root does not exist: {data_dir}")
 
     # Build command
-    script_path = (
-        Path.home() / ".claude" / "skills" / "tasks" / "scripts" / "task_view.py"
-    )
+    script_path = Path.home() / ".claude" / "skills" / "tasks" / "scripts" / "task_view.py"
     if not script_path.exists():
-        print(f"❌ FAIL: Script not found: {script_path}")
-        return False
+        print(f"⚠️  SKIP: Script not found: {script_path}")
+        pytest.skip(f"Script not found: {script_path} - local setup only")
 
     aops = os.environ.get("AOPS")
     cmd = ["uv", "run", "--no-project", "python", str(script_path), "--compact"]
@@ -105,45 +107,48 @@ def test_script_execution_from_writing():
             print("❌ FAIL: Script execution failed")
             print(f"  stdout: {result.stdout}")
             print(f"  stderr: {result.stderr}")
-            return False
+            pytest.fail(f"Script execution failed: {result.stderr}")
 
         if "Using data_dir:" not in result.stdout:
             print("❌ FAIL: Unexpected output")
             print(f"  stdout: {result.stdout}")
-            return False
+            pytest.fail(f"Unexpected output: {result.stdout}")
 
         print("  ✓ Script executed successfully")
         print("  ✓ Found data directory in output")
         print("✅ PASS: Script runs from writing repo")
-        return True
 
     except subprocess.TimeoutExpired:
         print("❌ FAIL: Script execution timed out")
-        return False
+        pytest.fail("Script execution timed out")
+    except AssertionError:
+        raise
     except Exception as e:
         print(f"❌ FAIL: Exception during execution: {e}")
-        return False
+        pytest.fail(f"Exception during execution: {e}")
 
 
 def test_symlink_points_to_aops():
     """Verify symlink resolves to AOPS directory."""
+    import pytest
+
     print("\nTesting symlink resolution...")
 
     aops = os.environ.get("AOPS")
     if not aops:
-        print("❌ FAIL: AOPS not set")
-        return False
+        print("⚠️  SKIP: AOPS not set")
+        pytest.skip("AOPS not set - local setup only")
 
     aops_scripts = Path(aops) / "skills" / "tasks" / "scripts"
     symlink_scripts = Path.home() / ".claude" / "skills" / "tasks" / "scripts"
 
     if not aops_scripts.exists():
-        print(f"❌ FAIL: AOPS scripts don't exist: {aops_scripts}")
-        return False
+        print(f"⚠️  SKIP: AOPS scripts don't exist: {aops_scripts}")
+        pytest.skip(f"AOPS scripts don't exist: {aops_scripts} - local setup only")
 
     if not symlink_scripts.exists():
-        print(f"❌ FAIL: Symlink scripts don't exist: {symlink_scripts}")
-        return False
+        print(f"⚠️  SKIP: Symlink scripts don't exist: {symlink_scripts}")
+        pytest.skip("Symlink scripts don't exist - local setup only")
 
     # Resolve both paths
     aops_resolved = aops_scripts.resolve()
@@ -153,11 +158,10 @@ def test_symlink_points_to_aops():
         print("❌ FAIL: Paths don't match:")
         print(f"  AOPS:    {aops_resolved}")
         print(f"  Symlink: {symlink_resolved}")
-        return False
+        pytest.fail(f"Paths don't match: AOPS={aops_resolved}, Symlink={symlink_resolved}")
 
     print(f"  ✓ Both resolve to: {aops_resolved}")
     print("✅ PASS: Symlink correctly points to AOPS")
-    return True
 
 
 def main():
@@ -176,8 +180,11 @@ def main():
     results = []
     for test in tests:
         try:
-            result = test()
-            results.append(result)
+            test()
+            results.append(True)
+        except AssertionError as e:
+            print(f"\n❌ FAIL in {test.__name__}: {e}")
+            results.append(False)
         except Exception as e:
             print(f"\n❌ EXCEPTION in {test.__name__}: {e}")
             results.append(False)

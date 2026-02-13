@@ -46,11 +46,13 @@ The same information delivered differently has vastly different compliance rates
 **Structured Output Technique**: When you need strict format compliance, tell the agent its output will be parsed programmatically. Agents have strong training priors to avoid breaking parsers - they've seen countless examples where malformed output causes errors. This framing makes format violations feel consequential.
 
 Use this technique when:
+
 - Agent output feeds into downstream processing (hooks, pipelines)
 - You need exact format compliance (no preamble, no elaboration)
 - Other emphasis techniques haven't achieved sufficient compliance
 
 Example (custodiet agent):
+
 ```
 **CRITICAL: Your output is parsed programmatically.** The calling hook extracts
 your verdict using regex. Any deviation from the exact format below will cause
@@ -98,27 +100,30 @@ parsing failures and break the enforcement pipeline.
 
 **Escalation Matrix**:
 
-| Change Type | Default Escalation | Override Conditions |
-|-------------|-------------------|---------------------|
-| Corollary to existing axiom/heuristic | auto | None - always allowed |
-| New heuristic (soft guidance) | critic | Human if affects multiple workflows |
-| New axiom (hard rule) | human | Never auto-approve |
-| Enforcement hook (Level 4-5) | critic | Human if blocking behavior |
-| Deny rule (Level 6) | human | Never auto-approve |
-| settings.json modification | human | Never auto-approve |
+| Change Type                           | Default Escalation | Override Conditions                 |
+| ------------------------------------- | ------------------ | ----------------------------------- |
+| Corollary to existing axiom/heuristic | auto               | None - always allowed               |
+| New heuristic (soft guidance)         | critic             | Human if affects multiple workflows |
+| New axiom (hard rule)                 | human              | Never auto-approve                  |
+| Enforcement hook (Level 4-5)          | critic             | Human if blocking behavior          |
+| Deny rule (Level 6)                   | human              | Never auto-approve                  |
+| settings.json modification            | human              | Never auto-approve                  |
 
 **Why this works**: The structured format:
+
 1. **Forces context loading** - Can't fill "Rules Loaded" without reading the files
 2. **Requires prior art search** - Prevents reinventing existing patterns
 3. **Demands minimality justification** - Catches over-engineering
 4. **Enables automatic routing** - Escalation field parsed for approval workflow
 
 **Integration points**:
+
 - `/learn` command requires this format before framework edits
 - PreToolUse hook can validate format presence for framework file edits
 - Critic/custodiet receive the justification block as input
 
 **Fails when**:
+
 - Agent fabricates "Rules Loaded" without actually reading
 - Format becomes boilerplate (agent copy-pastes without reasoning)
 

@@ -10,7 +10,9 @@ from pathlib import Path
 CLI_CMD = [sys.executable, "-m", "scripts.task_cli"]
 
 
-def run_cli(*args: str, cwd: Path | None = None, env: dict | None = None) -> subprocess.CompletedProcess:
+def run_cli(
+    *args: str, cwd: Path | None = None, env: dict | None = None
+) -> subprocess.CompletedProcess:
     """Run the task CLI with given arguments."""
     cmd = CLI_CMD + list(args)
     # Merge with current env if custom env provided
@@ -82,7 +84,13 @@ class TestCliCreate:
 
     def test_create_with_project(self, tmp_path):
         """'task create --project book "My Task"' assigns to project."""
-        result = run_cli("create", "--project", "book", "My Book Task", env={"ACA_DATA": str(tmp_path)})
+        result = run_cli(
+            "create",
+            "--project",
+            "book",
+            "My Book Task",
+            env={"ACA_DATA": str(tmp_path)},
+        )
         assert result.returncode == 0
 
 
@@ -112,14 +120,14 @@ class TestCliComplete:
             if "ID:" in line:
                 task_id = line.split("ID:")[-1].strip()
                 break
-        
+
         # Fallback to searching for date-like ID if ID: line not found (legacy)
         if not task_id:
             for word in create_result.stdout.split():
                 if word.startswith("20") and len(word) >= 8:
                     task_id = word.strip()
                     break
-                    
+
         assert task_id is not None, f"Could not find task ID in: {create_result.stdout}"
 
         # Now complete it
@@ -146,19 +154,19 @@ class TestCliShow:
         # First create a task
         create_result = run_cli("create", "Task to show", env=env)
         assert create_result.returncode == 0
-        
+
         task_id = None
         for line in create_result.stdout.splitlines():
             if "ID:" in line:
                 task_id = line.split("ID:")[-1].strip()
                 break
-        
+
         if not task_id:
             for word in create_result.stdout.split():
                 if word.startswith("20") and len(word) >= 8:
                     task_id = word.strip()
                     break
-                    
+
         assert task_id is not None, f"Could not find task ID in: {create_result.stdout}"
 
         # Now show it

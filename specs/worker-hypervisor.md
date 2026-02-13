@@ -7,6 +7,14 @@ status: DRAFT
 
 # Worker-Hypervisor Architecture
 
+## Giving Effect
+
+- [[skills/hypervisor/SKILL.md]] - Hypervisor skill for batch parallel processing with atomic locking
+- [[polecat/swarm.py]] - Swarm orchestration for parallel workers
+- [[mcp__plugin_aops-core_task_manager__claim_next_task]] - Atomic task claiming to prevent race conditions
+- [[commands/pull.md]] - `/pull` command that workers execute
+- [[specs/polecat-swarms.md]] - Swarm architecture built on polecat worktrees
+
 **Goal**: Enable parallel task execution where multiple worker agents independently pull and complete tasks from bd, coordinated by a hypervisor that maintains a pool of active workers.
 
 ## Problem Statement
@@ -47,7 +55,7 @@ Current execution is single-threaded: one agent handles one task at a time. For 
 
 ## Worker Agent
 
-### Purpose
+### Worker Purpose
 
 A worker agent is a self-contained execution unit that:
 
@@ -153,7 +161,7 @@ Workers MUST NOT:
 
 ## Hypervisor Agent
 
-### Purpose
+### Hypervisor Purpose
 
 The hypervisor is a coordination layer that:
 
@@ -245,73 +253,9 @@ Worker reports failure
            No  → Continue with remaining workers
 ```
 
-## bd Integration
-
-### Session Start Instructions (Worker)
-
-When a worker starts, it has full bd context injected. The worker does NOT need to:
-
-- Run `bd ready` (already knows its task)
-- Search for tasks (task is assigned)
-- Decide what to work on (hypervisor decided)
-
-Worker bd operations:
-
-```bash
-# At start: claim the task
-bd update <id> --status=in_progress
-
-# During work: add progress notes
-bd update <id> --comment="Completed step X"
-
-# At end: close the task
-bd close <id>
-```
-
-### Session Start Instructions (Hypervisor)
-
-Hypervisor actively manages bd:
-
-```bash
-# Assess queue
-bd ready
-bd list --status=open --no-blocked
-
-# Monitor progress (check worker tasks)
-bd show <worker-task-id>
-
-# Handle failures
-bd update <id> --comment="Worker failed: <reason>"
-bd update <id> --status=blocked --blocked-by="<reason>"
-
-# Final sync
-bd sync
-```
-
-## Integration with Core Loop
-
-The worker-hypervisor pattern integrates with the v1.0 core loop:
-
-1. **Prompt Hydrator**: Can route batch requests to hypervisor workflow
-2. **Critic**: Reviews hypervisor's task assignment plan before spawning workers
-3. **Custodiet**: Monitors workers for scope drift (each worker runs independently)
-4. **QA**: Hypervisor runs combined QA after all workers complete
-
-### Workflow Selection
-
-```
-User request mentions "batch" or multiple tasks
-    │
-    ├─ Prompt hydrator selects [[batch-processing]] workflow
-    │
-    ├─ Workflow instructs: "Spawn hypervisor agent"
-    │
-    └─ Hypervisor takes over parallel execution
-```
-
 ## Success Criteria
 
-1. Workers can independently complete bd tasks without supervision
+1. Workers can independently complete tasks without supervision
 2. Hypervisor maintains 4-8 concurrent workers
 3. Git operations don't conflict (single push point)
 4. Failures are handled gracefully (retry, log, continue)
@@ -324,13 +268,13 @@ Tested parallel worker spawning with 5 haiku workers on aops framework tasks:
 
 ### Results
 
-| Metric | Result |
-|--------|--------|
-| Spawn success | 5/5 (100%) |
-| Execution success | 5/5 (100%) |
-| Conflicts/collisions | 0 |
-| Commits produced | 5 |
-| Notification delivery | 4/5 (80%) |
+| Metric                | Result     |
+| --------------------- | ---------- |
+| Spawn success         | 5/5 (100%) |
+| Execution success     | 5/5 (100%) |
+| Conflicts/collisions  | 0          |
+| Commits produced      | 5          |
+| Notification delivery | 4/5 (80%)  |
 
 ### Confirmed Working
 

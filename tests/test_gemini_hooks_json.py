@@ -94,8 +94,7 @@ class TestGeminiHooksJsonStructure:
             data = json.load(f)
 
         assert "hooks" in data, (
-            "hooks.json must have a 'hooks' key at top level. "
-            f"Found keys: {list(data.keys())}"
+            f"hooks.json must have a 'hooks' key at top level. Found keys: {list(data.keys())}"
         )
 
     def test_hooks_is_object(self, dist_hooks_json: Path) -> None:
@@ -174,8 +173,7 @@ class TestGeminiHooksEventNames:
         missing = required_events - event_names
 
         assert not missing, (
-            f"hooks.json missing required events: {missing}. "
-            f"Present events: {event_names}"
+            f"hooks.json missing required events: {missing}. Present events: {event_names}"
         )
 
 

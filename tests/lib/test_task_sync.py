@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """Tests for task_sync module."""
 
-import pytest
 import tempfile
 from pathlib import Path
-from datetime import datetime, UTC
 
-from lib.task_sync import TaskSyncService, SyncResult, sync_task_from_session
+import pytest
+from lib.task_model import TaskType
 from lib.task_storage import TaskStorage
-from lib.task_model import Task, TaskType, TaskStatus
+from lib.task_sync import SyncResult, TaskSyncService, sync_task_from_session
 
 
 class TestTaskSyncService:
@@ -80,9 +79,7 @@ Some notes about the feature.
 
     def test_mark_checklist_items(self, service, sample_task):
         """Test marking checklist items as complete."""
-        marked = service._mark_checklist_items(
-            sample_task, "Wrote unit tests for feature X"
-        )
+        marked = service._mark_checklist_items(sample_task, "Wrote unit tests for feature X")
         assert len(marked) >= 1
         assert "Write unit tests" in marked
         assert "[x] Write unit tests" in sample_task.body
@@ -91,10 +88,7 @@ Some notes about the feature.
 
     def test_mark_checklist_items_no_match(self, service, sample_task):
         """Test no items marked when no match."""
-        original_body = sample_task.body
-        marked = service._mark_checklist_items(
-            sample_task, "Something completely unrelated"
-        )
+        marked = service._mark_checklist_items(sample_task, "Something completely unrelated")
         assert len(marked) == 0
         # Body should be unchanged (all items still unchecked)
         assert "- [ ] Write unit tests" in sample_task.body
@@ -114,13 +108,9 @@ Some notes about the feature.
     def test_add_progress_entry_existing_section(self, service, sample_task):
         """Test adding progress entry to existing section."""
         # First entry
-        service._add_progress_entry(
-            sample_task, "First entry", "sess1234", "2026-01-23"
-        )
+        service._add_progress_entry(sample_task, "First entry", "sess1234", "2026-01-23")
         # Second entry
-        added = service._add_progress_entry(
-            sample_task, "Second entry", "sess5678", "2026-01-24"
-        )
+        added = service._add_progress_entry(sample_task, "Second entry", "sess5678", "2026-01-24")
         assert added is True
         assert "First entry" in sample_task.body
         assert "Second entry" in sample_task.body
@@ -152,9 +142,7 @@ Some notes about the feature.
         insights = {
             "session_id": "test1234",
             "date": "2026-01-24",
-            "accomplishments": [
-                {"task_id": "nonexistent-12345678", "text": "Something"}
-            ],
+            "accomplishments": [{"task_id": "nonexistent-12345678", "text": "Something"}],
         }
 
         report = service.sync_accomplishments_to_tasks(insights)

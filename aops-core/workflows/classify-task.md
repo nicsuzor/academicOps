@@ -18,38 +18,44 @@ Determine task complexity and placement on the work graph for proper sequencing.
 
 Classify based on execution path and scope:
 
-| Complexity | Path | Scope | Signals |
-|------------|------|-------|---------|
-| `mechanical` | EXECUTE | single-session | Known steps, clear deliverable, no judgment needed |
-| `requires-judgment` | EXECUTE | single-session | Some unknowns, needs exploration within bounds |
-| `multi-step` | EXECUTE | multi-session | Sequential orchestration, clear decomposition |
-| `needs-decomposition` | TRIAGE | any | Too vague, must break down before executing |
-| `blocked-human` | TRIAGE | any | Requires human decision or external input |
+| Complexity            | Path    | Scope          | Signals                                            |
+| --------------------- | ------- | -------------- | -------------------------------------------------- |
+| `mechanical`          | EXECUTE | single-session | Known steps, clear deliverable, no judgment needed |
+| `requires-judgment`   | EXECUTE | single-session | Some unknowns, needs exploration within bounds     |
+| `multi-step`          | EXECUTE | multi-session  | Sequential orchestration, clear decomposition      |
+| `needs-decomposition` | TRIAGE  | any            | Too vague, must break down before executing        |
+| `blocked-human`       | TRIAGE  | any            | Requires human decision or external input          |
 
 ### Classification Heuristics
 
 **mechanical** (immediate):
+
 - "Rename X to Y across files"
 - "Add field Z to model"
 - "Fix typo in documentation"
 - Single file, obvious change
 
 **requires-judgment** (execute with discretion):
+
 - "Debug why X fails" (known symptom, unknown cause)
 - "Implement feature Y" (bounded scope, some design decisions)
 - "Review and fix test failures" (investigation within session)
 
 **multi-step** (plan with independent review):
+
 - "Refactor system X" (clear goal, multiple sessions)
 - "Migrate from A to B" (known destination, staged execution)
 - "Complete feature with tests" (multiple phases)
 
 **needs-decomposition** (TRIAGE, don't execute):
+
 - "Build feature X" (vague scope)
 - "Improve performance" (needs analysis first)
 - Goal-level requests lacking clear path
+- **NOT** tasks with clear plans awaiting information - those are `multi-step` (e.g., "run QA tests, analyze results, decompose findings" has clear steps)
 
 **blocked-human** (TRIAGE, assign to nic):
+
 - "Which API should we use?"
 - "Need approval for architecture change"
 - Missing external input, strategic decision
@@ -61,18 +67,21 @@ Every task exists on a work graph. Position it correctly:
 ### Parent Selection
 
 **Before setting parent, search for candidate parents**:
+
 1. Use graph search or task index to find existing work related to this task
 2. Look for umbrella tasks, project containers, or feature groups that would logically contain this work
 3. Check task titles and bodies for matching keywords or scope areas
 4. Only assign parent if a clear relationship exists
 
 **Set `parent` when**:
+
 - Task is a subtask of existing project/goal
 - Work contributes to a larger deliverable
 - Task naturally belongs under umbrella work
 - Search confirmed a relevant parent exists
 
 **Leave `parent` null when**:
+
 - Standalone work (bug fixes, quick tasks)
 - Creating a new root-level goal
 - Work genuinely has no logical parent
@@ -91,11 +100,13 @@ Example: Instead of creating 5 separate "bug fix" tasks at trunk level, group th
 ### Dependency Selection
 
 **Set `depends_on` when**:
+
 - Task requires output of another task
 - Sequencing matters for correctness
 - Blocking is intentional (human review gates)
 
 **Common dependency patterns**:
+
 - Schema design → implementation (can't implement without design)
 - Research → build (can't build without understanding)
 - Write → review → publish (sequential phases)
@@ -114,11 +125,11 @@ Example: Instead of creating 5 separate "bug fix" tasks at trunk level, group th
 
 **Tasks are work units, not tool calls.** A single task may comprise many execution steps.
 
-| Level | What it is | Decompose to this? |
-|-------|-----------|-------------------|
-| **Task** | Tracked work item with complexity | ✅ Yes - decompose goals → tasks |
+| Level              | What it is                         | Decompose to this?                     |
+| ------------------ | ---------------------------------- | -------------------------------------- |
+| **Task**           | Tracked work item with complexity  | ✅ Yes - decompose goals → tasks       |
 | **Execution step** | Progress tracking within execution | ❌ No - these are execution, not tasks |
-| **Task() call** | Subagent invocation | ❌ No - these are execution mechanisms |
+| **Task() call**    | Subagent invocation                | ❌ No - these are execution mechanisms |
 
 **Right granularity**: "Add pagination to API endpoint" (1 task, many steps)
 **Over-decomposed**: "Write test file", "Add page parameter", "Update response format" (3 tasks for 1 feature)
@@ -133,11 +144,11 @@ Example: Instead of creating 5 separate "bug fix" tasks at trunk level, group th
 
 When assigning projects, assess your confidence level:
 
-| Confidence | Signals | Action |
-|------------|---------|--------|
-| **High** | Task clearly mentions project, matches existing epic, domain obvious | Assign directly |
-| **Medium** | Could fit multiple projects, context suggests one | Present suggestion with reasoning, confirm |
-| **Low** | Ambiguous, cross-cutting, or unfamiliar domain | Ask user before assigning |
+| Confidence | Signals                                                              | Action                                     |
+| ---------- | -------------------------------------------------------------------- | ------------------------------------------ |
+| **High**   | Task clearly mentions project, matches existing epic, domain obvious | Assign directly                            |
+| **Medium** | Could fit multiple projects, context suggests one                    | Present suggestion with reasoning, confirm |
+| **Low**    | Ambiguous, cross-cutting, or unfamiliar domain                       | Ask user before assigning                  |
 
 #### Confirmation Pattern (Medium/Low Confidence)
 
@@ -150,11 +161,13 @@ When uncertain, present suggestions rather than guessing:
 ```
 
 Then use `AskUserQuestion` with specific options:
+
 - "Move to project Y" (your suggestion)
 - "Keep in project X"
 - Let user specify via "Other"
 
 **Example from recategorization session:**
+
 - Task "omcp repo size" was under `aops` project
 - Content clearly about omcp repository, not aops framework
 - Presented suggestion: "Move to project=omcp?" with reasoning
@@ -162,16 +175,19 @@ Then use `AskUserQuestion` with specific options:
 
 #### Standard Projects
 
-| Project | Domain |
-|---------|--------|
-| `aops` | Framework infrastructure, hooks, workflows |
-| `buttermilk` | Data pipelines, processing infrastructure |
-| `tja` | TJA research project |
-| `osb` | Oversight Board research |
-| `omcp` | Outlook MCP server |
-| `personal` | Personal infrastructure, GCP, home automation |
-| `academic` | Teaching, research admin |
-| `ns` | General/uncategorized (default fallback) |
+| Project      | Domain                                        |
+| ------------ | --------------------------------------------- |
+| `aops`       | Framework infrastructure, hooks, workflows    |
+| `buttermilk` | Data pipelines, processing infrastructure     |
+| `tja`        | TJA research project                          |
+| `osb`        | Oversight Board research                      |
+| `omcp`       | Outlook MCP server                            |
+| `personal`   | Personal infrastructure, GCP, home automation |
+| `academic`   | Teaching, research admin                      |
+| `hdr`        | HDR student supervision and administration    |
+| `ns`         | General/uncategorized (default fallback)      |
+
+**Note**: HDR student tasks MUST use `project=hdr`. Do not use `supervision` project for student-specific tasks.
 
 **Default**: Use `ns` only if no specific project fits AND user confirmation isn't practical
 
@@ -179,13 +195,13 @@ Then use `AskUserQuestion` with specific options:
 
 Complexity determines which model executes the work:
 
-| Complexity | Model | Rationale |
-|------------|-------|-----------|
-| `mechanical` | haiku | Fast, cheap; known steps require no judgment |
-| `requires-judgment` | sonnet | Balanced capability for investigation within bounds |
-| `multi-step` | sonnet | Orchestration across sessions; escalate to opus for architectural complexity |
-| `needs-decomposition` | opus | Deep planning capability for breakdown; or human if strategic |
-| `blocked-human` | N/A | Human handles; no model execution |
+| Complexity            | Model  | Rationale                                                                    |
+| --------------------- | ------ | ---------------------------------------------------------------------------- |
+| `mechanical`          | haiku  | Fast, cheap; known steps require no judgment                                 |
+| `requires-judgment`   | sonnet | Balanced capability for investigation within bounds                          |
+| `multi-step`          | sonnet | Orchestration across sessions; escalate to opus for architectural complexity |
+| `needs-decomposition` | opus   | Deep planning capability for breakdown; or human if strategic                |
+| `blocked-human`       | N/A    | Human handles; no model execution                                            |
 
 ### Escalation Rules
 
@@ -217,33 +233,37 @@ Complexity and workflow are related but not 1:1. The relationship:
 
 ### Complexity × Workflow Matrix
 
-| Complexity | Typical Workflows | Execution Style |
-|------------|-------------------|-----------------|
-| `mechanical` | [[design]], [[direct-skill]] | Skip optional verification; fast path |
-| `requires-judgment` | [[debugging]], [[design]], [[feature-dev]] | Standard execution with checkpoints |
-| `multi-step` | [[decompose]] then [[feature-dev]] | Break into sessions; track cross-session |
-| `needs-decomposition` | [[decompose]] | TRIAGE: decompose first, don't execute |
-| `blocked-human` | None | TRIAGE: assign and halt |
+| Complexity            | Typical Workflows                          | Execution Style                          |
+| --------------------- | ------------------------------------------ | ---------------------------------------- |
+| `mechanical`          | [[design]], [[direct-skill]]               | Skip optional verification; fast path    |
+| `requires-judgment`   | [[debugging]], [[design]], [[feature-dev]] | Standard execution with checkpoints      |
+| `multi-step`          | [[decompose]] then [[feature-dev]]         | Break into sessions; track cross-session |
+| `needs-decomposition` | [[decompose]]                              | TRIAGE: decompose first, don't execute   |
+| `blocked-human`       | None                                       | TRIAGE: assign and halt                  |
 
 ### Workflow Refinement by Complexity
 
 **mechanical + design**:
+
 - Skip detailed critic (use fast critic or none)
 - Minimal verification checkpoint
 - Direct commit after change
 
 **requires-judgment + debugging**:
+
 - Standard verification checkpoints
 - Fast critic review
 - Document findings in task body
 
 **multi-step + feature-dev**:
+
 - Detailed critic review
 - Multiple verification gates
 - Session handoff documentation
 - Cross-session state tracking
 
 **needs-decomposition**:
+
 - Use [[decompose]] workflow
 - Output is subtasks, not implementation
 - Each subtask should be `mechanical` or `requires-judgment`
@@ -290,6 +310,7 @@ New work arrives
 4. **Project**: Match to relevant domain
 
 **Result**:
+
 ```
 create_task(
   title="Add pagination to API endpoint",

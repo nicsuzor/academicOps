@@ -18,10 +18,10 @@ Force graceful handover when work must stop immediately.
 
 ## When to Use
 
-* Session must end unexpectedly
-* Context window approaching limit
-* User needs to interrupt for higher-priority work
-* Agent is stuck and needs to hand off
+- Session must end unexpectedly
+- Context window approaching limit
+- User needs to interrupt for higher-priority work
+- Agent is stuck and needs to hand off
 
 ## Execution
 

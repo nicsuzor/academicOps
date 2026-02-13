@@ -25,7 +25,7 @@ Generated indices are root-level markdown files designed for direct agent consum
 | File                  | Purpose                                           | Derived From                            |
 | --------------------- | ------------------------------------------------- | --------------------------------------- |
 | `INDEX.md`            | File tree and locations                           | Directory structure                     |
-| `enforcement-map.md`            | Enforcement mechanisms                            | Hooks, settings.json, pre-commit        |
+| `enforcement-map.md`  | Enforcement mechanisms                            | Hooks, settings.json, pre-commit        |
 | `WORKFLOWS.md`        | Task classification and routing                   | Skills, agents, guardrails              |
 | `docs/ENFORCEMENT.md` | Practical enforcement guide + root cause analysis | specs/enforcement.md, observed patterns |
 

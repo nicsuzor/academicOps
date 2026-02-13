@@ -5,16 +5,48 @@ All paths resolve using AOPS and ACA_DATA environment variables.
 """
 
 import os
+from datetime import UTC
 from pathlib import Path
 
 import pytest
 
-from .paths import get_bots_dir, get_data_dir, get_hooks_dir, get_writing_root
+from .paths import (
+    get_bots_dir,
+    get_data_dir,
+    get_hooks_dir,
+    get_repo_root,
+    get_writing_root,
+)
 
 
 def _is_xdist_worker() -> bool:
     """Check if running in an xdist worker process."""
     return os.environ.get("PYTEST_XDIST_WORKER") is not None
+
+
+@pytest.fixture(autouse=True)
+def ensure_test_environment(monkeypatch, tmp_path):
+    """Ensure ACA_DATA is set and directories exist for all tests.
+
+    This provides a fallback test environment if ACA_DATA is not set externally.
+    """
+    if not os.environ.get("ACA_DATA"):
+        # Use a stable temp dir for the session if possible, or tmp_path
+        # But tmp_path is unique per test.
+        # Ideally we want a shared one for the session, but per-test is safer for isolation.
+        data_dir = tmp_path / "aca_data"
+        monkeypatch.setenv("ACA_DATA", str(data_dir))
+    else:
+        data_dir = Path(os.environ["ACA_DATA"])
+
+    # Ensure required structure exists
+    (data_dir / "tasks").mkdir(parents=True, exist_ok=True)
+    (data_dir / "projects").mkdir(parents=True, exist_ok=True)
+    (data_dir / "logs").mkdir(parents=True, exist_ok=True)
+    (data_dir / "goals").mkdir(parents=True, exist_ok=True)
+    (data_dir / "context").mkdir(parents=True, exist_ok=True)
+    # Sessions is sibling of data_root
+    (data_dir.parent / "sessions").mkdir(parents=True, exist_ok=True)
 
 
 @pytest.fixture(autouse=True)
@@ -27,9 +59,7 @@ def skip_demo_in_xdist(request):
     Run demo tests with: pytest -m demo -n 0
     """
     if "demo" in request.keywords and _is_xdist_worker():
-        pytest.skip(
-            "Demo tests require -n 0 for visible output. Run: pytest -m demo -n 0"
-        )
+        pytest.skip("Demo tests require -n 0 for visible output. Run: pytest -m demo -n 0")
 
 
 @pytest.fixture
@@ -75,6 +105,18 @@ def writing_root() -> Path:
 
 
 @pytest.fixture
+def repo_root() -> Path:
+    """Return Path to repository root (parent of aops-core plugin).
+
+    GitHub workflows and other repo-level files live here, not in the plugin.
+
+    Returns:
+        Path: Absolute path to repository root
+    """
+    return get_repo_root()
+
+
+@pytest.fixture
 def test_data_dir(tmp_path: Path, monkeypatch) -> Path:
     """Create temporary data directory structure for task tests.
 
@@ -97,12 +139,8 @@ def test_data_dir(tmp_path: Path, monkeypatch) -> Path:
     (tasks_dir / "archived").mkdir(parents=True)
 
     # Create sample task files for tests
-    _create_sample_task(
-        inbox_dir, "sample-task-1", "High Priority Task", 1, "project-a"
-    )
-    _create_sample_task(
-        inbox_dir, "sample-task-2", "Medium Priority Task", 2, "project-b"
-    )
+    _create_sample_task(inbox_dir, "sample-task-1", "High Priority Task", 1, "project-a")
+    _create_sample_task(inbox_dir, "sample-task-2", "Medium Priority Task", 2, "project-b")
     _create_sample_task(inbox_dir, "sample-task-3", "Low Priority Task", 3, "project-a")
 
     # Set ACA_DATA - server reads this directly via task_ops.get_data_dir()
@@ -123,14 +161,14 @@ def _create_sample_task(
         priority: Priority level (0-3)
         project: Project name
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     filename = f"{task_id}.md"
     filepath = directory / filename
 
     # Generate properly formatted content
-    now = datetime.now(timezone.utc).isoformat()
-    created = datetime(2025, 1, 1, tzinfo=timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
+    created = datetime(2025, 1, 1, tzinfo=UTC).isoformat()
 
     content = f"""---
 title: {title}
@@ -155,6 +193,8 @@ This is a sample task created by the test fixture.
 
 """
     filepath.write_text(content, encoding="utf-8")
+
+
 #!/usr/bin/env python3
 """Integration test configuration and fixtures.
 
@@ -166,11 +206,11 @@ Provides:
 
 import json
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import pytest
-
 from lib.paths import get_plugin_root as get_aops_root
 
 
@@ -203,12 +243,9 @@ def extract_response_text(result: dict[str, Any]) -> str:
             if isinstance(text, str):
                 return text
             raise TypeError(
-                f"Expected result['result']['result'] to be string, "
-                f"got {type(text).__name__}"
+                f"Expected result['result']['result'] to be string, got {type(text).__name__}"
             )
-        raise ValueError(
-            f"Dict result missing 'result' field. Keys: {list(result_data.keys())}"
-        )
+        raise ValueError(f"Dict result missing 'result' field. Keys: {list(result_data.keys())}")
 
     # Handle string result directly (simplest case)
     if isinstance(result_data, str):
@@ -258,8 +295,7 @@ def extract_response_text(result: dict[str, Any]) -> str:
         )
 
     raise TypeError(
-        f"Expected result['result'] to be dict, str, or list, "
-        f"got {type(result_data).__name__}"
+        f"Expected result['result'] to be dict, str, or list, got {type(result_data).__name__}"
     )
 
 
@@ -444,8 +480,7 @@ def _make_failing_wrapper(
         if not result["success"] and fail_on_error:
             error_msg = result.get("error", "Unknown error")
             pytest.fail(
-                f"Headless session failed (set fail_on_error=False to handle manually): "
-                f"{error_msg}"
+                f"Headless session failed (set fail_on_error=False to handle manually): {error_msg}"
             )
 
         return result
@@ -546,7 +581,7 @@ def run_gemini_headless(
             "result": {},
             "error": "AOPS environment variable not set - required for tests",
         }
-    
+
     # Ensure CLAUDE_PLUGIN_ROOT is set for hooks.json variable expansion
     if "CLAUDE_PLUGIN_ROOT" not in env:
         # aops-core is the plugin root
@@ -581,15 +616,14 @@ def run_gemini_headless(
             # Fallback: look for JSON object boundaries
             # We want the LAST valid JSON object, as that's likely the CLI response
             # (Hooks log earlier)
-            import re
-            
+
             # Simple heuristic: Look for { ... } that parse successfully
             candidates = []
             # This regex matches balanced braces is hard, so we'll try a simpler approach:
             # Find all start braces '{'
             output = result.stdout
             for i, char in enumerate(output):
-                if char == '{':
+                if char == "{":
                     # Try to parse from here to end, then backtrack if needed
                     # Actually, better to just try parsing substring starting at i
                     try:
@@ -597,7 +631,7 @@ def run_gemini_headless(
                         candidates.append((i + end_idx, obj))
                     except json.JSONDecodeError:
                         continue
-            
+
             if candidates:
                 # Use the last successfully parsed object
                 _, parsed_output = max(candidates, key=lambda x: x[0])
@@ -771,9 +805,9 @@ def _skill_was_invoked(tool_calls: list[dict], skill_name: str) -> bool:
 def extract_subagent_tool_calls(tool_calls: list[dict]) -> list[dict]:
     """Extract subagent tool calls from a list of main agent tool calls.
 
-    When a main agent invokes a Skill tool, that skill may itself invoke tools
-    (subagent tool calls). This helper extracts information about subagent
-    invocations for cleaner test assertions.
+    Extracts both Task tool and Skill tool invocations. The Task tool spawns
+    actual subagents (separate processes), while Skill tool invokes skills
+    within the current agent context.
 
     Args:
         tool_calls: List of parsed tool calls from main agent session
@@ -781,52 +815,153 @@ def extract_subagent_tool_calls(tool_calls: list[dict]) -> list[dict]:
 
     Returns:
         List of subagent tool call information dicts with keys:
-        - skill: Name of the skill that was invoked
-        - args: Arguments passed to the Skill tool (may include nested skill names)
-        - input: Raw input dict from the Skill tool call
+        - type: "task" or "skill" indicating invocation type
+        - name: Subagent type (for Task) or skill name (for Skill)
+        - prompt: Task prompt (Task only)
+        - args: Arguments (Skill only, may include nested skill names)
+        - model: Model used (Task only, if specified)
+        - run_in_background: Whether Task runs in background (Task only)
+        - input: Raw input dict from the tool call
         - index: Position in the main agent's tool call sequence
 
     Example:
         # In a test:
         result, session_id, tool_calls = claude_headless_tracked(
-            "Use the framework skill to do something"
+            "Use the Explore agent to find Python files"
         )
         subagent_calls = extract_subagent_tool_calls(tool_calls)
 
-        # Check that a specific skill was invoked
-        assert any(call["skill"] == "framework" for call in subagent_calls)
+        # Check for Task subagent spawns
+        task_calls = [c for c in subagent_calls if c["type"] == "task"]
+        assert any(c["name"] == "Explore" for c in task_calls)
 
-        # Check skill arguments
-        framework_calls = [c for c in subagent_calls if c["skill"] == "framework"]
-        assert all("args" in c for c in framework_calls)
+        # Check for Skill invocations
+        skill_calls = [c for c in subagent_calls if c["type"] == "skill"]
+        assert any(c["name"] == "framework" for c in skill_calls)
     """
     subagent_calls = []
 
     for index, call in enumerate(tool_calls):
-        # Only Skill tool invocations represent subagent calls
-        if call["name"] != "Skill":
+        call_name = call.get("name", "")
+        input_data = call.get("input", {})
+
+        if call_name == "Task":
+            # Task tool spawns actual subagents
+            subagent_type = input_data.get("subagent_type", "")
+            if not subagent_type:
+                continue
+
+            subagent_calls.append(
+                {
+                    "type": "task",
+                    "name": subagent_type,
+                    "prompt": input_data.get("prompt", ""),
+                    "model": input_data.get("model"),
+                    "run_in_background": input_data.get("run_in_background", False),
+                    "input": input_data,
+                    "index": index,
+                }
+            )
+
+        elif call_name == "Skill":
+            # Skill tool invokes skills within current context
+            skill_name = input_data.get("skill", "")
+            if not skill_name:
+                continue
+
+            subagent_calls.append(
+                {
+                    "type": "skill",
+                    "name": skill_name,
+                    "args": input_data.get("args", ""),
+                    "input": input_data,
+                    "index": index,
+                }
+            )
+
+    return subagent_calls
+
+
+def extract_task_calls(tool_calls: list[dict]) -> list[dict]:
+    """Extract Task tool invocations (subagent spawns) from tool calls.
+
+    This is a convenience helper for tests that only care about Task tool
+    invocations, not Skill invocations.
+
+    Args:
+        tool_calls: List of parsed tool calls from main agent session
+
+    Returns:
+        List of Task invocation dicts with keys:
+        - subagent_type: Type of subagent spawned
+        - prompt: Task prompt
+        - model: Model used (if specified)
+        - run_in_background: Whether running in background
+        - input: Raw input dict
+        - index: Position in tool call sequence
+
+    Example:
+        task_calls = extract_task_calls(tool_calls)
+        assert any(c["subagent_type"] == "Explore" for c in task_calls)
+    """
+    task_calls = []
+
+    for index, call in enumerate(tool_calls):
+        if call.get("name") != "Task":
             continue
 
         input_data = call.get("input", {})
-        skill_name = input_data.get("skill", "")
+        subagent_type = input_data.get("subagent_type", "")
 
-        if not skill_name:
-            # Malformed Skill invocation - skip it
+        if not subagent_type:
             continue
 
-        # Extract arguments if present (args key contains additional parameters)
-        args = input_data.get("args", "")
-
-        subagent_calls.append(
+        task_calls.append(
             {
-                "skill": skill_name,
-                "args": args,
+                "subagent_type": subagent_type,
+                "prompt": input_data.get("prompt", ""),
+                "model": input_data.get("model"),
+                "run_in_background": input_data.get("run_in_background", False),
                 "input": input_data,
                 "index": index,
             }
         )
 
-    return subagent_calls
+    return task_calls
+
+
+def task_tool_with_type(tool_calls: list[dict], subagent_type: str) -> bool:
+    """Check if Task tool was used with a specific subagent type.
+
+    Args:
+        tool_calls: List of parsed tool calls from session
+        subagent_type: Expected subagent_type value (e.g., "Explore", "critic")
+
+    Returns:
+        True if Task tool was called with matching subagent_type
+
+    Example:
+        assert task_tool_with_type(tool_calls, "Explore")
+        assert task_tool_with_type(tool_calls, "general-purpose")
+    """
+    task_calls = extract_task_calls(tool_calls)
+    return any(c["subagent_type"] == subagent_type for c in task_calls)
+
+
+def count_task_calls(tool_calls: list[dict]) -> int:
+    """Count number of Task tool invocations.
+
+    Args:
+        tool_calls: List of parsed tool calls from session
+
+    Returns:
+        Number of Task tool calls
+
+    Example:
+        # Verify parallel agent spawn
+        assert count_task_calls(tool_calls) >= 2
+    """
+    return len(extract_task_calls(tool_calls))
 
 
 @pytest.fixture
@@ -849,23 +984,69 @@ def extract_subagent_calls():
     """Pytest fixture providing subagent tool call extractor.
 
     Returns:
-        Callable that extracts subagent tool calls from main agent tool calls.
+        Callable that extracts subagent tool calls (both Task and Skill) from
+        main agent tool calls.
 
     Example:
-        def test_skill_invocation(claude_headless_tracked, extract_subagent_calls):
+        def test_subagent_invocation(claude_headless_tracked, extract_subagent_calls):
             result, _, tool_calls = claude_headless_tracked("prompt")
             subagent_calls = extract_subagent_calls(tool_calls)
 
-            # Check if a specific skill was invoked as subagent
-            framework_calls = [c for c in subagent_calls if c["skill"] == "framework"]
-            assert len(framework_calls) > 0
+            # Check for Task subagent spawns
+            task_calls = [c for c in subagent_calls if c["type"] == "task"]
+            assert any(c["name"] == "Explore" for c in task_calls)
 
-            # Check skill arguments
-            for call in framework_calls:
-                assert "input" in call
-                assert "args" in call
+            # Check for Skill invocations
+            skill_calls = [c for c in subagent_calls if c["type"] == "skill"]
+            assert any(c["name"] == "framework" for c in skill_calls)
     """
     return extract_subagent_tool_calls
+
+
+@pytest.fixture
+def get_task_calls():
+    """Pytest fixture providing Task tool call extractor.
+
+    Returns:
+        Callable that extracts Task tool invocations from tool calls.
+
+    Example:
+        def test_explore_agent(claude_headless_tracked, get_task_calls):
+            result, _, tool_calls = claude_headless_tracked("prompt")
+            task_calls = get_task_calls(tool_calls)
+            assert any(c["subagent_type"] == "Explore" for c in task_calls)
+    """
+    return extract_task_calls
+
+
+@pytest.fixture
+def check_task_type():
+    """Pytest fixture for checking if Task tool was used with specific subagent type.
+
+    Returns:
+        Callable that checks if Task tool was called with matching subagent_type.
+
+    Example:
+        def test_explore_agent(claude_headless_tracked, check_task_type):
+            result, _, tool_calls = claude_headless_tracked("Use Explore agent")
+            assert check_task_type(tool_calls, "Explore")
+    """
+    return task_tool_with_type
+
+
+@pytest.fixture
+def get_task_count():
+    """Pytest fixture for counting Task tool invocations.
+
+    Returns:
+        Callable that returns number of Task tool calls.
+
+    Example:
+        def test_parallel_spawn(claude_headless_tracked, get_task_count):
+            result, _, tool_calls = claude_headless_tracked("Spawn 2 agents")
+            assert get_task_count(tool_calls) >= 2
+    """
+    return count_task_calls
 
 
 @pytest.fixture
@@ -1043,9 +1224,7 @@ def pytest_configure(config):
         "markers",
         "integration: mark test as integration test (requires external systems)",
     )
-    config.addinivalue_line(
-        "markers", "slow: mark test as slow (may take minutes to complete)"
-    )
+    config.addinivalue_line("markers", "slow: mark test as slow (may take minutes to complete)")
 
 
 def pytest_collection_modifyitems(config, items):  # noqa: ARG001

@@ -133,9 +133,7 @@ class TestCustodietVariantsDemo:
         # Custodiet threshold is 7 action tools (Bash, Edit, Write, Task)
         # For simple tasks, we may not hit threshold - that's OK
         # The test proves infrastructure works when threshold IS hit
-        action_tools = sum(
-            tool_counts.get(t, 0) for t in ["Bash", "Edit", "Write", "Task"]
-        )
+        action_tools = sum(tool_counts.get(t, 0) for t in ["Bash", "Edit", "Write", "Task"])
 
         criteria = [
             ("Session completed successfully", result["success"]),
@@ -239,8 +237,7 @@ class TestCustodietVariantsDemo:
         custodiet_calls = [
             c
             for c in tool_calls
-            if c["name"] == "Task"
-            and c.get("input", {}).get("subagent_type") == "custodiet"
+            if c["name"] == "Task" and c.get("input", {}).get("subagent_type") == "custodiet"
         ]
         print(f"\n--- Custodiet Invocations: {len(custodiet_calls)} ---")
 
@@ -278,9 +275,7 @@ class TestCustodietVariantsDemo:
         print("=" * 80)
 
         bash_count = tool_counts.get("Bash", 0)
-        action_tools = sum(
-            tool_counts.get(t, 0) for t in ["Bash", "Edit", "Write", "Task"]
-        )
+        action_tools = sum(tool_counts.get(t, 0) for t in ["Bash", "Edit", "Write", "Task"])
 
         criteria = [
             ("Session completed successfully", result["success"]),
@@ -425,9 +420,7 @@ class TestCustodietVariantsDemo:
         print("=" * 80)
 
         bash_count = tool_counts.get("Bash", 0)
-        action_tools = sum(
-            tool_counts.get(t, 0) for t in ["Bash", "Edit", "Write", "Task"]
-        )
+        action_tools = sum(tool_counts.get(t, 0) for t in ["Bash", "Edit", "Write", "Task"])
 
         # This test validates audit file content structure.
         # If audit file created, verify it has all required sections.
@@ -476,6 +469,5 @@ class TestCustodietVariantsDemo:
             print("OVERALL: SKIP (threshold not reached)")
             print("=" * 80)
             pytest.skip(
-                f"Session used {action_tools} tools, below threshold. "
-                f"No audit file to verify."
+                f"Session used {action_tools} tools, below threshold. No audit file to verify."
             )

@@ -1,28 +1,106 @@
 {
-    "docs": [
-        {
-            "topic": "hooks",
-            "keywords": [
-                "hook",
-                "gate",
-                "router",
-                "event",
-                "userpromptsubmit",
-                "hydration"
-            ],
-            "path": "docs/hooks.md",
-            "description": "Guide for developing agent hooks and gates"
-        },
-        {
-            "topic": "project_structure",
-            "keywords": [
-                "structure",
-                "layout",
-                "where is",
-                "file organization"
-            ],
-            "path": "README.md",
-            "description": "Project overview and structure"
-        }
-    ]
+  "docs": [
+    {
+      "topic": "project_overview",
+      "path": "README.md",
+      "description": "academicOps framework overview, core loop, architecture, and installation",
+      "keywords": ["academicops", "framework", "overview", "installation", "core loop", "architecture"]
+    },
+    {
+      "topic": "framework_index",
+      "path": "aops-core/INDEX.md",
+      "description": "Master index for aops-core pointing to all sub-indices",
+      "keywords": ["index", "navigation", "routing", "framework structure"]
+    },
+    {
+      "topic": "axioms",
+      "path": "aops-core/AXIOMS.md",
+      "description": "Inviolable principles and their logical derivations - fail-fast, DRY, verify-first, no workarounds",
+      "keywords": ["axiom", "principle", "rule", "inviolable", "fail-fast", "verify first", "no workarounds", "categorical imperative"]
+    },
+    {
+      "topic": "heuristics",
+      "path": "aops-core/HEURISTICS.md",
+      "description": "Working hypotheses validated by evidence - task management, decomposition, CLI patterns",
+      "keywords": ["heuristic", "guideline", "best practice", "evidence-based", "decomposition", "task sequencing"]
+    },
+    {
+      "topic": "skills",
+      "path": "aops-core/SKILLS.md",
+      "description": "Skills index for routing user requests - triggers, descriptions, and invocation patterns",
+      "keywords": ["skill", "command", "routing", "trigger", "daily", "remember", "analyst", "audit"]
+    },
+    {
+      "topic": "workflows",
+      "path": "aops-core/WORKFLOWS.md",
+      "description": "Workflow index and decision tree for routing prompts to appropriate workflows",
+      "keywords": ["workflow", "routing", "decision tree", "design", "decompose", "debugging", "batch"]
+    },
+    {
+      "topic": "hooks",
+      "path": "aops-core/skills/framework/references/hooks.md",
+      "description": "Hook system documentation - Claude Code and Gemini CLI hooks, gate implementation, router architecture",
+      "keywords": ["hook", "gate", "router", "event", "pretooluse", "userpromptsubmit", "sessionstart"]
+    },
+    {
+      "topic": "core_loop_spec",
+      "path": "specs/flow.md",
+      "description": "v1.0 core loop specification - hydration, workflow execution, QA, and reflection flow",
+      "keywords": ["core loop", "execution flow", "hydration", "qa", "reflection", "spec"]
+    },
+    {
+      "topic": "enforcement",
+      "path": "aops-core/framework/enforcement-map.md",
+      "description": "Maps rules to enforcement mechanisms - hard gates, soft gates, prompts, detection",
+      "keywords": ["enforcement", "gate", "compliance", "rule", "mechanism", "blocking"]
+    },
+    {
+      "topic": "prompt_hydration",
+      "path": "specs/prompt-hydration.md",
+      "description": "Prompt hydration specification - context injection, workflow selection, JIT loading",
+      "keywords": ["hydration", "context", "prompt", "injection", "hydrator", "jit"]
+    },
+    {
+      "topic": "workflow_system",
+      "path": "specs/workflow-system-spec.md",
+      "description": "Workflow system specification - skills vs workflows, composability, constraints",
+      "keywords": ["workflow", "spec", "composability", "constraint", "base workflow"]
+    },
+    {
+      "topic": "testing",
+      "path": "docs/testing-patterns.md",
+      "description": "Testing patterns for academicOps framework - hooks, e2e, integration tests",
+      "keywords": ["test", "testing", "pattern", "hook test", "e2e", "integration"]
+    },
+    {
+      "topic": "vision",
+      "path": "docs/VISION.md",
+      "description": "Framework vision statement and long-term goals",
+      "keywords": ["vision", "goal", "philosophy", "design", "purpose"]
+    },
+    {
+      "topic": "observability",
+      "path": "specs/framework-observability.md",
+      "description": "Framework observability specification - metrics, logging, feedback loops",
+      "keywords": ["observability", "metrics", "logging", "feedback", "monitoring", "token usage"]
+    },
+    {
+      "topic": "custodiet",
+      "path": "specs/ultra-vires-custodiet.md",
+      "description": "Ultra vires detection specification - authority boundaries, compliance checking",
+      "keywords": ["custodiet", "ultra vires", "authority", "compliance", "audit", "scope"]
+    },
+    {
+      "topic": "polecat_system",
+      "path": "specs/polecat-system.md",
+      "description": "Polecat worktree system for parallel task execution",
+      "keywords": ["polecat", "worktree", "parallel", "worker", "git", "isolation"]
+    },
+    {
+      "topic": "task_management",
+      "path": "specs/work-management.md",
+      "description": "Task and work management specification - task graph, dependencies, status tracking",
+      "keywords": ["task", "work", "management", "dependency", "status", "graph", "queue"]
+    }
+  ]
 }

@@ -1,7 +1,11 @@
 # Claude code
 .claude/
 .gemini/
-.agent/
+!.agent/commands/
+!.agent/skills/
+!.agent/rules
+!.agent/workflows
+
 # ============================================================================
 # Python
 # ============================================================================
@@ -10,6 +14,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 .aops-version
+# Generated during build from root pyproject.toml
+aops-core/pyproject.toml
 
 # C extensions
 *.so
@@ -323,14 +329,10 @@ data/views/today-priorities-*.md
 reference-graph.json
 reference-graph.csv
 
-# Generated MCP config (built from fragments by setup.sh)
-aops-tools/config/claude/mcp.json
-aops-tools/config/gemini/mcp-servers.json
-
-# Plugin-specific MCP configs (generated from templates by setup.sh)
+# Plugin-specific MCP configs (generated from templates)
 aops-core/.mcp.json
+
+# Distribution artifacts - built by CI, stored in aops-dist repo
 dist/
-aops-tools/.mcp.json
+
 streamlit_log.txt
-.agent/PATHS.md
-aops-tools/.claude-plugin/.aops-version

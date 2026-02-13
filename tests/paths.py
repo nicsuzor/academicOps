@@ -18,12 +18,28 @@ for path in [_aops_root, _aops_core]:
 
 from lib.paths import (  # noqa: E402
     get_aops_root as get_bots_dir,  # Framework root IS the old bots dir
+)
+from lib.paths import (
     get_data_root as get_data_dir,
+)
+from lib.paths import (
     get_hooks_dir,
 )
 
 # Aliases for writing-related paths
 get_writing_root = get_bots_dir  # Writing root points to framework root
+
+
+def get_repo_root() -> Path:
+    """
+    Return path to repository root (parent of aops-core plugin).
+
+    GitHub workflows and other repo-level files live here, not in the plugin.
+
+    Returns:
+        Path: Absolute path to repository root
+    """
+    return _aops_root
 
 
 def get_hook_script(name: str) -> Path:
@@ -51,5 +67,6 @@ __all__ = [
     "get_data_dir",
     "get_hooks_dir",
     "get_hook_script",
+    "get_repo_root",
     "get_writing_root",
 ]

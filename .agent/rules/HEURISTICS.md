@@ -149,6 +149,7 @@ description: Working hypotheses validated by evidence.
 **Statement**: After making bounded changes, commit immediately. Never ask permission to commit in any form.
 
 **Corollaries**:
+
 - NEVER output: "Would you like me to commit?", "Ready to commit?", "Should I push?", or any variant
 - Complete the work → commit → report what you did. No pause for permission.
 
@@ -160,7 +161,7 @@ description: Working hypotheses validated by evidence.
 
 **Statement**: When you decompose a task into children representing separate follow-up work, complete the parent immediately. Children can be siblings (next work), not blockers.
 
-**Derivation**: Parent completion guard blocks completing parents with *incomplete subtasks of the same work*. But decomposition for learn/design/spike tasks creates *follow-up* work - the parent task IS done once decomposition is complete. Don't confuse "has children" with "work incomplete."
+**Derivation**: Parent completion guard blocks completing parents with _incomplete subtasks of the same work_. But decomposition for learn/design/spike tasks creates _follow-up_ work - the parent task IS done once decomposition is complete. Don't confuse "has children" with "work incomplete."
 
 ---
 
@@ -169,6 +170,7 @@ description: Working hypotheses validated by evidence.
 **Statement**: Create child tasks only when they add information beyond the parent's bullet points - acceptance criteria, dependencies, distinct ownership, or execution context. Until then, keep items as bullets in the parent body.
 
 **Corollaries**:
+
 - A child task with an empty body (just title) is a sign of premature decomposition
 - Decompose when work is claimed OR when subtasks need independent tracking
 - Numbered lists in parent body are sufficient for planning; tasks are for execution
@@ -182,6 +184,7 @@ description: Working hypotheses validated by evidence.
 **Statement**: The creating agent is responsible for inserting tasks onto the work graph. Every task MUST connect to the hierarchy: `action → task → epic → project → goal`. Disconnected tasks are violations.
 
 **Hierarchy definitions**:
+
 - **Goal**: Long-term outcome (months/years) - "Finish PhD", "Launch product"
 - **Project**: Bounded initiative with deliverables (weeks/months) - "Migrate to tasks-mcp"
 - **Epic**: Group of tasks toward a milestone (days/weeks) - "Implement batch processing"
@@ -191,6 +194,7 @@ description: Working hypotheses validated by evidence.
 **Sequencing principle**: Work on one epic at a time when possible. Epics are the unit of focus - completing an epic before starting another reduces context-switching and makes progress visible.
 
 **Corollaries**:
+
 - Before `create_task()`, search for the parent epic in the project
 - Set `parent` to link to epic (or create one if none exists)
 - Use `depends_on` for explicit sequencing between tasks within an epic
@@ -208,6 +212,7 @@ description: Working hypotheses validated by evidence.
 **Statement**: When user makes specific, repeated assertions about their own codebase or system behavior, trust the assertion and verify with ONE minimal test. Do NOT spawn investigation/critic/custodiet to "validate" user claims about their own system.
 
 **Corollaries**:
+
 - User's role: report observations from their environment
 - Agent's role: verify with minimal steps, then act or report findings
 - Investigate root cause ONLY if user asks "why" or if minimal verification fails
@@ -223,7 +228,8 @@ description: Working hypotheses validated by evidence.
 
 **Derivation**: Fixing bugs without a failing test leads to "success theater" where the agent claims a fix that might not address the root cause or might regress. A failing test provides objective proof of the bug and objective proof of the fix.
 
-**Protocol**: 
+**Protocol**:
+
 1. Identify the failing input/state.
 2. Create a test in `tests/` that fails with that input.
 3. Apply the fix.
@@ -236,12 +242,14 @@ description: Working hypotheses validated by evidence.
 **Statement**: Each task should have one primary objective. When work spans multiple concerns (execute work + improve framework, verify fix + document pattern), create separate tasks with dependency relationships.
 
 **Corollaries**:
+
 - Executing work is separate from reflecting on/improving the framework that guided it
 - Verification work is separate from documenting patterns learned
 - If task description contains "AND THEN" or combines action + meta-work, decompose
 - Use depends_on to create accountability chain: primary work completes first, then reflection/improvement
 
 **Example**:
+
 - Task A: "Verify Unicode fix resolves Gemini error" (primary work)
 - Task B: "[Learn] Task structure - separate verification from framework improvement" (meta-work, depends_on: A)
 
@@ -254,6 +262,7 @@ description: Working hypotheses validated by evidence.
 **Statement**: CLI commands and MCP tools exposing the same functionality MUST have identical default behavior. Users should get the same result whether using CLI or MCP.
 
 **Corollaries**:
+
 - Same function, same defaults: If MCP `list_tasks` defaults to `limit=10`, CLI `task list` must too
 - CLI may offer convenience flags (`--all`) but defaults must match MCP
 - When adding features to one interface, update the other
@@ -267,10 +276,12 @@ description: Working hypotheses validated by evidence.
 **Statement**: Command files define invocation syntax and route to workflows. Step-by-step procedural logic lives in `workflows/` directories.
 
 **Boundary definition**:
+
 - Commands: Argument parsing, validation, error presentation, dispatch to agent or workflow reference
 - Workflows: Sequential steps, state transitions, retries, agent orchestration, branching logic
 
 **Corollaries**:
+
 - Commands reference workflows via `See [[workflow-name]]` or spawn agents that execute workflows
 - Workflows are reusable across different entry points (commands, skills, agents)
 - When a command exceeds ~30 lines, check if procedural logic should move to a workflow
@@ -284,11 +295,13 @@ description: Working hypotheses validated by evidence.
 **Statement**: Use `fd` for file finding operations instead of `ls | grep/tail` pipelines. Use specific patterns to avoid false positives.
 
 **Examples**:
+
 - Find recent hook logs: `fd -l --newer 1h "hook.*jsonl"` (not `ls *.jsonl | tail`)
 - Find files by type: `fd -e py` (not `ls *.py`)
 - Find with time filter: `fd --changed-within 1d` (not `find -mtime`)
 
 **Corollaries**:
+
 - Before creating a file in a new location, use `fd` to discover if related files already exist elsewhere
 - Example: Before creating `data/osb/osb.md`, run `fd "osb\|oversight" $ACA_DATA` to find existing locations
 
@@ -301,12 +314,14 @@ description: Working hypotheses validated by evidence.
 **Statement**: LLMs are bad at counting, aggregation, and numerical computation. Use Python/scripts for deterministic operations; LLMs for judgment, classification, and generation.
 
 **Examples**:
+
 - Token counting → transcript_parser.py UsageStats (not LLM)
 - File counts, line counts → glob/wc (not LLM)
 - Data aggregation → pandas/SQL (not LLM)
 - Pattern matching on logs → Python (not LLM)
 
 **Corollaries (MCP Tool Design)**:
+
 - Server returns **raw data** (counts, metrics, lists); agent does **all classification/selection**
 - NO word-matching, fuzzy search, or NLP in MCP servers - agent uses LLM for similarity
 - Thresholds as **parameters** (agent decides), not hardcoded constants
@@ -321,6 +336,7 @@ description: Working hypotheses validated by evidence.
 **Statement**: Bug fixes must not remove functionality required by acceptance criteria. When a proposed fix would remove spec-required behavior, either ask user for clarification or find a fix that preserves the behavior.
 
 **Corollaries**:
+
 - Before proposing a fix, check the spec's acceptance criteria
 - "Node selection shows task details" in spec → fix cannot remove click interaction
 - If the only fix removes required functionality → ask user about acceptable tradeoffs
@@ -334,15 +350,18 @@ description: Working hypotheses validated by evidence.
 **Statement**: When user is deconstructing/planning, match their level of abstraction. Don't fill in blanks until they signal readiness for specifics.
 
 **Signals of planning phase**:
+
 - "Let's figure out...", "What are we building...", "First steps first..."
 - Questions being explored, decisions not yet made
 - User providing partial answers with room for more discussion
 
 **Signals of execution phase**:
+
 - "Let's do it", "Go ahead", specific values provided
 - User answering all questions, decisions finalized
 
 **Corollaries**:
+
 - If user says "we need to decide X, Y, Z" - help explore, don't propose X=foo, Y=bar
 - If user answers 2 of 3 questions, ask about the 3rd - don't assume
 - Premature specifics break the user's planning flow
@@ -357,6 +376,7 @@ description: Working hypotheses validated by evidence.
 **Statement**: Spike/learn task output belongs in the task graph, not random files. Write findings to: (1) task body, (2) parent epic "Findings from Spikes" section, (3) decomposed subtasks for actionable items.
 
 **Corollaries**:
+
 - NEVER create standalone markdown files for spike output
 - If task doesn't specify output location, output goes to task body
 - Actionable findings become subtasks with depends_on relationships
@@ -371,6 +391,7 @@ description: Working hypotheses validated by evidence.
 **Statement**: When a task uses infrastructure from another project as its implementation vehicle, create explicit linkage: (1) document in task body, (2) add soft_depends_on to infrastructure project task if exists, (3) create sibling task for infrastructure improvements discovered.
 
 **Corollaries**:
+
 - Using buttermilk pipeline for OSB work → document "also testing buttermilk batch" in task body
 - Discovering buttermilk bug during OSB work → create buttermilk task, link via soft_depends_on
 - "Incidental improvements" = separate tracked tasks, not hidden scope creep
@@ -384,11 +405,13 @@ description: Working hypotheses validated by evidence.
 **Statement**: Methodological choices in research (how to classify, measure, or evaluate) belong to the researcher. When implementation requires methodology not yet specified, HALT and ask - do not invent approaches.
 
 **Signs you're making a methodological choice**:
+
 - "I'll detect X by checking for Y" (classification method)
 - "I'll measure success by Z" (evaluation criteria)
 - "I'll use pattern matching to identify..." (measurement approach)
 
 **Corollaries**:
+
 - Text matching for LLM output classification → methodological choice, needs researcher approval
 - Defining evaluation rubrics → methodological choice, needs researcher approval
 - Choosing statistical tests → methodological choice, needs researcher approval
@@ -404,8 +427,17 @@ description: Working hypotheses validated by evidence.
 **Statement**: When implementation fails and a reference example exists, re-read the reference before inventing alternatives.
 
 **Corollaries**:
+
 - Error → problem-solving mode is the wrong instinct when following an example
 - Error → "what does the reference actually do?" is the right first question
 - If reference uses X and you tried Y, fix is to use X, not to simplify to Z
 
 **Derivation**: P#3 says "adapt the example directly, don't re-implement." This applies equally during error recovery. Errors don't license divergence from the reference - they signal that you haven't matched it closely enough.
+
+---
+
+## Protect dist/ Directory (H#94)
+
+**Statement**: NEVER modify files in `dist/` directly.
+
+**Derivation**: Files in `dist/` are build artifacts generated by `scripts/build.py`. Any direct changes will be overwritten during the next build or on push. All framework modifications MUST be made to the source files in `aops-core/` (hooks, skills, lib, etc.). If you need a change to appear in `dist/`, edit the source and run the build script.

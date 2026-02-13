@@ -144,11 +144,29 @@ def _validate_framework_reflections(reflections: list[dict[str, Any]]) -> None:
                     f"got '{reflection['outcome']}'"
                 )
 
-        # Validate followed as boolean if present
+        # Validate and coerce followed to boolean if present
+        # Accept: bool, int (0/1), strings ("true"/"false", "yes"/"no", "1"/"0")
         if "followed" in reflection and reflection["followed"] is not None:
-            if not isinstance(reflection["followed"], bool):
+            val = reflection["followed"]
+            if isinstance(val, bool):
+                pass  # Already valid
+            elif isinstance(val, int):
+                reflection["followed"] = bool(val)
+            elif isinstance(val, str):
+                lower_val = val.lower().strip()
+                if lower_val in ("true", "yes", "1", "y"):
+                    reflection["followed"] = True
+                elif lower_val in ("false", "no", "0", "n", ""):
+                    reflection["followed"] = False
+                else:
+                    raise InsightsValidationError(
+                        f"Field 'framework_reflections[{i}].followed' cannot be coerced "
+                        f"to boolean from string '{val}'"
+                    )
+            else:
                 raise InsightsValidationError(
-                    f"Field 'framework_reflections[{i}].followed' must be a boolean"
+                    f"Field 'framework_reflections[{i}].followed' must be a boolean "
+                    f"or coercible value, got {type(val).__name__}"
                 )
 
         # Validate list fields
@@ -199,7 +217,7 @@ def _validate_token_metrics(token_metrics: dict[str, Any]) -> None:
         ]
         for field in totals_numeric_fields:
             if field in totals and totals[field] is not None:
-                if not isinstance(totals[field], (int, float)):
+                if not isinstance(totals[field], int | float):
                     raise InsightsValidationError(
                         f"Field 'token_metrics.totals.{field}' must be numeric"
                     )
@@ -247,14 +265,14 @@ def _validate_token_metrics(token_metrics: dict[str, Any]) -> None:
         ]
         for field in efficiency_numeric_fields:
             if field in efficiency and efficiency[field] is not None:
-                if not isinstance(efficiency[field], (int, float)):
+                if not isinstance(efficiency[field], int | float):
                     raise InsightsValidationError(
                         f"Field 'token_metrics.efficiency.{field}' must be numeric"
                     )
         # Validate cache_hit_rate range if present (0.0 to 1.0)
         if "cache_hit_rate" in efficiency and efficiency["cache_hit_rate"] is not None:
             rate = efficiency["cache_hit_rate"]
-            if isinstance(rate, (int, float)) and not (0.0 <= rate <= 1.0):
+            if isinstance(rate, int | float) and not (0.0 <= rate <= 1.0):
                 raise InsightsValidationError(
                     f"Field 'token_metrics.efficiency.cache_hit_rate' must be between 0.0 and 1.0, got {rate}"
                 )
@@ -293,8 +311,7 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
     valid_outcomes = {"success", "partial", "failure"}
     if insights["outcome"] not in valid_outcomes:
         raise InsightsValidationError(
-            f"Field 'outcome' must be one of {valid_outcomes}, "
-            f"got '{insights['outcome']}'"
+            f"Field 'outcome' must be one of {valid_outcomes}, got '{insights['outcome']}'"
         )
 
     # Validate date format (ISO 8601: YYYY-MM-DD or full timestamp with tz)
@@ -323,6 +340,7 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
         "jit_context_needed",
         "context_distractions",
         "framework_reflections",
+        "timeline_events",
     ]
     for field in array_fields:
         if field in insights and not isinstance(insights[field], list):
@@ -337,7 +355,7 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
     ]
     for field in numeric_fields:
         if field in insights and insights[field] is not None:
-            if not isinstance(insights[field], (int, float)):
+            if not isinstance(insights[field], int | float):
                 raise InsightsValidationError(f"Field '{field}' must be numeric")
 
     # Validate user_mood range if present
@@ -363,10 +381,7 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
         _validate_token_metrics(insights["token_metrics"])
 
     # Validate framework_reflections structure (optional)
-    if (
-        "framework_reflections" in insights
-        and insights["framework_reflections"] is not None
-    ):
+    if "framework_reflections" in insights and insights["framework_reflections"] is not None:
         _validate_framework_reflections(insights["framework_reflections"])
 
 
@@ -566,9 +581,7 @@ def write_insights_file(
         patterns_to_try.append(status_dir / f"{session_id}.json")
         # Fallback: search with glob for pattern matching (handles renamed files)
         if date_compact:
-            patterns_to_try.extend(
-                status_dir.glob(f"{date_compact}-*{session_id}*.json")
-            )
+            patterns_to_try.extend(status_dir.glob(f"{date_compact}-*{session_id}*.json"))
         patterns_to_try.extend(status_dir.glob(f"*{session_id}*.json"))
 
         for candidate in patterns_to_try:
@@ -578,7 +591,7 @@ def write_insights_file(
 
         if status_path:
             try:
-                with open(status_path, "r", encoding="utf-8") as f:
+                with open(status_path, encoding="utf-8") as f:
                     status_data = json.load(f)
                 # Extract insights from status and merge into insights dict
                 # Handle both formats:
@@ -599,9 +612,7 @@ def write_insights_file(
     path.parent.mkdir(parents=True, exist_ok=True)
 
     # Create temp file in same directory
-    fd, temp_path_str = tempfile.mkstemp(
-        suffix=".json", prefix="insights-", dir=str(path.parent)
-    )
+    fd, temp_path_str = tempfile.mkstemp(suffix=".json", prefix="insights-", dir=str(path.parent))
     temp_path = Path(temp_path_str)
 
     try:

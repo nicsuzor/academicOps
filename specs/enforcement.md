@@ -12,6 +12,18 @@ related: [[framework-observability]], [[feedback-loops]], [[workflow-system-spec
 
 **Status**: Implemented (core concepts active)
 
+## Giving Effect
+
+- [[AXIOMS.md]] - Layer 1: Immutable principles loaded at session start
+- [[hooks/user_prompt_submit.py]] - Layer 2: Prompt hydration and intent routing
+- [[hooks/hydration_gate.py]] - Layer 2: Blocks/warns if agent skips hydration
+- [[hooks/overdue_enforcement.py]] - Layer 2.5: Periodic compliance audit via custodiet
+- [[agents/custodiet.md]] - Layer 2.5: Drift detection and axiom violation checking
+- [[hooks/policy_enforcer.py]] - Layer 4: PostToolUse detection hooks
+- [[hooks/gate_registry.py]] - Layer 4: Gate registration and configuration
+- [[agents/critic.md]] - Layer 5: Post-hoc review agent
+- [[framework/enforcement-map.md]] - Registry of all active enforcement mechanisms
+
 ## Enforcement Model
 
 ```mermaid
@@ -97,10 +109,12 @@ The [[specs/prompt-hydration]] process classifies prompts and suggests workflows
 Blocks/warns when agent attempts to use tools before invoking prompt-hydrator subagent.
 
 **Gate Behavior**:
+
 - **Warn mode** (default, `HYDRATION_GATE_MODE=warn`): Logs warning to stderr, allows tool use
 - **Block mode** (`HYDRATION_GATE_MODE=block`): Blocks all tools (exit code 2) until hydrator invoked
 
 **Bypass Conditions**:
+
 - Subagent sessions (`CLAUDE_AGENT_TYPE` set) - subagents inherit hydration from parent
 - First prompt from CLI (no session state exists) - prevents blocking on session startup
 - User bypass prefix (`.` or `/`) - handled by UserPromptSubmit hook

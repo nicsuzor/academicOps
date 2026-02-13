@@ -19,8 +19,8 @@ Configuration via environment variables (all required if NTFY_TOPIC is set):
 from __future__ import annotations
 
 import logging
-import urllib.request
 import urllib.error
+import urllib.request
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -130,9 +130,7 @@ def notify_subagent_stop(
     )
 
 
-def notify_task_bound(
-    config: dict[str, Any], session_id: str, task_id: str
-) -> bool:
+def notify_task_bound(config: dict[str, Any], session_id: str, task_id: str) -> bool:
     """Send notification when task is bound to session."""
     short_id = session_id[:8] if len(session_id) > 8 else session_id
     return send_notification(
@@ -144,9 +142,7 @@ def notify_task_bound(
     )
 
 
-def notify_task_completed(
-    config: dict[str, Any], session_id: str, task_id: str
-) -> bool:
+def notify_task_completed(config: dict[str, Any], session_id: str, task_id: str) -> bool:
     """Send notification when task is completed."""
     short_id = session_id[:8] if len(session_id) > 8 else session_id
     return send_notification(

@@ -20,9 +20,8 @@ import json
 import os
 import subprocess
 import sys
-import tempfile
+from datetime import UTC
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -103,8 +102,7 @@ sys.exit(0)
         # With real hooks, this depends on hook behavior
         # But we verify the router itself works
         assert result.returncode in (0, 1, 2), (
-            f"Router returned unexpected exit code {result.returncode}. "
-            f"stderr: {result.stderr}"
+            f"Router returned unexpected exit code {result.returncode}. stderr: {result.stderr}"
         )
 
     def test_router_forwards_stderr_on_block(self, router_path: Path):
@@ -136,8 +134,7 @@ sys.exit(0)
         # If hydration gate blocked (exit 2), stderr should have the message
         if result.returncode == 2:
             assert result.stderr.strip(), (
-                "Router exit 2 but stderr is empty - "
-                "block message not forwarded to Claude Code!"
+                "Router exit 2 but stderr is empty - block message not forwarded to Claude Code!"
             )
 
 
@@ -159,7 +156,7 @@ class TestRouterBlockOutputFormat:
         should still produce valid output to avoid parse errors.
         """
         import hashlib
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         # Set up session state to trigger block
         sessions_dir = tmp_path / "sessions" / "status"
@@ -168,13 +165,13 @@ class TestRouterBlockOutputFormat:
         session_id = "test-format-session"
         # Session file uses hash of session_id
         short_hash = hashlib.sha256(session_id.encode()).hexdigest()[:8]
-        today = datetime.now(timezone.utc).strftime("%Y%m%d")
+        today = datetime.now(UTC).strftime("%Y%m%d")
         session_file = sessions_dir / f"{today}-{short_hash}.json"
 
         session_state = {
             "session_id": session_id,
-            "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-            "started_at": datetime.now(timezone.utc).isoformat(),
+            "date": datetime.now(UTC).strftime("%Y-%m-%d"),
+            "started_at": datetime.now(UTC).isoformat(),
             "state": {"hydration_pending": True},
             "hydration": {},
             "main_agent": {},
@@ -242,8 +239,7 @@ class TestClaudeCodeBlockEnforcement:
         hydrator_calls = [
             c
             for c in tool_calls
-            if c["name"] == "Task"
-            and c.get("input", {}).get("subagent_type") == "prompt-hydrator"
+            if c["name"] == "Task" and c.get("input", {}).get("subagent_type") == "prompt-hydrator"
         ]
 
         # Valid outcomes:
@@ -268,9 +264,7 @@ class TestClaudeCodeBlockEnforcement:
                     if c["name"] == "Task"
                     and c.get("input", {}).get("subagent_type") == "prompt-hydrator"
                 )
-                bash_idx = next(
-                    i for i, c in enumerate(tool_calls) if c["name"] == "Bash"
-                )
+                bash_idx = next(i for i, c in enumerate(tool_calls) if c["name"] == "Bash")
                 assert hydrator_idx < bash_idx, (
                     f"Hydrator (idx {hydrator_idx}) should come before Bash (idx {bash_idx})"
                 )
@@ -300,13 +294,11 @@ class TestClaudeCodeBlockEnforcement:
         hydrator_calls = [
             c
             for c in tool_calls
-            if c["name"] == "Task"
-            and c.get("input", {}).get("subagent_type") == "prompt-hydrator"
+            if c["name"] == "Task" and c.get("input", {}).get("subagent_type") == "prompt-hydrator"
         ]
 
         if hydrator_calls:
             # Hydrator was called - verify Bash worked after
-            bash_calls = [c for c in tool_calls if c["name"] == "Bash"]
             if result["success"]:
                 # Session succeeded with hydrator - Bash should have been allowed
                 # (Though agent might choose not to use Bash at all)
@@ -324,14 +316,13 @@ class TestClaudeCodeBlockEnforcement:
         )
 
         # With bypass, no hydrator should be needed
-        hydrator_calls = [
+        bypass_hydrator_calls = [
             c
             for c in tool_calls
-            if c["name"] == "Task"
-            and c.get("input", {}).get("subagent_type") == "prompt-hydrator"
+            if c["name"] == "Task" and c.get("input", {}).get("subagent_type") == "prompt-hydrator"
         ]
 
-        if result["success"]:
+        if result["success"] and not bypass_hydrator_calls:
             # Success with bypass - either Bash worked or wasn't needed
             pass  # Just verify session succeeded without hydrator being required
         else:

@@ -1,10 +1,10 @@
-import os
 import json
+import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any
 
 
 def format_path_for_json(path: str) -> str:
@@ -12,12 +12,10 @@ def format_path_for_json(path: str) -> str:
     return str(Path(path).resolve())
 
 
-def convert_mcp_server_to_gemini(
-    name: str, config: Dict[str, Any]
-) -> Optional[Dict[str, Any]]:
+def convert_mcp_server_to_gemini(name: str, config: dict[str, Any]) -> dict[str, Any] | None:
     """Convert a single MCP server config from Claude to Gemini format."""
     server_type = config.get("type", "stdio")
-    result: Dict[str, Any] = {}
+    result: dict[str, Any] = {}
 
     if server_type == "http":
         if "url" not in config:
@@ -52,7 +50,7 @@ def convert_mcp_server_to_gemini(
     return result
 
 
-def convert_mcp_to_gemini(servers: Dict[str, Any]) -> Dict[str, Any]:
+def convert_mcp_to_gemini(servers: dict[str, Any]) -> dict[str, Any]:
     """Convert a dictionary of MCP servers to Gemini format."""
     gemini_servers = {}
     for name, config in servers.items():
@@ -62,7 +60,7 @@ def convert_mcp_to_gemini(servers: Dict[str, Any]) -> Dict[str, Any]:
     return gemini_servers
 
 
-def convert_gemini_to_antigravity(servers: Dict[str, Any]) -> Dict[str, Any]:
+def convert_gemini_to_antigravity(servers: dict[str, Any]) -> dict[str, Any]:
     """Convert Gemini MCP config to Antigravity format (url -> serverUrl)."""
     ag_servers = {}
     for name, config in servers.items():
@@ -110,7 +108,7 @@ def safe_copy(src: Path, dst: Path):
     print(f"  Copied {src.name} -> {dst}")
 
 
-def get_git_commit_sha(repo_path: Optional[Path] = None) -> Optional[str]:
+def get_git_commit_sha(repo_path: Path | None = None) -> str | None:
     """Get the current git commit SHA for version tracking.
 
     Args:
@@ -168,8 +166,8 @@ def write_plugin_version(plugin_dir: Path, commit_sha: str) -> Path:
 def check_installed_plugin_version(
     plugin_name: str,
     source_commit: str,
-    installed_plugins_path: Optional[Path] = None,
-) -> tuple[bool, Optional[str]]:
+    installed_plugins_path: Path | None = None,
+) -> tuple[bool, str | None]:
     """Check if installed plugin matches source version.
 
     Args:
@@ -208,7 +206,9 @@ def check_installed_plugin_version(
 
         # Compare: installed commit should start with source commit (or vice versa)
         # since one might be short and one long
-        if installed_commit.startswith(source_commit) or source_commit.startswith(installed_commit[:8]):
+        if installed_commit.startswith(source_commit) or source_commit.startswith(
+            installed_commit[:8]
+        ):
             return (True, installed_commit)
 
         return (False, installed_commit)
@@ -229,14 +229,14 @@ def emit_version_mismatch_warning(
     print(f"\n⚠️  VERSION MISMATCH: {plugin_name}", file=sys.stderr)
     print(f"   Source commit:    {source_commit}", file=sys.stderr)
     print(f"   Installed commit: {installed_commit[:8]}...", file=sys.stderr)
-    print(f"   The installed Claude plugin may be outdated.", file=sys.stderr)
-    print(f"   Consider reinstalling the plugin in Claude Desktop.", file=sys.stderr)
+    print("   The installed Claude plugin may be outdated.", file=sys.stderr)
+    print("   Consider reinstalling the plugin in Claude Desktop.", file=sys.stderr)
     print("", file=sys.stderr)
 
 
 def generate_gemini_hooks(
-    claude_hooks: Dict[str, Any], aops_path: str, router_script_path: str
-) -> Dict[str, Any]:
+    claude_hooks: dict[str, Any], aops_path: str, router_script_path: str
+) -> dict[str, Any]:
     """Generate Gemini hooks configuration from Claude hooks."""
 
     CLAUDE_TO_GEMINI = {
@@ -261,9 +261,7 @@ def generate_gemini_hooks(
             # Claude format: { "SessionStart": [{"hooks": [{"timeout": 5000}]}] } or similar deep nesting
             try:
                 # Based on create_extension.py interrogation of structure
-                timeout = (
-                    claude_hooks[c_event][0].get("hooks", [{}])[0].get("timeout", 5000)
-                )
+                timeout = claude_hooks[c_event][0].get("hooks", [{}])[0].get("timeout", 5000)
             except (IndexError, KeyError, TypeError):
                 timeout = 5000  # Default
 
@@ -274,9 +272,7 @@ def generate_gemini_hooks(
 
                 # Convert CamelCase to kebab-case for the name suffix
                 # e.g., SessionStart -> session-start
-                slug = "".join(
-                    ["-" + c.lower() if c.isupper() else c for c in g_event]
-                ).lstrip("-")
+                slug = "".join(["-" + c.lower() if c.isupper() else c for c in g_event]).lstrip("-")
 
                 gemini_hooks[g_event].append(
                     {

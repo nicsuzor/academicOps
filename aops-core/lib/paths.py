@@ -11,11 +11,11 @@ Required environment variables:
 
 from __future__ import annotations
 
+import logging
 import os
 import shutil
-import logging
-from pathlib import Path
 from functools import lru_cache
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -37,11 +37,13 @@ def get_plugin_root() -> Path:
 
 def get_aops_root() -> Path:
     """
-    Get the AOPS root directory (alias for plugin root in this context, or $AOPS).
+    Get the AOPS root directory (alias for plugin root).
+
+    In plugin-only architecture, this is always the plugin root.
+    The $AOPS environment variable is no longer used.
     """
-    if os.environ.get("AOPS"):
-        return Path(os.environ["AOPS"]).resolve()
     return get_plugin_root()
+
 
 def get_bots_dir() -> Path:
     """Alias for get_aops_root."""
@@ -110,6 +112,26 @@ def get_workflows_dir() -> Path:
 def get_indices_dir() -> Path:
     """Get indices directory (plugin_root/indices)."""
     return get_plugin_root() / "indices"
+
+
+def get_axioms_file() -> Path:
+    """Get path to AXIOMS.md framework file."""
+    return get_plugin_root() / "AXIOMS.md"
+
+
+def get_heuristics_file() -> Path:
+    """Get path to HEURISTICS.md framework file."""
+    return get_plugin_root() / "HEURISTICS.md"
+
+
+def get_skills_file() -> Path:
+    """Get path to SKILLS.md framework file."""
+    return get_plugin_root() / "SKILLS.md"
+
+
+def get_tools_file() -> Path:
+    """Get path to TOOLS.md framework file."""
+    return get_plugin_root() / "TOOLS.md"
 
 
 # Data directories

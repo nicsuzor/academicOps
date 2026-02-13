@@ -1,6 +1,7 @@
 ---
 id: interactive-followup
 category: session
+bases: [base-verification]
 triggers: ["follow-up", "also", "quick change", "one more thing"]
 ---
 
@@ -48,17 +49,20 @@ If a "follow-up" grows beyond bounded scope:
 ## Examples
 
 **Triggers follow-up flow:**
+
 - "save that to the daily note" (short, has "that", has "save")
 - "also add a test for it" (short, has "also", has "add", has "it")
 - "put this in memory" (short, has "this", has "put")
 
 **Does NOT trigger (needs full hydration):**
+
 - "implement a new feature that handles user authentication with OAuth2 and JWT tokens" (too long, no continuation markers)
 - "refactor the entire module" (no existing work context assumed)
 
 ## Implementation
 
 Detection happens in `user_prompt_submit.py`:
+
 - `is_followup_prompt()` - Checks all three conditions
 - `should_skip_hydration()` - Returns True for follow-ups
 

@@ -101,9 +101,10 @@ class TestFrameworkReflectionDemo:
         print("=" * 80)
 
         # Check for reflection in response
-        has_reflection_header = "Framework Reflection" in response_text.lower().replace(
-            " ", ""
-        ) or "## framework reflection" in response_text.lower()
+        has_reflection_header = (
+            "Framework Reflection" in response_text.lower().replace(" ", "")
+            or "## framework reflection" in response_text.lower()
+        )
         has_prompts_field = "**prompts**:" in response_text.lower()
         has_outcome_field = "**outcome**:" in response_text.lower()
 
@@ -196,8 +197,7 @@ class TestFrameworkReflectionDemo:
         framework_agent_calls = [
             c
             for c in tool_calls
-            if c["name"] == "Task"
-            and "framework" in c.get("input", {}).get("subagent_type", "")
+            if c["name"] == "Task" and "framework" in c.get("input", {}).get("subagent_type", "")
         ]
 
         log_skill_called = any(
@@ -215,8 +215,14 @@ class TestFrameworkReflectionDemo:
         print("=" * 80)
 
         criteria = [
-            ("Session completed (or made progress)", result["success"] or len(tool_calls) > 0),
-            ("/log skill or framework agent invoked", log_skill_called or framework_called),
+            (
+                "Session completed (or made progress)",
+                result["success"] or len(tool_calls) > 0,
+            ),
+            (
+                "/log skill or framework agent invoked",
+                log_skill_called or framework_called,
+            ),
         ]
 
         all_passed = True

@@ -113,9 +113,7 @@ class TestTranscriptGenerationDemo:
             pytest.skip(f"No session files >= {MIN_SIZE} bytes found")
 
         # Use most recent among those large enough
-        session_file = max(
-            [f for f, _ in large_enough], key=lambda f: f.stat().st_mtime
-        )
+        session_file = max([f for f, _ in large_enough], key=lambda f: f.stat().st_mtime)
         file_size = session_file.stat().st_size
 
         print(f"\nSelected: {session_file.name}")
@@ -127,9 +125,7 @@ class TestTranscriptGenerationDemo:
         print("\n--- STEP 3: Transcript Generation ---")
 
         output_base = tmp_path / "demo-transcript"
-        script_path = (
-            Path(__file__).parent.parent.parent / "scripts" / "session_transcript.py"
-        )
+        script_path = Path(__file__).parent.parent.parent / "scripts" / "session_transcript.py"
 
         print(f"Script: {script_path}")
         print(f"Input: {session_file}")
@@ -193,7 +189,7 @@ class TestTranscriptGenerationDemo:
         print("\nFile sizes:")
         print(f"  Full: {full_size:,} bytes")
         print(f"  Abridged: {abridged_size:,} bytes")
-        print(f"  Compression ratio: {abridged_size/full_size*100:.1f}%")
+        print(f"  Compression ratio: {abridged_size / full_size * 100:.1f}%")
 
         assert full_size > 0, "Full transcript is empty"
         assert abridged_size > 0, "Abridged transcript is empty"
@@ -226,13 +222,11 @@ class TestTranscriptGenerationDemo:
 
         print("\n📊 Content Statistics:")
         print(f"  {'Metric':<20} {'Full':>10} {'Abridged':>10}")
-        print(f"  {'-'*20} {'-'*10} {'-'*10}")
+        print(f"  {'-' * 20} {'-' * 10} {'-' * 10}")
         print(
             f"  {'Lines':<20} {full_stats['total_lines']:>10,} {abridged_stats['total_lines']:>10,}"
         )
-        print(
-            f"  {'Headings':<20} {full_stats['headings']:>10} {abridged_stats['headings']:>10}"
-        )
+        print(f"  {'Headings':<20} {full_stats['headings']:>10} {abridged_stats['headings']:>10}")
         print(
             f"  {'Code blocks':<20} {full_stats['code_blocks']:>10} {abridged_stats['code_blocks']:>10}"
         )
@@ -272,7 +266,7 @@ This demo showed the complete transcript generation pipeline:
 
 The transcript pipeline produces:
 - Full transcript ({full_size:,} bytes): Complete conversation details
-- Abridged transcript ({abridged_size:,} bytes): {abridged_size/full_size*100:.1f}% of full
+- Abridged transcript ({abridged_size:,} bytes): {abridged_size / full_size * 100:.1f}% of full
 
 These transcripts are used for:
 - Human review of agent sessions

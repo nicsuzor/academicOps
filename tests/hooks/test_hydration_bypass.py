@@ -12,7 +12,6 @@ Related:
 import sys
 from pathlib import Path
 
-
 # Add aops-core to path for hook imports
 AOPS_CORE = Path(__file__).parent.parent.parent / "aops-core"
 if str(AOPS_CORE) not in sys.path:

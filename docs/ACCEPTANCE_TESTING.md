@@ -20,68 +20,69 @@ Verify that the setup script correctly installs commands and workflows (fixing t
 
 1. **Run Setup**:
 
-    ```bash
-    cd $AOPS
-    ./setup.sh
-    ``
+   ```bash
+   cd $AOPS
+   ./setup.sh
+   ``
+   ```
 
 2. **Verify Global Workflows**: Check if `~/.gemini/antigravity/global_workflows` contains framework workflows.
 
-    ```bash
-    ls ~/.gemini/antigravity/global_workflows
-    ```
+   ```bash
+   ls ~/.gemini/antigravity/global_workflows
+   ```
 
-    *Expectation*: Should list files like `audit.md`, `email.md`, etc.
+   _Expectation_: Should list files like `audit.md`, `email.md`, etc.
 
 ## 3. Hydration & Hook Verification
 
 Verify that the hydration system (which injects context) is working and failing hooks are visible.
 
 1. **Verify Hook Configuration**:
-    Check that `dist/aops-core/hooks/hooks.json` exists and contains Gemini event names.
+   Check that `dist/aops-core/hooks/hooks.json` exists and contains Gemini event names.
 
-    **CRITICAL**: Gemini CLI reads hooks from `hooks/hooks.json`, NOT from `gemini-extension.json`.
-    The `gemini-extension.json` file should NOT have a `hooks` key - hooks belong ONLY in `hooks/hooks.json`.
+   **CRITICAL**: Gemini CLI reads hooks from `hooks/hooks.json`, NOT from `gemini-extension.json`.
+   The `gemini-extension.json` file should NOT have a `hooks` key - hooks belong ONLY in `hooks/hooks.json`.
 
-    ```bash
-    # Verify hooks.json exists in dist
-    cat dist/aops-core/hooks/hooks.json | jq '.hooks | keys'
-    # Expected: ["AfterTool", "BeforeAgent", "BeforeTool", "SessionEnd", "SessionStart", "SubagentStop"]
+   ```bash
+   # Verify hooks.json exists in dist
+   cat dist/aops-core/hooks/hooks.json | jq '.hooks | keys'
+   # Expected: ["AfterTool", "BeforeAgent", "BeforeTool", "SessionEnd", "SessionStart", "SubagentStop"]
 
-    # Verify gemini-extension.json has NO hooks key
-    cat dist/aops-core/gemini-extension.json | jq 'has("hooks")'
-    # Expected: false
-    ```
+   # Verify gemini-extension.json has NO hooks key
+   cat dist/aops-core/gemini-extension.json | jq 'has("hooks")'
+   # Expected: false
+   ```
 
 2. **Quick Hook Loading Test** (Recommended):
-    Run gemini with a short prompt to verify hooks are discovered:
-    ```bash
-    gemini -p "what hooks do you have enabled?"
-    ```
+   Run gemini with a short prompt to verify hooks are discovered:
+   ```bash
+   gemini -p "what hooks do you have enabled?"
+   ```
 
-    *Expected output (working state)*:
-    ```
-    Loaded cached credentials.
-    Loading extension: aops-core
-    Loading extension: aops-tools
-    Invalid hook event name: "SubagentStop" from extensions config. Skipping.
-    Hook registry initialized with 5 hook entries  # 5+ indicates hooks loaded
-    ```
+   _Expected output (working state)_:
+   ```
+   Loaded cached credentials.
+   Loading extension: aops-core
+   Loading extension: aops-tools
+   Invalid hook event name: "SubagentStop" from extensions config. Skipping.
+   Hook registry initialized with 5 hook entries  # 5+ indicates hooks loaded
+   ```
 
-    *Broken state indicator*:
-    ```
-    Hook registry initialized with 0 hook entries  # Hooks not loading from hooks/hooks.json
-    ```
+   _Broken state indicator_:
+   ```
+   Hook registry initialized with 0 hook entries  # Hooks not loading from hooks/hooks.json
+   ```
 
-    This test completes in ~3s and requires no interactive session. See [[workflows/debugging]] for hook debugging procedures.
+   This test completes in ~3s and requires no interactive session. See [[workflows/debugging]] for hook debugging procedures.
 
-    **Common failure causes**:
-    - `hooks/hooks.json` missing from dist (check build.py)
-    - Hooks defined in `gemini-extension.json` instead of `hooks/hooks.json`
-    - Wrong event names (Claude uses PreToolUse, Gemini uses BeforeTool)
+   **Common failure causes**:
+   - `hooks/hooks.json` missing from dist (check build.py)
+   - Hooks defined in `gemini-extension.json` instead of `hooks/hooks.json`
+   - Wrong event names (Claude uses PreToolUse, Gemini uses BeforeTool)
 
 3. **Manual Hook Check** (Optional):
-    Inspect `logs/user_prompt_submit.log` (if enabled) or ensure the previous silent failures are now logging errors.
+   Inspect `logs/user_prompt_submit.log` (if enabled) or ensure the previous silent failures are now logging errors.
 
 ## 4. Automated Agent Testing (The Harness)
 
@@ -95,7 +96,7 @@ Run the harness using Gemini to verify the `polecat -> gemini` path.
 uv run scripts/automated_test_harness.py --create "Check current directory and print files" --agent gemini
 ```
 
-*Success Criteria*:
+_Success Criteria_:
 
 - Harness creates a "TEST" task.
 - Polecat output shows successful worktree setup and agent run.
@@ -110,7 +111,7 @@ Run the harness using Claude to verify the `polecat -> claude` path.
 uv run scripts/automated_test_harness.py --create "Check current directory and print files" --agent claude
 ```
 
-*Success Criteria*:
+_Success Criteria_:
 
 - Similar to Gemini, but verifies Claude CLI invocation (`--permission-mode plan`).
 - Transcript is generated and verified.
@@ -123,7 +124,7 @@ Verify that the harness can pull a real task from the stack and operate without 
 uv run scripts/automated_test_harness.py --agent gemini
 ```
 
-*Success Criteria*:
+_Success Criteria_:
 
 - Harness claims the next tasks.
 - Agent runs successfully.
@@ -134,23 +135,23 @@ uv run scripts/automated_test_harness.py --agent gemini
 After tests, verify that artifacts are correct:
 
 1. **Transcripts**: Check `~/writing/sessions/` for generated transcripts.
-    - **CRITICAL**: Worker session IDs do NOT match task IDs. To find a transcript:
-      ```bash
-      rg "task-id" ~/writing/sessions/  # Search by task ID mentioned in transcript
-      ```
-    - Use `session_transcript.py` to generate readable transcripts:
-      ```bash
-      uv run python $AOPS/aops-core/scripts/session_transcript.py <session.jsonl> -o ~/writing/sessions/<task-id>-transcript.md
-      ```
-    - Ensure transcripts contain task context injected by hydration.
-    - Ensure transcripts contain the agent's output.
+   - **CRITICAL**: Worker session IDs do NOT match task IDs. To find a transcript:
+     ```bash
+     rg "task-id" ~/writing/sessions/  # Search by task ID mentioned in transcript
+     ```
+   - Use `session_transcript.py` to generate readable transcripts:
+     ```bash
+     uv run python $AOPS/aops-core/scripts/session_transcript.py <session.jsonl> -o ~/writing/sessions/<task-id>-transcript.md
+     ```
+   - Ensure transcripts contain task context injected by hydration.
+   - Ensure transcripts contain the agent's output.
 
 2. **Task Status**: Check that test tasks are either closed or in the expected state (if `--keep` was used).
 
 3. **Worker Session Tracking** (Known Gap):
-    - Worker sessions generate auto-IDs (e.g., `59513a-f50d0dd2`) that differ from task IDs (e.g., `aops-dd44aefa`)
-    - **Workaround**: Search transcripts by task ID content, not filename
-    - **Future fix**: See task `aops-f24e2bb8` for session ID tracking implementation
+   - Worker sessions generate auto-IDs (e.g., `59513a-f50d0dd2`) that differ from task IDs (e.g., `aops-dd44aefa`)
+   - **Workaround**: Search transcripts by task ID content, not filename
+   - **Future fix**: See task `aops-f24e2bb8` for session ID tracking implementation
 
 ## 5.1 Review Workflow (Before Merge)
 

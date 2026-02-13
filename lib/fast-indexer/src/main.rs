@@ -282,7 +282,7 @@ fn parse_file(path: PathBuf) -> Option<FileData> {
     let content = fs::read_to_string(&path).ok()?;
     let matter = Matter::<YAML>::new();
     let result = matter.parse(&content);
-    
+
     // Frontmatter data
     let fm_data = result.data.as_ref().map(|d| d.deserialize::<serde_json::Value>().ok()).flatten();
 
@@ -327,7 +327,7 @@ fn parse_file(path: PathBuf) -> Option<FileData> {
     // 4. Raw Links
     // Extract [[wiki links]] and [md links](...)
     let mut raw_links = Vec::new();
-    
+
     // Wiki links: [[target]] or [[target|alias]]
     let wiki_re = Regex::new(r"\[\[([^\]\|]+)(?:\|[^\]]+)?\]\]").unwrap();
     for cap in wiki_re.captures_iter(&result.content) {
@@ -429,14 +429,14 @@ fn resolve_link(link: &str, current_file: &FileData, id_map: &HashMap<String, St
     // For fast indexing, we can check if the canonicalized path (or just raw resolved path) matches any known file path
     // But we need absolute paths for the map logic used in extension.
     // Let's assume absolute paths in the map.
-    
+
     // To properly check existence without hitting FS again, we'd need a Set of all valid paths.
     // Let's optimize: id_map stores ShortKey -> AbsPath.
     // We can also assume we might need full path resolution.
-    
+
     // Simplification: If relative path resolution works, the extension uses `resolveLinkPath`.
     // Here we must emulate that.
-    // If the link is "./foo.md", we join it. 
+    // If the link is "./foo.md", we join it.
     // Since we are writing a standalone tool, we can just canonicalize.
     if joined.exists() {
         return Some(joined.canonicalize().ok()?.to_string_lossy().to_string());
@@ -748,7 +748,7 @@ fn output_mcp_index(files: &[FileData], path: &str, data_root: &Path) -> Result<
 fn main() -> Result<()> {
     let args = Args::parse();
     let root = Path::new(&args.root).canonicalize()?;
-    
+
     if !args.quiet {
         println!("Scanning directory: {:?}", root);
     }

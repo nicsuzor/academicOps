@@ -113,9 +113,7 @@ class TestSessionDiscoveryDemo:
 
         # Check first session as representative
         first_session = sessions[0]
-        print(
-            f"Checking session: {getattr(first_session, 'session_id', 'unknown')[:20]}..."
-        )
+        print(f"Checking session: {getattr(first_session, 'session_id', 'unknown')[:20]}...")
 
         print("\nRequired attributes:")
         all_attrs_present = True
@@ -129,9 +127,7 @@ class TestSessionDiscoveryDemo:
             # Show value (truncated)
             if present:
                 value_str = str(value)[:40]
-                print(
-                    f"  [{status}] {attr}: {value_str}{'...' if len(str(value)) > 40 else ''}"
-                )
+                print(f"  [{status}] {attr}: {value_str}{'...' if len(str(value)) > 40 else ''}")
             else:
                 print(f"  [{status}] {attr}")
 
@@ -151,9 +147,7 @@ class TestSessionDiscoveryDemo:
             for err in validation_errors[:3]:
                 print(f"     - {err}")
         else:
-            print(
-                f"  ✅ All {min(10, len(sessions))} sessions have required attributes"
-            )
+            print(f"  ✅ All {min(10, len(sessions))} sessions have required attributes")
 
         # === STEP 4: Verify Paths Exist ===
         print("\n--- STEP 4: Path Verification ---")
@@ -182,9 +176,7 @@ class TestSessionDiscoveryDemo:
                 print(f"    - {p}...")
 
         # All checked paths should exist
-        assert (
-            paths_valid == paths_checked
-        ), f"Some session paths don't exist: {paths_missing}"
+        assert paths_valid == paths_checked, f"Some session paths don't exist: {paths_missing}"
 
         # === STEP 5: Show Session Details ===
         print("\n--- STEP 5: Session Details ---")

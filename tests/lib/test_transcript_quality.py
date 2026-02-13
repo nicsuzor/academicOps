@@ -16,8 +16,8 @@ import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-
-from lib.session_reader import Entry, SessionProcessor
+from lib.session_reader import SessionProcessor
+from lib.transcript_parser import Entry
 
 
 def _make_timestamp(offset_seconds: int = 0) -> str:
@@ -47,9 +47,7 @@ def _create_assistant_entry(text: str, offset: int = 0) -> dict:
     }
 
 
-def _create_tool_use_entry(
-    tool_name: str, tool_input: dict, tool_id: str, offset: int = 0
-) -> dict:
+def _create_tool_use_entry(tool_name: str, tool_input: dict, tool_id: str, offset: int = 0) -> dict:
     """Create an assistant entry with a tool invocation."""
     return {
         "type": "assistant",
@@ -143,18 +141,14 @@ class TestHookAttribution:
         }
         entries = [
             _create_user_entry("Run a command", offset=0),
-            _create_tool_use_entry(
-                "Bash", {"command": "echo hello"}, "tool-1", offset=1
-            ),
+            _create_tool_use_entry("Bash", {"command": "echo hello"}, "tool-1", offset=1),
             hook_entry,  # Hook fires after tool use
             _create_tool_result_entry("tool-1", "hello", offset=3),
         ]
         _write_jsonl(session_file, entries)
 
         processor = SessionProcessor()
-        session, parsed_entries, agent_entries = processor.parse_session_file(
-            session_file
-        )
+        session, parsed_entries, agent_entries = processor.parse_session_file(session_file)
 
         markdown = processor.format_session_as_markdown(
             session, parsed_entries, agent_entries=agent_entries, variant="full"
@@ -210,11 +204,7 @@ class TestSubagentOrdering:
                 "type": "assistant",
                 "uuid": "agent-msg-1",
                 "timestamp": _make_timestamp(2),
-                "message": {
-                    "content": [
-                        {"type": "text", "text": "Searching for Python files..."}
-                    ]
-                },
+                "message": {"content": [{"type": "text", "text": "Searching for Python files..."}]},
             }
         ]
         _write_jsonl(agent_file, agent_entries_list)
@@ -256,9 +246,7 @@ class TestSubagentOrdering:
                 "task-1",
                 offset=2,
             ),
-            _create_tool_result_entry(
-                "task-1", "Search complete.", offset=3, agent_id="xyz789"
-            ),
+            _create_tool_result_entry("task-1", "Search complete.", offset=3, agent_id="xyz789"),
             _create_assistant_entry("Search is done.", offset=4),
         ]
         _write_jsonl(session_file, entries)
@@ -268,9 +256,7 @@ class TestSubagentOrdering:
                 "type": "assistant",
                 "uuid": "agent-msg-1",
                 "timestamp": _make_timestamp(3),
-                "message": {
-                    "content": [{"type": "text", "text": "I found the files."}]
-                },
+                "message": {"content": [{"type": "text", "text": "I found the files."}]},
             }
         ]
         agent_entries = {"xyz789": [Entry.from_dict(e) for e in agent_entries_list]}
@@ -323,9 +309,7 @@ class TestMarkdownStructure:
         _write_jsonl(session_file, entries)
 
         processor = SessionProcessor()
-        session, parsed_entries, agent_entries = processor.parse_session_file(
-            session_file
-        )
+        session, parsed_entries, agent_entries = processor.parse_session_file(session_file)
 
         markdown = processor.format_session_as_markdown(
             session, parsed_entries, agent_entries=agent_entries, variant="full"
@@ -333,9 +317,9 @@ class TestMarkdownStructure:
 
         # Should have a clear structure showing what generated what
         # Example: "### Hook: PostToolUse: Bash" or similar
-        assert (
-            "PostToolUse" in markdown or "Hook" in markdown
-        ), "Hook events should be visible in transcript for debugging"
+        assert "PostToolUse" in markdown or "Hook" in markdown, (
+            "Hook events should be visible in transcript for debugging"
+        )
 
     def test_json_in_tool_results_properly_escaped(self, tmp_path: Path):
         """JSON in tool results must not break markdown fences.
@@ -354,17 +338,13 @@ class TestMarkdownStructure:
         session_file = tmp_path / "session.jsonl"
         entries = [
             _create_user_entry("Get JSON data", offset=0),
-            _create_tool_use_entry(
-                "mcp__zot__search", {"query": "test"}, "tool-1", offset=1
-            ),
+            _create_tool_use_entry("mcp__zot__search", {"query": "test"}, "tool-1", offset=1),
             _create_tool_result_entry("tool-1", json_result, offset=2),
         ]
         _write_jsonl(session_file, entries)
 
         processor = SessionProcessor()
-        session, parsed_entries, agent_entries = processor.parse_session_file(
-            session_file
-        )
+        session, parsed_entries, agent_entries = processor.parse_session_file(session_file)
 
         markdown = processor.format_session_as_markdown(
             session, parsed_entries, agent_entries=agent_entries, variant="full"
@@ -400,17 +380,13 @@ class TestTranscriptValidity:
         entries = [
             _create_user_entry("Hello", offset=0),
             _create_assistant_entry("Hi there!", offset=1),
-            _create_tool_use_entry(
-                "Read", {"file_path": "/tmp/test.txt"}, "tool-1", offset=2
-            ),
+            _create_tool_use_entry("Read", {"file_path": "/tmp/test.txt"}, "tool-1", offset=2),
             _create_tool_result_entry("tool-1", "File contents here", offset=3),
         ]
         _write_jsonl(session_file, entries)
 
         processor = SessionProcessor()
-        session, parsed_entries, agent_entries = processor.parse_session_file(
-            session_file
-        )
+        session, parsed_entries, agent_entries = processor.parse_session_file(session_file)
 
         markdown = processor.format_session_as_markdown(
             session, parsed_entries, agent_entries=agent_entries, variant="full"
@@ -454,9 +430,7 @@ class TestTranscriptValidity:
         _write_jsonl(session_file, entries)
 
         processor = SessionProcessor()
-        session, parsed_entries, agent_entries = processor.parse_session_file(
-            session_file
-        )
+        session, parsed_entries, agent_entries = processor.parse_session_file(session_file)
 
         markdown = processor.format_session_as_markdown(
             session, parsed_entries, agent_entries=agent_entries, variant="full"
@@ -484,9 +458,7 @@ class TestExitCodeExtraction:
         session_file = tmp_path / "session.jsonl"
         entries = [
             _create_user_entry("Run a failing command", offset=0),
-            _create_tool_use_entry(
-                "Bash", {"command": "exit 1"}, "tool-1", offset=1
-            ),
+            _create_tool_use_entry("Bash", {"command": "exit 1"}, "tool-1", offset=1),
             {
                 "type": "user",
                 "uuid": "result-2",
@@ -506,9 +478,7 @@ class TestExitCodeExtraction:
         _write_jsonl(session_file, entries)
 
         processor = SessionProcessor()
-        session, parsed_entries, agent_entries = processor.parse_session_file(
-            session_file
-        )
+        session, parsed_entries, agent_entries = processor.parse_session_file(session_file)
 
         markdown = processor.format_session_as_markdown(
             session, parsed_entries, agent_entries=agent_entries, variant="full"
@@ -527,9 +497,7 @@ class TestExitCodeExtraction:
         session_file = tmp_path / "session.jsonl"
         entries = [
             _create_user_entry("Run a command", offset=0),
-            _create_tool_use_entry(
-                "Bash", {"command": "echo hello"}, "tool-1", offset=1
-            ),
+            _create_tool_use_entry("Bash", {"command": "echo hello"}, "tool-1", offset=1),
             {
                 "type": "user",
                 "uuid": "result-2",
@@ -549,9 +517,7 @@ class TestExitCodeExtraction:
         _write_jsonl(session_file, entries)
 
         processor = SessionProcessor()
-        session, parsed_entries, agent_entries = processor.parse_session_file(
-            session_file
-        )
+        session, parsed_entries, agent_entries = processor.parse_session_file(session_file)
 
         markdown = processor.format_session_as_markdown(
             session, parsed_entries, agent_entries=agent_entries, variant="full"
@@ -570,9 +536,7 @@ class TestExitCodeExtraction:
         session_file = tmp_path / "session.jsonl"
         entries = [
             _create_user_entry("Read a file", offset=0),
-            _create_tool_use_entry(
-                "Read", {"file_path": "/tmp/test.txt"}, "tool-1", offset=1
-            ),
+            _create_tool_use_entry("Read", {"file_path": "/tmp/test.txt"}, "tool-1", offset=1),
             {
                 "type": "user",
                 "uuid": "result-2",
@@ -592,18 +556,14 @@ class TestExitCodeExtraction:
         _write_jsonl(session_file, entries)
 
         processor = SessionProcessor()
-        session, parsed_entries, agent_entries = processor.parse_session_file(
-            session_file
-        )
+        session, parsed_entries, agent_entries = processor.parse_session_file(session_file)
 
         markdown = processor.format_session_as_markdown(
             session, parsed_entries, agent_entries=agent_entries, variant="full"
         )
 
         # Non-Bash tools should not have "→ exit" suffix
-        assert "→ exit" not in markdown, (
-            "Non-Bash tools should not display exit codes."
-        )
+        assert "→ exit" not in markdown, "Non-Bash tools should not display exit codes."
 
     def test_exit_code_128_extracted(self, tmp_path: Path):
         """Exit code 128 (and other codes) should be correctly extracted.
@@ -613,9 +573,7 @@ class TestExitCodeExtraction:
         session_file = tmp_path / "session.jsonl"
         entries = [
             _create_user_entry("Push to git", offset=0),
-            _create_tool_use_entry(
-                "Bash", {"command": "git push"}, "tool-1", offset=1
-            ),
+            _create_tool_use_entry("Bash", {"command": "git push"}, "tool-1", offset=1),
             {
                 "type": "user",
                 "uuid": "result-2",
@@ -635,15 +593,11 @@ class TestExitCodeExtraction:
         _write_jsonl(session_file, entries)
 
         processor = SessionProcessor()
-        session, parsed_entries, agent_entries = processor.parse_session_file(
-            session_file
-        )
+        session, parsed_entries, agent_entries = processor.parse_session_file(session_file)
 
         markdown = processor.format_session_as_markdown(
             session, parsed_entries, agent_entries=agent_entries, variant="full"
         )
 
         # Should extract and display exit code 128
-        assert "128" in markdown, (
-            "Exit code 128 should be extracted and displayed in transcript."
-        )
+        assert "128" in markdown, "Exit code 128 should be extracted and displayed in transcript."

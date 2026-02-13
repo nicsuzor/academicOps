@@ -17,8 +17,8 @@ import re
 from pathlib import Path
 
 import pytest
-
 from lib.paths import get_aops_root
+
 from tests.conftest import extract_response_text
 
 
@@ -56,11 +56,7 @@ def print_full_session_trace(output: str) -> None:
                             "additionalContext", ""
                         )
                         if context:
-                            preview = (
-                                context[:1000] + "..."
-                                if len(context) > 1000
-                                else context
-                            )
+                            preview = context[:1000] + "..." if len(context) > 1000 else context
                             print(f"    Context preview: {preview[:500]}")
                     except json.JSONDecodeError:
                         print(f"    Raw: {stdout[:500]}...")
@@ -86,9 +82,7 @@ def print_full_session_trace(output: str) -> None:
                                 print(
                                     f"      subagent_type: {tool_input.get('subagent_type', 'N/A')}"
                                 )
-                                print(
-                                    f"      description: {tool_input.get('description', 'N/A')}"
-                                )
+                                print(f"      description: {tool_input.get('description', 'N/A')}")
                                 prompt_preview = str(tool_input.get("prompt", ""))[:200]
                                 print(f"      prompt: {prompt_preview}...")
                             else:
@@ -109,11 +103,7 @@ def print_full_session_trace(output: str) -> None:
                 print(f"\n[{i}] ✅ FINAL RESULT:")
                 result_text = event.get("result", "")
                 if isinstance(result_text, str):
-                    preview = (
-                        result_text[:500] + "..."
-                        if len(result_text) > 500
-                        else result_text
-                    )
+                    preview = result_text[:500] + "..." if len(result_text) > 500 else result_text
                     print(f"    {preview}")
 
             # User events contain tool results
@@ -134,10 +124,7 @@ def print_full_session_trace(output: str) -> None:
                     content = message.get("content", [])
                     if isinstance(content, list):
                         for block in content:
-                            if (
-                                isinstance(block, dict)
-                                and block.get("type") == "tool_result"
-                            ):
+                            if isinstance(block, dict) and block.get("type") == "tool_result":
                                 tool_content = block.get("content", "")
                                 print(f"\n[{i}] 📥 TOOL RESULT (from message):")
                                 print(f"    {tool_content}")
@@ -197,14 +184,10 @@ def extract_hydrator_response(output: str) -> dict | None:
                     content = message.get("content", [])
                     if isinstance(content, list):
                         for block in content:
-                            if (
-                                isinstance(block, dict)
-                                and block.get("type") == "tool_result"
-                            ):
+                            if isinstance(block, dict) and block.get("type") == "tool_result":
                                 tool_content = block.get("content", "")
                                 if isinstance(tool_content, str) and (
-                                    "**Intent**:" in tool_content
-                                    or "**Workflow**:" in tool_content
+                                    "**Intent**:" in tool_content or "**Workflow**:" in tool_content
                                 ):
                                     return _parse_hydrator_text(tool_content)
 
@@ -375,9 +358,7 @@ def test_hydrator_does_not_answer_user_questions(
     # The hydrator should NOT read the file - it should route to simple-question workflow
     prompt = "What is my shell PS1 prompt configured to?"
 
-    result, session_id, tool_calls = claude_headless_tracked(
-        prompt, timeout_seconds=180
-    )
+    result, session_id, tool_calls = claude_headless_tracked(prompt, timeout_seconds=180)
 
     assert result["success"], f"Execution failed: {result.get('error')}"
 
@@ -403,9 +384,13 @@ def test_hydrator_does_not_answer_user_questions(
     for indicator in bug_indicators:
         # Check if indicator appears in the hydrator's section of output
         # (after Task call, before main agent resumes)
-        if 'subagent_type":"aops-core:prompt-hydrator"' in output or 'subagent_type":"prompt-hydrator"' in output:
+        if (
+            'subagent_type":"aops-core:prompt-hydrator"' in output
+            or 'subagent_type":"prompt-hydrator"' in output
+        ):
             # Find hydrator result section
             import re
+
             hydrator_result_pattern = r'"type":"tool_result".*?"content":"(.*?)"'
             matches = re.findall(hydrator_result_pattern, output, re.DOTALL)
             for match in matches:
@@ -430,8 +415,7 @@ def test_hydrator_does_not_answer_user_questions(
 
     # Verify hydrator selected simple-question workflow (not executed the answer)
     assert "simple-question" in output.lower() or "workflow" in output.lower(), (
-        f"Hydrator should have selected a workflow, not answered directly. "
-        f"Session: {session_id}"
+        f"Hydrator should have selected a workflow, not answered directly. Session: {session_id}"
     )
 
 
@@ -461,9 +445,7 @@ def test_hydrator_does_not_search_for_skills_or_workflows(
     # from the pre-loaded Skills Index, not search the filesystem
     prompt = "run the daily skill"
 
-    result, session_id, tool_calls = claude_headless_tracked(
-        prompt, timeout_seconds=180
-    )
+    result, session_id, tool_calls = claude_headless_tracked(prompt, timeout_seconds=180)
 
     assert result["success"], f"Execution failed: {result.get('error')}"
 
@@ -473,32 +455,34 @@ def test_hydrator_does_not_search_for_skills_or_workflows(
     # instead of using pre-loaded indexes
     bug_indicators = [
         # Filesystem discovery commands
-        'find -name',
-        'find . -name',
-        'ls -la',
-        'ls -l ',
+        "find -name",
+        "find . -name",
+        "ls -la",
+        "ls -l ",
         # Evidence of searching for skills/workflows
         'name "*daily*"',
-        '*daily*',
+        "*daily*",
         # Searching skill directories
-        '/skills/',
-        '/workflows/',
+        "/skills/",
+        "/workflows/",
     ]
 
     # Look for these patterns within hydrator's execution context
     # The hydrator output appears after Task(prompt-hydrator) and before main agent resumes
-    hydrator_section_start = output.find('prompt-hydrator')
+    hydrator_section_start = output.find("prompt-hydrator")
     if hydrator_section_start > 0:
         # Find the tool result that contains hydrator's work
-        hydrator_context = output[hydrator_section_start:hydrator_section_start + 10000]
+        hydrator_context = output[hydrator_section_start : hydrator_section_start + 10000]
 
         for indicator in bug_indicators:
             if indicator in hydrator_context:
                 # Check if this is actual hydrator behavior, not just context
                 # (the indicator might appear in the prompt itself)
-                if f'command":"{indicator}' in hydrator_context or \
-                   f"command': '{indicator}" in hydrator_context or \
-                   f'Bash(command="{indicator}' in hydrator_context:
+                if (
+                    f'command":"{indicator}' in hydrator_context
+                    or f"command': '{indicator}" in hydrator_context
+                    or f'Bash(command="{indicator}' in hydrator_context
+                ):
                     pytest.fail(
                         f"Hydrator used filesystem discovery: found '{indicator}' command.\n"
                         f"The hydrator should use pre-loaded Skills Index and Workflows Index,\n"
@@ -507,7 +491,8 @@ def test_hydrator_does_not_search_for_skills_or_workflows(
 
     # Verify hydrator WAS called
     hydrator_calls = [
-        c for c in tool_calls
+        c
+        for c in tool_calls
         if c["name"] == "Task"
         and "prompt-hydrator" in str(c.get("input", {}).get("subagent_type", ""))
     ]
@@ -544,9 +529,7 @@ def test_hydrator_does_not_glob_when_given_specific_file(
     # The hook creates a temp file and tells main agent to spawn prompt-hydrator
     prompt = "HYDRATOR_GLOB_TEST: Help me understand how the policy_enforcer hook works"
 
-    result, session_id, tool_calls = claude_headless_tracked(
-        prompt, timeout_seconds=180
-    )
+    result, session_id, tool_calls = claude_headless_tracked(prompt, timeout_seconds=180)
 
     assert result["success"], f"Execution failed: {result.get('error')}"
 
@@ -593,8 +576,7 @@ def test_hydrator_does_not_glob_when_given_specific_file(
     ]
 
     assert len(hydrator_calls) > 0, (
-        f"prompt-hydrator should have been spawned for this prompt. "
-        f"Session: {session_id}"
+        f"prompt-hydrator should have been spawned for this prompt. Session: {session_id}"
     )
 
 
@@ -623,9 +605,7 @@ def test_hydrator_temp_file_contains_real_prompt(claude_headless) -> None:
     import time
 
     recent_cutoff = time.time() - 120
-    recent_files = [
-        f for f in temp_dir.glob("hydrate_*.md") if f.stat().st_mtime > recent_cutoff
-    ]
+    recent_files = [f for f in temp_dir.glob("hydrate_*.md") if f.stat().st_mtime > recent_cutoff]
 
     assert recent_files, "Should have recent hydration temp files"
 
@@ -636,9 +616,9 @@ def test_hydrator_temp_file_contains_real_prompt(claude_headless) -> None:
         if "HYDRATOR_TEST_MARKER" in content:
             marker_found = True
             # Verify the COMPLETE prompt is there, not truncated
-            assert (
-                "session-insights skill documentation" in content
-            ), "Full prompt should be in temp file - got truncated content"
+            assert "session-insights skill documentation" in content, (
+                "Full prompt should be in temp file - got truncated content"
+            )
             # Verify hydrator template structure
             assert "## User Prompt" in content, "Missing User Prompt section"
             assert "## Your Task" in content, "Missing Your Task section"
@@ -667,9 +647,7 @@ def test_hydrator_task_is_spawned(claude_headless_tracked) -> None:
         "blocking dangerous npm commands"
     )
 
-    result, session_id, tool_calls = claude_headless_tracked(
-        prompt, timeout_seconds=180
-    )
+    result, session_id, tool_calls = claude_headless_tracked(prompt, timeout_seconds=180)
 
     assert result["success"], f"Execution failed: {result.get('error')}"
 
@@ -695,8 +673,7 @@ def test_hydrator_task_is_spawned(claude_headless_tracked) -> None:
 
     # The hydrator prompt should reference the temp file path
     assert "/tmp/claude-hydrator/hydrate_" in hydrator_prompt, (
-        f"Hydrator prompt should reference temp file path. "
-        f"Got: {hydrator_prompt[:200]}..."
+        f"Hydrator prompt should reference temp file path. Got: {hydrator_prompt[:200]}..."
     )
 
 
@@ -762,10 +739,11 @@ def test_short_confirmation_preserves_context() -> None:
     # the context extraction function directly with a fixture that resembles
     # the failure case.
 
-    from lib.session_reader import extract_router_context
     import json
     import tempfile
     from pathlib import Path
+
+    from lib.session_reader import extract_router_context
 
     # Create a minimal session JSONL that simulates the failure scenario:
     # 1. User asks about config
@@ -776,9 +754,7 @@ def test_short_confirmation_preserves_context() -> None:
         # Turn 1: User asks about config
         {
             "type": "user",
-            "message": {
-                "content": [{"type": "text", "text": "check how bd is configured"}]
-            },
+            "message": {"content": [{"type": "text", "text": "check how bd is configured"}]},
         },
         # Turn 2: Agent investigates and asks confirmation
         {
@@ -800,9 +776,7 @@ def test_short_confirmation_preserves_context() -> None:
     ]
 
     # Write to temp file
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".jsonl", delete=False
-    ) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
         for entry in session_entries:
             f.write(json.dumps(entry) + "\n")
         temp_path = Path(f.name)
@@ -855,9 +829,7 @@ def test_directive_disguised_as_question_routes_to_feature_dev(
         "in which case the workflow has to be: ANSWER and HALT"
     )
 
-    result, session_id, tool_calls = claude_headless_tracked(
-        prompt, timeout_seconds=180
-    )
+    result, session_id, tool_calls = claude_headless_tracked(prompt, timeout_seconds=180)
 
     assert result["success"], f"Execution failed: {result.get('error')}"
 
@@ -1055,7 +1027,9 @@ class TestHydratorDemo:
         # The hydrator returns text starting with "## Prompt Hydration"
         # We need to find ALL occurrences and pick the LAST one (the actual response,
         # not the template in the temp file)
-        hydrator_pattern = r"## Prompt Hydration\\n\\n\*\*Intent\*\*:.*?(?=\\n\\n---|\nagentId:|\"type\")"
+        hydrator_pattern = (
+            r"## Prompt Hydration\\n\\n\*\*Intent\*\*:.*?(?=\\n\\n---|\nagentId:|\"type\")"
+        )
         hydrator_matches = list(re.finditer(hydrator_pattern, output, re.DOTALL))
 
         if len(hydrator_matches) > 1:
@@ -1091,9 +1065,7 @@ class TestHydratorDemo:
         skill_pattern = r"Skill\(skill=['\"]([^'\"]+)['\"]\)"
         skills = re.findall(skill_pattern, text)
         unique_skills = set(skills)
-        print(
-            f"3. Skills assigned: {list(unique_skills) if unique_skills else 'None found'}"
-        )
+        print(f"3. Skills assigned: {list(unique_skills) if unique_skills else 'None found'}")
 
         # Check workflow is appropriate for complex task
         workflow_match = re.search(r"\*\*Workflow\*\*:\s*(\w+)", text)

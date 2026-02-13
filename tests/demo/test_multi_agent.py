@@ -79,9 +79,7 @@ class TestMultiAgentDemo:
 
             # Look for evidence that critic feedback was processed
             critic_indicators = ["critic", "review", "concern", "issue", "test", "risk"]
-            found_indicators = [
-                ind for ind in critic_indicators if ind in response_lower
-            ]
+            found_indicators = [ind for ind in critic_indicators if ind in response_lower]
             print(f"    Critic-related terms found: {found_indicators}")
 
             # Show response for human validation

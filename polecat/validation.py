@@ -23,7 +23,6 @@ Threat models addressed:
 
 import re
 
-
 # Maximum task ID length to prevent DoS/buffer issues
 MAX_TASK_ID_LENGTH = 100
 
@@ -37,23 +36,35 @@ MIN_TASK_ID_LENGTH = 2
 TASK_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]*[a-z0-9]$|^[a-z0-9]$")
 
 # Git special refs that should never be used as task IDs
-GIT_SPECIAL_REFS = frozenset({
-    "head", "fetch_head", "orig_head", "merge_head",
-    "cherry_pick_head", "revert_head", "stash",
-    "main", "master", "develop", "origin",
-})
+GIT_SPECIAL_REFS = frozenset(
+    {
+        "head",
+        "fetch_head",
+        "orig_head",
+        "merge_head",
+        "cherry_pick_head",
+        "revert_head",
+        "stash",
+        "main",
+        "master",
+        "develop",
+        "origin",
+    }
+)
 
 # Dangerous substrings that indicate injection attempts
-DANGEROUS_PATTERNS = frozenset({
-    "..",      # Path traversal and git ref separator
-    "/",       # Path separator
-    "\\",      # Windows path separator
-    "@{",      # Git reflog syntax
-    "\x00",    # Null byte
-    "\n",      # Newline (command injection)
-    "\r",      # Carriage return
-    " ",       # Space (command injection)
-})
+DANGEROUS_PATTERNS = frozenset(
+    {
+        "..",  # Path traversal and git ref separator
+        "/",  # Path separator
+        "\\",  # Windows path separator
+        "@{",  # Git reflog syntax
+        "\x00",  # Null byte
+        "\n",  # Newline (command injection)
+        "\r",  # Carriage return
+        " ",  # Space (command injection)
+    }
+)
 
 
 class TaskIDValidationError(ValueError):
@@ -123,8 +134,7 @@ def validate_task_id_or_raise(task_id: str) -> str:
     # Type check
     if not isinstance(task_id, str):
         raise TaskIDValidationError(
-            str(task_id) if task_id is not None else "None",
-            "must be a string"
+            str(task_id) if task_id is not None else "None", "must be a string"
         )
 
     # Length bounds
@@ -137,10 +147,7 @@ def validate_task_id_or_raise(task_id: str) -> str:
     # Check for dangerous patterns first (before regex, since regex won't catch all)
     for pattern in DANGEROUS_PATTERNS:
         if pattern in task_id:
-            raise TaskIDValidationError(
-                task_id,
-                f"contains forbidden pattern: {repr(pattern)}"
-            )
+            raise TaskIDValidationError(task_id, f"contains forbidden pattern: {repr(pattern)}")
 
     # Check for git special refs (case-insensitive)
     if task_id.lower() in GIT_SPECIAL_REFS:
@@ -154,7 +161,7 @@ def validate_task_id_or_raise(task_id: str) -> str:
         raise TaskIDValidationError(
             task_id,
             "must contain only lowercase alphanumeric characters, hyphens, and underscores, "
-            "and must start/end with alphanumeric"
+            "and must start/end with alphanumeric",
         )
 
     return task_id

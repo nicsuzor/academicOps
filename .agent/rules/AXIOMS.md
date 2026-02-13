@@ -48,6 +48,7 @@ No defaults, no fallbacks, no workarounds, no silent failures.
 If you don't know, say so. No guesses.
 
 **Corollaries**:
+
 - This includes implementation approaches. If you don't know how to use a tool/library the user specified, say so and ask - don't invent your own approach that "looks similar."
 - When user provides a working example to follow, adapt that example directly. Don't extract abstract "patterns" and re-implement from scratch - that's inventing your own approach with extra steps.
 
@@ -278,8 +279,9 @@ Agents are autonomous entities with knowledge who execute workflows. Agents don'
 Legacy NLP (keyword matching, regex heuristics, fuzzy string matching) is forbidden for semantic decisions. We have smart LLMs—use them.
 
 **Corollaries**:
+
 - Don't try to guess user intent with regex
 - Don't filter documentation based on keyword matches
-- Provide the Agent with the *index of choices* and let the Agent decide
+- Provide the Agent with the _index of choices_ and let the Agent decide
 
 **Derivation**: LLMs understand semantics; regex does not. Hardcoded NLP heuristics are brittle and require constant maintenance. Agentic decision-making scales better.

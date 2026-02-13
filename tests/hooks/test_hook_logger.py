@@ -5,12 +5,10 @@ Tests that log_hook_event correctly writes to per-session JSONL files.
 """
 
 import json
-import os
 import sys
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -18,6 +16,7 @@ import pytest
 aops_core_dir = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(aops_core_dir))
 
+from hooks.schemas import CanonicalHookOutput, HookContext
 from hooks.unified_logger import log_hook_event
 
 
@@ -42,10 +41,12 @@ class TestLogHookEvent:
         session_id = "test-session-12345678"
 
         log_hook_event(
-            session_id=session_id,
-            hook_event="TestEvent",
-            input_data={"foo": "bar"},
-            output_data={"result": "ok"},
+            HookContext(
+                session_id=session_id,
+                hook_event="TestEvent",
+                raw_input={"foo": "bar"},
+            ),
+            output=CanonicalHookOutput(metadata={"result": "ok"}),
             exit_code=0,
         )
 
@@ -61,10 +62,14 @@ class TestLogHookEvent:
         session_id = "test-structure-abcd1234"
 
         log_hook_event(
-            session_id=session_id,
-            hook_event="PreToolUse",
-            input_data={"tool_name": "Edit", "tool_input": {"file": "test.py"}},
-            output_data={"additionalContext": "some context"},
+            HookContext(
+                session_id=session_id,
+                hook_event="PreToolUse",
+                tool_name="Edit",
+                tool_input={"file": "test.py"},
+                raw_input={"tool_name": "Edit", "tool_input": {"file": "test.py"}},
+            ),
+            output=CanonicalHookOutput(context_injection="some context"),
             exit_code=0,
         )
 
@@ -80,13 +85,14 @@ class TestLogHookEvent:
         assert entry["hook_event"] == "PreToolUse"
         assert "logged_at" in entry
         assert entry["exit_code"] == 0
-        # Input data should be in 'input' key
-        assert "input" in entry
-        assert entry["input"]["tool_name"] == "Edit"
-        assert entry["input"]["tool_input"]["file"] == "test.py"
+        # Input data should be preserved
+        assert entry["tool_name"] == "Edit"
+        assert entry["tool_input"]["file"] == "test.py"
         # Output data should be in 'output' key
         assert "output" in entry
-        assert entry["output"]["additionalContext"] == "some context"
+        assert entry["output"]["context_injection"] == "some context"
+
+        assert "raw_input" in entry
 
     def test_multiple_events_appended(self, temp_claude_projects):
         """Test that multiple events are appended to same file."""
@@ -94,9 +100,11 @@ class TestLogHookEvent:
 
         for i in range(3):
             log_hook_event(
-                session_id=session_id,
-                hook_event=f"Event{i}",
-                input_data={"index": i},
+                HookContext(
+                    session_id=session_id,
+                    hook_event=f"Event{i}",
+                    raw_input={"index": i},
+                ),
                 exit_code=0,
             )
 
@@ -115,9 +123,11 @@ class TestLogHookEvent:
         """Test that empty session_id silently skips (fail-safe for hooks)."""
         # Should not raise or create files
         log_hook_event(
-            session_id="",
-            hook_event="TestEvent",
-            input_data={},
+            HookContext(
+                session_id="",
+                hook_event="TestEvent",
+                raw_input={},
+            ),
         )
 
         projects_dir = Path(temp_claude_projects) / ".claude" / "projects"
@@ -127,9 +137,11 @@ class TestLogHookEvent:
     def test_unknown_session_id_skips_silently(self, temp_claude_projects):
         """Test that 'unknown' session_id silently skips."""
         log_hook_event(
-            session_id="unknown",
-            hook_event="TestEvent",
-            input_data={},
+            HookContext(
+                session_id="unknown",
+                hook_event="TestEvent",
+                raw_input={},
+            ),
         )
 
         projects_dir = Path(temp_claude_projects) / ".claude" / "projects"
@@ -139,12 +151,14 @@ class TestLogHookEvent:
     def test_log_file_path_format(self, temp_claude_projects):
         """Test that log file path follows expected format: YYYYMMDD-shorthash-hooks.jsonl."""
         session_id = "test-path-format-xyz"
-        today = datetime.now(timezone.utc).strftime("%Y%m%d")
+        today = datetime.now(UTC).strftime("%Y%m%d")
 
         log_hook_event(
-            session_id=session_id,
-            hook_event="TestEvent",
-            input_data={},
+            HookContext(
+                session_id=session_id,
+                hook_event="TestEvent",
+                raw_input={},
+            ),
         )
 
         projects_dir = Path(temp_claude_projects) / ".claude" / "projects"
@@ -161,8 +175,8 @@ class TestLogHookEvent:
 
     def test_different_sessions_different_files(self, temp_claude_projects):
         """Test that different session IDs create different log files."""
-        log_hook_event(session_id="session-aaa", hook_event="Test", input_data={})
-        log_hook_event(session_id="session-bbb", hook_event="Test", input_data={})
+        log_hook_event(HookContext(session_id="session-aaa", hook_event="Test", raw_input={}))
+        log_hook_event(HookContext(session_id="session-bbb", hook_event="Test", raw_input={}))
 
         projects_dir = Path(temp_claude_projects) / ".claude" / "projects"
         log_files = list(projects_dir.rglob("*-hooks.jsonl"))
@@ -179,9 +193,11 @@ class TestLogHookEventEdgeCases:
 
         # datetime is not JSON serializable by default
         log_hook_event(
-            session_id=session_id,
-            hook_event="TestEvent",
-            input_data={"timestamp": datetime.now()},
+            HookContext(
+                session_id=session_id,
+                hook_event="TestEvent",
+                raw_input={"timestamp": datetime.now()},
+            ),
         )
 
         # Should not raise - custom serializer handles it
@@ -194,9 +210,11 @@ class TestLogHookEventEdgeCases:
         session_id = "test-no-output"
 
         log_hook_event(
-            session_id=session_id,
-            hook_event="TestEvent",
-            input_data={"key": "value"},
+            HookContext(
+                session_id=session_id,
+                hook_event="TestEvent",
+                raw_input={"key": "value"},
+            ),
             # No output_data
         )
 

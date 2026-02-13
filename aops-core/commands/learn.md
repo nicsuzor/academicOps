@@ -1,4 +1,4 @@
---- 
+---
 name: learn
 category: instruction
 description: Make minimal, graduated framework tweaks with experiment tracking
@@ -23,6 +23,128 @@ permalink: commands/learn
 
 ## Workflow
 
+### -1. Capture Failure Context (MANDATORY)
+
+**Before any root cause analysis, capture the evidence.**
+
+This step is REQUIRED for failures in the current session. Skip ONLY if analyzing a past incident retrospectively (where transcript already exists).
+
+#### -1a. Generate Session Transcript
+
+Invoke `transcript.py` to capture the current session.
+
+**Find current session file**:
+
+```bash
+# For Gemini (uses fd per P#79 + ls -t for sorting):
+SESSION_FILE=$(fd -t f -a --newer 1h .json ~/.gemini/tmp | xargs ls -t | head -1)
+
+# For Claude:
+# SESSION_FILE=$(find ~/.claude/projects -name "*.jsonl" -mmin -60 -type f 2>/dev/null | xargs ls -t 2>/dev/null | head -1)
+```
+
+**Generate transcript**:
+
+```bash
+uv run --directory ${AOPS} python aops-core/scripts/transcript.py "$SESSION_FILE"
+```
+
+Note the output path for the abridged transcript.
+
+#### -1b. Review Abridged Transcript
+
+Load and read the abridged transcript:
+
+```bash
+ABRIDGED=$(ls -t ~/writing/sessions/claude/*-abridged.md 2>/dev/null | head -1)
+```
+
+Identify from the transcript:
+
+1. **Failure point**: Where did the error/mistake occur?
+2. **Trigger**: What user prompt or context led to the mistake?
+3. **Consequence**: How was the error manifested?
+
+#### -1c. Extract Minimal Bug Reproduction
+
+From the abridged transcript, extract the MINIMUM turns to demonstrate the bug.
+
+**INCLUDE**:
+
+- The turn establishing the task/intent
+- Critical context that led to the decision
+- The turn where the wrong action was taken
+- User corrections or error messages
+- Direct consequences of the error
+
+**EXCLUDE**:
+
+- Routine file reads after context established
+- Successful tool uses unrelated to failure
+- System-injected context (`<agent-notification>`, `<ide_selection>`)
+- Repetitive or redundant turns
+
+**Target**: 5 turns maximum. Expand to 10 only if essential context would be lost.
+
+#### -1d. Create Fails Report
+
+Save the minimal reproduction to `$ACA_DATA/aops/fails/`:
+
+```bash
+DATE=$(date +%Y%m%d)
+SLUG="[brief-descriptive-slug]"  # e.g., "cache-deletion-breaks-hooks"
+```
+
+Write to `$ACA_DATA/aops/fails/$DATE-$SLUG.md`:
+
+````markdown
+# [YYYYMMDD] [Brief Slug]
+
+## Failure Summary
+
+[One sentence: what went wrong?]
+
+## Root Cause Category
+
+[To be filled in Step 1: Clarity | Context | Blocking | Detection | Gap]
+
+## Minimal Bug Reproduction
+
+### Context
+
+[1-2 sentences establishing the situation]
+
+### Failure Sequence
+
+\```
+
+1. User: [prompt that triggered the issue]
+2. Agent: [action taken - what was done wrong]
+3. [Consequence or user correction]
+   \```
+
+### Expected vs Actual
+
+- **Expected**: [What should have happened]
+- **Actual**: [What actually happened]
+
+## Session Reference
+
+- Session ID: [8-char ID from transcript filename]
+- Transcript: [full path to -full.md transcript]
+````
+
+#### -1e. Verification Checklist
+
+Before proceeding to Step 0:
+
+- [ ] Transcript generated and saved to usual location
+- [ ] Abridged transcript reviewed
+- [ ] Minimal reproduction extracted (no more than 10 turns)
+- [ ] Fails report created at `$ACA_DATA/aops/fails/[DATE]-[slug].md`
+
+**You CANNOT proceed without completing this investigation phase.**
+
 ### 0. Load Governance Context (MANDATORY)
 
 **Before any framework change, read these files:**
@@ -45,11 +167,12 @@ mcp__plugin_aops-core_task_manager__create_task(
   type="task",
   project="aops",
   priority=2,
-  body="1. Observation: ...\n2. Root cause category: ...\n3. Proposed fix: ...\n4. Success metric: ..."
+  body="1. Observation: ...\n2. Root cause category: ...\n3. Proposed fix: ...\n4. Success metric: ...\n5. Fails report: $ACA_DATA/aops/fails/[DATE]-[slug].md"
 )
 ```
 
 OR if related task exists:
+
 ```
 mcp__plugin_aops-core_task_manager__update_task(
   id="<id>",
@@ -58,26 +181,30 @@ mcp__plugin_aops-core_task_manager__update_task(
 ```
 
 The task MUST contain:
+
 1. **Observation**: What went wrong (specific, not vague)
 2. **Root cause category**: Clarity/Context/Blocking/Detection/Gap
 3. **Proposed fix**: What you will change (file path, enforcement level)
 4. **Success metric**: How we know the fix worked (measurable)
+5. **Fails report**: Path to the minimal bug reproduction (from Step -1)
 
 **You do NOT need user permission** to make the fix if it's documented in the task. The task IS the approval - it creates accountability and traceability.
 
 ### 1. Identify Root Cause (Not Proximate Cause)
 
+**Using the minimal bug reproduction from Step -1**, review the failure sequence and ask:
+
 **We don't control agents** - they're probabilistic. Find the **framework component failure**, not the agent mistake.
 
 See [[specs/enforcement.md]] "Component Responsibilities" for the full model.
 
-| Root Cause Category | Definition                     | Fix Location                  |
-| ------------------- | ------------------------------ | ----------------------------- |
+| Root Cause Category | Definition                     | Fix Location                            |
+| ------------------- | ------------------------------ | --------------------------------------- |
 | Clarity Failure     | Instruction ambiguous/weak     | framework/AXIOMS, skill text, guardrail |
-| Context Failure     | Didn't provide relevant info   | Intent router, hydration      |
-| Blocking Failure    | Should have blocked but didn't | PreToolUse hook, deny rule    |
-| Detection Failure   | Should have caught but didn't  | PostToolUse hook              |
-| Gap                 | No component exists for this   | Create new enforcement        |
+| Context Failure     | Didn't provide relevant info   | Intent router, hydration                |
+| Blocking Failure    | Should have blocked but didn't | PreToolUse hook, deny rule              |
+| Detection Failure   | Should have caught but didn't  | PostToolUse hook                        |
+| Gap                 | No component exists for this   | Create new enforcement                  |
 
 **Wrong**: "Agent ignored instruction" (proximate cause - we can't fix the agent)
 **Right**: "Guardrail instruction too generic for this task type" (root cause - we can fix the guardrail)
@@ -86,11 +213,11 @@ See [[specs/enforcement.md]] "Component Responsibilities" for the full model.
 
 When a subagent (custodiet, critic, qa, etc.) makes an incorrect decision:
 
-| Symptom | Wrong Fix | Right Fix |
-|---------|-----------|-----------|
-| Subagent blocks legitimate work | Add exception to subagent instructions | Enrich context the subagent receives |
-| Subagent misclassifies intent | Narrow the classification rules | Provide more user intent context |
-| Subagent false positive | "Don't do X in case Y" rule | Give subagent information to distinguish X from Y |
+| Symptom                         | Wrong Fix                              | Right Fix                                         |
+| ------------------------------- | -------------------------------------- | ------------------------------------------------- |
+| Subagent blocks legitimate work | Add exception to subagent instructions | Enrich context the subagent receives              |
+| Subagent misclassifies intent   | Narrow the classification rules        | Provide more user intent context                  |
+| Subagent false positive         | "Don't do X in case Y" rule            | Give subagent information to distinguish X from Y |
 
 **Key insight**: Subagents are haiku-class models with limited context windows. When they make wrong decisions, the root cause is almost always **insufficient context**, not **wrong instructions**. Adding rules/exceptions just papers over the real problem.
 
@@ -120,12 +247,12 @@ See @docs/ENFORCEMENT.md for mechanism details.
 
 **File placement** (for Prompt-level fixes):
 
-| Fix Type | File | When to Use |
-|----------|------|-------------|
-| Hard rule, never violate | AXIOMS.md | Principles that apply universally |
-| Soft guidance, exceptions exist | HEURISTICS.md | Rules of thumb, "prefer X over Y" |
-| Enforcement wiring | framework/enforcement-map.md | Document how rule is enforced |
-| Session context | CORE.md | Paths, environment, "what exists" |
+| Fix Type                        | File                         | When to Use                       |
+| ------------------------------- | ---------------------------- | --------------------------------- |
+| Hard rule, never violate        | AXIOMS.md                    | Principles that apply universally |
+| Soft guidance, exceptions exist | HEURISTICS.md                | Rules of thumb, "prefer X over Y" |
+| Enforcement wiring              | framework/enforcement-map.md | Document how rule is enforced     |
+| Session context                 | CORE.md                      | Paths, environment, "what exists" |
 
 ### 4. Emit Structured Justification (MANDATORY)
 
@@ -151,6 +278,10 @@ Before editing ANY framework file, output this exact format:
 - Level: [1a | 1b | 1c | 1d | 2 | 3a | 3b | 4 | 5 | 6 | 7]
 - Change: [exact content, max 3 sentences]
 
+**Generality Check** (STOP if answer is "no"):
+- Does this fix address the GENERAL pattern, not just the specific instance?
+- If fix contains task-specific keywords (e.g., "test", "commit", "email"), is that specificity actually necessary?
+
 **Minimality**:
 - Why not lower level: [explanation]
 - Why not narrower scope: [explanation]
@@ -161,6 +292,7 @@ Before editing ANY framework file, output this exact format:
 ```
 
 **Escalation routing**:
+
 - `auto`: Corollaries only - proceed immediately
 - `critic`: New heuristics, Level 4-5 hooks - get critic approval
 - `human`: New axioms, deny rules, settings.json - use AskUserQuestion
@@ -176,6 +308,7 @@ Keep changes brief (1-3 sentences for soft interventions). If you need a bigger 
 **NEVER create new files.** Edit existing files inline. New files = over-engineering. A 2-line inline note always beats a new context file.
 
 **After making the fix**, update the task with:
+
 - Commit hash or file changed
 - Exact change made
 - How to verify (what behavior to observe)
@@ -186,6 +319,23 @@ mcp__plugin_aops-core_task_manager__update_task(
   body="<existing>\n\nFix applied: [commit hash]. Changed [file]. Verify by [observable behavior]."
 )
 ```
+
+### 5.5. Create Escalation Task (If Applicable)
+
+If your fix includes a proposed escalation (e.g., "if prompt-level fix fails, implement hook enforcement"), create a **blocked task** to track it:
+
+```python
+mcp__plugin_aops-core_task_manager__create_task(
+  title="[Escalation] {description of stronger intervention}",
+  type="task",
+  project="aops",
+  status="blocked",
+  depends_on=["<current-learn-task-id>"],
+  body="## Proposed Escalation\n\n{mechanism description}\n\n**Blocked pending**: Evidence that prompt-level fix (parent task) is insufficient."
+)
+```
+
+This ensures proposed escalations are tracked in the task system, not just mentioned in reflection text.
 
 ### 6. Generalize the Pattern (REQUIRED)
 
@@ -203,27 +353,32 @@ The immediate fix handles THIS instance. The pattern recognition prevents FUTURE
 Tests verify the fix works and prevent regressions. **But only when the fix is testable.**
 
 **When to create a test**:
+
 - Fix modifies code (hooks, scripts, libraries) → YES, create test
 - Fix modifies hook behavior with deterministic input/output → YES, create test
 - Fix modifies prompts/instructions for LLM behavior → NO test possible, skip with justification
 
 **For testable fixes**:
+
 1. **Capture the failure case as a fixture** - Extract the exact input that caused the failure
 2. **Write a failing test first** - The test should FAIL with the old behavior
 3. **Verify test passes after fix** - Run the test to confirm the intervention works
 4. **Use slow tests for live interfaces** - Mark with `@pytest.mark.slow` if testing against live Claude/APIs
 
 **For prompt/instruction fixes (not testable)**:
+
 - Document the expected behavior change in the task
 - The fix itself (clearer instructions) IS the intervention
 - Do NOT create placeholder tests that pass unconditionally - that's worse than no test
 
 **Test location**: `$AOPS/tests/` - choose appropriate subdirectory:
+
 - `tests/hooks/` - Hook behavior tests
 - `tests/integration/` - Cross-component tests
 - `tests/` - General framework tests
 
 **Example**: If custodiet was overly restrictive, find the exact input JSON it received and create:
+
 ```python
 @pytest.mark.slow
 def test_custodiet_allows_legitimate_framework_work():
@@ -261,9 +416,11 @@ Output in the standard Framework Reflection format so session-insights can parse
 ```
 
 **Field mapping from /learn workflow:**
+
 - Prompts → The user feedback/observation
 - Accomplishments → Task + fix + test (the deliverables)
 - Root cause → From step 1 (Clarity/Context/Blocking/Detection/Gap)
 - Proposed changes → From step 5 (pattern generalization) + escalation triggers
 
+```
 ```

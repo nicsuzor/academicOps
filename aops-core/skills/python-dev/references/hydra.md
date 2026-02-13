@@ -786,7 +786,7 @@ But keep `conf/` in version control.
 
 ## Quick Reference Card
 
-### Defaults List Syntax
+### Defaults List Reference
 
 ```yaml
 defaults:

@@ -82,11 +82,11 @@ Framework documentation suffered from overlap and underspecification. Multiple f
 
 ### Three-Document Architecture
 
-| Document         | Purpose                                              | Audience                   | Injected to Agents? |
-| ---------------- | ---------------------------------------------------- | -------------------------- | ------------------- |
+| Document               | Purpose                                              | Audience                   | Injected to Agents? |
+| ---------------------- | ---------------------------------------------------- | -------------------------- | ------------------- |
 | **FRAMEWORK-PATHS.md** | Agent-focused paths and key files                    | Agents                     | Yes (SessionStart)  |
-| **INDEX.md**     | Complete file accounting for audits                  | Maintainers, audit scripts | No                  |
-| **README.md**    | Human feature guide - capabilities and relationships | Humans                     | No                  |
+| **INDEX.md**           | Complete file accounting for audits                  | Maintainers, audit scripts | No                  |
+| **README.md**          | Human feature guide - capabilities and relationships | Humans                     | No                  |
 
 ### FRAMEWORK-PATHS.md (Agent-Focused)
 

@@ -151,7 +151,6 @@ def append_task_contribution(session_id: str, task_data: dict[str, Any]) -> None
 
     path = get_task_contributions_path(session_id)
     import time
-
     from datetime import datetime
 
     ts = datetime.now().isoformat()

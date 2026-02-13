@@ -26,23 +26,23 @@ from pathlib import Path
 
 # Color schemes
 ASSIGNEE_COLORS = {
-    "bot": "#17a2b8",     # cyan/teal - AI agent
+    "bot": "#17a2b8",  # cyan/teal - AI agent
     "claude": "#17a2b8",  # same as bot
     "worker": "#fd7e14",  # orange - background worker
-    "nic": "#6f42c1",     # purple - human
+    "nic": "#6f42c1",  # purple - human
 }
 ASSIGNEE_DEFAULT = "#6c757d"  # gray for unassigned
 
 STATUS_COLORS = {
-    "done": "#d4edda",      # green
+    "done": "#d4edda",  # green
     "completed": "#d4edda",
-    "cancelled": "#e9ecef", # gray
-    "active": "#cce5ff",    # blue
+    "cancelled": "#e9ecef",  # gray
+    "active": "#cce5ff",  # blue
     "in_progress": "#cce5ff",
-    "blocked": "#f8d7da",   # red
-    "waiting": "#fff3cd",   # yellow
-    "inbox": "#ffffff",     # white
-    "todo": "#ffffff",      # white
+    "blocked": "#f8d7da",  # red
+    "waiting": "#fff3cd",  # yellow
+    "inbox": "#ffffff",  # white
+    "todo": "#ffffff",  # white
 }
 
 PRIORITY_BORDERS = {
@@ -56,19 +56,19 @@ PRIORITY_BORDERS = {
 TYPE_SHAPES = {
     "goal": "ellipse",
     "project": "box3d",
-    "epic": "octagon",      # Milestone grouping
+    "epic": "octagon",  # Milestone grouping
     "task": "box",
     "action": "note",
-    "bug": "diamond",       # Defect to fix
-    "feature": "hexagon",   # New functionality
-    "learn": "tab",         # Observational tracking
+    "bug": "diamond",  # Defect to fix
+    "feature": "hexagon",  # New functionality
+    "learn": "tab",  # Observational tracking
 }
 
 EDGE_STYLES = {
-    "parent": {"color": "#6c757d", "style": "solid"},           # gray - hierarchy
-    "depends_on": {"color": "#dc3545", "style": "bold"},        # red - blocking
-    "soft_depends_on": {"color": "#17a2b8", "style": "dashed"}, # teal - advisory
-    "wikilink": {"color": "#adb5bd", "style": "dotted"},        # light gray - generic
+    "parent": {"color": "#6c757d", "style": "solid"},  # gray - hierarchy
+    "depends_on": {"color": "#dc3545", "style": "bold"},  # red - blocking
+    "soft_depends_on": {"color": "#17a2b8", "style": "dashed"},  # teal - advisory
+    "wikilink": {"color": "#adb5bd", "style": "dotted"},  # light gray - generic
 }
 
 # Structural completed nodes (completed parents with active children)
@@ -79,7 +79,15 @@ STRUCTURAL_STYLE = {
 }
 
 # Statuses considered incomplete (assignee coloring applies)
-INCOMPLETE_STATUSES = {"inbox", "active", "in_progress", "blocked", "waiting", "todo", "pending"}
+INCOMPLETE_STATUSES = {
+    "inbox",
+    "active",
+    "in_progress",
+    "blocked",
+    "waiting",
+    "todo",
+    "pending",
+}
 
 
 def extract_assignee(file_path: str) -> str | None:
@@ -114,7 +122,6 @@ def filter_completed_smart(nodes: list[dict], edges: list[dict]) -> tuple[list[d
     done_statuses = {"done", "completed"}
 
     # Build node lookup and identify completed nodes
-    node_by_id = {n["id"]: n for n in nodes}
     completed_ids = {n["id"] for n in nodes if n.get("status", "").lower() in done_statuses}
     active_ids = {n["id"] for n in nodes if n.get("status", "").lower() not in done_statuses}
 
@@ -171,7 +178,6 @@ def filter_rollup(nodes: list[dict], edges: list[dict]) -> tuple[list[dict], set
     # Build lookups
     node_by_id = {n["id"]: n for n in nodes}
     unfinished_ids = {n["id"] for n in nodes if n.get("status", "").lower() not in done_statuses}
-    finished_ids = {n["id"] for n in nodes if n.get("status", "").lower() in done_statuses}
 
     # Build parent→children mapping from node.parent field
     # (more reliable than parsing edges since nodes directly declare their parent)
@@ -233,9 +239,114 @@ def classify_edge(source_id: str, target_id: str, node_by_id: dict) -> str:
     return "wikilink"
 
 
-def generate_dot(nodes: list[dict], edges: list[dict], include_orphans: bool = False,
-                 structural_ids: set[str] | None = None,
-                 stats: dict | None = None) -> str:
+def _build_legend_table(stats: dict) -> str:
+    """Build an HTML table label for the legend node.
+
+    Uses Graphviz HTML-like label syntax to create a compact, boxed legend
+    that works with all layout engines (including sfdp, neato, fdp).
+    """
+    rows = []
+
+    rows.append(
+        '<TABLE BORDER="2" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4"'
+        ' COLOR="#dee2e6" BGCOLOR="#f8f9fa">'
+    )
+
+    # Title
+    rows.append(
+        '<TR><TD COLSPAN="4" ALIGN="CENTER">'
+        '<B><FONT POINT-SIZE="14" COLOR="#495057">Legend</FONT></B>'
+        "</TD></TR>"
+    )
+
+    # Task Types
+    rows.append('<TR><TD COLSPAN="4" BGCOLOR="#e9ecef"><B>Task Types</B></TD></TR>')
+    type_items = [
+        ("Goal", "ellipse"),
+        ("Project", "box3d"),
+        ("Epic", "octagon"),
+        ("Task", "box"),
+        ("Action", "note"),
+        ("Bug", "diamond"),
+        ("Feature", "hexagon"),
+        ("Learn", "tab"),
+    ]
+    for i in range(0, len(type_items), 4):
+        chunk = type_items[i : i + 4]
+        cells = "".join(
+            f'<TD BGCOLOR="#cce5ff" BORDER="1">{name} ({shape})</TD>' for name, shape in chunk
+        )
+        rows.append(f"<TR>{cells}</TR>")
+
+    # Status
+    rows.append('<TR><TD COLSPAN="4" BGCOLOR="#e9ecef"><B>Status</B></TD></TR>')
+    status_items = [
+        ("Active", "#cce5ff"),
+        ("Done", "#d4edda"),
+        ("Structural", "#c3e6cb"),
+        ("Blocked", "#f8d7da"),
+    ]
+    cells = "".join(f'<TD BGCOLOR="{color}" BORDER="1">{name}</TD>' for name, color in status_items)
+    rows.append(f"<TR>{cells}</TR>")
+    rows.append('<TR><TD BGCOLOR="#fff3cd" BORDER="1">Waiting</TD><TD COLSPAN="3"></TD></TR>')
+
+    # Assignee
+    rows.append('<TR><TD COLSPAN="4" BGCOLOR="#e9ecef"><B>Assignee (border color)</B></TD></TR>')
+    assignee_items = [
+        ("@bot", "#17a2b8"),
+        ("@nic", "#6f42c1"),
+        ("@worker", "#fd7e14"),
+    ]
+    cells = "".join(f'<TD BORDER="1" COLOR="{color}">{name}</TD>' for name, color in assignee_items)
+    cells += "<TD></TD>"
+    rows.append(f"<TR>{cells}</TR>")
+
+    # Edge Types
+    rows.append('<TR><TD COLSPAN="4" BGCOLOR="#e9ecef"><B>Edge Types</B></TD></TR>')
+    rows.append(
+        "<TR>"
+        '<TD><FONT COLOR="#6c757d">&#x2500;&#x2500;</FONT> parent</TD>'
+        '<TD><FONT COLOR="#dc3545"><B>&#x2500;&#x2500;</B></FONT> depends_on</TD>'
+        '<TD><FONT COLOR="#17a2b8">- - -</FONT> soft_depends</TD>'
+        "<TD></TD>"
+        "</TR>"
+    )
+
+    # Statistics
+    if stats:
+        total_nodes = stats.get("total_nodes", 0)
+        total_edges = stats.get("total_edges", 0)
+        rows.append('<TR><TD COLSPAN="4" BGCOLOR="#e9ecef"><B>Statistics</B></TD></TR>')
+        rows.append(
+            f'<TR><TD COLSPAN="2">Nodes: {total_nodes}</TD>'
+            f'<TD COLSPAN="2">Edges: {total_edges}</TD></TR>'
+        )
+
+        by_type = stats.get("by_type", {})
+        if by_type:
+            parts = [f"{v} {k}" for k, v in sorted(by_type.items(), key=lambda x: -x[1])[:5]]
+            rows.append(
+                f'<TR><TD COLSPAN="4"><FONT POINT-SIZE="10">{", ".join(parts)}</FONT></TD></TR>'
+            )
+
+        by_status = stats.get("by_status", {})
+        if by_status:
+            parts = [f"{v} {k}" for k, v in sorted(by_status.items(), key=lambda x: -x[1])[:5]]
+            rows.append(
+                f'<TR><TD COLSPAN="4"><FONT POINT-SIZE="10">{", ".join(parts)}</FONT></TD></TR>'
+            )
+
+    rows.append("</TABLE>")
+    return "\n".join(rows)
+
+
+def generate_dot(
+    nodes: list[dict],
+    edges: list[dict],
+    include_orphans: bool = False,
+    structural_ids: set[str] | None = None,
+    stats: dict | None = None,
+) -> str:
     """Generate DOT format graph with styling.
 
     Args:
@@ -261,100 +372,20 @@ def generate_dot(nodes: list[dict], edges: list[dict], include_orphans: bool = F
     lines = [
         "digraph TaskGraph {",
         "    rankdir=TB;",
-        "    node [style=filled, fontname=\"Helvetica\"];",
-        "    edge [color=\"#6c757d\"];",
-        "",
-        "    // Legend - Task Types",
-        "    subgraph cluster_legend_types {",
-        "        label=\"Task Types\";",
-        "        style=dashed;",
-        "        legend_goal [label=\"Goal\" shape=ellipse fillcolor=\"#cce5ff\"];",
-        "        legend_project [label=\"Project\" shape=box3d fillcolor=\"#cce5ff\"];",
-        "        legend_epic [label=\"Epic\" shape=octagon fillcolor=\"#cce5ff\"];",
-        "        legend_task [label=\"Task\" shape=box fillcolor=\"#cce5ff\"];",
-        "        legend_action [label=\"Action\" shape=note fillcolor=\"#cce5ff\"];",
-        "        legend_bug [label=\"Bug\" shape=diamond fillcolor=\"#cce5ff\"];",
-        "        legend_feature [label=\"Feature\" shape=hexagon fillcolor=\"#cce5ff\"];",
-        "        legend_learn [label=\"Learn\" shape=tab fillcolor=\"#cce5ff\"];",
-        "    }",
-        "",
-        "    // Legend - Status",
-        "    subgraph cluster_legend_status {",
-        "        label=\"Status\";",
-        "        style=dashed;",
-        "        legend_active [label=\"Active\" shape=box fillcolor=\"#cce5ff\"];",
-        "        legend_done [label=\"Done\" shape=box fillcolor=\"#d4edda\"];",
-        "        legend_structural [label=\"Done (structural)\" shape=box3d style=\"filled,dashed\" fillcolor=\"#c3e6cb\"];",
-        "        legend_blocked [label=\"Blocked\" shape=box fillcolor=\"#f8d7da\"];",
-        "        legend_waiting [label=\"Waiting\" shape=box fillcolor=\"#fff3cd\"];",
-        "    }",
-        "",
-        "    // Legend - Assignee",
-        "    subgraph cluster_legend_assignee {",
-        "        label=\"Assignee\";",
-        "        style=dashed;",
-        "        legend_bot [label=\"@bot\" shape=box fillcolor=\"#ffffff\" color=\"#17a2b8\" penwidth=3];",
-        "        legend_nic [label=\"@nic\" shape=box fillcolor=\"#ffffff\" color=\"#6f42c1\" penwidth=3];",
-        "        legend_worker [label=\"@worker\" shape=box fillcolor=\"#ffffff\" color=\"#fd7e14\" penwidth=3];",
-        "    }",
-        "",
-        "    // Legend - Edge Types",
-        "    subgraph cluster_legend_edges {",
-        "        label=\"Edge Types\";",
-        "        style=dashed;",
-        "        legend_e1 [label=\"\" shape=point width=0.1];",
-        "        legend_e2 [label=\"\" shape=point width=0.1];",
-        "        legend_e3 [label=\"\" shape=point width=0.1];",
-        "        legend_e4 [label=\"\" shape=point width=0.1];",
-        "        legend_e5 [label=\"\" shape=point width=0.1];",
-        "        legend_e6 [label=\"\" shape=point width=0.1];",
-        "        legend_e1 -> legend_e2 [label=\"parent\" color=\"#6c757d\" style=solid];",
-        "        legend_e3 -> legend_e4 [label=\"depends_on\" color=\"#dc3545\" style=bold];",
-        "        legend_e5 -> legend_e6 [label=\"soft_depends\" color=\"#17a2b8\" style=dashed];",
-        "    }",
-        "",
+        '    node [style=filled, fontname="Helvetica"];',
+        '    edge [color="#6c757d"];',
     ]
 
-    # Add statistics subgraph if stats provided
-    if stats:
-        total_nodes = stats.get("total_nodes", 0)
-        total_edges = stats.get("total_edges", 0)
-        by_type = stats.get("by_type", {})
-        by_status = stats.get("by_status", {})
-
-        # Build type breakdown string
-        type_parts = [f"{v} {k}" for k, v in sorted(by_type.items(), key=lambda x: -x[1])]
-        type_str = ", ".join(type_parts[:5])  # Top 5 types
-        if len(type_parts) > 5:
-            type_str += f", +{len(type_parts) - 5} more"
-
-        # Build status breakdown string
-        status_parts = [f"{v} {k}" for k, v in sorted(by_status.items(), key=lambda x: -x[1])]
-        status_str = ", ".join(status_parts[:5])  # Top 5 statuses
-        if len(status_parts) > 5:
-            status_str += f", +{len(status_parts) - 5} more"
-
-        stats_label = (
-            f"Graph Statistics\\n"
-            f"─────────────────\\n"
-            f"Nodes: {total_nodes}\\n"
-            f"Edges: {total_edges}\\n"
-            f"─────────────────\\n"
-            f"By Type:\\n{type_str}\\n"
-            f"─────────────────\\n"
-            f"By Status:\\n{status_str}"
-        )
-
-        lines.extend([
-            "    // Statistics",
-            "    subgraph cluster_stats {",
-            "        label=\"\";",
-            "        style=filled;",
-            "        fillcolor=\"#f8f9fa\";",
-            f'        stats_box [label=\"{stats_label}\" shape=note fillcolor=\"#ffffff\" fontsize=10];',
-            "    }",
+    # Legend as a single HTML-table node (works with all layout engines)
+    legend_html = _build_legend_table(stats)
+    lines.extend(
+        [
             "",
-        ])
+            "    // Legend",
+            f"    legend [shape=plaintext margin=0 label=<{legend_html}>];",
+            "",
+        ]
+    )
 
     # Add nodes
     for node in nodes:
@@ -395,12 +426,12 @@ def generate_dot(nodes: list[dict], edges: list[dict], include_orphans: bool = F
         lines.append(
             f'    "{node_id}" ['
             f'label="{label}" '
-            f'shape={shape} '
+            f"shape={shape} "
             f'style="{style}" '
             f'fillcolor="{fillcolor}" '
             f'color="{pencolor}" '
-            f'penwidth={penwidth}'
-            f'];'
+            f"penwidth={penwidth}"
+            f"];"
         )
 
     lines.append("")
@@ -467,16 +498,28 @@ def generate_svg(dot_content: str, output_base: str, layout: str, keep_dot: bool
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate styled task graph from fast-indexer JSON")
+    parser = argparse.ArgumentParser(
+        description="Generate styled task graph from fast-indexer JSON"
+    )
     parser.add_argument("input", help="Input JSON file from fast-indexer")
     parser.add_argument("-o", "--output", default="tasks", help="Output base name")
     parser.add_argument("--include-orphans", action="store_true", help="Include unconnected nodes")
-    parser.add_argument("--no-filter", action="store_true",
-                        help="Disable smart filtering (show all tasks including completed)")
-    parser.add_argument("--layout", default="sfdp", choices=["dot", "neato", "sfdp", "fdp", "circo", "twopi"],
-                        help="Graphviz layout engine (default: sfdp)")
-    parser.add_argument("--single", action="store_true",
-                        help="Generate only single output (default generates multiple variants)")
+    parser.add_argument(
+        "--no-filter",
+        action="store_true",
+        help="Disable smart filtering (show all tasks including completed)",
+    )
+    parser.add_argument(
+        "--layout",
+        default="sfdp",
+        choices=["dot", "neato", "sfdp", "fdp", "circo", "twopi"],
+        help="Graphviz layout engine (default: sfdp)",
+    )
+    parser.add_argument(
+        "--single",
+        action="store_true",
+        help="Generate only single output (default generates multiple variants)",
+    )
     args = parser.parse_args()
 
     input_path = Path(args.input)
@@ -499,13 +542,23 @@ def main():
     if args.single:
         # Single mode: respect --no-filter and --include-orphans flags
         variants = [
-            ("", None if args.no_filter else "smart", args.include_orphans, "single output"),
+            (
+                "",
+                None if args.no_filter else "smart",
+                args.include_orphans,
+                "single output",
+            ),
         ]
     else:
         # Multi mode (default): generate both variants
         variants = [
             ("", "smart", False, "smart-filtered (active work)"),
-            ("-rollup", "rollup", False, "pruned tree (unfinished + structural ancestors)"),
+            (
+                "-rollup",
+                "rollup",
+                False,
+                "pruned tree (unfinished + structural ancestors)",
+            ),
         ]
 
     for suffix, filter_type, include_orphans, description in variants:
@@ -527,7 +580,9 @@ def main():
 
         excluded_count = original_count - len(nodes)
         if excluded_count > 0 or structural_ids:
-            print(f"  Filtered: {excluded_count} nodes removed, {len(structural_ids)} structural kept")
+            print(
+                f"  Filtered: {excluded_count} nodes removed, {len(structural_ids)} structural kept"
+            )
 
         # Count by type and status for this variant
         # Note: Some linked nodes (non-tasks) may lack status/type fields

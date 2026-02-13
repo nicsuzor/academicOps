@@ -1,15 +1,11 @@
 """Tests for session insights generator library."""
 
 import json
-import tempfile
-from pathlib import Path
 
 import pytest
-
 from lib.insights_generator import (
     InsightsValidationError,
     extract_json_from_response,
-    extract_project_name,
     extract_short_hash,
     generate_fallback_insights,
     get_insights_file_path,
@@ -119,9 +115,7 @@ class TestSchemaValidation:
             "project": "test",
             # Missing: summary, outcome, accomplishments
         }
-        with pytest.raises(
-            InsightsValidationError, match="Missing required field: summary"
-        ):
+        with pytest.raises(InsightsValidationError, match="Missing required field: summary"):
             validate_insights_schema(insights)
 
     def test_invalid_outcome_value(self):
@@ -134,9 +128,7 @@ class TestSchemaValidation:
             "outcome": "invalid",
             "accomplishments": [],
         }
-        with pytest.raises(
-            InsightsValidationError, match="outcome.*must be one of.*success"
-        ):
+        with pytest.raises(InsightsValidationError, match="outcome.*must be one of.*success"):
             validate_insights_schema(insights)
 
     def test_invalid_date_format(self):
@@ -149,9 +141,7 @@ class TestSchemaValidation:
             "outcome": "success",
             "accomplishments": [],
         }
-        with pytest.raises(
-            InsightsValidationError, match="date.*must be ISO 8601 format"
-        ):
+        with pytest.raises(InsightsValidationError, match="date.*must be ISO 8601 format"):
             validate_insights_schema(insights)
 
     def test_invalid_field_type(self):
@@ -164,9 +154,7 @@ class TestSchemaValidation:
             "outcome": "success",
             "accomplishments": "not an array",  # Should be list
         }
-        with pytest.raises(
-            InsightsValidationError, match="accomplishments.*must be list"
-        ):
+        with pytest.raises(InsightsValidationError, match="accomplishments.*must be list"):
             validate_insights_schema(insights)
 
     def test_user_mood_out_of_range(self):
@@ -240,9 +228,7 @@ class TestSchemaValidation:
             "accomplishments": [],
             "worker_name": ["list", "not", "string"],  # Should be string
         }
-        with pytest.raises(
-            InsightsValidationError, match="worker_name.*must be a string or null"
-        ):
+        with pytest.raises(InsightsValidationError, match="worker_name.*must be a string or null"):
             validate_insights_schema(insights)
 
 
@@ -265,7 +251,9 @@ class TestInsightsFilePath:
 
     def test_file_path_format_with_project_and_slug(self):
         """Test that file path includes project and slug."""
-        path = get_insights_file_path("2026-01-13", "a1b2c3d4", slug="review", project="aops", hour="17")
+        path = get_insights_file_path(
+            "2026-01-13", "a1b2c3d4", slug="review", project="aops", hour="17"
+        )
         # With project and slug: YYYYMMDD-HH-project-session_id-slug.json
         assert path.name == "20260113-17-aops-a1b2c3d4-review.json"
 
@@ -350,14 +338,22 @@ class TestFallbackInsights:
     def test_fallback_has_required_fields(self):
         """Test that fallback insights have all required fields."""
         metadata = {"session_id": "abc", "date": "2026-01-13", "project": "test"}
-        operational = {"workflows_used": [], "subagents_invoked": [], "subagent_count": 0}
+        operational = {
+            "workflows_used": [],
+            "subagents_invoked": [],
+            "subagent_count": 0,
+        }
         fallback = generate_fallback_insights(metadata, operational)
 
         validate_insights_schema(fallback)  # Should not raise
 
     def test_fallback_includes_metadata(self):
         """Test that fallback includes provided metadata."""
-        metadata = {"session_id": "abc123", "date": "2026-01-13", "project": "myproject"}
+        metadata = {
+            "session_id": "abc123",
+            "date": "2026-01-13",
+            "project": "myproject",
+        }
         operational = {}
         fallback = generate_fallback_insights(metadata, operational)
 
@@ -478,17 +474,13 @@ class TestTokenMetricsValidation:
     def test_token_metrics_must_be_dict(self):
         """Test that token_metrics must be a dict if present."""
         insights = self._minimal_insights(token_metrics="not a dict")
-        with pytest.raises(
-            InsightsValidationError, match="token_metrics.*must be a dict"
-        ):
+        with pytest.raises(InsightsValidationError, match="token_metrics.*must be a dict"):
             validate_insights_schema(insights)
 
     def test_token_metrics_totals_must_be_dict(self):
         """Test that token_metrics.totals must be a dict."""
         insights = self._minimal_insights(token_metrics={"totals": "not a dict"})
-        with pytest.raises(
-            InsightsValidationError, match="token_metrics.totals.*must be a dict"
-        ):
+        with pytest.raises(InsightsValidationError, match="token_metrics.totals.*must be a dict"):
             validate_insights_schema(insights)
 
     def test_token_metrics_totals_numeric_fields(self):
@@ -497,41 +489,35 @@ class TestTokenMetricsValidation:
             token_metrics={"totals": {"input_tokens": "not a number"}}
         )
         with pytest.raises(
-            InsightsValidationError, match="token_metrics.totals.input_tokens.*must be numeric"
+            InsightsValidationError,
+            match="token_metrics.totals.input_tokens.*must be numeric",
         ):
             validate_insights_schema(insights)
 
     def test_token_metrics_by_model_must_be_dict(self):
         """Test that token_metrics.by_model must be a dict."""
         insights = self._minimal_insights(token_metrics={"by_model": ["list", "not", "dict"]})
-        with pytest.raises(
-            InsightsValidationError, match="token_metrics.by_model.*must be a dict"
-        ):
+        with pytest.raises(InsightsValidationError, match="token_metrics.by_model.*must be a dict"):
             validate_insights_schema(insights)
 
     def test_token_metrics_by_model_entries_must_be_dict(self):
         """Test that each by_model entry must be a dict."""
-        insights = self._minimal_insights(
-            token_metrics={"by_model": {"claude-opus": "not a dict"}}
-        )
+        insights = self._minimal_insights(token_metrics={"by_model": {"claude-opus": "not a dict"}})
         with pytest.raises(
-            InsightsValidationError, match="token_metrics.by_model.claude-opus.*must be a dict"
+            InsightsValidationError,
+            match="token_metrics.by_model.claude-opus.*must be a dict",
         ):
             validate_insights_schema(insights)
 
     def test_token_metrics_by_agent_must_be_dict(self):
         """Test that token_metrics.by_agent must be a dict."""
         insights = self._minimal_insights(token_metrics={"by_agent": 123})
-        with pytest.raises(
-            InsightsValidationError, match="token_metrics.by_agent.*must be a dict"
-        ):
+        with pytest.raises(InsightsValidationError, match="token_metrics.by_agent.*must be a dict"):
             validate_insights_schema(insights)
 
     def test_token_metrics_by_agent_entries_must_be_dict(self):
         """Test that each by_agent entry must be a dict."""
-        insights = self._minimal_insights(
-            token_metrics={"by_agent": {"main": [1, 2, 3]}}
-        )
+        insights = self._minimal_insights(token_metrics={"by_agent": {"main": [1, 2, 3]}})
         with pytest.raises(
             InsightsValidationError, match="token_metrics.by_agent.main.*must be a dict"
         ):
@@ -551,15 +537,14 @@ class TestTokenMetricsValidation:
             token_metrics={"efficiency": {"tokens_per_minute": "fast"}}
         )
         with pytest.raises(
-            InsightsValidationError, match="token_metrics.efficiency.tokens_per_minute.*must be numeric"
+            InsightsValidationError,
+            match="token_metrics.efficiency.tokens_per_minute.*must be numeric",
         ):
             validate_insights_schema(insights)
 
     def test_token_metrics_cache_hit_rate_range(self):
         """Test that cache_hit_rate must be between 0.0 and 1.0."""
-        insights = self._minimal_insights(
-            token_metrics={"efficiency": {"cache_hit_rate": 1.5}}
-        )
+        insights = self._minimal_insights(token_metrics={"efficiency": {"cache_hit_rate": 1.5}})
         with pytest.raises(
             InsightsValidationError, match="cache_hit_rate.*must be between 0.0 and 1.0"
         ):
@@ -568,15 +553,11 @@ class TestTokenMetricsValidation:
     def test_token_metrics_cache_hit_rate_valid_bounds(self):
         """Test that cache_hit_rate at boundaries (0.0 and 1.0) passes."""
         # Test 0.0
-        insights = self._minimal_insights(
-            token_metrics={"efficiency": {"cache_hit_rate": 0.0}}
-        )
+        insights = self._minimal_insights(token_metrics={"efficiency": {"cache_hit_rate": 0.0}})
         validate_insights_schema(insights)  # Should not raise
 
         # Test 1.0
-        insights = self._minimal_insights(
-            token_metrics={"efficiency": {"cache_hit_rate": 1.0}}
-        )
+        insights = self._minimal_insights(token_metrics={"efficiency": {"cache_hit_rate": 1.0}})
         validate_insights_schema(insights)  # Should not raise
 
     def test_token_metrics_with_null_sub_fields(self):
@@ -587,4 +568,96 @@ class TestTokenMetricsValidation:
                 "efficiency": {"cache_hit_rate": None, "tokens_per_minute": None},
             }
         )
+        validate_insights_schema(insights)  # Should not raise
+
+
+class TestFrameworkReflectionsValidation:
+    """Test framework_reflections field validation, especially 'followed' coercion."""
+
+    def _minimal_insights(self, **extra):
+        """Create minimal valid insights with optional extra fields."""
+        base = {
+            "session_id": "a1b2c3d4",
+            "date": "2026-01-13",
+            "project": "test",
+            "summary": "Test session",
+            "outcome": "success",
+            "accomplishments": [],
+        }
+        base.update(extra)
+        return base
+
+    def test_followed_accepts_bool_true(self):
+        """Test that followed accepts boolean True."""
+        insights = self._minimal_insights(framework_reflections=[{"followed": True}])
+        validate_insights_schema(insights)  # Should not raise
+
+    def test_followed_accepts_bool_false(self):
+        """Test that followed accepts boolean False."""
+        insights = self._minimal_insights(framework_reflections=[{"followed": False}])
+        validate_insights_schema(insights)  # Should not raise
+
+    def test_followed_coerces_int_1_to_true(self):
+        """Test that followed coerces integer 1 to True."""
+        insights = self._minimal_insights(framework_reflections=[{"followed": 1}])
+        validate_insights_schema(insights)  # Should not raise
+        assert insights["framework_reflections"][0]["followed"] is True
+
+    def test_followed_coerces_int_0_to_false(self):
+        """Test that followed coerces integer 0 to False."""
+        insights = self._minimal_insights(framework_reflections=[{"followed": 0}])
+        validate_insights_schema(insights)  # Should not raise
+        assert insights["framework_reflections"][0]["followed"] is False
+
+    def test_followed_coerces_string_true(self):
+        """Test that followed coerces string 'true' to True."""
+        insights = self._minimal_insights(framework_reflections=[{"followed": "true"}])
+        validate_insights_schema(insights)  # Should not raise
+        assert insights["framework_reflections"][0]["followed"] is True
+
+    def test_followed_coerces_string_false(self):
+        """Test that followed coerces string 'false' to False."""
+        insights = self._minimal_insights(framework_reflections=[{"followed": "false"}])
+        validate_insights_schema(insights)  # Should not raise
+        assert insights["framework_reflections"][0]["followed"] is False
+
+    def test_followed_coerces_string_yes(self):
+        """Test that followed coerces string 'yes' to True."""
+        insights = self._minimal_insights(framework_reflections=[{"followed": "yes"}])
+        validate_insights_schema(insights)  # Should not raise
+        assert insights["framework_reflections"][0]["followed"] is True
+
+    def test_followed_coerces_string_no(self):
+        """Test that followed coerces string 'no' to False."""
+        insights = self._minimal_insights(framework_reflections=[{"followed": "no"}])
+        validate_insights_schema(insights)  # Should not raise
+        assert insights["framework_reflections"][0]["followed"] is False
+
+    def test_followed_coerces_string_case_insensitive(self):
+        """Test that followed string coercion is case-insensitive."""
+        for val in ["TRUE", "True", "YES", "Yes", "Y", "1"]:
+            insights = self._minimal_insights(framework_reflections=[{"followed": val}])
+            validate_insights_schema(insights)
+            assert insights["framework_reflections"][0]["followed"] is True
+
+        for val in ["FALSE", "False", "NO", "No", "N", "0", ""]:
+            insights = self._minimal_insights(framework_reflections=[{"followed": val}])
+            validate_insights_schema(insights)
+            assert insights["framework_reflections"][0]["followed"] is False
+
+    def test_followed_rejects_invalid_string(self):
+        """Test that followed rejects unrecognized string values."""
+        insights = self._minimal_insights(framework_reflections=[{"followed": "maybe"}])
+        with pytest.raises(InsightsValidationError, match="cannot be coerced to boolean"):
+            validate_insights_schema(insights)
+
+    def test_followed_rejects_invalid_type(self):
+        """Test that followed rejects non-coercible types like lists."""
+        insights = self._minimal_insights(framework_reflections=[{"followed": [True]}])
+        with pytest.raises(InsightsValidationError, match="must be a boolean or coercible value"):
+            validate_insights_schema(insights)
+
+    def test_followed_accepts_null(self):
+        """Test that followed accepts None/null."""
+        insights = self._minimal_insights(framework_reflections=[{"followed": None}])
         validate_insights_schema(insights)  # Should not raise

@@ -1,3 +1,9 @@
+---
+id: feature-dev
+category: development
+bases: [base-task-tracking, base-tdd, base-verification, base-commit]
+---
+
 # Feature Development Workflow
 
 Test-first feature development from idea to validated implementation.
@@ -5,11 +11,13 @@ Test-first feature development from idea to validated implementation.
 ## When to Use
 
 Use this workflow when:
+
 - Adding new features
 - Building significant functionality
 - Implementing user-requested capabilities
 
 Do NOT use for:
+
 - Bug fixes (unless requiring new functionality)
 - Simple refactoring
 - Documentation-only changes
@@ -31,6 +39,7 @@ Each phase must complete before the next can begin:
 ### Commit Gates
 
 Before any commit:
+
 - All tests must pass
 - Critic must have reviewed
 - No regressions in existing tests
@@ -72,6 +81,7 @@ Before any commit:
 ## Triggers
 
 Phase transitions happen automatically:
+
 - When user story is captured → analyze requirements
 - When requirements are documented → design experiment
 - When experiment plan exists → write tests
@@ -81,11 +91,13 @@ Phase transitions happen automatically:
 - When validation passes → synthesize to spec
 
 Review gates:
+
 - When plan is ready → invoke plan-agent
 - When review is needed → invoke critic
 - If critic escalates → invoke detailed critic
 
 Error handling:
+
 - On unexpected test failure → halt
 - On blocker → halt and report
 - On validation failure → revert or iterate
@@ -93,6 +105,7 @@ Error handling:
 ## How to Check
 
 **Phase completion checks:**
+
 - User story captured: task body contains "## User Story" or file exists with user-story content
 - Requirements documented: task body contains "## Requirements"
 - Success criteria defined: task body contains "## Success Criteria"
@@ -107,6 +120,7 @@ Error handling:
 - Validation passed: all success criteria met, tests pass, and critic approved
 
 **Condition checks:**
+
 - Framework feature: files touched include "aops-core/" or tags include "framework"
 - Routine feature: not a framework feature
 - Blocked on infrastructure: error indicates missing tool/service/permission

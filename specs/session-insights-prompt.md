@@ -1,5 +1,14 @@
 # Session Insights Generation Prompt
 
+## Giving Effect
+
+- [[skills/session-insights/SKILL.md]] - Session insights skill that uses this prompt
+- [[mcp__gemini__*]] - Gemini MCP tools for transcript analysis
+- [[specs/session-insights-metrics-schema.md]] - Schema for extracted metrics
+- [[specs/framework-observability.md]] - Observability architecture this feeds into
+
+---
+
 Analyze this session and extract structured insights. Output ONLY valid JSON (no markdown code fences, no commentary).
 
 ## Session Metadata
@@ -52,6 +61,7 @@ For each correction, mistake, learning moment, or process violation, provide an 
 ```
 
 Examples:
+
 - User corrected agent for skipping a skill → Category: "Skill Usage", Heuristic: "H2"
 - Agent forgot to run tests → Category: "Verification", Heuristic: "H3"
 - Missing context caused wrong assumption → Category: "Context Gap", Heuristic: null
@@ -78,6 +88,7 @@ Track skill invocation effectiveness:
 Array of knowledge/context that was needed but not surfaced at the right time.
 
 Examples:
+
 - `"Agent didn't know about existing test helper functions"`
 - `"Hydrator didn't mention project's commit message convention"`
 - `"Missing information about PR review process"`
@@ -89,6 +100,7 @@ Empty array if no gaps identified.
 Float from **-1.0** to **1.0** measuring user satisfaction via tone analysis.
 
 **Anchor Points:**
+
 - **1.0** = Effusively positive ("Great work!", "Perfect!", "Love it!", exclamation marks)
 - **0.5** = Satisfied ("Thanks", "Looks good", task completed without friction)
 - **0.0** = Neutral (default - no feedback, straightforward task execution)
@@ -96,6 +108,7 @@ Float from **-1.0** to **1.0** measuring user satisfaction via tone analysis.
 - **-1.0** = Furious (explicit frustration, "This is completely wrong", repeated failures)
 
 **Indicators:**
+
 - **Positive (>0)**: Explicit thanks, praise, collaborative tone, smooth completion
 - **Neutral (0)**: Minimal feedback, task-focused exchanges only
 - **Negative (<0)**: Corrections, repeat requests, explicit frustration, sarcasm
@@ -111,10 +124,15 @@ Array of `[timestamp_iso8601, role, content]` tuples showing dialogue progressio
 If transcript unavailable, provide empty array `[]`.
 
 Example:
+
 ```json
 [
   ["2026-01-13T10:00:00+00:00", "user", "Create session insights architecture"],
-  ["2026-01-13T10:00:30+00:00", "agent", "Spawned prompt-hydrator and entered plan mode"],
+  [
+    "2026-01-13T10:00:30+00:00",
+    "agent",
+    "Spawned prompt-hydrator and entered plan mode"
+  ],
   ["2026-01-13T10:15:00+00:00", "user", "Approved plan"],
   ["2026-01-13T10:15:05+00:00", "agent", "Implemented Phase 1 and Phase 2"]
 ]
@@ -132,9 +150,14 @@ This provides context for understanding what prompted each user response.
 If transcript unavailable, provide empty array `[]`.
 
 Example:
+
 ```json
 [
-  ["2026-01-13T09:59:50+00:00", "agent", "I've completed the analysis. Ready to proceed?"],
+  [
+    "2026-01-13T09:59:50+00:00",
+    "agent",
+    "I've completed the analysis. Ready to proceed?"
+  ],
   ["2026-01-13T10:00:00+00:00", "user", "Yes, but also add error handling"],
   ["2026-01-13T10:14:55+00:00", "agent", "Here's the implementation plan."],
   ["2026-01-13T10:15:00+00:00", "user", "Approved"]
@@ -148,6 +171,7 @@ Reflect on your performance this session. Identify changes to make workflows eas
 Array of specific, actionable workflow improvements:
 
 Examples:
+
 - `"Add pre-flight checklist for PR creation to avoid missing test runs"`
 - `"Create a skill for common test fixture setup pattern"`
 - `"Should have run linter earlier in the workflow"`
@@ -162,6 +186,7 @@ Identify information that would have saved time if provided earlier. This helps 
 Array of specific context that was missing at session start but needed later:
 
 Examples:
+
 - `"Project uses pytest, not unittest - discovered after writing wrong tests"`
 - `"Auth tokens stored in .env.local not .env - caused 10 min debugging"`
 - `"Existing helper function already handled this case - duplicated effort"`
@@ -176,6 +201,7 @@ Identify information that was provided but was irrelevant or distracting. This h
 Array of specific context that added noise without value:
 
 Examples:
+
 - `"Detailed plugin architecture docs loaded for simple bug fix"`
 - `"Full PR template instructions when task was just code review"`
 - `"Legacy migration notes for greenfield development"`
@@ -188,6 +214,7 @@ Empty array `[]` if no distractions identified.
 Extract ALL Framework Reflection sections found in the transcript. These structured reflections are output by agents at session end (via `/dump`, `/handover`, or `/learn` skills) and contain valuable session metadata.
 
 **Where to find them:**
+
 - Look for `## Framework Reflection` markdown headers in assistant messages
 - May appear multiple times in a session (all should be captured)
 - May appear in both main agent and subagent entries
@@ -229,6 +256,7 @@ Extract ALL Framework Reflection sections found in the transcript. These structu
 ```
 
 **Field mappings:**
+
 - `prompts`: String - the user request
 - `guidance_received`: String or null - guidance from hydrator
 - `followed`: Boolean - whether guidance was followed (true for "Yes", false for "No")
@@ -241,6 +269,7 @@ Extract ALL Framework Reflection sections found in the transcript. These structu
 
 **Quick Exit format:**
 If a reflection shows `Answered user's question: "<summary>"`, parse as:
+
 ```json
 {
   "prompts": "<summary>",
@@ -267,13 +296,13 @@ Structure:
       "cache_create_tokens": 5000
     },
     "by_model": {
-      "claude-opus-4-5-20251101": {"input": 40000, "output": 10000},
-      "claude-3-5-haiku-20241022": {"input": 5000, "output": 2000}
+      "claude-opus-4-5-20251101": { "input": 40000, "output": 10000 },
+      "claude-3-5-haiku-20241022": { "input": 5000, "output": 2000 }
     },
     "by_agent": {
-      "main": {"input": 35000, "output": 8000},
-      "prompt-hydrator": {"input": 3000, "output": 1000},
-      "custodiet": {"input": 2000, "output": 500}
+      "main": { "input": 35000, "output": 8000 },
+      "prompt-hydrator": { "input": 3000, "output": 1000 },
+      "custodiet": { "input": 2000, "output": 500 }
     },
     "efficiency": {
       "cache_hit_rate": 0.67,
@@ -350,7 +379,10 @@ Output ONLY this JSON structure (no markdown code fences, no explanatory text be
     ["2026-01-13T09:59:50+00:00", "agent", "Preceding message"],
     ["2026-01-13T10:00:00+00:00", "user", "User prompt"]
   ],
-  "workflow_improvements": ["Should have run linter earlier", "Skill docs unclear"],
+  "workflow_improvements": [
+    "Should have run linter earlier",
+    "Skill docs unclear"
+  ],
   "jit_context_needed": ["Project uses pytest not unittest"],
   "context_distractions": ["Plugin architecture docs not needed for bug fix"],
   "framework_reflections": [
@@ -374,13 +406,13 @@ Output ONLY this JSON structure (no markdown code fences, no explanatory text be
       "cache_create_tokens": 5000
     },
     "by_model": {
-      "claude-opus-4-5-20251101": {"input": 40000, "output": 10000},
-      "claude-3-5-haiku-20241022": {"input": 5000, "output": 2000}
+      "claude-opus-4-5-20251101": { "input": 40000, "output": 10000 },
+      "claude-3-5-haiku-20241022": { "input": 5000, "output": 2000 }
     },
     "by_agent": {
-      "main": {"input": 35000, "output": 8000},
-      "prompt-hydrator": {"input": 3000, "output": 1000},
-      "custodiet": {"input": 2000, "output": 500}
+      "main": { "input": 35000, "output": 8000 },
+      "prompt-hydrator": { "input": 3000, "output": 1000 },
+      "custodiet": { "input": 2000, "output": 500 }
     },
     "efficiency": {
       "cache_hit_rate": 0.67,
@@ -403,7 +435,7 @@ Output ONLY this JSON structure (no markdown code fences, no explanatory text be
    - Strings: Use `null` or empty string `""`
    - Numbers: Use `null` or `0` as appropriate
 
-4. **JSON Only**: Do NOT wrap JSON in markdown code fences (` ``` `). Do NOT include commentary before or after the JSON. Output should be pure JSON that can be directly parsed.
+4. **JSON Only**: Do NOT wrap JSON in markdown code fences (`` ``` ``). Do NOT include commentary before or after the JSON. Output should be pure JSON that can be directly parsed.
 
 5. **Outcome Guidelines**:
    - If user explicitly said "done", "complete", "working" → likely `"success"`

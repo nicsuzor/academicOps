@@ -154,7 +154,7 @@ class Task:
     tags: list[str] = field(default_factory=list)
     effort: str | None = None  # Estimated effort
     context: str | None = None  # @home, @computer, etc.
-    assignee: str | None = None  # Task owner: 'nic' or 'bot'
+    assignee: str | None = None  # Task owner: 'nic' or 'polecat'
     complexity: TaskComplexity | None = None  # Routing classification (set by hydrator)
 
     # Body content (markdown below frontmatter)
@@ -180,9 +180,7 @@ class Task:
         # - Legacy format: YYYYMMDD-slug (e.g., 20260119-my-task)
         # - Simple slug for permalinks (e.g., my-task-id)
         if not re.match(r"^[\w-]+$", self.id):
-            raise ValueError(
-                f"Task id must be slug format: {self.id}"
-            )
+            raise ValueError(f"Task id must be slug format: {self.id}")
         if not 0 <= self.priority <= 4:
             raise ValueError(f"Priority must be 0-4, got {self.priority}")
         if self.depth < 0:
@@ -197,7 +195,7 @@ class Task:
             project: Project slug (defaults to 'ns' for no-project)
 
         Returns:
-            ID in format <project>-<uuid[:8]> """
+            ID in format <project>-<uuid[:8]>"""
         prefix = project if project else "ns"
         hash_part = uuid.uuid4().hex[:8]
         return f"{prefix}-{hash_part}"
@@ -214,8 +212,8 @@ class Task:
             Slugified title for use in filenames
         """
         slug = title.lower()
-        slug = re.sub(r"[^\\w\\s-]", "", slug)  # Remove non-word chars
-        slug = re.sub(r"[\\s_]+", "-", slug)  # Replace spaces/underscores
+        slug = re.sub(r"[^\w\s-]", "", slug)  # Remove non-word chars
+        slug = re.sub(r"[\s_]+", "-", slug)  # Replace spaces/underscores
         slug = re.sub(r"-+", "-", slug)  # Collapse multiple dashes
         slug = slug.strip("-")[:max_length]
         return slug
@@ -317,23 +315,19 @@ class Task:
         # Parse type - require explicit type field (skip non-task files)
         task_type_str = fm.get("type")
         if task_type_str is None:
-            raise ValueError(
-                f"Missing 'type' field for item {task_id} - not a task file"
-            )
+            raise ValueError(f"Missing 'type' field for item {task_id} - not a task file")
         try:
             task_type = TaskType(task_type_str)
-        except ValueError:
+        except ValueError as e:
             raise ValueError(
                 f"Invalid type '{task_type_str}' for item {task_id} - not a task"
-            )
+            ) from e
 
         # Map status aliases and parse with graceful coercion
         status_str = fm.get("status", "active")
         if isinstance(status_str, str):
             status_str = cls.STATUS_ALIASES.get(status_str, status_str)
-        status = _safe_parse_enum(
-            status_str, TaskStatus, TaskStatus.ACTIVE, "status", task_id
-        )
+        status = _safe_parse_enum(status_str, TaskStatus, TaskStatus.ACTIVE, "status", task_id)
 
         # Parse numeric fields (may come as strings from YAML)
         priority = fm.get("priority", 2)
@@ -461,10 +455,10 @@ class Task:
         """
         # Match ## Relationships followed by content until next ## or end
         # Use lookahead to preserve the next section's newlines
-        pattern = r"\\n*## Relationships\\n[\\s\\S]*?(?=\\n\\n## |\\Z)"
+        pattern = r"\n*## Relationships\n[\s\S]*?(?=\n\n## |\Z)"
         result = re.sub(pattern, "", body)
         # Normalize multiple newlines and strip trailing whitespace
-        result = re.sub(r"\\n{3,}", "\\n\\n", result)
+        result = re.sub(r"\n{3,}", "\n\n", result)
         return result.rstrip()
 
     @classmethod

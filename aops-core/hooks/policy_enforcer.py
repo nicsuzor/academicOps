@@ -10,11 +10,10 @@ Exit codes:
     0: Always (JSON output determines allow/deny via permissionDecision field)
 """
 
-import json
 import re
 import sys
+from pathlib import Path
 from typing import Any
-
 
 # Destructive git operations that should be blocked
 DESTRUCTIVE_GIT_PATTERNS = [
@@ -24,7 +23,6 @@ DESTRUCTIVE_GIT_PATTERNS = [
     r"git\s+checkout\s+--\s+\.",
     r"git\s+stash\s+drop",
 ]
-
 
 
 def count_prose_lines(content: str) -> int:
@@ -44,9 +42,7 @@ def count_prose_lines(content: str) -> int:
     return count
 
 
-def validate_minimal_documentation(
-    tool_name: str, args: dict[str, Any]
-) -> dict[str, Any] | None:
+def validate_minimal_documentation(tool_name: str, args: dict[str, Any]) -> dict[str, Any] | None:
     """Block *-GUIDE.md files and .md files > 200 prose lines."""
     if tool_name != "Write":
         return None
@@ -82,9 +78,7 @@ def validate_minimal_documentation(
     return None
 
 
-def validate_safe_git_usage(
-    tool_name: str, args: dict[str, Any]
-) -> dict[str, Any] | None:
+def validate_safe_git_usage(tool_name: str, args: dict[str, Any]) -> dict[str, Any] | None:
     """Block destructive git operations."""
     if tool_name != "Bash":
         return None
@@ -107,49 +101,39 @@ def validate_safe_git_usage(
     return None
 
 
-def main():
-    """Main hook entry point - validates and returns result."""
-    input_data: dict[str, Any] = {}
-    try:
-        input_data = json.load(sys.stdin)
-    except json.JSONDecodeError as e:
-        # Log JSON parse error - likely empty stdin or malformed input
-        print(f"WARNING: JSON parse failed: {e}", file=sys.stderr)
-    except Exception as e:
-        # Log unexpected errors during stdin read
-        print(f"ERROR: Failed to read stdin: {type(e).__name__}: {e}", file=sys.stderr)
+def validate_protect_artifacts(tool_name: str, args: dict[str, Any]) -> dict[str, Any] | None:
+    """Block modification of protected files (H#94)."""
+    if tool_name not in ["Write", "Edit", "replace"]:
+        return None
 
-    if "tool_name" not in input_data:
-        raise ValueError("input_data requires 'tool_name' parameter (P#8: fail-fast)")
-    if "tool_input" not in input_data:
-        raise ValueError("input_data requires 'tool_input' parameter (P#8: fail-fast)")
-    tool_name = input_data["tool_name"]
-    args = input_data["tool_input"]
+    # Handle both Claude Code (file_path) and Gemini CLI (file_path)
+    file_path = args.get("file_path")
+    if not file_path:
+        return None
 
-    # Check policies in order
-    result = validate_minimal_documentation(tool_name, args)
-    if result is None:
-        result = validate_safe_git_usage(tool_name, args)
+    # Load protected paths from project-local config
+    protected_paths = []
+    local_config = Path(".agent/rules/protected_paths.txt")
+    if local_config.exists():
+        try:
+            protected_paths = [
+                line.strip()
+                for line in local_config.read_text().splitlines()
+                if line.strip() and not line.startswith("#")
+            ]
+        except Exception as e:
+            print(f"WARNING: Failed to read {local_config}: {e}", file=sys.stderr)
 
-    # If blocking, use JSON permissionDecision:deny with exit 0
-    # Exit 0 ensures Claude Code processes the JSON output (exit 2 ignores stdout)
-    if result and result.get("continue") is False:
-        output = {
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": "deny",
-                "additionalContext": result.get("systemMessage", "BLOCKED by policy")
+    # Check if file_path matches any protected path
+    for protected in protected_paths:
+        if file_path.startswith(protected) or f"/{protected}" in file_path:
+            return {
+                "continue": False,
+                "systemMessage": (
+                    f"BLOCKED: Modification of protected path '{file_path}'.\n"
+                    f"This path is protected by project-local rule (see .agent/rules/protected_paths.txt).\n"
+                    "Modify source files instead and run build scripts if necessary."
+                ),
             }
-        }
-        print(json.dumps(output))
-        sys.exit(0)
 
-    # Allow: output JSON to stdout, exit 0
-    if result is None:
-        result = {}
-    print(json.dumps(result))
-    sys.exit(0)
-
-
-if __name__ == "__main__":
-    main()
+    return None

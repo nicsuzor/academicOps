@@ -15,7 +15,7 @@ import os
 import re
 import sys
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -333,14 +333,12 @@ def build_graph(root: Path) -> dict:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Build reference graph from framework files"
-    )
+    parser = argparse.ArgumentParser(description="Build reference graph from framework files")
     parser.add_argument(
         "--root",
         type=Path,
         default=None,
-        help="Framework root directory (default: $AOPS or current dir)",
+        help="Framework root directory (default: plugin root)",
     )
     parser.add_argument(
         "--output",
@@ -351,13 +349,12 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    # Determine root
+    # Determine root - default to plugin root (4 levels up from this script)
+    # This file is at aops-core/skills/audit/scripts/build_reference_map.py
     if args.root:
         root = args.root.resolve()
-    elif "AOPS" in os.environ:
-        root = Path(os.environ["AOPS"]).resolve()
     else:
-        root = Path.cwd().resolve()
+        root = Path(__file__).resolve().parent.parent.parent.parent
 
     if not root.is_dir():
         print(f"Error: Root directory does not exist: {root}", file=sys.stderr)
@@ -388,9 +385,7 @@ def main() -> int:
         writer = csv.writer(f)
         writer.writerow(["source", "target", "weight", "ref_type"])
         for link in graph["links"]:
-            writer.writerow(
-                [link["source"], link["target"], link["weight"], link["ref_type"]]
-            )
+            writer.writerow([link["source"], link["target"], link["weight"], link["ref_type"]])
     print(f"Wrote {csv_output}", file=sys.stderr)
 
     return 0

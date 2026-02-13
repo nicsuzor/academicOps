@@ -13,50 +13,58 @@ Verify that a proposed execution plan satisfies the selected workflow's constrai
 ## When to Check
 
 Check constraints when:
+
 - Workflow has a `## Constraints` section
 - Workflow has `## Triggers` or `## How to Check` sections
 - Plan involves multiple steps with ordering requirements
 
 Skip constraint checking for:
+
 - `simple-question` workflow (no constraints)
 - `direct-skill` workflow (skill handles its own constraints)
 - Plans with single atomic action
 
 ## Constraint Types
 
-| Section | Contains | Verification Method |
-|---------|----------|---------------------|
-| **Sequencing** | `X must complete before Y` | Check execution step order |
-| **After Each Step** | `After X: do Y` | Check post-action steps exist |
-| **Always True** | Invariants that must hold | Check no steps violate |
-| **Never Do** | Prohibited actions | Check no steps match |
-| **Conditional Rules** | `If X then Y` | Check conditions trigger actions |
-| **Triggers** | State transitions | Check triggers map to steps |
-| **How to Check** | Predicate definitions | Use to verify completion |
+| Section               | Contains                   | Verification Method              |
+| --------------------- | -------------------------- | -------------------------------- |
+| **Sequencing**        | `X must complete before Y` | Check execution step order       |
+| **After Each Step**   | `After X: do Y`            | Check post-action steps exist    |
+| **Always True**       | Invariants that must hold  | Check no steps violate           |
+| **Never Do**          | Prohibited actions         | Check no steps match             |
+| **Conditional Rules** | `If X then Y`              | Check conditions trigger actions |
+| **Triggers**          | State transitions          | Check triggers map to steps      |
+| **How to Check**      | Predicate definitions      | Use to verify completion         |
 
 ## Verification Process
 
 For each constraint type in the selected workflow:
 
 **1. BEFORE rules** - "X must complete before Y"
+
 - Verify X appears before Y in the plan
 - If X is missing entirely, flag as violation
 
 **2. AFTER rules** - "After X: do Y"
+
 - Find step X in the plan
 - Verify Y appears after X
 
 **3. ALWAYS rules** - Invariants
+
 - Verify no step would violate the invariant
 
 **4. NEVER rules** - Prohibitions
+
 - Check no step matches the prohibited pattern
 
 **5. IF-THEN rules** - Conditionals
+
 - If condition applies to this task, verify action is in plan
 - If can't evaluate statically, note as "runtime check needed"
 
 **6. ON-INVOKE rules** - Triggers
+
 - Identify if trigger condition will occur
 - Verify corresponding action is invoked
 
@@ -75,18 +83,19 @@ If any constraint is violated, output:
 ```
 
 After listing violations:
+
 - **Revise the plan** to satisfy all constraints (preferred)
 - **Flag for human review** if constraints conflict or are ambiguous
 
 ## Predicate Evaluation
 
-| Predicate | How to Verify |
-|-----------|---------------|
-| "Tests exist" | Plan includes "Write test" step |
-| "Tests pass" | Plan includes "Run tests" step |
-| "Plan approved" | Plan includes approval gate |
-| "Critic reviewed" | Plan includes critic invocation |
-| "Task claimed" | Plan includes task update with status="active" |
+| Predicate         | How to Verify                                  |
+| ----------------- | ---------------------------------------------- |
+| "Tests exist"     | Plan includes "Write test" step                |
+| "Tests pass"      | Plan includes "Run tests" step                 |
+| "Plan approved"   | Plan includes approval gate                    |
+| "Critic reviewed" | Plan includes critic invocation                |
+| "Task claimed"    | Plan includes task update with status="active" |
 
 **Static predicates** (check at planning time): "test file exists", "critic invoked"
 **Runtime predicates** (check during execution): "tests pass", "validation succeeds"

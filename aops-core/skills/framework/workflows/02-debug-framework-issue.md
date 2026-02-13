@@ -103,6 +103,22 @@ cd $AOPS && uv run python scripts/transcript.py <session-file>
 
 **ALWAYS generate transcript first** - raw JSONL/JSON wastes tokens and is hard to read.
 
+**Hooks logs vs Session files** (important distinction):
+
+| File Type        | Location                                                                 | Contains                                                           |
+| ---------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| **Session file** | `~/.claude/projects/*/*.jsonl` or `~/.gemini/tmp/*/chats/session-*.json` | Actual conversation: user prompts, agent responses, tool calls     |
+| **Hooks log**    | `~/.gemini/tmp/*/chats/*-hooks.jsonl`                                    | Hook events only: SessionStart, BeforeAgent, BeforeTool, AfterTool |
+
+- **Hooks logs** record what hooks fired and their outputs, NOT the conversation
+- If you have a hooks log, find the session file via `transcript_path` field in the first entry
+- Use `transcript.py` on the **session file**, not the hooks log
+
+```bash
+# Extract session file path from hooks log
+head -1 /path/to/hooks.jsonl | jq -r '.input.transcript_path'
+```
+
 **Controlled test environment**:
 
 - Tests run in `/tmp/claude-test-*` (consistent location)
