@@ -504,6 +504,8 @@ class HookRouter:
             "aops-core:custodiet",
             "qa",
             "aops-core:qa",
+            "audit",
+            "aops-core:audit",
             "aops-core:butler",
             "butler",
         }
