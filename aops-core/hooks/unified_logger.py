@@ -50,6 +50,7 @@ def log_hook_event(
         return
 
     try:
+        # <!-- NS: this should be in state object and already available. -->
         # Build per-session hook log path
         input_data = ctx.raw_input
         date = input_data.get("date")
@@ -71,6 +72,7 @@ def log_hook_event(
             trace_id=trace_id,
             logged_at=datetime.now().astimezone().replace(microsecond=0).isoformat(),
             exit_code=exit_code,
+            output=output.model_dump() if output else None,
             **ctx.model_dump(exclude={"framework_content", "session_id", "trace_id"}),
         )
 
