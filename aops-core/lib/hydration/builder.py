@@ -19,6 +19,7 @@ from lib.hook_utils import (
 from lib.hook_utils import (
     write_temp_file as _write_temp,
 )
+from lib.session_paths import get_gate_file_path
 from lib.hydration.context_loaders import (
     get_task_work_state,
     load_environment_variables_context,
@@ -145,8 +146,10 @@ def build_hydration_instruction(
         task_state=task_state,
     )
 
-    # Write to temp file
-    temp_path = write_temp_file(full_context, input_data)
+    # Write to predictable gate file path (with temp cleanup for migration)
+    temp_path = get_gate_file_path("hydration", session_id, input_data)
+    temp_path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path.write_text(full_context, encoding="utf-8")
 
     # Update session state
     if state is None:

@@ -324,6 +324,68 @@ def get_session_directory(
     return get_session_status_dir(session_id)
 
 
+GATE_NAMES = ("hydration", "custodiet", "critic", "qa")
+
+
+def get_gate_file_path(
+    gate: str,
+    session_id: str,
+    input_data: dict | None = None,
+    date: str | None = None,
+) -> Path:
+    """Get the path for a gate context file.
+
+    Writes to the same directory as hook log files:
+    - Claude: ~/.claude/projects/<project>/<date>-<shorthash>-<gate>.md
+    - Gemini: ~/.gemini/tmp/<hash>/logs/<date>-<shorthash>-<gate>.md
+
+    Checks AOPS_GATE_FILE_<GATE> env var first for session-stable path.
+
+    Args:
+        gate: Gate name (hydration, custodiet, critic, qa)
+        session_id: Session ID from Claude Code or Gemini CLI
+        input_data: Optional input data dict for Gemini detection
+        date: Optional date in YYYY-MM-DD format (defaults to today)
+
+    Returns:
+        Path to the gate context file
+    """
+    env_var = f"AOPS_GATE_FILE_{gate.upper()}"
+    if env_path := os.environ.get(env_var):
+        return Path(env_path)
+
+    if date is None:
+        date = datetime.now(UTC).strftime("%Y-%m-%d")
+
+    short_hash = get_session_short_hash(session_id)
+    date_compact = date.replace("-", "")
+
+    if _is_gemini_session(session_id, input_data):
+        logs_dir = get_gemini_logs_dir(input_data)
+        return logs_dir / f"{date_compact}-{short_hash}-{gate}.md"
+    else:
+        project_folder = get_claude_project_folder()
+        claude_projects_dir = Path.home() / ".claude" / "projects" / project_folder
+        claude_projects_dir.mkdir(parents=True, exist_ok=True)
+        return claude_projects_dir / f"{date_compact}-{short_hash}-{gate}.md"
+
+
+def get_all_gate_file_paths(
+    session_id: str,
+    input_data: dict | None = None,
+    date: str | None = None,
+) -> dict[str, Path]:
+    """Get paths for all gate context files.
+
+    Returns:
+        Dict mapping gate name to file path
+    """
+    return {
+        gate: get_gate_file_path(gate, session_id, input_data, date)
+        for gate in GATE_NAMES
+    }
+
+
 def get_pid_session_map_path() -> Path:
     """Get path for PID -> SessionID mapping file.
 

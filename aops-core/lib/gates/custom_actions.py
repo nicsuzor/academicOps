@@ -6,6 +6,7 @@ from hooks.schemas import HookContext
 from lib import hook_utils
 from lib.gate_model import GateResult
 from lib.gate_types import GateState
+from lib.session_paths import get_gate_file_path
 from lib.session_state import SessionState
 from lib.template_registry import TemplateRegistry
 
@@ -83,9 +84,14 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:
             + "; ".join(render_errors)
         )
 
-    # Write to temp — fail fast on disk errors
-    temp_dir = hook_utils.get_hook_temp_dir(category, ctx.raw_input)
-    return hook_utils.write_temp_file(content, temp_dir, f"audit_{gate}_", session_id=session_id)
+    # Write to predictable gate file path — fail fast on disk errors
+    input_data = ctx.raw_input or {}
+    if "session_id" not in input_data:
+        input_data = {**input_data, "session_id": session_id}
+    gate_path = get_gate_file_path(gate, session_id, input_data)
+    gate_path.parent.mkdir(parents=True, exist_ok=True)
+    gate_path.write_text(content, encoding="utf-8")
+    return gate_path
 
 
 def execute_custom_action(
@@ -136,5 +142,15 @@ def execute_custom_action(
             system_message=f"Compliance report ready: {temp_path}",
             context_injection=instruction,
         )
+
+    if name == "prepare_critic_review":
+        temp_path = create_audit_file(ctx.session_id, "critic", ctx)
+        state.metrics["temp_path"] = str(temp_path)
+        return None
+
+    if name == "prepare_qa_review":
+        temp_path = create_audit_file(ctx.session_id, "qa", ctx)
+        state.metrics["temp_path"] = str(temp_path)
+        return None
 
     return None

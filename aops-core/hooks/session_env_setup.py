@@ -17,7 +17,12 @@ if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
 from lib.gate_model import GateResult, GateVerdict
-from lib.session_paths import get_hook_log_path, get_session_file_path, get_session_status_dir
+from lib.session_paths import (
+    get_all_gate_file_paths,
+    get_hook_log_path,
+    get_session_file_path,
+    get_session_status_dir,
+)
 from lib.session_state import SessionState
 
 from hooks.schemas import HookContext
@@ -145,6 +150,26 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
 
     persist["AOPS_HOOK_LOG_PATH"] = str(hook_log_path)
     persist["AOPS_SESSION_STATE_PATH"] = str(state_file_path)
+
+    # 5. Persist gate file paths
+    gate_paths = get_all_gate_file_paths(ctx.session_id, ctx.raw_input)
+    for gate_name, gate_path in gate_paths.items():
+        persist[f"AOPS_GATE_FILE_{gate_name.upper()}"] = str(gate_path)
+
+    # 6. Create .aops/ symlinks (non-fatal on failure)
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR")
+    if project_dir:
+        aops_dir = Path(project_dir) / ".aops"
+        try:
+            aops_dir.mkdir(parents=True, exist_ok=True)
+            for gate_name, gate_path in gate_paths.items():
+                symlink = aops_dir / f"{gate_name}.md"
+                # Remove existing symlink/file before creating
+                if symlink.exists() or symlink.is_symlink():
+                    symlink.unlink()
+                symlink.symlink_to(gate_path)
+        except OSError as e:
+            print(f"WARNING: Failed to create .aops/ symlinks: {e}", file=sys.stderr)
 
     # Persist all environment variables
     set_persistent_env(persist)
