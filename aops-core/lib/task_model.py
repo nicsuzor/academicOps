@@ -961,6 +961,15 @@ class Task:
         """
         from_status = self.status
 
+        # Check if already at target status (no-op)
+        if from_status == new_status:
+            return TransitionResult(
+                success=True,
+                from_status=from_status,
+                to_status=new_status,
+                idempotency_key=self.idempotency_key,
+            )
+
         # Check idempotency - if same transition with same key, return success
         if self.idempotency_key:
             # Parse existing key: {task_id}-{from}-{to}-{ts}
@@ -1053,8 +1062,11 @@ class Task:
         if new_status not in (TaskStatus.FAILED,):
             # Keep diagnostic for history when retrying
             pass
-        if new_status not in (TaskStatus.IN_PROGRESS,):
+        # Keep worker_id and pr_url for audit trail on terminal states
+        if new_status not in (TaskStatus.IN_PROGRESS, TaskStatus.DONE, TaskStatus.CANCELLED, TaskStatus.REVIEW, TaskStatus.MERGE_READY, TaskStatus.MERGING):
             self.worker_id = None
+        if new_status not in (TaskStatus.REVIEW, TaskStatus.MERGE_READY, TaskStatus.MERGING, TaskStatus.DONE, TaskStatus.CANCELLED):
+            self.pr_url = None
         if new_status not in (TaskStatus.WAITING,):
             self.approval_type = None
             self.decision_deadline = None
