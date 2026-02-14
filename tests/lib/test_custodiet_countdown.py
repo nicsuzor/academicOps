@@ -7,7 +7,6 @@ threshold is reached, giving agents advance notice to run compliance checks.
 from __future__ import annotations
 
 import pytest
-
 from hooks.schemas import HookContext
 from lib.gate_model import GateVerdict
 from lib.gate_types import CountdownConfig, GateConfig
@@ -73,7 +72,10 @@ class TestCountdownEvaluation:
         )
 
     def test_no_countdown_before_window(
-        self, gate_with_countdown: GenericGate, session_state: SessionState, hook_context: HookContext
+        self,
+        gate_with_countdown: GenericGate,
+        session_state: SessionState,
+        hook_context: HookContext,
     ) -> None:
         """No countdown message when ops_since_open < start_at (threshold - start_before)."""
         # Set ops to 5 (threshold=15, start_before=5, so window starts at 10)
@@ -84,7 +86,10 @@ class TestCountdownEvaluation:
         assert result is None
 
     def test_countdown_in_window(
-        self, gate_with_countdown: GenericGate, session_state: SessionState, hook_context: HookContext
+        self,
+        gate_with_countdown: GenericGate,
+        session_state: SessionState,
+        hook_context: HookContext,
     ) -> None:
         """Countdown message appears when in the window (start_at <= ops < threshold)."""
         gate_state = session_state.get_gate("test_gate")
@@ -96,7 +101,10 @@ class TestCountdownEvaluation:
         assert "3 turns left" in result.system_message
 
     def test_countdown_at_threshold_boundary(
-        self, gate_with_countdown: GenericGate, session_state: SessionState, hook_context: HookContext
+        self,
+        gate_with_countdown: GenericGate,
+        session_state: SessionState,
+        hook_context: HookContext,
     ) -> None:
         """Countdown at exact start of window (ops == threshold - start_before)."""
         gate_state = session_state.get_gate("test_gate")
@@ -107,7 +115,10 @@ class TestCountdownEvaluation:
         assert "5 turns left" in result.system_message
 
     def test_no_countdown_at_threshold(
-        self, gate_with_countdown: GenericGate, session_state: SessionState, hook_context: HookContext
+        self,
+        gate_with_countdown: GenericGate,
+        session_state: SessionState,
+        hook_context: HookContext,
     ) -> None:
         """No countdown when at or past threshold (policy handles this)."""
         gate_state = session_state.get_gate("test_gate")
@@ -177,7 +188,10 @@ class TestCountdownIntegration:
         )
 
     def test_countdown_appears_before_block(
-        self, custodiet_like_gate: GenericGate, session_state: SessionState, hook_context: HookContext
+        self,
+        custodiet_like_gate: GenericGate,
+        session_state: SessionState,
+        hook_context: HookContext,
     ) -> None:
         """Countdown message appears in check() result before threshold."""
         gate_state = session_state.get_gate("custodiet_test")
@@ -189,7 +203,10 @@ class TestCountdownIntegration:
         assert "3 turns until check required" in result.system_message
 
     def test_policy_blocks_at_threshold(
-        self, custodiet_like_gate: GenericGate, session_state: SessionState, hook_context: HookContext
+        self,
+        custodiet_like_gate: GenericGate,
+        session_state: SessionState,
+        hook_context: HookContext,
     ) -> None:
         """Policy blocks at threshold, no countdown (not needed)."""
         gate_state = session_state.get_gate("custodiet_test")
@@ -239,3 +256,54 @@ class TestCountdownIntegration:
         assert result.verdict == GateVerdict.ALLOW
         assert "3 turns left" in result.system_message
         assert "/tmp/test_compliance.json" in result.system_message
+
+    def test_countdown_computes_temp_path_deterministically(
+        self, session_state: SessionState, hook_context: HookContext
+    ) -> None:
+        """Countdown should compute temp_path using get_gate_file_path when not in metrics.
+
+        Bug: aops-d3b46a51
+        Previously, countdown showed "(not available)" because temp_path was only
+        set when the policy fired (at threshold). The countdown fires BEFORE
+        threshold, so temp_path was never set.
+
+        Fix: Compute temp_path deterministically using get_gate_file_path() so
+        agents know the compliance file path in advance.
+        """
+        from lib.gate_types import GateCondition, GatePolicy
+
+        # Create gate with temp_path in countdown template (like custodiet)
+        config = GateConfig(
+            name="custodiet",  # Use actual gate name for path computation
+            description="Gate with temp_path in countdown",
+            countdown=CountdownConfig(
+                start_before=5,
+                threshold=15,
+                message_template="📋 {remaining} turns left. Run check with: `{temp_path}`",
+            ),
+            policies=[
+                GatePolicy(
+                    condition=GateCondition(
+                        hook_event="PreToolUse",
+                        min_ops_since_open=15,
+                    ),
+                    verdict="deny",
+                    message_template="Blocked",
+                ),
+            ],
+        )
+        gate = GenericGate(config)
+
+        # Set ops to be in countdown window
+        gate_state = session_state.get_gate("custodiet")
+        gate_state.ops_since_open = 12
+        # NOTE: temp_path is NOT set in metrics - this is the bug condition
+
+        result = gate.check(hook_context, session_state)
+        assert result is not None
+        assert result.verdict == GateVerdict.ALLOW
+        assert "3 turns left" in result.system_message
+        # Should NOT show "(not available)" - should compute path deterministically
+        assert "(not available)" not in result.system_message
+        # Should show a valid file path (contains session hash and gate name)
+        assert "custodiet.md" in result.system_message

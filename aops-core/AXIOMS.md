@@ -180,6 +180,7 @@ Check actual state, never assume.
 - The onus is on YOU to discharge the burden of proof
 - Use LLM semantic evaluation to determine whether command output shows success or failure
 - When another agent marks work complete, verify by checking the OUTCOME (does the feature exist? does the code work?), not by second-guessing whether they did their job
+- Before `git push`, verify the push destination matches intent. Use explicit refspec (`git push origin HEAD:refs/heads/<branch-name>`) when the branch may track a different upstream than where you intend to push.
 
 **Derivation**: Assumptions cause cascading failures. Verification catches problems early.
 
