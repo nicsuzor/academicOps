@@ -13,6 +13,7 @@ from lib.gate_types import (
     GateStatus,
     GateTransition,
 )
+from lib.session_paths import get_gate_file_path
 from lib.session_state import SessionState
 
 logger = logging.getLogger(__name__)
@@ -267,13 +268,22 @@ class GenericGate:
 
         remaining = threshold - current_ops
 
+        # Compute temp_path deterministically if not in metrics
+        # Bug fix: aops-d3b46a51 - temp_path was showing "(not available)" in
+        # countdown because it was only set when policy fired (at threshold).
+        # Now we compute it using get_gate_file_path() so agents know the path
+        # in advance.
+        temp_path = state.metrics.get("temp_path")
+        if not temp_path:
+            temp_path = str(get_gate_file_path(self.name, ctx.session_id))
+
         # Render countdown message
         variables = {
             "remaining": remaining,
             "threshold": threshold,
             "current": current_ops,
             "gate_name": self.name,
-            "temp_path": state.metrics.get("temp_path", "(not available)"),
+            "temp_path": temp_path,
         }
 
         try:
@@ -362,7 +372,8 @@ class GenericGate:
                     ),
                     context_injection="\n\n".join(
                         filter(
-                            None, [trigger_result.context_injection, policy_result.context_injection]
+                            None,
+                            [trigger_result.context_injection, policy_result.context_injection],
                         )
                     ),
                     metadata={**trigger_result.metadata, **policy_result.metadata},
