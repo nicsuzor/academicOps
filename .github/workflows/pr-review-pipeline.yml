@@ -146,7 +146,7 @@ jobs:
     if: >-
       (github.event_name == 'workflow_dispatch') ||
       (github.event_name == 'pull_request' && github.event.action == 'assigned' && github.event.assignee.login == 'claude-for-github[bot]') ||
-      (github.event_name == 'pull_request_review' && github.event.review.state == 'approved' && github.event.review.user.type != 'Bot') ||
+      (github.event_name == 'pull_request_review' && github.event.review.state == 'approved') ||
       (github.event_name == 'pull_request_review_comment' && github.event.comment.user.login == 'nicsuzor') ||
       (github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.comment.user.login == 'nicsuzor')
     runs-on: ubuntu-latest
@@ -252,19 +252,19 @@ jobs:
 
           claude_args: '--allowed-tools "Bash(gh pr:*),Bash(git:*),Edit,Read,Write"'
 
-      - name: Merge PR
+      - name: Approve PR
         if: steps.pr-ref.outputs.ref != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
 
-          # Only merge if Claude's last comment signals LGTM
+          # Only approve if Claude's last comment signals LGTM
           LAST_COMMENT=$(gh pr view "$PR_NUM" --json comments --jq '.comments[-1].body')
           if echo "$LAST_COMMENT" | grep -q "LGTM:"; then
-            echo "Claude confirmed LGTM - merging PR #$PR_NUM"
-            gh pr merge "$PR_NUM" --squash --delete-branch
+            echo "Claude confirmed LGTM - approving PR #$PR_NUM"
+            gh pr review "$PR_NUM" --approve
           else
-            echo "Claude did not confirm LGTM - skipping merge"
+            echo "Claude did not confirm LGTM - skipping approval"
             echo "Last comment excerpt: $(echo "$LAST_COMMENT" | head -1)"
           fi
