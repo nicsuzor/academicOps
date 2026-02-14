@@ -75,6 +75,7 @@ def test_critic_gate_opening_subagent(mock_session):
 
     ctx = HookContext(
         session_id=session_id,
+        trace_id=None,
         hook_event="SubagentStop",
         subagent_type="critic",  # Matches pattern
         raw_input={"subagent_type": "critic"},

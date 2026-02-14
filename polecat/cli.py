@@ -967,7 +967,7 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             sys.exit(3)  # Exit 3 = queue empty. Swarm treats non-zero as "stop worker".
 
     if is_issue:
-        print(f"🎯 Issue: {task.title} ({task.issue_url or task.id})")
+        print(f"🎯 Issue: {task.title} ({getattr(task, 'issue_url', '') or task.id})")
     else:
         print(f"🎯 Task: {task.title} ({task.id})")
 
@@ -984,8 +984,9 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
 
     # Build task body — for issues, prepend the issue URL for reference
     task_body = task.body or ""
-    if is_issue and task.issue_url:
-        task_body = f"**GitHub Issue**: {task.issue_url}\n\n{task_body}"
+    issue_url = getattr(task, "issue_url", "")
+    if is_issue and issue_url:
+        task_body = f"**GitHub Issue**: {issue_url}\n\n{task_body}"
 
     # Resolve soft dependencies for context injection (local tasks only)
     soft_deps = None
@@ -994,17 +995,21 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
         for dep_id in task.soft_depends_on:
             dep_task = manager.storage.get_task(dep_id)
             if dep_task:
-                soft_deps.append({
-                    "id": dep_task.id,
-                    "title": dep_task.title,
-                    "status": dep_task.status.value if hasattr(dep_task.status, "value") else str(dep_task.status),
-                    "body": dep_task.body or "",
-                })
+                soft_deps.append(
+                    {
+                        "id": dep_task.id,
+                        "title": dep_task.title,
+                        "status": dep_task.status.value
+                        if hasattr(dep_task.status, "value")
+                        else str(dep_task.status),
+                        "body": dep_task.body or "",
+                    }
+                )
 
     prompt = build_polecat_prompt(
         task_id=task.id,
         task_title=task.title,
-        task_type=task.type.value if hasattr(task.type, "value") else str(task.type),
+        task_type=task.type.value if hasattr(task.type, "value") else str(task.type),  # type: ignore[reportAttributeAccessIssue]
         task_project=task.project or "",
         task_body=task_body,
         task_meta={

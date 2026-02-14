@@ -147,5 +147,4 @@ def execute_custom_action(
         state.metrics["temp_path"] = str(temp_path)
         return None
 
-
     return None

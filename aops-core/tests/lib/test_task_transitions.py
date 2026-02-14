@@ -128,7 +128,7 @@ class TestGuardValidation:
         result = task.transition_to(TaskStatus.DECOMPOSING, trigger="iteration")
         # Guard should fail because depth=10
         assert not result.success
-        assert "exceeds MAX_DEPTH" in result.error
+        assert result.error is not None and "exceeds MAX_DEPTH" in result.error
 
 
 class TestFieldClearing:

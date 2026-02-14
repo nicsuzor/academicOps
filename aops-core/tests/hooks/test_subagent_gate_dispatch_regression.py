@@ -153,6 +153,7 @@ class TestSubagentGateDispatch:
 
         ctx = HookContext(
             session_id=session_id,
+            trace_id=None,
             hook_event="SubagentStop",
             subagent_type="critic",
             is_subagent=True,
@@ -181,6 +182,7 @@ class TestSubagentGateDispatch:
 
         ctx = HookContext(
             session_id=session_id,
+            trace_id=None,
             hook_event="PostToolUse",
             tool_name="Read",
             is_subagent=True,
@@ -211,6 +213,7 @@ class TestComplianceSubagentBypass:
 
         ctx = HookContext(
             session_id=session_id,
+            trace_id=None,
             hook_event="PreToolUse",
             tool_name="Read",
             is_subagent=True,
@@ -239,6 +242,7 @@ class TestComplianceSubagentBypass:
 
         ctx = HookContext(
             session_id=session_id,
+            trace_id=None,
             hook_event="PreToolUse",
             tool_name="Write",
             is_subagent=True,
@@ -263,6 +267,7 @@ class TestComplianceSubagentBypass:
 
         ctx = HookContext(
             session_id=session_id,
+            trace_id=None,
             hook_event="PreToolUse",
             tool_name="Write",
             is_subagent=True,
@@ -292,6 +297,7 @@ class TestComplianceSubagentBypass:
 
         ctx = HookContext(
             session_id=session_id,
+            trace_id=None,
             hook_event="PreToolUse",
             tool_name="Write",
             is_subagent=False,  # Main session, NOT a subagent
@@ -325,6 +331,7 @@ class TestEvaluateTriggersMethod:
 
         ctx = HookContext(
             session_id=session_id,
+            trace_id=None,
             hook_event="PreToolUse",
             tool_name="Write",
             raw_input={},
@@ -346,6 +353,7 @@ class TestEvaluateTriggersMethod:
 
         ctx = HookContext(
             session_id=session_id,
+            trace_id=None,
             hook_event="PreToolUse",
             tool_name="Write",
             raw_input={},
@@ -390,6 +398,7 @@ class TestReadOnlyToolExclusion:
 
         ctx = HookContext(
             session_id=session_id,
+            trace_id=None,
             hook_event="PreToolUse",
             tool_name="Read",  # Should be in read_only category
             is_subagent=False,

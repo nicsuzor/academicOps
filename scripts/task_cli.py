@@ -251,7 +251,8 @@ def list_tasks(
 @click.option("--project", "-p", help="Filter by project")
 @click.option("--all", "-a", "show_all", is_flag=True, help="Show completed tasks too")
 @click.option("--roots-only", "-r", is_flag=True, help="Only show root-level tasks (no full tree)")
-def tree(project: str | None, show_all: bool, roots_only: bool):
+@click.option("--goals", "-g", is_flag=True, help="Show full goal-rooted tree instead of project level")
+def tree(project: str | None, show_all: bool, roots_only: bool, goals: bool):
     """Show tasks in hierarchical tree view.
 
     Displays the task hierarchy with visual tree structure.
@@ -259,8 +260,19 @@ def tree(project: str | None, show_all: bool, roots_only: bool):
     """
     index = get_index()
 
-    # Get root tasks
-    roots = index.get_roots()
+    # Get display roots: default to top-level projects, --goals shows goal-rooted tree
+    if goals:
+        roots = index.get_roots()
+    else:
+        # Show projects whose parent is null or a root-level goal (no parent)
+        root_goal_ids = {
+            t.id for t in index._tasks.values() if t.type == "goal" and t.parent is None
+        }
+        roots = [
+            t
+            for t in index._tasks.values()
+            if t.type == "project" and (t.parent is None or t.parent in root_goal_ids)
+        ]
 
     # Filter by project if specified
     if project:

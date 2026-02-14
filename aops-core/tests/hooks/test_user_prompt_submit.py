@@ -68,7 +68,7 @@ class TestUserPromptSubmit(unittest.TestCase):
         # Mock setup
         mock_load.return_value = self.mock_state
         mock_gate_path = MagicMock()
-        mock_gate_path.__str__ = lambda self: "/tmp/hydrate_123.md"
+        mock_gate_path.__str__ = MagicMock(return_value="/tmp/hydrate_123.md")
         mock_gate_path.parent = MagicMock()
         mock_get_gate_file_path.return_value = mock_gate_path
 

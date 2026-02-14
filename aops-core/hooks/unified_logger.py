@@ -96,7 +96,7 @@ def log_hook_event(
 
 
 def log_event_to_session(
-    session_id: str, hook_event: str, input_data: dict[str, Any], state: SessionState = None
+    session_id: str, hook_event: str, input_data: dict[str, Any], state: SessionState | None = None
 ) -> GateResult | None:
     """Update session state for a hook event.
 

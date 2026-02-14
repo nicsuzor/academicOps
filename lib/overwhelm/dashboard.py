@@ -274,7 +274,7 @@ def load_token_metrics() -> dict | None:
 
     today = datetime.now().strftime("%Y%m%d")
 
-    totals = {
+    totals: dict[str, int | float] = {
         "input_tokens": 0,
         "output_tokens": 0,
         "cache_read": 0,

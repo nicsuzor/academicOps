@@ -99,6 +99,7 @@ def worker_loop(
             exit_code = 0
             print(f"[{worker_name}] 🧪 Dry run finished with {exit_code}")
         else:
+            assert aops_path is not None  # guaranteed by guard above
             cmd = [
                 "uv",
                 "run",

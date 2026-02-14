@@ -36,6 +36,7 @@ def clean_aca_data(tmp_path):
     else:
         del os.environ["ACA_DATA"]
 
+
 def test_complete_task_with_incomplete_markers(clean_aca_data):
     """Test that complete_task fails if there are incomplete markers."""
     # Create a task with incomplete markers
@@ -60,6 +61,7 @@ def test_complete_task_with_incomplete_markers(clean_aca_data):
     assert res_force["success"]
     assert res_force["task"]["status"] == "done"
 
+
 def test_update_task_status_done_with_incomplete_markers(clean_aca_data):
     """Test that update_task status=done fails if there are incomplete markers."""
     # Create a task with incomplete markers
@@ -78,6 +80,7 @@ def test_update_task_status_done_with_incomplete_markers(clean_aca_data):
     assert res_force["success"]
     assert res_force["task"]["status"] == "done"
 
+
 def test_update_task_body_and_status_done(clean_aca_data):
     """Test that update_task checks the NEW body if body is updated in same call."""
     # Create a task without markers
@@ -94,6 +97,7 @@ def test_update_task_body_and_status_done(clean_aca_data):
     res_ok = update_task.fn(id=task_id, body="- [x] New Item", status="done")
     assert res_ok["success"]
     assert res_ok["task"]["status"] == "done"
+
 
 def test_complete_task_no_markers(clean_aca_data):
     """Test that complete_task succeeds if there are no incomplete markers."""

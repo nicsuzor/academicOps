@@ -17,6 +17,7 @@ class TestCustodietGateCommitCheck(unittest.TestCase):
         self.state = SessionState.create("test-session")
         self.ctx = HookContext(
             session_id="test-session",
+            trace_id=None,
             hook_event="Stop",
             raw_input={"transcript_path": "/tmp/transcript.jsonl"},
         )

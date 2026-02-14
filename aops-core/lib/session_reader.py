@@ -1123,7 +1123,7 @@ def _extract_errors(entries: list[Any], max_turns: int) -> list[dict[str, Any]]:
         for item in content:
             if isinstance(item, dict) and item.get("type") == "tool_result":
                 if item.get("is_error") or item.get("isError"):
-                    tool_id = item.get("tool_use_id") or item.get("toolUseId")
+                    tool_id = item.get("tool_use_id") or item.get("toolUseId") or ""
                     tool_info = tool_use_map.get(tool_id, {})
                     error_content = item.get("content", "")
 

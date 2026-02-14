@@ -180,6 +180,8 @@ def get_hook_log_path(
     if _is_gemini_session(session_id, input_data):
         # Gemini: write to logs/ directory in state dir
         logs_dir = get_gemini_logs_dir(input_data)
+        if logs_dir is None:
+            raise ValueError("Gemini session detected but no logs directory configured")
         return logs_dir / f"{date_compact}-{short_hash}-hooks.jsonl"
     else:
         # Claude: ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
@@ -362,6 +364,8 @@ def get_gate_file_path(
 
     if _is_gemini_session(session_id, input_data):
         logs_dir = get_gemini_logs_dir(input_data)
+        if logs_dir is None:
+            raise ValueError("Gemini session detected but no logs directory configured")
         return logs_dir / f"{date_compact}-{short_hash}-{gate}.md"
     else:
         project_folder = get_claude_project_folder()
@@ -380,10 +384,7 @@ def get_all_gate_file_paths(
     Returns:
         Dict mapping gate name to file path
     """
-    return {
-        gate: get_gate_file_path(gate, session_id, input_data, date)
-        for gate in GATE_NAMES
-    }
+    return {gate: get_gate_file_path(gate, session_id, input_data, date) for gate in GATE_NAMES}
 
 
 def get_pid_session_map_path() -> Path:

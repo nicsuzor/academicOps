@@ -41,7 +41,7 @@ def get_polecat_home() -> Path:
     return Path.home() / ".aops"
 
 
-def get_config_path(home_dir: Path = None) -> Path:
+def get_config_path(home_dir: Path | None = None) -> Path:
     """Get the polecat config file path.
 
     Args:
@@ -60,7 +60,7 @@ def get_config_path(home_dir: Path = None) -> Path:
 POLECAT_CONFIG = get_config_path()
 
 
-def load_config(config_path: Path = None) -> dict:
+def load_config(config_path: Path | None = None) -> dict:
     """Load full polecat config from file.
 
     Args:
@@ -82,7 +82,7 @@ def load_config(config_path: Path = None) -> dict:
         return yaml.safe_load(f)
 
 
-def load_projects(config_path: Path = None) -> dict:
+def load_projects(config_path: Path | None = None) -> dict:
     """Load project registry from config file.
 
     Args:
@@ -108,7 +108,7 @@ def load_projects(config_path: Path = None) -> dict:
     return projects
 
 
-def load_crew_names(config_path: Path = None) -> list[str]:
+def load_crew_names(config_path: Path | None = None) -> list[str]:
     """Load crew names from config file.
 
     Args:
@@ -122,7 +122,7 @@ def load_crew_names(config_path: Path = None) -> list[str]:
 
 
 class PolecatManager:
-    def __init__(self, home_dir: Path = None):
+    def __init__(self, home_dir: Path | None = None):
         """Initialize the polecat manager.
 
         Args:
@@ -688,7 +688,7 @@ class PolecatManager:
                 results[project] = False
         return results
 
-    def claim_next_task(self, caller: str, project: str = None):
+    def claim_next_task(self, caller: str, project: str | None = None):
         """Finds and claims the highest priority ready task."""
         tasks = self.storage.get_ready_tasks(project=project)
 

@@ -18,10 +18,10 @@ try:
 except ImportError:
     # Fallback for runtime if paths not set
     if "Task" not in locals() and "Task" not in globals():
-        Task = Any  # type: ignore
+        Task = Any  # type: ignore[reportInvalidTypeForm]
 
 
-def generate_pr_body(task: Task) -> str:
+def generate_pr_body(task: Task) -> str:  # type: ignore[reportInvalidTypeForm]
     """Generate a Pull Request body from a Task object.
 
     Extracts the description and acceptance criteria from the task body.

@@ -103,8 +103,8 @@ class HealthMetrics:
     broken_wikilinks: list[dict[str, str]] = field(default_factory=list)
 
     # Content quality
-    oversized_skills: list[dict[str, int]] = field(default_factory=list)
-    specs_missing_sections: list[dict[str, list[str]]] = field(default_factory=list)
+    oversized_skills: list[dict[str, str | int]] = field(default_factory=list)
+    specs_missing_sections: list[dict[str, str | list[str]]] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""

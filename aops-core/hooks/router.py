@@ -43,7 +43,6 @@ try:
         from hooks.schemas import (
             CanonicalHookOutput,
             ClaudeGeneralHookOutput,
-            ClaudeHookOutput,
             ClaudeHookSpecificOutput,
             ClaudeStopHookOutput,
             GeminiHookOutput,
@@ -54,7 +53,6 @@ try:
         from schemas import (
             CanonicalHookOutput,
             ClaudeGeneralHookOutput,
-            ClaudeHookOutput,
             ClaudeHookSpecificOutput,
             ClaudeStopHookOutput,
             GeminiHookOutput,
@@ -162,19 +160,21 @@ def persist_session_data(data: dict[str, Any]) -> None:
 class HookRouter:
     # Global bypass for compliance subagents (POLICIES ONLY)
     # We still run triggers for these agents so gate states update correctly.
-    _COMPLIANCE_SUBAGENT_TYPES = frozenset({
-        "hydrator",
-        "prompt-hydrator",
-        "aops-core:prompt-hydrator",
-        "custodiet",
-        "aops-core:custodiet",
-        "qa",
-        "aops-core:qa",
-        "audit",
-        "aops-core:audit",
-        "aops-core:butler",
-        "butler",
-    })
+    _COMPLIANCE_SUBAGENT_TYPES = frozenset(
+        {
+            "hydrator",
+            "prompt-hydrator",
+            "aops-core:prompt-hydrator",
+            "custodiet",
+            "aops-core:custodiet",
+            "qa",
+            "aops-core:qa",
+            "audit",
+            "aops-core:audit",
+            "aops-core:butler",
+            "butler",
+        }
+    )
 
     def __init__(self):
         self.session_data = get_session_data()
@@ -199,7 +199,7 @@ class HookRouter:
         if gemini_event:
             hook_event = GEMINI_EVENT_MAP.get(gemini_event, gemini_event)
         else:
-            raw_event = raw_input.get("hook_event_name")
+            raw_event = raw_input.get("hook_event_name") or ""
             hook_event = GEMINI_EVENT_MAP.get(raw_event, raw_event)
 
         # 2. Determine Session ID
@@ -526,7 +526,8 @@ class HookRouter:
         - SubagentStop -> gate.on_subagent_stop()
         """
         is_compliance_agent = ctx.is_subagent and (
-            state.state.get("hydrator_active") or ctx.subagent_type in self._COMPLIANCE_SUBAGENT_TYPES
+            state.state.get("hydrator_active")
+            or ctx.subagent_type in self._COMPLIANCE_SUBAGENT_TYPES
         )
 
         messages = []
@@ -658,7 +659,9 @@ class HookRouter:
         out.metadata = result.metadata
         return out
 
-    def output_for_claude(self, result: CanonicalHookOutput, event: str) -> ClaudeHookOutput:
+    def output_for_claude(
+        self, result: CanonicalHookOutput, event: str
+    ) -> ClaudeGeneralHookOutput | ClaudeStopHookOutput:
         """Format for Claude Code."""
         if event == "Stop" or event == "SessionEnd":
             output = ClaudeStopHookOutput()

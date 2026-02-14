@@ -631,7 +631,7 @@ def _find_recent_sessions(
 ) -> list[Path]:
     """Find recent session JSONL files, excluding hooks and agent files."""
     cutoff = datetime.now(tz=UTC) - timedelta(hours=hours)
-    sessions: list[Path] = []
+    sessions: list[tuple[datetime, Path]] = []
 
     for f in sessions_dir.glob("*.jsonl"):
         # Skip hooks and agent files

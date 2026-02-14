@@ -1,5 +1,5 @@
 from functools import cached_property
-from typing import Any, Literal
+from typing import Any, Literal, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -103,7 +103,7 @@ class ClaudeGeneralHookOutput(BaseModel):
 
 
 # Union type for any Claude Hook Output
-ClaudeHookOutput = ClaudeGeneralHookOutput | ClaudeStopHookOutput
+ClaudeHookOutput: TypeAlias = ClaudeGeneralHookOutput | ClaudeStopHookOutput
 
 
 # --- Gemini CLI Hook Schemas ---

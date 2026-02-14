@@ -56,7 +56,7 @@ def escape_toml_basic_string(s: str) -> str:
     return s.replace("\\", "\\\\").replace('"', '\\"')
 
 
-def escape_toml_literal(s: str) -> str:
+def escape_toml_literal(s: str) -> str | None:
     """Escape a string for TOML multiline literal (''' ... ''')."""
     # Multiline literal strings in TOML use triple single quotes and do not support escaping,
     # except for escaping the closing sequence itself.

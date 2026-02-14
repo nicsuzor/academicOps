@@ -146,8 +146,8 @@ def render_task_manager():
                 selection_mode="single-row",
             )
 
-            if selection and selection["selection"]["rows"]:
-                row_idx = selection["selection"]["rows"][0]
+            if selection and selection.get("selection", {}).get("rows"):  # type: ignore[union-attr]
+                row_idx = selection["selection"]["rows"][0]  # type: ignore[index]
                 selected_task_id = df.iloc[row_idx]["ID"]
 
     # --- Task Detail / Edit ---

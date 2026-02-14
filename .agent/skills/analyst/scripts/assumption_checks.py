@@ -136,7 +136,7 @@ def check_normality_per_group(
             axes = [axes]
 
     for idx, group in enumerate(groups):
-        group_data = data[data[group_col] == group][value_col].dropna()
+        group_data = data[data[group_col] == group][value_col].dropna()  # type: ignore[reportAttributeAccessIssue]
         stat, p = stats.shapiro(group_data)
 
         results.append(
@@ -195,7 +195,7 @@ def check_homogeneity_of_variance(
     statistic, p_value = stats.levene(*groups)
 
     # Variance ratio (max/min)
-    variances = [np.var(g, ddof=1) for g in groups]
+    variances = [np.var(g, ddof=1) for g in groups]  # type: ignore[reportCallIssue]
     var_ratio = max(variances) / min(variances)
 
     is_homogeneous = p_value > alpha
@@ -302,7 +302,7 @@ def check_linearity(
 
     return {
         "r": r_value,
-        "r_squared": r_value**2,
+        "r_squared": r_value**2,  # type: ignore[reportOperatorIssue]
         "interpretation": (
             "Examine residual plot. Points should be randomly scattered around zero. "
             "Patterns (curves, funnels) suggest non-linearity or heteroscedasticity."
@@ -356,7 +356,7 @@ def detect_outliers(
         outlier_mask = (data_clean < lower_bound) | (data_clean > upper_bound)
 
     elif method == "zscore":
-        z_scores = np.abs(stats.zscore(data_clean))
+        z_scores = np.abs(stats.zscore(data_clean))  # type: ignore[reportCallIssue]
         outlier_mask = z_scores > threshold
         lower_bound = data_clean.mean() - threshold * data_clean.std()
         upper_bound = data_clean.mean() + threshold * data_clean.std()
@@ -468,7 +468,10 @@ def comprehensive_assumption_check(
     print("\n1. OUTLIER DETECTION")
     print("-" * 70)
     outlier_results = detect_outliers(
-        data[value_col].dropna(), name=value_col, method="iqr", plot=True
+        data[value_col].dropna(),
+        name=value_col,
+        method="iqr",
+        plot=True,  # type: ignore[reportArgumentType]
     )
     results["outliers"] = outlier_results
     print(f"   {outlier_results['interpretation']}")
@@ -485,9 +488,9 @@ def comprehensive_assumption_check(
         results["normality_per_group"] = normality_results
         print(normality_results.to_string(index=False))
 
-        all_normal = normality_results["Normal"].eq("Yes").all()
-        print(f"\n   All groups normal: {'Yes' if all_normal else 'No'}")
-        if not all_normal:
+        all_normal = normality_results["Normal"].eq("Yes").all()  # type: ignore[reportGeneralTypeIssues]
+        print(f"\n   All groups normal: {'Yes' if all_normal else 'No'}")  # type: ignore[reportGeneralTypeIssues]
+        if not all_normal:  # type: ignore[reportGeneralTypeIssues]
             print("   → Consider non-parametric alternative (Mann-Whitney, Kruskal-Wallis)")
 
         # Homogeneity of variance
@@ -505,7 +508,10 @@ def comprehensive_assumption_check(
         print("\n2. NORMALITY CHECK")
         print("-" * 70)
         normality_results = check_normality(
-            data[value_col].dropna(), name=value_col, alpha=alpha, plot=True
+            data[value_col].dropna(),
+            name=value_col,
+            alpha=alpha,
+            plot=True,  # type: ignore[reportArgumentType]
         )
         results["normality"] = normality_results
         print(f"   {normality_results['interpretation']}")

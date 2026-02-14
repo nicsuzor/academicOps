@@ -15,13 +15,7 @@ from pathlib import Path
 # Add hypervisor scripts to path for import
 sys.path.insert(
     0,
-    str(
-        Path(__file__).parent.parent
-        / "aops-core"
-        / "skills"
-        / "hypervisor"
-        / "scripts"
-    ),
+    str(Path(__file__).parent.parent / "aops-core" / "skills" / "hypervisor" / "scripts"),
 )
 
 from batch_worker import determine_assignee, process_task

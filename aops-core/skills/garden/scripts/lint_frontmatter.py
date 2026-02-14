@@ -187,8 +187,8 @@ def check_yaml_validity(content: str, path: Path) -> list[LintIssue]:
     except yaml.YAMLError as e:
         # Extract line number from YAML error if available
         line = 1
-        if hasattr(e, "problem_mark") and e.problem_mark:
-            line = e.problem_mark.line + 2  # +2 for 1-indexed and --- line
+        if hasattr(e, "problem_mark") and e.problem_mark:  # type: ignore[union-attr]
+            line = e.problem_mark.line + 2  # type: ignore[union-attr]  # +2 for 1-indexed and --- line
         issues.append(
             LintIssue(
                 file=path,
