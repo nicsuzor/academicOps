@@ -18,11 +18,12 @@ sys.path.insert(0, str(AOPS_CORE_ROOT))
 
 # Now we can import the server functions
 from mcp_servers.tasks_server import (
-    create_task,
     complete_task,
-    update_task,
+    create_task,
     get_task,
+    update_task,
 )
+
 
 @pytest.fixture
 def clean_aca_data(tmp_path):

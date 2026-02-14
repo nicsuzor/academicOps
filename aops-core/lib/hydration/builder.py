@@ -19,7 +19,6 @@ from lib.hook_utils import (
 from lib.hook_utils import (
     write_temp_file as _write_temp,
 )
-from lib.session_paths import get_gate_file_path
 from lib.hydration.context_loaders import (
     get_task_work_state,
     load_environment_variables_context,

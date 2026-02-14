@@ -12,8 +12,6 @@ See P#102 (Judgment Tasks Default Unassigned) in HEURISTICS.md.
 import sys
 from pathlib import Path
 
-import pytest
-
 # Add hypervisor scripts to path for import
 sys.path.insert(
     0,
