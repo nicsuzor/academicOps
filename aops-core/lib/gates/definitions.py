@@ -64,7 +64,8 @@ GATE_CONFIGS = [
                     "**User prompt hydration required.** Invoke the **prompt-hydrator** agent with the file path argument: `{temp_path}`\n"
                     "Run the hydrator with this command:\n"
                     "- Gemini: `delegate_to_agent(name='prompt-hydrator', query='{temp_path}')`\n"
-                    "- Claude: `Task(subagent_type='prompt-hydrator', prompt='{temp_path}')`"
+                    "- Claude: `Task(subagent_type='prompt-hydrator', prompt='{temp_path}')`\n\n"
+                    "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
                 ),
             )
         ],
@@ -118,7 +119,8 @@ GATE_CONFIGS = [
                 context_template=(
                     "**Periodic compliance check required ({ops_since_open} ops since last check).** Invoke the **custodiet** agent with the file path argument: `{temp_path}`\n"
                     "- Gemini: `delegate_to_agent(name='custodiet', query='{temp_path}')`\n"
-                    "- Claude: `Task(subagent_type='custodiet', prompt='{temp_path}')`"
+                    "- Claude: `Task(subagent_type='custodiet', prompt='{temp_path}')`\n\n"
+                    "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
                 ),
                 custom_action="prepare_compliance_report",
             ),
@@ -204,7 +206,8 @@ GATE_CONFIGS = [
                     "Run the critic with this command:\n"
                     "- Gemini: `delegate_to_agent(name='aops-core:critic', query='{temp_path}')`\n"
                     "- Claude: `Task(subagent_type='aops-core:critic', prompt='{temp_path}')`\n"
-                    "- Make sure you obey the instructions the tool or subagent produces, but do not print the output to the user -- it just clutters up the conversation."
+                    "- Make sure you obey the instructions the tool or subagent produces, but do not print the output to the user -- it just clutters up the conversation.\n\n"
+                    "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
                 ),
             ),
         ],
@@ -259,7 +262,8 @@ GATE_CONFIGS = [
                     "Run the qa with this command:\n"
                     "- Gemini: `delegate_to_agent(name='aops-core:qa', query='{temp_path}')`\n"
                     "- Claude: `Task(subagent_type='aops-core:qa', prompt='{temp_path}')`\n"
-                    "- Make sure you obey the instructions the tool or subagent produces, but do not print the output to the user -- it just clutters up the conversation."
+                    "- Make sure you obey the instructions the tool or subagent produces, but do not print the output to the user -- it just clutters up the conversation.\n\n"
+                    "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
                 ),
             ),
         ],
@@ -281,7 +285,8 @@ GATE_CONFIGS = [
                 message_template=("⛔ Handover required"),
                 context_template=(
                     "⛔ Finalization required before exit.\n\n"
-                    "Please invoke the Handover Skill. The gate will only allow exit once the Handover Skill has completed and the output is successfully parsed in the correct format."
+                    "Please invoke the Handover Skill. The gate will only allow exit once the Handover Skill has completed and the output is successfully parsed in the correct format.\n\n"
+                    "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
                 ),
             ),
         ],
