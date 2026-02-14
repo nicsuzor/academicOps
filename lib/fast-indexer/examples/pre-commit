@@ -1,0 +1,15 @@
+#!/bin/bash
+# Pre-commit hook to update graph index
+
+# Adjust path to where you installed the binary
+INDEXER="fast-indexer"
+OUTPUT="graph.json"
+
+echo "Generating graph index..."
+if $INDEXER . --output "$OUTPUT"; then
+    echo "Graph index updated."
+    git add "$OUTPUT"
+else
+    echo "Error generating graph index."
+    exit 1
+fi

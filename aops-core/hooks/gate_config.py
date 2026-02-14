@@ -1,0 +1,164 @@
+"""
+Gate Configuration: Single source of truth for gate behavior.
+
+This module defines:
+1. Tool categories (always_available, read_only, write, meta, stop)
+2. Gate execution order per event
+3. Subagent bypass rules
+4. Gate modes (block/warn)
+
+"""
+
+
+# =============================================================================
+# TOOL CATEGORIES
+# =============================================================================
+# Categorize tools by their side effects. This determines which gates must
+# pass before the tool can be used.
+
+TOOL_CATEGORIES: dict[str, set[str]] = {
+    # Always available: bypass ALL gates, including hydration
+    "always_available": {
+        "Task",
+        "Skill",
+        "delegate_to_agent",
+        "activate_skill",
+        "mcp__plugin_aops-core_task_manager__get_task",
+        "mcp__plugin_aops-core_task_manager__get_children",
+        "mcp__plugin_aops-core_task_manager__get_dependencies",
+        "mcp__plugin_aops-core_task_manager__create_task",
+        "mcp__plugin_aops-core_task_manager__update_task",
+        "mcp__plugin_aops-core_task_manager__complete_task",
+        "mcp__plugin_aops-core_task_manager__decompose_task",
+        "mcp__plugin_aops-core_task_manager__claim_next_task",
+        "mcp__plugin_aops-core_task_manager__rebuild_index",
+        "mcp__plugin_aops-core_task_manager__list_tasks",
+        "create_task",
+        "update_task",
+        "complete_task",
+        "get_task",
+        "list_tasks",
+        "search_tasks",
+        "get_task_tree",
+        "get_children",
+        "decompose_task",
+        "mcp__plugin_aops-core_memory__retrieve_memory",
+        "mcp__plugin_aops-core_memory__recall_memory",
+        "mcp__plugin_aops-core_memory__search_by_tag",
+        "retrieve_memory",
+        "recall_memory",
+        "search_by_tag",
+        "prompt-hydrator",
+        "aops-core:prompt-hydrator",
+        "critic",
+        "aops-core:critic",
+        "custodiet",
+        "aops-core:custodiet",
+        "qa",
+        "aops-core:qa",
+        "handover",
+        "aops-core:handover",
+        "codebase_investigator",
+        "cli_help",
+        "effectual-planner",
+        "AskUserQuestion",
+        "TodoWrite",
+        "EnterPlanMode",
+        "ExitPlanMode",
+        "KillShell",
+    },
+    # Read-only tools: no side effects
+    "read_only": {
+        "Read",
+        "Glob",
+        "Grep",
+        "WebFetch",
+        "WebSearch",
+        "ListMcpResourcesTool",
+        "ReadMcpResourceTool",
+        "TaskOutput",
+        "read_file",
+        "view_file",
+        "list_dir",
+        "list_directory",
+        "find_by_name",
+        "grep_search",
+        "search_file_content",
+        "glob",
+        "search_web",
+        "google_web_search",
+        "web_fetch",
+        "read_url_content",
+        "mcp__plugin_aops-core_memory__list_memories",
+        "mcp__plugin_aops-core_memory__check_database_health",
+        "mcp__plugin_context7-plugin_context7__resolve-library-id",
+        "mcp__plugin_context7-plugin_context7__query-docs",
+        "mcp__plugin_aops-core_task_manager__search_tasks",
+        "mcp__plugin_aops-core_task_manager__get_task_tree",
+        "mcp__plugin_aops-core_task_manager__get_review_tasks",
+        "mcp__plugin_aops-core_task_manager__get_blocked_tasks",
+        "mcp__plugin_aops-core_task_manager__get_tasks_with_topology",
+        "mcp__plugin_aops-core_task_manager__get_task_neighborhood",
+        "mcp__plugin_aops-core_task_manager__get_index_stats",
+        "mcp__plugin_aops-core_task_manager__get_graph_metrics",
+        "mcp__plugin_aops-core_task_manager__get_review_snapshot",
+        "mcp__plugin_aops-core_task_manager__complete_tasks",
+        "mcp__plugin_aops-core_task_manager__delete_task",
+        "mcp__plugin_aops-core_task_manager__reset_stalled_tasks",
+        "mcp__plugin_aops-core_task_manager__reorder_children",
+        "mcp__plugin_aops-core_task_manager__dedup_tasks",
+    },
+    # Write tools: modify USER files/state
+    "write": {
+        "Edit",
+        "Write",
+        "Bash",
+        "NotebookEdit",
+        "MultiEdit",
+        "write_file",
+        "replace",
+        "run_shell_command",
+        "execute_code",
+        "save_memory",
+        "mcp__plugin_aops-core_memory__store_memory",
+        "mcp__plugin_aops-core_memory__delete_memory",
+    },
+    "meta": set(),
+}
+
+# =============================================================================
+# GATE MODE DEFAULTS
+# =============================================================================
+# Default enforcement modes for gates. Can be overridden by environment variables.
+
+GATE_MODE_DEFAULTS: dict[str, str] = {
+    "hydration": "block",
+    "task": "warn",
+    "custodiet": "block",
+    "critic": "warn",
+    "qa": "block",
+    "handover": "warn",
+}
+
+# Environment variable names for gate modes
+GATE_MODE_ENV_VARS: dict[str, str] = {
+    "hydration": "HYDRATION_GATE_MODE",
+    "task": "TASK_GATE_MODE",
+    "custodiet": "CUSTODIET_GATE_MODE",
+    "critic": "CRITIC_GATE_MODE",
+    "qa": "QA_GATE_MODE",
+    "handover": "HANDOVER_GATE_MODE",
+}
+
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+
+
+def get_tool_category(tool_name: str) -> str:
+    """Get the category for a tool. Returns 'unknown' if not categorized."""
+    for category, tools in TOOL_CATEGORIES.items():
+        if tool_name in tools:
+            return category
+    # Default: treat unknown tools as write (conservative)
+    return "write"
