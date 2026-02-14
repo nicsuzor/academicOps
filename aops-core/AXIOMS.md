@@ -303,7 +303,13 @@ Agents are autonomous entities with knowledge who execute workflows. Agents don'
 
 ## No Shitty NLP (P#49)
 
-Legacy NLP (keyword matching, regex heuristics, fuzzy string matching) is forbidden for semantic decisions. We have smart LLMs—use them.
+Legacy NLP (keyword matching, regex heuristics, fuzzy string matching) is forbidden for semantic decisions. We have smart LLMs — use them.
+
+**General principle**: Don't downgrade to dumb techniques when smart ones are available. This applies beyond NLP:
+
+- Semantic decisions → use LLM judgment, not regex (original scope)
+- Acceptance criteria → evaluate semantically ("QA verifies X"), not pattern-match ("output contains Y")
+- Task execution → apply agent reasoning, not mechanical 1:1 transformation (see P#78)
 
 **Corollaries**:
 
@@ -311,8 +317,9 @@ Legacy NLP (keyword matching, regex heuristics, fuzzy string matching) is forbid
 - Don't filter documentation based on keyword matches
 - Provide the Agent with the _index of choices_ and let the Agent decide
 - Acceptance criteria for LLM-evaluated tests must be semantic ("QA verifies X"), not pattern-based ("output contains Y")
+- An agent that mechanically maps input to output without reasoning is the execution equivalent of regex for semantic classification
 
-**Derivation**: LLMs understand semantics; regex does not. Hardcoded NLP heuristics are brittle and require constant maintenance. Agentic decision-making scales better.
+**Derivation**: LLMs understand semantics; regex does not. Hardcoded NLP heuristics are brittle and require constant maintenance. Agentic decision-making scales better. The same logic applies to execution: mechanical transformation where judgment is warranted produces brittle, unexamined output that misses what a reasoning agent would catch.
 
 ## Explicit Approval For Costly Operations (P#50)
 

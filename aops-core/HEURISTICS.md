@@ -335,16 +335,36 @@ description: Working hypotheses validated by evidence.
 
 ---
 
-## Deterministic Computation Stays in Code (P#78)
+## Right Tool for the Work (P#78)
 
-**Statement**: LLMs are bad at counting, aggregation, and numerical computation. Use Python/scripts for deterministic operations; LLMs for judgment, classification, and generation.
+**Statement**: Agents exist to apply judgment. Using deterministic techniques for work that requires reasoning is negligence — the execution equivalent of P#49's prohibition on regex for semantic decisions.
+
+When an agent receives a task that requires evaluation, it must EVALUATE — not mechanically transform. A 1:1 mapping where judgment was warranted is a P#78 violation.
+
+Conversely, purely deterministic operations (counting, aggregation, lossless format conversion) belong in existing tools and inline code, not LLM reasoning.
+
+**Judgment is warranted when**:
+
+- The transformation involves structural decisions (grouping, hierarchy, naming)
+- There is ambiguity in how input maps to output
+- The transformation is lossy (input semantics don't map 1:1 to output format)
+- Trade-offs exist between valid approaches
+
+**Mechanical execution is appropriate when**:
+
+- The transformation can be specified as a pure function with no branching on semantic content
+- No structural decisions, ambiguity, or trade-offs are involved
 
 **Examples**:
 
-- Token counting → transcript_parser.py UsageStats (not LLM)
-- File counts, line counts → glob/wc (not LLM)
-- Data aggregation → pandas/SQL (not LLM)
-- Pattern matching on logs → Python (not LLM)
+- Token counting → existing tool or inline code (not LLM) ✓
+- File counts, line counts → glob/wc (not LLM) ✓
+- Data aggregation → pandas/SQL (not LLM) ✓
+- Lossless format conversion with no structural decisions → inline code (not LLM) ✓
+- Converting constraints to YAML by evaluating structure, grouping, and fitness → agent judgment required ✓
+- Converting constraints to YAML by mechanically mapping bullets to keys → P#78 violation ✗
+- Renaming files per explicit pattern → mechanical ✓
+- Renaming files to "make them clearer" → judgment required ✓
 
 **Corollaries (MCP Tool Design)**:
 
@@ -353,7 +373,7 @@ description: Working hypotheses validated by evidence.
 - Thresholds as **parameters** (agent decides), not hardcoded constants
 - If a tool name contains "candidates", "similar", or "suggest" → wrong boundary, redesign
 
-**Derivation**: LLMs hallucinate numbers and fail at counting. Deterministic operations have exact solutions that code computes reliably. Session logs and hook logs already exist - process them with Python, not inference.
+**Derivation**: Extends P#49 (No Shitty NLP) beyond NLP to all execution. Smart agents exist to apply judgment. Mechanical execution where judgment is warranted wastes the capability and produces worse outcomes. Note: "use existing tools/inline code" for deterministic work — not "create new script files" (P#28 still applies).
 
 ---
 
@@ -756,6 +776,7 @@ mcp__task_manager__complete_task(id=batch_task_id)
 - Unassigned judgment tasks remain in backlog for nic to claim or delegate as needed
 - The `/q` and decompose workflows apply these routing rules when creating tasks
 - `blocked-human` complexity also defaults to unassigned (not auto-assigned to nic)
+- "Mechanical routing" means the task CAN be done without human judgment — not that the agent should skip task analysis. Polecat evaluates WHETHER the task is truly mechanical before executing it AS mechanical. If truly mechanical (no structural decisions, no ambiguity, lossless transformation per P#78 signals), proceed mechanically. If judgment is warranted, apply reasoning even if routed as mechanical.
 
 **Derivation**: Human attention is the scarcest resource. Auto-assigning every judgment task to `nic` defeats the purpose of a backlog - it turns the backlog into nic's inbox. Tasks should be pulled (claimed) rather than pushed (assigned) unless explicitly requested.
 

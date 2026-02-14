@@ -35,6 +35,8 @@ The name draws from public law: "ultra vires" (beyond powers) describes acts out
 
 **Scope**: This spec covers **semantic authority enforcement** - understanding whether an agent's actions align with the user's intent. Pattern-based mechanical violations (`--no-verify`, backup files, destructive git) are handled by mechanical hooks and are NOT part of custodiet.
 
+**Scope compliance is necessary but not sufficient.** An action within the user's requested scope can still be ultra vires if the execution method breaches framework axioms. An agent that mechanically maps input to output without applying judgment — when judgment was warranted — violates P#78 the same way regex for semantic decisions violates P#49. Custodiet checks both scope AND method compliance.
+
 ## Operation
 
 ## Failure Categories
@@ -155,6 +157,8 @@ Per [[HEURISTICS#H31]] (No LLM Calls in Hooks), hooks cannot call LLMs directly.
 | Heuristic violations | H19 Questions            | Implementing when user asked a question     |
 | Drift patterns       | Plan deviation           | TodoWrite shows X, agent doing Y            |
 | Drift patterns       | Scope creep              | Work user didn't request                    |
+| Method compliance    | P#78 Right Tool          | Mechanical transform, judgment warranted    |
+| Method compliance    | P#49 No Shitty NLP       | Regex/keywords, semantics needed            |
 
 ### Invocation Points
 
