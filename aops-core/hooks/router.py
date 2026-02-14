@@ -69,6 +69,26 @@ except ImportError as e:
 
 # --- Configuration ---
 
+DEBUG_LOG_PATH = Path("/tmp/cc_hooks_debug.jsonl")
+
+
+def _debug_log_input(raw_input: dict[str, Any], args: Any) -> None:
+    """Append raw hook input to debug JSONL file if DEBUG_HOOKS=1."""
+    if not os.environ.get("DEBUG_HOOKS"):
+        return
+    try:
+        entry = {
+            "ts": datetime.now().isoformat(),
+            "client": getattr(args, "client", None),
+            "event": getattr(args, "event", None),
+            "input": raw_input,
+        }
+        with DEBUG_LOG_PATH.open("a") as f:
+            f.write(json.dumps(entry) + "\n")
+    except Exception as e:
+        print(f"DEBUG_LOG error: {e}", file=sys.stderr)
+
+
 # Event mapping: Gemini -> Claude (internal normalization)
 GEMINI_EVENT_MAP = {
     "SessionStart": "SessionStart",
@@ -742,6 +762,9 @@ def main():
                 raw_input = json.loads(input_data)
     except Exception as e:
         print(f"WARNING: Failed to read stdin: {e}", file=sys.stderr)
+
+    # Debug log all input (enable with DEBUG_HOOKS=1)
+    _debug_log_input(raw_input, args)
 
     # Detect Invocation Mode, relying on explicit --client flag
     if args.client:
