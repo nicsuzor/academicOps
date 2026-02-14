@@ -314,7 +314,9 @@ def finish(ctx, no_push, do_nuke, force):
                 sys.exit(1)
 
     # --- NO-CHANGES DETECTION ---
-    # If the agent made no changes, skip the entire test/merge pipeline
+    # If the agent made no changes, the task was likely not completed (e.g., stuck in
+    # hydration loop, crashed early, or other failure mode). Do NOT mark as done.
+    # See: aops-91e4c3f2 - Gemini polecat workers stuck in hydration gate loop
     try:
         # First, fetch to ensure we have latest origin/main
         subprocess.run(
@@ -330,14 +332,22 @@ def finish(ctx, no_push, do_nuke, force):
         )
         # git diff --quiet returns 0 if no changes, 1 if changes exist
         if diff_check.returncode == 0:
-            print("📭 No changes detected. Skipping test/merge pipeline.")
-            # Mark task as done directly
+            print("📭 No changes detected. Agent likely did not complete the task.")
+            print("⚠️  Marking as 'active' for retry (not 'done').")
+            # Mark task as ACTIVE for retry, NOT done
+            # Zero changes = worker didn't actually complete the work
             try:
                 from lib.task_model import TaskStatus
 
-                task.status = TaskStatus.DONE
+                task.status = TaskStatus.ACTIVE
+                task.assignee = None  # Clear assignee so another worker can claim
+                task.body = (
+                    (task.body or "")
+                    + "\n\n## 🔄 Auto-retry (zero changes detected)\n"
+                    + "Worker finished without making changes. Task returned to queue.\n"
+                )
                 manager.storage.save_task(task)
-                print("✅ Task marked as 'done' (no changes to merge)")
+                print("🔄 Task returned to queue for retry")
             except ImportError:
                 print("Warning: Could not update task status (lib.task_model not available)")
 
