@@ -181,6 +181,8 @@ Check actual state, never assume.
 - Use LLM semantic evaluation to determine whether command output shows success or failure
 - When another agent marks work complete, verify by checking the OUTCOME (does the feature exist? does the code work?), not by second-guessing whether they did their job
 - Before `git push`, verify the push destination matches intent. Use explicit refspec (`git push origin HEAD:refs/heads/<branch-name>`) when the branch may track a different upstream than where you intend to push.
+- When generating artifacts (code, config, prompts, data), EXAMINE the output for fitness-for-purpose. "File created successfully" is not verification - read a sample and assess quality.
+- When investigating external systems (GitHub PRs, CI runs, API responses), read ALL available primary evidence (comments, reviews, logs, output) before drawing conclusions. Metadata (timestamps, status codes) supports but does not replace primary evidence.
 
 **Derivation**: Assumptions cause cascading failures. Verification catches problems early.
 
