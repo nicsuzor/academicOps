@@ -1,4 +1,11 @@
-import os
+from gate_config import (
+    CRITIC_GATE_MODE,
+    CUSTODIET_GATE_MODE,
+    CUSTODIET_TOOL_CALL_THRESHOLD,
+    HANDOVER_GATE_MODE,
+    HYDRATION_GATE_MODE,
+    QA_GATE_MODE,
+)
 
 from lib.gate_types import (
     CountdownConfig,
@@ -9,9 +16,6 @@ from lib.gate_types import (
     GateTransition,
     GateTrigger,
 )
-
-CUSTODIET_TOOL_CALL_THRESHOLD = int(os.getenv("CUSTODIET_TOOL_CALL_THRESHOLD", 15))
-CUSTODIET_GATE_MODE = os.getenv("CUSTODIET_GATE_MODE", "warn")  # deny or warn
 
 # Note: We have had to add SubagentStart to multiple triggers as a workaround for hooks not recognising subagents in tool calls. This means many gates open as soon as the subagent is called, rather than when the subagent finishes. This is particularly important because we cannot otherwise allow the subagent to run when its gate is blocked.
 
@@ -56,7 +60,7 @@ GATE_CONFIGS = [
                     hook_event="PreToolUse",
                     excluded_tool_categories=["always_available"],
                 ),
-                verdict="deny",
+                verdict=HYDRATION_GATE_MODE,
                 # Brief user-facing summary
                 message_template="⛔ Hydration required: invoke prompt-hydrator before proceeding",
                 # Full agent instructions
@@ -93,7 +97,7 @@ GATE_CONFIGS = [
                 transition=GateTransition(
                     reset_ops_counter=True,
                     system_message_template="🛡️ Compliance verified.",
-                    context_template="🛡️ Compliance verified.",
+                    context_injection_template="🛡️ Compliance verified.",
                 ),
             ),
             # Direct tool call fallback
@@ -102,7 +106,7 @@ GATE_CONFIGS = [
                 transition=GateTransition(
                     reset_ops_counter=True,
                     system_message_template="🛡️ Compliance verified.",
-                    context_template="🛡️ Compliance verified.",
+                    context_injection_template="🛡️ Compliance verified.",
                 ),
             ),
         ],
@@ -123,20 +127,6 @@ GATE_CONFIGS = [
                     "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
                 ),
                 custom_action="prepare_compliance_report",
-            ),
-            # Stop check (Uncommitted work)
-            GatePolicy(
-                condition=GateCondition(hook_event="Stop", custom_check="has_uncommitted_work"),
-                verdict="warn",
-                message_template="{block_reason}",
-                context_template="{block_reason}",
-            ),
-            # Stop warning (Unpushed commits)
-            GatePolicy(
-                condition=GateCondition(hook_event="Stop", custom_check="has_unpushed_commits"),
-                verdict="warn",
-                message_template="{warning_message}",
-                context_template="{warning_message}",
             ),
         ],
     ),
@@ -196,7 +186,7 @@ GATE_CONFIGS = [
                     tool_name_pattern="^(Edit|Write|NotebookEdit|MultiEdit)$",
                     excluded_tool_categories=["always_available"],
                 ),
-                verdict="deny",
+                verdict=CRITIC_GATE_MODE,
                 custom_action="prepare_critic_review",
                 message_template="⛔ Critic review required before editing. Invoke critic agent first.",
                 context_template=(
@@ -252,7 +242,7 @@ GATE_CONFIGS = [
                     current_status=GateStatus.CLOSED,
                     hook_event="Stop",
                 ),
-                verdict="deny",
+                verdict=QA_GATE_MODE,
                 custom_action="prepare_qa_review",
                 message_template="⛔ QA verification required before exit. Invoke QA agent first.",
                 context_template=(
@@ -275,13 +265,27 @@ GATE_CONFIGS = [
         initial_status=GateStatus.OPEN,
         triggers=[],
         policies=[
+            # Stop check (Uncommitted work)
+            GatePolicy(
+                condition=GateCondition(hook_event="Stop", custom_check="has_uncommitted_work"),
+                verdict=HANDOVER_GATE_MODE,
+                message_template="{block_reason}",
+                context_template="{block_reason}",
+            ),
+            # Stop warning (Unpushed commits)
+            GatePolicy(
+                condition=GateCondition(hook_event="Stop", custom_check="has_unpushed_commits"),
+                verdict="warn",
+                message_template="{warning_message}",
+                context_template="{warning_message}",
+            ),
             # Block Stop until Framework Reflection is provided
             GatePolicy(
                 condition=GateCondition(
                     hook_event="Stop",
                     custom_check="missing_framework_reflection",
                 ),
-                verdict="warn",
+                verdict=HANDOVER_GATE_MODE,
                 message_template=("⛔ Handover required"),
                 context_template=(
                     "⛔ Finalization required before exit.\n\n"
