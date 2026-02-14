@@ -7,7 +7,6 @@ from hooks.schemas import HookContext
 
 from lib.gate_model import GateResult, GateVerdict
 from lib.gate_types import (
-    CountdownConfig,
     GateCondition,
     GateConfig,
     GateState,
@@ -259,7 +258,7 @@ class GenericGate:
         else:
             current_ops = state.metrics.get(countdown.metric, 0)
 
-        threshold = countdown.threshold or 0
+        threshold = countdown.threshold
         start_at = threshold - countdown.start_before
 
         # Only show countdown if we're in the window (start_at <= current < threshold)
@@ -274,7 +273,7 @@ class GenericGate:
             "threshold": threshold,
             "current": current_ops,
             "gate_name": self.name,
-            "temp_path": state.metrics.get("temp_path", "(run custodiet to generate)"),
+            "temp_path": state.metrics.get("temp_path", "(not available)"),
         }
 
         try:

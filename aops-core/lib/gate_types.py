@@ -108,17 +108,16 @@ class CountdownConfig(BaseModel):
     # e.g., if threshold=15 and start_before=5, countdown shows at ops 10-14
     start_before: int = 5
 
-    # Message template. Supports {remaining}, {threshold}, {temp_path}
+    # Message template. Supports {remaining}, {threshold}, {gate_name}, {temp_path}
     message_template: str = (
-        "You have {remaining} turns to invoke the custodiet check "
-        "with this file path before you are blocked: `{temp_path}`"
+        "Approaching {gate_name} threshold. You have {remaining} operations remaining."
     )
 
     # Which metric to count against (default: ops_since_open)
     metric: str = "ops_since_open"
 
-    # Threshold value (if different from policy's min_ops_since_open)
-    threshold: int | None = None
+    # Threshold value for countdown
+    threshold: int
 
 
 class GateConfig(BaseModel):

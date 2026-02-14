@@ -10,7 +10,7 @@ import pytest
 
 from hooks.schemas import HookContext
 from lib.gate_model import GateVerdict
-from lib.gate_types import CountdownConfig, GateConfig, GateState, GateStatus
+from lib.gate_types import CountdownConfig, GateConfig
 from lib.gates.engine import GenericGate
 from lib.session_state import SessionState
 
@@ -20,12 +20,12 @@ class TestCountdownConfig:
 
     def test_default_values(self) -> None:
         """CountdownConfig has sensible defaults."""
-        config = CountdownConfig()
+        config = CountdownConfig(threshold=15)
         assert config.start_before == 5
         assert config.metric == "ops_since_open"
-        assert config.threshold is None
+        assert config.threshold == 15
         assert "remaining" in config.message_template
-        assert "custodiet" in config.message_template
+        assert "threshold" in config.message_template or "operations" in config.message_template
 
     def test_custom_values(self) -> None:
         """CountdownConfig accepts custom values."""
@@ -200,3 +200,42 @@ class TestCountdownIntegration:
         assert result.verdict == GateVerdict.DENY
         # Policy message, not countdown
         assert "Blocked: threshold reached" in result.system_message
+
+    def test_countdown_includes_temp_path_when_available(
+        self, session_state: SessionState, hook_context: HookContext
+    ) -> None:
+        """Countdown message includes temp_path when configured and available."""
+        from lib.gate_types import GateCondition, GatePolicy
+
+        # Create gate with template that includes temp_path
+        config = GateConfig(
+            name="path_test_gate",
+            description="Gate with temp_path in countdown",
+            countdown=CountdownConfig(
+                start_before=5,
+                threshold=15,
+                message_template="📋 {remaining} turns left. File: `{temp_path}`",
+            ),
+            policies=[
+                GatePolicy(
+                    condition=GateCondition(
+                        hook_event="PreToolUse",
+                        min_ops_since_open=15,
+                    ),
+                    verdict="deny",
+                    message_template="Blocked",
+                ),
+            ],
+        )
+        gate = GenericGate(config)
+
+        # Set ops to be in countdown window
+        gate_state = session_state.get_gate("path_test_gate")
+        gate_state.ops_since_open = 12
+        gate_state.metrics["temp_path"] = "/tmp/test_compliance.json"
+
+        result = gate.check(hook_context, session_state)
+        assert result is not None
+        assert result.verdict == GateVerdict.ALLOW
+        assert "3 turns left" in result.system_message
+        assert "/tmp/test_compliance.json" in result.system_message
