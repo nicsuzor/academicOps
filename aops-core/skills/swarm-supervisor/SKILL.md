@@ -23,7 +23,7 @@ Orchestrate the complete non-interactive agent workflow: decompose → review �
 
 - **Hooks**: Triggers that start agent work (shell scripts, cron)
 - **MCP tools**: Task state management (create, update, complete)
-- **CLI**: Worker spawning via `polecat run` or `polecat swarm` (see Command Selection below)
+- **CLI**: Worker spawning via `polecat swarm`
 
 ## Lifecycle Phases
 
@@ -114,18 +114,6 @@ claims tasks via `claim_next_task()` and reports completion status works.
 Orchestrate multiple parallel polecat workers, each with isolated git worktrees. This replaces the deprecated hypervisor patterns.
 
 > See [[references/parallel-worker-orchestration]] for architecture, usage, and troubleshooting.
-
-## Polecat Command Selection
-
-Choose the right subcommand based on dispatch intent:
-
-| Intent | Command | When to use |
-|--------|---------|-------------|
-| Run a specific task by ID | `polecat run -t <task-id>` | "Commission a polecat for THIS task" |
-| Claim next ready task from a project | `polecat run -p <project>` | "Run the next thing in aops" |
-| Batch drain queue with parallel workers | `polecat swarm -c N -p <project>` | "Drain the queue", multiple tasks |
-
-`run` executes a single claim-setup-work-finish cycle. `swarm` spawns N parallel workers that each run cycles continuously until the queue is empty. **Never use `swarm` to target a single known task** — use `run -t`.
 
 ## Related
 

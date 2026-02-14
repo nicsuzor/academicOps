@@ -48,3 +48,126 @@ Capabilities that can be assigned to workers. Used for task-to-worker matching.
 | `deep-code`        | Complex algorithms, performance-critical code   |
 | `architecture`     | System design changes, API contracts            |
 | `complex-refactor` | Multi-file refactors with behavior preservation |
+
+## Selection Rules
+
+### Tag-Based Routing
+
+Tags that route tasks to specific worker types.
+
+#### High-Stakes Tags → Claude
+
+Tasks with these tags require Claude's judgment capabilities:
+
+```
+security, api, database, auth, payment
+```
+
+#### Bulk Tags → Gemini
+
+Tasks with these tags are suitable for Gemini's efficiency:
+
+```
+formatting, lint-fix, dependency-bump, rename
+```
+
+### Complexity Routing
+
+| Complexity Value      | Routed To | Rationale                       |
+| --------------------- | --------- | ------------------------------- |
+| `needs-decomposition` | jules     | Requires architectural thinking |
+| `requires-judgment`   | claude    | Needs nuanced decision-making   |
+| `multi-step`          | claude    | Complex coordination            |
+| `mechanical`          | gemini    | Straightforward execution       |
+| (unset)               | claude    | Safe default                    |
+
+### Heuristic Thresholds
+
+| Condition           | Worker | Rationale                   |
+| ------------------- | ------ | --------------------------- |
+| files_affected > 10 | gemini | Bulk operations             |
+| effort > 2h         | claude | Complex work needs judgment |
+
+## Domain Specialists
+
+Registry of domain-specific reviewer agents. When task tags match these domains,
+the supervisor may invoke the specialist for advisory review.
+
+| Domain   | Specialist Agent              | Mandatory |
+| -------- | ----------------------------- | --------- |
+| security | `aops-core:security-reviewer` | No        |
+| database | `aops-core:db-reviewer`       | No        |
+| api      | `aops-core:api-reviewer`      | No        |
+| frontend | `aops-core:ui-reviewer`       | No        |
+
+**Note**: Domain specialists are advisory only. Their input informs but does not
+block; final synthesis is done by the supervisor alongside mandatory reviewers
+(Critic, Custodiet).
+
+## Operational Thresholds
+
+### Heartbeat Expectations
+
+Expected update frequency and alert thresholds for monitoring worker progress.
+
+| Worker | Expected Heartbeat | Alert Threshold |
+| ------ | ------------------ | --------------- |
+| claude | 30min              | 45min silence   |
+| gemini | 20min              | 30min silence   |
+| jules  | 60min              | 90min silence   |
+
+### Exit Code Semantics
+
+Standard exit codes from `polecat run` and their meanings:
+
+| Exit Code | Meaning       | Supervisor Action                    |
+| --------- | ------------- | ------------------------------------ |
+| 0         | Success       | Mark merge_ready, proceed to Phase 5 |
+| 1         | Task failure  | Inspect error, mark blocked or retry |
+| 2         | Setup failure | Retry once, then mark blocked        |
+| 3         | Queue empty   | Normal - no action needed            |
+| 4+        | Unknown       | Mark blocked, flag for human         |
+
+### Retry Limits
+
+| Recovery Action | Max Attempts | Backoff                    |
+| --------------- | ------------ | -------------------------- |
+| RETRY           | 3            | Exponential, starting 5min |
+| REASSIGN        | 1            | Immediate                  |
+
+## Swarm Sizing Defaults
+
+Recommended swarm composition based on queue characteristics.
+
+| Ready Tasks | Task Mix       | Recommended Swarm            |
+| ----------- | -------------- | ---------------------------- |
+| 1-2         | Any            | `polecat run` (no swarm)     |
+| 3-5         | Mostly simple  | `-c 1 -g 2`                  |
+| 3-5         | Mostly complex | `-c 2 -g 1`                  |
+| 6-10        | Mixed          | `-c 2 -g 3`                  |
+| 10+         | Mixed          | `-c 2 -g 4` (max reasonable) |
+
+## Capacity Limits
+
+Hard limits on concurrent workers (enforced by swarm supervisor).
+
+| Worker Type | Max Concurrent | Reason                        |
+| ----------- | -------------- | ----------------------------- |
+| claude      | 2              | API rate limits, cost         |
+| gemini      | 4              | Higher throughput, lower cost |
+| jules       | 1              | Expensive, serialized work    |
+
+---
+
+## Customization Guide
+
+To customize worker dispatch for your deployment:
+
+1. **Add a new worker type**: Add row to Worker Types table with capabilities
+2. **Change routing rules**: Modify tag lists or complexity routing table
+3. **Adjust thresholds**: Update heartbeat/alert times, retry limits
+4. **Add domain specialist**: Add row to Domain Specialists table
+5. **Scale capacity**: Modify Max Concurrent in Capacity Limits
+
+The swarm-supervisor skill reads this configuration at dispatch time. Changes
+take effect on next supervisor invocation without modifying the skill itself.

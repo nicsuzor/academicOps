@@ -251,29 +251,16 @@ def list_tasks(
 @click.option("--project", "-p", help="Filter by project")
 @click.option("--all", "-a", "show_all", is_flag=True, help="Show completed tasks too")
 @click.option("--roots-only", "-r", is_flag=True, help="Only show root-level tasks (no full tree)")
-@click.option("--goals", "-g", is_flag=True, help="Show goals as roots (default: projects only)")
-def tree(project: str | None, show_all: bool, roots_only: bool, goals: bool):
+def tree(project: str | None, show_all: bool, roots_only: bool):
     """Show tasks in hierarchical tree view.
 
     Displays the task hierarchy with visual tree structure.
-    By default shows projects as root nodes. Use --goals to show goals instead.
     By default hides completed tasks - use --all to show them.
     """
     index = get_index()
 
-    # Get display roots: default to top-level projects, --goals shows goal-rooted tree
-    if goals:
-        roots = index.get_roots()
-    else:
-        # Show projects whose parent is null or a root-level goal (no parent)
-        root_goal_ids = {
-            t.id for t in index._tasks.values()
-            if t.type == "goal" and t.parent is None
-        }
-        roots = [
-            t for t in index._tasks.values()
-            if t.type == "project" and (t.parent is None or t.parent in root_goal_ids)
-        ]
+    # Get root tasks
+    roots = index.get_roots()
 
     # Filter by project if specified
     if project:
@@ -287,27 +274,19 @@ def tree(project: str | None, show_all: bool, roots_only: bool, goals: bool):
         console.print("[dim]No tasks found.[/dim]")
         return
 
-    # Sort roots by priority, then order
-    roots.sort(key=lambda e: (e.priority, e.order))
+    # Sort roots by project, then priority, then order
+    roots.sort(key=lambda e: (e.project or "", e.priority, e.order))
 
-    if goals:
-        # In goals view, group orphan tasks by project field
-        roots.sort(key=lambda e: (e.project or "", e.priority, e.order))
-
+    # Group by project
     current_project = None
 
     for root in roots:
-        if goals:
-            # In goals view, print project field headers for grouping
-            if root.project != current_project:
-                current_project = root.project
-                proj_name = current_project or "inbox"
-                console.print()
-                console.print(f"[bold cyan]═══ {proj_name} ═══[/bold cyan]")
-        else:
-            # In project view, print a heading for each top-level project
+        # Print project header if changed
+        if root.project != current_project:
+            current_project = root.project
+            proj_name = current_project or "inbox"
             console.print()
-            console.print(f"[bold cyan]═══ {root.title} ═══[/bold cyan]")
+            console.print(f"[bold cyan]═══ {proj_name} ═══[/bold cyan]")
 
         # Build root label
         icon, style = STATUS_STYLE.get(root.status, ("•", "white"))

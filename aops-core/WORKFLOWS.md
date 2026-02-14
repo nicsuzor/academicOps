@@ -29,15 +29,14 @@ Workflows are **hydrator hints**, not complete instructions. They tell the hydra
 
 **Always consider these.** Most workflows compose one or more base patterns.
 
-| Base                      | Pattern                                      | Skip When                             |
-| ------------------------- | -------------------------------------------- | ------------------------------------- |
-| [[base-task-tracking]]    | Claim/create task, update progress, complete | [[simple-question]], [[direct-skill]] |
-| [[base-tdd]]              | Red-green-refactor cycle                     | Non-code changes                      |
-| [[base-verification]]     | Checkpoint before completion                 | Trivial changes                       |
-| [[base-review-checkpoint]]| Human QA gate with iterative loops           | Pure technical work, trivial changes  |
-| [[base-commit]]           | Stage, commit (why not what), push           | No file modifications                 |
-| [[base-handover]]         | Session end: task, git push, reflection      | [[simple-question]]                   |
-| [[base-memory-capture]]   | Store findings to memory MCP via /remember   | No discoveries, [[simple-question]]   |
+| Base                    | Pattern                                      | Skip When                             |
+| ----------------------- | -------------------------------------------- | ------------------------------------- |
+| [[base-task-tracking]]  | Claim/create task, update progress, complete | [[simple-question]], [[direct-skill]] |
+| [[base-tdd]]            | Red-green-refactor cycle                     | Non-code changes                      |
+| [[base-verification]]   | Checkpoint before completion                 | Trivial changes                       |
+| [[base-commit]]         | Stage, commit (why not what), push           | No file modifications                 |
+| [[base-handover]]       | Session end: task, git push, reflection      | [[simple-question]]                   |
+| [[base-memory-capture]] | Store findings to memory MCP via /remember   | No discoveries, [[simple-question]]   |
 
 ## Decision Tree
 

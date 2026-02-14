@@ -253,12 +253,6 @@ See @docs/ENFORCEMENT.md for mechanism details.
 | Soft guidance, exceptions exist | HEURISTICS.md                | Rules of thumb, "prefer X over Y" |
 | Enforcement wiring              | framework/enforcement-map.md | Document how rule is enforced     |
 | Session context                 | CORE.md                      | Paths, environment, "what exists" |
-| Skill-specific guidance         | skills/\<skill\>/SKILL.md   | Context agents see when skill activates |
-
-**Enforcement Location Reality Check** (STOP if answer is "no"):
-- Will an automated agent actually encounter this fix during normal execution?
-- Fixes MUST go to files agents read: AXIOMS.md, HEURISTICS.md, CORE.md, skill files, hooks, enforcement-map.md.
-- `$ACA_DATA/` (the human PKM) is NEVER a valid fix destination — no agent is instructed to search it.
 
 ### 4. Emit Structured Justification (MANDATORY)
 
