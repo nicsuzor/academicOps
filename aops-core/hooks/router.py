@@ -256,6 +256,8 @@ class HookRouter:
             tool_output = self._normalize_json_field(raw_tool_output)
 
         # 6. Extract subagent_type from spawning tools
+        # Claude uses Task(subagent_type=...), Gemini uses delegate_to_agent(name=...)
+        # We check all three parameter names to support both clients
         if not subagent_type and tool_name in (
             "Task",
             "delegate_to_agent",
@@ -263,7 +265,11 @@ class HookRouter:
             "activate_skill",
         ):
             if isinstance(tool_input, dict):
-                subagent_type = tool_input.get("subagent_type") or tool_input.get("agent_name")
+                subagent_type = (
+                    tool_input.get("subagent_type")
+                    or tool_input.get("agent_name")
+                    or tool_input.get("name")
+                )
 
         # 7. Detect Subagent Session
         # Call is_subagent_session BEFORE popping fields from raw_input
@@ -472,8 +478,11 @@ class HookRouter:
                     agent_type = "unknown"
                     tool_input = ctx.tool_input
                     if isinstance(tool_input, dict):
-                        agent_type = tool_input.get("subagent_type") or tool_input.get(
-                            "agent_name", "unknown"
+                        # Support both Claude (subagent_type) and Gemini (name) parameters
+                        agent_type = (
+                            tool_input.get("subagent_type")
+                            or tool_input.get("agent_name")
+                            or tool_input.get("name", "unknown")
                         )
                     verdict = None
                     if tool_result := ctx.tool_output:

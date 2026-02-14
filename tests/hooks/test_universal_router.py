@@ -160,3 +160,95 @@ class TestToolInputNormalization:
         # raw_input is unchanged, but tool_output is normalized
         assert ctx.tool_output == {"output": "done", "status": "ok"}
         assert isinstance(ctx.tool_output, dict)
+
+
+class TestSubagentTypeExtraction:
+    """Tests for subagent_type extraction from spawning tools.
+
+    Gemini uses delegate_to_agent(name='...'), Claude uses Task(subagent_type='...').
+    Both should correctly extract subagent_type for gate triggers.
+
+    Bug fix: aops-91e4c3f2 - Gemini polecat workers stuck in hydration gate loop
+    """
+
+    @pytest.fixture
+    def router_instance(self):
+        return HookRouter()
+
+    def test_claude_task_subagent_type(self, router_instance):
+        """Claude Task tool with subagent_type extracts correctly."""
+        raw = {
+            "hook_event_name": "PreToolUse",
+            "session_id": "test-123",
+            "tool_name": "Task",
+            "tool_input": {"subagent_type": "prompt-hydrator", "prompt": "Hydrate this"},
+        }
+        ctx = router_instance.normalize_input(raw)
+        assert ctx.subagent_type == "prompt-hydrator"
+
+    def test_gemini_delegate_to_agent_name(self, router_instance):
+        """Gemini delegate_to_agent with name= extracts correctly."""
+        raw = {
+            "hook_event_name": "PreToolUse",
+            "session_id": "test-123",
+            "tool_name": "delegate_to_agent",
+            "tool_input": {"name": "prompt-hydrator", "query": "Hydrate this"},
+        }
+        ctx = router_instance.normalize_input(raw)
+        assert ctx.subagent_type == "prompt-hydrator"
+
+    def test_gemini_delegate_to_agent_agent_name(self, router_instance):
+        """Gemini delegate_to_agent with agent_name= also works."""
+        raw = {
+            "hook_event_name": "PreToolUse",
+            "session_id": "test-123",
+            "tool_name": "delegate_to_agent",
+            "tool_input": {"agent_name": "custodiet", "query": "Check compliance"},
+        }
+        ctx = router_instance.normalize_input(raw)
+        assert ctx.subagent_type == "custodiet"
+
+    def test_activate_skill_name(self, router_instance):
+        """activate_skill with name= extracts correctly."""
+        raw = {
+            "hook_event_name": "PreToolUse",
+            "session_id": "test-123",
+            "tool_name": "activate_skill",
+            "tool_input": {"name": "prompt-hydrator"},
+        }
+        ctx = router_instance.normalize_input(raw)
+        assert ctx.subagent_type == "prompt-hydrator"
+
+    def test_skill_tool_subagent_type(self, router_instance):
+        """Skill tool with subagent_type extracts correctly."""
+        raw = {
+            "hook_event_name": "PreToolUse",
+            "session_id": "test-123",
+            "tool_name": "Skill",
+            "tool_input": {"subagent_type": "qa"},
+        }
+        ctx = router_instance.normalize_input(raw)
+        assert ctx.subagent_type == "qa"
+
+    def test_subagent_type_from_payload_takes_precedence(self, router_instance):
+        """If subagent_type already in payload, tool_input is not used."""
+        raw = {
+            "hook_event_name": "PreToolUse",
+            "session_id": "test-123",
+            "tool_name": "delegate_to_agent",
+            "subagent_type": "already-set",
+            "tool_input": {"name": "should-not-override"},
+        }
+        ctx = router_instance.normalize_input(raw)
+        assert ctx.subagent_type == "already-set"
+
+    def test_aops_prefixed_subagent(self, router_instance):
+        """aops-core: prefixed subagent names work correctly."""
+        raw = {
+            "hook_event_name": "PreToolUse",
+            "session_id": "test-123",
+            "tool_name": "delegate_to_agent",
+            "tool_input": {"name": "aops-core:prompt-hydrator", "query": "Hydrate"},
+        }
+        ctx = router_instance.normalize_input(raw)
+        assert ctx.subagent_type == "aops-core:prompt-hydrator"
