@@ -25,7 +25,11 @@ class TestUniversalRouter:
             "tool_input": {"path": "test.txt"},
             "hook_event_name": "BeforeTool",
         }
-        ctx = router_instance.normalize_input(raw, gemini_event="BeforeTool")
+        # Clear CLAUDE_SESSION_ID so the router doesn't pick up a real session ID
+        # when running inside a Claude Code session (env leak into test)
+        with patch.dict("os.environ", {"CLAUDE_SESSION_ID": ""}, clear=False):
+            router_instance.session_data = {}  # Also clear cached session data
+            ctx = router_instance.normalize_input(raw, gemini_event="BeforeTool")
 
         assert ctx.hook_event == "PreToolUse"
         assert ctx.tool_name == "read_file"
