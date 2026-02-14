@@ -134,9 +134,9 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
 GATE_MODE_DEFAULTS: dict[str, str] = {
     "hydration": "block",
     "task": "warn",
-    "custodiet": "warn",
+    "custodiet": "block",
     "critic": "warn",
-    "qa": "warn",
+    "qa": "block",
     "handover": "warn",
 }
 

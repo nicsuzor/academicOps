@@ -258,6 +258,8 @@ At threshold, spawns haiku subagent to review session transcript for:
 
 Uses `decision: "block"` output format to force agent attention. Insight capture is advisory only (no block).
 
+**Enforcement mode**: `block` (default). Custodiet violations halt the session. Override via `CUSTODIET_GATE_MODE=warn` env var. Changed from `warn` to `block` on 2026-02-14 after agent scope-drifted from user-specified URL without detection (see `$ACA_DATA/aops/fails/20260214-scope-drift-url-pivot.md`).
+
 ### Random Reminders (Between Checks)
 
 Between threshold checks, randomly injects soft reminders from `hooks/data/reminders.txt`.
@@ -377,6 +379,8 @@ The stop gate requires THREE conditions for session completion:
 | (3) QA verified          | `qa_invoked`             | `post_qa_trigger` (PostToolUse)              | QA skill/task invoked       |
 
 **Note**: Condition (3) is only required when hydration occurred AND workflow is not streamlined (`interactive-followup`, `simple-question`, `direct-skill`).
+
+**QA enforcement mode**: `block` (default). QA failures halt the session. Override via `QA_GATE_MODE=warn` env var. Changed from `warn` to `block` on 2026-02-14 after QA rubber-stamped a source substitution violation (see `$ACA_DATA/aops/fails/20260214-scope-drift-url-pivot.md`).
 
 **Gate (2) Field Validation**: When `## Framework Reflection` is detected in agent response, all 8 required fields must be present:
 
