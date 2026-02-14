@@ -180,6 +180,7 @@ Check actual state, never assume.
 - The onus is on YOU to discharge the burden of proof
 - Use LLM semantic evaluation to determine whether command output shows success or failure
 - When another agent marks work complete, verify by checking the OUTCOME (does the feature exist? does the code work?), not by second-guessing whether they did their job
+- When generating artifacts (code, config, prompts, data), EXAMINE the output for fitness-for-purpose. "File created successfully" is not verification - read a sample and assess quality.
 
 **Derivation**: Assumptions cause cascading failures. Verification catches problems early.
 
