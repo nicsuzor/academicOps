@@ -351,7 +351,7 @@ def _load_global_workflow_content(prompt: str = "") -> str:
 
     # Format output
     result = []
-    # Reverse order so bases appear before the workflows that use them (or vice versa, 
+    # Reverse order so bases appear before the workflows that use them (or vice versa,
     # but breadth-first queue gives us workflows then bases)
     for name, content in included_content.items():
         result.append(f"\n\n### Workflow: {name}\n\n{content}")

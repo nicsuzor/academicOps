@@ -72,16 +72,13 @@ Your output MUST be valid Markdown following this structure.
 ### Execution Plan
 
 1. **Task**: [Claim existing task ID or create new task]
-2. **TodoWrite Plan**:
-```python
-TodoWrite(todos=[
-  { "id": "1", "content": "Step 1: [Task claim/create]", "status": "todo" },
-  { "id": "2", "content": "Step 2: [Integrated workflow step]", "status": "todo" },
-  { "id": "3", "content": "Step 3: [Integrated workflow step]", "status": "todo" },
-  { "id": "4", "content": "Step 4: [QA Verification]", "status": "todo" },
-  { "id": "5", "content": "Step 5: [Complete task and commit]", "status": "todo" }
-])
-```
+2. **Steps**:
+   - Step 1: [Task claim/create]
+   - Step 2: [Integrated workflow step]
+   - Step 3: [Integrated workflow step]
+   - Step 4: [QA Verification]
+   - Step 5: [Complete task and commit]
+
 3. Invoke CRITIC to review the plan
 4. Execute steps [directly / in parallel]
 5. CHECKPOINT: [verification]
@@ -145,11 +142,10 @@ Always add this section to execution plans (except [[simple-question]]):
 ### Execution Plan Rules
 
 1. **First step**: Claim existing task OR create new task
-2. **Integrated Plan**: Combine steps from the selected workflow and its bases into a single numbered list.
-3. **TodoWrite Plan**: Use `TodoWrite(todos=[...])` to structure the steps. Each step MUST start with "Step N:".
-4. **QA MANDATORY**: Every plan (except simple-question) includes QA verification step
-5. **Last step**: Complete task and commit
-6. **Explicit syntax**: Use `Task(...)`, `Skill(...)`, `TodoWrite(...)` literally - not prose descriptions
+2. **Integrated Plan**: Combine steps from the selected workflow and its bases into a single ordered list of steps.
+3. **QA MANDATORY**: Every plan (except simple-question) includes QA verification step
+4. **Last step**: Complete task and commit
+5. **Explicit syntax**: Use `Task(...)`, `Skill(...)` literally - not prose descriptions. For steps, use "Step N: [description]".
 
 ### Workflow Selection Rules
 

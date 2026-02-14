@@ -38,9 +38,7 @@ class TestTransitionTable:
             if status in terminal_statuses:
                 continue
             outgoing = [
-                to_status
-                for (from_status, to_status) in TRANSITION_TABLE
-                if from_status == status
+                to_status for (from_status, to_status) in TRANSITION_TABLE if from_status == status
             ]
             assert len(outgoing) > 0, f"Status {status.value} has no outgoing transitions"
 
@@ -49,9 +47,7 @@ class TestTransitionTable:
         terminal_statuses = {TaskStatus.DONE, TaskStatus.CANCELLED}
         for status in terminal_statuses:
             outgoing = [
-                to_status
-                for (from_status, to_status) in TRANSITION_TABLE
-                if from_status == status
+                to_status for (from_status, to_status) in TRANSITION_TABLE if from_status == status
             ]
             assert len(outgoing) == 0, f"Terminal status {status.value} has outgoing transitions"
 

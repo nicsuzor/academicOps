@@ -150,17 +150,13 @@ Return this EXACT structure:
 ### Execution Plan
 
 1. **Task**: [Claim existing task ID or create new task]
-2. **TodoWrite Plan**:
-<!-- Note: double-braces used for python .format() escaping -->
-```python
-TodoWrite(todos=[
-  {{ "id": "1", "content": "Step 1: [Task claim/create]", "status": "todo" }},
-  {{ "id": "2", "content": "Step 2: [Integrated workflow step]", "status": "todo" }},
-  {{ "id": "3", "content": "Step 3: [Integrated workflow step]", "status": "todo" }},
-  {{ "id": "4", "content": "Step 4: [QA Verification]", "status": "todo" }},
-  {{ "id": "5", "content": "Step 5: [Complete task and commit]", "status": "todo" }}
-])
-```
+2. **Steps**:
+   - Step 1: [Task claim/create]
+   - Step 2: [Integrated workflow step]
+   - Step 3: [Integrated workflow step]
+   - Step 4: [QA Verification]
+   - Step 5: [Complete task and commit]
+
 3. Invoke CRITIC to review the plan
 4. Execute steps [directly / in parallel]
 5. CHECKPOINT: [verification]
