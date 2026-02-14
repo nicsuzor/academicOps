@@ -79,7 +79,7 @@ GATE_CONFIGS = [
             threshold=CUSTODIET_TOOL_CALL_THRESHOLD,
             message_template=(
                 "📋 {remaining} turns until custodiet check required. "
-                "Run the check proactively to avoid being blocked."
+                "Run the check proactively with: `{temp_path}`"
             ),
         ),
         triggers=[
