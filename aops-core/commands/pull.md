@@ -122,7 +122,8 @@ For tasks with `type: learn`:
 1. **Investigate** per task instructions
 2. **Write findings to task body** - Use `update_task(id, body=...)` to append findings
 3. **Summarize in parent epic** - Read parent, append to "## Findings from Spikes"
-4. **Decompose actionable items** - Create subtasks for each fix/recommendation:
+4. **Apply learnings to framework** - Before creating follow-up tasks, check if findings warrant direct changes to framework files (HEURISTICS.md, skill prompts, specs). Knowledge files alone are insufficient — if a learning points to a process improvement, change the process.
+5. **Decompose actionable items** - Create subtasks for remaining work that can't be done in this session:
    ```
    mcp__plugin_aops-tools_task_manager__decompose_task(
      id="<spike-id>",
@@ -132,7 +133,7 @@ For tasks with `type: learn`:
      ]
    )
    ```
-5. **Complete the spike** - Decomposition IS completion for learn tasks (per P#71, P#81)
+6. **Complete the spike** - Decomposition IS completion for learn tasks (per P#71, P#81)
 
 ### Step 3A.2: Commit Before Completion
 

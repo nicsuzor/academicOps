@@ -778,3 +778,35 @@ mcp__task_manager__complete_task(id=batch_task_id)
 **Evidence 2**: Session bed2aad5 (2026-02-11) — Agent marked task "done" despite body saying "90% complete."
 
 **Derivation**: P#26 (Verify First) says "check actual state, never assume." P#96 (QA Tests Are Black-Box) says QA should not inspect implementation. Together: QA must independently confirm outcomes, not rubber-stamp the agent's narrative.
+
+---
+
+## Cross-Repo References Use Absolute Paths (P#104)
+
+**Statement**: When task bodies reference files outside the current project, use absolute paths. Relative paths fail when sessions run from a different working directory.
+
+**Corollaries**:
+
+- Task in `aops` project referencing academicOps spec → `/home/nic/src/academicOps/specs/foo.md`, not `specs/foo.md`
+- Sessions in `/home/nic/writing` cannot resolve paths relative to `/home/nic/src/academicOps`
+- Subagents inherit the session's working directory, not the task's project directory
+- When creating tasks from cross-project work (P#83), include absolute paths for all referenced files
+
+**Derivation**: PR 417 retrospective found sessions burning 5-10 tool calls searching wrong directory trees when task bodies used relative paths. Absolute paths are unambiguous regardless of which repo the session starts in.
+
+---
+
+## Validate Architecture Before Decomposing (P#105)
+
+**Statement**: Before decomposing a task into >3 subtasks, present the architectural approach to the user and get confirmation. Do not create implementation subtasks until the design direction is stable.
+
+**Corollaries**:
+
+- Present: what you plan to build, how (agent prompts vs code, patterns), key tradeoffs
+- Use "what you gain / what you lose" format for tradeoff presentation — this enables quick decisions
+- P#72 (Decompose Only When Adding Value) guards against premature per-task decomposition; this heuristic guards against premature project-level decomposition
+- For design discussions: state your recommendation but let the user decide
+
+**Evidence**: PR 417 — agent created 11 implementation tasks for programmatic Python modules. User redirected to agent-based approach within 20 minutes, requiring 9 task cancellations. In another session, agent built an entire consensus module that was immediately rejected.
+
+**Derivation**: Decomposition is cheap to do but expensive to undo (cancelled tasks, wasted context, misleading other sessions). A single confirmation turn prevents hours of rework. P#90 (Match Planning Abstraction) reinforces: when design is unstable, match the planning abstraction rather than jumping to execution.
