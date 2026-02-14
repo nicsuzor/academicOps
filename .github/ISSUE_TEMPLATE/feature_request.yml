@@ -1,0 +1,34 @@
+name: Feature Request
+description: Suggest an idea for academicOps
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have a suggestion for a new feature? We'd love to hear it!
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of the proposed feature.
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Use Case / Motivation
+      description: Why is this feature needed? What problem does it solve?
+    validations:
+      required: true
+  - type: textarea
+    id: implementation
+    attributes:
+      label: Proposed Implementation
+      description: (Optional) How do you think this should be implemented?
+  - type: checkboxes
+    id: checkboxes
+    attributes:
+      label: Verification
+      options:
+        - label: I have searched the existing issues and this is not a duplicate.
+          required: true

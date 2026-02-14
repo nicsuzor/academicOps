@@ -1,0 +1,27 @@
+#!/bin/bash
+# Post-commit lint check - warns but doesn't block
+
+ERRORS=0
+
+# Python linting (via uv)
+if ! uv run ruff check . --quiet 2>/dev/null; then
+    echo "⚠️  Python lint issues (uv run ruff check .)"
+    ERRORS=1
+fi
+
+# Markdown/JSON/TOML formatting (via npx)
+if [ -n "$(npx dprint check --list-different 2>/dev/null)" ]; then
+    echo "⚠️  Format issues (npx dprint check)"
+    ERRORS=1
+fi
+
+# Markdown linting (via npx)
+if ! npx markdownlint-cli2 "**/*.md" --config .markdownlint-cli2.jsonc 2>/dev/null; then
+    echo "⚠️  Markdown lint issues (npx markdownlint-cli2)"
+    ERRORS=1
+fi
+
+if [ $ERRORS -eq 1 ]; then
+    echo ""
+    echo "Fix before pushing to avoid CI failures."
+fi

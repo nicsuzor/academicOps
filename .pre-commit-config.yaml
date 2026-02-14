@@ -1,0 +1,55 @@
+# Pre-commit hooks for academicOps framework governance
+# See https://pre-commit.com for more info
+
+repos:
+  # Markdown/JSON/TOML validation (dprint - check-only, no auto-fix)
+  # Run `./scripts/format.sh` to format files before staging
+  - repo: local
+    hooks:
+      - id: dprint
+        name: dprint check
+        entry: /home/nic/.dprint/bin/dprint check
+        language: system
+        types_or: [markdown, json, toml]
+        pass_filenames: true
+
+  # Markdown linting (catches issues dprint doesn't fix)
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.12.1
+    hooks:
+      - id: markdownlint-cli2
+        exclude: '^archived/'
+
+  # Standard hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '\.excalidraw$'
+      - id: end-of-file-fixer
+        exclude: '\.excalidraw$'
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+
+  # Python linting (check-only, no auto-fix)
+  # Run `./scripts/format.sh` to format files before staging
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.4
+    hooks:
+      - id: ruff
+        exclude: '^archived/'
+      - id: ruff-format
+        args: [--check]
+        exclude: '^archived/'
+
+  # Type checking and framework health checks run in CI only
+  # (see .github/workflows/framework-health.yml)
+  #
+  # Moved to CI:
+  # - basedpyright: full type analysis too slow for every commit
+  # - check-skill-line-count: whole-repo scan, not file-scoped
+  # - check-orphan-files: whole-repo scan, not file-scoped
+  # - check-broken-wikilinks: slow full codebase scan
+  # - audit_framework_health: comprehensive audit
