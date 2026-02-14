@@ -122,6 +122,7 @@ tags: [framework, enforcement, moc]
 | [[qa-tests-black-box]]                          | QA Tests Are Black-Box                                | HEURISTICS.md                                          | SessionStart, QA execution     | 1b    |
 | [[cli-testing-extended-timeouts]]               | CLI Testing Requires Extended Timeouts                | HEURISTICS.md                                          | SessionStart                   | 1a    |
 | [[plans-get-critic-review]]                     | Plans Get Critic Review, Not Human Approval           | HEURISTICS.md, critic_review guardrail                 | Post plan-filing               | 1b    |
+| [[qa-independent-evidence]]                     | QA Must Produce Independent Evidence                  | HEURISTICS.md, /pull Step 3A.V                         | Before completion              | 1c    |
 
 ## Enforcement Level Summary
 

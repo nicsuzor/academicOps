@@ -758,3 +758,23 @@ mcp__task_manager__complete_task(id=batch_task_id)
 - `blocked-human` complexity also defaults to unassigned (not auto-assigned to nic)
 
 **Derivation**: Human attention is the scarcest resource. Auto-assigning every judgment task to `nic` defeats the purpose of a backlog - it turns the backlog into nic's inbox. Tasks should be pulled (claimed) rather than pushed (assigned) unless explicitly requested.
+
+---
+
+## QA Must Produce Independent Evidence (P#103)
+
+**Statement**: QA verification must generate NEW evidence, not re-read the agent's own work. "Tests pass" and "code looks correct" are necessary but not sufficient — QA must independently verify the causal chain between fix and problem.
+
+**Corollaries**:
+
+- QA re-reading the same files the implementing agent read is an echo chamber, not verification
+- For bug fixes: QA must trace the failure path independently (what broke → why → does the fix address the actual mechanism)
+- For features: QA must exercise the feature from the user's perspective, not inspect the code
+- Verification depth scales with task complexity: a typo fix needs a glance; a concurrency bug needs end-to-end causal tracing
+- When previous work is inherited (task body documents a fix from another session), the inheriting agent must independently verify the claims, not trust the documentation
+
+**Evidence**: Session 04a50c2f (2026-02-14) — Agent inherited a bug fix, ran tests, spawned QA that re-read the same code, and tried to close. User forced independent causal chain verification.
+
+**Evidence 2**: Session bed2aad5 (2026-02-11) — Agent marked task "done" despite body saying "90% complete."
+
+**Derivation**: P#26 (Verify First) says "check actual state, never assume." P#96 (QA Tests Are Black-Box) says QA should not inspect implementation. Together: QA must independently confirm outcomes, not rubber-stamp the agent's narrative.

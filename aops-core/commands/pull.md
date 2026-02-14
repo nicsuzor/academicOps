@@ -93,10 +93,27 @@ Follow the task's workflow or use standard execution pattern:
 
 1. Read task body for context and acceptance criteria
 2. Implement the changes
-3. Verify against acceptance criteria
+3. **Verify with independent evidence** (see Step 3A.V below)
 4. Run tests if applicable
 5. Commit changes
 6. Complete task (see Step 4)
+
+### Step 3A.V: Verification Loop (P#103)
+
+Before proceeding to commit, verify the work produces **independent evidence** of correctness. Verification depth scales with complexity:
+
+**Simple tasks** (typo, config change, single-file edit):
+- Run tests. If they pass, proceed.
+
+**Standard tasks** (feature, refactor, straightforward bug):
+- Run tests AND manually verify the change does what the acceptance criteria require.
+
+**Complex tasks** (concurrency bugs, multi-component fixes, inherited work from other sessions):
+- Independently trace the causal chain: what was broken → why → does this fix address the actual mechanism?
+- Do NOT trust prior documentation at face value. Re-derive the conclusion from code.
+- If inheriting work: the previous session's analysis is a hypothesis, not a fact. Verify it.
+
+**QA loop**: If verification reveals gaps or doubts, loop back to step 2. Do NOT proceed to commit with unresolved questions. This loop is the difference between "tests pass" and "fix is correct."
 
 ### Step 3A.1: Execute Spike/Learn Tasks
 
@@ -155,6 +172,8 @@ Note: Use `mcp__task_manager__update_task` (not `mcp__plugin_aops-core_tasks`) f
 #### Option B: Decompose into Subtasks
 
 If task is too large but scope is clear:
+
+**Architecture checkpoint (required for >3 subtasks)**: Before creating subtasks, present the architectural approach to the user — what you plan to build, how (agent prompts vs code, which patterns), and key tradeoffs. Do NOT create subtasks until the approach is confirmed. Premature decomposition before the design is stable creates waste (P#72).
 
 ```
 mcp__plugin_aops-tools_task_manager__decompose_task(
