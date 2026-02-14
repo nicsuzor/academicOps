@@ -235,6 +235,55 @@ class GenericGate:
             )
         return None
 
+    def _evaluate_countdown(
+        self, ctx: HookContext, session_state: SessionState
+    ) -> GateResult | None:
+        """Evaluate countdown warning before threshold is reached.
+
+        Returns a subtle informational message if we're approaching the
+        threshold but haven't reached it yet. This gives agents advance
+        notice to proactively run compliance checks.
+        """
+        countdown = self.config.countdown
+        if not countdown:
+            return None
+
+        state = self._get_state(session_state)
+
+        # Get current ops count based on configured metric
+        if countdown.metric == "ops_since_open":
+            current_ops = state.ops_since_open
+        elif countdown.metric == "ops_since_close":
+            current_ops = state.ops_since_close
+        else:
+            current_ops = state.metrics.get(countdown.metric, 0)
+
+        threshold = countdown.threshold
+        start_at = threshold - countdown.start_before
+
+        # Only show countdown if we're in the window (start_at <= current < threshold)
+        if current_ops < start_at or current_ops >= threshold:
+            return None
+
+        remaining = threshold - current_ops
+
+        # Render countdown message
+        variables = {
+            "remaining": remaining,
+            "threshold": threshold,
+            "current": current_ops,
+            "gate_name": self.name,
+            "temp_path": state.metrics.get("temp_path", "(not available)"),
+        }
+
+        try:
+            message = countdown.message_template.format_map(variables)
+        except KeyError as e:
+            logger.warning(f"Countdown template error for gate '{self.name}': {e}")
+            message = f"📋 {remaining} turns until {self.name} check required."
+
+        return GateResult.allow(system_message=message)
+
     def _evaluate_policies(
         self, ctx: HookContext, session_state: SessionState
     ) -> GateResult | None:
@@ -297,31 +346,59 @@ class GenericGate:
         return self._evaluate_triggers(context, session_state)
 
     def check(self, context: HookContext, session_state: SessionState) -> GateResult | None:
-        """PreToolUse: Check policies."""
+        """PreToolUse: Check policies and countdown warnings."""
         # Run triggers first to allow JIT state transitions (e.g. unblocking hydrator)
         trigger_result = self._evaluate_triggers(context, session_state)
         policy_result = self._evaluate_policies(context, session_state)
 
-        if not trigger_result:
+        # If policy blocks/warns, return that (countdown not needed)
+        if policy_result and policy_result.verdict in (GateVerdict.DENY, GateVerdict.WARN):
+            if trigger_result:
+                # Merge trigger messages but keep policy verdict
+                return GateResult(
+                    verdict=policy_result.verdict,
+                    system_message="\n".join(
+                        filter(None, [trigger_result.system_message, policy_result.system_message])
+                    ),
+                    context_injection="\n\n".join(
+                        filter(
+                            None, [trigger_result.context_injection, policy_result.context_injection]
+                        )
+                    ),
+                    metadata={**trigger_result.metadata, **policy_result.metadata},
+                )
             return policy_result
-        if not policy_result:
-            return trigger_result
 
-        # Merge results if both present
+        # Check countdown warning (only if policy didn't trigger)
+        countdown_result = self._evaluate_countdown(context, session_state)
+
+        # Collect all results to merge
+        results = [r for r in [trigger_result, policy_result, countdown_result] if r]
+
+        if not results:
+            return None
+        if len(results) == 1:
+            return results[0]
+
+        # Merge all results
         # Verdict: deny > warn > allow
-        verdict = policy_result.verdict
-        if trigger_result.verdict == GateVerdict.DENY:
-            verdict = GateVerdict.DENY
+        verdict = GateVerdict.ALLOW
+        for r in results:
+            if r.verdict == GateVerdict.DENY:
+                verdict = GateVerdict.DENY
+                break
+            elif r.verdict == GateVerdict.WARN:
+                verdict = GateVerdict.WARN
+
+        merged_metadata: dict = {}
+        for r in results:
+            merged_metadata.update(r.metadata)
 
         return GateResult(
             verdict=verdict,
-            system_message="\n".join(
-                filter(None, [trigger_result.system_message, policy_result.system_message])
-            ),
-            context_injection="\n\n".join(
-                filter(None, [trigger_result.context_injection, policy_result.context_injection])
-            ),
-            metadata={**trigger_result.metadata, **policy_result.metadata},
+            system_message="\n".join(filter(None, [r.system_message for r in results])),
+            context_injection="\n\n".join(filter(None, [r.context_injection for r in results])),
+            metadata=merged_metadata,
         )
 
     def on_stop(self, context: HookContext, session_state: SessionState) -> GateResult | None:

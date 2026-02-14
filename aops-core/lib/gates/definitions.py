@@ -1,6 +1,7 @@
 import os
 
 from lib.gate_types import (
+    CountdownConfig,
     GateCondition,
     GateConfig,
     GatePolicy,
@@ -73,6 +74,14 @@ GATE_CONFIGS = [
         name="custodiet",
         description="Enforces periodic compliance checks.",
         initial_status=GateStatus.OPEN,
+        countdown=CountdownConfig(
+            start_before=5,
+            threshold=CUSTODIET_TOOL_CALL_THRESHOLD,
+            message_template=(
+                "📋 {remaining} turns until custodiet check required. "
+                "Run the check proactively with: `{temp_path}`"
+            ),
+        ),
         triggers=[
             # Custodiet check -> Reset
             GateTrigger(

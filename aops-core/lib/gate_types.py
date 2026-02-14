@@ -97,6 +97,29 @@ class GatePolicy(BaseModel):
     custom_action: str | None = None
 
 
+class CountdownConfig(BaseModel):
+    """Configuration for countdown warnings before a gate blocks.
+
+    Provides advance notice to agents before they hit a gate threshold,
+    allowing them to proactively run compliance checks.
+    """
+
+    # Number of ops before threshold to start showing countdown
+    # e.g., if threshold=15 and start_before=5, countdown shows at ops 10-14
+    start_before: int = 5
+
+    # Message template. Supports {remaining}, {threshold}, {gate_name}, {temp_path}
+    message_template: str = (
+        "Approaching {gate_name} threshold. You have {remaining} operations remaining."
+    )
+
+    # Which metric to count against (default: ops_since_open)
+    metric: str = "ops_since_open"
+
+    # Threshold value for countdown
+    threshold: int
+
+
 class GateConfig(BaseModel):
     """Declarative configuration for a gate."""
 
@@ -111,3 +134,6 @@ class GateConfig(BaseModel):
 
     # Policies (Stateful -> Verdict)
     policies: list[GatePolicy] = Field(default_factory=list)
+
+    # Optional countdown warning before threshold
+    countdown: CountdownConfig | None = None
