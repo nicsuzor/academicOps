@@ -89,15 +89,28 @@ Capacity overflow actions are worker-specific (some allow substitution, others q
 **Single Task Dispatch**:
 
 ```bash
-# Claude worker for specific task
+# Claude worker for a specific task (by task ID)
+polecat run -t <task-id> -p <project>
+
+# Gemini worker for a specific task
+polecat run -t <task-id> -p <project> --gemini
+
+# Claude worker claiming next ready task from queue
 polecat run -p <project>
 
-# Gemini worker for specific task
+# Gemini worker claiming next ready task from queue
 polecat run -g -p <project>
 
-# Jules (manual invocation - not automated)
-# Requires explicit human trigger due to cost
+# Jules (asynchronous, runs on Google infrastructure)
+jules new --repo <owner>/<repo> "<task description>"
 ```
+
+**Jules Dispatch Notes**:
+
+- Jules takes a plain-text prompt string, not piped input
+- Jules sessions are asynchronous — returns a session URL immediately
+- Monitor via `jules remote list --session`
+- One session per task; use `--parallel N` only for independent subtasks
 
 **Batch Dispatch (Swarm)**:
 
