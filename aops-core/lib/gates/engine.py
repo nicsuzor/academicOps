@@ -131,6 +131,10 @@ class GenericGate:
             **state.metrics,
         }
 
+        # Add deterministic temp_path if not already in metrics (P#102)
+        if "temp_path" not in variables:
+            variables["temp_path"] = str(get_gate_file_path(self.name, ctx.session_id))
+
         # Fail fast on missing template variables. The old defaultdict fallback
         # silently produced "(not set)" which caused gates to pass broken
         # instructions to agents (e.g. temp_path not in metrics).

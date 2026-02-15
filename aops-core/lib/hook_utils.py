@@ -220,8 +220,11 @@ def is_subagent_session(input_data: dict[str, Any] | None = None) -> bool:
     Returns:
         True if this appears to be a subagent session
     """
-    if input_data and input_data.get("is_subagent"):
-        return True
+    if input_data:
+        if input_data.get("is_subagent"):
+            return True
+        if input_data.get("is_sidechain") or input_data.get("isSidechain"):
+            return True
 
     # Method 1: Check for agent_id/agent_type fields in hook payload.
     if input_data:

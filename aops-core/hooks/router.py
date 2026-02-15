@@ -310,7 +310,12 @@ class HookRouter:
                 {"session_id": session_id, "agent_id": agent_id, "subagent_type": subagent_type}
             )
 
-        # 9. Precompute values
+        # 9. Clear subagent info on stop to prevent pollution (P#102)
+        # Only clear for subagent stop events or if it's a subagent session stopping.
+        if hook_event == "SubagentStop" or (is_subagent and hook_event == "Stop"):
+            persist_session_data({"session_id": session_id, "agent_id": None, "subagent_type": None})
+
+        # 10. Precompute values
         short_hash = get_session_short_hash(session_id)
 
         # 10. Build Context and POP processed fields from raw_input
@@ -550,15 +555,23 @@ class HookRouter:
             or ctx.subagent_type in self._COMPLIANCE_SUBAGENT_TYPES
         )
 
+        # Gates that govern main agent transitions and should not block transient subagents.
+        # Subagents cannot clear these gates (only the main agent response can).
+        MAIN_FLOW_GATES = {"hydration", "critic", "qa", "handover"}
+
         messages = []
         context_injections = []
         final_verdict = GateVerdict.ALLOW
 
         for gate in GateRegistry.get_all_gates():
             try:
-                # If compliance agent, only evaluate triggers for PreToolUse and Stop
-                # (other events only run triggers anyway)
-                if is_compliance_agent and ctx.hook_event in ("PreToolUse", "Stop"):
+                # Subagents bypass main flow gates (since they can't clear them)
+                # but still run triggers for them. Compliance agents bypass everything.
+                is_bypassed = is_compliance_agent or (
+                    ctx.is_subagent and gate.name in MAIN_FLOW_GATES
+                )
+
+                if is_bypassed and ctx.hook_event in ("PreToolUse", "Stop"):
                     result = gate.evaluate_triggers(ctx, state)
                 else:
                     result = self._call_gate_method(gate, ctx, state)
@@ -570,8 +583,8 @@ class HookRouter:
                         context_injections.append(result.context_injection)
 
                     # Verdict precedence: DENY > WARN > ALLOW
-                    # Compliance agents ALWAYS return ALLOW verdict because they bypass policies
-                    if not is_compliance_agent:
+                    # Bypassed agents ALWAYS return ALLOW verdict because they skip policies
+                    if not is_bypassed:
                         if result.verdict == GateVerdict.DENY:
                             final_verdict = GateVerdict.DENY
                             break  # First deny wins
