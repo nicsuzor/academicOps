@@ -511,9 +511,8 @@ class TestCompliancePostToolUseBypass:
         router._dispatch_gates(ctx, state)
 
         # Compliance agent's PostToolUse must NOT inflate the ops counter.
-        # evaluate_triggers runs but the custodiet trigger resets the counter.
-        # Either way, ops should not be higher than initial.
-        assert state.gates["custodiet"].ops_since_open <= initial_ops
+        # The custodiet trigger should fire and reset the counter to 0.
+        assert state.gates["custodiet"].ops_since_open == 0
 
     def test_non_compliance_agent_post_tool_use_increments_ops(self, mock_session, test_registry):
         """PostToolUse from non-compliance subagents should still increment ops."""
