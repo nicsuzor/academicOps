@@ -468,10 +468,10 @@ def comprehensive_assumption_check(
     print("\n1. OUTLIER DETECTION")
     print("-" * 70)
     outlier_results = detect_outliers(
-        data[value_col].dropna(),
+        data[value_col].dropna(),  # type: ignore[reportArgumentType]
         name=value_col,
         method="iqr",
-        plot=True,  # type: ignore[reportArgumentType]
+        plot=True,
     )
     results["outliers"] = outlier_results
     print(f"   {outlier_results['interpretation']}")
@@ -508,10 +508,10 @@ def comprehensive_assumption_check(
         print("\n2. NORMALITY CHECK")
         print("-" * 70)
         normality_results = check_normality(
-            data[value_col].dropna(),
+            data[value_col].dropna(),  # type: ignore[reportArgumentType]
             name=value_col,
             alpha=alpha,
-            plot=True,  # type: ignore[reportArgumentType]
+            plot=True,
         )
         results["normality"] = normality_results
         print(f"   {normality_results['interpretation']}")
