@@ -412,3 +412,184 @@ class TestReadOnlyToolExclusion:
         # Read tool should not be denied
         if result is not None:
             assert result.verdict != GateVerdict.DENY
+
+
+# =============================================================================
+# aops-55bcf1a2: Fix gates blocking subagent tool calls (5 interacting bugs)
+# =============================================================================
+
+
+class TestSubagentStartHandler:
+    """Bug 1: _call_gate_method must route SubagentStart to gate.on_subagent_start()."""
+
+    def test_call_gate_method_routes_subagent_start(self, mock_session, test_registry):
+        """SubagentStart must be dispatched to gate.on_subagent_start(), not return None."""
+        session_id, state = mock_session
+
+        # Custodiet trigger matches SubagentStart with subagent_type=custodiet
+        state.gates["custodiet"].ops_since_open = 50
+        state.gates["custodiet"].status = GateStatus.OPEN
+
+        ctx = HookContext(
+            session_id=session_id,
+            trace_id=None,
+            hook_event="SubagentStart",
+            subagent_type="custodiet",
+            is_subagent=False,  # Main agent context
+            raw_input={},
+        )
+
+        router = _make_router()
+        with (
+            patch.object(router, "_run_special_handlers"),
+            patch("hooks.router.SessionState.load", return_value=state),
+            patch("hooks.router.log_hook_event"),
+        ):
+            router.execute_hooks(ctx)
+
+        # Trigger should have fired and reset ops counter
+        assert state.gates["custodiet"].ops_since_open == 0
+
+    def test_on_subagent_start_method_exists(self):
+        """GenericGate must have on_subagent_start method."""
+        gate = GenericGate(_make_custodiet_config())
+        assert hasattr(gate, "on_subagent_start")
+        assert callable(gate.on_subagent_start)
+
+    def test_on_subagent_start_evaluates_triggers(self, mock_session):
+        """on_subagent_start must evaluate triggers (same as on_subagent_stop)."""
+        session_id, state = mock_session
+
+        state.gates["custodiet"].ops_since_open = 50
+        state.gates["custodiet"].status = GateStatus.OPEN
+
+        ctx = HookContext(
+            session_id=session_id,
+            trace_id=None,
+            hook_event="SubagentStart",
+            subagent_type="custodiet",
+            raw_input={},
+        )
+
+        gate = GenericGate(_make_custodiet_config())
+        result = gate.on_subagent_start(ctx, state)
+
+        # Trigger should fire and reset ops
+        assert state.gates["custodiet"].ops_since_open == 0
+        assert result is not None
+
+
+class TestCompliancePostToolUseBypass:
+    """Bug 2: Compliance bypass must cover PostToolUse to prevent ops inflation."""
+
+    def test_compliance_agent_post_tool_use_does_not_increment_ops(
+        self, mock_session, test_registry
+    ):
+        """PostToolUse from compliance subagents must not increment ops_since_open.
+
+        Before the fix, custodiet's own Read/Grep calls went through
+        gate.on_tool_use() which incremented ops_since_open, inflating the
+        counter the custodiet was supposed to reset.
+        """
+        session_id, state = mock_session
+
+        initial_ops = 10
+        state.gates["custodiet"].ops_since_open = initial_ops
+        state.gates["custodiet"].status = GateStatus.OPEN
+
+        ctx = HookContext(
+            session_id=session_id,
+            trace_id=None,
+            hook_event="PostToolUse",
+            tool_name="Read",
+            is_subagent=True,
+            subagent_type="aops-core:custodiet",
+            raw_input={},
+        )
+
+        router = _make_router()
+        router._dispatch_gates(ctx, state)
+
+        # Compliance agent's PostToolUse must NOT inflate the ops counter.
+        # The custodiet trigger should fire and reset the counter to 0.
+        assert state.gates["custodiet"].ops_since_open == 0
+
+    def test_non_compliance_agent_post_tool_use_increments_ops(self, mock_session, test_registry):
+        """PostToolUse from non-compliance subagents should still increment ops."""
+        session_id, state = mock_session
+
+        state.gates["custodiet"].ops_since_open = 10
+        state.gates["custodiet"].status = GateStatus.OPEN
+
+        ctx = HookContext(
+            session_id=session_id,
+            trace_id=None,
+            hook_event="PostToolUse",
+            tool_name="Read",
+            is_subagent=True,
+            subagent_type="Explore",  # NOT a compliance agent
+            raw_input={},
+        )
+
+        router = _make_router()
+        router._dispatch_gates(ctx, state)
+
+        # Non-compliance agent's PostToolUse SHOULD increment ops
+        assert state.gates["custodiet"].ops_since_open == 11
+
+
+class TestSubagentStartStopIsNotSubagent:
+    """Bug 3: SubagentStart/SubagentStop must not set is_subagent=True.
+
+    These events fire in the main agent's context ABOUT a subagent.
+    They carry agent_id/agent_type metadata which previously caused
+    false positive subagent detection.
+    """
+
+    def test_subagent_start_not_marked_as_subagent(self):
+        """normalize_input must set is_subagent=False for SubagentStart events."""
+        router = _make_router()
+
+        raw_input = {
+            "hook_event_name": "SubagentStart",
+            "session_id": "f4e3f1cb-775c-4aaf-8bf6-4e18a18dad3d",
+            "agent_id": "abc1234",
+            "agent_type": "custodiet",
+        }
+
+        ctx = router.normalize_input(raw_input)
+
+        assert ctx.hook_event == "SubagentStart"
+        assert ctx.is_subagent is False
+        assert ctx.subagent_type == "custodiet"
+
+    def test_subagent_stop_not_marked_as_subagent(self):
+        """normalize_input must set is_subagent=False for SubagentStop events."""
+        router = _make_router()
+
+        raw_input = {
+            "hook_event_name": "SubagentStop",
+            "session_id": "f4e3f1cb-775c-4aaf-8bf6-4e18a18dad3d",
+            "agent_id": "abc1234",
+            "agent_type": "custodiet",
+        }
+
+        ctx = router.normalize_input(raw_input)
+
+        assert ctx.hook_event == "SubagentStop"
+        assert ctx.is_subagent is False
+
+    def test_actual_subagent_session_still_detected(self):
+        """Regular subagent sessions (short hex IDs) must still be detected."""
+        router = _make_router()
+
+        raw_input = {
+            "hook_event_name": "PreToolUse",
+            "session_id": "aafdeee",  # Short hex = subagent
+            "tool_name": "Read",
+        }
+
+        ctx = router.normalize_input(raw_input)
+
+        assert ctx.hook_event == "PreToolUse"
+        assert ctx.is_subagent is True

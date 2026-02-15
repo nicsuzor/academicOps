@@ -304,6 +304,12 @@ class HookRouter:
         ):
             is_subagent = True
 
+        # SubagentStart/SubagentStop fire in the MAIN agent's context ABOUT a
+        # subagent. They carry agent_id/agent_type metadata which causes false
+        # positives above. Override: these are never subagent events.
+        if hook_event in ("SubagentStart", "SubagentStop"):
+            is_subagent = False
+
         # 8. Persist session data on start or subagent start
         if hook_event in ("SessionStart", "SubagentStart"):
             persist_session_data(
@@ -543,6 +549,7 @@ class HookRouter:
         - SessionStart -> gate.on_session_start()
         - Stop -> gate.on_stop()
         - AfterAgent -> gate.on_after_agent()
+        - SubagentStart -> gate.on_subagent_start()
         - SubagentStop -> gate.on_subagent_stop()
         """
         is_compliance_agent = ctx.is_subagent and (
@@ -558,7 +565,7 @@ class HookRouter:
             try:
                 # If compliance agent, only evaluate triggers for PreToolUse and Stop
                 # (other events only run triggers anyway)
-                if is_compliance_agent and ctx.hook_event in ("PreToolUse", "Stop"):
+                if is_compliance_agent and ctx.hook_event in ("PreToolUse", "PostToolUse", "Stop"):
                     result = gate.evaluate_triggers(ctx, state)
                 else:
                     result = self._call_gate_method(gate, ctx, state)
@@ -609,6 +616,8 @@ class HookRouter:
             return gate.on_stop(ctx, state)
         elif event == "AfterAgent":
             return gate.on_after_agent(ctx, state)
+        elif event == "SubagentStart":
+            return gate.on_subagent_start(ctx, state)
         elif event == "SubagentStop":
             return gate.on_subagent_stop(ctx, state)
         return None

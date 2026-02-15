@@ -455,6 +455,11 @@ class GenericGate:
     ) -> GateResult | None:
         return self._evaluate_triggers(context, session_state)
 
+    def on_subagent_start(
+        self, context: HookContext, session_state: SessionState
+    ) -> GateResult | None:
+        return self._evaluate_triggers(context, session_state)
+
     def on_subagent_stop(
         self, context: HookContext, session_state: SessionState
     ) -> GateResult | None:
