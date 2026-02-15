@@ -24,7 +24,7 @@ GATE_CONFIGS = [
     GateConfig(
         name="hydration",
         description="Ensures prompts are hydrated with context.",
-        initial_status=GateStatus.OPEN,  # Starts open, closes on userpromptsubmit.
+        initial_status=GateStatus.CLOSED,  # Starts open, closes on userpromptsubmit.
         triggers=[
             # Hydrator starts or finishes -> Open
             # DISPATCH: Main agent intends to call hydrator -> Open gate pre-emptively
@@ -41,16 +41,16 @@ GATE_CONFIGS = [
                 ),
             ),
             # User Prompt (not ignored) -> Close
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="UserPromptSubmit", custom_check="is_hydratable"
-                ),
-                transition=GateTransition(
-                    target_status=GateStatus.CLOSED,
-                    custom_action="hydrate_prompt",
-                    system_message_template="💧 Hydration required. Gate CLOSED.",
-                ),
-            ),
+            # GateTrigger(
+            #     condition=GateCondition(
+            #         hook_event="UserPromptSubmit", custom_check="is_hydratable"
+            #     ),
+            #     transition=GateTransition(
+            #         target_status=GateStatus.CLOSED,
+            #         custom_action="hydrate_prompt",
+            #         system_message_template="💧 Hydration required. Gate CLOSED.",
+            #     ),
+            # ),
         ],
         policies=[
             # If Closed, Block tools (except always_available like Task, prompt-hydrator)
@@ -80,7 +80,7 @@ GATE_CONFIGS = [
         description="Enforces periodic compliance checks.",
         initial_status=GateStatus.OPEN,
         countdown=CountdownConfig(
-            start_before=5,
+            start_before=7,
             threshold=CUSTODIET_TOOL_CALL_THRESHOLD,
             message_template=(
                 "📋 {remaining} turns until custodiet check required. "
@@ -91,18 +91,9 @@ GATE_CONFIGS = [
             # Custodiet check -> Reset
             GateTrigger(
                 condition=GateCondition(
-                    hook_event="^(SubagentStart|PreToolUse|SubagentStop|PostToolUse)$",
+                    hook_event="^(SubagentStart|SubagentStop)$",
                     subagent_type_pattern="custodiet",
                 ),
-                transition=GateTransition(
-                    reset_ops_counter=True,
-                    system_message_template="🛡️ Compliance verified.",
-                    context_injection_template="🛡️ Compliance verified.",
-                ),
-            ),
-            # Direct tool call fallback
-            GateTrigger(
-                condition=GateCondition(hook_event="PostToolUse", tool_name_pattern="custodiet"),
                 transition=GateTransition(
                     reset_ops_counter=True,
                     system_message_template="🛡️ Compliance verified.",
@@ -266,19 +257,19 @@ GATE_CONFIGS = [
         triggers=[],
         policies=[
             # Stop check (Uncommitted work)
-            GatePolicy(
-                condition=GateCondition(hook_event="Stop", custom_check="has_uncommitted_work"),
-                verdict=HANDOVER_GATE_MODE,
-                message_template="{block_reason}",
-                context_template="{block_reason}",
-            ),
-            # Stop warning (Unpushed commits)
-            GatePolicy(
-                condition=GateCondition(hook_event="Stop", custom_check="has_unpushed_commits"),
-                verdict="warn",
-                message_template="{warning_message}",
-                context_template="{warning_message}",
-            ),
+            # GatePolicy(
+            #     condition=GateCondition(hook_event="Stop", custom_check="has_uncommitted_work"),
+            #     verdict=HANDOVER_GATE_MODE,
+            #     message_template="{block_reason}",
+            #     context_template="{block_reason}",
+            # ),
+            # # Stop warning (Unpushed commits)
+            # GatePolicy(
+            #     condition=GateCondition(hook_event="Stop", custom_check="has_unpushed_commits"),
+            #     verdict="warn",
+            #     message_template="{warning_message}",
+            #     context_template="{warning_message}",
+            # ),
             # Block Stop until Framework Reflection is provided
             GatePolicy(
                 condition=GateCondition(
