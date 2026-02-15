@@ -593,6 +593,7 @@ mcp__plugin_aops-tools_task_manager__get_task(id="...")
 - Compare email entry_ids and subject lines against existing task bodies
 - Apply workflow classification rules (Task/FYI/Skip) - not every item needs a task
 - For email triage specifically: check sent mail for existing replies first
+- **Search breadth**: When searching to avoid duplicates, try multiple query variations (project name, key concepts, partial phrases) and use `list_tasks(project=X)` filter. Zero results on first search = broaden query, not conclude "no existing task."
 
 **Derivation**: Corollary of P#26 (Verify First) and P#58 (Indices Before Exploration). Batch operations without deduplication create noise and duplicate work. The task index is the authoritative source - query it first.
 
