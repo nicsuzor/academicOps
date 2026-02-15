@@ -17,7 +17,11 @@ from lib.gate_types import (
     GateTrigger,
 )
 
-# Note: We have had to add SubagentStart to multiple triggers as a workaround for hooks not recognising subagents in tool calls. This means many gates open as soon as the subagent is called, rather than when the subagent finishes. This is particularly important because we cannot otherwise allow the subagent to run when its gate is blocked.
+# Note: SubagentStart is included in trigger patterns alongside SubagentStop so
+# gates can transition as soon as the subagent is dispatched (e.g. opening a gate
+# pre-emptively so the subagent's own tool calls aren't blocked). This is
+# intentional, not a workaround — _call_gate_method now routes SubagentStart
+# to gate.on_subagent_start() (fixed in aops-55bcf1a2).
 
 GATE_CONFIGS = [
     # --- Hydration ---
