@@ -133,7 +133,14 @@ class GenericGate:
 
         # Add deterministic temp_path if not already in metrics (P#102)
         if "temp_path" not in variables:
-            variables["temp_path"] = str(get_gate_file_path(self.name, ctx.session_id))
+            input_data: dict[str, Any] | None = None
+            # Provide transcript_path to get_gate_file_path when available so that
+            # Gemini sessions can correctly resolve their log directory.
+            if ctx.transcript_path is not None:
+                input_data = {"transcript_path": ctx.transcript_path}
+            variables["temp_path"] = str(
+                get_gate_file_path(self.name, ctx.session_id, input_data=input_data)
+            )
 
         # Fail fast on missing template variables. The old defaultdict fallback
         # silently produced "(not set)" which caused gates to pass broken

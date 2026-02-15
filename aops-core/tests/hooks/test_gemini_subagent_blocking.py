@@ -15,6 +15,7 @@ def mock_session(tmp_path):
     with (
         patch("lib.session_paths.get_session_status_dir", return_value=tmp_path),
         patch("lib.session_state.get_session_status_dir", return_value=tmp_path),
+        patch("lib.session_paths.get_pid_session_map_path", return_value=tmp_path / "pid_map.json"),
     ):
         state = SessionState.create(session_id)
         # Ensure hydration is closed
@@ -32,9 +33,10 @@ def test_gemini_subagent_bypasses_hydration_even_if_not_compliance(mock_session)
 
     # Simulate a Gemini subagent tool call where we only have is_sidechain
     raw_input = {
+        "session_id": session_id,
         "is_sidechain": True,
         "tool_name": "Read",
-        "tool_input": {"file_path": "test.txt"}
+        "tool_input": {"file_path": "test.txt"},
     }
 
     router = HookRouter()
@@ -48,8 +50,6 @@ def test_gemini_subagent_bypasses_hydration_even_if_not_compliance(mock_session)
     # Let's see what happens with current _dispatch_gates logic
     result = router._dispatch_gates(ctx, state)
 
-    # If the fix works, result should be None or verdict ALLOW
-    if result:
-        assert result.verdict == GateVerdict.ALLOW
-    else:
-        assert result is None
+    # The router returns None for an ALLOW verdict with no messages,
+    # which is a valid success case for a bypassed gate.
+    assert result is None or result.verdict == GateVerdict.ALLOW
