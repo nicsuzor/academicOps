@@ -23,6 +23,7 @@ jobs:
         github.event.review.user.type != 'Bot' &&
         contains(github.event.review.body, '@claude')) ||
       (github.event_name == 'issues' &&
+        github.event.issue.user.type != 'Bot' &&
         (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
     permissions:
