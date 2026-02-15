@@ -116,6 +116,7 @@ jobs:
       - name: Run Custodiet Agent
         uses: anthropics/claude-code-action@v1
         with:
+          allowed_bots: "claude[bot]"
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
             ${{ steps.custodiet-prompt.outputs.prompt }}
@@ -130,6 +131,7 @@ jobs:
       - name: Run QA Agent
         uses: anthropics/claude-code-action@v1
         with:
+          allowed_bots: "claude[bot]"
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
             ${{ steps.qa-prompt.outputs.prompt }}
