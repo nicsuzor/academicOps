@@ -330,7 +330,7 @@ class GenericGate:
                 final_sys_msg = sys_msg_prefix + sys_msg
                 final_ctx_inj = ctx_inj_prefix + (ctx_inj if ctx_inj else "")
 
-                if policy.verdict == "deny":
+                if policy.verdict in ("deny", "block"):
                     return GateResult.deny(
                         system_message=final_sys_msg,
                         context_injection=final_ctx_inj if final_ctx_inj else None,

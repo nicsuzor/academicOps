@@ -45,16 +45,16 @@ GATE_CONFIGS = [
                 ),
             ),
             # User Prompt (not ignored) -> Close
-            # GateTrigger(
-            #     condition=GateCondition(
-            #         hook_event="UserPromptSubmit", custom_check="is_hydratable"
-            #     ),
-            #     transition=GateTransition(
-            #         target_status=GateStatus.CLOSED,
-            #         custom_action="hydrate_prompt",
-            #         system_message_template="💧 Hydration required. Gate CLOSED.",
-            #     ),
-            # ),
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="UserPromptSubmit", custom_check="is_hydratable"
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.CLOSED,
+                    custom_action="hydrate_prompt",
+                    system_message_template="💧 Hydration required. Gate CLOSED.",
+                ),
+            ),
         ],
         policies=[
             # If Closed, Block tools (except always_available like Task, prompt-hydrator)
