@@ -251,7 +251,9 @@ def list_tasks(
 @click.option("--project", "-p", help="Filter by project")
 @click.option("--all", "-a", "show_all", is_flag=True, help="Show completed tasks too")
 @click.option("--roots-only", "-r", is_flag=True, help="Only show root-level tasks (no full tree)")
-@click.option("--goals", "-g", is_flag=True, help="Show full goal-rooted tree instead of project level")
+@click.option(
+    "--goals", "-g", is_flag=True, help="Show full goal-rooted tree instead of project level"
+)
 def tree(project: str | None, show_all: bool, roots_only: bool, goals: bool):
     """Show tasks in hierarchical tree view.
 

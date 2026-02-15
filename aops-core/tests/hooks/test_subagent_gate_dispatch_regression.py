@@ -515,9 +515,7 @@ class TestCompliancePostToolUseBypass:
         # Either way, ops should not be higher than initial.
         assert state.gates["custodiet"].ops_since_open <= initial_ops
 
-    def test_non_compliance_agent_post_tool_use_increments_ops(
-        self, mock_session, test_registry
-    ):
+    def test_non_compliance_agent_post_tool_use_increments_ops(self, mock_session, test_registry):
         """PostToolUse from non-compliance subagents should still increment ops."""
         session_id, state = mock_session
 
