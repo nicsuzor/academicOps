@@ -32,8 +32,8 @@ AOPS_CORE = Path(__file__).parent.parent.parent / "aops-core"
 if str(AOPS_CORE) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE))
 
-from hooks.unified_logger import log_hook_event
 from hooks.schemas import HookContext
+from hooks.unified_logger import log_hook_event
 
 
 @pytest.mark.metrics
