@@ -19,21 +19,20 @@ from pathlib import Path
 
 import pytest
 
+# Add aops-core to path for hook imports (must happen before hook imports)
+AOPS_CORE = Path(__file__).parent.parent.parent / "aops-core"
+if str(AOPS_CORE) not in sys.path:
+    sys.path.insert(0, str(AOPS_CORE))
+
+from hooks.schemas import HookContext  # noqa: I001
+from hooks.unified_logger import log_hook_event  # noqa: I001
+
 # Path to the measurement script
 MEASURE_SCRIPT = Path(__file__).parent.parent / "scripts" / "measure_router_compliance.py"
 
 # Baseline from 2025-11-28 measurement
 BASELINE_COMPLIANCE_RATE = 3.2  # percent
 WARN_THRESHOLD = 1.0  # Warn if compliance drops below this
-
-
-# Add aops-core to path for hook imports
-AOPS_CORE = Path(__file__).parent.parent.parent / "aops-core"
-if str(AOPS_CORE) not in sys.path:
-    sys.path.insert(0, str(AOPS_CORE))
-
-from hooks.schemas import HookContext
-from hooks.unified_logger import log_hook_event
 
 
 @pytest.mark.metrics
