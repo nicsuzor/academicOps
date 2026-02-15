@@ -318,7 +318,7 @@ class HookRouter:
         # 10. Precompute values
         short_hash = get_session_short_hash(session_id)
 
-        # 10. Build Context and POP processed fields from raw_input
+        # 11. Build Context and POP processed fields from raw_input
         # We pop now so the remainder in ctx.raw_input is "extra" data
         processed_fields = [
             "hook_event_name",

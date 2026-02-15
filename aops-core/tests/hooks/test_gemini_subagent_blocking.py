@@ -32,7 +32,7 @@ def test_gemini_subagent_bypasses_hydration_even_if_not_compliance(mock_session)
     session_id, state = mock_session
 
     # Simulate a Gemini subagent tool call where we only have is_sidechain
-    raw_input = {
+    input_data = {
         "session_id": session_id,
         "is_sidechain": True,
         "tool_name": "Read",
@@ -42,7 +42,7 @@ def test_gemini_subagent_bypasses_hydration_even_if_not_compliance(mock_session)
     router = HookRouter()
     GateRegistry.initialize()
 
-    ctx = router.normalize_input(raw_input, gemini_event="BeforeTool")
+    ctx = router.normalize_input(input_data, gemini_event="BeforeTool")
 
     # Currently, if is_subagent is True but subagent_type is None,
     # it won't be a compliance agent and will be blocked.
