@@ -142,11 +142,14 @@ jobs:
           claude_args: '--allowed-tools "Bash(gh:*),Read"'
 
   claude-lgtm-merge:
-    # Run for: manual dispatch, PR assigned to claude, approved reviews, or LGTM comments from nicsuzor
+    # Run for: manual dispatch, PR assigned to claude, human-approved reviews, or LGTM comments from nicsuzor.
+    # Bot approvals (from QA agent, custodiet, copilot, gemini, github-actions) must NOT trigger this —
+    # only human reviewers or explicit workflow_dispatch should initiate the merge flow.
     if: >-
       (github.event_name == 'workflow_dispatch') ||
       (github.event_name == 'pull_request' && github.event.action == 'assigned' && github.event.assignee.login == 'claude-for-github[bot]') ||
-      (github.event_name == 'pull_request_review' && github.event.review.state == 'approved') ||
+      (github.event_name == 'pull_request_review' && github.event.review.state == 'approved' &&
+        github.event.review.user.type != 'Bot') ||
       (github.event_name == 'pull_request_review_comment' && github.event.comment.user.login == 'nicsuzor') ||
       (github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.comment.user.login == 'nicsuzor')
     runs-on: ubuntu-latest
