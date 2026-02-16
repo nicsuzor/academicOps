@@ -379,6 +379,8 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
             tools_list = [t.strip() for t in original_tools.split(",")]
             filtered = [t[5:] if t.startswith("mcp__") else t for t in tools_list]
             frontmatter["tools"] = filtered  # Convert to list for Gemini schema
+            # Remove 'color' field - not supported by Gemini CLI
+            frontmatter.pop("color", None)
             # Validate and apply Gemini schema defaults
             frontmatter = validate_gemini_agent_schema(frontmatter, filename)
             new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
@@ -389,6 +391,8 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
         # Strip mcp__ prefix from tool names for Gemini
         filtered_tools = [t[5:] if t.startswith("mcp__") else t for t in original_tools]
         frontmatter["tools"] = filtered_tools
+        # Remove 'color' field - not supported by Gemini CLI
+        frontmatter.pop("color", None)
         # Validate and apply Gemini schema defaults
         frontmatter = validate_gemini_agent_schema(frontmatter, filename)
         new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
