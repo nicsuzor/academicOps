@@ -286,6 +286,30 @@ fn extract_tags(frontmatter: &Option<serde_json::Value>, content: &str) -> Vec<S
     tags.into_iter().collect()
 }
 
+/// Helper to parse a string array from frontmatter
+fn parse_string_array_from_fm(fm_data: &Option<serde_json::Value>, key: &str) -> Vec<String> {
+    fm_data.as_ref()
+        .and_then(|fm| fm.get(key))
+        .and_then(|v| v.as_array())
+        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+        .unwrap_or_default()
+}
+
+/// Helper to deduplicate a vector of strings
+fn deduplicate_vec(vec: &mut Vec<String>) {
+    let mut set = std::collections::HashSet::new();
+    vec.retain(|item| set.insert(item.clone()));
+}
+
+/// Helper to convert empty vec to None
+fn vec_to_option<T>(vec: Vec<T>) -> Option<Vec<T>> {
+    if vec.is_empty() {
+        None
+    } else {
+        Some(vec)
+    }
+}
+
 fn parse_file(path: PathBuf) -> Option<FileData> {
     let content = fs::read_to_string(&path).ok()?;
     let matter = Matter::<YAML>::new();
@@ -363,31 +387,11 @@ fn parse_file(path: PathBuf) -> Option<FileData> {
     let priority = fm_data.as_ref().and_then(|fm| fm.get("priority").and_then(|v| v.as_i64()).map(|v| v as i32));
     let order = fm_data.as_ref().and_then(|fm| fm.get("order").and_then(|v| v.as_i64()).map(|v| v as i32)).unwrap_or(0);
     let parent = fm_data.as_ref().and_then(|fm| fm.get("parent").and_then(|v| v.as_str()).map(String::from));
-    let depends_on = fm_data.as_ref()
-        .and_then(|fm| fm.get("depends_on"))
-        .and_then(|v| v.as_array())
-        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
-        .unwrap_or_default();
-    let soft_depends_on = fm_data.as_ref()
-        .and_then(|fm| fm.get("soft_depends_on"))
-        .and_then(|v| v.as_array())
-        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
-        .unwrap_or_default();
-    let children = fm_data.as_ref()
-        .and_then(|fm| fm.get("children"))
-        .and_then(|v| v.as_array())
-        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
-        .unwrap_or_default();
-    let blocks = fm_data.as_ref()
-        .and_then(|fm| fm.get("blocks"))
-        .and_then(|v| v.as_array())
-        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
-        .unwrap_or_default();
-    let soft_blocks = fm_data.as_ref()
-        .and_then(|fm| fm.get("soft_blocks"))
-        .and_then(|v| v.as_array())
-        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
-        .unwrap_or_default();
+    let depends_on = parse_string_array_from_fm(&fm_data, "depends_on");
+    let soft_depends_on = parse_string_array_from_fm(&fm_data, "soft_depends_on");
+    let children = parse_string_array_from_fm(&fm_data, "children");
+    let blocks = parse_string_array_from_fm(&fm_data, "blocks");
+    let soft_blocks = parse_string_array_from_fm(&fm_data, "soft_blocks");
     let project = fm_data.as_ref().and_then(|fm| fm.get("project").and_then(|v| v.as_str()).map(String::from));
     let due = fm_data.as_ref().and_then(|fm| fm.get("due").and_then(|v| v.as_str()).map(String::from));
     let depth = fm_data.as_ref().and_then(|fm| fm.get("depth").and_then(|v| v.as_i64()).map(|v| v as i32)).unwrap_or(0);
@@ -457,6 +461,13 @@ fn resolve_link(link: &str, current_file: &FileData, id_map: &HashMap<String, St
     None
 }
 
+/// Helper to append GraphML data element if value is not empty
+fn append_data_if_not_empty(node_str: &mut String, key: &str, value: &str) {
+    if !value.is_empty() {
+        node_str.push_str(&format!("      <data key=\"{}\">{}</data>\n", key, value));
+    }
+}
+
 fn output_graphml(graph: &Graph, path: &str) -> Result<()> {
     let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
 <graphml xmlns="http://graphml.graphdrawing.org/xmlns"
@@ -514,36 +525,16 @@ fn output_graphml(graph: &Graph, path: &str) -> Result<()> {
         if !priority.is_empty() {
             node_str.push_str(&format!("      <data key=\"d5\">{}</data>\n", priority));
         }
-        if !project.is_empty() {
-            node_str.push_str(&format!("      <data key=\"d6\">{}</data>\n", project));
-        }
-        if !assignee.is_empty() {
-            node_str.push_str(&format!("      <data key=\"d7\">{}</data>\n", assignee));
-        }
-        if !complexity.is_empty() {
-            node_str.push_str(&format!("      <data key=\"d8\">{}</data>\n", complexity));
-        }
-        if !depends_on.is_empty() {
-            node_str.push_str(&format!("      <data key=\"d9\">{}</data>\n", depends_on));
-        }
-        if !soft_depends_on.is_empty() {
-            node_str.push_str(&format!("      <data key=\"d10\">{}</data>\n", soft_depends_on));
-        }
-        if !blocks.is_empty() {
-            node_str.push_str(&format!("      <data key=\"d11\">{}</data>\n", blocks));
-        }
-        if !soft_blocks.is_empty() {
-            node_str.push_str(&format!("      <data key=\"d12\">{}</data>\n", soft_blocks));
-        }
-        if !parent.is_empty() {
-            node_str.push_str(&format!("      <data key=\"d13\">{}</data>\n", parent));
-        }
-        if !children.is_empty() {
-            node_str.push_str(&format!("      <data key=\"d14\">{}</data>\n", children));
-        }
-        if !due.is_empty() {
-            node_str.push_str(&format!("      <data key=\"d15\">{}</data>\n", due));
-        }
+        append_data_if_not_empty(&mut node_str, "d6", &project);
+        append_data_if_not_empty(&mut node_str, "d7", &assignee);
+        append_data_if_not_empty(&mut node_str, "d8", &complexity);
+        append_data_if_not_empty(&mut node_str, "d9", &depends_on);
+        append_data_if_not_empty(&mut node_str, "d10", &soft_depends_on);
+        append_data_if_not_empty(&mut node_str, "d11", &blocks);
+        append_data_if_not_empty(&mut node_str, "d12", &soft_blocks);
+        append_data_if_not_empty(&mut node_str, "d13", &parent);
+        append_data_if_not_empty(&mut node_str, "d14", &children);
+        append_data_if_not_empty(&mut node_str, "d15", &due);
 
         node_str.push_str("    </node>\n");
         xml.push_str(&node_str);
@@ -617,14 +608,6 @@ fn output_dot(graph: &Graph, path: &str) -> Result<()> {
 /// - priority: 0-4 (0=critical, 4=someday)
 /// - tags: Array of tags from frontmatter or inline #hashtags
 fn build_mcp_index(files: &[FileData], data_root: &Path) -> McpIndex {
-    // Build lookup by task_id (from frontmatter id field)
-    let mut task_id_to_file: HashMap<String, &FileData> = HashMap::new();
-    for f in files {
-        if let Some(ref tid) = f.task_id {
-            task_id_to_file.insert(tid.clone(), f);
-        }
-    }
-
     // Build initial entries with direct fields
     let mut entries: HashMap<String, McpIndexEntry> = HashMap::new();
     for f in files {
@@ -721,7 +704,10 @@ fn build_mcp_index(files: &[FileData], data_root: &Path) -> McpIndex {
     // Apply updates
     for (child_id, parent_id) in parent_updates {
         if let Some(entry) = entries.get_mut(&child_id) {
-            entry.parent = Some(parent_id);
+            // Only set parent if not already explicitly set in frontmatter
+            if entry.parent.is_none() {
+                entry.parent = Some(parent_id);
+            }
         }
     }
     for (blocker_id, dep_id) in dep_updates {
@@ -748,25 +734,11 @@ fn build_mcp_index(files: &[FileData], data_root: &Path) -> McpIndex {
     // Deduplicate and update leaf status
     for tid in &task_ids {
         if let Some(entry) = entries.get_mut(tid) {
-            // Deduplicate children
-            let mut children_set: HashSet<String> = HashSet::new();
-            entry.children.retain(|c| children_set.insert(c.clone()));
-
-            // Deduplicate blocks
-            let mut blocks_set: HashSet<String> = HashSet::new();
-            entry.blocks.retain(|b| blocks_set.insert(b.clone()));
-
-            // Deduplicate soft_blocks
-            let mut soft_blocks_set: HashSet<String> = HashSet::new();
-            entry.soft_blocks.retain(|b| soft_blocks_set.insert(b.clone()));
-
-            // Deduplicate depends_on
-            let mut depends_on_set: HashSet<String> = HashSet::new();
-            entry.depends_on.retain(|b| depends_on_set.insert(b.clone()));
-
-            // Deduplicate soft_depends_on
-            let mut soft_depends_on_set: HashSet<String> = HashSet::new();
-            entry.soft_depends_on.retain(|b| soft_depends_on_set.insert(b.clone()));
+            deduplicate_vec(&mut entry.children);
+            deduplicate_vec(&mut entry.blocks);
+            deduplicate_vec(&mut entry.soft_blocks);
+            deduplicate_vec(&mut entry.depends_on);
+            deduplicate_vec(&mut entry.soft_depends_on);
 
             entry.leaf = entry.children.is_empty();
         }
@@ -1110,16 +1082,16 @@ fn main() -> Result<()> {
                 id: f.id,
                 path: f.path.canonicalize().unwrap_or(f.path).to_string_lossy().to_string(),
                 label: f.label,
-                tags: if f.tags.is_empty() { None } else { Some(f.tags) },
+                tags: vec_to_option(f.tags),
                 node_type: f.node_type,
                 status: f.status,
                 priority: f.priority,
                 parent: f.parent,
-                depends_on: if f.depends_on.is_empty() { None } else { Some(f.depends_on) },
-                soft_depends_on: if f.soft_depends_on.is_empty() { None } else { Some(f.soft_depends_on) },
-                blocks: if f.blocks.is_empty() { None } else { Some(f.blocks) },
-                soft_blocks: if f.soft_blocks.is_empty() { None } else { Some(f.soft_blocks) },
-                children: if f.children.is_empty() { None } else { Some(f.children) },
+                depends_on: vec_to_option(f.depends_on),
+                soft_depends_on: vec_to_option(f.soft_depends_on),
+                blocks: vec_to_option(f.blocks),
+                soft_blocks: vec_to_option(f.soft_blocks),
+                children: vec_to_option(f.children),
                 assignee: f.assignee,
                 complexity: f.complexity,
                 project: f.project,
