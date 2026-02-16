@@ -82,6 +82,7 @@ To simplify routing and reduce cognitive load, we propose consolidating the curr
 | **`verification`** | For quality assurance, peer review, and criticism. | `qa`, `critic`, `peer-review` | `qa`, `critic`, `peer-review`, `constraint-check` |
 | **`operations`** | For repetitive administrative and batch tasks. | `email`, `batch`, `admin` | `email-capture`, `email-triage`, `email-reply`, `batch-processing`, `reference-letter` |
 
+*Skills in this table that do not yet exist in `SKILLS.md`—namely `planning`, `strategy`, `design`, `tdd`, `critic`, `batch`, and `admin`—are proposed new skills that must be created as part of implementing this proposal.*
 *Note: `simple-question` remains as a lightweight routing fast-track for pure information requests.*
 
 ### 3. Thickening the Skills
