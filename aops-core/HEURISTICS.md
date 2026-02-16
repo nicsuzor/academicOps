@@ -223,3 +223,9 @@ Structure tasks hierarchically under functional Epics rather than flat project l
 ## Judgment Tasks Default Unassigned (P#102)
 
 Tasks requiring human judgment default to `assignee: null`. Only mechanical work defaults to `assignee: polecat`.
+
+**Corollaries**:
+
+- Default to `polecat`. A task only needs `assignee: null` when it literally cannot proceed without a human decision RIGHT NOW — not because design decisions exist somewhere in the task.
+- Workers decompose tasks and escalate at actual decision forks (via `status: blocked` or AskUserQuestion). Pre-routing to human based on "this involves design choices" is premature.
+- Assign to `nic` only when explicitly requested by user (`/q nic: ...`).

@@ -38,9 +38,9 @@ If a related task exists with status != "done":
 
 **Determine assignee**:
 
-- `polecat`: Mechanical work, code changes, documentation, create skill/hook (swarm-claimable)
-- `null` (unassigned): Judgment-call tasks - review, evaluate, decide, design choices (backlog for nic to claim)
-- Explicit override: User specifies `/q nic: <description>` → `assignee="nic"`
+- `polecat` (DEFAULT): Almost everything. Workers decompose tasks and escalate at actual decision forks via `status: blocked` or AskUserQuestion. A task having design aspects does NOT make it a judgment task.
+- `null` (unassigned): ONLY when the task literally cannot proceed without a human decision right now (e.g., "choose between X and Y before any work can start"). This is rare.
+- `nic`: ONLY when user explicitly specifies `/q nic: <description>`
 
 **Determine priority**:
 
