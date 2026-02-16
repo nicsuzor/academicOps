@@ -3176,10 +3176,8 @@ st.markdown(
     }
 
     .path-project-group {
-        margin-bottom: 24px;
-        background: rgba(255, 255, 255, 0.02);
-        padding: 12px;
-        border-radius: 8px;
+        margin-bottom: 20px;
+        padding: 0;
     }
 
     .path-project-header {
@@ -3196,30 +3194,29 @@ st.markdown(
 
     .path-threads {
         display: flex;
-        gap: 20px;
-        overflow-x: auto;
-        padding-bottom: 8px;
+        flex-direction: column;
+        gap: 12px;
     }
 
     .path-thread {
-        flex: 0 0 280px;
-        border-left: 2px solid var(--border-color, #333);
-        padding-left: 14px;
-        transition: border-color 0.2s ease;
+        border-left: 3px solid var(--border-color, #333);
+        padding: 12px 16px;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 0 6px 6px 0;
+        transition: border-color 0.2s ease, background 0.2s ease;
     }
 
     .path-thread:hover {
         border-left-color: #555;
+        background: rgba(255, 255, 255, 0.04);
     }
 
     .path-thread-header {
         font-weight: 600;
-        font-size: 0.85em;
+        font-size: 0.9em;
         color: var(--text-primary, #e0e0e0);
         margin-bottom: 10px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        line-height: 1.4;
     }
 
     .path-thread-header .session-hash {
