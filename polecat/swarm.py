@@ -21,6 +21,10 @@ import time
 MIN_STARTUP_DELAY_S = 0.5
 MAX_STARTUP_DELAY_S = 3.0
 
+# Gemini worker launch stagger (seconds between spawns)
+# Free tier rate limits are easily exceeded by concurrent sessions
+DEFAULT_GEMINI_STAGGER_S = 15.0
+
 # Global event to signal workers to drain
 STOP_EVENT = multiprocessing.Event()
 
@@ -162,6 +166,7 @@ def run_swarm(
     caller: str = "polecat",
     dry_run: bool = False,
     home_dir: str | None = None,
+    gemini_stagger: float | None = None,
 ):
     """Entry point for CLI integration.
 
@@ -172,6 +177,8 @@ def run_swarm(
         caller: Identity claiming the tasks (default: bot).
         dry_run: If True, simulate execution.
         home_dir: Optional polecat home directory override.
+        gemini_stagger: Seconds to wait between Gemini worker spawns.
+            Default: 15s to avoid quota exhaustion on free tier.
     """
     total_workers = claude_count + gemini_count
     if total_workers == 0:
@@ -212,8 +219,12 @@ def run_swarm(
         processes.append(p)
         cpu_idx += 1
 
-    # Spawn Gemini workers
-    for _ in range(gemini_count):
+    # Spawn Gemini workers with stagger delay to avoid quota exhaustion
+    stagger = gemini_stagger if gemini_stagger is not None else DEFAULT_GEMINI_STAGGER_S
+    for i in range(gemini_count):
+        if i > 0 and stagger > 0 and not dry_run:
+            print(f"⏳ Waiting {stagger:.0f}s before spawning next Gemini worker...")
+            time.sleep(stagger)
         cpu = available_cpus[cpu_idx % len(available_cpus)]
         p = multiprocessing.Process(
             target=worker_loop, args=("gemini", cpu, project, caller, dry_run, home_dir)
@@ -259,9 +270,23 @@ def main():
         type=str,
         help="Polecat home directory (default: ~/.aops, or POLECAT_HOME env var)",
     )
+    parser.add_argument(
+        "--gemini-stagger",
+        type=float,
+        default=None,
+        help=f"Seconds between Gemini worker spawns (default: {DEFAULT_GEMINI_STAGGER_S}s)",
+    )
 
     args = parser.parse_args()
-    run_swarm(args.claude, args.gemini, args.project, args.caller, args.dry_run, args.home)
+    run_swarm(
+        args.claude,
+        args.gemini,
+        args.project,
+        args.caller,
+        args.dry_run,
+        args.home,
+        args.gemini_stagger,
+    )
 
 
 if __name__ == "__main__":

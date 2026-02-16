@@ -27,7 +27,7 @@ what the supervisor can dispatch to.
 | Worker           | Capabilities                              | Cost | Speed | Max Concurrent | Best For                     |
 | ---------------- | ----------------------------------------- | ---- | ----- | -------------- | ---------------------------- |
 | `polecat-claude` | code, docs, refactor, test, debug         | 3    | 5     | 2              | Most tasks                   |
-| `polecat-gemini` | code, docs, analysis, bulk-ops            | 1    | 3     | 4              | High-volume, simpler tasks   |
+| `polecat-gemini` | code, docs, analysis, bulk-ops            | 1    | 3     | 2              | High-volume, simpler tasks   |
 | `jules`          | deep-code, architecture, complex-refactor | 5    | 1     | 1              | Critical path, complex logic |
 
 **Cost/Speed Scale**: 1-5 where 5 is highest. Cost = token/API expense, Speed = tasks/hour.
@@ -142,20 +142,23 @@ Recommended swarm composition based on queue characteristics.
 | Ready Tasks | Task Mix       | Recommended Swarm            |
 | ----------- | -------------- | ---------------------------- |
 | 1-2         | Any            | `polecat run` (no swarm)     |
-| 3-5         | Mostly simple  | `-c 1 -g 2`                  |
-| 3-5         | Mostly complex | `-c 2 -g 1`                  |
-| 6-10        | Mixed          | `-c 2 -g 3`                  |
-| 10+         | Mixed          | `-c 2 -g 4` (max reasonable) |
+| 3-5         | Mostly simple  | `-c 1 -g 1`                  |
+| 3-5         | Mostly complex | `-c 2 -g 0`                  |
+| 6-10        | Mixed          | `-c 2 -g 2`                  |
+| 10+         | Mixed          | `-c 2 -g 2` (max reasonable) |
+
+> **Note**: Gemini free tier has strict rate limits. Workers launch with 15s stagger
+> by default (`--gemini-stagger`). If quota errors persist, reduce `-g` count.
 
 ## Capacity Limits
 
 Hard limits on concurrent workers (enforced by swarm supervisor).
 
-| Worker Type | Max Concurrent | Reason                        |
-| ----------- | -------------- | ----------------------------- |
-| claude      | 2              | API rate limits, cost         |
-| gemini      | 4              | Higher throughput, lower cost |
-| jules       | 1              | Expensive, serialized work    |
+| Worker Type | Max Concurrent | Reason                              |
+| ----------- | -------------- | ----------------------------------- |
+| claude      | 2              | API rate limits, cost               |
+| gemini      | 2              | Free tier quota limits (15s stagger)|
+| jules       | 1              | Expensive, serialized work          |
 
 ---
 
