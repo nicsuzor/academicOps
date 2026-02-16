@@ -107,10 +107,12 @@ jules new --repo <owner>/<repo> "<task description>"
 
 **Jules Dispatch Notes**:
 
-- Jules takes a plain-text prompt string, not piped input
+- Jules takes a plain-text prompt via pipe: `echo "<prompt>" | jules new --repo <owner>/<repo>`
+- Multiline prompts in quotes hang the CLI; always pipe instead
 - Jules sessions are asynchronous — returns a session URL immediately
-- Monitor via `jules remote list --session`
+- Check status: `jules remote list --session`
 - One session per task; use `--parallel N` only for independent subtasks
+- Include task ID in prompt text so PRs can be linked back to tasks
 
 **Batch Dispatch (Swarm)**:
 
@@ -157,160 +159,56 @@ Calculate swarm composition from:
 
 ---
 
-### 4.4 Progress Monitoring Protocol
+### 4.4 Post-Dispatch (fire and forget)
 
-**Heartbeat Expectations**:
+**The supervisor does not actively monitor workers.** After dispatch, the
+supervisor's job is done. Workers are autonomous — they work, push, and
+create PRs. The next touchpoint is when PRs arrive on GitHub.
 
-> **Configuration**: See Heartbeat Expectations in [[WORKERS.md]] for per-worker
-> update frequencies and alert thresholds.
-
-Each worker type has configured:
-
-- **Expected Heartbeat**: How often task status should update
-- **Alert Threshold**: Silence duration that triggers stall detection
-
-**Monitoring Commands**:
+**Stale task cleanup** (periodic, not real-time):
 
 ```bash
-# Check swarm status
-polecat summary
-
-# Analyze specific stalled task
-polecat analyze <task-id>
-
-# Reset tasks stuck in_progress for >4 hours
+# Reset tasks stuck in_progress for >4 hours (cron or manual)
 polecat reset-stalled --hours 4 --dry-run
 polecat reset-stalled --hours 4
 ```
 
-**Stall Detection Protocol**:
+This is a janitorial operation, not active supervision. Run it periodically
+(e.g., via `stale-check` cron hook) to clean up crashed workers.
 
-```markdown
-## Supervisor: Handle Stalled Worker
+**Worker failures surface as missing PRs.** If a worker fails, no PR appears.
+The task stays `in_progress` until the stale-check resets it to `active` for
+the next dispatch cycle. No supervisor intervention needed.
 
-1. Detect: Task in_progress > alert_threshold without update
-2. Diagnose:
-   - Check task body for error messages
-   - Check git status in worktree (if accessible)
-   - Check for blocking dependencies that appeared
-3. Action based on diagnosis:
-
-| Diagnosis               | Action                             |
-| ----------------------- | ---------------------------------- |
-| Worker crashed          | Reset task to active, re-dispatch  |
-| Task blocked            | Mark task blocked, append reason   |
-| Infinite loop suspected | Reset task, add constraint to body |
-| Resource exhaustion     | Wait, retry with same worker type  |
-| Unknown                 | Reset task, flag for human review  |
-```
+**Known issue: auto-finish override loop.** When a task was already completed
+by another worker (e.g., Jules fixed it), polecat auto-finish detects zero
+changes and resets to active, creating an infinite retry loop. Workaround:
+mark the task `done` and kill the swarm. See `aops-fdc9d0e2`.
 
 ---
 
-### 4.5 Worker Failure Handling
+### 4.5 Parallel Execution Coordination
 
-**Exit Code Semantics** (from `polecat run`):
-
-> **Configuration**: See Exit Code Semantics and Retry Limits in [[WORKERS.md]]
-> for exit code meanings and recovery parameters.
-
-Map worker exit codes to supervisor actions:
-
-- **Success (0)**: Proceed to merge phase
-- **Task/Setup failures**: Apply retry/block logic per configuration
-- **Queue empty**: Normal termination, no action needed
-- **Unknown codes**: Escalate to human review
-
-**Failure Recovery Protocol**:
-
-```markdown
-## Supervisor: Handle Worker Failure
-
-**Task**: <task-id>
-**Worker**: <worker-type>
-**Exit Code**: <code>
-**Error Output**: <last 50 lines>
-
-### Diagnosis
-
-[Supervisor's analysis of what went wrong]
-
-### Recovery Action
-
-[One of: RETRY, REASSIGN, BLOCK, ESCALATE]
-
-### If RETRY:
-
-- Retry count: [n/max per WORKERS.md Retry Limits]
-- Backoff: [per WORKERS.md configuration]
-
-### If REASSIGN:
-
-- Original worker: <type>
-- New worker: <type>
-- Reason: [capability mismatch, etc.]
-
-### If BLOCK:
-
-- Blocking reason appended to task body
-- Status set to 'blocked'
-- Surfaced in daily note for human
-
-### If ESCALATE:
-
-- Task assigned to human (assignee='nic')
-- Full context preserved in task body
-```
-
----
-
-### 4.6 Parallel Execution Coordination
-
-When multiple workers execute simultaneously, the supervisor ensures:
+Workers coordinate through the task system, not through the supervisor:
 
 **Dependency Respect**:
 
 - Workers only claim tasks with satisfied `depends_on`
 - `claim_next_task()` API enforces this automatically
-- Supervisor verifies before dispatch
+- No supervisor verification needed at runtime
 
 **Conflict Prevention**:
 
-- Each worker operates in isolated worktree
+- Each polecat worker operates in isolated worktree
 - No two workers touch same task (atomic claiming)
+- Jules sessions are isolated by design (separate Google infrastructure)
 - If decomposition reveals shared files:
-  - Add explicit `depends_on` between subtasks
-  - Or process sequentially
+  - Add explicit `depends_on` between subtasks before dispatch
 
-**Progress Aggregation**:
+**Batch isolation** (workaround until `aops-2e13ecb4` is fixed):
 
-```markdown
-## Swarm Progress Report
-
-**Project**: <project>
-**Swarm Started**: <timestamp>
-**Duration**: <elapsed>
-
-### Completed (ready for merge)
-
-| Task      | Worker   | Duration | PR   |
-| --------- | -------- | -------- | ---- |
-| subtask-1 | claude-1 | 23min    | #456 |
-
-### In Progress
-
-| Task      | Worker   | Started   | Last Update |
-| --------- | -------- | --------- | ----------- |
-| subtask-2 | gemini-1 | 10min ago | 2min ago    |
-
-### Pending
-
-| Task      | Blocked By | Est. Start  |
-| --------- | ---------- | ----------- |
-| subtask-3 | subtask-1  | After merge |
-
-### Summary
-
-- Throughput: 2.6 tasks/hour
-- Completion: 1/5 (20%)
-- Est. remaining: ~1.5 hours
-```
+- `polecat swarm` claims ANY ready task in the project, not just the
+  curated batch
+- Mark non-batch tasks as `waiting` status before dispatch to prevent
+  accidental claiming
+- Restore to `active` after the swarm finishes

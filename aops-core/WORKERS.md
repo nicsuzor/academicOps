@@ -106,34 +106,28 @@ block; final synthesis is done by the supervisor alongside mandatory reviewers
 
 ## Operational Thresholds
 
-### Heartbeat Expectations
+### Stale Task Cleanup
 
-Expected update frequency and alert thresholds for monitoring worker progress.
+Workers that crash leave tasks in `in_progress`. Periodic cleanup resets them:
 
-| Worker | Expected Heartbeat | Alert Threshold |
-| ------ | ------------------ | --------------- |
-| claude | 30min              | 45min silence   |
-| gemini | 20min              | 30min silence   |
-| jules  | 60min              | 90min silence   |
+```bash
+polecat reset-stalled --hours 4   # reset tasks stuck >4h
+```
+
+Run via `stale-check` cron hook. No active monitoring needed — stale tasks
+get picked up on the next dispatch cycle.
 
 ### Exit Code Semantics
 
-Standard exit codes from `polecat run` and their meanings:
+Standard exit codes from `polecat run` (informational — supervisor doesn't
+need to act on these; workers handle their own lifecycle):
 
-| Exit Code | Meaning       | Supervisor Action                    |
-| --------- | ------------- | ------------------------------------ |
-| 0         | Success       | Mark merge_ready, proceed to Phase 5 |
-| 1         | Task failure  | Inspect error, mark blocked or retry |
-| 2         | Setup failure | Retry once, then mark blocked        |
-| 3         | Queue empty   | Normal - no action needed            |
-| 4+        | Unknown       | Mark blocked, flag for human         |
-
-### Retry Limits
-
-| Recovery Action | Max Attempts | Backoff                    |
-| --------------- | ------------ | -------------------------- |
-| RETRY           | 3            | Exponential, starting 5min |
-| REASSIGN        | 1            | Immediate                  |
+| Exit Code | Meaning       | What happens                          |
+| --------- | ------------- | ------------------------------------- |
+| 0         | Success       | Worker pushes branch, creates PR      |
+| 1         | Task failure  | Task stays in_progress, stale-check resets |
+| 2         | Setup failure | Task stays in_progress, stale-check resets |
+| 3         | Queue empty   | Normal - worker exits cleanly         |
 
 ## Swarm Sizing Defaults
 
@@ -149,13 +143,21 @@ Recommended swarm composition based on queue characteristics.
 
 ## Capacity Limits
 
-Hard limits on concurrent workers (enforced by swarm supervisor).
+Hard limits on concurrent workers.
 
-| Worker Type | Max Concurrent | Reason                        |
-| ----------- | -------------- | ----------------------------- |
-| claude      | 2              | API rate limits, cost         |
-| gemini      | 4              | Higher throughput, lower cost |
-| jules       | 1              | Expensive, serialized work    |
+| Worker Type | Max Concurrent | Reason                                  |
+| ----------- | -------------- | --------------------------------------- |
+| claude      | 2              | API rate limits, cost                   |
+| gemini      | 2              | Free tier quota; was 4, reduced after crashes |
+| jules       | 7+             | Async on Google infra, no local limits  |
+
+**Note on Jules**: Jules sessions run asynchronously on Google infrastructure.
+Unlike polecat workers which consume local resources, Jules sessions are
+fire-and-forget. The practical limit is how many PRs you want to review at once.
+
+**Note on Gemini**: Free tier quota is easily exhausted. Stagger Gemini worker
+launches (`--gemini-stagger 15` flag) to avoid simultaneous quota hits.
+See `aops-8f4ef5b5`.
 
 ---
 
@@ -165,7 +167,7 @@ To customize worker dispatch for your deployment:
 
 1. **Add a new worker type**: Add row to Worker Types table with capabilities
 2. **Change routing rules**: Modify tag lists or complexity routing table
-3. **Adjust thresholds**: Update heartbeat/alert times, retry limits
+3. **Adjust thresholds**: Update stale-check hours
 4. **Add domain specialist**: Add row to Domain Specialists table
 5. **Scale capacity**: Modify Max Concurrent in Capacity Limits
 
