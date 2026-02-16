@@ -35,6 +35,7 @@ from lib.hydration.context_loaders import (
     load_axioms,
     load_environment_variables_context,
     load_framework_paths,
+    load_glossary,
     load_heuristics,
     load_mcp_tools_context,
     load_project_context_index,
@@ -100,6 +101,7 @@ __all__ = [
     "extract_router_context",
     # Context loaders
     "load_framework_paths",
+    "load_glossary",
     "load_tools_index",
     "load_mcp_tools_context",
     "load_environment_variables_context",

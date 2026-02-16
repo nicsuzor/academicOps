@@ -60,7 +60,7 @@ The full audit runs 11 phases (see `skills/audit/SKILL.md` for details):
 | 4     | File Justification        | Ensure files trace to specs                                      |
 | 4b    | Instruction Justification | Verify instructions trace to framework/enforcement-map.md        |
 | 5     | Documentation Accuracy    | Verify README.md flowchart matches hooks                         |
-| 6     | Regenerate Indices        | Rebuild INDEX.md, WORKFLOWS.md, etc.                             |
+| 6     | Regenerate Indices        | Rebuild INDEX.md, WORKFLOWS.md, GLOSSARY.md, etc.                |
 | 7     | Other Updates             | Fix violations, update tables                                    |
 | 8     | Persist Report            | Save to `$ACA_DATA/projects/aops/audit/`                         |
 | 8b    | Transcript QA             | Scan recent sessions for hydration gaps and operational failures |

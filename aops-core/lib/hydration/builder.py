@@ -23,6 +23,7 @@ from lib.hydration.context_loaders import (
     get_task_work_state,
     load_environment_variables_context,
     load_framework_paths,
+    load_glossary,
     load_mcp_tools_context,
     load_project_context_index,
     load_project_paths_context,
@@ -116,6 +117,7 @@ def build_hydration_instruction(
             )
 
     # Load all context components
+    glossary = load_glossary()
     framework_paths = load_framework_paths()
     mcp_tools = load_mcp_tools_context()
     env_vars = load_environment_variables_context()
@@ -133,6 +135,7 @@ def build_hydration_instruction(
     full_context = context_template.format(
         prompt=prompt,
         session_context=session_context,
+        glossary=glossary,
         framework_paths=framework_paths,
         mcp_tools=mcp_tools,
         env_vars=env_vars,
