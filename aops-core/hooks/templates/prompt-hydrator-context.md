@@ -14,6 +14,10 @@ description: |
 
 Transform this user prompt into an execution plan with scope detection and task routing.
 
+## Framework Glossary
+
+{glossary}
+
 ## User Prompt
 
 {prompt}

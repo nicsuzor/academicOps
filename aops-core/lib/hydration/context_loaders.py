@@ -452,6 +452,18 @@ def load_scripts_index() -> str:
         return ""
 
 
+def load_glossary() -> str:
+    """Load GLOSSARY.md for hydrator context.
+
+    The glossary provides framework terminology definitions so the hydrator
+    can interpret user prompts without filesystem exploration.
+    """
+    try:
+        return _load_framework_file("GLOSSARY.md")
+    except FileNotFoundError:
+        return ""
+
+
 def load_project_rules() -> str:
     """Load project-specific rules from .agent/rules/."""
     return _load_project_rules()
