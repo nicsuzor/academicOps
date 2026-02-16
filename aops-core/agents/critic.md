@@ -2,6 +2,7 @@
 name: critic
 description: Second-opinion review of plans and conclusions
 model: opus
+color: orange
 tools:
   - read_file
 ---

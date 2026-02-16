@@ -2,6 +2,7 @@
 name: prompt-hydrator
 description: Transform terse prompts into execution plans with scope detection, task routing, and deferred work capture
 model: haiku
+color: cyan
 tools:
   - read_file
   - mcp__memory__retrieve_memory

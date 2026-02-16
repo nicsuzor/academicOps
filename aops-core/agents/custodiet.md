@@ -2,6 +2,7 @@
 name: custodiet
 description: Ultra vires detector - catches agents acting beyond granted authority
 model: haiku
+color: red
 tools:
   - read_file
 ---
