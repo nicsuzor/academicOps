@@ -237,11 +237,11 @@ def classify_edge(source_id: str, target_id: str, node_by_id: dict) -> str:
     source = node_by_id.get(source_id, {})
     if source.get("parent") == target_id:
         return "parent"
-    if target_id in source.get("depends_on", []):
+    if target_id in (source.get("depends_on") or []):
         return "depends_on"
-    if target_id in source.get("soft_depends_on", []):
+    if target_id in (source.get("soft_depends_on") or []):
         return "soft_depends_on"
-    return "wikilink"
+    return "link"
 
 
 def _build_legend_table(stats: dict) -> str:
@@ -312,7 +312,7 @@ def _build_legend_table(stats: dict) -> str:
         "<TR>"
         '<TD><FONT COLOR="#0d6efd"><B>&#x2501;&#x2501;</B></FONT> parent</TD>'
         '<TD><FONT COLOR="#dc3545"><B>&#x2500;&#x2500;</B></FONT> depends_on</TD>'
-        '<TD><FONT COLOR="#6c757d">- - -</FONT> soft_depends</TD>'
+        '<TD><FONT COLOR="#6c757d">- - -</FONT> soft_depends_on</TD>'
         '<TD><FONT COLOR="#adb5bd">. . .</FONT> link</TD>'
         "</TR>"
     )
