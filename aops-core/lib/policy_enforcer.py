@@ -78,6 +78,51 @@ def validate_minimal_documentation(tool_name: str, args: dict[str, Any]) -> dict
     return None
 
 
+def validate_uv_python_usage(tool_name: str, args: dict[str, Any]) -> dict[str, Any] | None:
+    """Block bare python/pip/jupyter commands without uv run prefix (P#93)."""
+    if tool_name != "Bash":
+        return None
+
+    if "command" not in args:
+        raise ValueError("Bash tool args requires 'command' parameter (P#8: fail-fast)")
+    command = args["command"]
+
+    blocked_terms = ["python", "python3", "pip", "pip3", "jupyter"]
+    for term in blocked_terms:
+        # Match the term as a whole word
+        for match in re.finditer(rf"\b{term}\b", command):
+            start = match.start()
+
+            # Check for --version
+            if command[match.end() :].strip().startswith("--version"):
+                continue
+
+            # Check for 'which ' prefix
+            if command[:start].strip().endswith("which"):
+                continue
+
+            # Check for 'uv run' prefix in the current command segment
+            # We look back to the start of the command or the last shell separator (&&, ||, ;, |)
+            segment_start = 0
+            for sep in ["&&", "||", ";", "|"]:
+                last_sep = command.rfind(sep, 0, start)
+                if last_sep != -1:
+                    segment_start = max(segment_start, last_sep + len(sep))
+
+            segment = command[segment_start:start].strip()
+            if "uv run" not in segment:
+                return {
+                    "continue": False,
+                    "systemMessage": (
+                        f"BLOCKED: Bare '{term}' command detected.\n"
+                        f"Command: {command}\n"
+                        f"P#93: Always use 'uv run {term}' to ensure deterministic environments."
+                    ),
+                }
+
+    return None
+
+
 def validate_safe_git_usage(tool_name: str, args: dict[str, Any]) -> dict[str, Any] | None:
     """Block destructive git operations."""
     if tool_name != "Bash":
