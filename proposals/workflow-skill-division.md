@@ -45,7 +45,7 @@ Workflows currently contain deep "how-to" expertise that should be modularized i
 Several files in the `workflows/` directory are actually skills/commands:
 
 - **`strategy.md`**: Labeled as a command/skill in its own content. It contains facilitation techniques and questioning frameworks. It has no lifecycle stages or gates—it's a tool for thinking.
-- **`audit.md`**: Effectively a wrapper for the `audit` skill. It duplicates the 11 phases of audit execution found in `skills/audit/SKILL.md`.
+- **`audit.md`**: A thin workflow wrapper that lists the 11 audit phases at a high level and defers execution details to `skills/audit/SKILL.md`. While it already follows the workflow/skill split principle, it could be better positioned within the new 5-workflow structure.
 - **`reflect.md`**: A procedural guide for reflection that should be part of the `handover` or `governance` skill.
 
 ### 3. Inconsistent Lifecycle Placement
@@ -77,12 +77,16 @@ To simplify routing and reduce cognitive load, we propose consolidating the curr
 | Workflow | Scope | Composes Skills | Replaces |
 | :--- | :--- | :--- | :--- |
 | **`task-lifecycle`** | The default master workflow for all tracked work. | `framework`, `handover`, `tasks` | *New (consolidates fragmented lifecycle logic)* |
-| **`discovery`** | For uncertain goals and strategic planning. | `planning`, `strategy`, `analyst` | `decompose`, `strategy`, `collaborate` |
+| **`discovery`** | For uncertain goals and strategic planning. | `planning`, `strategy`, `analyst` | `decompose`, `strategy` |
 | **`development`** | For technical implementation, debugging, and fixing. | `python-dev`, `design`, `tdd` | `feature-dev`, `debugging`, `tdd-cycle` |
 | **`verification`** | For quality assurance, peer review, and criticism. | `qa`, `critic`, `peer-review` | `qa`, `critic`, `peer-review`, `constraint-check` |
-| **`operations`** | For repetitive administrative and batch tasks. | `email`, `batch`, `admin` | `email-triage`, `batch-processing`, `reference-letter` |
+| **`operations`** | For repetitive administrative and batch tasks. | `email`, `batch`, `admin` | `email-capture`, `email-triage`, `email-reply`, `batch-processing`, `reference-letter` |
 
 *Note: `simple-question` remains as a lightweight routing fast-track for pure information requests.*
+
+**Disposition of other identified workflows:**
+- **`reflect.md`**: Will be integrated into the `task-lifecycle` workflow's handover phase or incorporated into the `handover` skill.
+- **`audit.md`**: Will be refactored as part of the `verification` workflow, delegating to the existing `audit` skill.
 
 ### 3. Thickening the Skills
 Skills will become the primary repository of expertise and execution detail. They will be structured with:
@@ -94,10 +98,11 @@ Skills will become the primary repository of expertise and execution detail. The
 
 ## Implementation Plan
 
-1. **Step 1: Relocation**: Move misfiled skills (e.g., `strategy.md`) from `workflows/` to `skills/`.
+1. **Step 1: Relocation**: Move misfiled skills (e.g., `strategy.md`) from `workflows/` to `skills/`. Create new skill directories as needed (e.g., `skills/planning/`, `skills/strategy/`).
 2. **Step 2: Modularization**: Extract detailed rubrics and "how-to" logic from workflows (e.g., `qa.md`) into specialized skill reference files.
 3. **Step 3: Refactoring**: Rewrite workflows as thin procedural guides using the 5 core workflow structure.
-4. **Step 4: Update Indices**: Regenerate `WORKFLOWS.md` and `SKILLS.md` to reflect the new architecture.
+4. **Step 4: Routing & Reference Migration**: Update existing routing logic in `WORKFLOWS.md` and any other routing configuration to map old workflow entries to the 5 core workflows. Systematically update all code and documentation references to use the new workflow names.
+5. **Step 5: Update Indices**: Regenerate `WORKFLOWS.md` and `SKILLS.md` to reflect the new architecture.
 
 ---
 
