@@ -18,6 +18,7 @@ def should_skip_hydration(prompt: str, session_id: str | None = None) -> bool:
     - Skill invocations (prompts starting with '/')
     - Expanded slash commands (containing <command-name>/ tag)
     - User ignore shortcut (prompts starting with '.')
+    - Polecat workers (task body IS the hydrated context - aops-b218bcac)
 
     Args:
         prompt: The user's prompt text
@@ -32,6 +33,14 @@ def should_skip_hydration(prompt: str, session_id: str | None = None) -> bool:
         return True
 
     prompt_stripped = prompt.strip()
+
+    # Polecat workers: task body IS the hydrated context
+    # These workers receive pre-hydrated task prompts from the swarm supervisor.
+    # They should not require additional hydration, which would cause:
+    # 1. Unnecessary API calls (quota exhaustion risk)
+    # 2. Worker crashes if hydration subagent fails (aops-b218bcac)
+    if _is_polecat_worker_prompt(prompt_stripped):
+        return True
 
     # Agent/task completion notifications from background Task agents
     if prompt_stripped.startswith("<agent-notification>"):
@@ -54,6 +63,39 @@ def should_skip_hydration(prompt: str, session_id: str | None = None) -> bool:
 
     # User ignore shortcut - user explicitly wants no hydration
     if prompt_stripped.startswith("."):
+        return True
+
+    return False
+
+
+def _is_polecat_worker_prompt(prompt: str) -> bool:
+    """Detect if this is a polecat worker prompt.
+
+    Polecat workers receive their task body as the initial prompt, which is
+    already fully hydrated by the swarm supervisor. They should skip hydration
+    to avoid:
+    1. Redundant subagent calls (quota exhaustion risk)
+    2. Worker crashes if hydration subagent fails (aops-b218bcac)
+
+    Detection is based on the standard polecat worker prompt header injected
+    by the swarm supervisor.
+
+    Args:
+        prompt: The stripped prompt text
+
+    Returns:
+        True if this is a polecat worker prompt
+    """
+    # Standard polecat worker header (injected by swarm-supervisor skill)
+    if "You are a polecat worker" in prompt:
+        return True
+
+    # Task already claimed marker (indicates pre-hydrated task execution)
+    if "Your task has already been claimed" in prompt:
+        return True
+
+    # ## Your Task with task ID marker (structured task body)
+    if "## Your Task" in prompt and "**ID**:" in prompt:
         return True
 
     return False

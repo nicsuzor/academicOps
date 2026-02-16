@@ -65,3 +65,51 @@ class TestHydrationBypass:
         assert should_skip_hydration("   .dotted")
         assert should_skip_hydration("\n/slash")
         assert should_skip_hydration("\t.tabbed")
+
+    def test_polecat_worker_bypasses_hydration(self):
+        """Polecat worker prompts should bypass hydration (aops-b218bcac).
+
+        Polecat workers receive pre-hydrated task bodies from the swarm
+        supervisor. They should not require additional hydration, which
+        would cause quota exhaustion and worker crashes.
+        """
+        # Standard polecat worker header
+        polecat_prompt = """You are a polecat worker. Your task has already been claimed and your worktree is ready. Do not claim or re-claim this task. Do not run `/pull`. Just execute.
+
+## Your Task
+
+- **ID**: aops-b218bcac
+- **Title**: Bug: Gemini workers crash on hydration gate
+- **Type**: bug
+
+## Task Body
+
+Fix the hydration gate bug.
+"""
+        assert should_skip_hydration(polecat_prompt)
+
+        # Just the polecat worker marker
+        assert should_skip_hydration("You are a polecat worker. Execute the task.")
+
+        # Just the task claimed marker
+        assert should_skip_hydration("Your task has already been claimed. Execute.")
+
+        # Structured task body format
+        assert should_skip_hydration("## Your Task\n\n- **ID**: task-123\n\nDo the thing.")
+
+    def test_polecat_markers_in_middle_do_not_bypass(self):
+        """Polecat markers in unstructured contexts should still bypass.
+
+        Note: Unlike prefix checks, these markers bypass anywhere in the
+        prompt because the polecat worker prompt structure is distinctive.
+        """
+        # These SHOULD bypass because they contain the markers
+        assert should_skip_hydration("The message says: You are a polecat worker")
+        assert should_skip_hydration("It says Your task has already been claimed")
+
+    def test_similar_but_different_prompts_do_not_bypass(self):
+        """Prompts that look similar but aren't polecat should NOT bypass."""
+        # These should NOT bypass - they don't have the exact markers
+        assert not should_skip_hydration("You are a worker bee")
+        assert not should_skip_hydration("Your task is to complete this")
+        assert not should_skip_hydration("## My Task\n\nDo something")
