@@ -80,7 +80,7 @@ monitoring — the supervisor's job ends here.
 3. Dispatch: `polecat swarm` for polecat workers, `jules new` for Jules
 4. Done. Next touchpoint is when PRs arrive.
 
-**Known limitations (dogfooding 2026-02-16):**
+**Known limitations (from dogfooding sessions):**
 
 - `polecat swarm` claims ANY ready task in the project, not just the curated
   batch. Mark non-batch tasks as `waiting` to prevent claiming. See `aops-2e13ecb4`.
