@@ -108,6 +108,8 @@ struct Node {
     #[serde(skip_serializing_if = "Option::is_none")]
     depends_on: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    soft_depends_on: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     assignee: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     complexity: Option<String>,
@@ -998,6 +1000,7 @@ fn main() -> Result<()> {
                 priority: f.priority,
                 parent: f.parent,
                 depends_on: if f.depends_on.is_empty() { None } else { Some(f.depends_on) },
+                soft_depends_on: if f.soft_depends_on.is_empty() { None } else { Some(f.soft_depends_on) },
                 assignee: f.assignee,
                 complexity: f.complexity,
                 project: f.project,
