@@ -97,7 +97,8 @@ Skills will become the primary repository of expertise and execution detail. The
 1. **Step 1: Relocation**: Move misfiled skills (e.g., `strategy.md`) from `workflows/` to `skills/`.
 2. **Step 2: Modularization**: Extract detailed rubrics and "how-to" logic from workflows (e.g., `qa.md`) into specialized skill reference files.
 3. **Step 3: Refactoring**: Rewrite workflows as thin procedural guides using the 5 core workflow structure.
-4. **Step 4: Update Indices**: Regenerate `WORKFLOWS.md` and `SKILLS.md` to reflect the new architecture.
+4. **Step 4: Routing & Reference Migration**: Update existing routing logic in `WORKFLOWS.md` (and any other routing configuration) to map old workflow entries to the 5 core workflows, and systematically update all code and documentation references to use the new workflow names (adding temporary aliases/redirects from old to new names where needed).
+5. **Step 5: Update Indices**: Regenerate `WORKFLOWS.md` and `SKILLS.md` to reflect the new architecture and verified routing.
 
 ---
 
