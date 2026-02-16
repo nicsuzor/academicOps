@@ -190,3 +190,33 @@ class TestCompleteTaskPropagation:
         # Check if C is now ACTIVE
         updated_c = storage.get_task(task_c.id)
         assert updated_c.status == TaskStatus.ACTIVE
+
+    def test_update_task_unblock(self, tmp_path: Path, storage: TaskStorage) -> None:
+        """Using update_task to set status=DONE also propagates unblocks."""
+        from mcp_servers import tasks_server
+
+        # Create A
+        task_a = storage.create_task(title="Task A", project="testproj")
+        storage.save_task(task_a)
+
+        # Create B, depending on A
+        task_b = storage.create_task(
+            title="Task B",
+            project="testproj",
+            status=TaskStatus.BLOCKED,
+            depends_on=[task_a.id],
+        )
+        storage.save_task(task_b)
+
+        index = TaskIndex(tmp_path)
+        index.rebuild()
+
+        with patch.object(tasks_server, "_get_storage", return_value=storage):
+            with patch.object(tasks_server, "_get_index", return_value=index):
+                # Update A to DONE via update_task
+                result = tasks_server.update_task.fn(task_a.id, status="done")
+                assert result["success"] is True
+
+        # Check if B is now ACTIVE
+        updated_b = storage.get_task(task_b.id)
+        assert updated_b.status == TaskStatus.ACTIVE

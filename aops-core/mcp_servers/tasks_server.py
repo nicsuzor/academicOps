@@ -20,6 +20,7 @@ from __future__ import annotations
 import logging
 import re
 import sys
+from collections import deque
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -286,13 +287,14 @@ def _propagate_unblocks(
     Args:
         storage: TaskStorage instance
         index: TaskIndex instance
-        completed_ids: List of task IDs that were just completed (status=DONE)
+        completed_ids: List of task IDs that were just completed
+            (status=DONE or CANCELLED)
 
     Returns:
         List of task IDs that were unblocked
     """
     unblocked_ids = []
-    to_check = list(completed_ids)
+    to_check = deque(completed_ids)
     processed = set()
 
     # Track what we know is completed to avoid redundant storage reads
@@ -300,7 +302,7 @@ def _propagate_unblocks(
     completed_cache = set(completed_ids)
 
     while to_check:
-        current_id = to_check.pop(0)
+        current_id = to_check.popleft()
         if current_id in processed:
             continue
         processed.add(current_id)
@@ -799,15 +801,14 @@ def update_task(
             storage.save_task(task)
 
             # If status changed to DONE or CANCELLED, propagate unblocks
+            index = _get_index()
             if "status" in modified_fields and task.status in (
                 TaskStatus.DONE,
                 TaskStatus.CANCELLED,
             ):
-                index = _get_index()
                 _propagate_unblocks(storage, index, [id])
 
             # Rebuild index
-            index = _get_index()
             index.rebuild()
 
         logger.info(f"update_task: {id} - modified {modified_fields}")
