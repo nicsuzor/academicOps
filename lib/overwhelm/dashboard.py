@@ -2799,6 +2799,41 @@ st.markdown(
     }
 
     /* ==========================================================================
+     * TODAY'S STORY SECTION (LLM-generated daily summary)
+     * ========================================================================== */
+    .todays-story-panel {
+        margin: 16px 0;
+        padding: 16px 20px;
+        background: linear-gradient(135deg, rgba(96, 165, 250, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%);
+        border: 1px solid rgba(96, 165, 250, 0.2);
+        border-radius: 10px;
+    }
+
+    .todays-story-header {
+        font-size: 0.85em;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #60a5fa;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .todays-story-content {
+        font-size: 0.95em;
+        line-height: 1.6;
+        color: var(--text-primary, #e0e0e0);
+    }
+
+    .todays-story-empty {
+        font-size: 0.85em;
+        color: var(--text-muted, #777);
+        font-style: italic;
+    }
+
+    /* ==========================================================================
      * WHERE YOU LEFT OFF SECTION (formerly RECENT ACTIVITY)
      * ========================================================================== */
     .where-left-off-panel {
@@ -4684,6 +4719,21 @@ if synthesis:
 
     synth_html += "</div>"  # End panel
     st.markdown(synth_html, unsafe_allow_html=True)
+
+# === TODAY'S STORY SECTION ===
+# Display LLM-generated daily summary from /daily skill (pre-computed, not render-time)
+try:
+    daily_note = analyzer.read_daily_note()
+    todays_story = daily_note.get("todays_story", "") if daily_note else ""
+
+    if todays_story:
+        story_html = "<div class='todays-story-panel'>"
+        story_html += "<div class='todays-story-header'>📖 TODAY'S STORY</div>"
+        story_html += f"<div class='todays-story-content'>{esc(todays_story)}</div>"
+        story_html += "</div>"
+        st.markdown(story_html, unsafe_allow_html=True)
+except Exception:
+    pass  # Today's Story is non-critical; fail silently
 
 # === WHERE YOU LEFT OFF SECTION ===
 # Time range selector in sidebar
