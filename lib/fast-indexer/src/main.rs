@@ -108,11 +108,21 @@ struct Node {
     #[serde(skip_serializing_if = "Option::is_none")]
     depends_on: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    soft_depends_on: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    blocks: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    soft_blocks: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    children: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     assignee: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     complexity: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     project: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    due: Option<String>,
 }
 
 /// Edge types for visual discrimination in graph output
@@ -192,7 +202,6 @@ struct McpIndex {
 #[derive(Clone)]
 struct FileData {
     path: PathBuf,
-    content: String,
     id: String,
     label: String,
     tags: Vec<String>,
@@ -221,7 +230,6 @@ struct FileData {
 }
 
 fn compute_id(path: &Path) -> String {
-    let path_str = path.to_string_lossy();
     let path_without_ext = path.with_extension("");
     let key = path_without_ext.to_string_lossy();
     format!("{:x}", md5::compute(key.as_bytes()))
@@ -375,6 +383,11 @@ fn parse_file(path: PathBuf) -> Option<FileData> {
         .and_then(|v| v.as_array())
         .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
         .unwrap_or_default();
+    let soft_blocks = fm_data.as_ref()
+        .and_then(|fm| fm.get("soft_blocks"))
+        .and_then(|v| v.as_array())
+        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+        .unwrap_or_default();
     let project = fm_data.as_ref().and_then(|fm| fm.get("project").and_then(|v| v.as_str()).map(String::from));
     let due = fm_data.as_ref().and_then(|fm| fm.get("due").and_then(|v| v.as_str()).map(String::from));
     let depth = fm_data.as_ref().and_then(|fm| fm.get("depth").and_then(|v| v.as_i64()).map(|v| v as i32)).unwrap_or(0);
@@ -387,7 +400,6 @@ fn parse_file(path: PathBuf) -> Option<FileData> {
         // Use frontmatter id as node identifier when present, fall back to path hash
         id: task_id.clone().unwrap_or_else(|| compute_id(&path)),
         path,
-        content: String::new(), // Don't keep heavy content in memory
         label,
         tags,
         raw_links,
@@ -401,7 +413,7 @@ fn parse_file(path: PathBuf) -> Option<FileData> {
         soft_depends_on,
         children,
         blocks,
-        soft_blocks: Vec::new(),  // Computed later in build_mcp_index
+        soft_blocks,
         project,
         due,
         depth,
@@ -459,6 +471,13 @@ fn output_graphml(graph: &Graph, path: &str) -> Result<()> {
   <key id="d6" for="node" attr.name="project" attr.type="string"/>
   <key id="d7" for="node" attr.name="assignee" attr.type="string"/>
   <key id="d8" for="node" attr.name="complexity" attr.type="string"/>
+  <key id="d9" for="node" attr.name="depends_on" attr.type="string"/>
+  <key id="d10" for="node" attr.name="soft_depends_on" attr.type="string"/>
+  <key id="d11" for="node" attr.name="blocks" attr.type="string"/>
+  <key id="d12" for="node" attr.name="soft_blocks" attr.type="string"/>
+  <key id="d13" for="node" attr.name="parent" attr.type="string"/>
+  <key id="d14" for="node" attr.name="children" attr.type="string"/>
+  <key id="d15" for="node" attr.name="due" attr.type="string"/>
   <key id="e0" for="edge" attr.name="type" attr.type="string"/>
   <graph id="G" edgedefault="directed">
 "#);
@@ -473,6 +492,13 @@ fn output_graphml(graph: &Graph, path: &str) -> Result<()> {
         let project = node.project.as_ref().map(|s| s.as_str()).unwrap_or("");
         let assignee = node.assignee.as_ref().map(|s| s.as_str()).unwrap_or("");
         let complexity = node.complexity.as_ref().map(|s| s.as_str()).unwrap_or("");
+        let depends_on = node.depends_on.as_ref().map(|v| v.join(",")).unwrap_or_default();
+        let soft_depends_on = node.soft_depends_on.as_ref().map(|v| v.join(",")).unwrap_or_default();
+        let blocks = node.blocks.as_ref().map(|v| v.join(",")).unwrap_or_default();
+        let soft_blocks = node.soft_blocks.as_ref().map(|v| v.join(",")).unwrap_or_default();
+        let parent = node.parent.as_ref().map(|s| s.as_str()).unwrap_or("");
+        let children = node.children.as_ref().map(|v| v.join(",")).unwrap_or_default();
+        let due = node.due.as_ref().map(|s| s.as_str()).unwrap_or("");
 
         let mut node_str = format!(
             "    <node id=\"{}\">\n      <data key=\"d0\">{}</data>\n      <data key=\"d1\">{}</data>\n      <data key=\"d2\">{}</data>\n",
@@ -496,6 +522,27 @@ fn output_graphml(graph: &Graph, path: &str) -> Result<()> {
         }
         if !complexity.is_empty() {
             node_str.push_str(&format!("      <data key=\"d8\">{}</data>\n", complexity));
+        }
+        if !depends_on.is_empty() {
+            node_str.push_str(&format!("      <data key=\"d9\">{}</data>\n", depends_on));
+        }
+        if !soft_depends_on.is_empty() {
+            node_str.push_str(&format!("      <data key=\"d10\">{}</data>\n", soft_depends_on));
+        }
+        if !blocks.is_empty() {
+            node_str.push_str(&format!("      <data key=\"d11\">{}</data>\n", blocks));
+        }
+        if !soft_blocks.is_empty() {
+            node_str.push_str(&format!("      <data key=\"d12\">{}</data>\n", soft_blocks));
+        }
+        if !parent.is_empty() {
+            node_str.push_str(&format!("      <data key=\"d13\">{}</data>\n", parent));
+        }
+        if !children.is_empty() {
+            node_str.push_str(&format!("      <data key=\"d14\">{}</data>\n", children));
+        }
+        if !due.is_empty() {
+            node_str.push_str(&format!("      <data key=\"d15\">{}</data>\n", due));
         }
 
         node_str.push_str("    </node>\n");
@@ -594,11 +641,11 @@ fn build_mcp_index(files: &[FileData], data_root: &Path) -> McpIndex {
                 priority: f.priority.unwrap_or(2),
                 order: f.order,
                 parent: f.parent.clone(),
-                children: Vec::new(),    // Computed below
+                children: f.children.clone(),
                 depends_on: f.depends_on.clone(),
-                blocks: Vec::new(),      // Computed below
+                blocks: f.blocks.clone(),
                 soft_depends_on: f.soft_depends_on.clone(),
-                soft_blocks: Vec::new(), // Computed below (inverse of soft_depends_on)
+                soft_blocks: f.soft_blocks.clone(),
                 depth: f.depth,
                 leaf: f.leaf,
                 project: f.project.clone(),
@@ -629,43 +676,98 @@ fn build_mcp_index(files: &[FileData], data_root: &Path) -> McpIndex {
         }
     }
 
-    // Compute blocks (inverse of depends_on) - collect updates first
-    let mut block_updates: Vec<(String, String)> = Vec::new(); // (dep_id, blocker_id)
+    // Compute inverse relationships for completeness and symmetry
+    let mut parent_updates: Vec<(String, String)> = Vec::new(); // (child_id, parent_id)
+    let mut dep_updates: Vec<(String, String)> = Vec::new();    // (blocker_id, dep_id)
+    let mut block_updates: Vec<(String, String)> = Vec::new();  // (dep_id, blocker_id)
+    let mut soft_dep_updates: Vec<(String, String)> = Vec::new(); // (soft_blocker_id, soft_dep_id)
+    let mut soft_block_updates: Vec<(String, String)> = Vec::new(); // (soft_dep_id, soft_blocker_id)
+
     for tid in &task_ids {
         if let Some(entry) = entries.get(tid) {
+            // Children -> Parent symmetry
+            for child_id in &entry.children {
+                if entries.contains_key(child_id) {
+                    parent_updates.push((child_id.clone(), tid.clone()));
+                }
+            }
+            // Depends_on -> Blocks symmetry
             for dep_id in &entry.depends_on {
                 if entries.contains_key(dep_id) {
                     block_updates.push((dep_id.clone(), tid.clone()));
                 }
             }
-        }
-    }
-    for (dep_id, blocker_id) in block_updates {
-        if let Some(dep_entry) = entries.get_mut(&dep_id) {
-            dep_entry.blocks.push(blocker_id);
-        }
-    }
-
-    // Compute soft_blocks (inverse of soft_depends_on) - informational only, does NOT affect ready/blocked
-    let mut soft_block_updates: Vec<(String, String)> = Vec::new(); // (soft_dep_id, soft_blocker_id)
-    for tid in &task_ids {
-        if let Some(entry) = entries.get(tid) {
+            // Blocks -> Depends_on symmetry
+            for blocker_id in &entry.blocks {
+                if entries.contains_key(blocker_id) {
+                    dep_updates.push((blocker_id.clone(), tid.clone()));
+                }
+            }
+            // Soft_depends_on -> Soft_blocks symmetry
             for soft_dep_id in &entry.soft_depends_on {
                 if entries.contains_key(soft_dep_id) {
                     soft_block_updates.push((soft_dep_id.clone(), tid.clone()));
                 }
             }
-        }
-    }
-    for (soft_dep_id, soft_blocker_id) in soft_block_updates {
-        if let Some(soft_dep_entry) = entries.get_mut(&soft_dep_id) {
-            soft_dep_entry.soft_blocks.push(soft_blocker_id);
+            // Soft_blocks -> Soft_depends_on symmetry
+            for soft_blocker_id in &entry.soft_blocks {
+                if entries.contains_key(soft_blocker_id) {
+                    soft_dep_updates.push((soft_blocker_id.clone(), tid.clone()));
+                }
+            }
         }
     }
 
-    // Update leaf status based on computed children
+    // Apply updates
+    for (child_id, parent_id) in parent_updates {
+        if let Some(entry) = entries.get_mut(&child_id) {
+            entry.parent = Some(parent_id);
+        }
+    }
+    for (blocker_id, dep_id) in dep_updates {
+        if let Some(entry) = entries.get_mut(&blocker_id) {
+            entry.depends_on.push(dep_id);
+        }
+    }
+    for (dep_id, blocker_id) in block_updates {
+        if let Some(entry) = entries.get_mut(&dep_id) {
+            entry.blocks.push(blocker_id);
+        }
+    }
+    for (soft_blocker_id, soft_dep_id) in soft_dep_updates {
+        if let Some(entry) = entries.get_mut(&soft_blocker_id) {
+            entry.soft_depends_on.push(soft_dep_id);
+        }
+    }
+    for (soft_dep_id, soft_blocker_id) in soft_block_updates {
+        if let Some(entry) = entries.get_mut(&soft_dep_id) {
+            entry.soft_blocks.push(soft_blocker_id);
+        }
+    }
+
+    // Deduplicate and update leaf status
     for tid in &task_ids {
         if let Some(entry) = entries.get_mut(tid) {
+            // Deduplicate children
+            let mut children_set: HashSet<String> = HashSet::new();
+            entry.children.retain(|c| children_set.insert(c.clone()));
+
+            // Deduplicate blocks
+            let mut blocks_set: HashSet<String> = HashSet::new();
+            entry.blocks.retain(|b| blocks_set.insert(b.clone()));
+
+            // Deduplicate soft_blocks
+            let mut soft_blocks_set: HashSet<String> = HashSet::new();
+            entry.soft_blocks.retain(|b| soft_blocks_set.insert(b.clone()));
+
+            // Deduplicate depends_on
+            let mut depends_on_set: HashSet<String> = HashSet::new();
+            entry.depends_on.retain(|b| depends_on_set.insert(b.clone()));
+
+            // Deduplicate soft_depends_on
+            let mut soft_depends_on_set: HashSet<String> = HashSet::new();
+            entry.soft_depends_on.retain(|b| soft_depends_on_set.insert(b.clone()));
+
             entry.leaf = entry.children.is_empty();
         }
     }
@@ -923,9 +1025,10 @@ fn main() -> Result<()> {
             for child_ref in &f.children {
                 if let Some(target_id) = resolve_fm_ref(child_ref) {
                     if f.id != target_id {
+                        // Direction: parent (this) <- child (target)
                         local_edges.push(Edge {
-                            source: f.id.clone(),
-                            target: target_id,
+                            source: target_id,
+                            target: f.id.clone(),
                             edge_type: EdgeType::Parent,
                         });
                     }
@@ -936,10 +1039,25 @@ fn main() -> Result<()> {
             for blocks_ref in &f.blocks {
                 if let Some(target_id) = resolve_fm_ref(blocks_ref) {
                     if f.id != target_id {
+                        // Direction: blocked task (target) -> this (blocker)
                         local_edges.push(Edge {
-                            source: f.id.clone(),
-                            target: target_id,
+                            source: target_id,
+                            target: f.id.clone(),
                             edge_type: EdgeType::DependsOn,
+                        });
+                    }
+                }
+            }
+
+            // Edges from frontmatter: soft_blocks (this -> soft blocked task) - informational (inverse)
+            for soft_blocks_ref in &f.soft_blocks {
+                if let Some(target_id) = resolve_fm_ref(soft_blocks_ref) {
+                    if f.id != target_id {
+                        // Direction: soft blocked task (target) -> this (blocker)
+                        local_edges.push(Edge {
+                            source: target_id,
+                            target: f.id.clone(),
+                            edge_type: EdgeType::SoftDependsOn,
                         });
                     }
                 }
@@ -998,9 +1116,14 @@ fn main() -> Result<()> {
                 priority: f.priority,
                 parent: f.parent,
                 depends_on: if f.depends_on.is_empty() { None } else { Some(f.depends_on) },
+                soft_depends_on: if f.soft_depends_on.is_empty() { None } else { Some(f.soft_depends_on) },
+                blocks: if f.blocks.is_empty() { None } else { Some(f.blocks) },
+                soft_blocks: if f.soft_blocks.is_empty() { None } else { Some(f.soft_blocks) },
+                children: if f.children.is_empty() { None } else { Some(f.children) },
                 assignee: f.assignee,
                 complexity: f.complexity,
                 project: f.project,
+                due: f.due,
             }
         })
         .collect();
