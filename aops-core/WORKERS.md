@@ -147,8 +147,9 @@ Recommended swarm composition based on queue characteristics.
 | 6-10        | Mixed          | `-c 2 -g 2`                  |
 | 10+         | Mixed          | `-c 2 -g 2` (max reasonable) |
 
-> **Note**: Gemini free tier has strict rate limits. Workers launch with 15s stagger
-> by default (`--gemini-stagger`). If quota errors persist, reduce `-g` count.
+> **Note**: Gemini free tier has strict rate limits. Workers launched by the swarm
+> supervisor stagger Gemini requests by ~15s by default. If quota errors persist,
+> reduce `-g` count.
 
 ## Capacity Limits
 
@@ -157,7 +158,7 @@ Hard limits on concurrent workers (enforced by swarm supervisor).
 | Worker Type | Max Concurrent | Reason                              |
 | ----------- | -------------- | ----------------------------------- |
 | claude      | 2              | API rate limits, cost               |
-| gemini      | 2              | Free tier quota limits (15s stagger)|
+| gemini      | 2              | Free tier quota limits (15s stagger) |
 | jules       | 1              | Expensive, serialized work          |
 
 ---
