@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from lib.paths import get_plugin_root
+from lib.paths import get_aops_home, get_plugin_root
 
 
 class InsightsValidationError(Exception):
@@ -386,14 +386,12 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
 
 
 def get_summaries_dir() -> Path:
-    """Get summaries directory.
-
-    Returns ~/writing/sessions/summaries/ (centralized location for all session summaries).
+    """Get summaries directory (~/.aops/summaries/).
 
     Returns:
         Path to summaries directory
     """
-    summaries_dir = Path.home() / "writing" / "sessions" / "summaries"
+    summaries_dir = get_aops_home() / "summaries"
     summaries_dir.mkdir(parents=True, exist_ok=True)
     return summaries_dir
 
