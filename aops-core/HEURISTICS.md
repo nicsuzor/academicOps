@@ -166,6 +166,9 @@ Never block on TaskOutput waiting for notifications. Use polling or fire-and-for
 
 Content you didn't write in this session is presumptively intentional. Append rather than replace. Never delete without explicit instruction.
 
+**Corollaries**:
+- Files must be self-contained. Never write forward-references to conversational output (e.g., "See detailed analysis below") — persist all substantive content in the file itself. Response text is ephemeral; files are state.
+
 ## User Intent Discovery Before Implementation (P#88)
 
 Before implementing user-facing features, verify understanding of user intent, not just technical requirements.

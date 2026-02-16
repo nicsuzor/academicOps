@@ -563,7 +563,7 @@ Examples:
     args = parser.parse_args()
 
     # Default output directory
-    sessions_claude = get_sessions_dir() / "claude"
+    sessions_claude = get_sessions_dir() / "transcripts"
     sessions_claude.mkdir(parents=True, exist_ok=True)
 
     processor = SessionProcessor()
