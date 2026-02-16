@@ -1,8 +1,6 @@
 """Tests for polecat swarm functionality, including gemini_stagger feature."""
 
-import multiprocessing
 import sys
-import time
 from pathlib import Path
 from unittest.mock import Mock, call, patch
 
