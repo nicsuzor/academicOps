@@ -18,11 +18,13 @@ on:
 
 jobs:
   claude-review:
-    # Only run bot triage on new/updated PRs
+    # Only run bot triage on new/updated PRs from humans or Jules.
+    # Skip when claude-review itself pushes a fix commit (synchronize from bot actor).
     if: >-
       github.event_name == 'pull_request' &&
       (github.event.action == 'opened' || github.event.action == 'synchronize') &&
-      github.actor != 'claude[bot]'
+      github.actor != 'claude[bot]' &&
+      github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     concurrency:
       group: pr-review-${{ github.event.pull_request.number }}
