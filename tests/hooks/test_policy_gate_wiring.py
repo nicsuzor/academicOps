@@ -7,9 +7,10 @@ aops_core_dir = Path(__file__).parent.parent.parent
 if str(aops_core_dir) not in sys.path:
     sys.path.insert(0, str(aops_core_dir))
 
-from lib.gates.custom_conditions import check_custom_condition
 from hooks.schemas import HookContext
 from lib.gate_types import GateState
+from lib.gates.custom_conditions import check_custom_condition
+
 
 def test_validate_policy_condition_blocks_bare_python():
     ctx = MagicMock(spec=HookContext)
@@ -25,6 +26,7 @@ def test_validate_policy_condition_blocks_bare_python():
 
     assert result is True
     assert "Bare 'python' command detected" in state.metrics["block_reason"]
+
 
 def test_validate_policy_condition_allows_uv_run():
     ctx = MagicMock(spec=HookContext)
