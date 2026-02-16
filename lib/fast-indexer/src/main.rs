@@ -108,6 +108,8 @@ struct Node {
     #[serde(skip_serializing_if = "Option::is_none")]
     depends_on: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    soft_depends_on: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     assignee: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     complexity: Option<String>,
@@ -192,7 +194,6 @@ struct McpIndex {
 #[derive(Clone)]
 struct FileData {
     path: PathBuf,
-    content: String,
     id: String,
     label: String,
     tags: Vec<String>,
@@ -208,7 +209,6 @@ struct FileData {
     soft_depends_on: Vec<String>,
     children: Vec<String>,
     blocks: Vec<String>,
-    soft_blocks: Vec<String>,
     project: Option<String>,
     due: Option<String>,
     depth: i32,
@@ -221,7 +221,7 @@ struct FileData {
 }
 
 fn compute_id(path: &Path) -> String {
-    let path_str = path.to_string_lossy();
+    let _path_str = path.to_string_lossy();
     let path_without_ext = path.with_extension("");
     let key = path_without_ext.to_string_lossy();
     format!("{:x}", md5::compute(key.as_bytes()))
@@ -387,7 +387,6 @@ fn parse_file(path: PathBuf) -> Option<FileData> {
         // Use frontmatter id as node identifier when present, fall back to path hash
         id: task_id.clone().unwrap_or_else(|| compute_id(&path)),
         path,
-        content: String::new(), // Don't keep heavy content in memory
         label,
         tags,
         raw_links,
@@ -401,7 +400,6 @@ fn parse_file(path: PathBuf) -> Option<FileData> {
         soft_depends_on,
         children,
         blocks,
-        soft_blocks: Vec::new(),  // Computed later in build_mcp_index
         project,
         due,
         depth,
@@ -998,6 +996,7 @@ fn main() -> Result<()> {
                 priority: f.priority,
                 parent: f.parent,
                 depends_on: if f.depends_on.is_empty() { None } else { Some(f.depends_on) },
+                soft_depends_on: if f.soft_depends_on.is_empty() { None } else { Some(f.soft_depends_on) },
                 assignee: f.assignee,
                 complexity: f.complexity,
                 project: f.project,
