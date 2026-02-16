@@ -102,7 +102,7 @@ polecat run -p <project>
 polecat run -g -p <project>
 
 # Jules (asynchronous, runs on Google infrastructure)
-jules new --repo <owner>/<repo> "<task description>"
+echo "<task description>" | jules new --repo <owner>/<repo>
 ```
 
 **Jules Dispatch Notes**:

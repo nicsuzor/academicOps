@@ -391,16 +391,6 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
         # Web operations
         "WebFetch": "web_fetch",
         "WebSearch": "web_search",
-        # These are already correct for Gemini (passthrough)
-        "read_file": "read_file",
-        "write_file": "write_file",
-        "replace": "replace",
-        "glob": "glob",
-        "search_file_content": "search_file_content",
-        "run_shell_command": "run_shell_command",
-        "activate_skill": "activate_skill",
-        "web_fetch": "web_fetch",
-        "web_search": "web_search",
     }
 
     # Handle case where tools is already a string (no transformation needed for format)
