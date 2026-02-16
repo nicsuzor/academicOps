@@ -260,7 +260,7 @@ jobs:
 
             4. Always run tests after modifying code. The PR will ONLY be merged if all tests pass. If tests fail, fix the issues and push a new commit.
 
-          claude_args: '--allowed-tools "Bash(gh pr:*),Bash(git:*),Edit,Read,Write"'
+          claude_args: '--allowed-tools "Bash,Edit,Read,Write"'
 
       - name: Approve PR
         if: steps.pr-ref.outputs.ref != ''
