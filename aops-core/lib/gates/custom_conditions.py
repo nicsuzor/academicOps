@@ -112,6 +112,9 @@ def check_custom_condition(
         tool_name = ctx.tool_name
         args = ctx.tool_input
 
+        if tool_name is None or not isinstance(args, dict):
+            return False
+
         results = [
             validate_uv_python_usage(tool_name, args),
             validate_safe_git_usage(tool_name, args),
