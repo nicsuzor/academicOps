@@ -8,8 +8,8 @@ if str(aops_core_dir) not in sys.path:
     sys.path.insert(0, str(aops_core_dir))
 
 from hooks.schemas import HookContext
-from lib.gates.custom_conditions import check_custom_condition
 from lib.gate_types import GateState
+from lib.gates.custom_conditions import check_custom_condition
 
 
 def test_validate_policy_condition_blocks_bare_python():
