@@ -92,17 +92,19 @@ def validate_uv_python_usage(tool_name: str, args: dict[str, Any]) -> dict[str, 
         # Match the term as a whole word
         for match in re.finditer(rf"\b{term}\b", command):
             start = match.start()
+            end = match.end()
 
-            # Check for --version
-            if command[match.end() :].strip().startswith("--version"):
+            # Exception: version checks (--version or -V)
+            suffix = command[end:].strip()
+            if suffix.startswith(("--version", "-V")):
                 continue
 
-            # Check for 'which ' prefix
-            if command[:start].strip().endswith("which"):
+            # Exception: which/type/command -v prefix (commands that check for executable)
+            prefix = command[:start].strip()
+            if prefix.endswith(("which", "type")) or prefix.endswith("command -v"):
                 continue
 
-            # Check for 'uv run' prefix in the current command segment
-            # We look back to the start of the command or the last shell separator (&&, ||, ;, |)
+            # Find the start of the current shell segment (after &&, ||, ;, |)
             segment_start = 0
             for sep in ["&&", "||", ";", "|"]:
                 last_sep = command.rfind(sep, 0, start)
@@ -110,7 +112,19 @@ def validate_uv_python_usage(tool_name: str, args: dict[str, Any]) -> dict[str, 
                     segment_start = max(segment_start, last_sep + len(sep))
 
             segment = command[segment_start:start].strip()
-            if "uv run" not in segment:
+
+            # If 'uv run' is present in the segment, it's allowed
+            if "uv run" in segment:
+                continue
+
+            # We only block if the term is the command being executed.
+            # If the segment is empty, it's a bare command at the start of a shell segment.
+            # If the segment contains only pass-through prefixes, it's a bare execution.
+            # Otherwise, it's likely an argument (e.g., 'grep python'), which we allow.
+            pass_throughs = ["env", "sudo", "time", "nohup", "xargs", "exec"]
+            is_bare_or_prefix = not segment or any(segment == p or segment.endswith(f" {p}") for p in pass_throughs)
+
+            if is_bare_or_prefix:
                 return {
                     "continue": False,
                     "systemMessage": (
