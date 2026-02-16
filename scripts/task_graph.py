@@ -119,7 +119,7 @@ def filter_completed_smart(nodes: list[dict], edges: list[dict]) -> tuple[list[d
         (filtered_nodes, structural_ids) where structural_ids are completed nodes
         kept because they have active descendants (displayed differently).
     """
-    done_statuses = {"done", "completed"}
+    done_statuses = {"done", "completed", "cancelled"}
 
     # Build node lookup and identify completed nodes
     completed_ids = {n["id"] for n in nodes if n.get("status", "").lower() in done_statuses}
@@ -173,7 +173,7 @@ def filter_rollup(nodes: list[dict], edges: list[dict]) -> tuple[list[dict], set
         (filtered_nodes, structural_ids) where structural_ids are completed nodes
         kept because they have unfinished descendants (displayed differently).
     """
-    done_statuses = {"done", "completed"}
+    done_statuses = {"done", "completed", "cancelled"}
 
     # Build lookups
     node_by_id = {n["id"]: n for n in nodes}
