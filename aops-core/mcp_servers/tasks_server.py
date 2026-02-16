@@ -275,6 +275,86 @@ def _format_incomplete_items_error(incomplete: list[str]) -> str:
     )
 
 
+def _propagate_unblocks(
+    storage: TaskStorage, index: TaskIndex, completed_ids: list[str]
+) -> list[str]:
+    """Recursively propagate unblocks to dependent tasks.
+
+    When tasks are completed, check if any blocked tasks now have all their
+    dependencies met. If so, transition them to ACTIVE.
+
+    Args:
+        storage: TaskStorage instance
+        index: TaskIndex instance
+        completed_ids: List of task IDs that were just completed (status=DONE)
+
+    Returns:
+        List of task IDs that were unblocked
+    """
+    unblocked_ids = []
+    to_check = list(completed_ids)
+    processed = set()
+
+    # Track what we know is completed to avoid redundant storage reads
+    # Note: we only trust DONE and CANCELLED statuses
+    completed_cache = set(completed_ids)
+
+    while to_check:
+        current_id = to_check.pop(0)
+        if current_id in processed:
+            continue
+        processed.add(current_id)
+
+        # Find tasks that depend on current_id
+        # Note: index might be slightly stale but relationships (blocks) are stable
+        dependents = index.get_dependents(current_id)
+
+        for dep_entry in dependents:
+            # Skip if already unblocked in this pass
+            if dep_entry.id in unblocked_ids:
+                continue
+
+            # Load full task to check all its dependencies and current status
+            dep_task = storage.get_task(dep_entry.id)
+            if not dep_task:
+                continue
+
+            # Only transition tasks that are currently BLOCKED
+            # If it's already ACTIVE or IN_PROGRESS, no need to transition.
+            # If it's already DONE, we might need to recurse (it might have been
+            # waiting for this dependency to unblock its own dependents).
+            if dep_task.status == TaskStatus.BLOCKED:
+                # Check if all dependencies are now met
+                all_deps_met = True
+                for did in dep_task.depends_on:
+                    if did in completed_cache:
+                        continue
+
+                    d_task = storage.get_task(did)
+                    if not d_task or d_task.status not in (TaskStatus.DONE, TaskStatus.CANCELLED):
+                        all_deps_met = False
+                        break
+                    else:
+                        completed_cache.add(did)
+
+                if all_deps_met:
+                    # Transition to ACTIVE
+                    logger.info(f"Unblocking task {dep_task.id} (dependencies met)")
+                    dep_task.transition_to(TaskStatus.ACTIVE, trigger="unblock_condition_met")
+                    storage.save_task(dep_task)
+                    unblocked_ids.append(dep_task.id)
+                    # We don't need to add to to_check here because it's not DONE,
+                    # so it doesn't unblock its own dependents yet.
+
+            elif dep_task.status in (TaskStatus.DONE, TaskStatus.CANCELLED):
+                # Task is already done, but it might now unblock its dependents
+                # if current_id was its last unmet dependency.
+                completed_cache.add(dep_task.id)
+                to_check.append(dep_task.id)
+
+    return unblocked_ids
+
+
 # =============================================================================
 # CRUD OPERATIONS
 # =============================================================================
@@ -717,8 +797,17 @@ def update_task(
         # Save if anything changed
         if modified_fields:
             storage.save_task(task)
+
+            # If status changed to DONE or CANCELLED, propagate unblocks
+            if "status" in modified_fields and task.status in (
+                TaskStatus.DONE,
+                TaskStatus.CANCELLED,
+            ):
+                index = _get_index()
+                _propagate_unblocks(storage, index, [id])
+
             # Rebuild index
-            index = TaskIndex(get_data_root())
+            index = _get_index()
             index.rebuild()
 
         logger.info(f"update_task: {id} - modified {modified_fields}")
@@ -844,11 +933,16 @@ def complete_task(id: str, force: bool = False) -> dict[str, Any]:
         task.complete()
         storage.save_task(task)
 
+        # Propagate unblocks to dependent tasks
+        index = _get_index()
+        unblocked = _propagate_unblocks(storage, index, [id])
+
         # Rebuild index
-        index = TaskIndex(get_data_root())
         index.rebuild()
 
-        logger.info(f"complete_task: {id}")
+        logger.info(
+            f"complete_task: {id}" + (f" (unblocked {len(unblocked)} tasks)" if unblocked else "")
+        )
 
         return {
             "success": True,
@@ -1479,12 +1573,19 @@ def complete_tasks(ids: list[str]) -> dict[str, Any]:
                     }
                 )
 
-        # Rebuild index once at the end
+        # Propagate unblocks and rebuild index once at the end
         if completed:
-            index = TaskIndex(get_data_root())
+            completed_ids = [t["id"] for t in completed]
+            index = _get_index()
+            unblocked = _propagate_unblocks(storage, index, completed_ids)
             index.rebuild()
 
-        logger.info(f"complete_tasks: {len(completed)} completed, {len(failures)} failed")
+            logger.info(
+                f"complete_tasks: {len(completed)} completed, "
+                f"{len(unblocked)} unblocked, {len(failures)} failed"
+            )
+        else:
+            logger.info(f"complete_tasks: 0 completed, {len(failures)} failed")
 
         return {
             "success": len(failures) == 0,
