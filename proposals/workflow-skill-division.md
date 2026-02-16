@@ -72,7 +72,7 @@ Workflows will be refactored to remove "how-to" content, delegating instead to t
 | `strategy.md` | Facilitation techniques, questioning framework | `skills/strategy/` |
 
 ### 2. Consolidating into Core Workflows
-To simplify routing and reduce cognitive load, we propose consolidating the current 20+ workflows into **5 Core Workflows**. These workflows act as high-level procedural containers that delegate specific "doing" logic to thick, specialized skills.
+To simplify routing and reduce cognitive load, we propose consolidating the current set of 18 non-base workflows (excluding the 10 base workflows) into **5 Core Workflows**. These workflows act as high-level procedural containers that delegate specific "doing" logic to thick, specialized skills.
 
 | Workflow | Scope | Composes Skills | Replaces |
 | :--- | :--- | :--- | :--- |
