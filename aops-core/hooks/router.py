@@ -310,8 +310,9 @@ class HookRouter:
         if hook_event in ("SubagentStart", "SubagentStop"):
             is_subagent = False
 
-        # 8. Persist session data on start or subagent start
-        if hook_event in ("SessionStart", "SubagentStart"):
+        # 8. Persist session data on session start only (not subagent start, as multiple
+        # subagents may run simultaneously and would clobber each other's entries)
+        if hook_event == "SessionStart":
             persist_session_data(
                 {"session_id": session_id, "agent_id": agent_id, "subagent_type": subagent_type}
             )
