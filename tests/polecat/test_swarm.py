@@ -1,12 +1,19 @@
 """Tests for polecat swarm functionality, including gemini_stagger feature."""
 
 import multiprocessing
+import sys
 import time
-from unittest.mock import Mock, patch, call
+from pathlib import Path
+from unittest.mock import Mock, call, patch
 
 import pytest
 
-from polecat.swarm import run_swarm, DEFAULT_GEMINI_STAGGER_S, STOP_EVENT
+# Add polecat to path
+TESTS_DIR = Path(__file__).parent.resolve()
+REPO_ROOT = TESTS_DIR.parent.parent
+sys.path.insert(0, str(REPO_ROOT / "polecat"))
+
+from swarm import DEFAULT_GEMINI_STAGGER_S, STOP_EVENT, run_swarm
 
 
 @pytest.fixture(autouse=True)
@@ -20,8 +27,8 @@ def reset_stop_event():
 class TestGeminiStagger:
     """Tests for Gemini worker spawn stagger functionality."""
 
-    @patch("polecat.swarm.multiprocessing.Process")
-    @patch("polecat.swarm.time.sleep")
+    @patch("swarm.multiprocessing.Process")
+    @patch("swarm.time.sleep")
     def test_gemini_stagger_default_delay(self, mock_sleep, mock_process):
         """Test that Gemini workers spawn with default 15s stagger delay."""
         # Arrange
@@ -47,8 +54,8 @@ class TestGeminiStagger:
             call(DEFAULT_GEMINI_STAGGER_S),
         ])
 
-    @patch("polecat.swarm.multiprocessing.Process")
-    @patch("polecat.swarm.time.sleep")
+    @patch("swarm.multiprocessing.Process")
+    @patch("swarm.time.sleep")
     def test_gemini_stagger_custom_delay(self, mock_sleep, mock_process):
         """Test that custom gemini_stagger value is respected."""
         # Arrange
@@ -71,8 +78,8 @@ class TestGeminiStagger:
         assert mock_sleep.call_count == 1
         mock_sleep.assert_called_once_with(custom_stagger)
 
-    @patch("polecat.swarm.multiprocessing.Process")
-    @patch("polecat.swarm.time.sleep")
+    @patch("swarm.multiprocessing.Process")
+    @patch("swarm.time.sleep")
     def test_gemini_stagger_zero_disables_delay(self, mock_sleep, mock_process):
         """Test that gemini_stagger=0 disables stagger delay."""
         # Arrange
@@ -93,8 +100,8 @@ class TestGeminiStagger:
         # Assert: No sleep calls should occur
         assert mock_sleep.call_count == 0
 
-    @patch("polecat.swarm.multiprocessing.Process")
-    @patch("polecat.swarm.time.sleep")
+    @patch("swarm.multiprocessing.Process")
+    @patch("swarm.time.sleep")
     def test_gemini_stagger_bypassed_in_dry_run(self, mock_sleep, mock_process):
         """Test that stagger delay is NOT applied in dry_run mode (bypassed)."""
         # Arrange
@@ -117,8 +124,8 @@ class TestGeminiStagger:
         # so dry_run bypasses the stagger
         assert mock_sleep.call_count == 0
 
-    @patch("polecat.swarm.multiprocessing.Process")
-    @patch("polecat.swarm.time.sleep")
+    @patch("swarm.multiprocessing.Process")
+    @patch("swarm.time.sleep")
     def test_single_gemini_worker_no_stagger(self, mock_sleep, mock_process):
         """Test that a single Gemini worker spawns without any delay."""
         # Arrange
@@ -139,8 +146,8 @@ class TestGeminiStagger:
         # Assert: No stagger needed for single worker
         assert mock_sleep.call_count == 0
 
-    @patch("polecat.swarm.multiprocessing.Process")
-    @patch("polecat.swarm.time.sleep")
+    @patch("swarm.multiprocessing.Process")
+    @patch("swarm.time.sleep")
     def test_claude_workers_unaffected_by_gemini_stagger(self, mock_sleep, mock_process):
         """Test that Claude workers spawn without stagger delay."""
         # Arrange
@@ -161,8 +168,8 @@ class TestGeminiStagger:
         # Assert: Claude workers should spawn without any stagger
         assert mock_sleep.call_count == 0
 
-    @patch("polecat.swarm.multiprocessing.Process")
-    @patch("polecat.swarm.time.sleep")
+    @patch("swarm.multiprocessing.Process")
+    @patch("swarm.time.sleep")
     def test_mixed_workers_only_gemini_staggers(self, mock_sleep, mock_process):
         """Test that only Gemini workers get stagger delay in mixed swarm."""
         # Arrange
@@ -185,9 +192,9 @@ class TestGeminiStagger:
         assert mock_sleep.call_count == 1
         mock_sleep.assert_called_once_with(10.0)
 
-    @patch("polecat.swarm.multiprocessing.Process")
-    @patch("polecat.swarm.time.sleep")
-    @patch("polecat.swarm.STOP_EVENT")
+    @patch("swarm.multiprocessing.Process")
+    @patch("swarm.time.sleep")
+    @patch("swarm.STOP_EVENT")
     def test_stop_event_during_stagger_prevents_spawn(self, mock_stop_event, mock_sleep, mock_process):
         """Test that STOP_EVENT during stagger prevents further Gemini worker spawns."""
         # Arrange
@@ -223,11 +230,11 @@ class TestGeminiStagger:
 class TestSwarmCLI:
     """Tests for CLI argument parsing and parameter passing."""
 
-    @patch("polecat.swarm.run_swarm")
+    @patch("swarm.run_swarm")
     @patch("sys.argv", ["swarm.py", "--claude=1", "--gemini=2", "--gemini-stagger=20"])
     def test_cli_gemini_stagger_flag(self, mock_run_swarm):
         """Test that --gemini-stagger CLI flag is parsed and passed correctly."""
-        from polecat.swarm import main
+        from swarm import main
 
         # Act
         main()
@@ -243,11 +250,11 @@ class TestSwarmCLI:
             20.0,  # gemini_stagger
         )
 
-    @patch("polecat.swarm.run_swarm")
+    @patch("swarm.run_swarm")
     @patch("sys.argv", ["swarm.py", "--claude=1", "--gemini=2"])
     def test_cli_gemini_stagger_default(self, mock_run_swarm):
         """Test that CLI defaults gemini_stagger to None when not specified."""
-        from polecat.swarm import main
+        from swarm import main
 
         # Act
         main()
@@ -267,7 +274,7 @@ class TestSwarmCLI:
 class TestSwarmBasicFunctionality:
     """Tests for basic swarm functionality."""
 
-    @patch("polecat.swarm.multiprocessing.Process")
+    @patch("swarm.multiprocessing.Process")
     def test_no_workers_exits_immediately(self, mock_process):
         """Test that run_swarm exits immediately if no workers specified."""
         # Act
@@ -283,7 +290,7 @@ class TestSwarmBasicFunctionality:
         # Assert: No processes should be created
         assert mock_process.call_count == 0
 
-    @patch("polecat.swarm.multiprocessing.Process")
+    @patch("swarm.multiprocessing.Process")
     def test_correct_worker_count(self, mock_process):
         """Test that correct number of worker processes are spawned."""
         # Arrange
