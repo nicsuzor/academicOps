@@ -66,7 +66,7 @@ TYPE_SHAPES = {
 
 EDGE_STYLES = {
     "parent": {"color": "#0d6efd", "style": "solid", "penwidth": "3"},  # blue - hierarchy
-    "depends_on": {"color": "#dc3545", "style": "bold", "penwidth": "2"},  # red - blocking
+    "depends_on": {"color": "#d63384", "style": "bold", "penwidth": "2"},  # red - blocking (matches Rust)
     "soft_depends_on": {"color": "#6c757d", "style": "dashed", "penwidth": "1.5"},  # gray - advisory
     "link": {"color": "#adb5bd", "style": "dotted", "penwidth": "1"},  # light gray - generic
     "wikilink": {"color": "#adb5bd", "style": "dotted", "penwidth": "1"},
