@@ -15,23 +15,34 @@ triggers:
 
 # Swarm Supervisor - Full Lifecycle Orchestration
 
-Orchestrate the complete non-interactive agent workflow: decompose → review → approve → execute → merge → capture.
+Orchestrate the complete non-interactive agent workflow: decompose → review → approve → dispatch → PR review → capture.
 
 ## Design Philosophy
 
-**Agents decide, code triggers.** This skill provides prompt instructions for agent-driven orchestration. The supervisor agent makes all substantive decisions (decomposition strategy, reviewer selection, worker dispatch). Code is limited to:
+**Dispatch and walk away.** The supervisor's job ends at dispatch. Once tasks
+are sent to workers (polecat, Jules, or any other), the next touchpoint is
+when pull requests arrive on GitHub. Workers are autonomous — they claim tasks,
+do the work, push branches, and create PRs. Everything between dispatch and
+PR is the worker's problem.
 
-- **Hooks**: Triggers that start agent work (shell scripts, cron)
+- **Supervisor decides**: Task curation, worker selection, batch composition
+- **Workers execute**: Autonomously, with no supervisor monitoring
+- **GitHub handles**: PR review pipeline, merge gates, CI checks
+- **GitHub Actions closes the loop**: PR merge → task marked done
+
+Code is limited to:
+
 - **MCP tools**: Task state management (create, update, complete)
-- **CLI**: Worker spawning via `polecat swarm`
+- **CLI**: Worker spawning via `polecat swarm` or `jules new`
+- **GitHub Actions**: Automated PR review and task completion on merge
 
 ## Lifecycle Phases
 
 ```
-┌─────────────┐    ┌──────────┐    ┌─────────┐    ┌──────────┐    ┌───────┐    ┌─────────┐
-│  DECOMPOSE  │───►│  REVIEW  │───►│ APPROVE │───►│ EXECUTE  │───►│ MERGE │───►│ CAPTURE │
-│  (agent)    │    │ (agents) │    │ (human) │    │ (workers)│    │(human)│    │ (agent) │
-└─────────────┘    └──────────┘    └─────────┘    └──────────┘    └───────┘    └─────────┘
+┌─────────────┐    ┌──────────┐    ┌─────────┐    ┌──────────┐    ┌───────────┐    ┌─────────┐
+│  DECOMPOSE  │───►│  REVIEW  │───►│ APPROVE │───►│ DISPATCH │───►│ PR REVIEW │───►│ CAPTURE │
+│  (agent)    │    │ (agents) │    │ (human) │    │(sup+fire)│    │(GH Action)│    │ (agent) │
+└─────────────┘    └──────────┘    └─────────┘    └──────────┘    └───────────┘    └─────────┘
 ```
 
 ### Phase 1: Decompose & Phase 2: Multi-Agent Review
@@ -54,28 +65,46 @@ Task waits for human decision. Surfaced via `/daily` skill in daily note.
 | Backburner      | → dormant     | Preserved but inactive          |
 | Cancel          | → cancelled   | Reason required                 |
 
-### Phase 4: Worker Execution
+### Phase 4: Dispatch (fire and forget)
 
-Supervisor dispatches workers based on task requirements. This phase transforms approved decomposition into parallel execution.
+Supervisor selects workers, dispatches tasks, and **walks away**. No active
+monitoring — the supervisor's job ends here.
 
-> See [[instructions/worker-execution]] for worker types, selection protocols, dispatching, and failure handling.
+> See [[instructions/worker-execution]] for worker types, selection protocols,
+> and dispatch commands.
+
+**Dispatch flow:**
+
+1. Curate batch: select tasks, set complexity, confirm assignees
+2. Mark non-approved tasks as `waiting` to prevent accidental claiming
+3. Dispatch: `polecat swarm` for polecat workers, `jules new` for Jules
+4. Done. Next touchpoint is when PRs arrive.
+
+**Known limitations (from dogfooding sessions):**
+
+- `polecat swarm` claims ANY ready task in the project, not just the curated
+  batch. Mark non-batch tasks as `waiting` to prevent claiming. See `aops-2e13ecb4`.
+- Auto-finish overrides manual task completion when a task was already fixed
+  by another worker. See `aops-fdc9d0e2`.
 
 ### Phase 5: PR Review & Merge
 
-Human gate. Supervisor surfaces merge-ready tasks in daily note.
+**GitHub-native.** PRs arrive from workers (polecat branches, Jules PRs).
+The `pr-review-pipeline.yml` GitHub Action handles automated review. Human
+merges via GitHub UI or auto-merge for clean PRs.
 
-```markdown
-## Ready to Merge
+The supervisor does NOT actively monitor for merge-ready PRs. PRs surface
+naturally through GitHub's notification system and the PR review pipeline.
 
-| PR          | Task         | Tests | Reviews     | Summary           |
-| ----------- | ------------ | ----- | ----------- | ----------------- |
-| [#123](url) | [[task-abc]] | Pass  | 3/3 APPROVE | Added auth module |
-```
+**Task completion on merge**: When a PR merges, a GitHub Action parses the
+task ID from the branch name (`polecat/aops-XXXX`) and marks the task done.
+This closes the loop without supervisor involvement.
 
 **Merge via**:
 
-- `gh pr merge --squash --delete-branch`
-- Or GitHub Actions auto-merge for clean PRs
+- GitHub UI: review, approve, merge
+- `gh pr merge --squash --delete-branch` from CLI
+- Auto-merge via GitHub Actions for PRs that pass all checks
 
 ### Phase 6: Knowledge Capture
 
@@ -87,25 +116,22 @@ Post-merge, supervisor extracts learnings.
 
 ## Lifecycle Trigger Hooks
 
-External triggers that start lifecycle phases. Shell scripts check
-preconditions (is queue non-empty?) and start supervisor sessions.
-All dispatch decisions are made by this supervisor agent, not by scripts.
+External triggers that start lifecycle phases. The supervisor is invoked
+for dispatch decisions; everything after dispatch is handled by workers
+and GitHub Actions.
 
-> **Configuration**: See [[LIFECYCLE-HOOKS.md]] for notification settings
-> and cron schedules. See [[WORKERS.md]] for runner types, capabilities,
+> **Configuration**: See [[WORKERS.md]] for runner types, capabilities,
 > and sizing defaults — the supervisor reads these at dispatch time.
 
-| Hook          | Trigger        | What it does                            | Script                                   |
-| ------------- | -------------- | --------------------------------------- | ---------------------------------------- |
-| `queue-drain` | cron / manual  | Checks queue, starts supervisor session | `scripts/hooks/lifecycle/queue-drain.sh` |
-| `post-finish` | polecat finish | Sends completion notification           | `scripts/hooks/lifecycle/post-finish.sh` |
-| `stale-check` | cron / manual  | Resets tasks stuck beyond threshold     | `scripts/hooks/lifecycle/stale-check.sh` |
-| `merge-ready` | cron / manual  | Lists merge-ready PRs, notifies         | `scripts/hooks/lifecycle/merge-ready.sh` |
+| Hook           | Trigger          | What it does                            |
+| -------------- | ---------------- | --------------------------------------- |
+| `queue-drain`  | cron / manual    | Checks queue, starts supervisor session |
+| `stale-check`  | cron / manual    | Resets tasks stuck beyond threshold     |
+| `pr-merge`     | GitHub Action    | PR merged → mark task done              |
 
-**Agent-driven dispatch**: When `queue-drain.sh` starts a supervisor session,
-the supervisor (this skill) reads WORKERS.md, inspects the task queue via
-MCP, and decides which runners to invoke and how many. Any runner that
-claims tasks via `claim_next_task()` and reports completion status works.
+**Agent-driven dispatch**: The supervisor reads WORKERS.md, inspects the
+task queue via MCP, and decides which runners to invoke and how many.
+Any runner that creates PRs from task work is compatible.
 
 ---
 
