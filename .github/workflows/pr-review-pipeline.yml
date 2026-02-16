@@ -252,19 +252,19 @@ jobs:
 
           claude_args: '--allowed-tools "Bash(gh pr:*),Bash(git:*),Edit,Read,Write"'
 
-      - name: Merge PR
+      - name: Approve PR
         if: steps.pr-ref.outputs.ref != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
 
-          # Only merge if Claude's last comment signals LGTM
+          # Only approve if Claude's last comment signals LGTM
           LAST_COMMENT=$(gh pr view "$PR_NUM" --json comments --jq '.comments[-1].body')
           if echo "$LAST_COMMENT" | grep -q "LGTM:"; then
-            echo "Claude confirmed LGTM - merging PR #$PR_NUM"
-            gh pr merge "$PR_NUM" --squash --delete-branch
+            echo "Claude confirmed LGTM - approving PR #$PR_NUM"
+            gh pr review "$PR_NUM" --approve
           else
-            echo "Claude did not confirm LGTM - skipping merge"
+            echo "Claude did not confirm LGTM - skipping approval"
             echo "Last comment excerpt: $(echo "$LAST_COMMENT" | head -1)"
           fi
