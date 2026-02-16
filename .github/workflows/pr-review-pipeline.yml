@@ -17,9 +17,10 @@ on:
         type: number
 
 jobs:
-  claude-review:
-    # Only run bot triage on new/updated PRs from humans or Jules.
-    # Skip when claude-review itself pushes a fix commit (synchronize from bot actor).
+  custodiet-and-qa:
+    # Run scope/compliance and acceptance checks on new/updated PRs.
+    # Runs first — doesn't need bot reviews, and gives bot reviewers time to post
+    # before claude-review (bot triage) runs after this job completes.
     if: >-
       github.event_name == 'pull_request' &&
       (github.event.action == 'opened' || github.event.action == 'synchronize') &&
@@ -29,61 +30,6 @@ jobs:
     concurrency:
       group: pr-review-${{ github.event.pull_request.number }}
       cancel-in-progress: true
-    permissions:
-      contents: write
-      pull-requests: write
-      id-token: write
-      issues: write
-      actions: read
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.ref }}
-
-      - name: Claude reviews bot comments
-        uses: anthropics/claude-code-action@v1
-        with:
-          allowed_bots: "claude[bot],jules[bot]"
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          prompt: |
-            You are reviewing PR #${{ github.event.pull_request.number }}.
-
-            ## Task
-
-            1. Fetch all review comments on this PR using `gh pr view ${{ github.event.pull_request.number }} --comments` and `gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews`.
-            2. Identify comments from bot reviewers (Copilot, Gemini Code Assist).
-            3. Triage each bot comment into one of:
-               - **Genuine bug**: A real defect that would cause incorrect behavior. FIX IT.
-               - **Valid improvement**: A meaningful code quality improvement. FIX IT.
-               - **False positive**: The bot misunderstood the code. RESPOND with a brief explanation.
-               - **Scope creep**: A valid suggestion but outside this PR's scope. ACKNOWLEDGE as future work.
-            4. Make code fixes for genuine bugs and valid improvements. Commit and push changes.
-            5. Reply to each bot comment thread with your assessment and action taken.
-            6. Post a summary comment on the PR:
-               ```
-               ## Bot Review Triage
-
-               | Reviewer | Comment | Category | Action |
-               |----------|---------|----------|--------|
-               | ... | ... | ... | ... |
-
-               **Changes made**: [count] fixes committed
-               **Deferred**: [count] items flagged as future work
-               ```
-
-            ## Rules
-            - Do NOT address human reviewer comments — those are handled in the merge workflow.
-            - Do NOT merge the PR. Your job is to address bot feedback only.
-            - If no bot reviews exist, post a comment noting this and exit.
-            - Run tests after making changes to verify nothing is broken.
-
-          claude_args: '--allowed-tools "Bash(gh:*),Bash(git:*),Bash(npm:*),Bash(python:*),Bash(pytest:*),Bash(uv:*),Edit,Read,Write"'
-
-  custodiet-and-qa:
-    needs: claude-review
-    # Only runs after claude-review, which already gates on pull_request opened/synchronize
-    runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
@@ -145,6 +91,62 @@ jobs:
             Use `gh pr view ${{ github.event.pull_request.number }}`, `gh pr diff ${{ github.event.pull_request.number }}`, and `gh pr checks ${{ github.event.pull_request.number }}` to gather information.
 
           claude_args: '--allowed-tools "Bash(gh:*),Read"'
+
+  claude-review:
+    needs: custodiet-and-qa
+    # Bot triage runs AFTER custodiet-and-qa (~3 min), giving Gemini Code Assist
+    # and Copilot time to post their reviews before we triage them.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+      issues: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Claude reviews bot comments
+        uses: anthropics/claude-code-action@v1
+        with:
+          allowed_bots: "claude[bot],jules[bot]"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            You are reviewing PR #${{ github.event.pull_request.number }}.
+
+            ## Task
+
+            1. Fetch all review comments on this PR using `gh pr view ${{ github.event.pull_request.number }} --comments` and `gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews`.
+            2. Identify comments from bot reviewers (Copilot, Gemini Code Assist).
+            3. Triage each bot comment into one of:
+               - **Genuine bug**: A real defect that would cause incorrect behavior. FIX IT.
+               - **Valid improvement**: A meaningful code quality improvement. FIX IT.
+               - **False positive**: The bot misunderstood the code. RESPOND with a brief explanation.
+               - **Scope creep**: A valid suggestion but outside this PR's scope. ACKNOWLEDGE as future work.
+            4. Make code fixes for genuine bugs and valid improvements. Commit and push changes.
+            5. Reply to each bot comment thread with your assessment and action taken.
+            6. Post a summary comment on the PR:
+               ```
+               ## Bot Review Triage
+
+               | Reviewer | Comment | Category | Action |
+               |----------|---------|----------|--------|
+               | ... | ... | ... | ... |
+
+               **Changes made**: [count] fixes committed
+               **Deferred**: [count] items flagged as future work
+               ```
+
+            ## Rules
+            - Do NOT address human reviewer comments — those are handled in the merge workflow.
+            - Do NOT merge the PR. Your job is to address bot feedback only.
+            - If no bot reviews exist, post a comment noting this and exit.
+            - Run tests after making changes to verify nothing is broken.
+
+          claude_args: '--allowed-tools "Bash(gh:*),Bash(git:*),Bash(npm:*),Bash(python:*),Bash(pytest:*),Bash(uv:*),Edit,Read,Write"'
 
   claude-lgtm-merge:
     # Run for: manual dispatch, PR assigned to claude, human-approved reviews, or LGTM comments from nicsuzor.
