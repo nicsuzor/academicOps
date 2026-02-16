@@ -122,7 +122,9 @@ def validate_uv_python_usage(tool_name: str, args: dict[str, Any]) -> dict[str, 
             # If the segment contains only pass-through prefixes, it's a bare execution.
             # Otherwise, it's likely an argument (e.g., 'grep python'), which we allow.
             pass_throughs = ["env", "sudo", "time", "nohup", "xargs", "exec"]
-            is_bare_or_prefix = not segment or any(segment == p or segment.endswith(f" {p}") for p in pass_throughs)
+            is_bare_or_prefix = not segment or any(
+                segment == p or segment.endswith(f" {p}") for p in pass_throughs
+            )
 
             if is_bare_or_prefix:
                 return {
