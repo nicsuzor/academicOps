@@ -6,7 +6,7 @@ aops_core_dir = Path(__file__).parent.parent.parent
 if str(aops_core_dir) not in sys.path:
     sys.path.insert(0, str(aops_core_dir))
 
-from hooks.policy_enforcer import (
+from lib.policy_enforcer import (
     validate_minimal_documentation,
     validate_protect_artifacts,
     validate_safe_git_usage,

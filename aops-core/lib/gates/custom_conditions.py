@@ -101,4 +101,28 @@ def check_custom_condition(
         except (ImportError, Exception):
             return True  # Assume missing on error
 
+    if name == "validate_policy":
+        from lib.policy_enforcer import (
+            validate_minimal_documentation,
+            validate_protect_artifacts,
+            validate_safe_git_usage,
+            validate_uv_python_usage,
+        )
+
+        tool_name = ctx.tool_name
+        args = ctx.tool_input
+
+        results = [
+            validate_uv_python_usage(tool_name, args),
+            validate_safe_git_usage(tool_name, args),
+            validate_minimal_documentation(tool_name, args),
+            validate_protect_artifacts(tool_name, args),
+        ]
+
+        for result in results:
+            if result and result.get("continue") is False:
+                state.metrics["block_reason"] = result.get("systemMessage", "Policy violation")
+                return True  # Condition met (it means we should block)
+        return False
+
     return False

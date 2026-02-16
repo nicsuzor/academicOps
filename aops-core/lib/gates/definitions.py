@@ -290,4 +290,21 @@ GATE_CONFIGS = [
             ),
         ],
     ),
+    # --- Policy Enforcer ---
+    GateConfig(
+        name="policy",
+        description="Enforces framework policies.",
+        initial_status=GateStatus.OPEN,
+        triggers=[],
+        policies=[
+            GatePolicy(
+                condition=GateCondition(
+                    hook_event="PreToolUse",
+                    custom_check="validate_policy",
+                ),
+                verdict="block",
+                message_template="{block_reason}",
+            ),
+        ],
+    ),
 ]
