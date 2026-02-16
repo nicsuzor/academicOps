@@ -27,6 +27,15 @@ BASELINE_COMPLIANCE_RATE = 3.2  # percent
 WARN_THRESHOLD = 1.0  # Warn if compliance drops below this
 
 
+# Add aops-core to path for hook imports
+AOPS_CORE = Path(__file__).parent.parent.parent / "aops-core"
+if str(AOPS_CORE) not in sys.path:
+    sys.path.insert(0, str(AOPS_CORE))
+
+from hooks.schemas import HookContext
+from hooks.unified_logger import log_hook_event
+
+
 @pytest.mark.metrics
 @pytest.mark.slow
 def test_router_compliance_measurement():
@@ -96,6 +105,14 @@ def test_hook_logs_exist():
     """Verify hook logging infrastructure is working."""
     # Hook logs go to ~/.claude/projects/<project>/*-hooks.jsonl
     projects_dir = Path.home() / ".claude" / "projects"
+
+    # Ensure at least one log exists by creating it via the logger
+    # This makes the test robust against clean environments or test ordering
+    ctx = HookContext(
+        session_id="test-log-session",
+        hook_event="TestEvent",
+    )
+    log_hook_event(ctx)
 
     assert projects_dir.exists(), f"Claude projects directory missing: {projects_dir}"
 

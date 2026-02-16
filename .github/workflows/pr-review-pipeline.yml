@@ -21,7 +21,8 @@ jobs:
     # Only run bot triage on new/updated PRs
     if: >-
       github.event_name == 'pull_request' &&
-      (github.event.action == 'opened' || github.event.action == 'synchronize')
+      (github.event.action == 'opened' || github.event.action == 'synchronize') &&
+      github.actor != 'claude[bot]'
     runs-on: ubuntu-latest
     concurrency:
       group: pr-review-${{ github.event.pull_request.number }}
@@ -116,6 +117,7 @@ jobs:
       - name: Run Custodiet Agent
         uses: anthropics/claude-code-action@v1
         with:
+          allowed_bots: "claude[bot]"
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
             ${{ steps.custodiet-prompt.outputs.prompt }}
@@ -130,6 +132,7 @@ jobs:
       - name: Run QA Agent
         uses: anthropics/claude-code-action@v1
         with:
+          allowed_bots: "claude[bot]"
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
             ${{ steps.qa-prompt.outputs.prompt }}
