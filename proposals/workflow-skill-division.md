@@ -80,7 +80,7 @@ To simplify routing and reduce cognitive load, we propose consolidating the curr
 | **`discovery`** | For uncertain goals and strategic planning. | `planning`, `strategy`, `analyst` | `decompose`, `strategy`, `collaborate` |
 | **`development`** | For technical implementation, debugging, and fixing. | `python-dev`, `design`, `tdd` | `feature-dev`, `debugging`, `tdd-cycle` |
 | **`verification`** | For quality assurance, peer review, and criticism. | `qa`, `critic`, `peer-review` | `qa`, `critic`, `peer-review`, `constraint-check` |
-| **`operations`** | For repetitive administrative and batch tasks. | `email`, `batch`, `admin` | `email-triage`, `batch-processing`, `reference-letter` |
+| **`operations`** | For repetitive administrative and batch tasks. | `email`, `batch`, `admin` | `email-capture`, `email-triage`, `email-reply`, `batch-processing`, `reference-letter` |
 
 *Note: `simple-question` remains as a lightweight routing fast-track for pure information requests.*
 
