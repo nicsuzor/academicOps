@@ -96,15 +96,43 @@ merges via GitHub UI or auto-merge for clean PRs.
 The supervisor does NOT actively monitor for merge-ready PRs. PRs surface
 naturally through GitHub's notification system and the PR review pipeline.
 
+**PR review pipeline** (`pr-review-pipeline.yml`) has three jobs:
+
+1. **custodiet-and-qa** — scope/compliance + acceptance checks. Runs first on
+   PR open/synchronize, giving bot reviewers (Gemini, Copilot) time to post.
+2. **claude-review** — bot comment triage. Runs after custodiet-and-qa (~3 min
+   delay). Triages bot reviewer comments as genuine bug / valid improvement /
+   false positive / scope creep, and pushes fixes for actionable items.
+3. **claude-lgtm-merge** — human-triggered merge agent. Fires on human LGTM
+   comment, PR approval, or workflow_dispatch. Addresses all outstanding review
+   comments, runs lint/tests, and posts final status. Has full Bash access.
+
+**Pipeline limitations:**
+
+- PRs that modify workflow files (`.github/workflows/`) cannot get pipeline
+  review due to OIDC validation (workflow content must match default branch).
+  These PRs need manual review and admin merge.
+- Bot reviewers take 2–5 min to post. The pipeline ordering (custodiet first)
+  provides enough delay for most, but Copilot may occasionally post after
+  triage runs.
+
+**Merge flow:**
+
+- Auto-merge is enabled. Once the merge agent approves and CI passes, GitHub
+  merges automatically.
+- Human LGTM comment (e.g., "lgtm", "merge", "@claude merge") triggers the
+  merge agent.
+- Admin bypass: `gh pr merge <PR> --squash --admin --delete-branch` for PRs
+  that can't get pipeline approval (workflow PRs, urgent fixes).
+
 **Task completion on merge**: When a PR merges, a GitHub Action parses the
 task ID from the branch name (`polecat/aops-XXXX`) and marks the task done.
 This closes the loop without supervisor involvement.
 
-**Merge via**:
-
-- GitHub UI: review, approve, merge
-- `gh pr merge --squash --delete-branch` from CLI
-- Auto-merge via GitHub Actions for PRs that pass all checks
+**Jules PR workflow**: Jules sessions show "Completed" when coding is done,
+but require human approval on the Jules web UI before branches are pushed
+and PRs are created. No CLI approval mechanism exists — check session status
+with `jules remote list --session`.
 
 ### Phase 6: Knowledge Capture
 
