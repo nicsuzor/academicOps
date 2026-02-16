@@ -227,7 +227,7 @@ def run_swarm(
             print("🛑 Drain requested; stopping further Gemini worker spawns.")
             break
         if i > 0 and stagger > 0 and not dry_run:
-            print(f"⏳ Waiting {stagger:.0f}s before spawning next Gemini worker...")
+            print(f"⏳ Waiting {stagger}s before spawning next Gemini worker...")
             time.sleep(stagger)
             if STOP_EVENT.is_set():
                 print("🛑 Drain requested during stagger; stopping further Gemini worker spawns.")
