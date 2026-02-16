@@ -10,7 +10,9 @@ from lib.session_state import SessionState
 
 
 @pytest.fixture
-def router():
+def router(monkeypatch):
+    # Mock get_session_data to avoid reading shared PID session map during xdist tests
+    monkeypatch.setattr("hooks.router.get_session_data", lambda: {})
     return HookRouter()
 
 
