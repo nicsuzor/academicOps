@@ -105,7 +105,8 @@ naturally through GitHub's notification system and the PR review pipeline.
    false positive / scope creep, and pushes fixes for actionable items.
 3. **claude-lgtm-merge** — human-triggered merge agent. Fires on human LGTM
    comment, PR approval, or workflow_dispatch. Addresses all outstanding review
-   comments, runs lint/tests, and posts final status. Has full Bash access.
+   comments, runs lint/tests, and posts final status. Has full Bash access,
+   with permissions to run any command in the runner.
 
 **Pipeline limitations:**
 
