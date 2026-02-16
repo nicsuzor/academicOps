@@ -372,12 +372,46 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
 
     original_tools = frontmatter.get("tools", [])
 
+    # Tool name mapping: Claude Code -> Gemini CLI
+    # (inverse of the Claude mapping below)
+    GEMINI_TOOL_NAME_MAP = {
+        # File operations (Claude Code -> Gemini)
+        "Read": "read_file",
+        "Write": "write_file",
+        "Edit": "replace",
+        "Glob": "glob",
+        "Grep": "search_file_content",
+        "grep": "search_file_content",  # lowercase variant
+        # Shell execution
+        "Bash": "run_shell_command",
+        "bash": "run_shell_command",  # lowercase variant
+        # Skills/Agents
+        "Skill": "activate_skill",
+        "Task": "activate_skill",
+        # Web operations
+        "WebFetch": "web_fetch",
+        "WebSearch": "web_search",
+        # These are already correct for Gemini (passthrough)
+        "read_file": "read_file",
+        "write_file": "write_file",
+        "replace": "replace",
+        "glob": "glob",
+        "search_file_content": "search_file_content",
+        "run_shell_command": "run_shell_command",
+        "activate_skill": "activate_skill",
+        "web_fetch": "web_fetch",
+        "web_search": "web_search",
+    }
+
     # Handle case where tools is already a string (no transformation needed for format)
     if isinstance(original_tools, str):
         if platform == "gemini":
-            # Strip mcp__ prefix from comma-separated string tools
+            # Strip mcp__ prefix and remap tool names for Gemini
             tools_list = [t.strip() for t in original_tools.split(",")]
-            filtered = [t[5:] if t.startswith("mcp__") else t for t in tools_list]
+            filtered = []
+            for t in tools_list:
+                tool_name = t[5:] if t.startswith("mcp__") else t
+                filtered.append(GEMINI_TOOL_NAME_MAP.get(tool_name, tool_name))
             frontmatter["tools"] = filtered  # Convert to list for Gemini schema
             # Remove 'color' field - not supported by Gemini CLI
             frontmatter.pop("color", None)
@@ -388,8 +422,14 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
         return content
 
     if platform == "gemini":
-        # Strip mcp__ prefix from tool names for Gemini
-        filtered_tools = [t[5:] if t.startswith("mcp__") else t for t in original_tools]
+        # Strip mcp__ prefix and remap tool names for Gemini
+        filtered_tools = []
+        for t in original_tools:
+            # Strip mcp__ prefix if present
+            tool_name = t[5:] if t.startswith("mcp__") else t
+            # Remap to Gemini tool name if mapping exists, otherwise keep as-is
+            filtered_tools.append(GEMINI_TOOL_NAME_MAP.get(tool_name, tool_name))
+
         frontmatter["tools"] = filtered_tools
         # Remove 'color' field - not supported by Gemini CLI
         frontmatter.pop("color", None)
