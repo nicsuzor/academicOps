@@ -232,3 +232,9 @@ Tasks requiring human judgment default to `assignee: null`. Only mechanical work
 - Default to `polecat`. A task only needs `assignee: null` when it literally cannot proceed without a human decision RIGHT NOW — not because design decisions exist somewhere in the task.
 - Workers decompose tasks and escalate at actual decision forks (via `status: blocked` or AskUserQuestion). Pre-routing to human based on "this involves design choices" is premature.
 - Assign to `nic` only when explicitly requested by user (`/q nic: ...`).
+
+## Execute Deletion Instructions Literally (P#103)
+
+When user gives explicit deletion, cleanup, or removal instructions, execute them literally. Do not rationalize keeping, preserving, or retaining things the user asked to remove.
+
+**Derivation**: P#5 (Do One Thing) — execute what's asked, not what you think is better. Agent "helpfulness" priors can override explicit user directives when the agent believes keeping something is more useful. The user's instruction is the ground truth.
