@@ -222,9 +222,16 @@ def run_swarm(
     # Spawn Gemini workers with stagger delay to avoid quota exhaustion
     stagger = gemini_stagger if gemini_stagger is not None else DEFAULT_GEMINI_STAGGER_S
     for i in range(gemini_count):
+        # Honor drain/stop requests: do not spawn additional Gemini workers once STOP_EVENT is set.
+        if STOP_EVENT.is_set():
+            print("🛑 Drain requested; stopping further Gemini worker spawns.")
+            break
         if i > 0 and stagger > 0 and not dry_run:
             print(f"⏳ Waiting {stagger:.0f}s before spawning next Gemini worker...")
             time.sleep(stagger)
+            if STOP_EVENT.is_set():
+                print("🛑 Drain requested during stagger; stopping further Gemini worker spawns.")
+                break
         cpu = available_cpus[cpu_idx % len(available_cpus)]
         p = multiprocessing.Process(
             target=worker_loop, args=("gemini", cpu, project, caller, dry_run, home_dir)
