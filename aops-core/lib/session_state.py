@@ -226,4 +226,3 @@ class SessionState(BaseModel):
             gate.last_close_turn = self.global_turn_count
             gate.ops_since_close = 0
         self.gates[name] = gate
-

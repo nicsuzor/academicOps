@@ -150,9 +150,7 @@ class TestFieldExtraction:
             with patch("hooks.router.persist_session_data"):
                 ctx = router.normalize_input(raw.copy())
 
-            assert ctx.agent_id == "my-agent-id", (
-                f"Failed for agent_id variant: {field_name}"
-            )
+            assert ctx.agent_id == "my-agent-id", f"Failed for agent_id variant: {field_name}"
 
 
 class TestRawInputRemainder:
@@ -184,11 +182,24 @@ class TestRawInputRemainder:
             ctx = router.normalize_input(raw)
 
         processed_fields = [
-            "hook_event_name", "session_id", "transcript_path", "trace_id",
-            "tool_name", "tool_input", "tool_result", "toolResult",
-            "tool_response", "subagent_result", "agent_id", "agentId",
-            "slug", "cwd", "is_sidechain", "isSidechain",
-            "subagent_type", "agent_type",
+            "hook_event_name",
+            "session_id",
+            "transcript_path",
+            "trace_id",
+            "tool_name",
+            "tool_input",
+            "tool_result",
+            "toolResult",
+            "tool_response",
+            "subagent_result",
+            "agent_id",
+            "agentId",
+            "slug",
+            "cwd",
+            "is_sidechain",
+            "isSidechain",
+            "subagent_type",
+            "agent_type",
         ]
         for field in processed_fields:
             assert field not in ctx.raw_input, (
