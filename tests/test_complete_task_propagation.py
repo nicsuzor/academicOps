@@ -21,7 +21,7 @@ sys.path.insert(0, str(FRAMEWORK_ROOT))
 sys.path.insert(0, str(AOPS_CORE_ROOT))
 
 from lib.task_index import TaskIndex
-from lib.task_model import TaskStatus, TaskType
+from lib.task_model import TaskStatus
 from lib.task_storage import TaskStorage
 
 
