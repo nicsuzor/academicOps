@@ -98,9 +98,7 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         filename="prompt-hydrator-context.md",
         required_vars=(
             "session_context",
-            "axioms_content",
-            "heuristics_content",
-            "skills_content",
+            "glossary",
         ),
         optional_vars=(
             "prompt",
@@ -113,8 +111,6 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
             "relevant_files",
             "workflows_index",
             "skills_index",
-            "axioms",
-            "heuristics",
             "task_state",
             "scripts_index",
             "session_id",
