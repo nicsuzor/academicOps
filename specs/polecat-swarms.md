@@ -57,7 +57,7 @@ flowchart LR
 
 ### Conflict Avoidance
 
-- **Atomic Claiming**: Workers use `claim_next_task()` API for atomic task claiming. This prevents duplicate work across concurrent workers.
+- **Atomic Claiming**: Workers use Polecat CLI's `claim_next_task()` (in `polecat/manager.py`) for atomic task claiming. This prevents duplicate work across concurrent workers.
 - **Isolation**: Each worker has a dedicated git worktree/branch.
 - **Rebasing**: Workers must rebase on `main` before `polecat finish` to ensure their branch is current, reducing merge conflicts in the Refinery.
 
@@ -128,7 +128,7 @@ The Engineer acts as a quality gate when tasks don't meet auto-merge criteria.
 
 ### How do swarm workers claim tasks without conflicts?
 
-Workers use the `claim_next_task()` MCP API which atomically finds the highest-priority ready task and claims it (sets `status=in_progress`, `assignee=caller`). File locking prevents race conditions between concurrent workers.
+Workers use the Polecat CLI's `claim_next_task()` function (in `polecat/manager.py`) which atomically finds the highest-priority ready task and claims it (sets `status=in_progress`, `assignee=caller`). File locking prevents race conditions between concurrent workers.
 
 ### Rollback Strategy
 
