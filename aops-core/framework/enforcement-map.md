@@ -46,7 +46,7 @@ tags: [framework, enforcement, moc]
 | [[maintain-relational-integrity]]           | Relational Integrity            | wikilink conventions                                                                         | Pre-commit (planned)   |           |
 | [[nothing-is-someone-elses-responsibility]] | Nothing Is Someone Else's       | AXIOMS.md                                                                                    | SessionStart           |           |
 | [[acceptance-criteria-own-success]]         | Acceptance Criteria Own Success | /qa skill enforcement                                                                        | Stop                   |           |
-| [[plan-first-development]]                  | Plan-First Development          | EnterPlanMode tool                                                                           | Before coding          |           |
+| [[plan-first-development]]                  | Plan-First Development          | EnterPlanMode tool, critic gate (P#41 corollary: "approved" = critic PROCEED)                | Before coding          |           |
 | [[research-data-immutable]]                 | Research Data Immutable         | settings.json denies records/**                                                              | PreToolUse             |           |
 | [[just-in-time-context]]                    | Just-In-Time Context            | sessionstart_load_axioms.py                                                                  | SessionStart           |           |
 | [[minimal-instructions]]                    | Minimal Instructions            | policy_enforcer.py 200-line limit                                                            | PreToolUse             | Hard Gate |

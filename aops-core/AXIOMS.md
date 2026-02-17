@@ -130,6 +130,10 @@ Only user-defined acceptance criteria determine whether work is complete. Agents
 
 No coding without an approved plan.
 
+**Corollaries**:
+
+- "Approved" means critic-reviewed with a PROCEED verdict (or REVISE feedback addressed). Human approval occurs at PR time, not plan filing (see P#100 in HEURISTICS.md).
+
 ## Research Data Is Immutable (P#42)
 
 Source datasets, ground truth labels, records/, and any files serving as evidence for research claims are SACRED. NEVER modify, convert, reformat, or "fix" them.

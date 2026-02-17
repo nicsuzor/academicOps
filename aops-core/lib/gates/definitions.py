@@ -92,7 +92,7 @@ GATE_CONFIGS = [
             ),
         ),
         triggers=[
-            # Custodiet check -> Reset
+            # Custodiet check -> Reset and track reviewed turn
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(SubagentStart|SubagentStop)$",
@@ -100,6 +100,7 @@ GATE_CONFIGS = [
                 ),
                 transition=GateTransition(
                     reset_ops_counter=True,
+                    custom_action="track_custodiet_checkpoint",
                     system_message_template="🛡️ Compliance verified.",
                     context_injection_template="🛡️ Compliance verified.",
                 ),
