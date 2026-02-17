@@ -279,17 +279,6 @@ GATE_CONFIGS = [
                     system_message_template="📤 Task bound. Handover required before exit.",
                 ),
             ),
-            # Task bound: claim_next_task (always implies in_progress) -> Close
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="PostToolUse",
-                    tool_name_pattern="claim_next_task",
-                ),
-                transition=GateTransition(
-                    target_status=GateStatus.CLOSED,
-                    system_message_template="📤 Task claimed. Handover required before exit.",
-                ),
-            ),
             # /handover skill completes -> Open
             GateTrigger(
                 condition=GateCondition(

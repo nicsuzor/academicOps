@@ -31,7 +31,6 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "mcp__plugin_aops-core_task_manager__update_task",
         "mcp__plugin_aops-core_task_manager__complete_task",
         "mcp__plugin_aops-core_task_manager__decompose_task",
-        "mcp__plugin_aops-core_task_manager__claim_next_task",
         "mcp__plugin_aops-core_task_manager__rebuild_index",
         "mcp__plugin_aops-core_task_manager__list_tasks",
         "create_task",

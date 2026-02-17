@@ -682,7 +682,6 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         # Agent directory paths (may not exist in all configurations)
         ".agent/PATHS.md",
         # MCP tool references (conceptual links to tool documentation)
-        "mcp__plugin_aops-core_task_manager__claim_next_task",
         "mcp__plugin_aops-core_task_manager__create_task",
         "mcp__plugin_aops-core_task_manager__update_task",
         "mcp__plugin_aops-core_task_manager__list_tasks",
