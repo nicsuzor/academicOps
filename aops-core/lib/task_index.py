@@ -37,13 +37,14 @@ Usage:
 
 from __future__ import annotations
 
-import json
-import logging
-import shutil
-import subprocess
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
+import json
+import logging
 from pathlib import Path
+import shutil
+import subprocess
 from typing import Any
 
 from lib.paths import get_data_root
@@ -472,10 +473,10 @@ class TaskIndex:
             List of all descendant entries
         """
         descendants = []
-        to_visit = [task_id]
+        to_visit = deque([task_id])
 
         while to_visit:
-            current_id = to_visit.pop(0)
+            current_id = to_visit.popleft()
             entry = self._tasks.get(current_id)
             if not entry:
                 continue

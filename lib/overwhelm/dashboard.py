@@ -24,7 +24,7 @@ aops_core = aops_root / "aops-core"
 sys.path.insert(0, str(aops_core))
 
 
-from collections import defaultdict
+from collections import defaultdict, deque
 
 import networkx as nx
 from lib.path_reconstructor import EventType, reconstruct_path
@@ -3380,177 +3380,42 @@ def calculate_graph_health(graph: dict) -> dict:
     5. Connected components (orphan detection)
     6. Strategic reachability (% of tasks reaching a goal)
     """
-    from collections import defaultdict, deque
-
     nodes = graph.get("nodes", [])
     edges = graph.get("edges", [])
 
-    # Build adjacency lists
-    children = defaultdict(list)  # parent -> [children]
-    parents = defaultdict(list)  # child -> [parents]
+    children, parents, node_map = _build_graph_structures(nodes, edges)
 
-    node_map = {n["id"]: n for n in nodes}
-
-    for e in edges:
-        src, tgt = e.get("source"), e.get("target")
-        if src and tgt:
-            children[src].append(tgt)
-            parents[tgt].append(src)
-
-    # Identify goals (root nodes)
+    # Identify goals (root nodes) and tasks
     goals = [n["id"] for n in nodes if n.get("node_type") == "goal"]
     tasks = [n["id"] for n in nodes if n.get("node_type") == "task"]
 
-    # 1. Branching factor (average out-degree for non-leaf nodes)
-    non_leaf_degrees = [len(children[n["id"]]) for n in nodes if children[n["id"]]]
-    avg_branching = sum(non_leaf_degrees) / len(non_leaf_degrees) if non_leaf_degrees else 0
-    max_branching = max(non_leaf_degrees) if non_leaf_degrees else 0
-
-    # 2. Level width distribution (BFS from goals)
-    level_widths = []
-    visited = set()
-    frontier = set(goals)
-
-    while frontier:
-        level_widths.append(len(frontier))
-        visited.update(frontier)
-        next_frontier = set()
-        for node_id in frontier:
-            for child in children.get(node_id, []):
-                if child not in visited:
-                    next_frontier.add(child)
-        frontier = next_frontier
-
-    # Clumping indicator: max level width vs average
-    avg_level_width = sum(level_widths) / len(level_widths) if level_widths else 0
-    max_level_width = max(level_widths) if level_widths else 0
-    clumping_ratio = max_level_width / avg_level_width if avg_level_width > 0 else 0
-
-    # 3. Dependency chain length (longest path from any goal)
-    def longest_path_from(start_id: str, memo: dict, path: set) -> int:
-        if start_id in memo:
-            return memo[start_id]
-        # Cycle detection
-        if start_id in path:
-            return 0
-
-        if not children.get(start_id):
-            memo[start_id] = 0
-            return 0
-
-        path.add(start_id)
-        try:
-            max_child = max(longest_path_from(c, memo, path) for c in children[start_id])
-            memo[start_id] = 1 + max_child
-            return memo[start_id]
-        finally:
-            path.remove(start_id)
-
-    memo = {}
-    max_chain = max((longest_path_from(g, memo, set()) for g in goals), default=0)
-    avg_chain = sum(memo.values()) / len(memo) if memo else 0
-
-    # 4. Priority inheritance violations
-    violations = []
-    for node_id, child_ids in children.items():
-        parent_node = node_map.get(node_id, {})
-        parent_priority = parent_node.get("priority")
-        if parent_priority is None:
-            continue
-
-        for child_id in child_ids:
-            child_node = node_map.get(child_id, {})
-            child_priority = child_node.get("priority")
-            if child_priority is not None and child_priority > parent_priority:
-                # Lower number = higher priority, so child > parent means violation
-                violations.append(
-                    {
-                        "parent": parent_node.get("label", node_id)[:40],
-                        "parent_priority": parent_priority,
-                        "child": child_node.get("label", child_id)[:40],
-                        "child_priority": child_priority,
-                    }
-                )
-
-    # 5. Connected components / Strategic reachability
-    # Find nodes reachable from goals (going down the tree)
-    reachable_from_goals = set()
-    to_visit = deque(goals)
-    while to_visit:
-        current = to_visit.popleft()
-        if current in reachable_from_goals:
-            continue
-        reachable_from_goals.add(current)
-        for child in children.get(current, []):
-            to_visit.append(child)
-
-    # Orphans: nodes not reachable from any goal
-    all_node_ids = set(n["id"] for n in nodes)
-    orphans = all_node_ids - reachable_from_goals
-    orphan_tasks = [
-        node_map[o].get("label", o)[:50]
-        for o in orphans
-        if node_map.get(o, {}).get("node_type") == "task"
-    ]
-
-    strategic_reachability = (
-        len(reachable_from_goals) / len(all_node_ids) * 100 if all_node_ids else 100
+    # Calculate metrics using helper functions
+    branching_metrics = _calculate_branching_metrics(nodes, children)
+    level_metrics = _calculate_level_metrics(goals, children)
+    chain_metrics = _calculate_chain_metrics(goals, children)
+    priority_metrics = _calculate_priority_metrics(children, node_map)
+    connectivity_metrics = _calculate_connectivity_metrics(
+        nodes, goals, children, parents, node_map
     )
 
-    # 6. Count disconnected components
-    def find_components():
-        visited = set()
-        components = 0
-        for node_id in all_node_ids:
-            if node_id in visited:
-                continue
-            # BFS to find all connected nodes (undirected)
-            components += 1
-            queue = deque([node_id])
-            while queue:
-                current = queue.popleft()
-                if current in visited:
-                    continue
-                visited.add(current)
-                # Add neighbors (both directions)
-                for child in children.get(current, []):
-                    if child not in visited:
-                        queue.append(child)
-                for parent in parents.get(current, []):
-                    if parent not in visited:
-                        queue.append(parent)
-        return components
-
-    num_components = find_components()
-
-    return {
+    # Combine all metrics into the final health report
+    result = {
         "total_nodes": len(nodes),
         "total_edges": len(edges),
         "goals": len(goals),
         "tasks": len(tasks),
-        # Sequencing metrics
-        "avg_branching_factor": round(avg_branching, 2),
-        "max_branching_factor": max_branching,
-        "branching_healthy": max_branching <= 10,
-        "max_chain_length": max_chain,
-        "avg_chain_length": round(avg_chain, 2),
-        "depth_levels": len(level_widths),
-        # Clumping metrics
-        "level_widths": level_widths[:10],  # First 10 levels
-        "clumping_ratio": round(clumping_ratio, 2),
-        "clumping_healthy": clumping_ratio < 3,
-        # Priority inheritance
-        "priority_violations": len(violations),
-        "priority_violation_examples": violations[:5],
-        "priority_healthy": len(violations) == 0,
-        # Connectivity
-        "connected_components": num_components,
-        "components_healthy": num_components == 1,
-        "strategic_reachability": round(strategic_reachability, 1),
-        "reachability_healthy": strategic_reachability >= 95,
-        "orphan_count": len(orphan_tasks),
-        "orphan_examples": orphan_tasks[:5],
     }
+
+    # Merge in calculated metrics
+    result.update(branching_metrics)
+    result.update(chain_metrics)
+    level_metrics["level_widths"] = level_metrics["level_widths"][:10]  # Truncate for summary
+    result.update(level_metrics)
+
+    result.update(priority_metrics)
+    result.update(connectivity_metrics)
+
+    return result
 
 
 @st.cache_resource(ttl=60)
@@ -5287,3 +5152,176 @@ current_time = time.time()
 if current_time - st.session_state.last_refresh >= 300:
     st.session_state.last_refresh = current_time
     st.rerun()
+
+
+def _build_graph_structures(nodes: list[dict], edges: list[dict]):
+    """Build adjacency lists and node map from graph data."""
+    children = defaultdict(list)
+    parents = defaultdict(list)
+    node_map = {n["id"]: n for n in nodes}
+
+    for e in edges:
+        src, tgt = e.get("source"), e.get("target")
+        if src and tgt:
+            children[src].append(tgt)
+            parents[tgt].append(src)
+
+    return children, parents, node_map
+
+
+def _calculate_branching_metrics(nodes: list[dict], children: dict[str, list]) -> dict:
+    """Calculate branching factor metrics."""
+    non_leaf_degrees = [len(children[n["id"]]) for n in nodes if children[n["id"]]]
+    avg_branching = sum(non_leaf_degrees) / len(non_leaf_degrees) if non_leaf_degrees else 0
+    max_branching = max(non_leaf_degrees) if non_leaf_degrees else 0
+    return {
+        "avg_branching_factor": round(avg_branching, 2),
+        "max_branching_factor": max_branching,
+        "branching_healthy": max_branching <= 10,
+    }
+
+
+def _calculate_level_metrics(goals: list[str], children: dict[str, list]) -> dict:
+    """Calculate level width and clumping metrics."""
+    level_widths = []
+    visited = set()
+    frontier = set(goals)
+
+    while frontier:
+        level_widths.append(len(frontier))
+        visited.update(frontier)
+        next_frontier = set()
+        for node_id in frontier:
+            for child in children.get(node_id, []):
+                if child not in visited:
+                    next_frontier.add(child)
+        frontier = next_frontier
+
+    avg_level_width = sum(level_widths) / len(level_widths) if level_widths else 0
+    max_level_width = max(level_widths) if level_widths else 0
+    clumping_ratio = max_level_width / avg_level_width if avg_level_width > 0 else 0
+
+    return {
+        "level_widths": level_widths,
+        "depth_levels": len(level_widths),
+        "clumping_ratio": round(clumping_ratio, 2),
+        "clumping_healthy": clumping_ratio < 3,
+    }
+
+
+def _calculate_chain_metrics(goals: list[str], children: dict[str, list]) -> dict:
+    """Calculate dependency chain length metrics."""
+
+    def longest_path_from(start_id: str, memo: dict, path: set) -> int:
+        if start_id in memo:
+            return memo[start_id]
+        if start_id in path:
+            return 0
+        if not children.get(start_id):
+            memo[start_id] = 0
+            return 0
+        path.add(start_id)
+        try:
+            max_child = max(longest_path_from(c, memo, path) for c in children[start_id])
+            memo[start_id] = 1 + max_child
+            return memo[start_id]
+        finally:
+            path.remove(start_id)
+
+    memo = {}
+    max_chain = max((longest_path_from(g, memo, set()) for g in goals), default=0)
+    avg_chain = sum(memo.values()) / len(memo) if memo else 0
+    return {
+        "max_chain_length": max_chain,
+        "avg_chain_length": round(avg_chain, 2),
+    }
+
+
+def _calculate_priority_metrics(children: dict[str, list], node_map: dict) -> dict:
+    """Calculate priority inheritance violation metrics."""
+    violations = []
+    for node_id, child_ids in children.items():
+        parent_node = node_map.get(node_id, {})
+        parent_priority = parent_node.get("priority")
+        if parent_priority is None:
+            continue
+
+        for child_id in child_ids:
+            child_node = node_map.get(child_id, {})
+            child_priority = child_node.get("priority")
+            if child_priority is not None and child_priority > parent_priority:
+                violations.append(
+                    {
+                        "parent": parent_node.get("label", node_id)[:40],
+                        "parent_priority": parent_priority,
+                        "child": child_node.get("label", child_id)[:40],
+                        "child_priority": child_priority,
+                    }
+                )
+    return {
+        "priority_violations": len(violations),
+        "priority_violation_examples": violations[:5],
+        "priority_healthy": len(violations) == 0,
+    }
+
+
+def _calculate_connectivity_metrics(
+    nodes: list[dict],
+    goals: list[str],
+    children: dict[str, list],
+    parents: dict[str, list],
+    node_map: dict,
+) -> dict:
+    """Calculate strategic reachability and connectivity metrics."""
+    reachable_from_goals = set()
+    to_visit = deque(goals)
+    while to_visit:
+        current = to_visit.popleft()
+        if current in reachable_from_goals:
+            continue
+        reachable_from_goals.add(current)
+        for child in children.get(current, []):
+            to_visit.append(child)
+
+    all_node_ids = set(n["id"] for n in nodes)
+    orphans = all_node_ids - reachable_from_goals
+    orphan_tasks = [
+        node_map[o].get("label", o)[:50]
+        for o in orphans
+        if node_map.get(o, {}).get("node_type") == "task"
+    ]
+
+    strategic_reachability = (
+        len(reachable_from_goals) / len(all_node_ids) * 100 if all_node_ids else 100
+    )
+
+    def find_components():
+        visited = set()
+        components = 0
+        for node_id in all_node_ids:
+            if node_id in visited:
+                continue
+            components += 1
+            queue = deque([node_id])
+            while queue:
+                current = queue.popleft()
+                if current in visited:
+                    continue
+                visited.add(current)
+                for child in children.get(current, []):
+                    if child not in visited:
+                        queue.append(child)
+                for parent in parents.get(current, []):
+                    if parent not in visited:
+                        queue.append(parent)
+        return components
+
+    num_components = find_components()
+    return {
+        "connected_components": num_components,
+        "components_healthy": num_components == 1,
+        "strategic_reachability": round(strategic_reachability, 1),
+        "reachability_healthy": strategic_reachability >= 95,
+        "orphan_count": len(orphan_tasks),
+        "orphan_examples": orphan_tasks[:5],
+    }
