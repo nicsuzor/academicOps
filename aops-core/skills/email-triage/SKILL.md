@@ -112,6 +112,12 @@ emails = mcp__outlook__messages_search(
 | **FYI**  | Useful information, no action needed   | Read and archive    |
 | **Skip** | Spam, irrelevant, auto-generated noise | Archive immediately |
 
+**Classification guardrails:**
+
+- Personal invitations requesting participation → classify as **Task** (not FYI/Optional)
+- Domain mismatches (e.g., medical grants for non-medical projects) → **Skip** or FYI
+- Routine newsletters/receipts/automated alerts → usually **Skip**; archive after logging
+
 **Reply-waiting signals** (ALWAYS Task, never FYI):
 
 - "following up", "checking in", "any update", "wanted to touch base"
@@ -179,6 +185,56 @@ mcp__plugin_aops-core_task_manager__update_task(
     body=f"\nAll {total_count} emails moved to {folder_name} folder."
 )
 ```
+
+## Interactive Supervised Mode
+
+When running in interactive/supervised mode (human-in-the-loop), apply these additional guardrails:
+
+### Classification Workflow
+
+1. **Classify first**: Present the full batch classification (Task/FYI/Skip) to the user for review before taking any action
+2. **Noise first**: Archive Skip items first as a quick win before processing Task items
+
+### Scheduling and Coordination
+
+3. **Never propose dates**: When scheduling is required, use `AskUserQuestion` to present options — never assume dates or availability
+4. **Multi-party coordination**: Before drafting coordination emails, ask "who else needs to be contacted?"
+
+### Response Drafting
+
+5. **Long threads (>2 messages)**: Summarise the thread state to the user before drafting a reply
+6. **Non-responders**: When someone hasn't replied to a previous email, use a more tentative, warmer tone — not transactional
+7. **Draft vs send**: Always confirm whether the user wants to save as draft or send
+
+### Deferred Items
+
+8. **Create task for deferred work**: Any actionable email that won't be handled immediately MUST get a task — never archive an actionable email without creating a task first
+
+## Drafting Email Responses
+
+When drafting responses, follow these requirements:
+
+### Style Guide Prerequisite
+
+**Before drafting ANY response**, load the user's email style guide from memory:
+
+```python
+mcp__plugin_aops-core_memory__retrieve_memory(query="email style guide")
+```
+
+If no style guide is found, use these defaults:
+- Sign-off: "Best" or "Cheers" (never "Best regards" or "Kind regards")
+- Tone: Warm, direct, collegial — like talking to a respected peer over coffee
+- Structure: Brief paragraphs, personal judgment language ("my intuition is...", "I'm happy to...")
+- Avoid: Legal brief structure, numbered lists, formal headings, "I submit that"
+- Default to brevity — if it feels like a memo, it's too formal
+
+### Drafting Guardrails
+
+- For threads with >2 messages, summarise the thread state before drafting
+- When someone hasn't replied to a previous email, use a more tentative, warmer tone
+- For scheduling/coordination, present options — never assume dates or availability
+- If email requires action but NOT a reply to sender, do not suggest a response
 
 ## Batch Processing (Large Volumes)
 
