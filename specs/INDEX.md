@@ -24,6 +24,7 @@ Each spec includes a **"Giving Effect"** section near the top that links to impl
 
 ## Workflow Specs
 
+- [[specs/pr-process.md]]: PR review pipeline — stages, agents, and merge flow.
 - [[specs/collaborate-workflow.md]]: Interactive collaboration workflow.
 - [[specs/decision-queue-spec.md]]: Batch decision processing.
 - [[specs/audit-protocol.md]]: Framework audit procedures.
