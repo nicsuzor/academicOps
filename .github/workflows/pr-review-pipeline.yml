@@ -432,11 +432,15 @@ jobs:
           REVIEW_IDS=$(gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews \
             --jq '[.[] | select(.user.login == "claude[bot]" and .state == "CHANGES_REQUESTED")] | .[].id')
 
-          for REVIEW_ID in $REVIEW_IDS; do
-            echo "Dismissing review $REVIEW_ID from claude[bot]"
-            gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews/${REVIEW_ID}/dismissals \
-              -X PUT -f message="Superseded: All review comments addressed and LGTM confirmed."
-          done
+          if [ -n "$REVIEW_IDS" ]; then
+            for REVIEW_ID in $REVIEW_IDS; do
+              echo "Dismissing review $REVIEW_ID from claude[bot]"
+              gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews/${REVIEW_ID}/dismissals \
+                -X PUT -f message="Superseded: All review comments addressed and LGTM confirmed."
+            done
+          else
+            echo "No CHANGES_REQUESTED reviews from claude[bot] to dismiss"
+          fi
 
       - name: Approve PR
         if: steps.pr-ref.outputs.ref != '' && steps.lgtm-status.outputs.lgtm == 'true'
