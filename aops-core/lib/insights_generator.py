@@ -91,6 +91,9 @@ def extract_recent_context(session_id: str, max_turns: int = 20) -> str:
     Returns:
         Recent conversation as markdown string, or empty string if unavailable
     """
+    if not session_id or not session_id.strip():
+        return ""
+
     # 1. Determine session file path
     session_path = None
 
@@ -101,10 +104,10 @@ def extract_recent_context(session_id: str, max_turns: int = 20) -> str:
     else:
         # Search for the session by ID or short hash
         short_hash = extract_short_hash(session_id)
+        input_lower = session_id.lower()
         sessions = find_sessions()
         for s in sessions:
             sid_lower = s.session_id.lower()
-            input_lower = session_id.lower()
             # Match by:
             # 1. Exact ID
             # 2. Input is a prefix of the session ID (common UX for hashes)
@@ -129,8 +132,8 @@ def extract_recent_context(session_id: str, max_turns: int = 20) -> str:
 
         # Join turns with double newlines for markdown readability
         return "\n\n".join(conversation)
-    except Exception:
-        # Fail gracefully
+    except Exception as e:
+        print(f"⚠️  Warning: Failed to extract context for session '{session_id}': {e}")
         return ""
 
 
