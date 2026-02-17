@@ -2,7 +2,7 @@
 name: email-triage
 category: instruction
 description: Email triage workflow with mandatory archive receipt logging to task body
-allowed-tools: Read,Glob,Grep,Edit,Write,TodoWrite,AskUserQuestion,mcp__outlook__messages_list_recent,mcp__outlook__messages_get,mcp__outlook__messages_move,mcp__outlook__messages_search,mcp__plugin_aops-core_task_manager__update_task,mcp__plugin_aops-core_task_manager__create_task
+allowed-tools: Read,Glob,Grep,Edit,Write,TodoWrite,AskUserQuestion,mcp__outlook__messages_list_recent,mcp__outlook__messages_get,mcp__outlook__messages_move,mcp__outlook__messages_search,mcp__plugin_aops-core_task_manager__update_task,mcp__plugin_aops-core_task_manager__create_task,mcp__memory__retrieve_memory
 version: 1.0.0
 permalink: skills-email-triage
 ---
@@ -114,7 +114,7 @@ emails = mcp__outlook__messages_search(
 
 **Classification guardrails:**
 
-- Personal invitations requesting participation → classify as **Task** (not FYI/Optional)
+- Personal invitations requesting participation → classify as **Task** (not FYI)
 - Domain mismatches (e.g., medical grants for non-medical projects) → **Skip** or FYI
 - Routine newsletters/receipts/automated alerts → usually **Skip**; archive after logging
 
@@ -188,27 +188,27 @@ mcp__plugin_aops-core_task_manager__update_task(
 
 ## Interactive Supervised Mode
 
-When running in interactive/supervised mode (human-in-the-loop), apply these additional guardrails:
+Interactive Supervised Mode is an extension of the standard 6-step workflow for runs where a human is actively supervising (human-in-the-loop). **All of Steps 1–6 still apply**, including the mandatory user checkpoint in Step 4; the rules below are additional guardrails that change *how* you execute those steps when the user is available for real-time review.
 
 ### Classification Workflow
 
-1. **Classify first**: Present the full batch classification (Task/FYI/Skip) to the user for review before taking any action
-2. **Noise first**: Archive Skip items first as a quick win before processing Task items
+1. **Classify first (refines Step 2 + Step 4)**: Before taking any action on emails, complete the full batch classification (Task/FYI/Skip) and present it to the user for review and confirmation. This user review happens at the Step 4 checkpoint, before any archive or move operations.
+2. **Noise first (ordering within Steps 3–5)**: After user confirmation of the classification, archive Skip (noise) items first as a quick win, then proceed to process Task and FYI items according to the main workflow.
 
 ### Scheduling and Coordination
 
-3. **Never propose dates**: When scheduling is required, use `AskUserQuestion` to present options — never assume dates or availability
-4. **Multi-party coordination**: Before drafting coordination emails, ask "who else needs to be contacted?"
+1. **Never propose dates**: When scheduling is required, use `AskUserQuestion` to present options — never assume dates or availability
+2. **Multi-party coordination**: Before drafting coordination emails, ask "who else needs to be contacted?"
 
 ### Response Drafting
 
-5. **Long threads (>2 messages)**: Summarise the thread state to the user before drafting a reply
-6. **Non-responders**: When someone hasn't replied to a previous email, use a more tentative, warmer tone — not transactional
-7. **Draft vs send**: Always confirm whether the user wants to save as draft or send
+1. **Long threads (>2 messages)**: Summarise the thread state to the user before drafting a reply
+2. **Non-responders**: When someone hasn't replied to a previous email, use a more tentative, warmer tone — not transactional
+3. **Draft vs send**: Always confirm whether the user wants to save as draft or send
 
 ### Deferred Items
 
-8. **Create task for deferred work**: Any actionable email that won't be handled immediately MUST get a task — never archive an actionable email without creating a task first
+1. **Create task for deferred work**: Any actionable email that won't be handled immediately MUST get a task — never archive an actionable email without creating a task first
 
 ## Drafting Email Responses
 
@@ -219,7 +219,7 @@ When drafting responses, follow these requirements:
 **Before drafting ANY response**, load the user's email style guide from memory:
 
 ```python
-mcp__plugin_aops-core_memory__retrieve_memory(query="email style guide")
+mcp__memory__retrieve_memory(query="email style guide")
 ```
 
 If no style guide is found, use these defaults:
@@ -231,9 +231,7 @@ If no style guide is found, use these defaults:
 
 ### Drafting Guardrails
 
-- For threads with >2 messages, summarise the thread state before drafting
-- When someone hasn't replied to a previous email, use a more tentative, warmer tone
-- For scheduling/coordination, present options — never assume dates or availability
+- Apply the Interactive Supervised Mode guardrails above (long threads, non-responder tone, scheduling, draft vs send)
 - If email requires action but NOT a reply to sender, do not suggest a response
 
 ## Batch Processing (Large Volumes)
