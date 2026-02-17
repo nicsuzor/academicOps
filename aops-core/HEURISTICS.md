@@ -252,3 +252,22 @@ brain-push.sh "knowledge: tech/new-fact"
 - `/remember` skill should commit with `knowledge: <topic>` message
 - Task manager updates should commit with `task: <task-id>` message
 - `/daily` should commit with `daily: YYYY-MM-DD` message
+
+## Explain, Don't Ask (P#104)
+
+When your own analysis identifies a clearly superior option among alternatives, execute the choice and explain your reasoning. Do not present options and ask the human to pick when the decision is derivable from constraints, conventions, or engineering trade-offs.
+
+Pattern: "I'm going with X because [reasoning]. Alternatives considered: Y (rejected: [reason]), Z (rejected: [reason])."
+
+This applies when:
+- One option is strictly dominated (your analysis already says it's "fiddly" or "preserves a bad model")
+- The choice follows from established project conventions
+- Engineering constraints clearly favor one approach
+
+This does NOT apply when:
+- The decision involves taste, values, or genuine ambiguity
+- Multiple options are genuinely equivalent with different trade-offs the user might weight differently
+- The decision has irreversible consequences beyond the immediate task
+- An axiom might be at risk
+
+**Derivation**: Extends P#59 (Action Over Clarification) from task selection to implementation decisions. P#102 corollary establishes that pre-routing to human based on "this involves design choices" is premature. P#78 establishes that classification is LLM work. If an agent can classify one option as superior, asking the human is wasted attention.
