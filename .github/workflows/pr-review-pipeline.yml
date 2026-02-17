@@ -118,6 +118,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Run Strategic Review Agent
+        id: strategic-agent
         uses: anthropics/claude-code-action@v1
         with:
           allowed_bots: "claude[bot]"
@@ -131,6 +132,23 @@ jobs:
             Use `gh pr view ${{ github.event.pull_request.number }}` and `gh pr diff ${{ github.event.pull_request.number }}` to gather information.
 
           claude_args: '--allowed-tools "Bash(gh:*),Read"'
+
+      - name: Enable auto-merge on approval
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUM="${{ github.event.pull_request.number }}"
+
+          # Check if strategic review approved (look for approval in recent reviews)
+          APPROVED=$(gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews \
+            --jq '[.[] | select(.user.login == "claude[bot]" and .state == "APPROVED")] | length')
+
+          if [ "$APPROVED" -gt 0 ]; then
+            echo "Strategic review approved - enabling auto-merge"
+            gh pr merge "$PR_NUM" --auto --rebase --repo "${{ github.repository }}" || true
+          else
+            echo "Strategic review did not approve - skipping auto-merge enablement"
+          fi
 
   # ──────────────────────────────────────────────
   # Stage 4: Custodiet (scope compliance)
@@ -382,19 +400,68 @@ jobs:
 
           claude_args: '--allowed-tools "Bash,Edit,Read,Write"'
 
-      - name: Approve PR
+      - name: Check LGTM status
+        id: lgtm-status
         if: steps.pr-ref.outputs.ref != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
 
-          # Only approve if Claude's last comment signals LGTM
+          # Only proceed if Claude's last comment signals LGTM
           LAST_COMMENT=$(gh pr view "$PR_NUM" --json comments --jq '.comments[-1].body')
           if echo "$LAST_COMMENT" | grep -q "LGTM:"; then
-            echo "Claude confirmed LGTM - approving PR #$PR_NUM"
-            gh pr review "$PR_NUM" --approve
+            echo "Claude confirmed LGTM"
+            echo "lgtm=true" >> $GITHUB_OUTPUT
           else
             echo "Claude did not confirm LGTM - skipping approval"
             echo "Last comment excerpt: $(echo "$LAST_COMMENT" | head -1)"
+            echo "lgtm=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Dismiss claude[bot] change requests
+        if: steps.pr-ref.outputs.ref != '' && steps.lgtm-status.outputs.lgtm == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
+
+          # Find and dismiss any CHANGES_REQUESTED reviews from claude[bot]
+          # This unblocks GitHub auto-merge which may be waiting on unresolved reviews
+          REVIEW_IDS=$(gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews \
+            --jq '[.[] | select(.user.login == "claude[bot]" and .state == "CHANGES_REQUESTED")] | .[].id')
+
+          for REVIEW_ID in $REVIEW_IDS; do
+            echo "Dismissing review $REVIEW_ID from claude[bot]"
+            gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews/${REVIEW_ID}/dismissals \
+              -X PUT -f message="Superseded: All review comments addressed and LGTM confirmed."
+          done
+
+      - name: Approve PR
+        if: steps.pr-ref.outputs.ref != '' && steps.lgtm-status.outputs.lgtm == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
+          echo "Approving PR #$PR_NUM"
+          gh pr review "$PR_NUM" --approve
+
+      - name: Merge PR (fallback if auto-merge not triggered)
+        if: steps.pr-ref.outputs.ref != '' && steps.lgtm-status.outputs.lgtm == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
+
+          # Check if auto-merge is already enabled
+          AUTO_MERGE=$(gh pr view "$PR_NUM" --json autoMergeRequest --jq '.autoMergeRequest != null')
+
+          if [ "$AUTO_MERGE" = "true" ]; then
+            echo "Auto-merge is enabled - GitHub will handle the merge"
+          else
+            echo "Auto-merge not enabled - attempting direct merge"
+            gh pr merge "$PR_NUM" --rebase --delete-branch --repo "${{ github.repository }}" || {
+              echo "Direct merge failed - PR may require additional approvals or checks"
+              exit 0
+            }
           fi
