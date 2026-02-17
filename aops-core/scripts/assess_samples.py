@@ -23,7 +23,12 @@ from lib.paths import get_data_root
 
 
 def list_samples(category=None):
-    sample_root = get_data_root() / "samples" / "v1.1"
+    try:
+        data_root = get_data_root()
+    except RuntimeError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+    sample_root = data_root / "samples" / "v1.1"
     if not sample_root.exists():
         print(f"No samples found at {sample_root}")
         return []

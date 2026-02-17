@@ -320,9 +320,10 @@ class SessionAnalyzer:
         Note:
             Uses lib.paths.get_data_root() for canonical path resolution.
         """
-        # Get data root via paths.py (fail-fast)
-        data_path = get_data_root()
-        if not data_path.exists():
+        # Get data root via paths.py; return None if ACA_DATA is not set
+        try:
+            data_path = get_data_root()
+        except RuntimeError:
             return None
 
         # Use today's date if not specified
