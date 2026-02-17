@@ -9,6 +9,8 @@ status: draft
 
 Async, decentralized work coordination via GitHub issues.
 
+> **Scope**: This workflow is for **issue-level async coordination only**. It is not part of the PR review pipeline. For PR review and merge automation, see `specs/pr-process.md`.
+
 ## Design Principle
 
 **Agent-agnostic**: We don't care WHO does a step, only that it's done. Any agent (local Claude, Gemini, Jules, Copilot) can pick up work. The issue is the single source of truth.
@@ -231,7 +233,7 @@ Action:
 - Agent follows instructions in the triggering comment
 - Concurrency control prevents parallel runs on same issue
 
-**Note**: Authorization is currently implicit via GitHub Actions permissions. The workflow runs for any comment matching the trigger phrases. To restrict to authorized reviewers, add a condition checking `github.event.comment.user.login` or require the "agent-ready" label.
+**SECURITY**: The workflow restricts triggers to comments from `nicsuzor` only, preventing unauthorized compute usage. The `workflow_dispatch` path is separately restricted to repo admins by GitHub.
 
 ### Open Questions
 
