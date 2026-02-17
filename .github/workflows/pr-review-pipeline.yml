@@ -139,15 +139,16 @@ jobs:
         run: |
           PR_NUM="${{ github.event.pull_request.number }}"
 
-          # Check if strategic review approved (look for approval in recent reviews)
-          APPROVED=$(gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews \
-            --jq '[.[] | select(.user.login == "claude[bot]" and .state == "APPROVED")] | length')
+          # Check if strategic review approved:
+          # consider only the most recent review from claude[bot]
+          LATEST_STATE=$(gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews \
+            --jq '[.[] | select(.user.login == "claude[bot]")] | sort_by(.submitted_at) | (last.state // empty)')
 
-          if [ "$APPROVED" -gt 0 ]; then
-            echo "Strategic review approved - enabling auto-merge"
+          if [ "$LATEST_STATE" = "APPROVED" ]; then
+            echo "Strategic review approved by latest claude[bot] review - enabling auto-merge"
             gh pr merge "$PR_NUM" --auto --rebase --repo "${{ github.repository }}" || true
           else
-            echo "Strategic review did not approve - skipping auto-merge enablement"
+            echo "Latest claude[bot] review is not an approval - skipping auto-merge enablement"
           fi
 
   # ──────────────────────────────────────────────
