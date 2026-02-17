@@ -69,6 +69,7 @@ def _is_gemini_session(session_id: str | None, input_data: dict | None) -> bool:
     1. GEMINI_SESSION_ID env var is set (Gemini CLI always provides this)
     2. session_id starts with "gemini-"
     3. transcript_path contains "/.gemini/"
+    4. AOPS_SESSION_STATE_DIR contains ".gemini" (polecat worker fallback)
 
     Args:
         session_id: Session ID (may have "gemini-" prefix)
@@ -88,6 +89,13 @@ def _is_gemini_session(session_id: str | None, input_data: dict | None) -> bool:
         transcript_path = input_data.get("transcript_path")
         if transcript_path is not None and "/.gemini/" in transcript_path:
             return True
+
+    # Polecat worker fallback: AOPS_SESSION_STATE_DIR is set by router at SessionStart
+    # and persists across the session. Workers may not have transcript_path in input_data
+    # but will have this env var pointing to ~/.gemini/tmp/<hash>/ for Gemini sessions.
+    state_dir = os.environ.get("AOPS_SESSION_STATE_DIR")
+    if state_dir and ".gemini" in state_dir:
+        return True
 
     return False
 
