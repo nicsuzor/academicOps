@@ -134,26 +134,12 @@ def get_tools_file() -> Path:
     return get_plugin_root() / "TOOLS.md"
 
 
-# Generated output directories (centralised under ~/.aops/)
-
-
-def get_aops_home() -> Path:
-    """Get ~/.aops/ directory for generated output files.
-
-    This is the centralised location for all aops-generated artefacts
-    (transcripts, summaries, index files). Created on first access.
-    """
-    aops_home = Path.home() / ".aops"
-    aops_home.mkdir(parents=True, exist_ok=True)
-    return aops_home
-
-
 # Data directories
 
 
 def get_sessions_dir() -> Path:
-    """Get sessions directory (~/.aops/sessions/)."""
-    return get_aops_home() / "sessions"
+    """Get sessions directory (sibling of $ACA_DATA, not inside it)."""
+    return get_data_root().parent / "sessions"
 
 
 def get_projects_dir() -> Path:

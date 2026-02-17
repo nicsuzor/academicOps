@@ -92,7 +92,7 @@ GATE_CONFIGS = [
             ),
         ),
         triggers=[
-            # Custodiet check -> Reset and track reviewed turn
+            # Custodiet check -> Reset
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(SubagentStart|SubagentStop)$",
@@ -100,7 +100,6 @@ GATE_CONFIGS = [
                 ),
                 transition=GateTransition(
                     reset_ops_counter=True,
-                    custom_action="track_custodiet_checkpoint",
                     system_message_template="🛡️ Compliance verified.",
                     context_injection_template="🛡️ Compliance verified.",
                 ),
@@ -288,23 +287,6 @@ GATE_CONFIGS = [
                     "Please invoke the Handover Skill. The gate will only allow exit once the Handover Skill has completed and the output is successfully parsed in the correct format.\n\n"
                     "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
                 ),
-            ),
-        ],
-    ),
-    # --- Policy Enforcer ---
-    GateConfig(
-        name="policy",
-        description="Enforces framework policies.",
-        initial_status=GateStatus.OPEN,
-        triggers=[],
-        policies=[
-            GatePolicy(
-                condition=GateCondition(
-                    hook_event="PreToolUse",
-                    custom_check="validate_policy",
-                ),
-                verdict="block",
-                message_template="{block_reason}",
             ),
         ],
     ),

@@ -184,75 +184,6 @@ def _extract_questions_from_text(text: str) -> list[str]:
     return questions
 
 
-def _summarize_assistant_actions(assistant_sequence: list) -> str:
-    """Summarize assistant actions for condensed context mode.
-
-    Creates a brief summary of what the agent did, including file paths
-    and command names but not full details/results.
-
-    Args:
-        assistant_sequence: List of assistant action items from a turn
-
-    Returns:
-        Brief summary string, e.g., "Edited [file.py], ran [git status, npm test]"
-    """
-    edits: list[str] = []
-    writes: list[str] = []
-    reads: list[str] = []
-    commands: list[str] = []
-    tasks: list[str] = []
-    other_tools: list[str] = []
-
-    for item in assistant_sequence:
-        if item.get("type") != "tool":
-            continue
-
-        tool_name = item.get("tool_name", "")
-        tool_input = item.get("tool_input", {})
-
-        if tool_name == "Edit":
-            path = tool_input.get("file_path", "")
-            if path:
-                # Just filename, not full path
-                edits.append(path.split("/")[-1])
-        elif tool_name == "Write":
-            path = tool_input.get("file_path", "")
-            if path:
-                writes.append(path.split("/")[-1])
-        elif tool_name == "Read":
-            path = tool_input.get("file_path", "")
-            if path:
-                reads.append(path.split("/")[-1])
-        elif tool_name == "Bash":
-            cmd = tool_input.get("command", "")
-            # Extract first word/command name
-            if cmd:
-                first_word = cmd.split()[0] if cmd.split() else cmd[:20]
-                commands.append(first_word)
-        elif tool_name == "Task":
-            subagent = tool_input.get("subagent_type", "")
-            if subagent:
-                tasks.append(subagent)
-        elif tool_name not in ("TodoWrite", "Skill"):
-            other_tools.append(tool_name)
-
-    parts = []
-    if edits:
-        parts.append(f"Edited [{', '.join(edits[:3])}{'...' if len(edits) > 3 else ''}]")
-    if writes:
-        parts.append(f"Wrote [{', '.join(writes[:3])}{'...' if len(writes) > 3 else ''}]")
-    if reads:
-        parts.append(f"Read [{', '.join(reads[:3])}{'...' if len(reads) > 3 else ''}]")
-    if commands:
-        parts.append(f"Ran [{', '.join(commands[:3])}{'...' if len(commands) > 3 else ''}]")
-    if tasks:
-        parts.append(f"Invoked [{', '.join(tasks[:2])}{'...' if len(tasks) > 2 else ''}]")
-    if other_tools:
-        parts.append(f"Used [{', '.join(other_tools[:3])}{'...' if len(other_tools) > 3 else ''}]")
-
-    return "; ".join(parts) if parts else ""
-
-
 def _extract_and_expand_prompts(turns: list, max_turns: int) -> list[str]:
     """Extracts user prompts from turns, expanding command invocations."""
     prompts = []
@@ -643,10 +574,7 @@ def build_rich_session_context(transcript_path: Path | str, max_turns: int = 15)
     return "\n".join(lines)
 
 
-def build_critic_session_context(
-    transcript_path: Path | str,
-    condense_before_turn: int = 0,
-) -> str:
+def build_critic_session_context(transcript_path: Path | str) -> str:
     """Build deep session context for critic agent review.
 
     Unlike build_rich_session_context (designed for scope-drift detection with
@@ -664,18 +592,8 @@ def build_critic_session_context(
     - Noise filtered: TodoWrite, system-reminders, hook internals excluded
     - Tool results included for key tools (Task, Bash) — outcomes matter
 
-    Token optimization (condense_before_turn):
-    - Turns BEFORE the boundary are condensed: user prompts preserved but
-      agent reasoning and tool results are summarized briefly (file paths
-      and command names included, but not full output)
-    - Turns AT OR AFTER the boundary get full detail
-    - This enables incremental compliance checking without re-reading
-      previously reviewed content in full
-
     Args:
         transcript_path: Path to session transcript JSONL file
-        condense_before_turn: Turn number before which to use condensed format.
-            0 means no condensation (full detail for all turns).
 
     Returns:
         Formatted markdown context suitable for critic agent consumption
@@ -724,9 +642,6 @@ def build_critic_session_context(
 
         turn_num += 1
 
-        # Check if this turn should be condensed (previously reviewed)
-        is_condensed = condense_before_turn > 0 and turn_num < condense_before_turn
-
         # --- User message ---
         if user_msg and not is_meta:
             msg = user_msg.strip()
@@ -734,10 +649,9 @@ def build_critic_session_context(
             msg = _clean_prompt_text(msg)
             # Filter out system-injected context
             if not _is_system_injected_context(msg):
-                # Truncate based on condensation mode
-                max_len = 300 if is_condensed else 1000
-                if len(msg) > max_len:
-                    msg = msg[:max_len] + "..."
+                # Generous truncation — user intent matters
+                if len(msg) > 1000:
+                    msg = msg[:1000] + "..."
                 lines.append(f"### Turn {turn_num}")
                 lines.append(f"**User**: {msg}")
                 lines.append("")
@@ -746,15 +660,6 @@ def build_critic_session_context(
         if not assistant_sequence:
             continue
 
-        # For condensed turns, just summarize what tools were used
-        if is_condensed:
-            tool_summary = _summarize_assistant_actions(assistant_sequence)
-            if tool_summary:
-                lines.append(f"**Agent** (condensed): {tool_summary}")
-                lines.append("")
-            continue
-
-        # --- Full detail mode for recent turns ---
         # Collect agent text blocks (reasoning/communication)
         text_parts: list[str] = []
         tool_entries: list[str] = []

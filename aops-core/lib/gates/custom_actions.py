@@ -11,24 +11,11 @@ from lib.session_state import SessionState
 from lib.template_registry import TemplateRegistry
 
 
-def create_audit_file(
-    session_id: str,
-    gate: str,
-    ctx: HookContext,
-    session_state: SessionState | None = None,
-) -> Path:
+def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:
     """Create rich audit file for gate using TemplateRegistry.
 
     Fails fast if audit file cannot be created — callers depend on the
     returned path being valid and present in gate metrics.
-
-    Args:
-        session_id: Session identifier
-        gate: Gate name (e.g., "custodiet", "critic")
-        ctx: Hook context with transcript path and other metadata
-        session_state: Optional session state for checkpoint tracking.
-            If provided and gate is "custodiet", will use last_reviewed_turn
-            to condense earlier turns in the context.
 
     Raises:
         RuntimeError: If template rendering or file write fails.
@@ -40,15 +27,7 @@ def create_audit_file(
             from lib.session_reader import build_critic_session_context
 
             try:
-                # For custodiet, condense turns before the last checkpoint
-                condense_before = 0
-                if gate == "custodiet" and session_state:
-                    custodiet_gate = session_state.get_gate("custodiet")
-                    condense_before = custodiet_gate.metrics.get("last_reviewed_turn", 0)
-
-                session_context = build_critic_session_context(
-                    transcript_path, condense_before_turn=condense_before
-                )
+                session_context = build_critic_session_context(transcript_path)
             except Exception:
                 pass  # Degrade context, not the file creation
         else:
@@ -151,7 +130,7 @@ def execute_custom_action(
         )
 
     if name == "prepare_compliance_report":
-        temp_path = create_audit_file(ctx.session_id, "custodiet", ctx, session_state)
+        temp_path = create_audit_file(ctx.session_id, "custodiet", ctx)
         state.metrics["temp_path"] = str(temp_path)
 
         registry = TemplateRegistry.instance()
@@ -166,13 +145,6 @@ def execute_custom_action(
         gate_name = name.replace("prepare_", "").replace("_review", "")
         temp_path = create_audit_file(ctx.session_id, gate_name, ctx)
         state.metrics["temp_path"] = str(temp_path)
-        return None
-
-    if name == "track_custodiet_checkpoint":
-        # Track the current turn number as the last reviewed checkpoint.
-        # This enables context condensation for subsequent compliance checks.
-        current_turn = session_state.global_turn_count
-        state.metrics["last_reviewed_turn"] = current_turn
         return None
 
     return None
