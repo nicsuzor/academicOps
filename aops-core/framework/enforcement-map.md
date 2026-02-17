@@ -24,17 +24,17 @@ tags: [framework, enforcement, moc]
 | [[do-one-thing]]                            | Hydrator Returns Plan Only      | check_subagent_tool_restrictions blocks Edit/Write for prompt-hydrator                       | PreToolUse             | Hard Gate |
 | [[data-boundaries]]                         | Data Boundaries                 | settings.json deny rules                                                                     | PreToolUse             |           |
 | [[project-independence]]                    | Project Independence            | AXIOMS.md                                                                                    | SessionStart           |           |
-| [[fail-fast-code]]                          | Fail-Fast (Code)                | policy_enforcer.py blocks destructive git                                                    | PreToolUse             | Hard Gate |
+| [[fail-fast-code]]                          | Fail-Fast (Code)                | policy_enforcer.py blocks destructive git                                                    | PreToolUse             |           |
 | [[fail-fast-code]]                          | Fail-Fast (Code) - No Fallbacks | check_no_fallbacks.py AST visitor detects `.get(..., "")`, `.get(..., [])`, `or ""` patterns | Pre-commit (active)    |           |
 | [[fail-fast-code]]                          | Fail-Fast (Code) Analysis       | axiom_enforcer (DISABLED)                                                                    | PreToolUse             |           |
 | [[fail-fast-agents]]                        | Fail-Fast (Agents)              | fail_fast_watchdog.py injects reminder                                                       | PostToolUse            |           |
-| [[self-documenting]]                        | Self-Documenting                | policy_enforcer.py blocks *-GUIDE.md                                                         | PreToolUse             | Hard Gate |
-| [[single-purpose-files]]                    | Single-Purpose Files            | policy_enforcer.py 200-line limit                                                            | PreToolUse             | Hard Gate |
+| [[self-documenting]]                        | Self-Documenting                | policy_enforcer.py blocks *-GUIDE.md                                                         | PreToolUse             |           |
+| [[single-purpose-files]]                    | Single-Purpose Files            | policy_enforcer.py 200-line limit                                                            | PreToolUse             |           |
 | [[dry-modular-explicit]]                    | DRY, Modular, Explicit          | AXIOMS.md                                                                                    | SessionStart           |           |
 | [[use-standard-tools]]                      | Use Standard Tools              | pyproject.toml, pre-commit                                                                   | Config                 |           |
 | [[always-dogfooding]]                       | Always Dogfooding               | AXIOMS.md                                                                                    | SessionStart           |           |
 | [[skills-are-read-only]]                    | Skills are Read-Only            | settings.json denies skill writes                                                            | PreToolUse             |           |
-| [[trust-version-control]]                   | Trust Version Control           | policy_enforcer.py blocks backup patterns                                                    | PreToolUse             | Hard Gate |
+| [[trust-version-control]]                   | Trust Version Control           | policy_enforcer.py blocks backup patterns                                                    | PreToolUse             |           |
 | [[no-workarounds]]                          | No Workarounds                  | fail_fast_watchdog.py                                                                        | PostToolUse            |           |
 | [[verify-first]]                            | Verify First                    | TodoWrite checkpoint                                                                         | During execution       |           |
 | [[verify-first]]                            | Verify Push Target              | AXIOMS.md corollary: explicit refspec for git push                                           | Before git push        | 1c        |
@@ -49,7 +49,7 @@ tags: [framework, enforcement, moc]
 | [[plan-first-development]]                  | Plan-First Development          | EnterPlanMode tool                                                                           | Before coding          |           |
 | [[research-data-immutable]]                 | Research Data Immutable         | settings.json denies records/**                                                              | PreToolUse             |           |
 | [[just-in-time-context]]                    | Just-In-Time Context            | sessionstart_load_axioms.py                                                                  | SessionStart           |           |
-| [[minimal-instructions]]                    | Minimal Instructions            | policy_enforcer.py 200-line limit                                                            | PreToolUse             | Hard Gate |
+| [[minimal-instructions]]                    | Minimal Instructions            | policy_enforcer.py 200-line limit                                                            | PreToolUse             |           |
 | [[feedback-loops-for-uncertainty]]          | Feedback Loops                  | AXIOMS.md                                                                                    | SessionStart           |           |
 | [[current-state-machine]]                   | Current State Machine           | autocommit_state.py (auto-commit+push)                                                       | PostToolUse            |           |
 | [[one-spec-per-feature]]                    | One Spec Per Feature            | AXIOMS.md                                                                                    | SessionStart           |           |
@@ -116,8 +116,8 @@ tags: [framework, enforcement, moc]
 | [[preserve-pre-existing-content]]               | Preserve Pre-Existing Content                         | HEURISTICS.md                                          | SessionStart                   |       |
 | [[user-intent-discovery]]                       | User Intent Discovery Before Implementation           | HEURISTICS.md, prompt-hydrator guidance                | SessionStart, UserPromptSubmit |       |
 | [[verify-non-duplication-batch-create]]         | Verify Non-Duplication Before Batch Create            | HEURISTICS.md, triage-email workflow                   | SessionStart, batch operations | 1a    |
-| [[run-python-via-uv]]                           | Run Python via uv                                     | policy_enforcer.py                                     | PreToolUse                     | Hard Gate |
-| [[protect-dist-directory]]                      | Protect dist/ Directory                               | .agent/rules/HEURISTICS.md, policy_enforcer.py         | SessionStart, PreToolUse       | Hard Gate |
+| [[run-python-via-uv]]                           | Run Python via uv                                     | HEURISTICS.md                                          | SessionStart                   | 1a    |
+| [[protect-dist-directory]]                      | Protect dist/ Directory                               | .agent/rules/HEURISTICS.md, policy_enforcer.py         | SessionStart, PreToolUse       | 1a    |
 | [[subagent-verdicts-binding]]                   | Subagent Verdicts Are Binding                         | HEURISTICS.md                                          | SessionStart, SubagentStop     | 1a    |
 | [[qa-tests-black-box]]                          | QA Tests Are Black-Box                                | HEURISTICS.md                                          | SessionStart, QA execution     | 1b    |
 | [[cli-testing-extended-timeouts]]               | CLI Testing Requires Extended Timeouts                | HEURISTICS.md                                          | SessionStart                   | 1a    |
@@ -517,7 +517,7 @@ Context injected via CORE.md at SessionStart. Guides where agents place files.
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | Deny rules       | `$AOPS/config/claude/settings.json` → `permissions.deny`                                                                              |
 | Agent tools      | `$AOPS/aops-core/agents/*.md` → `tools:` frontmatter                                                                                  |
-| PreToolUse       | `$AOPS/aops-core/hooks/router.py`, `aops-core/lib/policy_enforcer.py` (via policy gate) |
+| PreToolUse       | `$AOPS/aops-core/hooks/gate_registry.py` (hydration, custodiet, subagent_restrictions), `task_required_gate.py`, `policy_enforcer.py` |
 | PostToolUse      | `$AOPS/aops-core/hooks/gate_registry.py` (accountant, task_binding, post_hydration, post_critic, skill_activation)                    |
 | SubagentStop     | `$AOPS/aops-core/hooks/unified_logger.py` (sets `critic_invoked` flag)                                                                |
 | UserPromptSubmit | `$AOPS/aops-core/hooks/user_prompt_submit.py`                                                                                         |

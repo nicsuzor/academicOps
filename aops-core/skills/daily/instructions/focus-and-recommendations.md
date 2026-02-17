@@ -125,15 +125,7 @@ P3 ██░░░░░░░░ 15/85
 (User's stated priorities are recorded here and never overwritten)
 ```
 
-### 3.3: Verify Candidate Task Completion (P#26)
-
-Before recommending any task, verify it represents genuinely outstanding work:
-
-1. **Parent/project tasks**: Call `get_children(id)` to check child completion ratio. If >75% of children are done/cancelled, do NOT recommend the parent — recommend the specific remaining child task(s) instead.
-2. **Cross-reference sent mail**: Check recent sent mail (last 48h) for deliverables matching candidate tasks. If user already sent the output (report, email, document), the task is likely done or nearly done — omit or flag as "verify completion".
-3. **Carryover verification**: Tasks carried from yesterday's note should be re-verified via `get_task(id)` to confirm they're still active.
-
-### 3.4: Reason About Recommendations
+### 3.3: Reason About Recommendations
 
 Select ~10 recommendations using judgment (approx 2 per category):
 
@@ -179,7 +171,7 @@ Select ~10 recommendations using judgment (approx 2 per category):
 1. Note: "Heavy framework day - consider actual tasks"
 2. ENJOY must be non-framework work
 
-### 3.5: Engage User on Priorities
+### 3.4: Engage User on Priorities
 
 After presenting recommendations, use `AskUserQuestion` to confirm priorities:
 
@@ -193,7 +185,7 @@ After presenting recommendations, use `AskUserQuestion` to confirm priorities:
 3. After section 5 completes, output: "Daily planning complete. Use `/pull` to start work."
 4. HALT - do not proceed to task execution
 
-### 3.6: Present candidate tasks to archive
+### 3.5: Present candidate tasks to archive
 
 ```
 - [ns-xyz] **[[Stale Task]]** - [reason: no activity in X days]
