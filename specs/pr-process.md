@@ -4,12 +4,12 @@ How pull requests move from open to merged (or rejected) in the aops repository.
 
 ## Workflow files
 
-| Workflow | File | Trigger | Purpose |
-|----------|------|---------|---------|
-| Code Quality | `code-quality.yml` | `pull_request → main` | Lint + type check gate |
-| PR Pipeline | `pr-review-pipeline.yml` | `pull_request`, comments, reviews, dispatch | Agent review + merge flow |
-| Polecat | `polecat-issue-trigger.yml` | `@polecat` in comments | Ad-hoc agent work on issues/PRs |
-| Claude | `claude.yml` | `@claude` in comments | Ad-hoc Claude interaction |
+| Workflow     | File                        | Trigger                                     | Purpose                         |
+| ------------ | --------------------------- | ------------------------------------------- | ------------------------------- |
+| Code Quality | `code-quality.yml`          | `pull_request → main`                       | Lint + type check gate          |
+| PR Pipeline  | `pr-review-pipeline.yml`    | `pull_request`, comments, reviews, dispatch | Agent review + merge flow       |
+| Polecat      | `polecat-issue-trigger.yml` | `@polecat` in comments                      | Ad-hoc agent work on issues/PRs |
+| Claude       | `claude.yml`                | `@claude` in comments                       | Ad-hoc Claude interaction       |
 
 ## Flowchart
 
@@ -105,10 +105,10 @@ flowchart TD
 
 Two independent jobs run in parallel:
 
-| Job | Tool | What it checks |
-|-----|------|----------------|
-| `lint` | `ruff check` + `ruff format --check` | Lint errors, import order, code formatting |
-| `type-check` | `basedpyright` | Static type analysis (basic mode) |
+| Job          | Tool                                 | What it checks                             |
+| ------------ | ------------------------------------ | ------------------------------------------ |
+| `lint`       | `ruff check` + `ruff format --check` | Lint errors, import order, code formatting |
+| `type-check` | `basedpyright`                       | Static type analysis (basic mode)          |
 
 If either fails, the author fixes and pushes. The workflow re-runs on `synchronize`.
 
@@ -144,16 +144,16 @@ Runs as sequential steps in one job:
 
 Claude triages comments from external bot reviewers (Copilot, Gemini Code Assist):
 
-| Category | Action |
-|----------|--------|
-| Genuine bug | Fix the code, commit + push |
-| Valid improvement | Fix the code, commit + push |
-| False positive | Reply explaining why no change needed |
-| Scope creep | Acknowledge as future work |
+| Category          | Action                                |
+| ----------------- | ------------------------------------- |
+| Genuine bug       | Fix the code, commit + push           |
+| Valid improvement | Fix the code, commit + push           |
+| False positive    | Reply explaining why no change needed |
+| Scope creep       | Acknowledge as future work            |
 
 Posts a summary table to the PR when done.
 
-### 3. Human review
+### 4. Human review
 
 The human reviewer (repo owner) evaluates:
 
@@ -167,7 +167,7 @@ Three possible outcomes:
 - **Close** -- PR is rejected
 - **Approve** -- triggers the merge agent (via LGTM comment, formal approval, or assigning to `claude-for-github[bot]`)
 
-### 4. Merge agent
+### 5. Merge agent
 
 **Workflow**: `pr-review-pipeline.yml`, job `claude-lgtm-merge`
 **Trigger**: Human approval, LGTM-pattern comment from owner, workflow dispatch, or PR assigned to claude bot
@@ -199,20 +199,20 @@ lgtm | merge | rebase | ship it | @claude merge
 
 Outside the main pipeline, two workflows respond to mentions in comments:
 
-| Mention | Workflow | Use case |
-|---------|----------|----------|
-| `@claude` | `claude.yml` | General questions, debugging, analysis |
-| `@polecat` or `ready for agent` | `polecat-issue-trigger.yml` | Agent-driven issue/PR processing |
+| Mention                         | Workflow                    | Use case                               |
+| ------------------------------- | --------------------------- | -------------------------------------- |
+| `@claude`                       | `claude.yml`                | General questions, debugging, analysis |
+| `@polecat` or `ready for agent` | `polecat-issue-trigger.yml` | Agent-driven issue/PR processing       |
 
 These are independent of the PR review pipeline and don't affect merge decisions.
 
 ## Concurrency controls
 
-| Scope | Group key | Cancel in-progress? |
-|-------|-----------|---------------------|
-| Custodiet + QA | `pr-review-{pr_number}` | Yes (new push cancels stale run) |
-| Merge agent | `pr-merge-{pr_number}` | No (merge runs to completion) |
-| Polecat | `polecat-{issue_number}` | No (serial per issue) |
+| Scope          | Group key                | Cancel in-progress?              |
+| -------------- | ------------------------ | -------------------------------- |
+| Custodiet + QA | `pr-review-{pr_number}`  | Yes (new push cancels stale run) |
+| Merge agent    | `pr-merge-{pr_number}`   | No (merge runs to completion)    |
+| Polecat        | `polecat-{issue_number}` | No (serial per issue)            |
 
 ## Configuration
 
