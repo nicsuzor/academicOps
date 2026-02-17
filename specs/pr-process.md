@@ -20,7 +20,10 @@ flowchart TD
     %% ── Stage 1: Code Quality ──
     PR --> Lint["<b>1. Code Quality</b><br/>Ruff lint + format"]
     Lint --> LintPass{Passed?}
-    LintPass -- No --> FixLint["Author fixes lint errors"]
+    LintPass -- No --> AutoFix["Autofix: ruff check --fix<br/>+ ruff format<br/><i>commit & push</i>"]
+    AutoFix --> AutoFixOk{Changes<br/>made?}
+    AutoFixOk -- Yes --> PR
+    AutoFixOk -- No --> FixLint["Author fixes lint errors"]
     FixLint --> PR
     LintPass -- Yes --> TypeCk
 
@@ -121,10 +124,10 @@ The human reviewer's LGTM comment or formal approval **triggers** the merge agen
 ### 1. Code Quality: lint
 
 **Job**: `lint`
-**Depends on**: PR opened/synchronized
+**Depends on**: Any `pull_request` event (opened, synchronize, assigned)
 **Blocking**: Yes
 
-Runs `ruff check` and `ruff format --check`. If either fails, the pipeline stops. The author fixes and pushes; the pipeline re-runs from the top on `synchronize`.
+Runs `ruff check` and `ruff format --check`. If either fails, the job attempts **autofix**: it runs `ruff check --fix` and `ruff format`, then commits and pushes the fixes back to the PR branch. The push triggers a new `synchronize` event, which re-runs the pipeline with the fixed code. If autofix produces no changes (e.g. the issue requires manual intervention), the pipeline stops and the author must fix manually.
 
 ### 2. Code Quality: type check
 

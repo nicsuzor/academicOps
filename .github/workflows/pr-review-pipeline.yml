@@ -31,15 +31,18 @@ jobs:
   # ──────────────────────────────────────────────
   lint:
     name: Lint
-    if: >-
-      github.event_name == 'pull_request' &&
-      (github.event.action == 'opened' || github.event.action == 'synchronize')
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     concurrency:
       group: pr-review-${{ github.event.pull_request.number }}
       cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -59,6 +62,25 @@ jobs:
 
       - name: Ruff format check
         run: uv run ruff format --check
+
+      - name: Autofix formatting
+        if: failure()
+        run: |
+          uv run ruff check --fix || true
+          uv run ruff format
+
+      - name: Commit and push fixes
+        if: failure()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No formatting changes to commit"
+          else
+            git commit -m "style: autofix lint and formatting"
+            git push
+          fi
 
   # ──────────────────────────────────────────────
   # Stage 2: Type Check
