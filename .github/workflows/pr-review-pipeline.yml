@@ -1,3 +1,12 @@
+# Single sequential PR pipeline.
+# Each stage depends on the previous one passing. This fails fast
+# and avoids wasting LLM compute on PRs that can't pass earlier gates.
+#
+# Stages: lint → type-check → strategic-review → custodiet → qa → notify-ready
+# Merge agent runs separately, triggered by human approval.
+#
+# See specs/pr-process.md for the full process documentation.
+
 name: PR Pipeline
 
 on:
@@ -17,10 +26,11 @@ on:
         type: number
 
 jobs:
-  custodiet-and-qa:
-    # Run scope/compliance and acceptance checks on new/updated PRs.
-    # Runs first — doesn't need bot reviews, and gives bot reviewers time to post
-    # before claude-review (bot triage) runs after this job completes.
+  # ──────────────────────────────────────────────
+  # Stage 1: Lint
+  # ──────────────────────────────────────────────
+  lint:
+    name: Lint
     if: >-
       github.event_name == 'pull_request' &&
       (github.event.action == 'opened' || github.event.action == 'synchronize') &&
@@ -30,6 +40,105 @@ jobs:
     concurrency:
       group: pr-review-${{ github.event.pull_request.number }}
       cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Ruff lint
+        run: uv run ruff check --output-format=github
+
+      - name: Ruff format check
+        run: uv run ruff format --check
+
+  # ──────────────────────────────────────────────
+  # Stage 2: Type Check
+  # ──────────────────────────────────────────────
+  type-check:
+    name: Type Check
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run basedpyright
+        run: uv run basedpyright
+
+  # ──────────────────────────────────────────────
+  # Stage 3: Strategic Review
+  # ──────────────────────────────────────────────
+  strategic-review:
+    name: Strategic Review
+    needs: type-check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+      issues: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Read strategic review instructions
+        id: strategic-prompt
+        run: |
+          PROMPT=$(cat .github/agents/strategic-review.md)
+          {
+            echo "prompt<<STRATEGIC_EOF"
+            echo "$PROMPT"
+            echo "STRATEGIC_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run Strategic Review Agent
+        uses: anthropics/claude-code-action@v1
+        with:
+          allowed_bots: "claude[bot]"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            ${{ steps.strategic-prompt.outputs.prompt }}
+
+            ---
+
+            Review PR #${{ github.event.pull_request.number }} in repository ${{ github.repository }}.
+            Use `gh pr view ${{ github.event.pull_request.number }}` and `gh pr diff ${{ github.event.pull_request.number }}` to gather information.
+
+          claude_args: '--allowed-tools "Bash(gh:*),Read"'
+
+  # ──────────────────────────────────────────────
+  # Stage 4: Custodiet (scope compliance)
+  # ──────────────────────────────────────────────
+  custodiet:
+    name: Custodiet
+    needs: strategic-review
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
@@ -52,16 +161,6 @@ jobs:
             echo "CUSTODIET_EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Read QA instructions
-        id: qa-prompt
-        run: |
-          PROMPT=$(cat .github/agents/qa.md)
-          {
-            echo "prompt<<QA_EOF"
-            echo "$PROMPT"
-            echo "QA_EOF"
-          } >> "$GITHUB_OUTPUT"
-
       - name: Run Custodiet Agent
         uses: anthropics/claude-code-action@v1
         with:
@@ -76,6 +175,35 @@ jobs:
             Use `gh pr view ${{ github.event.pull_request.number }}` and `gh pr diff ${{ github.event.pull_request.number }}` to gather information.
 
           claude_args: '--allowed-tools "Bash(gh:*),Read"'
+
+  # ──────────────────────────────────────────────
+  # Stage 5: QA (acceptance criteria)
+  # ──────────────────────────────────────────────
+  qa:
+    name: QA
+    needs: custodiet
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+      issues: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Read QA instructions
+        id: qa-prompt
+        run: |
+          PROMPT=$(cat .github/agents/qa.md)
+          {
+            echo "prompt<<QA_EOF"
+            echo "$PROMPT"
+            echo "QA_EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Run QA Agent
         uses: anthropics/claude-code-action@v1
@@ -92,62 +220,47 @@ jobs:
 
           claude_args: '--allowed-tools "Bash(gh:*),Read"'
 
-  claude-review:
-    needs: custodiet-and-qa
-    # Bot triage runs AFTER custodiet-and-qa (~3 min), giving Gemini Code Assist
-    # and Copilot time to post their reviews before we triage them.
+  # ──────────────────────────────────────────────
+  # Stage 6: Ready for Review notification
+  # ──────────────────────────────────────────────
+  notify-ready:
+    name: Ready for Review
+    needs: qa
     runs-on: ubuntu-latest
     permissions:
-      contents: write
       pull-requests: write
-      id-token: write
-      issues: write
       actions: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.ref }}
+      - name: Post pipeline summary
+        run: |
+          PR_NUM="${{ github.event.pull_request.number }}"
 
-      - name: Claude reviews bot comments
-        uses: anthropics/claude-code-action@v1
-        with:
-          allowed_bots: "claude[bot],jules[bot]"
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          prompt: |
-            You are reviewing PR #${{ github.event.pull_request.number }}.
+          # Collect review statuses from bot comments
+          REVIEWS=$(gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews \
+            --jq '[.[] | select(.user.login == "claude[bot]" or .user.login == "github-actions[bot]")] | length')
 
-            ## Task
+          gh pr comment "$PR_NUM" --repo "${{ github.repository }}" --body "$(cat <<'SUMMARY'
+          ## Pipeline Complete
 
-            1. Fetch all review comments on this PR using `gh pr view ${{ github.event.pull_request.number }} --comments` and `gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews`.
-            2. Identify comments from bot reviewers (Copilot, Gemini Code Assist).
-            3. Triage each bot comment into one of:
-               - **Genuine bug**: A real defect that would cause incorrect behavior. FIX IT.
-               - **Valid improvement**: A meaningful code quality improvement. FIX IT.
-               - **False positive**: The bot misunderstood the code. RESPOND with a brief explanation.
-               - **Scope creep**: A valid suggestion but outside this PR's scope. ACKNOWLEDGE as future work.
-            4. Make code fixes for genuine bugs and valid improvements. Commit and push changes.
-            5. Reply to each bot comment thread with your assessment and action taken.
-            6. Post a summary comment on the PR:
-               ```
-               ## Bot Review Triage
+          All automated review stages have passed:
 
-               | Reviewer | Comment | Category | Action |
-               |----------|---------|----------|--------|
-               | ... | ... | ... | ... |
+          | Stage | Status |
+          |-------|--------|
+          | Lint | ✅ Passed |
+          | Type check | ✅ Passed |
+          | Strategic review | ✅ Passed |
+          | Custodiet | ✅ Passed |
+          | QA | ✅ Passed |
 
-               **Changes made**: [count] fixes committed
-               **Deferred**: [count] items flagged as future work
-               ```
+          **Ready for human review.** External bot comments (Copilot, Gemini Code Assist) will be triaged during merge preparation.
+          SUMMARY
+          )"
 
-            ## Rules
-            - Do NOT address human reviewer comments — those are handled in the merge workflow.
-            - Do NOT merge the PR. Your job is to address bot feedback only.
-            - If no bot reviews exist, post a comment noting this and exit.
-            - Run tests after making changes to verify nothing is broken.
-
-          claude_args: '--allowed-tools "Bash(gh:*),Bash(git:*),Bash(npm:*),Bash(python:*),Bash(pytest:*),Bash(uv:*),Edit,Read,Write"'
-
+  # ──────────────────────────────────────────────
+  # Stage 7: Merge Agent (triggered by human approval)
+  # ──────────────────────────────────────────────
   claude-lgtm-merge:
     # Run for: manual dispatch, PR assigned to claude, human-approved reviews, or LGTM comments from nicsuzor.
     # Bot approvals (from QA agent, custodiet, copilot, gemini, github-actions) must NOT trigger this —
@@ -222,43 +335,40 @@ jobs:
           prompt: |
             PR #${{ steps.pr-ref.outputs.pr_number }} has been approved.
 
-            Please:
-            1. Review the PR description and code changes to ensure they meet our standards.
-            2. Respond to any outstanding review comments, either by making code changes or posting a comment explaining why no change is needed.
-            3. Commit and push any changes to the PR branch.
-            4. Verify CI checks are passing using `gh pr checks`.
-            5. Post a final confirmation comment:
+            Please prepare this PR for merge:
+
+            1. **Aggregate all review comments** from bot reviewers (Copilot, Gemini Code Assist),
+               custodiet, QA, and human reviewers using `gh pr view` and `gh api`.
+            2. **Triage bot comments** into categories:
+               - Genuine bugs (e.g., type mismatch that would crash at runtime) → FIX
+               - Valid improvements (e.g., move import out of loop, add error types to except) → FIX
+               - False positives (e.g., claiming a key was removed when it wasn't) → RESPOND explaining why
+               - Scope creep (e.g., "add more tests") → ACKNOWLEDGE as follow-up
+            3. **Address human reviewer comments** — these are critical requirements. Do NOT ignore
+               or dismiss human comments or defer implementation.
+            4. Commit and push any changes to the PR branch.
+            5. Rebase on main if required to resolve merge conflicts. Do NOT merge main into the
+               PR branch. Always rebase to maintain a clean history.
+            6. Fix any lint or CI errors introduced by your changes.
+            7. Run tests after modifying code. The PR will ONLY be merged if all tests pass.
+            8. Post a final confirmation comment:
                - "LGTM: All review comments addressed and CI checks passed. Ready to merge."
                OR
                - "Request changes: Address the remaining issues before this PR can be merged."
                OR
                - "Close: PR does not meet standards or requires design discussion."
 
-            ## Merging PRs with review comments
+            Post a summary table of triaged comments:
+            ```
+            ## Review Comment Triage
 
-            ### Bot review comments
-            The pr-review-pipeline workflow may have already triaged and addressed bot reviewer comments
-            (Copilot, Gemini Code Assist). Check for a "Bot Review Triage" summary comment on the PR.
-            - If bot comments were already addressed: verify the fixes are adequate and move on.
-            - If no triage comment exists: triage bot comments yourself using these categories:
-              - Genuine bugs (e.g., type mismatch that would crash at runtime) - fix these
-              - Valid improvements (e.g., move import out of loop, add error types to except) - fix these
-              - False positives (e.g., claiming a key was removed when it wasn't) - respond explaining why no change is needed
-              - Scope creep (e.g., "add more tests") - acknowledge as follow-up feedback
+            | Reviewer | Comment | Category | Action |
+            |----------|---------|----------|--------|
+            | ... | ... | ... | ... |
 
-            ### Custodiet and QA agent reviews
-            The pr-review-pipeline may have also run custodiet (scope/compliance) and QA (acceptance criteria)
-            agents. Check for reviews from these agents.
-            - If custodiet flagged issues: address scope or compliance concerns before merging.
-            - If QA flagged issues: verify acceptance criteria are met and fix any regressions.
-            - If these agents haven't run: proceed normally — they are not a merge gate.
-
-            ### Human review comments
-            Address ALL comments by repository owners and managers thoroughly. Do NOT ignore or dismiss comments or defer implementation. Treat these comments as CRITICAL REQUIREMENTS that MUST be addressed before merging.
-
-            3. Rebase if required to resolve merge conflicts. Do NOT merge main into the PR branch. Always rebase to maintain a clean history.
-
-            4. Always run tests after modifying code. The PR will ONLY be merged if all tests pass. If tests fail, fix the issues and push a new commit.
+            **Changes made**: [count] fixes committed
+            **Deferred**: [count] items flagged as future work
+            ```
 
           claude_args: '--allowed-tools "Bash,Edit,Read,Write"'
 

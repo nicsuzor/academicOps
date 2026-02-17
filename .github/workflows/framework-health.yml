@@ -1,6 +1,6 @@
 # Framework health audit for academicOps
 # Project-wide governance checks — runs on main branch only, NOT on PRs.
-# For PR code quality checks (lint, type-check), see code-quality.yml.
+# For PR code quality and review checks, see pr-review-pipeline.yml.
 
 name: Framework Health
 
