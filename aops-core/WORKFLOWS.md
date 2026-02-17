@@ -97,7 +97,6 @@ Core workflows for building and fixing software.
 | [[tdd-cycle]]          | Any testable code change             | task-tracking, tdd, verification, commit |
 | [[feature-dev]]        | Test-first feature from idea to ship | task-tracking, tdd, verification, commit |
 | [[debugging]]          | Cause unknown, investigating         | task-tracking, verification              |
-| [[github-issue-cycle]] | Async work via GitHub issues         | task-tracking                            |
 
 ### Quality Assurance
 

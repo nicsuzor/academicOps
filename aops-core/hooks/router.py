@@ -69,7 +69,13 @@ except ImportError as e:
 
 # --- Configuration ---
 
-DEBUG_LOG_PATH = Path("/tmp/cc_hooks_debug.jsonl")
+DEBUG_LOG_DIR = Path("/tmp")
+
+
+def _debug_log_path(session_id: str | None) -> Path:
+    """Return per-session debug log path."""
+    slug = session_id if session_id else "unknown"
+    return DEBUG_LOG_DIR / f"cc_hooks_{slug}.jsonl"
 
 
 def _debug_log_input(raw_input: dict[str, Any], args: Any) -> None:
@@ -77,13 +83,15 @@ def _debug_log_input(raw_input: dict[str, Any], args: Any) -> None:
     if not os.environ.get("DEBUG_HOOKS"):
         return
     try:
+        session_id = raw_input.get("session_id") or os.environ.get("CLAUDE_SESSION_ID")
         entry = {
             "ts": datetime.now().isoformat(),
+            "session_id": session_id,
             "client": getattr(args, "client", None),
             "event": getattr(args, "event", None),
             "input": raw_input,
         }
-        with DEBUG_LOG_PATH.open("a") as f:
+        with _debug_log_path(session_id).open("a") as f:
             f.write(json.dumps(entry) + "\n")
     except Exception as e:
         print(f"DEBUG_LOG error: {e}", file=sys.stderr)
