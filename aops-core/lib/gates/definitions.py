@@ -254,37 +254,67 @@ GATE_CONFIGS = [
         ],
     ),
     # --- Handover ---
+    # Gate starts OPEN. Closes when a task is bound (work begins).
+    # Opens when /handover skill completes. Policy blocks Stop when CLOSED.
+    #
+    # Previous approach used missing_framework_reflection custom_check on Stop,
+    # but that fails because Claude Code fires Stop before the current turn's
+    # output (containing the reflection) is flushed to the JSONL transcript.
+    # Fix: trigger-based approach (like critic/QA gates). See aops-f6f9b5dc.
     GateConfig(
         name="handover",
         description="Requires Framework Reflection before exit.",
         initial_status=GateStatus.OPEN,
-        triggers=[],
+        triggers=[
+            # Task bound: update_task with status=in_progress -> Close
+            # Work has begun, so handover will be required before exit.
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="PostToolUse",
+                    tool_name_pattern="update_task",
+                    tool_input_pattern="in_progress",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.CLOSED,
+                    system_message_template="📤 Task bound. Handover required before exit.",
+                ),
+            ),
+            # Task bound: claim_next_task (always implies in_progress) -> Close
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="PostToolUse",
+                    tool_name_pattern="claim_next_task",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.CLOSED,
+                    system_message_template="📤 Task claimed. Handover required before exit.",
+                ),
+            ),
+            # /handover skill completes -> Open
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="PostToolUse",
+                    tool_name_pattern="^Skill$",
+                    tool_input_pattern="handover",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.OPEN,
+                    system_message_template="📤 Handover complete. Gate OPEN.",
+                ),
+            ),
+        ],
         policies=[
-            # Stop check (Uncommitted work)
-            # GatePolicy(
-            #     condition=GateCondition(hook_event="Stop", custom_check="has_uncommitted_work"),
-            #     verdict=HANDOVER_GATE_MODE,
-            #     message_template="{block_reason}",
-            #     context_template="{block_reason}",
-            # ),
-            # # Stop warning (Unpushed commits)
-            # GatePolicy(
-            #     condition=GateCondition(hook_event="Stop", custom_check="has_unpushed_commits"),
-            #     verdict="warn",
-            #     message_template="{warning_message}",
-            #     context_template="{warning_message}",
-            # ),
-            # Block Stop until Framework Reflection is provided
+            # Block Stop when gate is CLOSED (handover not yet done)
             GatePolicy(
                 condition=GateCondition(
+                    current_status=GateStatus.CLOSED,
                     hook_event="Stop",
-                    custom_check="missing_framework_reflection",
                 ),
                 verdict=HANDOVER_GATE_MODE,
-                message_template=("⛔ Handover required"),
+                message_template="⛔ Handover required",
                 context_template=(
                     "⛔ Finalization required before exit.\n\n"
-                    "Please invoke the Handover Skill. The gate will only allow exit once the Handover Skill has completed and the output is successfully parsed in the correct format.\n\n"
+                    "Please invoke the Handover Skill (`/handover`). The gate will only allow exit once the Handover Skill has completed.\n\n"
                     "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
                 ),
             ),
