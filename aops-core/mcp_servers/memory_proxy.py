@@ -17,7 +17,9 @@ MEMORY_URL = os.environ.get(
     "MEMORY_SERVER_URL",
     "http://services.stoat-musical.ts.net:8026/mcp",
 )
-API_KEY = os.environ.get("MCP_MEMORY_API_KEY", "")
+API_KEY = os.environ.get("MCP_MEMORY_API_KEY")
+if not API_KEY:
+    raise ValueError("MCP_MEMORY_API_KEY environment variable must be set.")
 
 client = Client(MEMORY_URL, auth=BearerAuth(token=API_KEY))
 proxy = FastMCP.as_proxy(client, name="memory-proxy")
