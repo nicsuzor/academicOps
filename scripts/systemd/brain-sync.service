@@ -1,0 +1,12 @@
+[Unit]
+Description=Sync ~/brain git repository
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.aops/aops/scripts/brain-sync.sh
+# Use the installed location in ~/.aops/aops (not worktree)
+
+[Install]
+WantedBy=default.target

@@ -232,3 +232,23 @@ Tasks requiring human judgment default to `assignee: null`. Only mechanical work
 - Default to `polecat`. A task only needs `assignee: null` when it literally cannot proceed without a human decision RIGHT NOW — not because design decisions exist somewhere in the task.
 - Workers decompose tasks and escalate at actual decision forks (via `status: blocked` or AskUserQuestion). Pre-routing to human based on "this involves design choices" is premature.
 - Assign to `nic` only when explicitly requested by user (`/q nic: ...`).
+
+## Skills Commit After Brain Writes (P#103)
+
+Skills writing to `~/brain` MUST commit and push with a specific message describing what was written. Use `brain-push.sh` helper:
+
+```bash
+brain-push.sh "knowledge: tech/new-fact"
+```
+
+**Rationale**: Multiple writers (skills, task manager, /remember, manual edits) write to ~/brain. Meaningful commit messages require the writer to say what they did—a generic sync cannot know intent.
+
+**Implementation**:
+- Primary path: Skills call `brain-push.sh "descriptive message"` after writing
+- Fallback: `brain-sync.sh` runs every 5 minutes via systemd timer, generating messages from paths
+- Conflict handling: Always rebase (no merge commits). On conflict, log to `~/.brain/.sync-failures.log`
+
+**Corollaries**:
+- `/remember` skill should commit with `knowledge: <topic>` message
+- Task manager updates should commit with `task: <task-id>` message
+- `/daily` should commit with `daily: YYYY-MM-DD` message
