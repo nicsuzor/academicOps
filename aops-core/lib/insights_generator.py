@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from lib.paths import get_aops_home, get_plugin_root
+from lib.session_reader import extract_gate_context, find_sessions
 
 
 class InsightsValidationError(Exception):
@@ -84,20 +85,53 @@ def extract_recent_context(session_id: str, max_turns: int = 20) -> str:
     """Extract recent conversation context from session.
 
     Args:
-        session_id: Session identifier
+        session_id: Session identifier (full ID, short hash, or file path)
         max_turns: Maximum number of conversation turns to extract
 
     Returns:
         Recent conversation as markdown string, or empty string if unavailable
-
-    Note:
-        This is a simplified implementation. For full transcript extraction,
-        use session_reader.py or generate full transcript via session_transcript.py
     """
-    # TODO: Implement actual transcript extraction
-    # For now, return placeholder
-    # In production, would use session_reader.extract_context_from_session()
-    return f"[Recent context for session {session_id} - max {max_turns} turns]"
+    # 1. Determine session file path
+    session_path = None
+
+    # Check if session_id is already a path to an existing file
+    potential_path = Path(session_id)
+    if potential_path.exists() and potential_path.is_file():
+        session_path = potential_path
+    else:
+        # Search for the session by ID or short hash
+        short_hash = extract_short_hash(session_id)
+        sessions = find_sessions()
+        for s in sessions:
+            sid_lower = s.session_id.lower()
+            input_lower = session_id.lower()
+            # Match by:
+            # 1. Exact ID
+            # 2. Input is a prefix of the session ID (common UX for hashes)
+            # 3. Session ID matches the extracted short hash of the input
+            if (
+                sid_lower == input_lower
+                or sid_lower.startswith(input_lower)
+                or sid_lower == short_hash.lower()
+            ):
+                session_path = s.path
+                break
+
+    if not session_path:
+        return ""
+
+    # 2. Extract recent conversation context
+    try:
+        ctx = extract_gate_context(session_path, include={"conversation"}, max_turns=max_turns)
+        conversation = ctx.get("conversation", [])
+        if not conversation:
+            return ""
+
+        # Join turns with double newlines for markdown readability
+        return "\n\n".join(conversation)
+    except Exception:
+        # Fail gracefully
+        return ""
 
 
 def _validate_framework_reflections(reflections: list[dict[str, Any]]) -> None:
