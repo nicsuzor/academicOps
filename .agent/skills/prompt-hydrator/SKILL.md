@@ -146,7 +146,7 @@ Provide execution steps as a markdown list. Mark steps that can run in parallel 
 **Parallel marking rules**:
 - Steps within a `[PARALLEL]` block have no dependencies on each other
 - Use bullet points (`-`) under `[PARALLEL]` for the grouped steps
-- The step following a parallel block depends on ALL parallel steps completing
+- The next numbered step after a `[PARALLEL]` block acts as a barrier; it only executes after all parallel steps are complete.
 - Only mark steps as parallel when they are truly independent (no shared state, no ordering requirement)
 
 ### Constraint Verification
