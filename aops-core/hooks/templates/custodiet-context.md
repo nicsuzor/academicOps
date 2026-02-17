@@ -52,6 +52,7 @@ Key areas to check:
 - Fail-fast behavior (errors handled immediately vs papered over)
 - Plan mode usage (complex work planned first vs jumping to implementation)
 - Derivation from axioms (following conventions vs ad-hoc solutions)
+- **Aimless exploration (P#58)**: Agent reads multiple files/directories without a clear index or plan. Look for sequences of Glob/Read/Bash calls that wander without direction. If the plan specifies "ask user for X", exploring to find X yourself is a violation.
 
 ### Skills with implicit authority grants
 
@@ -132,6 +133,17 @@ When the session involves discovery, investigation, or decision-making, check if
 ```
 Note: Session discovered [insight] but did not capture it. Consider: mcp__plugin_aops-core_task_manager__update_task for operational tracking, or Skill(skill="remember") for knowledge persistence.
 ```
+
+### Session Continuations (Compacted Sessions)
+
+When the session narrative contains a compaction summary (from a previous session), treat it as BACKGROUND CONTEXT only:
+
+- Previous custodiet blocks described in the summary are **RESOLVED** (the user continued the session)
+- Focus your analysis on **CURRENT tool calls and actions**, not historical events
+- A "line 862 block" from a previous session is NOT an active violation
+- Look for the boundary between compaction summary and current session events
+
+**Key distinction**: Compaction summaries describe what happened; current tool calls show what IS happening. Your job is to check the latter.
 
 ## Your Assessment
 
