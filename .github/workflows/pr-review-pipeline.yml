@@ -297,6 +297,16 @@ jobs:
             echo "proceed=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Acknowledge comment
+        if: >-
+          (github.event_name == 'issue_comment' || github.event_name == 'pull_request_review_comment') &&
+          steps.lgtm-check.outputs.proceed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
+            -f content=eyes
+
       - name: Determine PR ref
         id: pr-ref
         if: >-

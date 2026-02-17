@@ -72,7 +72,7 @@ Is this about the user? (projects, goals, context, tasks)
 
 ## Workflow
 
-1. **Search first**: `mcp__memory__retrieve_memory(query="topic")` + `Glob`
+1. **Search first**: `mcp__memory__retrieve_memory(query="topic")` + `Glob` under `$ACA_DATA/`
 2. **If match**: Augment existing file
 3. **If no match**: Create new file with frontmatter:
 
