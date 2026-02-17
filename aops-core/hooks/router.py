@@ -285,7 +285,8 @@ class HookRouter:
 
         # 6. Extract subagent_type from spawning tools
         # Claude uses Task(subagent_type=...), Gemini uses delegate_to_agent(name=...)
-        # We check all three parameter names to support both clients
+        # Skill tool uses skill=... parameter
+        # We check all parameter names to support both clients
         if not subagent_type and tool_name in (
             "Task",
             "delegate_to_agent",
@@ -297,6 +298,7 @@ class HookRouter:
                     tool_input.get("subagent_type")
                     or tool_input.get("agent_name")
                     or tool_input.get("name")
+                    or tool_input.get("skill")  # Skill tool uses 'skill' parameter
                 )
 
         # 7. Detect Subagent Session
