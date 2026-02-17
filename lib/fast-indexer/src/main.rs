@@ -111,12 +111,15 @@ struct Node {
     #[serde(skip_serializing_if = "Option::is_none")]
     soft_depends_on: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
+<<<<<<< HEAD
     blocks: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     soft_blocks: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     children: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
+=======
+>>>>>>> 54a3d25 (chore: ensure custodiet.md is present)
     assignee: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     complexity: Option<String>,
@@ -218,7 +221,6 @@ struct FileData {
     soft_depends_on: Vec<String>,
     children: Vec<String>,
     blocks: Vec<String>,
-    soft_blocks: Vec<String>,
     project: Option<String>,
     due: Option<String>,
     depth: i32,
@@ -418,7 +420,10 @@ fn parse_file(path: PathBuf) -> Option<FileData> {
         soft_depends_on,
         children,
         blocks,
+<<<<<<< HEAD
         soft_blocks,
+=======
+>>>>>>> 54a3d25 (chore: ensure custodiet.md is present)
         project,
         due,
         depth,
@@ -576,10 +581,10 @@ fn output_dot(graph: &Graph, path: &str) -> Result<()> {
     // - link: thin gray line (default, lowest visual weight)
     for edge in &graph.edges {
         let style = match edge.edge_type {
-            EdgeType::DependsOn => "style=solid, color=\"#d63384\", penwidth=2",
+            EdgeType::DependsOn => "style=bold, color=\"#dc3545\", penwidth=2",
             EdgeType::SoftDependsOn => "style=dashed, color=\"#6c757d\", penwidth=1.5",
             EdgeType::Parent => "style=solid, color=\"#0d6efd\", penwidth=3",
-            EdgeType::Link => "style=solid, color=\"#adb5bd\", penwidth=1",
+            EdgeType::Link => "style=dotted, color=\"#adb5bd\", penwidth=1",
         };
         dot.push_str(&format!("    \"{}\" -> \"{}\" [{}];\n", edge.source, edge.target, style));
     }
@@ -1097,11 +1102,16 @@ fn main() -> Result<()> {
                 status: f.status,
                 priority: f.priority,
                 parent: f.parent,
+<<<<<<< HEAD
                 depends_on: vec_to_option(f.depends_on),
                 soft_depends_on: vec_to_option(f.soft_depends_on),
                 blocks: vec_to_option(f.blocks),
                 soft_blocks: vec_to_option(f.soft_blocks),
                 children: vec_to_option(f.children),
+=======
+                depends_on: if f.depends_on.is_empty() { None } else { Some(f.depends_on) },
+                soft_depends_on: if f.soft_depends_on.is_empty() { None } else { Some(f.soft_depends_on) },
+>>>>>>> 54a3d25 (chore: ensure custodiet.md is present)
                 assignee: f.assignee,
                 complexity: f.complexity,
                 project: f.project,
