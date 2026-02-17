@@ -397,7 +397,7 @@ Examples:
 
     # Build output
     output_parts = []
-    output_parts.append(f"# Subagent QA Report\n")
+    output_parts.append("# Subagent QA Report\n")
     output_parts.append(f"**Subagent:** {args.subagent}")
     output_parts.append(f"**Model:** {model}")
     if args.prompt:
@@ -443,7 +443,7 @@ Examples:
     if not args.quiet:
         context_lines = context.count("\n")
         context_chars = len(context)
-        print(f"\n--- Stats ---", file=sys.stderr)
+        print("\n--- Stats ---", file=sys.stderr)
         print(f"Subagent: {args.subagent} (model: {model})", file=sys.stderr)
         print(f"Context: {context_lines} lines, {context_chars:,} chars", file=sys.stderr)
         print(f"Estimated tokens: ~{context_chars // 4:,}", file=sys.stderr)
