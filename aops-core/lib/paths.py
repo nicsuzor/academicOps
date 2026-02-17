@@ -75,6 +75,11 @@ def get_data_root() -> Path:
     return path
 
 
+def get_local_cache_root() -> Path:
+    """Get local cache directory ($HOME/.aops)."""
+    return Path.home() / ".aops"
+
+
 # Framework component directories
 # All resolved relative to get_plugin_root()
 
@@ -138,8 +143,8 @@ def get_tools_file() -> Path:
 
 
 def get_sessions_dir() -> Path:
-    """Get sessions directory (sibling of $ACA_DATA, not inside it)."""
-    return get_data_root().parent / "sessions"
+    """Get sessions directory."""
+    return get_local_cache_root() / "sessions"
 
 
 def get_projects_dir() -> Path:
