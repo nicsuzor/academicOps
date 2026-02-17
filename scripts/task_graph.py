@@ -449,7 +449,7 @@ def generate_dot(
             edge_type = edge.get("type") or classify_edge(
                 edge["source"], edge["target"], node_by_id
             )
-            style = EDGE_STYLES.get(edge_type, EDGE_STYLES["wikilink"])
+            style = EDGE_STYLES.get(edge_type, EDGE_STYLES["link"])
 
             style_attrs = [
                 f'color="{style["color"]}"',
