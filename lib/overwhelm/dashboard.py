@@ -24,7 +24,7 @@ aops_core = aops_root / "aops-core"
 sys.path.insert(0, str(aops_core))
 
 
-from collections import defaultdict
+from collections import defaultdict, deque
 
 import networkx as nx
 from lib.path_reconstructor import EventType, reconstruct_path
@@ -5204,8 +5204,6 @@ if current_time - st.session_state.last_refresh >= 300:
 
 def _build_graph_structures(nodes: list[dict], edges: list[dict]):
     """Build adjacency lists and node map from graph data."""
-    from collections import defaultdict
-
     children = defaultdict(list)
     parents = defaultdict(list)
     node_map = {n["id"]: n for n in nodes}
@@ -5219,7 +5217,7 @@ def _build_graph_structures(nodes: list[dict], edges: list[dict]):
     return children, parents, node_map
 
 
-def _calculate_branching_metrics(nodes: list[dict], children: dict) -> dict:
+def _calculate_branching_metrics(nodes: list[dict], children: dict[str, list]) -> dict:
     """Calculate branching factor metrics."""
     non_leaf_degrees = [len(children[n["id"]]) for n in nodes if children[n["id"]]]
     avg_branching = sum(non_leaf_degrees) / len(non_leaf_degrees) if non_leaf_degrees else 0
@@ -5231,7 +5229,7 @@ def _calculate_branching_metrics(nodes: list[dict], children: dict) -> dict:
     }
 
 
-def _calculate_level_metrics(goals: list[str], children: dict) -> dict:
+def _calculate_level_metrics(goals: list[str], children: dict[str, list]) -> dict:
     """Calculate level width and clumping metrics."""
     level_widths = []
     visited = set()
@@ -5259,7 +5257,7 @@ def _calculate_level_metrics(goals: list[str], children: dict) -> dict:
     }
 
 
-def _calculate_chain_metrics(goals: list[str], children: dict) -> dict:
+def _calculate_chain_metrics(goals: list[str], children: dict[str, list]) -> dict:
     """Calculate dependency chain length metrics."""
 
     def longest_path_from(start_id: str, memo: dict, path: set) -> int:
@@ -5287,7 +5285,7 @@ def _calculate_chain_metrics(goals: list[str], children: dict) -> dict:
     }
 
 
-def _calculate_priority_metrics(children: dict, node_map: dict) -> dict:
+def _calculate_priority_metrics(children: dict[str, list], node_map: dict) -> dict:
     """Calculate priority inheritance violation metrics."""
     violations = []
     for node_id, child_ids in children.items():
@@ -5316,11 +5314,9 @@ def _calculate_priority_metrics(children: dict, node_map: dict) -> dict:
 
 
 def _calculate_connectivity_metrics(
-    nodes: list[dict], goals: list[str], children: dict, parents: dict, node_map: dict
+    nodes: list[dict], goals: list[str], children: dict[str, list], parents: dict[str, list], node_map: dict
 ) -> dict:
     """Calculate strategic reachability and connectivity metrics."""
-    from collections import deque
-
     reachable_from_goals = set()
     to_visit = deque(goals)
     while to_visit:
