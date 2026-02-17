@@ -65,10 +65,15 @@ TYPE_SHAPES = {
 }
 
 EDGE_STYLES = {
-    "parent": {"color": "#6c757d", "style": "solid"},  # gray - hierarchy
-    "depends_on": {"color": "#dc3545", "style": "bold"},  # red - blocking
-    "soft_depends_on": {"color": "#17a2b8", "style": "dashed"},  # teal - advisory
-    "wikilink": {"color": "#adb5bd", "style": "dotted"},  # light gray - generic
+    "parent": {"color": "#0d6efd", "style": "solid", "penwidth": "3"},  # blue - hierarchy
+    "depends_on": {"color": "#dc3545", "style": "bold", "penwidth": "2"},  # red - blocking
+    "soft_depends_on": {
+        "color": "#6c757d",
+        "style": "dashed",
+        "penwidth": "1.5",
+    },  # gray - advisory
+    "link": {"color": "#adb5bd", "style": "dotted", "penwidth": "1"},  # light gray - generic
+    "wikilink": {"color": "#adb5bd", "style": "dotted", "penwidth": "1"},
 }
 
 # Structural completed nodes (completed parents with active children)
@@ -232,11 +237,11 @@ def classify_edge(source_id: str, target_id: str, node_by_id: dict) -> str:
     source = node_by_id.get(source_id, {})
     if source.get("parent") == target_id:
         return "parent"
-    if target_id in source.get("depends_on", []):
+    if target_id in (source.get("depends_on") or []):
         return "depends_on"
-    if target_id in source.get("soft_depends_on", []):
+    if target_id in (source.get("soft_depends_on") or []):
         return "soft_depends_on"
-    return "wikilink"
+    return "link"
 
 
 def _build_legend_table(stats: dict) -> str:
@@ -305,10 +310,10 @@ def _build_legend_table(stats: dict) -> str:
     rows.append('<TR><TD COLSPAN="4" BGCOLOR="#e9ecef"><B>Edge Types</B></TD></TR>')
     rows.append(
         "<TR>"
-        '<TD><FONT COLOR="#6c757d">&#x2500;&#x2500;</FONT> parent</TD>'
+        '<TD><FONT COLOR="#0d6efd"><B>&#x2501;&#x2501;</B></FONT> parent</TD>'
         '<TD><FONT COLOR="#dc3545"><B>&#x2500;&#x2500;</B></FONT> depends_on</TD>'
-        '<TD><FONT COLOR="#17a2b8">- - -</FONT> soft_depends</TD>'
-        "<TD></TD>"
+        '<TD><FONT COLOR="#6c757d">- - -</FONT> soft_depends_on</TD>'
+        '<TD><FONT COLOR="#adb5bd">. . .</FONT> link</TD>'
         "</TR>"
     )
 
@@ -440,12 +445,20 @@ def generate_dot(
     node_ids = {n["id"] for n in nodes}
     for edge in edges:
         if edge["source"] in node_ids and edge["target"] in node_ids:
-            edge_type = classify_edge(edge["source"], edge["target"], node_by_id)
-            style = EDGE_STYLES.get(edge_type, EDGE_STYLES["wikilink"])
-            lines.append(
-                f'    "{edge["source"]}" -> "{edge["target"]}" '
-                f'[color="{style["color"]}" style="{style["style"]}"];'
+            # Prefer edge type from indexer JSON, fallback to classification
+            edge_type = edge.get("type") or classify_edge(
+                edge["source"], edge["target"], node_by_id
             )
+            style = EDGE_STYLES.get(edge_type, EDGE_STYLES["link"])
+
+            style_attrs = [
+                f'color="{style["color"]}"',
+                f'style="{style["style"]}"',
+            ]
+            if "penwidth" in style:
+                style_attrs.append(f"penwidth={style['penwidth']}")
+
+            lines.append(f'    "{edge["source"]}" -> "{edge["target"]}" [{" ".join(style_attrs)}];')
 
     lines.append("}")
     return "\n".join(lines)
