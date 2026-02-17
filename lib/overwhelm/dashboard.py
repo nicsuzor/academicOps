@@ -3441,9 +3441,8 @@ def calculate_graph_health(graph: dict) -> dict:
     # Merge in calculated metrics
     result.update(branching_metrics)
     result.update(chain_metrics)
+    level_metrics["level_widths"] = level_metrics["level_widths"][:10]  # Truncate for summary
     result.update(level_metrics)
-    # Truncate level_widths for the summary
-    result["level_widths"] = result["level_widths"][:10]
 
     result.update(priority_metrics)
     result.update(connectivity_metrics)
@@ -5314,7 +5313,11 @@ def _calculate_priority_metrics(children: dict[str, list], node_map: dict) -> di
 
 
 def _calculate_connectivity_metrics(
-    nodes: list[dict], goals: list[str], children: dict[str, list], parents: dict[str, list], node_map: dict
+    nodes: list[dict],
+    goals: list[str],
+    children: dict[str, list],
+    parents: dict[str, list],
+    node_map: dict,
 ) -> dict:
     """Calculate strategic reachability and connectivity metrics."""
     reachable_from_goals = set()
