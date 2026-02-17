@@ -51,7 +51,6 @@ use rayon::prelude::*;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -1059,16 +1058,7 @@ fn main() -> Result<()> {
         .collect();
 
     // 5. Output based on format
-    // Resolve default output to ~/.aops/index/graph when using the default value
-    let resolved_output = if args.output == "graph" {
-        let home = env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
-        let index_dir = PathBuf::from(&home).join(".aops").join("index");
-        fs::create_dir_all(&index_dir).ok();
-        index_dir.join("graph").to_string_lossy().to_string()
-    } else {
-        args.output.clone()
-    };
-    let output_base = resolved_output.trim_end_matches(".json")
+    let output_base = args.output.trim_end_matches(".json")
         .trim_end_matches(".graphml")
         .trim_end_matches(".dot");
 
