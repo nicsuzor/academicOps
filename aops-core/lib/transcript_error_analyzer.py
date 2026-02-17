@@ -663,9 +663,10 @@ def scan_recent_sessions(
     if sessions_dir is None:
         home = Path.home()
         projects_dir = home / ".claude" / "projects"
-        # Derive project dir from CWD: /home/nic/src/academicOps -> -home-nic-src-academicOps
+        # Derive project dir from CWD: /home/nic/.project -> -home-nic-_project
+        # Match Claude Code path sanitization: '/' -> '-', '.' -> '_'
         cwd = Path(os.environ.get("CLAUDE_PROJECT_DIR", str(Path.cwd())))
-        encoded_name = str(cwd).replace("/", "-")
+        encoded_name = str(cwd).replace("/", "-").replace(".", "_")
         candidate = projects_dir / encoded_name
         if candidate.exists():
             sessions_dir = candidate
