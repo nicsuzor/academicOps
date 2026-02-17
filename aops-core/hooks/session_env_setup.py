@@ -156,21 +156,6 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     for gate_name, gate_path in gate_paths.items():
         persist[f"AOPS_GATE_FILE_{gate_name.upper()}"] = str(gate_path)
 
-    # 6. Create .aops/ symlinks (non-fatal on failure)
-    project_dir = os.environ.get("CLAUDE_PROJECT_DIR")
-    if project_dir:
-        aops_dir = Path(project_dir) / ".aops"
-        try:
-            aops_dir.mkdir(parents=True, exist_ok=True)
-            for gate_name, gate_path in gate_paths.items():
-                symlink = aops_dir / f"{gate_name}.md"
-                # Remove existing symlink/file before creating
-                if symlink.exists() or symlink.is_symlink():
-                    symlink.unlink()
-                symlink.symlink_to(gate_path)
-        except OSError as e:
-            print(f"WARNING: Failed to create .aops/ symlinks: {e}", file=sys.stderr)
-
     # Persist all environment variables
     set_persistent_env(persist)
 
