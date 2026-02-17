@@ -121,6 +121,7 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
             "gate_name",
             "tool_name",
             "custodiet_mode",
+            "glossary",
         ),
         description="Unified context for hydration gate",
     ),
