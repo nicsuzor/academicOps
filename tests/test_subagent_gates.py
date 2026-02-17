@@ -156,6 +156,98 @@ def test_regex_hook_event_matching():
     )
 
 
+def test_router_normalize_skill_tool_extracts_skill_name(router):
+    """normalize_input extracts skill name from Skill tool into subagent_type."""
+    raw_input = {
+        "hook_event_name": "PostToolUse",
+        "session_id": "main-session-uuid-1234",
+        "tool_name": "Skill",
+        "tool_input": {"skill": "handover", "args": ""},
+    }
+    ctx = router.normalize_input(raw_input)
+    assert ctx.subagent_type == "handover"
+    assert ctx.tool_name == "Skill"
+
+
+def test_router_normalize_skill_tool_not_subagent(router):
+    """Main-session Skill invocations must NOT be classified as subagent sessions."""
+    raw_input = {
+        "hook_event_name": "PostToolUse",
+        "session_id": "main-session-uuid-1234",
+        "tool_name": "Skill",
+        "tool_input": {"skill": "handover", "args": ""},
+    }
+    ctx = router.normalize_input(raw_input)
+    assert ctx.is_subagent is False
+
+
+def test_router_normalize_activate_skill_extracts_skill_name(router):
+    """normalize_input extracts skill name from activate_skill (Gemini) into subagent_type."""
+    raw_input = {
+        "hook_event_name": "PostToolUse",
+        "session_id": "main-session-uuid-5678",
+        "tool_name": "activate_skill",
+        "tool_input": {"skill": "handover"},
+    }
+    ctx = router.normalize_input(raw_input)
+    assert ctx.subagent_type == "handover"
+    assert ctx.is_subagent is False
+
+
+def test_handover_gate_opens_on_skill_tool_posttooluse():
+    """Handover gate transitions CLOSED->OPEN after PostToolUse for Skill tool."""
+    state = SessionState.create("test-session")
+    state.get_gate("handover").status = GateStatus.CLOSED
+
+    handover_config = next(g for g in GATE_CONFIGS if g.name == "handover")
+    gate = GenericGate(handover_config)
+
+    ctx = HookContext(
+        session_id="main-session-uuid-1234",
+        hook_event="PostToolUse",
+        tool_name="Skill",
+        subagent_type="handover",
+    )
+    gate.on_tool_use(ctx, state)
+    assert state.get_gate("handover").status == GateStatus.OPEN
+
+
+def test_handover_gate_opens_on_activate_skill_posttooluse():
+    """Handover gate transitions CLOSED->OPEN after PostToolUse for activate_skill (Gemini)."""
+    state = SessionState.create("test-session")
+    state.get_gate("handover").status = GateStatus.CLOSED
+
+    handover_config = next(g for g in GATE_CONFIGS if g.name == "handover")
+    gate = GenericGate(handover_config)
+
+    ctx = HookContext(
+        session_id="main-session-uuid-5678",
+        hook_event="PostToolUse",
+        tool_name="activate_skill",
+        subagent_type="handover",
+    )
+    gate.on_tool_use(ctx, state)
+    assert state.get_gate("handover").status == GateStatus.OPEN
+
+
+def test_handover_gate_not_opened_by_partial_match():
+    """Handover gate must NOT open for subagent_type that only partially matches 'handover'."""
+    state = SessionState.create("test-session")
+    state.get_gate("handover").status = GateStatus.CLOSED
+
+    handover_config = next(g for g in GATE_CONFIGS if g.name == "handover")
+    gate = GenericGate(handover_config)
+
+    ctx = HookContext(
+        session_id="main-session-uuid-9999",
+        hook_event="PostToolUse",
+        tool_name="Skill",
+        subagent_type="pre-handover",  # Should NOT match ^handover$
+    )
+    gate.on_tool_use(ctx, state)
+    assert state.get_gate("handover").status == GateStatus.CLOSED
+
+
 def test_router_bypass_for_subagents(router):
     """Test that router.execute_hooks bypasses gates for subagents (sidechains)."""
     # 1. Setup Session State (Hydration CLOSED)
