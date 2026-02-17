@@ -9,10 +9,10 @@ See specs/unified-session-summary.md for architecture details.
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from typing import Any, TypedDict
 
+from .paths import get_data_root
 from .session_paths import get_session_short_hash
 
 
@@ -39,14 +39,10 @@ def get_session_summary_dir() -> Path:
     Returns:
         Path to $ACA_DATA/dashboard/sessions/
 
-    Raises:
-        ValueError: If ACA_DATA environment variable not set
+    Note:
+        Uses lib.paths.get_data_root() for canonical path resolution.
     """
-    aca_data = os.environ.get("ACA_DATA")
-    if not aca_data:
-        raise ValueError("ACA_DATA environment variable not set")
-
-    return Path(aca_data) / "dashboard" / "sessions"
+    return get_data_root() / "dashboard" / "sessions"
 
 
 def get_session_summary_path(session_id: str) -> Path:
