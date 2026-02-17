@@ -112,6 +112,25 @@ class TestSessionPaths(unittest.TestCase):
         )
         self.assertFalse(result)
 
+    @patch.dict(
+        os.environ,
+        {"AOPS_SESSION_STATE_DIR": "/home/user/.gemini/tmp/abc123hash"},
+        clear=True,
+    )
+    def test_is_gemini_session_state_dir_fallback(self):
+        """_is_gemini_session detects Gemini via AOPS_SESSION_STATE_DIR when no transcript_path.
+
+        This is the polecat worker case: worker runs in isolated worktree without
+        transcript_path in input_data, but AOPS_SESSION_STATE_DIR was set by router.
+        Regression test for GH#467.
+        """
+        # UUID session_id (no gemini- prefix), no transcript_path, but state dir is Gemini
+        result = session_paths._is_gemini_session(
+            "07328230-44d4-414b-9fec-191a6eec0948",
+            {},  # No transcript_path - simulating polecat worker
+        )
+        self.assertTrue(result, "Should detect Gemini from AOPS_SESSION_STATE_DIR")
+
 
 if __name__ == "__main__":
     unittest.main()
