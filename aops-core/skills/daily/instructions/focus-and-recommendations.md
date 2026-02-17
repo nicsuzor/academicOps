@@ -7,15 +7,37 @@ Populate the `## Focus` section with priority dashboard and task recommendations
 ### 3.1: Load Task Data
 
 ```python
-mcp__plugin_aops-core_task_manager__list_tasks(limit=100)
+# Get all tasks (limit=0 returns all)
+tasks = mcp__plugin_aops-core_task_manager__list_tasks(limit=0)
 ```
 
-Parse task data from output to identify:
+Parse task data to identify priority distribution, overdue tasks, and blocked tasks.
 
-- Priority distribution (P0/P1/P2/P3 counts)
-- Overdue tasks (negative days_until_due)
-- Today's work by project
-- Blocked tasks
+#### Priority Distribution Counting (CRITICAL)
+
+**Both numerator AND denominator MUST use the same filter.**
+
+```python
+# Actionable = NOT done/cancelled
+ACTIONABLE_STATUSES = ["active", "inbox", "in_progress", "blocked", "waiting", "review", "merge_ready"]
+
+actionable_tasks = [t for t in tasks if t["status"] in ACTIONABLE_STATUSES]
+total_actionable = len(actionable_tasks)
+
+# Count by priority within actionable tasks
+priority_counts = {0: 0, 1: 0, 2: 0, 3: 0}
+for task in actionable_tasks:
+    p = task.get("priority", 2)  # default P2 if missing
+    if p in priority_counts:
+        priority_counts[p] += 1
+```
+
+**Format**: `P0 ░░░░░░░░░░ 9/333` where:
+- `9` = actionable P0 tasks
+- `333` = total actionable tasks (NOT total including done/cancelled)
+
+**Wrong**: `P0 9/779` (numerator filtered, denominator unfiltered)
+**Right**: `P0 9/333` (both filtered consistently)
 
 ### 3.1.5: Generate Task Tree
 
