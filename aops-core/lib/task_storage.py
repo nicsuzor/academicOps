@@ -35,6 +35,7 @@ Usage:
 from __future__ import annotations
 
 import tempfile
+from collections import deque
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
@@ -594,10 +595,10 @@ class TaskStorage:
             List of all descendant tasks
         """
         descendants = []
-        to_visit = [task_id]
+        to_visit = deque([task_id])
 
         while to_visit:
-            current_id = to_visit.pop(0)
+            current_id = to_visit.popleft()
             children = self.get_children(current_id)
             for child in children:
                 descendants.append(child)
