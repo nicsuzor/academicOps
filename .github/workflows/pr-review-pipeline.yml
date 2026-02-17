@@ -2,7 +2,7 @@
 # Each stage depends on the previous one passing. This fails fast
 # and avoids wasting LLM compute on PRs that can't pass earlier gates.
 #
-# Stages: lint → type-check → strategic-review → custodiet → qa → notify-ready
+# Stages: lint → type-check → gatekeeper → strategic-review → custodiet → qa → notify-ready
 # Merge agent runs separately, triggered by human approval.
 #
 # See specs/pr-process.md for the full process documentation.
@@ -33,9 +33,7 @@ jobs:
     name: Lint
     if: >-
       github.event_name == 'pull_request' &&
-      (github.event.action == 'opened' || github.event.action == 'synchronize') &&
-      github.actor != 'claude[bot]' &&
-      github.actor != 'github-actions[bot]'
+      (github.event.action == 'opened' || github.event.action == 'synchronize')
     runs-on: ubuntu-latest
     concurrency:
       group: pr-review-${{ github.event.pull_request.number }}
@@ -89,11 +87,55 @@ jobs:
         run: uv run basedpyright
 
   # ──────────────────────────────────────────────
-  # Stage 3: Strategic Review
+  # Stage 3: Gatekeeper (alignment + quality gate)
+  # ──────────────────────────────────────────────
+  gatekeeper:
+    name: Gatekeeper
+    needs: type-check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+      issues: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Read gatekeeper instructions
+        id: gatekeeper-prompt
+        run: |
+          PROMPT=$(cat .github/agents/gatekeeper.md)
+          {
+            echo "prompt<<GATEKEEPER_EOF"
+            echo "$PROMPT"
+            echo "GATEKEEPER_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run Gatekeeper Agent
+        uses: anthropics/claude-code-action@v1
+        with:
+          allowed_bots: "claude[bot]"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            ${{ steps.gatekeeper-prompt.outputs.prompt }}
+
+            ---
+
+            Review PR #${{ github.event.pull_request.number }} in repository ${{ github.repository }}.
+            Use `gh pr view ${{ github.event.pull_request.number }}` and `gh pr diff ${{ github.event.pull_request.number }}` to gather information.
+
+          claude_args: '--allowed-tools "Bash(gh:*),Read"'
+
+  # ──────────────────────────────────────────────
+  # Stage 4: Strategic Review
   # ──────────────────────────────────────────────
   strategic-review:
     name: Strategic Review
-    needs: type-check
+    needs: gatekeeper
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -152,7 +194,7 @@ jobs:
           fi
 
   # ──────────────────────────────────────────────
-  # Stage 4: Custodiet (scope compliance)
+  # Stage 5: Custodiet (scope compliance)
   # ──────────────────────────────────────────────
   custodiet:
     name: Custodiet
@@ -196,7 +238,7 @@ jobs:
           claude_args: '--allowed-tools "Bash(gh:*),Read"'
 
   # ──────────────────────────────────────────────
-  # Stage 5: QA (acceptance criteria)
+  # Stage 6: QA (acceptance criteria)
   # ──────────────────────────────────────────────
   qa:
     name: QA
@@ -240,7 +282,7 @@ jobs:
           claude_args: '--allowed-tools "Bash(gh:*),Read"'
 
   # ──────────────────────────────────────────────
-  # Stage 6: Ready for Review notification
+  # Stage 7: Ready for Review notification
   # ──────────────────────────────────────────────
   notify-ready:
     name: Ready for Review
@@ -269,6 +311,7 @@ jobs:
           |-------|--------|
           | Lint | ✅ Passed |
           | Type check | ✅ Passed |
+          | Gatekeeper | ✅ Approved |
           | Strategic review | ✅ Passed |
           | Custodiet | ✅ Passed |
           | QA | ✅ Passed |
@@ -278,7 +321,7 @@ jobs:
           )"
 
   # ──────────────────────────────────────────────
-  # Stage 7: Merge Agent (triggered by human approval)
+  # Stage 8: Merge Agent (triggered by human approval)
   # ──────────────────────────────────────────────
   claude-lgtm-merge:
     # Run for: manual dispatch, PR assigned to claude, human-approved reviews, or LGTM comments from nicsuzor.
