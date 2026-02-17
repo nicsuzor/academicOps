@@ -41,6 +41,13 @@ def check_custom_condition(
         try:
             from lib.hydration import should_skip_hydration
 
+            # Check ctx.is_subagent FIRST - this is computed by the router with
+            # full context (including Gemini's is_sidechain flag). Avoids the bug
+            # where should_skip_hydration() only had session_id and missed sidechain
+            # detection for Gemini CLI subagents.
+            if ctx.is_subagent:
+                return False  # Subagents are not hydratable
+
             # Extract prompt
             # For Claude, prompt is not directly in input usually?
             # It might be in 'user_message' or similar if router normalizes it.
