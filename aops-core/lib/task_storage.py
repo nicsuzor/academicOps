@@ -34,11 +34,11 @@ Usage:
 
 from __future__ import annotations
 
-import tempfile
 from collections import deque
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
+import tempfile
 
 from filelock import FileLock
 
