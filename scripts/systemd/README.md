@@ -1,6 +1,10 @@
 # Brain Sync Systemd Timer
 
-Periodic sync for `~/brain` repository.
+Periodic sync for `$ACA_DATA` (PKB) repository.
+
+## Prerequisites
+
+The `ACA_DATA` environment variable must be set (e.g., `export ACA_DATA="$HOME/brain"`).
 
 ## Installation
 
@@ -8,6 +12,9 @@ Periodic sync for `~/brain` repository.
 # Copy units to user systemd directory
 mkdir -p ~/.config/systemd/user
 cp brain-sync.service brain-sync.timer ~/.config/systemd/user/
+
+# Make scripts executable
+chmod +x ~/.aops/aops/scripts/brain-sync.sh ~/.aops/aops/scripts/brain-push.sh
 
 # Reload systemd
 systemctl --user daemon-reload
@@ -38,4 +45,4 @@ systemctl --user start brain-sync.service
 
 ## Logs
 
-Sync failures are logged to `~/brain/.sync-failures.log`.
+Sync failures are logged to `${ACA_DATA}/.sync-failures.log`.

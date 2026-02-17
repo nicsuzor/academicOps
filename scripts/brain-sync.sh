@@ -1,5 +1,5 @@
-#!/bin/bash
-# brain-sync.sh - Fallback periodic sync for ~/brain
+#!/usr/bin/env bash
+# brain-sync.sh - Fallback periodic sync for PKB ($ACA_DATA)
 #
 # Commits dirty working tree with meaningful commit messages derived from
 # changed file paths, then pushes to origin with rebase-based conflict handling.
@@ -12,7 +12,8 @@
 
 set -euo pipefail
 
-BRAIN_DIR="${HOME}/brain"
+: "${ACA_DATA:?ACA_DATA environment variable must be set}"
+BRAIN_DIR="${ACA_DATA}"
 LOG_FILE="${BRAIN_DIR}/.sync-failures.log"
 LOCK_FILE="${BRAIN_DIR}/.sync.lock"
 
@@ -33,18 +34,23 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Acquire lock (prevent concurrent syncs)
+# Acquire lock atomically using mkdir (prevents concurrent syncs)
 acquire_lock() {
-    if [ -f "${LOCK_FILE}" ]; then
-        local pid
-        pid=$(cat "${LOCK_FILE}" 2>/dev/null || echo "")
-        if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-            log "INFO" "Sync already running (PID: $pid), exiting"
-            exit 0
-        fi
-        # Stale lock, remove it
-        rm -f "${LOCK_FILE}"
+    if mkdir "${LOCK_FILE}.d" 2>/dev/null; then
+        echo $$ > "${LOCK_FILE}"
+        rmdir "${LOCK_FILE}.d"
+        return 0
     fi
+
+    # Check if existing lock is stale
+    local pid
+    pid=$(cat "${LOCK_FILE}" 2>/dev/null || echo "")
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+        log "INFO" "Sync already running (PID: $pid), exiting"
+        exit 0
+    fi
+
+    # Stale lock, overwrite it
     echo $$ > "${LOCK_FILE}"
 }
 
@@ -75,8 +81,13 @@ path_to_category() {
             echo "task: ${task_id}"
             ;;
         daily/*)
-            local date_part
-            date_part=$(basename "${path}" .md | sed 's/-daily$//' | sed 's/\([0-9]\{4\}\)\([0-9]\{2\}\)\([0-9]\{2\}\)/\1-\2-\3/')
+            local base date_part
+            base=$(basename "${path}" .md | sed 's/-daily$//')
+            if [[ "${base}" =~ ^([0-9]{4})([0-9]{2})([0-9]{2})$ ]]; then
+                date_part="${BASH_REMATCH[1]}-${BASH_REMATCH[2]}-${BASH_REMATCH[3]}"
+            else
+                date_part="${base}"
+            fi
             echo "daily: ${date_part}"
             ;;
         projects/*)
@@ -137,41 +148,40 @@ generate_commit_message() {
     local cat_list
     cat_list=$(printf '%s\n' "${!categories[@]}" | sort | tr '\n' ', ' | sed 's/, $//')
 
-    if [ "$count" -le 3 ]; then
-        # Few files: list them
-        echo "sync: ${count} files (${cat_list})"
-    else
-        echo "sync: ${count} files (${cat_list})"
-    fi
+    echo "sync: ${count} files (${cat_list})"
 }
 
 # Pull with rebase, handling conflicts
 pull_rebase() {
     log "INFO" "Pulling with rebase..."
 
-    if git pull --rebase origin main 2>/dev/null; then
+    local pull_output
+    if pull_output=$(git pull --rebase origin main 2>&1); then
         return 0
     fi
 
     # Rebase failed - try abort, stash, pull, stash pop
-    log "WARN" "Rebase failed, attempting recovery..."
+    log "WARN" "Rebase failed: ${pull_output}"
+    log "WARN" "Attempting recovery..."
 
-    git rebase --abort 2>/dev/null || true
+    git rebase --abort 2>&1 || true
 
     if ! git stash push -m "brain-sync recovery $(date '+%Y%m%d-%H%M%S')"; then
         log_failure "Failed to stash local changes"
         return 1
     fi
 
-    if ! git pull --rebase origin main; then
-        log_failure "Pull failed even after stashing"
-        git stash pop 2>/dev/null || true
+    local pull2_output
+    if ! pull2_output=$(git pull --rebase origin main 2>&1); then
+        log_failure "Pull failed even after stashing: ${pull2_output}"
+        git stash pop 2>&1 || true
         return 1
     fi
 
     if ! git stash pop; then
         log_failure "Stash pop failed - conflict needs manual resolution"
-        log_failure "Your changes are in: git stash list"
+        log_failure "Your changes are preserved in the stash (see: git stash list)"
+        log_failure "Next steps: run 'git status', resolve conflicts, then 'git stash apply' to re-apply"
         return 1
     fi
 
@@ -182,28 +192,34 @@ pull_rebase() {
 push_with_retry() {
     log "INFO" "Pushing to origin..."
 
-    if git push origin main 2>/dev/null; then
+    local push_output
+    if push_output=$(git push origin main 2>&1); then
         return 0
     fi
 
     # Push rejected - retry once with pull-rebase
-    log "WARN" "Push rejected, retrying with pull-rebase..."
+    log "WARN" "Push rejected (${push_output}), retrying with pull-rebase..."
 
     if ! pull_rebase; then
         log_failure "Pull-rebase failed during push retry"
         return 1
     fi
 
-    if git push origin main 2>/dev/null; then
+    if push_output=$(git push origin main 2>&1); then
         return 0
     fi
 
-    log_failure "Push failed after retry - giving up"
+    log_failure "Push failed after retry - giving up: ${push_output}"
     return 1
 }
 
 # Main sync function
 main() {
+    if [ ! -d "${BRAIN_DIR}" ]; then
+        echo "${BRAIN_DIR} (\$ACA_DATA) does not exist. Please initialise it as a git repository first." >&2
+        exit 1
+    fi
+
     cd "${BRAIN_DIR}" || {
         log_failure "Cannot cd to ${BRAIN_DIR}"
         exit 1
@@ -234,12 +250,15 @@ main() {
     local -a untracked_files
     mapfile -t untracked_files < <(git ls-files --others --exclude-standard 2>/dev/null)
 
-    # Combine all files
-    local -a all_files=("${changed_files[@]}" "${staged_files[@]}" "${untracked_files[@]}")
-
-    # Remove duplicates and empty entries
-    local -a unique_files
-    mapfile -t unique_files < <(printf '%s\n' "${all_files[@]}" | grep -v '^$' | sort -u)
+    # Combine all files, remove duplicates and empty entries
+    # Use safe array expansion to handle empty arrays with set -u
+    local -a all_files unique_files
+    all_files=(
+        ${changed_files[@]+"${changed_files[@]}"}
+        ${staged_files[@]+"${staged_files[@]}"}
+        ${untracked_files[@]+"${untracked_files[@]}"}
+    )
+    mapfile -t unique_files < <(printf '%s\n' "${all_files[@]+"${all_files[@]}"}" | grep -v '^$' | sort -u)
 
     if [ ${#unique_files[@]} -eq 0 ]; then
         log "INFO" "No files to commit"

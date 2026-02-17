@@ -235,18 +235,18 @@ Tasks requiring human judgment default to `assignee: null`. Only mechanical work
 
 ## Skills Commit After Brain Writes (P#103)
 
-Skills writing to `~/brain` MUST commit and push with a specific message describing what was written. Use `brain-push.sh` helper:
+Skills writing to `$ACA_DATA` MUST commit and push with a specific message describing what was written. Use `brain-push.sh` helper:
 
 ```bash
 brain-push.sh "knowledge: tech/new-fact"
 ```
 
-**Rationale**: Multiple writers (skills, task manager, /remember, manual edits) write to ~/brain. Meaningful commit messages require the writer to say what they did—a generic sync cannot know intent.
+**Rationale**: Multiple writers (skills, task manager, /remember, manual edits) write to `$ACA_DATA`. Meaningful commit messages require the writer to say what they did—a generic sync cannot know intent.
 
 **Implementation**:
 - Primary path: Skills call `brain-push.sh "descriptive message"` after writing
 - Fallback: `brain-sync.sh` runs every 5 minutes via systemd timer, generating messages from paths
-- Conflict handling: Always rebase (no merge commits). On conflict, log to `~/.brain/.sync-failures.log`
+- Conflict handling: Always rebase (no merge commits). On conflict, log to `${ACA_DATA}/.sync-failures.log`
 
 **Corollaries**:
 - `/remember` skill should commit with `knowledge: <topic>` message

@@ -1,5 +1,5 @@
 [Unit]
-Description=Sync ~/brain git repository
+Description=Sync $ACA_DATA git repository
 After=network-online.target
 Wants=network-online.target
 
@@ -7,6 +7,3 @@ Wants=network-online.target
 Type=oneshot
 ExecStart=%h/.aops/aops/scripts/brain-sync.sh
 # Use the installed location in ~/.aops/aops (not worktree)
-
-[Install]
-WantedBy=default.target
