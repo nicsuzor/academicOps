@@ -52,6 +52,10 @@ P3 ██░░░░░░░░ 15/85
 
 (Natural language summary of the day's work — generated from merged PRs, sessions, and completed tasks)
 
+## Mobile Captures
+
+(Triaged from `notes/mobile-captures/` — see step 1.5)
+
 ## FYI
 
 ### [[Topic from Email]]

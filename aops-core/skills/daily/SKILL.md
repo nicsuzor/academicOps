@@ -33,7 +33,7 @@ Every `/daily` invocation runs the **full pipeline** and updates the daily note 
 /daily sync     # Alias — same behavior, kept for muscle memory
 ```
 
-**Pipeline**: 1 (create if missing) → 2 (email briefing) → 3 (focus & recommendations) → 4 (progress sync & merged PRs) → 5 (work summary)
+**Pipeline**: 1 (create if missing) → 1.5 (mobile capture triage) → 2 (email briefing) → 3 (focus & recommendations) → 4 (progress sync & merged PRs) → 5 (work summary)
 
 **Idempotent updates**: Each section is updated in place using the Edit tool. User-written content is **never deleted**:
 
@@ -47,6 +47,7 @@ Every `/daily` invocation runs the **full pipeline** and updates the daily note 
 
 | Section                 | Owner    | Updated By                               |
 | ----------------------- | -------- | ---------------------------------------- |
+| Mobile Captures         | `/daily` | Triage from notes/mobile-captures (mixed)|
 | Focus                   | `/daily` | Task data + user priorities (mixed)      |
 | Task Tree               | `/daily` | Task hierarchy snapshot (machine)        |
 | Today's Story           | `/daily` | Synthesis from merges + sessions + tasks |
@@ -65,11 +66,23 @@ Every `/daily` invocation runs the **full pipeline** and updates the daily note 
 
 ---
 
-## 1. Create note & 2. Update daily briefing
+## 1. Create note
 
-Manage the initial creation of the daily note and the triage of recent emails to provide an FYI briefing.
+Manage the initial creation of the daily note (or skip if it already exists).
 
-> See [[instructions/briefing-and-triage]] for details on note creation, carryover verification, and email classification.
+> See [[instructions/briefing-and-triage]] for details on note creation and carryover verification.
+
+## 1.5. Mobile Capture Triage
+
+Process unprocessed notes from `notes/mobile-captures/` (captured via iPhone shortcut / quick-capture workflow).
+
+> See [[instructions/mobile-capture-triage]] for the triage protocol.
+
+## 2. Update daily briefing
+
+Triage recent emails to provide an FYI briefing.
+
+> See [[instructions/briefing-and-triage]] for email classification details.
 
 ## 3. Today's Focus
 
@@ -93,6 +106,7 @@ Generate natural language narratives of the day's achievements for both the dail
 
 ## Error Handling
 
+- **No mobile captures**: Skip triage, continue with email briefing
 - **Outlook unavailable**: Skip email triage, continue with recommendations
 - **GitHub CLI unavailable**: Skip merged PR listing, note in section
 - **No session JSONs**: Skip sync, note "No sessions to sync"
