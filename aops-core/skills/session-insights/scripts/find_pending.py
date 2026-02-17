@@ -8,12 +8,21 @@ Usage:
 
 Output:
     pipe-separated lines: TRANSCRIPT_PATH|SESSION_ID|DATE
+
+Note:
+    Uses lib.paths.get_data_root() for canonical path resolution.
 """
 
 import argparse
-import os
 import sys
 from pathlib import Path
+
+# Add aops-core to path for lib imports
+SCRIPT_DIR = Path(__file__).parent.resolve()
+AOPS_CORE_ROOT = SCRIPT_DIR.parent.parent.parent
+sys.path.insert(0, str(AOPS_CORE_ROOT))
+
+from lib.paths import get_data_root
 
 
 def main():
@@ -21,8 +30,7 @@ def main():
     parser.add_argument("--limit", type=int, default=5, help="Max number of sessions to return")
     args = parser.parse_args()
 
-    aca_data_env = os.environ["ACA_DATA"]
-    aca_data = Path(aca_data_env)
+    aca_data = get_data_root()
 
     transcripts_dir = aca_data / "sessions" / "claude"
     insights_dir = aca_data / "sessions" / "summaries"  # v3.4.0: summaries subdirectory
