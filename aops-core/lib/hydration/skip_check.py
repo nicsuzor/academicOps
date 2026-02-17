@@ -6,8 +6,6 @@ Gates (lib/gates/) can now import this without circular dependencies.
 
 from __future__ import annotations
 
-import os
-
 from lib.hook_utils import is_subagent_session
 
 
@@ -20,7 +18,6 @@ def should_skip_hydration(
     """Check if prompt should skip hydration.
 
     Returns True for:
-    - Polecat sessions (they run hydrator themselves via /pull or inline)
     - Subagent sessions (they are themselves part of the hydration/task flow)
     - Agent/task completion notifications (<agent-notification>, <task-notification>)
     - Skill invocations (prompts starting with '/')
@@ -37,13 +34,7 @@ def should_skip_hydration(
     Returns:
         True if hydration should be skipped
     """
-    # 0a. Skip if this is a polecat session
-    # Polecat workers run the hydrator themselves as their first step;
-    # injecting hydration instructions into their prompt is redundant.
-    if os.environ.get("POLECAT_SESSION_TYPE") == "polecat":
-        return True
-
-    # 0b. Skip if this is a subagent session
+    # 0. Skip if this is a subagent session
     # Subagents should never trigger their own hydration requirement
     # Use pre-computed flag if available (avoids Gemini is_sidechain detection gap)
     if is_subagent is True:

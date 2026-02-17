@@ -9,11 +9,8 @@ Related:
 - Feature ns-1h65: Block progress until prompt hydrator has run
 """
 
-import os
 import sys
 from pathlib import Path
-
-import pytest
 
 # Add aops-core to path for hook imports
 AOPS_CORE = Path(__file__).parent.parent.parent / "aops-core"
@@ -21,16 +18,6 @@ if str(AOPS_CORE) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE))
 
 from hooks.user_prompt_submit import should_skip_hydration  # noqa: E402
-
-
-@pytest.fixture(autouse=True)
-def clear_polecat_env(monkeypatch):
-    """Ensure POLECAT_SESSION_TYPE is not set during tests.
-
-    Polecat sessions skip hydration by design, but tests need to verify
-    prompt-based skip logic without session-type interference.
-    """
-    monkeypatch.delenv("POLECAT_SESSION_TYPE", raising=False)
 
 
 class TestHydrationBypass:
@@ -78,24 +65,3 @@ class TestHydrationBypass:
         assert should_skip_hydration("   .dotted")
         assert should_skip_hydration("\n/slash")
         assert should_skip_hydration("\t.tabbed")
-
-    def test_polecat_session_bypasses_hydration(self, monkeypatch):
-        """Polecat sessions should bypass hydration.
-
-        Polecat workers run the hydrator themselves as their first step,
-        so injecting hydration instructions into their prompt is redundant.
-        """
-        monkeypatch.setenv("POLECAT_SESSION_TYPE", "polecat")
-        # Any prompt should bypass when in polecat session
-        assert should_skip_hydration("Create a new function")
-        assert should_skip_hydration("Fix the bug")
-        assert should_skip_hydration("")
-
-    def test_crew_session_does_not_bypass_hydration(self, monkeypatch):
-        """Crew sessions should NOT bypass hydration (only polecat sessions do).
-
-        Crew workers are interactive and need hydration like regular sessions.
-        """
-        monkeypatch.setenv("POLECAT_SESSION_TYPE", "crew")
-        # Normal prompts should NOT bypass for crew sessions
-        assert not should_skip_hydration("Create a new function")
