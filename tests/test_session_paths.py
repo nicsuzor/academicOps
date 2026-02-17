@@ -114,7 +114,7 @@ class TestSessionPaths(unittest.TestCase):
 
     @patch.dict(
         os.environ,
-        {"AOPS_SESSION_STATE_DIR": "/home/user/.gemini/tmp/abc123hash"},
+        {"AOPS_SESSION_STATE_DIR": "/home/user/.gemini/tmp/abc123hash/"},
         clear=True,
     )
     def test_is_gemini_session_state_dir_fallback(self):
@@ -130,6 +130,62 @@ class TestSessionPaths(unittest.TestCase):
             {},  # No transcript_path - simulating polecat worker
         )
         self.assertTrue(result, "Should detect Gemini from AOPS_SESSION_STATE_DIR")
+
+    @patch.dict(
+        os.environ,
+        {"AOPS_SESSION_STATE_DIR": ""},
+        clear=True,
+    )
+    def test_is_gemini_session_state_dir_no_false_positive(self):
+        """_is_gemini_session does not false-positive on paths with '.gemini' as substring."""
+        # Path that contains .gemini but not as a directory component
+        with patch.dict(
+            os.environ,
+            {"AOPS_SESSION_STATE_DIR": "/home/user/my.gemini-project/sessions/"},
+        ):
+            result = session_paths._is_gemini_session(
+                "07328230-44d4-414b-9fec-191a6eec0948",
+                {},
+            )
+            self.assertFalse(result, "Should not false-positive on .gemini as filename prefix")
+
+    @patch.dict(
+        os.environ,
+        {"AOPS_SESSION_STATE_DIR": "/home/user/.gemini/tmp/abc123hash/"},
+        clear=True,
+    )
+    def test_get_gate_file_path_gemini_state_dir_fallback(self):
+        """get_gate_file_path returns a valid path for Gemini sessions detected via AOPS_SESSION_STATE_DIR.
+
+        Integration regression test for GH#467: verifies that _is_gemini_session returning True
+        via AOPS_SESSION_STATE_DIR does not cause ValueError in get_gate_file_path when
+        transcript_path is absent from input_data (polecat worker scenario).
+        """
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_dir = Path(tmpdir) / ".gemini" / "tmp" / "abc123hash"
+            state_dir.mkdir(parents=True, exist_ok=True)
+
+            with patch.dict(
+                os.environ,
+                {"AOPS_SESSION_STATE_DIR": str(state_dir) + "/"},
+            ):
+                try:
+                    gate_path = session_paths.get_gate_file_path(
+                        "hydration",
+                        "07328230-44d4-414b-9fec-191a6eec0948",
+                        {},  # No transcript_path - simulating polecat worker
+                    )
+                except ValueError as exc:
+                    self.fail(
+                        f"get_gate_file_path raised ValueError unexpectedly for polecat worker: {exc}"
+                    )
+
+                self.assertIsNotNone(gate_path, "get_gate_file_path should return a path")
+                self.assertIsInstance(gate_path, Path, "Expected Path object")
+                self.assertIn("hydration", str(gate_path), "Gate name should appear in path")
+                self.assertIn(".gemini", str(gate_path), "Path should be in Gemini directory")
 
 
 if __name__ == "__main__":
