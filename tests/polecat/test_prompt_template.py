@@ -1,10 +1,11 @@
 from polecat.prompt_template import (
-    build_task_extras,
-    build_soft_dep_context,
-    build_polecat_prompt,
-    FINISH_LOCAL_TASK,
     FINISH_GITHUB_ISSUE,
+    FINISH_LOCAL_TASK,
+    build_polecat_prompt,
+    build_soft_dep_context,
+    build_task_extras,
 )
+
 
 def test_build_task_extras_empty():
     assert build_task_extras({}) == ""
