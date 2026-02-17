@@ -30,7 +30,11 @@ def main():
     parser.add_argument("--limit", type=int, default=5, help="Max number of sessions to return")
     args = parser.parse_args()
 
-    aca_data = get_data_root()
+    try:
+        aca_data = get_data_root()
+    except RuntimeError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
 
     transcripts_dir = aca_data / "sessions" / "claude"
     insights_dir = aca_data / "sessions" / "summaries"  # v3.4.0: summaries subdirectory

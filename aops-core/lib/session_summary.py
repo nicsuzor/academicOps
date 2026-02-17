@@ -12,8 +12,8 @@ import json
 from pathlib import Path
 from typing import Any, TypedDict
 
-from .paths import get_data_root
-from .session_paths import get_session_short_hash
+from lib.paths import get_data_root
+from lib.session_paths import get_session_short_hash
 
 
 class SessionSummary(TypedDict, total=False):
