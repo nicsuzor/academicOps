@@ -118,7 +118,7 @@ Runs `basedpyright` in basic mode. Fails the pipeline if type errors are found.
 
 ### 3. Strategic Review
 
-**Job**: `strategic-review` 
+**Job**: `strategic-review`
 **Depends on**: `type-check`
 **Blocking**: Yes -- can close PRs early
 
