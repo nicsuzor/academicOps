@@ -39,8 +39,7 @@ def get_claude_project_folder() -> str:
         # Fallback for non-hook contexts (e.g., direct script execution)
         project_path = Path.cwd().resolve()
     # Match Claude Code path sanitization: '/' -> '-', '.' -> '_'
-    path_str = str(project_path).replace("/", "-")[1:]
-    return "-" + path_str.replace(".", "_")
+    return "-" + str(project_path)[1:].replace("/", "-").replace(".", "_")
 
 
 def get_session_short_hash(session_id: str) -> str:
