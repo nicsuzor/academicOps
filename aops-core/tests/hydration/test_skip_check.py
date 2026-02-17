@@ -5,7 +5,7 @@ that fixes Gemini CLI sidechain detection (where session_id alone
 was insufficient to detect subagent context).
 """
 
-import pytest
+from unittest.mock import patch
 
 from lib.hydration.skip_check import should_skip_hydration
 
@@ -38,13 +38,16 @@ class TestSubagentSkip:
         is_subagent=True (computed from is_sidechain flag), hydration skips.
         """
         gemini_session_id = "gemini-20260213-143000-abc12345"
-        # Without is_subagent flag, would NOT skip (Gemini session ID doesn't match pattern)
-        result_without = should_skip_hydration(
-            "normal prompt", session_id=gemini_session_id, is_subagent=None
-        )
-        assert result_without is False
+        # Patch os.getcwd() to a neutral path so is_subagent_session() path-based
+        # detection doesn't fire in CI/agent environments (e.g. paths with /agent-).
+        with patch("lib.hook_utils.os.getcwd", return_value="/home/runner/work"):
+            # Without is_subagent flag, would NOT skip (Gemini session ID doesn't match pattern)
+            result_without = should_skip_hydration(
+                "normal prompt", session_id=gemini_session_id, is_subagent=None
+            )
+            assert result_without is False
 
-        # With is_subagent=True, DOES skip
+        # With is_subagent=True, DOES skip (no need to patch - flag short-circuits)
         result_with = should_skip_hydration(
             "normal prompt", session_id=gemini_session_id, is_subagent=True
         )
