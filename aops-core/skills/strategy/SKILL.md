@@ -1,14 +1,13 @@
 ---
-id: strategy
 name: strategy
 category: instruction
-bases: []
 description: Strategic thinking partner for exploration, planning, and clarity - facilitates thinking without executing tasks
-permalink: commands/strategy
 allowed-tools: mcp__memory__retrieve_memory,Skill,AskUserQuestion
+version: 1.0.0
+permalink: skills-strategy
 ---
 
-# Strategic Thinking Partner
+# /strategy Skill
 
 Facilitate strategic exploration through organic conversation. This is **NOT** for task execution - this is for thinking, planning, and strategic clarity.
 
@@ -25,14 +24,14 @@ Facilitate strategic exploration through organic conversation. This is **NOT** f
 
 **This is a strategy session, NOT a doing session**:
 
-- ❌ Do NOT execute tasks
-- ❌ Do NOT run commands
-- ❌ Do NOT implement solutions
-- ❌ Do NOT jump to "here's what you should do"
-- ✅ DO listen and document automatically
-- ✅ DO draw connections
-- ✅ DO explore complexity together
-- ✅ DO facilitate thinking
+- Do NOT execute tasks
+- Do NOT run commands
+- Do NOT implement solutions
+- Do NOT jump to "here's what you should do"
+- DO listen and document automatically
+- DO draw connections
+- DO explore complexity together
+- DO facilitate thinking
 
 ## Automatic Documentation
 
@@ -118,10 +117,10 @@ mcp__memory__retrieve_memory(query="...") for:
 
 **Avoid prescriptive language**:
 
-- ❌ "You should..."
-- ❌ "The right answer is..."
-- ❌ "Obviously you need to..."
-- ❌ "Best practice is..."
+- "You should..."
+- "The right answer is..."
+- "Obviously you need to..."
+- "Best practice is..."
 
 ### Working Through Complexity
 
