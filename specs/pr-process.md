@@ -8,7 +8,6 @@ How pull requests move from open to merged (or rejected) in the aops repository.
 | ----------- | --------------------------- | --------------------------------------- | ---------------------------------- |
 | PR Pipeline | `pr-review-pipeline.yml`    | `pull_request`, LGTM comments, dispatch | Sequential review + merge pipeline |
 | Claude      | `claude.yml`                | `@claude` in comments                   | On-demand Claude interaction       |
-| Polecat     | `polecat-issue-trigger.yml` | `@polecat` in comments                  | On-demand agent work on issues/PRs |
 
 Merge is handled by GitHub's auto-merge feature. The pipeline's job is to get the PR to an approved state; GitHub merges it automatically once status checks pass and approval is granted.
 
@@ -232,10 +231,9 @@ lgtm | merge | rebase | ship it | @claude merge
 
 These respond to mentions in comments and are independent of the pipeline:
 
-| Mention                         | Workflow                    | Permissions    | Use case                              |
-| ------------------------------- | --------------------------- | -------------- | ------------------------------------- |
-| `@claude`                       | `claude.yml`                | read + write   | Questions, debugging, analysis, fixes |
-| `@polecat` or `ready for agent` | `polecat-issue-trigger.yml` | read + limited | Agent-driven issue/PR processing      |
+| Mention   | Workflow     | Permissions  | Use case                              |
+| --------- | ------------ | ------------ | ------------------------------------- |
+| `@claude` | `claude.yml` | read + write | Questions, debugging, analysis, fixes |
 
 `@claude` has write access to make fixes when asked but does **not** trigger automatically on PR events. It only activates when explicitly mentioned.
 
@@ -245,7 +243,6 @@ These respond to mentions in comments and are independent of the pipeline:
 | --------------- | ------------------------ | -------------------------------- |
 | Review pipeline | `pr-review-{pr_number}`  | Yes (new push cancels stale run) |
 | Merge agent     | `pr-merge-{pr_number}`   | No (merge runs to completion)    |
-| Polecat         | `polecat-{issue_number}` | No (serial per issue)            |
 
 ## Configuration
 

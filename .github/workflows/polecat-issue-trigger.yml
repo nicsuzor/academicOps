@@ -1,8 +1,7 @@
 name: Polecat Issue Trigger
 
-# Automated trigger for the github-issue-cycle workflow
 # Responds to issue/PR comments containing "@polecat" or "ready for agent"
-# See: aops-core/workflows/github-issue-cycle.md
+# Agent follows the instructions in the triggering comment
 
 on:
   issue_comment:
@@ -85,10 +84,10 @@ jobs:
 
           # For workflow_dispatch, use provided prompt or default
           # For comment triggers, Claude will follow the instructions in the comment
-          prompt: ${{ github.event_name == 'workflow_dispatch' && (inputs.prompt || format('Process issue #{0} following the github-issue-cycle workflow', inputs.issue_number)) || '' }}
+          prompt: ${{ github.event_name == 'workflow_dispatch' && (inputs.prompt || format('Process issue #{0}', inputs.issue_number)) || '' }}
 
           additional_permissions: |
             actions: read
 
-          # Allow common agent operations for the github-issue-cycle workflow
+          # Allow common agent operations
           claude_args: '--allowed-tools "Bash(gh issue:*),Bash(gh pr:*),Bash(git:*),Read,Glob,Grep"'
