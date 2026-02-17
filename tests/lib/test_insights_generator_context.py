@@ -91,7 +91,9 @@ class TestExtractRecentContext:
         result = extract_recent_context(file_path)
 
         assert result == "[User]: Direct path"
-        mock_extract.assert_called_once_with(Path(file_path), include={"conversation"}, max_turns=20)
+        mock_extract.assert_called_once_with(
+            Path(file_path), include={"conversation"}, max_turns=20
+        )
 
     @patch("lib.insights_generator.find_sessions")
     def test_session_not_found(self, mock_find):
