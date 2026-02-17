@@ -4,123 +4,142 @@ How pull requests move from open to merged (or rejected) in the aops repository.
 
 ## Workflow files
 
-| Workflow     | File                        | Trigger                                     | Purpose                         |
-| ------------ | --------------------------- | ------------------------------------------- | ------------------------------- |
-| Code Quality | `code-quality.yml`          | `pull_request → main`                       | Lint + type check gate          |
-| PR Pipeline  | `pr-review-pipeline.yml`    | `pull_request`, comments, reviews, dispatch | Agent review + merge flow       |
-| Polecat      | `polecat-issue-trigger.yml` | `@polecat` in comments                      | Ad-hoc agent work on issues/PRs |
-| Claude       | `claude.yml`                | `@claude` in comments                       | Ad-hoc Claude interaction       |
+| Workflow    | File                        | Trigger                                 | Purpose                            |
+| ----------- | --------------------------- | --------------------------------------- | ---------------------------------- |
+| PR Pipeline | `pr-review-pipeline.yml`    | `pull_request`, LGTM comments, dispatch | Sequential review + merge pipeline |
+| Claude      | `claude.yml`                | `@claude` in comments                   | On-demand Claude interaction       |
+| Polecat     | `polecat-issue-trigger.yml` | `@polecat` in comments                  | On-demand agent work on issues/PRs |
+
+Merge is handled by GitHub's auto-merge feature. The pipeline's job is to get the PR to an approved state; GitHub merges it automatically once status checks pass and approval is granted.
 
 ## Flowchart
 
 ```mermaid
 flowchart TD
-    %% ── Trigger ──
     PR["PR opened / updated<br/><i>push to branch targeting main</i>"]
 
-    %% ── Parallel gates ──
-    PR --> CQ["<b>Code Quality</b><br/>code-quality.yml"]
-    PR --> CustQA["<b>Custodiet + QA</b><br/>pr-review-pipeline.yml<br/>job: custodiet-and-qa"]
-    PR -.-> ExtBot["External bot reviewers<br/><i>Copilot, Gemini Code Assist</i>"]
+    %% ── Stage 1: Code Quality ──
+    PR --> Lint["<b>1. Code Quality</b><br/>Ruff lint + format"]
+    Lint --> LintPass{Passed?}
+    LintPass -- No --> FixLint["Author fixes lint errors"]
+    FixLint --> PR
+    LintPass -- Yes --> TypeCk
 
-    subgraph cq ["Code Quality (parallel jobs)"]
-        CQ --> Lint["Ruff lint + format check"]
-        CQ --> TypeCk["BasedPyright type check"]
-    end
+    TypeCk["<b>2. Type Check</b><br/>BasedPyright"] --> TypePass{Passed?}
+    TypePass -- No --> FixType["Author fixes type errors"]
+    FixType --> PR
 
-    subgraph custqa ["Scope + Acceptance (sequential steps)"]
-        CustQA --> Cust["<b>Custodiet agent</b><br/>Scope compliance<br/>Unauthorized changes<br/>Convention violations"]
-        Cust --> QA["<b>QA agent</b><br/>Acceptance criteria<br/>Test coverage<br/>Regression check"]
-    end
+    %% ── Stage 2: Strategic Review ──
+    TypePass -- Yes --> Strategic["<b>3. Strategic Review</b><br/>Framework alignment<br/>Design coherence<br/>Best practices"]
+    Strategic --> StratPass{Verdict}
+    StratPass -- "Close: misaligned" --> EarlyReject["PR closed early<br/><i>with explanation</i>"]
+    StratPass -- "Request changes" --> FixStrat["Author revises approach"]
+    FixStrat --> PR
+    StratPass -- Approved --> Custodiet
 
-    %% ── Decision after first gates ──
-    Lint --> CQPass{Code quality<br/>passed?}
-    TypeCk --> CQPass
-    CQPass -- No --> FixCQ["Author fixes<br/>lint / type errors"]
-    FixCQ --> PR
+    %% ── Stage 3: Scope + Acceptance ──
+    Custodiet["<b>4. Custodiet</b><br/>Scope compliance<br/>Unauthorized changes"] --> CustPass{Passed?}
+    CustPass -- "Request changes" --> FixScope["Author fixes scope issues"]
+    FixScope --> PR
+    CustPass -- Approved --> QA
 
-    QA --> AgentPass{Agents<br/>approved?}
-    AgentPass -- "Request changes" --> FixAgent["Author or polecat<br/>addresses findings"]
-    FixAgent --> PR
+    QA["<b>5. QA</b><br/>Acceptance criteria<br/>Test coverage<br/>Regressions"] --> QAPass{Passed?}
+    QAPass -- "Request changes" --> FixQA["Author fixes QA issues"]
+    FixQA --> PR
 
-    %% ── Bot triage ──
-    AgentPass -- Approved --> BotTriage["<b>Claude Bot Triage</b><br/>pr-review-pipeline.yml<br/>job: claude-review"]
-    ExtBot -.-> BotTriage
+    %% ── Stage 4: Ready for Review ──
+    QAPass -- Approved --> Notify["<b>6. Ready for Review</b><br/>Post summary comment<br/>with all check results"]
 
-    BotTriage --> Triage{Triage each<br/>bot comment}
-    Triage -- "Genuine bug /<br/>valid improvement" --> Fix["Claude fixes code,<br/>commits + pushes"]
-    Triage -- "False positive" --> Respond["Claude responds<br/>with explanation"]
-    Triage -- "Scope creep" --> Defer["Claude defers<br/>to future work"]
-    Fix --> Summary["Posts Bot Review<br/>Triage summary table"]
-    Respond --> Summary
-    Defer --> Summary
-
-    %% ── Human review ──
-    Summary --> HumanReview["<b>Human review</b><br/>Owner reviews changes,<br/>agent comments, CI status"]
-    CQPass -- Yes --> HumanReview
+    Notify --> HumanReview["<b>Human review</b><br/>Owner reviews changes,<br/>agent comments, CI status"]
 
     HumanReview --> Decision{Human<br/>decision}
-    Decision -- "Request changes" --> AuthorFix["Author addresses<br/>human feedback"]
+    Decision -- "Request changes" --> AuthorFix["Author addresses feedback"]
     AuthorFix --> PR
     Decision -- "Close" --> Rejected["PR closed / rejected"]
     Decision -- "Approve / LGTM /<br/>merge / ship it" --> MergeAgent
 
-    %% ── Merge agent ──
-    MergeAgent["<b>Claude Merge Agent</b><br/>pr-review-pipeline.yml<br/>job: claude-lgtm-merge"]
+    %% ── Stage 5: Merge Preparation ──
+    MergeAgent["<b>7. Merge Agent</b><br/>claude-lgtm-merge"]
 
-    MergeAgent --> AddrComments["Address outstanding<br/>review comments"]
-    AddrComments --> RunTests["Run tests,<br/>verify CI passing"]
+    MergeAgent --> AggComments["Aggregate + triage<br/>all review comments<br/><i>(bot + human)</i>"]
+    AggComments --> FixAll["Fix genuine issues,<br/>respond to false positives"]
+    FixAll --> Rebase["Rebase on main"]
+    Rebase --> RunTests["Run tests,<br/>fix lint / CI errors"]
     RunTests --> TestPass{CI<br/>passing?}
-    TestPass -- No --> MergeFix["Claude fixes issues,<br/>commits + pushes"]
-    MergeFix --> RunTests
+    TestPass -- No --> FixCI["Fix issues,<br/>commit + push"]
+    FixCI --> RunTests
     TestPass -- Yes --> Verdict{Claude<br/>verdict}
-    Verdict -- "LGTM:" --> AutoApprove["Workflow approves PR<br/>(gh pr review --approve)"]
-    Verdict -- "Request changes" --> BackToAuthor["Back to author /<br/>human review"]
+    Verdict -- "LGTM:" --> AutoApprove["Workflow approves PR"]
+    Verdict -- "Request changes" --> BackToAuthor["Back to human review"]
     BackToAuthor --> HumanReview
     Verdict -- "Close" --> Rejected
 
-    AutoApprove --> Merged["PR merged"]
+    AutoApprove --> Merged["Auto-merged by GitHub"]
 
     %% ── Styling ──
     classDef gate fill:#e8f4fd,stroke:#2196f3
     classDef agent fill:#fff3e0,stroke:#ff9800
+    classDef strategic fill:#f3e5f5,stroke:#9c27b0
     classDef human fill:#e8f5e9,stroke:#4caf50
     classDef fail fill:#ffebee,stroke:#f44336
     classDef success fill:#e8f5e9,stroke:#4caf50,stroke-width:2px
 
-    class CQ,Lint,TypeCk gate
-    class Cust,QA,BotTriage,MergeAgent agent
+    class Lint,TypeCk gate
+    class Custodiet,QA,MergeAgent agent
+    class Strategic strategic
     class HumanReview,Decision human
-    class Rejected,FixCQ,FixAgent,AuthorFix fail
+    class Rejected,EarlyReject,FixLint,FixType,FixStrat,FixScope,FixQA,AuthorFix fail
     class Merged,AutoApprove success
 ```
 
+## Pipeline design
+
+The entire PR lifecycle runs as **one sequential pipeline** in `pr-review-pipeline.yml`. Each stage depends on the previous one passing. This is intentional: sequential execution fails fast and avoids wasting LLM compute on PRs that can't pass earlier gates.
+
+GitHub auto-merge handles the final merge once the pipeline approves.
+
 ## Stage-by-stage walkthrough
 
-### 1. Code Quality gate
+### 1. Code Quality: lint
 
-**Workflow**: `code-quality.yml`
-**Trigger**: `pull_request` targeting `main`
-**Blocking**: Yes -- must pass before merge
+**Job**: `lint`
+**Depends on**: PR opened/synchronized
+**Blocking**: Yes
 
-Two independent jobs run in parallel:
+Runs `ruff check` and `ruff format --check`. If either fails, the pipeline stops. The author fixes and pushes; the pipeline re-runs from the top on `synchronize`.
 
-| Job          | Tool                                 | What it checks                             |
-| ------------ | ------------------------------------ | ------------------------------------------ |
-| `lint`       | `ruff check` + `ruff format --check` | Lint errors, import order, code formatting |
-| `type-check` | `basedpyright`                       | Static type analysis (basic mode)          |
+### 2. Code Quality: type check
 
-If either fails, the author fixes and pushes. The workflow re-runs on `synchronize`.
+**Job**: `type-check`
+**Depends on**: `lint`
+**Blocking**: Yes
 
-### 2. Custodiet + QA agents
+Runs `basedpyright` in basic mode. Fails the pipeline if type errors are found.
 
-**Workflow**: `pr-review-pipeline.yml`, job `custodiet-and-qa`
-**Trigger**: `pull_request` opened or synchronized (skips bot actors)
-**Blocking**: Posts reviews that may request changes
+### 3. Strategic Review
 
-Runs as sequential steps in one job:
+**Job**: `strategic-review`
+**Depends on**: `type-check`
+**Blocking**: Yes -- can close PRs early
 
-**Custodiet** (scope compliance):
+A new agent that evaluates the PR at a higher level than scope or correctness. It asks: _is this the right change for the framework?_
+
+What it checks:
+
+- **Framework alignment**: Does this PR further the project's vision and architectural direction? Does it fit with existing patterns or introduce unnecessary divergence?
+- **Design coherence**: Is the approach well-structured? Would a different decomposition or ordering serve better?
+- **Best practices**: Does the code follow established conventions, not just syntactically (that's lint's job) but structurally?
+- **Proportionality**: Is the scope of change proportional to the problem? Does it try to do too much?
+
+The strategic reviewer **can close a PR** if it's fundamentally misaligned -- e.g., it takes the wrong approach entirely, conflicts with framework principles, or tries to do too many things at once. However, closing should be rare and reserved for cases where revision won't help. The default action is to request changes with clear guidance on what needs to shift.
+
+Agent instructions: `.github/agents/strategic-review.md`
+
+### 4. Custodiet (scope compliance)
+
+**Job**: `custodiet`
+**Depends on**: `strategic-review`
+**Blocking**: Posts review, may request changes
 
 - Compares actual diff against PR description
 - Flags out-of-scope file changes
@@ -128,7 +147,11 @@ Runs as sequential steps in one job:
 - Checks convention compliance
 - Posts `gh pr review --approve` or `--request-changes`
 
-**QA** (acceptance criteria):
+### 5. QA (acceptance criteria)
+
+**Job**: `qa`
+**Depends on**: `custodiet`
+**Blocking**: Posts review, may request changes
 
 - Verifies stated acceptance criteria are met
 - Checks CI status and test coverage
@@ -136,30 +159,38 @@ Runs as sequential steps in one job:
 - Lightweight bug/security scan
 - Posts `gh pr review --approve` or `--request-changes`
 
-### 3. Bot Review Triage
+### 6. Ready for Review notification
 
-**Workflow**: `pr-review-pipeline.yml`, job `claude-review`
-**Trigger**: Runs after `custodiet-and-qa` completes (the delay gives external bots time to post)
-**Blocking**: No -- informational, fixes issues proactively
+**Job**: `notify-ready`
+**Depends on**: `qa`
+**Blocking**: No
 
-Claude triages comments from external bot reviewers (Copilot, Gemini Code Assist):
+Posts a summary comment to the PR aggregating results from all automated stages:
 
-| Category          | Action                                |
-| ----------------- | ------------------------------------- |
-| Genuine bug       | Fix the code, commit + push           |
-| Valid improvement | Fix the code, commit + push           |
-| False positive    | Reply explaining why no change needed |
-| Scope creep       | Acknowledge as future work            |
+```
+## Pipeline Complete
 
-Posts a summary table to the PR when done.
+| Stage            | Result  | Notes              |
+|------------------|---------|--------------------|
+| Lint             | Passed  |                    |
+| Type check       | Passed  |                    |
+| Strategic review | Approved| Aligns with vision |
+| Custodiet        | Approved| Scope matches      |
+| QA               | Approved| Criteria met       |
 
-### 4. Human review
+Ready for human review. External bot comments (Copilot, Gemini) are
+listed below for reference -- they will be triaged during merge prep.
+```
+
+This gives the human reviewer a single notification with full context, rather than requiring them to piece together results from multiple bot comments.
+
+### 7. Human review
 
 The human reviewer (repo owner) evaluates:
 
+- The summary comment from the notification stage
 - Code changes and PR description
-- Agent review results (custodiet, QA, bot triage)
-- CI status
+- Any external bot comments (informational only at this point)
 
 Three possible outcomes:
 
@@ -167,25 +198,27 @@ Three possible outcomes:
 - **Close** -- PR is rejected
 - **Approve** -- triggers the merge agent (via LGTM comment, formal approval, or assigning to `claude-for-github[bot]`)
 
-### 5. Merge agent
+### 8. Merge Agent
 
-**Workflow**: `pr-review-pipeline.yml`, job `claude-lgtm-merge`
+**Job**: `claude-lgtm-merge`
 **Trigger**: Human approval, LGTM-pattern comment from owner, workflow dispatch, or PR assigned to claude bot
 **Blocking**: Yes -- controls final approval
 
-The merge agent:
+The merge agent prepares the PR for merge by handling everything in one pass:
 
-1. Addresses any outstanding review comments (human comments are highest priority)
-2. Re-triages bot comments if the earlier triage job didn't run
-3. Commits and pushes any fixes
-4. Rebases if needed (never merge-commits from main)
-5. Verifies CI checks pass
-6. Posts a final verdict:
-   - `LGTM:` -- workflow auto-approves the PR
+1. **Aggregate all review comments** -- collect comments from bot reviewers (Copilot, Gemini Code Assist), custodiet, QA, and humans
+2. **Triage bot comments**: genuine bug → fix; valid improvement → fix; false positive → respond; scope creep → defer
+3. **Address human comments** as highest priority -- these are critical requirements
+4. **Commit and push** any fixes
+5. **Rebase** on main if needed (never merge-commit from main)
+6. **Fix lint/CI errors** introduced by any of the above changes
+7. **Run tests** and verify all checks pass
+8. **Post final verdict**:
+   - `LGTM:` -- workflow auto-approves the PR, GitHub auto-merge takes over
    - `Request changes:` -- back to human review
    - `Close:` -- PR rejected
 
-The workflow's final step checks Claude's last comment. If it starts with `LGTM:`, the PR gets an automatic `gh pr review --approve`.
+The merge agent has unrestricted Bash access. This is acceptable because it has no repo admin permissions -- the worst case is damage scoped to the PR branch itself.
 
 ## Trigger reference
 
@@ -195,24 +228,24 @@ LGTM patterns that activate the merge agent (case-insensitive, from repo owner o
 lgtm | merge | rebase | ship it | @claude merge
 ```
 
-## Ad-hoc agent triggers
+## On-demand agents
 
-Outside the main pipeline, two workflows respond to mentions in comments:
+These respond to mentions in comments and are independent of the pipeline:
 
-| Mention                         | Workflow                    | Use case                               |
-| ------------------------------- | --------------------------- | -------------------------------------- |
-| `@claude`                       | `claude.yml`                | General questions, debugging, analysis |
-| `@polecat` or `ready for agent` | `polecat-issue-trigger.yml` | Agent-driven issue/PR processing       |
+| Mention                         | Workflow                    | Permissions    | Use case                              |
+| ------------------------------- | --------------------------- | -------------- | ------------------------------------- |
+| `@claude`                       | `claude.yml`                | read + write   | Questions, debugging, analysis, fixes |
+| `@polecat` or `ready for agent` | `polecat-issue-trigger.yml` | read + limited | Agent-driven issue/PR processing      |
 
-These are independent of the PR review pipeline and don't affect merge decisions.
+`@claude` has write access to make fixes when asked but does **not** trigger automatically on PR events. It only activates when explicitly mentioned.
 
 ## Concurrency controls
 
-| Scope          | Group key                | Cancel in-progress?              |
-| -------------- | ------------------------ | -------------------------------- |
-| Custodiet + QA | `pr-review-{pr_number}`  | Yes (new push cancels stale run) |
-| Merge agent    | `pr-merge-{pr_number}`   | No (merge runs to completion)    |
-| Polecat        | `polecat-{issue_number}` | No (serial per issue)            |
+| Scope           | Group key                | Cancel in-progress?              |
+| --------------- | ------------------------ | -------------------------------- |
+| Review pipeline | `pr-review-{pr_number}`  | Yes (new push cancels stale run) |
+| Merge agent     | `pr-merge-{pr_number}`   | No (merge runs to completion)    |
+| Polecat         | `polecat-{issue_number}` | No (serial per issue)            |
 
 ## Configuration
 
@@ -220,9 +253,9 @@ To modify this process:
 
 - **Add/remove lint rules**: Edit `pyproject.toml` under `[tool.ruff.lint]`
 - **Change type checking strictness**: Edit `pyproject.toml` under `[tool.basedpyright]`
+- **Modify strategic review behavior**: Edit `.github/agents/strategic-review.md`
 - **Modify custodiet behavior**: Edit `.github/agents/custodiet.md`
 - **Modify QA behavior**: Edit `.github/agents/qa.md`
 - **Change merge trigger patterns**: Edit the LGTM grep pattern in `pr-review-pipeline.yml`
-- **Add new CI checks**: Add jobs to `code-quality.yml`
 - **Adjust concurrency**: Edit `concurrency` blocks in `pr-review-pipeline.yml`
 - **Pre-commit hooks** (local): Edit `.pre-commit-config.yaml`
