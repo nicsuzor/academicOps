@@ -467,6 +467,6 @@ jobs:
             echo "Auto-merge not enabled - attempting direct merge"
             gh pr merge "$PR_NUM" --rebase --delete-branch --repo "${{ github.repository }}" || {
               echo "Direct merge failed - PR may require additional approvals or checks"
-              exit 0
+              exit 1
             }
           fi
