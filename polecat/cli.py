@@ -540,7 +540,9 @@ def finish(ctx, no_push, do_nuke, force):
         task.status = TaskStatus.MERGE_READY
         manager.storage.save_task(task)
         print("✅ Task marked as 'merge_ready'")
-        print("📋 If a PR was created, the review pipeline will handle merge. See logs above for PR status.")
+        print(
+            "📋 If a PR was created, the review pipeline will handle merge. See logs above for PR status."
+        )
 
     except ImportError:
         print("Warning: Could not update task status (lib.task_model not available)")
