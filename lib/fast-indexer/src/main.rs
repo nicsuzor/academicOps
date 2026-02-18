@@ -110,15 +110,12 @@ struct Node {
     #[serde(skip_serializing_if = "Option::is_none")]
     soft_depends_on: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-<<<<<<< HEAD
     blocks: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     soft_blocks: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     children: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-=======
->>>>>>> 54a3d25 (chore: ensure custodiet.md is present)
     assignee: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     complexity: Option<String>,
@@ -189,6 +186,12 @@ struct McpIndexEntry {
     assignee: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     complexity: Option<String>,
+    /// Derived: transitive downstream impact score based on what this task blocks
+    #[serde(default)]
+    downstream_weight: f64,
+    /// Derived: true if any transitively blocked task has a due date (proxy for external commitment)
+    #[serde(default)]
+    stakeholder_exposure: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -220,6 +223,7 @@ struct FileData {
     soft_depends_on: Vec<String>,
     children: Vec<String>,
     blocks: Vec<String>,
+    soft_blocks: Vec<String>,
     project: Option<String>,
     due: Option<String>,
     depth: i32,
@@ -419,10 +423,7 @@ fn parse_file(path: PathBuf) -> Option<FileData> {
         soft_depends_on,
         children,
         blocks,
-<<<<<<< HEAD
         soft_blocks,
-=======
->>>>>>> 54a3d25 (chore: ensure custodiet.md is present)
         project,
         due,
         depth,
@@ -642,6 +643,8 @@ fn build_mcp_index(files: &[FileData], data_root: &Path) -> McpIndex {
                 tags: f.tags.clone(),
                 assignee: f.assignee.clone(),
                 complexity: f.complexity.clone(),
+                downstream_weight: 0.0,
+                stakeholder_exposure: false,
             });
         }
     }
@@ -749,6 +752,104 @@ fn build_mcp_index(files: &[FileData], data_root: &Path) -> McpIndex {
         }
     }
 
+    // Compute downstream_weight and stakeholder_exposure
+    // For each task, BFS through blocks + soft_blocks to accumulate a weighted
+    // score based on downstream tasks' priority and due dates.
+    {
+        let excluded_statuses: HashSet<&str> = ["done", "cancelled"].into_iter().collect();
+
+        // Pre-compute base weight for each non-excluded task
+        let base_weights: HashMap<String, f64> = entries.iter()
+            .filter(|(_, e)| !excluded_statuses.contains(e.status.as_str()))
+            .map(|(tid, e)| {
+                let priority_weight = match e.priority {
+                    0 => 5.0,
+                    1 => 3.0,
+                    2 => 2.0,
+                    3 => 1.0,
+                    _ => 0.5,
+                };
+                let due_multiplier = if e.due.is_some() { 2.0 } else { 1.0 };
+                (tid.clone(), priority_weight * due_multiplier)
+            })
+            .collect();
+
+        // Pre-compute which tasks have due dates (for stakeholder_exposure)
+        let has_due: HashSet<String> = entries.iter()
+            .filter(|(_, e)| e.due.is_some() && !excluded_statuses.contains(e.status.as_str()))
+            .map(|(tid, _)| tid.clone())
+            .collect();
+
+        // BFS per task through blocks + soft_blocks
+        let all_ids: Vec<String> = entries.keys().cloned().collect();
+        let mut weights: HashMap<String, f64> = HashMap::new();
+        let mut exposures: HashMap<String, bool> = HashMap::new();
+
+        for start_id in &all_ids {
+            let mut total_weight: f64 = 0.0;
+            let mut has_stakeholder = false;
+            let mut visited: HashSet<String> = HashSet::new();
+            // (task_id, depth_from_start, is_soft_path)
+            let mut queue: Vec<(String, u32, bool)> = Vec::new();
+
+            if let Some(entry) = entries.get(start_id) {
+                for blocked_id in &entry.blocks {
+                    if !excluded_statuses.contains(
+                        entries.get(blocked_id).map(|e| e.status.as_str()).unwrap_or("done")
+                    ) {
+                        queue.push((blocked_id.clone(), 1, false));
+                    }
+                }
+                for soft_blocked_id in &entry.soft_blocks {
+                    if !excluded_statuses.contains(
+                        entries.get(soft_blocked_id).map(|e| e.status.as_str()).unwrap_or("done")
+                    ) {
+                        queue.push((soft_blocked_id.clone(), 1, true));
+                    }
+                }
+            }
+
+            while let Some((tid, depth, is_soft)) = queue.pop() {
+                if !visited.insert(tid.clone()) {
+                    continue; // Cycle detection
+                }
+                if let Some(&bw) = base_weights.get(&tid) {
+                    let depth_decay = 1.0 / (depth as f64);
+                    let soft_factor = if is_soft { 0.3 } else { 1.0 };
+                    total_weight += depth_decay * bw * soft_factor;
+                }
+                if has_due.contains(&tid) {
+                    has_stakeholder = true;
+                }
+                if let Some(entry) = entries.get(&tid) {
+                    for next in &entry.blocks {
+                        if !visited.contains(next) {
+                            queue.push((next.clone(), depth + 1, is_soft));
+                        }
+                    }
+                    for next in &entry.soft_blocks {
+                        if !visited.contains(next) {
+                            queue.push((next.clone(), depth + 1, true));
+                        }
+                    }
+                }
+            }
+
+            weights.insert(start_id.clone(), total_weight);
+            exposures.insert(start_id.clone(), has_stakeholder);
+        }
+
+        // Apply computed values
+        for (tid, entry) in entries.iter_mut() {
+            if let Some(&w) = weights.get(tid) {
+                entry.downstream_weight = (w * 100.0).round() / 100.0;
+            }
+            if let Some(&e) = exposures.get(tid) {
+                entry.stakeholder_exposure = e;
+            }
+        }
+    }
+
     // Build by_project groupings
     let mut by_project: HashMap<String, Vec<String>> = HashMap::new();
     for (tid, entry) in &entries {
@@ -799,11 +900,14 @@ fn build_mcp_index(files: &[FileData], data_root: &Path) -> McpIndex {
         }
     }
 
-    // Sort ready by priority, order, title
+    // Sort ready by priority, then downstream_weight DESC, then order, then title
     ready.sort_by(|a, b| {
         let ea = entries.get(a).unwrap();
         let eb = entries.get(b).unwrap();
-        (ea.priority, ea.order, &ea.title).cmp(&(eb.priority, eb.order, &eb.title))
+        ea.priority.cmp(&eb.priority)
+            .then(eb.downstream_weight.partial_cmp(&ea.downstream_weight).unwrap_or(std::cmp::Ordering::Equal))
+            .then(ea.order.cmp(&eb.order))
+            .then(ea.title.cmp(&eb.title))
     });
 
     McpIndex {
@@ -1092,16 +1196,11 @@ fn main() -> Result<()> {
                 status: f.status,
                 priority: f.priority,
                 parent: f.parent,
-<<<<<<< HEAD
                 depends_on: vec_to_option(f.depends_on),
                 soft_depends_on: vec_to_option(f.soft_depends_on),
                 blocks: vec_to_option(f.blocks),
                 soft_blocks: vec_to_option(f.soft_blocks),
                 children: vec_to_option(f.children),
-=======
-                depends_on: if f.depends_on.is_empty() { None } else { Some(f.depends_on) },
-                soft_depends_on: if f.soft_depends_on.is_empty() { None } else { Some(f.soft_depends_on) },
->>>>>>> 54a3d25 (chore: ensure custodiet.md is present)
                 assignee: f.assignee,
                 complexity: f.complexity,
                 project: f.project,

@@ -58,7 +58,7 @@ Key areas to check:
 
 Certain skills grant implicit authority to perform actions that might otherwise look like scope creep or unauthorized task claiming.
 
-- `/pull` (Pull Request): Grants authority to **claim** tasks, execute implementation plans, and modify code. Implicitly authorizes `bd update --status=in_progress` (which maps to task claiming).
+- `/pull` (Pull Request): Grants authority to **claim** tasks, execute implementation plans, and modify code. Implicitly authorizes `bd update --status=in_progress` (which maps to task claiming). **P#41 satisfaction**: When `/pull` is active and the task body contains acceptance criteria or implementation details, P#41 (Plan-First) is satisfied — the task spec IS the approved plan. Do NOT block execution for lacking a separate plan document.
 - `/q` (Question/Issue): Grants authority to create issues/tasks for tracking.
 - `/dump` (Context Dump): Grants broad authority to read/analyze context.
 
