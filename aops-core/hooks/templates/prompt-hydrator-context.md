@@ -64,7 +64,9 @@ Based on prompt keywords, these specific files may be relevant:
 
 ## Your Task
 
-1. **Understand intent** - What does the user actually want? When user says "kick off", "trigger", or "run" a named operation/workflow/pipeline, they mean ACTIVATE EXISTING AUTOMATION - check `.github/workflows/` and CI/CD before planning manual execution.
+1. **Understand intent** - What does the user actually want?
+   - When user says "kick off", "trigger", or "run" a named operation/workflow/pipeline, they mean ACTIVATE EXISTING AUTOMATION - check `.github/workflows/` and CI/CD before planning manual execution.
+   - When user signals overwhelm, disorientation, or context recovery ("where am I", "what was I doing", "I'm overwhelmed", "catch me up", "I'm lost"), route to `/daily` skill — it handles focus, prioritization, and task recommendations. Do NOT dump raw task lists or stats at an overwhelmed user.
 2. **Select context to inject** - What does the agent need to know?
    - **Tier 1: Memory server** (PRIMARY) - Semantic search for related knowledge.
    - **Tier 2: Workflows and skills** (SECONDARY) - Relevant workflows and skills from your pre-loaded indices.
