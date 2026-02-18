@@ -7,9 +7,10 @@ the worktree is ready — the agent just needs to execute.
 """
 
 POLECAT_WORK_TEMPLATE = """\
+.
 You are a polecat worker. Your task has already been claimed and your \
-worktree is ready. Do not claim or re-claim this task. Do not run \
-`/pull`. Just execute.
+worktree is ready. The task context below is self-contained — do not \
+run `/pull` or the hydrator. Just execute.
 
 ## Your Task
 

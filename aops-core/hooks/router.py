@@ -285,7 +285,11 @@ class HookRouter:
 
         # 6. Extract subagent_type from spawning tools
         # Claude uses Task(subagent_type=...), Gemini uses delegate_to_agent(name=...)
-        # We check all three parameter names to support both clients
+        # Skill tool uses skill=... parameter
+        # We check all parameter names to support both clients
+        # Track whether subagent_type was derived from a Skill/activate_skill invocation
+        # (as opposed to a real subagent-spawning tool) to avoid is_subagent misclassification.
+        _subagent_type_from_skill = False
         if not subagent_type and tool_name in (
             "Task",
             "delegate_to_agent",
@@ -297,18 +301,27 @@ class HookRouter:
                     tool_input.get("subagent_type")
                     or tool_input.get("agent_name")
                     or tool_input.get("name")
+                    or tool_input.get("skill")  # Skill tool uses 'skill' parameter
                 )
+                if subagent_type and tool_name in ("Skill", "activate_skill"):
+                    _subagent_type_from_skill = True
 
         # 7. Detect Subagent Session
         # Call is_subagent_session BEFORE popping fields from raw_input
         is_subagent = is_subagent_session(raw_input)
 
-        # If we have subagent info from PID map or spawning tool, treat as subagent
-        if not is_subagent and (
-            subagent_type
-            or agent_id
-            or raw_input.get("is_sidechain")
-            or raw_input.get("isSidechain")
+        # If we have subagent info from PID map or spawning tool, treat as subagent.
+        # Skill/activate_skill tool calls are NOT subagent invocations — they run
+        # in the main agent's session — so skip the is_subagent override for those.
+        if (
+            not is_subagent
+            and not _subagent_type_from_skill
+            and (
+                subagent_type
+                or agent_id
+                or raw_input.get("is_sidechain")
+                or raw_input.get("isSidechain")
+            )
         ):
             is_subagent = True
 
@@ -487,11 +500,9 @@ class HookRouter:
             elif ctx.hook_event == "PostToolUse":
                 TASK_BINDING_TOOLS = {
                     "mcp__plugin_aops-core_task_manager__update_task",
-                    "mcp__plugin_aops-core_task_manager__claim_next_task",
                     "mcp__plugin_aops-core_task_manager__complete_task",
                     "mcp__plugin_aops-core_task_manager__complete_tasks",
                     "update_task",
-                    "claim_next_task",
                     "complete_task",
                     "complete_tasks",
                 }

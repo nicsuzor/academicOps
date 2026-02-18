@@ -36,7 +36,7 @@ polecat swarm -c 1 -g 1 --dry-run
 ### Key Features
 
 1. **Worktree Isolation**: Each worker gets its own git worktree - no merge conflicts
-2. **Atomic Task Claiming**: `claim_next_task()` API prevents duplicate work
+2. **Atomic Task Claiming**: Polecat CLI's `claim_next_task()` in `manager.py` prevents duplicate work via atomic file locking
 3. **CPU Affinity**: Workers bound to specific cores for predictable performance
 4. **Auto-Restart**: Successful workers restart immediately for next task
 5. **Failure Isolation**: Failed workers stop and alert; others continue

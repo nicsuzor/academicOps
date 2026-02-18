@@ -279,23 +279,15 @@ GATE_CONFIGS = [
                     system_message_template="📤 Task bound. Handover required before exit.",
                 ),
             ),
-            # Task bound: claim_next_task (always implies in_progress) -> Close
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="PostToolUse",
-                    tool_name_pattern="claim_next_task",
-                ),
-                transition=GateTransition(
-                    target_status=GateStatus.CLOSED,
-                    system_message_template="📤 Task claimed. Handover required before exit.",
-                ),
-            ),
             # /handover skill completes -> Open
+            # Uses subagent_type_pattern to match skill name extracted by router
+            # (router.py extracts tool_input["skill"] into ctx.subagent_type)
+            # Matches both Claude's Skill tool and Gemini's activate_skill tool.
             GateTrigger(
                 condition=GateCondition(
                     hook_event="PostToolUse",
-                    tool_name_pattern="^Skill$",
-                    tool_input_pattern="handover",
+                    tool_name_pattern="^(Skill|activate_skill)$",
+                    subagent_type_pattern="^handover$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,

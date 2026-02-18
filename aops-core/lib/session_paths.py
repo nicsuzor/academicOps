@@ -20,11 +20,15 @@ def get_claude_project_folder() -> str:
     otherwise falls back to cwd. This is critical for plugin-based hooks that
     run from the plugin cache directory rather than the project directory.
 
-    Converts absolute path to sanitized folder name:
-    /home/user/project -> -home-user-project
+    Converts absolute path to sanitized folder name matching Claude Code's format:
+    /home/user/.project -> -home-user-_project
+
+    Claude Code replaces:
+    - '/' with '-'
+    - '.' with '_'
 
     Returns:
-        Project folder name with leading dash and all slashes replaced
+        Project folder name with leading dash and sanitized characters
     """
     # CLAUDE_PROJECT_DIR is set by Claude Code during hook execution
     # and contains the absolute path to the project root
@@ -34,8 +38,8 @@ def get_claude_project_folder() -> str:
     else:
         # Fallback for non-hook contexts (e.g., direct script execution)
         project_path = Path.cwd().resolve()
-    # Replace leading / with -, then all / with -
-    return "-" + str(project_path).replace("/", "-")[1:]
+    # Match Claude Code path sanitization: '/' -> '-', '.' -> '_'
+    return "-" + str(project_path)[1:].replace("/", "-").replace(".", "_")
 
 
 def get_session_short_hash(session_id: str) -> str:
@@ -69,6 +73,7 @@ def _is_gemini_session(session_id: str | None, input_data: dict | None) -> bool:
     1. GEMINI_SESSION_ID env var is set (Gemini CLI always provides this)
     2. session_id starts with "gemini-"
     3. transcript_path contains "/.gemini/"
+    4. AOPS_SESSION_STATE_DIR contains "/.gemini/" (polecat worker fallback)
 
     Args:
         session_id: Session ID (may have "gemini-" prefix)
@@ -89,24 +94,42 @@ def _is_gemini_session(session_id: str | None, input_data: dict | None) -> bool:
         if transcript_path is not None and "/.gemini/" in transcript_path:
             return True
 
+    # Polecat worker fallback: AOPS_SESSION_STATE_DIR is set by router at SessionStart
+    # and persists across the session. Workers may not have transcript_path in input_data
+    # but will have this env var pointing to ~/.gemini/tmp/<hash>/ for Gemini sessions.
+    state_dir = os.environ.get("AOPS_SESSION_STATE_DIR")
+    if state_dir and "/.gemini/" in state_dir:
+        return True
+
     return False
 
 
 def _get_gemini_status_dir(input_data: dict | None) -> Path | None:
-    """Get Gemini status directory from transcript_path.
+    """Get Gemini status directory from transcript_path or AOPS_SESSION_STATE_DIR.
 
     Gemini transcript paths look like:
     ~/.gemini/tmp/<hash>/chats/session-<uuid>.json
     or
     ~/.gemini/tmp/<hash>/logs/session-<uuid>.jsonl
 
+    Falls back to AOPS_SESSION_STATE_DIR when transcript_path is not available
+    (e.g., polecat workers where input_data has no transcript_path).
+
     Returns the ~/.gemini/tmp/<hash>/ directory or None if not detectable.
     """
     if input_data is None:
+        # Try AOPS_SESSION_STATE_DIR as last resort
+        state_dir = os.environ.get("AOPS_SESSION_STATE_DIR")
+        if state_dir and "/.gemini/" in state_dir:
+            return Path(state_dir)
         return None
 
     transcript_path = input_data.get("transcript_path")
     if transcript_path is None:
+        # Try AOPS_SESSION_STATE_DIR as fallback for workers without transcript_path
+        state_dir = os.environ.get("AOPS_SESSION_STATE_DIR")
+        if state_dir and "/.gemini/" in state_dir:
+            return Path(state_dir)
         return None
 
     path = Path(transcript_path)

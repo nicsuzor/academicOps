@@ -128,17 +128,26 @@ Select 3-7 principles relevant to THIS task from AXIOMS and HEURISTICS:
 
 ### Execution Plan
 
-Provide execution steps as a markdown list:
+Provide execution steps as a markdown list. Mark steps that can run in parallel using `[PARALLEL]` groups:
 
 ```markdown
 ## Execution Steps
 
 1. [Task claim/create]
-2. [Step from workflow]
-3. CHECKPOINT: [verification]
-4. activate_skill(name='qa', prompt='...')
-5. Complete task and commit
+2. [PARALLEL]
+   - [Independent step A]
+   - [Independent step B]
+3. [Step that depends on parallel results]
+4. CHECKPOINT: [verification]
+5. activate_skill(name='qa', prompt='...')
+6. Complete task and commit
 ```
+
+**Parallel marking rules**:
+- Steps within a `[PARALLEL]` block have no dependencies on each other
+- Use bullet points (`-`) under `[PARALLEL]` for the grouped steps
+- The next numbered step after a `[PARALLEL]` block acts as a barrier; it only executes after all parallel steps are complete.
+- Only mark steps as parallel when they are truly independent (no shared state, no ordering requirement)
 
 ### Constraint Verification
 
@@ -249,6 +258,7 @@ After TRIAGE action: **HALT**
 2. **QA MANDATORY**: Every plan (except simple-question) includes QA verification step
 3. **Last step**: Complete task and commit
 4. **Explicit syntax**: Use `Task(...)`, `Skill(...)` literally - not prose descriptions
+5. **Mark parallel steps**: Group independent steps under `[PARALLEL]` blocks when they can execute concurrently (e.g., reading multiple files, searching different patterns, running independent checks)
 
 ### Workflow Selection Rules
 

@@ -584,7 +584,7 @@ Dashboard rendering (HTML/CSS in dashboard.py)
 | `user_prompt`   | User message in turn                           | First ~120 chars of user input |
 | `task_create`   | `task_manager__create_task` tool call          | Task title and project         |
 | `task_complete` | `task_manager__complete_task` tool call        | Task ID completed              |
-| `task_claim`    | `task_manager__claim_next_task` tool call      | Task claimed from queue        |
+| `task_claim`    | Polecat CLI `claim_next_task()` in `manager.py` | Task claimed from queue       |
 | `task_update`   | `task_manager__update_task` with status change | New status value               |
 
 ### Display Design

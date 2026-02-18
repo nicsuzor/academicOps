@@ -194,7 +194,7 @@ Workers coordinate through the task system, not through the supervisor:
 **Dependency Respect**:
 
 - Workers only claim tasks with satisfied `depends_on`
-- `claim_next_task()` API enforces this automatically
+- Polecat CLI `claim_next_task()` in `manager.py` enforces this via atomic file locking
 - No supervisor verification needed at runtime
 
 **Conflict Prevention**:
