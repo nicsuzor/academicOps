@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 """Tests for _check_incomplete_markers validation function."""
 
-from mcp_servers.tasks_server import (
-    _check_incomplete_markers,
-    _format_incomplete_items_error,
-)
+from mcp_servers.tasks_server import _check_incomplete_markers, _format_incomplete_items_error
 
 
 class TestCheckIncompleteMarkers:
@@ -43,6 +40,13 @@ Some content here
         body = "This task is 90% complete"
         markers = _check_incomplete_markers(body)
         assert any("90%" in m for m in markers)
+
+    def test_detects_lowest_percentage_when_multiple_exist(self):
+        """Should report the lowest incomplete percentage when multiple exist."""
+        body = "Section A is 90% complete\nSection B is 70% complete"
+        markers = _check_incomplete_markers(body)
+        assert any("70%" in m for m in markers)
+        assert not any("90%" in m for m in markers)
 
     def test_does_not_trigger_on_100_percent(self):
         """100% complete should NOT trigger."""
@@ -114,7 +118,11 @@ All items have been implemented.
 Work in progress
 """
         markers = _check_incomplete_markers(body)
-        assert len(markers) >= 3  # percentage, remaining, unchecked, wip
+        assert len(markers) == 4  # percentage, remaining, unchecked TODOs, wip
+        assert any("90%" in m for m in markers)
+        assert any("Remaining" in m for m in markers)
+        assert any("unchecked TODO" in m for m in markers)
+        assert any("work-in-progress" in m for m in markers)
 
 
 class TestFormatIncompleteItemsError:

@@ -246,7 +246,7 @@ def _format_tree(node: dict[str, Any], indent: int = 0) -> str:
     return "\n".join(lines)
 
 
-def _check_incomplete_markers(body: str) -> list[str]:
+def _check_incomplete_markers(body: str | None) -> list[str]:
     """Check task body for incompleteness indicators.
 
     Checks for:
@@ -269,10 +269,12 @@ def _check_incomplete_markers(body: str) -> list[str]:
     if _REMAINING_SECTION_PATTERN.search(body):
         markers.append("Task has 'Remaining' section")
 
-    # Check for percentage < 100%
-    pct_match = _PERCENTAGE_COMPLETE_PATTERN.search(body)
-    if pct_match and int(pct_match.group(1)) < 100:
-        markers.append(f"Task shows {pct_match.group(1)}% complete")
+    # Check for percentage < 100% (scan all occurrences, report the lowest)
+    pct_matches = list(_PERCENTAGE_COMPLETE_PATTERN.finditer(body))
+    if pct_matches:
+        incomplete_pcts = [int(m.group(1)) for m in pct_matches if int(m.group(1)) < 100]
+        if incomplete_pcts:
+            markers.append(f"Task shows {min(incomplete_pcts)}% complete")
 
     # Check for unchecked TODO items
     unchecked = [m.group(1).strip() for m in _INCOMPLETE_MARKER_PATTERN.finditer(body)]
