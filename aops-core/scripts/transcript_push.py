@@ -21,17 +21,7 @@ FRAMEWORK_ROOT = AOPS_CORE_ROOT.parent
 sys.path.insert(0, str(FRAMEWORK_ROOT))
 sys.path.insert(0, str(AOPS_CORE_ROOT))
 
-try:
-    from lib.paths import get_data_root
-except ImportError:
-    # Fallback if lib is not in path
-    def get_data_root():
-        import os
-
-        data = os.environ.get("ACA_DATA")
-        if not data:
-            raise RuntimeError("ACA_DATA environment variable not set")
-        return Path(data).resolve()
+from lib.paths import get_data_root
 
 
 def run_transcript(args):

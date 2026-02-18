@@ -51,7 +51,13 @@ def check_custom_condition(
                 # But for now assume it's available or skip
                 return False
 
-            return not should_skip_hydration(prompt, ctx.session_id)
+            # Pass ctx.is_subagent so should_skip_hydration() uses the router's
+            # pre-computed value rather than falling back to is_subagent_session()
+            # heuristics. This centralises subagent detection and prevents the
+            # is_subagent_session() fallback from running when ctx.is_subagent=False.
+            return not should_skip_hydration(
+                prompt, ctx.session_id, is_subagent=ctx.is_subagent
+            )
         except ImportError:
             return False
 

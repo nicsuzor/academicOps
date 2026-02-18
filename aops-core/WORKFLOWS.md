@@ -10,20 +10,11 @@ tags: [framework, routing, workflows, index]
 
 # Workflow Index
 
-> **Curated by audit skill** - Regenerate with `Skill(skill="audit")`
-
-<!-- @nic: general rule: self-documenting files are good, but documentation should NOT be in template text that goes to a LLM. We EITHER have to delineate this markdown or move it into the frontmatter or spec file.  -->
-<!-- @claude 2026-01-24: This file is type:index - it's for human reference and hydrator routing, not direct LLM injection. Individual workflow files (e.g., workflows/design.md) are what get loaded. Those should stay lean. This index can remain self-documenting. -->
-<!-- @nic 2026-01-26: bullshit. this file is directly injected. reconsider. -->
-<!-- @claude 2026-02-07: You're right - this file IS loaded by user_prompt_submit.py via load_workflows_index(). Task created: aops-25545fb8. Options: (1) Move explanatory content to a separate docs file, keeping only the routing table here, or (2) use frontmatter-only format like other indices. Recommend option 1. -->
-
 Workflows are **hydrator hints**, not complete instructions. They tell the hydrator:
 
 1. When this workflow applies (routing signals)
 2. What's unique to this workflow
 3. Which base workflows to compose
-
-> **Design note (2026-01-25)**: The former `minor-edit` workflow was removed. Any file-modifying work requires full hydration planning—there is no "minor edit" category. Pure information requests route to `simple-question`; all file modifications route to `design` or more specific workflows.
 
 ## Base Workflows (Composable Patterns)
 
@@ -37,8 +28,13 @@ Workflows are **hydrator hints**, not complete instructions. They tell the hydra
 | [[base-commit]]         | Stage, commit (why not what), push           | No file modifications                 |
 | [[base-handover]]       | Session end: task, git push, reflection      | [[simple-question]]                   |
 | [[base-memory-capture]] | Store findings to memory MCP via /remember   | No discoveries, [[simple-question]]   |
+| [[base-qa]]             | QA checkpoint: lock criteria, gather, judge  | Trivial changes, user waives          |
+| [[base-batch]]          | Batch processing: chunk, parallelize, aggregate | Single item, items have dependencies |
+| [[base-investigation]]  | Investigation: hypothesis → probe → conclude | Cause known, just executing           |
 
 ## Decision Tree
+
+**Multiple intents?** If your prompt contains two or more distinct goals (e.g., "process emails AND fix that bug"), split and route each independently. One workflow per intent.
 
 ```
 User request
@@ -55,14 +51,28 @@ User request
     │
     ├─ Multiple similar items? ────────────────> [[batch-processing]]
     │
-    ├─ Investigating/debugging? ───────────────> [[debugging]]
+    ├─ Email/communications? ──────────────────> [[triage-email]]
+    │       ├─ Classifying emails? ────────────> [[email-classify]]
+    │       ├─ Extracting tasks from email? ───> [[email-capture]]
+    │       └─ Drafting replies? ──────────────> [[email-reply]]
+    │
+    ├─ Academic/research task? ────────────────> (see below)
+    │       ├─ Review submission? ─────────────> [[peer-review]]
+    │       ├─ Reference letter? ──────────────> [[reference-letter]]
+    │       └─ HDR supervision? ───────────────> [[hdr-supervision]]
+    │
+    ├─ Bug or issue?
+    │       ├─ Cause unknown (investigating)? ─> [[debugging]]
+    │       └─ Cause known (clear fix)? ───────> [[design]]
     │
     ├─ Planning/designing known work? ─────────> [[design]]
     │   (know what to build, designing how)
     │
     ├─ Need QA verification? ──────────────────> [[qa-demo]]
     │
-    └─ Framework governance change? ───────────> [[framework-change]]
+    ├─ Framework governance change? ───────────> [[framework-change]]
+    │
+    └─ No branch matched? ─────────────────────> Ask user to clarify
 ```
 
 ## Scope-Based Routing
@@ -71,8 +81,11 @@ User request
 | ---------------------------------------------- | -------------------- |
 | "Write a paper", "Build X", "Plan the project" | [[decompose]]        |
 | "Add feature X", "Fix bug Y" (clear steps)     | [[design]]           |
+| "Bug broken", "not working" (cause unknown)    | [[debugging]]        |
 | "How do I..." (information only)               | [[simple-question]]  |
 | "Process all X", "batch update"                | [[batch-processing]] |
+| "Process emails", "check inbox"                | [[triage-email]]     |
+| "Review grant", "reference letter"             | [[peer-review]] / [[reference-letter]] |
 | "/commit", "/email" (skill name)               | [[direct-skill]]     |
 
 ## Available Workflows
