@@ -5,7 +5,6 @@ This gate blocks new folder creation in ~/brain to prevent folder proliferation.
 
 import os
 import sys
-import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -48,9 +47,7 @@ def make_context(tool_name: str, tool_input: dict) -> HookContext:
 class TestBrainFolderWriteProtection:
     """Test Write tool protection for brain folders."""
 
-    def test_blocks_write_to_new_subfolder(
-        self, mock_session_state, gate_state, tmp_path
-    ):
+    def test_blocks_write_to_new_subfolder(self, mock_session_state, gate_state, tmp_path):
         """Write to a new subfolder in brain should be blocked."""
         # Create a fake brain root that exists
         fake_brain = tmp_path / "brain"
@@ -67,9 +64,7 @@ class TestBrainFolderWriteProtection:
             assert result is True
             assert "new-category" in gate_state.metrics.get("blocked_path", "")
 
-    def test_allows_write_to_existing_folder(
-        self, mock_session_state, gate_state, tmp_path
-    ):
+    def test_allows_write_to_existing_folder(self, mock_session_state, gate_state, tmp_path):
         """Write to an existing folder in brain should be allowed."""
         fake_brain = tmp_path / "brain"
         fake_brain.mkdir()
@@ -110,9 +105,7 @@ class TestBrainFolderWriteProtection:
             "Write",
             {"file_path": f"{tmp_path}/other/new-folder/file.txt", "content": "test"},
         )
-        result = check_custom_condition(
-            "creates_brain_folder", ctx, gate_state, mock_session_state
-        )
+        result = check_custom_condition("creates_brain_folder", ctx, gate_state, mock_session_state)
         assert result is False
 
 
@@ -149,9 +142,7 @@ class TestBrainFolderBashProtection:
             )
             assert result is True
 
-    def test_allows_mkdir_existing_folder(
-        self, mock_session_state, gate_state, tmp_path
-    ):
+    def test_allows_mkdir_existing_folder(self, mock_session_state, gate_state, tmp_path):
         """mkdir for existing brain folder should be allowed (mkdir will fail gracefully)."""
         fake_brain = tmp_path / "brain"
         fake_brain.mkdir()
@@ -174,9 +165,7 @@ class TestBrainFolderBashProtection:
             "Bash",
             {"command": f"mkdir {tmp_path}/other-project"},
         )
-        result = check_custom_condition(
-            "creates_brain_folder", ctx, gate_state, mock_session_state
-        )
+        result = check_custom_condition("creates_brain_folder", ctx, gate_state, mock_session_state)
         assert result is False
 
     def test_handles_tilde_expansion(self, mock_session_state, gate_state, tmp_path):
@@ -204,9 +193,7 @@ class TestOtherTools:
             "Read",
             {"file_path": "/home/nic/brain/new-folder/file.md"},
         )
-        result = check_custom_condition(
-            "creates_brain_folder", ctx, gate_state, mock_session_state
-        )
+        result = check_custom_condition("creates_brain_folder", ctx, gate_state, mock_session_state)
         assert result is False
 
     def test_glob_tool_not_affected(self, mock_session_state, gate_state):
@@ -215,7 +202,5 @@ class TestOtherTools:
             "Glob",
             {"pattern": "/home/nic/brain/**/*.md"},
         )
-        result = check_custom_condition(
-            "creates_brain_folder", ctx, gate_state, mock_session_state
-        )
+        result = check_custom_condition("creates_brain_folder", ctx, gate_state, mock_session_state)
         assert result is False
