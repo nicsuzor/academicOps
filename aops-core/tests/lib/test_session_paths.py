@@ -1,8 +1,9 @@
 import os
-import pytest
-from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 from lib.session_paths import _is_gemini_session, get_gate_file_path, get_session_short_hash
+
 
 class TestIsGeminiSession:
     """Tests for _is_gemini_session function."""
@@ -33,7 +34,7 @@ class TestIsGeminiSession:
         assert _is_gemini_session("550e8400-e29b-41d4-a716-446655440000", {}) is False
         # No indicators at all
         with patch.dict(os.environ, {}, clear=True):
-             assert _is_gemini_session(None, None) is False
+            assert _is_gemini_session(None, None) is False
 
 
 class TestGetGateFilePath:
@@ -60,7 +61,13 @@ class TestGetGateFilePath:
 
         # Expected: ~/.claude/projects/<project>/<date>-<shorthash>-<gate>.md
         # Short hash for "550e8400..." is "550e8400"
-        expected_path = tmp_path / ".claude" / "projects" / "-home-user-project" / "20240520-550e8400-custodiet.md"
+        expected_path = (
+            tmp_path
+            / ".claude"
+            / "projects"
+            / "-home-user-project"
+            / "20240520-550e8400-custodiet.md"
+        )
         assert path == expected_path
         # Verify parent directory was created (via mkdir(parents=True, exist_ok=True))
         assert expected_path.parent.exists()
@@ -105,5 +112,7 @@ class TestGetGateFilePath:
         """Test that it raises ValueError if Gemini is detected but logs dir cannot be found."""
         with patch("lib.session_paths._is_gemini_session", return_value=True):
             with patch("lib.session_paths.get_gemini_logs_dir", return_value=None):
-                with pytest.raises(ValueError, match="Gemini session detected but no logs directory configured"):
+                with pytest.raises(
+                    ValueError, match="Gemini session detected but no logs directory configured"
+                ):
                     get_gate_file_path("hydration", "some-id")
