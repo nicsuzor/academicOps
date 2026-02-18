@@ -3335,6 +3335,7 @@ def esc(text):
         .replace("<", "&lt;")
         .replace(">", "&gt;")
         .replace('"', "&quot;")
+        .replace("'", "&#39;")
     )
 
 
@@ -3357,8 +3358,10 @@ def clean_activity_text(raw_text: str) -> str:
     s = str(raw_text)
     # Remove HTML comments <!-- ... -->
     s = _re.sub(r"<!--.*?-->", "", s, flags=_re.DOTALL)
-    # Remove HTML tags
-    s = _re.sub(r"<[^>]+>", "", s)
+    # Remove paired HTML tags AND their content (e.g. <system-reminder>...</system-reminder>)
+    s = _re.sub(r"<(\w[\w-]*)[\s>].*?</\1>", "", s, flags=_re.DOTALL)
+    # Remove any remaining unpaired HTML tags
+    s = _re.sub(r"<[^>]+>", "", s, flags=_re.DOTALL)
 
     # Remove markdown headers (lines starting with #)
     lines = [line for line in s.split("\n") if not line.strip().startswith("#")]
@@ -4043,8 +4046,10 @@ def _sanitize_prompt(text: str) -> str:
     s = text
     # Remove HTML comments <!-- ... -->
     s = _re.sub(r"<!--.*?-->", "", s, flags=_re.DOTALL)
-    # Remove HTML tags
-    s = _re.sub(r"<[^>]+>", "", s)
+    # Remove paired HTML tags AND their content (e.g. <system-reminder>...</system-reminder>)
+    s = _re.sub(r"<(\w[\w-]*)[\s>].*?</\1>", "", s, flags=_re.DOTALL)
+    # Remove any remaining unpaired HTML tags
+    s = _re.sub(r"<[^>]+>", "", s, flags=_re.DOTALL)
     # Convert markdown links [text](url) to just text
     s = _re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", s)
     # Strip bold/italic markers (** __ * _) but keep content
@@ -4875,7 +4880,7 @@ try:
                     if not re.match(r"^[a-z]+-[a-f0-9]+$", thread.git_branch):
                         branch_html = f"<div class='session-branch' style='font-size: 0.75em; opacity: 0.6; margin-top: -8px; margin-bottom: 8px;' title='Git Branch'>branch: {esc(thread.git_branch)}</div>"
 
-                path_html += f"<div class='path-thread-header' title='{esc(goal_to_show)}'>{goal_display} <span class='session-hash'>({sid_display})</span></div>"
+                path_html += f"<div class='path-thread-header' title='{esc(cleaned_goal)}'>{goal_display} <span class='session-hash'>({sid_display})</span></div>"
                 path_html += branch_html
 
                 # Consolidate consecutive TASK_UPDATE events
