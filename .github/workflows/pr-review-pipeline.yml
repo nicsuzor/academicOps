@@ -1,4 +1,4 @@
-# LLM review pipeline. Runs only after PR Checks (lint + gatekeeper + type-check)
+# LLM review pipeline. Runs only after Code Quality (lint + gatekeeper + type-check)
 # all pass, via a workflow_run trigger. This avoids re-running expensive LLM
 # reviews when only lint is re-run.
 #
@@ -11,7 +11,7 @@ name: PR Pipeline
 
 on:
   workflow_run:
-    workflows: ["PR Checks"]
+    workflows: ["Code Quality"]
     types: [completed]
   pull_request:
     types: [assigned]

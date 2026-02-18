@@ -5,9 +5,11 @@
 #
 # See specs/pr-process.md for the full process documentation.
 
-name: PR Checks
+name: Code Quality
 
 on:
+  push:
+    branches: [main]
   pull_request:
     types: [opened, synchronize, assigned]
 
@@ -21,12 +23,12 @@ jobs:
     permissions:
       contents: write
     concurrency:
-      group: pr-checks-${{ github.event.pull_request.number }}
+      group: code-quality-${{ github.event.pull_request.number || github.ref }}
       cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
@@ -53,15 +55,15 @@ jobs:
         continue-on-error: true
         run: uv run ruff format --check
 
-      # Autofix and push if either check found problems
+      # Autofix and push if either check found problems (PRs only)
       - name: Autofix lint and formatting
-        if: steps.lint-initial.outcome == 'failure' || steps.format-initial.outcome == 'failure'
+        if: github.event_name == 'pull_request' && (steps.lint-initial.outcome == 'failure' || steps.format-initial.outcome == 'failure')
         run: |
           uv run ruff check --fix || true
           uv run ruff format
 
       - name: Commit and push fixes
-        if: steps.lint-initial.outcome == 'failure' || steps.format-initial.outcome == 'failure'
+        if: github.event_name == 'pull_request' && (steps.lint-initial.outcome == 'failure' || steps.format-initial.outcome == 'failure')
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -88,9 +90,10 @@ jobs:
   # ──────────────────────────────────────────────
   gatekeeper:
     name: Gatekeeper
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     concurrency:
-      group: pr-gatekeeper-${{ github.event.pull_request.number }}
+      group: gatekeeper-${{ github.event.pull_request.number }}
       cancel-in-progress: true
     permissions:
       contents: read
@@ -138,6 +141,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
