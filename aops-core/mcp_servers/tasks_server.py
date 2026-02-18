@@ -40,8 +40,11 @@ from lib.task_index import TaskIndex, TaskIndexEntry
 from lib.task_model import Task, TaskComplexity, TaskStatus, TaskType
 from lib.task_storage import TaskStorage
 
-# Pre-compile regex pattern for performance
+# Pre-compile regex patterns for performance
 _INCOMPLETE_MARKER_PATTERN = re.compile(r"^-\s*\[ \]\s*(.+)$", re.MULTILINE)
+_REMAINING_PATTERN = re.compile(r"^#+\s*Remaining:", re.IGNORECASE | re.MULTILINE)
+_PERCENT_COMPLETE_PATTERN = re.compile(r"(\d+)%\s*complete", re.IGNORECASE)
+_WIP_PATTERN = re.compile(r"\b(WIP|in-progress)\b", re.IGNORECASE)
 
 
 def _resolve_status_alias(status: str) -> str:
@@ -246,18 +249,45 @@ def _format_tree(node: dict[str, Any], indent: int = 0) -> str:
 def _check_incomplete_markers(body: str) -> list[str]:
     """Check for incomplete checklist markers in the task body.
 
-    Looks for lines starting with '- [ ]'.
+    Looks for:
+    - Lines starting with '- [ ]'
+    - 'Remaining:' section headers
+    - Percentage complete < 100%
+    - WIP or in-progress markers
 
     Args:
         body: Task body markdown
 
     Returns:
-        List of incomplete items found
+        List of incomplete items or markers found
     """
     if not body:
         return []
 
-    return [m.group(1).strip() for m in _INCOMPLETE_MARKER_PATTERN.finditer(body)]
+    incomplete = []
+
+    # 1. Check for [ ] items
+    for m in _INCOMPLETE_MARKER_PATTERN.finditer(body):
+        incomplete.append(m.group(1).strip())
+
+    # 2. Check for Remaining: section
+    if _REMAINING_PATTERN.search(body):
+        incomplete.append("Remaining: section")
+
+    # 3. Check for X% complete (X < 100)
+    for m in _PERCENT_COMPLETE_PATTERN.finditer(body):
+        try:
+            percent = int(m.group(1))
+            if percent < 100:
+                incomplete.append(f"{percent}% complete")
+        except ValueError:
+            continue
+
+    # 4. Check for WIP/in-progress
+    for m in _WIP_PATTERN.finditer(body):
+        incomplete.append(m.group(0))
+
+    return incomplete
 
 
 def _format_incomplete_items_error(incomplete: list[str]) -> str:
