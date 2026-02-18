@@ -77,15 +77,15 @@ def install_cron_jobs(aops_path: Path, aca_data_path: str):
         new_crontab_lines.append(line)
 
     new_crontab_lines.append("# aOps task index")
-    cron_cmd = f"*/5 * * * * cd {aops_path} && ACA_DATA={aca_data_path} uv run python scripts/regenerate_task_index.py >> /tmp/task-index.log 2>&1"
+    cron_cmd = f"*/5 * * * * cd {aops_path} && ACA_DATA={aca_data_path} uv run python scripts/regenerate_task_index.py > /dev/null 2>&1"
     new_crontab_lines.append(cron_cmd)
 
     new_crontab_lines.append("# aOps transcripts")
-    transcript_cmd = f"*/30 * * * * cd {aops_path} && ACA_DATA={aca_data_path} uv run python aops-core/scripts/transcript_push.py --recent >> /tmp/aops-transcripts.log 2>&1"
+    transcript_cmd = f"*/30 * * * * cd {aops_path} && ACA_DATA={aca_data_path} uv run python aops-core/scripts/transcript_push.py --recent > /dev/null 2>&1"
     new_crontab_lines.append(transcript_cmd)
 
     new_crontab_lines.append("# aOps refinery")
-    refinery_cmd = f"*/5 * * * * cd {aops_path} && ACA_DATA={aca_data_path} uv run python scripts/refinery.py >> /tmp/aops-refinery.log 2>&1"
+    refinery_cmd = f"*/5 * * * * cd {aops_path} && ACA_DATA={aca_data_path} uv run python scripts/refinery.py > /dev/null 2>&1"
     new_crontab_lines.append(refinery_cmd)
 
     new_crontab = "\n".join(new_crontab_lines) + "\n"
