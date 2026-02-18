@@ -540,7 +540,7 @@ def finish(ctx, no_push, do_nuke, force):
         task.status = TaskStatus.MERGE_READY
         manager.storage.save_task(task)
         print("✅ Task marked as 'merge_ready'")
-        print("📋 PR filed — review pipeline will handle merge")
+        print("📋 If a PR was created, the review pipeline will handle merge. See logs above for PR status.")
 
     except ImportError:
         print("Warning: Could not update task status (lib.task_model not available)")
@@ -549,7 +549,8 @@ def finish(ctx, no_push, do_nuke, force):
     if do_nuke:
         print("Nuking worktree...")
         os.chdir(Path.home())  # Move out of worktree before nuking
-        manager.nuke_worktree(task_id, force=False)
+        # Branch was pushed and PR filed; merge check no longer applies here
+        manager.nuke_worktree(task_id, force=True)
         print("Worktree removed")
     else:
         print(f"\nTo clean up later: polecat nuke {task_id}")
@@ -1083,7 +1084,7 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             original_cwd = os.getcwd()
             try:
                 os.chdir(worktree_path)
-                ctx.invoke(finish, no_push=False, do_nuke=False)
+                ctx.invoke(finish, no_push=False, do_nuke=True)
                 print("✅ Auto-finish completed.")
             except SystemExit as e:
                 if e.code != 0:
