@@ -306,6 +306,15 @@ def _build_legend_table(stats: dict) -> str:
     cells += "<TD></TD>"
     rows.append(f"<TR>{cells}</TR>")
 
+    # Downstream Weight
+    rows.append('<TR><TD COLSPAN="4" BGCOLOR="#e9ecef"><B>Downstream Weight</B></TD></TR>')
+    rows.append(
+        "<TR>"
+        '<TD COLSPAN="2">\u2696 N.N = impact score</TD>'
+        '<TD COLSPAN="2">Double border = stakeholder</TD>'
+        "</TR>"
+    )
+
     # Edge Types
     rows.append('<TR><TD COLSPAN="4" BGCOLOR="#e9ecef"><B>Edge Types</B></TD></TR>')
     rows.append(
@@ -428,6 +437,25 @@ def generate_dot(
 
         label = node.get("label", node["id"])[:50].replace('"', '\\"')
 
+        # Downstream weight visualization
+        dw = node.get("downstream_weight", 0)
+        stakeholder = node.get("stakeholder_exposure", False)
+        extra_attrs = ""
+
+        if dw > 0:
+            # Append weight to label
+            label = f"{label}\\n\u2696 {dw:.1f}"
+            # Scale node width: base 1.5, up to 3.0 for highest weights
+            scale = min(1.5 + (dw / 10.0) * 1.5, 3.5)
+            extra_attrs += f" width={scale:.2f}"
+            # Larger font for high-weight nodes
+            if dw >= 5.0:
+                extra_attrs += " fontsize=14"
+
+        if stakeholder:
+            # Double border for stakeholder exposure
+            extra_attrs += " peripheries=2"
+
         lines.append(
             f'    "{node_id}" ['
             f'label="{label}" '
@@ -436,6 +464,7 @@ def generate_dot(
             f'fillcolor="{fillcolor}" '
             f'color="{pencolor}" '
             f"penwidth={penwidth}"
+            f"{extra_attrs}"
             f"];"
         )
 

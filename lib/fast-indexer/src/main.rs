@@ -123,7 +123,16 @@ struct Node {
     project: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     due: Option<String>,
+    /// Derived: transitive downstream impact score
+    #[serde(default, skip_serializing_if = "is_zero_f64")]
+    downstream_weight: f64,
+    /// Derived: true if any transitively blocked task has a due date
+    #[serde(default, skip_serializing_if = "is_false")]
+    stakeholder_exposure: bool,
 }
+
+fn is_zero_f64(v: &f64) -> bool { *v == 0.0 }
+fn is_false(v: &bool) -> bool { !*v }
 
 /// Edge types for visual discrimination in graph output
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -233,6 +242,9 @@ struct FileData {
     // Additional metadata fields
     assignee: Option<String>,
     complexity: Option<String>,
+    // Derived graph metrics (computed after relationship resolution)
+    downstream_weight: f64,
+    stakeholder_exposure: bool,
 }
 
 fn compute_id(path: &Path) -> String {
@@ -431,6 +443,8 @@ fn parse_file(path: PathBuf) -> Option<FileData> {
         task_id,
         assignee,
         complexity,
+        downstream_weight: 0.0,
+        stakeholder_exposure: false,
     })
 }
 
@@ -1161,6 +1175,155 @@ fn main() -> Result<()> {
         })
         .collect();
 
+    // 4b. Compute inverse relationships (depends_on → blocks, soft_depends_on → soft_blocks)
+    // The frontmatter may not have blocks/soft_blocks, so compute from depends_on/soft_depends_on.
+    {
+        let id_to_idx: HashMap<String, usize> = files.iter().enumerate()
+            .map(|(i, f)| (f.id.clone(), i))
+            .collect();
+
+        // Collect (blocker_idx, blocked_idx) pairs from depends_on
+        let mut block_pairs: Vec<(usize, usize)> = Vec::new();
+        let mut soft_block_pairs: Vec<(usize, usize)> = Vec::new();
+
+        for (i, f) in files.iter().enumerate() {
+            for dep_id in &f.depends_on {
+                if let Some(&dep_idx) = id_to_idx.get(dep_id) {
+                    // dep_id blocks f.id → add f.id to dep's blocks
+                    block_pairs.push((dep_idx, i));
+                }
+            }
+            for sdep_id in &f.soft_depends_on {
+                if let Some(&sdep_idx) = id_to_idx.get(sdep_id) {
+                    soft_block_pairs.push((sdep_idx, i));
+                }
+            }
+        }
+
+        for (blocker_idx, blocked_idx) in block_pairs {
+            let blocked_id = files[blocked_idx].id.clone();
+            if !files[blocker_idx].blocks.contains(&blocked_id) {
+                files[blocker_idx].blocks.push(blocked_id);
+            }
+        }
+        for (blocker_idx, blocked_idx) in soft_block_pairs {
+            let blocked_id = files[blocked_idx].id.clone();
+            if !files[blocker_idx].soft_blocks.contains(&blocked_id) {
+                files[blocker_idx].soft_blocks.push(blocked_id);
+            }
+        }
+    }
+
+    // 4c. Compute downstream_weight and stakeholder_exposure on FileData
+    // BFS through blocks/soft_blocks to accumulate transitive impact scores.
+    // Runs before format branch so both graph JSON and MCP index benefit.
+    {
+        let excluded_statuses: HashSet<&str> = ["done", "cancelled"].into_iter().collect();
+
+        // Build id->index lookup for files
+        let id_to_idx: HashMap<String, usize> = files.iter().enumerate()
+            .map(|(i, f)| (f.id.clone(), i))
+            .collect();
+
+        // Pre-compute base weight for each non-excluded file
+        let base_weights: HashMap<String, f64> = files.iter()
+            .filter(|f| {
+                f.status.as_deref().map(|s| !excluded_statuses.contains(s)).unwrap_or(false)
+            })
+            .map(|f| {
+                let priority_weight = match f.priority.unwrap_or(2) {
+                    0 => 5.0,
+                    1 => 3.0,
+                    2 => 2.0,
+                    3 => 1.0,
+                    _ => 0.5,
+                };
+                let due_multiplier = if f.due.is_some() { 2.0 } else { 1.0 };
+                (f.id.clone(), priority_weight * due_multiplier)
+            })
+            .collect();
+
+        let has_due: HashSet<String> = files.iter()
+            .filter(|f| f.due.is_some() && f.status.as_deref().map(|s| !excluded_statuses.contains(s)).unwrap_or(false))
+            .map(|f| f.id.clone())
+            .collect();
+
+        // Pre-snapshot blocks/soft_blocks (avoid borrow issues)
+        let blocks_map: HashMap<String, Vec<String>> = files.iter()
+            .map(|f| (f.id.clone(), f.blocks.clone()))
+            .collect();
+        let soft_blocks_map: HashMap<String, Vec<String>> = files.iter()
+            .map(|f| (f.id.clone(), f.soft_blocks.clone()))
+            .collect();
+
+        let all_ids: Vec<String> = files.iter().map(|f| f.id.clone()).collect();
+
+        for start_id in &all_ids {
+            let mut total_weight: f64 = 0.0;
+            let mut has_stakeholder = false;
+            let mut visited: HashSet<String> = HashSet::new();
+            let mut queue: Vec<(String, u32, bool)> = Vec::new();
+
+            // Seed with direct blocks/soft_blocks
+            if let Some(blocked) = blocks_map.get(start_id) {
+                for bid in blocked {
+                    if !excluded_statuses.contains(
+                        files.get(*id_to_idx.get(bid).unwrap_or(&0))
+                            .and_then(|f| f.status.as_deref())
+                            .unwrap_or("done")
+                    ) {
+                        queue.push((bid.clone(), 1, false));
+                    }
+                }
+            }
+            if let Some(soft_blocked) = soft_blocks_map.get(start_id) {
+                for sbid in soft_blocked {
+                    if !excluded_statuses.contains(
+                        files.get(*id_to_idx.get(sbid).unwrap_or(&0))
+                            .and_then(|f| f.status.as_deref())
+                            .unwrap_or("done")
+                    ) {
+                        queue.push((sbid.clone(), 1, true));
+                    }
+                }
+            }
+
+            while let Some((tid, depth, is_soft)) = queue.pop() {
+                if !visited.insert(tid.clone()) {
+                    continue;
+                }
+                if let Some(&bw) = base_weights.get(&tid) {
+                    let depth_decay = 1.0 / (depth as f64);
+                    let soft_factor = if is_soft { 0.3 } else { 1.0 };
+                    total_weight += depth_decay * bw * soft_factor;
+                }
+                if has_due.contains(&tid) {
+                    has_stakeholder = true;
+                }
+                // Continue BFS through this node's blocks
+                if let Some(next_blocks) = blocks_map.get(&tid) {
+                    for next in next_blocks {
+                        if !visited.contains(next) {
+                            queue.push((next.clone(), depth + 1, is_soft));
+                        }
+                    }
+                }
+                if let Some(next_soft) = soft_blocks_map.get(&tid) {
+                    for next in next_soft {
+                        if !visited.contains(next) {
+                            queue.push((next.clone(), depth + 1, true));
+                        }
+                    }
+                }
+            }
+
+            if let Some(&idx) = id_to_idx.get(start_id) {
+                files[idx].downstream_weight = (total_weight * 100.0).round() / 100.0;
+                files[idx].stakeholder_exposure = has_stakeholder;
+            }
+        }
+    }
+
     // 5. Output based on format
     let output_base = args.output.trim_end_matches(".json")
         .trim_end_matches(".graphml")
@@ -1205,6 +1368,8 @@ fn main() -> Result<()> {
                 complexity: f.complexity,
                 project: f.project,
                 due: f.due,
+                downstream_weight: f.downstream_weight,
+                stakeholder_exposure: f.stakeholder_exposure,
             }
         })
         .collect();
