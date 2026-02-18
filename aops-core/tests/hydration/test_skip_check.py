@@ -101,51 +101,51 @@ class TestCommandArgsHydration:
         instead of being hydrated for intent parsing.
         """
         prompt = (
-            '<command-message>pull</command-message>\n'
-            '<command-name>/pull</command-name>\n'
-            '<command-args>buttermilk-27315753 and deconstruct</command-args>\n'
-            '# /pull - Pull, Claim, and Complete a Task\n'
-            'ARGUMENTS: buttermilk-27315753 and deconstruct'
+            "<command-message>pull</command-message>\n"
+            "<command-name>/pull</command-name>\n"
+            "<command-args>buttermilk-27315753 and deconstruct</command-args>\n"
+            "# /pull - Pull, Claim, and Complete a Task\n"
+            "ARGUMENTS: buttermilk-27315753 and deconstruct"
         )
         assert should_skip_hydration(prompt) is False
 
     def test_expanded_command_with_single_arg_skips(self):
         """Slash commands with a single task ID arg should still skip."""
         prompt = (
-            '<command-message>pull</command-message>\n'
-            '<command-name>/pull</command-name>\n'
-            '<command-args>buttermilk-27315753</command-args>\n'
-            '# /pull - Pull, Claim, and Complete a Task\n'
-            'ARGUMENTS: buttermilk-27315753'
+            "<command-message>pull</command-message>\n"
+            "<command-name>/pull</command-name>\n"
+            "<command-args>buttermilk-27315753</command-args>\n"
+            "# /pull - Pull, Claim, and Complete a Task\n"
+            "ARGUMENTS: buttermilk-27315753"
         )
         assert should_skip_hydration(prompt) is True
 
     def test_expanded_command_with_no_args_skips(self):
         """Bare slash commands (no args) should still skip."""
         prompt = (
-            '<command-message>pull</command-message>\n'
-            '<command-name>/pull</command-name>\n'
-            '# /pull - Pull, Claim, and Complete a Task'
+            "<command-message>pull</command-message>\n"
+            "<command-name>/pull</command-name>\n"
+            "# /pull - Pull, Claim, and Complete a Task"
         )
         assert should_skip_hydration(prompt) is True
 
     def test_expanded_command_with_empty_args_skips(self):
         """Commands with empty <command-args> tag should skip."""
         prompt = (
-            '<command-message>commit</command-message>\n'
-            '<command-name>/commit</command-name>\n'
-            '<command-args></command-args>\n'
-            '# /commit'
+            "<command-message>commit</command-message>\n"
+            "<command-name>/commit</command-name>\n"
+            "<command-args></command-args>\n"
+            "# /commit"
         )
         assert should_skip_hydration(prompt) is True
 
     def test_learn_with_multi_word_args_does_not_skip(self):
         """Other commands with NL args also trigger hydration."""
         prompt = (
-            '<command-message>learn</command-message>\n'
-            '<command-name>/learn</command-name>\n'
-            '<command-args>this is why hydrator should block everything</command-args>\n'
-            '# /learn - Graduated Framework Improvement'
+            "<command-message>learn</command-message>\n"
+            "<command-name>/learn</command-name>\n"
+            "<command-args>this is why hydrator should block everything</command-args>\n"
+            "# /learn - Graduated Framework Improvement"
         )
         assert should_skip_hydration(prompt) is False
 

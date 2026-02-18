@@ -585,7 +585,9 @@ class SessionAnalyzer:
                 result["story"] = story_text
 
         # Extract My priorities
-        priorities_match = re.search(r"### My priorities\n\n(.*?)(?:\n\n<!--|\n\n##|\Z)", content, re.DOTALL)
+        priorities_match = re.search(
+            r"### My priorities\n\n(.*?)(?:\n\n<!--|\n\n##|\Z)", content, re.DOTALL
+        )
         if priorities_match:
             result["priorities"] = priorities_match.group(1).strip()
 
