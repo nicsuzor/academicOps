@@ -1,7 +1,9 @@
-**Hydrate ALL prompts** (even simple ones!): invoke the **prompt-hydrator** agent before proceeding.
+**User prompt hydration required.** Invoke the **prompt-hydrator** agent with the file path argument: `{temp_path}`
 
-- Do NOT read the temp file yourself
-- The Hydrator will provide missing context to help you understand and execute the instruction.
-- Use your subagent tool or Task tool to call "prompt-hydrator" (or "aops-core:prompt-hydrator") with this exact query:
+Run the hydrator with this command:
+- Gemini: `delegate_to_agent(name='aops-core:prompt-hydrator', query='{temp_path}')`
+- Claude: `Task(subagent_type='aops-core:prompt-hydrator', prompt='{temp_path}')`
 
-> `Transform user prompt using context in {temp_path}`
+Pass the file path directly to the agent — it will read the file and perform the hydration.
+
+This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!

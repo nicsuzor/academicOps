@@ -84,7 +84,7 @@ jobs:
 
           # For workflow_dispatch, use provided prompt or default
           # For comment triggers, Claude will follow the instructions in the comment
-          prompt: ${{ github.event_name == 'workflow_dispatch' && (inputs.prompt || format('Process issue #{0}', inputs.issue_number)) || '' }}
+          prompt: ${{ github.event_name == 'workflow_dispatch' && (inputs.prompt || format('Process issue {0}', inputs.issue_number)) || '' }}
 
           additional_permissions: |
             actions: read

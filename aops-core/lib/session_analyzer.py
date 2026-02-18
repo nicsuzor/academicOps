@@ -9,13 +9,13 @@ Uses lib/session_reader.py for JSONL parsing.
 
 from __future__ import annotations
 
-import os
 import re
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
+from lib.paths import get_data_root
 from lib.session_reader import find_sessions, parse_todowrite_state
 from lib.transcript_parser import ConversationTurn, SessionProcessor, TodoWriteState
 
@@ -317,16 +317,13 @@ class SessionAnalyzer:
                     - blockers: Blockers string
             Returns None if file doesn't exist or ACA_DATA not set.
 
-        Raises:
-            ValueError: If ACA_DATA environment variable not set
+        Note:
+            Uses lib.paths.get_data_root() for canonical path resolution.
         """
-        # Get ACA_DATA directory (fail-fast)
-        aca_data = os.environ.get("ACA_DATA")
-        if not aca_data:
-            raise ValueError("ACA_DATA environment variable not set")
-
-        data_path = Path(aca_data)
-        if not data_path.exists():
+        # Get data root via paths.py; return None if ACA_DATA is not set
+        try:
+            data_path = get_data_root()
+        except RuntimeError:
             return None
 
         # Use today's date if not specified
@@ -443,15 +440,19 @@ class SessionAnalyzer:
                 - outcomes: List of outcome items
                 - progress: Tuple of (completed_count, total_count)
             Returns None if file doesn't exist.
+
+        Note:
+            Uses lib.paths.get_data_root() for canonical path resolution.
         """
-        aca_data = os.environ.get("ACA_DATA")
-        if not aca_data:
+        try:
+            data_path = get_data_root()
+        except RuntimeError:
             return None
 
         if date_str is None:
             date_str = date.today().strftime("%Y%m%d")
 
-        daily_path = Path(aca_data) / "sessions" / f"{date_str}-daily.md"
+        daily_path = data_path / "sessions" / f"{date_str}-daily.md"
         if not daily_path.exists():
             return None
 
@@ -809,15 +810,19 @@ def update_daily_note_dashboard(date_str: str | None = None) -> bool:
 
     Safety: Never modifies content below ## Session Details.
             Only touches progress bar lines (identified by █░ characters).
+
+    Note:
+        Uses lib.paths.get_data_root() for canonical path resolution.
     """
-    aca_data = os.environ.get("ACA_DATA")
-    if not aca_data:
+    try:
+        data_path = get_data_root()
+    except RuntimeError:
         return False
 
     if date_str is None:
         date_str = date.today().strftime("%Y%m%d")
 
-    daily_path = Path(aca_data) / "sessions" / f"{date_str}-daily.md"
+    daily_path = data_path / "sessions" / f"{date_str}-daily.md"
     if not daily_path.exists():
         return False
 

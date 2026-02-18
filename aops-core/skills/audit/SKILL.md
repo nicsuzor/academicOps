@@ -244,10 +244,20 @@ Index files are root-level files for agent consumption. The auditing agent curat
 **Generation requirements**:
 
 1. **Preserve existing structure**: Keep the decision tree, key distinctions, and project-specific sections
-2. **Preserve annotations**: Do NOT delete `<!-- @nic: -->` or `<!-- @claude: -->` comments - these contain design history
+2. **No meta-commentary**: Do NOT include annotation debates (`<!-- @nic: -->`, `<!-- @claude: -->`) or design notes inline — these are not routing content and waste tokens on every hydration. Move to frontmatter or a separate doc if preservation matters.
 3. **Add Bases column**: In workflow tables, include a "Bases" column showing which base patterns each workflow composes
 4. **Extract from frontmatter**: Read `bases:` field from each workflow's YAML frontmatter
 5. **Handle missing bases**: If a workflow lacks `bases:` in frontmatter, show "-" in the Bases column
+
+**Decision tree requirements** (ensure these are present):
+
+- **Multi-intent guidance**: Add at top — "Multiple intents? Split and route each independently. One workflow per intent."
+- **Email/communications branch**: Route to `[[triage-email]]` with sub-branches for classify, capture, reply
+- **Academic/research branch**: Route to peer-review, reference-letter, hdr-supervision sub-branches
+- **Bug/issue distinction**: "Cause unknown → `[[debugging]]`; Cause known (clear fix) → `[[design]]`"
+- **Explicit fallback**: "No branch matched → Ask user to clarify"
+
+**Base workflows table**: Must include all base patterns: base-task-tracking, base-tdd, base-verification, base-commit, base-handover, base-memory-capture, base-qa, base-batch, base-investigation.
 
 **Table format**:
 
@@ -292,6 +302,8 @@ Each curated index must include:
 ```
 > **Curated by audit skill** - Regenerate with `Skill(skill="audit")`
 ```
+
+**Exception**: WORKFLOWS.md is directly injected into every hydration — omit this header from WORKFLOWS.md to avoid wasting tokens on meta-commentary.
 
 ### Phase 7: Other Updates
 
