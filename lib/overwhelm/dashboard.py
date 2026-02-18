@@ -4801,8 +4801,10 @@ try:
                 path_html += f"<div style='font-size: 0.7em; font-weight: 700; text-transform: uppercase; color: {proj_color}; opacity: 0.8; margin-bottom: 4px;'>{esc(proj)}</div>"
                 path_html += "<div style='display: flex; flex-wrap: wrap; gap: 8px;'>"
                 for ab in items:
-                    task_label = esc(ab.task_id or ab.description)
-                    path_html += f"<div class='path-abandoned-item' style='border-left: 2px solid {proj_color}; background: rgba(255,255,255,0.03); padding: 4px 10px; border-radius: 4px; font-size: 0.85em;' title='Task: {esc(ab.description)}'>□ {task_label}</div>"
+                    # Use resolved title for abandoned work if available
+                    title = ab.resolved_title or ab.description or ab.task_id
+                    task_label = esc(title)
+                    path_html += f"<div class='path-abandoned-item' style='border-left: 2px solid {proj_color}; background: rgba(255,255,255,0.03); padding: 4px 10px; border-radius: 4px; font-size: 0.85em;' title='Task ID: {esc(ab.task_id or \"unknown\")}'>□ {task_label}</div>"
                 path_html += "</div>"
                 path_html += "</div>"
             
@@ -4831,13 +4833,24 @@ try:
                 sid_display = esc(thread.session_id[:8])
                 
                 # Sanitize initial goal before display (prevent markdown headers from breaking layout)
-                cleaned_goal = clean_activity_text(thread.initial_goal)
+                # Prioritize hydrated_intent if available for better narrative recognition
+                goal_to_show = thread.hydrated_intent or thread.initial_goal
+                cleaned_goal = clean_activity_text(goal_to_show)
                 goal_display = esc(
                     cleaned_goal[:120] + "..."
                     if len(cleaned_goal) > 120
                     else cleaned_goal
                 )
-                path_html += f"<div class='path-thread-header' title='{esc(thread.initial_goal)}'>{goal_display} <span class='session-hash'>({sid_display})</span></div>"
+                
+                # Add branch information if available as secondary context
+                branch_html = ""
+                if thread.git_branch:
+                    # Filter out mechanical branch names that are just task IDs
+                    if not re.match(r"^[a-z]+-[a-f0-9]+$", thread.git_branch):
+                        branch_html = f"<div class='session-branch' style='font-size: 0.75em; opacity: 0.6; margin-top: -8px; margin-bottom: 8px;' title='Git Branch'>branch: {esc(thread.git_branch)}</div>"
+
+                path_html += f"<div class='path-thread-header' title='{esc(goal_to_show)}'>{goal_display} <span class='session-hash'>({sid_display})</span></div>"
+                path_html += branch_html
 
                 # Consolidate consecutive TASK_UPDATE events
                 display_events = []
@@ -4874,19 +4887,22 @@ try:
                     is_minor = event.event_type == EventType.TASK_UPDATE
                     event_class = "path-event minor" if is_minor else "path-event"
 
-                    # Event description - sanitize first
-                    cleaned_desc = clean_activity_text(event.description)
+                    # Use the new narrative renderer from path_reconstructor
+                    narrative = event.render_narrative()
+                    cleaned_desc = clean_activity_text(narrative)
+                    
                     # Increase truncation to 120 as per spec
                     desc = esc(cleaned_desc[:120]) if cleaned_desc else ""
 
+                    # Add bolding for key actions for better scannability
                     if event.event_type == EventType.TASK_CREATE:
-                        desc = f"<b>Created:</b> {desc}"
+                        desc = desc.replace("Created: ", "<b>Created:</b> ")
                     elif event.event_type == EventType.TASK_COMPLETE:
-                        desc = f"<b>✓</b> {desc}"
-                    elif event.event_type == EventType.TASK_UPDATE:
-                        desc = f"→ {desc}"
+                        desc = desc.replace("Finished: ", "<b>✓</b> ")
                     elif event.event_type == EventType.TASK_CLAIM:
-                        desc = f"<b>Claimed:</b> {desc}"
+                        desc = desc.replace("Started working on: ", "<b>Claimed:</b> ")
+                    elif event.event_type == EventType.USER_PROMPT:
+                        desc = desc.replace("Requested: ", "<b>Requested:</b> ")
 
                     # Skip low-signal/empty events
                     is_low_signal = not cleaned_desc or cleaned_desc.lower().strip() in (
