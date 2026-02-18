@@ -1,8 +1,8 @@
-# LLM review pipeline. Runs only after PR Checks (lint + type-check) pass,
-# via a workflow_run trigger. This avoids re-running expensive LLM reviews
-# when only lint is re-run.
+# LLM review pipeline. Runs only after PR Checks (lint + gatekeeper + type-check)
+# all pass, via a workflow_run trigger. This avoids re-running expensive LLM
+# reviews when only lint is re-run.
 #
-# Stages: setup → gatekeeper → strategic-review → custodiet → qa → notify-ready
+# Stages: setup → strategic-review → custodiet → qa → notify-ready
 # Merge agent runs separately, triggered by human approval.
 #
 # See specs/pr-process.md for the full process documentation.
@@ -61,58 +61,11 @@ jobs:
           echo "PR #$PR_NUMBER on branch $HEAD_REF"
 
   # ──────────────────────────────────────────────
-  # Stage 1: Gatekeeper (alignment + quality gate)
-  # ──────────────────────────────────────────────
-  gatekeeper:
-    name: Gatekeeper
-    needs: setup
-    runs-on: ubuntu-latest
-    concurrency:
-      group: pr-review-${{ needs.setup.outputs.pr_number }}
-      cancel-in-progress: true
-    permissions:
-      contents: read
-      pull-requests: write
-      id-token: write
-      issues: write
-      actions: read
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ needs.setup.outputs.head_ref }}
-
-      - name: Read gatekeeper instructions
-        id: gatekeeper-prompt
-        run: |
-          PROMPT=$(cat .github/agents/gatekeeper.md)
-          {
-            echo "prompt<<GATEKEEPER_EOF"
-            echo "$PROMPT"
-            echo "GATEKEEPER_EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Run Gatekeeper Agent
-        uses: anthropics/claude-code-action@v1
-        with:
-          allowed_bots: "claude[bot]"
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          prompt: |
-            ${{ steps.gatekeeper-prompt.outputs.prompt }}
-
-            ---
-
-            Review PR #${{ needs.setup.outputs.pr_number }} in repository ${{ github.repository }}.
-            Use `gh pr view ${{ needs.setup.outputs.pr_number }}` and `gh pr diff ${{ needs.setup.outputs.pr_number }}` to gather information.
-
-          claude_args: '--allowed-tools "Bash(gh:*),Read"'
-
-  # ──────────────────────────────────────────────
-  # Stage 2: Strategic Review
+  # Stage 1: Strategic Review
   # ──────────────────────────────────────────────
   strategic-review:
     name: Strategic Review
-    needs: [setup, gatekeeper]
+    needs: [setup]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -287,8 +240,8 @@ jobs:
           | Stage | Status |
           |-------|--------|
           | Lint | ✅ Passed |
-          | Type check | ✅ Passed |
           | Gatekeeper | ✅ Approved |
+          | Type check | ✅ Passed |
           | Strategic review | ✅ Passed |
           | Custodiet | ✅ Passed |
           | QA | ✅ Passed |

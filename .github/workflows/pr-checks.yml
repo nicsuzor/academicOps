@@ -1,7 +1,7 @@
-# Cheap, fast checks that run on every PR push.
-# The review pipeline (pr-review-pipeline.yml) starts only after these pass,
-# via a workflow_run trigger. Re-running lint here does NOT re-trigger the
-# expensive LLM review stages.
+# Checks that run on every PR push: lint, gatekeeper, and type-check.
+# Lint and gatekeeper run in parallel; type-check runs after lint passes.
+# The review pipeline (pr-review-pipeline.yml) starts only after ALL jobs
+# here pass, via a workflow_run trigger.
 #
 # See specs/pr-process.md for the full process documentation.
 
@@ -81,6 +81,53 @@ jobs:
       - name: Ruff format check (final)
         if: steps.format-initial.outcome == 'failure'
         run: uv run ruff format --check
+
+  # ──────────────────────────────────────────────
+  # Gatekeeper (alignment + quality gate)
+  # Runs in parallel with lint — no dependencies.
+  # ──────────────────────────────────────────────
+  gatekeeper:
+    name: Gatekeeper
+    runs-on: ubuntu-latest
+    concurrency:
+      group: pr-gatekeeper-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+      issues: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Read gatekeeper instructions
+        id: gatekeeper-prompt
+        run: |
+          PROMPT=$(cat .github/agents/gatekeeper.md)
+          {
+            echo "prompt<<GATEKEEPER_EOF"
+            echo "$PROMPT"
+            echo "GATEKEEPER_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run Gatekeeper Agent
+        uses: anthropics/claude-code-action@v1
+        with:
+          allowed_bots: "claude[bot]"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            ${{ steps.gatekeeper-prompt.outputs.prompt }}
+
+            ---
+
+            Review PR #${{ github.event.pull_request.number }} in repository ${{ github.repository }}.
+            Use `gh pr view ${{ github.event.pull_request.number }}` and `gh pr diff ${{ github.event.pull_request.number }}` to gather information.
+
+          claude_args: '--allowed-tools "Bash(gh:*),Read"'
 
   # ──────────────────────────────────────────────
   # Stage 2: Type Check
