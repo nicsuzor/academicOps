@@ -69,7 +69,9 @@ class TestPromptPatternSkip:
 
     def test_agent_notification_skips(self):
         """Agent notifications skip hydration."""
-        assert should_skip_hydration("<agent-notification>Task complete</agent-notification>") is True
+        assert (
+            should_skip_hydration("<agent-notification>Task complete</agent-notification>") is True
+        )
 
     def test_task_notification_skips(self):
         """Task notifications skip hydration."""

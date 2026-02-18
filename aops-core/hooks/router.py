@@ -313,11 +313,15 @@ class HookRouter:
         # If we have subagent info from PID map or spawning tool, treat as subagent.
         # Skill/activate_skill tool calls are NOT subagent invocations — they run
         # in the main agent's session — so skip the is_subagent override for those.
-        if not is_subagent and not _subagent_type_from_skill and (
-            subagent_type
-            or agent_id
-            or raw_input.get("is_sidechain")
-            or raw_input.get("isSidechain")
+        if (
+            not is_subagent
+            and not _subagent_type_from_skill
+            and (
+                subagent_type
+                or agent_id
+                or raw_input.get("is_sidechain")
+                or raw_input.get("isSidechain")
+            )
         ):
             is_subagent = True
 
