@@ -103,6 +103,7 @@ Check actual state, never assume.
 - Before `git push`, verify push destination matches intent.
 - When generating artifacts, EXAMINE the output. "File created successfully" is not verification.
 - When investigating external systems, read ALL available primary evidence before drawing conclusions.
+- Before skipping work due to "missing" environment capabilities (credentials, APIs, services), verify they're actually absent.
 
 **Derivation**: Assumptions cause cascading failures. Verification catches problems early. The onus is on YOU to discharge the burden of proof. "Probably" and "should" are red flags that mean you haven't actually checked.
 
