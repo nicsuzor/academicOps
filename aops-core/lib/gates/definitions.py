@@ -315,4 +315,34 @@ GATE_CONFIGS = [
             ),
         ],
     ),
+    # --- Brain Folder Protection ---
+    # Blocks creation of new folders in /home/nic/brain to prevent folder proliferation.
+    # Existing folders are allowed; only NEW folder creation is blocked.
+    # Admin override: Set BRAIN_FOLDER_GATE_MODE=warn to allow with warning.
+    GateConfig(
+        name="brain_folder",
+        description="Prevents new folder creation in ~/brain directory.",
+        initial_status=GateStatus.OPEN,
+        triggers=[],  # No state transitions needed
+        policies=[
+            GatePolicy(
+                condition=GateCondition(
+                    hook_event="PreToolUse",
+                    tool_name_pattern="^(Write|Bash)$",
+                    custom_check="creates_brain_folder",
+                ),
+                verdict="block",  # Hard block by default; admin override via env var
+                message_template="⛔ New folder creation in ~/brain is prohibited",
+                context_template=(
+                    "⛔ **Brain Folder Protection**\n\n"
+                    "Creating new folders in `/home/nic/brain` is prohibited to prevent folder proliferation.\n\n"
+                    "**Blocked path**: `{blocked_path}`\n\n"
+                    "**Options**:\n"
+                    "1. Use an existing folder in ~/brain instead\n"
+                    "2. Request admin override if this is a truly novel category\n\n"
+                    "To request override, explain why this new folder is necessary."
+                ),
+            ),
+        ],
+    ),
 ]

@@ -105,4 +105,58 @@ def check_custom_condition(
         except (ImportError, Exception):
             return True  # Assume missing on error
 
+    if name == "creates_brain_folder":
+        # Check if a Write/Bash tool attempts to create new folders in /home/nic/brain
+        # This is a policy enforcement to prevent folder proliferation
+        # Returns True if the operation would create a new folder
+        import os
+        import re
+        from pathlib import Path
+
+        BRAIN_ROOT = Path(os.path.expanduser("~/brain"))
+
+        tool_name = ctx.tool_name
+        tool_input = ctx.tool_input or {}
+
+        if tool_name == "Write":
+            file_path = tool_input.get("file_path", "")
+            if file_path:
+                target = Path(file_path)
+                # Check if any NEW directory would be created under brain root
+                if str(target).startswith(str(BRAIN_ROOT)):
+                    # Walk up from target's parent to brain root
+                    parent = target.parent
+                    while str(parent).startswith(str(BRAIN_ROOT)) and parent != BRAIN_ROOT:
+                        if not parent.exists():
+                            # This would create a new folder
+                            state.metrics["blocked_path"] = str(parent)
+                            return True
+                        parent = parent.parent
+            return False
+
+        if tool_name == "Bash":
+            command = tool_input.get("command", "")
+            # Check for mkdir commands targeting brain directory
+            # Extract paths from mkdir/install -d commands and check against BRAIN_ROOT
+            mkdir_patterns = [
+                # mkdir with optional -p flag
+                r"mkdir\s+(?:-p\s+)?['\"]?([^'\";\s]+)['\"]?",
+                # install -d
+                r"install\s+-d\s+['\"]?([^'\";\s]+)['\"]?",
+            ]
+            for pattern in mkdir_patterns:
+                match = re.search(pattern, command)
+                if match:
+                    target_path = match.group(1)
+                    # Expand ~ if present
+                    expanded = Path(os.path.expanduser(target_path))
+                    # Check if this path is under BRAIN_ROOT
+                    if str(expanded).startswith(str(BRAIN_ROOT)):
+                        if not expanded.exists():
+                            state.metrics["blocked_path"] = str(expanded)
+                            return True
+            return False
+
+        return False
+
     return False
