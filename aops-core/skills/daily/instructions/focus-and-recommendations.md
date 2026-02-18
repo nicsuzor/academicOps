@@ -18,7 +18,7 @@ Parse task data to identify priority distribution, overdue tasks, and blocked ta
 **Both numerator AND denominator MUST use the same filter.**
 
 ```python
-# Actionable = NOT done/cancelled
+# Actionable = excludes terminal (done, cancelled) and suspended/transient statuses
 ACTIONABLE_STATUSES = ["active", "inbox", "in_progress", "blocked", "waiting", "review", "merge_ready"]
 
 actionable_tasks = [t for t in tasks if t["status"] in ACTIONABLE_STATUSES]
