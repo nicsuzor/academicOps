@@ -151,7 +151,8 @@ GATE_CONFIGS = [
             # Hydration completes -> Close gate
             GateTrigger(
                 condition=GateCondition(
-                    hook_event="SubagentStop", subagent_type_pattern="^(aops-core:)?hydrator$"
+                    hook_event="SubagentStop",
+                    subagent_type_pattern="^(aops-core:)?prompt-hydrator$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,

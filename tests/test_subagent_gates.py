@@ -10,10 +10,10 @@ from lib.session_state import SessionState
 
 
 @pytest.fixture
-def router(monkeypatch):
+def router():
     # Mock get_session_data to avoid reading shared PID session map during xdist tests
-    monkeypatch.setattr("hooks.router.get_session_data", lambda: {})
-    return HookRouter()
+    with patch("hooks.router.get_session_data", return_value={}):
+        return HookRouter()
 
 
 def test_router_normalize_subagent_type_extraction(router):
@@ -66,14 +66,16 @@ def test_hydration_gate_simplified_triggers():
 
     # 1. Test SubagentStop trigger
     ctx_stop = HookContext(
-        session_id="aafdeee", hook_event="SubagentStop", subagent_type="hydrator"
+        session_id="aafdeee", hook_event="SubagentStop", subagent_type="prompt-hydrator"
     )
     gate.on_subagent_stop(ctx_stop, state)
     assert state.get_gate("hydration").status == GateStatus.OPEN
 
     # 2. Reset and Test PostToolUse fallback trigger
     state.get_gate("hydration").status = GateStatus.CLOSED
-    ctx_post = HookContext(session_id="aafdeee", hook_event="PostToolUse", subagent_type="hydrator")
+    ctx_post = HookContext(
+        session_id="aafdeee", hook_event="PostToolUse", subagent_type="prompt-hydrator"
+    )
     gate.on_tool_use(ctx_post, state)
     assert state.get_gate("hydration").status == GateStatus.OPEN
 
@@ -88,7 +90,9 @@ def test_critic_gate_simplified_triggers():
     gate = GenericGate(critic_config)
 
     # 1. Hydration stop should CLOSE critic gate
-    ctx_hyd_stop = HookContext(session_id="s1", hook_event="SubagentStop", subagent_type="hydrator")
+    ctx_hyd_stop = HookContext(
+        session_id="s1", hook_event="SubagentStop", subagent_type="prompt-hydrator"
+    )
     gate.on_subagent_stop(ctx_hyd_stop, state)
     assert state.get_gate("critic").status == GateStatus.CLOSED
 
