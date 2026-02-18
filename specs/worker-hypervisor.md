@@ -11,7 +11,7 @@ status: DRAFT
 
 - [[skills/hypervisor/SKILL.md]] - Hypervisor skill for batch parallel processing with atomic locking
 - [[polecat/swarm.py]] - Swarm orchestration for parallel workers
-- [[mcp__plugin_aops-core_task_manager__claim_next_task]] - Atomic task claiming to prevent race conditions
+- [[polecat/manager.py]] - Atomic task claiming via Polecat CLI to prevent race conditions
 - [[commands/pull.md]] - `/pull` command that workers execute
 - [[specs/polecat-swarms.md]] - Swarm architecture built on polecat worktrees
 

@@ -558,14 +558,6 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
                         "task_id": inp.get("id", ""),
                     }
                 )
-            elif "task_manager__claim_next_task" in tool:
-                events.append(
-                    {
-                        "timestamp": ts,
-                        "type": "task_claim",
-                        "project": inp.get("project"),
-                    }
-                )
             elif "task_manager__update_task" in tool:
                 status = inp.get("status")
                 if status:  # only record status changes
