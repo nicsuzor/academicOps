@@ -1,5 +1,7 @@
 """Tests for GateResult model and HookRouter formatting logic."""
 
+from unittest.mock import patch
+
 from hooks.router import HookRouter
 from hooks.schemas import CanonicalHookOutput
 from lib.gate_model import GateResult, GateVerdict
@@ -26,7 +28,8 @@ class TestRouterFormatting:
     """Tests for HookRouter.output_for_gemini and output_for_claude."""
 
     def setup_method(self):
-        self.router = HookRouter()
+        with patch("hooks.router.get_session_data", return_value={}):
+            self.router = HookRouter()
 
     def test_format_for_gemini_deny(self):
         canonical = CanonicalHookOutput(
@@ -105,7 +108,8 @@ class TestRouterMerge:
     """Tests for HookRouter._merge_result logic."""
 
     def setup_method(self):
-        self.router = HookRouter()
+        with patch("hooks.router.get_session_data", return_value={}):
+            self.router = HookRouter()
 
     def test_merge_metadata(self):
         target = CanonicalHookOutput(
