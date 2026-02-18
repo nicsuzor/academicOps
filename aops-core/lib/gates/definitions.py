@@ -52,7 +52,7 @@ GATE_CONFIGS = [
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
                     custom_action="hydrate_prompt",
-                    system_message_template="💧 Hydration required. Gate CLOSED.",
+                    system_message_template="Gate CLOSED — ALL tools blocked until prompt-hydrator is invoked",
                 ),
             ),
         ],
@@ -73,7 +73,7 @@ GATE_CONFIGS = [
                     "Run the hydrator with this command:\n"
                     "- Gemini: `delegate_to_agent(name='prompt-hydrator', query='{temp_path}')`\n"
                     "- Claude: `Task(subagent_type='prompt-hydrator', prompt='{temp_path}')`\n\n"
-                    "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
+                    "ALL TOOLS ARE BLOCKED until you invoke the prompt-hydrator agent."
                 ),
             )
         ],

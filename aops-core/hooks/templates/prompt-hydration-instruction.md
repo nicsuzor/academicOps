@@ -6,4 +6,4 @@ Run the hydrator with this command:
 
 Pass the file path directly to the agent — it will read the file and perform the hydration.
 
-This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!
+ALL TOOLS ARE BLOCKED until you invoke the prompt-hydrator agent.
