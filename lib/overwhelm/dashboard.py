@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import textwrap
 import time
@@ -3401,9 +3402,7 @@ def load_task_graph() -> dict | None:
 
 
 # Default task graph SVG location
-TASK_GRAPH_SVG = (
-    Path.home() / ".aops" / "tasks" / "task-map.svg"
-)
+TASK_GRAPH_SVG = Path.home() / ".aops" / "tasks" / "task-map.svg"
 
 
 def find_latest_svg() -> Path | None:
@@ -3422,9 +3421,9 @@ def find_latest_svg() -> Path | None:
     search_dirs = [
         Path.home() / ".aops" / "tasks",
         Path(aca_data) / "aops" / "outputs",
-        Path(aca_data) / "outputs"
+        Path(aca_data) / "outputs",
     ]
-    
+
     for outputs_dir in search_dirs:
         if outputs_dir.exists():
             svgs = list(outputs_dir.glob("task-viz*.svg")) + list(outputs_dir.glob("task-map*.svg"))
@@ -4771,7 +4770,11 @@ if stale_count > 0:
             unsafe_allow_html=True,
         )
     with col2:
-        if st.button("📦 Archive All", use_container_width=True, help="Move all sessions older than 24h to archive"):
+        if st.button(
+            "📦 Archive All",
+            use_container_width=True,
+            help="Move all sessions older than 24h to archive",
+        ):
             archive_stale_sessions(hours=24)
 
 # === PATH RECONSTRUCTION SECTION ===
@@ -4786,7 +4789,7 @@ try:
             path_html += "<div class='path-abandoned'>"
             path_html += f"<div class='path-abandoned-title'>📋 UNFINISHED TASKS ({len(path.abandoned_work)} started but not finished)</div>"
             path_html += "<div style='font-size: 0.8em; opacity: 0.7; margin-bottom: 8px;'>Tasks created or claimed across all sessions that haven't been marked done.</div>"
-            
+
             # Group abandoned work by project
             abandoned_by_project = {}
             for ab in path.abandoned_work:
@@ -4794,20 +4797,21 @@ try:
                 if proj not in abandoned_by_project:
                     abandoned_by_project[proj] = []
                 abandoned_by_project[proj].append(ab)
-            
+
             for proj, items in sorted(abandoned_by_project.items()):
                 proj_color = get_project_color(proj)
-                path_html += f"<div style='margin-bottom: 8px;'>"
+                path_html += "<div style='margin-bottom: 8px;'>"
                 path_html += f"<div style='font-size: 0.7em; font-weight: 700; text-transform: uppercase; color: {proj_color}; opacity: 0.8; margin-bottom: 4px;'>{esc(proj)}</div>"
                 path_html += "<div style='display: flex; flex-wrap: wrap; gap: 8px;'>"
                 for ab in items:
                     # Use resolved title for abandoned work if available
                     title = ab.resolved_title or ab.description or ab.task_id
                     task_label = esc(title)
-                    path_html += f"<div class='path-abandoned-item' style='border-left: 2px solid {proj_color}; background: rgba(255,255,255,0.03); padding: 4px 10px; border-radius: 4px; font-size: 0.85em;' title='Task ID: {esc(ab.task_id or \"unknown\")}'>□ {task_label}</div>"
+                    abandoned_id = ab.task_id or "unknown"
+                    path_html += f"<div class='path-abandoned-item' style='border-left: 2px solid {proj_color}; background: rgba(255,255,255,0.03); padding: 4px 10px; border-radius: 4px; font-size: 0.85em;' title='Task ID: {esc(abandoned_id)}'>□ {task_label}</div>"
                 path_html += "</div>"
                 path_html += "</div>"
-            
+
             path_html += "</div>"
 
         # Group threads by project
@@ -4831,17 +4835,15 @@ try:
 
                 path_html += "<div class='path-thread' style='border-left-color: {proj_color}66'>"
                 sid_display = esc(thread.session_id[:8])
-                
+
                 # Sanitize initial goal before display (prevent markdown headers from breaking layout)
                 # Prioritize hydrated_intent if available for better narrative recognition
                 goal_to_show = thread.hydrated_intent or thread.initial_goal
                 cleaned_goal = clean_activity_text(goal_to_show)
                 goal_display = esc(
-                    cleaned_goal[:120] + "..."
-                    if len(cleaned_goal) > 120
-                    else cleaned_goal
+                    cleaned_goal[:120] + "..." if len(cleaned_goal) > 120 else cleaned_goal
                 )
-                
+
                 # Add branch information if available as secondary context
                 branch_html = ""
                 if thread.git_branch:
@@ -4890,7 +4892,7 @@ try:
                     # Use the new narrative renderer from path_reconstructor
                     narrative = event.render_narrative()
                     cleaned_desc = clean_activity_text(narrative)
-                    
+
                     # Increase truncation to 120 as per spec
                     desc = esc(cleaned_desc[:120]) if cleaned_desc else ""
 
@@ -4914,7 +4916,7 @@ try:
                         "session",
                         "session started",
                     )
-                    
+
                     if is_low_signal:
                         # Only keep low-signal events if they are high-importance types
                         if event.event_type not in (
@@ -4923,7 +4925,7 @@ try:
                             EventType.TASK_CREATE,
                         ):
                             continue
-                        
+
                         # If description is empty but it's a create/claim, we need the task_id at least
                         if not cleaned_desc and not event.task_id:
                             continue

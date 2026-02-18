@@ -184,7 +184,7 @@ def _build_thread_from_summary(
 
             desc = raw.get("description", "")
             task_id = raw.get("task_id") or raw.get("task_title")
-            
+
             # Resolve task title if possible
             resolved_title = None
             if resolver and task_id:
@@ -291,7 +291,7 @@ def _build_thread_from_summary(
 
     # Abandoned = created but not completed
     abandoned = list(created_task_ids - completed_task_ids)
-    
+
     # Extra metadata
     hydrated_intent = summary.get("hydrated_intent") or summary.get("summary")
     git_branch = summary.get("git_branch")
@@ -364,7 +364,7 @@ def reconstruct_path(hours: int = 24) -> ReconstructedPath:
         return ReconstructedPath()
 
     cutoff = datetime.now().astimezone() - timedelta(hours=hours)
-    
+
     # Initialize task resolver for title lookups
     resolver = TaskResolver()
 
