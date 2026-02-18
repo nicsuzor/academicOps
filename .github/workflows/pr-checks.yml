@@ -42,20 +42,26 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
-      - name: Ruff lint
+      # Initial check: identify problems but don't fail the job yet
+      - name: Ruff lint (initial)
+        id: lint-initial
+        continue-on-error: true
         run: uv run ruff check --output-format=github
 
-      - name: Ruff format check
+      - name: Ruff format check (initial)
+        id: format-initial
+        continue-on-error: true
         run: uv run ruff format --check
 
-      - name: Autofix formatting
-        if: failure()
+      # Autofix and push if either check found problems
+      - name: Autofix lint and formatting
+        if: steps.lint-initial.outcome == 'failure' || steps.format-initial.outcome == 'failure'
         run: |
           uv run ruff check --fix || true
           uv run ruff format
 
       - name: Commit and push fixes
-        if: failure()
+        if: steps.lint-initial.outcome == 'failure' || steps.format-initial.outcome == 'failure'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -66,6 +72,15 @@ jobs:
             git commit -m "style: autofix lint and formatting"
             git push
           fi
+
+      # Final gate: re-check after fixes (or confirm clean on first pass)
+      - name: Ruff lint (final)
+        if: steps.lint-initial.outcome == 'failure'
+        run: uv run ruff check --output-format=github
+
+      - name: Ruff format check (final)
+        if: steps.format-initial.outcome == 'failure'
+        run: uv run ruff format --check
 
   # ──────────────────────────────────────────────
   # Stage 2: Type Check
