@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """Tests for _check_incomplete_markers validation function."""
 
-import pytest
-
 from mcp_servers.tasks_server import (
     _check_incomplete_markers,
     _format_incomplete_items_error,

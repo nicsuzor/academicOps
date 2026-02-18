@@ -299,10 +299,7 @@ def _format_incomplete_items_error(markers: list[str]) -> str:
         Formatted error message
     """
     marker_list = "; ".join(markers)
-    return (
-        f"Cannot complete task: {marker_list}. "
-        "Use force=True to bypass validation."
-    )
+    return f"Cannot complete task: {marker_list}. Use force=True to bypass validation."
 
 
 def _propagate_unblocks(
