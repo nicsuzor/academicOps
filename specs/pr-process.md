@@ -4,10 +4,11 @@ How pull requests move from open to merged (or rejected) in the aops repository.
 
 ## Workflow files
 
-| Workflow    | File                        | Trigger                                 | Purpose                            |
-| ----------- | --------------------------- | --------------------------------------- | ---------------------------------- |
-| PR Pipeline | `pr-review-pipeline.yml`    | `pull_request`, LGTM comments, dispatch | Sequential review + merge pipeline |
-| Claude      | `claude.yml`                | `@claude` in comments                   | On-demand Claude interaction       |
+| Workflow    | File                        | Trigger                                        | Purpose                            |
+| ----------- | --------------------------- | ---------------------------------------------- | ---------------------------------- |
+| PR Checks   | `pr-checks.yml`             | `pull_request` (opened, synchronize, assigned)  | Lint + type-check (cheap, fast)    |
+| PR Pipeline | `pr-review-pipeline.yml`    | `workflow_run` (PR Checks), LGTM comments, dispatch | LLM review chain + merge agent     |
+| Claude      | `claude.yml`                | `@claude` in comments                          | On-demand Claude interaction       |
 
 Merge is handled by GitHub's auto-merge feature. The ruleset requires **2 approvals**: one from the gatekeeper bot (`claude[bot]`, automated) and one from the LGTM merge agent (`github-actions[bot]`, triggered by human approval). GitHub merges automatically once both approvals and status checks are satisfied.
 
@@ -104,7 +105,19 @@ flowchart TD
 
 ## Pipeline design
 
-The entire PR lifecycle runs as **one sequential pipeline** in `pr-review-pipeline.yml`. Each stage depends on the previous one passing. This is intentional: sequential execution fails fast and avoids wasting LLM compute on PRs that can't pass earlier gates.
+The PR lifecycle runs across **two workflows**, linked by `workflow_run`:
+
+1. **PR Checks** (`pr-checks.yml`): Lint + type-check. Cheap and fast. Re-running these does NOT cascade into the LLM review stages.
+2. **PR Pipeline** (`pr-review-pipeline.yml`): LLM review chain (gatekeeper → strategic → custodiet → QA → notify). Only starts when PR Checks completes successfully, via a `workflow_run` trigger. A `setup` job extracts PR metadata from the `workflow_run` event and passes it to downstream stages.
+
+```
+pr-checks.yml:           lint → type-check
+                              ↓ (workflow_run: completed + success)
+pr-review-pipeline.yml:  setup → gatekeeper → strategic-review → custodiet → qa → notify-ready
+                         (+ merge agent, triggered independently)
+```
+
+Each stage depends on the previous one passing. Sequential execution fails fast and avoids wasting LLM compute on PRs that can't pass earlier gates.
 
 GitHub auto-merge handles the final merge once both required approvals are in place.
 
@@ -277,6 +290,7 @@ These respond to mentions in comments and are independent of the pipeline:
 
 | Scope           | Group key                | Cancel in-progress?              |
 | --------------- | ------------------------ | -------------------------------- |
+| PR Checks       | `pr-checks-{pr_number}`  | Yes (new push cancels stale run) |
 | Review pipeline | `pr-review-{pr_number}`  | Yes (new push cancels stale run) |
 | Merge agent     | `pr-merge-{pr_number}`   | No (merge runs to completion)    |
 
