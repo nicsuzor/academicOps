@@ -40,8 +40,11 @@ from lib.task_index import TaskIndex, TaskIndexEntry
 from lib.task_model import Task, TaskComplexity, TaskStatus, TaskType
 from lib.task_storage import TaskStorage
 
-# Pre-compile regex pattern for performance
+# Pre-compile regex patterns for performance
 _INCOMPLETE_MARKER_PATTERN = re.compile(r"^-\s*\[ \]\s*(.+)$", re.MULTILINE)
+_REMAINING_SECTION_PATTERN = re.compile(r"(?i)\bremaining\b.*:")
+_PERCENTAGE_COMPLETE_PATTERN = re.compile(r"(\d{1,3})%\s*complete", re.IGNORECASE)
+_WIP_MARKER_PATTERN = re.compile(r"(?i)\b(in.?progress|wip|work.in.progress)\b")
 
 
 def _resolve_status_alias(status: str) -> str:
@@ -244,35 +247,61 @@ def _format_tree(node: dict[str, Any], indent: int = 0) -> str:
 
 
 def _check_incomplete_markers(body: str) -> list[str]:
-    """Check for incomplete checklist markers in the task body.
+    """Check task body for incompleteness indicators.
 
-    Looks for lines starting with '- [ ]'.
+    Checks for:
+    - "Remaining" sections (e.g., "Remaining:", "remaining work:")
+    - Percentage < 100% (e.g., "90% complete")
+    - Unchecked TODO items (- [ ])
+    - WIP/in-progress markers
 
     Args:
         body: Task body markdown
 
     Returns:
-        List of incomplete items found
+        List of incompleteness markers found (human-readable descriptions)
     """
+    markers: list[str] = []
     if not body:
-        return []
+        return markers
 
-    return [m.group(1).strip() for m in _INCOMPLETE_MARKER_PATTERN.finditer(body)]
+    # Check for "Remaining" sections (flexible matching)
+    if _REMAINING_SECTION_PATTERN.search(body):
+        markers.append("Task has 'Remaining' section")
+
+    # Check for percentage < 100%
+    pct_match = _PERCENTAGE_COMPLETE_PATTERN.search(body)
+    if pct_match and int(pct_match.group(1)) < 100:
+        markers.append(f"Task shows {pct_match.group(1)}% complete")
+
+    # Check for unchecked TODO items
+    unchecked = [m.group(1).strip() for m in _INCOMPLETE_MARKER_PATTERN.finditer(body)]
+    if unchecked:
+        preview = ", ".join(unchecked[:3])
+        if len(unchecked) > 3:
+            preview += "..."
+        markers.append(f"Task has {len(unchecked)} unchecked TODO items: {preview}")
+
+    # Check for explicit "In Progress" / WIP markers
+    if _WIP_MARKER_PATTERN.search(body):
+        markers.append("Task marked as work-in-progress")
+
+    return markers
 
 
-def _format_incomplete_items_error(incomplete: list[str]) -> str:
-    """Format error message for incomplete checklist items.
+def _format_incomplete_items_error(markers: list[str]) -> str:
+    """Format error message for incompleteness markers.
 
     Args:
-        incomplete: List of incomplete item descriptions
+        markers: List of incompleteness marker descriptions
 
     Returns:
         Formatted error message
     """
+    marker_list = "; ".join(markers)
     return (
-        f"Cannot complete task with {len(incomplete)} incomplete items: "
-        f"{', '.join(incomplete[:3])}{'...' if len(incomplete) > 3 else ''}. "
-        "Mark items as [x] or use force=True to bypass."
+        f"Cannot complete task: {marker_list}. "
+        "Use force=True to bypass validation."
     )
 
 
