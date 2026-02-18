@@ -1497,22 +1497,25 @@ def get_where_you_left_off(hours: int = 24, limit: int = 10) -> dict:
         project = s.get("project") or "unknown"
         session_short = s.get("session_short") or (s.get("session_id", "")[:7])
 
+        # Clean fields for display
+        clean_goal = clean_activity_text(goal)
+        clean_now = clean_activity_text(now_task) if now_task else None
+        clean_next = clean_activity_text(next_task) if next_task else None
+
         entry = {
             "is_active": True,
             "bucket": "active",
             "time_display": "NOW",
             "project": project,
-            "description": goal[:150] + "..." if len(goal) > 150 else goal,
+            "description": clean_goal,
             "outcome_text": "IN PROGRESS",
             "outcome_class": "active",
             "reentry_link": None,
             "session_id": session_short,
             # Rich context for card display
-            "goal": goal[:150] + "..." if len(goal) > 150 else goal,
-            "now_task": now_task[:100] + "..." if now_task and len(now_task) > 100 else now_task,
-            "next_task": next_task[:100] + "..."
-            if next_task and len(next_task) > 100
-            else next_task,
+            "goal": clean_goal,
+            "now_task": clean_now,
+            "next_task": clean_next,
             "progress_done": progress_done,
             "progress_total": progress_total,
             "session_type": session_type,
@@ -1553,20 +1556,21 @@ def get_where_you_left_off(hours: int = 24, limit: int = 10) -> dict:
             reentry_link = f"obsidian://open?vault=writing&file=sessions/claude/{session_file}"
 
         project = s.get("project") or "unknown"
-        truncated_summary = summary[:120] + "..." if len(summary) > 120 else summary
+        # Sanitize summary
+        clean_summary = clean_activity_text(summary)
 
         entry = {
             "is_active": False,
             "bucket": bucket,
             "time_display": s.get("time_ago"),
             "project": project,
-            "description": truncated_summary,
+            "description": clean_summary,
             "outcome_text": outcome_text,
             "outcome_class": outcome_class,
             "reentry_link": reentry_link,
             "session_id": s.get("session_id"),
             # Rich context fields (completed sessions have limited context)
-            "goal": truncated_summary,
+            "goal": clean_summary,
             "now_task": None,
             "next_task": None,
             "progress_done": 0,
@@ -1602,6 +1606,44 @@ def group_sessions_by_project(sessions: list[dict]) -> dict[str, list[dict]]:
             grouped[project] = []
         grouped[project].append(s)
     return grouped
+
+
+def archive_stale_sessions(hours: int = 24):
+    """Move session summaries older than N hours to archived/ folder."""
+    import shutil
+    from datetime import timedelta
+
+    summaries_dir = Path.home() / "writing" / "sessions" / "summaries"
+    archived_dir = summaries_dir / "archived"
+
+    if not summaries_dir.exists():
+        return
+
+    archived_dir.mkdir(exist_ok=True)
+
+    cutoff = datetime.now(UTC) - timedelta(hours=hours)
+    count = 0
+
+    for json_file in summaries_dir.glob("*.json"):
+        try:
+            data = json.loads(json_file.read_text())
+            date_str = data.get("date")
+            if not date_str:
+                continue
+
+            session_date = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+            if session_date.tzinfo is None:
+                session_date = session_date.replace(tzinfo=UTC)
+
+            if session_date < cutoff:
+                shutil.move(str(json_file), str(archived_dir / json_file.name))
+                count += 1
+        except Exception:
+            continue
+
+    if count > 0:
+        st.success(f"Archived {count} stale sessions.")
+        st.rerun()
 
 
 # Page config
@@ -3196,15 +3238,17 @@ st.markdown(
 
     .path-threads {
         display: flex;
-        gap: 20px;
-        overflow-x: auto;
-        padding-bottom: 8px;
+        flex-wrap: wrap;
+        gap: 16px;
+        padding-bottom: 12px;
     }
 
     .path-thread {
-        flex: 0 0 280px;
+        flex: 1 1 300px;
+        max-width: 450px;
         border-left: 2px solid var(--border-color, #333);
-        padding-left: 14px;
+        padding-left: 16px;
+        margin-bottom: 8px;
         transition: border-color 0.2s ease;
     }
 
@@ -3216,10 +3260,11 @@ st.markdown(
         font-weight: 600;
         font-size: 0.85em;
         color: var(--text-primary, #e0e0e0);
-        margin-bottom: 10px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        margin-bottom: 12px;
+        line-height: 1.5;
+        /* Allow wrapping */
+        word-wrap: break-word;
+        white-space: normal;
     }
 
     .path-thread-header .session-hash {
@@ -3295,10 +3340,10 @@ def esc(text):
 def clean_activity_text(raw_text: str) -> str:
     """Clean raw session prompt for display.
 
-    Strips markdown formatting to produce a clean summary suitable for dashboard.
+    Strips markdown and HTML markup to produce a clean summary suitable for dashboard.
 
     Args:
-        raw_text: Raw prompt text potentially containing markdown headers and formatting.
+        raw_text: Raw prompt text potentially containing markdown/HTML formatting.
 
     Returns:
         Cleaned text, max 120 characters, with "..." suffix if truncated.
@@ -3306,12 +3351,20 @@ def clean_activity_text(raw_text: str) -> str:
     if not raw_text:
         return "Working..."
 
-    # Remove markdown headers (lines starting with #)
-    lines = [line for line in raw_text.split("\n") if not line.strip().startswith("#")]
+    import re as _re
 
-    # Join remaining lines and remove markdown formatting
+    s = str(raw_text)
+    # Remove HTML comments <!-- ... -->
+    s = _re.sub(r"<!--.*?-->", "", s, flags=_re.DOTALL)
+    # Remove HTML tags
+    s = _re.sub(r"<[^>]+>", "", s)
+
+    # Remove markdown headers (lines starting with #)
+    lines = [line for line in s.split("\n") if not line.strip().startswith("#")]
+
+    # Join remaining lines and remove common markdown formatting
     text = " ".join(lines)
-    text = text.replace("**", "").replace("*", "").strip()
+    text = text.replace("**", "").replace("__", "").replace("*", "").replace("_", "").strip()
 
     # Collapse multiple spaces
     while "  " in text:
@@ -3349,23 +3402,35 @@ def load_task_graph() -> dict | None:
 
 # Default task graph SVG location
 TASK_GRAPH_SVG = (
-    Path(os.environ.get("ACA_DATA", str(Path.home() / "writing/data")))
-    / "aops"
-    / "outputs"
-    / "task-map.svg"
+    Path.home() / ".aops" / "tasks" / "task-map.svg"
 )
 
 
 def find_latest_svg() -> Path | None:
     """Find the task graph SVG file."""
+    # 1. Check primary location (~/.aops/tasks/)
     if TASK_GRAPH_SVG.exists():
         return TASK_GRAPH_SVG
 
-    # Fallback: search for any task-viz SVG
-    outputs_dir = TASK_GRAPH_SVG.parent
-    svgs = list(outputs_dir.glob("task-viz*.svg"))
-    if svgs:
-        return max(svgs, key=lambda p: p.stat().st_mtime)
+    # 2. Check writing/data fallback
+    aca_data = os.environ.get("ACA_DATA", str(Path.home() / "writing/data"))
+    data_svg = Path(aca_data) / "aops" / "outputs" / "task-map.svg"
+    if data_svg.exists():
+        return data_svg
+
+    # 3. Fallback: search for any task-viz SVG in ACA_DATA outputs or ~/.aops/tasks/
+    search_dirs = [
+        Path.home() / ".aops" / "tasks",
+        Path(aca_data) / "aops" / "outputs",
+        Path(aca_data) / "outputs"
+    ]
+    
+    for outputs_dir in search_dirs:
+        if outputs_dir.exists():
+            svgs = list(outputs_dir.glob("task-viz*.svg")) + list(outputs_dir.glob("task-map*.svg"))
+            if svgs:
+                return max(svgs, key=lambda p: p.stat().st_mtime)
+
     return None
 
 
@@ -4113,17 +4178,20 @@ def render_session_summary():
                     "green" if outcome == "success" else "orange" if outcome == "partial" else "red"
                 )
 
+                # Sanitize summary
+                clean_summary = clean_activity_text(summary)
+
                 # Render Card
                 with st.expander(
                     f"**{project}** | {sid} | {duration:.1f}m | :{status_color}[{outcome.upper()}]",
                     expanded=False,
                 ):
-                    st.markdown(f"**Summary:** {summary}")
+                    st.markdown(f"**Summary:** {clean_summary}")
 
                     if friction:
                         st.markdown("**🛑 Problems:**")
                         for p in friction:
-                            st.markdown(f"- {p}")
+                            st.markdown(f"- {clean_activity_text(p)}")
 
                     st.markdown("**📊 Metrics:**")
                     c1, c2, c3 = st.columns(3)
@@ -4134,7 +4202,7 @@ def render_session_summary():
                     if data.get("accomplishments"):
                         st.markdown("**✅ Accomplishments:**")
                         for a in data["accomplishments"]:
-                            st.markdown(f"- {a}")
+                            st.markdown(f"- {clean_activity_text(a)}")
 
             except Exception as e:
                 st.error(f"Error reading {f.name}: {e}")
@@ -4693,13 +4761,18 @@ if active_sessions_wlo or paused_sessions_wlo:
 # Stale sessions prompt (>24h) - not in main display per spec
 # Per spec: show archive prompt with action buttons
 if stale_count > 0:
-    st.markdown(
-        f"""<div class='stale-sessions-prompt'>
-            📦 {stale_count} stale session{"s" if stale_count != 1 else ""} (no activity &gt;24h)
-            <span class='stale-hint'>These are hidden from the main display</span>
-        </div>""",
-        unsafe_allow_html=True,
-    )
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.markdown(
+            f"""<div class='stale-sessions-prompt'>
+                📦 {stale_count} stale session{"s" if stale_count != 1 else ""} (no activity &gt;24h)
+                <span class='stale-hint'>These are hidden from the main display</span>
+            </div>""",
+            unsafe_allow_html=True,
+        )
+    with col2:
+        if st.button("📦 Archive All", use_container_width=True, help="Move all sessions older than 24h to archive"):
+            archive_stale_sessions(hours=24)
 
 # === PATH RECONSTRUCTION SECTION ===
 try:
@@ -4713,12 +4786,26 @@ try:
             path_html += "<div class='path-abandoned'>"
             path_html += f"<div class='path-abandoned-title'>📋 UNFINISHED TASKS ({len(path.abandoned_work)} started but not finished)</div>"
             path_html += "<div style='font-size: 0.8em; opacity: 0.7; margin-bottom: 8px;'>Tasks created or claimed across all sessions that haven't been marked done.</div>"
-            path_html += "<div style='display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px;'>"
+            
+            # Group abandoned work by project
+            abandoned_by_project = {}
             for ab in path.abandoned_work:
-                task_label = esc(ab.task_id or ab.description)
-                proj_color = get_project_color(ab.project)
-                path_html += f"<div class='path-abandoned-item' style='border-left: 2px solid {proj_color}; background: rgba(255,255,255,0.03); padding: 4px 10px; border-radius: 4px; font-size: 0.85em;' title='Project: {esc(ab.project)}'>□ {task_label}</div>"
-            path_html += "</div>"
+                proj = ab.project or "unknown"
+                if proj not in abandoned_by_project:
+                    abandoned_by_project[proj] = []
+                abandoned_by_project[proj].append(ab)
+            
+            for proj, items in sorted(abandoned_by_project.items()):
+                proj_color = get_project_color(proj)
+                path_html += f"<div style='margin-bottom: 8px;'>"
+                path_html += f"<div style='font-size: 0.7em; font-weight: 700; text-transform: uppercase; color: {proj_color}; opacity: 0.8; margin-bottom: 4px;'>{esc(proj)}</div>"
+                path_html += "<div style='display: flex; flex-wrap: wrap; gap: 8px;'>"
+                for ab in items:
+                    task_label = esc(ab.task_id or ab.description)
+                    path_html += f"<div class='path-abandoned-item' style='border-left: 2px solid {proj_color}; background: rgba(255,255,255,0.03); padding: 4px 10px; border-radius: 4px; font-size: 0.85em;' title='Task: {esc(ab.description)}'>□ {task_label}</div>"
+                path_html += "</div>"
+                path_html += "</div>"
+            
             path_html += "</div>"
 
         # Group threads by project
@@ -4742,10 +4829,13 @@ try:
 
                 path_html += "<div class='path-thread' style='border-left-color: {proj_color}66'>"
                 sid_display = esc(thread.session_id[:8])
+                
+                # Sanitize initial goal before display (prevent markdown headers from breaking layout)
+                cleaned_goal = clean_activity_text(thread.initial_goal)
                 goal_display = esc(
-                    thread.initial_goal[:120] + "..."
-                    if len(thread.initial_goal) > 120
-                    else thread.initial_goal
+                    cleaned_goal[:120] + "..."
+                    if len(cleaned_goal) > 120
+                    else cleaned_goal
                 )
                 path_html += f"<div class='path-thread-header' title='{esc(thread.initial_goal)}'>{goal_display} <span class='session-hash'>({sid_display})</span></div>"
 
@@ -4784,8 +4874,11 @@ try:
                     is_minor = event.event_type == EventType.TASK_UPDATE
                     event_class = "path-event minor" if is_minor else "path-event"
 
-                    # Event description
-                    desc = esc(event.description[:100]) if event.description else ""
+                    # Event description - sanitize first
+                    cleaned_desc = clean_activity_text(event.description)
+                    # Increase truncation to 120 as per spec
+                    desc = esc(cleaned_desc[:120]) if cleaned_desc else ""
+
                     if event.event_type == EventType.TASK_CREATE:
                         desc = f"<b>Created:</b> {desc}"
                     elif event.event_type == EventType.TASK_COMPLETE:
@@ -4794,6 +4887,30 @@ try:
                         desc = f"→ {desc}"
                     elif event.event_type == EventType.TASK_CLAIM:
                         desc = f"<b>Claimed:</b> {desc}"
+
+                    # Skip low-signal/empty events
+                    is_low_signal = not cleaned_desc or cleaned_desc.lower().strip() in (
+                        "working...",
+                        "push",
+                        "/dump",
+                        "created:",
+                        "claimed:",
+                        "session",
+                        "session started",
+                    )
+                    
+                    if is_low_signal:
+                        # Only keep low-signal events if they are high-importance types
+                        if event.event_type not in (
+                            EventType.TASK_COMPLETE,
+                            EventType.TASK_CLAIM,
+                            EventType.TASK_CREATE,
+                        ):
+                            continue
+                        
+                        # If description is empty but it's a create/claim, we need the task_id at least
+                        if not cleaned_desc and not event.task_id:
+                            continue
 
                     path_html += f"<div class='{event_class}'>"
                     path_html += f"<span class='dot {dot_class}'></span>"
@@ -4998,6 +5115,8 @@ try:
             tasks_by_id = {t["id"]: t for t in all_tasks}
             for epic in project_epics[:3]:  # Limit to 3 epics
                 epic_title = epic.get("title", "").replace("Epic: ", "")
+                # Sanitize epic title
+                clean_epic = clean_activity_text(epic_title)
                 children_ids = epic.get("children", [])
                 done_count = sum(
                     1 for cid in children_ids if tasks_by_id.get(cid, {}).get("status") == "done"
@@ -5005,7 +5124,7 @@ try:
                 total_count = len(children_ids)
                 pct = (done_count / total_count * 100) if total_count > 0 else 0
                 card_parts.append(
-                    f"<div class='epic-progress'><div class='epic-title'>{esc(epic_title)}</div>"
+                    f"<div class='epic-progress'><div class='epic-title'>{esc(clean_epic)}</div>"
                     f"<div class='epic-bar'><div class='epic-fill' style='width: {pct:.0f}%'></div></div>"
                     f"<div class='epic-count'>{done_count}/{total_count}</div></div>"
                 )
@@ -5017,10 +5136,12 @@ try:
             card_parts.append(f"<div class='p-section-title'>✅ COMPLETED ({time_label})</div>")
             for t in completed_tasks[:3]:
                 title = t.get("title", "")
+                # Sanitize completed task title
+                clean_title = clean_activity_text(title)
                 modified_dt = t["_modified_dt"]
                 time_ago = _format_time_ago(modified_dt)
                 card_parts.append(
-                    f"<div class='completed-row'><span class='completed-title'>✓ {esc(title)}</span>"
+                    f"<div class='completed-row'><span class='completed-title'>✓ {esc(clean_title)}</span>"
                     f"<span class='completed-time'>{time_ago}</span></div>"
                 )
             if len(completed_tasks) > 3:
@@ -5037,8 +5158,10 @@ try:
                 prio = t.get("priority", 2)
                 prio_cls = f"p{prio}" if prio <= 1 else "p2"
                 title = t.get("title")
+                # Sanitize title
+                clean_title = clean_activity_text(title)
                 card_parts.append(
-                    f"<div class='task-row'><span class='task-prio {prio_cls}'>P{prio}</span><span class='task-title'>{esc(title)}</span></div>"
+                    f"<div class='task-row'><span class='task-prio {prio_cls}'>P{prio}</span><span class='task-title'>{esc(clean_title)}</span></div>"
                 )
             if len(incomplete_tasks) > 3:
                 card_parts.append(
@@ -5049,7 +5172,9 @@ try:
         if p_acc:
             card_parts.append("<div class='p-section-title'>✅ RECENTLY</div>")
             for acc in p_acc[:3]:
-                card_parts.append(f"<div class='acc-row'>✓ {esc(acc)}</div>")
+                # Sanitize accomplishment
+                clean_acc = clean_activity_text(acc)
+                card_parts.append(f"<div class='acc-row'>✓ {esc(clean_acc)}</div>")
 
         # Wrap in Project Card Div
         # Wrap in Project Card Div
