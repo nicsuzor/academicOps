@@ -445,12 +445,19 @@ def generate_dot(
         if dw > 0:
             # Append weight to label
             label = f"{label}\\n\u2696 {dw:.1f}"
-            # Scale node width: base 1.5, up to 3.0 for highest weights
-            scale = min(1.5 + (dw / 10.0) * 1.5, 3.5)
-            extra_attrs += f" width={scale:.2f}"
-            # Larger font for high-weight nodes
-            if dw >= 5.0:
-                extra_attrs += " fontsize=14"
+            # Sqrt scaling for better visual separation across the 1-10 range
+            import math
+            sqrt_dw = math.sqrt(dw)
+            scale_w = min(1.2 + sqrt_dw * 0.7, 4.0)
+            scale_h = min(0.8 + sqrt_dw * 0.3, 2.0)
+            extra_attrs += f" width={scale_w:.2f} height={scale_h:.2f} fixedsize=false"
+            # Graduated font size
+            if dw >= 6.0:
+                extra_attrs += " fontsize=16"
+            elif dw >= 3.0:
+                extra_attrs += " fontsize=13"
+            # Thicken border proportional to weight (visual "heft")
+            penwidth = max(penwidth, min(1 + sqrt_dw, 5))
 
         if stakeholder:
             # Double border for stakeholder exposure
