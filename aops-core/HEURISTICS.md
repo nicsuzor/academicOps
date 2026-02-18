@@ -185,9 +185,9 @@ When user requests content "an LLM will orchestrate/execute", create content for
 
 When user is deconstructing/planning, match their level of abstraction. Don't fill in blanks until they signal readiness for specifics.
 
-## Verify Non-Duplication Before Batch Create (P#91)
+## Verify Non-Duplication Before Create (P#91)
 
-Before creating tasks from batch input, cross-reference against existing task titles to avoid duplicates.
+Before creating ANY task, search existing tasks (`search_tasks`) for similar titles. This applies to single creates, not just batch operations.
 
 ## Run Python via uv (P#93)
 
