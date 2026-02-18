@@ -243,6 +243,15 @@ class PolecatManager:
             ]
 
         subprocess.run(cmd, cwd=local_repo_path, check=True)
+
+        # Prevent accidental push to main by unsetting upstream tracking.
+        # This ensures 'git push' fails unless a remote/branch is explicitly specified.
+        subprocess.run(
+            ["git", "branch", "--unset-upstream", branch_name],
+            cwd=local_repo_path,
+            check=False,  # Might fail if no upstream was set, which is fine
+        )
+
         return worktree_path
 
     def nuke_crew(self, name: str, force: bool = False):
@@ -905,6 +914,14 @@ class PolecatManager:
                 subprocess.run(cmd, cwd=repo_path, check=True)
             else:
                 raise e
+
+        # Prevent accidental push to main by unsetting upstream tracking.
+        # This ensures 'git push' fails unless a remote/branch is explicitly specified.
+        subprocess.run(
+            ["git", "branch", "--unset-upstream", branch_name],
+            cwd=repo_path,
+            check=False,  # Might fail if no upstream was set, which is fine
+        )
 
         # Post-creation validation: ensure worktree has valid history
         result = subprocess.run(
