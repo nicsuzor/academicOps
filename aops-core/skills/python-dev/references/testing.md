@@ -88,6 +88,20 @@ async def test_processor():
 - Slower execution (OK to take 30s+)
 - Location: `tests/e2e/` or `tests/endtoend/`
 
+## TDD Scope Selection
+
+When writing tests first (TDD red phase), select test scope based on what the task touches:
+
+| Task involves | Required test scope | Example |
+|---|---|---|
+| Internal logic, data transforms | Unit tests | New parser, config validation |
+| External service, API, provider | Unit + Integration | New LLM provider, API client |
+| Full pipeline, multi-component | Unit + Integration + E2E | New workflow, pipeline |
+
+**Integration tests are NOT optional for external service work.** If the implementation calls an external API, the TDD red phase must include an integration test that verifies the real service responds. Unit tests alone prove your wiring logic is correct but not that the service actually works.
+
+**Write integration tests in the red phase**, not after implementation. The test should fail because the provider/client doesn't exist yet, then pass after implementation.
+
 ## E2E Testing Pattern
 
 ### TRUE E2E = Real APIs + Real Storage + Real Data
