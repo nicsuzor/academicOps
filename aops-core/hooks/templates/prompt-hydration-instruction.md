@@ -1,4 +1,4 @@
-**User prompt hydration required.** Invoke the **prompt-hydrator** agent with the file path argument: `{temp_path}`
+**User prompt hydration required. ALL TOOLS ARE BLOCKED until hydrator is invoked.** Invoke the **prompt-hydrator** agent with the file path argument: `{temp_path}`
 
 Run the hydrator with this command:
 - Gemini: `delegate_to_agent(name='aops-core:prompt-hydrator', query='{temp_path}')`
