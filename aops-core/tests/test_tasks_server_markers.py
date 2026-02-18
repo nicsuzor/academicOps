@@ -15,7 +15,7 @@ from mcp_servers.tasks_server import _check_incomplete_markers
 def test_empty_body():
     """Empty body or None should return no markers."""
     assert _check_incomplete_markers("") == []
-    assert _check_incomplete_markers(None) == []
+    assert _check_incomplete_markers(None) == []  # type: ignore[arg-type]  # defensive: callers may pass None
 
 
 def test_remaining_section():
