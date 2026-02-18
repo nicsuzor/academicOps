@@ -201,6 +201,10 @@ A batch task is not complete until all spawned workers have finished. "Fire-and-
 
 When a subagent (critic, custodiet, qa) returns a HALT or REVISE verdict, the main agent MUST stop and address the issue.
 
+**Corollaries**:
+
+- When custodiet blocks work as out-of-scope, capture the blocked improvement as a new task before reverting. Useful work should be deferred, not lost.
+
 **Derivation**: P#9 (Fail-Fast Agents) requires stopping when tools fail. Subagents are tools. Their failure verdicts must be respected.
 
 ## QA Tests Are Black-Box (P#96)
