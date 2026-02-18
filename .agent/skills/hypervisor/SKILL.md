@@ -155,7 +155,7 @@ gemini mcp list
 
 Located at `prompts/gemini-task-worker.md`. Key features:
 
-- Atomic claiming via `claim_next_task(caller="gemini")`
+- Atomic claiming via `list_tasks` + `update_task(status="in_progress", assignee="gemini")`
 - Fail-fast on errors (mark blocked instead of retrying)
 - Scope boundaries (no git, no external changes)
 - Clear completion/block output format
