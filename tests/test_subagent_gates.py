@@ -73,7 +73,9 @@ def test_hydration_gate_simplified_triggers():
 
     # 2. Reset and Test PostToolUse fallback trigger
     state.get_gate("hydration").status = GateStatus.CLOSED
-    ctx_post = HookContext(session_id="aafdeee", hook_event="PostToolUse", subagent_type="prompt-hydrator")
+    ctx_post = HookContext(
+        session_id="aafdeee", hook_event="PostToolUse", subagent_type="prompt-hydrator"
+    )
     gate.on_tool_use(ctx_post, state)
     assert state.get_gate("hydration").status == GateStatus.OPEN
 
