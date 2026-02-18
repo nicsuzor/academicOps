@@ -230,6 +230,28 @@ def test_handover_gate_opens_on_activate_skill_posttooluse():
     assert state.get_gate("handover").status == GateStatus.OPEN
 
 
+def test_handover_gate_opens_on_prefixed_skill_name():
+    """Handover gate transitions CLOSED->OPEN for 'aops-core:handover' (prefixed form).
+
+    Regression test for aops-core-30cfacd4: stop hook was not recognizing handover
+    completion because the trigger pattern didn't match the prefixed skill name.
+    """
+    state = SessionState.create("test-session")
+    state.get_gate("handover").status = GateStatus.CLOSED
+
+    handover_config = next(g for g in GATE_CONFIGS if g.name == "handover")
+    gate = GenericGate(handover_config)
+
+    ctx = HookContext(
+        session_id="main-session-uuid-prefixed",
+        hook_event="PostToolUse",
+        tool_name="Skill",
+        subagent_type="aops-core:handover",  # Prefixed form used by /handover skill
+    )
+    gate.on_tool_use(ctx, state)
+    assert state.get_gate("handover").status == GateStatus.OPEN
+
+
 def test_handover_gate_not_opened_by_partial_match():
     """Handover gate must NOT open for subagent_type that only partially matches 'handover'."""
     state = SessionState.create("test-session")
@@ -242,7 +264,7 @@ def test_handover_gate_not_opened_by_partial_match():
         session_id="main-session-uuid-9999",
         hook_event="PostToolUse",
         tool_name="Skill",
-        subagent_type="pre-handover",  # Should NOT match ^handover$
+        subagent_type="pre-handover",  # Should NOT match ^(aops-core:)?handover$
     )
     gate.on_tool_use(ctx, state)
     assert state.get_gate("handover").status == GateStatus.CLOSED
