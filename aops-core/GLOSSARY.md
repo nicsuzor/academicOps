@@ -58,7 +58,7 @@ Quick definitions for framework-specific terminology. Used by hydrator to interp
 | Phrase | Interpretation |
 |--------|----------------|
 | "kick off" / "trigger" | Activate existing automation (check workflows/CI first) |
-| "claim a task" | Use `/pull` skill or `claim_next_task` |
+| "claim a task" | Use `/pull` skill or `polecat run` CLI command |
 | "what's next" | List ready tasks, recommend highest priority |
 | "fix the bug in X" | Locate, understand, and fix - create task first |
 | "run the tests" | Execute test suite for current project |

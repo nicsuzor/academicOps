@@ -21,13 +21,14 @@ Used by:
 from __future__ import annotations
 
 import json
-import os
 import re
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+
+from lib.session_paths import get_claude_project_folder
 
 # Exploration patterns: common convention files agents probe for
 _EXPLORATION_PATTERNS = {
@@ -663,9 +664,9 @@ def scan_recent_sessions(
     if sessions_dir is None:
         home = Path.home()
         projects_dir = home / ".claude" / "projects"
-        # Derive project dir from CWD: /home/nic/src/academicOps -> -home-nic-src-academicOps
-        cwd = Path(os.environ.get("CLAUDE_PROJECT_DIR", str(Path.cwd())))
-        encoded_name = str(cwd).replace("/", "-")
+        # Derive project dir using centralized Claude Code path sanitization
+        # (CLAUDE_PROJECT_DIR when set, else CWD; '/' -> '-', '.' -> '_')
+        encoded_name = get_claude_project_folder()
         candidate = projects_dir / encoded_name
         if candidate.exists():
             sessions_dir = candidate

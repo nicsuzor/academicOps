@@ -227,8 +227,10 @@ This command:
 
 1. Auto-commits any uncommitted changes (safeguard)
 2. Pushes the branch to origin
-3. Sets task status to `merge_ready`
-4. Attempts auto-merge if no blockers
+3. Attempts to create/update a PR (best-effort; requires GitHub CLI `gh` and may fail without aborting)
+4. Sets task status to `merge_ready` (even if PR creation/update fails)
+
+The PR review pipeline handles merge via GitHub auto-merge when a PR exists and is configured appropriately.
 
 #### If NOT in a Polecat Worktree
 

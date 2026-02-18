@@ -20,11 +20,15 @@ def get_claude_project_folder() -> str:
     otherwise falls back to cwd. This is critical for plugin-based hooks that
     run from the plugin cache directory rather than the project directory.
 
-    Converts absolute path to sanitized folder name:
-    /home/user/project -> -home-user-project
+    Converts absolute path to sanitized folder name matching Claude Code's format:
+    /home/user/.project -> -home-user-_project
+
+    Claude Code replaces:
+    - '/' with '-'
+    - '.' with '_'
 
     Returns:
-        Project folder name with leading dash and all slashes replaced
+        Project folder name with leading dash and sanitized characters
     """
     # CLAUDE_PROJECT_DIR is set by Claude Code during hook execution
     # and contains the absolute path to the project root
@@ -34,8 +38,8 @@ def get_claude_project_folder() -> str:
     else:
         # Fallback for non-hook contexts (e.g., direct script execution)
         project_path = Path.cwd().resolve()
-    # Replace leading / with -, then all / with -
-    return "-" + str(project_path).replace("/", "-")[1:]
+    # Match Claude Code path sanitization: '/' -> '-', '.' -> '_'
+    return "-" + str(project_path)[1:].replace("/", "-").replace(".", "_")
 
 
 def get_session_short_hash(session_id: str) -> str:

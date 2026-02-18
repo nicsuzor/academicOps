@@ -209,48 +209,6 @@ def checkout(ctx, task_id, caller):
         sys.exit(1)
 
 
-def _attempt_auto_merge(task, manager):
-    """Attempt to auto-merge a task after it's marked merge_ready.
-
-    This is a hook called from the finish command. It attempts to merge
-    immediately if conditions are right, otherwise leaves the task for
-    manual merge via 'polecat merge'.
-
-    Args:
-        task: Task object that was just marked merge_ready
-        manager: PolecatManager instance
-    """
-    try:
-        from engineer import Engineer
-        from lib.task_model import TaskStatus
-
-        # Check if any blocking dependencies are not done
-        if task.depends_on:
-            for dep_id in task.depends_on:
-                dep_task = manager.storage.get_task(dep_id)
-                if dep_task and dep_task.status != TaskStatus.DONE:
-                    print(f"  ⏸ Auto-merge skipped: dependency {dep_id} not done")
-                    return
-
-        print("  🔄 Attempting auto-merge...")
-        eng = Engineer()
-
-        # Process just this task (not a full scan)
-        try:
-            eng.process_merge(task)
-            print("  ✅ Auto-merge succeeded!")
-        except Exception as e:
-            # Merge failed - kickback to review
-            print(f"  ⚠ Auto-merge failed: {e}")
-            eng.handle_failure(task, str(e))
-            print("  Task moved to 'review' - engineer (bot) will attempt to fix")
-
-    except ImportError as e:
-        print(f"  ⚠ Auto-merge skipped: {e}")
-    except Exception as e:
-        print(f"  ⚠ Auto-merge error: {e}")
-
-
 @main.command()
 @click.option("--no-push", is_flag=True, help="Skip pushing to remote")
 @click.option("--nuke", "do_nuke", is_flag=True, help="Also remove the worktree after finishing")
@@ -582,9 +540,9 @@ def finish(ctx, no_push, do_nuke, force):
         task.status = TaskStatus.MERGE_READY
         manager.storage.save_task(task)
         print("✅ Task marked as 'merge_ready'")
-
-        # Auto-merge hook: attempt to merge immediately if no blockers
-        _attempt_auto_merge(task, manager)
+        print(
+            "📋 If a PR was created, the review pipeline will handle merge. See logs above for PR status."
+        )
 
     except ImportError:
         print("Warning: Could not update task status (lib.task_model not available)")
@@ -593,7 +551,8 @@ def finish(ctx, no_push, do_nuke, force):
     if do_nuke:
         print("Nuking worktree...")
         os.chdir(Path.home())  # Move out of worktree before nuking
-        manager.nuke_worktree(task_id, force=False)
+        # Branch was pushed and PR filed; merge check no longer applies here
+        manager.nuke_worktree(task_id, force=True)
         print("Worktree removed")
     else:
         print(f"\nTo clean up later: polecat nuke {task_id}")
@@ -1127,7 +1086,7 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             original_cwd = os.getcwd()
             try:
                 os.chdir(worktree_path)
-                ctx.invoke(finish, no_push=False, do_nuke=False)
+                ctx.invoke(finish, no_push=False, do_nuke=True)
                 print("✅ Auto-finish completed.")
             except SystemExit as e:
                 if e.code != 0:

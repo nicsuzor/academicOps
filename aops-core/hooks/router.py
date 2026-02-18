@@ -500,11 +500,9 @@ class HookRouter:
             elif ctx.hook_event == "PostToolUse":
                 TASK_BINDING_TOOLS = {
                     "mcp__plugin_aops-core_task_manager__update_task",
-                    "mcp__plugin_aops-core_task_manager__claim_next_task",
                     "mcp__plugin_aops-core_task_manager__complete_task",
                     "mcp__plugin_aops-core_task_manager__complete_tasks",
                     "update_task",
-                    "claim_next_task",
                     "complete_task",
                     "complete_tasks",
                 }
