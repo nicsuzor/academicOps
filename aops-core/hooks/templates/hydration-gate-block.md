@@ -7,18 +7,12 @@ description: |
   Instructs the agent to invoke the aops-core:prompt-hydrator agent or skill before proceeding.
 ---
 
-⛔ **MANDATORY**: HYDRATION GATE
+**User prompt hydration required.** Invoke the **prompt-hydrator** agent with the file path argument: `{temp_path}`
 
-You must invoke the **aops-core:prompt-hydrator** agent FIRST to load context.
+Run the hydrator with this command:
+- Gemini: `delegate_to_agent(name='aops-core:prompt-hydrator', query='{temp_path}')`
+- Claude: `Task(subagent_type='aops-core:prompt-hydrator', prompt='{temp_path}')`
 
-**Instruction**:
+Pass the file path directly to the agent — it will read the file and perform the hydration.
 
-A temporary file has been created with the hydrator's instructions: `{temp_path}`
-
-1. Run the command for your client:
-   - For Claude Code: `Task(subagent_type="aops-core:prompt-hydrator", prompt="Transform user prompt using context in {temp_path}")`
-   - For Gemini CLI: delegate to agent `"name": "prompt-hydrator", "args": {{"query": "Transform user prompt using context in {temp_path}"}})`
-
-2. **IMMEDIATELY** after it returns, continue with the plan it provides. Do not stop.
-
-The `prompt-hydrator` locates required context and applies crucial defined procedures that you must follow in order to answer the user's request.
+This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!

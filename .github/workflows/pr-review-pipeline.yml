@@ -1,8 +1,8 @@
-# Single sequential PR pipeline.
-# Each stage depends on the previous one passing. This fails fast
-# and avoids wasting LLM compute on PRs that can't pass earlier gates.
+# LLM review pipeline. Runs only after PR Checks (lint + type-check) pass,
+# via a workflow_run trigger. This avoids re-running expensive LLM reviews
+# when only lint is re-run.
 #
-# Stages: lint → type-check → strategic-review → custodiet → qa → notify-ready
+# Stages: setup → gatekeeper → strategic-review → custodiet → qa → notify-ready
 # Merge agent runs separately, triggered by human approval.
 #
 # See specs/pr-process.md for the full process documentation.
@@ -10,8 +10,11 @@
 name: PR Pipeline
 
 on:
+  workflow_run:
+    workflows: ["PR Checks"]
+    types: [completed]
   pull_request:
-    types: [opened, synchronize, assigned]
+    types: [assigned]
   pull_request_review:
     types: [submitted]
   pull_request_review_comment:
@@ -27,73 +30,89 @@ on:
 
 jobs:
   # ──────────────────────────────────────────────
-  # Stage 1: Lint
+  # Setup: extract PR metadata from workflow_run
   # ──────────────────────────────────────────────
-  lint:
-    name: Lint
+  setup:
+    name: Setup
     if: >-
-      github.event_name == 'pull_request' &&
-      (github.event.action == 'opened' || github.event.action == 'synchronize') &&
-      github.actor != 'claude[bot]' &&
-      github.actor != 'github-actions[bot]'
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      pr_number: ${{ steps.pr-info.outputs.pr_number }}
+      head_ref: ${{ steps.pr-info.outputs.head_ref }}
+    steps:
+      - name: Extract PR info from workflow_run
+        id: pr-info
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # workflow_run exposes the PR that triggered the checks
+          PR_NUMBER="${{ github.event.workflow_run.pull_requests[0].number }}"
+          HEAD_REF="${{ github.event.workflow_run.pull_requests[0].head.ref }}"
+
+          if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
+            echo "::error::Could not determine PR number from workflow_run event"
+            exit 1
+          fi
+
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "head_ref=$HEAD_REF" >> "$GITHUB_OUTPUT"
+          echo "PR #$PR_NUMBER on branch $HEAD_REF"
+
+  # ──────────────────────────────────────────────
+  # Stage 1: Gatekeeper (alignment + quality gate)
+  # ──────────────────────────────────────────────
+  gatekeeper:
+    name: Gatekeeper
+    needs: setup
     runs-on: ubuntu-latest
     concurrency:
-      group: pr-review-${{ github.event.pull_request.number }}
+      group: pr-review-${{ needs.setup.outputs.pr_number }}
       cancel-in-progress: true
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+      issues: write
+      actions: read
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          fetch-depth: 0
+          ref: ${{ needs.setup.outputs.head_ref }}
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
+      - name: Read gatekeeper instructions
+        id: gatekeeper-prompt
+        run: |
+          PROMPT=$(cat .github/agents/gatekeeper.md)
+          {
+            echo "prompt<<GATEKEEPER_EOF"
+            echo "$PROMPT"
+            echo "GATEKEEPER_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run Gatekeeper Agent
+        uses: anthropics/claude-code-action@v1
         with:
-          version: "latest"
+          allowed_bots: "claude[bot]"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            ${{ steps.gatekeeper-prompt.outputs.prompt }}
 
-      - name: Install dependencies
-        run: uv sync --frozen
+            ---
 
-      - name: Ruff lint
-        run: uv run ruff check --output-format=github
+            Review PR #${{ needs.setup.outputs.pr_number }} in repository ${{ github.repository }}.
+            Use `gh pr view ${{ needs.setup.outputs.pr_number }}` and `gh pr diff ${{ needs.setup.outputs.pr_number }}` to gather information.
 
-      - name: Ruff format check
-        run: uv run ruff format --check
+          claude_args: '--allowed-tools "Bash(gh:*),Read"'
 
   # ──────────────────────────────────────────────
-  # Stage 2: Type Check
-  # ──────────────────────────────────────────────
-  type-check:
-    name: Type Check
-    needs: lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          version: "latest"
-
-      - name: Install dependencies
-        run: uv sync --frozen
-
-      - name: Run basedpyright
-        run: uv run basedpyright
-
-  # ──────────────────────────────────────────────
-  # Stage 3: Strategic Review
+  # Stage 2: Strategic Review
   # ──────────────────────────────────────────────
   strategic-review:
     name: Strategic Review
-    needs: type-check
+    needs: [setup, gatekeeper]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -105,7 +124,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: ${{ needs.setup.outputs.head_ref }}
 
       - name: Read strategic review instructions
         id: strategic-prompt
@@ -118,6 +137,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Run Strategic Review Agent
+        id: strategic-agent
         uses: anthropics/claude-code-action@v1
         with:
           allowed_bots: "claude[bot]"
@@ -127,17 +147,35 @@ jobs:
 
             ---
 
-            Review PR #${{ github.event.pull_request.number }} in repository ${{ github.repository }}.
-            Use `gh pr view ${{ github.event.pull_request.number }}` and `gh pr diff ${{ github.event.pull_request.number }}` to gather information.
+            Review PR #${{ needs.setup.outputs.pr_number }} in repository ${{ github.repository }}.
+            Use `gh pr view ${{ needs.setup.outputs.pr_number }}` and `gh pr diff ${{ needs.setup.outputs.pr_number }}` to gather information.
 
           claude_args: '--allowed-tools "Bash(gh:*),Read"'
 
+      - name: Enable auto-merge on approval
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUM="${{ needs.setup.outputs.pr_number }}"
+
+          # Check if strategic review approved:
+          # consider only the most recent review from claude[bot]
+          LATEST_STATE=$(gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews \
+            --jq '[.[] | select(.user.login == "claude[bot]")] | sort_by(.submitted_at) | (last.state // empty)')
+
+          if [ "$LATEST_STATE" = "APPROVED" ]; then
+            echo "Strategic review approved by latest claude[bot] review - enabling auto-merge"
+            gh pr merge "$PR_NUM" --auto --rebase --repo "${{ github.repository }}" || true
+          else
+            echo "Latest claude[bot] review is not an approval - skipping auto-merge enablement"
+          fi
+
   # ──────────────────────────────────────────────
-  # Stage 4: Custodiet (scope compliance)
+  # Stage 3: Custodiet (scope compliance)
   # ──────────────────────────────────────────────
   custodiet:
     name: Custodiet
-    needs: strategic-review
+    needs: [setup, strategic-review]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -149,7 +187,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: ${{ needs.setup.outputs.head_ref }}
 
       - name: Read custodiet instructions
         id: custodiet-prompt
@@ -171,17 +209,17 @@ jobs:
 
             ---
 
-            Review PR #${{ github.event.pull_request.number }} in repository ${{ github.repository }}.
-            Use `gh pr view ${{ github.event.pull_request.number }}` and `gh pr diff ${{ github.event.pull_request.number }}` to gather information.
+            Review PR #${{ needs.setup.outputs.pr_number }} in repository ${{ github.repository }}.
+            Use `gh pr view ${{ needs.setup.outputs.pr_number }}` and `gh pr diff ${{ needs.setup.outputs.pr_number }}` to gather information.
 
           claude_args: '--allowed-tools "Bash(gh:*),Read"'
 
   # ──────────────────────────────────────────────
-  # Stage 5: QA (acceptance criteria)
+  # Stage 4: QA (acceptance criteria)
   # ──────────────────────────────────────────────
   qa:
     name: QA
-    needs: custodiet
+    needs: [setup, custodiet]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -193,7 +231,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: ${{ needs.setup.outputs.head_ref }}
 
       - name: Read QA instructions
         id: qa-prompt
@@ -215,17 +253,17 @@ jobs:
 
             ---
 
-            Review PR #${{ github.event.pull_request.number }} in repository ${{ github.repository }}.
-            Use `gh pr view ${{ github.event.pull_request.number }}`, `gh pr diff ${{ github.event.pull_request.number }}`, and `gh pr checks ${{ github.event.pull_request.number }}` to gather information.
+            Review PR #${{ needs.setup.outputs.pr_number }} in repository ${{ github.repository }}.
+            Use `gh pr view ${{ needs.setup.outputs.pr_number }}`, `gh pr diff ${{ needs.setup.outputs.pr_number }}`, and `gh pr checks ${{ needs.setup.outputs.pr_number }}` to gather information.
 
           claude_args: '--allowed-tools "Bash(gh:*),Read"'
 
   # ──────────────────────────────────────────────
-  # Stage 6: Ready for Review notification
+  # Stage 5: Ready for Review notification
   # ──────────────────────────────────────────────
   notify-ready:
     name: Ready for Review
-    needs: qa
+    needs: [setup, qa]
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -235,7 +273,7 @@ jobs:
     steps:
       - name: Post pipeline summary
         run: |
-          PR_NUM="${{ github.event.pull_request.number }}"
+          PR_NUM="${{ needs.setup.outputs.pr_number }}"
 
           # Collect review statuses from bot comments
           REVIEWS=$(gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews \
@@ -250,6 +288,7 @@ jobs:
           |-------|--------|
           | Lint | ✅ Passed |
           | Type check | ✅ Passed |
+          | Gatekeeper | ✅ Approved |
           | Strategic review | ✅ Passed |
           | Custodiet | ✅ Passed |
           | QA | ✅ Passed |
@@ -259,7 +298,7 @@ jobs:
           )"
 
   # ──────────────────────────────────────────────
-  # Stage 7: Merge Agent (triggered by human approval)
+  # Stage 6: Merge Agent (triggered by human approval)
   # ──────────────────────────────────────────────
   claude-lgtm-merge:
     # Run for: manual dispatch, PR assigned to claude, human-approved reviews, or LGTM comments from nicsuzor.
@@ -382,19 +421,72 @@ jobs:
 
           claude_args: '--allowed-tools "Bash,Edit,Read,Write"'
 
-      - name: Approve PR
+      - name: Check LGTM status
+        id: lgtm-status
         if: steps.pr-ref.outputs.ref != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
 
-          # Only approve if Claude's last comment signals LGTM
+          # Only proceed if Claude's last comment signals LGTM
           LAST_COMMENT=$(gh pr view "$PR_NUM" --json comments --jq '.comments[-1].body')
           if echo "$LAST_COMMENT" | grep -q "LGTM:"; then
-            echo "Claude confirmed LGTM - approving PR #$PR_NUM"
-            gh pr review "$PR_NUM" --approve
+            echo "Claude confirmed LGTM"
+            echo "lgtm=true" >> $GITHUB_OUTPUT
           else
             echo "Claude did not confirm LGTM - skipping approval"
             echo "Last comment excerpt: $(echo "$LAST_COMMENT" | head -1)"
+            echo "lgtm=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Dismiss claude[bot] change requests
+        if: steps.pr-ref.outputs.ref != '' && steps.lgtm-status.outputs.lgtm == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
+
+          # Find and dismiss any CHANGES_REQUESTED reviews from claude[bot]
+          # This unblocks GitHub auto-merge which may be waiting on unresolved reviews
+          REVIEW_IDS=$(gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews \
+            --jq '[.[] | select(.user.login == "claude[bot]" and .state == "CHANGES_REQUESTED")] | .[].id')
+
+          if [ -n "$REVIEW_IDS" ]; then
+            for REVIEW_ID in $REVIEW_IDS; do
+              echo "Dismissing review $REVIEW_ID from claude[bot]"
+              gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews/${REVIEW_ID}/dismissals \
+                -X PUT -f message="Superseded: All review comments addressed and LGTM confirmed."
+            done
+          else
+            echo "No CHANGES_REQUESTED reviews from claude[bot] to dismiss"
+          fi
+
+      - name: Approve PR
+        if: steps.pr-ref.outputs.ref != '' && steps.lgtm-status.outputs.lgtm == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
+          echo "Approving PR #$PR_NUM"
+          gh pr review "$PR_NUM" --approve
+
+      - name: Merge PR (fallback if auto-merge not triggered)
+        if: steps.pr-ref.outputs.ref != '' && steps.lgtm-status.outputs.lgtm == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
+
+          # Check if auto-merge is already enabled
+          AUTO_MERGE=$(gh pr view "$PR_NUM" --json autoMergeRequest --jq '.autoMergeRequest != null')
+
+          if [ "$AUTO_MERGE" = "true" ]; then
+            echo "Auto-merge is enabled - GitHub will handle the merge"
+          else
+            echo "Auto-merge not enabled - attempting direct merge"
+            gh pr merge "$PR_NUM" --rebase --delete-branch --repo "${{ github.repository }}" || {
+              echo "Direct merge failed - PR may require additional approvals or checks"
+              exit 1
+            }
           fi

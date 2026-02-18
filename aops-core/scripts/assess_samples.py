@@ -5,24 +5,30 @@ Assessment tool for gate agent inputs (v1.1).
 This script processes samples collected via AOPS_SAMPLE_INPUTS=1
 and facilitates human/agent assessment of whether the agents
 (hydrator, custodiet, qa) had sufficient information.
+
+Note:
+    Uses lib.paths.get_data_root() for canonical path resolution.
 """
 
 import json
-import os
 import sys
 from pathlib import Path
 
+# Add aops-core to path for lib imports
+SCRIPT_DIR = Path(__file__).parent.resolve()
+AOPS_CORE_ROOT = SCRIPT_DIR.parent
+sys.path.insert(0, str(AOPS_CORE_ROOT))
 
-def get_data_root():
-    data = os.environ.get("ACA_DATA")
-    if not data:
-        print("Error: ACA_DATA environment variable not set.")
-        sys.exit(1)
-    return Path(data)
+from lib.paths import get_data_root
 
 
 def list_samples(category=None):
-    sample_root = get_data_root() / "samples" / "v1.1"
+    try:
+        data_root = get_data_root()
+    except RuntimeError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+    sample_root = data_root / "samples" / "v1.1"
     if not sample_root.exists():
         print(f"No samples found at {sample_root}")
         return []

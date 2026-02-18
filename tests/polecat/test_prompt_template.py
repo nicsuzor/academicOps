@@ -77,6 +77,16 @@ def test_build_polecat_prompt_basic():
     assert FINISH_LOCAL_TASK.format(task_id="task-123") in prompt
 
 
+def test_polecat_prompt_starts_with_dot_for_hydration_bypass():
+    """Polecat prompts start with '.' to bypass the hydration gate.
+
+    The hydration framework skips prompts starting with '.', so polecat workers
+    receive their self-contained task brief without redundant hydrator instructions.
+    """
+    prompt = build_polecat_prompt(task_id="task-1", task_title="Title")
+    assert prompt.startswith(".\n"), "Polecat prompt must start with '.' to bypass hydration"
+
+
 def test_build_polecat_prompt_issue():
     prompt = build_polecat_prompt(task_id="issue-456", task_title="Issue Title", is_issue=True)
     assert FINISH_GITHUB_ISSUE in prompt

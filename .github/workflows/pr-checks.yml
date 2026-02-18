@@ -1,0 +1,94 @@
+# Cheap, fast checks that run on every PR push.
+# The review pipeline (pr-review-pipeline.yml) starts only after these pass,
+# via a workflow_run trigger. Re-running lint here does NOT re-trigger the
+# expensive LLM review stages.
+#
+# See specs/pr-process.md for the full process documentation.
+
+name: PR Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, assigned]
+
+jobs:
+  # ──────────────────────────────────────────────
+  # Stage 1: Lint
+  # ──────────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: pr-checks-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Ruff lint
+        run: uv run ruff check --output-format=github
+
+      - name: Ruff format check
+        run: uv run ruff format --check
+
+      - name: Autofix formatting
+        if: failure()
+        run: |
+          uv run ruff check --fix || true
+          uv run ruff format
+
+      - name: Commit and push fixes
+        if: failure()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No formatting changes to commit"
+          else
+            git commit -m "style: autofix lint and formatting"
+            git push
+          fi
+
+  # ──────────────────────────────────────────────
+  # Stage 2: Type Check
+  # ──────────────────────────────────────────────
+  type-check:
+    name: Type Check
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run basedpyright
+        run: uv run basedpyright

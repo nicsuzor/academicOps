@@ -9,7 +9,12 @@ from __future__ import annotations
 from lib.hook_utils import is_subagent_session
 
 
-def should_skip_hydration(prompt: str, session_id: str | None = None) -> bool:
+def should_skip_hydration(
+    prompt: str,
+    session_id: str | None = None,
+    *,
+    is_subagent: bool | None = None,
+) -> bool:
     """Check if prompt should skip hydration.
 
     Returns True for:
@@ -22,13 +27,19 @@ def should_skip_hydration(prompt: str, session_id: str | None = None) -> bool:
     Args:
         prompt: The user's prompt text
         session_id: Optional session ID for subagent detection
+        is_subagent: Pre-computed subagent flag from router context. When provided,
+            skips is_subagent_session() call. This is important for Gemini CLI
+            where is_sidechain flag detection requires full input_data context.
 
     Returns:
         True if hydration should be skipped
     """
     # 0. Skip if this is a subagent session
     # Subagents should never trigger their own hydration requirement
-    if is_subagent_session({"session_id": session_id}):
+    # Use pre-computed flag if available (avoids Gemini is_sidechain detection gap)
+    if is_subagent is True:
+        return True
+    if is_subagent is None and is_subagent_session({"session_id": session_id}):
         return True
 
     prompt_stripped = prompt.strip()
