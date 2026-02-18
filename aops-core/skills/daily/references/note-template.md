@@ -81,11 +81,9 @@ P3 ██░░░░░░░░ 15/85
 |---------|---------|---------|
 | - | - | No sessions yet today |
 
-## Session Timeline
+## Today's Path
 
-| Time | Session | Terminal | Project | Activity |
-|------|---------|----------|---------|----------|
-| - | - | - | - | - |
+(Narrative timeline of the day's threads, grouped by project — generated via `show_path.py`)
 
 ### Terminal Overwhelm Analysis
 

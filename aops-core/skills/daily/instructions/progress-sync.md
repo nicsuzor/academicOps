@@ -2,15 +2,19 @@
 
 ## 4. Daily progress sync
 
-Update daily note from session JSON files and GitHub merge data.
+Update daily note from session JSON files and narrative path reconstruction.
 
-### Step 4.1: Find Session JSONs
+### Step 4.1: Narrative Path Reconstruction (Compass Model)
+
+Instead of a mechanical table, build a narrative timeline of the day's work using the `show_path.py` script. This helps the user recover context and identify "where they are" in the day's story.
 
 ```bash
-ls $ACA_SESSIONS/summaries/YYYYMMDD*.json 2>/dev/null
+uv run python3 aops-core/scripts/show_path.py --hours 24
 ```
 
-**Incremental filtering**: After listing JSONs, read the current daily note's Session Log table. Extract session IDs already present. Filter the JSON list to exclude already-processed sessions. This prevents duplicate entries on repeated syncs.
+**Format in daily note** (fully replace the `## Session Timeline` section):
+
+Use the script output to create a "Today's Path" section grouped by project. Each project should show the threads of work, starting with the session goal/intent and listing key actions (Created, Finished, Claimed) in narrative format.
 
 ### Step 4.1.5: Load Closure History
 
@@ -32,7 +36,7 @@ mcp__plugin_aops-core_task_manager__list_tasks(status="done", limit=20)
 
 ### Step 4.2: Load and Merge Sessions
 
-Read each session JSON. Extract:
+Read each session JSON from `$ACA_SESSIONS/summaries/YYYYMMDD*.json`. Extract:
 
 - Session ID, project, summary
 - Accomplishments
@@ -40,7 +44,10 @@ Read each session JSON. Extract:
 - Skill compliance metrics
 - Framework feedback: workflow_improvements, jit_context_needed, context_distractions, user_mood
 
+**Incremental filtering**: After listing JSONs, read the current daily note's Session Log table. Extract session IDs already present. Filter the JSON list to exclude already-processed sessions. This prevents duplicate entries on repeated syncs.
+
 ### Step 4.2.5: Query Merged PRs
+... (rest of the file) ...
 
 Fetch today's merged PRs from the current repository:
 

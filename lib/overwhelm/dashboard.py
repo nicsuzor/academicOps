@@ -4621,6 +4621,27 @@ if synthesis:
     synth_html += "</div>"  # End panel
     st.markdown(synth_html, unsafe_allow_html=True)
 
+# === DAILY STORY SECTION ===
+daily_story = analyzer.extract_daily_story()
+if daily_story:
+    with st.container():
+        st.markdown("<div class='daily-story-container' style='margin-bottom: 24px; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 8px; border-left: 4px solid #60a5fa;'>", unsafe_allow_html=True)
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            if daily_story["story"]:
+                st.markdown(f"### 📖 Today's Story\n{daily_story['story']}")
+            if daily_story["dropped_threads"]:
+                st.markdown("#### ⚠ Dropped Threads")
+                for thread in daily_story["dropped_threads"]:
+                    st.markdown(f"- {thread}")
+        
+        with col2:
+            if daily_story["priorities"]:
+                st.markdown(f"### 🎯 Focus\n{daily_story['priorities']}")
+        
+        st.markdown("</div>", unsafe_allow_html=True)
+
 # === WHERE YOU LEFT OFF SECTION ===
 # Time range selector in sidebar
 activity_hours = st.sidebar.selectbox(
