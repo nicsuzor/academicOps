@@ -4638,8 +4638,9 @@ if active_sessions_wlo or paused_sessions_wlo:
     if paused_sessions_wlo:
         paused_count = len(paused_sessions_wlo)
         wlo_html += "<details class='wlo-paused-collapsible'>"
-        wlo_html += f"<summary><span class='wlo-bucket-label wlo-paused-label'>⏸️ PAUSED ({paused_count} session{'s' if paused_count != 1 else ''}, 4-24h ago)</span></summary>"
+        wlo_html += f"<summary><span class='wlo-bucket-label wlo-paused-label'>⏸️ PAUSED SESSIONS ({paused_count} session{'s' if paused_count != 1 else ''}, 4-24h ago)</span></summary>"
         wlo_html += "<div class='wlo-paused-content'>"
+        wlo_html += "<div style='font-size: 0.8em; opacity: 0.7; margin: 5px 0 10px 10px;'>Sessions with activity between 4 and 24 hours ago.</div>"
 
         # Group paused sessions by project
         paused_by_project: dict[str, list] = {}
@@ -4707,10 +4708,11 @@ try:
         path_html = "<div class='path-timeline'>"
         path_html += "<h3>YOUR PATH</h3>"
 
-        # Dropped threads callout (most actionable — show first)
+        # Unfinished tasks callout (most actionable — show first)
         if path.abandoned_work:
             path_html += "<div class='path-abandoned'>"
-            path_html += f"<div class='path-abandoned-title'>⚠ DROPPED THREADS ({len(path.abandoned_work)} started but not finished)</div>"
+            path_html += f"<div class='path-abandoned-title'>📋 UNFINISHED TASKS ({len(path.abandoned_work)} started but not finished)</div>"
+            path_html += "<div style='font-size: 0.8em; opacity: 0.7; margin-bottom: 8px;'>Tasks created or claimed across all sessions that haven't been marked done.</div>"
             path_html += "<div style='display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px;'>"
             for ab in path.abandoned_work:
                 task_label = esc(ab.task_id or ab.description)

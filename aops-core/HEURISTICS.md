@@ -104,6 +104,10 @@ Create child tasks only when they add information beyond the parent's bullet poi
 
 Every task MUST connect to the hierarchy: `action → task → epic → project → goal`. Disconnected tasks are violations.
 
+**Corollaries**:
+
+- Task hierarchy is defined by graph relationships (`parent`, `depends_on`), not filesystem paths. Directory layout is an implementation detail of task storage.
+
 ## User System Expertise > Agent Hypotheses (P#74)
 
 When user makes specific assertions about their own codebase, trust the assertion and verify with ONE minimal test. Do NOT spawn investigation to "validate" user claims.
@@ -271,3 +275,9 @@ This does NOT apply when:
 - An axiom might be at risk
 
 **Derivation**: Extends P#59 (Action Over Clarification) from task selection to implementation decisions. P#102 corollary establishes that pre-routing to human based on "this involves design choices" is premature. P#78 establishes that classification is LLM work. If an agent can classify one option as superior, asking the human is wasted attention.
+
+## Standard Tooling Over Framework Gates (P#105)
+
+When proposing enforcement for repo-level rules (file structure, naming, content format), prefer standard git tooling (pre-commit hooks, CI checks) over framework-internal mechanisms (PreToolUse gates, custom hooks). Framework gates control agent behavior in real-time; repo structure rules belong in git.
+
+**Derivation**: Extends P#5 (Do One Thing) to enforcement design. The enforcement-map.md already shows the pattern: `data-markdown-only`, `check-orphan-files`, `check-skill-line-count` are all pre-commit hooks. New rules of the same kind should follow the same pattern, not escalate to a more complex enforcement layer.

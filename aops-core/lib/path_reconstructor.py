@@ -2,7 +2,7 @@
 
 Reads enriched session summaries (with timeline_events) and assembles
 a cross-session view showing what path was taken, what deviated, and
-what was dropped. Designed for ADHD-friendly context recovery.
+what remains unfinished. Designed for ADHD-friendly context recovery.
 
 No JSONL or markdown parsing — reads only pre-computed summary JSONs.
 """

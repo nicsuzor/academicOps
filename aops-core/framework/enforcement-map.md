@@ -125,6 +125,7 @@ tags: [framework, enforcement, moc]
 | [[plans-get-critic-review]]                     | Plans Get Critic Review, Not Human Approval           | HEURISTICS.md, critic_review guardrail                 | Post plan-filing               | 1b    |
 | [[explain-dont-ask]]                            | Explain, Don't Ask (P#104)                            | HEURISTICS.md                                          | SessionStart                   |       |
 | [[qa-independent-evidence]]                     | QA Must Produce Independent Evidence                  | HEURISTICS.md, /pull Step 3A.V                         | Before completion              | 1c    |
+| [[standard-tooling-over-framework-gates]]       | Standard Tooling Over Framework Gates (P#105)         | HEURISTICS.md                                          | SessionStart                   | 1a    |
 
 ## Enforcement Level Summary
 
