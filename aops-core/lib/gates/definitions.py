@@ -52,7 +52,7 @@ GATE_CONFIGS = [
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
                     custom_action="hydrate_prompt",
-                    system_message_template="💧 Hydration required. Gate CLOSED.",
+                    system_message_template="Gate CLOSED — ALL tools blocked until prompt-hydrator is invoked",
                 ),
             ),
         ],
@@ -69,7 +69,7 @@ GATE_CONFIGS = [
                 message_template="⛔ Hydration required: invoke prompt-hydrator before proceeding",
                 # Full agent instructions
                 context_template=(
-                    "**User prompt hydration required.** Invoke the **prompt-hydrator** agent with the file path argument: `{temp_path}`\n"
+                    "**User prompt hydration required. You were already told that prompt hydration is required.** Invoke the **prompt-hydrator** agent with the file path argument: `{temp_path}`\n"
                     "Run the hydrator with this command:\n"
                     "- Gemini: `delegate_to_agent(name='prompt-hydrator', query='{temp_path}')`\n"
                     "- Claude: `Task(subagent_type='prompt-hydrator', prompt='{temp_path}')`\n\n"

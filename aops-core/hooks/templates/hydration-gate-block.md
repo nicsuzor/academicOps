@@ -7,7 +7,7 @@ description: |
   Instructs the agent to invoke the aops-core:prompt-hydrator agent or skill before proceeding.
 ---
 
-**User prompt hydration required.** Invoke the **prompt-hydrator** agent with the file path argument: `{temp_path}`
+**User prompt hydration required. You were already told that prompt hydration is required.** Invoke the **prompt-hydrator** agent with the file path argument: `{temp_path}`
 
 Run the hydrator with this command:
 - Gemini: `delegate_to_agent(name='aops-core:prompt-hydrator', query='{temp_path}')`
