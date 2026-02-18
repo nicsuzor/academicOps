@@ -72,7 +72,8 @@ jobs:
             - Tags: ${{ steps.payload.outputs.tags }}
 
             TASK:
-            1. Use the [[remember]] skill to store this content to the memory server
+            1. Use the [[remember]] skill to store this content to the memory server.
+               MANDATORY: Use the 'notes/mobile-captures/' directory for the file.
             2. Include metadata:
                - Tags: mobile-capture, plus any from input
                - Type: note
@@ -81,16 +82,33 @@ jobs:
             Example call:
             Use mcp__memory__store_memory with:
             - content: The iOS capture content
+            - folder: notes/mobile-captures
             - metadata: { "tags": "mobile-capture,inbox,...", "type": "note" }
 
             Report success when the memory has been stored.
 
-      - name: Log capture
+      - name: Commit and push note
         env:
-          NOTE_CONTENT: ${{ steps.payload.outputs.content }}
-          CLAUDE_RESULT: ${{ steps.claude.outputs.result }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "iOS capture stored to memory server"
-          echo "Content: ${NOTE_CONTENT:0:100}..."
-          echo "Result: $CLAUDE_RESULT"
-          # No git commit needed - memory is stored remotely
+          git config user.name "academicOps Agent"
+          git config user.email "agent@academicops.local"
+
+          # Add all changes (Claude should have created a new file in notes/mobile-captures/)
+          git add -A
+
+          # Find the new note file
+          FILE=$(git diff --cached --name-only | grep "^notes/mobile-captures/" | head -n 1)
+
+          if [ -n "$FILE" ]; then
+            # Extract keywords from filename (removing date prefix and replacing hyphens with spaces)
+            FILENAME=$(basename "$FILE" .md)
+            KEYWORDS=$(echo "$FILENAME" | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}-//' | tr '-' ' ')
+            COMMIT_MSG="capture: $KEYWORDS"
+
+            echo "Committing: $FILE with message: $COMMIT_MSG"
+            git commit -m "$COMMIT_MSG"
+            git push origin HEAD:${{ github.ref }}
+          else
+            echo "No new capture file found in notes/mobile-captures/. Skipping commit."
+          fi

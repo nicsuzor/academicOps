@@ -80,6 +80,11 @@ path_to_category() {
             task_id=$(basename "${path}" .md)
             echo "task: ${task_id}"
             ;;
+        notes/mobile-captures/*)
+            local name
+            name=$(basename "${path}" .md | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}-//')
+            echo "capture: ${name//-/ }"
+            ;;
         daily/*)
             local base date_part
             base=$(basename "${path}" .md | sed 's/-daily$//')
