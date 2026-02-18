@@ -283,11 +283,12 @@ GATE_CONFIGS = [
             # Uses subagent_type_pattern to match skill name extracted by router
             # (router.py extracts tool_input["skill"] into ctx.subagent_type)
             # Matches both Claude's Skill tool and Gemini's activate_skill tool.
+            # Pattern matches both "handover" and "aops-core:handover" (prefixed form).
             GateTrigger(
                 condition=GateCondition(
                     hook_event="PostToolUse",
                     tool_name_pattern="^(Skill|activate_skill)$",
-                    subagent_type_pattern="^handover$",
+                    subagent_type_pattern="^(aops-core:)?handover$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
