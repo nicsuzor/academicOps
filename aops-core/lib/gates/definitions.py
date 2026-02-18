@@ -36,7 +36,7 @@ GATE_CONFIGS = [
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(SubagentStart|PreToolUse|SubagentStop|PostToolUse)$",
-                    subagent_type_pattern="hydrator",
+                    subagent_type_pattern="^(aops-core:)?hydrator$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
@@ -96,7 +96,7 @@ GATE_CONFIGS = [
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(SubagentStart|SubagentStop)$",
-                    subagent_type_pattern="custodiet",
+                    subagent_type_pattern="^(aops-core:)?custodiet$",
                 ),
                 transition=GateTransition(
                     reset_ops_counter=True,
@@ -151,7 +151,7 @@ GATE_CONFIGS = [
             # Hydration completes -> Close gate
             GateTrigger(
                 condition=GateCondition(
-                    hook_event="SubagentStop", subagent_type_pattern="hydrator"
+                    hook_event="SubagentStop", subagent_type_pattern="^(aops-core:)?hydrator$"
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
@@ -162,7 +162,7 @@ GATE_CONFIGS = [
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(SubagentStart|SubagentStop|PostToolUse)$",
-                    subagent_type_pattern="critic",
+                    subagent_type_pattern="^(aops-core:)?critic$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
@@ -213,7 +213,7 @@ GATE_CONFIGS = [
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(SubagentStart|SubagentStop|PostToolUse)$",
-                    subagent_type_pattern="qa",
+                    subagent_type_pattern="^(aops-core:)?qa$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
@@ -222,7 +222,9 @@ GATE_CONFIGS = [
             ),
             # Critic, once called, requires QA review to ensure compliance before exit
             GateTrigger(
-                condition=GateCondition(hook_event="PostToolUse", subagent_type_pattern="critic"),
+                condition=GateCondition(
+                    hook_event="PostToolUse", subagent_type_pattern="^(aops-core:)?critic$"
+                ),
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
                     reset_ops_counter=False,
