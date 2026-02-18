@@ -6,7 +6,35 @@ Gates (lib/gates/) can now import this without circular dependencies.
 
 from __future__ import annotations
 
+import re
+
 from lib.hook_utils import is_subagent_session
+
+
+def _command_args_need_hydration(prompt: str) -> bool:
+    """Check if slash command arguments contain natural language needing intent parsing.
+
+    Returns True when <command-args> contains multi-word content suggesting
+    the user mixed a task reference with natural language instructions
+    (e.g., "/pull task-id and deconstruct").
+
+    Single-token args (just a task ID) don't need hydration.
+    """
+    match = re.search(r"<command-args>(.*?)</command-args>", prompt, re.DOTALL)
+    if not match:
+        return False
+
+    args = match.group(1).strip()
+    if not args:
+        return False
+
+    # Single token (task ID, skill name, etc.) — no hydration needed
+    tokens = args.split()
+    if len(tokens) <= 1:
+        return False
+
+    # Multi-token args: likely contains natural language that needs intent parsing
+    return True
 
 
 def should_skip_hydration(
@@ -20,9 +48,12 @@ def should_skip_hydration(
     Returns True for:
     - Subagent sessions (they are themselves part of the hydration/task flow)
     - Agent/task completion notifications (<agent-notification>, <task-notification>)
+    - Expanded slash commands WITHOUT multi-word arguments
     - Skill invocations (prompts starting with '/')
-    - Expanded slash commands (containing <command-name>/ tag)
     - User ignore shortcut (prompts starting with '.')
+
+    Slash commands WITH multi-word arguments are NOT skipped — the hydrator
+    parses user intent from the arguments before execution begins.
 
     Args:
         prompt: The user's prompt text
@@ -50,10 +81,13 @@ def should_skip_hydration(
     if prompt_stripped.startswith("<task-notification>"):
         return True
 
-    # Expanded slash commands - the skill expansion IS the hydration
-    # These contain <command-name>/xxx</command-name> tags from Claude Code
+    # Expanded slash commands: skip UNLESS args contain natural language
+    # The skill expansion provides the workflow, but multi-word args may carry
+    # user intent that needs parsing (e.g., "/pull task-id and deconstruct")
     if "<command-name>/" in prompt:
-        return True
+        if _command_args_need_hydration(prompt):
+            return False  # Hydrate: args need intent parsing
+        return True  # Skip: bare command or single-token arg
 
     # Skill invocations - generally skip hydration
     if prompt_stripped.startswith("/"):

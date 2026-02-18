@@ -36,7 +36,7 @@ GATE_CONFIGS = [
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(SubagentStart|PreToolUse|SubagentStop|PostToolUse)$",
-                    subagent_type_pattern="^(aops-core:)?hydrator$",
+                    subagent_type_pattern="^(aops-core:)?prompt-hydrator$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
