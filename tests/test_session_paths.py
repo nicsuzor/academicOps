@@ -104,6 +104,12 @@ class TestSessionPaths(unittest.TestCase):
         result = session_paths._is_gemini_session("gemini-2026-01-01-abc123", None)
         self.assertTrue(result)
 
+    @patch.dict(os.environ, {"GEMINI_SESSION_ID": "test-session-id"})
+    def test_is_gemini_session_env_var(self):
+        """_is_gemini_session detects Gemini via GEMINI_SESSION_ID env var."""
+        result = session_paths._is_gemini_session(None, None)
+        self.assertTrue(result)
+
     def test_is_gemini_session_claude(self):
         """_is_gemini_session returns False for Claude sessions."""
         result = session_paths._is_gemini_session(
@@ -186,6 +192,68 @@ class TestSessionPaths(unittest.TestCase):
                 self.assertIsInstance(gate_path, Path, "Expected Path object")
                 self.assertIn("hydration", str(gate_path), "Gate name should appear in path")
                 self.assertIn(".gemini", str(gate_path), "Path should be in Gemini directory")
+
+    def test_get_gate_file_path_claude(self):
+        """get_gate_file_path returns a valid path for Claude sessions."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch.object(Path, "home", return_value=Path(tmpdir)):
+                # Mock get_claude_project_folder to avoid needing real cwd
+                with patch("lib.session_paths.get_claude_project_folder", return_value="-project"):
+                    gate_path = session_paths.get_gate_file_path(
+                        "hydration",
+                        "07328230-44d4-414b-9fec-191a6eec0948",
+                        date="2026-01-24"
+                    )
+
+                    self.assertIn(".claude/projects/-project", str(gate_path))
+                    self.assertIn("20260124-07328230-hydration.md", str(gate_path))
+
+    def test_get_gate_file_path_gemini_prefix(self):
+        """get_gate_file_path returns a valid path for Gemini sessions via prefix."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # For Gemini, we need a logs dir
+            project_hash = hashlib.sha256(b"test").hexdigest()
+            gemini_base = Path(tmpdir) / ".gemini" / "tmp" / project_hash
+
+            with (
+                patch.object(Path, "home", return_value=Path(tmpdir)),
+                patch.dict(os.environ, {
+                    "GEMINI_PROJECT_DIR": "test",
+                    "AOPS_SESSION_STATE_DIR": str(gemini_base)
+                })
+            ):
+                gate_path = session_paths.get_gate_file_path(
+                    "hydration",
+                    "gemini-2026-01-24-abc12345",
+                    date="2026-01-24"
+                )
+
+                self.assertIn(".gemini/tmp", str(gate_path))
+                # gemini-20... doesn't match alphanumeric prefix, so it uses hash fallback for short hash
+                expected_hash = hashlib.sha256("gemini-2026-01-24-abc12345".encode()).hexdigest()[:8]
+                self.assertIn(f"20260124-{expected_hash}-hydration.md", str(gate_path))
+
+    def test_get_gate_file_path_gemini_polecat(self):
+        """get_gate_file_path returns a valid path for Gemini sessions (polecat style - UUID ID)."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_dir = Path(tmpdir) / ".gemini" / "tmp" / "abc123hash"
+            state_dir.mkdir(parents=True, exist_ok=True)
+
+            with (
+                patch.object(Path, "home", return_value=Path(tmpdir)),
+                patch.dict(os.environ, {"AOPS_SESSION_STATE_DIR": str(state_dir)})
+            ):
+                gate_path = session_paths.get_gate_file_path(
+                    "hydration",
+                    "07328230-44d4-414b-9fec-191a6eec0948",
+                    date="2026-01-24"
+                )
+
+                self.assertIn(".gemini/tmp/abc123hash", str(gate_path))
+                self.assertIn("logs/20260124-07328230-hydration.md", str(gate_path))
 
 
 if __name__ == "__main__":
