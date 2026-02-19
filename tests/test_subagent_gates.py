@@ -123,7 +123,9 @@ def test_regex_hook_event_matching():
     assert (
         gate._evaluate_condition(
             cond,
-            HookContext(session_id="s1", hook_event="SubagentStop", subagent_type="prompt-hydrator"),
+            HookContext(
+                session_id="s1", hook_event="SubagentStop", subagent_type="prompt-hydrator"
+            ),
             state.get_gate("hydration"),
             state,
         )
