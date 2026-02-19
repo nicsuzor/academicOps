@@ -52,28 +52,28 @@ GATE_CONFIGS = [
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
                     custom_action="hydrate_prompt",
-                    system_message_template="Gate CLOSED — ALL tools blocked until prompt-hydrator is invoked",
+                    system_message_template="💧 Hydration recommended. Status: PENDING.",
                 ),
             ),
         ],
         policies=[
-            # If Closed, Block tools (except always_available like Task, prompt-hydrator)
+            # If Closed, Block/Warn tools (except always_available like Task, prompt-hydrator)
             GatePolicy(
                 condition=GateCondition(
                     current_status=GateStatus.CLOSED,
                     hook_event="PreToolUse",
-                    excluded_tool_categories=["always_available"],
+                    excluded_tool_categories=["always_available", "read_only"],
                 ),
                 verdict=HYDRATION_GATE_MODE,
                 # Brief user-facing summary
-                message_template="⛔ Hydration required: invoke prompt-hydrator before proceeding",
+                message_template="💧 Hydration suggested: invoke prompt-hydrator for optimal planning",
                 # Full agent instructions
                 context_template=(
-                    "**User prompt hydration required. You were already told that prompt hydration is required.** Invoke the **prompt-hydrator** agent with the file path argument: `{temp_path}`\n"
-                    "Run the hydrator with this command:\n"
+                    "**Prompt hydration suggested.** To ensure alignment with project workflows and axioms, please invoke the **prompt-hydrator** agent with: `{temp_path}`\n\n"
+                    "Command:\n"
                     "- Gemini: `delegate_to_agent(name='prompt-hydrator', query='{temp_path}')`\n"
                     "- Claude: `Task(subagent_type='prompt-hydrator', prompt='{temp_path}')`\n\n"
-                    "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
+                    "This is an advisory notice. You may proceed if the task is trivial, but hydration is recommended for any file-modifying work."
                 ),
             )
         ],
