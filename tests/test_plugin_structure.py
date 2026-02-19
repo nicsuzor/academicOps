@@ -41,7 +41,7 @@ class TestCoreSkills:
 class TestCoreAgents:
     """Verify core agents are present."""
 
-    CORE_AGENTS = ["prompt-hydrator", "critic", "custodiet", "qa", "effectual-planner"]
+    CORE_AGENTS = ["prompt-hydrator", "custodiet", "qa", "effectual-planner"]
 
     def test_all_core_agents_present(self) -> None:
         """All 5 core agents must be present."""

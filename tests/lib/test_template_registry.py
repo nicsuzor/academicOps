@@ -92,12 +92,12 @@ def test_get_spec_all_registered_templates(registry):
         "custodiet.context",
         "custodiet.instruction",
         "custodiet.fallback",
-        "stop.critic",
         "stop.handover_block",
         "tool.gate_message",
     ]
 
     for name in expected_names:
+
         spec = registry.get_spec(name)
         assert spec is not None, f"Template {name} not registered"
         assert spec.name == name
@@ -411,7 +411,7 @@ def test_spec_category_assignment(registry):
 
     # Context injection
     assert registry.get_spec("custodiet.instruction").category == TemplateCategory.CONTEXT_INJECTION
-    assert registry.get_spec("stop.critic").category == TemplateCategory.CONTEXT_INJECTION
+    assert registry.get_spec("stop.handover_block").category == TemplateCategory.CONTEXT_INJECTION
 
     # Subagent instruction
     assert registry.get_spec("custodiet.context").category == TemplateCategory.SUBAGENT_INSTRUCTION

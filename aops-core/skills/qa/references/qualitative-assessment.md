@@ -13,11 +13,9 @@ Criteria-based qualitative evaluation of a feature against its user stories. Not
 
 - Functional verification (does code run?) → Quick Verification
 - Spec compliance (are all items present?) → Acceptance Testing
-- Code quality review → [[critic]]
 
 ## Philosophy
 
-A building inspector checks if the wiring meets code. An architecture critic evaluates whether the building serves its inhabitants. Both are necessary. This mode is the **critic**, not the inspector.
 
 The difference matters: a checklist can be executed mechanically. Quality assessment requires the evaluator to think, interpret, and exercise judgment.
 

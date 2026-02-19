@@ -1,5 +1,4 @@
 from gate_config import (
-    CRITIC_GATE_MODE,
     CUSTODIET_GATE_MODE,
     CUSTODIET_TOOL_CALL_THRESHOLD,
     HANDOVER_GATE_MODE,
@@ -125,63 +124,6 @@ GATE_CONFIGS = [
             ),
         ],
     ),
-    # --- Critic ---
-    # Closes after hydration, blocks edit tools until plan is reviewed and approved by critic.
-    GateConfig(
-        name="critic",
-        description="Enforces plan review before editing.",
-        initial_status=GateStatus.OPEN,
-        triggers=[
-            # Hydration completes -> Close gate
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="SubagentStop",
-                    subagent_type_pattern="^(aops-core:)?(prompt-hydrator|hydrator)$",
-                ),
-                transition=GateTransition(
-                    target_status=GateStatus.CLOSED,
-                    system_message_template="📋 Hydration complete. Plan review required before editing.",
-                ),
-            ),
-            # Critic review completes with PROCEED -> Open gate
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="^(SubagentStart|SubagentStop|PostToolUse)$",
-                    subagent_type_pattern="^(aops-core:)?critic$",
-                ),
-                transition=GateTransition(
-                    target_status=GateStatus.OPEN,
-                    reset_ops_counter=True,
-                    system_message_template="👁️ Critic review complete. Editing allowed.",
-                ),
-            ),
-        ],
-        policies=[
-            # Block edit tools when CLOSED
-            # Anchored regex prevents matching TodoWrite etc. (aops-81df9690)
-            GatePolicy(
-                condition=GateCondition(
-                    current_status=GateStatus.CLOSED,
-                    hook_event="PreToolUse",
-                    tool_name_pattern="^(Edit|Write|NotebookEdit|MultiEdit)$",
-                    excluded_tool_categories=["always_available"],
-                ),
-                verdict=CRITIC_GATE_MODE,
-                custom_action="prepare_critic_review",
-                message_template="⛔ Critic review required before editing. Invoke critic agent first.",
-                context_template=(
-                    "**CRITIC REVIEW REQUIRED**\n\n"
-                    "You must invoke the **critic** agent to review your plan before making edits.\n\n"
-                    "**Instruction**:\n"
-                    "Run the critic with this command:\n"
-                    "- Gemini: `delegate_to_agent(name='aops-core:critic', query='{temp_path}')`\n"
-                    "- Claude: `Task(subagent_type='aops-core:critic', prompt='{temp_path}')`\n"
-                    "- Make sure you obey the instructions the tool or subagent produces, but do not print the output to the user -- it just clutters up the conversation.\n\n"
-                    "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
-                ),
-            ),
-        ],
-    ),
     # --- QA ---
     # Blocks exit until planned requirements are verified by QA agent.
     GateConfig(
@@ -202,17 +144,6 @@ GATE_CONFIGS = [
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
-                    system_message_template="🧪 QA complete. Requirements verified.",
-                ),
-            ),
-            # Critic, once called, requires QA review to ensure compliance before exit
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="PostToolUse", subagent_type_pattern="^(aops-core:)?critic$"
-                ),
-                transition=GateTransition(
-                    target_status=GateStatus.CLOSED,
-                    reset_ops_counter=False,
                     system_message_template="🧪 QA complete. Requirements verified.",
                 ),
             ),

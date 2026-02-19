@@ -100,8 +100,6 @@ Before invoking reviewers, prepare a context document containing:
 
 ```python
 # Spawn both mandatory reviewers simultaneously
-critic_task = Task(
-    subagent_type='aops-core:critic',
     model='opus',
     prompt='''Review this decomposition proposal:
 
@@ -210,7 +208,6 @@ update_task(id=task_id, status='waiting', body=synthesis_markdown)
 
 ### Issues Requiring Resolution
 
-1. [Issue from critic]: [specific problem]
    - **Suggested fix**: [how to address]
 
 2. [Issue from custodiet if WARN]: [scope concern]
@@ -280,7 +277,6 @@ If reviewers return conflicting verdicts (one PROCEED, one REVISE), initiate a d
 ```python
 # Share concerns with the other reviewer
 debate_task = Task(
-    subagent_type='aops-core:critic',
     model='opus',
     prompt='''The custodiet raised this concern about the decomposition:
 
@@ -297,7 +293,6 @@ Respond with:
 - MAINTAIN: [brief justification]
 - REVISE: [what changes you now recommend]
 ''',
-    description='Debate: critic response to custodiet concern'
 )
 ```
 
@@ -329,7 +324,6 @@ Respond with:
 
 ### Options for Human
 
-1. **Proceed as planned**: Accept critic's assessment
 2. **Narrow scope**: Accept custodiet's constraint
 3. **Request more info**: Specific question to resolve
 

@@ -80,30 +80,6 @@ def test_hydration_gate_simplified_triggers():
     assert state.get_gate("hydration").status == GateStatus.OPEN
 
 
-def test_critic_gate_simplified_triggers():
-    """Test simplified triggers for critic gate."""
-    state = SessionState.create("test-session")
-    # Initially Open
-    assert state.get_gate("critic").status == GateStatus.OPEN
-
-    critic_config = next(g for g in GATE_CONFIGS if g.name == "critic")
-    gate = GenericGate(critic_config)
-
-    # 1. Hydration stop should CLOSE critic gate
-    ctx_hyd_stop = HookContext(
-        session_id="s1", hook_event="SubagentStop", subagent_type="prompt-hydrator"
-    )
-    gate.on_subagent_stop(ctx_hyd_stop, state)
-    assert state.get_gate("critic").status == GateStatus.CLOSED
-
-    # 2. Critic stop should OPEN critic gate
-    ctx_critic_stop = HookContext(
-        session_id="s1", hook_event="SubagentStop", subagent_type="critic"
-    )
-    gate.on_subagent_stop(ctx_critic_stop, state)
-    assert state.get_gate("critic").status == GateStatus.OPEN
-
-
 def test_regex_hook_event_matching():
     """Test that GenericGate supports regex in hook_event matching."""
     from lib.gate_types import GateCondition
