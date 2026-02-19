@@ -108,7 +108,6 @@ class SessionState(BaseModel):
             "task": GateStatus.OPEN,
             "critic": GateStatus.OPEN,
             "custodiet": GateStatus.OPEN,
-            "qa": GateStatus.OPEN,
             "handover": GateStatus.OPEN,
         }
 

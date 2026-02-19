@@ -4,7 +4,6 @@ from gate_config import (
     CUSTODIET_TOOL_CALL_THRESHOLD,
     HANDOVER_GATE_MODE,
     HYDRATION_GATE_MODE,
-    QA_GATE_MODE,
 )
 
 from lib.gate_types import (
@@ -191,64 +190,6 @@ GATE_CONFIGS = [
                     "Run the critic with this command:\n"
                     "- Gemini: `delegate_to_agent(name='aops-core:critic', query='{temp_path}')`\n"
                     "- Claude: `Task(subagent_type='aops-core:critic', prompt='{temp_path}')`\n"
-                    "- Make sure you obey the instructions the tool or subagent produces, but do not print the output to the user -- it just clutters up the conversation.\n\n"
-                    "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
-                ),
-            ),
-        ],
-    ),
-    # --- QA ---
-    # Blocks exit until planned requirements are verified by QA agent.
-    GateConfig(
-        name="qa",
-        description="Ensures requirements compliance before exit.",
-        initial_status=GateStatus.OPEN,
-        triggers=[
-            # Start -> Open
-            GateTrigger(
-                condition=GateCondition(hook_event="SessionStart"),
-                transition=GateTransition(target_status=GateStatus.OPEN),
-            ),
-            # QA agent verifies requirements -> Open gate
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="^(SubagentStart|SubagentStop|PostToolUse)$",
-                    subagent_type_pattern="^(aops-core:)?qa$",
-                ),
-                transition=GateTransition(
-                    target_status=GateStatus.OPEN,
-                    system_message_template="🧪 QA complete. Requirements verified.",
-                ),
-            ),
-            # Critic, once called, requires QA review to ensure compliance before exit
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="PostToolUse", subagent_type_pattern="^(aops-core:)?critic$"
-                ),
-                transition=GateTransition(
-                    target_status=GateStatus.CLOSED,
-                    reset_ops_counter=False,
-                    system_message_template="🧪 QA complete. Requirements verified.",
-                ),
-            ),
-        ],
-        policies=[
-            # Block Stop when CLOSED
-            GatePolicy(
-                condition=GateCondition(
-                    current_status=GateStatus.CLOSED,
-                    hook_event="Stop",
-                ),
-                verdict=QA_GATE_MODE,
-                custom_action="prepare_qa_review",
-                message_template="⛔ QA verification required before exit. Invoke QA agent first.",
-                context_template=(
-                    "**QA VERIFICATION REQUIRED**\n\n"
-                    "You must invoke the **qa** agent to verify planned requirements before exiting.\n\n"
-                    "**Instruction**:\n"
-                    "Run the qa with this command:\n"
-                    "- Gemini: `delegate_to_agent(name='aops-core:qa', query='{temp_path}')`\n"
-                    "- Claude: `Task(subagent_type='aops-core:qa', prompt='{temp_path}')`\n"
                     "- Make sure you obey the instructions the tool or subagent produces, but do not print the output to the user -- it just clutters up the conversation.\n\n"
                     "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
                 ),

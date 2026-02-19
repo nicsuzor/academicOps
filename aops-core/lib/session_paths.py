@@ -349,7 +349,7 @@ def get_session_directory(
     return get_session_status_dir(session_id)
 
 
-GATE_NAMES = ("hydration", "custodiet", "critic", "qa")
+GATE_NAMES = ("hydration", "custodiet", "critic")
 
 
 def get_gate_file_path(
