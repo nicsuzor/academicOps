@@ -1,4 +1,5 @@
 from gate_config import (
+    CRITIC_GATE_MODE,
     CUSTODIET_GATE_MODE,
     CUSTODIET_TOOL_CALL_THRESHOLD,
     HANDOVER_GATE_MODE,
@@ -34,7 +35,7 @@ GATE_CONFIGS = [
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(SubagentStart|PreToolUse|SubagentStop|PostToolUse)$",
-                    subagent_type_pattern="^(aops-core:)?(prompt-hydrator|hydrator)$",
+                    subagent_type_pattern="^(aops-core:)?prompt-hydrator$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
@@ -150,7 +151,7 @@ GATE_CONFIGS = [
             GateTrigger(
                 condition=GateCondition(
                     hook_event="SubagentStop",
-                    subagent_type_pattern="^(aops-core:)?(prompt-hydrator|hydrator)$",
+                    subagent_type_pattern="^(aops-core:)?prompt-hydrator$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
@@ -198,7 +199,7 @@ GATE_CONFIGS = [
     ),
     # --- Handover ---
     # Gate starts OPEN. Closes when a task is bound (work begins).
-    # Opens when /dump skill completes. Policy blocks Stop when CLOSED.
+    # Opens when /handover skill completes. Policy blocks Stop when CLOSED.
     #
     # Previous approach used missing_framework_reflection custom_check on Stop,
     # but that fails because Claude Code fires Stop before the current turn's
@@ -222,16 +223,16 @@ GATE_CONFIGS = [
                     system_message_template="📤 Task bound. Handover required before exit.",
                 ),
             ),
-            # /dump skill completes -> Open
+            # /handover skill completes -> Open
             # Uses subagent_type_pattern to match skill name extracted by router
             # (router.py extracts tool_input["skill"] into ctx.subagent_type)
             # Matches both Claude's Skill tool and Gemini's activate_skill tool.
-            # Pattern matches "dump", "handover", and their prefixed forms (e.g., "aops-core:dump").
+            # Pattern matches both "handover" and "aops-core:handover" (prefixed form).
             GateTrigger(
                 condition=GateCondition(
                     hook_event="PostToolUse",
                     tool_name_pattern="^(Skill|activate_skill)$",
-                    subagent_type_pattern="^(aops-core:)?(handover|dump)$",
+                    subagent_type_pattern="^(aops-core:)?handover$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
@@ -250,7 +251,7 @@ GATE_CONFIGS = [
                 message_template="⛔ Handover required",
                 context_template=(
                     "⛔ Finalization required before exit.\n\n"
-                    "Please invoke the /dump command. The gate will only allow exit once it has completed.\n\n"
+                    "Please invoke the Handover Skill (`/handover`). The gate will only allow exit once the Handover Skill has completed.\n\n"
                     "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
                 ),
             ),

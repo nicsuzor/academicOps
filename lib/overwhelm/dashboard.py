@@ -4835,8 +4835,9 @@ try:
                     # Use resolved title for abandoned work if available
                     title = ab.resolved_title or ab.description or ab.task_id
                     task_label = esc(title)
-                    task_id_display = esc(ab.task_id or "unknown")
-                    path_html += f"<div class='path-abandoned-item' style='border-left: 2px solid {proj_color}; background: rgba(255,255,255,0.03); padding: 4px 10px; border-radius: 4px; font-size: 0.85em;' title='Task ID: {task_id_display}'>□ {task_label}</div>"
+                    item_style = f"border-left: 2px solid {proj_color}; background: rgba(255,255,255,0.03); padding: 4px 10px; border-radius: 4px; font-size: 0.85em;"
+                    item_title = f"Task ID: {esc(ab.task_id or 'unknown')}"
+                    path_html += f"<div class='path-abandoned-item' style='{item_style}' title='{item_title}'>□ {task_label}</div>"
                 path_html += "</div>"
                 path_html += "</div>"
 
