@@ -349,7 +349,7 @@ def get_session_directory(
     return get_session_status_dir(session_id)
 
 
-GATE_NAMES = ("hydration", "custodiet", "critic")
+GATE_NAMES = ("hydration", "custodiet")
 
 
 def get_gate_file_path(
@@ -367,7 +367,7 @@ def get_gate_file_path(
     Checks AOPS_GATE_FILE_<GATE> env var first for session-stable path.
 
     Args:
-        gate: Gate name (hydration, custodiet, critic, qa)
+        gate: Gate name (hydration, custodiet)
         session_id: Session ID from Claude Code or Gemini CLI
         input_data: Optional input data dict for Gemini detection
         date: Optional date in YYYY-MM-DD format (defaults to today)
