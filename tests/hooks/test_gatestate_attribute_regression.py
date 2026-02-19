@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -39,7 +40,7 @@ def test_hydrate_prompt_no_attribute_error():
             hooks.user_prompt_submit.build_hydration_instruction = original_build
 
 
-def test_user_prompt_submit_no_attribute_error():
+def test_user_prompt_submit_no_attribute_error(tmp_path):
     """Regression test for UserPromptSubmit hook logic."""
     from hooks.user_prompt_submit import build_hydration_instruction, write_initial_hydrator_state
 
@@ -65,14 +66,19 @@ def test_user_prompt_submit_no_attribute_error():
                 hooks.user_prompt_submit.write_temp_file = mock_write_temp
                 mock_write_temp.return_value = Path("/tmp/mock_hydrate.md")
 
-                try:
-                    # This should not raise AttributeError
-                    instruction = build_hydration_instruction(
-                        session_id, "test prompt", state=session_state
-                    )
-                    assert "Prompt hydration available" in instruction
-                finally:
-                    hooks.user_prompt_submit.write_temp_file = original_write
+                # Redirect gate file writes to tmp_path to keep the test hermetic
+                gate_file = tmp_path / "hydration-gate.md"
+                env_patch = patch.dict(os.environ, {"AOPS_GATE_FILE_HYDRATION": str(gate_file)})
+
+                with env_patch:
+                    try:
+                        # This should not raise AttributeError
+                        instruction = build_hydration_instruction(
+                            session_id, "test prompt", state=session_state
+                        )
+                        assert "User prompt hydration required" in instruction
+                    finally:
+                        hooks.user_prompt_submit.write_temp_file = original_write
 
         finally:
             SessionState.load = original_load

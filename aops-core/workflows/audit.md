@@ -70,3 +70,8 @@ Format defined in `skills/audit/references/report-format.md`:
 - Report ALL discrepancies found
 - Do NOT justify ignoring files as "generated" or "acceptable"
 - The user decides what's acceptable, not the auditor
+
+### Evidence
+
+- Every finding must cite specific file:line references
+- Link to source evidence, not just claims

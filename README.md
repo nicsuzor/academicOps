@@ -301,7 +301,6 @@ The **framework agent** embodies the self-reflexive principle—it both executes
 | /log             | Log framework observations for continuous improvement  |
 | /dump            | Session handover and context dump                      |
 | /bump            | Increment framework version                            |
-| /acceptance_test | Run automated acceptance tests for a feature           |
 
 ## Key Skills
 

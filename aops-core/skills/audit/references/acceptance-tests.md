@@ -20,7 +20,7 @@ To add a new acceptance test, add a section to `tests/acceptance/*.md` (e.g., `t
 
 ### Template
 
-```markdown
+````markdown
 ### TEST-NNN: <Short Description>
 
 **ID**: `v1.1-<kebab-case-id>`
@@ -28,8 +28,8 @@ To add a new acceptance test, add a section to `tests/acceptance/*.md` (e.g., `t
 **Description**: <What this test validates>
 
 **User Input**:
-```
 
+```
 <exact user prompt>
 ```
 
@@ -50,7 +50,7 @@ To add a new acceptance test, add a section to `tests/acceptance/*.md` (e.g., `t
 **Related**:
 
 - <Links to related workflows, skills, docs>
-```
+````
 
 ## Example Criteria
 
