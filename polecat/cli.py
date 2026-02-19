@@ -1,13 +1,20 @@
 #!/usr/bin/env python3
 import json
 import os
+import re
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
 import click
-from manager import PolecatManager
-from validation import TaskIDValidationError, validate_task_id_or_raise
+
+try:
+    from manager import PolecatManager
+    from validation import TaskIDValidationError, validate_task_id_or_raise
+except ImportError:
+    # Fallback if running as module
+    from .manager import PolecatManager
+    from .validation import TaskIDValidationError, validate_task_id_or_raise
 
 
 def save_worker_transcript(
@@ -816,7 +823,14 @@ def _fetch_github_issue(issue_ref: str, project: str | None) -> dict:
     data = json.loads(result.stdout)
 
     # Synthesize a safe task ID for worktree/branch naming
-    repo_slug = repo.replace("/", "-") if repo else (project or "gh")
+    if repo:
+        # Sanitize repo name: lowercase and replace non-alphanumeric/underscore/hyphen with hyphen
+        repo_slug = re.sub(r"[^a-z0-9_-]", "-", repo.lower())
+        # Collapse multiple hyphens
+        repo_slug = re.sub(r"-+", "-", repo_slug).strip("-")
+    else:
+        repo_slug = project or "gh"
+
     task_id = f"gh-{repo_slug}-{number}"
 
     return {

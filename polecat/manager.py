@@ -7,8 +7,14 @@ import sys
 from pathlib import Path
 
 import yaml
-from observability import metrics
-from validation import validate_task_id_or_raise
+
+try:
+    from observability import metrics
+    from validation import validate_task_id_or_raise
+except ImportError:
+    # Fallback if running as module
+    from .observability import metrics
+    from .validation import validate_task_id_or_raise
 
 # Add aops-core to path for lib imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
