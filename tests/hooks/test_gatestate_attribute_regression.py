@@ -72,12 +72,12 @@ def test_user_prompt_submit_no_attribute_error(tmp_path):
 
                 with env_patch:
                     try:
-                                                    # This should not raise AttributeError
-                                                    instruction = build_hydration_instruction(
-                                                        session_id, "test prompt", state=session_state
-                                                    )
-                                                    assert "Prompt hydration available" in instruction
-                        
+                        # This should not raise AttributeError
+                        instruction = build_hydration_instruction(
+                            session_id, "test prompt", state=session_state
+                        )
+                        assert "Prompt hydration available" in instruction
+
                     finally:
                         hooks.user_prompt_submit.write_temp_file = original_write
 
