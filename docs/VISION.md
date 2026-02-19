@@ -11,18 +11,48 @@ tags:
 
 # academicOps Vision
 
-**Last updated**: 2026-01-08
+**Last updated**: 2026-02-19
 
 > **Why this file matters**: Agents have no persistent memory. VISION.md defines the end state - what we're building and why. Update when fundamental direction changes (rare). Keep out: implementation details, current status.
 
 ## What This Is
 
-An academic support framework for Claude Code. It provides:
+A constitutional automation framework for academic work. academicOps operates through four mechanisms:
 
-1. **Consistent agent behavior** - Principles ([[AXIOMS.md|AXIOMS]]) loaded every session
-2. **Intelligent routing** - Prompts hydrated into complete execution plans
-3. **Quality enforcement** - Workflows embed appropriate quality gates for each task type
-4. **Knowledge persistence** - Memory server + [[archived/specs/remember-skill.md|remember skill]] for institutional memory
+### 1. Synchronous workflow enforcement (local, real-time)
+
+In every local session, the framework defines and enforces universal and modular workflows. Hooks, the hydrator, and custodiet ensure agents use the skills we provide and follow the procedures we define — in real time, as work happens.
+
+- SessionStart loads principles ([[AXIOMS.md|AXIOMS]], [[HEURISTICS.md|HEURISTICS]])
+- Prompt hydration transforms terse inputs into structured execution plans
+- Custodiet detects drift and scope violations during execution
+- Workflows embed quality gates appropriate to each task type
+
+### 2. Asynchronous quality assurance (GitHub as automation hub)
+
+GitHub serves as the coordination layer for agents and humans. PR pipelines run automated review workflows — strategic review, custodiet compliance, QA verification — asynchronously after work is submitted. This catches what synchronous enforcement misses and provides the audit trail.
+
+- PR Pipeline: Setup → Strategic Review → Custodiet → QA → Ready for Review
+- Polecat workers execute tasks autonomously via GitHub Issues
+- CI/CD enforces linting, type checking, and gatekeeper checks
+
+### 3. Baseline capabilities (tasks, memory, management)
+
+The framework provides infrastructure that every session and every project depends on:
+
+- **Task system** — hierarchical task graph with dependencies, decomposition, and lifecycle tracking
+- **Memory server** — semantic search over institutional knowledge, persisted across sessions
+- **Knowledge architecture** — three-repo model (`$AOPS/` public framework, `$ACA_DATA/` private knowledge, project repos)
+
+### 4. Domain-specific academic tools
+
+Generic but academically-focused capabilities that support research workflows:
+
+- Citation management (zotmcp + Zotero)
+- Research data analysis (/analyst skill + dbt + Streamlit)
+- Document conversion and PDF generation
+- Email triage and task capture
+- Writing style enforcement
 
 **Scope**: Supports academic work across ALL repositories.
 
@@ -41,20 +71,9 @@ PROMPT → HYDRATE → EXECUTE (following plan)
 The hydrator receives the user prompt along with session history and memory context, then outputs:
 
 1. **Intent**: What the user actually wants
-2. **Workflow**: Which workflow template applies (simple-question, design, tdd, batch, qa-proof, plan-mode)
+2. **Workflow**: Which workflow template applies
 3. **TodoWrite Plan**: Concrete steps with per-step skill assignments
 4. **Guardrails**: Constraints based on workflow + domain
-
-### Workflow Catalog
-
-| Workflow        | Trigger                       | Quality Gate                   |
-| --------------- | ----------------------------- | ------------------------------ |
-| simple-question | "?", "how", "what"            | Answer accuracy                |
-| design          | File-modifying work           | Verification + commit          |
-| tdd             | New feature, "implement"      | Tests pass                     |
-| batch           | Multiple files, "all", "each" | Per-item + aggregate QA        |
-| qa-proof        | "verify", "check"             | Evidence gathered              |
-| plan-mode       | Framework, infrastructure     | User approval before execution |
 
 ### Key Principles
 
@@ -62,32 +81,6 @@ The hydrator receives the user prompt along with session history and memory cont
 2. **Skills match per-step** — Each step can invoke its own skill
 3. **Workflows define quality** — Each workflow embeds appropriate CHECKPOINTs
 4. **Agent follows plan** — Main agent executes steps without re-deciding
-
-## What It Does
-
-### Currently Working
-
-| Capability                 | Implementation                                             | How Invoked          |
-| -------------------------- | ---------------------------------------------------------- | -------------------- |
-| Research data analysis     | [[archived/specs/analyst-skill.md\|analyst]] skill         | analyst skill        |
-| Citation management        | zotmcp + Zotero                                            | MCP tools            |
-| Task capture from email    | [[archived/specs/tasks-skill.md\|tasks]] skill + /email    | tasks skill + /email |
-| Task visualization         | [[aops-core/skills/excalidraw/SKILL.md\|excalidraw]] skill | excalidraw skill     |
-| Writing style enforcement  | Style guides                                               | Agents follow guides |
-| Knowledge capture          | [[archived/specs/remember-skill.md\|remember]] skill       | remember skill       |
-| Session transcripts        | [[archived/specs/transcript-skill.md\|transcript]] skill   | transcript skill     |
-| Markdown to PDF generation | [[aops-core/skills/pdf/SKILL.md\|pdf]] skill               | pdf skill            |
-
-### Enforcement Mechanisms
-
-| What's Enforced     | How                                               |
-| ------------------- | ------------------------------------------------- |
-| Principles loaded   | SessionStart hook injects AXIOMS, HEURISTICS      |
-| Intent understood   | HYDRATE stage (prompt-hydrator agent)             |
-| Workflow selected   | ROUTE stage (workflow selector)                   |
-| Quality gates met   | ORCHESTRATE stage (workflow-embedded checkpoints) |
-| Drift detected      | custodiet agent (PostToolUse)                     |
-| Knowledge persisted | remember skill (session end)                      |
 
 ## Knowledge Architecture
 

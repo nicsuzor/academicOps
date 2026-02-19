@@ -1,16 +1,21 @@
 # academicOps: A constitutional automation framework for academic work
 
-- Enforces a logical system: every rule derivable from aops-core/AXIOMS.md with aops-core/HEURISTICS.md supported by evidence.
-- Reflexive, self-improving agents must follow a CATEGORICAL IMPERATIVE: every action must be supported by a general rule.
-- Graduated approach to enforcement: aops-core/framework/enforcement-map.md sets out a full map of rules to enforcement mechanism, from gentle reminders to hard blocks.
-- Agent autonomy is limited to the authority they were granted: live ultra vires detection loop
-- Direct integration with beads for task memomory, memory mcp for vector search
-- Full personal knowledge base with gardening and continuous remembering skills
-- Human readable and portable Markdown files are the single sources of truth
-- Everything in git for durability and observability
-- Strict separation of user data (not in this repo)
+academicOps operates through four mechanisms:
+
+1. **Synchronous workflow enforcement** (local, real-time) — Hooks, hydrator, and custodiet define and enforce universal + modular workflows, ensuring agents use the skills we provide and follow the procedures we define in real time.
+
+2. **Asynchronous quality assurance** (GitHub as automation hub) — PR pipelines run strategic review, custodiet compliance, and QA verification after work is submitted. Polecat workers execute tasks autonomously via GitHub Issues.
+
+3. **Baseline capabilities** — Task system (hierarchical graph with dependencies), memory server (semantic search, cross-session persistence), knowledge architecture (three-repo model with strict separation of user data).
+
+4. **Domain-specific academic tools** — Citation management, research data analysis, document conversion/PDF, email triage, writing style enforcement.
+
+### Foundations
+
+- Constitutional: every rule derivable from AXIOMS.md via HEURISTICS.md, supported by evidence
+- Human-readable markdown files are the single sources of truth; everything in git for durability and observability
+- Agents follow a categorical imperative: every action must be supported by a general rule
 - Optimised for long-term strategic planning under conditions of uncertainty
-- Includes integrated MCP tooling for email and calendar access
 
 ## Installation
 
