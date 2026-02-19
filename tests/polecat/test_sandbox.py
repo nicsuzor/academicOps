@@ -8,9 +8,7 @@ that restricts Write and Edit operations to the worktree directory.
 import json
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 # Add polecat to path
 TESTS_DIR = Path(__file__).parent.resolve()
@@ -24,7 +22,6 @@ class TestCreateSandboxSettings:
 
     def test_creates_claude_dir(self, tmp_path):
         """create_sandbox_settings creates .claude/ directory in worktree."""
-        from manager import PolecatManager
 
         manager = _make_manager(tmp_path)
         worktree = tmp_path / "worktree"
@@ -36,7 +33,6 @@ class TestCreateSandboxSettings:
 
     def test_creates_settings_file(self, tmp_path):
         """create_sandbox_settings creates .claude/settings.json."""
-        from manager import PolecatManager
 
         manager = _make_manager(tmp_path)
         worktree = tmp_path / "worktree"
@@ -141,7 +137,6 @@ class TestCreateSandboxSettings:
 
 def _make_manager(tmp_path: Path):
     """Create a PolecatManager with mocked dependencies for unit tests."""
-    from unittest.mock import MagicMock, patch
 
     config = {
         "projects": {},
