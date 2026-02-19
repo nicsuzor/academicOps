@@ -52,7 +52,7 @@ GATE_CONFIGS = [
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
                     custom_action="hydrate_prompt",
-                    system_message_template="💧 Hydration recommended. Gate CLOSED; hydration output pending.",
+                    system_message_template="💧 Hydration recommended. Status: PENDING.",
                 ),
             ),
         ],
@@ -71,9 +71,9 @@ GATE_CONFIGS = [
                 context_template=(
                     "**Prompt hydration suggested.** To ensure alignment with project workflows and axioms, please invoke the **prompt-hydrator** agent with: `{temp_path}`\n\n"
                     "Command:\n"
-                    "- Gemini: `delegate_to_agent(name='aops-core:prompt-hydrator', query='{temp_path}')`\n"
-                    "- Claude: `Task(subagent_type='aops-core:prompt-hydrator', prompt='{temp_path}')`\n\n"
-                    "Invoke the prompt-hydrator to satisfy this gate. Applies to write-category and side-effecting tools; read-only tools are exempt."
+                    "- Gemini: `delegate_to_agent(name='prompt-hydrator', query='{temp_path}')`\n"
+                    "- Claude: `Task(subagent_type='prompt-hydrator', prompt='{temp_path}')`\n\n"
+                    "This is an advisory notice. You may proceed if the task is trivial, but hydration is recommended for any file-modifying work."
                 ),
             )
         ],

@@ -204,18 +204,11 @@ class TestTaskHydratorSpawn:
         # Gate opens later on SubagentStop when hydrator finishes.
 
 
-class TestReadToolExemptFromHydration:
-    """Test that read-only tools are NOT blocked by the hydration gate.
+class TestReadToolBlockedWithoutHydration:
+    """Test that read tools are blocked without hydration (when hydrator not active)."""
 
-    read_only tools are excluded from the hydration gate policy (PR#516).
-    """
-
-    def test_read_allowed_when_hydration_not_passed(self, mock_session_state):
-        """Read should be allowed even when hydration gate is not passed.
-
-        read_only tools are excluded from the hydration gate policy, so
-        they bypass the gate entirely regardless of hydration status.
-        """
+    def test_read_blocked_when_hydration_not_passed(self, mock_session_state):
+        """Read should be blocked when hydration gate is not passed."""
         state, _ = mock_session_state
         state.close_gate("hydration")
         # Ensure temp_path is present in metrics for template rendering
@@ -231,11 +224,13 @@ class TestReadToolExemptFromHydration:
         )
 
         router = HookRouter()
+
+        # Mock hydration gate mode to deny if needed, but defaults to DENY in policy
         result = router._dispatch_gates(ctx, state)
 
-        # Read is a read_only tool, excluded from hydration gate: should be allowed
-        if result:
-            assert result.verdict == GateVerdict.ALLOW
+        # Should block or warn because hydration is required for read_only
+        assert result
+        assert result.verdict in (GateVerdict.DENY, GateVerdict.WARN)
 
     def test_read_allowed_when_hydration_passed(self, mock_session_state):
         """Read should be allowed when hydration gate is passed."""

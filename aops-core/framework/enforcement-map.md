@@ -342,8 +342,6 @@ The TASK GATE tracks three conditions for full compliance:
 
 **Full enforcement**: Set `TASK_GATE_ENFORCE_ALL=1` to require all three gates.
 
-**Hydration enforcement mode**: `warn` (default). The hydration gate is advisory; agents receive guidance but are not blocked. Override via `HYDRATION_GATE_MODE=block` env var. Default changed from `block` to `warn` on 2026-02-19 to accommodate zero-friction ADHD workflow and minimal maintenance requirements. Read-only tools are excluded from the gate policy.
-
 **Binding flow**:
 
 1. Hydrator guides: "claim existing or create new task"
