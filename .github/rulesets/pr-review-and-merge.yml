@@ -1,0 +1,113 @@
+# GitHub Ruleset: PR Review and Merge rules
+# Ruleset ID: 12723813
+# Applied to: default branch (~DEFAULT_BRANCH) of nicsuzor/academicOps
+#
+# This file is the authoritative reference for the repository ruleset.
+# It cannot be auto-applied via REST API (some rule types like merge_queue
+# and copilot_code_review_analysis_tools are UI-only), but it serves as:
+#   1. A diff-reviewable record of what rules are active
+#   2. A sync target for rules that CAN be updated via API (see below)
+#   3. Input for the validate-ruleset-alignment CI check
+#
+# To apply API-compatible rules from this file, run:
+#   scripts/sync-ruleset.sh
+#
+# Rules NOT configurable via REST API (must be set in GitHub UI):
+#   - merge_queue (Settings → Rules → Rulesets → add Merge queue rule)
+#   - copilot_code_review_analysis_tools (CodeQL — re-add after any API update)
+#
+# Recommended merge queue settings (set via UI):
+#   merge_method: REBASE
+#   min_entries_to_merge: 1
+#   min_entries_to_merge_wait_minutes: 5
+#   max_entries_to_build: 5
+#   max_entries_to_merge: 5
+#   grouping_strategy: ALLGREEN
+
+name: PR Review and Merge rules
+
+# Which branches this ruleset applies to
+target: branch
+conditions:
+  ref_name:
+    include:
+      - ~DEFAULT_BRANCH  # main branch
+    exclude: []
+
+enforcement: active
+
+# Who can bypass these rules (admin role)
+bypass_actors:
+  - actor_id: 5          # Repository admin role
+    actor_type: RepositoryRole
+    bypass_mode: always
+
+rules:
+  # ─────────────────────────────────────────
+  # Prevent branch deletion
+  # ─────────────────────────────────────────
+  - type: deletion
+    # Purpose: Protects main from accidental deletion
+
+  # ─────────────────────────────────────────
+  # Require linear history (no force-push)
+  # ─────────────────────────────────────────
+  - type: non_fast_forward
+    # Purpose: Prevents force-pushes that would rewrite history on main
+
+  # ─────────────────────────────────────────
+  # Require pull request before merging
+  # ─────────────────────────────────────────
+  - type: pull_request
+    parameters:
+      required_approving_review_count: 1
+      # Approval #1: Gatekeeper (claude[bot]) — automated, runs in parallel with lint
+      # Approval #2: Merge Agent (github-actions[bot]) — triggered by human LGTM
+      dismiss_stale_reviews_on_push: false
+      require_code_owner_review: false
+      require_last_push_approval: false
+      required_review_thread_resolution: false
+      allowed_merge_methods:
+        - rebase
+      # Note: squash and merge-commit are disabled at repo level and here.
+      # Rebase-only keeps a linear history compatible with the merge queue.
+
+  # ─────────────────────────────────────────
+  # Required status checks
+  # ─────────────────────────────────────────
+  - type: required_status_checks
+    parameters:
+      strict_required_status_checks_policy: false
+      # strict=false: PR branch does not need to be up to date with base before merge.
+      # The merge queue handles rebasing; strict mode is redundant and adds friction.
+      do_not_enforce_on_create: false
+      required_status_checks:
+        - context: Lint
+          # CRITICAL: This must exactly match the `name:` of the job in code-quality.yml.
+          # Current job name: "Lint" (capital L). Any mismatch silently blocks all PRs.
+          # Run `scripts/validate-ruleset-alignment.sh` to verify alignment.
+
+  # ─────────────────────────────────────────
+  # Code quality (CodeQL / Copilot analysis)
+  # ─────────────────────────────────────────
+  - type: code_quality
+    parameters:
+      severity: errors
+    # Note: This rule type is NOT configurable via REST API.
+    # If it disappears after an API update (which drops it silently),
+    # re-add it via GitHub UI: Settings → Rules → Rulesets → edit → add Code quality rule.
+    # The copilot_code_review_analysis_tools (CodeQL) check runs automatically
+    # once this rule is active.
+
+  # ─────────────────────────────────────────
+  # Merge queue (UI-only, not in API)
+  # ─────────────────────────────────────────
+  # merge_queue rule must be added via GitHub UI. Recommended settings:
+  #   merge_method: REBASE
+  #   min_entries: 1
+  #   wait_minutes: 5
+  #   max_entries_to_build: 5
+  #   grouping_strategy: ALLGREEN
+  # When enabled, gh pr merge --merge-queue in pr-lgtm-merge.yml enqueues PRs.
+  # The queue rebases each PR on the current main head and reruns required checks
+  # before merging, eliminating cascade conflicts from multiple concurrent PRs.
