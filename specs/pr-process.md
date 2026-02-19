@@ -10,7 +10,9 @@ How pull requests move from open to merged (or rejected) in the aops repository.
 | PR Pipeline | `pr-review-pipeline.yml`    | `workflow_run` (Code Quality), LGTM comments, dispatch | LLM review chain (strategic → QA) + merge agent |
 | Claude      | `claude.yml`                | `@claude` in comments                          | On-demand Claude interaction       |
 
-Merge is handled by GitHub's auto-merge feature. The ruleset requires **2 approvals**: one from the gatekeeper bot (`claude[bot]`, automated) and one from the LGTM merge agent (`github-actions[bot]`, triggered by human approval). GitHub merges automatically once both approvals and status checks are satisfied.
+Merge is handled by GitHub's **merge queue**. The ruleset requires **2 approvals**: one from the gatekeeper bot (`claude[bot]`, automated) and one from the LGTM merge agent (`github-actions[bot]`, triggered by human approval). When the merge agent confirms LGTM, it adds the PR to the merge queue. GitHub then rebases the PR against the latest main, reruns required checks, and merges automatically — eliminating manual serial rebases when multiple PRs are in flight.
+
+> **Setup note**: Merge queue is enabled in the repository ruleset (GitHub Settings → Rules → Rulesets → "PR Review and Merge rules"). It cannot be configured via REST API — use the GitHub UI to enable/configure the merge queue rule.
 
 ## Flowchart
 
@@ -82,12 +84,12 @@ flowchart TD
     TestPass -- No --> FixCI["Fix issues,<br/>commit + push"]
     FixCI --> RunTests
     TestPass -- Yes --> Verdict{Claude<br/>verdict}
-    Verdict -- "LGTM:" --> AutoApprove["Workflow approves PR<br/><i>🔑 Approval #2 (github-actions[bot])</i><br/>+ enables auto-merge"]
+    Verdict -- "LGTM:" --> AutoApprove["Workflow approves PR<br/><i>🔑 Approval #2 (github-actions[bot])</i><br/>+ adds to merge queue"]
     Verdict -- "Request changes" --> BackToAuthor["Back to human review"]
     BackToAuthor --> HumanReview
     Verdict -- "Close" --> Rejected
 
-    AutoApprove --> Merged["Auto-merged by GitHub<br/><i>(2/2 approvals met)</i>"]
+    AutoApprove --> Merged["Merged by GitHub merge queue<br/><i>(rebased + checks passed)</i>"]
 
     %% ── Styling ──
     classDef gate fill:#e8f4fd,stroke:#2196f3
@@ -126,7 +128,7 @@ pr-review-pipeline.yml:  setup → strategic-review → custodiet → qa → not
 
 Lint and gatekeeper run in parallel because they have no logical dependency: lint handles syntax while gatekeeper reviews alignment via `gh pr diff` (GitHub API). Type-check depends on lint (for autofix commits) but not on gatekeeper. The `workflow_run` trigger fires with `conclusion: success` only when ALL jobs pass, so a gatekeeper failure still blocks the downstream pipeline.
 
-GitHub auto-merge handles the final merge once both required approvals are in place.
+The merge queue handles the final merge. When a PR is added to the queue, GitHub rebases it against the current head of main, runs all required status checks, and merges it automatically. Multiple PRs queue in order; each is tested against the result of merging all prior queued PRs, preventing cascade conflicts.
 
 ## Approval architecture
 
@@ -134,10 +136,10 @@ The ruleset requires **2 approving reviews** before merge:
 
 | Approval | Actor | When | How |
 |----------|-------|------|-----|
-| #1 Gatekeeper | `claude[bot]` | Automated, parallel with lint (in pr-checks.yml) | `gh pr review --approve` inside claude-code-action |
+| #1 Gatekeeper | `claude[bot]` | Automated, parallel with lint (in code-quality.yml) | `gh pr review --approve` inside claude-code-action |
 | #2 LGTM merge | `github-actions[bot]` | After human triggers merge via approval/LGTM comment | `gh pr review --approve` via GITHUB_TOKEN |
 
-The human reviewer's LGTM comment or formal approval **triggers** the merge agent, which addresses review comments and then lodges the second approval. The human only acts once.
+The human reviewer's LGTM comment or formal approval **triggers** the merge agent, which addresses review comments, lodges the second approval, and adds the PR to the merge queue. The human only acts once.
 
 ## Stage-by-stage walkthrough
 
@@ -267,11 +269,13 @@ The merge agent prepares the PR for merge by handling everything in one pass:
 6. **Fix lint/CI errors** introduced by any of the above changes
 7. **Run tests** and verify all checks pass
 8. **Post final verdict**:
-   - `LGTM:` -- workflow approves the PR (`github-actions[bot]`, approval #2) and enables auto-merge
+   - `LGTM:` -- workflow approves the PR (`github-actions[bot]`, approval #2) and adds to merge queue
    - `Request changes:` -- back to human review
    - `Close:` -- PR rejected
 
-When the merge agent confirms LGTM, the workflow lodges approval #2 from `github-actions[bot]` and enables auto-merge. Combined with the gatekeeper's earlier approval #1 from `claude[bot]`, this satisfies the 2-approval requirement and GitHub merges automatically.
+When the merge agent confirms LGTM, the workflow lodges approval #2 from `github-actions[bot]` and adds the PR to the **merge queue** (`gh pr merge --merge-queue`). The merge queue automatically rebases each PR against the latest main, runs required checks in a temporary merge branch, and merges in order. This eliminates the cascade-conflict problem when multiple polecat PRs are in flight simultaneously.
+
+If merge queue is not yet enabled, the workflow falls back to `gh pr merge --auto --rebase`.
 
 The merge agent has unrestricted Bash access. This is acceptable because it has no repo admin permissions -- the worst case is damage scoped to the PR branch itself.
 
@@ -314,3 +318,5 @@ To modify this process:
 - **Change merge trigger patterns**: Edit the LGTM grep pattern in `pr-review-pipeline.yml`
 - **Adjust concurrency**: Edit `concurrency` blocks in `pr-review-pipeline.yml`
 - **Pre-commit hooks** (local): Edit `.pre-commit-config.yaml`
+- **Merge queue settings**: Configure via GitHub UI → Settings → Rules → Rulesets → "PR Review and Merge rules" → add merge_queue rule. Recommended settings: merge method = rebase, min entries = 1, max to build = 5, grouping = ALLGREEN.
+- **Allowed merge methods**: Currently restricted to rebase-only (enforced by ruleset). Do not add merge-commit or squash without updating the merge agent prompt.

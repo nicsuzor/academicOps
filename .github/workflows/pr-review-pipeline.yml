@@ -424,22 +424,23 @@ jobs:
           echo "Approving PR #$PR_NUM"
           gh pr review "$PR_NUM" --approve
 
-      - name: Merge PR (fallback if auto-merge not triggered)
+      - name: Add to merge queue
         if: steps.pr-ref.outputs.ref != '' && steps.lgtm-status.outputs.lgtm == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
 
-          # Check if auto-merge is already enabled
-          AUTO_MERGE=$(gh pr view "$PR_NUM" --json autoMergeRequest --jq '.autoMergeRequest != null')
-
-          if [ "$AUTO_MERGE" = "true" ]; then
-            echo "Auto-merge is enabled - GitHub will handle the merge"
+          # Add to merge queue (preferred path when merge queue is enabled).
+          # gh pr merge --merge-queue enqueues the PR; GitHub handles rebasing,
+          # running required checks against the queue head, and merging automatically.
+          # Falls back to direct rebase merge if merge queue is not configured.
+          if gh pr merge "$PR_NUM" --merge-queue --repo "${{ github.repository }}" 2>/dev/null; then
+            echo "PR #$PR_NUM added to merge queue"
           else
-            echo "Auto-merge not enabled - attempting direct merge"
-            gh pr merge "$PR_NUM" --rebase --delete-branch --repo "${{ github.repository }}" || {
-              echo "Direct merge failed - PR may require additional approvals or checks"
+            echo "Merge queue not available - falling back to auto-merge (direct rebase on check pass)"
+            gh pr merge "$PR_NUM" --auto --rebase --repo "${{ github.repository }}" || {
+              echo "Direct merge also failed - PR may require additional approvals or checks"
               exit 1
             }
           fi
