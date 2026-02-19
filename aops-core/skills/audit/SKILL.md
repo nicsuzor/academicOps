@@ -25,8 +25,8 @@ TodoWrite(todos=[
   {content: "Phase 3: Skill content audit - check size and actionability", status: "pending", activeForm: "Auditing skill content"},
   {content: "Phase 4: Justification audit - check specs for file references", status: "pending", activeForm: "Auditing file justifications"},
   {content: "Phase 4b: Instruction justification - verify every instruction traces to framework/enforcement-map.md", status: "pending", activeForm: "Auditing instruction justifications"},
-  {content: "Phase 5: Documentation accuracy - verify README.md flowchart vs hooks", status: "pending", activeForm": "Verifying documentation"},
-  {content: "Phase 6: Regenerate indices - invoke Skill(skill='flowchart') for README.md flowchart", status: "pending", activeForm: "Regenerating indices"},
+  {content: "Phase 5: Documentation accuracy - verify README.md flowcharts (hooks + CI/CD)", status: "pending", activeForm: "Verifying documentation"},
+  {content: "Phase 6: Regenerate indices - invoke Skill(skill='flowchart') for README.md flowcharts", status: "pending", activeForm: "Regenerating indices"},
   {content: "Phase 7: Other updates", status: "pending", activeForm: "Finalizing updates"},
   {content: "Phase 8: Save audit report to $ACA_DATA/projects/aops/audit/YYYY-MM-DD-HHMMSS-audit.md", status: "pending", activeForm: "Persisting report"},
   {content: "Phase 8b: Transcript QA - scan recent sessions for hydration gaps and operational failures", status: "pending", activeForm: "Running transcript QA analysis"},
@@ -200,18 +200,27 @@ FRAMEWORK-PATHS.md:35 - "When working with session logs, always invoke Skill(ski
 
 ### Phase 5: Documentation Accuracy
 
-Verify README.md flowchart reflects actual hook architecture:
+Verify README.md flowcharts reflect actual architecture:
+
+**Local hooks flowchart** (Core Loop Diagram):
 
 1. Parse Mermaid for hook names
 2. Compare to hooks/router.py dispatch mappings
 3. Compare to settings.json hook events
 4. Flag drift
 
+**CI/CD pipeline flowchart** (placed after the Core Loop Diagram):
+
+1. Parse Mermaid for workflow names and stage sequence
+2. Compare to `.github/workflows/*.yml` files — check job names, trigger types, and `needs:` dependencies
+3. Compare to `specs/pr-process.md` — check stage descriptions match workflow reality
+4. Flag drift (missing workflows, wrong triggers, stale job names)
+
 ### Phase 6: Curate Index Files
 
 Index files are root-level files for agent consumption. The auditing agent curates these using LLM judgment, not mechanical script generation.
 
-**Target files**: INDEX.md, enforcement-map.md, WORKFLOWS.md, SKILLS.md, AXIOMS.md, HEURISTICS.md, docs/ENFORCEMENT.md, README.md (flowchart section).
+**Target files**: INDEX.md, enforcement-map.md, WORKFLOWS.md, SKILLS.md, AXIOMS.md, HEURISTICS.md, docs/ENFORCEMENT.md, README.md (flowchart sections: local hooks + CI/CD pipeline).
 
 **Approach**: For each index file, read the source materials, then write a curated index that accurately reflects current state. Use your judgment to:
 
@@ -231,7 +240,8 @@ Index files are root-level files for agent consumption. The auditing agent curat
 | INDEX.md              | Filesystem scan of `$AOPS/`                           | File tree with accurate purpose annotations               |
 | enforcement-map.md    | `hooks/*.py` "Enforces:" docstrings, `gate_config.py` | Axiom-to-hook mapping accuracy                            |
 | docs/ENFORCEMENT.md   | `specs/enforcement.md`, existing content              | Mechanism ladder, root cause model                        |
-| README.md (flowchart) | `hooks/router.py`, `gate_config.py`, `gates.py`       | Invoke `Skill(skill="flowchart")` first. Mermaid accuracy |
+| README.md (hooks flowchart) | `hooks/router.py`, `gate_config.py`, `gates.py`       | Invoke `Skill(skill="flowchart")` first. Mermaid accuracy |
+| README.md (CI/CD flowchart) | `.github/workflows/*.yml`, `specs/pr-process.md`      | Invoke `Skill(skill="flowchart")` first. Stage sequence + triggers |
 
 #### WORKFLOWS.md Curation
 
@@ -289,11 +299,52 @@ Enforces: current-state-machine (Current State Machine)
 2. Compare against enforcement-map.md Axiom-Enforcement table
 3. Flag discrepancies (hook declares axiom not in map, map lists hook without declaration, etc.)
 
-#### README.md Flowchart
+#### README.md Flowchart (Local Hooks)
 
 **First**: Invoke `Skill(skill="flowchart")` to load Mermaid conventions.
 
 Regenerate the core loop flowchart from `hooks/router.py` dispatch mappings, `gate_config.py` gate definitions, and `hooks/*.py` implementations. Every gate in `gate_config.py` must be represented.
+
+#### README.md Flowchart (CI/CD Pipeline)
+
+Place this flowchart in README.md **after** the Core Loop Diagram, under a `### CI/CD Pipeline` heading. Include a concise summary paragraph before the flowchart.
+
+**First**: Invoke `Skill(skill="flowchart")` to load Mermaid conventions.
+
+**Source of truth**: `specs/pr-process.md` contains the canonical flowchart and stage descriptions. The README version is a **simplified summary** — not a duplication.
+
+**Generation steps**:
+
+1. Read `specs/pr-process.md` — extract the stage sequence, workflow file names, and approval architecture
+2. Read `.github/workflows/*.yml` — verify job names, triggers, and `needs:` dependencies match the spec
+3. Generate a simplified Mermaid flowchart showing:
+   - The 4 workflow files and their trigger relationships
+   - The stage sequence: lint → gatekeeper → type-check → (pytest + review pipeline) → human review → merge agent → merge queue
+   - The 2-approval gate (claude[bot] + github-actions[bot])
+4. Write a 2-3 sentence summary paragraph above the flowchart explaining the pipeline purpose
+
+**Content structure in README.md**:
+
+```markdown
+### CI/CD Pipeline
+
+The PR pipeline runs automated checks across four workflow files linked by
+`workflow_run` triggers. Two LLM approvals are required before merge: a
+gatekeeper check (alignment + quality) and a merge agent check (after human
+LGTM). See `specs/pr-process.md` for full documentation.
+
+```mermaid
+flowchart LR
+    ...simplified pipeline diagram...
+```
+```
+
+**Accuracy checks** (flag drift if any fail):
+
+- Every `.github/workflows/*.yml` PR-related workflow appears in the diagram
+- Job names in the diagram match actual `name:` fields in workflow files
+- Trigger types (workflow_run, issue_comment, etc.) are correctly attributed
+- The approval architecture (2 approvals, which actors) matches the live ruleset
 
 #### Generated File Header
 
@@ -418,7 +469,8 @@ For each finding from Phases 0-7 that requires action:
 | Explanatory content in skill                     | P2       | chore      | audit,refactor      |
 | Missing from INDEX.md                            | P3       | chore      | audit,documentation |
 | Orphan instruction (no enforcement-map.md trace) | P2       | bug        | audit,governance    |
-| README.md flowchart drift                        | P2       | bug        | audit,documentation |
+| README.md hooks flowchart drift                  | P2       | bug        | audit,documentation |
+| README.md CI/CD flowchart drift                  | P2       | bug        | audit,documentation |
 | Hook→Axiom mismatch                              | P2       | bug        | audit,governance    |
 | Recurring hydration gap (2+ sessions or score≥6) | P2       | bug        | audit,hydration     |
 | Critical stuck pattern (repeat≥3)                | P1       | bug        | audit,hydration     |
