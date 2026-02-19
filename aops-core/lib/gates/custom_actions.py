@@ -23,7 +23,7 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:
     transcript_path = ctx.transcript_path or ctx.raw_input.get("transcript_path")
     session_context = ""
     if transcript_path:
-        if gate in ("critic", "custodiet"):
+        if gate == "custodiet":
             from lib.session_reader import build_critic_session_context
 
             try:
@@ -141,10 +141,5 @@ def execute_custom_action(
             context_injection=instruction,
         )
 
-    if name in ("prepare_critic_review", "prepare_qa_review"):
-        gate_name = name.replace("prepare_", "").replace("_review", "")
-        temp_path = create_audit_file(ctx.session_id, gate_name, ctx)
-        state.metrics["temp_path"] = str(temp_path)
-        return None
 
     return None

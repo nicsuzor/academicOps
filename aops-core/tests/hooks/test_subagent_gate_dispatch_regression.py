@@ -142,14 +142,15 @@ class TestSubagentGateDispatch:
         """When a subagent stops, triggers must still fire.
 
         Before the fix, `if ctx.is_subagent: pass` skipped all gate dispatch
-        for subagent sessions. Triggers like critic gate opening on SubagentStop
+        for subagent sessions. Triggers like a gate opening on SubagentStop
         never ran.
         """
         session_id, state = mock_session
 
-        # Set up: critic gate has high ops count (should be reset by trigger)
-        state.gates["critic"].ops_since_open = 50
-        state.gates["critic"].status = GateStatus.OPEN
+        # Set up: gate has high ops count (should be reset by trigger)
+        # Using get_gate to ensure it exists even if not in defaults
+        state.get_gate("critic").ops_since_open = 50
+        state.get_gate("critic").status = GateStatus.OPEN
 
         ctx = HookContext(
             session_id=session_id,
@@ -170,7 +171,7 @@ class TestSubagentGateDispatch:
             router.execute_hooks(ctx)
 
         # Critic trigger should have fired and reset ops
-        assert state.gates["critic"].ops_since_open == 0
+        assert state.get_gate("critic").ops_since_open == 0
 
     def test_subagent_triggers_run_on_post_tool_use(self, mock_session, test_registry):
         """PostToolUse in subagent sessions must still increment ops counters."""

@@ -81,14 +81,14 @@ class TestGetGateFilePath:
         (tmp_path / "gemini-logs").mkdir(parents=True)
 
         session_id = "gemini-session-123"
-        gate = "qa"
+        gate = "custodiet"
         date = "2024-05-20"
 
         path = get_gate_file_path(gate, session_id, date=date)
 
         # Short hash for "gemini-session-123" will be a SHA256 prefix because of '-'
         short_hash = get_session_short_hash(session_id)
-        expected_path = tmp_path / "gemini-logs" / f"20240520-{short_hash}-qa.md"
+        expected_path = tmp_path / "gemini-logs" / f"20240520-{short_hash}-custodiet.md"
 
         assert path == expected_path
 
@@ -102,10 +102,10 @@ class TestGetGateFilePath:
 
         # Use AOPS_SESSION_STATE_DIR to trigger Gemini detection for a UUID session
         with patch.dict(os.environ, {"AOPS_SESSION_STATE_DIR": str(gemini_state_dir)}):
-            path = get_gate_file_path("critic", session_id, date="2024-05-20")
+            path = get_gate_file_path("hydration", session_id, date="2024-05-20")
 
             assert "/.gemini/tmp/fakehash/logs" in str(path)
-            assert "20240520-550e8400-critic.md" in str(path)
+            assert "20240520-550e8400-hydration.md" in str(path)
             assert path.parent == gemini_logs_dir
 
     def test_gemini_missing_logs_dir_raises_error(self):
