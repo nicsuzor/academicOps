@@ -48,11 +48,11 @@ For detailed guidance on decomposition patterns, see the [[planning]] skill:
 
 ### Spike vs Placeholder
 
-| Situation                              | Use Spike            | Use Placeholder   |
-| -------------------------------------- | -------------------- | ----------------- |
-| "We don't know if X is possible"       | Investigate first    |                   |
-| "We know X is needed, details TBD"     |                      | Capture intent    |
-| "Implementation approach is unclear"   | Prototype/probe      |                   |
+| Situation                            | Use Spike         | Use Placeholder |
+| ------------------------------------ | ----------------- | --------------- |
+| "We don't know if X is possible"     | Investigate first |                 |
+| "We know X is needed, details TBD"   |                   | Capture intent  |
+| "Implementation approach is unclear" | Prototype/probe   |                 |
 
 ### Dependency Selection
 

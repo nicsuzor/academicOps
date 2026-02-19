@@ -208,7 +208,7 @@ update_task(id=task_id, status='waiting', body=synthesis_markdown)
 
 ### Issues Requiring Resolution
 
-   - **Suggested fix**: [how to address]
+- **Suggested fix**: [how to address]
 
 2. [Issue from custodiet if WARN]: [scope concern]
    - **Suggested fix**: [how to narrow scope]

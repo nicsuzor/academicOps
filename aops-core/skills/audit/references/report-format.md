@@ -60,6 +60,7 @@ Status of updated indices:
 ## Human Review Queue
 
 List of items requiring manual intervention:
+
 - Broken wikilinks that couldn't be auto-resolved.
 - Acceptance test failures.
 - Other discrepancies.

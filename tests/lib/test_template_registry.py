@@ -97,7 +97,6 @@ def test_get_spec_all_registered_templates(registry):
     ]
 
     for name in expected_names:
-
         spec = registry.get_spec(name)
         assert spec is not None, f"Template {name} not registered"
         assert spec.name == name

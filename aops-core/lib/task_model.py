@@ -60,6 +60,7 @@ def get_agent_assignee() -> str:
     """Get the default agent assignee from environment or convention."""
     return os.environ.get("AOPS_AGENT_ASSIGNEE", "polecat")
 
+
 E = TypeVar("E", bound=Enum)
 
 

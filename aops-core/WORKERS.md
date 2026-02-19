@@ -122,12 +122,12 @@ get picked up on the next dispatch cycle.
 Standard exit codes from `polecat run` (informational — supervisor doesn't
 need to act on these; workers handle their own lifecycle):
 
-| Exit Code | Meaning       | What happens                          |
-| --------- | ------------- | ------------------------------------- |
-| 0         | Success       | Worker pushes branch, creates PR      |
+| Exit Code | Meaning       | What happens                               |
+| --------- | ------------- | ------------------------------------------ |
+| 0         | Success       | Worker pushes branch, creates PR           |
 | 1         | Task failure  | Task stays in_progress, stale-check resets |
 | 2         | Setup failure | Task stays in_progress, stale-check resets |
-| 3         | Queue empty   | Normal - worker exits cleanly         |
+| 3         | Queue empty   | Normal - worker exits cleanly              |
 
 ## Swarm Sizing Defaults
 
@@ -145,11 +145,11 @@ Recommended swarm composition based on queue characteristics.
 
 Hard limits on concurrent workers.
 
-| Worker Type | Max Concurrent | Reason                                  |
-| ----------- | -------------- | --------------------------------------- |
-| claude      | 2              | API rate limits, cost                   |
+| Worker Type | Max Concurrent | Reason                                        |
+| ----------- | -------------- | --------------------------------------------- |
+| claude      | 2              | API rate limits, cost                         |
 | gemini      | 2              | Free tier quota; was 4, reduced after crashes |
-| jules       | 7+             | Async on Google infra, no local limits  |
+| jules       | 7+             | Async on Google infra, no local limits        |
 
 **Note on Jules**: Jules sessions run asynchronously on Google infrastructure.
 Unlike polecat workers which consume local resources, Jules sessions are

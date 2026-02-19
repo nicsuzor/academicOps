@@ -13,11 +13,11 @@ Process inline HTML comments for asynchronous human-agent collaboration across f
 
 ## Supported File Types
 
-| Type       | Extension                      | Notes                                                                            |
-| ---------- | ------------------------------ | -------------------------------------------------------------------------------- |
-| Markdown   | `.md`                          | Primary use case. HTML comments invisible in rendered output.                    |
+| Type       | Extension                      | Notes                                                                              |
+| ---------- | ------------------------------ | ---------------------------------------------------------------------------------- |
+| Markdown   | `.md`                          | Primary use case. HTML comments invisible in rendered output.                      |
 | Python     | `.py`                          | Use `# <!-- @user: comment -->` format. HTML comments work but are unconventional. |
-| Other text | `.txt`, `.toml`, `.yaml`, etc. | Any file the agent can read/edit. Use appropriate comment syntax.                |
+| Other text | `.txt`, `.toml`, `.yaml`, etc. | Any file the agent can read/edit. Use appropriate comment syntax.                  |
 
 **Unsupported**: Binary files, images, compiled code.
 

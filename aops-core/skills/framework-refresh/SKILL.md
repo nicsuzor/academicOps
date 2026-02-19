@@ -29,6 +29,7 @@ uv run python $AOPS/aops-core/scripts/framework_refresh.py
 ```
 
 This script handles:
+
 - Core task index regeneration (via `fast-indexer`)
 - Knowledge graph generation
 - Dashboard task map rendering (SVG)
@@ -38,6 +39,7 @@ This script handles:
 ### 2. Manual Verification
 
 After running the script, verify:
+
 - `${ACA_DATA}/tasks/index.json` is updated
 - `${ACA_DATA}/outputs/task-map.svg` exists and is recent
 - Memory server queries return new content

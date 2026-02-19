@@ -62,6 +62,7 @@ git status --porcelain
 ### Step 3: Persist Discoveries to Memory (Optional)
 
 If significant discoveries or learnings occurred, persist them to memory:
+
 ```
 mcp__memory__store_memory(content="...", tags=["dump", "handover"])
 ```

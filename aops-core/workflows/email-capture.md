@@ -740,10 +740,10 @@ For each action item:
 
 Different email accounts require different tools for archiving:
 
-| Account                  | Tool               | Parameter               | Notes                                                 |
-| ------------------------ | ------------------ | ----------------------- | ----------------------------------------------------- |
+| Account                     | Tool               | Parameter               | Notes                                                 |
+| --------------------------- | ------------------ | ----------------------- | ----------------------------------------------------- |
 | Personal (user@example.com) | `messages_archive` | `folder_id="211"`       | Gmail requires folder ID (account param doesn't work) |
-| Work (user@example.edu.au) | `messages_move`    | `folder_path="Archive"` | Standard Exchange folder path                         |
+| Work (user@example.edu.au)  | `messages_move`    | `folder_path="Archive"` | Standard Exchange folder path                         |
 
 **Personal archive** (uses `messages_archive` with folder ID):
 

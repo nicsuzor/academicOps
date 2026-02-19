@@ -430,7 +430,9 @@ def generate_dot(
         vault_name = os.environ.get("AOPS_OBSIDIAN_VAULT", "writing")
         # Ensure path is relative to data root if possible
         # Node IDs from fast-indexer are usually paths relative to scan root
-        link_url = f"obsidian://open?vault={vault_name}&file={quote(file_path)}" if file_path else ""
+        link_url = (
+            f"obsidian://open?vault={vault_name}&file={quote(file_path)}" if file_path else ""
+        )
         href_attr = f'URL="{link_url}" target="_blank" ' if link_url else ""
 
         # For incomplete tasks, use assignee color for border; otherwise priority color

@@ -45,6 +45,7 @@ The `/decision-extract` skill identifies pending decisions:
 ### 2.2 Prioritization
 
 Decisions are prioritized by:
+
 1. **Blocking count**: How many tasks depend on this? (Higher = more urgent)
 2. **Priority**: The priority of the task itself (P0 > P1)
 3. **Age**: Older decisions first
@@ -53,8 +54,8 @@ Decisions are prioritized by:
 
 The daily note includes a `## Pending Decisions` section.
 
-| Source | Status | Task | Context |
-|---|---|---|---|
+| Source      | Status                                    | Task                 | Context                         |
+| ----------- | ----------------------------------------- | -------------------- | ------------------------------- |
 | Task system | Status = `waiting` with `assignee: human` | "Approve design doc" | Options: approve, reject, defer |
 
 ## 4. Resolution Flow

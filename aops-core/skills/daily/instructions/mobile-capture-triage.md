@@ -10,6 +10,7 @@ Glob: notes/mobile-captures/*.md
 ```
 
 Read each file. A capture is **unprocessed** if:
+
 - `processed: false` in frontmatter, OR
 - No `processed` field in frontmatter
 
@@ -31,6 +32,7 @@ What should we do with these?
 Use `AskUserQuestion` for each capture (or batch if the user prefers):
 
 **Triage actions:**
+
 - **→ Task**: Create a task via `mcp__plugin_aops-core_task_manager__create_task()` with content from the capture. Ask user for project/priority if not obvious.
 - **→ Note**: Keep as-is in `notes/mobile-captures/`, just mark processed. The note is already stored.
 - **→ Expand**: The idea needs fleshing out. Create a task with `type: learn` or `type: feature` and include the raw capture as the body.
@@ -59,7 +61,7 @@ Add a summary to the daily note under `## Mobile Captures` (insert before `## FY
 - **Register microcommons** → Task [aops-xyz] in [[project-name]]
 - **Faster note processing** → Discarded (implemented)
 
-*2 captures processed*
+_2 captures processed_
 ```
 
 If captures were triaged on a previous run today, update the section incrementally.

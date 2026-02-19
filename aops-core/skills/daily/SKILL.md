@@ -45,18 +45,18 @@ Every `/daily` invocation runs the **full pipeline** and updates the daily note 
 
 ## Section Ownership
 
-| Section                 | Owner    | Updated By                               |
-| ----------------------- | -------- | ---------------------------------------- |
-| Mobile Captures         | `/daily` | Triage from notes/mobile-captures (mixed)|
-| Focus                   | `/daily` | Task data + user priorities (mixed)      |
-| Task Tree               | `/daily` | Task hierarchy snapshot (machine)        |
-| Today's Story           | `/daily` | Synthesis from merges + sessions + tasks |
-| FYI                     | `/daily` | Email triage (mixed)                     |
-| Merged PRs              | `/daily` | GitHub API query (machine)               |
-| Session Log/Timeline    | `/daily` | Session JSON synthesis (machine)         |
-| Project Accomplishments | `/daily` | Session JSON synthesis (mixed)           |
-| Reflection              | `/daily` | Goals vs achieved analysis (machine)     |
-| Abandoned Todos         | `/daily` | End-of-day (user)                        |
+| Section                 | Owner    | Updated By                                |
+| ----------------------- | -------- | ----------------------------------------- |
+| Mobile Captures         | `/daily` | Triage from notes/mobile-captures (mixed) |
+| Focus                   | `/daily` | Task data + user priorities (mixed)       |
+| Task Tree               | `/daily` | Task hierarchy snapshot (machine)         |
+| Today's Story           | `/daily` | Synthesis from merges + sessions + tasks  |
+| FYI                     | `/daily` | Email triage (mixed)                      |
+| Merged PRs              | `/daily` | GitHub API query (machine)                |
+| Session Log/Timeline    | `/daily` | Session JSON synthesis (machine)          |
+| Project Accomplishments | `/daily` | Session JSON synthesis (mixed)            |
+| Reflection              | `/daily` | Goals vs achieved analysis (machine)      |
+| Abandoned Todos         | `/daily` | End-of-day (user)                         |
 
 ## Formatting Rules
 

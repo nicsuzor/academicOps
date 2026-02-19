@@ -25,11 +25,11 @@ The `task ready` command and `task_graph.py` script use these identifiers:
 
 ### 2.1 Legend
 
-| Marker | Meaning |
-|---|---|
+| Marker     | Meaning           |
+| ---------- | ----------------- |
 | `@polecat` | Assigned to agent |
 | `@human`   | Assigned to human |
-| `[P0-4]`   | Priority |
+| `[P0-4]`   | Priority          |
 
 ## 3. Command Examples
 
@@ -46,7 +46,7 @@ All new tasks entered via `/q` or manual markdown creation start as:
 - status: inbox
 - Assigned (@polecat or @human)
 
-| Scenario | Action |
-|---|---|
+| Scenario     | Action                                       |
+| ------------ | -------------------------------------------- |
 | Path unclear | Create `[discovery]` task assigned to @human |
-| Mechanical | Assign to @polecat |
+| Mechanical   | Assign to @polecat                           |

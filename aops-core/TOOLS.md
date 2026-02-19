@@ -16,14 +16,14 @@ Reference for agent capabilities. Use this to understand what operations are pos
 
 ## MCP Servers
 
-| Server         | Purpose                    | Key Operations                                                         |
-| -------------- | -------------------------- | ---------------------------------------------------------------------- |
-| `omcp` (opt)   | Outlook email & calendar   | Search/read/draft messages (requires local Outlook client setup)       |
-| `zot` (opt)    | Zotero research library    | Search papers, get citations (requires local Zotero setup)             |
-| `osb`          | Meta Oversight Board cases | Search decisions, get case summaries, legal reasoning analysis         |
-| `memory`       | Semantic knowledge store   | Store/retrieve memories, tag-based search, recall by time              |
-| `task_manager` | Work tracking system       | Create/update/complete tasks, manage dependencies, task trees          |
-| `context7`     | Library documentation      | Look up API docs for any programming library                           |
+| Server         | Purpose                    | Key Operations                                                   |
+| -------------- | -------------------------- | ---------------------------------------------------------------- |
+| `omcp` (opt)   | Outlook email & calendar   | Search/read/draft messages (requires local Outlook client setup) |
+| `zot` (opt)    | Zotero research library    | Search papers, get citations (requires local Zotero setup)       |
+| `osb`          | Meta Oversight Board cases | Search decisions, get case summaries, legal reasoning analysis   |
+| `memory`       | Semantic knowledge store   | Store/retrieve memories, tag-based search, recall by time        |
+| `task_manager` | Work tracking system       | Create/update/complete tasks, manage dependencies, task trees    |
+| `context7`     | Library documentation      | Look up API docs for any programming library                     |
 
 <!-- NS: exclude Standard Tools from this file. -->
 

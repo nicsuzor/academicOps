@@ -64,9 +64,9 @@ The main agent may have: omcp (Outlook), zot (Zotero), osb, playwright, context7
 **Pass criteria**: Hydrator suggests execution plan; main agent attempts the search.
 
 ### Test Case 2: Zotero Research
+
 **Prompt**: "find papers in my Zotero library about content moderation"
 **Expected**: Hydrator suggests research workflow if `zot` is available, or correctly identifies that the optional Zotero plugin is required.
-
 
 ### Test Case 3: Calendar Access
 

@@ -17,15 +17,16 @@ This document defines the core vs. optional dependency architecture of the acade
 
 The core framework provides the essential infrastructure for workflow enforcement, task management, and knowledge persistence.
 
-| Component | Purpose | Dependencies |
-|-----------|---------|--------------|
-| **Task System** | Hierarchical task graph with blocking dependencies. | `task_manager` MCP server |
-| **Memory System** | Semantic search index for cross-session knowledge. | `memory` MCP server |
-| **Prompt Hydration** | Transforms user prompts into execution plans. | `prompt-hydrator` agent, `critic` agent |
-| **Compliance Auditing**| Real-time monitoring of agent behavior. | `custodiet` agent |
-| **Standard Tools** | Basic file operations and environment access. | `Read`, `Write`, `Edit`, `Bash`, `Glob`, `Grep`, `Task` |
+| Component               | Purpose                                             | Dependencies                                            |
+| ----------------------- | --------------------------------------------------- | ------------------------------------------------------- |
+| **Task System**         | Hierarchical task graph with blocking dependencies. | `task_manager` MCP server                               |
+| **Memory System**       | Semantic search index for cross-session knowledge.  | `memory` MCP server                                     |
+| **Prompt Hydration**    | Transforms user prompts into execution plans.       | `prompt-hydrator` agent, `critic` agent                 |
+| **Compliance Auditing** | Real-time monitoring of agent behavior.             | `custodiet` agent                                       |
+| **Standard Tools**      | Basic file operations and environment access.       | `Read`, `Write`, `Edit`, `Bash`, `Glob`, `Grep`, `Task` |
 
 ### Core Logic
+
 The core logic resides in `aops-core/lib/` and is shared across all tools and agents. This includes the task model, session state management, and path resolution.
 
 ## 2. Optional Plugins (Recommended)
@@ -33,20 +34,23 @@ The core logic resides in `aops-core/lib/` and is shared across all tools and ag
 Optional plugins extend the framework with domain-specific capabilities. These require additional setup or external accounts.
 
 ### 2.1 Research & Citations
-| Component | Purpose | Requirement |
-|-----------|---------|--------------|
-| **Zotero Integration** | Search papers and manage citations. | `zot` MCP server, local Zotero setup |
-| **Oversight Board** | Legal reasoning analysis over OSB cases. | `osb` MCP server |
+
+| Component              | Purpose                                  | Requirement                          |
+| ---------------------- | ---------------------------------------- | ------------------------------------ |
+| **Zotero Integration** | Search papers and manage citations.      | `zot` MCP server, local Zotero setup |
+| **Oversight Board**    | Legal reasoning analysis over OSB cases. | `osb` MCP server                     |
 
 ### 2.2 Communication & Coordination
-| Component | Purpose | Requirement |
-|-----------|---------|--------------|
-| **Outlook Integration** | Email triage and task capture. | `omcp` MCP server, local Outlook setup |
-| **Notifications** | Real-time alerts for long-running tasks. | `ntfy` server and topic setup |
+
+| Component               | Purpose                                  | Requirement                            |
+| ----------------------- | ---------------------------------------- | -------------------------------------- |
+| **Outlook Integration** | Email triage and task capture.           | `omcp` MCP server, local Outlook setup |
+| **Notifications**       | Real-time alerts for long-running tasks. | `ntfy` server and topic setup          |
 
 ### 2.3 Data Analysis
-| Component | Purpose | Requirement |
-|-----------|---------|--------------|
+
+| Component         | Purpose                                 | Requirement        |
+| ----------------- | --------------------------------------- | ------------------ |
 | **Analyst Skill** | Research data pipelines and dashboards. | `dbt`, `Streamlit` |
 
 ## 3. Dependency Management

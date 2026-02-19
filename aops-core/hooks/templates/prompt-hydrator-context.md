@@ -166,8 +166,8 @@ Return this EXACT structure:
 - [COMBINED WORKFLOW STEPS] ...
 
 3. Execute steps [directly / in parallel]
-5. CHECKPOINT: [verification]
-6. Land the plane:
+4. CHECKPOINT: [verification]
+5. Land the plane:
 
 - Document progress in task and mark as complete/ready for review/failed
 - Confirm all tests pass and no regressions.

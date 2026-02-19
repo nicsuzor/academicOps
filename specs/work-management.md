@@ -43,11 +43,11 @@ See `[[specs/tasks-v2]]` for the detailed task model.
 
 Tasks are routed based on their `assignee` field:
 
-| Role | Responsibility |
-|---|---|
-| `polecat` | Autonomous execution of mechanical tasks |
-| `human` | Human tasks - requires judgment, external context |
-| `null` | Unassigned (Inbox/Backlog) |
+| Role      | Responsibility                                    |
+| --------- | ------------------------------------------------- |
+| `polecat` | Autonomous execution of mechanical tasks          |
+| `human`   | Human tasks - requires judgment, external context |
+| `null`    | Unassigned (Inbox/Backlog)                        |
 
 ### 3.1 Routing Logic
 

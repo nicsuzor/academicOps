@@ -4,13 +4,13 @@ How pull requests move from open to merged (or rejected) in the aops repository.
 
 ## Workflow files
 
-| Workflow         | File                        | Trigger                                        | Purpose                                      |
-| ---------------- | --------------------------- | ---------------------------------------------- | -------------------------------------------- |
-| Code Quality     | `code-quality.yml`          | `push` (main), `pull_request` (opened, synchronize, assigned) | Lint + gatekeeper (parallel), then type-check |
-| PR Pipeline      | `pr-review-pipeline.yml`    | `workflow_run` (Code Quality completed)        | LLM review chain: strategic → custodiet → QA → notify |
-| Merge Agent      | `pr-lgtm-merge.yml`         | `issue_comment`, `pull_request_review`, `pull_request` (assigned), `workflow_dispatch` | Human-triggered merge: triage comments, rebase, add to queue |
-| Claude           | `claude.yml`                | `@claude` in comments                          | On-demand Claude interaction                 |
-| Polecat          | `polecat-issue-trigger.yml` | `issue_comment`, `pull_request_review_comment`, `workflow_dispatch` | `@polecat` on-demand agent |
+| Workflow     | File                        | Trigger                                                                                | Purpose                                                      |
+| ------------ | --------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Code Quality | `code-quality.yml`          | `push` (main), `pull_request` (opened, synchronize, assigned)                          | Lint + gatekeeper (parallel), then type-check                |
+| PR Pipeline  | `pr-review-pipeline.yml`    | `workflow_run` (Code Quality completed)                                                | LLM review chain: strategic → custodiet → QA → notify        |
+| Merge Agent  | `pr-lgtm-merge.yml`         | `issue_comment`, `pull_request_review`, `pull_request` (assigned), `workflow_dispatch` | Human-triggered merge: triage comments, rebase, add to queue |
+| Claude       | `claude.yml`                | `@claude` in comments                                                                  | On-demand Claude interaction                                 |
+| Polecat      | `polecat-issue-trigger.yml` | `issue_comment`, `pull_request_review_comment`, `workflow_dispatch`                    | `@polecat` on-demand agent                                   |
 
 Merge is handled by GitHub's auto-merge feature. The ruleset requires **2 approvals**: one from the gatekeeper bot (`claude[bot]`, automated) and one from the LGTM merge agent (`github-actions[bot]`, triggered by human approval). GitHub merges automatically once both approvals and status checks are satisfied.
 
@@ -136,10 +136,10 @@ GitHub auto-merge handles the final merge once both required approvals are in pl
 
 The ruleset requires **2 approving reviews** before merge:
 
-| Approval | Actor | When | How |
-|----------|-------|------|-----|
-| #1 Gatekeeper | `claude[bot]` | Automated, parallel with lint (in pr-checks.yml) | `gh pr review --approve` inside claude-code-action |
-| #2 LGTM merge | `github-actions[bot]` | After human triggers merge via approval/LGTM comment | `gh pr review --approve` via GITHUB_TOKEN |
+| Approval      | Actor                 | When                                                 | How                                                |
+| ------------- | --------------------- | ---------------------------------------------------- | -------------------------------------------------- |
+| #1 Gatekeeper | `claude[bot]`         | Automated, parallel with lint (in pr-checks.yml)     | `gh pr review --approve` inside claude-code-action |
+| #2 LGTM merge | `github-actions[bot]` | After human triggers merge via approval/LGTM comment | `gh pr review --approve` via GITHUB_TOKEN          |
 
 The human reviewer's LGTM comment or formal approval **triggers** the merge agent, which addresses review comments and then lodges the second approval. The human only acts once.
 
@@ -299,12 +299,12 @@ These respond to mentions in comments and are independent of the pipeline:
 
 ## Concurrency controls
 
-| Scope           | Group key                    | Cancel in-progress?              |
-| --------------- | ---------------------------- | -------------------------------- |
-| PR Checks (lint)| `pr-checks-{pr_number}`      | Yes (new push cancels stale run) |
-| Gatekeeper      | `pr-gatekeeper-{pr_number}`  | Yes (new push cancels stale run) |
-| Review pipeline | `pr-review-{pr_number}`      | Yes (new push cancels stale run) |
-| Merge agent     | `pr-merge-{pr_number}`       | No (merge runs to completion)    |
+| Scope            | Group key                   | Cancel in-progress?              |
+| ---------------- | --------------------------- | -------------------------------- |
+| PR Checks (lint) | `pr-checks-{pr_number}`     | Yes (new push cancels stale run) |
+| Gatekeeper       | `pr-gatekeeper-{pr_number}` | Yes (new push cancels stale run) |
+| Review pipeline  | `pr-review-{pr_number}`     | Yes (new push cancels stale run) |
+| Merge agent      | `pr-merge-{pr_number}`      | No (merge runs to completion)    |
 
 ## Configuration
 

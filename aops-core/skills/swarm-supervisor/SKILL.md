@@ -152,11 +152,11 @@ and GitHub Actions.
 > **Configuration**: See [[WORKERS.md]] for runner types, capabilities,
 > and sizing defaults — the supervisor reads these at dispatch time.
 
-| Hook           | Trigger          | What it does                            |
-| -------------- | ---------------- | --------------------------------------- |
-| `queue-drain`  | cron / manual    | Checks queue, starts supervisor session |
-| `stale-check`  | cron / manual    | Resets tasks stuck beyond threshold     |
-| `pr-merge`     | GitHub Action    | PR merged → mark task done              |
+| Hook          | Trigger       | What it does                            |
+| ------------- | ------------- | --------------------------------------- |
+| `queue-drain` | cron / manual | Checks queue, starts supervisor session |
+| `stale-check` | cron / manual | Resets tasks stuck beyond threshold     |
+| `pr-merge`    | GitHub Action | PR merged → mark task done              |
 
 **Agent-driven dispatch**: The supervisor reads WORKERS.md, inspects the
 task queue via MCP, and decides which runners to invoke and how many.

@@ -11,6 +11,7 @@ description: |
 **Compliance check required.** Invoke the **custodiet** agent with the file path argument: `{temp_path}`
 
 Run the custodiet with this command:
+
 - Gemini: `delegate_to_agent(name='aops-core:custodiet', query='{temp_path}')`
 - Claude: `Task(subagent_type='aops-core:custodiet', prompt='{temp_path}')`
 

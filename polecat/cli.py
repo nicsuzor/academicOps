@@ -772,7 +772,6 @@ def _fetch_github_issue(issue_ref: str, project: str | None) -> dict:
         Dict with keys: id, title, body, project, repo, number, url
     """
     import json
-    import re
     import subprocess
 
     repo = None

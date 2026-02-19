@@ -15,10 +15,12 @@ permalink: commands/learn
 ### 1. Capture Failure Context
 
 **Identify the failure**:
+
 - Where did the mistake occur?
 - What was the trigger?
 
 **Generate Session Transcript**:
+
 ```bash
 # For Gemini (typical):
 SESSION_FILE=$(fd -t f -a --newer 1h .json ~/.gemini/tmp | xargs ls -t | head -1)
@@ -34,6 +36,7 @@ uv run --directory ${AOPS} python aops-core/scripts/transcript.py "$SESSION_FILE
 Review the abridged transcript (usually `~/writing/sessions/claude/YYYYMMDD-HH-project-ID-slug-abridged.md`) and extract the minimum turns (ideally < 5) to demonstrate the bug.
 
 Identify:
+
 - **Expected**: What should have happened
 - **Actual**: What actually happened
 
@@ -42,6 +45,7 @@ Identify:
 Dump the reproduction and transcript reference directly to GitHub issues. This is the primary capture mechanism.
 
 **Command**:
+
 ```bash
 # Set repo (default to qut-dmrc/academicOps or detected current repo)
 REPO="qut-dmrc/academicOps"

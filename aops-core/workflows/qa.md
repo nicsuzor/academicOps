@@ -25,13 +25,13 @@ Quality assurance and verification workflows. Multiple modes for different verif
 
 ## Mode Selection
 
-| Mode                       | When to Use                                    | Reference                      |
-| -------------------------- | ---------------------------------------------- | ------------------------------ |
-| **Quick Verification**     | Pre-completion sanity check, tests pass        | [[quick-verification]]         |
-| **Acceptance Testing**     | End-to-end testing, user perspective           | [[acceptance-testing]]         |
-| **Qualitative Assessment** | Fitness-for-purpose, UX quality, design intent | [[qualitative-assessment]]     |
-| **Integration Validation** | Framework changes, structural verification     | [[integration-validation]]     |
-| **System Design**          | Build QA infrastructure for a project          | [[system-design-qa]]           |
+| Mode                       | When to Use                                    | Reference                  |
+| -------------------------- | ---------------------------------------------- | -------------------------- |
+| **Quick Verification**     | Pre-completion sanity check, tests pass        | [[quick-verification]]     |
+| **Acceptance Testing**     | End-to-end testing, user perspective           | [[acceptance-testing]]     |
+| **Qualitative Assessment** | Fitness-for-purpose, UX quality, design intent | [[qualitative-assessment]] |
+| **Integration Validation** | Framework changes, structural verification     | [[integration-validation]] |
+| **System Design**          | Build QA infrastructure for a project          | [[system-design-qa]]       |
 
 ## Quick Reference
 

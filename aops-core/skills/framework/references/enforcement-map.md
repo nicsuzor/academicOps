@@ -22,13 +22,12 @@ This document tracks all enforcement mechanisms in the academicOps framework.
 
 ### PreToolUse Hooks
 
-| Hook                     | Mode       | Description                                                          |
-| ------------------------ | ---------- | -------------------------------------------------------------------- |
-| `hydration_gate.py`      | warn/block | Blocks until prompt-hydrator invoked                                 |
+| Hook                     | Mode         | Description                                                          |
+| ------------------------ | ------------ | -------------------------------------------------------------------- |
+| `hydration_gate.py`      | warn/block   | Blocks until prompt-hydrator invoked                                 |
 | `axiom_enforcer`         | **DISABLED** | Real-time detection of P#8 (Fail-Fast) and P#26 (Write-Without-Read) |
-| `command_intercept.py`   | transform  | Transforms tool inputs (e.g., Glob excludes)                         |
-| `overdue_enforcement.py` | warn       | Injects reminders for overdue tasks                                 |
-
+| `command_intercept.py`   | transform    | Transforms tool inputs (e.g., Glob excludes)                         |
+| `overdue_enforcement.py` | warn         | Injects reminders for overdue tasks                                  |
 
 ### PostToolUse Hooks
 

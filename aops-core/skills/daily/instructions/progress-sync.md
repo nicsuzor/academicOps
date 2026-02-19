@@ -47,6 +47,7 @@ Read each session JSON from `$ACA_SESSIONS/summaries/YYYYMMDD*.json`. Extract:
 **Incremental filtering**: After listing JSONs, read the current daily note's Session Log table. Extract session IDs already present. Filter the JSON list to exclude already-processed sessions. This prevents duplicate entries on repeated syncs.
 
 ### Step 4.2.5: Query Merged PRs
+
 ... (rest of the file) ...
 
 Fetch today's merged PRs from the current repository:

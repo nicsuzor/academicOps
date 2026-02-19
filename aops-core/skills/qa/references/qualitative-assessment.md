@@ -16,7 +16,6 @@ Criteria-based qualitative evaluation of a feature against its user stories. Not
 
 ## Philosophy
 
-
 The difference matters: a checklist can be executed mechanically. Quality assessment requires the evaluator to think, interpret, and exercise judgment.
 
 ## Creating the Assessment Plan
@@ -53,11 +52,11 @@ Scenarios should cover:
 
 For each scenario, define 3-5 assessment dimensions. Each dimension is a **question requiring interpretive judgment**, NOT a binary check.
 
-| Anti-pattern (don't do this)                    | Qualitative dimension (do this)                                                                |
-| ----------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| "Does the header show the session goal? Yes/No" | "Can you reconstruct your working narrative? How much cognitive effort does it take?"          |
-| "Are timestamps in HH:MM format? Yes/No"        | "Does the temporal information help you orient, or does it add visual noise?"                  |
-| "Is DROPPED THREADS shown first? Yes/No"        | "Does the display create appropriate urgency without triggering anxiety?"                      |
+| Anti-pattern (don't do this)                    | Qualitative dimension (do this)                                                       |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------- |
+| "Does the header show the session goal? Yes/No" | "Can you reconstruct your working narrative? How much cognitive effort does it take?" |
+| "Are timestamps in HH:MM format? Yes/No"        | "Does the temporal information help you orient, or does it add visual noise?"         |
+| "Is DROPPED THREADS shown first? Yes/No"        | "Does the display create appropriate urgency without triggering anxiety?"             |
 
 Dimensions should address:
 
@@ -95,13 +94,13 @@ The output MUST be **narrative prose**, not tables. Structure:
 
 ## Assessment Plan Anti-Patterns
 
-| Anti-Pattern      | Why It Fails                                             | Instead                                        |
-| ----------------- | -------------------------------------------------------- | ---------------------------------------------- |
-| Pass/Fail tables  | Reduces nuance to binary; evaluator stops thinking       | Narrative evaluation on a quality spectrum     |
-| Point scoring     | Creates false precision; 73/100 means nothing            | Qualitative judgment with evidence             |
-| "Is X present?"   | Presence ≠ quality                                       | "How well does X serve the user's need for Y?" |
-| Checklist mindset | Can be executed without understanding the user           | Require persona immersion before evaluation    |
-| Identical weight  | Not all criteria matter equally                          | Weight by impact on user's actual experience   |
+| Anti-Pattern      | Why It Fails                                       | Instead                                        |
+| ----------------- | -------------------------------------------------- | ---------------------------------------------- |
+| Pass/Fail tables  | Reduces nuance to binary; evaluator stops thinking | Narrative evaluation on a quality spectrum     |
+| Point scoring     | Creates false precision; 73/100 means nothing      | Qualitative judgment with evidence             |
+| "Is X present?"   | Presence ≠ quality                                 | "How well does X serve the user's need for Y?" |
+| Checklist mindset | Can be executed without understanding the user     | Require persona immersion before evaluation    |
+| Identical weight  | Not all criteria matter equally                    | Weight by impact on user's actual experience   |
 
 ## Invocation
 

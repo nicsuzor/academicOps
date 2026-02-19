@@ -31,17 +31,17 @@ You are given a PR number and repository, OR a file path containing PR context. 
 
 Map file change patterns to applicable workflows:
 
-| Files changed | Workflow | Key gates |
-|---|---|---|
-| `.agent/`, `aops-core/`, hooks, AXIOMS, HEURISTICS | `framework-change` | enforcement-map update (P#65), CLAUDE.md update, detailed critic review |
-| `aops-core/agents/`, `aops-core/skills/`, `.github/agents/` | `feature-dev` or `design` | single-purpose (P#11), no dynamic content in skills (P#19) |
-| Bug fix (title/desc says "fix") | `debugging` → `tdd-cycle` | reproduction test BEFORE fix (P#82), no functionality removal (P#80) |
-| New features, new files | `feature-dev` | TDD: tests first, acceptance criteria defined before implementation (P#31) |
-| Existing code changes only | `tdd-cycle` | existing tests pass, no regressions |
-| `.tasks/`, task markdown | `batch-task-processing` | task hierarchy connected (P#73), judgment tasks not auto-assigned (P#102) |
-| `*.md` (non-agent) | `interactive-followup` or `design` | link density (P#54), preserve existing content (P#87) |
-| `.github/workflows/` | `framework-change` | no quality gate bypass (P#25), security justification required |
-| `*.py`, `scripts/` | `tdd-cycle` or `feature-dev` | `uv run python` (P#93), no single-use scripts (P#28), fail-fast (P#8) |
+| Files changed                                               | Workflow                           | Key gates                                                                  |
+| ----------------------------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------- |
+| `.agent/`, `aops-core/`, hooks, AXIOMS, HEURISTICS          | `framework-change`                 | enforcement-map update (P#65), CLAUDE.md update, detailed critic review    |
+| `aops-core/agents/`, `aops-core/skills/`, `.github/agents/` | `feature-dev` or `design`          | single-purpose (P#11), no dynamic content in skills (P#19)                 |
+| Bug fix (title/desc says "fix")                             | `debugging` → `tdd-cycle`          | reproduction test BEFORE fix (P#82), no functionality removal (P#80)       |
+| New features, new files                                     | `feature-dev`                      | TDD: tests first, acceptance criteria defined before implementation (P#31) |
+| Existing code changes only                                  | `tdd-cycle`                        | existing tests pass, no regressions                                        |
+| `.tasks/`, task markdown                                    | `batch-task-processing`            | task hierarchy connected (P#73), judgment tasks not auto-assigned (P#102)  |
+| `*.md` (non-agent)                                          | `interactive-followup` or `design` | link density (P#54), preserve existing content (P#87)                      |
+| `.github/workflows/`                                        | `framework-change`                 | no quality gate bypass (P#25), security justification required             |
+| `*.py`, `scripts/`                                          | `tdd-cycle` or `feature-dev`       | `uv run python` (P#93), no single-use scripts (P#28), fail-fast (P#8)      |
 
 ## Step 4: Detect Scope Issues
 

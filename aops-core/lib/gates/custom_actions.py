@@ -168,11 +168,11 @@ def execute_custom_action(
         if criteria:
             session_state.main_agent.user_acceptance_criteria = criteria
             session_state.main_agent.uac_checked = [False] * len(criteria)
-            
+
             # Update UAC gate metrics for template rendering
             uac_gate = session_state.get_gate("uac")
             uac_gate.metrics["incomplete_uac_list"] = "\n".join(f"- [ ] {c}" for c in criteria)
-            
+
             return GateResult.allow(
                 system_message=f"📋 Extracted {len(criteria)} User Acceptance Criteria."
             )

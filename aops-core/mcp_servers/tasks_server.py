@@ -451,6 +451,7 @@ def create_task(
         storage = _get_storage()
 
         from lib.task_model import get_human_assignee
+
         default_assignee = get_human_assignee() if type in ("goal", "project", "epic") else None
         effective_assignee = assignee if assignee is not None else default_assignee
 

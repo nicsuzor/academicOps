@@ -6,15 +6,15 @@ This file serves as the canonical reference for all framework paths.
 
 ## Environment Variables
 
-| Variable      | Path                      | Description                     |
-| ------------- | ------------------------- | ------------------------------- |
-| $AOPS         | /home/user/src/academicOps | Framework Root                  |
-| $ACA_DATA     | /home/user/writing/data    | User Data Root                  |
+| Variable  | Path                       | Description    |
+| --------- | -------------------------- | -------------- |
+| $AOPS     | /home/user/src/academicOps | Framework Root |
+| $ACA_DATA | /home/user/writing/data    | User Data Root |
 
 ## Framework Components
 
-| Component | Path                                         |
-| --------- | -------------------------------------------- |
+| Component | Path                                          |
+| --------- | --------------------------------------------- |
 | Skills    | /home/user/src/academicOps/aops-core/skills   |
 | Hooks     | /home/user/src/academicOps/aops-core/hooks    |
 | Commands  | /home/user/src/academicOps/aops-core/commands |
@@ -24,10 +24,10 @@ This file serves as the canonical reference for all framework paths.
 
 ## Data Directories
 
-| Category  | Path                            |
-| --------- | ------------------------------- |
-| Sessions  | /home/user/writing/sessions      |
-| Projects  | /home/user/writing/data/projects |
-| Logs      | /home/user/writing/data/logs     |
-| Context   | /home/user/writing/data/context  |
-| Goals     | /home/user/writing/data/goals    |
+| Category | Path                             |
+| -------- | -------------------------------- |
+| Sessions | /home/user/writing/sessions      |
+| Projects | /home/user/writing/data/projects |
+| Logs     | /home/user/writing/data/logs     |
+| Context  | /home/user/writing/data/context  |
+| Goals    | /home/user/writing/data/goals    |

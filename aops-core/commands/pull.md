@@ -103,12 +103,15 @@ Follow the task's workflow or use standard execution pattern:
 Before proceeding to commit, verify the work produces **independent evidence** of correctness. Verification depth scales with complexity:
 
 **Simple tasks** (typo, config change, single-file edit):
+
 - Run tests. If they pass, proceed.
 
 **Standard tasks** (feature, refactor, straightforward bug):
+
 - Run tests AND manually verify the change does what the acceptance criteria require.
 
 **Complex tasks** (concurrency bugs, multi-component fixes, inherited work from other sessions):
+
 - Independently trace the causal chain: what was broken → why → does this fix address the actual mechanism?
 - Do NOT trust prior documentation at face value. Re-derive the conclusion from code.
 - If inheriting work: the previous session's analysis is a hypothesis, not a fact. Verify it.

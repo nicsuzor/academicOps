@@ -114,6 +114,7 @@ def check_custom_condition(
 
         try:
             from lib.task_storage import TaskStorage
+
             storage = TaskStorage()
             task = storage.get_task(task_id)
             if not task:
@@ -122,13 +123,16 @@ def check_custom_condition(
             # Use the existing check from tasks_server logic (re-implemented or imported)
             # For simplicity, we check if ANY [ ] exists in task body
             import re
+
             if re.search(r"^\s*-\s*\[ \]\s+.*$", task.body, re.MULTILINE):
                 # Update list of incomplete items for gate metrics
                 incomplete = re.findall(r"^\s*-\s*\[ \]\s+(.*)$", task.body, re.MULTILINE)
                 uac_gate = session_state.get_gate("uac")
-                uac_gate.metrics["incomplete_uac_list"] = "\n".join(f"- [ ] {i}" for i in incomplete)
+                uac_gate.metrics["incomplete_uac_list"] = "\n".join(
+                    f"- [ ] {i}" for i in incomplete
+                )
                 return False
-            
+
             return True
         except Exception:
             return True

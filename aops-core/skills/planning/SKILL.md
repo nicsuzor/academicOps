@@ -39,11 +39,11 @@ We decompose to **discover what we don't know**, not because we know what to do.
 
 ### Spike vs Placeholder
 
-| Situation                         | Use Spike            | Use Placeholder   |
-| --------------------------------- | -------------------- | ----------------- |
-| "We don't know if X is possible"  | Investigate first    |                   |
-| "We know X is needed, details TBD"|                      | Capture intent    |
-| "Implementation approach unclear" | Prototype/probe      |                   |
+| Situation                          | Use Spike         | Use Placeholder |
+| ---------------------------------- | ----------------- | --------------- |
+| "We don't know if X is possible"   | Investigate first |                 |
+| "We know X is needed, details TBD" |                   | Capture intent  |
+| "Implementation approach unclear"  | Prototype/probe   |                 |
 
 ### Dependency Type Selection
 

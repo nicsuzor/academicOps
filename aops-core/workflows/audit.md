@@ -39,13 +39,13 @@ Skill(skill="audit", args="session-effectiveness /path/to/transcript.md")
 
 The full audit runs 5 phases (see `skills/audit/SKILL.md` for details):
 
-| Phase | Name                   | Purpose                                                     |
-| ----- | ---------------------- | ----------------------------------------------------------- |
-| 1     | Structure Audit        | Sync filesystem to INDEX.md                                 |
-| 2     | Index Curation         | Update SKILLS.md, WORKFLOWS.md, AXIOMS.md, HEURISTICS.md    |
-| 3     | Documentation Accuracy | Update README.md flowchart and tables                       |
-| 4     | Acceptance Tests       | Run agent-driven e2e tests in tests/acceptance/             |
-| 5     | Persist Report         | Save audit report to `$ACA_DATA/projects/aops/audit/`       |
+| Phase | Name                   | Purpose                                                  |
+| ----- | ---------------------- | -------------------------------------------------------- |
+| 1     | Structure Audit        | Sync filesystem to INDEX.md                              |
+| 2     | Index Curation         | Update SKILLS.md, WORKFLOWS.md, AXIOMS.md, HEURISTICS.md |
+| 3     | Documentation Accuracy | Update README.md flowchart and tables                    |
+| 4     | Acceptance Tests       | Run agent-driven e2e tests in tests/acceptance/          |
+| 5     | Persist Report         | Save audit report to `$ACA_DATA/projects/aops/audit/`    |
 
 ## Report Output
 

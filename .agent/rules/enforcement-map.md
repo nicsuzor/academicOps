@@ -175,22 +175,22 @@ These guardrails are applied by [[prompt-hydration]] based on task classificatio
 
 ### Guardrail Registry
 
-| Guardrail                 | Heuristic                                                                                            | Failure Prevented                                           |
-| ------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| `framework_gate`          | [[spec-first-file-modification]], [[one-spec-per-feature]]                                           | Framework changes bypassing workflow (spec review, indices) |
-| `verify_before_complete`  | [[verification-before-assertion]]                                                                    | Claiming success without checking                           |
-| `answer_only`             | [[questions-require-answers]]                                                                        | Jumping to implementation when asked a question             |
-| `require_skill`           | [[skill-first-action]]                                                                               | Skipping skill for domain work                              |
-| `plan_mode`               | [[plan-first-development]]                                                                           | Framework changes without approval                          |
-| `quote_errors_exactly`    | [[error-messages-primary-evidence]]                                                                  | Paraphrasing errors                                         |
-| `fix_within_design`       | [[debug-dont-redesign]]                                                                              | Redesigning during debugging                                |
-| `follow_literally`        | [[explicit-instructions-override]]                                                                   | Interpreting user instructions                              |
-| `critic_review`           | [[mandatory-second-opinion]]                                                                         | Presenting plans without review                             |
-| `use_todowrite`           | [[todowrite-vs-persistent-tasks]]                                                                    | Losing track of steps                                       |
-| `criteria_gate`           | [[acceptance-criteria-own-success]], [[no-promises-without-instructions]], [[edit-source-run-setup]] | Missing acceptance criteria                                 |
-| `capture_insights`        | [[semantic-vs-episodic-storage]]                                                                     | Losing discoveries (bd for ops, remember for knowledge)     |
-| `zero_friction_capture`   | [[action-over-clarification]]                                                                        | Asking questions on exploratory ideas instead of capturing  |
-| `hook_docs_first`         | [[verify-first]]                                                                                     | Modifying hook output fields without reading hooks.md       |
+| Guardrail                | Heuristic                                                                                            | Failure Prevented                                           |
+| ------------------------ | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `framework_gate`         | [[spec-first-file-modification]], [[one-spec-per-feature]]                                           | Framework changes bypassing workflow (spec review, indices) |
+| `verify_before_complete` | [[verification-before-assertion]]                                                                    | Claiming success without checking                           |
+| `answer_only`            | [[questions-require-answers]]                                                                        | Jumping to implementation when asked a question             |
+| `require_skill`          | [[skill-first-action]]                                                                               | Skipping skill for domain work                              |
+| `plan_mode`              | [[plan-first-development]]                                                                           | Framework changes without approval                          |
+| `quote_errors_exactly`   | [[error-messages-primary-evidence]]                                                                  | Paraphrasing errors                                         |
+| `fix_within_design`      | [[debug-dont-redesign]]                                                                              | Redesigning during debugging                                |
+| `follow_literally`       | [[explicit-instructions-override]]                                                                   | Interpreting user instructions                              |
+| `critic_review`          | [[mandatory-second-opinion]]                                                                         | Presenting plans without review                             |
+| `use_todowrite`          | [[todowrite-vs-persistent-tasks]]                                                                    | Losing track of steps                                       |
+| `criteria_gate`          | [[acceptance-criteria-own-success]], [[no-promises-without-instructions]], [[edit-source-run-setup]] | Missing acceptance criteria                                 |
+| `capture_insights`       | [[semantic-vs-episodic-storage]]                                                                     | Losing discoveries (bd for ops, remember for knowledge)     |
+| `zero_friction_capture`  | [[action-over-clarification]]                                                                        | Asking questions on exploratory ideas instead of capturing  |
+| `hook_docs_first`        | [[verify-first]]                                                                                     | Modifying hook output fields without reading hooks.md       |
 
 ### Task Type → Guardrail Mapping
 
@@ -200,8 +200,8 @@ These guardrails are applied by [[prompt-hydration]] based on task classificatio
 | `cc_hook`   | verify_before_complete, require_skill:plugin-dev:hook-development, plan_mode, criteria_gate, use_todowrite, hook_docs_first               |
 | `cc_mcp`    | verify_before_complete, require_skill:plugin-dev:mcp-integration, plan_mode, criteria_gate, use_todowrite                                 |
 | `debug`     | verify_before_complete, quote_errors_exactly, fix_within_design, criteria_gate, use_todowrite, capture_insights                           |
-| `feature`   | verify_before_complete, criteria_gate, use_todowrite, capture_insights                                           |
-| `python`    | verify_before_complete, require_skill:python-dev, criteria_gate, use_todowrite                                   |
+| `feature`   | verify_before_complete, criteria_gate, use_todowrite, capture_insights                                                                    |
+| `python`    | verify_before_complete, require_skill:python-dev, criteria_gate, use_todowrite                                                            |
 | `question`  | answer_only                                                                                                                               |
 | `persist`   | require_skill:remember                                                                                                                    |
 | `analysis`  | require_skill:analyst, criteria_gate, use_todowrite, capture_insights                                                                     |
