@@ -203,7 +203,7 @@ Add progress note to task file body:
 ```markdown
 ## Progress
 
-- 2026-01-19: [accomplishment text]. See [[sessions/20260119-daily.md]]
+- 2026-01-19: [accomplishment text]. See [[daily/20260119-daily.md]]
 ```
 
 If `## Progress` section exists, append to it. Otherwise, create it at end of task body.
