@@ -54,49 +54,55 @@ def test_gate_open_close_unification(mock_session):
     session_id = mock_session
     state = SessionState.load(session_id)
 
-    # Open critic gate
-    state.open_gate("critic")
+    # Open handover gate
+    state.open_gate("handover")
     state.save()
 
     state = SessionState.load(session_id)
-    assert state.gates["critic"].status == GateStatus.OPEN
+    assert state.gates["handover"].status == GateStatus.OPEN
 
-    # Close critic gate
-    state.close_gate("critic")
+    # Close handover gate
+    state.close_gate("handover")
     state.save()
 
     state = SessionState.load(session_id)
-    assert state.gates["critic"].status == GateStatus.CLOSED
+    assert state.gates["handover"].status == GateStatus.CLOSED
 
 
-def test_critic_gate_opening_subagent(mock_session):
-    """Test that critic gate opens when Critic subagent stops."""
+def test_handover_gate_opening_skill(mock_session):
+    """Test that handover gate opens when handover skill stops."""
     session_id = mock_session
 
     ctx = HookContext(
         session_id=session_id,
         trace_id=None,
-        hook_event="SubagentStop",
-        subagent_type="critic",  # Matches pattern
-        raw_input={"subagent_type": "critic"},
+        hook_event="PostToolUse",
+        tool_name="Skill",
+        subagent_type="handover",  # Matches pattern
+        raw_input={"tool_name": "Skill", "tool_input": {"skill": "handover"}},
     )
 
     state = SessionState.load(session_id)
-    # Ensure gate starts closed (simulate metrics high)
-    state.gates["critic"].ops_since_open = 100
-    # Status might be open but we want to test ResetOps
-    state.gates["critic"].status = GateStatus.OPEN
+    # Ensure gate starts closed
+    state.gates["handover"].status = GateStatus.CLOSED
+    state.save()
 
-    # Run hook
-    # Note: on_subagent_stop calls triggers
-    result = on_subagent_stop(ctx, state)
+    # Need a router to run triggers
+    from hooks.router import HookRouter
+
+    router = HookRouter.__new__(HookRouter)
+    router.session_data = {}
+
+    # Run hooks
+    with patch("hooks.router.SessionState.load", return_value=state):
+        result = router.execute_hooks(ctx)
 
     assert result is not None
     assert result.system_message is not None
-    assert "Critic review complete" in result.system_message
+    assert "Handover complete" in result.system_message
 
-    # Verify Ops reset
-    assert state.gates["critic"].ops_since_open == 0
+    # Verify status
+    assert state.gates["handover"].status == GateStatus.OPEN
 
 
 if __name__ == "__main__":
