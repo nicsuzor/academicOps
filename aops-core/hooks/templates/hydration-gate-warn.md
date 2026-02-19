@@ -14,4 +14,4 @@ To ensure alignment with project workflows and axioms, it is recommended to invo
 - Gemini: `delegate_to_agent(name='aops-core:prompt-hydrator', query='{temp_path}')`
 - Claude: `Task(subagent_type='aops-core:prompt-hydrator', prompt='{temp_path}')`
 
-You may proceed if the task is trivial, but hydration is recommended for any file-modifying work.
+You may proceed if the task is trivial, but hydration is recommended for any side-effecting or write-category work.
