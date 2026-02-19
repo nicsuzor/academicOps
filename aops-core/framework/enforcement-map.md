@@ -214,7 +214,6 @@ These guardrails are applied by [[prompt-hydration]] based on task classificatio
 | `answer_only`             | [[questions-require-answers]]                                                                        | Jumping to implementation when asked a question             |
 | `require_skill`           | [[skill-first-action]]                                                                               | Skipping skill for domain work                              |
 | `plan_mode`               | [[plan-first-development]]                                                                           | Framework changes without approval                          |
-| `require_acceptance_test` | [[mandatory-acceptance-testing]]                                                                     | Claiming complete without e2e test                          |
 | `quote_errors_exactly`    | [[error-messages-primary-evidence]]                                                                  | Paraphrasing errors                                         |
 | `fix_within_design`       | [[debug-dont-redesign]]                                                                              | Redesigning during debugging                                |
 | `follow_literally`        | [[explicit-instructions-override]]                                                                   | Interpreting user instructions                              |
@@ -233,8 +232,8 @@ These guardrails are applied by [[prompt-hydration]] based on task classificatio
 | `cc_hook`   | verify_before_complete, require_skill:plugin-dev:hook-development, plan_mode, criteria_gate, use_todowrite, hook_docs_first               |
 | `cc_mcp`    | verify_before_complete, require_skill:plugin-dev:mcp-integration, plan_mode, criteria_gate, use_todowrite                                 |
 | `debug`     | verify_before_complete, quote_errors_exactly, fix_within_design, criteria_gate, use_todowrite, capture_insights                           |
-| `feature`   | verify_before_complete, require_acceptance_test, criteria_gate, use_todowrite, capture_insights                                           |
-| `python`    | verify_before_complete, require_skill:python-dev, require_acceptance_test, criteria_gate, use_todowrite                                   |
+| `feature`   | verify_before_complete, criteria_gate, use_todowrite, capture_insights                                           |
+| `python`    | verify_before_complete, require_skill:python-dev, criteria_gate, use_todowrite                                   |
 | `question`  | answer_only                                                                                                                               |
 | `persist`   | require_skill:remember                                                                                                                    |
 | `analysis`  | require_skill:analyst, criteria_gate, use_todowrite, capture_insights                                                                     |
