@@ -33,7 +33,6 @@ ASSIGNEE_COLORS = {
     "claude": "#17a2b8",  # same as bot
     "worker": "#fd7e14",  # orange - background worker
     "human": "#6f42c1",  # purple - human
-    "human": "#6f42c1",  # purple - human
     "nic": "#6f42c1",  # purple - human
 }
 ASSIGNEE_DEFAULT = "#6c757d"  # gray for unassigned
