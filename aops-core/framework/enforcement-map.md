@@ -342,6 +342,12 @@ The TASK GATE tracks three conditions for full compliance:
 
 **Full enforcement**: Set `TASK_GATE_ENFORCE_ALL=1` to require all three gates.
 
+**Hydration enforcement mode**: `warn` (default). The hydration gate is advisory; agents receive guidance but are not blocked. Override via `HYDRATION_GATE_MODE=block` env var.
+
+Warn is the appropriate default per P#105 (Standard Tooling Over Framework Gates): hydration is workflow guidance, not an integrity constraint. Hard-blocking is reserved for correctness gates (custodiet, QA). The advisory notice is surfaced on every non-exempt tool call until hydration is satisfied — this is not a silent failure (P#8 Fail-Fast): the agent is explicitly informed on each tool call and proceeding without hydration is a deliberate, visible choice.
+
+Read-only tools (`read_only` category) are excluded from the gate policy. Blocking reads before hydration creates a circular dependency: the agent cannot gather the context needed to run the hydrator if reads are blocked. Read-only operations carry no side effects that require a hydrated execution plan.
+
 **Binding flow**:
 
 1. Hydrator guides: "claim existing or create new task"
