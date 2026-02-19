@@ -94,10 +94,9 @@ After listing violations:
 | "Tests exist"     | Plan includes "Write test" step                |
 | "Tests pass"      | Plan includes "Run tests" step                 |
 | "Plan approved"   | Plan includes approval gate                    |
-| "Critic reviewed" | Plan includes critic invocation                |
 | "Task claimed"    | Plan includes task update with status="active" |
 
-**Static predicates** (check at planning time): "test file exists", "critic invoked"
+**Static predicates** (check at planning time): "test file exists"
 **Runtime predicates** (check during execution): "tests pass", "validation succeeds"
 
 For runtime predicates, verify the plan includes the CHECK step, not that the predicate is satisfied.

@@ -199,7 +199,7 @@ A batch task is not complete until all spawned workers have finished. "Fire-and-
 
 ## Subagent Verdicts Are Binding (P#95)
 
-When a subagent (critic, custodiet, qa) returns a HALT or REVISE verdict, the main agent MUST stop and address the issue.
+When a subagent (custodiet, qa) returns a HALT or REVISE verdict, the main agent MUST stop and address the issue.
 
 **Corollaries**:
 
@@ -222,10 +222,6 @@ When testing CLI tools via Bash, use `timeout: 180000` (3 minutes) minimum.
 ## Centralized Git Versioning (P#99)
 
 Versioning logic MUST be centralized in a single source of truth.
-
-## Plans Get Critic Review, Not Human Approval (P#100)
-
-After filing a plan or decomposition, the next step is automated critic review. Human approval happens at PR, not at plan filing.
 
 ## Prefer Deep Functional Nesting Over Flat Projects (P#101)
 

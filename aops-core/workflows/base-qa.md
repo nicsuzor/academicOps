@@ -5,7 +5,7 @@ category: base
 
 # Base: Quality Assurance
 
-**Composable base pattern.** Used by QA, critic, and verification workflows.
+**Composable base pattern.** Used by QA and verification workflows.
 
 ## Pattern
 

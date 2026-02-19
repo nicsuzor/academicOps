@@ -165,8 +165,7 @@ Return this EXACT structure:
 
 - [COMBINED WORKFLOW STEPS] ...
 
-3. Invoke CRITIC to review the plan
-4. Execute steps [directly / in parallel]
+3. Execute steps [directly / in parallel]
 5. CHECKPOINT: [verification]
 6. Land the plane:
 
