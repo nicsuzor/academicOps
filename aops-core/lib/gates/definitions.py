@@ -34,7 +34,7 @@ GATE_CONFIGS = [
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(SubagentStart|PreToolUse|SubagentStop|PostToolUse)$",
-                    subagent_type_pattern="^(aops-core:)?prompt-hydrator$",
+                    subagent_type_pattern="^(aops-core:)?(prompt-hydrator|hydrator)$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
@@ -123,9 +123,82 @@ GATE_CONFIGS = [
             ),
         ],
     ),
+    # --- Task ---
+    GateConfig(
+        name="task",
+        description="Tracks task execution.",
+        initial_status=GateStatus.OPEN,
+        triggers=[
+            # Start -> Open
+            GateTrigger(
+                condition=GateCondition(hook_event="SessionStart"),
+                transition=GateTransition(target_status=GateStatus.OPEN),
+            ),
+        ],
+        policies=[
+            # Placeholder for future task policies
+        ],
+    ),
+    # --- Critic ---
+    # Closes after hydration, blocks edit tools until plan is reviewed and approved by critic.
+    GateConfig(
+        name="critic",
+        description="Enforces plan review before editing.",
+        initial_status=GateStatus.OPEN,
+        triggers=[
+            # Hydration completes -> Close gate
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="SubagentStop",
+                    subagent_type_pattern="^(aops-core:)?(prompt-hydrator|hydrator)$",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.CLOSED,
+                    system_message_template="📋 Hydration complete. Plan review required before editing.",
+                ),
+            ),
+            # Critic review completes with PROCEED -> Open gate
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="^(SubagentStart|SubagentStop|PostToolUse)$",
+                    subagent_type_pattern="^(aops-core:)?critic$",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.OPEN,
+                    reset_ops_counter=True,
+                    system_message_template="👁️ Critic review complete. Editing allowed.",
+                ),
+            ),
+        ],
+        policies=[
+            # Block edit tools when CLOSED
+            # Anchored regex prevents matching TodoWrite etc. (aops-81df9690)
+            GatePolicy(
+                condition=GateCondition(
+                    current_status=GateStatus.CLOSED,
+                    hook_event="PreToolUse",
+                    tool_name_pattern="^(Edit|Write|NotebookEdit|MultiEdit)$",
+                    excluded_tool_categories=["always_available"],
+                ),
+                verdict=CRITIC_GATE_MODE,
+                custom_action="prepare_critic_review",
+                message_template="⛔ Critic review required before editing. Invoke critic agent first.",
+                context_template=(
+                    "**CRITIC REVIEW REQUIRED**\n\n"
+                    "You must invoke the **critic** agent to review your plan before making edits.\n\n"
+                    "**Instruction**:\n"
+                    "Run the critic with this command:\n"
+                    "- Gemini: `delegate_to_agent(name='aops-core:critic', query='{temp_path}')`\n"
+                    "- Claude: `Task(subagent_type='aops-core:critic', prompt='{temp_path}')`\n"
+                    "- Make sure you obey the instructions the tool or subagent produces, but do not print the output to the user -- it just clutters up the conversation.\n\n"
+                    "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
+                ),
+            ),
+        ],
+    ),
     # --- Handover ---
     # Gate starts OPEN. Closes when a task is bound (work begins).
-    # Opens when /handover skill completes. Policy blocks Stop when CLOSED.
+    # Opens when /dump skill completes. Policy blocks Stop when CLOSED.
     #
     # Previous approach used missing_framework_reflection custom_check on Stop,
     # but that fails because Claude Code fires Stop before the current turn's
@@ -149,16 +222,16 @@ GATE_CONFIGS = [
                     system_message_template="📤 Task bound. Handover required before exit.",
                 ),
             ),
-            # /handover skill completes -> Open
+            # /dump skill completes -> Open
             # Uses subagent_type_pattern to match skill name extracted by router
             # (router.py extracts tool_input["skill"] into ctx.subagent_type)
             # Matches both Claude's Skill tool and Gemini's activate_skill tool.
-            # Pattern matches both "handover" and "aops-core:handover" (prefixed form).
+            # Pattern matches "dump", "handover", and their prefixed forms (e.g., "aops-core:dump").
             GateTrigger(
                 condition=GateCondition(
                     hook_event="PostToolUse",
                     tool_name_pattern="^(Skill|activate_skill)$",
-                    subagent_type_pattern="^(aops-core:)?handover$",
+                    subagent_type_pattern="^(aops-core:)?(handover|dump)$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
@@ -177,7 +250,7 @@ GATE_CONFIGS = [
                 message_template="⛔ Handover required",
                 context_template=(
                     "⛔ Finalization required before exit.\n\n"
-                    "Please invoke the Handover Skill (`/handover`). The gate will only allow exit once the Handover Skill has completed.\n\n"
+                    "Please invoke the /dump command. The gate will only allow exit once it has completed.\n\n"
                     "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
                 ),
             ),

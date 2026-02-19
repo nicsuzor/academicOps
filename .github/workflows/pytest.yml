@@ -1,21 +1,18 @@
 name: Pytest
 
 on:
-  workflow_run:
-    workflows: ["Code Quality"]
-    types: [completed]
+  push:
+    branches: [ "main" ]
+  pull_request:
+  workflow_dispatch:
 
 jobs:
   pytest:
-    # Run only if the Code Quality workflow succeeded
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    name: Pytest
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout PR code
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ github.event.workflow_run.head_repository.full_name }}
-          ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -31,4 +28,4 @@ jobs:
         run: uv sync --frozen
 
       - name: Run pytest
-        run: uv run pytest aops-core/tests
+        run: uv run pytest

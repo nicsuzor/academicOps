@@ -54,8 +54,8 @@ tags: [framework, enforcement, moc]
 | [[feedback-loops-for-uncertainty]]          | Feedback Loops                  | AXIOMS.md                                                                                    | SessionStart           |           |
 | [[current-state-machine]]                   | Current State Machine           | autocommit_state.py (auto-commit+push)                                                       | PostToolUse            |           |
 | [[one-spec-per-feature]]                    | One Spec Per Feature            | AXIOMS.md                                                                                    | SessionStart           |           |
-| [[mandatory-handover]]                      | Mandatory Handover Workflow     | prompt-hydrator-context.md (Session Completion Rules section), handover SKILL.md Step 1.5    | UserPromptSubmit, Stop |           |
-| [[capture-outstanding-work]]                | Capture Outstanding Work        | handover SKILL.md Step 1.5 (create follow-up tasks for incomplete/deferred work)             | Stop                   |           |
+| [[mandatory-handover]]                      | Mandatory Handover Workflow     | prompt-hydrator-context.md (Session Completion Rules section), dump.md Step 2                | UserPromptSubmit, Stop |           |
+| [[capture-outstanding-work]]                | Capture Outstanding Work        | dump.md Step 2 (create follow-up tasks for incomplete/deferred work)                         | Stop                   |           |
 | [[explicit-approval-costly-ops]]            | Costly Operations Approval      | external-batch-submission.md workflow + AskUserQuestion before batch submit                  | During execution       |           |
 
 ## Heuristic → Enforcement Mapping
@@ -214,7 +214,6 @@ These guardrails are applied by [[prompt-hydration]] based on task classificatio
 | `answer_only`             | [[questions-require-answers]]                                                                        | Jumping to implementation when asked a question             |
 | `require_skill`           | [[skill-first-action]]                                                                               | Skipping skill for domain work                              |
 | `plan_mode`               | [[plan-first-development]]                                                                           | Framework changes without approval                          |
-| `require_acceptance_test` | [[mandatory-acceptance-testing]]                                                                     | Claiming complete without e2e test                          |
 | `quote_errors_exactly`    | [[error-messages-primary-evidence]]                                                                  | Paraphrasing errors                                         |
 | `fix_within_design`       | [[debug-dont-redesign]]                                                                              | Redesigning during debugging                                |
 | `follow_literally`        | [[explicit-instructions-override]]                                                                   | Interpreting user instructions                              |
@@ -233,8 +232,8 @@ These guardrails are applied by [[prompt-hydration]] based on task classificatio
 | `cc_hook`   | verify_before_complete, require_skill:plugin-dev:hook-development, plan_mode, criteria_gate, use_todowrite, hook_docs_first               |
 | `cc_mcp`    | verify_before_complete, require_skill:plugin-dev:mcp-integration, plan_mode, criteria_gate, use_todowrite                                 |
 | `debug`     | verify_before_complete, quote_errors_exactly, fix_within_design, criteria_gate, use_todowrite, capture_insights                           |
-| `feature`   | verify_before_complete, require_acceptance_test, criteria_gate, use_todowrite, capture_insights                                           |
-| `python`    | verify_before_complete, require_skill:python-dev, require_acceptance_test, criteria_gate, use_todowrite                                   |
+| `feature`   | verify_before_complete, criteria_gate, use_todowrite, capture_insights                                           |
+| `python`    | verify_before_complete, require_skill:python-dev, criteria_gate, use_todowrite                                   |
 | `question`  | answer_only                                                                                                                               |
 | `persist`   | require_skill:remember                                                                                                                    |
 | `analysis`  | require_skill:analyst, criteria_gate, use_todowrite, capture_insights                                                                     |
@@ -411,13 +410,15 @@ The stop gate requires TWO conditions for session completion:
 **Workflow**:
 
 1. Agent completes work
-2. Agent outputs Framework Reflection with ALL required fields
-3. AfterAgent hook validates format and sets `handover_skill_invoked` flag
-4. Agent invokes `/handover` skill
-5. Agent attempts to end session (triggers Stop event)
-6. Stop gate checks both flags (hydrator, handover)
-7. If all flags set: session ends
-8. If any flag missing: blocks with instructions for the missing step
+2. Agent invokes QA skill to verify results against original request and acceptance criteria
+3. PostToolUse hook sets `qa_invoked` flag
+4. Agent outputs Framework Reflection with ALL required fields
+5. AfterAgent hook validates format and sets `handover_skill_invoked` flag
+6. Agent invokes `/dump` command
+7. Agent attempts to end session (triggers Stop event)
+8. Stop gate checks all three flags (hydrator, handover, QA)
+9. If all flags set: session ends
+10. If any flag missing: blocks with instructions for the missing step
 
 ### Uncommitted Work Check
 
