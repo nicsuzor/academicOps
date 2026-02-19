@@ -75,7 +75,6 @@ tags: [framework, enforcement, moc]
 | [[no-promises-without-instructions]]            | No Promises Without Instructions                      | HEURISTICS.md                                          | SessionStart                   |       |
 | [[semantic-search-over-keyword]]                | Semantic Search Over Keyword                          | HEURISTICS.md                                          | SessionStart                   |       |
 | [[edit-source-run-setup]]                       | Edit Source, Run Setup                                | HEURISTICS.md                                          | SessionStart                   |       |
-| [[mandatory-second-opinion]]                    | Mandatory Second Opinion                              | planner agent invokes critic                           | Planning                       |       |
 | [[streamlit-hot-reloads]]                       | Streamlit Hot Reloads                                 | HEURISTICS.md                                          | SessionStart                   |       |
 | [[use-askuserquestion]]                         | Use AskUserQuestion                                   | HEURISTICS.md                                          | SessionStart                   |       |
 | [[check-skill-conventions]]                     | Check Skill Conventions                               | HEURISTICS.md                                          | SessionStart                   |       |
@@ -98,7 +97,6 @@ tags: [framework, enforcement, moc]
 | [[semantic-link-density]]                       | Semantic Link Density                                 | check_orphan_files.py                                  | Pre-commit                     |       |
 | [[spec-first-file-modification]]                | Spec-First File Modification                          | HEURISTICS.md                                          | SessionStart                   |       |
 | [[file-category-classification]]                | File Category Classification                          | check_file_taxonomy.py                                 | Pre-commit                     |       |
-| [[llm-semantic-evaluation]]                     | LLM Semantic Evaluation                               | PR template checklist, critic agent                    | PR Review                      |       |
 | [[full-evidence-for-validation]]                | Full Evidence for Validation                          | @pytest.mark.demo requirement                          | Test design                    |       |
 | [[real-fixtures-over-contrived]]                | Real Fixtures Over Contrived                          | docs/testing-patterns.md                               | Test design                    |       |
 | [[execution-over-inspection]]                   | Execution Over Inspection                             | framework skill compliance protocol                    | Skill invocation               |       |
@@ -123,7 +121,6 @@ tags: [framework, enforcement, moc]
 | [[subagent-verdicts-binding]]                   | Subagent Verdicts Are Binding                         | HEURISTICS.md                                          | SessionStart, SubagentStop     | 1a    |
 | [[qa-tests-black-box]]                          | QA Tests Are Black-Box                                | HEURISTICS.md                                          | SessionStart, QA execution     | 1b    |
 | [[cli-testing-extended-timeouts]]               | CLI Testing Requires Extended Timeouts                | HEURISTICS.md                                          | SessionStart                   | 1a    |
-| [[plans-get-critic-review]]                     | Plans Get Critic Review, Not Human Approval           | HEURISTICS.md, critic_review guardrail                 | Post plan-filing               | 1b    |
 | [[explain-dont-ask]]                            | Explain, Don't Ask (P#104)                            | HEURISTICS.md                                          | SessionStart                   |       |
 | [[qa-independent-evidence]]                     | QA Must Produce Independent Evidence                  | HEURISTICS.md, /pull Step 3A.V                         | Before completion              | 1c    |
 | [[standard-tooling-over-framework-gates]]       | Standard Tooling Over Framework Gates (P#105)         | HEURISTICS.md                                          | SessionStart                   | 1a    |
@@ -217,7 +214,6 @@ These guardrails are applied by [[prompt-hydration]] based on task classificatio
 | `quote_errors_exactly`    | [[error-messages-primary-evidence]]                                                                  | Paraphrasing errors                                         |
 | `fix_within_design`       | [[debug-dont-redesign]]                                                                              | Redesigning during debugging                                |
 | `follow_literally`        | [[explicit-instructions-override]]                                                                   | Interpreting user instructions                              |
-| `critic_review`           | [[mandatory-second-opinion]]                                                                         | Presenting plans without review                             |
 | `use_todowrite`           | [[todowrite-vs-persistent-tasks]]                                                                    | Losing track of steps                                       |
 | `criteria_gate`           | [[acceptance-criteria-own-success]], [[no-promises-without-instructions]], [[edit-source-run-setup]] | Missing acceptance criteria                                 |
 | `capture_insights`        | [[semantic-vs-episodic-storage]]                                                                     | Losing discoveries (bd for ops, remember for knowledge)     |
@@ -228,7 +224,7 @@ These guardrails are applied by [[prompt-hydration]] based on task classificatio
 
 | Task Type   | Guardrails Applied                                                                                                                        |
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `framework` | framework_gate, verify_before_complete, require_skill:framework, plan_mode, critic_review, criteria_gate, use_todowrite, capture_insights |
+| `framework` | framework_gate, verify_before_complete, require_skill:framework, plan_mode, criteria_gate, use_todowrite, capture_insights                |
 | `cc_hook`   | verify_before_complete, require_skill:plugin-dev:hook-development, plan_mode, criteria_gate, use_todowrite, hook_docs_first               |
 | `cc_mcp`    | verify_before_complete, require_skill:plugin-dev:mcp-integration, plan_mode, criteria_gate, use_todowrite                                 |
 | `debug`     | verify_before_complete, quote_errors_exactly, fix_within_design, criteria_gate, use_todowrite, capture_insights                           |
@@ -311,7 +307,6 @@ The TASK GATE consolidates multiple enforcement concerns into a single PreToolUs
 
 - Task binding (work tracking)
 - Hydration completion (plan before execute)
-- Critic review (second opinion)
 
 | Operation Type             | Tool                           | Requires TASK GATE         | Bypass               |
 | -------------------------- | ------------------------------ | -------------------------- | -------------------- |
@@ -336,11 +331,10 @@ The TASK GATE tracks three conditions for full compliance:
 | -------------------- | ------------------------------- | --------------------------------------------------------- | ------------------------- |
 | (a) Task bound       | Session has active task         | `update_task(status="in_progress")` or `create_task(...)` | `main_agent.current_task` |
 | (b) Hydrator invoked | Plan mode or hydrator completed | `EnterPlanMode` tool or prompt-hydrator SubagentStop      | `state.plan_mode_invoked` |
-| (c) Critic invoked   | Critic agent reviewed plan      | SubagentStop with `subagent_type="critic"`                | `state.critic_invoked`    |
 
-**Default enforcement**: Only gate (a) task_bound is enforced. Gates (b) and (c) are tracked for observability.
+**Default enforcement**: Only gate (a) task_bound is enforced. Gate (b) is tracked for observability.
 
-**Full enforcement**: Set `TASK_GATE_ENFORCE_ALL=1` to require all three gates.
+**Full enforcement**: Set `TASK_GATE_ENFORCE_ALL=1` to require both gates.
 
 **Hydration enforcement mode**: `warn` (default). The hydration gate is advisory; agents receive guidance but are not blocked. Override via `HYDRATION_GATE_MODE=block` env var.
 
@@ -354,8 +348,7 @@ Read-only tools (`read_only` category) are excluded from the gate policy. Blocki
 2. Agent calls `update_task(status="in_progress")` or `create_task(...)` → gate (a) set
 3. `task_binding.py` PostToolUse hook sets `current_task` in session state
 4. Agent enters plan mode or hydrator completes → gate (b) set
-5. Agent invokes critic: `Task(subagent_type="aops-core:critic", ...)` → gate (c) set
-6. `check_task_required_gate()` checks gates before allowing destructive operations
+5. `check_task_required_gate()` checks gates before allowing destructive operations
 
 **Bypass conditions**:
 
@@ -467,7 +460,6 @@ Main agent has all tools except deny rules. Subagents are restricted:
 | Main agent        | All (minus deny rules)                         | varies | Primary task execution                                                                                         |
 | prompt-hydrator   | Read, Grep, mcp__memory__retrieve_memory, Task | haiku  | Context enrichment (Edit/Write blocked by check_subagent_tool_restrictions)                                    |
 | custodiet         | Read                                           | haiku  | Compliance checking                                                                                            |
-| critic            | Read                                           | opus   | Plan/conclusion review                                                                                         |
 | qa                | Read, Grep, Glob                               | opus   | Independent verification (anti-sycophancy: must verify against original request verbatim, not agent reframing) |
 | planner           | All (inherits from main)                       | sonnet | Implementation planning                                                                                        |
 | effectual-planner | All (inherits from main)                       | opus   | Strategic planning                                                                                             |
@@ -524,8 +516,8 @@ Context injected via CORE.md at SessionStart. Guides where agents place files.
 | Deny rules       | `$AOPS/config/claude/settings.json` → `permissions.deny`                                                                              |
 | Agent tools      | `$AOPS/aops-core/agents/*.md` → `tools:` frontmatter                                                                                  |
 | PreToolUse       | `$AOPS/aops-core/hooks/gate_registry.py` (hydration, custodiet, subagent_restrictions), `task_required_gate.py`, `policy_enforcer.py` |
-| PostToolUse      | `$AOPS/aops-core/hooks/gate_registry.py` (accountant, task_binding, post_hydration, post_critic, skill_activation)                    |
-| SubagentStop     | `$AOPS/aops-core/hooks/unified_logger.py` (sets `critic_invoked` flag)                                                                |
+| PostToolUse      | `$AOPS/aops-core/hooks/gate_registry.py` (accountant, task_binding, post_hydration, skill_activation)                                 |
+| SubagentStop     | `$AOPS/aops-core/hooks/unified_logger.py`                                                                                            |
 | UserPromptSubmit | `$AOPS/aops-core/hooks/user_prompt_submit.py`                                                                                         |
 | SessionStart     | `$AOPS/aops-core/hooks/sessionstart_load_axioms.py`                                                                                   |
 | Stop             | `$AOPS/aops-core/hooks/reflection_check.py`, `session_end_commit_check.py`                                                            |
@@ -534,4 +526,4 @@ Context injected via CORE.md at SessionStart. Guides where agents place files.
 | Remember skill   | `$AOPS/aops-core/skills/remember/SKILL.md`                                                                                            |
 | Memory sync      | `$AOPS/aops-core/skills/remember/workflows/sync.md`                                                                                   |
 | Session insights | `$AOPS/aops-core/skills/session-insights/SKILL.md`                                                                                    |
-| Session state    | `$AOPS/aops-core/lib/session_state.py` (gate flags: critic_invoked, todo_with_handover)                                               |
+| Session state    | `$AOPS/aops-core/lib/session_state.py` (gate flags: todo_with_handover)                                               |

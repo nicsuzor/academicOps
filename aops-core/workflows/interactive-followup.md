@@ -28,7 +28,6 @@ Follow-ups are detected automatically when ALL conditions are met:
 ## What Gets Skipped
 
 - **Hydrator agent** - No prompt-hydrator invocation
-- **Critic review** - No mandatory critic before work
 - **New task binding** - Inherits active task from session
 
 ## What Still Applies

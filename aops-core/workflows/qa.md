@@ -18,7 +18,6 @@ Quality assurance and verification workflows. Multiple modes for different verif
 
 ## NOT This Workflow
 
-- Code review / skeptical review → [[critic]]
 - Bug investigation → [[debugging]]
 - Trivial changes (typo fixes)
 

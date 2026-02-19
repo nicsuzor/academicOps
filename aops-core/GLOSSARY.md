@@ -16,7 +16,6 @@ Quick definitions for framework-specific terminology. Used by hydrator to interp
 | **task system** | Markdown-based task tracking with MCP tools (`mcp__plugin_aops-core_task_manager__*`) |
 | **hydrator** | Agent that transforms terse prompts into execution plans (this context) |
 | **custodiet** | Compliance-checking agent that enforces framework principles |
-| **critic** | Agent that reviews plans before execution |
 | **qa** | Quality assurance agent for end-to-end verification |
 
 ## Directories
@@ -82,7 +81,6 @@ Quick definitions for framework-specific terminology. Used by hydrator to interp
 | `Plan` | Software architecture planning |
 | `aops-butler` | Framework coordination and STATUS updates |
 | `aops-core:prompt-hydrator` | Transform prompts (internal) |
-| `aops-core:critic` | Plan review |
 | `aops-core:qa` | End-to-end verification |
 
 ## Key Principles (by ID)

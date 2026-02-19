@@ -117,8 +117,6 @@ Verification workflows for different scopes.
 
 | Workflow            | When to Use                     | Bases         |
 | ------------------- | ------------------------------- | ------------- |
-| [[critic-fast]]     | Quick sanity check (default)    | -             |
-| [[critic-detailed]] | Framework/architectural changes | -             |
 | [[qa-demo]]         | Pre-completion verification     | -             |
 | [[qa-test]]         | User acceptance testing         | -             |
 | [[prove-feature]]   | Integration validation          | -             |

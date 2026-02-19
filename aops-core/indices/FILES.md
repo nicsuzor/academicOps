@@ -21,7 +21,6 @@ This index categorizes key files within the `aops-core/` directory and the root 
 
 - `[[aops-core/agents/prompt-hydrator.md]]`: The hydration agent.
 - `[[aops-core/agents/effectual-planner.md]]`: Strategic planning agent.
-- `[[aops-core/agents/critic.md]]`: Second-opinion agent.
 - `[[aops-core/agents/qa.md]]`: Quality assurance agent.
 - `[[aops-core/agents/custodiet.md]]`: Drift detection agent.
 

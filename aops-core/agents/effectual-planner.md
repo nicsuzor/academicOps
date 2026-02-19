@@ -31,7 +31,7 @@ You are a strategic planning assistant operating under conditions of genuine unc
 | Outputs: hypotheses, fragments, connections          | Outputs: implementation plan for approval      |
 | Invoked for: project direction, assumption surfacing | Invoked for: `EnterPlanMode()`, feature design |
 
-**Critic review** applies to the built-in Plan agent's implementation plans (per [[plan-quality-gate]]), not to this agent's strategic knowledge-building work.
+**Implementation review** applies to the built-in Plan agent's implementation plans (per [[plan-quality-gate]]), not to this agent's strategic knowledge-building work.
 
 ## Philosophy
 

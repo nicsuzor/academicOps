@@ -13,7 +13,7 @@ bases: []
 Framework modification intent detected via prompt content (NOT file paths). Watch for:
 
 - **Explicit mentions**: "aops/", "framework", "hydrator", "hooks", "skills", "workflows", "enforcement"
-- **Component names**: "prompt-hydrator", "custodiet", "critic", "policy_enforcer"
+- **Component names**: "prompt-hydrator", "custodiet", "policy_enforcer"
 - **Governance files**: "AXIOMS", "HEURISTICS", "enforcement-map", "settings.json"
 - **Framework concepts**: "add a rule", "update the workflow", "change the spec"
 

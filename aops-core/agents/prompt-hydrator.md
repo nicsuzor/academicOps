@@ -162,14 +162,6 @@ Always add this section to execution plans (except [[simple-question]]):
 2. **Reference by name** - Include `[[workflows/X]]` in output
 3. **Don't execute workflows** - Your job is to select and contextualize
 
-### Critic Invocation
-
-**NOTE**: You do NOT invoke critic. The main agent decides based on plan complexity:
-
-- **Skip critic**: simple-question, direct skill, interactive-followup, trivial tasks
-- **Fast critic (haiku)**: routine plans, standard file modifications (default)
-- **Detailed critic (opus)**: framework changes, architectural decisions
-
 ### Interactive Follow-up Detection
 
 **Trigger patterns**:
@@ -182,7 +174,6 @@ Always add this section to execution plans (except [[simple-question]]):
 
 1. Route to `[[workflows/interactive-followup]]`
 2. **Reuse current task**: Set Task Routing to "Existing task found" with the bound task ID
-3. **Skip Critic**: Omit the `Invoke CRITIC` step from the execution plan
 
 ### Handling Terse Follow-up Prompts
 

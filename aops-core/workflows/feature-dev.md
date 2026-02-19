@@ -34,14 +34,13 @@ Each phase must complete before the next can begin:
 4. **Tests must exist and fail** before planning development
 5. **Plan must be approved** before implementation begins
 6. **Implementation must be complete** before validation
-7. **Validation must pass** and **critic must review** before synthesizing to spec
+7. **Validation must pass** before synthesizing to spec
 
 ### Commit Gates
 
 Before any commit:
 
 - All tests must pass
-- Critic must have reviewed
 - No regressions in existing tests
 
 ### After Each Step
@@ -63,7 +62,6 @@ Before any commit:
 - Never commit with failing tests
 - Never implement without an approved plan
 - Never implement without tests existing first
-- Never skip critic review
 - Never ship partial success
 - Never work around blockers
 - Never rationalize test failures
@@ -74,8 +72,6 @@ Before any commit:
 - If tests fail: halt and fix, or revert
 - If blocked on infrastructure: halt and report
 - If requirements are unclear: return to analysis phase
-- If this is a framework feature: use detailed critic
-- If this is a routine feature: use fast critic
 - If an iteration fails: revert
 
 ## Triggers
@@ -93,8 +89,6 @@ Phase transitions happen automatically:
 Review gates:
 
 - When plan is ready → invoke plan-agent
-- When review is needed → invoke critic
-- If critic escalates → invoke detailed critic
 
 Error handling:
 
@@ -115,9 +109,8 @@ Error handling:
 - Tests pass: pytest exit code is 0 for all tests
 - Plan approved: task body contains "## Approved Plan" or user said "approved" or "lgtm"
 - Implementation complete: all execution steps for implementation are done
-- Critic reviewed: critic agent was spawned and returned a verdict
 - No regressions: full test suite passes (not just feature tests)
-- Validation passed: all success criteria met, tests pass, and critic approved
+- Validation passed: all success criteria met and tests pass
 
 **Condition checks:**
 

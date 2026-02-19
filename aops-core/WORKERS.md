@@ -102,7 +102,7 @@ the supervisor may invoke the specialist for advisory review.
 
 **Note**: Domain specialists are advisory only. Their input informs but does not
 block; final synthesis is done by the supervisor alongside mandatory reviewers
-(Critic, Custodiet).
+(Custodiet).
 
 ## Operational Thresholds
 

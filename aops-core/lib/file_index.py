@@ -247,11 +247,6 @@ FILE_INDEX: tuple[FileEntry, ...] = (
     ),
     # --- Agent System ---
     FileEntry(
-        path="agents/critic.md",
-        description="Critic agent for plan review",
-        keywords=("critic", "review", "plan review", "second opinion"),
-    ),
-    FileEntry(
         path="agents/custodiet.md",
         description="Custodiet agent (ultra vires detection)",
         keywords=("custodiet", "ultra vires", "authority", "scope violation"),
