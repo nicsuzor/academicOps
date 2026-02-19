@@ -43,3 +43,5 @@ This index categorizes key files within the `aops-core/` directory and the root 
 - `[[aops-core/framework/graph_rendering.py]]`: SVG and graph visualization logic.
 - `[[aops-core/framework/audit_logic.py]]`: Governance validation logic.
 - `[[aops-core/scripts/framework_refresh.py]]`: Unified refresh automation script.
+- `[[scripts/garden_framework.py]]`: Task graph maintenance and orphan detection script.
+- `[[.github/workflows/framework-gardening.yml]]`: Periodic gardening automation workflow.

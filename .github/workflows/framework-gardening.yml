@@ -1,0 +1,57 @@
+# Periodic gardening for framework task graph and PKB
+# Detects orphans, stale tasks, and duplicates.
+
+name: Framework Gardening
+
+on:
+  schedule:
+    - cron: '0 20 * * *'  # 06:00 AEST (20:00 UTC)
+    - cron: '0 8 * * *'   # 18:00 AEST (08:00 UTC)
+  workflow_dispatch:
+
+env:
+  AOPS: ${{ github.workspace }}
+
+jobs:
+  garden:
+    name: Framework Gardening
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run gardening script
+        run: |
+          # Create a dummy ACA_DATA for the script to run without erroring on missing dir
+          mkdir -p dummy_data/tasks
+          export ACA_DATA=$(pwd)/dummy_data
+          
+          # Note: In CI this won't find real user tasks, but it verifies the script works
+          # and catches issues in any tasks committed to the repo (e.g. examples/tests)
+          uv run python scripts/garden_framework.py -o gardening-report.md
+          
+          echo "## Framework Gardening Report" >> $GITHUB_STEP_SUMMARY
+          cat gardening-report.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload gardening report
+        uses: actions/upload-artifact@v4
+        with:
+          name: gardening-report
+          path: gardening-report.md
+          retention-days: 7
