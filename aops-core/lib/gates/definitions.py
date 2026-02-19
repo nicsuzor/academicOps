@@ -81,13 +81,13 @@ GATE_CONFIGS = [
     # --- Custodiet ---
     GateConfig(
         name="custodiet",
-        description="Enforces periodic compliance checks.",
+        description="Enforces high-integrity workflow behaviors.",
         initial_status=GateStatus.OPEN,
         countdown=CountdownConfig(
             start_before=7,
             threshold=CUSTODIET_TOOL_CALL_THRESHOLD,
             message_template=(
-                "📋 {remaining} turns until custodiet check required. "
+                "📋 {remaining} turns until workflow integrity check required. "
                 "Run the check proactively (and in the background!) with: `{temp_path}`"
             ),
         ),
@@ -100,8 +100,8 @@ GATE_CONFIGS = [
                 ),
                 transition=GateTransition(
                     reset_ops_counter=True,
-                    system_message_template="🛡️ Compliance verified.",
-                    context_injection_template="🛡️ Compliance verified.",
+                    system_message_template="🛡️ Workflow integrity verified.",
+                    context_injection_template="🛡️ Workflow integrity verified.",
                 ),
             ),
         ],
@@ -114,9 +114,9 @@ GATE_CONFIGS = [
                     excluded_tool_categories=["always_available", "read_only"],
                 ),
                 verdict=CUSTODIET_GATE_MODE,
-                message_template="Periodic compliance check required ({ops_since_open} ops since last check).\nInvoke 'custodiet' agent.",
+                message_template="Periodic workflow integrity check required ({ops_since_open} ops since last check).\nInvoke 'custodiet' agent.",
                 context_template=(
-                    "**Periodic compliance check required ({ops_since_open} ops since last check).** Invoke the **custodiet** agent with the file path argument: `{temp_path}`\n"
+                    "**Periodic workflow integrity check required ({ops_since_open} ops since last check).** Invoke the **custodiet** agent with the file path argument: `{temp_path}`\n"
                     "- Gemini: `delegate_to_agent(name='custodiet', query='{temp_path}')`\n"
                     "- Claude: `Task(subagent_type='custodiet', prompt='{temp_path}')`\n\n"
                     "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
