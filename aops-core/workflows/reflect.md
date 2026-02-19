@@ -45,7 +45,7 @@ Complete the task while staying aware of friction points:
 
 | Observation               | Action                                    |
 | ------------------------- | ----------------------------------------- |
-| One-time friction         | `/log [observation]` → continue           |
+| One-time friction         | `/learn [observation]` → continue         |
 | Recurring pattern (3+)    | Check HEURISTICS.md → `/learn` if missing |
 | Blocking current task     | Fix minimally, note for codification      |
 | Better pattern discovered | Document what worked                      |
@@ -121,7 +121,7 @@ Build new skills when decomposition reveals capability gaps.
 
 ## Key Rules
 
-1. **Don't stop to fix everything.** Log with `/log`, continue working.
+1. **Don't stop to fix everything.** Log with `/learn`, continue working.
 2. **Do codify at session end.** Before handover, ask: what learned → what changed?
 3. **Small improvements compound.** One workflow tweak per session adds up.
 4. **Reflect on tools, not just tasks.** The meta-layer matters.

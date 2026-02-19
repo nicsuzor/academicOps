@@ -16,7 +16,7 @@ related: [[workflow-system-spec]], [[enforcement]], [[session-insights-prompt]]
 - [[specs/session-insights-metrics-schema.md]] - Schema for metrics extraction
 - [[hooks/unified_logger.py]] - Centralized logging for observability
 - [[polecat/observability.py]] - Polecat-specific observability
-- [[commands/log.md]] - `/log` command for logging observations
+- [[commands/learn.md]] - `/learn` command for capturing framework observations and improvements
 
 ## Overview
 
