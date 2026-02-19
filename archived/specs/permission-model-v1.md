@@ -4,7 +4,8 @@ type: spec
 category: specs
 description: Architectural spec for enforcing task binding before destructive operations
 tags: [permissions, enforcement, security]
-status: draft
+status: cancelled
+notes: Task gate was implemented but found to be redundant/doing nothing. Removed on 2026-02-19.
 created: 2026-01-21
 ---
 

@@ -20,7 +20,6 @@ Each spec includes a **"Giving Effect"** section near the top that links to impl
 - [[specs/workflow-system-spec.md]]: Design of the workflow engine.
 - [[specs/verification-system.md]]: Design of the verification system.
 - [[specs/ultra-vires-custodiet.md]]: Drift detection architecture.
-- [[specs/permission-model-v1.md]]: Task gate and permission system.
 
 ## Workflow Specs
 

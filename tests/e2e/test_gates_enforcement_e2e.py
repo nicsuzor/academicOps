@@ -109,87 +109,6 @@ class TestHydrationGateE2E:
 
 
 @pytest.mark.slow
-class TestTaskGateE2E:
-    """E2E tests for task gate enforcement."""
-
-    def test_task_gate_warns_on_write_without_task(self, cli_headless, tmp_path):
-        """
-        GIVEN: A session without task binding
-        WHEN: Agent attempts to Write a file
-        THEN: Gate should warn/block about missing task binding
-        """
-        runner, platform = cli_headless
-        test_file = tmp_path / "test-task-gate.txt"
-
-        result = runner(
-            f"Write the text 'hello world' to the file {test_file}. Use the Write tool.",
-            model="haiku" if platform == "claude" else None,
-            fail_on_error=False,
-        )
-
-        output_text = json.dumps(result.get("result", {}))
-
-        gate_indicators = ["task", "gate", "binding", "claim", "BLOCKED", "warn"]
-        has_gate_message = any(ind.lower() in output_text.lower() for ind in gate_indicators)
-
-        assert has_gate_message, (
-            f"[{platform}] Expected task gate to warn/block on Write.\nOutput: {output_text[:500]}"
-        )
-
-    def test_task_gate_allows_task_creation(self, cli_headless):
-        """
-        GIVEN: A session without task binding
-        WHEN: Agent uses create_task MCP tool
-        THEN: Tool should succeed (task creation is allowed to establish binding)
-        """
-        import uuid
-
-        runner, platform = cli_headless
-        task_title = f"E2E Test Task {uuid.uuid4().hex[:8]}"
-
-        result = runner(
-            f"Create a new task with title '{task_title}' and status 'active' using the task manager MCP tool.",
-            model="haiku" if platform == "claude" else None,
-            fail_on_error=False,
-        )
-
-        output_text = json.dumps(result.get("result", {}))
-
-        assert result["success"], (
-            f"[{platform}] Task creation should succeed. Output: {output_text[:300]}"
-        )
-
-        success_indicators = ["success", "created", "task_title", task_title.lower()]
-        has_success = any(ind.lower() in output_text.lower() for ind in success_indicators)
-        assert has_success, f"[{platform}] Expected task creation success, got: {output_text[:300]}"
-
-    def test_destructive_bash_triggers_task_gate(self, cli_headless, tmp_path):
-        """
-        GIVEN: A session without task binding
-        WHEN: Agent attempts destructive Bash (echo > file)
-        THEN: Gate should warn/block about task requirement
-        """
-        runner, platform = cli_headless
-        test_file = tmp_path / "destructive-test.txt"
-
-        result = runner(
-            f"Run this Bash command: echo 'test content' > {test_file}",
-            model="haiku" if platform == "claude" else None,
-            fail_on_error=False,
-        )
-
-        output_text = json.dumps(result.get("result", {}))
-
-        gate_indicators = ["task", "gate", "destructive", "binding", "BLOCKED", "warn"]
-        has_gate_message = any(ind.lower() in output_text.lower() for ind in gate_indicators)
-
-        assert has_gate_message or not result["success"], (
-            f"[{platform}] Expected task gate to enforce on destructive Bash.\n"
-            f"Output: {output_text[:500]}"
-        )
-
-
-@pytest.mark.slow
 class TestBashClassificationE2E:
     """E2E tests for Bash command classification."""
 
@@ -219,103 +138,6 @@ class TestBashClassificationE2E:
             assert has_path_output or result["success"], (
                 f"[{platform}] Expected pwd to return a path, got: {output_text[:300]}"
             )
-
-    def test_rm_classified_as_destructive(self, cli_headless, tmp_path):
-        """
-        GIVEN: A session
-        WHEN: Agent attempts rm command
-        THEN: Gate should recognize as destructive and enforce task gate
-        """
-        runner, platform = cli_headless
-        test_file = tmp_path / "file-to-delete.txt"
-        test_file.write_text("delete me")
-
-        result = runner(
-            f"Run 'rm {test_file}' using Bash.",
-            model="haiku" if platform == "claude" else None,
-            fail_on_error=False,
-        )
-
-        output_text = json.dumps(result.get("result", {}))
-
-        gate_indicators = ["gate", "task", "destructive", "BLOCKED", "warn"]
-        has_gate_enforcement = any(ind.lower() in output_text.lower() for ind in gate_indicators)
-
-        file_still_exists = test_file.exists()
-
-        assert has_gate_enforcement or file_still_exists, (
-            f"[{platform}] Expected rm to be blocked or warned by gates.\n"
-            f"File deleted: {not file_still_exists}\n"
-            f"Output: {output_text[:500]}"
-        )
-
-    def test_git_commit_classified_as_destructive(self, cli_headless):
-        """
-        GIVEN: A session without task binding
-        WHEN: Agent attempts git commit
-        THEN: Gate should recognize as destructive and enforce task gate
-        """
-        runner, platform = cli_headless
-
-        result = runner(
-            "Run 'git commit -m \"test commit\"' using Bash.",
-            model="haiku" if platform == "claude" else None,
-            fail_on_error=False,
-        )
-
-        output_text = json.dumps(result.get("result", {}))
-
-        gate_indicators = ["gate", "task", "destructive", "BLOCKED", "warn"]
-        git_refusal_indicators = [
-            "nothing to commit",
-            "no changes",
-            "working tree clean",
-        ]
-
-        has_gate_enforcement = any(ind.lower() in output_text.lower() for ind in gate_indicators)
-        has_git_refusal = any(ind.lower() in output_text.lower() for ind in git_refusal_indicators)
-
-        assert has_gate_enforcement or has_git_refusal, (
-            f"[{platform}] Expected git commit to be blocked by gates or refused by git.\n"
-            f"Output: {output_text[:500]}"
-        )
-
-
-@pytest.mark.slow
-class TestSafeTempPathE2E:
-    """E2E tests for safe temp path bypass."""
-
-    def test_write_to_claude_tmp_bypasses_task_gate(self, cli_headless):
-        """
-        GIVEN: A session without task binding
-        WHEN: Agent writes to ~/.claude/tmp/
-        THEN: Write should succeed (safe temp path bypasses task gate)
-        """
-        runner, platform = cli_headless
-
-        claude_tmp = Path.home() / ".claude" / "tmp"
-        claude_tmp.mkdir(parents=True, exist_ok=True)
-        test_file = claude_tmp / "e2e-test-safe-path.txt"
-
-        result = runner(
-            f"Write the text 'safe temp test' to the file {test_file}. Use the Write tool.",
-            model="haiku" if platform == "claude" else None,
-            fail_on_error=False,
-        )
-
-        output_text = json.dumps(result.get("result", {}))
-
-        write_succeeded = test_file.exists()
-        blocked_for_task = "task" in output_text.lower() and "BLOCKED" in output_text.upper()
-
-        if test_file.exists():
-            test_file.unlink()
-
-        assert write_succeeded or not blocked_for_task, (
-            f"[{platform}] Expected write to ~/.claude/tmp to bypass task gate.\n"
-            f"File created: {write_succeeded}\n"
-            f"Output: {output_text[:500]}"
-        )
 
 
 @pytest.mark.slow
@@ -360,11 +182,11 @@ class TestGateLifecycleE2E:
 class TestMultiGateE2E:
     """E2E tests for multi-gate enforcement on write operations."""
 
-    def test_edit_requires_hydration_and_task(self, cli_headless, tmp_path):
+    def test_edit_requires_hydration(self, cli_headless, tmp_path):
         """
-        GIVEN: A fresh session (no hydration, no task)
+        GIVEN: A fresh session (no hydration)
         WHEN: Agent attempts Edit tool
-        THEN: Should be blocked for hydration first, then task gate
+        THEN: Should be blocked for hydration
         """
         runner, platform = cli_headless
         test_file = tmp_path / "edit-test.txt"
@@ -378,22 +200,22 @@ class TestMultiGateE2E:
 
         output_text = json.dumps(result.get("result", {}))
 
-        gate_indicators = ["gate", "hydration", "task", "BLOCKED", "warn", "required"]
+        gate_indicators = ["gate", "hydration", "BLOCKED", "warn", "required"]
         has_gate_enforcement = any(ind.lower() in output_text.lower() for ind in gate_indicators)
 
         file_unchanged = test_file.read_text() == "original content"
 
         assert has_gate_enforcement or file_unchanged, (
-            f"[{platform}] Expected Edit to be blocked by gates.\n"
+            f"[{platform}] Expected Edit to be blocked by hydration gate.\n"
             f"File modified: {not file_unchanged}\n"
             f"Output: {output_text[:500]}"
         )
 
-    def test_write_to_project_file_requires_gates(self, cli_headless):
+    def test_write_to_project_file_requires_hydration(self, cli_headless):
         """
         GIVEN: A fresh session
         WHEN: Agent attempts to Write to a project file
-        THEN: Should trigger gate enforcement (not in safe temp paths)
+        THEN: Should trigger hydration gate enforcement
         """
         runner, platform = cli_headless
         project_file = Path.cwd() / "e2e-test-should-not-exist.txt"
@@ -406,7 +228,7 @@ class TestMultiGateE2E:
 
         output_text = json.dumps(result.get("result", {}))
 
-        gate_indicators = ["gate", "hydration", "task", "BLOCKED", "warn"]
+        gate_indicators = ["gate", "hydration", "BLOCKED", "warn"]
         has_gate_enforcement = any(ind.lower() in output_text.lower() for ind in gate_indicators)
 
         file_not_created = not project_file.exists()
@@ -415,7 +237,7 @@ class TestMultiGateE2E:
             project_file.unlink()
 
         assert has_gate_enforcement or file_not_created, (
-            f"[{platform}] Expected Write to project file to be blocked by gates.\n"
+            f"[{platform}] Expected Write to project file to be blocked by hydration gate.\n"
             f"File created: {not file_not_created}\n"
             f"Output: {output_text[:500]}"
         )

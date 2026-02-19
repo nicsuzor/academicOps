@@ -198,32 +198,6 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         required_vars=("session_id", "gate_name", "tool_name"),
         description="Audit context for custodiet gate",
     ),
-    # --- Task gate ---
-    "task.block": TemplateSpec(
-        name="task.block",
-        category=TemplateCategory.USER_MESSAGE,
-        filename="task-gate-block.md",
-        required_vars=(
-            "task_bound_status",
-            "hydrator_invoked_status",
-            "critic_invoked_status",
-            "missing_gates",
-        ),
-        description="Block message when task gate denies tool",
-        env_override="TASK_GATE_BLOCK_TEMPLATE",
-    ),
-    "task.warn": TemplateSpec(
-        name="task.warn",
-        category=TemplateCategory.USER_MESSAGE,
-        filename="task-gate-warn.md",
-        required_vars=(
-            "task_bound_status",
-            "hydrator_invoked_status",
-            "critic_invoked_status",
-        ),
-        description="Warning when task gate is in warn mode",
-        env_override="TASK_GATE_WARN_TEMPLATE",
-    ),
     # --- Stop gate ---
     "stop.critic": TemplateSpec(
         name="stop.critic",
