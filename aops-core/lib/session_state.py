@@ -44,6 +44,9 @@ class MainAgentState(BaseModel):
     task_cleared_ts: str | None = None
     todos_completed: int = 0
     todos_total: int = 0
+    # User Acceptance Criteria tracking
+    user_acceptance_criteria: list[str] = Field(default_factory=list)
+    uac_checked: list[bool] = Field(default_factory=list)
 
 
 class SessionState(BaseModel):

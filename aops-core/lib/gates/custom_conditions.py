@@ -105,4 +105,36 @@ def check_custom_condition(
         except (ImportError, Exception):
             return True  # Assume missing on error
 
+    if name == "uac_verified":
+        # Check if all UAC are marked done in current task body
+        task_id = session_state.main_agent.current_task
+        if not task_id:
+            # No task bound = no UAC to verify (or already satisfied by other means)
+            return True
+
+        try:
+            from lib.task_storage import TaskStorage
+            storage = TaskStorage()
+            task = storage.get_task(task_id)
+            if not task:
+                return True
+
+            # Use the existing check from tasks_server logic (re-implemented or imported)
+            # For simplicity, we check if ANY [ ] exists in task body
+            import re
+            if re.search(r"^\s*-\s*\[ \]\s+.*$", task.body, re.MULTILINE):
+                # Update list of incomplete items for gate metrics
+                incomplete = re.findall(r"^\s*-\s*\[ \]\s+(.*)$", task.body, re.MULTILINE)
+                uac_gate = session_state.get_gate("uac")
+                uac_gate.metrics["incomplete_uac_list"] = "\n".join(f"- [ ] {i}" for i in incomplete)
+                return False
+            
+            return True
+        except Exception:
+            return True
+
+    if name == "has_incomplete_uac":
+        # Inverse of uac_verified for policy matching
+        return not check_custom_condition("uac_verified", ctx, state, session_state)
+
     return False

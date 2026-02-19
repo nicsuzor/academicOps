@@ -114,6 +114,7 @@ GEMINI_EVENT_MAP = {
 # --- Gate Status Display ---
 GATE_ICONS = {
     "hydration": ("🫗", "."),
+    "uac": ("📋", "."),
     "custodiet": ("🛡", "."),
     "handover": ("📤", "."),
 }

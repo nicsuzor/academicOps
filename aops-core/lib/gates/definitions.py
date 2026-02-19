@@ -171,6 +171,57 @@ GATE_CONFIGS = [
             ),
         ],
     ),
+    # --- UAC ---
+    # User Acceptance Criteria gate. Blocks exit if UAC items are incomplete.
+    GateConfig(
+        name="uac",
+        description="Ensures user acceptance criteria are met before exit.",
+        initial_status=GateStatus.OPEN,
+        triggers=[
+            # Hydration happens -> Close gate (UAC pending extraction/verification)
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="PostToolUse",
+                    subagent_type_pattern="^(aops-core:)?prompt-hydrator$",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.CLOSED,
+                    custom_action="extract_uac",
+                    system_message_template="📋 UAC extracted. Gate CLOSED until criteria verified.",
+                ),
+            ),
+            # Task completion check -> Open if no incomplete items
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="PostToolUse",
+                    tool_name_pattern="^(complete_task|complete_tasks|update_task)$",
+                    custom_check="uac_verified",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.OPEN,
+                    system_message_template="📋 UAC verified. Gate OPEN.",
+                ),
+            ),
+        ],
+        policies=[
+            # Block Stop when CLOSED and items incomplete
+            GatePolicy(
+                condition=GateCondition(
+                    current_status=GateStatus.CLOSED,
+                    hook_event="Stop",
+                    custom_check="has_incomplete_uac",
+                ),
+                verdict=QA_GATE_MODE,  # Use QA mode for UAC blocking
+                message_template="⛔ User Acceptance Criteria (UAC) not fully met.",
+                context_template=(
+                    "**UAC VERIFICATION REQUIRED**\n\n"
+                    "The following User Acceptance Criteria are not yet marked as complete:\n"
+                    "{incomplete_uac_list}\n\n"
+                    "Please ensure all criteria are addressed and marked with [x] in your task body before exiting."
+                ),
+            ),
+        ],
+    ),
     # --- Handover ---
     # Gate starts OPEN. Closes when a task is bound (work begins).
     # Opens when /handover skill completes. Policy blocks Stop when CLOSED.

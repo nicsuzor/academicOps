@@ -87,6 +87,8 @@ Your output MUST be valid Markdown wrapped in structured tags.
 1. [Measurable outcome 1]
 2. [Measurable outcome 2]
 
+(These will be extracted by the UAC gate - keep them concise and measurable)
+
 ### Relevant Context
 
 - [Key context from your input that agent needs]

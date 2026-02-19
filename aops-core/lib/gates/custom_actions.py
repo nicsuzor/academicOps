@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 
 from hooks.schemas import HookContext
@@ -140,5 +141,40 @@ def execute_custom_action(
             system_message=f"Compliance report ready: {temp_path}",
             context_injection=instruction,
         )
+
+    if name == "extract_uac":
+        # Extract UAC from prompt-hydrator output
+        if not ctx.tool_output:
+            return None
+
+        output_text = str(ctx.tool_output)
+        if "<hydration_result>" not in output_text:
+            return None
+
+        # Look for UAC section
+        uac_match = re.search(
+            r"### Acceptance Criteria\n\n(.*?)(?=\n\n###|\n\n</hydration_result>|$)",
+            output_text,
+            re.DOTALL,
+        )
+        if not uac_match:
+            return None
+
+        criteria_block = uac_match.group(1).strip()
+        # Parse numbered list or bullet points
+        items = re.findall(r"^\d+\.\s+(.*)$|^[-*]\s+(.*)$", criteria_block, re.MULTILINE)
+        criteria = [item[0] or item[1] for item in items if item[0] or item[1]]
+
+        if criteria:
+            session_state.main_agent.user_acceptance_criteria = criteria
+            session_state.main_agent.uac_checked = [False] * len(criteria)
+            
+            # Update UAC gate metrics for template rendering
+            uac_gate = session_state.get_gate("uac")
+            uac_gate.metrics["incomplete_uac_list"] = "\n".join(f"- [ ] {c}" for c in criteria)
+            
+            return GateResult.allow(
+                system_message=f"📋 Extracted {len(criteria)} User Acceptance Criteria."
+            )
 
     return None
