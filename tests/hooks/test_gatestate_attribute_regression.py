@@ -70,7 +70,7 @@ def test_user_prompt_submit_no_attribute_error():
                     instruction = build_hydration_instruction(
                         session_id, "test prompt", state=session_state
                     )
-                    assert "Transform user prompt using context" in instruction
+                    assert instruction.startswith("**User prompt hydration required.")
                 finally:
                     hooks.user_prompt_submit.write_temp_file = original_write
 
