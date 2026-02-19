@@ -248,11 +248,11 @@ See [[specs/framework-observability.md]] for details
 - Low skill compliance → discovery or routing issues
 - Token inefficiency → optimize hydration or caching
 
-**3. Intervene** - Apply graduated fixes via `/learn`:
+**3. Intervene** - Capture and apply fixes via `/learn`:
 
-- Start at lowest effective level (corollary, then heuristic, then hook)
-- Document root cause and intervention in a task
-- Verify improvement in subsequent sessions
+- Use `/learn` for rapid async knowledge capture of failures (dump to GitHub issues)
+- Apply minimal fixes documented as single tasks
+- Avoid complex task trees; prefer "fire and forget" capture
 
 See [[specs/feedback-loops.md]] for the complete improvement workflow.
 
@@ -298,7 +298,7 @@ The **framework agent** embodies the self-reflexive principle—it both executes
 | /diag            | Quick diagnostic of what's loaded in session           |
 | /pull            | Pull a task from the queue and claim it                |
 | /q               | Quick-queue a task for later                           |
-| /learn           | Make minimal framework tweaks with experiment tracking |
+| /learn           | Rapid async knowledge capture for framework failures |
 | /work            | Collaborative task execution                           |
 | /log             | Log framework observations for continuous improvement  |
 | /dump            | Emergency work handover and session exit               |

@@ -142,13 +142,13 @@ Use `fd` for file finding operations instead of `ls | grep/tail` pipelines.
 
 Bug fixes must not remove functionality required by acceptance criteria.
 
-## Spike Output Goes to Task Graph (P#81)
+## Spike Output Goes to Task Graph or GitHub (P#81)
 
-Spike/learn task output belongs in the task graph (task body, parent epic), not random files.
+Spike/learn output belongs in the task graph (task body, parent epic) or GitHub issues, not random files.
 
-## Mandatory Reproduction Tests (P#82)
+## Mandatory Reproduction Tests for Fixes (P#82)
 
-Every framework bug fix MUST be preceded by a failing reproduction test case.
+Every framework bug fix MUST be preceded by a failing reproduction test case. This applies when implementing a fix, not necessarily during the initial async capture (/learn).
 
 ## Make Cross-Project Dependencies Explicit (P#83)
 
