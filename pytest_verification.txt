@@ -1,0 +1,10 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.12, pytest-9.0.2, pluggy-1.6.0
+rootdir: /app
+configfile: pyproject.toml
+plugins: cov-7.0.0, timeout-2.4.0, xdist-3.8.0, anyio-4.12.1
+created: 16/16 workers
+16 workers [2 items]
+
+.s                                                                       [100%]
+========================= 1 passed, 1 skipped in 6.51s =========================

@@ -1,0 +1,158 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.12, pytest-9.0.2, pluggy-1.6.0 -- /app/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /app
+configfile: pyproject.toml
+plugins: cov-7.0.0, timeout-2.4.0, xdist-3.8.0, anyio-4.12.1
+created: 16/16 workers
+16 workers [13 items]
+
+scheduling tests via LoadScheduling
+
+tests/integration/test_custodiet_e2e.py::test_custodiet_task_spawned
+tests/hooks/test_router_compliance.py::test_router_compliance_today
+tests/integration/test_custodiet_e2e.py::test_custodiet_subagent_file_access
+tests/hooks/test_router_compliance.py::test_hook_logs_exist
+tests/hooks/test_router_compliance.py::test_router_compliance_measurement
+tests/integration/test_custodiet_e2e.py::TestCustodietDemo::test_demo_custodiet_golden_path
+tests/integration/test_custodiet_e2e.py::test_custodiet_temp_file_created_on_threshold
+tests/integration/test_skill_script_discovery.py::test_task_script_runs_from_writing_repo
+tests/integration/test_skill_script_discovery.py::test_skill_self_contained_architecture
+tests/integration/test_skill_script_discovery.py::test_skill_scripts_exist_via_symlink
+[gw4] [  7%] SKIPPED tests/integration/test_custodiet_e2e.py::test_custodiet_subagent_file_access
+tests/integration/test_skill_script_discovery.py::test_task_skill_scripts_discoverable
+tests/integration/test_custodiet_e2e.py::test_custodiet_temp_file_structure
+tests/integration/test_skill_script_discovery.py::test_claude_finds_scripts_without_search
+[gw11] [ 15%] SKIPPED tests/integration/test_skill_script_discovery.py::test_claude_finds_scripts_without_search
+[gw0] [ 23%] SKIPPED tests/hooks/test_router_compliance.py::test_router_compliance_today
+[gw2] [ 30%] PASSED tests/hooks/test_router_compliance.py::test_hook_logs_exist
+[gw1] [ 38%] SKIPPED tests/hooks/test_router_compliance.py::test_router_compliance_measurement
+[gw5] [ 46%] SKIPPED tests/integration/test_custodiet_e2e.py::test_custodiet_task_spawned
+[gw8] [ 53%] SKIPPED tests/integration/test_skill_script_discovery.py::test_task_skill_scripts_discoverable
+[gw3] [ 61%] SKIPPED tests/integration/test_custodiet_e2e.py::test_custodiet_temp_file_created_on_threshold
+[gw6] [ 69%] PASSED tests/integration/test_custodiet_e2e.py::test_custodiet_temp_file_structure
+[gw7] [ 76%] SKIPPED tests/integration/test_custodiet_e2e.py::TestCustodietDemo::test_demo_custodiet_golden_path
+[gw12] [ 84%] FAILED tests/integration/test_skill_script_discovery.py::test_skill_self_contained_architecture
+[gw9] [ 92%] FAILED tests/integration/test_skill_script_discovery.py::test_skill_scripts_exist_via_symlink
+[gw10] [100%] FAILED tests/integration/test_skill_script_discovery.py::test_task_script_runs_from_writing_repo
+
+=================================== FAILURES ===================================
+____________________ test_skill_self_contained_architecture ____________________
+[gw12] linux -- Python 3.12.12 /app/.venv/bin/python
+
+    @pytest.mark.integration
+    @pytest.mark.slow
+    def test_skill_self_contained_architecture():
+        """Test that skills are self-contained with their own scripts.
+
+        Verifies:
+        - Scripts live in skill directory (skills/tasks/scripts/)
+        - Scripts are accessible via symlink (~/. claude/skills/tasks/scripts/)
+        - Architecture supports run-from-anywhere
+        """
+        import os
+
+        aops = os.environ.get("AOPS")
+        assert aops, "AOPS environment variable should be set"
+
+        aops_path = Path(aops)
+        assert aops_path.exists(), f"AOPS path should exist: {aops_path}"
+
+        # Scripts should exist in AOPS framework
+        scripts_in_aops = aops_path / "skills" / "tasks" / "scripts"
+>       assert scripts_in_aops.exists(), f"Scripts should exist in AOPS: {scripts_in_aops}"
+E       AssertionError: Scripts should exist in AOPS: /app/aops-core/skills/tasks/scripts
+E       assert False
+E        +  where False = exists()
+E        +    where exists = PosixPath('/app/aops-core/skills/tasks/scripts').exists
+
+tests/integration/test_skill_script_discovery.py:254: AssertionError
+_____________________ test_skill_scripts_exist_via_symlink _____________________
+[gw9] linux -- Python 3.12.12 /app/.venv/bin/python
+
+    @pytest.mark.integration
+    @pytest.mark.slow
+    def test_skill_scripts_exist_via_symlink():
+        """Test that skill scripts are accessible via ~/.claude/skills/ symlink.
+
+        Verifies:
+        - ~/.claude/skills/tasks/ symlink exists
+        - Script files are accessible through symlink
+        - Path resolution works correctly
+        """
+        # Check symlink exists
+        skills_path = Path.home() / ".claude" / "skills"
+        assert skills_path.exists(), "~/.claude/skills/ should exist"
+        assert skills_path.is_symlink() or skills_path.is_dir(), (
+            "~/.claude/skills/ should be symlink or directory"
+        )
+
+        # Check task skill exists
+        task_skill_path = skills_path / "tasks"
+>       assert task_skill_path.exists(), "~/.claude/skills/tasks/ should exist"
+E       AssertionError: ~/.claude/skills/tasks/ should exist
+E       assert False
+E        +  where False = exists()
+E        +    where exists = PosixPath('/home/jules/.claude/skills/tasks').exists
+
+tests/integration/test_skill_script_discovery.py:122: AssertionError
+___________________ test_task_script_runs_from_writing_repo ____________________
+[gw10] linux -- Python 3.12.12 /app/.venv/bin/python
+
+data_dir = PosixPath('/tmp/pytest-of-jules/pytest-3/popen-gw10/test_task_script_runs_from_wri0/aca_data')
+
+    @pytest.mark.integration
+    @pytest.mark.slow
+    def test_task_script_runs_from_writing_repo(data_dir):
+        """Test that task scripts execute correctly from writing repo.
+
+        Verifies:
+        - Scripts can be invoked with PYTHONPATH=$AOPS
+        - Scripts find lib.paths correctly
+        - Scripts locate data in writing repo's data directory
+        """
+        import os
+
+        # Build command to run task_view.py
+        cmd = [
+            "uv",
+            "run",
+            "python",
+            str(Path.home() / ".claude" / "skills" / "tasks" / "scripts" / "task_view.py"),
+            "--compact",
+        ]
+
+        # Set environment
+        env = os.environ.copy()
+        aops = env.get("AOPS")
+        assert aops, "AOPS environment variable should be set"
+        env["PYTHONPATH"] = aops
+
+        # Execute from writing repo
+        result = subprocess.run(
+            cmd,
+            cwd=data_dir,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            env=env,
+            check=False,
+        )
+
+        # Should succeed
+>       assert result.returncode == 0, (
+            f"Script should execute successfully\nstdout: {result.stdout}\nstderr: {result.stderr}"
+        )
+E       AssertionError: Script should execute successfully
+E         stdout:
+E         stderr: /app/.venv/bin/python3: can't open file '/home/jules/.claude/skills/tasks/scripts/task_view.py': [Errno 2] No such file or directory
+E
+E       assert 2 == 0
+E        +  where 2 = CompletedProcess(args=['uv', 'run', 'python', '/home/jules/.claude/skills/tasks/scripts/task_view.py', '--compact'], returncode=2, stdout='', stderr="/app/.venv/bin/python3: can't open file '/home/jules/.claude/skills/tasks/scripts/task_view.py': [Errno 2] No such file or directory\n").returncode
+
+tests/integration/test_skill_script_discovery.py:174: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/test_skill_script_discovery.py::test_skill_self_contained_architecture
+FAILED tests/integration/test_skill_script_discovery.py::test_skill_scripts_exist_via_symlink
+FAILED tests/integration/test_skill_script_discovery.py::test_task_script_runs_from_writing_repo
+==================== 3 failed, 2 passed, 8 skipped in 4.52s ====================

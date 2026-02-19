@@ -1,0 +1,64 @@
+Using CPython 3.12.12 interpreter at: /home/jules/.pyenv/versions/3.12.12/bin/python3.12
+Creating virtual environment at: .venv
+   Building academicops @ file:///app
+Downloading networkx (2.0MiB)
+Downloading cryptography (4.3MiB)
+Downloading beartype (1.3MiB)
+Downloading pillow (6.7MiB)
+Downloading pydantic-core (2.0MiB)
+Downloading numpy (15.8MiB)
+Downloading pydeck (6.6MiB)
+Downloading pandas (11.8MiB)
+Downloading virtualenv (5.6MiB)
+Downloading pygments (1.2MiB)
+Downloading nodejs-wheel-binaries (57.0MiB)
+Downloading scipy (33.4MiB)
+Downloading pyarrow (45.4MiB)
+Downloading basedpyright (11.7MiB)
+Downloading pdfminer-six (6.3MiB)
+Downloading streamlit (8.7MiB)
+Downloading ruff (10.6MiB)
+Downloading lupa (2.0MiB)
+ Downloaded pydantic-core
+ Downloaded lupa
+ Downloaded pygments
+ Downloaded beartype
+ Downloaded virtualenv
+ Downloaded cryptography
+ Downloaded pdfminer-six
+ Downloaded pydeck
+ Downloaded pillow
+ Downloaded networkx
+      Built academicops @ file:///app
+ Downloaded streamlit
+ Downloaded ruff
+ Downloaded numpy
+ Downloaded pandas
+ Downloaded scipy
+ Downloaded pyarrow
+ Downloaded basedpyright
+ Downloaded nodejs-wheel-binaries
+Installed 137 packages in 445ms
+============================= test session starts ==============================
+platform linux -- Python 3.12.12, pytest-9.0.2, pluggy-1.6.0
+rootdir: /app
+configfile: pyproject.toml
+testpaths: tests, aops-core/tests
+plugins: cov-7.0.0, timeout-2.4.0, xdist-3.8.0, anyio-4.12.1
+created: 16/16 workers
+16 workers [902 items]
+
+s.............sss.s....s..s....s.......s................s....s...s...... [  7%]
+.s..s..s...s..............s............................................. [ 15%]
+............s........................................................... [ 23%]
+........................................................................ [ 31%]
+........................................................................ [ 39%]
+........................................................................ [ 47%]
+........................................................................ [ 55%]
+.........s..s........................................................... [ 63%]
+........................................................................ [ 71%]
+.......................................s............................s... [ 79%]
+........................................................................ [ 87%]
+........................................................................ [ 95%]
+......................................                                   [100%]
+======================= 880 passed, 22 skipped in 39.77s =======================

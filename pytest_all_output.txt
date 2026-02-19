@@ -1,0 +1,177 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.12, pytest-9.0.2, pluggy-1.6.0
+rootdir: /app
+configfile: pyproject.toml
+testpaths: tests, aops-core/tests
+plugins: cov-7.0.0, timeout-2.4.0, xdist-3.8.0, anyio-4.12.1
+created: 16/16 workers
+16 workers [1033 items]
+
+sssssss........ss..s..s...sssss....s.s.s....sss.....s.s...ss.....ssss.ss [  6%]
+............sss..ss.......ss.s.sss..ssss..ss.ss...ss....s.....s.ss.sss.. [ 13%]
+ss.ssss.......sss.s.s..s.sssss.ss.s...sssss.s..ss.ssss.s..sss.ss..ss...s [ 20%]
+ssssss.s.....s.ssssss...s.sss..ssss.s..s.........s.........s............ [ 27%]
+.......................................s...s.....s........s...s......... [ 34%]
+.Fs.s.sss.s..ss...............................................F.....s... [ 41%]
+........................................................................ [ 48%]
+.........................F...............................F..s........... [ 55%]
+...............F........s..............................................s [ 62%]
+.......s....s........................................................... [ 69%]
+........................................................................ [ 76%]
+........................................................................ [ 83%]
+.......s................................................................ [ 90%]
+........................................................................ [ 97%]
+.........................                                                [100%]
+=================================== FAILURES ===================================
+______________________ test_custodiet_temp_file_structure ______________________
+[gw14] linux -- Python 3.12.12 /app/.venv/bin/python
+
+    @pytest.mark.slow
+    @pytest.mark.integration
+    def test_custodiet_temp_file_structure() -> None:
+        """Validate custodiet temp file structure (non-demo unit test).
+
+        Reads existing temp files to verify structure - no Claude session needed.
+        """
+>       temp_dir = get_audit_temp_dir()
+                   ^^^^^^^^^^^^^^^^^^^^
+
+tests/integration/test_custodiet_e2e.py:228:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/integration/test_custodiet_e2e.py:36: in get_audit_temp_dir
+    return hook_utils.get_hook_temp_dir("hydrator")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+aops-core/lib/hook_utils.py:59: in get_hook_temp_dir
+    session_id = get_session_id(input_data)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+input_data = None
+
+    def get_session_id(input_data: dict[str, Any] | None = None) -> str:
+        """Get session ID from hook input data or environment.
+
+        Args:
+            input_data: Hook input data dict
+
+        Returns:
+            Session ID string, or empty string if not found and not required
+
+        Raises:
+            ValueError: If require=True and session_id not found
+        """
+        session_id = None
+        if input_data:
+            session_id = input_data.get("session_id")
+        if not session_id:
+            session_id = os.environ.get("CLAUDE_SESSION_ID")
+        if not session_id:
+>           raise ValueError(
+                "session_id is required in hook input_data or CLAUDE_SESSION_ID env var. "
+                "If you're seeing this error, the hook invocation is missing required context."
+            )
+E           ValueError: session_id is required in hook input_data or CLAUDE_SESSION_ID env var. If you're seeing this error, the hook invocation is missing required context.
+
+aops-core/lib/hook_utils.py:191: ValueError
+______________________ test_router_compliance_measurement ______________________
+[gw6] linux -- Python 3.12.12 /app/.venv/bin/python
+
+    @pytest.mark.metrics
+    @pytest.mark.slow
+    def test_router_compliance_measurement():
+        """Run compliance measurement and report results.
+
+        This test always passes but prints metrics for review.
+        Use --capture=no (-s) to see output.
+        """
+>       assert MEASURE_SCRIPT.exists(), f"Measurement script not found: {MEASURE_SCRIPT}"
+E       AssertionError: Measurement script not found: /app/tests/scripts/measure_router_compliance.py
+E       assert False
+E        +  where False = exists()
+E        +    where exists = PosixPath('/app/tests/scripts/measure_router_compliance.py').exists
+
+tests/hooks/test_router_compliance.py:47: AssertionError
+_____________________ test_skill_scripts_exist_via_symlink _____________________
+[gw5] linux -- Python 3.12.12 /app/.venv/bin/python
+
+    @pytest.mark.integration
+    @pytest.mark.slow
+    def test_skill_scripts_exist_via_symlink():
+        """Test that skill scripts are accessible via ~/.claude/skills/ symlink.
+
+        Verifies:
+        - ~/.claude/skills/tasks/ symlink exists
+        - Script files are accessible through symlink
+        - Path resolution works correctly
+        """
+        # Check symlink exists
+        skills_path = Path.home() / ".claude" / "skills"
+>       assert skills_path.exists(), "~/.claude/skills/ should exist"
+E       AssertionError: ~/.claude/skills/ should exist
+E       assert False
+E        +  where False = exists()
+E        +    where exists = PosixPath('/home/jules/.claude/skills').exists
+
+tests/integration/test_skill_script_discovery.py:77: AssertionError
+___________________ test_task_script_runs_from_writing_repo ____________________
+[gw5] linux -- Python 3.12.12 /app/.venv/bin/python
+
+data_dir = PosixPath('/tmp/pytest-of-jules/pytest-1/popen-gw5/test_task_script_runs_from_wri0/aca_data')
+
+    @pytest.mark.integration
+    @pytest.mark.slow
+    def test_task_script_runs_from_writing_repo(data_dir):
+        """Test that task scripts execute correctly from writing repo.
+
+        Verifies:
+        - Scripts can be invoked with PYTHONPATH=$AOPS
+        - Scripts find lib.paths correctly
+        - Scripts locate data in writing repo's data directory
+        """
+        import os
+
+        # Build command to run task_view.py
+        cmd = [
+            "uv",
+            "run",
+            "python",
+            str(Path.home() / ".claude" / "skills" / "tasks" / "scripts" / "task_view.py"),
+            "--compact",
+        ]
+
+        # Set environment
+        env = os.environ.copy()
+        aops = env.get("AOPS")
+>       assert aops, "AOPS environment variable should be set"
+E       AssertionError: AOPS environment variable should be set
+E       assert None
+
+tests/integration/test_skill_script_discovery.py:121: AssertionError
+____________________ test_skill_self_contained_architecture ____________________
+[gw5] linux -- Python 3.12.12 /app/.venv/bin/python
+
+    @pytest.mark.integration
+    @pytest.mark.slow
+    def test_skill_self_contained_architecture():
+        """Test that skills are self-contained with their own scripts.
+
+        Verifies:
+        - Scripts live in skill directory (skills/tasks/scripts/)
+        - Scripts are accessible via symlink (~/. claude/skills/tasks/scripts/)
+        - Architecture supports run-from-anywhere
+        """
+        import os
+
+        aops = os.environ.get("AOPS")
+>       assert aops, "AOPS environment variable should be set"
+E       AssertionError: AOPS environment variable should be set
+E       assert None
+
+tests/integration/test_skill_script_discovery.py:209: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/test_custodiet_e2e.py::test_custodiet_temp_file_structure
+FAILED tests/hooks/test_router_compliance.py::test_router_compliance_measurement
+FAILED tests/integration/test_skill_script_discovery.py::test_skill_scripts_exist_via_symlink
+FAILED tests/integration/test_skill_script_discovery.py::test_task_script_runs_from_writing_repo
+FAILED tests/integration/test_skill_script_discovery.py::test_skill_self_contained_architecture
+================= 5 failed, 881 passed, 147 skipped in 28.02s ==================

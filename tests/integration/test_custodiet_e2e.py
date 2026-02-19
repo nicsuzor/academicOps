@@ -220,11 +220,26 @@ def test_custodiet_subagent_file_access(claude_headless_tracked) -> None:
 
 @pytest.mark.slow
 @pytest.mark.integration
-def test_custodiet_temp_file_structure() -> None:
+def test_custodiet_temp_file_structure(monkeypatch, tmp_path) -> None:
     """Validate custodiet temp file structure (non-demo unit test).
 
     Reads existing temp files to verify structure - no Claude session needed.
     """
+    # Create dummy environment and file to test structure parsing independently
+    monkeypatch.setenv("TMPDIR", str(tmp_path))
+    temp_dir = tmp_path / "hydrator"
+    temp_dir.mkdir()
+
+    # Create a valid dummy audit file
+    dummy_file = temp_dir / "audit_test.md"
+    dummy_file.write_text(
+        "## Session Context\nTest Context\n"
+        "# AXIOMS\nTest Axioms\n"
+        "# HEURISTICS\nTest Heuristics\n"
+        "## OUTPUT FORMAT\nTest Output Format\n" + ("x" * 2001)
+    )
+
+    # Now call the function under test (which uses get_audit_temp_dir -> TMPDIR)
     temp_dir = get_audit_temp_dir()
 
     if not temp_dir.exists():

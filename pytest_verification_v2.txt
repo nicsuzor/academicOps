@@ -1,0 +1,39 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.12, pytest-9.0.2, pluggy-1.6.0 -- /app/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /app
+configfile: pyproject.toml
+plugins: cov-7.0.0, timeout-2.4.0, xdist-3.8.0, anyio-4.12.1
+created: 16/16 workers
+16 workers [13 items]
+
+scheduling tests via LoadScheduling
+
+tests/integration/test_custodiet_e2e.py::test_custodiet_temp_file_created_on_threshold
+tests/hooks/test_router_compliance.py::test_router_compliance_measurement
+tests/hooks/test_router_compliance.py::test_router_compliance_today
+tests/hooks/test_router_compliance.py::test_hook_logs_exist
+[gw1] [  7%] SKIPPED tests/hooks/test_router_compliance.py::test_router_compliance_today
+tests/integration/test_custodiet_e2e.py::test_custodiet_task_spawned
+tests/integration/test_custodiet_e2e.py::TestCustodietDemo::test_demo_custodiet_golden_path
+[gw0] [ 15%] SKIPPED tests/hooks/test_router_compliance.py::test_router_compliance_measurement
+tests/integration/test_skill_script_discovery.py::test_skill_self_contained_architecture
+[gw2] [ 23%] PASSED tests/hooks/test_router_compliance.py::test_hook_logs_exist
+tests/integration/test_skill_script_discovery.py::test_task_script_runs_from_writing_repo
+tests/integration/test_custodiet_e2e.py::test_custodiet_subagent_file_access
+tests/integration/test_skill_script_discovery.py::test_task_skill_scripts_discoverable
+[gw3] [ 30%] SKIPPED tests/integration/test_custodiet_e2e.py::test_custodiet_temp_file_created_on_threshold
+tests/integration/test_skill_script_discovery.py::test_claude_finds_scripts_without_search
+[gw11] [ 38%] SKIPPED tests/integration/test_skill_script_discovery.py::test_claude_finds_scripts_without_search
+tests/integration/test_skill_script_discovery.py::test_skill_scripts_exist_via_symlink
+[gw7] [ 46%] SKIPPED tests/integration/test_custodiet_e2e.py::TestCustodietDemo::test_demo_custodiet_golden_path
+[gw5] [ 53%] SKIPPED tests/integration/test_custodiet_e2e.py::test_custodiet_subagent_file_access
+tests/integration/test_custodiet_e2e.py::test_custodiet_temp_file_structure
+[gw4] [ 61%] SKIPPED tests/integration/test_custodiet_e2e.py::test_custodiet_task_spawned
+[gw12] [ 69%] PASSED tests/integration/test_skill_script_discovery.py::test_skill_self_contained_architecture
+[gw9] [ 76%] PASSED tests/integration/test_skill_script_discovery.py::test_skill_scripts_exist_via_symlink
+[gw8] [ 84%] SKIPPED tests/integration/test_skill_script_discovery.py::test_task_skill_scripts_discoverable
+[gw6] [ 92%] PASSED tests/integration/test_custodiet_e2e.py::test_custodiet_temp_file_structure
+[gw10] [100%] PASSED tests/integration/test_skill_script_discovery.py::test_task_script_runs_from_writing_repo
+
+========================= 5 passed, 8 skipped in 4.61s =========================
