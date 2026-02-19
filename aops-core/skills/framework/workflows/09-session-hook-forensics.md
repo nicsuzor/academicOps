@@ -179,7 +179,7 @@ Once you identify the issue, document:
 | `PreToolUse`       | Before tool runs     | Gate checks, tool blocking      |
 | `PostToolUse`      | After tool completes | Gate state updates, errors      |
 | `SubagentStop`     | Subagent finishes    | Subagent success/failure        |
-| `Stop`             | Session ending       | QA/handover gate checks         |
+| `Stop`             | Session ending       | QA/handover gate checks (via `/dump`) |
 
 ## Reference: Gate Status Indicators
 

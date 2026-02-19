@@ -14,8 +14,8 @@ bases: [base-commit]
 1. **Complete all file changes** - Finish any pending edits, writes, or code modifications
 2. **Run quality gates** - If code was changed, run tests and verify they pass
 3. **Update task status** - Mark tasks complete or update progress as appropriate
-4. **Invoke `/handover`** - Use the Skill tool with `skill="aops-core:handover"`
-5. **Commit and PUSH** - The handover skill will guide you, but ensure `git push` succeeds
+4. **Invoke `/dump`** - Use the Skill tool with `skill="aops-core:dump"`
+5. **Commit and PUSH** - The dump command will guide you, but ensure `git push` succeeds
 6. **File a PR** - Open a pull request so the work is visible and reviewable
 7. **Verify** - All changes committed, pushed, and PR filed
 8. **Output Framework Reflection** - Provide context for the next session

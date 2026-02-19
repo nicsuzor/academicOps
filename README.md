@@ -299,7 +299,7 @@ The **framework agent** embodies the self-reflexive principle—it both executes
 | /learn           | Rapid async knowledge capture for framework failures |
 | /work            | Collaborative task execution                           |
 | /log             | Log framework observations for continuous improvement  |
-| /dump            | Emergency work handover and session exit               |
+| /dump            | Session handover and context dump                      |
 | /bump            | Increment framework version                            |
 | /acceptance_test | Run automated acceptance tests for a feature           |
 

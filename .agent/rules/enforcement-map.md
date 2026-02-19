@@ -306,7 +306,7 @@ All three gates must pass before destructive operations are allowed:
 **Handover patterns detected** (case-insensitive):
 
 - "session end", "session close", "session handover"
-- "handover", "hand over", "hand-over"
+- "dump", "handover", "hand over", "hand-over"
 - "commit and push", "final commit"
 - "wrap up", "framework reflection"
 
