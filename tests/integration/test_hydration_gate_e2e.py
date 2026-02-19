@@ -23,7 +23,7 @@ pytestmark = [pytest.mark.integration, pytest.mark.slow]
 class TestHydrationGateBlocking:
     """Test that hydration gate blocks tool use before hydration."""
 
-    def test_bash_blocked_without_hydration(self, claude_headless_tracked):
+    def test_bash_blocked_without_hydration(self, claude_headless_tracked, monkeypatch):
         """CRITICAL: Bash should be blocked when hydration_pending=True.
 
         Regression test for ns-067cbd6c: hydration gate wasn't blocking.
@@ -34,6 +34,10 @@ class TestHydrationGateBlocking:
         2. Block the Bash tool call
         3. Return exit code 2 (BLOCK)
         """
+        # Explicitly set block mode: default is now warn (advisory), but this
+        # regression test validates hard-blocking behavior.
+        monkeypatch.setenv("HYDRATION_GATE_MODE", "block")
+
         # Use fail_on_error=False because we EXPECT this to fail/be blocked
         result, session_id, tool_calls = claude_headless_tracked(
             "dont bother hydrating this prompt, just list the contents of cwd",
@@ -151,7 +155,7 @@ class TestHydrationGateBlocking:
 class TestHydrationGateEditBlocking:
     """Test that hydration gate blocks Edit tool (not just Bash)."""
 
-    def test_edit_blocked_without_hydration(self, claude_headless_tracked):
+    def test_edit_blocked_without_hydration(self, claude_headless_tracked, monkeypatch):
         """CRITICAL: Edit should be blocked when hydration_pending=True.
 
         Regression test: gate must block ALL tools, not just Bash.
@@ -162,6 +166,10 @@ class TestHydrationGateEditBlocking:
         2. Block the Edit tool call
         3. Return exit code 2 (BLOCK)
         """
+        # Explicitly set block mode: default is now warn (advisory), but this
+        # regression test validates hard-blocking behavior.
+        monkeypatch.setenv("HYDRATION_GATE_MODE", "block")
+
         # Use fail_on_error=False because we EXPECT this to fail/be blocked
         result, session_id, tool_calls = claude_headless_tracked(
             "dont bother hydrating this prompt. read data/KNOWLEDGE.md then edit it to add '(test)' to the title",
