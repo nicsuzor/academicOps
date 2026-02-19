@@ -427,6 +427,30 @@ class HookRouter:
         except Exception as e:
             print(f"WARNING: Gate status icons failed: {e}", file=sys.stderr)
 
+        # Safety: auto-approve if Stop blocked >= 4 times within 2 minutes (aops-c67313ef)
+        if ctx.hook_event in ("Stop", "SessionEnd") and merged_result.verdict == "deny":
+            try:
+                now = datetime.now().timestamp()
+                block_timestamps: list[float] = state.state.get("stop_block_timestamps", [])
+                # Purge entries older than 2 minutes
+                block_timestamps = [ts for ts in block_timestamps if now - ts < 120.0]
+                block_timestamps.append(now)
+                state.state["stop_block_timestamps"] = block_timestamps
+                if len(block_timestamps) >= 5:
+                    merged_result.verdict = "allow"
+                    warn = (
+                        "⚠️ SAFETY OVERRIDE: Stop hook blocked 5+ times in 2 minutes."
+                        " Auto-approving to prevent stall."
+                    )
+                    merged_result.system_message = (
+                        f"{merged_result.system_message}\n{warn}"
+                        if merged_result.system_message
+                        else warn
+                    )
+                    state.state["stop_block_timestamps"] = []
+            except Exception as e:
+                print(f"WARNING: Stop block safety check failed: {e}", file=sys.stderr)
+
         # Save Session State ONCE
         try:
             state.save()
