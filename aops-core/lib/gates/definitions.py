@@ -35,7 +35,7 @@ GATE_CONFIGS = [
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(SubagentStart|PreToolUse|SubagentStop|PostToolUse)$",
-                    subagent_type_pattern="^(aops-core:)?prompt-hydrator$",
+                    subagent_type_pattern="^(aops-core:)?(prompt-hydrator|hydrator)$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
@@ -150,7 +150,8 @@ GATE_CONFIGS = [
             # Hydration completes -> Close gate
             GateTrigger(
                 condition=GateCondition(
-                    hook_event="SubagentStop", subagent_type_pattern="^(aops-core:)?hydrator$"
+                    hook_event="SubagentStop",
+                    subagent_type_pattern="^(aops-core:)?(prompt-hydrator|hydrator)$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
