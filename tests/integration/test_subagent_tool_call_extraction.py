@@ -164,7 +164,7 @@ def test_extract_subagent_tool_calls_realistic_pattern(extract_subagent_calls):
     # This mimics a realistic pattern from a session where main agent
     # makes several tool calls and invokes skills
     tool_calls = [
-        {"name": "Read", "input": {"file_path": "/home/nic/writing/test.md"}},
+        {"name": "Read", "input": {"file_path": "/home/user/writing/test.md"}},
         {"name": "Bash", "input": {"command": "find . -name '*.py'"}},
         {
             "name": "Skill",

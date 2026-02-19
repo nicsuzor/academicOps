@@ -37,7 +37,7 @@ mcp__plugin_aops-core_task_manager__create_task(
     type="task",
     project="hdr",  # NOT "supervision", NOT "academic"
     tags=["sadia", "dissertation", "review"],
-    assignee="nic"  # HDR tasks typically assigned to human
+    assignee="human"  # HDR tasks typically assigned to human
 )
 ```
 
@@ -112,13 +112,13 @@ See `[[workflows/reference-letter]]` for the complete workflow.
 
 | Task Type           | Description                      | Typical Assignee |
 | ------------------- | -------------------------------- | ---------------- |
-| Reference letter    | Write recommendation for student | nic              |
-| Dissertation review | Review chapter/draft             | nic              |
-| Supervision inquiry | Respond to prospective student   | nic              |
-| Final seminar       | Schedule and attend              | nic              |
-| Annual planning     | Review annual plan with student  | nic              |
+| Reference letter    | Write recommendation for student | human            |
+| Dissertation review | Review chapter/draft             | human            |
+| Supervision inquiry | Respond to prospective student   | human            |
+| Final seminar       | Schedule and attend              | human            |
+| Annual planning     | Review annual plan with student  | human            |
 
-**Note**: Most HDR tasks are `assignee=nic` because they require human judgment and relationship management.
+**Note**: Most HDR tasks are `assignee=human` because they require human judgment and relationship management.
 
 ## Related Files
 

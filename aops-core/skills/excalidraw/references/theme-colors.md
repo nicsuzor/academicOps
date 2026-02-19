@@ -8,7 +8,7 @@ description: User's preferred color palette for Excalidraw diagrams with retro t
 
 # Theme Colors: User's Preferred Palette
 
-**Source**: `/home/nic/src/automod/tja/dash/utils/theme.py` (Retro Terminal / Cyberpunk aesthetic)
+**Source**: `/home/user/src/automod/tja/dash/utils/theme.py` (Retro Terminal / Cyberpunk aesthetic)
 
 **Design Philosophy**: Muted retro terminal aesthetic with soft, low-saturation colors. Sharp edges (no border-radius), subtle shadows, professional monospace typography.
 

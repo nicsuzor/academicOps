@@ -38,7 +38,7 @@ graph LR
 
 **Location**: `~/dotfiles/scripts/cloudflare-prompts/`
 
-- **Endpoint**: `https://prompt-logs.nicsuzor.workers.dev`
+- **Endpoint**: `https://prompt-logs.example.workers.dev`
 - **Routes**:
   - `POST /write` - accepts JSON or plain text
   - `GET /read` - returns all prompts chronologically

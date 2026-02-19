@@ -25,7 +25,7 @@ This is non-negotiable. The user cannot audit or revert archive operations witho
 | #   | Date       | From             | Subject                             |
 | --- | ---------- | ---------------- | ----------------------------------- |
 | 1   | 2025-11-19 | Email Quarantine | End User Digest: 7 New Messages     |
-| 2   | 2025-11-19 | QUT Travel       | Your Travel (#893940) has concluded |
+| 2   | 2025-11-19 | Travel Service   | Your Travel (#893940) has concluded |
 | ... |            |                  |                                     |
 
 All N emails moved to [Archive Folder] folder.
@@ -278,7 +278,7 @@ Task(
 | ----------------------- | ---------------------------------------------------------------------------------- |
 | Archive fails mid-batch | Task body contains partial receipt up to failure point - audit trail preserved     |
 | Task update fails       | HALT immediately. Log error. Do NOT continue archiving without receipt persistence |
-| Outlook unavailable     | HALT. Do not proceed without email access                                          |
+| Outlook unavailable     | Report that the optional `omcp` plugin is required for this skill. |
 | No task bound           | HALT. Create or specify task before any archive operations                         |
 
 ## Quality Gates
@@ -295,17 +295,17 @@ Before marking triage complete:
 Task body after successful triage:
 
 ```markdown
-# Email triage: QUT inbox (Nov 2025 - Feb 2026)
+# Email triage: Work inbox (Nov 2025 - Feb 2026)
 
 ## Archive Receipt Log (188 emails)
 
 | #   | Date       | From                         | Subject                             |
 | --- | ---------- | ---------------------------- | ----------------------------------- |
 | 1   | 2025-11-19 | Email Quarantine             | End User Digest: 7 New Messages     |
-| 2   | 2025-11-19 | QUT Travel                   | Your Travel (#893940) has concluded |
-| 3   | 2025-11-18 | QUT DVC Research             | Read and Publish Agreement Update   |
+| 2   | 2025-11-19 | Travel Service               | Your Travel (#893940) has concluded |
+| 3   | 2025-11-18 | DVC Research                 | Read and Publish Agreement Update   |
 | ... |            |                              |                                     |
 | 188 | 2026-02-01 | alerts-noreply@clarivate.com | Web of Science Alert                |
 
-All 188 emails moved to QUT Archive folder.
+All 188 emails moved to Archive folder.
 ```

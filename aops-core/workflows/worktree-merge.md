@@ -299,7 +299,7 @@ mcp__plugin_aops-core_task_manager__search_tasks(query="polecat")
 2. Simple/mechanical tasks: agent approves and marks done
 3. Complex/judgment tasks: agent asks user for resolution before proceeding
 
-**Note**: Task assignees use `nic` (human) or `polecat` (agent), not "engineer".
+**Note**: Task assignees use `human` (human) or `polecat` (agent), not "engineer".
 
 ## Edge Cases
 

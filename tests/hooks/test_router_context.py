@@ -534,7 +534,7 @@ class TestExtractRouterContextDemo:
         from lib.session_reader import extract_router_context
 
         # Find real session transcripts
-        session_dir = Path.home() / ".claude/projects/-Users-suzor-src-academicOps"
+        session_dir = Path.home() / ".claude/projects/-home-user-src-academicOps"
         if not session_dir.exists():
             pytest.skip("No session directory found")
 

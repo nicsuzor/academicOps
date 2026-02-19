@@ -65,7 +65,7 @@ The framework-debug skill provides methodology but still requires agent interpre
 
 **Who benefits?**
 
-Nic - faster debugging, better understanding of agent behavior, ability to review and learn from sessions.
+The user - faster debugging, better understanding of agent behavior, ability to review and learn from sessions.
 
 ## Success Criteria
 
@@ -122,7 +122,7 @@ session-transcript --current
 session-transcript --current -o transcript.md
 
 # From specific repository
-session-transcript --repo /home/nic/src/academicOps 3aa3c
+session-transcript --repo /home/user/src/academicOps 3aa3c
 ```
 
 ### Output Format
@@ -130,7 +130,7 @@ session-transcript --repo /home/nic/src/academicOps 3aa3c
 ```markdown
 # Session Transcript: 3aa3c020-9641-48bb-8331-f056c6b18917
 
-**Repository**: /home/nic/writing
+**Repository**: /home/user/writing
 **Started**: 2025-11-21 21:13:16 UTC
 **Duration**: 45 minutes (ongoing)
 
@@ -158,7 +158,7 @@ I'll invoke the framework skill to analyze this conversation...
 
 **Tool: Read**
 
-- File: /home/nic/writing/data/projects/aops/STATE.md
+- File: /home/user/writing/data/projects/aops/STATE.md
 - Result: 192 lines read
 
 ---

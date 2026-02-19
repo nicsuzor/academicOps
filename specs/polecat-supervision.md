@@ -126,7 +126,7 @@ create_task(
 
 ```bash
 # Single PR
-gh pr merge <N> --repo nicsuzor/academicOps --squash --delete-branch
+gh pr merge <N> --repo qut-dmrc/academicOps --squash --delete-branch
 
 # Batch merge (all clean PRs)
 gh pr list --json number -q '.[].number' | xargs -I{} gh pr merge {} --squash --delete-branch
@@ -215,10 +215,10 @@ polecat watch &
 pgrep -f "polecat.*swarm"
 
 # 2. Start watchdog
-cd /home/nic/src/academicOps && uv run polecat/cli.py watch &
+cd $AOPS && uv run polecat/cli.py watch &
 
 # 3. When notified of PRs:
-gh pr list --repo nicsuzor/academicOps --state open
+gh pr list --repo qut-dmrc/academicOps --state open
 ```
 
 ### Merge Cycle

@@ -158,14 +158,14 @@ class TestDetermineAssigneeMechanicalTasks:
 class TestDetermineAssigneeExplicitOverride:
     """Explicit assignee in frontmatter should be preserved."""
 
-    def test_explicit_nic_preserved(self):
-        """Explicit nic assignment should be preserved."""
+    def test_explicit_human_preserved(self):
+        """Explicit human assignment should be preserved."""
         result = determine_assignee(
             body="Some task",
-            fm={"assignee": "nic"},
+            fm={"assignee": "human"},
             title="Some task",
         )
-        assert result == "nic"
+        assert result == "human"
 
     def test_explicit_polecat_preserved(self):
         """Explicit polecat assignment should be preserved."""
@@ -220,13 +220,13 @@ class TestProcessTaskAssignment:
         result = process_task(str(task_file))
         assert result["action"] == "assign:None"
 
-    def test_explicit_nic_assignment_preserved(self, tmp_path):
-        """Explicit nic assignment should be preserved in process_task."""
-        task_file = tmp_path / "task-nic.md"
+    def test_explicit_human_assignment_preserved(self, tmp_path):
+        """Explicit human assignment should be preserved in process_task."""
+        task_file = tmp_path / "task-human.md"
         task_file.write_text(
             "---\ntitle: Respond to email\ntype: task\nstatus: active\n"
-            "assignee: nic\n---\n"
+            "assignee: human\n---\n"
             "Respond to the client email.\n"
         )
         result = process_task(str(task_file))
-        assert "nic" in result["action"]
+        assert "human" in result["action"]

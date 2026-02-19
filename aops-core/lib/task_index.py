@@ -48,7 +48,12 @@ from pathlib import Path
 from typing import Any
 
 from lib.paths import get_data_root
-from lib.task_model import Task, TaskStatus, TaskType
+from lib.task_model import (
+    Task,
+    TaskStatus,
+    TaskType,
+    get_human_assignee,
+)
 from lib.task_storage import TaskStorage
 
 logger = logging.getLogger(__name__)
@@ -525,7 +530,9 @@ class TaskIndex:
         return self._tasks.get(task_id)
 
     # Tags that indicate human-assigned tasks (excluded when caller is 'polecat')
-    HUMAN_TAGS = {"nic", "human"}
+    @property
+    def human_tags(self) -> set[str]:
+        return {get_human_assignee(), "human"}
 
     def get_ready_tasks(
         self, project: str | None = None, caller: str | None = None
@@ -537,7 +544,7 @@ class TaskIndex:
             caller: Filter by assignee - returns tasks where assignee is None
                     or assignee matches caller. If caller is None, returns all.
                     When caller is 'polecat', also excludes tasks with human tags
-                    ('nic', 'human') in their tags list.
+                    in their tags list.
 
         Returns:
             List of ready task entries sorted by priority (P0 first), then order, then title
@@ -553,7 +560,7 @@ class TaskIndex:
 
             # When caller is 'polecat', also exclude tasks with human tags
             if caller == "polecat":
-                entries = [e for e in entries if not (set(e.tags) & self.HUMAN_TAGS)]
+                entries = [e for e in entries if not (set(e.tags) & self.human_tags)]
 
         # Sort by priority (lower is higher priority), then order, then title
         entries.sort(key=lambda e: (e.priority, e.order, e.title))

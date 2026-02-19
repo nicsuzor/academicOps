@@ -252,7 +252,7 @@ def generate_gemini_hooks(
 
     gemini_hooks = {}
 
-    # Ensure paths are absolute (converts /home/nic/src/... to /home/nic/src/...)
+    # Ensure paths are absolute (converts /home/user/src/... to /home/user/src/...)
     # But router_script_path passed in should already be the dist path usually
 
     for c_event, g_events in CLAUDE_TO_GEMINI.items():

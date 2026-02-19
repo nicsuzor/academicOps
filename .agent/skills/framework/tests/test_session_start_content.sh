@@ -12,7 +12,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-REPO_ROOT="/home/nic/src/writing"
+REPO_ROOT="/home/user/src/writing"
 CLAUDE_MD="${REPO_ROOT}/CLAUDE.md"
 
 # Test 1: Verify CLAUDE.md exists

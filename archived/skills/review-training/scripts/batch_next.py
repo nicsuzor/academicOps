@@ -32,7 +32,7 @@ from datetime import datetime
 from pathlib import Path
 
 # Paths
-ARCHIVE_ROOT = Path("/home/nic/src/writing-archive/archive")
+ARCHIVE_ROOT = Path("/home/user/src/writing-archive/archive")
 MATCHED_DIR = ARCHIVE_ROOT / "matched"
 PROCESSED_DIR = ARCHIVE_ROOT / "processed_pairs"
 FAILED_DIR = ARCHIVE_ROOT / "failed_extraction"

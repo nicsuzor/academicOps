@@ -32,7 +32,7 @@ mcp__plugin_aops-core_task_manager__create_task(
     priority=1,  # Reference letters typically have deadlines
     due="{deadline}",  # ISO format: 2026-02-02T00:00:00+00:00
     tags=["reference", "{student-firstname}", "{purpose}"],
-    assignee="nic",
+    assignee="human",
     body="""# Reference Letter for {Student Name}
 
 ## Request Details

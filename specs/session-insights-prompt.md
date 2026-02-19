@@ -37,7 +37,7 @@ Use these values EXACTLY in your response:
 These fields are typically provided by Claude at session end from session state. If analyzing a transcript post-hoc, extract what you can:
 
 - **current_bead_id**: String issue ID of the bd issue being worked on at session end (e.g., `"aops-kdl0"`). Enables exact checkpoint recovery for session resumption. Use `null` if no bead was active.
-- **worker_name**: String identifier for the agent or human completing the work (e.g., `"Claude Opus 4.5"`, `"nic"`). Used for attribution and resumption context. Use `null` if unknown.
+- **worker_name**: String identifier for the agent or human completing the work (e.g., `"Claude Opus 4.5"`, `"human"`). Used for attribution and resumption context. Use `null` if unknown.
 - **workflows_used**: Array of workflow names (e.g., `["tdd"]`, `["plan-mode"]`, or `[]` if unknown)
 - **subagents_invoked**: Array of subagent names (e.g., `["prompt-hydrator", "critic", "qa"]`)
 - **subagent_count**: Integer count of subagents invoked

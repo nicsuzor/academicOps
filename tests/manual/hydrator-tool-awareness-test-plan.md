@@ -18,7 +18,7 @@ The prompt-hydrator subagent cannot know what tools the main agent has access to
 
 The main agent may have: omcp (Outlook), zot (Zotero), osb, playwright, context7, etc.
 
-**Original Bug**: When asked "search my QUT email archives for Mike Masnick", the hydrator:
+**Original Bug**: When asked "search my institutional email archives for Mike Masnick", the hydrator:
 
 1. Read the MCP servers list (configured servers)
 2. Saw "outlook is configured"
@@ -64,10 +64,9 @@ The main agent may have: omcp (Outlook), zot (Zotero), osb, playwright, context7
 **Pass criteria**: Hydrator suggests execution plan; main agent attempts the search.
 
 ### Test Case 2: Zotero Research
-
 **Prompt**: "find papers in my Zotero library about content moderation"
+**Expected**: Hydrator suggests research workflow if `zot` is available, or correctly identifies that the optional Zotero plugin is required.
 
-**Expected**: Hydrator suggests research workflow, does NOT claim Zotero is unavailable.
 
 ### Test Case 3: Calendar Access
 

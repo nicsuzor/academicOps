@@ -10,13 +10,13 @@
 #
 # Usage:
 #   ./scripts/validate-ruleset-alignment.sh
-#   ./scripts/validate-ruleset-alignment.sh --repo nicsuzor/academicOps  # live from API
+#   ./scripts/validate-ruleset-alignment.sh --repo qut-dmrc/academicOps  # live from API
 #
 # Run via CI: see .github/workflows/validate-ruleset.yml
 
 set -euo pipefail
 
-REPO="${REPO:-nicsuzor/academicOps}"
+REPO="${REPO:-qut-dmrc/academicOps}"
 WORKFLOWS_DIR=".github/workflows"
 RULESET_FILE=".github/rulesets/pr-review-and-merge.yml"
 

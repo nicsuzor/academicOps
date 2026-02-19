@@ -30,7 +30,7 @@ Break goals into actionable work under genuine uncertainty.
 6. Route task assignments:
    - **Mechanical work** (create, implement, fix, update, refactor) → `assignee: polecat`
    - **Judgment-call tasks** (review, evaluate, decide, design choices) → `assignee: null` (unassigned backlog)
-   - **Explicit override** → only assign to `nic` when user explicitly requests it
+   - **Explicit override** → only assign to `human` when user explicitly requests it
 
 ## Key Principle
 

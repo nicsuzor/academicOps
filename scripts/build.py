@@ -917,6 +917,7 @@ def package_artifacts(aops_root: Path, dist_root: Path, version: str):
             ".mypy_cache",
             ".ruff_cache",
             ".git",
+            "archived",
         ]
         if any(x in tarinfo.name for x in exclude):
             return None

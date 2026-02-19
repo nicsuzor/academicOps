@@ -69,7 +69,7 @@ SKILL SCRIPT DISCOVERY TEST SUITE
 ======================================================================
 
 Testing AOPS environment variable...
-  ✓ AOPS=/home/nic/src/academicOps
+  ✓ AOPS=/home/user/src/academicOps
 ✅ PASS: AOPS environment variable valid
 
 Testing symlink structure...
@@ -79,11 +79,11 @@ Testing symlink structure...
 ✅ PASS: All required scripts exist via symlink
 
 Testing symlink resolution...
-  ✓ Both resolve to: /home/nic/src/academicOps/skills/tasks/scripts
+  ✓ Both resolve to: /home/user/src/academicOps/skills/tasks/scripts
 ✅ PASS: Symlink correctly points to AOPS
 
 Testing script execution from writing repo...
-  Running from: /home/nic/src/writing
+  Running from: /home/user/src/writing
   Command: uv run python ~/.claude/skills/tasks/scripts/task_view.py --compact
   ✓ Script executed successfully
   ✓ Found data directory in output

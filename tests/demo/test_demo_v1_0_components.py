@@ -41,7 +41,7 @@ def find_large_recent_sessions(min_size_mb: float = 1.5, limit: int = 5) -> list
         List of paths to large session JSONL files, sorted by size descending
     """
     projects_dir = Path.home() / ".claude" / "projects"
-    academic_ops_dir = projects_dir / "-home-nic-src-academicOps"
+    academic_ops_dir = projects_dir / "-home-user-src-academicOps"
 
     if not academic_ops_dir.exists():
         return []

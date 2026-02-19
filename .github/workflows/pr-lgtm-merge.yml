@@ -29,7 +29,7 @@ on:
 
 jobs:
   claude-lgtm-merge:
-    # Run for: manual dispatch, PR assigned to claude, human-approved reviews, or LGTM comments from nicsuzor.
+    # Run for: manual dispatch, PR assigned to claude, human-approved reviews, or LGTM comments from the repository owner.
     # Bot approvals (from QA agent, custodiet, copilot, gemini, github-actions) must NOT trigger this —
     # only human reviewers or explicit workflow_dispatch should initiate the merge flow.
     if: >-
@@ -37,8 +37,8 @@ jobs:
       (github.event_name == 'pull_request' && github.event.action == 'assigned' && github.event.assignee.login == 'claude-for-github[bot]') ||
       (github.event_name == 'pull_request_review' && github.event.review.state == 'approved' &&
         github.event.review.user.type != 'Bot') ||
-      (github.event_name == 'pull_request_review_comment' && github.event.comment.user.login == 'nicsuzor') ||
-      (github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.comment.user.login == 'nicsuzor')
+      (github.event_name == 'pull_request_review_comment' && github.event.comment.user.login == github.repository_owner) ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.comment.user.login == github.repository_owner)
     runs-on: ubuntu-latest
     concurrency:
       group: pr-merge-${{ github.event.inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}

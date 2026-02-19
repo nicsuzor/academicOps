@@ -427,7 +427,7 @@ def create_task(
         due: Due date in ISO format (YYYY-MM-DDTHH:MM:SSZ)
         tags: List of tags for categorization
         body: Markdown body content
-        assignee: Task owner - typically 'nic' (human) or 'polecat' (agent)
+        assignee: Task owner - typically 'human' or 'polecat'
         complexity: Task complexity for routing - "mechanical", "requires-judgment",
             "multi-step", "needs-decomposition", or "blocked-human" (default: None)
 
@@ -443,12 +443,16 @@ def create_task(
             type="project",
             project="book",
             parent="20260112-write-book",
-            assignee="nic",
+            assignee="human",
             complexity="multi-step"
         )
     """
     try:
         storage = _get_storage()
+
+        from lib.task_model import get_human_assignee
+        default_assignee = get_human_assignee() if type in ("goal", "project", "epic") else None
+        effective_assignee = assignee if assignee is not None else default_assignee
 
         # Validate title
         title_stripped = task_title.strip() if task_title else ""
@@ -523,7 +527,7 @@ def create_task(
             due=due_datetime,
             tags=tags,
             body=body,
-            assignee=assignee,
+            assignee=effective_assignee,
             complexity=task_complexity,
         )
         task.order = order
@@ -643,7 +647,7 @@ def update_task(
         context: New context (or "" to clear)
         body: Body content to append (default) or replace. Appended with double newline separator.
         replace_body: If True, replace body instead of appending (default: False)
-        assignee: Task owner - 'nic' or 'polecat' (or "" to clear)
+        assignee: Task owner - 'human' or 'polecat' (or "" to clear)
         complexity: Task complexity - "mechanical", "requires-judgment", "multi-step",
             "needs-decomposition", or "blocked-human" (or "" to clear)
         force: If True, bypass validation checks when setting status=done (default: False)
@@ -1751,7 +1755,7 @@ def list_tasks(
         type: Filter by type - "goal", "project", "epic", "task", "action", "bug", "feature", or "learn"
         priority: Filter by exact priority (0-4)
         priority_max: Filter by priority <= N (e.g. 1 for P0 and P1)
-        assignee: Filter by assignee - typically "polecat" (agent) or "nic" (human)
+        assignee: Filter by assignee - typically "polecat" (agent) or "human"
         limit: Maximum number of tasks to return (default: 5, use 0 for unlimited)
 
     Returns:

@@ -347,7 +347,7 @@ def tree(project: str | None, show_all: bool, roots_only: bool, goals: bool):
 )
 @click.option("--parent", help="Parent task ID for hierarchy")
 @click.option("--priority", type=int, default=2, help="Priority 0-4 (0=critical, 4=someday)")
-@click.option("--assignee", "-a", help="Assign to actor (nic/bot)")
+@click.option("--assignee", "-a", help="Assign to actor (human/agent)")
 @click.option("--complexity", "-c", help="Task complexity")
 @click.option("--tags", help="Comma-separated tags")
 @click.option("--body", help="Markdown body content")
@@ -706,7 +706,7 @@ def update(
     "-c",
     "caller",
     default=None,
-    help="Claim the highest-priority task as CALLER (e.g., 'nic' or 'bot')",
+    help="Claim the highest-priority task as CALLER (e.g., 'human' or 'polecat')",
 )
 @click.option("--limit", "-n", default=20, help="Number of tasks to show (default: 20)")
 def ready(project: str, caller: str | None, limit: int):
@@ -720,10 +720,10 @@ def ready(project: str, caller: str | None, limit: int):
     locking to prevent race conditions.
 
     Examples:
-        task ready                  # List top 20 ready tasks
-        task ready -n 10            # List top 10 ready tasks
-        task ready --claim nic      # Claim highest-priority task as 'nic'
-        task ready -p aops --claim bot  # Claim from 'aops' project as 'bot'
+        task ready                      # List top 20 ready tasks
+        task ready -n 10                # List top 10 ready tasks
+        task ready --claim human        # Claim highest-priority task as 'human'
+        task ready -p aops --claim polecat  # Claim from 'aops' project as 'polecat'
     """
     storage = get_storage()
     tasks = storage.get_ready_tasks(project=project or None)

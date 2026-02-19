@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import uuid
 from collections.abc import Callable
@@ -48,6 +49,16 @@ from typing import Any, TypeVar
 import yaml
 
 logger = logging.getLogger(__name__)
+
+
+def get_human_assignee() -> str:
+    """Get the default human assignee from environment or convention."""
+    return os.environ.get("AOPS_HUMAN_ASSIGNEE", "human")
+
+
+def get_agent_assignee() -> str:
+    """Get the default agent assignee from environment or convention."""
+    return os.environ.get("AOPS_AGENT_ASSIGNEE", "polecat")
 
 E = TypeVar("E", bound=Enum)
 
@@ -446,7 +457,7 @@ class Task:
     tags: list[str] = field(default_factory=list)
     effort: str | None = None  # Estimated effort
     context: str | None = None  # @home, @computer, etc.
-    assignee: str | None = None  # Task owner: 'nic' or 'polecat'
+    assignee: str | None = None  # Task owner: 'human' or 'polecat'
     complexity: TaskComplexity | None = None  # Routing classification (set by hydrator)
 
     # Workflow state fields (per non-interactive-agent-workflow-spec.md)

@@ -45,10 +45,10 @@ Sessions are stored at: `~/.claude/projects/-<path-with-dashes>/<uuid>.jsonl`
 
 ```bash
 # List recent sessions for a project
-ls -lt ~/.claude/projects/-home-nic-src-academicOps/*.jsonl | head -5
+ls -lt ~/.claude/projects/-home-user-src-academicOps/*.jsonl | head -5
 
 # Find session by prompt content
-grep -l "your prompt text" ~/.claude/projects/-home-nic-src-*/*.jsonl
+grep -l "your prompt text" ~/.claude/projects/-home-user-src-*/*.jsonl
 ```
 
 ### 3. Generate Transcript

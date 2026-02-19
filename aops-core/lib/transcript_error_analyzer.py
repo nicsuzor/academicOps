@@ -655,7 +655,7 @@ def scan_recent_sessions(
 
     Args:
         sessions_dir: Directory containing session JSONL files.
-            Defaults to ~/.claude/projects/-home-nic-src-academicOps/
+            Defaults to ~/.claude/projects/-home-user-src-academicOps/
         hours: How far back to look (default 48 hours).
 
     Returns:

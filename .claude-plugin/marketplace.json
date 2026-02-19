@@ -3,8 +3,8 @@
   "name": "aops",
   "description": "academicOps - Research workflow automation framework",
   "owner": {
-    "name": "Nicolas Suzor",
-    "email": "nic@suzor.net"
+    "name": "The academicOps Team",
+    "email": "info@academicops.org"
   },
   "plugins": [
     {
@@ -12,7 +12,7 @@
       "description": "Core academicOps framework - skills, agents, hooks, and tools for research workflow automation",
       "version": "0.1.4",
       "author": {
-        "name": "Nicolas Suzor"
+        "name": "The academicOps Team"
       },
       "source": "./dist/aops-core-claude",
       "category": "productivity"

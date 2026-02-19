@@ -113,7 +113,7 @@ class TestExtractTranscriptErrors:
             _create_user_entry("Help me fix the auth module", 0),
             _create_tool_use_entry(
                 "Read",
-                {"file_path": "/home/nic/src/project/auth.py"},
+                {"file_path": "/home/user/src/project/auth.py"},
                 10,
                 "tool-10",
             ),
@@ -269,7 +269,7 @@ class TestClassifyErrors:
             _create_assistant_entry("Let me read auth.py", 5),
             _create_tool_use_entry(
                 "Read",
-                {"file_path": "/home/nic/src/project/auth.py"},
+                {"file_path": "/home/user/src/project/auth.py"},
                 10,
                 "tool-10",
             ),
@@ -296,7 +296,7 @@ class TestClassifyErrors:
             _create_assistant_entry("Let me check the project structure", 5),
             _create_tool_use_entry(
                 "Read",
-                {"file_path": "/home/nic/src/project/README.md"},
+                {"file_path": "/home/user/src/project/README.md"},
                 10,
                 "tool-10",
             ),
@@ -360,7 +360,7 @@ class TestClassifyErrors:
         """Repeated attempts to read the same file is a stuck_pattern."""
         from lib.transcript_error_analyzer import classify_errors, extract_transcript_errors
 
-        path = "/home/nic/src/project/missing.py"
+        path = "/home/user/src/project/missing.py"
         entries = [
             _create_user_entry("Find the module", 0),
             # First attempt
@@ -664,7 +664,7 @@ class TestErrorAnalysisReport:
 # --- Tests: Severity Scoring ---
 
 
-class TestSeverityScoring:
+class TestSeverityWeighting:
     """Test severity weight assignments."""
 
     def test_hydration_gap_is_high(self) -> None:

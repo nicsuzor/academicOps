@@ -90,7 +90,7 @@ Git is the backup system. NEVER create backup files (`.bak`, `_old`, `_ARCHIVED_
 **Corollaries**:
 
 - After completing work, always: commit → push to branch → file PR. Review happens at PR integration, not before commit. Never leave work uncommitted or ask the user to commit for you.
-- Never assign review/commit tasks to `nic`. The PR process IS the review mechanism.
+- Never assign review/commit tasks to the human. The PR process IS the review mechanism.
 
 ## No Workarounds (P#25)
 

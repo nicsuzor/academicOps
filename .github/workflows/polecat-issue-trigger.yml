@@ -35,13 +35,13 @@ jobs:
     if: |
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'issue_comment' &&
-        github.event.comment.user.login == 'nicsuzor' &&
+        github.event.comment.user.login == github.repository_owner &&
         github.event.comment.user.type != 'Bot' &&
         (contains(github.event.comment.body, '@polecat') ||
          contains(github.event.comment.body, 'ready for agent'))
       ) ||
       (github.event_name == 'pull_request_review_comment' &&
-        github.event.comment.user.login == 'nicsuzor' &&
+        github.event.comment.user.login == github.repository_owner &&
         github.event.comment.user.type != 'Bot' &&
         (contains(github.event.comment.body, '@polecat') ||
          contains(github.event.comment.body, 'ready for agent'))

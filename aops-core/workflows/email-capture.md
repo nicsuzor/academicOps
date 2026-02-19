@@ -44,7 +44,7 @@ backend: scripts
 
 ### Step 1: Fetch Recent Emails
 
-**CRITICAL**: To check if Outlook MCP is available, CALL THE TOOL. Do NOT investigate config files, check `ListMcpResourcesTool`, or grep for settings. Just invoke the tool - if it works, proceed; if it errors, HALT.
+**Note on optional dependencies**: The email workflow requires the optional `omcp` (Outlook) plugin. To check if Outlook MCP is available, CALL THE TOOL. Do NOT investigate config files, check `ListMcpResourcesTool`, or grep for settings. Just invoke the tool - if it works, proceed; if it errors (indicating plugin not installed or configured), report that the optional email workflow is unavailable.
 
 **Tool**: `mcp__outlook__messages_list_recent`
 
@@ -52,7 +52,7 @@ backend: scripts
 
 ```json
 {
-  "account": "n.suzor@qut.edu.au", // Optional: specific account or null for all
+  "account": "user@example.edu.au", // Optional: specific account or null for all
   "limit": 20 // Optional: number of messages (default 50)
 }
 ```
@@ -87,7 +87,7 @@ For emails that look actionable, check if user has already responded (indicating
 
 1. Extract key subject words (strip "Re:", "Fwd:", "FW:" prefixes)
 2. Query: `messages_query_subject_contains(term="[key subject words]", limit=5)`
-3. Filter results where `from_email` contains user's email address (n.suzor@qut.edu.au or nic@suzor.net)
+3. Filter results where `from_email` contains user's email address (e.g., user@example.edu.au)
 4. If match found: mark as "already responded"
 
 **Already responded emails**:
@@ -103,7 +103,7 @@ For emails that look actionable, check if user has already responded (indicating
 ```
 Incoming: "[ACTION REQUIRED] OSB Cycle 38 Vote"
 Query: messages_query_subject_contains(term="OSB Cycle 38 Vote")
-Found: "Re: [ACTION REQUIRED] OSB Cycle 38 Vote" from n.suzor@qut.edu.au
+Found: "Re: [ACTION REQUIRED] OSB Cycle 38 Vote" from user@example.edu.au
 Result: Mark as already responded, skip task creation
 ```
 
@@ -529,7 +529,7 @@ Show emails where user's response was detected:
 
 Use AskUserQuestion with multiSelect to let user mark any to KEEP:
 
-- QUT Newsletter Dec 23
+- Institutional Newsletter Dec 23
 - Travel Alert: NYC weather
 - Quarantine Digest (7 messages)
 - Edward Elgar book alert
@@ -564,7 +564,7 @@ Details: [logged for institutional reporting]
 | Priority | Task | Due | Source |
 |----------|------|-----|--------|
 | P0 | Acquit corporate card | urgent | Card Program |
-| P1 | ARC COI declaration | - | RMIT |
+| P1 | ARC COI declaration | - | Collaboration Partner |
 | P1 | Lucinda Nelson reference | - | Amanda Kennedy |
 
 
@@ -580,10 +580,10 @@ Details: [logged for institutional reporting]
 
 **Halt immediately and report**:
 
-1. **Outlook MCP unavailable**
-   - Error: `mcp__outlook__messages_list_recent` returns error
-   - Action: Halt workflow, report to user
-   - Message: "Cannot check email - Outlook MCP error: [exact error message]"
+1. **Outlook (optional plugin) unavailable**
+   - Error: `mcp__outlook__messages_list_recent` returns error (not found or connection failed)
+   - Action: Report that the optional email workflow is unavailable and HALT.
+   - Message: "The optional email-to-task workflow is not available: [exact error message]"
    - **DO NOT**: Investigate configs, check ListMcpResourcesTool, or try workarounds
 
 2. **Both task backends unavailable**
@@ -742,19 +742,19 @@ Different email accounts require different tools for archiving:
 
 | Account                  | Tool               | Parameter               | Notes                                                 |
 | ------------------------ | ------------------ | ----------------------- | ----------------------------------------------------- |
-| Gmail (nic@suzor.net)    | `messages_archive` | `folder_id="211"`       | Gmail requires folder ID (account param doesn't work) |
-| QUT (n.suzor@qut.edu.au) | `messages_move`    | `folder_path="Archive"` | Standard Exchange folder path                         |
+| Personal (user@example.com) | `messages_archive` | `folder_id="211"`       | Gmail requires folder ID (account param doesn't work) |
+| Work (user@example.edu.au) | `messages_move`    | `folder_path="Archive"` | Standard Exchange folder path                         |
 
-**Gmail archive** (uses `messages_archive` with folder ID):
+**Personal archive** (uses `messages_archive` with folder ID):
 
 ```
 mcp__outlook__messages_archive(entry_id="...", folder_id="211")
 ```
 
-**Exchange/Outlook archive** (uses `messages_move` with folder path):
+**Work archive** (uses `messages_move` with folder path):
 
 ```
-mcp__outlook__messages_move(entry_id="...", folder_path="Archive", account="n.suzor@qut.edu.au")
+mcp__outlook__messages_move(entry_id="...", folder_path="Archive", account="user@example.edu.au")
 ```
 
 **Why different tools?** Gmail accounts on macOS Outlook don't appear in AppleScript account enumeration, so `messages_move` with `account` parameter fails. Use `messages_list_folders` to discover folder IDs.

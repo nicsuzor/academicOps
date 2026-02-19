@@ -26,9 +26,12 @@ from pathlib import Path
 
 # Color schemes
 ASSIGNEE_COLORS = {
+    "polecat": "#17a2b8",  # cyan/teal - AI agent
     "bot": "#17a2b8",  # cyan/teal - AI agent
     "claude": "#17a2b8",  # same as bot
     "worker": "#fd7e14",  # orange - background worker
+    "human": "#6f42c1",  # purple - human
+    "human": "#6f42c1",  # purple - human
     "nic": "#6f42c1",  # purple - human
 }
 ASSIGNEE_DEFAULT = "#6c757d"  # gray for unassigned
@@ -298,8 +301,8 @@ def _build_legend_table(stats: dict) -> str:
     # Assignee
     rows.append('<TR><TD COLSPAN="4" BGCOLOR="#e9ecef"><B>Assignee (border color)</B></TD></TR>')
     assignee_items = [
-        ("@bot", "#17a2b8"),
-        ("@nic", "#6f42c1"),
+        ("@polecat", "#17a2b8"),
+        ("@human", "#6f42c1"),
         ("@worker", "#fd7e14"),
     ]
     cells = "".join(f'<TD BORDER="1" COLOR="{color}">{name}</TD>' for name, color in assignee_items)

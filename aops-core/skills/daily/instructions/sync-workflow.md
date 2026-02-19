@@ -59,7 +59,7 @@ gh pr list --state merged --json number,title,author,mergedAt,headRefName,url --
 
 | PR          | Title                        | Author                  | Merged |
 | ----------- | ---------------------------- | ----------------------- | ------ |
-| [#123](url) | Fix authentication bug       | @nicsuzor               | 10:15  |
+| [#123](url) | Fix authentication bug       | @user                   | 10:15  |
 | [#124](url) | Add daily skill merge review | @claude-for-github[bot] | 14:30  |
 
 _N PRs merged today_

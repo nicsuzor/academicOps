@@ -116,7 +116,7 @@ Reports are saved to: `${ACA_DATA}/projects/aops/audit/[date]-audit.md`
 
 Format: `YYYY-MM-DD-HHMMSS-audit.md`
 
-Example: `/home/nic/writing/data/projects/aops/audit/2026-01-14-153045-audit.md`
+Example: `/home/user/writing/data/projects/aops/audit/2026-01-14-153045-audit.md`
 
 ## Validation Criteria
 

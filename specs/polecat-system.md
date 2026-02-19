@@ -168,7 +168,7 @@ Note: Agents are responsible for calling `polecat finish` at the end of their wo
 ## Workflow
 
 1. **Start:** `polecat start` claims a task (e.g., `osb-c36de7ec`).
-2. **Context Switch:** The user/agent `cd`s to `/home/nic/polecats/osb-c36de7ec`.
+2. **Context Switch:** The user/agent `cd`s to `/home/user/polecats/osb-c36de7ec`.
 3. **Work:** Code changes are made, tested, and committed in this isolated environment.
 4. **Finish:** `polecat finish` pushes the branch and marks the task as `merge_ready`.
 5. **Cleanup:** `polecat nuke` removes the worktree directory.

@@ -63,7 +63,7 @@ For `type: learn` tasks specifically:
 
 If triaging, pick one:
 
-- **Assign**: `update_task(id="{task_id}", assignee="nic")` if it needs human judgment
+- **Assign**: `update_task(id="{task_id}", assignee="human")` if it needs human judgment
 - **Decompose**: Break into 3-7 subtasks if scope is clear but too large
 - **Block**: `update_task(id="{task_id}", status="blocked", body="Blocked: [reason]")` if unclear
 

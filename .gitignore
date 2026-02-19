@@ -335,6 +335,7 @@ aops-core/.mcp.json
 
 # Distribution artifacts - built by CI, stored in aops-dist repo
 dist/
+archived/
 
 streamlit_log.txt
 data/

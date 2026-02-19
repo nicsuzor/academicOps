@@ -40,7 +40,7 @@ If a related task exists with status != "done":
 
 - `polecat` (DEFAULT): Almost everything. Workers decompose tasks and escalate at actual decision forks via `status: blocked` or AskUserQuestion. A task having design aspects does NOT make it a judgment task.
 - `null` (unassigned): ONLY when the task literally cannot proceed without a human decision right now (e.g., "choose between X and Y before any work can start"). This is rare.
-- `nic`: ONLY when user explicitly specifies `/q nic: <description>`
+- `human`: ONLY when user explicitly specifies `/q human: <description>`
 
 **Determine priority**:
 
@@ -57,7 +57,7 @@ mcp__plugin_aops-tools_task_manager__create_task(
   type="task",  # or: bug, feature, learn
   project="<infer from context>",
   priority=2,
-  assignee="polecat",  # or null for judgment tasks, "nic" only if explicitly requested
+  assignee="polecat",  # or null for judgment tasks, "human" only if explicitly requested
   tags=["<relevant>", "<tags>"],
   body="""# <Title>
 
@@ -81,7 +81,7 @@ mcp__plugin_aops-tools_task_manager__create_task(
 
 Report: "Queued: [task-id] - [title] (assignee: polecat, P2)" or "Queued: [task-id] - [title] (unassigned, P2)"
 
-The task is queued. Swarm will claim if assignee=polecat. Unassigned tasks stay in backlog for nic to claim or delegate.
+The task is queued. Swarm will claim if assignee=polecat. Unassigned tasks stay in backlog for human to claim or delegate.
 
 ## Task Body Template
 
@@ -113,7 +113,7 @@ Good task bodies help workers succeed:
 - `/q` (no args) - Prompt user for task details
 - `/q P0 <description>` - Create high-priority task
 - `/q bot <description>` - Explicitly assign to swarm
-- `/q nic: <description>` - Explicitly assign to nic (override default routing)
+- `/q human: <description>` - Explicitly assign to human (override default routing)
 
 ## Meta-Workflow: Commission Don't Code
 

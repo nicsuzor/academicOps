@@ -228,7 +228,7 @@ def test_custodiet_allows_legitimate_framework_work():
     """Regression: custodiet blocked legitimate framework modification."""
     input_fixture = {
         "tool_name": "Edit",
-        "tool_input": {"file_path": "/home/nic/src/academicOps/skills/learn.md", ...},
+        "tool_input": {"file_path": "/home/user/src/academicOps/skills/learn.md", ...},
         # ... exact input that was incorrectly blocked
     }
     result = invoke_custodiet(input_fixture)

@@ -158,13 +158,13 @@ If task needs specific expertise or human judgment:
 ```
 mcp__task_manager__update_task(
   id="<task-id>",
-  assignee="<role>"  # e.g., "nic", "polecat"
+  assignee="<role>"  # e.g., "human", "polecat"
 )
 ```
 
 **Role assignment logic:**
 
-- `assignee="nic"` - Requires human judgment, strategic decisions, or external context
+- `assignee="human"` - Requires human judgment, strategic decisions, or external context
 - `assignee="polecat"` - Can be automated but needs clarification on scope/approach
 - Leave unassigned if role unclear
 

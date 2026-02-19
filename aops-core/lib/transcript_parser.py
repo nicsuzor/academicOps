@@ -143,13 +143,13 @@ def decode_claude_project_path(encoded_path: str) -> str | None:
     """Decode a Claude projects directory name to get the working directory.
 
     Claude Code stores sessions in ~/.claude/projects/{encoded-path}/ where
-    the encoded path replaces / with - (e.g., -home-nic-src-myproject).
+    the encoded path replaces / with - (e.g., -home-user-src-myproject).
 
     Args:
-        encoded_path: Encoded path like "-home-nic-src-myproject"
+        encoded_path: Encoded path like "-home-user-src-myproject"
 
     Returns:
-        Decoded path like "/home/nic/src/myproject", or None if invalid
+        Decoded path like "/home/user/src/myproject", or None if invalid
     """
     if not encoded_path or not encoded_path.startswith("-"):
         return None
@@ -932,7 +932,7 @@ class SessionInfo:
     @property
     def project_display(self) -> str:
         """Human-readable project name."""
-        # Convert "-home-nic-src-aOps" to "aOps"
+        # Convert "-home-user-src-aOps" to "aOps"
         if self.project.startswith("-"):
             parts = self.project.split("-")
             return parts[-1] if parts else self.project

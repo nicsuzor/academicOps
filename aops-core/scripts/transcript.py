@@ -451,7 +451,7 @@ def _infer_project(
     """Infer project name from session path and/or entries.
 
     Uses multiple strategies:
-    1. For Claude sessions: decode the project folder name (-home-nic-src-myproject)
+    1. For Claude sessions: decode the project folder name (-home-user-src-myproject)
     2. For Antigravity brain directories: try to extract from content
     3. For Gemini sessions: use hash prefix
     4. Fallback: extract from path or use "unknown"
@@ -508,7 +508,7 @@ def _infer_project(
             if inferred:
                 return inferred
 
-    # Decode Claude project path format: -home-nic-src-myproject
+    # Decode Claude project path format: -home-user-src-myproject
     if project.startswith("-"):
         decoded = decode_claude_project_path(project)
         if decoded:

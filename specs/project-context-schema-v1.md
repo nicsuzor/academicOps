@@ -211,7 +211,7 @@ A valid CORE.md must:
 ```markdown
 ---
 project: buttermilk
-root: /home/nic/src/buttermilk
+root: /home/user/src/example-project
 type: library
 primary_language: python
 ---

@@ -89,7 +89,7 @@ rg "type.*tool" ~/.claude/projects/-tmp-claude-test-*/
 
 ```bash
 # List recent Claude sessions
-ls -lt ~/.claude/projects/-home-nic-src-academicOps/*.jsonl | head -5
+ls -lt ~/.claude/projects/-home-user-src-academicOps/*.jsonl | head -5
 
 # List recent Gemini sessions
 ls -lt ~/.gemini/tmp/*/chats/*.json | head -5
@@ -237,10 +237,10 @@ grep -rl "SESSION_ID_HERE" ~/.claude/projects/
 grep -rl "add_numbers\|unique_prompt_text" ~/.claude/projects/ | head -10
 
 # Find test project sessions (tests run from academicOps)
-ls -lt ~/.claude/projects/-home-nic-src-academicOps/*.jsonl | head -10
+ls -lt ~/.claude/projects/-home-user-src-academicOps/*.jsonl | head -10
 ```
 
-**Tip**: Tests running headless sessions create JSONL in `~/.claude/projects/-home-nic-src-academicOps/` (the project where pytest runs), not in the test temp directory.
+**Tip**: Tests running headless sessions create JSONL in `~/.claude/projects/-home-user-src-academicOps/` (the project where pytest runs), not in the test temp directory.
 
 ### 2. Generate Readable Transcript
 
@@ -249,7 +249,7 @@ Raw JSONL is unreadable. Always convert first:
 ```bash
 # Generate transcript
 cd $AOPS && uv run python scripts/transcript.py \
-  ~/.claude/projects/-home-nic-src-academicOps/SESSION_ID.jsonl
+  ~/.claude/projects/-home-user-src-academicOps/SESSION_ID.jsonl
 
 # Output shows paths to full and abridged versions
 # Abridged is usually sufficient (excludes verbose tool results)
@@ -286,11 +286,11 @@ Look for these patterns:
 ```bash
 # Find session from test output (session ID: c64de01b-...)
 grep -rl "c64de01b" ~/.claude/projects/
-# Found: ~/.claude/projects/-home-nic-src-academicOps/c64de01b-....jsonl
+# Found: ~/.claude/projects/-home-user-src-academicOps/c64de01b-....jsonl
 
 # Generate transcript
 cd $AOPS && uv run python scripts/transcript.py \
-  ~/.claude/projects/-home-nic-src-academicOps/c64de01b-....jsonl
+  ~/.claude/projects/-home-user-src-academicOps/c64de01b-....jsonl
 ```
 
 **Transcript revealed**:

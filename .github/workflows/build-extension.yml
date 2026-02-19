@@ -12,7 +12,7 @@ on:
         default: false
 
 concurrency:
-  group: build-deploy-nicsuzor-aops-dist
+  group: build-deploy-aops-dist
   cancel-in-progress: false
 
 jobs:
@@ -83,7 +83,7 @@ jobs:
       - name: Check if version exists in dist repo
         id: check_version
         run: |
-          git clone git@github.com:nicsuzor/aops-dist.git ../aops-dist
+          git clone git@github.com:qut-dmrc/aops-dist.git ../aops-dist
 
           # Testing builds always deploy (version includes run_number so is always unique)
           if [ "${{ steps.release_type.outputs.type }}" = "testing" ]; then
@@ -221,7 +221,7 @@ jobs:
           fi
 
           gh release create "v$VERSION" \
-            --repo nicsuzor/aops-dist \
+            --repo qut-dmrc/aops-dist \
             --title "v$VERSION" \
             --notes "Built from academicOps@${{ github.sha }}" \
             $PRERELEASE_FLAG \

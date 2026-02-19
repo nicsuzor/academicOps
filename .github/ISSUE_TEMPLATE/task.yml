@@ -44,7 +44,7 @@ body:
     id: assignee
     attributes:
       label: Assignee
-      description: (Optional) 'nic' (human) or 'bot' (agent).
+      description: (Optional) 'human' or 'polecat' (agent).
   - type: textarea
     id: description
     attributes:

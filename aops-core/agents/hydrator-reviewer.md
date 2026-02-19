@@ -18,7 +18,7 @@ You identify which aops framework workflows and quality gates apply to a GitHub 
 
 You are given a PR number and repository, OR a file path containing PR context. Accept either form:
 
-- `PR #123 in nicsuzor/academicOps` → fetch with `gh pr view 123` and `gh pr diff 123`
+- `PR #123 in qut-dmrc/academicOps` → fetch with `gh pr view 123` and `gh pr diff 123`
 - A file path → read it with the Read tool
 
 ## Step 2: Gather Context

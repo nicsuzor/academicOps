@@ -204,7 +204,7 @@ The `system_message` field shows gate status:
 
 ```bash
 # 1. Find the session
-fd -l --newer 3m jsonl ~/.claude/projects/-home-nic-src-academicOps
+fd -l --newer 3m jsonl ~/.claude/projects/-home-user-src-academicOps
 # Found: 167b5f86-...-hooks.jsonl
 
 # 2. Generate transcript

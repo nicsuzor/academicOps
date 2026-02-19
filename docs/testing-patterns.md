@@ -138,7 +138,7 @@ def test_hydrator_temp_file_structure(self):
 
 ### `claude_headless`
 
-<!-- @nic 2026-01-30: Update for gemini cli fixtures. -->
+<!-- @user 2026-01-30: Update for gemini cli fixtures. -->
 <!-- @claude 2026-02-07: This is a direct instruction. Reviewed the section - gemini_headless fixture is already documented below at line 149. The section appears current. If additional fixtures are needed, please specify which ones. -->
 
 Basic headless execution, returns parsed result:

@@ -116,7 +116,7 @@ Only use BLOCK when the context explicitly says "Enforcement Mode: block".
      content="# Custodiet Block Record\n\n**Timestamp**: [ISO timestamp]\n**Session**: $CLAUDE_SESSION_ID\n\n## Decision\n\n[Your BLOCK output: Issue, Principle, Correction]\n\n## Input Context\n\n[Paste the full content you read from the audit temp file]"
    )
    ```
-   Replace YYYY-MM-DD_HHMMSS with actual timestamp. $ACA_DATA is `/home/nic/writing/data`.
+   Replace YYYY-MM-DD_HHMMSS with actual timestamp. $ACA_DATA is `/home/user/writing/data`.
 
 2. Use Bash to set the custodiet block flag:
    ```bash

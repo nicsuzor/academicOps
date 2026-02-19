@@ -29,7 +29,7 @@
 ### 1. Prerequisites Check
 
 ```
-AOPS=/home/nic/src/academicOps
+AOPS=/home/user/src/academicOps
 uv 0.9.10
 ```
 
@@ -48,7 +48,7 @@ uv 0.9.10
 - **Result**: PASS
 - **Observations**:
   - Task created and claimed by polecat
-  - Worktree set up at `/home/nic/.aops/polecat/aops-9e78192b`
+  - Worktree set up at `/home/user/.aops/polecat/aops-9e78192b`
   - Agent executed successfully in YOLO mode
   - Task marked as `done`
   - Transcript verified
@@ -58,7 +58,7 @@ uv 0.9.10
 - **Task ID**: aops-64a8071a
 - **Command**: `uv run scripts/automated_test_harness.py --create "Check current directory and print files" --agent claude`
 - **Result**: PASS
-- **Transcript**: `/home/nic/writing/sessions/claude/20260130-06-64a8071a-96f01f0e-session-abridged.md`
+- **Transcript**: `/home/user/writing/sessions/claude/20260130-06-64a8071a-96f01f0e-session-abridged.md`
 - **Observations**:
   - Task created and claimed by polecat
   - Worktree set up successfully
@@ -70,7 +70,7 @@ uv 0.9.10
 ### 5. Artifact Validation
 
 - **Gemini Transcript**: Generated and verified by harness
-- **Claude Transcript**: `/home/nic/writing/sessions/claude/20260130-06-64a8071a-96f01f0e-session-abridged.md`
+- **Claude Transcript**: `/home/user/writing/sessions/claude/20260130-06-64a8071a-96f01f0e-session-abridged.md`
   - Contains session metadata
   - Shows skill/workflow invocations: `aops-core:framework`, `aops-core:prompt-hydrator`
   - Token usage tracked: 97 in / 71 out, 1.4M cache read

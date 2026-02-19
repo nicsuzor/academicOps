@@ -15,7 +15,7 @@
 
 set -euo pipefail
 
-REPO="${REPO:-nicsuzor/academicOps}"
+REPO="${REPO:-qut-dmrc/academicOps}"
 RULESET_ID="${RULESET_ID:-12723813}"
 DRY_RUN=false
 

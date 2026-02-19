@@ -1214,7 +1214,7 @@ def find_sessions(
             if not project_dir.is_dir():
                 continue
 
-            # Skip hook log directories (e.g., -home-nic-writing-aops-hooks)
+            # Skip hook log directories (e.g., -home-user-writing-aops-hooks)
             if project_dir.name.endswith("-hooks"):
                 continue
 

@@ -182,10 +182,10 @@ def _format_project_name(project_folder: str) -> str:
     """Convert Claude projects folder name to display name.
 
     Folder names encode paths with dashes replacing slashes:
-    -home-nic-src-academicOps -> academicOps
-    -home-nic-.aops-aops-008c345f -> aops (skip hash suffix, skip hidden dirs)
-    -Users-suzor-src-buttermilk -> buttermilk
-    -home-nic-writing-academicOps-hooks -> academicOps (skip -hooks suffix)
+    -home-user-src-academicOps -> academicOps
+    -home-user-.aops-aops-008c345f -> aops (skip hash suffix, skip hidden dirs)
+    -Users-user-src-buttermilk -> buttermilk
+    -home-user-writing-academicOps-hooks -> academicOps (skip -hooks suffix)
 
     Strategy:
     1. Convert to path segments
@@ -207,7 +207,7 @@ def _format_project_name(project_folder: str) -> str:
         return project_folder.strip("-").split("-")[-1]
 
     # Filter out non-project segments
-    skip_segments = {"home", "Users", "src", "var", "tmp", "nic", "suzor", ""}
+    skip_segments = {"home", "Users", "src", "var", "tmp", "user", ""}
     meaningful_parts = []
 
     for part in parts:
@@ -806,7 +806,7 @@ def get_project_git_activity(project_path: str) -> list[str]:
     """Get recent git commits from project directory."""
     import subprocess
 
-    # Convert project path format: -Users-suzor-src-buttermilk -> /Users/suzor/src/buttermilk
+    # Convert project path format: -Users-user-src-buttermilk -> /Users/user/src/buttermilk
     if project_path.startswith("-"):
         path = "/" + project_path[1:].replace("-", "/")
     else:
@@ -875,9 +875,9 @@ def get_todays_accomplishments() -> list[dict]:
 
     # Add git commits from known project directories
     project_paths = [
-        ("-Users-suzor-writing-academicOps", "academicOps"),
-        ("-Users-suzor-writing", "writing"),
-        ("-Users-suzor-src-buttermilk", "buttermilk"),
+        ("-Users-user-writing-academicOps", "academicOps"),
+        ("-Users-user-writing", "writing"),
+        ("-Users-user-src-buttermilk", "buttermilk"),
     ]
 
     for path_key, project_name in project_paths:
@@ -932,7 +932,7 @@ def post_quick_capture(content: str, tags: str = "dashboard,quick-capture") -> t
 
     try:
         response = requests.post(
-            "https://api.github.com/repos/nicsuzor/writing/dispatches",
+            "https://api.github.com/repos/qut-dmrc/writing/dispatches",
             headers={
                 "Accept": "application/vnd.github+json",
                 "Authorization": f"Bearer {token}",
@@ -965,7 +965,7 @@ def fetch_cross_machine_prompts() -> list[dict]:
 
     try:
         response = requests.get(
-            "https://prompt-logs.nicsuzor.workers.dev/read",
+            "https://prompt-logs.example.workers.dev/read",
             headers={"Authorization": f"Bearer {api_key}"},
             timeout=5,
         )
@@ -1188,7 +1188,7 @@ def fetch_session_activity(hours: int = 4) -> list[dict]:
                 pass
 
     # 3. Add sessions from new status directories (~/writing/sessions/status)
-    # User migration: /home/nic/writing/sessions/status/YYYYMMDD-sessionID.json
+    # User migration: /home/user/writing/sessions/status/YYYYMMDD-sessionID.json
     status_dirs = [
         Path.home() / "writing" / "sessions" / "status",
         Path.home() / "writing" / "session" / "status",  # Handle singular typo possibility

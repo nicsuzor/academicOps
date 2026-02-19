@@ -4,7 +4,13 @@ import pandas as pd
 import streamlit as st
 from lib.paths import get_data_root
 from lib.task_index import TaskIndex
-from lib.task_model import Task, TaskComplexity, TaskStatus, TaskType
+from lib.task_model import (
+    Task,
+    TaskComplexity,
+    TaskStatus,
+    TaskType,
+    get_human_assignee,
+)
 
 # Add aOps root to path if not already there (dashboard.py does this, but good for standalone testing)
 # We assume this is imported by dashboard.py which sets up sys.path
@@ -248,7 +254,7 @@ def render_task_editor(task: Task, storage: TaskStorage):
 
         # Row 4: Assignee, Complexity, Context, Effort
         c8, c9, c10, c11 = st.columns(4)
-        assignee = c8.text_input("Assignee", value=task.assignee or "nic")
+        assignee = c8.text_input("Assignee", value=task.assignee or get_human_assignee())
 
         # Safe complexity access/default
         curr_complexity = task.complexity.value if task.complexity else "None"

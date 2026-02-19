@@ -1,6 +1,6 @@
 # GitHub Ruleset: PR Review and Merge rules
 # Ruleset ID: 12723813
-# Applied to: default branch (~DEFAULT_BRANCH) of nicsuzor/academicOps
+# Applied to: default branch (~DEFAULT_BRANCH) of qut-dmrc/academicOps
 #
 # This file is the authoritative reference for the repository ruleset.
 # It cannot be auto-applied via REST API (some rule types like merge_queue

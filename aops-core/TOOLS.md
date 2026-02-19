@@ -18,8 +18,8 @@ Reference for agent capabilities. Use this to understand what operations are pos
 
 | Server         | Purpose                    | Key Operations                                                         |
 | -------------- | -------------------------- | ---------------------------------------------------------------------- |
-| `omcp`         | Outlook email & calendar   | Search/read/draft messages, list events, create meetings               |
-| `zot`          | Zotero research library    | Search papers, get citations, find similar works, OpenAlex integration |
+| `omcp` (opt)   | Outlook email & calendar   | Search/read/draft messages (requires local Outlook client setup)       |
+| `zot` (opt)    | Zotero research library    | Search papers, get citations (requires local Zotero setup)             |
 | `osb`          | Meta Oversight Board cases | Search decisions, get case summaries, legal reasoning analysis         |
 | `memory`       | Semantic knowledge store   | Store/retrieve memories, tag-based search, recall by time              |
 | `task_manager` | Work tracking system       | Create/update/complete tasks, manage dependencies, task trees          |
@@ -43,8 +43,8 @@ Reference for agent capabilities. Use this to understand what operations are pos
 
 ## Routing Hints
 
-- **Email work** → `omcp` server has full Outlook access
-- **Research/citations** → `zot` for library, `osb` for Oversight Board
+- **Email work** → `omcp` server (if available) for Outlook access
+- **Research/citations** → `zot` (if available) for library, `osb` for Oversight Board
 - **Remember context** → `memory` server for semantic storage
 - **Task management** → `task_manager` for all work tracking
 - **Documentation lookup** → `context7` for library APIs

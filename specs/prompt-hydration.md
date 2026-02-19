@@ -351,7 +351,7 @@ Main agent follows the plan
 check the custodiet agent -- make sure it doesn't use inline python:
 
   ⎿  Bash(python3 -c "
-  import sys; sys.path.insert(0, '/home/nic/src/academicOps/lib')
+  import sys; sys.path.insert(0, '/home/user/src/academicOps/lib')
   from session_state import set_custodiet_block
   set_custodiet_block('$CLAUDE_SESSION_ID', 'Agent modified setup.sh without user approval after discovering root cause - violates P#5 (Do One Thing) and
   P#31

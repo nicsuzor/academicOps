@@ -7,7 +7,7 @@ from lib.axiom_detector import P8FallbackDetector
 
 def test_p8_env_get_default():
     detector = P8FallbackDetector()
-    code = 'aops_path = os.environ.get("AOPS", "/home/nic/src/aops")'
+    code = 'aops_path = os.environ.get("AOPS", "/home/user/src/aops")'
     violations = detector.detect(code)
     # Both env_get_default and dict_get_default match
     assert len(violations) >= 1

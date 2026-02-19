@@ -8,7 +8,7 @@
 set -euo pipefail
 
 # Configuration
-REPO_OWNER="nicsuzor"
+REPO_OWNER="qut-dmrc"
 REPO_NAME="writing"
 EVENT_TYPE="capture-note"
 

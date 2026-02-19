@@ -107,7 +107,7 @@ Generate natural language narratives of the day's achievements for both the dail
 ## Error Handling
 
 - **No mobile captures**: Skip triage, continue with email briefing
-- **Outlook unavailable**: Skip email triage, continue with recommendations
+- **Outlook (optional plugin) unavailable**: Skip email triage, continue with recommendations
 - **GitHub CLI unavailable**: Skip merged PR listing, note in section
 - **No session JSONs**: Skip sync, note "No sessions to sync"
 - **No tasks**: Present empty state, offer to run `/tasks`

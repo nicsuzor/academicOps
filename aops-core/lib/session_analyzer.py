@@ -127,7 +127,7 @@ class SessionAnalyzer:
         # Get project name from path
         project = session_path.parent.name
         if project.startswith("-"):
-            # Convert "-home-nic-src-aOps" to "aOps"
+            # Convert "-home-user-src-aOps" to "aOps"
             parts = project.split("-")
             project = parts[-1] if parts else project
 

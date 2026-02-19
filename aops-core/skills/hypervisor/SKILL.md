@@ -79,7 +79,7 @@ def claim_task(task_id: str) -> bool:
 The `batch_worker.py` script includes task triage logic:
 
 - **Closure detection**: Tasks with `## Close Reason` or `status: done`
-- **Assignee allocation**: `nic` for judgment tasks, `polecat` for automatable
+- **Assignee allocation**: `human` for judgment tasks, `polecat` for automatable
 - **Wikilink injection**: Adds `[[project]]` links based on frontmatter
 
 ```bash
@@ -208,7 +208,7 @@ mcp__plugin_aops-tools_task_manager__get_index_stats --include_projects true
 
 ### Known Limitations
 
-1. **No MCP tool access**: Gemini cannot use Outlook, Zotero, memory, calendar, browser MCP tools
+1. **No MCP tool access**: Gemini cannot use optional plugins like Outlook (`omcp`) or Zotero (`zot`), nor core memory, calendar, or browser MCP tools
 2. **Sandbox mode requires catatonit**: May fail on systems without this dependency
 3. **YOLO mode auto-approves all**: High trust, review git history for rollback
 4. **Sequential only**: Gemini CLI doesn't support parallel execution like Claude agents

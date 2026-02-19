@@ -80,14 +80,14 @@ Count tasks awaiting user decisions (for decision queue summary):
 # Get waiting tasks assigned to user
 waiting_tasks = mcp__plugin_aops-core_task_manager__list_tasks(
     status="waiting",
-    assignee="nic",
+    assignee="human",
     limit=50
 )
 
 # Get review tasks assigned to user
 review_tasks = mcp__plugin_aops-core_task_manager__list_tasks(
     status="review",
-    assignee="nic",
+    assignee="human",
     limit=50
 )
 

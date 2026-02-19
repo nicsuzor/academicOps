@@ -48,10 +48,10 @@ The framework provides infrastructure that every session and every project depen
 
 Generic but academically-focused capabilities that support research workflows:
 
-- Citation management (zotmcp + Zotero)
-- Research data analysis (/analyst skill + dbt + Streamlit)
+- Citation management (optional `zot` plugin for Zotero)
+- Research data analysis (optional `/analyst` skill + dbt + Streamlit)
 - Document conversion and PDF generation
-- Email triage and task capture
+- Email triage and task capture (optional `omcp` plugin for Outlook)
 - Writing style enforcement
 
 **Scope**: Supports academic work across ALL repositories.

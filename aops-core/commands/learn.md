@@ -43,8 +43,8 @@ Dump the reproduction and transcript reference directly to GitHub issues. This i
 
 **Command**:
 ```bash
-# Set repo (default to nicsuzor/aops-core or detected current repo)
-REPO="nicsuzor/aops-core"
+# Set repo (default to qut-dmrc/academicOps or detected current repo)
+REPO="qut-dmrc/academicOps"
 
 BODY=$(cat <<EOF
 ## Failure Summary
