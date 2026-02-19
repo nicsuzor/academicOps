@@ -10,12 +10,12 @@ This test validates the run-from-anywhere architecture works correctly.
 """
 
 import json
-import subprocess
 import shutil
+import subprocess
 from pathlib import Path
 
-import pytest
 import lib.paths
+import pytest
 
 
 @pytest.fixture(autouse=True)
