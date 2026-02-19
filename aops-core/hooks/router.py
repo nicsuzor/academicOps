@@ -117,7 +117,6 @@ GATE_ICONS = {
     "task": ("📎", "."),
     "critic": ("👁", "."),
     "custodiet": ("🛡", "."),
-    "qa": ("🧪", "."),
     "handover": ("📤", "."),
 }
 
@@ -195,8 +194,6 @@ class HookRouter:
             "aops-core:prompt-hydrator",
             "custodiet",
             "aops-core:custodiet",
-            "qa",
-            "aops-core:qa",
             "audit",
             "aops-core:audit",
             "aops-core:butler",

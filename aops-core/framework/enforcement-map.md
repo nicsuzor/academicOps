@@ -45,7 +45,7 @@ tags: [framework, enforcement, moc]
 | [[write-for-long-term]]                     | Write for Long Term             | AXIOMS.md                                                                                    | SessionStart           |           |
 | [[maintain-relational-integrity]]           | Relational Integrity            | wikilink conventions                                                                         | Pre-commit (planned)   |           |
 | [[nothing-is-someone-elses-responsibility]] | Nothing Is Someone Else's       | AXIOMS.md                                                                                    | SessionStart           |           |
-| [[acceptance-criteria-own-success]]         | Acceptance Criteria Own Success | /qa skill enforcement                                                                        | Stop                   |           |
+| [[acceptance-criteria-own-success]]         | Acceptance Criteria Own Success | /qa skill (on-demand)                                                                        | Stop                   |           |
 | [[plan-first-development]]                  | Plan-First Development          | EnterPlanMode tool                                                                           | Before coding          |           |
 | [[research-data-immutable]]                 | Research Data Immutable         | settings.json denies records/**                                                              | PreToolUse             |           |
 | [[just-in-time-context]]                    | Just-In-Time Context            | sessionstart_load_axioms.py                                                                  | SessionStart           |           |
@@ -88,7 +88,7 @@ tags: [framework, enforcement, moc]
 | [[user-centric-acceptance]]                     | User-Centric Acceptance                               | HEURISTICS.md                                          | SessionStart                   |       |
 | [[semantic-vs-episodic-storage]]                | Semantic vs Episodic Storage                          | HEURISTICS.md, hydrator advice, custodiet check        | SessionStart, PostToolUse      |       |
 | [[debug-dont-redesign]]                         | Debug, Don't Redesign                                 | HEURISTICS.md                                          | SessionStart                   |       |
-| [[mandatory-acceptance-testing]]                | Mandatory Acceptance Testing                          | /qa skill                                              | Stop                           |       |
+| [[mandatory-acceptance-testing]]                | Mandatory Acceptance Testing                          | /qa skill (on-demand)                                  | Stop                           |       |
 | [[todowrite-vs-persistent-tasks]]               | TodoWrite vs Persistent Tasks                         | HEURISTICS.md                                          | SessionStart                   |       |
 | [[design-first-not-constraint-first]]           | Design-First                                          | HEURISTICS.md                                          | SessionStart                   |       |
 | [[no-llm-calls-in-hooks]]                       | No LLM Calls in Hooks                                 | HEURISTICS.md                                          | SessionStart                   |       |
@@ -372,21 +372,18 @@ The TASK GATE tracks three conditions for full compliance:
 
 Session end is blocked until requirements are met. Three-phase validation ensures proper handover.
 
-### Framework Reflection Validation (Three-Stage)
+### Framework Reflection Validation (Two-Stage)
 
 **Enforcement**: `gate_registry.py` (AfterAgent → `check_agent_response_listener`) + `check_stop_gate`.
 
-The stop gate requires THREE conditions for session completion:
+The stop gate requires TWO conditions for session completion:
 
 | Condition                | Gate                     | Set By                                       | Check                       |
 | ------------------------ | ------------------------ | -------------------------------------------- | --------------------------- |
 | (1) Hydration invoked    | `hydrator_invoked`       | `post_hydration_trigger` (PostToolUse)       | Prompt-hydrator completed   |
 | (2) Reflection validated | `handover_skill_invoked` | `check_agent_response_listener` (AfterAgent) | All required fields present |
-| (3) QA verified          | `qa_invoked`             | `post_qa_trigger` (PostToolUse)              | QA skill/task invoked       |
 
-**Note**: Condition (3) is only required when hydration occurred AND workflow is not streamlined (`interactive-followup`, `simple-question`, `direct-skill`).
-
-**QA enforcement mode**: `block` (default). QA failures halt the session. Override via `QA_GATE_MODE=warn` env var. Changed from `warn` to `block` on 2026-02-14 after QA rubber-stamped a source substitution violation (see `$ACA_DATA/aops/fails/20260214-scope-drift-url-pivot.md`).
+**Note**: Condition (2) is only required when hydration occurred AND workflow is not streamlined (`interactive-followup`, `simple-question`, `direct-skill`).
 
 **Gate (2) Field Validation**: When `## Framework Reflection` is detected in agent response, all 8 required fields must be present:
 
@@ -413,15 +410,13 @@ The stop gate requires THREE conditions for session completion:
 **Workflow**:
 
 1. Agent completes work
-2. Agent invokes QA skill to verify results against original request and acceptance criteria
-3. PostToolUse hook sets `qa_invoked` flag
-4. Agent outputs Framework Reflection with ALL required fields
-5. AfterAgent hook validates format and sets `handover_skill_invoked` flag
-6. Agent invokes `/handover` skill
-7. Agent attempts to end session (triggers Stop event)
-8. Stop gate checks all three flags (hydrator, handover, QA)
-9. If all flags set: session ends
-10. If any flag missing: blocks with instructions for the missing step
+2. Agent outputs Framework Reflection with ALL required fields
+3. AfterAgent hook validates format and sets `handover_skill_invoked` flag
+4. Agent invokes `/handover` skill
+5. Agent attempts to end session (triggers Stop event)
+6. Stop gate checks both flags (hydrator, handover)
+7. If all flags set: session ends
+8. If any flag missing: blocks with instructions for the missing step
 
 ### Uncommitted Work Check
 
