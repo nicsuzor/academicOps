@@ -20,9 +20,133 @@ Exit codes:
     Non-zero: Hook error (logged, does not block)
 """
 
+import os
 import subprocess
 from pathlib import Path
 from typing import Any
+
+
+def is_aca_data_repo(repo_path: Path) -> bool:
+    """Check if repo_path is the ACA_DATA repository (~/brain).
+
+    ACA_DATA uses main branch as its only branch, so it needs an
+    exemption from branch protection for auto-commits.
+    """
+    aca_data = os.environ.get("ACA_DATA")
+    if not aca_data:
+        return False
+    try:
+        return repo_path.resolve() == Path(aca_data).resolve()
+    except (OSError, ValueError):
+        return False
+
+
+def generate_commit_message(tool_name: str, tool_input: dict[str, Any]) -> str:
+    """Generate a descriptive commit message from tool context.
+
+    Maps tool operations to human-readable commit messages following
+    the same conventions as brain-sync.sh.
+    """
+    if not isinstance(tool_input, dict):
+        return "sync: auto-commit"
+
+    # Task operations (suffix matching for client-agnostic tool names)
+    if tool_name.endswith("__create_task"):
+        title = tool_input.get("task_title", "")
+        if title:
+            return f"task: create '{title[:60]}'"
+        return "task: create"
+
+    if tool_name.endswith("__update_task"):
+        task_id = tool_input.get("id", "")
+        title = tool_input.get("task_title")
+        if title:
+            return f"task: update '{title[:60]}'"
+        if task_id:
+            return f"task: update {task_id}"
+        return "task: update"
+
+    if tool_name.endswith("__complete_task") or tool_name.endswith("__complete_tasks"):
+        task_id = tool_input.get("id", "")
+        ids = tool_input.get("ids", [])
+        if task_id:
+            return f"task: complete {task_id}"
+        if ids:
+            return f"task: complete {len(ids)} tasks"
+        return "task: complete"
+
+    if tool_name.endswith("__delete_task"):
+        task_id = tool_input.get("id", "")
+        return f"task: delete {task_id}" if task_id else "task: delete"
+
+    if tool_name.endswith("__decompose_task"):
+        task_id = tool_input.get("id", "")
+        return f"task: decompose {task_id}" if task_id else "task: decompose"
+
+    if tool_name.endswith("__reorder_children"):
+        return "task: reorder"
+
+    if tool_name.endswith("__rebuild_index"):
+        return "task: rebuild index"
+
+    # Memory operations
+    if tool_name.endswith("__store_memory"):
+        content = tool_input.get("content", "")
+        if content:
+            preview = content[:50].replace("\n", " ")
+            return f"memory: store '{preview}'"
+        return "memory: store"
+
+    if tool_name.endswith("__delete_memory"):
+        return "memory: delete"
+
+    if tool_name.endswith("__ingest_document") or tool_name.endswith("__ingest_directory"):
+        return "memory: ingest"
+
+    # Write/Edit to data paths - categorize by file path
+    if tool_name in ("Write", "Edit"):
+        file_path = tool_input.get("file_path", "")
+        return _categorize_data_path(file_path)
+
+    return "sync: auto-commit"
+
+
+def _categorize_data_path(file_path: str) -> str:
+    """Categorize a file path into a commit message (mirrors brain-sync.sh logic)."""
+    # Resolve to relative path within ACA_DATA if possible
+    aca_data = os.environ.get("ACA_DATA", "")
+    if aca_data:
+        try:
+            rel = str(Path(file_path).resolve().relative_to(Path(aca_data).resolve()))
+            file_path = rel
+        except ValueError:
+            pass
+
+    parts = file_path.split("/")
+    if not parts:
+        return "sync: auto-commit"
+
+    first_dir = parts[0]
+    basename = Path(file_path).stem
+
+    if first_dir == "knowledge":
+        if len(parts) >= 3:
+            return f"knowledge: {parts[1]}/{basename}"
+        return f"knowledge: {basename}"
+    elif first_dir == "aops" and len(parts) >= 3 and parts[1] == "tasks":
+        return f"task: {basename}"
+    elif first_dir == "daily":
+        return f"daily: {basename}"
+    elif first_dir == "projects" and len(parts) >= 2:
+        return f"project: {parts[1]}"
+    elif first_dir == "context":
+        return f"context: {basename}"
+    elif first_dir == "goals":
+        return f"goal: {basename}"
+    elif first_dir == "academic":
+        return f"academic: {basename}"
+
+    return f"{first_dir}: {basename}" if basename else first_dir
 
 
 def can_sync(repo_path: Path) -> tuple[bool, str]:
@@ -218,35 +342,39 @@ def get_modified_repos(tool_name: str, tool_input: dict[str, Any]) -> set[str]:
         if any(pattern in command for pattern in task_script_patterns):
             modified.add("data")
 
-    # memory MCP tools (knowledge base operations) -> data repo
-    memory_write_tools = [
-        "mcp__memory__store_memory",
-        "mcp__memory__update_memory_metadata",
-        "mcp__memory__delete_memory",
-        "mcp__memory__delete_by_tag",
-        "mcp__memory__delete_by_tags",
-        "mcp__memory__delete_by_all_tags",
-        "mcp__memory__delete_by_timeframe",
-        "mcp__memory__delete_before_date",
-        "mcp__memory__ingest_document",
-        "mcp__memory__ingest_directory",
-        "mcp__memory__rate_memory",
-    ]
-    if tool_name in memory_write_tools:
+    # Memory MCP tools (knowledge base operations) -> data repo
+    # Use suffix matching to be client-agnostic (handles mcp__memory__,
+    # mcp__plugin_aops-core_memory__, etc.)
+    memory_write_suffixes = (
+        "__store_memory",
+        "__update_memory_metadata",
+        "__delete_memory",
+        "__delete_by_tag",
+        "__delete_by_tags",
+        "__delete_by_all_tags",
+        "__delete_by_timeframe",
+        "__delete_before_date",
+        "__ingest_document",
+        "__ingest_directory",
+        "__rate_memory",
+    )
+    if any(tool_name.endswith(s) for s in memory_write_suffixes):
         modified.add("data")
 
-    # tasks-v2 MCP tools (task management) -> data repo
-    tasks_write_tools = [
-        "mcp__tasks__create_task",
-        "mcp__tasks__update_task",
-        "mcp__tasks__complete_task",
-        "mcp__tasks__delete_task",
-        "mcp__tasks__decompose_task",
-        "mcp__tasks__complete_tasks",
-        "mcp__tasks__reorder_children",
-        "mcp__tasks__rebuild_index",
-    ]
-    if tool_name in tasks_write_tools:
+    # Task MCP tools (task management) -> data repo
+    # Use suffix matching to be client-agnostic (handles mcp__tasks__,
+    # mcp__plugin_aops-core_task_manager__, etc.)
+    tasks_write_suffixes = (
+        "__create_task",
+        "__update_task",
+        "__complete_task",
+        "__delete_task",
+        "__decompose_task",
+        "__complete_tasks",
+        "__reorder_children",
+        "__rebuild_index",
+    )
+    if any(tool_name.endswith(s) for s in tasks_write_suffixes):
         modified.add("data")
 
     # Write/Edit operations - check path to determine repo
@@ -256,12 +384,17 @@ def get_modified_repos(tool_name: str, tool_input: dict[str, Any]) -> set[str]:
                 "Write/Edit tool_input requires 'file_path' parameter (P#8: fail-fast)"
             )
         file_path = tool_input["file_path"]
+        # Check if path is under ACA_DATA
+        aca_data = os.environ.get("ACA_DATA", "")
+        if aca_data:
+            try:
+                Path(file_path).resolve().relative_to(Path(aca_data).resolve())
+                modified.add("data")
+            except ValueError:
+                pass
+        # Legacy fallback: relative "data/" paths
         if "data/" in file_path or file_path.startswith("data/"):
             modified.add("data")
-
-        # AOPS tracking disabled: only sync knowledge base changes
-        # if "academicOps/" in file_path or "/academicOps" in file_path:
-        #     modified.add("aops")
 
     return modified
 
@@ -333,24 +466,30 @@ def is_protected_branch(branch: str | None) -> bool:
 
 
 def commit_and_push_repo(
-    repo_path: Path, subdir: str | None = None, commit_prefix: str = "update"
+    repo_path: Path,
+    subdir: str | None = None,
+    commit_prefix: str = "update",
+    commit_message: str | None = None,
 ) -> tuple[bool, str]:
     """Commit and push changes in a repo (optionally scoped to subdir).
 
     Syncs with remote before committing to prevent conflicts.
-    Will NOT auto-commit to main/master branches.
+    Will NOT auto-commit to main/master branches, UNLESS the repo
+    is $ACA_DATA (which only uses main).
 
     Args:
         repo_path: Path to repository root
         subdir: Optional subdirectory to add (e.g., "data/"). If None, adds all.
         commit_prefix: Prefix for commit message (e.g., "update(data)" or "update(framework)")
+        commit_message: Full commit message. If provided, overrides auto-generated message.
 
     Returns:
         Tuple of (success: bool, message: str)
     """
     # Branch protection: never auto-commit to main/master
+    # Exception: ACA_DATA repo uses main as its only branch
     current_branch = get_current_branch(repo_path)
-    if is_protected_branch(current_branch):
+    if is_protected_branch(current_branch) and not is_aca_data_repo(repo_path):
         return (
             False,
             f"Skipping auto-commit: protected branch '{current_branch or 'detached HEAD'}'",
@@ -390,14 +529,11 @@ def commit_and_push_repo(
         )
 
         # Commit with descriptive message
-        scope = subdir.rstrip("/") if subdir else "all"
-        commit_msg = (
-            f"{commit_prefix}: auto-commit after state operation\n\n"
-            f"Changes in {scope} committed automatically via PostToolUse hook.\n"
-            "Ensures cross-device sync and prevents data loss.\n\n"
-            "🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\n"
-            "Co-Authored-By: Claude <noreply@anthropic.com>"
-        )
+        if commit_message:
+            commit_msg = commit_message
+        else:
+            scope = subdir.rstrip("/") if subdir else "all"
+            commit_msg = f"{commit_prefix}: auto-commit ({scope})"
 
         subprocess.run(
             ["git", "commit", "-m", commit_msg],

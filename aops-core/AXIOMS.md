@@ -87,6 +87,11 @@ Skills MUST NOT contain dynamic data. All mutable state lives in $ACA_DATA.
 
 Git is the backup system. NEVER create backup files (`.bak`, `_old`, `_ARCHIVED_*`). Edit directly, rely on git. Commit AND push after completing logical work units. Commit promptly — no hesitation.
 
+**Corollaries**:
+
+- After completing work, always: commit → push to branch → file PR. Review happens at PR integration, not before commit. Never leave work uncommitted or ask the user to commit for you.
+- Never assign review/commit tasks to `nic`. The PR process IS the review mechanism.
+
 ## No Workarounds (P#25)
 
 If tooling or instructions don't work PRECISELY, log the failure and HALT. NEVER use `--no-verify`, `--force`, or skip flags.
