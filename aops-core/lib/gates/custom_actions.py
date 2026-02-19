@@ -24,10 +24,10 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:
     session_context = ""
     if transcript_path:
         if gate == "custodiet":
-            from lib.session_reader import build_critic_session_context
+            from lib.session_reader import build_audit_session_context
 
             try:
-                session_context = build_critic_session_context(transcript_path)
+                session_context = build_audit_session_context(transcript_path)
             except Exception:
                 pass  # Degrade context, not the file creation
         else:

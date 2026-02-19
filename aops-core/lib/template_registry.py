@@ -150,19 +150,6 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         description="Full context for custodiet compliance check",
         env_override="CUSTODIET_CONTEXT_TEMPLATE",
     ),
-    "critic.context": TemplateSpec(
-        name="critic.context",
-        category=TemplateCategory.SUBAGENT_INSTRUCTION,
-        filename="critic-context.md",
-        required_vars=(
-            "session_context",
-            "tool_name",
-            "axioms_content",
-            "heuristics_content",
-        ),
-        optional_vars=("session_id", "gate_name", "custodiet_mode", "skills_content"),
-        description="Deep session context for critic review (full narrative)",
-    ),
     "qa.context": TemplateSpec(
         name="qa.context",
         category=TemplateCategory.SUBAGENT_INSTRUCTION,
@@ -199,14 +186,6 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         description="Audit context for custodiet gate",
     ),
     # --- Stop gate ---
-    "stop.critic": TemplateSpec(
-        name="stop.critic",
-        category=TemplateCategory.CONTEXT_INJECTION,
-        filename="stop-gate-critic.md",
-        required_vars=(),
-        description="Instruction to invoke critic before stopping",
-        env_override="STOP_GATE_CRITIC_TEMPLATE",
-    ),
     "stop.handover_block": TemplateSpec(
         name="stop.handover_block",
         category=TemplateCategory.CONTEXT_INJECTION,

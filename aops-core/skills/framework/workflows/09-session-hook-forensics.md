@@ -193,7 +193,6 @@ The `system_message` field shows gate status:
 | ------ | --------- | ---------------------- |
 | 📌     | task      | Task binding status    |
 | 💧     | hydration | Hydration gate status  |
-| 🤝     | critic    | Critic approval status |
 | ✓      | -         | Gate open (passed)     |
 | ✗      | -         | Gate closed (blocked)  |
 

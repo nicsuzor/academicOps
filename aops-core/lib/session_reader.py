@@ -574,18 +574,18 @@ def build_rich_session_context(transcript_path: Path | str, max_turns: int = 15)
     return "\n".join(lines)
 
 
-def build_critic_session_context(transcript_path: Path | str) -> str:
-    """Build deep session context for critic agent review.
+def build_audit_session_context(transcript_path: Path | str) -> str:
+    """Build deep session context for audit and compliance review.
 
     Unlike build_rich_session_context (designed for scope-drift detection with
     thin, wide context), this produces a chronological narrative of the entire
     session: user requests, agent reasoning, tool calls with results, and
-    decisions made. The critic needs to see what actually happened to provide
+    decisions made. The auditor needs to see what actually happened to provide
     a grounded verdict.
 
     Design choices:
-    - ALL turns included (no max_turns cap) — critic must see full history
-    - Agent reasoning text preserved at length (2000 chars) — critic needs
+    - ALL turns included (no max_turns cap) — auditor must see full history
+    - Agent reasoning text preserved at length (2000 chars) — auditor needs
       to see *why* decisions were made, not just what tools were called
     - Task/subagent prompts and results shown — these are major decision points
     - Edit diffs summarized — what changed matters for review

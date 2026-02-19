@@ -134,7 +134,6 @@ Every task MUST follow this lifecycle. No shortcuts.
    EnterPlanMode()
 
 2. DESIGN WITH CRITIC REVIEW (MANDATORY for non-trivial work)
-   Task(subagent_type="critic", model="opus", prompt="
    Review this plan for errors and hidden assumptions:
    [PLAN SUMMARY]
    Check for: logical errors, unstated assumptions, missing verification.
@@ -142,7 +141,6 @@ Every task MUST follow this lifecycle. No shortcuts.
 
 3. ADDRESS CRITIC FEEDBACK
    PROCEED: Continue to Phase 3
-   REVISE: Fix issues, re-run critic (max 2 iterations, then escalate to user)
    HALT: Stop immediately. Report issues to user. Do NOT proceed.
 ```
 
@@ -166,7 +164,6 @@ Every task MUST follow this lifecycle. No shortcuts.
    If implementation reveals plan was incomplete:
    - STOP implementation
    - Return to Phase 2 with new information
-   - Re-run critic review
    - Continue only after revised plan approved
 ```
 
@@ -276,7 +273,6 @@ When you encounter something you cannot derive:
 
 - Skip any lifecycle phase
 - Claim complete without pushing
-- Bypass critic review for plans
 - Make ad-hoc changes without rules
 - Assume tests pass without running them
 - Mark tasks complete without verification
