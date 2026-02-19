@@ -13,7 +13,6 @@ The Gate System enforces framework policies through hooks that block or warn on 
 
 - Task Gate (requires task binding before work)
 - Custodiet Gate (ultra vires detection)
-- QA Gate (verification before completion)
 
 ## Evaluation Prompt
 
@@ -101,10 +100,6 @@ Notable instances:
 -
 
 #### Custodiet Gate
-
-[Same structure]
-
-#### QA Gate
 
 [Same structure]
 

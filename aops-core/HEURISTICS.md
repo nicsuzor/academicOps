@@ -142,13 +142,13 @@ Use `fd` for file finding operations instead of `ls | grep/tail` pipelines.
 
 Bug fixes must not remove functionality required by acceptance criteria.
 
-## Spike Output Goes to Task Graph (P#81)
+## Spike Output Goes to Task Graph or GitHub (P#81)
 
-Spike/learn task output belongs in the task graph (task body, parent epic), not random files.
+Spike/learn output belongs in the task graph (task body, parent epic) or GitHub issues, not random files.
 
-## Mandatory Reproduction Tests (P#82)
+## Mandatory Reproduction Tests for Fixes (P#82)
 
-Every framework bug fix MUST be preceded by a failing reproduction test case.
+Every framework bug fix MUST be preceded by a failing reproduction test case. This applies when implementing a fix, not necessarily during the initial async capture (/learn).
 
 ## Make Cross-Project Dependencies Explicit (P#83)
 
@@ -185,9 +185,9 @@ When user requests content "an LLM will orchestrate/execute", create content for
 
 When user is deconstructing/planning, match their level of abstraction. Don't fill in blanks until they signal readiness for specifics.
 
-## Verify Non-Duplication Before Batch Create (P#91)
+## Verify Non-Duplication Before Create (P#91)
 
-Before creating tasks from batch input, cross-reference against existing task titles to avoid duplicates.
+Before creating ANY task, search existing tasks (`search_tasks`) for similar titles. This applies to single creates, not just batch operations.
 
 ## Run Python via uv (P#93)
 
@@ -200,6 +200,10 @@ A batch task is not complete until all spawned workers have finished. "Fire-and-
 ## Subagent Verdicts Are Binding (P#95)
 
 When a subagent (critic, custodiet, qa) returns a HALT or REVISE verdict, the main agent MUST stop and address the issue.
+
+**Corollaries**:
+
+- When custodiet blocks work as out-of-scope, capture the blocked improvement as a new task before reverting. Useful work should be deferred, not lost.
 
 **Derivation**: P#9 (Fail-Fast Agents) requires stopping when tools fail. Subagents are tools. Their failure verdicts must be respected.
 

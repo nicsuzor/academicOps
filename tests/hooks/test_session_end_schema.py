@@ -18,7 +18,9 @@ from hooks.router import (
 
 class TestSessionEndSchema:
     @pytest.fixture
-    def router_instance(self):
+    def router_instance(self, monkeypatch):
+        # Mock get_session_data to avoid reading shared PID session map during xdist tests
+        monkeypatch.setattr("hooks.router.get_session_data", lambda: {})
         return HookRouter()
 
     def test_session_end_uses_stop_schema(self, router_instance):

@@ -2,7 +2,13 @@
 
 ## 1. Create note
 
-Check `$ACA_SESSIONS/YYYYMMDD-daily.md`.
+Check `$ACA_DATA/daily/YYYYMMDD-daily.md`.
+
+**Symlink Management (CRITICAL)**: On EVERY invocation, update the `daily.md` symlink to point to today's note. This ensures shortcuts and quick-links remain valid:
+
+```bash
+ln -snf daily/YYYYMMDD-daily.md $ACA_DATA/daily.md
+```
 
 **If exists**: Skip to section 2. The note is updated in place.
 

@@ -243,6 +243,15 @@ class PolecatManager:
             ]
 
         subprocess.run(cmd, cwd=local_repo_path, check=True)
+
+        # Prevent accidental push to main by unsetting upstream tracking.
+        # This ensures 'git push' fails unless a remote/branch is explicitly specified.
+        subprocess.run(
+            ["git", "branch", "--unset-upstream", branch_name],
+            cwd=local_repo_path,
+            check=False,  # Might fail if no upstream was set, which is fine
+        )
+
         return worktree_path
 
     def nuke_crew(self, name: str, force: bool = False):
@@ -906,6 +915,14 @@ class PolecatManager:
             else:
                 raise e
 
+        # Prevent accidental push to main by unsetting upstream tracking.
+        # This ensures 'git push' fails unless a remote/branch is explicitly specified.
+        subprocess.run(
+            ["git", "branch", "--unset-upstream", branch_name],
+            cwd=repo_path,
+            check=False,  # Might fail if no upstream was set, which is fine
+        )
+
         # Post-creation validation: ensure worktree has valid history
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
@@ -944,11 +961,59 @@ class PolecatManager:
                     check=True,
                 )
 
+        # --- SANDBOX SETTINGS ---
+        # Write .claude/settings.json to restrict file writes to this worktree only.
+        # Loaded via --setting-sources=user,project when spawning the worker.
+        self.create_sandbox_settings(worktree_path)
+
         # --- WORKTREE VERIFICATION ---
         # Verify the worktree is correctly set up for PR workflow
         self._verify_worktree_setup(worktree_path, branch_name, default_branch)
 
         return worktree_path
+
+    def create_sandbox_settings(self, worktree_path: Path) -> Path:
+        """Write .claude/settings.json to a worktree to sandbox file access.
+
+        The settings restrict Write and Edit operations to the worktree directory
+        only. When Claude Code loads this file via --setting-sources=user,project,
+        it will deny any attempt to write or edit files outside the worktree.
+
+        The allow rules take precedence over deny rules in Claude Code's permission
+        system, so worktree paths are explicitly allowed and everything else is
+        blocked by the wildcard deny.
+
+        Args:
+            worktree_path: Absolute path to the worktree root directory
+
+        Returns:
+            Path to the created settings file
+        """
+        import json
+
+        worktree_str = str(worktree_path.resolve())
+        claude_dir = worktree_path / ".claude"
+        claude_dir.mkdir(exist_ok=True)
+
+        settings = {
+            "permissions": {
+                "allow": [
+                    f"Write({worktree_str}/**)",
+                    f"Edit({worktree_str}/**)",
+                    f"Bash(cd {worktree_str}:*)",
+                ],
+                "deny": [
+                    "Write(**)",
+                    "Edit(**)",
+                ],
+            }
+        }
+
+        settings_path = claude_dir / "settings.json"
+        with open(settings_path, "w") as f:
+            json.dump(settings, f, indent=2)
+
+        return settings_path
 
     def _verify_worktree_setup(self, worktree_path: Path, branch_name: str, default_branch: str):
         """Verify worktree is correctly set up for the PR workflow.

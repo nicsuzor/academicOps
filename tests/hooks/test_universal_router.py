@@ -16,7 +16,9 @@ from hooks.schemas import GeminiHookOutput, HookContext
 
 class TestUniversalRouter:
     @pytest.fixture
-    def router_instance(self):
+    def router_instance(self, monkeypatch):
+        # Mock get_session_data to avoid reading shared PID session map during xdist tests
+        monkeypatch.setattr("hooks.router.get_session_data", lambda: {})
         return HookRouter()
 
     def test_normalize_input_basic(self, router_instance):
@@ -102,7 +104,9 @@ class TestToolInputNormalization:
     """Tests for JSON string normalization in router.py."""
 
     @pytest.fixture
-    def router_instance(self):
+    def router_instance(self, monkeypatch):
+        # Mock get_session_data to avoid reading shared PID session map during xdist tests
+        monkeypatch.setattr("hooks.router.get_session_data", lambda: {})
         return HookRouter()
 
     def test_normalize_json_field_string(self, router_instance):
@@ -176,7 +180,9 @@ class TestSubagentTypeExtraction:
     """
 
     @pytest.fixture
-    def router_instance(self):
+    def router_instance(self, monkeypatch):
+        # Mock get_session_data to avoid reading shared PID session map during xdist tests
+        monkeypatch.setattr("hooks.router.get_session_data", lambda: {})
         return HookRouter()
 
     def test_claude_task_subagent_type(self, router_instance):

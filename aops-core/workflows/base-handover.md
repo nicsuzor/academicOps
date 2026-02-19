@@ -7,7 +7,7 @@ bases: [base-commit]
 
 # Landing the Plane (Session Completion)
 
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds and you output a framework reflection in the required form.
+**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds, a PR is filed, and you output a framework reflection in the required form.
 
 ## MANDATORY WORKFLOW
 
@@ -16,13 +16,14 @@ bases: [base-commit]
 3. **Update task status** - Mark tasks complete or update progress as appropriate
 4. **Invoke `/handover`** - Use the Skill tool with `skill="aops-core:handover"`
 5. **Commit and PUSH** - The handover skill will guide you, but ensure `git push` succeeds
-6. **Verify** - All changes committed AND pushed to remote
-7. **Output Framework Reflection** - Provide context for the next session
+6. **File a PR** - Open a pull request so the work is visible and reviewable
+7. **Verify** - All changes committed, pushed, and PR filed
+8. **Output Framework Reflection** - Provide context for the next session
 
 ## CRITICAL RULES
 
-- Work is **NOT complete** until `git push` succeeds
-- **NEVER stop** before pushing to remote
+- Work is **NOT complete** until `git push` succeeds AND a PR is filed
+- **NEVER stop** before pushing to remote and filing a PR
 - If push fails, resolve and retry until it succeeds
 - Using mutating tools (Edit, Write, Bash, git) after handover will reset the gate
 
@@ -72,6 +73,27 @@ git push  # Push to remote
 ```
 
 **No uncommitted work is allowed at session end.** The commit message should summarize what was accomplished. Skip only if `git status` shows no changes.
+
+### File a PR (MANDATORY if changes were pushed)
+
+After pushing, open a pull request:
+
+```bash
+gh pr create --title "<type>: <description>" --body "$(cat <<'EOF'
+## Summary
+- <What was done and why>
+
+## Test plan
+- [ ] Tests pass
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+EOF
+)"
+```
+
+If a PR already exists for the branch, link it in the task body instead.
+
+**No session is complete without a PR.** If the branch is `main` and direct push is normal for this repo, note that explicitly in the reflection.
 
 ### Polecat Worktree: Signal Ready for Merge
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re as _re
 import sys
 import textwrap
 import time
@@ -3334,6 +3335,7 @@ def esc(text):
         .replace("<", "&lt;")
         .replace(">", "&gt;")
         .replace('"', "&quot;")
+        .replace("'", "&#39;")
     )
 
 
@@ -3351,13 +3353,13 @@ def clean_activity_text(raw_text: str) -> str:
     if not raw_text:
         return "Working..."
 
-    import re as _re
-
     s = str(raw_text)
     # Remove HTML comments <!-- ... -->
     s = _re.sub(r"<!--.*?-->", "", s, flags=_re.DOTALL)
-    # Remove HTML tags
-    s = _re.sub(r"<[^>]+>", "", s)
+    # Remove paired HTML tags AND their content (e.g. <system-reminder>...</system-reminder>)
+    s = _re.sub(r"<(\w[\w-]*)[\s>].*?</\1>", "", s, flags=_re.DOTALL)
+    # Remove any remaining unpaired HTML tags
+    s = _re.sub(r"<[^>]+>", "", s, flags=_re.DOTALL)
 
     # Remove markdown headers (lines starting with #)
     lines = [line for line in s.split("\n") if not line.strip().startswith("#")]
@@ -3401,9 +3403,7 @@ def load_task_graph() -> dict | None:
 
 
 # Default task graph SVG location
-TASK_GRAPH_SVG = (
-    Path.home() / ".aops" / "tasks" / "task-map.svg"
-)
+TASK_GRAPH_SVG = Path.home() / ".aops" / "tasks" / "task-map.svg"
 
 
 def find_latest_svg() -> Path | None:
@@ -3422,9 +3422,9 @@ def find_latest_svg() -> Path | None:
     search_dirs = [
         Path.home() / ".aops" / "tasks",
         Path(aca_data) / "aops" / "outputs",
-        Path(aca_data) / "outputs"
+        Path(aca_data) / "outputs",
     ]
-    
+
     for outputs_dir in search_dirs:
         if outputs_dir.exists():
             svgs = list(outputs_dir.glob("task-viz*.svg")) + list(outputs_dir.glob("task-map*.svg"))
@@ -4039,13 +4039,13 @@ def _sanitize_prompt(text: str) -> str:
 
     Returns empty string for useless/too-short prompts.
     """
-    import re as _re
-
     s = text
     # Remove HTML comments <!-- ... -->
     s = _re.sub(r"<!--.*?-->", "", s, flags=_re.DOTALL)
-    # Remove HTML tags
-    s = _re.sub(r"<[^>]+>", "", s)
+    # Remove paired HTML tags AND their content (e.g. <system-reminder>...</system-reminder>)
+    s = _re.sub(r"<(\w[\w-]*)[\s>].*?</\1>", "", s, flags=_re.DOTALL)
+    # Remove any remaining unpaired HTML tags
+    s = _re.sub(r"<[^>]+>", "", s, flags=_re.DOTALL)
     # Convert markdown links [text](url) to just text
     s = _re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", s)
     # Strip bold/italic markers (** __ * _) but keep content
@@ -4621,6 +4621,30 @@ if synthesis:
     synth_html += "</div>"  # End panel
     st.markdown(synth_html, unsafe_allow_html=True)
 
+# === DAILY STORY SECTION ===
+daily_story = analyzer.extract_daily_story()
+if daily_story:
+    with st.container():
+        st.markdown(
+            "<div class='daily-story-container' style='margin-bottom: 24px; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 8px; border-left: 4px solid #60a5fa;'>",
+            unsafe_allow_html=True,
+        )
+        col1, col2 = st.columns([2, 1])
+
+        with col1:
+            if daily_story["story"]:
+                st.markdown(f"### 📖 Today's Story\n{daily_story['story']}")
+            if daily_story["dropped_threads"]:
+                st.markdown("#### ⚠ Dropped Threads")
+                for thread in daily_story["dropped_threads"]:
+                    st.markdown(f"- {thread}")
+
+        with col2:
+            if daily_story["priorities"]:
+                st.markdown(f"### 🎯 Focus\n{daily_story['priorities']}")
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
 # === WHERE YOU LEFT OFF SECTION ===
 # Time range selector in sidebar
 activity_hours = st.sidebar.selectbox(
@@ -4771,7 +4795,11 @@ if stale_count > 0:
             unsafe_allow_html=True,
         )
     with col2:
-        if st.button("📦 Archive All", use_container_width=True, help="Move all sessions older than 24h to archive"):
+        if st.button(
+            "📦 Archive All",
+            use_container_width=True,
+            help="Move all sessions older than 24h to archive",
+        ):
             archive_stale_sessions(hours=24)
 
 # === PATH RECONSTRUCTION SECTION ===
@@ -4786,7 +4814,7 @@ try:
             path_html += "<div class='path-abandoned'>"
             path_html += f"<div class='path-abandoned-title'>📋 UNFINISHED TASKS ({len(path.abandoned_work)} started but not finished)</div>"
             path_html += "<div style='font-size: 0.8em; opacity: 0.7; margin-bottom: 8px;'>Tasks created or claimed across all sessions that haven't been marked done.</div>"
-            
+
             # Group abandoned work by project
             abandoned_by_project = {}
             for ab in path.abandoned_work:
@@ -4794,18 +4822,21 @@ try:
                 if proj not in abandoned_by_project:
                     abandoned_by_project[proj] = []
                 abandoned_by_project[proj].append(ab)
-            
+
             for proj, items in sorted(abandoned_by_project.items()):
                 proj_color = get_project_color(proj)
-                path_html += f"<div style='margin-bottom: 8px;'>"
+                path_html += "<div style='margin-bottom: 8px;'>"
                 path_html += f"<div style='font-size: 0.7em; font-weight: 700; text-transform: uppercase; color: {proj_color}; opacity: 0.8; margin-bottom: 4px;'>{esc(proj)}</div>"
                 path_html += "<div style='display: flex; flex-wrap: wrap; gap: 8px;'>"
                 for ab in items:
-                    task_label = esc(ab.task_id or ab.description)
-                    path_html += f"<div class='path-abandoned-item' style='border-left: 2px solid {proj_color}; background: rgba(255,255,255,0.03); padding: 4px 10px; border-radius: 4px; font-size: 0.85em;' title='Task: {esc(ab.description)}'>□ {task_label}</div>"
+                    # Use resolved title for abandoned work if available
+                    title = ab.resolved_title or ab.description or ab.task_id
+                    task_label = esc(title)
+                    task_id_display = esc(ab.task_id or "unknown")
+                    path_html += f"<div class='path-abandoned-item' style='border-left: 2px solid {proj_color}; background: rgba(255,255,255,0.03); padding: 4px 10px; border-radius: 4px; font-size: 0.85em;' title='Task ID: {task_id_display}'>□ {task_label}</div>"
                 path_html += "</div>"
                 path_html += "</div>"
-            
+
             path_html += "</div>"
 
         # Group threads by project
@@ -4827,17 +4858,26 @@ try:
                 if not thread.events and not thread.initial_goal:
                     continue
 
-                path_html += "<div class='path-thread' style='border-left-color: {proj_color}66'>"
+                path_html += f"<div class='path-thread' style='border-left-color: {proj_color}66'>"
                 sid_display = esc(thread.session_id[:8])
-                
+
                 # Sanitize initial goal before display (prevent markdown headers from breaking layout)
-                cleaned_goal = clean_activity_text(thread.initial_goal)
+                # Prioritize hydrated_intent if available for better narrative recognition
+                goal_to_show = thread.hydrated_intent or thread.initial_goal
+                cleaned_goal = clean_activity_text(goal_to_show)
                 goal_display = esc(
-                    cleaned_goal[:120] + "..."
-                    if len(cleaned_goal) > 120
-                    else cleaned_goal
+                    cleaned_goal[:120] + "..." if len(cleaned_goal) > 120 else cleaned_goal
                 )
-                path_html += f"<div class='path-thread-header' title='{esc(thread.initial_goal)}'>{goal_display} <span class='session-hash'>({sid_display})</span></div>"
+
+                # Add branch information if available as secondary context
+                branch_html = ""
+                if thread.git_branch:
+                    # Filter out mechanical branch names that are just task IDs
+                    if not _re.match(r"^[a-z]+-[a-f0-9]+$", thread.git_branch):
+                        branch_html = f"<div class='session-branch' style='font-size: 0.75em; opacity: 0.6; margin-top: -8px; margin-bottom: 8px;' title='Git Branch'>branch: {esc(thread.git_branch)}</div>"
+
+                path_html += f"<div class='path-thread-header' title='{esc(cleaned_goal)}'>{goal_display} <span class='session-hash'>({sid_display})</span></div>"
+                path_html += branch_html
 
                 # Consolidate consecutive TASK_UPDATE events
                 display_events = []
@@ -4874,19 +4914,22 @@ try:
                     is_minor = event.event_type == EventType.TASK_UPDATE
                     event_class = "path-event minor" if is_minor else "path-event"
 
-                    # Event description - sanitize first
-                    cleaned_desc = clean_activity_text(event.description)
+                    # Use the new narrative renderer from path_reconstructor
+                    narrative = event.render_narrative()
+                    cleaned_desc = clean_activity_text(narrative)
+
                     # Increase truncation to 120 as per spec
                     desc = esc(cleaned_desc[:120]) if cleaned_desc else ""
 
+                    # Add bolding for key actions for better scannability
                     if event.event_type == EventType.TASK_CREATE:
-                        desc = f"<b>Created:</b> {desc}"
+                        desc = desc.replace("Created: ", "<b>Created:</b> ")
                     elif event.event_type == EventType.TASK_COMPLETE:
-                        desc = f"<b>✓</b> {desc}"
-                    elif event.event_type == EventType.TASK_UPDATE:
-                        desc = f"→ {desc}"
+                        desc = desc.replace("Finished: ", "<b>✓</b> ")
                     elif event.event_type == EventType.TASK_CLAIM:
-                        desc = f"<b>Claimed:</b> {desc}"
+                        desc = desc.replace("Started working on: ", "<b>Claimed:</b> ")
+                    elif event.event_type == EventType.USER_PROMPT:
+                        desc = desc.replace("Requested: ", "<b>Requested:</b> ")
 
                     # Skip low-signal/empty events
                     is_low_signal = not cleaned_desc or cleaned_desc.lower().strip() in (
@@ -4898,7 +4941,7 @@ try:
                         "session",
                         "session started",
                     )
-                    
+
                     if is_low_signal:
                         # Only keep low-signal events if they are high-importance types
                         if event.event_type not in (
@@ -4907,7 +4950,7 @@ try:
                             EventType.TASK_CREATE,
                         ):
                             continue
-                        
+
                         # If description is empty but it's a create/claim, we need the task_id at least
                         if not cleaned_desc and not event.task_id:
                             continue

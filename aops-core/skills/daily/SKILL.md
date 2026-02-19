@@ -11,7 +11,7 @@ permalink: skills-daily
 
 Manage daily note lifecycle: briefing, task recommendations, progress sync, and work summary.
 
-Location: `$ACA_SESSIONS/YYYYMMDD-daily.md`
+Location: `$ACA_DATA/daily/YYYYMMDD-daily.md`
 
 ## CRITICAL BOUNDARY: Planning Only
 

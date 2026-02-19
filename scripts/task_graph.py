@@ -124,7 +124,7 @@ def filter_completed_smart(nodes: list[dict], edges: list[dict]) -> tuple[list[d
         (filtered_nodes, structural_ids) where structural_ids are completed nodes
         kept because they have active descendants (displayed differently).
     """
-    done_statuses = {"done", "completed", "cancelled"}
+    done_statuses = {"done", "completed"}
 
     # Build node lookup and identify completed nodes
     completed_ids = {n["id"] for n in nodes if n.get("status", "").lower() in done_statuses}
@@ -178,7 +178,7 @@ def filter_rollup(nodes: list[dict], edges: list[dict]) -> tuple[list[dict], set
         (filtered_nodes, structural_ids) where structural_ids are completed nodes
         kept because they have unfinished descendants (displayed differently).
     """
-    done_statuses = {"done", "completed", "cancelled"}
+    done_statuses = {"done", "completed"}
 
     # Build lookups
     node_by_id = {n["id"]: n for n in nodes}
@@ -447,6 +447,7 @@ def generate_dot(
             label = f"{label}\\n\u2696 {dw:.1f}"
             # Sqrt scaling for better visual separation across the 1-10 range
             import math
+
             sqrt_dw = math.sqrt(dw)
             scale_w = min(1.2 + sqrt_dw * 0.7, 4.0)
             scale_h = min(0.8 + sqrt_dw * 0.3, 2.0)
@@ -580,10 +581,14 @@ def main():
     with open(input_path) as f:
         data = json.load(f)
 
-    all_nodes = data["nodes"]
-    all_edges = data["edges"]
+    all_nodes = [n for n in data["nodes"] if n.get("status", "").lower() != "cancelled"]
+    node_ids = {n["id"] for n in all_nodes}
+    all_edges = [e for e in data["edges"] if e["source"] in node_ids and e["target"] in node_ids]
 
-    print(f"Loaded {len(all_nodes)} nodes, {len(all_edges)} edges from {input_path}")
+    print(
+        f"Loaded {len(all_nodes)} nodes (excluding cancelled), "
+        f"{len(all_edges)} edges from {input_path}"
+    )
 
     # Define variants to generate
     # Each variant: (suffix, filter_type, include_orphans, description)

@@ -220,7 +220,7 @@ async def store_chunk(
             if "not connected" in err_str:
                 raise ConnectionError(f"Client disconnected: {e}") from e
             if attempt < max_retries - 1:
-                wait = 2 ** attempt
+                wait = 2**attempt
                 if verbose:
                     print(f"  RETRY ({attempt + 1}/{max_retries}) {rel_path}: {e}", file=sys.stderr)
                 await asyncio.sleep(wait)
@@ -348,8 +348,9 @@ async def run(args: argparse.Namespace) -> None:
     MANIFEST_SAVE_INTERVAL = 50  # flush manifest every N files
 
     def _status_char(status: str) -> str:
-        return {"stored": ".", "skipped": "s", "empty": "e",
-                "not_found": "!", "failed": "x"}.get(status, "?")
+        return {"stored": ".", "skipped": "s", "empty": "e", "not_found": "!", "failed": "x"}.get(
+            status, "?"
+        )
 
     async def _record_result(result: dict) -> None:
         """Record a result and periodically flush the manifest."""
@@ -378,13 +379,20 @@ async def run(args: argparse.Namespace) -> None:
             except asyncio.QueueEmpty:
                 break
 
+            assert API_KEY is not None  # guarded by early exit above
             client = Client(MEMORY_URL, auth=BearerAuth(token=API_KEY))
             try:
                 async with client:
                     # Process first file
                     result = await process_file(
-                        client, file_path, brain_dir, manifest, semaphore,
-                        args.dry_run, args.force, args.verbose,
+                        client,
+                        file_path,
+                        brain_dir,
+                        manifest,
+                        semaphore,
+                        args.dry_run,
+                        args.force,
+                        args.verbose,
                     )
                     await _record_result(result)
 
@@ -395,24 +403,36 @@ async def run(args: argparse.Namespace) -> None:
                         except asyncio.QueueEmpty:
                             break
                         result = await process_file(
-                            client, file_path, brain_dir, manifest, semaphore,
-                            args.dry_run, args.force, args.verbose,
+                            client,
+                            file_path,
+                            brain_dir,
+                            manifest,
+                            semaphore,
+                            args.dry_run,
+                            args.force,
+                            args.verbose,
                         )
                         await _record_result(result)
 
             except (ConnectionError, OSError) as e:
                 print(f"\n  Worker {worker_id} reconnecting: {e}", file=sys.stderr)
-                await _record_result({
-                    "path": str(file_path.relative_to(brain_dir)),
-                    "status": "failed", "chunks": 0,
-                })
+                await _record_result(
+                    {
+                        "path": str(file_path.relative_to(brain_dir)),
+                        "status": "failed",
+                        "chunks": 0,
+                    }
+                )
                 continue
             except Exception as e:
                 print(f"\n  Worker {worker_id} error: {e}", file=sys.stderr)
-                await _record_result({
-                    "path": str(file_path.relative_to(brain_dir)),
-                    "status": "failed", "chunks": 0,
-                })
+                await _record_result(
+                    {
+                        "path": str(file_path.relative_to(brain_dir)),
+                        "status": "failed",
+                        "chunks": 0,
+                    }
+                )
                 continue
 
     workers = [asyncio.create_task(worker(i)) for i in range(args.concurrency)]
@@ -434,7 +454,7 @@ async def run(args: argparse.Namespace) -> None:
     failed = sum(1 for r in results if r["status"] == "failed")
     total_chunks = sum(r["chunks"] for r in results)
 
-    print(f"\n--- Summary ---")
+    print("\n--- Summary ---")
     print(f"Files processed: {len(results)}")
     print(f"  Stored:    {stored} ({total_chunks} chunks)")
     print(f"  Skipped:   {skipped} (unchanged)")

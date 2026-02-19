@@ -535,52 +535,63 @@ class SessionAnalyzer:
 
         return result
 
-    def extract_dashboard_state(self, session_path: Path) -> dict[str, Any]:
+    def extract_daily_story(self, date_str: str | None = None) -> dict[str, Any] | None:
         """
-        Extract dashboard state from a session file.
+        Extract the narrative story and priorities from the daily note.
 
         Args:
-            session_path: Path to session JSONL file
+            date_str: Date string in YYYYMMDD format. If None, uses today's date.
 
         Returns:
             Dict with keys:
-                - first_prompt: Truncated first user message (200 chars)
-                - first_prompt_full: Complete first user message
-                - last_prompt: Most recent user message
-                - todos: Current TODO list state (or None)
-                - memory_notes: List of created knowledge base notes
-                - in_progress_count: Count of in-progress todos
+                - story: The 'Today's Story' narrative text
+                - priorities: The 'My priorities' text
+                - momentum: Extracted momentum summary (if present)
+                - dropped_threads: List of dropped threads (if present)
+            Returns None if file doesn't exist.
         """
-        summary, entries, agent_entries = self.processor.parse_jsonl(session_path)
-        turns = self.processor.group_entries_into_turns(entries, agent_entries)
+        try:
+            data_path = get_data_root()
+        except RuntimeError:
+            return None
 
-        # Extract prompts and outcomes
-        prompts = self._extract_prompts(turns)
-        outcomes = self._extract_outcomes(session_path, turns)
+        if date_str is None:
+            date_str = date.today().strftime("%Y%m%d")
 
-        # Get first and last prompts
-        first_prompt_full = prompts[0].text if prompts else ""
-        first_prompt = first_prompt_full[:200]
-        if len(first_prompt_full) > 200:
-            first_prompt += "..."
+        daily_path = data_path / "sessions" / f"{date_str}-daily.md"
+        if not daily_path.exists():
+            return None
 
-        last_prompt = prompts[-1].text if prompts else ""
+        content = daily_path.read_text()
 
-        # Count in-progress todos
-        in_progress_count = 0
-        if outcomes.todos_final:
-            in_progress_count = sum(
-                1 for t in outcomes.todos_final if t.get("status") == "in_progress"
-            )
-
-        return {
-            "first_prompt": first_prompt,
-            "first_prompt_full": first_prompt_full,
-            "last_prompt": last_prompt,
-            "todos": outcomes.todos_final,
-            "memory_notes": outcomes.memory_notes,
-            "in_progress_count": in_progress_count,
+        result = {
+            "story": None,
+            "priorities": None,
+            "momentum": None,
+            "dropped_threads": [],
         }
+
+        # Extract Today's Story
+        story_match = re.search(r"## Today's Story\n\n(.*?)(?:\n\n##|\Z)", content, re.DOTALL)
+        if story_match:
+            story_text = story_match.group(1).strip()
+            # Split story into narrative and dropped threads if bullet points exist
+            if "\n- **⚠ Dropped Threads**:" in story_text:
+                parts = story_text.split("\n- **⚠ Dropped Threads**:")
+                result["story"] = parts[0].strip()
+                for thread in parts[1:]:
+                    result["dropped_threads"].append(thread.strip())
+            else:
+                result["story"] = story_text
+
+        # Extract My priorities
+        priorities_match = re.search(
+            r"### My priorities\n\n(.*?)(?:\n\n<!--|\n\n##|\Z)", content, re.DOTALL
+        )
+        if priorities_match:
+            result["priorities"] = priorities_match.group(1).strip()
+
+        return result
 
     def format_for_analysis(self, session_data: SessionData) -> str:
         """

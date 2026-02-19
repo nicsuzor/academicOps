@@ -1009,7 +1009,7 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
         cmd = [
             "claude",
             "--dangerously-skip-permissions",
-            "--setting-sources=user",
+            "--setting-sources=user,project",
         ]
 
         if interactive:

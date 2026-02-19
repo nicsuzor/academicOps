@@ -10,6 +10,7 @@ No JSONL or markdown parsing — reads only pre-computed summary JSONs.
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -27,6 +28,30 @@ class EventType(Enum):
     USER_PROMPT = "user_prompt"
 
 
+class TaskResolver:
+    """Resolves Task IDs to Titles using index.json."""
+
+    def __init__(self):
+        self.mapping = {}
+        aca_data = os.environ.get("ACA_DATA")
+        if aca_data:
+            index_path = Path(aca_data) / "tasks" / "index.json"
+            if index_path.exists():
+                try:
+                    data = json.loads(index_path.read_text())
+                    tasks = data.get("tasks", {})
+                    for tid, tdata in tasks.items():
+                        self.mapping[tid] = tdata.get("title", tid)
+                except Exception:
+                    pass
+
+    def resolve(self, task_id: str | None) -> str | None:
+        """Resolve a task ID to its current title."""
+        if not task_id:
+            return None
+        return self.mapping.get(task_id, task_id)
+
+
 @dataclass
 class TimelineEvent:
     timestamp: datetime | None
@@ -35,7 +60,29 @@ class TimelineEvent:
     project: str
     description: str
     task_id: str | None = None
+    resolved_title: str | None = None
     is_deviation: bool = False
+
+    def render_narrative(self) -> str:
+        """Render event as a human-friendly narrative sentence."""
+        title = self.resolved_title or self.description or self.task_id or "something"
+
+        if self.event_type == EventType.TASK_CLAIM:
+            return f"Started working on: {title}"
+        elif self.event_type == EventType.TASK_COMPLETE:
+            return f"Finished: {title}"
+        elif self.event_type == EventType.TASK_CREATE:
+            return f"Created: {title}"
+        elif self.event_type == EventType.TASK_ABANDON:
+            return f"Left unfinished: {title}"
+        elif self.event_type == EventType.USER_PROMPT:
+            return f"Requested: {title}"
+        elif self.event_type == EventType.SESSION_START:
+            return f"Started session: {title}"
+        elif self.event_type == EventType.TASK_UPDATE:
+            return f"Updated: {title}"
+
+        return title
 
 
 @dataclass
@@ -47,6 +94,8 @@ class SessionThread:
     events: list[TimelineEvent] = field(default_factory=list)
     abandoned_tasks: list[str] = field(default_factory=list)
     completed_tasks: list[str] = field(default_factory=list)
+    hydrated_intent: str | None = None
+    git_branch: str | None = None
 
 
 @dataclass
@@ -92,7 +141,9 @@ def _extract_slug_from_filename(filename: str) -> str:
     return ""
 
 
-def _build_thread_from_summary(summary: dict, filename_slug: str = "") -> SessionThread | None:
+def _build_thread_from_summary(
+    summary: dict, filename_slug: str = "", resolver: TaskResolver | None = None
+) -> SessionThread | None:
     """Build a SessionThread from a summary JSON dict.
 
     Reads timeline_events array from summary. For summaries without
@@ -103,6 +154,7 @@ def _build_thread_from_summary(summary: dict, filename_slug: str = "") -> Sessio
     Args:
         summary: Parsed summary JSON dict
         filename_slug: Optional slug extracted from filename for fallback
+        resolver: Optional TaskResolver for resolving task titles
 
     Returns:
         SessionThread or None if insufficient data
@@ -133,6 +185,11 @@ def _build_thread_from_summary(summary: dict, filename_slug: str = "") -> Sessio
             desc = raw.get("description", "")
             task_id = raw.get("task_id") or raw.get("task_title")
 
+            # Resolve task title if possible
+            resolved_title = None
+            if resolver and task_id:
+                resolved_title = resolver.resolve(task_id)
+
             event = TimelineEvent(
                 timestamp=ts,
                 event_type=event_type,
@@ -140,6 +197,7 @@ def _build_thread_from_summary(summary: dict, filename_slug: str = "") -> Sessio
                 project=project,
                 description=desc,
                 task_id=task_id,
+                resolved_title=resolved_title,
             )
             events.append(event)
 
@@ -234,6 +292,10 @@ def _build_thread_from_summary(summary: dict, filename_slug: str = "") -> Sessio
     # Abandoned = created but not completed
     abandoned = list(created_task_ids - completed_task_ids)
 
+    # Extra metadata
+    hydrated_intent = summary.get("hydrated_intent") or summary.get("summary")
+    git_branch = summary.get("git_branch")
+
     return SessionThread(
         session_id=session_id,
         project=project,
@@ -242,6 +304,8 @@ def _build_thread_from_summary(summary: dict, filename_slug: str = "") -> Sessio
         events=events,
         abandoned_tasks=abandoned,
         completed_tasks=list(completed_task_ids),
+        hydrated_intent=hydrated_intent,
+        git_branch=git_branch,
     )
 
 
@@ -301,6 +365,9 @@ def reconstruct_path(hours: int = 24) -> ReconstructedPath:
 
     cutoff = datetime.now().astimezone() - timedelta(hours=hours)
 
+    # Initialize task resolver for title lookups
+    resolver = TaskResolver()
+
     # Collect recent summaries
     threads: list[SessionThread] = []
     seen_sessions: set[str] = set()
@@ -333,7 +400,7 @@ def reconstruct_path(hours: int = 24) -> ReconstructedPath:
         # Extract filename slug for fallback goal
         filename_slug = _extract_slug_from_filename(name)
 
-        thread = _build_thread_from_summary(summary, filename_slug)
+        thread = _build_thread_from_summary(summary, filename_slug, resolver)
         if thread:
             threads.append(thread)
         else:

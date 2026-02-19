@@ -117,7 +117,6 @@ GATE_ICONS = {
     "task": ("📎", "."),
     "critic": ("👁", "."),
     "custodiet": ("🛡", "."),
-    "qa": ("🧪", "."),
     "handover": ("📤", "."),
 }
 
@@ -195,8 +194,6 @@ class HookRouter:
             "aops-core:prompt-hydrator",
             "custodiet",
             "aops-core:custodiet",
-            "qa",
-            "aops-core:qa",
             "audit",
             "aops-core:audit",
             "aops-core:butler",
@@ -427,6 +424,30 @@ class HookRouter:
         except Exception as e:
             print(f"WARNING: Gate status icons failed: {e}", file=sys.stderr)
 
+        # Safety: auto-approve if Stop blocked >= 4 times within 2 minutes (aops-c67313ef)
+        if ctx.hook_event in ("Stop", "SessionEnd") and merged_result.verdict == "deny":
+            try:
+                now = datetime.now().timestamp()
+                block_timestamps: list[float] = state.state.get("stop_block_timestamps", [])
+                # Purge entries older than 2 minutes
+                block_timestamps = [ts for ts in block_timestamps if now - ts < 120.0]
+                block_timestamps.append(now)
+                state.state["stop_block_timestamps"] = block_timestamps
+                if len(block_timestamps) >= 5:
+                    merged_result.verdict = "allow"
+                    warn = (
+                        "⚠️ SAFETY OVERRIDE: Stop hook blocked 5+ times in 2 minutes."
+                        " Auto-approving to prevent stall."
+                    )
+                    merged_result.system_message = (
+                        f"{merged_result.system_message}\n{warn}"
+                        if merged_result.system_message
+                        else warn
+                    )
+                    state.state["stop_block_timestamps"] = []
+            except Exception as e:
+                print(f"WARNING: Stop block safety check failed: {e}", file=sys.stderr)
+
         # Save Session State ONCE
         try:
             state.save()
@@ -468,6 +489,10 @@ class HookRouter:
                         return  # Fail-fast on initialization failure
             except Exception as e:
                 print(f"WARNING: session_env_setup error: {e}", file=sys.stderr)
+
+        # Auto-commit ACA_DATA after state-modifying operations
+        if ctx.hook_event == "PostToolUse":
+            self._run_aca_data_autocommit(ctx)
 
         # Generate transcript on stop
         if ctx.hook_event == "Stop":
@@ -558,6 +583,50 @@ class HookRouter:
                 )
         except Exception as e:
             print(f"WARNING: generate_transcript error: {e}", file=sys.stderr)
+
+    def _run_aca_data_autocommit(self, ctx: HookContext) -> None:
+        """Auto-commit ACA_DATA changes after state-modifying tool calls.
+
+        Checks if the tool call modified the data repo, and if so,
+        commits and pushes with a descriptive message. Never blocks
+        the agent on failure.
+        """
+        try:
+            from hooks.autocommit_state import (
+                commit_and_push_repo,
+                generate_commit_message,
+                get_modified_repos,
+                has_repo_changes,
+            )
+
+            tool_name = ctx.tool_name or ""
+            tool_input = ctx.tool_input if isinstance(ctx.tool_input, dict) else {}
+
+            modified = get_modified_repos(tool_name, tool_input)
+            if "data" not in modified:
+                return
+
+            aca_data = os.environ.get("ACA_DATA")
+            if not aca_data:
+                return
+
+            from pathlib import Path
+
+            repo_path = Path(aca_data)
+            if not repo_path.exists() or not (repo_path / ".git").exists():
+                return
+
+            if not has_repo_changes(repo_path):
+                return
+
+            msg = generate_commit_message(tool_name, tool_input)
+            success, result_msg = commit_and_push_repo(repo_path, commit_message=msg)
+            if not success:
+                print(f"WARNING: ACA_DATA autocommit: {result_msg}", file=sys.stderr)
+
+        except Exception as e:
+            # Never block the agent on autocommit failure
+            print(f"WARNING: ACA_DATA autocommit error: {e}", file=sys.stderr)
 
     def _dispatch_gates(self, ctx: HookContext, state: SessionState) -> GateResult | None:
         """Dispatch to GenericGate methods based on event type.

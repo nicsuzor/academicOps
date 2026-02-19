@@ -13,7 +13,9 @@ from hooks.router import CanonicalHookOutput, HookRouter
 
 class TestRouterFormatting:
     @pytest.fixture
-    def router_instance(self):
+    def router_instance(self, monkeypatch):
+        # Mock get_session_data to avoid reading shared PID session map during xdist tests
+        monkeypatch.setattr("hooks.router.get_session_data", lambda: {})
         return HookRouter()
 
     def test_format_for_claude_stop_event_deny(self, router_instance):

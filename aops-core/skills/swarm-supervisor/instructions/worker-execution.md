@@ -107,12 +107,13 @@ echo "<task description>" | jules new --repo <owner>/<repo>
 
 **Jules Dispatch Notes**:
 
-- Jules takes a plain-text prompt via pipe: `echo "<prompt>" | jules new --repo <owner>/<repo>`
-- Multiline prompts in quotes hang the CLI; always pipe instead
+- Pass prompt as quoted argument: `jules new --repo <owner>/<repo> "<task-id>: <description>"`
+- Single-line quoted prompts work fine; multiline heredocs may hang — keep prompts to one line
 - Jules sessions are asynchronous — returns a session URL immediately
 - Check status: `jules remote list --session`
 - One session per task; use `--parallel N` only for independent subtasks
-- Include task ID in prompt text so PRs can be linked back to tasks
+- Include task ID at the start of the prompt so PRs can be linked back to tasks
+- Sessions show "Completed" when coding is done but require human approval on Jules web UI before PRs are created
 
 **Batch Dispatch (Swarm)**:
 

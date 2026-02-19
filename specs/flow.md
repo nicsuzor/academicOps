@@ -131,7 +131,7 @@ status: DRAFT - PENDING APPROVAL (v2)
 | **prompt-hydrator** | haiku  | Transform prompts → execution plans                   | UserPromptSubmit hook instruction |
 | **critic**          | opus   | Review plans BEFORE execution                         | Main agent after hydrator returns |
 | **custodiet**       | haiku  | Detect scope drift, BLOCK on violation                | PostToolUse hook (periodic)       |
-| **qa**              | opus   | Independent end-to-end verification                   | TodoWrite step before commit      |
+| **qa**              | opus   | Independent verification (on-demand)                 | Skill invocation                  |
 | **framework**       | sonnet | Stateful framework understanding, manages reflections | Before session close              |
 
 ### Tools Required
@@ -194,8 +194,7 @@ status: DRAFT - PENDING APPROVAL (v2)
   "subagents": {
     "prompt-hydrator": { "last_invoked": "...", "result": "..." },
     "critic": { "last_invoked": "...", "verdict": "PROCEED", "acceptance_criteria": [...] },
-    "custodiet": { "last_invoked": "...", "result": "OK" },
-    "qa": { "last_invoked": "...", "result": "VERIFIED" }
+    "custodiet": { "last_invoked": "...", "result": "OK" }
   },
 
   "insights": null
@@ -293,30 +292,6 @@ The prompt-hydrator gathers context from:
 3. Ultra vires actions (beyond granted authority)
 
 **Output**: `OK` | `BLOCK` (sets flag, immediate HALT)
-
-### QA Verifier (BEFORE completion)
-
-**When**: After execution complete, before reflection
-
-**CRITICAL**: Must be INDEPENDENT agent, not the one that did the work
-
-**Purpose**: Full end-to-end verification that work is actually correct
-
-**Input** (from execution state file):
-
-- Original hydrated prompt (what was requested)
-- Acceptance criteria (as approved by Critic agent)
-- Current state of work
-
-**Checks**:
-
-1. Does output match original hydrated intent?
-2. Are all acceptance criteria (from Critic) met?
-3. Do tests pass?
-4. Is documentation updated?
-5. Are there any obvious errors?
-
-**Output**: `VERIFIED` | `ISSUES` (list problems to fix)
 
 ## Framework Agent
 

@@ -1,16 +1,21 @@
 # academicOps: A constitutional automation framework for academic work
 
-- Enforces a logical system: every rule derivable from aops-core/AXIOMS.md with aops-core/HEURISTICS.md supported by evidence.
-- Reflexive, self-improving agents must follow a CATEGORICAL IMPERATIVE: every action must be supported by a general rule.
-- Graduated approach to enforcement: aops-core/framework/enforcement-map.md sets out a full map of rules to enforcement mechanism, from gentle reminders to hard blocks.
-- Agent autonomy is limited to the authority they were granted: live ultra vires detection loop
-- Direct integration with beads for task memomory, memory mcp for vector search
-- Full personal knowledge base with gardening and continuous remembering skills
-- Human readable and portable Markdown files are the single sources of truth
-- Everything in git for durability and observability
-- Strict separation of user data (not in this repo)
+academicOps operates through four mechanisms:
+
+1. **Synchronous workflow enforcement** (local, real-time) — Hooks, hydrator, and custodiet define and enforce universal + modular workflows, ensuring agents use the skills we provide and follow the procedures we define in real time.
+
+2. **Asynchronous quality assurance** (GitHub as automation hub) — PR pipelines run strategic review, custodiet compliance, and QA verification after work is submitted. Polecat workers execute tasks autonomously via GitHub Issues.
+
+3. **Baseline capabilities** — Task system (hierarchical graph with dependencies), memory server (semantic search, cross-session persistence), knowledge architecture (three-repo model with strict separation of user data).
+
+4. **Domain-specific academic tools** — Citation management, research data analysis, document conversion/PDF, email triage, writing style enforcement.
+
+### Foundations
+
+- Constitutional: every rule derivable from AXIOMS.md via HEURISTICS.md, supported by evidence
+- Human-readable markdown files are the single sources of truth; everything in git for durability and observability
+- Agents follow a categorical imperative: every action must be supported by a general rule
 - Optimised for long-term strategic planning under conditions of uncertainty
-- Includes integrated MCP tooling for email and calendar access
 
 ## Installation
 
@@ -109,10 +114,9 @@ flowchart TD
 
         GateHa --> Stop[Stop Event]
         Stop --> Router6{Universal Router}
-        Router6 -.-> GateQ[QA Gate]
-        GateQ --> Commit[Commit & Close]
+        Router6 -.-> Commit[Commit & Close]
 
-        GateQ --- QExpl[Final gate: Mandates independent<br/>QA passage and clean git state]
+        Commit --- QExpl[Mandates independent<br/>QA passage and clean git state]
     end
 
     %% Flow Connections
@@ -132,7 +136,7 @@ flowchart TD
     classDef explain fill:none,stroke:#888,stroke-width:1px,color:#888,font-style:italic
 
     class Router1,Router2,Router3,Router4,Router5,Router6,Setup,Accountant,Commit hook
-    class StartGate,SkipCheck,GateH,GateT,GateC,GateCr,OpenCr,GateCr_Exec,GateHa,GateQ,ThresholdCheck gate
+    class StartGate,SkipCheck,GateH,GateT,GateC,GateCr,OpenCr,GateCr_Exec,GateHa,ThresholdCheck gate
     class Hydrator,Critic agent
     class State,Plan,Context state
     class SStart,UPS,PreTool,PostTool,AfterAgent,Stop event
@@ -243,11 +247,11 @@ See [[specs/framework-observability.md]] for details
 - Low skill compliance → discovery or routing issues
 - Token inefficiency → optimize hydration or caching
 
-**3. Intervene** - Apply graduated fixes via `/learn`:
+**3. Intervene** - Capture and apply fixes via `/learn`:
 
-- Start at lowest effective level (corollary, then heuristic, then hook)
-- Document root cause and intervention in a task
-- Verify improvement in subsequent sessions
+- Use `/learn` for rapid async knowledge capture of failures (dump to GitHub issues)
+- Apply minimal fixes documented as single tasks
+- Avoid complex task trees; prefer "fire and forget" capture
 
 See [[specs/feedback-loops.md]] for the complete improvement workflow.
 
@@ -269,8 +273,8 @@ $ACA_DATA is a **current state machine**—always up to date, always perfect. Th
 | Category    | Components                                                                                                                                                                 |
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Skills (24) | remember, analyst, audit, session-insights, garden, hypervisor, task-viz, etc.                                                                                             |
-| Agents (5)  | prompt-hydrator, critic, custodiet, qa, effectual-planner                                                                                                                  |
-| Hooks (19)  | router.py (Universal Hook Router), unified_logger.py, user_prompt_submit.py, session_env_setup.py, gate system (hydration, task, critic, custodiet, qa, handover)         |
+| Agents (4)  | prompt-hydrator, critic, custodiet, effectual-planner                                                                                                                      |
+| Hooks (18)  | router.py (Universal Hook Router), unified_logger.py, user_prompt_submit.py, session_env_setup.py, gate system (hydration, task, critic, custodiet, handover)              |
 | Governance  | 30+ axioms and heuristics with mechanical and instructional enforcement                                                                                                    |
 
 ### Key Agents
@@ -281,7 +285,6 @@ $ACA_DATA is a **current state machine**—always up to date, always perfect. Th
 | **prompt-hydrator** | haiku | Enriches prompts with context, suggests workflows, applies guardrails   |
 | **critic**          | opus  | Reviews plans for errors and hidden assumptions before execution        |
 | **custodiet**       | haiku | Periodic compliance audits (every 15 tool calls). Detects drift.        |
-| **qa**              | opus  | Independent verification that acceptance criteria are met               |
 
 The **framework agent** embodies the self-reflexive principle—it both executes framework tasks AND proposes improvements to the framework itself.
 
@@ -293,7 +296,7 @@ The **framework agent** embodies the self-reflexive principle—it both executes
 | /diag            | Quick diagnostic of what's loaded in session           |
 | /pull            | Pull a task from the queue and claim it                |
 | /q               | Quick-queue a task for later                           |
-| /learn           | Make minimal framework tweaks with experiment tracking |
+| /learn           | Rapid async knowledge capture for framework failures |
 | /work            | Collaborative task execution                           |
 | /log             | Log framework observations for continuous improvement  |
 | /dump            | Emergency work handover and session exit               |

@@ -6,8 +6,8 @@ How pull requests move from open to merged (or rejected) in the aops repository.
 
 | Workflow    | File                        | Trigger                                        | Purpose                            |
 | ----------- | --------------------------- | ---------------------------------------------- | ---------------------------------- |
-| PR Checks   | `pr-checks.yml`             | `pull_request` (opened, synchronize, assigned)  | Lint + gatekeeper (parallel), then type-check |
-| PR Pipeline | `pr-review-pipeline.yml`    | `workflow_run` (PR Checks), LGTM comments, dispatch | LLM review chain (strategic → QA) + merge agent |
+| Code Quality| `code-quality.yml`          | `push` (main), `pull_request` (opened, synchronize, assigned) | Lint + gatekeeper (parallel), then type-check |
+| PR Pipeline | `pr-review-pipeline.yml`    | `workflow_run` (Code Quality), LGTM comments, dispatch | LLM review chain (strategic → QA) + merge agent |
 | Claude      | `claude.yml`                | `@claude` in comments                          | On-demand Claude interaction       |
 
 Merge is handled by GitHub's auto-merge feature. The ruleset requires **2 approvals**: one from the gatekeeper bot (`claude[bot]`, automated) and one from the LGTM merge agent (`github-actions[bot]`, triggered by human approval). GitHub merges automatically once both approvals and status checks are satisfied.
@@ -18,7 +18,7 @@ Merge is handled by GitHub's auto-merge feature. The ruleset requires **2 approv
 flowchart TD
     PR["PR opened / updated<br/><i>push to branch targeting main</i>"]
 
-    %% ── pr-checks.yml: Lint + Gatekeeper in parallel, then Type Check ──
+    %% ── code-quality.yml: Lint + Gatekeeper in parallel, then Type Check ──
     PR --> Lint["<b>1a. Code Quality</b><br/>Ruff lint + format"]
     PR --> Gatekeeper["<b>1b. Gatekeeper</b><br/>Alignment vs VISION.md<br/>Code quality + fit<br/><i>🔑 Approval #1 (claude[bot])</i>"]
 
@@ -39,8 +39,8 @@ flowchart TD
     GKPass -- "Request changes" --> FixGK["Author revises approach"]
     FixGK --> PR
 
-    %% ── pr-review-pipeline.yml: starts after ALL pr-checks jobs pass ──
-    TypePass -- Yes --> WFRun["workflow_run<br/><i>all pr-checks passed</i>"]
+    %% ── pr-review-pipeline.yml: starts after ALL code-quality jobs pass ──
+    TypePass -- Yes --> WFRun["workflow_run<br/><i>all code-quality passed</i>"]
     GKPass -- Approved --> WFRun
 
     WFRun --> Strategic["<b>3. Strategic Review</b><br/>Design coherence<br/>Best practices"]
@@ -107,16 +107,19 @@ flowchart TD
 
 ## Pipeline design
 
-The PR lifecycle runs across **two workflows**, linked by `workflow_run`:
+The PR lifecycle runs across **three workflows**, linked by `workflow_run`:
 
-1. **PR Checks** (`pr-checks.yml`): Lint, gatekeeper, and type-check. Lint and gatekeeper run in parallel with no dependency on each other; type-check runs after lint passes. The gatekeeper is the first substantive LLM review and runs early so that misaligned PRs get feedback immediately, even if lint or type-check fail.
-2. **PR Pipeline** (`pr-review-pipeline.yml`): LLM review chain (strategic → custodiet → QA → notify). Only starts when ALL PR Checks jobs complete successfully, via a `workflow_run` trigger. A `setup` job extracts PR metadata from the `workflow_run` event and passes it to downstream stages.
+1. **Code Quality** (`code-quality.yml`): Lint, gatekeeper, and type-check. Lint and gatekeeper run in parallel with no dependency on each other; type-check runs after lint passes. The gatekeeper is the first substantive LLM review and runs early so that misaligned PRs get feedback immediately, even if lint or type-check fail.
+2. **Pytest** (`pytest.yml`): Runs automated tests. Triggered on push/PR to main, and also after `Code Quality` passes.
+3. **PR Pipeline** (`pr-review-pipeline.yml`): LLM review chain (strategic → custodiet → QA → notify). Only starts when ALL Code Quality jobs complete successfully, via a `workflow_run` trigger. A `setup` job extracts PR metadata from the `workflow_run` event and passes it to downstream stages.
 
 ```
-pr-checks.yml:           [lint, gatekeeper]  ← parallel, no dependency
+code-quality.yml:        [lint, gatekeeper]  ← parallel, no dependency
                               ↓
                           type-check          ← needs: lint (not gatekeeper)
                               ↓ (workflow_run: completed + success — ALL jobs must pass)
+pytest.yml:              pytest               ← runs after Code Quality
+                              ↓
 pr-review-pipeline.yml:  setup → strategic-review → custodiet → qa → notify-ready
                          (+ merge agent, triggered independently)
 ```
@@ -156,7 +159,7 @@ Runs `basedpyright` in basic mode. Fails the pipeline if type errors are found.
 
 ### 3. Gatekeeper (alignment + quality gate)
 
-**Job**: `gatekeeper` (in `pr-checks.yml`)
+**Job**: `gatekeeper` (in `code-quality.yml`)
 **Depends on**: None -- runs in parallel with lint
 **Blocking**: Yes -- can reject PRs, lodges approval #1
 
@@ -171,7 +174,7 @@ What it checks:
 
 The gatekeeper **can reject a PR** (recommend close) if it's fundamentally misaligned with the project vision. However, rejection should be rare -- the default for fixable issues is to request changes. Most PRs should pass.
 
-When the gatekeeper approves, it lodges a formal GitHub approval from `claude[bot]`. This is **approval #1 of 2** required for merge. A gatekeeper failure blocks the downstream review pipeline via the `workflow_run` trigger (which requires ALL pr-checks jobs to pass).
+When the gatekeeper approves, it lodges a formal GitHub approval from `claude[bot]`. This is **approval #1 of 2** required for merge. A gatekeeper failure blocks the downstream review pipeline via the `workflow_run` trigger (which requires ALL code-quality jobs to pass).
 
 Agent instructions: `.github/agents/gatekeeper.md`
 
