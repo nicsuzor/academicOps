@@ -44,7 +44,7 @@ git status --porcelain
 1. **Identify current task**: (or create historical task if work was done without one)
 2. **Update task with progress checkpoint**:
    ```
-   update_task(id="<task-id>", status="in_progress", body="## Progress Checkpoint\n...")
+   mcp__plugin_aops-core_task_manager__update_task(id="<task-id>", status="in_progress", body="## Progress Checkpoint\n...")
    ```
 3. **File follow-up tasks for ANY outstanding work**:
    - **Revealed errors/warnings** - Problems discovered but not fixed (e.g., lint errors, CI failures)
@@ -52,13 +52,13 @@ git status --porcelain
    - **Deferred decisions** - Items marked for later
    - **Verification gaps** - Tests that should be run
 
-   **For EACH item, call `create_task()` with details.** Mentioning follow-up in reflection text is NOT sufficient; tasks must exist in the system before proceeding.
+   **For EACH item, call `mcp__plugin_aops-core_task_manager__create_task()` with details.** Mentioning follow-up in reflection text is NOT sufficient; tasks must exist in the system before proceeding.
 
 ### Step 3: Persist Discoveries to Memory (Optional)
 
 If significant discoveries or learnings occurred, persist them to memory:
 ```
-store_memory(content="...", tags=["dump", "handover"])
+mcp__memory__store_memory(content="...", tags=["dump", "handover"])
 ```
 
 ### Step 4: Output Framework Reflection

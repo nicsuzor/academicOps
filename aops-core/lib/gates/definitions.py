@@ -226,7 +226,7 @@ GATE_CONFIGS = [
             # Uses subagent_type_pattern to match skill name extracted by router
             # (router.py extracts tool_input["skill"] into ctx.subagent_type)
             # Matches both Claude's Skill tool and Gemini's activate_skill tool.
-            # Pattern matches both "dump" and "aops-core:dump" (prefixed form).
+            # Pattern matches "dump", "handover", and their prefixed forms (e.g., "aops-core:dump").
             GateTrigger(
                 condition=GateCondition(
                     hook_event="PostToolUse",
@@ -250,7 +250,7 @@ GATE_CONFIGS = [
                 message_template="⛔ Handover required",
                 context_template=(
                     "⛔ Finalization required before exit.\n\n"
-                    "Please invoke the Handover Skill (`/dump`). The gate will only allow exit once the Handover Skill has completed.\n\n"
+                    "Please invoke the /dump command. The gate will only allow exit once it has completed.\n\n"
                     "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
                 ),
             ),
