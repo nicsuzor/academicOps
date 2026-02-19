@@ -69,7 +69,13 @@ class TestCrewWorktreeNoUpstream:
 
         # Replicate what setup_crew_worktree does
         cmd = [
-            "git", "worktree", "add", "-b", branch_name, str(worktree_path), "main",
+            "git",
+            "worktree",
+            "add",
+            "-b",
+            branch_name,
+            str(worktree_path),
+            "main",
         ]
         subprocess.run(cmd, cwd=local_clone, check=True)
 
@@ -82,8 +88,7 @@ class TestCrewWorktreeNoUpstream:
 
         upstream = _get_upstream(local_clone, branch_name)
         assert upstream is None, (
-            f"crew branch '{branch_name}' must not track any upstream, "
-            f"but is tracking: {upstream}"
+            f"crew branch '{branch_name}' must not track any upstream, but is tracking: {upstream}"
         )
 
     def test_without_fix_would_have_upstream(self, tmp_path: Path, local_clone: Path):
@@ -94,7 +99,13 @@ class TestCrewWorktreeNoUpstream:
 
         # Do NOT unset upstream (simulates the unfixed code)
         cmd = [
-            "git", "worktree", "add", "-b", branch_name, str(worktree_path), "main",
+            "git",
+            "worktree",
+            "add",
+            "-b",
+            branch_name,
+            str(worktree_path),
+            "main",
         ]
         subprocess.run(cmd, cwd=local_clone, check=True)
 
@@ -121,7 +132,13 @@ class TestPolecatWorktreeNoUpstream:
 
         # Replicate what _do_setup_worktree does
         cmd = [
-            "git", "worktree", "add", "-b", branch_name, str(worktree_path), "main",
+            "git",
+            "worktree",
+            "add",
+            "-b",
+            branch_name,
+            str(worktree_path),
+            "main",
         ]
         subprocess.run(cmd, cwd=local_clone, check=True)
 
@@ -138,7 +155,9 @@ class TestPolecatWorktreeNoUpstream:
             f"but is tracking: {upstream}"
         )
 
-    def test_push_targets_feature_branch_not_main(self, tmp_path: Path, local_clone: Path, bare_origin: Path):
+    def test_push_targets_feature_branch_not_main(
+        self, tmp_path: Path, local_clone: Path, bare_origin: Path
+    ):
         """When upstream is unset, git push must not push to main.
 
         With push.default=simple and no upstream set, git push will push the
@@ -152,7 +171,13 @@ class TestPolecatWorktreeNoUpstream:
         worktree_path.parent.mkdir(parents=True)
 
         cmd = [
-            "git", "worktree", "add", "-b", branch_name, str(worktree_path), "main",
+            "git",
+            "worktree",
+            "add",
+            "-b",
+            branch_name,
+            str(worktree_path),
+            "main",
         ]
         subprocess.run(cmd, cwd=local_clone, check=True)
         subprocess.run(
