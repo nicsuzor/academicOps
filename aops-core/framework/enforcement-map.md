@@ -38,6 +38,7 @@ tags: [framework, enforcement, moc]
 | [[no-workarounds]]                          | No Workarounds                  | fail_fast_watchdog.py                                                                        | PostToolUse            |           |
 | [[verify-first]]                            | Verify First                    | TodoWrite checkpoint                                                                         | During execution       |           |
 | [[verify-first]]                            | Verify Push Target              | AXIOMS.md corollary: explicit refspec for git push                                           | Before git push        | 1c        |
+| [[trust-version-control]]                   | Always File PR                  | AXIOMS.md P#24 corollary: commit → push → PR. Never leave work uncommitted.                 | Stop                   | 1c        |
 | [[verify-first]]                            | Write-Without-Read Check        | axiom_enforcer (DISABLED)                                                                    | PreToolUse             |           |
 | [[verify-first]], [[dont-make-shit-up]]     | Check Existing Automation First | prompt-hydrator-context.md Step 1 (check .github/workflows/ before manual execution)         | UserPromptSubmit       | 1c        |
 | [[verify-first]]                            | Primary Evidence Before Conclusions | AXIOMS.md P#26 corollary (read all comments/reviews/logs before concluding)                | SessionStart           | 1a        |

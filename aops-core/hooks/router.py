@@ -493,6 +493,10 @@ class HookRouter:
             except Exception as e:
                 print(f"WARNING: session_env_setup error: {e}", file=sys.stderr)
 
+        # Auto-commit ACA_DATA after state-modifying operations
+        if ctx.hook_event == "PostToolUse":
+            self._run_aca_data_autocommit(ctx)
+
         # Generate transcript on stop
         if ctx.hook_event == "Stop":
             transcript_path = ctx.raw_input.get("transcript_path")
@@ -582,6 +586,52 @@ class HookRouter:
                 )
         except Exception as e:
             print(f"WARNING: generate_transcript error: {e}", file=sys.stderr)
+
+    def _run_aca_data_autocommit(self, ctx: HookContext) -> None:
+        """Auto-commit ACA_DATA changes after state-modifying tool calls.
+
+        Checks if the tool call modified the data repo, and if so,
+        commits and pushes with a descriptive message. Never blocks
+        the agent on failure.
+        """
+        try:
+            from hooks.autocommit_state import (
+                commit_and_push_repo,
+                generate_commit_message,
+                get_modified_repos,
+                has_repo_changes,
+            )
+
+            tool_name = ctx.tool_name or ""
+            tool_input = ctx.tool_input if isinstance(ctx.tool_input, dict) else {}
+
+            modified = get_modified_repos(tool_name, tool_input)
+            if "data" not in modified:
+                return
+
+            aca_data = os.environ.get("ACA_DATA")
+            if not aca_data:
+                return
+
+            from pathlib import Path
+
+            repo_path = Path(aca_data)
+            if not repo_path.exists() or not (repo_path / ".git").exists():
+                return
+
+            if not has_repo_changes(repo_path):
+                return
+
+            msg = generate_commit_message(tool_name, tool_input)
+            success, result_msg = commit_and_push_repo(
+                repo_path, commit_message=msg
+            )
+            if not success:
+                print(f"WARNING: ACA_DATA autocommit: {result_msg}", file=sys.stderr)
+
+        except Exception as e:
+            # Never block the agent on autocommit failure
+            print(f"WARNING: ACA_DATA autocommit error: {e}", file=sys.stderr)
 
     def _dispatch_gates(self, ctx: HookContext, state: SessionState) -> GateResult | None:
         """Dispatch to GenericGate methods based on event type.
