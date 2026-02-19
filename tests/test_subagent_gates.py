@@ -214,6 +214,36 @@ def test_handover_gate_opens_on_skill_tool_posttooluse():
     assert state.get_gate("handover").status == GateStatus.OPEN
 
 
+def test_handover_gate_opens_on_dump():
+    """Handover gate transitions CLOSED->OPEN for 'dump' or 'aops-core:dump'."""
+    state = SessionState.create("test-session")
+    state.get_gate("handover").status = GateStatus.CLOSED
+
+    handover_config = next(g for g in GATE_CONFIGS if g.name == "handover")
+    gate = GenericGate(handover_config)
+
+    # 1. Test 'dump'
+    ctx_dump = HookContext(
+        session_id="s1",
+        hook_event="PostToolUse",
+        tool_name="Skill",
+        subagent_type="dump",
+    )
+    gate.on_tool_use(ctx_dump, state)
+    assert state.get_gate("handover").status == GateStatus.OPEN
+
+    # 2. Reset and test 'aops-core:dump'
+    state.get_gate("handover").status = GateStatus.CLOSED
+    ctx_prefixed_dump = HookContext(
+        session_id="s1",
+        hook_event="PostToolUse",
+        tool_name="Skill",
+        subagent_type="aops-core:dump",
+    )
+    gate.on_tool_use(ctx_prefixed_dump, state)
+    assert state.get_gate("handover").status == GateStatus.OPEN
+
+
 def test_handover_gate_opens_on_activate_skill_posttooluse():
     """Handover gate transitions CLOSED->OPEN after PostToolUse for activate_skill (Gemini)."""
     state = SessionState.create("test-session")

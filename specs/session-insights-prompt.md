@@ -211,7 +211,7 @@ Empty array `[]` if no distractions identified.
 
 ### 12. Framework Reflections (Agent Self-Assessment)
 
-Extract ALL Framework Reflection sections found in the transcript. These structured reflections are output by agents at session end (via `/dump`, `/handover`, or `/learn` skills) and contain valuable session metadata.
+Extract ALL Framework Reflection sections found in the transcript. These structured reflections are output by agents at session end (via `/dump` or `/learn` commands) and contain valuable session metadata.
 
 **Where to find them:**
 

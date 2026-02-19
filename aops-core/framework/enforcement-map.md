@@ -54,8 +54,8 @@ tags: [framework, enforcement, moc]
 | [[feedback-loops-for-uncertainty]]          | Feedback Loops                  | AXIOMS.md                                                                                    | SessionStart           |           |
 | [[current-state-machine]]                   | Current State Machine           | autocommit_state.py (auto-commit+push)                                                       | PostToolUse            |           |
 | [[one-spec-per-feature]]                    | One Spec Per Feature            | AXIOMS.md                                                                                    | SessionStart           |           |
-| [[mandatory-handover]]                      | Mandatory Handover Workflow     | prompt-hydrator-context.md (Session Completion Rules section), handover SKILL.md Step 1.5    | UserPromptSubmit, Stop |           |
-| [[capture-outstanding-work]]                | Capture Outstanding Work        | handover SKILL.md Step 1.5 (create follow-up tasks for incomplete/deferred work)             | Stop                   |           |
+| [[mandatory-handover]]                      | Mandatory Handover Workflow     | prompt-hydrator-context.md (Session Completion Rules section), dump.md Step 2                | UserPromptSubmit, Stop |           |
+| [[capture-outstanding-work]]                | Capture Outstanding Work        | dump.md Step 2 (create follow-up tasks for incomplete/deferred work)                         | Stop                   |           |
 | [[explicit-approval-costly-ops]]            | Costly Operations Approval      | external-batch-submission.md workflow + AskUserQuestion before batch submit                  | During execution       |           |
 
 ## Heuristic → Enforcement Mapping
@@ -410,13 +410,15 @@ The stop gate requires TWO conditions for session completion:
 **Workflow**:
 
 1. Agent completes work
-2. Agent outputs Framework Reflection with ALL required fields
-3. AfterAgent hook validates format and sets `handover_skill_invoked` flag
-4. Agent invokes `/handover` skill
-5. Agent attempts to end session (triggers Stop event)
-6. Stop gate checks both flags (hydrator, handover)
-7. If all flags set: session ends
-8. If any flag missing: blocks with instructions for the missing step
+2. Agent invokes QA skill to verify results against original request and acceptance criteria
+3. PostToolUse hook sets `qa_invoked` flag
+4. Agent outputs Framework Reflection with ALL required fields
+5. AfterAgent hook validates format and sets `handover_skill_invoked` flag
+6. Agent invokes `/dump` command
+7. Agent attempts to end session (triggers Stop event)
+8. Stop gate checks all three flags (hydrator, handover, QA)
+9. If all flags set: session ends
+10. If any flag missing: blocks with instructions for the missing step
 
 ### Uncommitted Work Check
 
