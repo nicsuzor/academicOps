@@ -1,0 +1,97 @@
+# Async QA review pipeline (Pillar 2)
+# Runs hydrator-reviewer and custodiet-reviewer on PRs.
+# These agents post advisory comments — they do not block merges.
+#
+# Triggers: PR opened, reopened, or new commits pushed to PR branch.
+# Both agents run in parallel after checkout.
+
+name: Async QA Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  # ──────────────────────────────────────────────
+  # Hydrator Reviewer: workflow guidance
+  # ──────────────────────────────────────────────
+  hydrator-review:
+    name: Hydrator Review
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read hydrator-reviewer instructions
+        id: hydrator-prompt
+        run: |
+          PROMPT=$(cat .github/agents/hydrator-reviewer.md)
+          {
+            echo "prompt<<HYDRATOR_EOF"
+            echo "$PROMPT"
+            echo "HYDRATOR_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run Hydrator Reviewer Agent
+        uses: anthropics/claude-code-action@v1
+        with:
+          allowed_bots: "claude[bot]"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            ${{ steps.hydrator-prompt.outputs.prompt }}
+
+            ---
+
+            Review PR #${{ github.event.pull_request.number }} in repository ${{ github.repository }}.
+            Use `gh pr view ${{ github.event.pull_request.number }}` and `gh pr diff ${{ github.event.pull_request.number }}` to gather information.
+            Post your findings as a comment using `gh pr comment ${{ github.event.pull_request.number }} --body "..."`.
+
+          claude_args: '--allowed-tools "Bash(gh:*),Read"'
+
+  # ──────────────────────────────────────────────
+  # Custodiet Reviewer: compliance and scope drift
+  # ──────────────────────────────────────────────
+  custodiet-review:
+    name: Custodiet Review
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read custodiet-reviewer instructions
+        id: custodiet-prompt
+        run: |
+          PROMPT=$(cat .github/agents/custodiet-reviewer.md)
+          {
+            echo "prompt<<CUSTODIET_EOF"
+            echo "$PROMPT"
+            echo "CUSTODIET_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run Custodiet Reviewer Agent
+        uses: anthropics/claude-code-action@v1
+        with:
+          allowed_bots: "claude[bot]"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            ${{ steps.custodiet-prompt.outputs.prompt }}
+
+            ---
+
+            Review PR #${{ github.event.pull_request.number }} in repository ${{ github.repository }}.
+            Use `gh pr view ${{ github.event.pull_request.number }}` and `gh pr diff ${{ github.event.pull_request.number }}` to gather information.
+            Post your findings as a comment using `gh pr comment ${{ github.event.pull_request.number }} --body "..."`.
+
+          claude_args: '--allowed-tools "Bash(gh:*),Read"'
