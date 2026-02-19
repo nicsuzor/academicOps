@@ -4,6 +4,7 @@ from gate_config import (
     CUSTODIET_TOOL_CALL_THRESHOLD,
     HANDOVER_GATE_MODE,
     HYDRATION_GATE_MODE,
+    QA_GATE_MODE,
 )
 
 from lib.gate_types import (
@@ -30,12 +31,12 @@ GATE_CONFIGS = [
         initial_status=GateStatus.CLOSED,  # Starts open, closes on userpromptsubmit.
         triggers=[
             # Hydrator starts or finishes -> Open
-            # DISPATCH: Main agent intends to call prompt-hydrator -> Open gate pre-emptively
-            # This allows the prompt-hydrator subagent to use its tools without being blocked.
+            # DISPATCH: Main agent intends to call hydrator -> Open gate pre-emptively
+            # This allows the hydrator subagent to use its tools without being blocked.
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(SubagentStart|PreToolUse|SubagentStop|PostToolUse)$",
-                    subagent_type_pattern="^(aops-core:)?(prompt-hydrator|hydrator)$",
+                    subagent_type_pattern="^(aops-core:)?prompt-hydrator$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
@@ -80,13 +81,13 @@ GATE_CONFIGS = [
     # --- Custodiet ---
     GateConfig(
         name="custodiet",
-        description="Enforces high-integrity workflow behaviors.",
+        description="Enforces periodic compliance checks.",
         initial_status=GateStatus.OPEN,
         countdown=CountdownConfig(
             start_before=7,
             threshold=CUSTODIET_TOOL_CALL_THRESHOLD,
             message_template=(
-                "📋 {remaining} turns until workflow integrity check required. "
+                "📋 {remaining} turns until custodiet check required. "
                 "Run the check proactively (and in the background!) with: `{temp_path}`"
             ),
         ),
@@ -99,8 +100,8 @@ GATE_CONFIGS = [
                 ),
                 transition=GateTransition(
                     reset_ops_counter=True,
-                    system_message_template="🛡️ Workflow integrity verified.",
-                    context_injection_template="🛡️ Workflow integrity verified.",
+                    system_message_template="🛡️ Compliance verified.",
+                    context_injection_template="🛡️ Compliance verified.",
                 ),
             ),
         ],
@@ -113,9 +114,9 @@ GATE_CONFIGS = [
                     excluded_tool_categories=["always_available", "read_only"],
                 ),
                 verdict=CUSTODIET_GATE_MODE,
-                message_template="Periodic workflow integrity check required ({ops_since_open} ops since last check).\nInvoke 'custodiet' agent.",
+                message_template="Periodic compliance check required ({ops_since_open} ops since last check).\nInvoke 'custodiet' agent.",
                 context_template=(
-                    "**Periodic workflow integrity check required ({ops_since_open} ops since last check).** Invoke the **custodiet** agent with the file path argument: `{temp_path}`\n"
+                    "**Periodic compliance check required ({ops_since_open} ops since last check).** Invoke the **custodiet** agent with the file path argument: `{temp_path}`\n"
                     "- Gemini: `delegate_to_agent(name='custodiet', query='{temp_path}')`\n"
                     "- Claude: `Task(subagent_type='custodiet', prompt='{temp_path}')`\n\n"
                     "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
@@ -150,8 +151,7 @@ GATE_CONFIGS = [
             # Hydration completes -> Close gate
             GateTrigger(
                 condition=GateCondition(
-                    hook_event="SubagentStop",
-                    subagent_type_pattern="^(aops-core:)?(prompt-hydrator|hydrator)$",
+                    hook_event="SubagentStop", subagent_type_pattern="^(aops-core:)?(prompt-hydrator|hydrator)$"
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
@@ -191,6 +191,64 @@ GATE_CONFIGS = [
                     "Run the critic with this command:\n"
                     "- Gemini: `delegate_to_agent(name='aops-core:critic', query='{temp_path}')`\n"
                     "- Claude: `Task(subagent_type='aops-core:critic', prompt='{temp_path}')`\n"
+                    "- Make sure you obey the instructions the tool or subagent produces, but do not print the output to the user -- it just clutters up the conversation.\n\n"
+                    "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
+                ),
+            ),
+        ],
+    ),
+    # --- QA ---
+    # Blocks exit until planned requirements are verified by QA agent.
+    GateConfig(
+        name="qa",
+        description="Ensures requirements compliance before exit.",
+        initial_status=GateStatus.OPEN,
+        triggers=[
+            # Start -> Open
+            GateTrigger(
+                condition=GateCondition(hook_event="SessionStart"),
+                transition=GateTransition(target_status=GateStatus.OPEN),
+            ),
+            # QA agent verifies requirements -> Open gate
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="^(SubagentStart|SubagentStop|PostToolUse)$",
+                    subagent_type_pattern="^(aops-core:)?qa$",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.OPEN,
+                    system_message_template="🧪 QA complete. Requirements verified.",
+                ),
+            ),
+            # Critic, once called, requires QA review to ensure compliance before exit
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="PostToolUse", subagent_type_pattern="^(aops-core:)?critic$"
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.CLOSED,
+                    reset_ops_counter=False,
+                    system_message_template="🧪 QA complete. Requirements verified.",
+                ),
+            ),
+        ],
+        policies=[
+            # Block Stop when CLOSED
+            GatePolicy(
+                condition=GateCondition(
+                    current_status=GateStatus.CLOSED,
+                    hook_event="Stop",
+                ),
+                verdict=QA_GATE_MODE,
+                custom_action="prepare_qa_review",
+                message_template="⛔ QA verification required before exit. Invoke QA agent first.",
+                context_template=(
+                    "**QA VERIFICATION REQUIRED**\n\n"
+                    "You must invoke the **qa** agent to verify planned requirements before exiting.\n\n"
+                    "**Instruction**:\n"
+                    "Run the qa with this command:\n"
+                    "- Gemini: `delegate_to_agent(name='aops-core:qa', query='{temp_path}')`\n"
+                    "- Claude: `Task(subagent_type='aops-core:qa', prompt='{temp_path}')`\n"
                     "- Make sure you obey the instructions the tool or subagent produces, but do not print the output to the user -- it just clutters up the conversation.\n\n"
                     "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
                 ),
