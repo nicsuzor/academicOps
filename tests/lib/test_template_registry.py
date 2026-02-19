@@ -92,12 +92,11 @@ def test_get_spec_all_registered_templates(registry):
         "custodiet.context",
         "custodiet.instruction",
         "custodiet.fallback",
-        "task.block",
-        "task.warn",
         "stop.critic",
         "stop.handover_block",
         "tool.gate_message",
     ]
+
     for name in expected_names:
         spec = registry.get_spec(name)
         assert spec is not None, f"Template {name} not registered"
@@ -408,7 +407,7 @@ def test_spec_category_assignment(registry):
 
     # User messages
     assert registry.get_spec("hydration.block").category == TemplateCategory.USER_MESSAGE
-    assert registry.get_spec("task.warn").category == TemplateCategory.USER_MESSAGE
+    assert registry.get_spec("hydration.warn").category == TemplateCategory.USER_MESSAGE
 
     # Context injection
     assert registry.get_spec("custodiet.instruction").category == TemplateCategory.CONTEXT_INJECTION
