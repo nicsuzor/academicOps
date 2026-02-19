@@ -15,17 +15,15 @@ triggers:
 
 Generate network graphs of markdown files showing wikilink connections. Uses the `fast-indexer` Rust binary for high-performance scanning and optional Python styling for task-specific color coding.
 
-## Quick Start
+## Dashboard Refresh
+
+For the Overwhelm Dashboard, use the unified refresh skill instead of manual commands:
 
 ```bash
-# Dashboard graphs (both needed for Overwhelm Dashboard)
-$AOPS/scripts/bin/fast-indexer ${ACA_DATA} -o ${ACA_DATA}/outputs/graph -f json
-$AOPS/scripts/bin/fast-indexer ${ACA_DATA} -o ${ACA_DATA}/outputs/knowledge-graph -f json
-
-# Tasks only → styled SVG
-$AOPS/scripts/bin/fast-indexer ${ACA_DATA} -o tasks -f json -t task,project,goal
-python3 $AOPS/scripts/task_graph.py tasks.json -o tasks-styled
+Skill(skill="framework-refresh")
 ```
+
+## Quick Start (Manual Commands)
 
 ## Use Cases
 

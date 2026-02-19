@@ -27,17 +27,18 @@ TodoWrite(todos=[
 
 ## Phase Instructions
 
-### Phase 1: Structure Audit
+### Phase 1: Governance & Structure Audit
 
-Compare filesystem to `INDEX.md`:
+Compare filesystem to `INDEX.md` and verify framework integrity:
 
 1. **Scan filesystem**: `find . -type f -not -path "*/.git/*" -not -path "*/__pycache__/*" | sort`
 2. **Update INDEX.md**: Add missing files and remove stale entries.
-3. **Verify wikilinks**: Check for broken `[[...]]` links and report them in the final report.
+3. **Verify wikilinks**: Check for broken `[[...]]` links and report them.
+4. **Health Check**: Run `uv run python scripts/audit_framework_health.py` to get quantified metrics.
 
-### Phase 2: Index Curation
+### Phase 2: Index Curation (LLM-based)
 
-Curate root-level index files using LLM judgment. For each file, read the source materials and ensure it accurately reflects the current state.
+Curate root-level index files using LLM judgment to ensure they accurately reflect documentation intent.
 
 | Index File         | Sources                                               |
 | ------------------ | ----------------------------------------------------- |
@@ -47,15 +48,13 @@ Curate root-level index files using LLM judgment. For each file, read the source
 | WORKFLOWS.md       | `workflows/*.md`, `skills/*/workflows/*.md`           |
 | enforcement-map.md | `hooks/*.py` "Enforces:" docstrings, `gate_config.py` |
 
-**Generated File Header**:
-Each curated index (except WORKFLOWS.md) must include:
-`> **Curated by audit skill** - Regenerate with Skill(skill="audit")`
+### Phase 3: Automated Refresh (MANDATORY)
 
-### Phase 3: Documentation Accuracy
+After governance checks and manual curation are complete, invoke the automated refresh to update binary indices and dashboard artifacts:
 
-1. **README.md Flowchart**: Invoke `Skill(skill="flowchart")` to regenerate the core loop flowchart from `hooks/router.py` and `gate_config.py`.
-2. **README.md Tables**: Update Commands, Skills, and Hooks tables in README.md to match current files.
-   - For skills with multiple workflows, include them in a "Sub-workflows" column.
+```bash
+Skill(skill="framework-refresh")
+```
 
 ### Phase 4: Acceptance Tests
 

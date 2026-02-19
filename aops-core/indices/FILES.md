@@ -36,3 +36,10 @@ This index categorizes key files within the `aops-core/` directory and the root 
 - `[[pyproject.toml]]`: Project dependencies and metadata.
 - `[[gemini-extension.json]]`: Extension definition.
 - `[[.pre-commit-config.yaml]]`: Git pre-commit hooks.
+
+## Framework Logic
+
+- `[[aops-core/framework/index_generation.py]]`: Core logic for index creation.
+- `[[aops-core/framework/graph_rendering.py]]`: SVG and graph visualization logic.
+- `[[aops-core/framework/audit_logic.py]]`: Governance validation logic.
+- `[[aops-core/scripts/framework_refresh.py]]`: Unified refresh automation script.

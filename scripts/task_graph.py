@@ -19,10 +19,12 @@ Examples:
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 # Color schemes
 ASSIGNEE_COLORS = {
@@ -424,6 +426,13 @@ def generate_dot(
 
         priority = priority if isinstance(priority, int) else 2
 
+        # Generate Obsidian URL for node link
+        vault_name = os.environ.get("AOPS_OBSIDIAN_VAULT", "writing")
+        # Ensure path is relative to data root if possible
+        # Node IDs from fast-indexer are usually paths relative to scan root
+        link_url = f"obsidian://open?vault={vault_name}&file={quote(file_path)}" if file_path else ""
+        href_attr = f'URL="{link_url}" target="_blank" ' if link_url else ""
+
         # For incomplete tasks, use assignee color for border; otherwise priority color
         is_incomplete = status.lower() in INCOMPLETE_STATUSES
         if is_incomplete and file_path:
@@ -475,7 +484,8 @@ def generate_dot(
             f'fillcolor="{fillcolor}" '
             f'color="{pencolor}" '
             f"penwidth={penwidth}"
-            f"{extra_attrs}"
+            f"{extra_attrs} "
+            f"{href_attr}"
             f"];"
         )
 
