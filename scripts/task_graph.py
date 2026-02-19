@@ -19,7 +19,6 @@ Examples:
 
 import argparse
 import json
-import math
 import re
 import subprocess
 import sys
@@ -447,6 +446,8 @@ def generate_dot(
             # Append weight to label
             label = f"{label}\\n\u2696 {dw:.1f}"
             # Sqrt scaling for better visual separation across the 1-10 range
+            import math
+
             sqrt_dw = math.sqrt(dw)
             scale_w = min(1.2 + sqrt_dw * 0.7, 4.0)
             scale_h = min(0.8 + sqrt_dw * 0.3, 2.0)

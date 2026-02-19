@@ -30,8 +30,8 @@ GATE_CONFIGS = [
         initial_status=GateStatus.CLOSED,  # Starts open, closes on userpromptsubmit.
         triggers=[
             # Hydrator starts or finishes -> Open
-            # DISPATCH: Main agent intends to call hydrator -> Open gate pre-emptively
-            # This allows the hydrator subagent to use its tools without being blocked.
+            # DISPATCH: Main agent intends to call prompt-hydrator -> Open gate pre-emptively
+            # This allows the prompt-hydrator subagent to use its tools without being blocked.
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(SubagentStart|PreToolUse|SubagentStop|PostToolUse)$",
