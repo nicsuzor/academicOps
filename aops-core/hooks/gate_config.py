@@ -132,7 +132,7 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
 # Default enforcement modes for gates. Can be overridden by environment variables.
 
 GATE_MODE_DEFAULTS: dict[str, str] = {
-    "hydration": "block",
+    "hydration": "warn",
     "task": "warn",
     "custodiet": "block",
     "critic": "warn",
