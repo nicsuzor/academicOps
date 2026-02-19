@@ -40,9 +40,8 @@ sys.path.insert(0, str(REPO_ROOT / "polecat"))
 sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
 # These imports require the path insertions above.
-from manager import PolecatManager  # noqa: E402
 from lib.task_model import Task  # noqa: E402
-
+from manager import PolecatManager  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -162,9 +161,7 @@ class TestCrewWorktreeNoUpstream:
     local_clone fixture) causes the new branch to inherit origin/main tracking.
     """
 
-    def test_new_branch_has_no_upstream(
-        self, local_clone: Path, manager: PolecatManager
-    ):
+    def test_new_branch_has_no_upstream(self, local_clone: Path, manager: PolecatManager):
         """Crew branch created via setup_crew_worktree() must not track any upstream."""
         manager.setup_crew_worktree("test-worker", "test")
 
@@ -175,9 +172,7 @@ class TestCrewWorktreeNoUpstream:
             f"The --unset-upstream fix in setup_crew_worktree() may have been removed."
         )
 
-    def test_without_fix_upstream_would_be_set(
-        self, tmp_path: Path, local_clone: Path
-    ):
+    def test_without_fix_upstream_would_be_set(self, tmp_path: Path, local_clone: Path):
         """Proves the test setup replicates the dangerous condition.
 
         With ``branch.autoSetupMerge=always``, a plain ``git worktree add -b
@@ -215,9 +210,7 @@ class TestPolecatWorktreeNoUpstream:
     manager.py.
     """
 
-    def test_new_polecat_branch_has_no_upstream(
-        self, local_clone: Path, manager: PolecatManager
-    ):
+    def test_new_polecat_branch_has_no_upstream(self, local_clone: Path, manager: PolecatManager):
         """Polecat branch created via _do_setup_worktree() must not track any upstream."""
         task_id = "aops-578fdde1"
         task = Task(id=task_id, title="regression test task", project="test")
@@ -264,6 +257,5 @@ class TestPolecatWorktreeNoUpstream:
             ["rev-parse", f"refs/heads/{branch_name}"], cwd=bare_origin
         ).stdout.strip()
         assert main_tip != feature_tip, (
-            "origin/main must not have advanced; the new commit must go to the "
-            "feature branch only."
+            "origin/main must not have advanced; the new commit must go to the feature branch only."
         )
