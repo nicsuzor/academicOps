@@ -134,6 +134,45 @@ class TestCreateSandboxSettings:
         # /etc should not be explicitly allowed
         assert "Write(/etc/**)" not in allow
 
+    def test_gitignore_entry_created_when_missing(self, tmp_path):
+        """create_sandbox_settings adds .claude/settings.json to .gitignore."""
+        manager = _make_manager(tmp_path)
+        worktree = tmp_path / "worktree"
+        worktree.mkdir()
+
+        manager.create_sandbox_settings(worktree)
+
+        gitignore = worktree / ".gitignore"
+        assert gitignore.exists(), ".gitignore must be created"
+        assert ".claude/settings.json" in gitignore.read_text()
+
+    def test_gitignore_entry_appended_to_existing(self, tmp_path):
+        """create_sandbox_settings appends to an existing .gitignore."""
+        manager = _make_manager(tmp_path)
+        worktree = tmp_path / "worktree"
+        worktree.mkdir()
+        gitignore = worktree / ".gitignore"
+        gitignore.write_text("node_modules/\n")
+
+        manager.create_sandbox_settings(worktree)
+
+        content = gitignore.read_text()
+        assert "node_modules/" in content, "Existing entries must be preserved"
+        assert ".claude/settings.json" in content
+
+    def test_gitignore_not_duplicated_on_repeat_call(self, tmp_path):
+        """create_sandbox_settings is idempotent for the .gitignore entry."""
+        manager = _make_manager(tmp_path)
+        worktree = tmp_path / "worktree"
+        worktree.mkdir()
+
+        manager.create_sandbox_settings(worktree)
+        manager.create_sandbox_settings(worktree)
+
+        gitignore = worktree / ".gitignore"
+        content = gitignore.read_text()
+        assert content.count(".claude/settings.json") == 1, "Must not duplicate entry"
+
 
 def _make_manager(tmp_path: Path):
     """Create a PolecatManager with mocked dependencies for unit tests."""

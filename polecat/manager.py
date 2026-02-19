@@ -979,9 +979,18 @@ class PolecatManager:
         only. When Claude Code loads this file via --setting-sources=user,project,
         it will deny any attempt to write or edit files outside the worktree.
 
+        Note: The Bash tool is not restricted by these rules. A worker can still
+        execute arbitrary shell commands (e.g. via redirects) that modify files
+        outside the worktree. The deny rules only cover Claude's Write and Edit
+        tool calls. Bash sandboxing requires a separate mechanism (e.g. OS-level
+        containers) and is tracked as future work.
+
         The allow rules take precedence over deny rules in Claude Code's permission
         system, so worktree paths are explicitly allowed and everything else is
         blocked by the wildcard deny.
+
+        Also writes .claude/settings.json to the worktree's .gitignore so the
+        generated infrastructure file is never staged in the user's PR.
 
         Args:
             worktree_path: Absolute path to the worktree root directory
@@ -1012,6 +1021,19 @@ class PolecatManager:
         settings_path = claude_dir / "settings.json"
         with open(settings_path, "w") as f:
             json.dump(settings, f, indent=2)
+
+        # Prevent the sandbox settings file from leaking into the user's PR.
+        # Workers run `git add .` during tasks; without this the academicOps
+        # infrastructure file would be staged and committed into the user repo.
+        gitignore_path = worktree_path / ".gitignore"
+        gitignore_entry = ".claude/settings.json\n"
+        if gitignore_path.exists():
+            existing = gitignore_path.read_text()
+            if ".claude/settings.json" not in existing:
+                with open(gitignore_path, "a") as f:
+                    f.write(gitignore_entry)
+        else:
+            gitignore_path.write_text(gitignore_entry)
 
         return settings_path
 
