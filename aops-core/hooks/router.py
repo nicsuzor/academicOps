@@ -599,9 +599,7 @@ class HookRouter:
                 return
 
             msg = generate_commit_message(tool_name, tool_input)
-            success, result_msg = commit_and_push_repo(
-                repo_path, commit_message=msg
-            )
+            success, result_msg = commit_and_push_repo(repo_path, commit_message=msg)
             if not success:
                 print(f"WARNING: ACA_DATA autocommit: {result_msg}", file=sys.stderr)
 
