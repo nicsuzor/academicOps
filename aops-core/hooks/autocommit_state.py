@@ -113,6 +113,10 @@ def generate_commit_message(tool_name: str, tool_input: dict[str, Any]) -> str:
 
 def _categorize_data_path(file_path: str) -> str:
     """Categorize a file path into a commit message (mirrors brain-sync.sh logic)."""
+    if not file_path or not file_path.strip():
+        return "sync: auto-commit"
+    file_path = file_path.strip()
+
     # Resolve to relative path within ACA_DATA if possible
     aca_data = os.environ.get("ACA_DATA", "")
     if aca_data:

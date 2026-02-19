@@ -4862,7 +4862,7 @@ try:
                 if not thread.events and not thread.initial_goal:
                     continue
 
-                path_html += "<div class='path-thread' style='border-left-color: {proj_color}66'>"
+                path_html += f"<div class='path-thread' style='border-left-color: {proj_color}66'>"
                 sid_display = esc(thread.session_id[:8])
 
                 # Sanitize initial goal before display (prevent markdown headers from breaking layout)
