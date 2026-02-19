@@ -133,7 +133,6 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
 
 GATE_MODE_DEFAULTS: dict[str, str] = {
     "hydration": "warn",
-    "task": "warn",
     "custodiet": "block",
     "critic": "warn",
     "qa": "block",
@@ -143,7 +142,6 @@ GATE_MODE_DEFAULTS: dict[str, str] = {
 # Environment variable names for gate modes
 GATE_MODE_ENV_VARS: dict[str, str] = {
     "hydration": "HYDRATION_GATE_MODE",
-    "task": "TASK_GATE_MODE",
     "custodiet": "CUSTODIET_GATE_MODE",
     "critic": "CRITIC_GATE_MODE",
     "qa": "QA_GATE_MODE",
@@ -155,7 +153,6 @@ QA_GATE_MODE = os.getenv(GATE_MODE_ENV_VARS["qa"], GATE_MODE_DEFAULTS["qa"])
 CRITIC_GATE_MODE = os.getenv(GATE_MODE_ENV_VARS["critic"], GATE_MODE_DEFAULTS["critic"])
 CUSTODIET_GATE_MODE = os.getenv(GATE_MODE_ENV_VARS["custodiet"], GATE_MODE_DEFAULTS["custodiet"])
 CUSTODIET_TOOL_CALL_THRESHOLD = int(os.getenv("CUSTODIET_TOOL_CALL_THRESHOLD", 15))
-TASK_GATE_MODE = os.getenv(GATE_MODE_ENV_VARS["task"], GATE_MODE_DEFAULTS["task"])
 HYDRATION_GATE_MODE = os.getenv(GATE_MODE_ENV_VARS["hydration"], GATE_MODE_DEFAULTS["hydration"])
 
 # =============================================================================

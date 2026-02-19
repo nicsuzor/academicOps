@@ -65,7 +65,6 @@ class TestSessionEnvSetup:
 
         # Verify enforcement modes
         assert "export CUSTODIET_MODE=" in content
-        assert "export TASK_GATE_MODE=" in content
         assert "export HYDRATION_GATE_MODE=" in content
 
     def test_run_session_env_setup_ignored_for_other_events(self, temp_env_file):

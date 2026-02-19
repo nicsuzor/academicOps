@@ -125,22 +125,6 @@ GATE_CONFIGS = [
             ),
         ],
     ),
-    # --- Task ---
-    GateConfig(
-        name="task",
-        description="Tracks task execution.",
-        initial_status=GateStatus.OPEN,
-        triggers=[
-            # Start -> Open
-            GateTrigger(
-                condition=GateCondition(hook_event="SessionStart"),
-                transition=GateTransition(target_status=GateStatus.OPEN),
-            ),
-        ],
-        policies=[
-            # Placeholder for future task policies
-        ],
-    ),
     # --- Critic ---
     # Closes after hydration, blocks edit tools until plan is reviewed and approved by critic.
     GateConfig(

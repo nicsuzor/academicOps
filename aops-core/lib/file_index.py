@@ -241,11 +241,6 @@ FILE_INDEX: tuple[FileEntry, ...] = (
         keywords=("posttooluse", "post tool", "after tool"),
     ),
     FileEntry(
-        path="hooks/gates/task_required_gate.py",
-        description="Task-required gate (blocks Write/Edit without task)",
-        keywords=("task gate", "task required", "write gate", "edit gate"),
-    ),
-    FileEntry(
         path="hooks/gates/hydration_gate.py",
         description="Hydration gate (ensures hydrator was invoked)",
         keywords=("hydration gate", "hydrator gate"),

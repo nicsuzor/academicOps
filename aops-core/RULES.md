@@ -97,7 +97,7 @@ Violation = friction, not failure. Evidence-based working hypotheses.
 
 | Level                 | Mechanism                      | Example                   |
 | --------------------- | ------------------------------ | ------------------------- |
-| **Hard block**        | Hook returns `block`           | Task gate, hydration gate |
+| **Hard block**        | Hook returns `block`           | Hydration gate |
 | **Soft warning**      | Hook returns `warn`            | Missing reflection        |
 | **Context injection** | Principle in AXIOMS/HEURISTICS | Agent sees rule           |
 | **Behavioral**        | Agent instruction-following    | Most principles           |
