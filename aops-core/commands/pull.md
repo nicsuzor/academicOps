@@ -21,7 +21,11 @@ permalink: commands/pull
 **If a specific task ID is provided** (`/pull <task-id>`):
 
 1. Call `mcp__plugin_aops-tools_task_manager__get_task(id="<task-id>")` to load it.
-2. If the task has children (leaf=false), navigate to the first ready leaf subtask instead.
+2. **If the task is an epic or has children** (leaf=false):
+   - **Schedule subtasks**: Call `mcp__plugin_aops-tools_task_manager__get_children(id="<task-id>")` to see unfinished work.
+   - **Sequencing rule**: Address subtasks in sequential order (`order` field).
+   - **Combined PR strategy**: When working on multiple tasks for a single PR, commit after EACH task completion with a clear message.
+   - **Navigate**: Select the first ready leaf subtask and claim it instead.
 3. Claim with `mcp__plugin_aops-tools_task_manager__update_task(id="<task-id>", status="in_progress", assignee="polecat")`.
 
 **If no tasks are ready**:
@@ -149,6 +153,14 @@ Before marking task complete, verify work is committed:
 3. Only after commit succeeds, proceed to Step 4
 
 **Enforcement**: Do NOT call `complete_task()` until commit is verified.
+
+### Step 3A.3: Pre-Finish Check (Prevention of Syntax Errors)
+
+Before running `polecat finish` or calling `complete_task()`, ensure the codebase remains clean:
+
+1. **Run Format/Lint**: Invoke `./scripts/format.sh` (or `ruff check .` and `dprint fmt`).
+2. **Fix Syntax Errors**: If the formatting script fails due to syntax errors, fix them immediately.
+3. **Verify repeated keys/logical errors**: Check for common agent errors like duplicate dictionary keys or unescaped quotes in f-strings.
 
 ### Step 3B: Triage (TRIAGE Path)
 
