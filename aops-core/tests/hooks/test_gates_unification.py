@@ -89,6 +89,7 @@ def test_handover_gate_opening_skill(mock_session):
 
     # Need a router to run triggers
     from hooks.router import HookRouter
+
     router = HookRouter.__new__(HookRouter)
     router.session_data = {}
 

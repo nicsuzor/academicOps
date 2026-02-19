@@ -141,5 +141,4 @@ def execute_custom_action(
             context_injection=instruction,
         )
 
-
     return None
