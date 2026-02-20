@@ -28,7 +28,8 @@ from lib.session_state import SessionState
 from hooks.schemas import HookContext
 
 # Gate enforcement mode environment variables
-GATE_MODE_VARS = ("CUSTODIET_MODE", "HYDRATION_GATE_MODE", "TASK_GATE_MODE")
+# Must match names in gate_config.py GATE_MODE_ENV_VARS
+GATE_MODE_VARS = ("CUSTODIET_GATE_MODE", "HYDRATION_GATE_MODE", "QA_GATE_MODE", "HANDOVER_GATE_MODE")
 DEFAULT_GATE_MODE = "warn"
 
 
@@ -54,7 +55,7 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     - PYTHONPATH (includes aops-core)
     - AOPS_SESSION_STATE_DIR
     - AOPS_HOOK_LOG_PATH
-    - Default gate enforcement modes (CUSTODIET_MODE, HYDRATION_GATE_MODE)
+    - Default gate enforcement modes (CUSTODIET_GATE_MODE, HYDRATION_GATE_MODE)
     - Other placeholder variables from original script
 
     """

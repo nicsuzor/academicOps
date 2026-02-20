@@ -14,7 +14,7 @@ This document tracks all enforcement mechanisms in the academicOps framework.
 
 | Variable                  | Default | Values          | Description                                     |
 | ------------------------- | ------- | --------------- | ----------------------------------------------- |
-| `CUSTODIET_MODE`          | `warn`  | `warn`, `block` | Controls custodiet compliance audit enforcement |
+| `CUSTODIET_GATE_MODE`     | `warn`  | `warn`, `block` | Controls custodiet compliance audit enforcement |
 | `HYDRATION_GATE_MODE` ... |         |                 |                                                 |
 | `HANDOVER_MODE` ...       |         |                 |                                                 |
 

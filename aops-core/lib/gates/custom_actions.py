@@ -39,7 +39,7 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:
                 pass  # Degrade context, not the file creation
 
     axioms, heuristics, skills = hook_utils.load_framework_content()
-    custodiet_mode = os.environ.get("CUSTODIET_MODE", "block").lower()
+    custodiet_mode = os.environ.get("CUSTODIET_GATE_MODE", "warn").lower()
 
     registry = TemplateRegistry.instance()
 
