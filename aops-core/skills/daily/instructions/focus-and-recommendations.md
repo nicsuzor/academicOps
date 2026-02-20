@@ -275,6 +275,33 @@ Select ~10 recommendations using judgment (approx 2 per category):
 1. Note: "Heavy framework day - consider actual tasks"
 2. ENJOY must be non-framework work
 
+### 3.3.5: Neglected-Priority Detection
+
+After generating recommendations, cross-reference the strategy document (3.1.3) against the project health dashboard (3.1.6) and recent task activity to identify **neglected strategic priorities** — projects the strategy says are important but that have little recent activity.
+
+**Detection logic**:
+
+1. From strategy.md, extract projects/goals marked as current priorities
+2. From project health dashboard, check each priority project's metrics:
+   - **No completions in 7+ days** for a strategic-priority project → neglected
+   - **Median staleness > 14 days** for a strategic-priority project → drifting
+   - **No tasks in today's recommendations** for a strategic-priority project → invisible
+3. For each neglected priority, check if there are actionable ready tasks in that project
+
+**Format in Focus section** (add after recommendations, before "Suggested sequence"):
+
+```markdown
+⚠️ **Neglected priorities** (strategy says important, but no recent activity):
+- [[Project X]] — P1 strategic priority, 12 days since last completion. Ready: [task-id] [[Task title]]
+- [[Project Y]] — P0 strategic priority, no active tasks. Consider: decompose or archive?
+```
+
+**Rules**:
+- Only flag projects explicitly named in strategy.md as priorities
+- Don't flag projects that had completions in the last 7 days
+- Always include at least one actionable suggestion (a ready task or a recommendation to decompose/archive)
+- Limit to top 3 neglected priorities to avoid overwhelming
+
 ### 3.4: Engage User on Priorities
 
 After presenting recommendations, use `AskUserQuestion` to confirm priorities:
