@@ -41,23 +41,23 @@ def test_complete_task_with_incomplete_markers(clean_aca_data):
     """Test that complete_task fails if there are incomplete markers."""
     # Create a task with incomplete markers
     body = "## Tasks\n- [ ] Item 1\n- [x] Item 2\n- [ ] Item 3"
-    res = create_task.fn(task_title="Test Task", body=body)
+    res = create_task(task_title="Test Task", body=body)
     assert res["success"]
     task_id = res["task"]["id"]
 
     # Try to complete it without force
-    res_comp = complete_task.fn(id=task_id)
+    res_comp = complete_task(id=task_id)
     assert not res_comp["success"]
     assert "incomplete items" in res_comp["message"]
     assert "Item 1" in res_comp["message"]
     assert "Item 3" in res_comp["message"]
 
     # Verify status is still active
-    res_get = get_task.fn(id=task_id)
+    res_get = get_task(id=task_id)
     assert res_get["task"]["status"] == "active"
 
     # Complete it with force
-    res_force = complete_task.fn(id=task_id, force=True)
+    res_force = complete_task(id=task_id, force=True)
     assert res_force["success"]
     assert res_force["task"]["status"] == "done"
 
@@ -66,17 +66,17 @@ def test_update_task_status_done_with_incomplete_markers(clean_aca_data):
     """Test that update_task status=done fails if there are incomplete markers."""
     # Create a task with incomplete markers
     body = "- [ ] Item A"
-    res = create_task.fn(task_title="Test Update", body=body)
+    res = create_task(task_title="Test Update", body=body)
     assert res["success"]
     task_id = res["task"]["id"]
 
     # Try to update status to done without force
-    res_upd = update_task.fn(id=task_id, status="done")
+    res_upd = update_task(id=task_id, status="done")
     assert not res_upd["success"]
     assert "incomplete items" in res_upd["message"]
 
     # Complete it with force
-    res_force = update_task.fn(id=task_id, status="done", force=True)
+    res_force = update_task(id=task_id, status="done", force=True)
     assert res_force["success"]
     assert res_force["task"]["status"] == "done"
 
@@ -84,17 +84,17 @@ def test_update_task_status_done_with_incomplete_markers(clean_aca_data):
 def test_update_task_body_and_status_done(clean_aca_data):
     """Test that update_task checks the NEW body if body is updated in same call."""
     # Create a task without markers
-    res = create_task.fn(task_title="Test Body Update")
+    res = create_task(task_title="Test Body Update")
     assert res["success"]
     task_id = res["task"]["id"]
 
     # Update body with markers and set status to done in same call
-    res_upd = update_task.fn(id=task_id, body="- [ ] New Item", status="done")
+    res_upd = update_task(id=task_id, body="- [ ] New Item", status="done")
     assert not res_upd["success"]
     assert "incomplete items" in res_upd["message"]
 
     # Update body to mark as done and set status to done
-    res_ok = update_task.fn(id=task_id, body="- [x] New Item", status="done")
+    res_ok = update_task(id=task_id, body="- [x] New Item", status="done")
     assert res_ok["success"]
     assert res_ok["task"]["status"] == "done"
 
@@ -103,10 +103,10 @@ def test_complete_task_no_markers(clean_aca_data):
     """Test that complete_task succeeds if there are no incomplete markers."""
     # Create a task without markers or with only completed ones
     body = "No markers here\n- [x] Done item"
-    res = create_task.fn(task_title="Clean Task", body=body)
+    res = create_task(task_title="Clean Task", body=body)
     assert res["success"]
     task_id = res["task"]["id"]
 
-    res_comp = complete_task.fn(id=task_id)
+    res_comp = complete_task(id=task_id)
     assert res_comp["success"]
     assert res_comp["task"]["status"] == "done"

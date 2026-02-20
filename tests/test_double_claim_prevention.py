@@ -56,7 +56,7 @@ class TestDoubleClaimPrevention:
         ):
             # User B tries to claim the task
             # Access .fn to call underlying function (FastMCP wraps in FunctionTool)
-            result = tasks_server.update_task.fn(
+            result = tasks_server.update_task(
                 id=claimed_task.id,
                 status="in_progress",
                 assignee="user_b",
@@ -77,7 +77,7 @@ class TestDoubleClaimPrevention:
             patch.object(tasks_server, "_get_storage", return_value=storage),
             patch("mcp_servers.tasks_server.get_data_root", return_value=tmp_path),
         ):
-            result = tasks_server.update_task.fn(
+            result = tasks_server.update_task(
                 id=claimed_task.id,
                 status="in_progress",
                 assignee="user_b",
@@ -107,7 +107,7 @@ class TestDoubleClaimPrevention:
             patch("mcp_servers.tasks_server.get_data_root", return_value=tmp_path),
         ):
             # User B tries to claim
-            tasks_server.update_task.fn(
+            tasks_server.update_task(
                 id=claimed_task.id,
                 status="in_progress",
                 assignee="user_b",
@@ -129,7 +129,7 @@ class TestDoubleClaimPrevention:
             patch("mcp_servers.tasks_server.get_data_root", return_value=tmp_path),
         ):
             # User A updates their own claimed task
-            result = tasks_server.update_task.fn(
+            result = tasks_server.update_task(
                 id=claimed_task.id,
                 status="in_progress",
                 assignee="user_a",
@@ -155,7 +155,7 @@ class TestDoubleClaimPrevention:
             patch.object(tasks_server, "_get_storage", return_value=storage),
             patch("mcp_servers.tasks_server.get_data_root", return_value=tmp_path),
         ):
-            result = tasks_server.update_task.fn(
+            result = tasks_server.update_task(
                 id=task.id,
                 status="in_progress",
                 assignee="user_b",
@@ -184,7 +184,7 @@ class TestDoubleClaimPrevention:
             patch.object(tasks_server, "_get_storage", return_value=storage),
             patch("mcp_servers.tasks_server.get_data_root", return_value=tmp_path),
         ):
-            result = tasks_server.update_task.fn(
+            result = tasks_server.update_task(
                 id=task.id,
                 status="in_progress",
                 assignee="user_b",
@@ -205,7 +205,7 @@ class TestDoubleClaimPrevention:
             patch("mcp_servers.tasks_server.get_data_root", return_value=tmp_path),
         ):
             # Just set status without specifying assignee
-            result = tasks_server.update_task.fn(
+            result = tasks_server.update_task(
                 id=claimed_task.id,
                 status="in_progress",
                 # No assignee specified
@@ -224,7 +224,7 @@ class TestDoubleClaimPrevention:
             patch.object(tasks_server, "_get_storage", return_value=storage),
             patch("mcp_servers.tasks_server.get_data_root", return_value=tmp_path),
         ):
-            result = tasks_server.update_task.fn(
+            result = tasks_server.update_task(
                 id=claimed_task.id,
                 status="in_progress",
                 assignee="user_b",
@@ -249,7 +249,7 @@ class TestClaimWithStatusAlias:
             patch.object(tasks_server, "_get_storage", return_value=storage),
             patch("mcp_servers.tasks_server.get_data_root", return_value=tmp_path),
         ):
-            result = tasks_server.update_task.fn(
+            result = tasks_server.update_task(
                 id=claimed_task.id,
                 status="in-progress",  # Hyphenated alias
                 assignee="user_b",
