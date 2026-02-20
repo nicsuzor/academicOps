@@ -29,6 +29,7 @@ SCRIPT_DIR = Path(__file__).parent.resolve()
 REPO_ROOT = SCRIPT_DIR.parent
 sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 
+from lib.knowledge_graph import KnowledgeGraph  # noqa: E402
 from lib.task_index import TaskIndex, TaskIndexEntry  # noqa: E402
 from lib.task_model import TaskStatus, TaskType  # noqa: E402
 from lib.task_storage import TaskStorage  # noqa: E402
@@ -997,6 +998,339 @@ def find_duplicates(delete: bool, plain: bool):
         console.print(f"[green]✓[/green] Deleted {deleted_count} duplicate(s)")
     elif not delete and to_delete:
         console.print(f"[dim]Use --delete to remove {len(to_delete)} duplicate(s)[/dim]")
+
+
+# =============================================================================
+# PKB Knowledge Graph Commands (#562)
+# =============================================================================
+
+# Node type icons for PKB display
+PKB_TYPE_ICON = {
+    "goal": "🎯",
+    "project": "📁",
+    "epic": "📌",
+    "task": "📋",
+    "action": "⚡",
+    "bug": "🐛",
+    "feature": "✨",
+    "learn": "📖",
+    "daily": "📅",
+    "knowledge": "📚",
+    "person": "👤",
+    "context": "🔍",
+    "template": "📄",
+    "note": "📝",
+}
+
+
+def _get_knowledge_graph() -> KnowledgeGraph:
+    """Load knowledge graph, building if needed."""
+    kg = KnowledgeGraph()
+    if not kg.load():
+        if not kg.build():
+            console.print("[red]Knowledge graph unavailable.[/red]")
+            console.print("[dim]Run fast-indexer first: fast-indexer $ACA_DATA -f json -o $ACA_DATA/graph[/dim]")
+            raise SystemExit(1)
+    return kg
+
+
+def _format_pkb_node(attrs: dict, show_path: bool = False) -> Text:
+    """Format a PKB node for display."""
+    ntype = attrs.get("node_type", "note")
+    icon = PKB_TYPE_ICON.get(ntype, "•")
+    label = attrs.get("label", attrs.get("id", "?"))
+    status = attrs.get("status")
+    priority = attrs.get("priority")
+
+    parts = [f"{icon} {label}"]
+    if status:
+        s_icon, s_style = STATUS_STYLE.get(status, ("", "white"))
+        parts.append(f"[{s_style}]{s_icon}[/{s_style}]")
+    if priority is not None and priority <= 1:
+        p_label, p_style = PRIORITY_STYLE.get(priority, ("", "white"))
+        parts.append(f"[{p_style}]{p_label}[/{p_style}]")
+
+    text = Text.from_markup(" ".join(parts))
+    if show_path and attrs.get("path"):
+        text.append(f"\n    {attrs['path']}", style="dim")
+    return text
+
+
+@main.group()
+def mem():
+    """PKB knowledge graph commands."""
+    pass
+
+
+@mem.command()
+@click.argument("id")
+@click.option("--depth", "-d", default=2, help="Neighbourhood depth (default: 2)")
+def context(id: str, depth: int):
+    """Show everything connected to a PKB item.
+
+    ID can be a task ID, wikilink name, filename stem, or title.
+    Shows parent chain, backlinks by type, and nearby nodes.
+    """
+    kg = _get_knowledge_graph()
+
+    resolved = kg.resolve(id)
+    if resolved is None:
+        console.print(f"[red]Cannot resolve '{id}' to a known PKB node[/red]")
+        raise SystemExit(1)
+
+    node_data = kg.node(resolved)
+    if node_data is None:
+        console.print(f"[red]Node '{resolved}' not found[/red]")
+        raise SystemExit(1)
+
+    # Header
+    ntype = node_data.get("node_type", "note")
+    icon = PKB_TYPE_ICON.get(ntype, "•")
+    console.print(Panel(
+        _format_pkb_node(node_data, show_path=True),
+        title=f"{icon} {ntype.upper()}",
+        border_style="blue",
+    ))
+
+    # Parent chain
+    parent_chain = []
+    current = node_data
+    while current and current.get("parent"):
+        parent_node = kg.node(current["parent"])
+        if parent_node:
+            parent_chain.append(parent_node)
+            current = parent_node
+        else:
+            break
+
+    if parent_chain:
+        console.print("\n[bold]Parent Chain[/bold]")
+        for i, p in enumerate(parent_chain):
+            indent = "  " * (i + 1)
+            console.print(f"{indent}↑ ", end="")
+            console.print(_format_pkb_node(p))
+
+    # Structural relationships
+    outgoing = kg.neighbors(resolved)
+    children = [n for n in outgoing if n.get("id") in (node_data.get("children") or [])]
+    deps = [n for n in outgoing if n.get("id") in (node_data.get("depends_on") or [])]
+    blocks = [n for n in outgoing if n.get("id") in (node_data.get("blocks") or [])]
+
+    if children:
+        console.print(f"\n[bold]Children[/bold] ({len(children)})")
+        for c in children:
+            console.print(f"  ├─ ", end="")
+            console.print(_format_pkb_node(c))
+
+    if deps:
+        console.print(f"\n[bold]Depends On[/bold] ({len(deps)})")
+        for d in deps:
+            console.print(f"  → ", end="")
+            console.print(_format_pkb_node(d))
+
+    if blocks:
+        console.print(f"\n[bold]Blocks[/bold] ({len(blocks)})")
+        for b in blocks:
+            console.print(f"  ← ", end="")
+            console.print(_format_pkb_node(b))
+
+    # Backlinks by type
+    bl_groups = kg.backlinks_by_type(resolved)
+    if bl_groups:
+        console.print("\n[bold]Mentions / Backlinks[/bold]")
+        for bl_type, bl_nodes in sorted(bl_groups.items()):
+            type_icon = PKB_TYPE_ICON.get(bl_type, "•")
+            console.print(f"  [cyan]{type_icon} {bl_type}[/cyan] ({len(bl_nodes)})")
+            for bl in bl_nodes[:5]:
+                console.print(f"    • ", end="")
+                console.print(_format_pkb_node(bl))
+            if len(bl_nodes) > 5:
+                console.print(f"    [dim]... and {len(bl_nodes) - 5} more[/dim]")
+
+    # Nearby nodes (from subgraph)
+    sub = kg.subgraph(resolved, depth=depth)
+    structural_ids = {resolved}
+    structural_ids.update(n.get("id", "") for n in parent_chain)
+    structural_ids.update(n.get("id", "") for n in children)
+    structural_ids.update(n.get("id", "") for n in deps)
+    structural_ids.update(n.get("id", "") for n in blocks)
+    for bl_nodes in bl_groups.values():
+        structural_ids.update(n.get("id", "") for n in bl_nodes)
+
+    nearby = [
+        dict(sub.nodes[nid]) for nid in sub.nodes()
+        if nid not in structural_ids
+    ]
+
+    if nearby:
+        console.print(f"\n[bold]Nearby[/bold] (within {depth} hops, {len(nearby)} nodes)")
+        for n in nearby[:10]:
+            console.print(f"  ~ ", end="")
+            console.print(_format_pkb_node(n))
+        if len(nearby) > 10:
+            console.print(f"  [dim]... and {len(nearby) - 10} more[/dim]")
+
+    # Stats
+    total_connections = sum(len(v) for v in bl_groups.values()) + len(children) + len(deps) + len(blocks)
+    console.print(f"\n[dim]{total_connections} connections, {len(nearby)} nearby nodes[/dim]")
+
+
+@mem.command()
+@click.argument("query")
+@click.option("--type", "-t", "types", multiple=True, help="Filter by node type")
+@click.option("--limit", "-n", default=10, help="Max results (default: 10)")
+def related(query: str, types: tuple[str, ...], limit: int):
+    """Search PKB by text with structural boosting.
+
+    Searches labels, tags, and paths. Graph neighbors of matches
+    get boosted scores.
+    """
+    import re
+
+    kg = _get_knowledge_graph()
+
+    type_filter = list(types) if types else None
+    query_lower = query.lower()
+    query_tokens = set(re.split(r"[-_\s/]", query_lower))
+
+    # Text matching
+    scored: dict[str, float] = {}
+    for nid, attrs in kg.graph.nodes(data=True):
+        if type_filter and attrs.get("node_type") not in type_filter:
+            continue
+
+        score = 0.0
+        label = (attrs.get("label") or "").lower()
+        tags = [t.lower() for t in (attrs.get("tags") or [])]
+
+        if query_lower in label:
+            score += 1.0
+        label_tokens = set(re.split(r"[-_\s/]", label))
+        overlap = query_tokens & label_tokens
+        if overlap:
+            score += 0.5 * len(overlap) / len(query_tokens)
+
+        for tag in tags:
+            if query_lower in tag:
+                score += 0.3
+
+        if score > 0:
+            scored[nid] = score
+
+    # Structural boost
+    boosted = dict(scored)
+    for nid, base_score in scored.items():
+        if base_score < 0.3:
+            continue
+        for _, target, _ in kg.graph.out_edges(nid, data=True):
+            if type_filter:
+                if kg.graph.nodes[target].get("node_type") not in type_filter:
+                    continue
+            boosted[target] = boosted.get(target, 0) + 0.1
+        for source, _, _ in kg.graph.in_edges(nid, data=True):
+            if type_filter:
+                if kg.graph.nodes[source].get("node_type") not in type_filter:
+                    continue
+            boosted[source] = boosted.get(source, 0) + 0.1
+
+    # Display results
+    results = sorted(
+        ((nid, s) for nid, s in boosted.items() if s > 0),
+        key=lambda x: x[1],
+        reverse=True,
+    )[:limit]
+
+    if not results:
+        console.print(f"[yellow]No results for '{query}'[/yellow]")
+        return
+
+    table = Table(title=f"PKB Search: '{query}'", show_lines=False)
+    table.add_column("Score", width=6, style="cyan")
+    table.add_column("Type", width=6)
+    table.add_column("Node", no_wrap=False)
+    table.add_column("Status", width=10)
+
+    for nid, score in results:
+        attrs = dict(kg.graph.nodes[nid])
+        ntype = attrs.get("node_type", "note")
+        icon = PKB_TYPE_ICON.get(ntype, "•")
+        status = attrs.get("status", "")
+        s_icon, s_style = STATUS_STYLE.get(status, ("", "dim"))
+        label = attrs.get("label", nid)
+
+        table.add_row(
+            f"{score:.2f}",
+            icon,
+            label,
+            Text(f"{s_icon} {status}", style=s_style) if status else Text("-", style="dim"),
+        )
+
+    console.print(table)
+    console.print(f"[dim]{len(results)} results from {kg.node_count} nodes[/dim]")
+
+
+@mem.command()
+@click.argument("source")
+@click.argument("target")
+def trace(source: str, target: str):
+    """Show path between two PKB nodes.
+
+    SOURCE and TARGET can be task IDs, wikilink names, or titles.
+    Shows the shortest path with edge types.
+    """
+    kg = _get_knowledge_graph()
+
+    src = kg.resolve(source)
+    if src is None:
+        console.print(f"[red]Cannot resolve source '{source}'[/red]")
+        raise SystemExit(1)
+
+    tgt = kg.resolve(target)
+    if tgt is None:
+        console.print(f"[red]Cannot resolve target '{target}'[/red]")
+        raise SystemExit(1)
+
+    src_node = kg.node(src)
+    tgt_node = kg.node(tgt)
+
+    paths = kg.all_shortest_paths(src, tgt, max_paths=3)
+
+    if not paths:
+        console.print(f"[yellow]No path between:[/yellow]")
+        console.print(f"  Source: ", end="")
+        console.print(_format_pkb_node(src_node))
+        console.print(f"  Target: ", end="")
+        console.print(_format_pkb_node(tgt_node))
+        raise SystemExit(1)
+
+    console.print(f"[bold]Found {len(paths)} path(s) of length {len(paths[0]) - 1}[/bold]\n")
+
+    for i, path_nodes in enumerate(paths):
+        if len(paths) > 1:
+            console.print(f"[cyan]Path {i + 1}:[/cyan]")
+
+        for j, node in enumerate(path_nodes):
+            console.print(f"  ", end="")
+            console.print(_format_pkb_node(node))
+
+            if j < len(path_nodes) - 1:
+                # Find edge type
+                next_id = path_nodes[j + 1]["id"]
+                this_id = node["id"]
+                edge_data = kg.graph.get_edge_data(this_id, next_id)
+                if edge_data:
+                    etype = edge_data.get("edge_type", "link")
+                    console.print(f"    ↓ [dim]{etype}[/dim]")
+                else:
+                    edge_data = kg.graph.get_edge_data(next_id, this_id)
+                    if edge_data:
+                        etype = edge_data.get("edge_type", "link")
+                        console.print(f"    ↑ [dim]{etype}[/dim]")
+                    else:
+                        console.print(f"    ↕ [dim]link[/dim]")
+
+        if i < len(paths) - 1:
+            console.print()
 
 
 if __name__ == "__main__":
