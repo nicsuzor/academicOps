@@ -22,104 +22,74 @@ academicOps applies the structural logic of constitutional and administrative la
 
 - **The constitutional metaphor is structural, not decorative.** Every operational rule must trace back to an axiom through explicit derivation. Rules that cannot be derived are invalid. This is the mechanism that prevents governance bloat: you cannot add arbitrary constraints, only constraints that follow from the constitution of the system.
 
-## The core loop
+## How it works
 
-Every agent session follows a structured lifecycle with gates at each transition. The key architectural decision is that **every mutating operation passes through gates**. An agent cannot edit a file without an active task (work tracking), a hydrated execution plan (intent verification), and periodic compliance audits (drift detection). Read-only operations are unrestricted, avoiding the circular dependency where an agent cannot gather context to satisfy the very gate that blocks it.
+Enforcement operates at two levels. Locally, agents work within a structured session lifecycle with real-time gates. At the integration level, every contribution passes through a distributed review pipeline before it reaches the main branch. This mirrors the F/OSS model: contributors work autonomously, but integration requires peer review.
+
+### The distributed review pipeline
+
+The primary enforcement mechanism is the PR pipeline. No code reaches main without passing through multiple independent reviewers, each checking different aspects of compliance. This is where the commons-based peer production model does its work.
 
 ```mermaid
-flowchart TD
-    %% Node Definitions
-    Start([Session Start])
+flowchart LR
+    PR([Agent opens PR]) --> CQ
 
-    subgraph Initialization [1. Initialization]
-        SStart[SessionStart Event] --> Router1{Universal Router}
-        Router1 -.-> Setup[session_env_setup.py]
-        Router1 -.-> StartGate[session_start gate]
-        StartGate --> State[(Create State File)]
-        StartGate --- InitExpl[Loads environment paths,<br/>AXIOMS, and HEURISTICS]
+    subgraph CQ [Code Quality]
+        Lint[Ruff lint + format]
+        Gate[[Gatekeeper agent]]
+        Types[Type check]
+        Lint --> Types
     end
 
-    subgraph Hydration [2. Hydration & Review]
-        UPS[UserPromptSubmit Event] --> Router2{Universal Router}
-        Router2 -.-> SkipCheck{Skip Hydration?}
-        SkipCheck -- No --> Context[Context -> Temp File]
-        Context --> Hydrator[[prompt-hydrator Subagent]]
-        Hydrator --> Plan[/Hydration Plan/]
-        Hydrator --> GateCr[Critic Gate: CLOSED]
-
-        Hydrator --- HydrateExpl[Fetches: Task queue, memory server,<br/>WORKFLOWS index, and relevant files]
-
-        Plan --> Critic[[critic Subagent]]
-        Critic --> CriticCheck{Plan Approved?}
-        CriticCheck -- REVISE --> Plan
-        CriticCheck -- PROCEED --> OpenCr[Critic Gate: OPEN]
-        Critic --- CriticExpl[Evaluates plan for assumptions,<br/>safety gaps, and logic errors]
+    subgraph Review [LLM Review Pipeline]
+        direction TB
+        Strat[[Strategic review]] --> Cust[[Custodiet:<br/>scope compliance]]
+        Cust --> QA[[QA: acceptance<br/>criteria check]]
     end
 
-    subgraph Execution [3. Execution & Hard Gates]
-        PreTool[PreToolUse Event] --> Router3{Universal Router}
-
-        Router3 -.-> GateH[Hydration Gate]
-        GateH --> GateT[Task Gate]
-        GateT --> GateCr_Exec[Critic Gate]
-
-        GateH --- HExpl[Blocks mutating tools until<br/>an execution plan is generated]
-        GateT --- TExpl[Enforces work tracking by requiring<br/>an active task for destructive actions]
-        GateCr_Exec --- CrExpl[Blocks edit tools until plan is reviewed]
-
-        GateCr_Exec --> ThresholdCheck{Audit Threshold?}
-        ThresholdCheck -- Yes ~15 ops --> GateC[Custodiet Gate]
-        ThresholdCheck -- No --> Tool[[Execute Tool]]
-
-        GateC --- CExpl[Reviews session history for<br/>principle violations and scope drift]
-        GateC --> Tool
-
-        Tool --> PostTool[PostToolUse Event]
-        PostTool --> Router4{Universal Router}
-        Router4 -.-> Accountant[Accountant: Update Counters]
+    subgraph Async [Advisory Review]
+        HydRev[[Hydrator reviewer]]
+        CustRev[[Custodiet reviewer]]
     end
 
-    subgraph Termination [4. Reflection & Close]
-        AfterAgent[AfterAgent Event] --> Router5{Universal Router}
-        Router5 -.-> GateHa[Handover Gate]
-        GateHa --- HaExpl[Ensures Framework Reflection includes<br/>all 8 required metadata fields]
+    CQ -- triggers --> Review
+    PR -.-> Async
 
-        GateHa --> Stop[Stop Event]
-        Stop --> Router6{Universal Router}
-        Router6 -.-> Commit[Commit & Close]
+    Review --> Approved{All pass?}
+    Approved -- Yes --> Human([Human reviews])
+    Approved -- No --> Revise([Agent revises])
 
-        Commit --- QExpl[Mandates independent<br/>QA passage and clean git state]
-    end
+    Human -- LGTM --> Merge[[Merge agent]]
+    Merge --> Triage[Triage all comments:<br/>FIX / RESPOND / DEFER]
+    Triage --> MQ([Merge queue])
 
-    %% Flow Connections
-    Start --> SStart
-    State --> UPS
-    SkipCheck -- Yes --> PreTool
-    OpenCr --> PreTool
-    Accountant --> AfterAgent
-    Commit --> End([Session End])
-
-    %% Styling (Light & Dark Theme Compatible)
-    classDef hook fill:#0277bd,stroke:#01579b,stroke-width:2px,color:#fff
-    classDef gate fill:#c62828,stroke:#b71c1c,stroke-width:2px,color:#fff
     classDef agent fill:#6a1b9a,stroke:#4a148c,stroke-width:2px,color:#fff
-    classDef state fill:#ef6c00,stroke:#e65100,stroke-width:2px,color:#fff
-    classDef event fill:#424242,stroke:#212121,stroke-width:2px,color:#fff
-    classDef explain fill:none,stroke:#888,stroke-width:1px,color:#888,font-style:italic
+    classDef gate fill:#c62828,stroke:#b71c1c,stroke-width:2px,color:#fff
+    classDef action fill:#0277bd,stroke:#01579b,stroke-width:2px,color:#fff
+    classDef human fill:#ef6c00,stroke:#e65100,stroke-width:2px,color:#fff
 
-    class Router1,Router2,Router3,Router4,Router5,Router6,Setup,Accountant,Commit hook
-    class StartGate,SkipCheck,GateH,GateT,GateC,GateCr,OpenCr,GateCr_Exec,GateHa,ThresholdCheck gate
-    class Hydrator,Critic agent
-    class State,Plan,Context state
-    class SStart,UPS,PreTool,PostTool,AfterAgent,Stop event
-    class InitExpl,HydrateExpl,CriticExpl,HExpl,TExpl,CrExpl,CExpl,HaExpl,QExpl explain
+    class Gate,Strat,Cust,QA,HydRev,CustRev,Merge agent
+    class Lint,Types action
+    class Human human
+    class Approved gate
 
-    %% Subgraph Styling
-    style Initialization fill:none,stroke:#888,stroke-dasharray: 5 5
-    style Hydration fill:none,stroke:#888,stroke-dasharray: 5 5
-    style Execution fill:none,stroke:#888,stroke-dasharray: 5 5
-    style Termination fill:none,stroke:#888,stroke-dasharray: 5 5
+    style CQ fill:none,stroke:#888,stroke-dasharray: 5 5
+    style Review fill:none,stroke:#888,stroke-dasharray: 5 5
+    style Async fill:none,stroke:#888,stroke-dasharray: 5 5
 ```
+
+**Key design decisions:**
+
+- **Only humans can trigger merges.** Bot approvals enable auto-merge, but the merge agent only fires on human LGTM. This is the constitutional constraint: agents propose, humans dispose.
+- **The merge agent triages, not rubber-stamps.** It reads every review comment (from Copilot, custodiet, QA, human reviewers), classifies each as FIX / RESPOND / ACKNOWLEDGE / DEFER, commits fixes, and only then confirms LGTM.
+- **Advisory review runs in parallel.** The hydrator and custodiet reviewers post non-blocking comments immediately on PR creation, giving early feedback without gating the pipeline.
+- **The merge queue rebases.** Every PR is rebased on current main and re-tested before merge, eliminating cascade conflicts from concurrent work.
+
+### The local session lifecycle
+
+Within a session, agents operate under real-time constraints. Every mutating operation passes through gates: an agent cannot edit a file without an active task (work tracking), a hydrated execution plan (intent verification), and periodic compliance audits (drift detection). The session ends with a structured reflection capturing outcome, friction, and proposed changes.
+
+The local layer provides the immediate feedback loop. The distributed layer provides the institutional review. Together, they implement the same principle at different scales: autonomous action within defined authority, subject to structured review.
 
 ## The hierarchy of norms
 
