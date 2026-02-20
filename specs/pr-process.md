@@ -45,7 +45,7 @@ pr-lgtm-merge.yml:       human approves → approve (Approval #2) → merge
 
 If gatekeeper rejects, its job fails → Code Quality fails → the review pipeline never starts.
 
-If custodiet or QA request changes, merge-prep auto-fixes them and pushes. The push re-triggers the pipeline. Eventually all agents approve, merge-prep posts "Ready for human review", and the human sees a clean PR.
+If custodiet or QA request changes, merge-prep attempts to auto-fix them and push a new commit. Each push re-triggers the PR Review pipeline and reruns the custodiet → QA → merge-prep chain. The notify-ready step **only** posts "Ready for human review" after verifying that the latest custodiet and QA reviews are all in the APPROVED state; if any agent still has CHANGES_REQUESTED, it does not declare readiness. To avoid an infinite loop when merge-prep cannot satisfy the reviewers, merge-prep is bounded by a small maximum number of auto-fix iterations; after that limit is reached (or if it cannot confidently fix the issues), it stops pushing, surfaces the remaining problems in a comment, and allows a human to intervene.
 
 ## Approval architecture
 
