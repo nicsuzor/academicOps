@@ -35,9 +35,7 @@ def main():
     print("Regenerating knowledge graphs...")
     if not run_fast_indexer(data_root, data_root / "outputs" / "graph", format="json"):
         failed_steps.append("knowledge graph")
-    if not run_fast_indexer(
-        data_root, data_root / "outputs" / "knowledge-graph", format="json"
-    ):
+    if not run_fast_indexer(data_root, data_root / "outputs" / "knowledge-graph", format="json"):
         failed_steps.append("knowledge-graph (alt)")
 
     # 3. Styled Task Map for Dashboard
