@@ -1,39 +1,33 @@
-# Merge Agent: triggered by human approval signals only.
-# Handles review comment triage, final fixes, and adds PR to merge queue.
+# Merge on human approval.
+#
+# By the time the human approves, all agents have reviewed and merge-prep has
+# fixed their comments. This workflow just lodges Approval #2 and merges.
 #
 # Tight triggers — only fires on:
 #   1. Human PR review approval (not bot reviews)
 #   2. LGTM-pattern comment from nicsuzor
 #   3. Manual workflow dispatch
 #
-# Separated from pr-review-pipeline.yml so review and merge triggers
-# don't cross-contaminate each other's check lists with SKIPPED entries.
-#
 # See specs/pr-process.md for full process documentation.
 
-name: Merge Agent
+name: Merge
 
 on:
-  # Human approval via formal review
   pull_request_review:
     types: [submitted]
-  # LGTM comment from owner
   issue_comment:
     types: [created]
-  # Manual trigger for specific PRs
   workflow_dispatch:
     inputs:
       pr_number:
-        description: 'PR number to run LGTM merge on'
+        description: 'PR number to merge'
         required: true
         type: number
 
 jobs:
-  claude-lgtm-merge:
-    # Tight filters:
-    #   - workflow_dispatch: always run
-    #   - pull_request_review: only human approvals (not bot reviews from agents)
-    #   - issue_comment: only LGTM-pattern from nicsuzor on PRs
+  merge:
+    name: Merge
+    # Tight filters: human approval only
     if: >-
       (github.event_name == 'workflow_dispatch') ||
       (github.event_name == 'pull_request_review' &&
@@ -49,7 +43,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      id-token: write
       issues: write
       actions: read
     steps:
@@ -60,24 +53,12 @@ jobs:
           COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
           if echo "$COMMENT_BODY" | grep -iqE '^(lgtm|merge|rebase|ship it|@claude merge)'; then
-            echo "Comment matches LGTM pattern"
             echo "proceed=true" >> $GITHUB_OUTPUT
           else
-            echo "Comment doesn't match merge pattern, skipping"
             echo "proceed=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Acknowledge comment
-        if: >-
-          github.event_name == 'issue_comment' &&
-          steps.lgtm-check.outputs.proceed == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
-            -f content=eyes
-
-      - name: Determine PR ref
+      - name: Determine PR number
         id: pr-ref
         if: >-
           github.event_name == 'workflow_dispatch' ||
@@ -89,132 +70,54 @@ jobs:
           PR_NUM="${{ github.event.inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}"
           echo "pr_number=$PR_NUM" >> $GITHUB_OUTPUT
 
-          # For pull_request_review events, the head ref is directly available
-          if [ -n "${{ github.event.pull_request.head.ref }}" ]; then
-            echo "ref=${{ github.event.pull_request.head.ref }}" >> $GITHUB_OUTPUT
-          else
-            # For comment/dispatch events, look up the head ref via gh CLI
-            HEAD_REF=$(gh pr view "$PR_NUM" --repo "${{ github.repository }}" --json headRefName -q .headRefName)
-            echo "ref=$HEAD_REF" >> $GITHUB_OUTPUT
-          fi
-
-      - uses: actions/checkout@v4
-        if: steps.pr-ref.outputs.ref != ''
-        with:
-          fetch-depth: 0
-          ref: ${{ steps.pr-ref.outputs.ref }}
-
-      - name: Claude PR merge agent
-        id: claude
-        if: steps.pr-ref.outputs.ref != ''
-        uses: anthropics/claude-code-action@v1
-        with:
-          allowed_bots: "claude[bot]"
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          prompt: |
-            PR #${{ steps.pr-ref.outputs.pr_number }} has been approved.
-
-            Please prepare this PR for merge:
-
-            1. **Aggregate all review comments** from bot reviewers (Copilot, Gemini Code Assist),
-               custodiet, QA, and human reviewers using `gh pr view` and `gh api`.
-            2. **Triage bot comments** into categories:
-               - Genuine bugs (e.g., type mismatch that would crash at runtime) -> FIX
-               - Valid improvements (e.g., move import out of loop, add error types to except) -> FIX
-               - False positives (e.g., claiming a key was removed when it wasn't) -> RESPOND explaining why
-               - Scope creep (e.g., "add more tests") -> ACKNOWLEDGE as follow-up
-            3. **Address human reviewer comments** — these are critical requirements. Do NOT ignore
-               or dismiss human comments or defer implementation.
-            4. Commit and push any changes to the PR branch.
-            5. Rebase on main if required to resolve merge conflicts. Do NOT merge main into the
-               PR branch. Always rebase to maintain a clean history.
-            6. Fix any lint or CI errors introduced by your changes.
-            7. Run tests after modifying code. The PR will ONLY be merged if all tests pass.
-            8. Post a final confirmation comment:
-               - "LGTM: All review comments addressed and CI checks passed. Ready to merge."
-               OR
-               - "Request changes: Address the remaining issues before this PR can be merged."
-               OR
-               - "Close: PR does not meet standards or requires design discussion."
-
-            Post a summary table of triaged comments:
-            ```
-            ## Review Comment Triage
-
-            | Reviewer | Comment | Category | Action |
-            |----------|---------|----------|--------|
-            | ... | ... | ... | ... |
-
-            **Changes made**: [count] fixes committed
-            **Deferred**: [count] items flagged as future work
-            ```
-
-          claude_args: '--allowed-tools "Bash,Edit,Read,Write"'
-
-      - name: Check LGTM status
-        id: lgtm-status
-        if: steps.pr-ref.outputs.ref != ''
+      - name: Acknowledge
+        if: github.event_name == 'issue_comment' && steps.lgtm-check.outputs.proceed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
-
-          # Only proceed if Claude's last comment signals LGTM
-          LAST_COMMENT=$(gh pr view "$PR_NUM" --json comments --jq '.comments[-1].body')
-          if echo "$LAST_COMMENT" | grep -q "LGTM:"; then
-            echo "Claude confirmed LGTM"
-            echo "lgtm=true" >> $GITHUB_OUTPUT
-          else
-            echo "Claude did not confirm LGTM - skipping approval"
-            echo "Last comment excerpt: $(echo "$LAST_COMMENT" | head -1)"
-            echo "lgtm=false" >> $GITHUB_OUTPUT
-          fi
+          gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
+            -f content=rocket
 
       - name: Dismiss claude[bot] change requests
-        if: steps.pr-ref.outputs.ref != '' && steps.lgtm-status.outputs.lgtm == 'true'
+        if: steps.pr-ref.outputs.pr_number != ''
         env:
           GH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
           PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
 
-          # Find and dismiss any CHANGES_REQUESTED reviews from claude[bot]
-          # This unblocks GitHub auto-merge which may be waiting on unresolved reviews
           REVIEW_IDS=$(gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews \
             --jq '[.[] | select(.user.login == "claude[bot]" and .state == "CHANGES_REQUESTED")] | .[].id')
 
           if [ -n "$REVIEW_IDS" ]; then
             for REVIEW_ID in $REVIEW_IDS; do
-              echo "Dismissing review $REVIEW_ID from claude[bot]"
+              echo "Dismissing review $REVIEW_ID"
               gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews/${REVIEW_ID}/dismissals \
-                -X PUT -f message="Superseded: All review comments addressed and LGTM confirmed."
+                -X PUT -f message="Superseded: Human approved, merge-prep addressed all comments."
             done
-          else
-            echo "No CHANGES_REQUESTED reviews from claude[bot] to dismiss"
           fi
 
-      - name: Approve PR
-        if: steps.pr-ref.outputs.ref != '' && steps.lgtm-status.outputs.lgtm == 'true'
+      - name: Approve PR (Approval #2)
+        if: steps.pr-ref.outputs.pr_number != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
-          echo "Approving PR #$PR_NUM"
-          gh pr review "$PR_NUM" --approve
+          echo "Approving PR #$PR_NUM (Approval #2 — human-triggered)"
+          gh pr review "$PR_NUM" --approve --body "Human approved. Merge-prep has addressed all review comments."
 
       - name: Add to merge queue
-        if: steps.pr-ref.outputs.ref != '' && steps.lgtm-status.outputs.lgtm == 'true'
+        if: steps.pr-ref.outputs.pr_number != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
 
-          # Add to merge queue (preferred path when merge queue is enabled).
           if gh pr merge "$PR_NUM" --merge-queue --repo "${{ github.repository }}" 2>/dev/null; then
             echo "PR #$PR_NUM added to merge queue"
           else
-            echo "Merge queue not available - falling back to auto-merge (direct rebase on check pass)"
+            echo "Merge queue not available — falling back to auto-merge"
             gh pr merge "$PR_NUM" --auto --rebase --repo "${{ github.repository }}" || {
-              echo "Direct merge also failed - PR may require additional approvals or checks"
+              echo "Merge failed — may need additional checks"
               exit 1
             }
           fi

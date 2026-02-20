@@ -1,0 +1,24 @@
+# Custodiet reviews new issue proposals for quality.
+# Assesses user story, acceptance criteria, and scope clarity.
+# Skips: bot-created issues, epics.
+
+name: "Issue Review: Custodiet"
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  review:
+    name: Custodiet
+    if: >-
+      !github.event.issue.pull_request &&
+      github.actor != 'dependabot[bot]' &&
+      github.actor != 'claude[bot]' &&
+      github.actor != 'github-actions[bot]' &&
+      !contains(github.event.issue.labels.*.name, 'epic')
+    uses: ./.github/workflows/agent-custodiet.yml
+    with:
+      target_type: issue
+      target_number: ${{ github.event.issue.number }}
+    secrets: inherit

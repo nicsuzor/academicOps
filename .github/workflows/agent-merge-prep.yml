@@ -1,0 +1,123 @@
+# Agent: Merge Prep
+# Personality: Diligent and thorough. The janitor. Fixes what the reviewers found.
+# Responsibilities:
+#   - Read all review comments from pipeline agents and external bots
+#   - Triage: fix genuine bugs, respond to false positives, defer scope creep
+#   - Push fixes so the pipeline re-runs with clean code
+#   - Post a triage summary comment
+# Authority: Can EDIT code, push commits, post comments
+# Prompt: .github/agents/merge-prep.md
+
+name: "Agent: Merge Prep"
+
+on:
+  workflow_call:
+    inputs:
+      pr_number:
+        description: 'PR number to prepare'
+        type: string
+        required: true
+      ref:
+        description: 'Git ref to checkout'
+        type: string
+        required: true
+
+jobs:
+  fix:
+    name: Merge Prep
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+      issues: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref }}
+
+      - name: Check if last push was from merge-prep
+        id: loop-check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Prevent infinite loop: if the last commit was pushed by merge-prep,
+          # skip this run. The agents should have re-reviewed the fixed code.
+          LAST_AUTHOR=$(git log -1 --format='%an')
+          if [ "$LAST_AUTHOR" = "github-actions[bot]" ]; then
+            echo "Last commit was from merge-prep — skipping to avoid loop"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check for outstanding review comments
+        id: review-check
+        if: steps.loop-check.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUM="${{ inputs.pr_number }}"
+
+          # Check if any agent requested changes
+          CHANGES_REQUESTED=$(gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews \
+            --jq '[.[] | select(.state == "CHANGES_REQUESTED")] | length')
+
+          # Check for unresolved review comments
+          COMMENTS=$(gh api repos/${{ github.repository }}/pulls/${PR_NUM}/comments \
+            --jq 'length')
+
+          echo "Changes requested: $CHANGES_REQUESTED"
+          echo "Review comments: $COMMENTS"
+
+          if [ "$CHANGES_REQUESTED" -gt 0 ] || [ "$COMMENTS" -gt 0 ]; then
+            echo "has_feedback=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_feedback=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Read agent instructions
+        if: steps.loop-check.outputs.skip != 'true' && steps.review-check.outputs.has_feedback == 'true'
+        id: prompt
+        run: |
+          PROMPT=$(cat .github/agents/merge-prep.md)
+          {
+            echo "prompt<<AGENT_EOF"
+            echo "$PROMPT"
+            echo "AGENT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run Merge Prep
+        if: steps.loop-check.outputs.skip != 'true' && steps.review-check.outputs.has_feedback == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          allowed_bots: "claude[bot]"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            ${{ steps.prompt.outputs.prompt }}
+
+            ---
+
+            Prepare PR #${{ inputs.pr_number }} in repository ${{ github.repository }}.
+            Use `gh pr view ${{ inputs.pr_number }}`, `gh pr diff ${{ inputs.pr_number }}`,
+            and `gh api repos/${{ github.repository }}/pulls/${{ inputs.pr_number }}/reviews`
+            to gather all review feedback.
+
+            Fix what you can, respond to false positives, and post your triage summary.
+
+          claude_args: '--allowed-tools "Bash,Edit,Read,Write"'
+
+      - name: Post no-action summary
+        if: steps.loop-check.outputs.skip != 'true' && steps.review-check.outputs.has_feedback == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment "${{ inputs.pr_number }}" --repo "${{ github.repository }}" --body "$(cat <<'EOF'
+          ## Merge Prep: No Review Comments
+
+          All review agents approved. No comments to address.
+          Ready for human review.
+          EOF
+          )"

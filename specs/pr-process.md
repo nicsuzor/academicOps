@@ -7,11 +7,13 @@ How pull requests move from open to merged (or rejected) in the aops repository.
 | Workflow         | File                        | Trigger                                        | Purpose                                      |
 | ---------------- | --------------------------- | ---------------------------------------------- | -------------------------------------------- |
 | Code Quality     | `code-quality.yml`          | `push` (main), `pull_request` (opened, synchronize, assigned) | Lint + gatekeeper (parallel), then type-check |
-| PR Review        | `pr-review-pipeline.yml`    | `pull_request` (opened, synchronize, reopened) | 3 review agents in parallel: strategic, custodiet, QA |
-| Issue Review     | `async-qa-review.yml`       | `issues` (opened)                              | Proposal quality: custodiet + hydrator in parallel |
-| Merge Agent      | `pr-lgtm-merge.yml`         | `pull_request_review`, `issue_comment`, `workflow_dispatch` | Human-triggered merge: triage comments, rebase, add to queue |
+| PR Review        | `pr-review-pipeline.yml`    | `workflow_run` (Code Quality completed)        | Sequential: custodiet → QA → merge-prep → notify |
+| Merge            | `pr-lgtm-merge.yml`         | `pull_request_review`, `issue_comment`, `workflow_dispatch` | Human-triggered: approve + merge |
+| Pytest           | `pytest.yml`                | `push` (main), `pull_request`, `workflow_dispatch` | Fast unit tests (slow/integration excluded) |
 | Claude           | `claude.yml`                | `@claude` in comments                          | On-demand Claude interaction                 |
-| Polecat          | `polecat-issue-trigger.yml` | `issue_comment`, `pull_request_review_comment`, `workflow_dispatch` | `@polecat` on-demand agent |
+| Polecat          | `polecat-issue-trigger.yml` | `@polecat` in comments, `workflow_dispatch`    | On-demand agent work |
+| Issue: Custodiet | `issue-review-custodiet.yml`| `issues` (opened)                              | Proposal quality review |
+| Issue: Hydrator  | `issue-review-hydrator.yml` | `issues` (opened)                              | Infrastructure context for proposals |
 
 ### Reusable agent workflows
 
@@ -19,97 +21,81 @@ Each agent is a first-class entity with its own `workflow_call` file, personalit
 
 | Agent | File | Personality | Authority |
 |-------|------|-------------|-----------|
-| Gatekeeper | `agent-gatekeeper.yml` | Authoritative guardian. Defaults to approval. | APPROVE, REQUEST CHANGES |
-| Strategic Review | `agent-strategic-review.yml` | Thoughtful, big-picture. Evaluates design direction. | APPROVE, REQUEST CHANGES |
+| Gatekeeper | `agent-gatekeeper.yml` | Authoritative guardian. Defaults to approval. Gates everything. | APPROVE, REQUEST CHANGES (fails job on rejection) |
 | Custodiet | `agent-custodiet.yml` | Vigilant, precise. Rules enforcer. | PRs: APPROVE/REQUEST CHANGES. Issues: COMMENT only |
 | QA | `agent-qa.yml` | Methodical, evidence-based. Verifies claims. | APPROVE, REQUEST CHANGES |
+| Merge Prep | `agent-merge-prep.yml` | Diligent, thorough. The janitor. Fixes what reviewers found. | EDIT code, push commits, post comments |
 | Hydrator | `agent-hydrator.yml` | Helpful, contextual. Surfaces infrastructure knowledge. | COMMENT only (advisory) |
 
 Agent prompts live in `.github/agents/<name>.md`. Each reusable workflow reads its own prompt file.
 
-Merge is handled by GitHub's auto-merge feature. The ruleset requires **1 approval** from the gatekeeper bot (`claude[bot]`, automated) plus the "Lint" status check. The LGTM merge agent (`github-actions[bot]`) provides a second approval triggered by human approval, and GitHub merges automatically once both approvals and status checks are satisfied.
+## How it works
+
+The pipeline is designed so that **by the time the human looks at a PR, everything should be clean**. The human's approval is the last step — it triggers an immediate merge.
+
+```
+code-quality.yml:        [lint ─── gatekeeper] (parallel)
+                              ↓
+                          type-check
+                              ↓ (workflow_run: all pass, gatekeeper approved)
+pr-review-pipeline.yml:  custodiet → qa → merge-prep → notify-ready
+
+pr-lgtm-merge.yml:       human approves → approve (Approval #2) → merge
+```
+
+If gatekeeper rejects, its job fails → Code Quality fails → the review pipeline never starts.
+
+If custodiet or QA request changes, merge-prep auto-fixes them and pushes. The push re-triggers the pipeline. Eventually all agents approve, merge-prep posts "Ready for human review", and the human sees a clean PR.
+
+## Approval architecture
+
+The ruleset requires **2 approving reviews** before merge:
+
+| Approval | Actor | When | How |
+|----------|-------|------|-----|
+| #1 Gatekeeper | `claude[bot]` | Automated, parallel with lint | `gh pr review --approve` in gatekeeper agent |
+| #2 Human merge | `github-actions[bot]` | After human triggers merge via approval/LGTM | `gh pr review --approve` via GITHUB_TOKEN |
+
+The human reviewer's approval or LGTM comment triggers the merge workflow, which lodges Approval #2 and adds the PR to the merge queue. The human only acts once.
 
 ## Flowchart
 
 ```mermaid
 flowchart TD
-    PR["PR opened / updated<br/><i>push to branch targeting main</i>"]
+    PR["PR opened / updated"]
 
-    %% ── code-quality.yml: Lint + Gatekeeper in parallel, then Type Check ──
-    PR --> Lint["<b>1a. Code Quality</b><br/>Ruff lint + format"]
-    PR --> Gatekeeper["<b>1b. Gatekeeper</b><br/>Alignment vs VISION.md<br/>Code quality + fit<br/><i>🔑 Approval #1 (claude[bot])</i>"]
+    %% ── Code Quality ──
+    PR --> Lint["<b>1a. Lint</b><br/>Ruff lint + format"]
+    PR --> GK["<b>1b. Gatekeeper</b><br/>Alignment, design, quality<br/><i>🔑 Approval #1</i>"]
 
-    Lint --> LintPass{Passed?}
-    LintPass -- No --> AutoFix["Autofix: ruff check --fix<br/>+ ruff format<br/><i>commit & push</i>"]
-    AutoFix --> AutoFixOk{Changes<br/>made?}
-    AutoFixOk -- Yes --> PR
-    AutoFixOk -- No --> FixLint["Author fixes lint errors"]
-    FixLint --> PR
-    LintPass -- Yes --> TypeCk
+    Lint --> LintOK{Pass?}
+    LintOK -- No --> AutoFix["Autofix + push"]
+    AutoFix --> PR
+    LintOK -- Yes --> TypeCk["<b>2. Type Check</b>"]
 
-    TypeCk["<b>2. Type Check</b><br/>BasedPyright"] --> TypePass{Passed?}
-    TypePass -- No --> FixType["Author fixes type errors"]
-    FixType --> PR
-
-    Gatekeeper --> GKPass{Verdict}
-    GKPass -- "Reject" --> EarlyReject["PR closed early<br/><i>with explanation</i>"]
-    GKPass -- "Request changes" --> FixGK["Author revises approach"]
+    GK --> GKV{Verdict}
+    GKV -- Reject --> Close["PR closed"]
+    GKV -- Changes --> FixGK["Author revises"]
     FixGK --> PR
 
-    %% ── pr-review-pipeline.yml: 3 agents run in PARALLEL ──
-    PR --> ReviewParallel["<b>3. PR Review Pipeline</b><br/><i>parallel agents</i>"]
+    %% ── Review Pipeline (only if Code Quality passes) ──
+    TypeCk --> AllPass
+    GKV -- Approved --> AllPass["All Code Quality passed"]
 
-    ReviewParallel --> Strategic["<b>3a. Strategic Review</b><br/>Design coherence<br/>Best practices"]
-    ReviewParallel --> Custodiet["<b>3b. Custodiet</b><br/>Scope compliance<br/>Principle violations"]
-    ReviewParallel --> QA["<b>3c. QA</b><br/>Acceptance criteria<br/>Test coverage"]
+    AllPass --> Cust["<b>3. Custodiet</b><br/>Scope, principles"]
+    Cust --> QA["<b>4. QA</b><br/>Criteria, tests"]
+    QA --> MP["<b>5. Merge Prep</b><br/>Fix review comments"]
 
-    Strategic --> StratPass{Verdict}
-    StratPass -- "Close: misaligned" --> EarlyReject
-    StratPass -- "Request changes" --> FixStrat["Author revises"]
-    FixStrat --> PR
+    MP --> MPPush{Pushed<br/>fixes?}
+    MPPush -- Yes --> PR
+    MPPush -- No --> Notify["<b>6. Ready for Review</b><br/><i>Your approval = merge</i>"]
 
-    Custodiet --> CustPass{Verdict}
-    CustPass -- "Request changes" --> FixScope["Author fixes scope"]
-    FixScope --> PR
-
-    QA --> QAPass{Verdict}
-    QAPass -- "Request changes" --> FixQA["Author fixes QA"]
-    FixQA --> PR
-
-    %% ── Ready for Review ──
-    StratPass -- Approved --> Notify
-    CustPass -- Approved --> Notify
-    QAPass -- Approved --> Notify
-    GKPass -- Approved --> Notify
-    TypePass -- Yes --> Notify
-
-    Notify["<b>4. Ready for Review</b><br/>Summary comment"]
-
-    Notify --> HumanReview["<b>Human review</b><br/>Owner reviews changes,<br/>agent comments, CI status"]
-
-    HumanReview --> Decision{Human<br/>decision}
-    Decision -- "Request changes" --> AuthorFix["Author addresses feedback"]
+    Notify --> Human["<b>Human review</b>"]
+    Human --> HV{Decision}
+    HV -- Changes --> AuthorFix["Author fixes"]
     AuthorFix --> PR
-    Decision -- "Close" --> Rejected["PR closed / rejected"]
-    Decision -- "Approve / LGTM /<br/>merge / ship it" --> MergeAgent
-
-    %% ── Merge Preparation ──
-    MergeAgent["<b>5. Merge Agent</b><br/>claude-lgtm-merge"]
-
-    MergeAgent --> AggComments["Aggregate + triage<br/>all review comments<br/><i>(bot + human)</i>"]
-    AggComments --> FixAll["Fix genuine issues,<br/>respond to false positives"]
-    FixAll --> Rebase["Rebase on main"]
-    Rebase --> RunTests["Run tests,<br/>fix lint / CI errors"]
-    RunTests --> TestPass{CI<br/>passing?}
-    TestPass -- No --> FixCI["Fix issues,<br/>commit + push"]
-    FixCI --> RunTests
-    TestPass -- Yes --> Verdict{Claude<br/>verdict}
-    Verdict -- "LGTM:" --> AutoApprove["Workflow approves PR<br/><i>🔑 Approval #2 (github-actions[bot])</i><br/>+ enables auto-merge"]
-    Verdict -- "Request changes" --> BackToAuthor["Back to human review"]
-    BackToAuthor --> HumanReview
-    Verdict -- "Close" --> Rejected
-
-    AutoApprove --> Merged["Auto-merged by GitHub<br/><i>(2/2 approvals met)</i>"]
+    HV -- Close --> Close
+    HV -- "LGTM" --> Merge["<b>7. Merge</b><br/><i>🔑 Approval #2</i><br/>→ merge queue"]
 
     %% ── Styling ──
     classDef gate fill:#e8f4fd,stroke:#2196f3
@@ -120,171 +106,113 @@ flowchart TD
     classDef success fill:#e8f5e9,stroke:#4caf50,stroke-width:2px
 
     class Lint,TypeCk gate
-    class Custodiet,QA,MergeAgent,Strategic agent
-    class Gatekeeper gatekeeper
-    class HumanReview,Decision human
-    class Rejected,EarlyReject,FixLint,FixType,FixGK,FixStrat,FixScope,FixQA,AuthorFix fail
-    class Merged,AutoApprove success
+    class Cust,QA,MP agent
+    class GK gatekeeper
+    class Human human
+    class Close,FixGK,AuthorFix fail
+    class Merge success
 ```
-
-## Pipeline design
-
-The PR lifecycle runs across **four workflows**:
-
-1. **Code Quality** (`code-quality.yml`): Lint, gatekeeper, and type-check. Lint and gatekeeper run in parallel; type-check runs after lint passes. The gatekeeper is the first substantive LLM review and runs early so that misaligned PRs get feedback immediately.
-2. **PR Review** (`pr-review-pipeline.yml`): Three review agents (strategic-review, custodiet, QA) run **in parallel**. Triggers directly on `pull_request` events — no `workflow_run` chaining. Each agent is independent: they read the PR, post their review, and finish. Reviews are advisory.
-3. **Pytest** (`pytest.yml`): Runs automated tests on push/PR.
-4. **Merge Agent** (`pr-lgtm-merge.yml`): Triggered by human approval signals only. Kept separate from the review pipeline so the two workflows' check entries don't cross-contaminate.
-
-```
-code-quality.yml:        [lint, gatekeeper]  ← parallel
-                              ↓
-                          type-check          ← needs: lint
-
-pr-review-pipeline.yml:  [strategic-review, custodiet, qa]  ← parallel
-                              ↓
-                          notify-ready        ← needs: all three
-
-pr-lgtm-merge.yml:       claude-lgtm-merge   ← triggered by human approval
-```
-
-The review pipeline and code quality run concurrently on the same `pull_request` event. All review agents are advisory — only "Lint" is a required status check. Merge requires the Lint check plus 1 approval (gatekeeper).
-
-### Agent architecture
-
-Agents are defined as **reusable `workflow_call` workflows** in `.github/workflows/agent-*.yml`. Each agent:
-
-1. **Reads its own prompt** from `.github/agents/<name>.md`
-2. **Defines its own permissions**, concurrency, and tool access
-3. **Has defined authority** (approve, request changes, or comment-only)
-4. **Can be called from any orchestrator** — assign agents to pipelines flexibly
-
-This separation means adding a new agent to the pipeline requires only adding a `uses:` line in the orchestrator, not duplicating boilerplate.
-
-## Approval architecture
-
-The ruleset requires **2 approving reviews** before merge:
-
-| Approval | Actor | When | How |
-|----------|-------|------|-----|
-| #1 Gatekeeper | `claude[bot]` | Automated, parallel with lint (in code-quality.yml) | `gh pr review --approve` inside claude-code-action |
-| #2 LGTM merge | `github-actions[bot]` | After human triggers merge via approval/LGTM comment | `gh pr review --approve` via GITHUB_TOKEN |
-
-The human reviewer's LGTM comment or formal approval **triggers** the merge agent, which addresses review comments and then lodges the second approval. The human only acts once.
 
 ## Stage-by-stage walkthrough
 
-### 1. Code Quality: lint
+### 1a. Lint
 
-**Job**: `lint`
-**Depends on**: Any `pull_request` event (opened, synchronize, assigned)
-**Blocking**: Yes (required status check)
+**Workflow**: `code-quality.yml` | **Blocking**: Yes (required status check)
 
-Runs `ruff check` and `ruff format --check`. If either fails, the job attempts **autofix**: it runs `ruff check --fix` and `ruff format`, then commits and pushes the fixes back to the PR branch. The push triggers a new `synchronize` event, which re-runs the pipeline with the fixed code.
+Runs `ruff check` and `ruff format --check`. Auto-fixes and pushes corrections on failure.
 
-### 2. Code Quality: type check
+### 1b. Gatekeeper
 
-**Job**: `type-check`
-**Depends on**: `lint`
-**Blocking**: Yes
+**Workflow**: `code-quality.yml` → `agent-gatekeeper.yml` | **Blocking**: Yes (Approval #1, gates pipeline)
 
-Runs `basedpyright` in basic mode. Fails if type errors are found.
+Runs in parallel with lint. Evaluates alignment with `VISION.md` and `AXIOMS.md`, design coherence, proportionality, and code quality. On approval, lodges formal GitHub review. On rejection, the job fails — blocking the entire downstream review pipeline.
 
-### 3. Gatekeeper (alignment + quality gate)
+### 2. Type Check
 
-**Job**: `gatekeeper` (reusable: `agent-gatekeeper.yml`)
-**Depends on**: None -- runs in parallel with lint
-**Blocking**: Yes -- can reject PRs, lodges approval #1
+**Workflow**: `code-quality.yml` | **Blocking**: Yes
 
-The first substantive review. Evaluates whether the PR belongs in the project at all, checking against `docs/VISION.md` and `aops-core/AXIOMS.md`. Because the gatekeeper runs before lint completes, the code may not yet be syntactically valid — the gatekeeper focuses on alignment and fit, not syntax.
+Runs `basedpyright` after lint passes.
 
-Agent instructions: `.github/agents/gatekeeper.md`
+### 3. Custodiet
 
-### 4. PR Review: strategic-review, custodiet, QA (parallel)
+**Workflow**: `pr-review-pipeline.yml` → `agent-custodiet.yml` | **Blocking**: Advisory (may request changes)
 
-**Jobs**: `strategic-review`, `custodiet`, `qa` (reusable: `agent-strategic-review.yml`, `agent-custodiet.yml`, `agent-qa.yml`)
-**Depends on**: None -- all three run in parallel, triggered directly by `pull_request`
-**Blocking**: Advisory -- may request changes but not required status checks
+Only runs after ALL Code Quality jobs pass (gatekeeper approved). Compares actual changes against stated scope, checks framework principles (P#87, P#65, P#25, P#5, P#31, etc.), flags unauthorized modifications.
 
-Three independent review agents run concurrently:
+### 4. QA
 
-- **Strategic Review**: Design coherence, framework alignment, best practices. Can approve or close.
-- **Custodiet**: Scope compliance, unauthorized modifications, principle violations. Can approve or request changes.
-- **QA**: Acceptance criteria, test coverage, regressions. Can approve or request changes.
+**Workflow**: `pr-review-pipeline.yml` → `agent-qa.yml` | **Blocking**: Advisory (may request changes)
 
-When all three complete, a **Ready for Review** notification posts a summary comment.
+Runs after custodiet. Verifies acceptance criteria, checks CI and test coverage, scans for regressions.
 
-Agent instructions: `.github/agents/strategic-review.md`, `.github/agents/custodiet.md`, `.github/agents/qa.md`
+### 5. Merge Prep
 
-### 5. Human review
+**Workflow**: `pr-review-pipeline.yml` → `agent-merge-prep.yml` | **Blocking**: May push fixes
 
-The human reviewer evaluates the summary comment, code changes, and agent reviews. Three outcomes:
+Runs after QA. Reads all review comments from custodiet, QA, and external bots. Triages into: genuine bugs (fix), valid improvements (fix), false positives (respond), scope creep (defer). Pushes fixes if needed — this re-triggers the pipeline for a clean pass.
 
-- **Request changes** -- author iterates, PR re-enters the pipeline
-- **Close** -- PR is rejected
-- **Approve / LGTM** -- triggers the merge agent
+Has a **loop guard**: skips if the last commit was from itself (prevents infinite re-runs).
 
-### 6. Merge Agent
+### 6. Notify Ready
 
-**Job**: `claude-lgtm-merge`
-**Trigger**: Human approval (formal review), LGTM-pattern comment from owner, or workflow dispatch
-**Blocking**: Yes -- controls approval #2
+Posts a summary comment: "Pipeline Complete — Ready for Human Review. Your approval is the last step needed to merge."
 
-The merge agent prepares the PR for merge in one pass: aggregate review comments, triage bot comments, fix genuine issues, rebase on main, run tests, and post a final verdict. On LGTM, the workflow lodges approval #2 and enables auto-merge.
+### 7. Human Approval → Merge
 
-The merge agent has unrestricted Bash access (scoped to the PR branch).
+**Workflow**: `pr-lgtm-merge.yml`
 
-## Issue review pipeline
+The human reviews the clean PR. Their approval or LGTM comment triggers the merge workflow, which:
+1. Dismisses any outstanding `claude[bot]` change requests
+2. Lodges Approval #2 (`github-actions[bot]`)
+3. Adds the PR to the merge queue
 
-New issues (proposals) are reviewed by two agents in parallel:
+## Issue review
 
-| Agent | Role | Authority |
-|-------|------|-----------|
-| Custodiet | User story quality, acceptance criteria, scope clarity | COMMENT (silence = approval) |
-| Hydrator | Infrastructure context, existing code, downstream impacts | COMMENT (silence = no useful context) |
+Each agent has its own trigger workflow for issues:
 
-Skips: bot-created issues, issues labeled `epic`.
+| Workflow | Agent | What it does |
+|----------|-------|-------------|
+| `issue-review-custodiet.yml` | Custodiet | Assesses user story quality, acceptance criteria, scope clarity |
+| `issue-review-hydrator.yml` | Hydrator | Surfaces existing infrastructure, inconsistencies, downstream impacts |
 
-Workflow: `async-qa-review.yml` (triggers on `issues: [opened]` only — no PR triggers).
+Both trigger independently on `issues: [opened]`. Skips: bot-created issues, epics. Silence means the proposal is fine.
 
 ## Trigger reference
 
-### Merge agent triggers
+### Merge triggers
 
 | Event | Filter | Why |
 |-------|--------|-----|
 | `pull_request_review: [submitted]` | Human only (`user.type != 'Bot'`), state = `approved` | Formal human approval |
-| `issue_comment: [created]` | `nicsuzor` only, on PRs | LGTM-pattern comments |
+| `issue_comment: [created]` | `nicsuzor` only, on PRs, LGTM pattern | Owner's merge signal |
 | `workflow_dispatch` | Manual | Explicit trigger for specific PRs |
 
-LGTM patterns (case-insensitive, from repo owner only):
-
+LGTM patterns (case-insensitive):
 ```
 lgtm | merge | rebase | ship it | @claude merge
 ```
 
 ### On-demand agents
 
-| Mention   | Workflow     | Permissions  | Use case                              |
-| --------- | ------------ | ------------ | ------------------------------------- |
-| `@claude` | `claude.yml` | read + write | Questions, debugging, analysis, fixes |
-| `@polecat` | `polecat-issue-trigger.yml` | read | Task processing, guided work |
+| Mention   | Workflow     | Use case                              |
+| --------- | ------------ | ------------------------------------- |
+| `@claude` | `claude.yml` | Questions, debugging, analysis, fixes |
+| `@polecat` | `polecat-issue-trigger.yml` | Task processing, guided work |
 
 ## Concurrency controls
 
-| Scope           | Group key                    | Cancel in-progress?              |
-| --------------- | ---------------------------- | -------------------------------- |
-| Lint            | `code-quality-{pr_number}`   | Yes (new push cancels stale run) |
-| Gatekeeper      | `gatekeeper-{pr_number}`     | Yes (new push cancels stale run) |
-| Merge agent     | `pr-merge-{pr_number}`       | No (merge runs to completion)    |
+| Scope           | Group key                    | Cancel in-progress? |
+| --------------- | ---------------------------- | ------------------- |
+| Lint            | `code-quality-{pr_number}`   | Yes |
+| Gatekeeper      | `gatekeeper-{pr_number}`     | Yes |
+| Merge           | `pr-merge-{pr_number}`       | No |
 
 ## Configuration
 
-To modify this process:
-
-- **Add/remove lint rules**: Edit `pyproject.toml` under `[tool.ruff.lint]`
-- **Change type checking strictness**: Edit `pyproject.toml` under `[tool.basedpyright]`
-- **Add a new review agent**: Create `agent-<name>.yml` (workflow_call) + `.github/agents/<name>.md` (prompt), then add a `uses:` line to the appropriate orchestrator
+- **Add a new review agent**: Create `agent-<name>.yml` + `.github/agents/<name>.md`, add `uses:` line to orchestrator
+- **Add agent to issue review**: Create `issue-review-<name>.yml` trigger file
 - **Change agent behavior**: Edit `.github/agents/<name>.md`
-- **Change merge trigger patterns**: Edit the LGTM grep pattern in `pr-lgtm-merge.yml`
-- **Pre-commit hooks** (local): Edit `.pre-commit-config.yaml`
+- **Change merge trigger patterns**: Edit LGTM grep in `pr-lgtm-merge.yml`
+- **Lint rules**: `pyproject.toml` under `[tool.ruff.lint]`
+- **Type checking**: `pyproject.toml` under `[tool.basedpyright]`
+- **Test markers**: `@pytest.mark.slow` (skipped in CI), `@pytest.mark.integration`
