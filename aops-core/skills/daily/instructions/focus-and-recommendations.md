@@ -39,6 +39,21 @@ for task in actionable_tasks:
 **Wrong**: `P0 9/779` (numerator filtered, denominator unfiltered)
 **Right**: `P0 9/333` (both filtered consistently)
 
+### 3.1.3: Load Strategy Document
+
+Read the strategy document to inform DEEP and priority recommendations:
+
+```bash
+Read $ACA_DATA/context/strategy.md
+```
+
+Extract from the strategy document:
+- **Active strategic priorities** (projects/goals marked as current focus)
+- **Temporal windows** (deadlines, funding rounds, semester boundaries)
+- **Neglected priorities** (strategic goals with no recent task activity)
+
+Use this context in section 3.3 when selecting DEEP recommendations — tasks that advance stated strategic priorities should be preferred over tasks that merely seem important in isolation.
+
 ### 3.1.5: Generate Task Tree
 
 After loading task data, generate the ASCII task tree for the `## Task Tree` section:
@@ -98,7 +113,7 @@ decisions = [
     if t.type not in EXCLUDED_TYPES
 ]
 
-# Get topology for blocking counts
+# Get topology for blocking counts, downstream_weight, and stakeholder_exposure
 topology = mcp__plugin_aops-core_task_manager__get_tasks_with_topology()
 
 # Count high-priority decisions (blocking 2+ tasks)
@@ -111,6 +126,23 @@ decision_count = len(decisions)
 ```
 
 This count appears in the Focus section summary.
+
+### 3.1.8: Identify Newly-Unblocked Tasks (MOMENTUM)
+
+Cross-reference today's ready tasks against recently-completed dependencies to find MOMENTUM candidates:
+
+```python
+# Tasks currently active that have depends_on entries where ALL dependencies are now done
+# These are tasks that recently became actionable because their blockers were resolved
+momentum_candidates = [
+    t for t in tasks
+    if t["status"] == "active"
+    and t.get("depends_on")  # had dependencies
+    # Check topology: blocked_by_count == 0 means all deps resolved
+]
+```
+
+Sort by `downstream_weight` DESC — newly-unblocked tasks with high downstream impact should surface first.
 
 ### 3.2: Build Focus Section
 
@@ -135,10 +167,11 @@ P3 ██░░░░░░░░ 15/85
 🚨 **DEADLINE TODAY**: [ns-xyz] [[ARC FT26 Reviews]] - Due 23:59 AEDT (8 reviews)
 **SHOULD**: [ns-abc] [[OSB PAO 2025E Review]] - 3 days overdue
 **SHOULD**: [ns-def] [[ADMS Clever Reporting]] - 16 days overdue
-**DEEP**: [ns-ghi] [[Write TJA paper]] - Advances ARC Future Fellowship research goals
+**DEEP**: [ns-ghi] [[Write TJA paper]] - Advances ARC Future Fellowship research goals (strategy: Research Impact)
+**MOMENTUM**: [ns-stu] [[Pipeline batch support]] - Unblocked by schema fix (dw: 6.0)
 **ENJOY**: [ns-jkl] [[Internet Histories article]] - [[Jeff Lazarus]] invitation on Santa Clara Principles
 **QUICK**: [ns-mno] [[ARC COI declaration]] - Simple form completion
-**UNBLOCK**: [ns-pqr] Framework CI - Address ongoing GitHub Actions failures
+**UNBLOCK**: [ns-pqr] Framework CI - Address ongoing GitHub Actions failures (dw: 7.25)
 
 *Suggested sequence*: Tackle overdue items first (OSB PAO highest priority given 3-day delay, then ADMS Clever).
 
@@ -165,8 +198,10 @@ Select ~10 recommendations using judgment (approx 2 per category):
 
 **DEEP (long-term goal advancement)**:
 
-- Tasks linked to strategic objectives or major project milestones
+- Cross-reference tasks against the strategy document (loaded in 3.1.3)
+- Prefer tasks that advance *stated strategic priorities* over tasks that merely seem important
 - Look for: research, design, architecture, foundational work
+- Check `downstream_weight` from topology data — high-weight tasks have outsized graph impact
 - Prefer tasks that advance bigger goals, not just maintain status quo
 - Avoid immediate deadlines (prefer >7 days out or no deadline)
 
@@ -182,9 +217,18 @@ Select ~10 recommendations using judgment (approx 2 per category):
 - Title signals: approve, send, confirm, respond, check
 - Aim for <15 min
 
+**MOMENTUM (newly-unblocked opportunities)**:
+
+- Tasks that recently transitioned from blocked → active (dependencies just completed)
+- Check topology data: tasks with `blocked_by_count == 0` but that previously had dependencies
+- These represent fresh opportunities where prerequisite work just finished
+- Format: `**MOMENTUM**: [id] [[Title]] - Unblocked by [completed-dep-title]`
+- High energy signal: completing these validates the dependency chain and may unblock further work
+
 **UNBLOCK (remove impediments)**:
 
 - Tasks that unblock other work or team members
+- Prefer tasks with high `downstream_weight` — these have the largest cascading impact
 - Infrastructure/tooling improvements, blocked issues
 - Technical debt slowing down current work
 
