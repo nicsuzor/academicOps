@@ -18,6 +18,8 @@ academicOps applies the structural logic of constitutional and administrative la
 
 - **Ultra vires detection runs continuously.** A *custodiet* agent periodically audits the main agent's behaviour against the authority it was granted, checking for scope drift, principle violations, and unauthorised action. This is not a post-hoc review; it is a live jurisdictional check that can halt execution mid-session.
 
+- **Governance, not computer science.** The dominant approach to AI safety focuses on making individual agents better: more aligned, more predictable, more constrained at the model level. We take a different bet. These are universal governance problems that persist no matter how good individual agents get, because the challenge is structural, not behavioural. So we go all in on the agentic metaphor and adopt the patterns that actually work for governing systems of autonomous individuals: distributed administrative review, drawn from everything we have learned about commons-based peer production in free/open source software and other knowledge commons. The enforcement mechanism is not a local supervisor watching over one agent's shoulder; it is a system of distributed review where agents check each other's work through structured processes, the way open source maintainers govern contributions at scale.
+
 - **The constitutional metaphor is structural, not decorative.** Every operational rule must trace back to an axiom through explicit derivation. Rules that cannot be derived are invalid. This is the mechanism that prevents governance bloat: you cannot add arbitrary constraints, only constraints that follow from the constitution of the system.
 
 ## The core loop
