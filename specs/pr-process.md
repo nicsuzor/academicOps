@@ -187,7 +187,7 @@ Both trigger independently on `issues: [opened]`. Skips: bot-created issues, epi
 | `issue_comment: [created]` | `nicsuzor` only, on PRs, LGTM pattern | Owner's merge signal |
 | `workflow_dispatch` | Manual | Explicit trigger for specific PRs |
 
-LGTM patterns (case-insensitive):
+LGTM patterns (case-insensitive, must appear at the **start** of the comment):
 ```
 lgtm | merge | rebase | ship it | @claude merge
 ```
@@ -205,6 +205,8 @@ lgtm | merge | rebase | ship it | @claude merge
 | --------------- | ---------------------------- | ------------------- |
 | Lint            | `code-quality-{pr_number}`   | Yes |
 | Gatekeeper      | `gatekeeper-{pr_number}`     | Yes |
+| PR Review       | `pr-review-{pr_number}`      | Yes |
+| Merge Prep      | `pr-review-{pr_number}` (inherits PR Review group) | Yes |
 | Merge           | `pr-merge-{pr_number}`       | No |
 
 ## Configuration
