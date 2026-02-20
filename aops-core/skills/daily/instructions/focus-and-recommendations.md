@@ -54,7 +54,7 @@ Extract from the strategy document:
 
 Use this context in section 3.3 when selecting DEEP recommendations — tasks that advance stated strategic priorities should be preferred over tasks that merely seem important in isolation.
 
-### 3.1.5: Generate Task Tree
+### 3.1.4: Generate Task Tree
 
 After loading task data, generate the ASCII task tree for the `## Task Tree` section:
 
