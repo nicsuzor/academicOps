@@ -62,7 +62,7 @@ class TestCompleteTaskPropagation:
         with patch.object(tasks_server, "_get_storage", return_value=storage):
             with patch.object(tasks_server, "_get_index", return_value=index):
                 # Complete A
-                result = tasks_server.complete_task.fn(task_a.id)
+                result = tasks_server.complete_task(task_a.id)
                 assert result["success"] is True
 
         # Check if B is now ACTIVE
@@ -94,7 +94,7 @@ class TestCompleteTaskPropagation:
         with patch.object(tasks_server, "_get_storage", return_value=storage):
             with patch.object(tasks_server, "_get_index", return_value=index):
                 # Complete A
-                result = tasks_server.complete_task.fn(task_a.id)
+                result = tasks_server.complete_task(task_a.id)
                 assert result["success"] is True
 
         # Check if C is still BLOCKED
@@ -106,7 +106,7 @@ class TestCompleteTaskPropagation:
             index.rebuild()
             with patch.object(tasks_server, "_get_index", return_value=index):
                 # Complete B
-                result = tasks_server.complete_task.fn(task_b.id)
+                result = tasks_server.complete_task(task_b.id)
                 assert result["success"] is True
 
         # Check if C is now ACTIVE
@@ -154,7 +154,7 @@ class TestCompleteTaskPropagation:
         with patch.object(tasks_server, "_get_storage", return_value=storage):
             with patch.object(tasks_server, "_get_index", return_value=index):
                 # Complete A
-                result = tasks_server.complete_task.fn(task_a.id)
+                result = tasks_server.complete_task(task_a.id)
                 assert result["success"] is True
 
         # C should now become ACTIVE.
@@ -184,7 +184,7 @@ class TestCompleteTaskPropagation:
         with patch.object(tasks_server, "_get_storage", return_value=storage):
             with patch.object(tasks_server, "_get_index", return_value=index):
                 # Complete A and B
-                result = tasks_server.complete_tasks.fn([task_a.id, task_b.id])
+                result = tasks_server.complete_tasks([task_a.id, task_b.id])
                 assert result["success"] is True
 
         # Check if C is now ACTIVE
@@ -214,7 +214,7 @@ class TestCompleteTaskPropagation:
         with patch.object(tasks_server, "_get_storage", return_value=storage):
             with patch.object(tasks_server, "_get_index", return_value=index):
                 # Update A to DONE via update_task
-                result = tasks_server.update_task.fn(task_a.id, status="done")
+                result = tasks_server.update_task(task_a.id, status="done")
                 assert result["success"] is True
 
         # Check if B is now ACTIVE
