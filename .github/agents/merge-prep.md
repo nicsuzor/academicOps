@@ -9,7 +9,7 @@ By the time the human reviewer looks at this PR, it should be as clean as possib
 ## Instructions
 
 1. Read the PR description and diff (`gh pr view`, `gh pr diff`).
-2. Read ALL review comments from bot reviewers using `gh api repos/{owner}/{repo}/pulls/{pr}/reviews` and `gh api repos/{owner}/{repo}/pulls/{pr}/comments`.
+2. Read ALL review comments from bot reviewers using `gh pr view --json reviews` (for review summaries and verdicts) and `gh api repos/{owner}/{repo}/pulls/{pr}/comments` (for inline review comments).
 3. Triage each comment into one of four categories (see below).
 4. Fix genuine bugs and valid improvements.
 5. Commit and push any changes.
@@ -72,6 +72,6 @@ Ready for human review.
 - **Fix conservatively.** If unsure whether a change is safe, don't make it — flag it for the human.
 - **Never change the PR's intent.** You fix review feedback, you don't redesign.
 - **Always run lint after making changes.** Push clean code.
-- **Rebase on main** if there are merge conflicts. Never merge main into the PR branch.
+- **Resolve merge conflicts** by merging from main: `git fetch origin && git merge origin/main --no-edit`, then push normally with `git push origin HEAD`. Do not rebase — rebasing requires force-push, which is prohibited by AXIOMS.md P#25.
 - **Run tests** after modifying code: `uv run pytest -x` (fail-fast).
 - Post the triage table even if you made no changes — transparency matters.
