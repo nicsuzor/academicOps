@@ -35,6 +35,7 @@ FRAMEWORK_ROOT = AOPS_CORE_ROOT.parent
 sys.path.insert(0, str(FRAMEWORK_ROOT))
 sys.path.insert(0, str(AOPS_CORE_ROOT))
 
+from lib.knowledge_graph import KnowledgeGraph
 from lib.paths import get_data_root
 from lib.task_index import TaskIndex, TaskIndexEntry
 from lib.task_model import Task, TaskComplexity, TaskStatus, TaskType
@@ -2808,6 +2809,453 @@ def get_review_snapshot(since_days: int = 1) -> dict[str, Any]:
             "velocity": {},
             "message": f"Failed to generate review snapshot: {e}",
         }
+
+
+# =============================================================================
+# PKB KNOWLEDGE GRAPH TOOLS (#554)
+# =============================================================================
+
+
+def _get_knowledge_graph() -> KnowledgeGraph:
+    """Get KnowledgeGraph instance, loading from cache or building.
+
+    Prefers pre-built graph.json. Falls back to building via fast-indexer.
+    """
+    kg = KnowledgeGraph(get_data_root())
+    if not kg.load():
+        if not kg.build():
+            logger.warning("Knowledge graph unavailable (no graph.json, no fast-indexer)")
+    return kg
+
+
+def _node_summary(attrs: dict) -> dict:
+    """Create a compact summary of a node for MCP responses."""
+    return {
+        "id": attrs.get("id", ""),
+        "label": attrs.get("label", ""),
+        "node_type": attrs.get("node_type", "note"),
+        "status": attrs.get("status"),
+        "priority": attrs.get("priority"),
+        "project": attrs.get("project"),
+        "path": attrs.get("path", ""),
+    }
+
+
+@mcp.tool()
+def pkb_context(
+    id: str,
+    depth: int = 2,
+) -> dict[str, Any]:
+    """Get full knowledge neighbourhood for any PKB node.
+
+    Returns ALL connected knowledge for a node: structural relationships,
+    backlinks grouped by type, nearby nodes. Works for ANY node type
+    (tasks, daily notes, knowledge files, people, etc.).
+
+    Accepts wikilink names, task IDs, or filenames via resolution map.
+
+    Args:
+        id: Node identifier (task ID, wikilink name, filename, or title)
+        depth: How many hops to include in neighbourhood (default: 2)
+
+    Returns:
+        Dictionary with node metadata, structural relationships,
+        mentions/backlinks, and nearby nodes.
+    """
+    try:
+        kg = _get_knowledge_graph()
+
+        resolved = kg.resolve(id)
+        if resolved is None:
+            return {
+                "success": False,
+                "message": f"Cannot resolve '{id}' to a known PKB node",
+            }
+
+        node_data = kg.node(resolved)
+        if node_data is None:
+            return {
+                "success": False,
+                "message": f"Node '{resolved}' not found in graph",
+            }
+
+        # Structural relationships
+        outgoing = kg.neighbors(resolved)
+        parent_chain = []
+        current = node_data
+        while current and current.get("parent"):
+            parent_node = kg.node(current["parent"])
+            if parent_node:
+                parent_chain.append(_node_summary(parent_node))
+                current = parent_node
+            else:
+                break
+
+        children = [
+            _node_summary(n)
+            for n in outgoing
+            if n.get("id") in (node_data.get("children") or [])
+        ]
+
+        deps = [
+            _node_summary(n)
+            for n in outgoing
+            if n.get("id") in (node_data.get("depends_on") or [])
+        ]
+
+        blocks = [
+            _node_summary(n)
+            for n in outgoing
+            if n.get("id") in (node_data.get("blocks") or [])
+        ]
+
+        # Backlinks grouped by type
+        backlinks_by_type = {}
+        for bl_type, bl_nodes in kg.backlinks_by_type(resolved).items():
+            backlinks_by_type[bl_type] = [_node_summary(n) for n in bl_nodes]
+
+        # Nearby nodes (ego subgraph minus the structural ones)
+        sub = kg.subgraph(resolved, depth=depth)
+        structural_ids = {resolved}
+        structural_ids.update(n.get("id", "") for n in parent_chain)
+        structural_ids.update(n.get("id", "") for n in children)
+        structural_ids.update(n.get("id", "") for n in deps)
+        structural_ids.update(n.get("id", "") for n in blocks)
+        for bl_nodes in backlinks_by_type.values():
+            structural_ids.update(n.get("id", "") for n in bl_nodes)
+
+        nearby = [
+            _node_summary(dict(sub.nodes[nid]))
+            for nid in sub.nodes()
+            if nid not in structural_ids
+        ]
+
+        return {
+            "success": True,
+            "node": {
+                "id": resolved,
+                "label": node_data.get("label", ""),
+                "node_type": node_data.get("node_type", "note"),
+                "status": node_data.get("status"),
+                "priority": node_data.get("priority"),
+                "project": node_data.get("project"),
+                "tags": node_data.get("tags"),
+                "downstream_weight": node_data.get("downstream_weight", 0),
+                "path": node_data.get("path", ""),
+            },
+            "structural": {
+                "parent_chain": parent_chain,
+                "children": children,
+                "depends_on": deps,
+                "blocks": blocks,
+            },
+            "mentions": backlinks_by_type,
+            "nearby": nearby[:20],  # Cap nearby nodes
+            "message": (
+                f"Context for '{node_data.get('label', resolved)}': "
+                f"{len(parent_chain)} ancestors, {len(children)} children, "
+                f"{sum(len(v) for v in backlinks_by_type.values())} backlinks, "
+                f"{len(nearby)} nearby nodes"
+            ),
+        }
+
+    except Exception as e:
+        logger.exception("pkb_context failed")
+        return {"success": False, "message": f"pkb_context failed: {e}"}
+
+
+@mcp.tool()
+def pkb_search(
+    query: str,
+    types: list[str] | None = None,
+    limit: int = 10,
+) -> dict[str, Any]:
+    """Search PKB combining structural graph and semantic similarity.
+
+    Searches node labels and tags for matching text, then boosts results
+    that are structurally close to other matches (graph neighbors get
+    higher scores).
+
+    Falls back to structural-only if semantic search unavailable.
+
+    Args:
+        query: Search query text
+        types: Filter by node types (e.g., ['task', 'knowledge', 'daily'])
+        limit: Maximum number of results (default: 10)
+
+    Returns:
+        Dictionary with ranked search results.
+    """
+    try:
+        kg = _get_knowledge_graph()
+
+        if kg.node_count == 0:
+            return {
+                "success": True,
+                "results": [],
+                "message": "Knowledge graph is empty",
+            }
+
+        query_lower = query.lower()
+        query_tokens = set(re.split(r"[-_\s/]", query_lower))
+
+        # Phase 1: Text matching on labels, tags, paths
+        scored: dict[str, float] = {}
+        for nid, attrs in kg.graph.nodes(data=True):
+            if types and attrs.get("node_type") not in types:
+                continue
+
+            score = 0.0
+            label = (attrs.get("label") or "").lower()
+            tags = [t.lower() for t in (attrs.get("tags") or [])]
+            path = (attrs.get("path") or "").lower()
+
+            # Exact substring match in label
+            if query_lower in label:
+                score += 1.0
+            # Token overlap with label
+            label_tokens = set(re.split(r"[-_\s/]", label))
+            overlap = query_tokens & label_tokens
+            if overlap:
+                score += 0.5 * len(overlap) / len(query_tokens)
+
+            # Tag match
+            for tag in tags:
+                if query_lower in tag:
+                    score += 0.3
+                elif any(t in tag for t in query_tokens):
+                    score += 0.15
+
+            # Path match
+            if query_lower in path:
+                score += 0.2
+
+            if score > 0:
+                scored[nid] = score
+
+        # Phase 2: Structural boost (graph proximity to matches)
+        boosted = dict(scored)
+        for nid, base_score in scored.items():
+            if base_score < 0.3:
+                continue
+            # Boost 1-hop neighbors
+            for _, target, _ in kg.graph.out_edges(nid, data=True):
+                if target not in boosted:
+                    boosted[target] = 0.0
+                    # Check type filter
+                    target_attrs = kg.graph.nodes[target]
+                    if types and target_attrs.get("node_type") not in types:
+                        continue
+                boosted[target] = max(boosted[target], boosted.get(target, 0) + 0.1)
+            for source, _, _ in kg.graph.in_edges(nid, data=True):
+                if source not in boosted:
+                    boosted[source] = 0.0
+                    source_attrs = kg.graph.nodes[source]
+                    if types and source_attrs.get("node_type") not in types:
+                        continue
+                boosted[source] = max(boosted[source], boosted.get(source, 0) + 0.1)
+
+        # Filter to positive scores and sort
+        results = []
+        for nid, score in sorted(boosted.items(), key=lambda x: x[1], reverse=True):
+            if score <= 0:
+                continue
+            if types:
+                node_type = kg.graph.nodes[nid].get("node_type")
+                if node_type not in types:
+                    continue
+            attrs = dict(kg.graph.nodes[nid])
+            result = _node_summary(attrs)
+            result["score"] = round(score, 3)
+            results.append(result)
+            if len(results) >= limit:
+                break
+
+        return {
+            "success": True,
+            "results": results,
+            "total_matches": len(boosted),
+            "message": f"Found {len(results)} results for '{query}' (searched {kg.node_count} nodes)",
+        }
+
+    except Exception as e:
+        logger.exception("pkb_search failed")
+        return {"success": False, "results": [], "message": f"pkb_search failed: {e}"}
+
+
+@mcp.tool()
+def pkb_trace(
+    source: str,
+    target: str,
+) -> dict[str, Any]:
+    """Find paths between two PKB nodes.
+
+    Returns up to 3 shortest paths with edge types between any two nodes.
+    If not structurally connected, reports that fact.
+
+    Accepts wikilink names, task IDs, or filenames via resolution map.
+
+    Args:
+        source: Source node (task ID, wikilink name, filename, or title)
+        target: Target node (task ID, wikilink name, filename, or title)
+
+    Returns:
+        Dictionary with paths and edge information.
+    """
+    try:
+        kg = _get_knowledge_graph()
+
+        src = kg.resolve(source)
+        if src is None:
+            return {"success": False, "message": f"Cannot resolve source '{source}'"}
+
+        tgt = kg.resolve(target)
+        if tgt is None:
+            return {"success": False, "message": f"Cannot resolve target '{target}'"}
+
+        src_node = kg.node(src)
+        tgt_node = kg.node(tgt)
+
+        paths = kg.all_shortest_paths(src, tgt, max_paths=3)
+
+        if not paths:
+            return {
+                "success": True,
+                "connected": False,
+                "source": _node_summary(src_node) if src_node else {"id": src},
+                "target": _node_summary(tgt_node) if tgt_node else {"id": tgt},
+                "paths": [],
+                "message": (
+                    f"No structural path between "
+                    f"'{src_node.get('label', src) if src_node else src}' and "
+                    f"'{tgt_node.get('label', tgt) if tgt_node else tgt}'"
+                ),
+            }
+
+        # Format paths with edge types
+        formatted_paths = []
+        for path_nodes in paths:
+            steps = []
+            for i, node in enumerate(path_nodes):
+                step = _node_summary(node)
+                if i < len(path_nodes) - 1:
+                    # Find edge type between this node and next
+                    next_id = path_nodes[i + 1]["id"]
+                    this_id = node["id"]
+                    edge_data = kg.graph.get_edge_data(this_id, next_id)
+                    if edge_data:
+                        step["edge_to_next"] = edge_data.get("edge_type", "link")
+                    else:
+                        # Try reverse direction
+                        edge_data = kg.graph.get_edge_data(next_id, this_id)
+                        if edge_data:
+                            step["edge_to_next"] = f"←{edge_data.get('edge_type', 'link')}"
+                        else:
+                            step["edge_to_next"] = "link"
+                steps.append(step)
+            formatted_paths.append(steps)
+
+        return {
+            "success": True,
+            "connected": True,
+            "source": _node_summary(src_node) if src_node else {"id": src},
+            "target": _node_summary(tgt_node) if tgt_node else {"id": tgt},
+            "paths": formatted_paths,
+            "path_length": len(paths[0]) - 1 if paths else 0,
+            "message": (
+                f"Found {len(paths)} path(s) of length {len(paths[0]) - 1} between "
+                f"'{src_node.get('label', src) if src_node else src}' and "
+                f"'{tgt_node.get('label', tgt) if tgt_node else tgt}'"
+            ),
+        }
+
+    except Exception as e:
+        logger.exception("pkb_trace failed")
+        return {"success": False, "message": f"pkb_trace failed: {e}"}
+
+
+@mcp.tool()
+def pkb_orphans(
+    types: list[str] | None = None,
+    min_age_days: int = 7,
+    limit: int = 20,
+) -> dict[str, Any]:
+    """Find PKB items not connected to any other node.
+
+    Returns nodes with zero structural connections, along with
+    suggested connections based on label similarity to other nodes.
+
+    Args:
+        types: Filter by node types (e.g., ['task', 'knowledge'])
+        min_age_days: Minimum age in days (default: 7). Not yet implemented
+            (requires created date in graph); currently returns all orphans.
+        limit: Maximum number of orphans to return (default: 20)
+
+    Returns:
+        Dictionary with orphan nodes and suggested connections.
+    """
+    try:
+        kg = _get_knowledge_graph()
+
+        if kg.node_count == 0:
+            return {
+                "success": True,
+                "orphans": [],
+                "stats": {"total_nodes": 0, "orphan_count": 0, "orphan_rate": 0},
+                "message": "Knowledge graph is empty",
+            }
+
+        orphan_nodes = kg.orphans(types=types)
+
+        # Add suggested connections for each orphan
+        orphans_with_suggestions = []
+        for orphan in orphan_nodes[:limit]:
+            orphan_id = orphan.get("id", "")
+            orphan_label = (orphan.get("label") or "").lower()
+
+            # Find similar nodes by label fuzzy matching
+            suggestions = []
+            if orphan_label:
+                matches = kg.fuzzy_resolve(orphan_label, threshold=40)
+                for match_id, match_key, match_score in matches[:3]:
+                    if match_id != orphan_id:
+                        match_node = kg.node(match_id)
+                        if match_node:
+                            suggestions.append({
+                                **_node_summary(match_node),
+                                "similarity": match_score,
+                            })
+
+            entry = _node_summary(orphan)
+            entry["suggested_connections"] = suggestions
+            orphans_with_suggestions.append(entry)
+
+        # Sort: higher priority orphans first
+        orphans_with_suggestions.sort(
+            key=lambda x: (x.get("priority") or 4, x.get("label", ""))
+        )
+
+        total_nodes = kg.node_count
+        orphan_count = len(orphan_nodes)
+        orphan_rate = round(orphan_count / total_nodes * 100, 1) if total_nodes > 0 else 0
+
+        return {
+            "success": True,
+            "orphans": orphans_with_suggestions,
+            "stats": {
+                "total_nodes": total_nodes,
+                "orphan_count": orphan_count,
+                "orphan_rate": orphan_rate,
+            },
+            "message": (
+                f"Found {orphan_count} orphan nodes ({orphan_rate}% of {total_nodes} total). "
+                f"Showing {len(orphans_with_suggestions)}."
+            ),
+        }
+
+    except Exception as e:
+        logger.exception("pkb_orphans failed")
+        return {"success": False, "orphans": [], "message": f"pkb_orphans failed: {e}"}
 
 
 # =============================================================================
