@@ -1,0 +1,24 @@
+# Hydrator surfaces existing infrastructure context for new issue proposals.
+# Finds relevant code, inconsistencies, and downstream impacts.
+# Skips: bot-created issues, epics.
+
+name: "Issue Review: Hydrator"
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  review:
+    name: Hydrator
+    if: >-
+      !github.event.issue.pull_request &&
+      github.actor != 'dependabot[bot]' &&
+      github.actor != 'claude[bot]' &&
+      github.actor != 'github-actions[bot]' &&
+      !contains(github.event.issue.labels.*.name, 'epic')
+    uses: ./.github/workflows/agent-hydrator.yml
+    with:
+      target_type: issue
+      target_number: ${{ github.event.issue.number }}
+    secrets: inherit
