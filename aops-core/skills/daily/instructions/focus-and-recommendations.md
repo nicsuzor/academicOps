@@ -102,8 +102,8 @@ for t in topology["tasks"]:
 for proj, tasks in sorted(projects.items()):
     active = [t for t in tasks if t["status"] in ACTIONABLE_STATUSES]
     blocked = [t for t in active if t["status"] == "blocked"]
-    staleness = sorted([t["ready_days"] for t in tasks if t.get("ready_days") is not None])
-    median_stale = staleness[len(staleness)//2] if staleness else 0
+    staleness = [t["ready_days"] for t in tasks if t.get("ready_days") is not None]
+    median_stale = statistics.median(staleness) if staleness else 0
     orphans = [t for t in active if not t.get("parent")]
 ```
 
