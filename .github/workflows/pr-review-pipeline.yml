@@ -1,208 +1,57 @@
-# LLM review pipeline. Runs only after Code Quality (lint + gatekeeper + type-check)
-# all pass, via a workflow_run trigger. This avoids re-running expensive LLM
-# reviews when only lint is re-run.
+# PR review pipeline: strategic-review, custodiet, and QA run in PARALLEL.
+# All three are independent reviewers that post comments/reviews — no serial dependency.
 #
-# Stages: setup → strategic-review → custodiet → qa → notify-ready
-# Merge agent lives in pr-lgtm-merge.yml (separate triggers: issue_comment, PR review).
+# Triggers directly on pull_request events. Reviews are advisory and do not
+# block merge (the ruleset only requires Lint + approvals).
+#
+# Merge agent lives in pr-lgtm-merge.yml (separate triggers).
+# Issue reviews live in issue-review.yml (separate triggers).
 #
 # See specs/pr-process.md for the full process documentation.
 
-name: PR Pipeline
+name: PR Review
 
 on:
-  workflow_run:
-    workflows: ["Code Quality"]
-    types: [completed]
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 jobs:
   # ──────────────────────────────────────────────
-  # Setup: extract PR metadata from workflow_run
+  # Three review agents run in parallel — no serial chaining.
+  # Each is a reusable agent workflow with its own personality and authority.
   # ──────────────────────────────────────────────
-  setup:
-    name: Setup
-    if: >-
-      github.event_name == 'workflow_run' &&
-      github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
-    outputs:
-      pr_number: ${{ steps.pr-info.outputs.pr_number }}
-      head_ref: ${{ steps.pr-info.outputs.head_ref }}
-    steps:
-      - name: Extract PR info from workflow_run
-        id: pr-info
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # workflow_run exposes the PR that triggered the checks
-          PR_NUMBER="${{ github.event.workflow_run.pull_requests[0].number }}"
-          HEAD_REF="${{ github.event.workflow_run.pull_requests[0].head.ref }}"
 
-          if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
-            echo "::error::Could not determine PR number from workflow_run event"
-            exit 1
-          fi
-
-          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
-          echo "head_ref=$HEAD_REF" >> "$GITHUB_OUTPUT"
-          echo "PR #$PR_NUMBER on branch $HEAD_REF"
-
-  # ──────────────────────────────────────────────
-  # Stage 1: Strategic Review
-  # ──────────────────────────────────────────────
   strategic-review:
     name: Strategic Review
-    needs: [setup]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-      id-token: write
-      issues: write
-      actions: read
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ needs.setup.outputs.head_ref }}
+    uses: ./.github/workflows/agent-strategic-review.yml
+    with:
+      pr_number: ${{ github.event.pull_request.number }}
+      ref: ${{ github.event.pull_request.head.ref }}
+    secrets: inherit
 
-      - name: Read strategic review instructions
-        id: strategic-prompt
-        run: |
-          PROMPT=$(cat .github/agents/strategic-review.md)
-          {
-            echo "prompt<<STRATEGIC_EOF"
-            echo "$PROMPT"
-            echo "STRATEGIC_EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Run Strategic Review Agent
-        id: strategic-agent
-        uses: anthropics/claude-code-action@v1
-        with:
-          allowed_bots: "claude[bot]"
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          prompt: |
-            ${{ steps.strategic-prompt.outputs.prompt }}
-
-            ---
-
-            Review PR #${{ needs.setup.outputs.pr_number }} in repository ${{ github.repository }}.
-            Use `gh pr view ${{ needs.setup.outputs.pr_number }}` and `gh pr diff ${{ needs.setup.outputs.pr_number }}` to gather information.
-
-          claude_args: '--allowed-tools "Bash(gh:*),Read"'
-
-      - name: Enable auto-merge on approval
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          PR_NUM="${{ needs.setup.outputs.pr_number }}"
-
-          # Check if strategic review approved:
-          # consider only the most recent review from claude[bot]
-          LATEST_STATE=$(gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews \
-            --jq '[.[] | select(.user.login == "claude[bot]")] | sort_by(.submitted_at) | (last.state // empty)')
-
-          if [ "$LATEST_STATE" = "APPROVED" ]; then
-            echo "Strategic review approved by latest claude[bot] review - enabling auto-merge"
-            gh pr merge "$PR_NUM" --auto --rebase --repo "${{ github.repository }}" || true
-          else
-            echo "Latest claude[bot] review is not an approval - skipping auto-merge enablement"
-          fi
-
-  # ──────────────────────────────────────────────
-  # Stage 3: Custodiet (scope compliance)
-  # ──────────────────────────────────────────────
   custodiet:
     name: Custodiet
-    needs: [setup, strategic-review]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-      id-token: write
-      issues: write
-      actions: read
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ needs.setup.outputs.head_ref }}
+    uses: ./.github/workflows/agent-custodiet.yml
+    with:
+      target_type: pr
+      target_number: ${{ github.event.pull_request.number }}
+      ref: ${{ github.event.pull_request.head.ref }}
+    secrets: inherit
 
-      - name: Read custodiet instructions
-        id: custodiet-prompt
-        run: |
-          PROMPT=$(cat .github/agents/custodiet.md)
-          {
-            echo "prompt<<CUSTODIET_EOF"
-            echo "$PROMPT"
-            echo "CUSTODIET_EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Run Custodiet Agent
-        uses: anthropics/claude-code-action@v1
-        with:
-          allowed_bots: "claude[bot]"
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          prompt: |
-            ${{ steps.custodiet-prompt.outputs.prompt }}
-
-            ---
-
-            Review PR #${{ needs.setup.outputs.pr_number }} in repository ${{ github.repository }}.
-            Use `gh pr view ${{ needs.setup.outputs.pr_number }}` and `gh pr diff ${{ needs.setup.outputs.pr_number }}` to gather information.
-
-          claude_args: '--allowed-tools "Bash(gh:*),Read"'
-
-  # ──────────────────────────────────────────────
-  # Stage 4: QA (acceptance criteria)
-  # ──────────────────────────────────────────────
   qa:
     name: QA
-    needs: [setup, custodiet]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-      id-token: write
-      issues: write
-      actions: read
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ needs.setup.outputs.head_ref }}
-
-      - name: Read QA instructions
-        id: qa-prompt
-        run: |
-          PROMPT=$(cat .github/agents/qa.md)
-          {
-            echo "prompt<<QA_EOF"
-            echo "$PROMPT"
-            echo "QA_EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Run QA Agent
-        uses: anthropics/claude-code-action@v1
-        with:
-          allowed_bots: "claude[bot]"
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          prompt: |
-            ${{ steps.qa-prompt.outputs.prompt }}
-
-            ---
-
-            Review PR #${{ needs.setup.outputs.pr_number }} in repository ${{ github.repository }}.
-            Use `gh pr view ${{ needs.setup.outputs.pr_number }}`, `gh pr diff ${{ needs.setup.outputs.pr_number }}`, and `gh pr checks ${{ needs.setup.outputs.pr_number }}` to gather information.
-
-          claude_args: '--allowed-tools "Bash(gh:*),Read"'
+    uses: ./.github/workflows/agent-qa.yml
+    with:
+      pr_number: ${{ github.event.pull_request.number }}
+      ref: ${{ github.event.pull_request.head.ref }}
+    secrets: inherit
 
   # ──────────────────────────────────────────────
-  # Stage 5: Ready for Review notification
+  # Ready for Review notification (after all agents complete)
   # ──────────────────────────────────────────────
   notify-ready:
     name: Ready for Review
-    needs: [setup, qa]
+    needs: [strategic-review, custodiet, qa]
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -212,28 +61,19 @@ jobs:
     steps:
       - name: Post pipeline summary
         run: |
-          PR_NUM="${{ needs.setup.outputs.pr_number }}"
-
-          # Collect review statuses from bot comments
-          REVIEWS=$(gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews \
-            --jq '[.[] | select(.user.login == "claude[bot]" or .user.login == "github-actions[bot]")] | length')
+          PR_NUM="${{ github.event.pull_request.number }}"
 
           gh pr comment "$PR_NUM" --repo "${{ github.repository }}" --body "$(cat <<'SUMMARY'
-          ## Pipeline Complete
+          ## Review Pipeline Complete
 
-          All automated review stages have passed:
+          All automated review agents have finished:
 
-          | Stage | Status |
-          |-------|--------|
-          | Lint | ✅ Passed |
-          | Gatekeeper | ✅ Approved |
-          | Type check | ✅ Passed |
-          | Strategic review | ✅ Passed |
-          | Custodiet | ✅ Passed |
-          | QA | ✅ Passed |
+          | Agent | Role |
+          |-------|------|
+          | Strategic Review | Design coherence, framework alignment |
+          | Custodiet | Scope compliance, principle violations |
+          | QA | Acceptance criteria, test coverage, regressions |
 
-          **Ready for human review.** External bot comments (Copilot, Gemini Code Assist) will be triaged during merge preparation.
+          **Ready for human review.** Check individual agent comments above for details.
           SUMMARY
           )"
-
-  # Merge Agent is in pr-lgtm-merge.yml (separate file, separate triggers)

@@ -1,0 +1,66 @@
+# Agent: Gatekeeper
+# Personality: Authoritative guardian. Defaults to approval. First line of defense.
+# Responsibilities:
+#   - Evaluate PR alignment with project vision and architectural direction
+#   - Lodge formal GitHub approval (Approval #1 required for merge)
+#   - Request changes for fixable issues; recommend closure for fundamental misalignment
+# Authority: APPROVE | REQUEST CHANGES | COMMENT (close recommendation)
+# Prompt: .github/agents/gatekeeper.md
+
+name: "Agent: Gatekeeper"
+
+on:
+  workflow_call:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        type: string
+        required: true
+      ref:
+        description: 'Git ref to checkout'
+        type: string
+        required: true
+
+jobs:
+  review:
+    name: Gatekeeper
+    runs-on: ubuntu-latest
+    concurrency:
+      group: gatekeeper-${{ inputs.pr_number }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+      issues: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref }}
+
+      - name: Read agent instructions
+        id: prompt
+        run: |
+          PROMPT=$(cat .github/agents/gatekeeper.md)
+          {
+            echo "prompt<<AGENT_EOF"
+            echo "$PROMPT"
+            echo "AGENT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run Gatekeeper
+        uses: anthropics/claude-code-action@v1
+        with:
+          allowed_bots: "claude[bot]"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            ${{ steps.prompt.outputs.prompt }}
+
+            ---
+
+            Review PR #${{ inputs.pr_number }} in repository ${{ github.repository }}.
+            Use `gh pr view ${{ inputs.pr_number }}` and `gh pr diff ${{ inputs.pr_number }}` to gather information.
+
+          claude_args: '--allowed-tools "Bash(gh:*),Read"'

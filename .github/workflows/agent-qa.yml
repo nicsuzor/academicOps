@@ -1,0 +1,64 @@
+# Agent: QA
+# Personality: Methodical and evidence-based. Verifies claims with facts, not assumptions.
+# Responsibilities:
+#   - Verify PR meets stated acceptance criteria
+#   - Check CI status and test coverage
+#   - Scan for regressions (broken imports, removed references)
+#   - Lightweight bug and security scan
+# Authority: APPROVE | REQUEST CHANGES
+# Prompt: .github/agents/qa.md
+
+name: "Agent: QA"
+
+on:
+  workflow_call:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        type: string
+        required: true
+      ref:
+        description: 'Git ref to checkout'
+        type: string
+        required: true
+
+jobs:
+  review:
+    name: QA
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+      issues: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref }}
+
+      - name: Read agent instructions
+        id: prompt
+        run: |
+          PROMPT=$(cat .github/agents/qa.md)
+          {
+            echo "prompt<<AGENT_EOF"
+            echo "$PROMPT"
+            echo "AGENT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run QA
+        uses: anthropics/claude-code-action@v1
+        with:
+          allowed_bots: "claude[bot]"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            ${{ steps.prompt.outputs.prompt }}
+
+            ---
+
+            Review PR #${{ inputs.pr_number }} in repository ${{ github.repository }}.
+            Use `gh pr view ${{ inputs.pr_number }}`, `gh pr diff ${{ inputs.pr_number }}`, and `gh pr checks ${{ inputs.pr_number }}` to gather information.
+
+          claude_args: '--allowed-tools "Bash(gh:*),Read"'
