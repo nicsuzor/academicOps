@@ -1,58 +1,28 @@
-# academicOps: A constitutional automation framework for academic work
+# academicOps
 
-academicOps operates through four mechanisms:
+A constitutional framework for governing autonomous AI agents in academic environments.
 
-1. **Synchronous workflow enforcement** (local, real-time) — Hooks, hydrator, and custodiet define and enforce universal + modular workflows, ensuring agents use the skills we provide and follow the procedures we define in real time.
+The central problem of agentic AI is not capability but legitimacy. LLM-based agents are stochastic: they exercise judgment, make choices, and produce variable outputs. For anyone trained in public law, this is not an unfamiliar problem. We govern stochastic decision-makers all the time. The question is not whether an agent will always get things right, but whether its exercise of power is *valid*: authorised, constrained, reviewable, and accountable.
 
-2. **Asynchronous quality assurance** (GitHub as automation hub) — PR pipelines run strategic review, custodiet compliance, and QA verification after work is submitted. Polecat workers execute tasks autonomously via GitHub Issues.
+academicOps applies the structural logic of constitutional and administrative law to autonomous AI agents. The result is a system where agents operate with genuine autonomy within defined jurisdictions, subject to the same kinds of controls that make delegated authority workable in legal systems: enumerated powers, procedural requirements, periodic review, and a doctrine of ultra vires that voids unauthorised action.
 
-3. **Baseline capabilities** — Task system (hierarchical graph with dependencies), memory server (semantic search, cross-session persistence), knowledge architecture (three-repo model with strict separation of user data).
+### What makes this different
 
-4. **Domain-specific academic tools** — Citation management, research data analysis, document conversion/PDF, email triage, writing style enforcement.
+- **We avoid the "human in the loop" trap.** Requiring a human to approve every agent decision defeats the purpose of automation and does not actually produce accountability. Instead, we define the *scope* of delegated authority and audit whether the agent stays within it, the way administrative law constrains discretion without requiring ministerial sign-off on every decision.
 
-### Foundations
+- **Agents are stochastic, and that is fine.** Probabilistic methods channelled through deterministic processes. We do not try to make agents predictable; we make their exercise of judgment *reviewable*. An agent that exercises discretion within its grant of authority is operating legitimately, even if a human might have decided differently.
 
-- Constitutional: every rule derivable from AXIOMS.md via HEURISTICS.md, supported by evidence
-- Human-readable markdown files are the single sources of truth; everything in git for durability and observability
-- Agents follow a categorical imperative: every action must be supported by a general rule
-- Optimised for long-term strategic planning under conditions of uncertainty
+- **Limits of authority derive from first principles.** Inviolable axioms function as constitutional provisions: they define what the system *is* and cannot be overridden. Mid-level heuristics function like common law doctrine: they evolve through experience, can be revised when evidence warrants, and are promoted or demoted based on how they perform in practice.
 
-## Installation
+- **We build precedent, not prescriptions.** The framework does not attempt to anticipate every problem ex ante. Instead, it builds in a systematic feedback loop: every session generates structured observations, recurring friction gets named as doctrine, and the rule system develops incrementally through use. The body of operational knowledge grows the way case law does, one decision at a time.
 
-### Link your data repository / knowledge base
+- **Ultra vires detection runs continuously.** A *custodiet* agent periodically audits the main agent's behaviour against the authority it was granted, checking for scope drift, principle violations, and unauthorised action. This is not a post-hoc review; it is a live jurisdictional check that can halt execution mid-session.
 
-- **Environment variables** in `~/.bashrc` or `~/.zshrc`:
+- **The constitutional metaphor is structural, not decorative.** Every operational rule must trace back to an axiom through explicit derivation. Rules that cannot be derived are invalid. This is the mechanism that prevents governance bloat: you cannot add arbitrary constraints, only constraints that follow from the constitution of the system.
 
-```bash
-export ACA_DATA="$HOME/writing/data"     # Your data (NOT in git)
-```
+## The core loop
 
-### Install plugin for Claude Code & Gemini CLI
-
-Distribution repository: https://github.com/nicsuzor/aops-dist
-
-Claude Code
-
-```bash
-command claude plugin marketplace add nicsuzor/aops-dist
-command claude plugin marketplace update aops && command claude plugin install aops-core@aops && command claude plugin list
-```
-
-Gemini CLI (warning: auto accept flag below, remove --consent if you're concerned)
-
-```bash
-(command gemini extensions uninstall aops-core || echo Gemini plugin not installed -- not removing.) && command gemini extensions install git@github.com:nicsuzor/aops-dist.git --consent --auto-update --pre-release
-```
-
-## Core Loop
-
-**For detailed specification, see**: [[specs/flow.md]]
-
-**Goal**: The minimal viable framework with ONE complete, working loop.
-
-**Philosophy**: Users don't have to use aops. But if they do, it's slow and thorough. The full workflow is MANDATORY.
-
-### Core Loop Diagram
+Every agent session follows a structured lifecycle with gates at each transition. The key architectural decision is that **every mutating operation passes through gates**. An agent cannot edit a file without an active task (work tracking), a hydrated execution plan (intent verification), and periodic compliance audits (drift detection). Read-only operations are unrestricted, avoiding the circular dependency where an agent cannot gather context to satisfy the very gate that blocks it.
 
 ```mermaid
 flowchart TD
@@ -149,229 +119,129 @@ flowchart TD
     style Termination fill:none,stroke:#888,stroke-dasharray: 5 5
 ```
 
-## Core Concepts
+## The hierarchy of norms
 
-### The Logical Derivation System
+The framework is structured as a legal hierarchy. Every operational rule must trace back to first principles, or it is invalid.
 
-academicOps is built as a **validated logical system**. Every rule traces back to first principles:
+| Level | Document | Role | Analogy |
+| ----- | -------- | ---- | ------- |
+| 1 | **AXIOMS.md** | Inviolable principles (30+) | Constitutional provisions |
+| 2 | **HEURISTICS.md** | Evidence-based working rules (40+) | Common law doctrine |
+| 3 | **enforcement-map.md** | Rule-to-mechanism mapping | Regulatory implementation |
 
-| Level | Document                                | Contains                    | Status                           |
-| ----- | --------------------------------------- | --------------------------- | -------------------------------- |
-| 1     | **aops-core/AXIOMS.md**                 | Inviolable principles       | Cannot be violated               |
-| 2     | **aops-core/HEURISTICS.md**             | Empirically validated rules | Can be revised with evidence     |
-| 3     | **aops-core/framework/enforcement-map.md** | Enforcement mechanisms      | Maps rules to technical controls |
+**Axioms** define what the system *is*. "Fail-Fast" means no defaults, no fallbacks, no silent failures. "Research Data Is Immutable" means source datasets are sacred. "Delegated Authority Only" means agents act within the bounds of what they were explicitly granted. These cannot be overridden.
 
-**The derivation rule**: Every convention MUST trace to an axiom. If it can't be derived, the convention is invalid.
+**Heuristics** are working hypotheses, validated by evidence and revised when evidence warrants. "Probabilistic Methods, Deterministic Processes" captures the core design insight. "Subagent Verdicts Are Binding" emerged after an agent ignored a compliance finding and introduced scope drift. These evolve: they get promoted when they prove themselves, demoted or revised when they cause friction, and new ones are named as recurring patterns emerge from practice.
 
-### Axioms vs Heuristics
+The derivation chain is the coherence mechanism. New rules must derive from existing axioms; if they cannot, either the rule is wrong or the axiom set is incomplete. This is how the system grows without accumulating arbitrary constraints.
 
-**Axioms** are inviolable—they define what the system IS:
+## Graduated enforcement
 
-- "Fail-Fast": No defaults, no fallbacks, no silent failures
-- "Skills Are Read-Only": No dynamic data in skills
-- "Research Data Is Immutable": Never modify source datasets
+Rules are enforced at multiple levels, calibrated to the severity of violation:
 
-**Heuristics** are working hypotheses validated by evidence:
+| Level | Mechanism | Example |
+| ----- | --------- | ------- |
+| **Hard gate** | Blocks action entirely | Task binding required for destructive operations |
+| **Soft gate** | Injects guidance, agent proceeds | Prompt hydrator suggests workflows |
+| **Periodic audit** | Compliance reviewed every ~15 operations | Custodiet detects scope drift and principle violations |
+| **Pre-commit** | Blocks commits with structural issues | Orphan file detection, frontmatter validation |
+| **Prompt-level** | Selective instruction injection via hydrator | Relevant principles surfaced just-in-time |
 
-- "Semantic Link Density": Related files MUST link to each other
-- "Skills Contain No Dynamic Content": Current state lives in $ACA_DATA
+The enforcement map documents every rule, its mechanism, the hook point where it fires, and the axiom it derives from. This serves as both an operational reference and an audit trail for the governance system itself.
 
-The difference: axioms cannot be violated; heuristics can and _should be_ be revised when evidence shows they're wrong.
+## The feedback loop
 
-### Skills vs Workflows
+The framework treats itself as a hypothesis under continuous test. It does not attempt to get everything right from the outset. Instead, it builds in systematic mechanisms for learning from its own operation:
 
-The framework distinguishes between **what** to do and **how** to do it:
+**Observation**: Every session generates structured data. Framework Reflections at session end capture outcome, friction points, and proposed changes. Token metrics track efficiency. Skill compliance shows whether suggested procedures were actually followed.
 
-|              | Skills                           | Workflows                      |
-| ------------ | -------------------------------- | ------------------------------ |
-| **Answer**   | "How do I do X?"                 | "What should I do?"            |
-| **Nature**   | Fungible instructions            | Composable chains of steps     |
-| **Examples** | Create a PDF, generate a mindmap | Feature development, TDD cycle |
+**Pattern recognition**: Recurring friction gets named. When the same kind of problem shows up across sessions, it becomes a candidate for doctrinal development: a new heuristic, a corollary to an existing axiom, or a change to an enforcement mechanism.
 
-**Skills** are interchangeable recipes—any skill that creates a PDF can substitute for another. They're the building blocks.
+**Intervention**: The `/learn` skill captures failures as structured knowledge. Fixes are applied at the lowest effective level: a corollary first, then a heuristic, then a hook. The system is designed to develop incrementally, the way case law builds up through individual decisions rather than comprehensive legislation.
 
-**Workflows** orchestrate those building blocks into coherent processes. A workflow defines the sequence (spec review → implementation → QA), while skills handle each step's mechanics.
+## Memory architecture
 
-For full specification, see [[specs/workflow-system-spec.md]].
+The framework distinguishes between two types of knowledge, following established memory theory:
 
-### Enforcement Levels
+| Type | Storage | Example |
+| ---- | ------- | ------- |
+| **Semantic** | $ACA_DATA markdown | "X doesn't work because Y" (timeless knowledge) |
+| **Episodic** | Task graph + git issues | "I tried X on Tuesday and it failed" (observations) |
 
-Rules aren't just documented—they're enforced at multiple levels:
-
-| Level          | Mechanism                                  | Example                                   |
-| -------------- | ------------------------------------------ | ----------------------------------------- |
-| **Hard Gate**  | Blocks action entirely                     | PreToolUse hooks block `git reset --hard` |
-| **Soft Gate**  | Injects guidance, agent can proceed        | prompt-hydrator suggests skills           |
-| **Prompt**     | Instructional (AXIOMS.md at session start) | "Verify First" reminder                   |
-| **Detection**  | Logs for analysis                          | custodiet compliance checks               |
-| **Pre-commit** | Blocks commits                             | Orphan file detection                     |
-
-### The Self-Reflexive Framework Agent
-
-This framework treats itself as a hypothesis. Agents are **co-developers**, not just executors:
-
-```
-When you encounter friction—something that doesn't fit, a question
-the schema can't answer, a pattern that needs a name—do this:
-
-1. Log it.
-2. Propose an amendment if you see one.
-3. Don't force it. If something doesn't fit, that's data.
-```
-
-The framework **evolves through use**. When agents hit friction:
-
-- Violations are logged as bd issues (operational observations)
-- Patterns that emerge get named and proposed as new heuristics
-- Heuristics that prove themselves get promoted or consolidated
-- Rules that don't work get revised
-
-This creates a feedback loop: the framework improves based on real usage, not theoretical design.
-
-### How the Framework Improves Itself
-
-The self-improvement cycle has three phases:
-
-**1. Observe** - Every session generates observables:
-
-- **Framework Reflections**: Agent self-reports at session end (outcome, friction, proposals)
-- **Token metrics**: Usage by model, agent, and tool (cache efficiency, throughput)
-- **Skill compliance**: Which suggested skills were actually invoked
-- **Learning observations**: Mistakes and corrections with root cause categories
-
-See [[specs/framework-observability.md]] for details
-
-**2. Analyze** - Humans identify patterns:
-
-- Recurring friction points → systemic problems
-- Low skill compliance → discovery or routing issues
-- Token inefficiency → optimize hydration or caching
-
-**3. Intervene** - Capture and apply fixes via `/learn`:
-
-- Use `/learn` for rapid async knowledge capture of failures (dump to GitHub issues)
-- Apply minimal fixes documented as single tasks
-- Avoid complex task trees; prefer "fire and forget" capture
-
-See [[specs/feedback-loops.md]] for the complete improvement workflow.
-
-### Memory Architecture
-
-The framework distinguishes between two types of knowledge:
-
-| Type         | Storage            | Example                                               |
-| ------------ | ------------------ | ----------------------------------------------------- |
-| **Episodic** | task+git issues    | "I tried X and it failed" (time-stamped observations) |
-| **Semantic** | $ACA_DATA markdown | "X doesn't work because Y" (timeless truths)          |
-
-$ACA_DATA is a **current state machine**—always up to date, always perfect. The memory server (accessed via `mcp__memory__retrieve_memory`) is a semantic search index derived from this markdown.
+$ACA_DATA is a **current state machine**: always up to date, always the single source of truth. Human-readable markdown files, version-controlled in git, with a memory server providing semantic search via vector embeddings. Knowledge persists in a durable, portable format while remaining discoverable through natural language.
 
 ## Architecture
 
-### Core Components
+### Agents
 
-| Category    | Components                                                                                                                                                                 |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Skills (24) | remember, analyst, audit, session-insights, garden, hypervisor, task-viz, etc.                                                                                             |
-| Agents (4)  | prompt-hydrator, critic, custodiet, effectual-planner                                                                                                                      |
-| Hooks (18)  | router.py (Universal Hook Router), unified_logger.py, user_prompt_submit.py, session_env_setup.py, gate system (hydration, task, critic, custodiet, handover)              |
-| Governance  | 30+ axioms and heuristics with mechanical and instructional enforcement                                                                                                    |
+| Agent | Model | Role |
+| ----- | ----- | ---- |
+| **prompt-hydrator** | haiku | Enriches prompts with context, selects workflows, applies guardrails |
+| **custodiet** | haiku | Periodic compliance audits. Detects drift, violations, scope creep |
+| **critic** | opus | Reviews execution plans for errors and hidden assumptions |
+| **qa** | opus | Independent verification against acceptance criteria |
+| **effectual-planner** | opus | Strategic planning under genuine uncertainty |
 
-### Key Agents
+## Skills and commands
 
-| Agent               | Model | Role                                                                    |
-| ------------------- | ----- | ----------------------------------------------------------------------- |
-| **framework**       | opus  | Primary entry point for framework changes. Handles full task lifecycle. |
-| **prompt-hydrator** | haiku | Enriches prompts with context, suggests workflows, applies guardrails   |
-| **critic**          | opus  | Reviews plans for errors and hidden assumptions before execution        |
-| **custodiet**       | haiku | Periodic compliance audits (every 15 tool calls). Detects drift.        |
+The framework ships with 24 skills (domain-specific instruction sets) and 7 commands (operational shortcuts). Skills are fungible: any skill that converts markdown to PDF can substitute for another. Workflows orchestrate skills into coherent processes.
 
-The **framework agent** embodies the self-reflexive principle—it both executes framework tasks AND proposes improvements to the framework itself.
+| Skill | Purpose |
+| ----- | ------- |
+| /analyst | Research data analysis (dbt, Streamlit, statistical methods) |
+| /audit | Framework governance audit and index updates |
+| /daily | Daily note lifecycle, briefing, task recommendations |
+| /remember | Dual-write knowledge to markdown and memory server |
+| /session-insights | Structured insight extraction from session transcripts |
+| /convert-to-md | Batch document conversion preserving tracked changes |
+| /pdf | Academic-style PDF generation with proper typography |
+| /garden | Incremental knowledge base maintenance |
+| /excalidraw | Hand-drawn diagrams and mind maps |
+| /flowchart | Mermaid flowcharts with accessibility best practices |
+| /python-dev | Production Python with fail-fast philosophy and type safety |
+| /strategy | Strategic thinking partner for planning under uncertainty |
+| /planning | Decomposition patterns, spikes, and dependency management |
+| /swarm-supervisor | Parallel worker orchestration with isolated worktrees |
+| /email-triage | Email classification and task extraction |
+| /hdr | Higher degree research student supervision workflows |
 
-## Commands
+| Command | Purpose |
+| ------- | ------- |
+| /pull | Pull a task from the queue and claim it |
+| /q | Quick-queue a task for later |
+| /learn | Capture framework failures as structured knowledge |
+| /dump | Session handover: commit, update tasks, reflection, halt |
+| /bump | Nudge an agent back into action |
+| /path | Narrative path reconstruction across sessions |
+| /aops | Show framework capabilities and help |
 
-| Command          | Purpose                                                |
-| ---------------- | ------------------------------------------------------ |
-| /aops            | Show framework capabilities and help                   |
-| /diag            | Quick diagnostic of what's loaded in session           |
-| /pull            | Pull a task from the queue and claim it                |
-| /q               | Quick-queue a task for later                           |
-| /learn           | Rapid async knowledge capture for framework failures |
-| /work            | Collaborative task execution                           |
-| /log             | Log framework observations for continuous improvement  |
-| /dump            | Session handover and context dump                      |
-| /bump            | Increment framework version                            |
+## Installation
 
-## Key Skills
+Distribution repository: https://github.com/nicsuzor/aops-dist
 
-| Skill             | Purpose                                               |
-| ----------------- | ----------------------------------------------------- |
-| /analyst          | Academic research data analysis (dbt, Streamlit)      |
-| /audit            | Comprehensive framework governance audit              |
-| /daily            | Daily note lifecycle, morning briefing, and sync      |
-| /remember         | Persist knowledge to markdown and memory server       |
-| /session-insights | Generate structured insights from session transcripts |
-| /task-viz         | Generate network graph of tasks and notes             |
-| /convert-to-md    | Batch convert documents to markdown                   |
-| /pdf              | Generate professionally formatted academic PDFs       |
-| /hypervisor       | Parallel batch task processing                        |
-| /excalidraw       | Create hand-drawn style diagrams and mind maps        |
+Set the data directory environment variable in `~/.bashrc` or `~/.zshrc`:
 
-## Project Configuration
-
-Projects can customize the hydrator's behavior by adding files to a `.agent/` directory in the project root.
-
-### `.agent/context-map.json`
-
-Maps project documentation to topics for just-in-time context injection. The hydrator presents this index to agents, who decide which files to read based on relevance.
-
-```json
-{
-  "docs": [
-    {
-      "topic": "authentication",
-      "path": "docs/auth-flow.md",
-      "description": "OAuth2 implementation with JWT tokens",
-      "keywords": ["oauth", "jwt", "login", "session", "token"]
-    },
-    {
-      "topic": "database_schema",
-      "path": "docs/schema.md",
-      "description": "PostgreSQL table definitions and migrations",
-      "keywords": ["postgres", "tables", "migrations", "sql"]
-    },
-    {
-      "topic": "api_endpoints",
-      "path": "docs/api.md",
-      "description": "REST API reference",
-      "keywords": ["api", "rest", "endpoints", "http"]
-    }
-  ]
-}
+```bash
+export ACA_DATA="$HOME/writing/data"     # Your knowledge base (NOT in this repo)
 ```
 
-**Fields**:
+Claude Code:
 
-- `topic`: Short identifier for the documentation area
-- `path`: Relative path from project root to the documentation file
-- `description`: Brief explanation of what the file covers
-- `keywords`: Terms that trigger relevance (agent makes semantic decision, not keyword matching)
-
-### `.agent/rules/`
-
-Project-specific rules that apply to ALL work in the project. Files in this directory are pre-loaded into the hydrator context and presented as binding constraints.
-
-```
-project/
-├── .agent/
-│   ├── rules/
-│   │   ├── testing.md      # "All PRs require 80% coverage"
-│   │   ├── code-style.md   # "Use ruff, not black"
-│   │   └── architecture.md # "No direct DB access from handlers"
+```bash
+command claude plugin marketplace add nicsuzor/aops-dist
+command claude plugin marketplace update aops && command claude plugin install aops-core@aops && command claude plugin list
 ```
 
-Rules are loaded automatically—agents don't need to search for them.
+Gemini CLI:
 
-### `.agent/workflows/`
+```bash
+(command gemini extensions uninstall aops-core || echo not installed) && command gemini extensions install git@github.com:nicsuzor/aops-dist.git --consent --auto-update --pre-release
+```
 
-Project-specific workflows that supplement the global workflow index. Use for project-specific processes (e.g., release procedures, review checklists).
+## Project configuration
+
+Projects customise the framework by adding files to a `.agent/` directory:
+
+- **`.agent/rules/`** - Project-specific rules loaded automatically as binding constraints
+- **`.agent/workflows/`** - Project-specific workflows supplementing the global index
+- **`.agent/context-map.json`** - Maps project documentation to topics for just-in-time context injection
