@@ -176,7 +176,7 @@ momentum_candidates = [
     t for t in tasks
     if t["status"] == "active"
     and t.get("depends_on")  # had dependencies
-    # Check topology: blocked_by_count == 0 means all deps resolved
+    and get_blocked_by_count(t["id"], topology) == 0  # topology: blocked_by_count == 0 means all deps resolved
 ]
 ```
 
