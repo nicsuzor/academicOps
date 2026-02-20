@@ -532,7 +532,7 @@ class TaskIndex:
     # Tags that indicate human-assigned tasks (excluded when caller is 'polecat')
     @property
     def human_tags(self) -> set[str]:
-        return {get_human_assignee(), "human"}
+        return {get_human_assignee(), "human", "nic"}
 
     def get_ready_tasks(
         self, project: str | None = None, caller: str | None = None

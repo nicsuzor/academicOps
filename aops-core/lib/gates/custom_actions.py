@@ -162,7 +162,7 @@ def execute_custom_action(
 
         criteria_block = uac_match.group(1).strip()
         # Parse numbered list or bullet points
-        items = re.findall(r"^\d+\.\s+(.*)$|^[-*]\s+(.*)$", criteria_block, re.MULTILINE)
+        items = re.findall(r"^\s*\d+\.\s*(.*)$|^\s*[-*]\s*(.*)$", criteria_block, re.MULTILINE)
         criteria = [item[0] or item[1] for item in items if item[0] or item[1]]
 
         if criteria:

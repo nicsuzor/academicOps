@@ -828,7 +828,11 @@ def _fetch_github_issue(issue_ref: str, project: str | None) -> dict:
         # Collapse multiple hyphens
         repo_slug = re.sub(r"-+", "-", repo_slug).strip("-")
     else:
-        repo_slug = project or "gh"
+        if project:
+            repo_slug = re.sub(r"[^a-z0-9_-]", "-", project.lower())
+            repo_slug = re.sub(r"-+", "-", repo_slug).strip("-") or "gh"
+        else:
+            repo_slug = "gh"
 
     task_id = f"gh-{repo_slug}-{number}"
 

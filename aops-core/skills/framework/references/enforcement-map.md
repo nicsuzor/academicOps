@@ -87,6 +87,14 @@ export CUSTODIET_GATE_MODE=block
 
 Or set at session start in `session_env_setup.sh`.
 
+## Stop Hooks
+
+| Hook / Condition         | Mode      | Description                                                                                                           |
+| ------------------------ | --------- | --------------------------------------------------------------------------------------------------------------------- |
+| `reflection_check.py`    | block     | Blocks session end until Framework Reflection with all 8 required fields is present                                  |
+| `session_end_commit_check.py` | block | Blocks if uncommitted changes exist when reflection or test success detected                                         |
+| `uac_verified` condition | soft gate | Blocks Stop if unchecked `- [ ]` items remain in task UAC section (Acceptance Criteria/Requirements/UAC headers) |
+
 ## Adding New Enforcement
 
 Per P#65, when adding enforcement measures:

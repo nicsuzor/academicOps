@@ -120,13 +120,29 @@ def check_custom_condition(
             if not task:
                 return True
 
-            # Use the existing check from tasks_server logic (re-implemented or imported)
-            # For simplicity, we check if ANY [ ] exists in task body
             import re
 
-            if re.search(r"^\s*-\s*\[ \]\s+.*$", task.body, re.MULTILINE):
+            # Scope check to a dedicated UAC section if one exists, to avoid
+            # blocking on unrelated checklists (e.g., backlog, optional todos).
+            _uac_header = re.compile(
+                r"^##\s+(?:Acceptance Criteria|Requirements|UAC|User Acceptance Criteria)\s*$",
+                re.MULTILINE | re.IGNORECASE,
+            )
+            header_match = _uac_header.search(task.body)
+            if header_match:
+                section_start = header_match.end()
+                next_header = re.search(r"^##\s", task.body[section_start:], re.MULTILINE)
+                scope = (
+                    task.body[section_start : section_start + next_header.start()]
+                    if next_header
+                    else task.body[section_start:]
+                )
+            else:
+                scope = task.body
+
+            if re.search(r"^\s*-\s*\[ \]\s*.*$", scope, re.MULTILINE):
                 # Update list of incomplete items for gate metrics
-                incomplete = re.findall(r"^\s*-\s*\[ \]\s+(.*)$", task.body, re.MULTILINE)
+                incomplete = re.findall(r"^\s*-\s*\[ \]\s*(.*)$", scope, re.MULTILINE)
                 uac_gate = session_state.get_gate("uac")
                 uac_gate.metrics["incomplete_uac_list"] = "\n".join(
                     f"- [ ] {i}" for i in incomplete
@@ -135,7 +151,7 @@ def check_custom_condition(
 
             return True
         except Exception:
-            return True
+            return False  # Fail closed — blocking gate must not silently pass on errors
 
     if name == "has_incomplete_uac":
         # Inverse of uac_verified for policy matching

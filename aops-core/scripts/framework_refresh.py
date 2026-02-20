@@ -24,24 +24,33 @@ def main():
 
     print("=== Refreshing Framework Indices ===")
 
+    failed_steps: list[str] = []
+
     # 1. Core Task Index
     print("Regenerating task index...")
-    run_fast_indexer(data_root, data_root / "tasks" / "index", format="json")
+    if not run_fast_indexer(data_root, data_root / "tasks" / "index", format="json"):
+        failed_steps.append("task index")
 
     # 2. Dashboard Graphs
     print("Regenerating knowledge graphs...")
-    run_fast_indexer(data_root, data_root / "outputs" / "graph", format="json")
-    run_fast_indexer(data_root, data_root / "outputs" / "knowledge-graph", format="json")
+    if not run_fast_indexer(data_root, data_root / "outputs" / "graph", format="json"):
+        failed_steps.append("knowledge graph")
+    if not run_fast_indexer(
+        data_root, data_root / "outputs" / "knowledge-graph", format="json"
+    ):
+        failed_steps.append("knowledge-graph (alt)")
 
     # 3. Styled Task Map for Dashboard
     print("Rendering styled task map...")
     filtered_json = Path("/tmp/tasks-filtered.json")
-    run_fast_indexer(
+    if not run_fast_indexer(
         data_root, Path("/tmp/tasks-filtered"), format="json", filter_types="task,project,goal"
-    )
+    ):
+        failed_steps.append("filtered task index")
 
     if filtered_json.exists():
-        render_task_map(filtered_json, data_root / "outputs" / "task-map")
+        if not render_task_map(filtered_json, data_root / "outputs" / "task-map"):
+            failed_steps.append("task map render")
 
     # 4. Sync to Memory
     print("Syncing to memory server...")
@@ -50,10 +59,16 @@ def main():
     if sync_script.exists():
         import subprocess
 
-        subprocess.run(["uv", "run", "python", str(sync_script)], check=False)
+        result = subprocess.run(["uv", "run", "python", str(sync_script)], check=False)
+        if result.returncode != 0:
+            failed_steps.append("memory sync")
 
     # 5. Update timestamp
     update_refresh_timestamp(data_root)
+
+    if failed_steps:
+        print(f"\n✗ Framework refresh completed with failures: {', '.join(failed_steps)}")
+        sys.exit(1)
 
     print("\n✓ Framework refresh complete.")
 

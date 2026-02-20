@@ -39,4 +39,4 @@ def update_refresh_timestamp(data_root: Path):
     timestamp_path.parent.mkdir(parents=True, exist_ok=True)
     from datetime import UTC, datetime
 
-    timestamp_path.write_text(datetime.now(UTC).isoformat() + "Z")
+    timestamp_path.write_text(datetime.now(UTC).isoformat().replace("+00:00", "Z"))

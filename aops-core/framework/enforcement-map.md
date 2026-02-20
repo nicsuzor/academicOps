@@ -47,6 +47,7 @@ tags: [framework, enforcement, moc]
 | [[maintain-relational-integrity]]           | Relational Integrity                | wikilink conventions                                                                         | Pre-commit (planned)   |           |
 | [[nothing-is-someone-elses-responsibility]] | Nothing Is Someone Else's           | AXIOMS.md                                                                                    | SessionStart           |           |
 | [[acceptance-criteria-own-success]]         | Acceptance Criteria Own Success     | /qa skill (on-demand)                                                                        | Stop                   |           |
+| [[acceptance-criteria-own-success]]         | UAC Gate (light-touch)              | `uac_verified` custom condition in `check_stop_gate` — blocks Stop if unchecked `- [ ]` items remain in task UAC section | Stop    | Soft Gate |
 | [[plan-first-development]]                  | Plan-First Development              | EnterPlanMode tool                                                                           | Before coding          |           |
 | [[research-data-immutable]]                 | Research Data Immutable             | settings.json denies records/**                                                              | PreToolUse             |           |
 | [[just-in-time-context]]                    | Just-In-Time Context                | sessionstart_load_axioms.py                                                                  | SessionStart           |           |
@@ -520,7 +521,7 @@ Context injected via CORE.md at SessionStart. Guides where agents place files.
 | SubagentStop     | `$AOPS/aops-core/hooks/unified_logger.py`                                                                                             |
 | UserPromptSubmit | `$AOPS/aops-core/hooks/user_prompt_submit.py`                                                                                         |
 | SessionStart     | `$AOPS/aops-core/hooks/sessionstart_load_axioms.py`                                                                                   |
-| Stop             | `$AOPS/aops-core/hooks/reflection_check.py`, `session_end_commit_check.py`                                                            |
+| Stop             | `$AOPS/aops-core/hooks/reflection_check.py`, `session_end_commit_check.py`, `gate_registry.py` (uac gate via `custom_conditions.uac_verified`) |
 | Pre-commit       | `~/writing/.pre-commit-config.yaml`                                                                                                   |
 | CI/CD            | `$AOPS/.github/workflows/`                                                                                                            |
 | Remember skill   | `$AOPS/aops-core/skills/remember/SKILL.md`                                                                                            |
