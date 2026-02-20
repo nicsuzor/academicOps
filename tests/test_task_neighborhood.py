@@ -148,7 +148,7 @@ class TestGetTaskNeighborhood:
 
         with patch.object(tasks_server, "_get_storage", return_value=storage):
             with patch.object(tasks_server, "_get_index", return_value=index):
-                result = tasks_server.get_task_neighborhood.fn("nonexistent-id")
+                result = tasks_server.get_task_neighborhood("nonexistent-id")
 
         assert result["success"] is False
         assert result["task"] is None
@@ -165,7 +165,7 @@ class TestGetTaskNeighborhood:
 
         with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
             with patch.object(tasks_server, "_get_index", return_value=index):
-                result = tasks_server.get_task_neighborhood.fn(target_id)
+                result = tasks_server.get_task_neighborhood(target_id)
 
         assert result["success"] is True
         assert result["task"] is not None
@@ -187,7 +187,7 @@ class TestGetTaskNeighborhood:
 
         with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
             with patch.object(tasks_server, "_get_index", return_value=index):
-                result = tasks_server.get_task_neighborhood.fn(target_id)
+                result = tasks_server.get_task_neighborhood(target_id)
 
         assert result["success"] is True
         parent = result["existing_relationships"]["parent"]
@@ -209,7 +209,7 @@ class TestGetTaskNeighborhood:
 
         with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
             with patch.object(tasks_server, "_get_index", return_value=index):
-                result = tasks_server.get_task_neighborhood.fn(target_id)
+                result = tasks_server.get_task_neighborhood(target_id)
 
         assert result["success"] is True
         children = result["existing_relationships"]["children"]
@@ -231,7 +231,7 @@ class TestGetTaskNeighborhood:
 
         with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
             with patch.object(tasks_server, "_get_index", return_value=index):
-                result = tasks_server.get_task_neighborhood.fn(target_id)
+                result = tasks_server.get_task_neighborhood(target_id)
 
         assert result["success"] is True
         depends_on = result["existing_relationships"]["depends_on"]
@@ -253,7 +253,7 @@ class TestGetTaskNeighborhood:
 
         with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
             with patch.object(tasks_server, "_get_index", return_value=index):
-                result = tasks_server.get_task_neighborhood.fn(target_id)
+                result = tasks_server.get_task_neighborhood(target_id)
 
         assert result["success"] is True
         blocks = result["existing_relationships"]["blocks"]
@@ -275,7 +275,7 @@ class TestGetTaskNeighborhood:
 
         with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
             with patch.object(tasks_server, "_get_index", return_value=index):
-                result = tasks_server.get_task_neighborhood.fn(target_id)
+                result = tasks_server.get_task_neighborhood(target_id)
 
         assert result["success"] is True
         soft_blocks = result["existing_relationships"]["soft_blocks"]
@@ -296,7 +296,7 @@ class TestGetTaskNeighborhood:
 
         with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
             with patch.object(tasks_server, "_get_index", return_value=index):
-                result = tasks_server.get_task_neighborhood.fn(target_id)
+                result = tasks_server.get_task_neighborhood(target_id)
 
         assert result["success"] is True
         same_project = result["same_project_tasks"]
@@ -333,7 +333,7 @@ class TestGetTaskNeighborhood:
 
         with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
             with patch.object(tasks_server, "_get_index", return_value=index):
-                result = tasks_server.get_task_neighborhood.fn(target_id)
+                result = tasks_server.get_task_neighborhood(target_id)
 
         assert result["success"] is True
         orphans = result["orphan_tasks"]
@@ -356,7 +356,7 @@ class TestGetTaskNeighborhood:
 
         with patch.object(tasks_server, "_get_storage", return_value=storage_with_tasks):
             with patch.object(tasks_server, "_get_index", return_value=index):
-                result = tasks_server.get_task_neighborhood.fn(target_id)
+                result = tasks_server.get_task_neighborhood(target_id)
 
         assert result["success"] is True
 
