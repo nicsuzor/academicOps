@@ -4,6 +4,10 @@ description: Async workflow guidance reviewer for PRs and issues — identifies 
 model: haiku
 color: cyan
 tools:
+  - Bash
+  - Read
+  - Glob
+  - Grep
   - run_shell_command
   - mcp__task_manager__search_tasks
   - mcp__task_manager__get_task

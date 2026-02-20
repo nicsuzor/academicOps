@@ -64,6 +64,11 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "EnterPlanMode",
         "ExitPlanMode",
         "KillShell",
+        # Claude Code built-in task tracking tools
+        "TaskCreate",
+        "TaskUpdate",
+        "TaskGet",
+        "TaskList",
     },
     # Read-only tools: no side effects
     "read_only": {
@@ -75,6 +80,8 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "ListMcpResourcesTool",
         "ReadMcpResourceTool",
         "TaskOutput",
+        "TaskStop",
+        "ToolSearch",
         "read_file",
         "view_file",
         "list_dir",

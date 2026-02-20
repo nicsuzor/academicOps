@@ -4,6 +4,10 @@ description: Async compliance reviewer for PRs and issues — detects scope drif
 model: haiku
 color: red
 tools:
+  - Bash
+  - Read
+  - Glob
+  - Grep
   - run_shell_command
   - read_file
   - mcp__task_manager__search_tasks

@@ -1,23 +1,37 @@
 # Async QA review pipeline (Pillar 2)
-# Runs hydrator-reviewer and custodiet-reviewer on PRs.
+# Runs hydrator-reviewer and custodiet-reviewer on PRs and issues.
 # These agents post advisory comments — they do not block merges.
 #
-# Triggers: PR opened, reopened, or new commits pushed to PR branch.
+# Triggers:
+#   PRs: opened, reopened, or new commits pushed
+#   Issues: opened only (proposal quality review)
+#
 # Both agents run in parallel after checkout.
+# Skips: bot-created issues, issues labeled 'epic' (tracking issues, not proposals)
 
 name: Async QA Review
 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  issues:
+    types: [opened]
 
 jobs:
   # ──────────────────────────────────────────────
-  # Hydrator Reviewer: workflow guidance
+  # Hydrator Reviewer: workflow guidance + infrastructure context
   # ──────────────────────────────────────────────
   hydrator-review:
     name: Hydrator Review
     runs-on: ubuntu-latest
+    # Skip bot-created issues and epics (tracking issues, not proposals)
+    if: >-
+      (github.event_name == 'pull_request') ||
+      (github.event_name == 'issues' &&
+       !github.event.issue.pull_request &&
+       github.actor != 'dependabot[bot]' &&
+       github.actor != 'claude[bot]' &&
+       !contains(github.event.issue.labels.*.name, 'epic'))
     permissions:
       contents: read
       pull-requests: write
@@ -38,7 +52,8 @@ jobs:
             echo "HYDRATOR_EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Run Hydrator Reviewer Agent
+      - name: Run Hydrator Reviewer Agent (PR)
+        if: github.event_name == 'pull_request'
         uses: anthropics/claude-code-action@v1
         with:
           allowed_bots: "claude[bot]"
@@ -52,7 +67,32 @@ jobs:
             Use `gh pr view ${{ github.event.pull_request.number }}` and `gh pr diff ${{ github.event.pull_request.number }}` to gather information.
             Post your findings as a comment using `gh pr comment ${{ github.event.pull_request.number }} --body "..."`.
 
-          claude_args: '--allowed-tools "Bash(gh:*),Read"'
+          claude_args: '--allowed-tools "Bash(gh:*),Bash(find:*),Bash(grep:*),Read"'
+
+      - name: Run Hydrator Reviewer Agent (Issue)
+        if: github.event_name == 'issues'
+        uses: anthropics/claude-code-action@v1
+        with:
+          allowed_bots: "claude[bot]"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            ${{ steps.hydrator-prompt.outputs.prompt }}
+
+            ---
+
+            Review issue #${{ github.event.issue.number }} in repository ${{ github.repository }}.
+            This is a PROPOSAL (issue), not a PR. There is no diff to review.
+
+            Use `gh issue view ${{ github.event.issue.number }}` to read the issue.
+            Search the codebase to find existing infrastructure that relates to this proposal.
+            Surface facts: what already exists, what's inconsistent, what downstream code will be affected.
+
+            If you have useful infrastructure context to share, post it as a comment using:
+            `gh issue comment ${{ github.event.issue.number }} --body "..."`.
+
+            If there is no useful context to add, do NOT post a comment. Silence is fine.
+
+          claude_args: '--allowed-tools "Bash(gh:*),Bash(find:*),Bash(grep:*),Read"'
 
   # ──────────────────────────────────────────────
   # Custodiet Reviewer: compliance and scope drift
@@ -60,6 +100,14 @@ jobs:
   custodiet-review:
     name: Custodiet Review
     runs-on: ubuntu-latest
+    # Skip bot-created issues and epics
+    if: >-
+      (github.event_name == 'pull_request') ||
+      (github.event_name == 'issues' &&
+       !github.event.issue.pull_request &&
+       github.actor != 'dependabot[bot]' &&
+       github.actor != 'claude[bot]' &&
+       !contains(github.event.issue.labels.*.name, 'epic'))
     permissions:
       contents: read
       pull-requests: write
@@ -80,7 +128,8 @@ jobs:
             echo "CUSTODIET_EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Run Custodiet Reviewer Agent
+      - name: Run Custodiet Reviewer Agent (PR)
+        if: github.event_name == 'pull_request'
         uses: anthropics/claude-code-action@v1
         with:
           allowed_bots: "claude[bot]"
@@ -93,5 +142,30 @@ jobs:
             Review PR #${{ github.event.pull_request.number }} in repository ${{ github.repository }}.
             Use `gh pr view ${{ github.event.pull_request.number }}` and `gh pr diff ${{ github.event.pull_request.number }}` to gather information.
             Post your findings as a comment using `gh pr comment ${{ github.event.pull_request.number }} --body "..."`.
+            If there are no findings, do NOT post a comment.
+
+          claude_args: '--allowed-tools "Bash(gh:*),Read"'
+
+      - name: Run Custodiet Reviewer Agent (Issue)
+        if: github.event_name == 'issues'
+        uses: anthropics/claude-code-action@v1
+        with:
+          allowed_bots: "claude[bot]"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            ${{ steps.custodiet-prompt.outputs.prompt }}
+
+            ---
+
+            Review issue #${{ github.event.issue.number }} in repository ${{ github.repository }}.
+            This is a PROPOSAL (issue), not a PR. There is no diff to review.
+
+            Use `gh issue view ${{ github.event.issue.number }}` to read the issue.
+            Assess the quality of the user story, acceptance criteria, and scope definition.
+
+            If you find genuine issues with the proposal quality, post your findings as a comment using:
+            `gh issue comment ${{ github.event.issue.number }} --body "..."`.
+
+            If the proposal is well-formed and compliant, do NOT post a comment. Silence means approval.
 
           claude_args: '--allowed-tools "Bash(gh:*),Read"'
