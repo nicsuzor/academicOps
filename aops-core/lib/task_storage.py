@@ -66,13 +66,31 @@ import re
 # Context inference patterns: (regex_for_title, tag_matches, context_value)
 _CONTEXT_RULES: list[tuple[re.Pattern[str] | None, frozenset[str], str]] = [
     # Email-related tasks
-    (re.compile(r"\b(reply|respond|email|forward|send)\b", re.I), frozenset({"email-triage"}), "@email"),
+    (
+        re.compile(r"\b(reply|respond|email|forward|send)\b", re.I),
+        frozenset({"email-triage"}),
+        "@email",
+    ),
     # Meeting/scheduling tasks
-    (re.compile(r"\b(meet|schedule|seminar|presentation|attend)\b", re.I), frozenset({"meeting", "supervision"}), "@meeting"),
+    (
+        re.compile(r"\b(meet|schedule|seminar|presentation|attend)\b", re.I),
+        frozenset({"meeting", "supervision"}),
+        "@meeting",
+    ),
     # Administrative tasks
-    (re.compile(r"\b(approve|acquit|form|allocate|enrol)\b", re.I), frozenset({"admin", "finance"}), "@admin"),
+    (
+        re.compile(r"\b(approve|acquit|form|allocate|enrol)\b", re.I),
+        frozenset({"admin", "finance"}),
+        "@admin",
+    ),
     # Deep work (research, writing, design)
-    (re.compile(r"\b(write|research|design|architect|analyse|analyze|investigate|spike)\b", re.I), frozenset({"research", "writing", "architecture"}), "@deep-work"),
+    (
+        re.compile(
+            r"\b(write|research|design|architect|analyse|analyze|investigate|spike)\b", re.I
+        ),
+        frozenset({"research", "writing", "architecture"}),
+        "@deep-work",
+    ),
 ]
 
 
