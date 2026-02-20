@@ -10,6 +10,8 @@ import pytest
 from scripts.task_graph import (
     TYPE_SHAPES,
     extract_ego_subgraph,
+    generate_attention_dot,
+    generate_attention_map,
     generate_dot,
 )
 
@@ -159,3 +161,64 @@ class TestCrossTypeRendering:
         dot = generate_dot(nodes, edges, include_orphans=True)
 
         assert "peripheries=2" in dot
+
+
+# ── #564: Unknown unknowns heat map ──────────────────────────────
+
+
+class TestAttentionMap:
+    """Test attention map (importance vs connectivity gap)."""
+
+    def test_finds_under_connected_nodes(self):
+        nodes, edges = _sample_graph_nodes_edges()
+        _, _, gap_data = generate_attention_map(nodes, edges)
+        # orphan-1 has 0 connections but no priority/downstream -> low gap
+        # goal-1 has high downstream_weight=8.0 and degree 1 -> gap
+        ids = {g["id"] for g in gap_data}
+        assert "goal-1" in ids  # High importance, moderate connectivity
+
+    def test_excludes_done_nodes(self):
+        nodes, edges = _sample_graph_nodes_edges()
+        _, _, gap_data = generate_attention_map(nodes, edges)
+        ids = {g["id"] for g in gap_data}
+        assert "task-2" not in ids  # status=done, should be excluded
+
+    def test_gap_scores_sorted_descending(self):
+        nodes, edges = _sample_graph_nodes_edges()
+        _, _, gap_data = generate_attention_map(nodes, edges)
+        scores = [g["gap_score"] for g in gap_data]
+        assert scores == sorted(scores, reverse=True)
+
+    def test_gap_data_fields(self):
+        nodes, edges = _sample_graph_nodes_edges()
+        _, _, gap_data = generate_attention_map(nodes, edges)
+        if gap_data:
+            g = gap_data[0]
+            assert "id" in g
+            assert "label" in g
+            assert "importance" in g
+            assert "connectivity" in g
+            assert "gap_score" in g
+
+    def test_flagged_subgraph_includes_neighbors(self):
+        nodes, edges = _sample_graph_nodes_edges()
+        flagged_nodes, _, gap_data = generate_attention_map(nodes, edges)
+        flagged_ids = {g["id"] for g in gap_data}
+        all_ids = {n["id"] for n in flagged_nodes}
+        # Subgraph should include flagged nodes + their neighbors
+        assert flagged_ids.issubset(all_ids)
+        assert len(all_ids) >= len(flagged_ids)
+
+    def test_attention_dot_generation(self):
+        nodes, edges = _sample_graph_nodes_edges()
+        flagged_nodes, flagged_edges, gap_data = generate_attention_map(nodes, edges)
+        if gap_data:
+            dot = generate_attention_dot(flagged_nodes, flagged_edges, gap_data)
+            assert "AttentionMap" in dot
+            assert "gap=" in dot  # Gap annotation on flagged nodes
+            assert "#dc3545" in dot  # Red border for attention nodes
+
+    def test_attention_map_respects_top_n(self):
+        nodes, edges = _sample_graph_nodes_edges()
+        _, _, gap_data = generate_attention_map(nodes, edges, top_n=2)
+        assert len(gap_data) <= 2

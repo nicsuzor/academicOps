@@ -629,6 +629,180 @@ def extract_ego_subgraph(
     return filtered_nodes, filtered_edges
 
 
+def generate_attention_map(
+    nodes: list[dict], edges: list[dict], top_n: int = 20
+) -> tuple[list[dict], list[dict], list[dict]]:
+    """Generate attention map: nodes where importance >> connectivity (#564).
+
+    Computes importance (priority weight + downstream_weight) and connectivity
+    (degree in the graph) for each node, then flags nodes with high gap scores.
+
+    Args:
+        nodes: All nodes from graph.json.
+        edges: All edges from graph.json.
+        top_n: Number of top attention-needed nodes to return.
+
+    Returns:
+        (flagged_nodes, flagged_edges, gap_data) where:
+        - flagged_nodes: Subgraph of attention-needed nodes + their nearest neighbors
+        - flagged_edges: Edges within the subgraph
+        - gap_data: List of dicts with node info and gap scores
+    """
+    # Build degree map (undirected)
+    degree: dict[str, int] = {n["id"]: 0 for n in nodes}
+    for e in edges:
+        src, tgt = e["source"], e["target"]
+        if src in degree:
+            degree[src] += 1
+        if tgt in degree:
+            degree[tgt] += 1
+
+    # Priority weight mapping
+    priority_weights = {0: 5.0, 1: 3.0, 2: 2.0, 3: 1.0, 4: 0.5}
+
+    # Compute gap scores
+    gap_data = []
+    for node in nodes:
+        nid = node["id"]
+        # Skip done/cancelled
+        status = (node.get("status") or "").lower()
+        if status in ("done", "cancelled", "completed"):
+            continue
+
+        priority = node.get("priority")
+        if priority is None:
+            priority_weight = 0.5
+        else:
+            priority_weight = priority_weights.get(priority, 0.5)
+
+        downstream = node.get("downstream_weight", 0.0)
+        importance = priority_weight + downstream
+
+        connectivity = degree.get(nid, 0)
+
+        # Gap: high importance relative to connectivity
+        if connectivity == 0:
+            gap_score = importance
+        else:
+            gap_score = importance / (1 + connectivity)
+
+        if gap_score > 0.5:  # Threshold for inclusion
+            gap_data.append({
+                "id": nid,
+                "label": node.get("label", ""),
+                "node_type": node.get("node_type") or "note",
+                "status": node.get("status"),
+                "priority": priority,
+                "importance": round(importance, 2),
+                "connectivity": connectivity,
+                "gap_score": round(gap_score, 2),
+            })
+
+    # Sort by gap score
+    gap_data.sort(key=lambda x: x["gap_score"], reverse=True)
+    gap_data = gap_data[:top_n]
+
+    # Build subgraph: flagged nodes + their direct neighbors
+    flagged_ids = {g["id"] for g in gap_data}
+    node_by_id = {n["id"]: n for n in nodes}
+
+    # Add nearest neighbors
+    adjacency: dict[str, set[str]] = {n["id"]: set() for n in nodes}
+    for e in edges:
+        src, tgt = e["source"], e["target"]
+        if src in adjacency and tgt in adjacency:
+            adjacency[src].add(tgt)
+            adjacency[tgt].add(src)
+
+    neighbor_ids = set()
+    for fid in flagged_ids:
+        for neighbor in adjacency.get(fid, set()):
+            neighbor_ids.add(neighbor)
+
+    subgraph_ids = flagged_ids | neighbor_ids
+    flagged_nodes = [n for n in nodes if n["id"] in subgraph_ids]
+    flagged_edges = [
+        e for e in edges if e["source"] in subgraph_ids and e["target"] in subgraph_ids
+    ]
+
+    return flagged_nodes, flagged_edges, gap_data
+
+
+def generate_attention_dot(
+    nodes: list[dict],
+    edges: list[dict],
+    gap_data: list[dict],
+) -> str:
+    """Generate DOT format graph for attention map (#564).
+
+    Flagged nodes (high gap score) get red borders with gap annotation.
+    Neighbor nodes get normal styling.
+    """
+    flagged_ids = {g["id"] for g in gap_data}
+    gap_by_id = {g["id"]: g for g in gap_data}
+
+    lines = [
+        "digraph AttentionMap {",
+        "    rankdir=TB;",
+        '    node [style=filled, fontname="Helvetica"];',
+        '    edge [color="#6c757d"];',
+        '    label="Attention Map: Under-connected Important Nodes";',
+        "    labelloc=t;",
+        '    fontsize=18;',
+        "",
+    ]
+
+    for node in nodes:
+        nid = node["id"]
+        node_type = node.get("node_type") or "task"
+        status = node.get("status") or "inbox"
+        shape = TYPE_SHAPES.get(node_type, "box")
+        fillcolor = STATUS_COLORS.get(status, "#ffffff")
+        label = node.get("label", nid)[:50].replace('"', '\\"')
+
+        if nid in flagged_ids:
+            gap = gap_by_id[nid]
+            label += f"\\n\u26a0 gap={gap['gap_score']}"
+            pencolor = "#dc3545"  # Red border for attention
+            penwidth = 3
+            style = "filled,bold"
+        else:
+            pencolor = "#adb5bd"
+            penwidth = 1
+            style = "filled"
+
+        lines.append(
+            f'    "{nid}" ['
+            f'label="{label}" '
+            f"shape={shape} "
+            f'style="{style}" '
+            f'fillcolor="{fillcolor}" '
+            f'color="{pencolor}" '
+            f"penwidth={penwidth}"
+            f"];"
+        )
+
+    lines.append("")
+
+    node_ids = {n["id"] for n in nodes}
+    for edge in edges:
+        if edge["source"] in node_ids and edge["target"] in node_ids:
+            edge_type = edge.get("type", "link")
+            edge_style = EDGE_STYLES.get(edge_type, EDGE_STYLES["link"])
+            style_attrs = [
+                f'color="{edge_style["color"]}"',
+                f'style="{edge_style["style"]}"',
+            ]
+            if "penwidth" in edge_style:
+                style_attrs.append(f"penwidth={edge_style['penwidth']}")
+            lines.append(
+                f'    "{edge["source"]}" -> "{edge["target"]}" [{" ".join(style_attrs)}];'
+            )
+
+    lines.append("}")
+    return "\n".join(lines)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Generate styled task graph from fast-indexer JSON"
@@ -664,6 +838,18 @@ def main():
         default=2,
         help="Ego-subgraph depth in hops (default: 2, use with --ego)",
     )
+    # Attention map (#564)
+    parser.add_argument(
+        "--attention-map",
+        action="store_true",
+        help="Generate attention map: under-connected important nodes",
+    )
+    parser.add_argument(
+        "--attention-top",
+        type=int,
+        default=20,
+        help="Number of top attention nodes (default: 20, use with --attention-map)",
+    )
     args = parser.parse_args()
 
     input_path = Path(args.input)
@@ -696,6 +882,26 @@ def main():
             f"Ego subgraph: {len(all_nodes)} nodes, {len(all_edges)} edges "
             f"(center={args.ego}, depth={args.depth})"
         )
+
+    # Attention map (#564)
+    if args.attention_map:
+        flagged_nodes, flagged_edges, gap_data = generate_attention_map(
+            all_nodes, all_edges, top_n=args.attention_top
+        )
+
+        if not gap_data:
+            print("No attention-needed nodes found")
+            return 0
+
+        print(f"\nAttention map: {len(gap_data)} flagged nodes, {len(flagged_nodes)} total in subgraph")
+        for g in gap_data[:10]:
+            print(f"  {g['label'][:40]:<40} gap={g['gap_score']:.1f}  "
+                  f"importance={g['importance']:.1f}  connectivity={g['connectivity']}")
+
+        dot_content = generate_attention_dot(flagged_nodes, flagged_edges, gap_data)
+        output_base = f"{args.output}-attention"
+        generate_svg(dot_content, output_base, args.layout, keep_dot=True)
+        return 0
 
     # Define variants to generate
     # Each variant: (suffix, filter_type, include_orphans, description)
