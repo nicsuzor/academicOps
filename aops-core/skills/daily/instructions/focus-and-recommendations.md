@@ -87,6 +87,44 @@ This provides a bird's eye view of active project hierarchy. The tree:
 
 Copy the `formatted` field from the response directly into the code block.
 
+### 3.1.6: Project Health Dashboard
+
+Compute per-project health metrics from the topology data (loaded in 3.1.7) and task list:
+
+```python
+# Group tasks by project
+projects = {}
+for t in topology["tasks"]:
+    proj = t.get("project") or "(orphan)"
+    projects.setdefault(proj, []).append(t)
+
+# Per-project metrics
+for proj, tasks in sorted(projects.items()):
+    active = [t for t in tasks if t["status"] in ACTIONABLE_STATUSES]
+    blocked = [t for t in active if t["status"] == "blocked"]
+    staleness = sorted([t["ready_days"] for t in tasks if t.get("ready_days") is not None])
+    median_stale = staleness[len(staleness)//2] if staleness else 0
+    orphans = [t for t in active if not t.get("parent")]
+```
+
+**Format in daily note** (add as a subsection within Focus, before recommendations):
+
+```markdown
+### Project Health
+
+| Project | Active | Blocked | Median Stale (d) | Orphan % |
+|---------|--------|---------|-------------------|----------|
+| aops    | 42     | 5 (12%) | 8.2               | 15%      |
+| osb     | 18     | 2 (11%) | 3.1               | 22%      |
+```
+
+**Highlight thresholds** (flag projects needing attention):
+- Blocker ratio > 25% → add `⚠️` prefix
+- Median staleness > 14d → add `🕐` prefix
+- Orphan ratio > 40% → add `🔗` prefix
+
+Only show projects with >= 3 active tasks to avoid noise.
+
 ### 3.1.7: Query Pending Decisions
 
 Count tasks awaiting user decisions (for decision queue summary):

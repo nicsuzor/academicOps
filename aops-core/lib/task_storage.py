@@ -61,6 +61,35 @@ EXCLUDED_DIRS = frozenset(
 )
 
 
+import re
+
+# Context inference patterns: (regex_for_title, tag_matches, context_value)
+_CONTEXT_RULES: list[tuple[re.Pattern[str] | None, frozenset[str], str]] = [
+    # Email-related tasks
+    (re.compile(r"\b(reply|respond|email|forward|send)\b", re.I), frozenset({"email-triage"}), "@email"),
+    # Meeting/scheduling tasks
+    (re.compile(r"\b(meet|schedule|seminar|presentation|attend)\b", re.I), frozenset({"meeting", "supervision"}), "@meeting"),
+    # Administrative tasks
+    (re.compile(r"\b(approve|acquit|form|allocate|enrol)\b", re.I), frozenset({"admin", "finance"}), "@admin"),
+    # Deep work (research, writing, design)
+    (re.compile(r"\b(write|research|design|architect|analyse|analyze|investigate|spike)\b", re.I), frozenset({"research", "writing", "architecture"}), "@deep-work"),
+]
+
+
+def infer_context(title: str, tags: list[str]) -> str | None:
+    """Infer context from task title patterns and tags.
+
+    Returns the first matching context, or None if no pattern matches.
+    """
+    tag_set = set(tags)
+    for pattern, tag_matches, context in _CONTEXT_RULES:
+        if tag_matches & tag_set:
+            return context
+        if pattern and pattern.search(title):
+            return context
+    return None
+
+
 class TaskStorage:
     """Flat file storage for tasks organized by project.
 
@@ -206,6 +235,9 @@ class TaskStorage:
             if parent_task:
                 depth = parent_task.depth + 1
 
+        # Auto-populate context if not otherwise set
+        context = infer_context(title, tags or [])
+
         return Task(
             id=task_id,
             title=title,
@@ -223,6 +255,7 @@ class TaskStorage:
             body=body,
             assignee=assignee,
             complexity=complexity,
+            context=context,
         )
 
     def claim_task(self, task_id: str, assignee: str) -> Task | None:
