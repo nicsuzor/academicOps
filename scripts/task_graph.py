@@ -24,6 +24,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Add aops-core to path for lib imports
+SCRIPT_DIR = Path(__file__).parent.resolve()
+REPO_ROOT = SCRIPT_DIR.parent
+sys.path.insert(0, str(REPO_ROOT / "aops-core"))
+
 # Color schemes
 ASSIGNEE_COLORS = {
     "bot": "#17a2b8",  # cyan/teal - AI agent
@@ -54,6 +59,7 @@ PRIORITY_BORDERS = {
 }
 
 TYPE_SHAPES = {
+    # Task types
     "goal": "ellipse",
     "project": "box3d",
     "epic": "octagon",  # Milestone grouping
@@ -62,6 +68,13 @@ TYPE_SHAPES = {
     "bug": "diamond",  # Defect to fix
     "feature": "hexagon",  # New functionality
     "learn": "tab",  # Observational tracking
+    # PKB cross-type nodes (#563)
+    "daily": "plaintext",
+    "knowledge": "note",
+    "person": "circle",
+    "context": "cds",
+    "template": "component",
+    "note": "box",  # Default
 }
 
 EDGE_STYLES = {
@@ -264,8 +277,8 @@ def _build_legend_table(stats: dict) -> str:
         "</TD></TR>"
     )
 
-    # Task Types
-    rows.append('<TR><TD COLSPAN="4" BGCOLOR="#e9ecef"><B>Task Types</B></TD></TR>')
+    # Task Types (include PKB cross-types #563)
+    rows.append('<TR><TD COLSPAN="4" BGCOLOR="#e9ecef"><B>Node Types</B></TD></TR>')
     type_items = [
         ("Goal", "ellipse"),
         ("Project", "box3d"),
@@ -275,6 +288,9 @@ def _build_legend_table(stats: dict) -> str:
         ("Bug", "diamond"),
         ("Feature", "hexagon"),
         ("Learn", "tab"),
+        ("Daily", "plaintext"),
+        ("Knowledge", "note"),
+        ("Person", "circle"),
     ]
     for i in range(0, len(type_items), 4):
         chunk = type_items[i : i + 4]
@@ -404,8 +420,8 @@ def generate_dot(
     # Add nodes
     for node in nodes:
         node_id = node["id"]
-        node_type = node.get("node_type", "task")
-        status = node.get("status", "inbox")
+        node_type = node.get("node_type") or "task"
+        status = node.get("status") or "inbox"
         priority = node.get("priority", 2)
         file_path = node.get("path", "")
 
@@ -547,6 +563,72 @@ def generate_svg(dot_content: str, output_base: str, layout: str, keep_dot: bool
     return success
 
 
+def extract_ego_subgraph(
+    nodes: list[dict], edges: list[dict], center_id: str, depth: int = 2
+) -> tuple[list[dict], list[dict]]:
+    """Extract ego-subgraph around a center node (#563).
+
+    Includes all nodes within `depth` hops via ANY edge type,
+    traversing edges bidirectionally.
+
+    Args:
+        nodes: All nodes from graph.json.
+        edges: All edges from graph.json.
+        center_id: Node ID to center on. Also tries resolution via label/filename.
+        depth: Maximum hop distance from center.
+
+    Returns:
+        (filtered_nodes, filtered_edges) containing only the subgraph.
+    """
+    node_by_id = {n["id"]: n for n in nodes}
+
+    # Try to resolve center_id if not a direct ID
+    if center_id not in node_by_id:
+        # Try label match (case-insensitive)
+        for n in nodes:
+            if n.get("label", "").lower() == center_id.lower():
+                center_id = n["id"]
+                break
+        # Try filename stem match
+        if center_id not in node_by_id:
+            for n in nodes:
+                stem = Path(n.get("path", "")).stem
+                if stem.lower() == center_id.lower():
+                    center_id = n["id"]
+                    break
+
+    if center_id not in node_by_id:
+        print(f"Error: Cannot find node '{center_id}' in graph", file=sys.stderr)
+        return [], []
+
+    # Build undirected adjacency for BFS
+    adjacency: dict[str, set[str]] = {n["id"]: set() for n in nodes}
+    for e in edges:
+        src, tgt = e["source"], e["target"]
+        if src in adjacency and tgt in adjacency:
+            adjacency[src].add(tgt)
+            adjacency[tgt].add(src)
+
+    # BFS from center
+    visited = {center_id}
+    frontier = {center_id}
+    for _ in range(depth):
+        next_frontier = set()
+        for nid in frontier:
+            for neighbor in adjacency.get(nid, set()):
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    next_frontier.add(neighbor)
+        frontier = next_frontier
+
+    filtered_nodes = [n for n in nodes if n["id"] in visited]
+    filtered_edges = [
+        e for e in edges if e["source"] in visited and e["target"] in visited
+    ]
+
+    return filtered_nodes, filtered_edges
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Generate styled task graph from fast-indexer JSON"
@@ -570,6 +652,18 @@ def main():
         action="store_true",
         help="Generate only single output (default generates multiple variants)",
     )
+    # Ego-subgraph extraction (#563)
+    parser.add_argument(
+        "--ego",
+        metavar="ID",
+        help="Extract ego-subgraph centered on this node (ID, label, or filename)",
+    )
+    parser.add_argument(
+        "--depth",
+        type=int,
+        default=2,
+        help="Ego-subgraph depth in hops (default: 2, use with --ego)",
+    )
     args = parser.parse_args()
 
     input_path = Path(args.input)
@@ -589,6 +683,19 @@ def main():
         f"Loaded {len(all_nodes)} nodes (excluding cancelled), "
         f"{len(all_edges)} edges from {input_path}"
     )
+
+    # Ego-subgraph extraction (#563)
+    if args.ego:
+        all_nodes, all_edges = extract_ego_subgraph(
+            all_nodes, all_edges, args.ego, args.depth
+        )
+        if not all_nodes:
+            return 1
+        node_ids = {n["id"] for n in all_nodes}
+        print(
+            f"Ego subgraph: {len(all_nodes)} nodes, {len(all_edges)} edges "
+            f"(center={args.ego}, depth={args.depth})"
+        )
 
     # Define variants to generate
     # Each variant: (suffix, filter_type, include_orphans, description)
