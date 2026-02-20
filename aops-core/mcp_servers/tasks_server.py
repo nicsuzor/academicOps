@@ -1308,6 +1308,8 @@ def get_tasks_with_topology(
         - created: datetime
         - modified: datetime
         - ready_days: float | None      # days since became ready (if status=active)
+        - downstream_weight: float      # transitive impact score (BFS from fast-indexer)
+        - stakeholder_exposure: bool    # true if any downstream task has a due date
     """
     try:
         index = _get_index()
@@ -1359,6 +1361,8 @@ def get_tasks_with_topology(
                 "created": full_task.created.isoformat(),
                 "modified": full_task.modified.isoformat(),
                 "ready_days": ready_days,
+                "downstream_weight": entry.downstream_weight,
+                "stakeholder_exposure": entry.stakeholder_exposure,
             }
             task_dicts.append(task_dict)
 

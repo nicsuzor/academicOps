@@ -80,6 +80,9 @@ class TaskIndexEntry:
     due: str | None = None
     tags: list[str] = field(default_factory=list)
     assignee: str | None = None
+    complexity: str | None = None
+    downstream_weight: float = 0.0  # Transitive impact score from fast-indexer BFS
+    stakeholder_exposure: bool = False  # True if any downstream task has a due date
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -103,6 +106,9 @@ class TaskIndexEntry:
             "due": self.due,
             "tags": self.tags,
             "assignee": self.assignee,
+            "complexity": self.complexity,
+            "downstream_weight": self.downstream_weight,
+            "stakeholder_exposure": self.stakeholder_exposure,
         }
 
     @classmethod
@@ -128,6 +134,9 @@ class TaskIndexEntry:
             due=data.get("due"),
             tags=data.get("tags", []),
             assignee=data.get("assignee"),
+            complexity=data.get("complexity"),
+            downstream_weight=data.get("downstream_weight", 0.0),
+            stakeholder_exposure=data.get("stakeholder_exposure", False),
         )
 
     @classmethod
@@ -153,6 +162,8 @@ class TaskIndexEntry:
             due=task.due.isoformat() if task.due else None,
             tags=task.tags,
             assignee=task.assignee,
+            complexity=task.complexity.value if task.complexity else None,
+            # downstream_weight and stakeholder_exposure are only computed by fast-indexer
         )
 
 
@@ -555,8 +566,8 @@ class TaskIndex:
             if caller == "polecat":
                 entries = [e for e in entries if not (set(e.tags) & self.HUMAN_TAGS)]
 
-        # Sort by priority (lower is higher priority), then order, then title
-        entries.sort(key=lambda e: (e.priority, e.order, e.title))
+        # Sort by priority (lower is higher priority), then downstream_weight DESC, then order, then title
+        entries.sort(key=lambda e: (e.priority, -e.downstream_weight, e.order, e.title))
         return entries
 
     def get_blocked_tasks(self) -> list[TaskIndexEntry]:
