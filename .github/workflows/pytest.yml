@@ -32,5 +32,14 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
+      - name: Setup Test Environment
+        run: |
+          mkdir -p ~/.claude
+          # Link the skills directory to ~/.claude/skills as expected by framework
+          ln -s $GITHUB_WORKSPACE/aops-core/skills ~/.claude/skills
+          ls -l ~/.claude/skills
+
       - name: Run pytest
-        run: uv run pytest
+        env:
+          AOPS: ${{ github.workspace }}
+        run: uv run pytest -m "not requires_local_env"

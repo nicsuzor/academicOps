@@ -220,10 +220,36 @@ def test_custodiet_subagent_file_access(claude_headless_tracked) -> None:
 
 @pytest.mark.slow
 @pytest.mark.integration
-def test_custodiet_temp_file_structure(tmp_path, monkeypatch) -> None:
-    """Validate custodiet temp file structure (non-demo unit test).
+@pytest.mark.requires_local_env
+def test_custodiet_temp_file_structure() -> None:
+    """Validate custodiet temp file structure (integration test).
 
-    Reads existing temp files to verify structure - no Claude session needed.
+    Reads ACTUAL existing temp files from previous sessions to verify structure.
+    This test requires a local environment with existing session history.
+    """
+    temp_dir = get_audit_temp_dir()
+
+    if not temp_dir.exists():
+        pytest.skip("No custodiet temp directory - run a Claude session first")
+
+    temp_files = sorted(temp_dir.glob("audit_*.md"), key=lambda f: f.stat().st_mtime, reverse=True)
+
+    if not temp_files:
+        pytest.skip("No custodiet temp files found")
+
+    most_recent = temp_files[0]
+    content = most_recent.read_text()
+
+    # Structural validation
+    assert "## Session Context" in content, "Missing Session Context section"
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+def test_custodiet_audit_file_structure_unit(tmp_path, monkeypatch) -> None:
+    """Validate custodiet temp file structure (unit test).
+
+    Verifies the parsing/validation logic against a synthetic file.
     """
     # Create a dummy temp dir with dummy files
     dummy_dir = tmp_path / "hydrator"
@@ -248,19 +274,13 @@ Output must be structured.
     )
 
     # Mock get_audit_temp_dir to return dummy_dir
-    monkeypatch.setattr(
-        "tests.integration.test_custodiet_e2e.get_audit_temp_dir", lambda: dummy_dir
-    )
+    monkeypatch.setattr("tests.integration.test_custodiet_e2e.get_audit_temp_dir", lambda: dummy_dir)
 
     temp_dir = get_audit_temp_dir()
-
-    if not temp_dir.exists():
-        pytest.skip("No custodiet temp directory - run a Claude session first")
+    assert temp_dir.exists()
 
     temp_files = sorted(temp_dir.glob("audit_*.md"), key=lambda f: f.stat().st_mtime, reverse=True)
-
-    if not temp_files:
-        pytest.skip("No custodiet temp files found")
+    assert temp_files
 
     most_recent = temp_files[0]
     content = most_recent.read_text()
