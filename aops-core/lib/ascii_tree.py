@@ -54,7 +54,7 @@ class AsciiTreeGenerator:
         # Format children recursively
         children = self.index.get_children(root_id)
         for i, child in enumerate(children):
-            is_last = i == len(children) - 1
+            is_last = (i == len(children) - 1)
             self._format_child(child, "", is_last, lines)
 
         return "\n".join(lines)
@@ -77,13 +77,16 @@ class AsciiTreeGenerator:
         # A task is a root in this project context if:
         # 1. It has no parent
         # 2. OR its parent is not in the project (e.g. parent is a goal outside the project)
-        roots = [t for t in tasks if not t.parent or t.parent not in project_ids]
+        roots = [
+            t for t in tasks
+            if not t.parent or t.parent not in project_ids
+        ]
 
         if not roots:
-            # Should be unreachable if tasks exists, unless there's a cycle?
-            # Or if all tasks have parents in project but form a cycle.
-            # Assume acyclic.
-            pass
+             # Should be unreachable if tasks exists, unless there's a cycle?
+             # Or if all tasks have parents in project but form a cycle.
+             # Assume acyclic.
+             pass
 
         # Sort roots by priority, then order, then title
         roots.sort(key=lambda t: (t.priority, t.order, t.title))
@@ -101,7 +104,11 @@ class AsciiTreeGenerator:
         lines.append(f"{symbol} {text}")
 
     def _format_child(
-        self, node: TaskIndexEntry, prefix: str, is_last: bool, lines: list[str]
+        self,
+        node: TaskIndexEntry,
+        prefix: str,
+        is_last: bool,
+        lines: list[str]
     ) -> None:
         """Format a child node and recurse."""
         connector = "└─" if is_last else "├─"
@@ -115,7 +122,7 @@ class AsciiTreeGenerator:
         child_prefix = prefix + ("  " if is_last else "│ ")
 
         for i, child in enumerate(children):
-            is_last_child = i == len(children) - 1
+            is_last_child = (i == len(children) - 1)
             self._format_child(child, child_prefix, is_last_child, lines)
 
     def _format_node_text(self, node: TaskIndexEntry) -> str:

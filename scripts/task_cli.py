@@ -1301,9 +1301,9 @@ def trace(source: str, target: str):
     if not paths:
         console.print("[yellow]No path between:[/yellow]")
         console.print("  Source: ", end="")
-        console.print(_format_pkb_node(src_node or {}))
+        console.print(_format_pkb_node(src_node or {"id": src}))
         console.print("  Target: ", end="")
-        console.print(_format_pkb_node(tgt_node or {}))
+        console.print(_format_pkb_node(tgt_node or {"id": tgt}))
         raise SystemExit(1)
 
     console.print(f"[bold]Found {len(paths)} path(s) of length {len(paths[0]) - 1}[/bold]\n")
