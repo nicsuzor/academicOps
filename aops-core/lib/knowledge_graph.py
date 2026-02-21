@@ -30,7 +30,7 @@ import re
 import subprocess
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import networkx as nx
 
