@@ -8,7 +8,7 @@ How pull requests move from open to merged (or rejected) in the aops repository.
 | ---------------- | --------------------------- | ---------------------------------------------- | -------------------------------------------- |
 | Code Quality     | `code-quality.yml`          | `push` (main), `pull_request` (opened, synchronize, assigned) | Lint + gatekeeper (parallel), then type-check |
 | PR Review        | `pr-review-pipeline.yml`    | `workflow_run` (Code Quality completed)        | Sequential: custodiet → QA → merge-prep → notify |
-| Merge            | `pr-lgtm-merge.yml`         | `pull_request_review`, `issue_comment`, `workflow_dispatch` | Human-triggered: approve + merge |
+| Merge            | `pr-lgtm-merge.yml`         | `pull_request_review`, `issue_comment`, `workflow_dispatch` | Human-triggered: approve + auto-merge (+ conflict resolution via Claude) |
 | Pytest           | `pytest.yml`                | `push` (main), `pull_request` (opened, synchronize), `workflow_dispatch` | Fast unit tests (slow/integration excluded) |
 | Claude           | `claude.yml`                | `@claude` in comments                          | On-demand Claude interaction                 |
 | Polecat          | `polecat-issue-trigger.yml` | `@polecat` in comments, `workflow_dispatch`    | On-demand agent work |
@@ -40,7 +40,8 @@ code-quality.yml:        [lint ─── gatekeeper] (parallel)
                               ↓ (workflow_run: all pass, gatekeeper approved)
 pr-review-pipeline.yml:  custodiet → qa → merge-prep → notify-ready
 
-pr-lgtm-merge.yml:       human approves → approve (Approval #2) → merge
+pr-lgtm-merge.yml:       human approves → approve (Approval #2) → auto-merge
+                         (if conflicts → @claude resolves → auto-merge on clean)
 ```
 
 If gatekeeper rejects, its job fails → Code Quality fails → the review pipeline never starts.
@@ -95,7 +96,11 @@ flowchart TD
     HV -- Changes --> AuthorFix["Author fixes"]
     AuthorFix --> PR
     HV -- Close --> Close
-    HV -- "LGTM" --> Merge["<b>7. Merge</b><br/><i>🔑 Approval #2</i><br/>→ rebase merge"]
+    HV -- "LGTM" --> Merge["<b>7. Merge</b><br/><i>🔑 Approval #2</i><br/>→ auto-merge"]
+    Merge --> MergeOK{Conflicts?}
+    MergeOK -- No --> Done["Merged"]
+    MergeOK -- Yes --> Claude["@claude resolves<br/>conflicts + pushes"]
+    Claude --> Done
 
     %% ── Styling ──
     classDef gate fill:#e8f4fd,stroke:#2196f3
@@ -110,7 +115,8 @@ flowchart TD
     class GK gatekeeper
     class Human human
     class Close,FixGK,AuthorFix fail
-    class Merge success
+    class Merge,Done success
+    class Claude agent
 ```
 
 ## Stage-by-stage walkthrough
@@ -162,9 +168,11 @@ Posts a summary comment: "Pipeline Complete — Ready for Human Review. Your app
 **Workflow**: `pr-lgtm-merge.yml`
 
 The human reviews the clean PR. Their approval or LGTM comment triggers the merge workflow, which:
-1. Dismisses any outstanding `claude[bot]` change requests
-2. Lodges Approval #2 (`github-actions[bot]`)
-3. Merges via rebase (`gh pr merge --rebase`)
+1. Lodges Approval #2 (`github-actions[bot]`)
+2. Enables GitHub auto-merge (rebase mode) — merges immediately if clean, or waits for checks
+3. If merge conflicts exist, posts `@claude` comment requesting rebase + conflict resolution — Claude fixes conflicts and pushes, auto-merge completes when checks pass
+
+**Important**: "lgtm" means **merge now**. It is a final approval signal, not a request for changes. Use `@claude` or `@polecat` to request fixes before approving.
 
 ## Issue review
 
@@ -210,6 +218,13 @@ lgtm | merge | rebase | ship it | @claude merge
 | PR Review       | `pr-review-{pr_number}`      | Yes |
 | Merge Prep      | `pr-review-{pr_number}` (inherits PR Review group) | Yes |
 | Merge           | `pr-merge-{pr_number}`       | No |
+
+## Known limitations
+
+- **Force-pushes disable auto-merge**: If Claude (or anyone) force-pushes to resolve conflicts, auto-merge must be re-enabled. The merge workflow does not currently handle this automatically.
+- **All agent reviews show as `github-actions[bot]`**: Reviews from gatekeeper, custodiet, QA, and merge-prep all share the `GITHUB_TOKEN` identity. Agents identify themselves in the review body text. Distinct bot identities would require registering separate GitHub Apps.
+- **`issue_comment` triggers are noisy**: Any PR comment triggers Claude Code, Polecat, and Merge workflows (all skip via job-level `if:` filters, but show as 1-second skipped runs in Actions). This is a GitHub limitation — `on: issue_comment` cannot be filtered at the trigger level.
+- **PR Review pipeline only runs on `pull_request` events**: The `push: main` trigger on Code Quality does not cascade to the PR Review pipeline (filtered by `workflow_run.event == 'pull_request'`).
 
 ## Configuration
 
