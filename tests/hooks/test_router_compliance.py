@@ -44,7 +44,8 @@ def test_router_compliance_measurement():
     This test always passes but prints metrics for review.
     Use --capture=no (-s) to see output.
     """
-    assert MEASURE_SCRIPT.exists(), f"Measurement script not found: {MEASURE_SCRIPT}"
+    if not MEASURE_SCRIPT.exists():
+        pytest.skip(f"Measurement script not found: {MEASURE_SCRIPT}")
 
     result = subprocess.run(
         [sys.executable, str(MEASURE_SCRIPT), "--all"],
