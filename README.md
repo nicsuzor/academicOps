@@ -16,7 +16,7 @@ A constitutional framework for governing autonomous AI agents with:
 
 ```mermaid
 flowchart LR
-    PR([Agent opens PR]) --> CQ
+    PR([PR opened / updated]) --> CQ
 
     subgraph CQ [Code Quality]
         Lint[Ruff lint + format]
@@ -25,10 +25,11 @@ flowchart LR
         Lint --> Types
     end
 
-    subgraph Review [LLM Review Pipeline]
+    subgraph Review [Sequential Review Pipeline]
         direction TB
-        Strat[[Strategic review]] --> Cust[[Custodiet:<br/>scope compliance]]
+        Cust[[Custodiet:<br/>scope compliance]]
         Cust --> QA[[QA: acceptance<br/>criteria check]]
+        QA --> MP[[Merge Prep:<br/>auto-fix comments]]
     end
 
     subgraph Async [Advisory Review]
@@ -36,35 +37,37 @@ flowchart LR
         CustRev[[Custodiet reviewer]]
     end
 
-    CQ -- triggers --> Review
+    CQ -- all pass --> Review
     PR -.-> Async
 
-    Review --> Approved{All pass?}
-    Approved -- Yes --> Human([Human reviews])
-    Approved -- No --> Revise([Agent revises])
+    Review --> Notify([Ready for Review])
+    Notify --> Human([Human reviews])
 
-    Human -- LGTM --> Merge[[Merge agent]]
-    Merge --> Triage[Triage all comments:<br/>FIX / RESPOND / DEFER]
-    Triage --> MQ([Merge queue])
+    Human -- LGTM --> AutoMerge([Auto-merge<br/>rebase])
+    AutoMerge -- conflicts --> Claude[[Claude resolves<br/>conflicts + pushes]]
+    AutoMerge -- clean --> Done([Merged])
+    Claude --> Done
 
     classDef agent fill:#6a1b9a,stroke:#4a148c,stroke-width:2px,color:#fff
     classDef gate fill:#c62828,stroke:#b71c1c,stroke-width:2px,color:#fff
     classDef action fill:#0277bd,stroke:#01579b,stroke-width:2px,color:#fff
     classDef human fill:#ef6c00,stroke:#e65100,stroke-width:2px,color:#fff
+    classDef success fill:#2e7d32,stroke:#1b5e20,stroke-width:2px,color:#fff
 
-    class Gate,Strat,Cust,QA,HydRev,CustRev,Merge agent
+    class Gate,Cust,QA,MP,HydRev,CustRev,Claude agent
     class Lint,Types action
     class Human human
-    class Approved gate
+    class Done success
 
     style CQ fill:none,stroke:#888,stroke-dasharray: 5 5
     style Review fill:none,stroke:#888,stroke-dasharray: 5 5
     style Async fill:none,stroke:#888,stroke-dasharray: 5 5
 ```
 
-- Only humans can trigger merges; the merge agent reads every review comment, classifies each as FIX / RESPOND / ACKNOWLEDGE / DEFER, commits fixes, and only then confirms.
-- Hydrator and custodiet reviewers post non-blocking advisory comments immediately on PR creation.
-- The merge queue rebases every PR against current main before merge.
+- **By the time the human sees the PR, everything should be clean.** Gatekeeper approves alignment (Approval #1), then custodiet, QA, and merge-prep run sequentially. Merge-prep auto-fixes review comments and pushes corrections.
+- Only humans can trigger merges. "LGTM" means **merge now** — it lodges Approval #2 and enables auto-merge (rebase). If merge conflicts exist, `@claude` is invoked to rebase and resolve them.
+- Hydrator and custodiet reviewers post non-blocking advisory comments on PR creation.
+- Full process documentation: [`specs/pr-process.md`](specs/pr-process.md).
 
 ## Local session lifecycle
 
