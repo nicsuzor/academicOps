@@ -31,7 +31,7 @@ from lib.insights_generator import (  # noqa: E402
     validate_insights_schema,
     write_insights_file,
 )
-from lib.paths import get_transcripts_dir  # noqa: E402
+from lib.paths import get_sessions_repo, get_transcripts_dir  # noqa: E402
 from lib.session_reader import find_sessions  # noqa: E402
 from lib.transcript_parser import (  # noqa: E402
     SessionProcessor,
@@ -521,6 +521,47 @@ def _infer_project(
     return project_parts[-1] if project_parts and project_parts[-1] else "unknown"
 
 
+def git_sync():
+    """Commit and push changes in the sessions repository."""
+    try:
+        sessions_root = get_sessions_repo()
+        if not (sessions_root / ".git").exists():
+            print(f"Skipping git sync: {sessions_root} is not a git repository")
+            return
+
+        print(f"Syncing changes in {sessions_root}...")
+
+        subprocess.run(
+            ["git", "add", "transcripts/", "summaries/"],
+            cwd=str(sessions_root), check=True,
+        )
+
+        status = subprocess.run(
+            ["git", "diff", "--cached", "--quiet"], cwd=str(sessions_root), check=False
+        ).returncode
+
+        if status == 0:
+            print("No changes to sync.")
+            return
+
+        commit_msg = "Auto-commit: session transcripts and insights updated"
+        subprocess.run(["git", "commit", "-m", commit_msg], cwd=str(sessions_root), check=True)
+        print("Committed changes.")
+
+        print("Attempting push...")
+        push_result = subprocess.run(
+            ["git", "push"], cwd=str(sessions_root), capture_output=True, text=True
+        )
+
+        if push_result.returncode == 0:
+            print("Push successful.")
+        else:
+            print(f"Push failed (non-blocking):\n{push_result.stderr}")
+
+    except Exception as e:
+        print(f"Git sync failed: {e}", file=sys.stderr)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Convert Claude Code JSONL or Gemini JSON sessions to markdown transcripts",
@@ -558,6 +599,11 @@ Examples:
         "--all",
         action="store_true",
         help="Process ALL sessions (overrides --recent filter)",
+    )
+    parser.add_argument(
+        "--no-sync",
+        action="store_true",
+        help="Skip git commit and push after generating transcripts",
     )
 
     args = parser.parse_args()
@@ -1016,4 +1062,8 @@ Examples:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    exit_code = main()
+    # Sync after successful or skipped runs (exit code 2 = skipped/insufficient content)
+    if exit_code in (0, 2) and not any(a in sys.argv for a in ("--no-sync",)):
+        git_sync()
+    sys.exit(exit_code)
