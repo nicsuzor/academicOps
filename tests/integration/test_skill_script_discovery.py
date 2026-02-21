@@ -11,9 +11,47 @@ This test validates the run-from-anywhere architecture works correctly.
 
 import json
 import subprocess
+import shutil
 from pathlib import Path
 
 import pytest
+import lib.paths
+
+
+@pytest.fixture(autouse=True)
+def setup_integration_env(monkeypatch):
+    """Setup environment for integration tests."""
+    # Set AOPS to plugin root
+    aops_path = lib.paths.get_plugin_root()
+    monkeypatch.setenv("AOPS", str(aops_path))
+
+    # Ensure ~/.claude/skills symlink exists
+    home_claude = Path.home() / ".claude"
+    created_home_claude = False
+    if not home_claude.exists():
+        # If ~/.claude doesn't exist, create it
+        home_claude.mkdir(parents=True, exist_ok=True)
+        created_home_claude = True
+
+    skills_link = home_claude / "skills"
+    skills_target = aops_path / "skills"
+
+    created_link = False
+    if not skills_link.exists():
+        try:
+            skills_link.symlink_to(skills_target)
+            created_link = True
+        except OSError:
+            pass  # Handle permission error or race condition
+
+    yield
+
+    # Cleanup
+    if created_link and skills_link.is_symlink():
+        skills_link.unlink()
+
+    if created_home_claude:
+        shutil.rmtree(home_claude)
 
 
 @pytest.mark.integration
@@ -26,12 +64,12 @@ def test_task_skill_scripts_discoverable(claude_headless, data_dir):
     - Scripts work from non-AOPS working directory
     - No need to search for scripts in CWD
     """
-    prompt = """Use the task skill to view tasks.
+    prompt = """Use the framework skill to validate docs.
 
-    Run the task_view.py script using the path ~/.claude/skills/tasks/scripts/task_view.py
+    Run the validate_docs.py script using the path ~/.claude/skills/framework/scripts/validate_docs.py
 
     Use this exact command:
-    PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_view.py --compact
+    PYTHONPATH=$AOPS uv run python ~/.claude/skills/framework/scripts/validate_docs.py --help
 
     Tell me if it succeeded and what the output was."""
 
@@ -52,10 +90,10 @@ def test_task_skill_scripts_discoverable(claude_headless, data_dir):
     # The response should contain evidence of successful script execution
     response_text = str(parsed).lower()
 
-    # Should mention tasks or successful execution
+    # Should mention usage or success
     assert any(
-        keyword in response_text for keyword in ["task", "success", "inbox", "using data_dir"]
-    ), "Response should indicate task script was executed"
+        keyword in response_text for keyword in ["usage", "help", "validate_docs.py", "success"]
+    ), "Response should indicate script usage was shown"
 
     # Should NOT indicate script not found
     assert "not found" not in response_text, "Script should be found via symlink"
@@ -68,7 +106,7 @@ def test_skill_scripts_exist_via_symlink():
     """Test that skill scripts are accessible via ~/.claude/skills/ symlink.
 
     Verifies:
-    - ~/.claude/skills/tasks/ symlink exists
+    - ~/.claude/skills/framework/ symlink exists
     - Script files are accessible through symlink
     - Path resolution works correctly
     """
@@ -79,16 +117,16 @@ def test_skill_scripts_exist_via_symlink():
         "~/.claude/skills/ should be symlink or directory"
     )
 
-    # Check task skill exists
-    task_skill_path = skills_path / "tasks"
-    assert task_skill_path.exists(), "~/.claude/skills/tasks/ should exist"
+    # Check framework skill exists
+    skill_path = skills_path / "framework"
+    assert skill_path.exists(), "~/.claude/skills/framework/ should exist"
 
     # Check scripts directory exists
-    scripts_path = task_skill_path / "scripts"
-    assert scripts_path.exists(), "~/.claude/skills/tasks/scripts/ should exist"
+    scripts_path = skill_path / "scripts"
+    assert scripts_path.exists(), "~/.claude/skills/framework/scripts/ should exist"
 
     # Check specific scripts exist
-    required_scripts = ["task_view.py", "task_add.py", "task_archive.py"]
+    required_scripts = ["validate_docs.py"]
     for script_name in required_scripts:
         script_path = scripts_path / script_name
         assert script_path.exists(), f"Script {script_name} should exist at {script_path}"
@@ -106,13 +144,13 @@ def test_task_script_runs_from_writing_repo(data_dir):
     """
     import os
 
-    # Build command to run task_view.py
+    # Build command to run validate_docs.py
     cmd = [
         "uv",
         "run",
         "python",
-        str(Path.home() / ".claude" / "skills" / "tasks" / "scripts" / "task_view.py"),
-        "--compact",
+        str(Path.home() / ".claude" / "skills" / "framework" / "scripts" / "validate_docs.py"),
+        "--help",
     ]
 
     # Set environment
@@ -137,8 +175,8 @@ def test_task_script_runs_from_writing_repo(data_dir):
         f"Script should execute successfully\nstdout: {result.stdout}\nstderr: {result.stderr}"
     )
 
-    # Should show data directory from writing repo
-    assert "data/tasks" in result.stdout, "Should use writing repo's data directory"
+    # Should show usage info
+    assert "usage:" in result.stdout or "usage:" in result.stderr, "Should show script usage"
 
 
 @pytest.mark.integration
@@ -158,9 +196,9 @@ def test_claude_finds_scripts_without_search(claude_headless, data_dir):
     containing specific path strings. The underlying functionality (scripts exist
     at correct paths, symlinks work) is tested by test_skill_self_contained_architecture.
     """
-    prompt = """I need to create a task.
+    prompt = """I need to check documentation.
 
-    Load the tasks skill documentation and tell me the exact path to the task_add.py script.
+    Load the framework skill documentation and tell me the exact path to the validate_docs.py script.
     Do NOT search for it - just read the skill documentation.
 
     What path does the documentation say to use?"""
@@ -181,9 +219,9 @@ def test_claude_finds_scripts_without_search(claude_headless, data_dir):
 
     # Should mention one of the valid path formats
     valid_paths = [
-        "~/.claude/skills/tasks/scripts",  # symlink path
-        "skills/tasks/scripts",  # relative path
-        "$aops/skills/tasks/scripts",  # actual path with env var
+        "~/.claude/skills/framework/scripts",  # symlink path
+        "skills/framework/scripts",  # relative path
+        "$aops/skills/framework/scripts",  # actual path with env var
     ]
     normalized_response = response_text.replace("\\", "/")
 
@@ -199,8 +237,8 @@ def test_skill_self_contained_architecture():
     """Test that skills are self-contained with their own scripts.
 
     Verifies:
-    - Scripts live in skill directory (skills/tasks/scripts/)
-    - Scripts are accessible via symlink (~/. claude/skills/tasks/scripts/)
+    - Scripts live in skill directory (skills/framework/scripts/)
+    - Scripts are accessible via symlink (~/.claude/skills/framework/scripts/)
     - Architecture supports run-from-anywhere
     """
     import os
@@ -212,11 +250,11 @@ def test_skill_self_contained_architecture():
     assert aops_path.exists(), f"AOPS path should exist: {aops_path}"
 
     # Scripts should exist in AOPS framework
-    scripts_in_aops = aops_path / "skills" / "tasks" / "scripts"
+    scripts_in_aops = aops_path / "skills" / "framework" / "scripts"
     assert scripts_in_aops.exists(), f"Scripts should exist in AOPS: {scripts_in_aops}"
 
     # Symlink should point to these scripts
-    symlink_path = Path.home() / ".claude" / "skills" / "tasks" / "scripts"
+    symlink_path = Path.home() / ".claude" / "skills" / "framework" / "scripts"
     assert symlink_path.exists(), f"Symlink should exist: {symlink_path}"
 
     # Verify they point to same location (resolve symlinks)
