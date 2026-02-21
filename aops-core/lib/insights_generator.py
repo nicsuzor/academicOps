@@ -422,12 +422,16 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
 # get_summaries_dir is now imported from lib.paths
 
 
-def find_existing_insights(date: str, session_id: str) -> Path | None:
+def find_existing_insights(date: str, session_id: str, index: int | None = None) -> Path | None:
     """Find existing insights file for a session ID.
 
     Args:
         date: Date string (YYYY-MM-DD format or ISO 8601)
         session_id: 8-character session hash
+        index: Optional specific reflection index to find.
+               If None, finds *any* insights file for the session (default behavior).
+               If > 0, finds files ending in -{index}.json.
+               If 0, finds files NOT ending in -{digit}.json.
 
     Returns:
         Path to existing insights file if found, None otherwise
@@ -456,7 +460,24 @@ def find_existing_insights(date: str, session_id: str) -> Path | None:
     for pattern in patterns:
         matches = list(summaries_dir.glob(pattern))
         if matches:
-            return matches[0]
+            if index is not None:
+                # Filter matches by index
+                filtered = []
+                for path in matches:
+                    stem = path.stem
+                    if index > 0:
+                        # Must end with -{index}
+                        if stem.endswith(f"-{index}"):
+                            filtered.append(path)
+                    else:
+                        # Must NOT end with -{digit}
+                        if not re.search(r"-\d+$", stem):
+                            filtered.append(path)
+
+                if filtered:
+                    return filtered[0]
+            else:
+                return matches[0]
     return None
 
 

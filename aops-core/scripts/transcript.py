@@ -208,7 +208,7 @@ def _process_reflection(
             idx = i if len(reflections) > 1 else None
 
             # Check for existing insights (avoid duplicates with different slugs)
-            existing = find_existing_insights(date_str, session_id)
+            existing = find_existing_insights(date_str, session_id, index=idx)
             if existing:
                 print(f"⏭️  Insights already exist for session {session_id}: {existing.name}")
                 continue
