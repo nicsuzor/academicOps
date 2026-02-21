@@ -622,9 +622,7 @@ def extract_ego_subgraph(
         frontier = next_frontier
 
     filtered_nodes = [n for n in nodes if n["id"] in visited]
-    filtered_edges = [
-        e for e in edges if e["source"] in visited and e["target"] in visited
-    ]
+    filtered_edges = [e for e in edges if e["source"] in visited and e["target"] in visited]
 
     return filtered_nodes, filtered_edges
 
@@ -687,16 +685,18 @@ def generate_attention_map(
             gap_score = importance / (1 + connectivity)
 
         if gap_score > 0.5:  # Threshold for inclusion
-            gap_data.append({
-                "id": nid,
-                "label": node.get("label", ""),
-                "node_type": node.get("node_type") or "note",
-                "status": node.get("status"),
-                "priority": priority,
-                "importance": round(importance, 2),
-                "connectivity": connectivity,
-                "gap_score": round(gap_score, 2),
-            })
+            gap_data.append(
+                {
+                    "id": nid,
+                    "label": node.get("label", ""),
+                    "node_type": node.get("node_type") or "note",
+                    "status": node.get("status"),
+                    "priority": priority,
+                    "importance": round(importance, 2),
+                    "connectivity": connectivity,
+                    "gap_score": round(gap_score, 2),
+                }
+            )
 
     # Sort by gap score
     gap_data.sort(key=lambda x: x["gap_score"], reverse=True)
@@ -704,8 +704,6 @@ def generate_attention_map(
 
     # Build subgraph: flagged nodes + their direct neighbors
     flagged_ids = {g["id"] for g in gap_data}
-    node_by_id = {n["id"]: n for n in nodes}
-
     # Add nearest neighbors
     adjacency: dict[str, set[str]] = {n["id"]: set() for n in nodes}
     for e in edges:
@@ -748,7 +746,7 @@ def generate_attention_dot(
         '    edge [color="#6c757d"];',
         '    label="Attention Map: Under-connected Important Nodes";',
         "    labelloc=t;",
-        '    fontsize=18;',
+        "    fontsize=18;",
         "",
     ]
 
@@ -795,9 +793,7 @@ def generate_attention_dot(
             ]
             if "penwidth" in edge_style:
                 style_attrs.append(f"penwidth={edge_style['penwidth']}")
-            lines.append(
-                f'    "{edge["source"]}" -> "{edge["target"]}" [{" ".join(style_attrs)}];'
-            )
+            lines.append(f'    "{edge["source"]}" -> "{edge["target"]}" [{" ".join(style_attrs)}];')
 
     lines.append("}")
     return "\n".join(lines)
@@ -872,9 +868,7 @@ def main():
 
     # Ego-subgraph extraction (#563)
     if args.ego:
-        all_nodes, all_edges = extract_ego_subgraph(
-            all_nodes, all_edges, args.ego, args.depth
-        )
+        all_nodes, all_edges = extract_ego_subgraph(all_nodes, all_edges, args.ego, args.depth)
         if not all_nodes:
             return 1
         node_ids = {n["id"] for n in all_nodes}
@@ -893,10 +887,14 @@ def main():
             print("No attention-needed nodes found")
             return 0
 
-        print(f"\nAttention map: {len(gap_data)} flagged nodes, {len(flagged_nodes)} total in subgraph")
+        print(
+            f"\nAttention map: {len(gap_data)} flagged nodes, {len(flagged_nodes)} total in subgraph"
+        )
         for g in gap_data[:10]:
-            print(f"  {g['label'][:40]:<40} gap={g['gap_score']:.1f}  "
-                  f"importance={g['importance']:.1f}  connectivity={g['connectivity']}")
+            print(
+                f"  {g['label'][:40]:<40} gap={g['gap_score']:.1f}  "
+                f"importance={g['importance']:.1f}  connectivity={g['connectivity']}"
+            )
 
         dot_content = generate_attention_dot(flagged_nodes, flagged_edges, gap_data)
         output_base = f"{args.output}-attention"

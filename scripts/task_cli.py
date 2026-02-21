@@ -1029,7 +1029,9 @@ def _get_knowledge_graph() -> KnowledgeGraph:
     if not kg.load():
         if not kg.build():
             console.print("[red]Knowledge graph unavailable.[/red]")
-            console.print("[dim]Run fast-indexer first: fast-indexer $ACA_DATA -f json -o $ACA_DATA/graph[/dim]")
+            console.print(
+                "[dim]Run fast-indexer first: fast-indexer $ACA_DATA -f json -o $ACA_DATA/graph[/dim]"
+            )
             raise SystemExit(1)
     return kg
 
@@ -1086,11 +1088,13 @@ def context(id: str, depth: int):
     # Header
     ntype = node_data.get("node_type", "note")
     icon = PKB_TYPE_ICON.get(ntype, "•")
-    console.print(Panel(
-        _format_pkb_node(node_data, show_path=True),
-        title=f"{icon} {ntype.upper()}",
-        border_style="blue",
-    ))
+    console.print(
+        Panel(
+            _format_pkb_node(node_data, show_path=True),
+            title=f"{icon} {ntype.upper()}",
+            border_style="blue",
+        )
+    )
 
     # Parent chain
     parent_chain = []
@@ -1119,19 +1123,19 @@ def context(id: str, depth: int):
     if children:
         console.print(f"\n[bold]Children[/bold] ({len(children)})")
         for c in children:
-            console.print(f"  ├─ ", end="")
+            console.print("  ├─ ", end="")
             console.print(_format_pkb_node(c))
 
     if deps:
         console.print(f"\n[bold]Depends On[/bold] ({len(deps)})")
         for d in deps:
-            console.print(f"  → ", end="")
+            console.print("  → ", end="")
             console.print(_format_pkb_node(d))
 
     if blocks:
         console.print(f"\n[bold]Blocks[/bold] ({len(blocks)})")
         for b in blocks:
-            console.print(f"  ← ", end="")
+            console.print("  ← ", end="")
             console.print(_format_pkb_node(b))
 
     # Backlinks by type
@@ -1142,7 +1146,7 @@ def context(id: str, depth: int):
             type_icon = PKB_TYPE_ICON.get(bl_type, "•")
             console.print(f"  [cyan]{type_icon} {bl_type}[/cyan] ({len(bl_nodes)})")
             for bl in bl_nodes[:5]:
-                console.print(f"    • ", end="")
+                console.print("    • ", end="")
                 console.print(_format_pkb_node(bl))
             if len(bl_nodes) > 5:
                 console.print(f"    [dim]... and {len(bl_nodes) - 5} more[/dim]")
@@ -1157,21 +1161,20 @@ def context(id: str, depth: int):
     for bl_nodes in bl_groups.values():
         structural_ids.update(n.get("id", "") for n in bl_nodes)
 
-    nearby = [
-        dict(sub.nodes[nid]) for nid in sub.nodes()
-        if nid not in structural_ids
-    ]
+    nearby = [dict(sub.nodes[nid]) for nid in sub.nodes() if nid not in structural_ids]
 
     if nearby:
         console.print(f"\n[bold]Nearby[/bold] (within {depth} hops, {len(nearby)} nodes)")
         for n in nearby[:10]:
-            console.print(f"  ~ ", end="")
+            console.print("  ~ ", end="")
             console.print(_format_pkb_node(n))
         if len(nearby) > 10:
             console.print(f"  [dim]... and {len(nearby) - 10} more[/dim]")
 
     # Stats
-    total_connections = sum(len(v) for v in bl_groups.values()) + len(children) + len(deps) + len(blocks)
+    total_connections = (
+        sum(len(v) for v in bl_groups.values()) + len(children) + len(deps) + len(blocks)
+    )
     console.print(f"\n[dim]{total_connections} connections, {len(nearby)} nearby nodes[/dim]")
 
 
@@ -1296,10 +1299,10 @@ def trace(source: str, target: str):
     paths = kg.all_shortest_paths(src, tgt, max_paths=3)
 
     if not paths:
-        console.print(f"[yellow]No path between:[/yellow]")
-        console.print(f"  Source: ", end="")
+        console.print("[yellow]No path between:[/yellow]")
+        console.print("  Source: ", end="")
         console.print(_format_pkb_node(src_node))
-        console.print(f"  Target: ", end="")
+        console.print("  Target: ", end="")
         console.print(_format_pkb_node(tgt_node))
         raise SystemExit(1)
 
@@ -1310,7 +1313,7 @@ def trace(source: str, target: str):
             console.print(f"[cyan]Path {i + 1}:[/cyan]")
 
         for j, node in enumerate(path_nodes):
-            console.print(f"  ", end="")
+            console.print("  ", end="")
             console.print(_format_pkb_node(node))
 
             if j < len(path_nodes) - 1:
@@ -1327,7 +1330,7 @@ def trace(source: str, target: str):
                         etype = edge_data.get("edge_type", "link")
                         console.print(f"    ↑ [dim]{etype}[/dim]")
                     else:
-                        console.print(f"    ↕ [dim]link[/dim]")
+                        console.print("    ↕ [dim]link[/dim]")
 
         if i < len(paths) - 1:
             console.print()
