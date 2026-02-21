@@ -89,12 +89,28 @@ jobs:
             -f event=APPROVE \
             -f body="Human approved. Merge-prep has addressed all review comments."
 
-      - name: Merge PR
+      - name: Enable auto-merge
         if: steps.pr-ref.outputs.pr_number != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
-          echo "Merging PR #$PR_NUM via rebase"
-          gh api repos/${{ github.repository }}/pulls/${PR_NUM}/merge \
-            -X PUT -f merge_method=rebase
+          REPO="${{ github.repository }}"
+
+          gh pr merge "$PR_NUM" --auto --rebase --repo "$REPO"
+          echo "Auto-merge enabled on PR #$PR_NUM"
+
+      - name: Request conflict resolution if needed
+        if: steps.pr-ref.outputs.pr_number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
+          REPO="${{ github.repository }}"
+
+          STATE=$(gh api repos/${REPO}/pulls/${PR_NUM} --jq '.mergeable_state // "unknown"')
+          if [ "$STATE" = "dirty" ]; then
+            gh pr comment "$PR_NUM" --repo "$REPO" --body \
+              "@claude This PR has been approved (lgtm). Please rebase onto main, resolve any merge conflicts, and push. Auto-merge is enabled and will merge once checks pass."
+            echo "Requested Claude to resolve conflicts on PR #$PR_NUM"
+          fi
