@@ -21,58 +21,58 @@ FRAMEWORK_ROOT = AOPS_CORE_ROOT.parent
 sys.path.insert(0, str(FRAMEWORK_ROOT))
 sys.path.insert(0, str(AOPS_CORE_ROOT))
 
-from lib.paths import get_data_root
+from lib.paths import get_sessions_repo
 
 
 def run_transcript(args):
     """Run the original transcript.py script."""
     transcript_script = SCRIPT_DIR / "transcript.py"
     cmd = [sys.executable, str(transcript_script)] + args
-    print(f"🚀 Running transcript generation: {' '.join(cmd)}")
+    print(f"Running transcript generation: {' '.join(cmd)}")
     return subprocess.run(cmd).returncode
 
 
 def git_sync():
-    """Commit and push changes in the writing repository."""
+    """Commit and push changes in the sessions repository."""
     try:
-        writing_root = get_data_root().parent
-        if not (writing_root / ".git").exists():
-            print(f"⚠️  Skipping git sync: {writing_root} is not a git repository")
+        sessions_root = get_sessions_repo()
+        if not (sessions_root / ".git").exists():
+            print(f"Skipping git sync: {sessions_root} is not a git repository")
             return
 
-        print(f"📂 Syncing changes in {writing_root}...")
+        print(f"Syncing changes in {sessions_root}...")
 
-        # Add all changes in sessions/ and summaries/ (where insights go)
-        # Using git add . in the writing root is standard for this repo
-        subprocess.run(["git", "add", "."], cwd=str(writing_root), check=True)
+        subprocess.run(
+            ["git", "add", "transcripts/", "summaries/"],
+            cwd=str(sessions_root), check=True,
+        )
 
         # Check if there are staged changes to commit
         status = subprocess.run(
-            ["git", "diff", "--cached", "--quiet"], cwd=str(writing_root), check=False
+            ["git", "diff", "--cached", "--quiet"], cwd=str(sessions_root), check=False
         ).returncode
 
         if status == 0:
-            print("✨ No changes to sync.")
+            print("No changes to sync.")
             return
 
         commit_msg = "Auto-commit: session transcripts and insights updated"
-        subprocess.run(["git", "commit", "-m", commit_msg], cwd=str(writing_root), check=True)
-        print("✅ Committed changes.")
+        subprocess.run(["git", "commit", "-m", commit_msg], cwd=str(sessions_root), check=True)
+        print("Committed changes.")
 
-        # Try to push
-        print("📤 Attempting push...")
+        # Try to push (non-blocking failure)
+        print("Attempting push...")
         push_result = subprocess.run(
-            ["git", "push"], cwd=str(writing_root), capture_output=True, text=True
+            ["git", "push"], cwd=str(sessions_root), capture_output=True, text=True
         )
 
         if push_result.returncode == 0:
-            print("🚀 Push successful.")
+            print("Push successful.")
         else:
-            # Failure is OK per task description
-            print(f"⚠️  Push failed (non-blocking):\n{push_result.stderr}")
+            print(f"Push failed (non-blocking):\n{push_result.stderr}")
 
     except Exception as e:
-        print(f"❌ Git sync failed: {e}", file=sys.stderr)
+        print(f"Git sync failed: {e}", file=sys.stderr)
 
 
 def main():

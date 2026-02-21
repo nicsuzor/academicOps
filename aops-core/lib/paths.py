@@ -80,6 +80,25 @@ def get_local_cache_root() -> Path:
     return Path.home() / ".aops"
 
 
+def get_sessions_repo() -> Path:
+    """Get sessions repository root.
+
+    Uses $AOPS_SESSIONS if set, otherwise defaults to ~/.aops/sessions.
+    Creates the directory if it doesn't exist.
+
+    Returns:
+        Path: Absolute path to sessions repo
+    """
+    sessions = os.environ.get("AOPS_SESSIONS")
+    if sessions:
+        path = Path(sessions).resolve()
+    else:
+        path = get_local_cache_root() / "sessions"
+
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 # Framework component directories
 # All resolved relative to get_plugin_root()
 
@@ -143,8 +162,21 @@ def get_tools_file() -> Path:
 
 
 def get_sessions_dir() -> Path:
-    """Get sessions directory."""
-    return get_local_cache_root() / "sessions"
+    """Get sessions directory (root of sessions repo).
+
+    Alias for get_sessions_repo() for backward compatibility.
+    """
+    return get_sessions_repo()
+
+
+def get_transcripts_dir() -> Path:
+    """Get transcripts directory ($AOPS_SESSIONS/transcripts)."""
+    return get_sessions_repo() / "transcripts"
+
+
+def get_summaries_dir() -> Path:
+    """Get summaries directory ($AOPS_SESSIONS/summaries)."""
+    return get_sessions_repo() / "summaries"
 
 
 def get_projects_dir() -> Path:
@@ -180,6 +212,7 @@ def validate_environment() -> dict[str, Path]:
     return {
         "PLUGIN_ROOT": get_plugin_root(),
         "ACA_DATA": get_data_root(),
+        "AOPS_SESSIONS": get_sessions_repo(),
     }
 
 
@@ -188,8 +221,9 @@ def print_environment() -> None:
     try:
         env = validate_environment()
         print("aOps Environment Configuration:")
-        print(f"  PLUGIN_ROOT: {env['PLUGIN_ROOT']}")
-        print(f"  ACA_DATA:    {env['ACA_DATA']}")
+        print(f"  PLUGIN_ROOT:   {env['PLUGIN_ROOT']}")
+        print(f"  ACA_DATA:      {env['ACA_DATA']}")
+        print(f"  AOPS_SESSIONS: {env['AOPS_SESSIONS']}")
         print("\nFramework directories:")
         print(f"  Skills:      {get_skills_dir()}")
         print(f"  Hooks:       {get_hooks_dir()}")
@@ -198,7 +232,9 @@ def print_environment() -> None:
         print(f"  Workflows:   {get_workflows_dir()}")
         print(f"  Indices:     {get_indices_dir()}")
         print("\nData directories:")
-        print(f"  Sessions:    {get_sessions_dir()}")
+        print(f"  Sessions:    {get_sessions_repo()}")
+        print(f"  Transcripts: {get_transcripts_dir()}")
+        print(f"  Summaries:   {get_summaries_dir()}")
         print(f"  Projects:    {get_projects_dir()}")
         print(f"  Logs:        {get_logs_dir()}")
     except RuntimeError as e:

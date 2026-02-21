@@ -32,14 +32,14 @@ RunTrigger = Literal["manual", "skill", "hook", "batch"]
 
 
 def get_metrics_dir() -> Path:
-    """Get metrics directory.
-
-    Returns ~/writing/sessions/summaries/.metrics/
+    """Get metrics directory ($AOPS_SESSIONS/summaries/.metrics/).
 
     Returns:
         Path to metrics directory
     """
-    metrics_dir = Path.home() / "writing" / "sessions" / "summaries" / ".metrics"
+    from lib.paths import get_summaries_dir
+
+    metrics_dir = get_summaries_dir() / ".metrics"
     metrics_dir.mkdir(parents=True, exist_ok=True)
     return metrics_dir
 

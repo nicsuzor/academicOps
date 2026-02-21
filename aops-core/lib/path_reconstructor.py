@@ -17,6 +17,8 @@ from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 
+from lib.paths import get_summaries_dir
+
 
 class EventType(Enum):
     SESSION_START = "session_start"
@@ -359,7 +361,7 @@ def reconstruct_path(hours: int = 24) -> ReconstructedPath:
     Returns:
         ReconstructedPath with threads and abandoned work
     """
-    summaries_dir = Path.home() / "writing" / "sessions" / "summaries"
+    summaries_dir = get_summaries_dir()
     if not summaries_dir.exists():
         return ReconstructedPath()
 

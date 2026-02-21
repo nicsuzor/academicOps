@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from lib.paths import get_plugin_root
+from lib.paths import get_plugin_root, get_summaries_dir
 from lib.session_reader import extract_gate_context, find_sessions
 
 
@@ -419,17 +419,8 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
         _validate_framework_reflections(insights["framework_reflections"])
 
 
-def get_summaries_dir() -> Path:
-    """Get summaries directory.
 
-    Returns ~/writing/sessions/summaries/ (centralized location for all session summaries).
-
-    Returns:
-        Path to summaries directory
-    """
-    summaries_dir = Path.home() / "writing" / "sessions" / "summaries"
-    summaries_dir.mkdir(parents=True, exist_ok=True)
-    return summaries_dir
+# get_summaries_dir is now imported from lib.paths
 
 
 def find_existing_insights(date: str, session_id: str) -> Path | None:

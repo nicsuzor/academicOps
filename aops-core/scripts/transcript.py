@@ -31,7 +31,7 @@ from lib.insights_generator import (  # noqa: E402
     validate_insights_schema,
     write_insights_file,
 )
-from lib.paths import get_sessions_dir  # noqa: E402
+from lib.paths import get_transcripts_dir  # noqa: E402
 from lib.session_reader import find_sessions  # noqa: E402
 from lib.transcript_parser import (  # noqa: E402
     SessionProcessor,
@@ -563,7 +563,7 @@ Examples:
     args = parser.parse_args()
 
     # Default output directory
-    sessions_claude = get_sessions_dir() / "transcripts"
+    sessions_claude = get_transcripts_dir()
     sessions_claude.mkdir(parents=True, exist_ok=True)
 
     processor = SessionProcessor()

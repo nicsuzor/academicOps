@@ -29,6 +29,7 @@ from collections import defaultdict, deque
 
 import networkx as nx
 from lib.path_reconstructor import EventType, reconstruct_path
+from lib.paths import get_summaries_dir, get_transcripts_dir
 from lib.session_analyzer import SessionAnalyzer, extract_todowrite_from_session
 from lib.session_context import SessionContext, extract_context_from_session_state
 from lib.session_reader import find_sessions
@@ -269,7 +270,7 @@ def load_token_metrics() -> dict | None:
         - cache_hit_rate: Percentage of tokens from cache (0-100)
         - session_count: Number of sessions with token data
     """
-    summaries_dir = Path.home() / "writing" / "sessions" / "summaries"
+    summaries_dir = get_summaries_dir()
     if not summaries_dir.exists():
         return None
 
@@ -333,8 +334,8 @@ def get_recent_sessions(hours: int = 24) -> list[dict]:
     """
     from datetime import timedelta
 
-    summaries_dir = Path.home() / "writing" / "sessions" / "summaries"
-    sessions_dir = Path.home() / "writing" / "sessions" / "claude"
+    summaries_dir = get_summaries_dir()
+    sessions_dir = get_transcripts_dir()
     if not summaries_dir.exists():
         return []
 
@@ -410,7 +411,7 @@ def get_recent_prompts(days: int = 7) -> list[dict]:
     """
     from datetime import timedelta
 
-    summaries_dir = Path.home() / "writing" / "sessions" / "summaries"
+    summaries_dir = get_summaries_dir()
     if not summaries_dir.exists():
         return []
 
@@ -1614,7 +1615,7 @@ def archive_stale_sessions(hours: int = 24):
     import shutil
     from datetime import timedelta
 
-    summaries_dir = Path.home() / "writing" / "sessions" / "summaries"
+    summaries_dir = get_summaries_dir()
     archived_dir = summaries_dir / "archived"
 
     if not summaries_dir.exists():
@@ -4113,7 +4114,7 @@ def render_session_summary():
 
     st.header("📝 Daily Session Summary")
 
-    summaries_dir = Path.home() / "writing" / "sessions" / "summaries"
+    summaries_dir = get_summaries_dir()
     if not summaries_dir.exists():
         st.info("No summaries directory found.")
         return
