@@ -35,12 +35,12 @@ FRAMEWORK_ROOT = AOPS_CORE_ROOT.parent
 sys.path.insert(0, str(FRAMEWORK_ROOT))
 sys.path.insert(0, str(AOPS_CORE_ROOT))
 
-from lib.ascii_tree import AsciiTreeGenerator
 from lib.knowledge_graph import KnowledgeGraph
 from lib.paths import get_data_root
 from lib.task_index import TaskIndex, TaskIndexEntry
 from lib.task_model import Task, TaskComplexity, TaskStatus, TaskType
 from lib.task_storage import TaskStorage
+from lib.ascii_tree import AsciiTreeGenerator
 
 # Pre-compile regex patterns for performance
 _INCOMPLETE_MARKER_PATTERN = re.compile(r"^-\s*\[ \]\s*(.+)$", re.MULTILINE)
@@ -1187,6 +1187,7 @@ def get_task_tree(
             "tree": None,
             "message": f"Failed to get task tree: {e}",
         }
+
 
 
 @mcp.tool()
