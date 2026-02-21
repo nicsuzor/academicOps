@@ -125,15 +125,20 @@ active → in_progress → merge_ready → done
 
 ## Step 3: File Follow-up Tasks
 
-For each incomplete work item from the current session:
+If outstanding work remains, file follow-up tasks using [[decompose]] principles:
+
+- **Group related items** into a single task with bullet points — don't create one task per TODO
+- **Appropriate granularity**: each task should be a coherent work unit (≤4h, single "why"), not an individual checklist item
+- **No reflexive tasks**: only create tasks where the action path is clear
+- **Include context**: body should contain enough for the next agent to resume without re-reading the session
 
 ```
 mcp__plugin_aops-core_task_manager__create_task(
-  title="<incomplete task>",
+  title="<coherent work unit>",
   type="task",
-  project="aops",
+  project="<project>",
   priority=2,
-  body="Follow-up from <session id> on <date>. Context: <what the next agent needs to know>",
+  body="Follow-up from <session>. Context: <what needs doing and why>",
   parent="<parent-task-id>"  # if applicable
 )
 ```
