@@ -85,7 +85,9 @@ jobs:
         run: |
           PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
           echo "Approving PR #$PR_NUM (Approval #2 — human-triggered)"
-          gh pr review "$PR_NUM" --approve --body "Human approved. Merge-prep has addressed all review comments."
+          gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews \
+            -f event=APPROVE \
+            -f body="Human approved. Merge-prep has addressed all review comments."
 
       - name: Merge PR
         if: steps.pr-ref.outputs.pr_number != ''
@@ -94,4 +96,5 @@ jobs:
         run: |
           PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
           echo "Merging PR #$PR_NUM via rebase"
-          gh pr merge "$PR_NUM" --rebase --repo "${{ github.repository }}"
+          gh api repos/${{ github.repository }}/pulls/${PR_NUM}/merge \
+            -X PUT -f merge_method=rebase
