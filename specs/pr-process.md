@@ -9,7 +9,7 @@ How pull requests move from open to merged (or rejected) in the aops repository.
 | Code Quality     | `code-quality.yml`          | `push` (main), `pull_request` (opened, synchronize, assigned) | Lint + gatekeeper (parallel), then type-check |
 | PR Review        | `pr-review-pipeline.yml`    | `workflow_run` (Code Quality completed)        | Sequential: custodiet → QA → merge-prep → notify |
 | Merge            | `pr-lgtm-merge.yml`         | `pull_request_review`, `issue_comment`, `workflow_dispatch` | Human-triggered: approve + merge |
-| Pytest           | `pytest.yml`                | `push` (main), `pull_request`, `workflow_dispatch` | Fast unit tests (slow/integration excluded) |
+| Pytest           | `pytest.yml`                | `push` (main), `pull_request` (opened, synchronize), `workflow_dispatch` | Fast unit tests (slow/integration excluded) |
 | Claude           | `claude.yml`                | `@claude` in comments                          | On-demand Claude interaction                 |
 | Polecat          | `polecat-issue-trigger.yml` | `@polecat` in comments, `workflow_dispatch`    | On-demand agent work |
 | Issue: Custodiet | `issue-review-custodiet.yml`| `issues` (opened)                              | Proposal quality review |
@@ -56,7 +56,7 @@ The ruleset requires **2 approving reviews** before merge:
 | #1 Gatekeeper | `claude[bot]` | Automated, parallel with lint | `gh pr review --approve` in gatekeeper agent |
 | #2 Human merge | `github-actions[bot]` | After human triggers merge via approval/LGTM | `gh pr review --approve` via GITHUB_TOKEN |
 
-The human reviewer's approval or LGTM comment triggers the merge workflow, which lodges Approval #2 and adds the PR to the merge queue. The human only acts once.
+The human reviewer's approval or LGTM comment triggers the merge workflow, which lodges Approval #2 and merges via rebase. The human only acts once.
 
 ## Flowchart
 
@@ -95,7 +95,7 @@ flowchart TD
     HV -- Changes --> AuthorFix["Author fixes"]
     AuthorFix --> PR
     HV -- Close --> Close
-    HV -- "LGTM" --> Merge["<b>7. Merge</b><br/><i>🔑 Approval #2</i><br/>→ merge queue"]
+    HV -- "LGTM" --> Merge["<b>7. Merge</b><br/><i>🔑 Approval #2</i><br/>→ rebase merge"]
 
     %% ── Styling ──
     classDef gate fill:#e8f4fd,stroke:#2196f3
@@ -164,7 +164,7 @@ Posts a summary comment: "Pipeline Complete — Ready for Human Review. Your app
 The human reviews the clean PR. Their approval or LGTM comment triggers the merge workflow, which:
 1. Dismisses any outstanding `claude[bot]` change requests
 2. Lodges Approval #2 (`github-actions[bot]`)
-3. Adds the PR to the merge queue
+3. Merges via rebase (`gh pr merge --rebase`)
 
 ## Issue review
 
@@ -204,7 +204,9 @@ lgtm | merge | rebase | ship it | @claude merge
 | Scope           | Group key                    | Cancel in-progress? |
 | --------------- | ---------------------------- | ------------------- |
 | Lint            | `code-quality-{pr_number}`   | Yes |
+| Type Check      | `code-quality-{pr_number}` (shares lint group) | Yes |
 | Gatekeeper      | `gatekeeper-{pr_number}`     | Yes |
+| Pytest          | `pytest-{pr_number}`         | Yes |
 | PR Review       | `pr-review-{pr_number}`      | Yes |
 | Merge Prep      | `pr-review-{pr_number}` (inherits PR Review group) | Yes |
 | Merge           | `pr-merge-{pr_number}`       | No |

@@ -105,19 +105,11 @@ jobs:
           echo "Approving PR #$PR_NUM (Approval #2 — human-triggered)"
           gh pr review "$PR_NUM" --approve --body "Human approved. Merge-prep has addressed all review comments."
 
-      - name: Add to merge queue
+      - name: Merge PR
         if: steps.pr-ref.outputs.pr_number != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
-
-          if gh pr merge "$PR_NUM" --merge-queue --repo "${{ github.repository }}" 2>/dev/null; then
-            echo "PR #$PR_NUM added to merge queue"
-          else
-            echo "Merge queue not available — falling back to auto-merge"
-            gh pr merge "$PR_NUM" --auto --rebase --repo "${{ github.repository }}" || {
-              echo "Merge failed — may need additional checks"
-              exit 1
-            }
-          fi
+          echo "Merging PR #$PR_NUM via rebase"
+          gh pr merge "$PR_NUM" --rebase --repo "${{ github.repository }}"

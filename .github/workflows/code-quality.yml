@@ -72,7 +72,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No formatting changes to commit"
           else
-            git commit -m "style: autofix lint and formatting"
+            git commit -m "style: autofix lint and formatting [skip ci]"
             git push
           fi
 
@@ -112,6 +112,9 @@ jobs:
     name: Type Check
     needs: lint
     runs-on: ubuntu-latest
+    concurrency:
+      group: code-quality-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
         with:
