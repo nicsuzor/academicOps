@@ -3217,7 +3217,7 @@ def pkb_orphans(
             suggestions = []
             if orphan_label:
                 matches = kg.fuzzy_resolve(orphan_label, threshold=40)
-                for match_id, match_key, match_score in matches[:3]:
+                for match_id, _match_key, match_score in matches[:3]:
                     if match_id != orphan_id:
                         match_node = kg.node(match_id)
                         if match_node:
