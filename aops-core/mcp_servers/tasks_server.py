@@ -35,12 +35,12 @@ FRAMEWORK_ROOT = AOPS_CORE_ROOT.parent
 sys.path.insert(0, str(FRAMEWORK_ROOT))
 sys.path.insert(0, str(AOPS_CORE_ROOT))
 
+from lib.ascii_tree import AsciiTreeGenerator
 from lib.knowledge_graph import KnowledgeGraph
 from lib.paths import get_data_root
 from lib.task_index import TaskIndex, TaskIndexEntry
 from lib.task_model import Task, TaskComplexity, TaskStatus, TaskType
 from lib.task_storage import TaskStorage
-from lib.ascii_tree import AsciiTreeGenerator
 
 # Pre-compile regex patterns for performance
 _INCOMPLETE_MARKER_PATTERN = re.compile(r"^-\s*\[ \]\s*(.+)$", re.MULTILINE)
@@ -1187,7 +1187,6 @@ def get_task_tree(
             "tree": None,
             "message": f"Failed to get task tree: {e}",
         }
-
 
 
 @mcp.tool()
@@ -2950,21 +2949,15 @@ def pkb_context(
                 break
 
         children = [
-            _node_summary(n)
-            for n in outgoing
-            if n.get("id") in (node_data.get("children") or [])
+            _node_summary(n) for n in outgoing if n.get("id") in (node_data.get("children") or [])
         ]
 
         deps = [
-            _node_summary(n)
-            for n in outgoing
-            if n.get("id") in (node_data.get("depends_on") or [])
+            _node_summary(n) for n in outgoing if n.get("id") in (node_data.get("depends_on") or [])
         ]
 
         blocks = [
-            _node_summary(n)
-            for n in outgoing
-            if n.get("id") in (node_data.get("blocks") or [])
+            _node_summary(n) for n in outgoing if n.get("id") in (node_data.get("blocks") or [])
         ]
 
         # Backlinks grouped by type
@@ -2983,9 +2976,7 @@ def pkb_context(
             structural_ids.update(n.get("id", "") for n in bl_nodes)
 
         nearby = [
-            _node_summary(dict(sub.nodes[nid]))
-            for nid in sub.nodes()
-            if nid not in structural_ids
+            _node_summary(dict(sub.nodes[nid])) for nid in sub.nodes() if nid not in structural_ids
         ]
 
         return {
@@ -3279,19 +3270,19 @@ def pkb_orphans(
                     if match_id != orphan_id:
                         match_node = kg.node(match_id)
                         if match_node:
-                            suggestions.append({
-                                **_node_summary(match_node),
-                                "similarity": match_score,
-                            })
+                            suggestions.append(
+                                {
+                                    **_node_summary(match_node),
+                                    "similarity": match_score,
+                                }
+                            )
 
             entry = _node_summary(orphan)
             entry["suggested_connections"] = suggestions
             orphans_with_suggestions.append(entry)
 
         # Sort: higher priority orphans first
-        orphans_with_suggestions.sort(
-            key=lambda x: (x.get("priority") or 4, x.get("label", ""))
-        )
+        orphans_with_suggestions.sort(key=lambda x: (x.get("priority") or 4, x.get("label", "")))
 
         total_nodes = kg.node_count
         orphan_count = len(orphan_nodes)
