@@ -167,4 +167,5 @@ markers = [
   "integration: marks tests as integration tests",
   "metrics: observability tests that report metrics (run with '-m metrics')",
   "demo: demo tests showing real behavior (run with '-k demo -v -s -n 0')",
+  "requires_local_env: marks tests that require a local environment/history (skipped in CI)",
 ]

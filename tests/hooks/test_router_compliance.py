@@ -38,6 +38,7 @@ from hooks.unified_logger import log_hook_event
 
 @pytest.mark.metrics
 @pytest.mark.slow
+@pytest.mark.requires_local_env
 def test_router_compliance_measurement():
     """Run compliance measurement and report results.
 
