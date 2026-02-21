@@ -40,6 +40,7 @@ from lib.paths import get_data_root
 from lib.task_index import TaskIndex, TaskIndexEntry
 from lib.task_model import Task, TaskComplexity, TaskStatus, TaskType
 from lib.task_storage import TaskStorage
+from lib.ascii_tree import AsciiTreeGenerator
 
 # Pre-compile regex patterns for performance
 _INCOMPLETE_MARKER_PATTERN = re.compile(r"^-\s*\[ \]\s*(.+)$", re.MULTILINE)
@@ -1185,6 +1186,63 @@ def get_task_tree(
             "success": False,
             "tree": None,
             "message": f"Failed to get task tree: {e}",
+        }
+
+
+
+@mcp.tool()
+def get_ascii_tree(
+    id: str | None = None,
+    project: str | None = None,
+) -> dict[str, Any]:
+    """Get ASCII tree visualization for a task or project.
+
+    Generates a read-only ASCII tree view of the task hierarchy.
+    If id is provided, shows tree rooted at that task.
+    If project is provided (and no id), shows trees for all root tasks in project.
+
+    Args:
+        id: Root task ID (optional)
+        project: Project slug (optional)
+
+    Returns:
+        Dictionary with:
+        - success: True if tree generated
+        - tree: ASCII tree string
+        - message: Status message
+    """
+    try:
+        index = _get_index()
+        generator = AsciiTreeGenerator(index)
+
+        tree = ""
+        target = ""
+
+        if id:
+            target = f"task {id}"
+            tree = generator.generate_tree(id)
+        elif project:
+            target = f"project {project}"
+            tree = generator.generate_project_tree(project)
+        else:
+            return {
+                "success": False,
+                "tree": "",
+                "message": "Must provide either id or project",
+            }
+
+        return {
+            "success": True,
+            "tree": tree,
+            "message": f"Generated ASCII tree for {target}",
+        }
+
+    except Exception as e:
+        logger.exception("get_ascii_tree failed")
+        return {
+            "success": False,
+            "tree": "",
+            "message": f"Failed to generate ASCII tree: {e}",
         }
 
 
