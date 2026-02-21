@@ -78,24 +78,6 @@ jobs:
           gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
             -f content=rocket
 
-      - name: Dismiss claude[bot] change requests
-        if: steps.pr-ref.outputs.pr_number != ''
-        env:
-          GH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-        run: |
-          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
-
-          REVIEW_IDS=$(gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews \
-            --jq '[.[] | select(.user.login == "claude[bot]" and .state == "CHANGES_REQUESTED")] | .[].id')
-
-          if [ -n "$REVIEW_IDS" ]; then
-            for REVIEW_ID in $REVIEW_IDS; do
-              echo "Dismissing review $REVIEW_ID"
-              gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews/${REVIEW_ID}/dismissals \
-                -X PUT -f message="Superseded: Human approved, merge-prep addressed all comments."
-            done
-          fi
-
       - name: Approve PR (Approval #2)
         if: steps.pr-ref.outputs.pr_number != ''
         env:
