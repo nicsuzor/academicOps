@@ -54,6 +54,12 @@ jobs:
     name: Custodiet
     needs: [setup]
     uses: ./.github/workflows/agent-custodiet.yml
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+      issues: write
+      actions: read
     with:
       target_type: pr
       target_number: ${{ needs.setup.outputs.pr_number }}
@@ -67,6 +73,12 @@ jobs:
     name: QA
     needs: [setup, custodiet]
     uses: ./.github/workflows/agent-qa.yml
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+      issues: write
+      actions: read
     with:
       pr_number: ${{ needs.setup.outputs.pr_number }}
       ref: ${{ needs.setup.outputs.head_ref }}
@@ -79,6 +91,12 @@ jobs:
     name: Merge Prep
     needs: [setup, qa]
     uses: ./.github/workflows/agent-merge-prep.yml
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+      issues: write
+      actions: read
     with:
       pr_number: ${{ needs.setup.outputs.pr_number }}
       ref: ${{ needs.setup.outputs.head_ref }}

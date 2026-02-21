@@ -18,6 +18,11 @@ jobs:
       github.actor != 'github-actions[bot]' &&
       !contains(github.event.issue.labels.*.name, 'epic')
     uses: ./.github/workflows/agent-hydrator.yml
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+      issues: write
     with:
       target_type: issue
       target_number: ${{ github.event.issue.number }}

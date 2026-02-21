@@ -18,6 +18,12 @@ jobs:
       github.actor != 'github-actions[bot]' &&
       !contains(github.event.issue.labels.*.name, 'epic')
     uses: ./.github/workflows/agent-custodiet.yml
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+      issues: write
+      actions: read
     with:
       target_type: issue
       target_number: ${{ github.event.issue.number }}
