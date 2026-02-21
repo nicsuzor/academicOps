@@ -476,7 +476,8 @@ class KnowledgeGraph:
         undirected = self._graph.to_undirected()
         ego = nx.ego_graph(undirected, resolved, radius=depth)
         # Return directed subgraph preserving edge directions
-        return self._graph.subgraph(ego.nodes()).copy()
+        sub: nx.DiGraph = self._graph.subgraph(ego.nodes()).copy()  # type: ignore[assignment]
+        return sub
 
     # ── Analysis ─────────────────────────────────────────────────────
 
