@@ -72,7 +72,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No formatting changes to commit"
           else
-            git commit -m "style: autofix lint and formatting [skip ci]"
+            git commit -m "style: autofix lint and formatting"
             git push
           fi
 
