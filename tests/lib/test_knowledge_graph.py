@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import pytest
-
 from lib.knowledge_graph import KnowledgeGraph, infer_node_type
-
 
 # ── Fixtures ──────────────────────────────────────────────────────
 

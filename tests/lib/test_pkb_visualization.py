@@ -2,11 +2,6 @@
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
-import pytest
-
 from scripts.task_graph import (
     TYPE_SHAPES,
     extract_ego_subgraph,
@@ -19,21 +14,62 @@ from scripts.task_graph import (
 def _sample_graph_nodes_edges():
     """Sample graph data for visualization testing."""
     nodes = [
-        {"id": "goal-1", "path": "/data/goals/publish.md", "label": "Publish",
-         "node_type": "goal", "status": "active", "priority": 0, "downstream_weight": 8.0},
-        {"id": "task-1", "path": "/data/tasks/write-paper.md", "label": "Write Paper",
-         "node_type": "task", "status": "active", "priority": 1, "parent": "goal-1",
-         "downstream_weight": 3.5, "stakeholder_exposure": True},
-        {"id": "task-2", "path": "/data/tasks/lit-review.md", "label": "Lit Review",
-         "node_type": "task", "status": "done", "priority": 2},
-        {"id": "daily-1", "path": "/data/daily/2026-01-15.md", "label": "2026-01-15",
-         "node_type": "daily", "status": None},
-        {"id": "knowledge-1", "path": "/data/knowledge/methods.md", "label": "Methods",
-         "node_type": "knowledge", "status": None},
-        {"id": "person-1", "path": "/data/people/alice.md", "label": "Alice",
-         "node_type": "person", "status": None},
-        {"id": "orphan-1", "path": "/data/notes/random.md", "label": "Random",
-         "node_type": "note", "status": None},
+        {
+            "id": "goal-1",
+            "path": "/data/goals/publish.md",
+            "label": "Publish",
+            "node_type": "goal",
+            "status": "active",
+            "priority": 0,
+            "downstream_weight": 8.0,
+        },
+        {
+            "id": "task-1",
+            "path": "/data/tasks/write-paper.md",
+            "label": "Write Paper",
+            "node_type": "task",
+            "status": "active",
+            "priority": 1,
+            "parent": "goal-1",
+            "downstream_weight": 3.5,
+            "stakeholder_exposure": True,
+        },
+        {
+            "id": "task-2",
+            "path": "/data/tasks/lit-review.md",
+            "label": "Lit Review",
+            "node_type": "task",
+            "status": "done",
+            "priority": 2,
+        },
+        {
+            "id": "daily-1",
+            "path": "/data/daily/2026-01-15.md",
+            "label": "2026-01-15",
+            "node_type": "daily",
+            "status": None,
+        },
+        {
+            "id": "knowledge-1",
+            "path": "/data/knowledge/methods.md",
+            "label": "Methods",
+            "node_type": "knowledge",
+            "status": None,
+        },
+        {
+            "id": "person-1",
+            "path": "/data/people/alice.md",
+            "label": "Alice",
+            "node_type": "person",
+            "status": None,
+        },
+        {
+            "id": "orphan-1",
+            "path": "/data/notes/random.md",
+            "label": "Random",
+            "node_type": "note",
+            "status": None,
+        },
     ]
     edges = [
         {"source": "task-1", "target": "goal-1", "type": "parent"},
@@ -144,8 +180,8 @@ class TestCrossTypeRendering:
         nodes, edges = _sample_graph_nodes_edges()
         dot = generate_dot(nodes, edges, include_orphans=True)
 
-        assert '#cce5ff' in dot  # active (blue)
-        assert '#d4edda' in dot  # done (green)
+        assert "#cce5ff" in dot  # active (blue)
+        assert "#d4edda" in dot  # done (green)
 
     def test_generate_dot_downstream_weight(self):
         """Downstream weight shown in labels."""

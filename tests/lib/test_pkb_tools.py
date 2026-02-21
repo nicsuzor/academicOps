@@ -6,9 +6,7 @@ Tests the MCP tool functions directly (not via MCP protocol).
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -120,7 +118,6 @@ def graph_dir(tmp_path: Path, monkeypatch) -> Path:
 
 def _import_tools():
     """Import MCP tool functions dynamically."""
-    import importlib
     import sys
 
     # Ensure the module paths are set up
