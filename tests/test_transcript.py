@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pytest
 
+from lib.paths import get_transcripts_dir
+
 
 class TestReflectionExtraction:
     """Test extracting Framework Reflections from transcript."""
@@ -78,7 +80,7 @@ Some conversation...
         """
 
         # Find session transcripts with Framework Reflections
-        sessions_dir = Path.home() / "writing" / "sessions" / "claude"
+        sessions_dir = get_transcripts_dir()
         reflection_files = []
 
         if sessions_dir.exists():

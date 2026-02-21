@@ -258,7 +258,7 @@ def load_synthesis() -> dict | None:
 def load_token_metrics() -> dict | None:
     """Load and aggregate token metrics from today's session summaries.
 
-    Scans ~/writing/sessions/summaries/ for files matching today's date (YYYYMMDD prefix).
+    Scans sessions/summaries/ for files matching today's date (YYYYMMDD prefix).
     Aggregates token_metrics from each file.
 
     Returns:
@@ -316,7 +316,7 @@ def load_token_metrics() -> dict | None:
 def get_recent_sessions(hours: int = 24) -> list[dict]:
     """Get recent session summaries for the Where You Left Off section.
 
-    Scans ~/writing/sessions/summaries/ for files within the time range.
+    Scans sessions/summaries/ for files within the time range.
 
     Args:
         hours: Only include sessions from the last N hours (default: 24)
@@ -396,7 +396,7 @@ def get_recent_sessions(hours: int = 24) -> list[dict]:
 def get_recent_prompts(days: int = 7) -> list[dict]:
     """Get recent session prompts for quick context recovery.
 
-    Scans ~/writing/sessions/summaries/ for files within the time range.
+    Scans sessions/summaries/ for files within the time range.
 
     Args:
         days: Only include sessions from the last N days (default: 7)
@@ -1555,7 +1555,7 @@ def get_where_you_left_off(hours: int = 24, limit: int = 10) -> dict:
         reentry_link = None
         session_file = s.get("session_file")
         if session_file:
-            reentry_link = f"obsidian://open?vault=writing&file=sessions/claude/{session_file}"
+            reentry_link = f"file://{get_transcripts_dir()}/{session_file}"
 
         project = s.get("project") or "unknown"
         # Sanitize summary
