@@ -273,9 +273,18 @@ def filter_reachable(nodes: list[dict], edges: list[dict]) -> tuple[list[dict], 
         if parent_id and parent_id in children_of:
             children_of[parent_id].append(node["id"])
 
-    # Identify leaves: unfinished nodes with no unfinished children
+    # Identify leaves: unfinished work-item nodes with no unfinished children.
+    # Only nodes with an explicit status AND a work-item node_type can seed the BFS.
+    # This prevents contacts/notes/references (which have no status and are childless)
+    # from being treated as actionable leaves and flooding the graph.
+    _LEAF_TYPES = {"task", "project", "epic", "bug", "feature", "review"}
     leaf_ids: set[str] = set()
     for node_id in unfinished_ids:
+        node = node_by_id[node_id]
+        if not node.get("status"):
+            continue
+        if node.get("node_type") not in _LEAF_TYPES:
+            continue
         unfinished_children = [
             c for c in children_of.get(node_id, []) if c in unfinished_ids
         ]
