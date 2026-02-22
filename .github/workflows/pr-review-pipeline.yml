@@ -12,12 +12,22 @@
 name: PR Review
 
 on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        type: string
+        required: true
+      head_ref:
+        description: 'Head branch ref'
+        type: string
+        required: true
   workflow_run:
     workflows: ["Code Quality"]
     types: [completed]
 
 concurrency:
-  group: pr-review-${{ github.event.workflow_run.pull_requests[0].number || github.run_id }}
+  group: pr-review-${{ inputs.pr_number || github.event.workflow_run.pull_requests[0].number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -27,24 +37,30 @@ jobs:
   setup:
     name: Setup
     if: >-
-      github.event_name == 'workflow_run' &&
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'pull_request'
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'pull_request')
     runs-on: ubuntu-latest
     outputs:
       pr_number: ${{ steps.pr-info.outputs.pr_number }}
       head_ref: ${{ steps.pr-info.outputs.head_ref }}
     steps:
-      - name: Extract PR info from workflow_run
+      - name: Extract PR info
         id: pr-info
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_NUMBER="${{ github.event.workflow_run.pull_requests[0].number }}"
-          HEAD_REF="${{ github.event.workflow_run.pull_requests[0].head.ref }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PR_NUMBER="${{ inputs.pr_number }}"
+            HEAD_REF="${{ inputs.head_ref }}"
+          else
+            PR_NUMBER="${{ github.event.workflow_run.pull_requests[0].number }}"
+            HEAD_REF="${{ github.event.workflow_run.pull_requests[0].head.ref }}"
+          fi
 
           if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
-            echo "::error::Could not determine PR number from workflow_run event"
+            echo "::error::Could not determine PR number"
             exit 1
           fi
 

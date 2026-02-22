@@ -5,6 +5,12 @@
 name: "Issue Review: Hydrator"
 
 on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number to review'
+        type: string
+        required: true
   issues:
     types: [opened]
 
