@@ -8,6 +8,7 @@ if str(aops_core_dir) not in sys.path:
 
 from hooks.policy_enforcer import (
     validate_minimal_documentation,
+    validate_no_direct_task_reads,
     validate_protect_artifacts,
     validate_safe_git_usage,
 )
@@ -69,3 +70,77 @@ def test_allow_source_write():
     }
     result = run_enforcer(input_data)
     assert result == {}
+
+
+# --- validate_no_direct_task_reads ---
+
+
+def test_block_read_task_md():
+    """Read on a task markdown file is blocked."""
+    result = validate_no_direct_task_reads(
+        "Read",
+        {"file_path": "/home/user/aca-data/data/tasks/inbox/aops-c4f7a17a-brain-repo-sync.md"},
+    )
+    assert result is not None
+    assert result["continue"] is False
+    assert "BLOCKED" in result["systemMessage"]
+    assert "mcp__pkb__" in result["systemMessage"]
+
+
+def test_block_glob_task_md():
+    """Glob with a data/tasks/*.md pattern is blocked."""
+    result = validate_no_direct_task_reads(
+        "Glob",
+        {"pattern": "data/tasks/inbox/*.md"},
+    )
+    assert result is not None
+    assert result["continue"] is False
+
+
+def test_block_grep_task_md():
+    """Grep targeting data/tasks/ .md files is blocked."""
+    result = validate_no_direct_task_reads(
+        "Grep",
+        {"path": "data/tasks/"},
+        # Grep with a .md path doesn't match unless the path includes .md
+        # but a glob filter would
+    )
+    # path itself doesn't end in .md — should NOT be blocked
+    assert result is None
+
+
+def test_block_grep_task_md_with_glob():
+    """Grep with glob filter targeting .md task files is blocked."""
+    result = validate_no_direct_task_reads(
+        "Grep",
+        {"path": "data/tasks/inbox/aops-deadbeef-my-task.md"},
+    )
+    assert result is not None
+    assert result["continue"] is False
+
+
+def test_allow_read_non_task_md():
+    """Read on a non-task .md file is allowed."""
+    result = validate_no_direct_task_reads(
+        "Read",
+        {"file_path": "aops-core/TOOLS.md"},
+    )
+    assert result is None
+
+
+def test_allow_read_task_json():
+    """Read on a .json file in data/tasks/ is handled by the JSON deny rule, not this one."""
+    result = validate_no_direct_task_reads(
+        "Read",
+        {"file_path": "data/tasks/index.json"},
+    )
+    assert result is None  # JSON files not covered by this validator
+
+
+def test_allow_write_task_md():
+    """Write tool is not blocked by this validator (only reads are blocked here)."""
+    result = validate_no_direct_task_reads(
+        "Write",
+        {"file_path": "data/tasks/inbox/aops-c4f7a17a-test.md", "content": "# test"},
+    )
+    assert result is None

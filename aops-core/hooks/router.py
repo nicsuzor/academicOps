@@ -474,6 +474,10 @@ class HookRouter:
         if ctx.hook_event in ("SessionStart", "Stop", "PostToolUse"):
             self._run_ntfy_notifier(ctx, state)
 
+        # Policy enforcement for PreToolUse (blocking validators)
+        if ctx.hook_event == "PreToolUse":
+            self._run_policy_enforcement(ctx, merged_result)
+
         # Session env setup on start
         if ctx.hook_event == "SessionStart":
             try:
@@ -579,6 +583,42 @@ class HookRouter:
                 )
         except Exception as e:
             print(f"WARNING: generate_transcript error: {e}", file=sys.stderr)
+
+    def _run_policy_enforcement(
+        self, ctx: HookContext, merged_result: CanonicalHookOutput
+    ) -> None:
+        """Run policy_enforcer validators for PreToolUse events.
+
+        Validators return None (allow) or {"continue": False, "systemMessage": "..."}
+        (deny).  First deny wins — remaining validators are skipped.
+        """
+        try:
+            from hooks.policy_enforcer import (
+                validate_minimal_documentation,
+                validate_no_direct_task_reads,
+                validate_protect_artifacts,
+                validate_safe_git_usage,
+            )
+
+            tool_name = ctx.tool_name or ""
+            tool_input = ctx.tool_input if isinstance(ctx.tool_input, dict) else {}
+
+            for validator in (
+                validate_minimal_documentation,
+                validate_safe_git_usage,
+                validate_protect_artifacts,
+                validate_no_direct_task_reads,
+            ):
+                result = validator(tool_name, tool_input)
+                if result:
+                    policy_output = CanonicalHookOutput(
+                        verdict="deny",
+                        system_message=result.get("systemMessage"),
+                    )
+                    self._merge_result(merged_result, policy_output)
+                    return  # First deny wins
+        except Exception as e:
+            print(f"WARNING: policy_enforcer error: {e}", file=sys.stderr)
 
     def _run_aca_data_autocommit(self, ctx: HookContext) -> None:
         """Auto-commit ACA_DATA changes after state-modifying tool calls.

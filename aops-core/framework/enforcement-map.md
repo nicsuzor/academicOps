@@ -282,10 +282,13 @@ Uses passive `additionalContext` format - agent may proceed without addressing.
 | Research records  | `**/tja/records/**`, `**/tox/records/**`      | Write, Edit, Bash       | Research data immutable      | [[research-data-immutable]]  |
 | Session state     | `/tmp/claude-session/**`                      | Write, Edit, Bash       | Hydration gate enforcement   | Mechanical trigger integrity |
 | Task indices      | `**/data/tasks/*.json`                        | Read, Bash              | Enforce MCP server usage     | [[just-in-time-context]]     |
+| Task files        | `data/tasks/**/<project>-<uid>-<slug>.md`     | Read, Glob, Grep        | Enforce PKB MCP tool usage   | [[just-in-time-context]]     |
 
 **Note**: Reading `~/.claude/hooks/**` etc IS allowed (skill invocation needs it).
 
 **Note**: Task JSON files (index.json, id_mapping.json) must be queried via tasks MCP server (list_tasks, search_tasks, get_task_tree, etc.) to prevent token bloat from reading large files directly.
+
+**Note**: Task markdown files (`<project>-<uid>-<slug>.md`, e.g. `aops-c4f7a17a-brain-repo-sync.md`) must be accessed via `mcp__pkb__get_task`, `mcp__pkb__task_search`, etc. Enforced by `policy_enforcer.py → validate_no_direct_task_reads` (PreToolUse hook via router.py).
 
 **Note**: Claude plugins and Gemini extensions protection enforced via:
 

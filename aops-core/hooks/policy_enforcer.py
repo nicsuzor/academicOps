@@ -5,6 +5,7 @@ PreToolUse policy enforcer for Claude Code.
 Blocks operations that violate framework principles:
 - MINIMAL: *-GUIDE.md files, .md files > 200 lines
 - Git Safety: destructive git commands
+- PKB Enforcement: direct filesystem reads of task markdown files
 
 Exit codes:
     0: Always (JSON output determines allow/deny via permissionDecision field)
@@ -135,5 +136,51 @@ def validate_protect_artifacts(tool_name: str, args: dict[str, Any]) -> dict[str
                     "Modify source files instead and run build scripts if necessary."
                 ),
             }
+
+    return None
+
+
+# Task file pattern: <project>-<uid>-<slug>.md files in data/tasks/ directories.
+# These must be accessed via PKB MCP tools, not directly from the filesystem.
+# Pattern matches any .md file anywhere inside a data/tasks/ subtree.
+_TASK_MD_RE = re.compile(r"data/tasks/[^\s]*\.md")
+
+
+def validate_no_direct_task_reads(tool_name: str, args: dict[str, Any]) -> dict[str, Any] | None:
+    """Block direct filesystem access to task markdown files.
+
+    Task files (data/tasks/**/<project>-<uid>-<slug>.md) must be accessed via
+    PKB MCP tools (mcp__pkb__get_task, mcp__pkb__task_search, etc.), not by
+    reading the filesystem directly. Direct reads cause token bloat and bypass
+    the MCP server's consistency guarantees.
+    """
+    if tool_name not in ("Read", "Glob", "Grep"):
+        return None
+
+    # Normalise the relevant path argument for each tool
+    if tool_name == "Read":
+        path_str = str(args.get("file_path") or "")
+    elif tool_name == "Glob":
+        path_str = str(args.get("pattern") or args.get("path") or "")
+    else:  # Grep
+        path_str = str(args.get("path") or args.get("glob") or "")
+
+    if not path_str:
+        return None
+
+    if _TASK_MD_RE.search(path_str):
+        return {
+            "continue": False,
+            "systemMessage": (
+                f"BLOCKED: Direct filesystem access to task file denied.\n"
+                f"Path: {path_str}\n"
+                "Use PKB MCP tools instead:\n"
+                "  mcp__pkb__get_task(id='<task-id>')    — look up by ID\n"
+                "  mcp__pkb__task_search(query='...')     — search by text\n"
+                "  mcp__pkb__list_tasks(...)              — list tasks\n"
+                "  mcp__pkb__pkb_context(...)             — task context\n"
+                "See TOOLS.md § 'PKB Tool Usage' for the full reference."
+            ),
+        }
 
     return None

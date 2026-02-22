@@ -48,3 +48,16 @@ Reference for agent capabilities. Use this to understand what operations are pos
 - **Remember context** → `memory` server for semantic storage
 - **Task management** → `pkb` for all work tracking, search, and knowledge graph
 - **Documentation lookup** → `context7` for library APIs
+
+## PKB Tool Usage (MANDATORY)
+
+Task operations MUST use `mcp__pkb__*` tools. NEVER use `Read`/`Glob`/`Grep`/`Bash` on task files directly — direct filesystem access to `data/tasks/` is blocked by the enforcement hook.
+
+| Operation | Use this tool | Do NOT use |
+| --------- | ------------- | ---------- |
+| Look up a task by ID | `mcp__pkb__get_task(id="aops-c4f7a17a")` | `Read("data/tasks/aops-c4f7a17a-*.md")` |
+| Search for tasks | `mcp__pkb__task_search(query="...")` | `Glob("data/tasks/**/*.md")` |
+| List tasks | `mcp__pkb__list_tasks(...)` | `Bash("ls data/tasks/")` |
+| Get task context | `mcp__pkb__pkb_context(...)` | `Grep("data/tasks/**")` |
+
+Task files in `data/tasks/` use the naming convention `<project>-<uid>-<slug>.md` (e.g. `aops-c4f7a17a-brain-repo-sync.md`). Always retrieve them via `mcp__pkb__get_task` or `mcp__pkb__task_search`, not by reading the filesystem.
