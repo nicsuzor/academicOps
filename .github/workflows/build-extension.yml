@@ -125,15 +125,15 @@ jobs:
           fi
 
           # Build for each platform that has a binary
-          for platform_dir in pkb-binaries/pkb-search-*; do
+          for platform_dir in pkb-binaries/pkb-*; do
             ARTIFACT_NAME=$(basename "$platform_dir")
-            # Extract platform info: pkb-search-{os}-{arch}
-            PLATFORM_LABEL="${ARTIFACT_NAME#pkb-search-}"
+            # Extract platform info: pkb-{os}-{arch}
+            PLATFORM_LABEL="${ARTIFACT_NAME#pkb-}"
 
             echo "Building with PKB binary: $ARTIFACT_NAME ($PLATFORM_LABEL)"
 
             uv run python scripts/build.py \
-              --pkb-binary "$platform_dir/pkb-search" \
+              --pkb-binary "$platform_dir/pkb" \
               --target-platform "$PLATFORM_LABEL" \
               $VERSION_FLAG
           done

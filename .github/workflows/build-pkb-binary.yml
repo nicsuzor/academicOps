@@ -23,9 +23,9 @@ jobs:
       matrix:
         include:
           - artifact_label: x86_64-linux
-            output_name: pkb-search-linux-x86_64
+            output_name: pkb-linux-x86_64
           - artifact_label: aarch64-darwin
-            output_name: pkb-search-macos-aarch64
+            output_name: pkb-macos-aarch64
 
     runs-on: ubuntu-latest
 
@@ -56,18 +56,18 @@ jobs:
             --repo nicsuzor/mem \
             --pattern "$ARCHIVE"
 
-          # Extract just the pkb binary
+          # Extract binaries (pkb and aops)
           mkdir -p output
           tar xzf "$ARCHIVE" -C output
-          # Rename pkb -> pkb-search for backward compatibility with aops configs
-          mv output/pkb output/pkb-search
-          chmod +x output/pkb-search
-          echo "Extracted pkb-search binary"
+          chmod +x output/pkb output/aops
+          echo "Extracted binaries:"
           ls -la output/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.output_name }}
-          path: output/pkb-search
+          path: |
+            output/pkb
+            output/aops
           if-no-files-found: error

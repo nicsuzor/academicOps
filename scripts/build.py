@@ -828,16 +828,25 @@ def build_antigravity(aops_root: Path, dist_root: Path, all_mcps: dict):
 
 
 def install_pkb_binary(dist_dir: Path, binary_path: Path) -> None:
-    """Install a pre-built PKB binary into a distribution directory.
+    """Install pre-built binaries into a distribution directory.
 
-    Copies the binary to dist_dir/bin/pkb-search and sets executable permissions.
+    Copies pkb and aops binaries to dist_dir/bin/ and sets executable permissions.
     """
     bin_dir = dist_dir / "bin"
     bin_dir.mkdir(parents=True, exist_ok=True)
-    dest = bin_dir / "pkb-search"
+
+    dest = bin_dir / "pkb"
     shutil.copy2(binary_path, dest)
     dest.chmod(0o755)
-    print(f"  ✓ Installed PKB binary -> {dest}")
+    print(f"  ✓ Installed pkb binary -> {dest}")
+
+    # Install aops binary if present in the same directory
+    aops_binary = binary_path.parent / "aops"
+    if aops_binary.exists():
+        aops_dest = bin_dir / "aops"
+        shutil.copy2(aops_binary, aops_dest)
+        aops_dest.chmod(0o755)
+        print(f"  ✓ Installed aops binary -> {aops_dest}")
 
 
 def main():
@@ -853,7 +862,7 @@ def main():
         "--pkb-binary",
         type=str,
         default=None,
-        help="Path to pre-built pkb-search binary to include in dist",
+        help="Path to pre-built pkb binary to include in dist",
     )
     parser.add_argument(
         "--target-platform",
