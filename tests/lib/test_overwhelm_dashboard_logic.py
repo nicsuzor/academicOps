@@ -19,7 +19,6 @@ def _build_incomplete_tasks(p_tasks, project_epics, all_tasks):
     This mirrors the rendered_child_ids / incomplete_tasks logic in the
     project card rendering loop.
     """
-    tasks_by_id = {t["id"]: t for t in all_tasks}
     rendered_child_ids = set()
 
     if project_epics:
