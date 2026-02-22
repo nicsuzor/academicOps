@@ -16,8 +16,8 @@
 
 set -euo pipefail
 
-AOPS="${AOPS:-/Users/suzor/src/academicOps}"
-AOPS_BIN="${AOPS_BIN:-aops}"
+AOPS="${AOPS:-$(cd "$(dirname "$0")/.." && pwd)}"
+AOPS_BIN="${AOPS_BIN:-$(command -v aops 2>/dev/null || echo aops)}"
 OUT_DIR="${AOPS_SESSIONS:-${HOME}/.aops/sessions}"
 LAYOUT="sfdp"
 

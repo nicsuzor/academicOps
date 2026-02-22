@@ -130,18 +130,31 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
         f"Transcript: {transcript_path}",
     ]
 
-    # Pull ACA_DATA to ensure fresh state at session start
+    # Sync ACA_DATA: commit pending changes, then pull remote
     aca_data = os.environ.get("ACA_DATA")
     if aca_data:
         try:
             from hooks.autocommit_state import (
                 can_sync,
+                commit_and_push_repo,
                 fetch_and_check_divergence,
+                has_repo_changes,
                 pull_rebase_if_behind,
             )
 
             aca_path = Path(aca_data)
             if aca_path.exists() and (aca_path / ".git").exists():
+                # Step 1: Commit+push any pending local changes (from CLI tools, Obsidian, etc.)
+                if has_repo_changes(aca_path):
+                    ok, commit_msg = commit_and_push_repo(
+                        aca_path, commit_message="sync: session-start auto-commit"
+                    )
+                    if ok:
+                        messages.append(f"ACA_DATA: committed pending changes")
+                    else:
+                        messages.append(f"ACA_DATA commit: {commit_msg}")
+
+                # Step 2: Pull remote changes
                 syncable, reason = can_sync(aca_path)
                 if syncable:
                     is_behind, count, fetch_err = fetch_and_check_divergence(aca_path)
