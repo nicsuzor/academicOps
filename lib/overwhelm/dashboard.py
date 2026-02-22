@@ -3749,16 +3749,29 @@ v.onmouseleave=()=>{{ isDrag=false; v.style.cursor='grab'; }};
     components.html(zoom_html, height=600)
 
 
-def render_v11_progress():
-    """Render v1.1 epic progress tracking section."""
-    V11_EPIC_ID = "aops-5056bc83"
-
+def render_spotlight_epic():
+    """Render spotlight epic progress tracking section (dynamically selected)."""
     tasks = load_tasks_from_index()
     tasks_by_id = {t["id"]: t for t in tasks}
 
-    epic = tasks_by_id.get(V11_EPIC_ID)
-    if not epic:
-        return  # Skip silently if epic not found
+    # Dynamically select the most active open epic
+    candidate_epics = [
+        t for t in tasks
+        if t.get("type") == "epic" and t.get("status") not in ("done", "closed")
+    ]
+    if not candidate_epics:
+        return
+
+    def _epic_activity_score(ep):
+        children_ids = ep.get("children", [])
+        return sum(
+            1 for cid in children_ids
+            if tasks_by_id.get(cid, {}).get("status") not in ("done", "closed", None)
+        )
+
+    epic = max(candidate_epics, key=_epic_activity_score)
+    if _epic_activity_score(epic) == 0:
+        return  # No active children — skip
 
     # Get children and count by status
     children_ids = epic.get("children", [])
@@ -3782,7 +3795,7 @@ def render_v11_progress():
     html = f"""
     <div class="v11-progress-panel">
         <div class="v11-progress-header">
-            <div class="v11-progress-title">🚀 v1.1 Production Release</div>
+            <div class="v11-progress-title">🚀 {epic.get("title", "Epic")}</div>
             <div class="v11-progress-pct">{done_pct:.0f}%</div>
         </div>
         <div class="v11-progress-bar">
@@ -4446,7 +4459,7 @@ if page == "Network Analysis":
     render_network_analysis()
     st.stop()
 
-render_v11_progress()
+render_spotlight_epic()
 
 # Graph section with tabs
 render_graph_section()
