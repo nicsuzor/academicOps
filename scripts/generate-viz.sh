@@ -19,7 +19,7 @@ set -euo pipefail
 AOPS="${AOPS:-/Users/suzor/src/academicOps}"
 AOPS_BIN="${AOPS_BIN:-aops}"
 OUT_DIR="${AOPS_SESSIONS:-${HOME}/.aops/sessions}"
-LAYOUT="fdp"
+LAYOUT="sfdp"
 
 # Parse arguments
 QUICK=false
