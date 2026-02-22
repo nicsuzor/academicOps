@@ -72,7 +72,7 @@ Ready for human review.
 After fixing issues that triggered a CHANGES_REQUESTED review, **dismiss that review** so it no longer blocks the PR:
 
 ```bash
-gh api repos/{owner}/{repo}/pulls/{pr}/reviews/{review_id}/dismissals \
+gh api -X PUT repos/{owner}/{repo}/pulls/{pr}/reviews/{review_id}/dismissals \
   -f message="Addressed: <summary of what was fixed>" -f event="DISMISS"
 ```
 
