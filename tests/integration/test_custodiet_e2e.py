@@ -274,9 +274,7 @@ Output must be structured.
     )
 
     # Mock get_audit_temp_dir to return dummy_dir
-    monkeypatch.setattr(
-        "tests.integration.test_custodiet_e2e.get_audit_temp_dir", lambda: dummy_dir
-    )
+    monkeypatch.setattr("tests.integration.test_custodiet_e2e.get_audit_temp_dir", lambda: dummy_dir)
 
     temp_dir = get_audit_temp_dir()
     assert temp_dir.exists()
