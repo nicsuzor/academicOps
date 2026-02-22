@@ -3750,8 +3750,7 @@ def render_spotlight_epic():
 
     # Dynamically select the most active open epic
     candidate_epics = [
-        t for t in tasks
-        if t.get("type") == "epic" and t.get("status") not in ("done", "closed")
+        t for t in tasks if t.get("type") == "epic" and t.get("status") not in ("done", "closed")
     ]
     if not candidate_epics:
         return
@@ -3759,7 +3758,8 @@ def render_spotlight_epic():
     def _epic_activity_score(ep):
         children_ids = ep.get("children", [])
         return sum(
-            1 for cid in children_ids
+            1
+            for cid in children_ids
             if tasks_by_id.get(cid, {}).get("status") not in ("done", "closed", None)
         )
 
@@ -5103,9 +5103,7 @@ try:
                 )
             # Merge sessions
             if sub in sessions_by_project:
-                sessions_by_project.setdefault(parent, []).extend(
-                    sessions_by_project.pop(sub)
-                )
+                sessions_by_project.setdefault(parent, []).extend(sessions_by_project.pop(sub))
 
     all_projects = {p for p in all_projects if is_valid_project(p)}
 
@@ -5222,7 +5220,8 @@ try:
         # We only show top 3-5 incomplete tasks to save space
         # Exclude epics and their children (already shown in EPICS section)
         incomplete_tasks = [
-            t for t in p_tasks
+            t
+            for t in p_tasks
             if t.get("status") not in ("done", "closed")
             and t.get("type") != "epic"
             and t.get("id") not in rendered_child_ids
