@@ -67,6 +67,22 @@ All review agents approved. No comments to address.
 Ready for human review.
 ```
 
+## Review Dismissal
+
+After fixing issues that triggered a CHANGES_REQUESTED review, **dismiss that review** so it no longer blocks the PR:
+
+```bash
+gh api repos/{owner}/{repo}/pulls/{pr}/reviews/{review_id}/dismissals \
+  -f message="Addressed: <summary of what was fixed>" -f event="DISMISS"
+```
+
+- Dismiss only reviews whose concerns you have fully addressed in your fixes.
+- If a human comment overrides a reviewer's concern (e.g., "leave those changes in"), dismiss with a message citing the maintainer's decision.
+- If a concern is still valid and you couldn't fix it, leave the review in place.
+- Always include a clear dismissal message explaining what was resolved.
+
+To find review IDs: `gh api repos/{owner}/{repo}/pulls/{pr}/reviews --jq '.[] | select(.state == "CHANGES_REQUESTED") | {id, body}'`
+
 ## Rules
 
 - **Fix conservatively.** If unsure whether a change is safe, don't make it — flag it for the human.
