@@ -29,6 +29,7 @@ from collections import defaultdict, deque
 
 import networkx as nx
 from lib.path_reconstructor import EventType, reconstruct_path
+from lib.paths import get_summaries_dir, get_transcripts_dir
 from lib.session_analyzer import SessionAnalyzer, extract_todowrite_from_session
 from lib.session_context import SessionContext, extract_context_from_session_state
 from lib.session_reader import find_sessions
@@ -257,7 +258,7 @@ def load_synthesis() -> dict | None:
 def load_token_metrics() -> dict | None:
     """Load and aggregate token metrics from today's session summaries.
 
-    Scans ~/writing/sessions/summaries/ for files matching today's date (YYYYMMDD prefix).
+    Scans sessions/summaries/ for files matching today's date (YYYYMMDD prefix).
     Aggregates token_metrics from each file.
 
     Returns:
@@ -269,7 +270,7 @@ def load_token_metrics() -> dict | None:
         - cache_hit_rate: Percentage of tokens from cache (0-100)
         - session_count: Number of sessions with token data
     """
-    summaries_dir = Path.home() / "writing" / "sessions" / "summaries"
+    summaries_dir = get_summaries_dir()
     if not summaries_dir.exists():
         return None
 
@@ -315,7 +316,7 @@ def load_token_metrics() -> dict | None:
 def get_recent_sessions(hours: int = 24) -> list[dict]:
     """Get recent session summaries for the Where You Left Off section.
 
-    Scans ~/writing/sessions/summaries/ for files within the time range.
+    Scans sessions/summaries/ for files within the time range.
 
     Args:
         hours: Only include sessions from the last N hours (default: 24)
@@ -333,8 +334,8 @@ def get_recent_sessions(hours: int = 24) -> list[dict]:
     """
     from datetime import timedelta
 
-    summaries_dir = Path.home() / "writing" / "sessions" / "summaries"
-    sessions_dir = Path.home() / "writing" / "sessions" / "claude"
+    summaries_dir = get_summaries_dir()
+    sessions_dir = get_transcripts_dir()
     if not summaries_dir.exists():
         return []
 
@@ -395,7 +396,7 @@ def get_recent_sessions(hours: int = 24) -> list[dict]:
 def get_recent_prompts(days: int = 7) -> list[dict]:
     """Get recent session prompts for quick context recovery.
 
-    Scans ~/writing/sessions/summaries/ for files within the time range.
+    Scans sessions/summaries/ for files within the time range.
 
     Args:
         days: Only include sessions from the last N days (default: 7)
@@ -410,7 +411,7 @@ def get_recent_prompts(days: int = 7) -> list[dict]:
     """
     from datetime import timedelta
 
-    summaries_dir = Path.home() / "writing" / "sessions" / "summaries"
+    summaries_dir = get_summaries_dir()
     if not summaries_dir.exists():
         return []
 
@@ -1554,7 +1555,7 @@ def get_where_you_left_off(hours: int = 24, limit: int = 10) -> dict:
         reentry_link = None
         session_file = s.get("session_file")
         if session_file:
-            reentry_link = f"obsidian://open?vault=writing&file=sessions/claude/{session_file}"
+            reentry_link = f"file://{get_transcripts_dir()}/{session_file}"
 
         project = s.get("project") or "unknown"
         # Sanitize summary
@@ -1614,7 +1615,7 @@ def archive_stale_sessions(hours: int = 24):
     import shutil
     from datetime import timedelta
 
-    summaries_dir = Path.home() / "writing" / "sessions" / "summaries"
+    summaries_dir = get_summaries_dir()
     archived_dir = summaries_dir / "archived"
 
     if not summaries_dir.exists():
@@ -4113,7 +4114,7 @@ def render_session_summary():
 
     st.header("📝 Daily Session Summary")
 
-    summaries_dir = Path.home() / "writing" / "sessions" / "summaries"
+    summaries_dir = get_summaries_dir()
     if not summaries_dir.exists():
         st.info("No summaries directory found.")
         return

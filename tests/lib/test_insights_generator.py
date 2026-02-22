@@ -264,10 +264,11 @@ class TestInsightsFilePath:
         assert path.name == "20260113-23-my-project-a1b2c3d4.json"
 
     def test_file_path_uses_centralized_location(self):
-        """Test that file path uses centralized ~/writing/sessions/summaries/ location."""
+        """Test that file path uses centralized sessions/summaries/ location."""
         path = get_insights_file_path("2026-01-13", "a1b2c3d4", project="test", hour="08")
-        # Centralized location, no env var dependency
-        assert "writing/sessions/summaries" in str(path)
+        # Centralized location via get_summaries_dir()
+        assert "summaries" in str(path)
+        assert path.name == "20260113-08-test-a1b2c3d4.json"
 
     def test_file_path_extracts_hour_from_iso8601(self):
         """Test that hour is extracted from ISO 8601 date format."""

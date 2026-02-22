@@ -75,3 +75,9 @@ Ready for human review.
 - **Resolve merge conflicts** by merging from main: `git fetch origin && git merge origin/main --no-edit`, then push normally with `git push origin HEAD`. Do not rebase — rebasing requires force-push, which is prohibited by AXIOMS.md P#25.
 - **Run tests** after modifying code: `uv run pytest -x` (fail-fast).
 - Post the triage table even if you made no changes — transparency matters.
+- **Tag your commits** with a `Merge-Prep-By: agent` trailer so the loop detector can distinguish your commits from other bot commits. Example:
+  ```
+  git commit -m "fix: address review feedback
+
+  Merge-Prep-By: agent"
+  ```

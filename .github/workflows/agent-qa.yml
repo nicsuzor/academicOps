@@ -11,6 +11,16 @@
 name: "Agent: QA"
 
 on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        type: string
+        required: true
+      ref:
+        description: 'Git ref to checkout'
+        type: string
+        required: true
   workflow_call:
     inputs:
       pr_number:

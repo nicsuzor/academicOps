@@ -19,18 +19,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+# Add aops-core to path for lib imports
+_aops_core = Path(__file__).resolve().parent.parent / "aops-core"
+sys.path.insert(0, str(_aops_core))
 
-def get_summaries_dir() -> Path:
-    """Get the session summaries directory.
-
-    Returns:
-        Path to ~/writing/sessions/summaries/
-    """
-    return Path.home() / "writing" / "sessions" / "summaries"
+from lib.paths import get_summaries_dir
 
 
 def parse_summary_filename(filename: str) -> dict[str, str | None] | None:

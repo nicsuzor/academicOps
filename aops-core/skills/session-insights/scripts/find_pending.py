@@ -22,7 +22,7 @@ SCRIPT_DIR = Path(__file__).parent.resolve()
 AOPS_CORE_ROOT = SCRIPT_DIR.parent.parent.parent
 sys.path.insert(0, str(AOPS_CORE_ROOT))
 
-from lib.paths import get_data_root
+from lib.paths import get_summaries_dir, get_transcripts_dir
 
 
 def main():
@@ -31,13 +31,11 @@ def main():
     args = parser.parse_args()
 
     try:
-        aca_data = get_data_root()
+        transcripts_dir = get_transcripts_dir()
+        insights_dir = get_summaries_dir()
     except RuntimeError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
-
-    transcripts_dir = aca_data / "sessions" / "claude"
-    insights_dir = aca_data / "sessions" / "summaries"  # v3.4.0: summaries subdirectory
 
     if not transcripts_dir.exists():
         print(

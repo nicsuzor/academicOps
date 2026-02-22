@@ -12,12 +12,22 @@
 name: PR Review
 
 on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        type: string
+        required: true
+      head_ref:
+        description: 'Head branch ref'
+        type: string
+        required: true
   workflow_run:
     workflows: ["Code Quality"]
     types: [completed]
 
 concurrency:
-  group: pr-review-${{ github.event.workflow_run.pull_requests[0].number || github.run_id }}
+  group: pr-review-${{ inputs.pr_number || github.event.workflow_run.pull_requests[0].number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -27,24 +37,30 @@ jobs:
   setup:
     name: Setup
     if: >-
-      github.event_name == 'workflow_run' &&
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'pull_request'
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'pull_request')
     runs-on: ubuntu-latest
     outputs:
       pr_number: ${{ steps.pr-info.outputs.pr_number }}
       head_ref: ${{ steps.pr-info.outputs.head_ref }}
     steps:
-      - name: Extract PR info from workflow_run
+      - name: Extract PR info
         id: pr-info
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_NUMBER="${{ github.event.workflow_run.pull_requests[0].number }}"
-          HEAD_REF="${{ github.event.workflow_run.pull_requests[0].head.ref }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PR_NUMBER="${{ inputs.pr_number }}"
+            HEAD_REF="${{ inputs.head_ref }}"
+          else
+            PR_NUMBER="${{ github.event.workflow_run.pull_requests[0].number }}"
+            HEAD_REF="${{ github.event.workflow_run.pull_requests[0].head.ref }}"
+          fi
 
           if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
-            echo "::error::Could not determine PR number from workflow_run event"
+            echo "::error::Could not determine PR number"
             exit 1
           fi
 
@@ -120,7 +136,27 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Post pipeline summary
+      - name: Check outstanding review state
+        id: review-state
+        run: |
+          PR_NUM="${{ needs.setup.outputs.pr_number }}"
+
+          CHANGES_REQUESTED=$(gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews \
+            --jq '[.[] | select(.state == "CHANGES_REQUESTED")] | length')
+          COMMENT_COUNT=$(gh api repos/${{ github.repository }}/pulls/${PR_NUM}/comments \
+            --jq 'length')
+
+          echo "changes_requested=$CHANGES_REQUESTED" >> "$GITHUB_OUTPUT"
+          echo "comment_count=$COMMENT_COUNT" >> "$GITHUB_OUTPUT"
+
+          if [ "$CHANGES_REQUESTED" -gt 0 ] || [ "$COMMENT_COUNT" -gt 0 ]; then
+            echo "has_unresolved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_unresolved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post pipeline summary (clean)
+        if: steps.review-state.outputs.has_unresolved == 'false'
         run: |
           PR_NUM="${{ needs.setup.outputs.pr_number }}"
 
@@ -137,5 +173,32 @@ jobs:
           | 4. Merge Prep | Auto-fix | Review comments triaged and addressed |
 
           **Your approval is the last step needed to merge.**
+          SUMMARY
+          )"
+
+      - name: Post pipeline summary (with unresolved feedback)
+        if: steps.review-state.outputs.has_unresolved == 'true'
+        run: |
+          PR_NUM="${{ needs.setup.outputs.pr_number }}"
+          CHANGES="${{ steps.review-state.outputs.changes_requested }}"
+          COMMENTS="${{ steps.review-state.outputs.comment_count }}"
+
+          gh pr comment "$PR_NUM" --repo "${{ github.repository }}" --body "$(cat <<SUMMARY
+          ## Pipeline Complete — Unresolved Feedback Remains
+
+          All automated stages have finished:
+
+          | Stage | Agent | Role |
+          |-------|-------|------|
+          | 1. Code Quality | Lint + Gatekeeper + Type Check | Syntax, alignment, types |
+          | 2. Custodiet | Scope compliance | Principle violations, unauthorized changes |
+          | 3. QA | Acceptance criteria | Tests, regressions, correctness |
+          | 4. Merge Prep | Auto-fix | Review comments triaged and addressed |
+
+          **Unresolved feedback:**
+          - Reviews requesting changes: ${CHANGES}
+          - Inline review comments: ${COMMENTS}
+
+          **Please review the outstanding comments before approving.**
           SUMMARY
           )"

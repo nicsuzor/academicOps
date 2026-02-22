@@ -55,10 +55,10 @@ REFLECTION_PATTERNS = ["Framework Reflection", "## Framework Reflection"]
 def generate_session_transcript(transcript_path: str) -> bool:
     """Generate transcript and insights from session JSONL file.
 
-    Invokes transcript_push.py to parse the session and generate:
+    Invokes transcript.py to parse the session and generate:
     - Markdown transcripts (full and abridged)
     - Insights JSON file (from Framework Reflection if present)
-    - Auto-commit and push to writing repository
+    - Auto-commit and push to sessions repository
 
     Args:
         transcript_path: Path to session.jsonl file
@@ -69,17 +69,11 @@ def generate_session_transcript(transcript_path: str) -> bool:
     import sys
 
     try:
-        # Get path to transcript_push.py script
         script_dir = Path(__file__).parent.parent / "scripts"
-        transcript_script = script_dir / "transcript_push.py"
+        transcript_script = script_dir / "transcript.py"
 
         if not transcript_script.exists():
             logger.warning(f"Transcript script not found: {transcript_script}")
-            # Fallback to transcript.py if push wrapper missing
-            transcript_script = script_dir / "transcript.py"
-
-        if not transcript_script.exists():
-            logger.warning(f"Fallback transcript script not found: {transcript_script}")
             return False
 
         # Run transcript script with the session file

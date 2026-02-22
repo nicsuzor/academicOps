@@ -11,6 +11,20 @@
 name: "Agent: Custodiet"
 
 on:
+  workflow_dispatch:
+    inputs:
+      target_type:
+        description: 'pr or issue'
+        type: string
+        required: true
+      target_number:
+        description: 'PR or issue number'
+        type: string
+        required: true
+      ref:
+        description: 'Git ref to checkout (required for PRs)'
+        type: string
+        required: false
   workflow_call:
     inputs:
       target_type:

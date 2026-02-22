@@ -20,7 +20,7 @@ This command is **mandatory** before session end. The framework stop gate blocks
 
 ## When to Use
 
-- Session ending normally (replaces `/handover`)
+- Session ending normally
 - Session must end unexpectedly (Emergency)
 - Context window approaching limit
 - User needs to interrupt for higher-priority work
@@ -28,79 +28,13 @@ This command is **mandatory** before session end. The framework stop gate blocks
 
 ## Execution
 
-Execute the following steps in order. Execute the [[handover-workflow]] if further guidance is needed.
+Execute the [[base-handover]] workflow. The steps are:
 
-### Step 1: Commit All Work (MANDATORY)
+1. **Commit and push all work** (MANDATORY per P#24)
+2. **Update task with progress** (or create historical task if none claimed)
+3. **File follow-up tasks** for outstanding work — use [[decompose]] principles for appropriate granularity
+4. **Persist discoveries to memory** (optional)
+5. **Output Framework Reflection**
+6. **Confirm handover complete** and halt
 
-```bash
-git status --porcelain
-```
-
-**You MUST commit and PUSH all your work before ending the session.** This is non-negotiable per P#24 (No Commit Hesitation).
-
-- **Staged changes**: Commit immediately with descriptive message
-- **Unstaged changes**: Stage and commit ALL relevant files
-- **No exceptions**: Work that isn't committed is lost
-
-> **CRITICAL**: Do not proceed to Step 2 until ALL changes are committed and pushed. The only acceptable reason to skip committing is if you made NO file changes this session.
-
-### Step 2: Update Task & Capture Outstanding Work
-
-1. **Identify current task**: (or create historical task if work was done without one)
-2. **Update task with progress checkpoint**:
-   ```
-   mcp__plugin_aops-core_task_manager__update_task(id="<task-id>", status="in_progress", body="## Progress Checkpoint\n...")
-   ```
-3. **File follow-up tasks for ANY outstanding work**:
-   - **Revealed errors/warnings** - Problems discovered but not fixed (e.g., lint errors, CI failures)
-   - **Incomplete work** - Planned steps that weren't completed
-   - **Deferred decisions** - Items marked for later
-   - **Verification gaps** - Tests that should be run
-
-   **For EACH item, call `mcp__plugin_aops-core_task_manager__create_task()` with details.** Mentioning follow-up in reflection text is NOT sufficient; tasks must exist in the system before proceeding.
-
-### Step 3: Persist Discoveries to Memory (Optional)
-
-If significant discoveries or learnings occurred, persist them to memory:
-```
-mcp__memory__store_memory(content="...", tags=["dump", "handover"])
-```
-
-### Step 4: Output Framework Reflection
-
-Output the following structure **exactly** (the framework validates this format):
-
-```markdown
-## Framework Reflection
-
-**Outcome**: success|partial|failure
-**Accomplishments**: [What was completed this session]
-**Friction points**: [Issues encountered, or "none"]
-**Next step**: [Task IDs for follow-up work, or "none"]
-```
-
-**Field definitions**:
-
-- **Outcome**:
-  - `success` - All planned work completed
-  - `partial` - Some work completed, some deferred (Standard for Emergency Dump)
-  - `failure` - Unable to complete primary objective
-- **Accomplishments**: Brief bullet points of what was done
-- **Friction points**: Framework issues, tool problems, blockers, or "none"
-- **Next step**: Task IDs from Step 2 (e.g., `aops-abc123`), or "none" if no follow-up needed
-
-### Step 5: Confirm Handover Complete
-
-After outputting the reflection, state:
-
-```
-Handover complete. Session may now end.
-```
-
-This confirms to the user and the stop gate that the handover procedure completed.
-
-### Step 6: Halt
-
-After confirming handover, **stop working**. Do not start new tasks or attempt to fix remaining issues.
-
-> **CRITICAL**: The reflection MUST confirm that changes were committed in Step 1. Never output a reflection with uncommitted work.
+> **CRITICAL**: Do not proceed past Step 1 until ALL changes are committed and pushed. The only acceptable reason to skip is if you made NO file changes.

@@ -416,11 +416,5 @@ def get_pid_session_map_path() -> Path:
     Used by router to bootstrap session ID from process ID when not provided.
     Stores simple JSON: {"session_id": "..."}
     """
-    aops_sessions = Path(os.getenv("AOPS_SESSIONS", "/tmp"))
-    if not aops_sessions.exists():
-        try:
-            aops_sessions.mkdir(parents=True, exist_ok=True)
-        except OSError:
-            pass  # Fallback to /tmp
-
-    return aops_sessions / f"session-{os.getppid()}.json"
+    # PID session maps are ephemeral runtime files, always use /tmp
+    return Path("/tmp") / f"session-{os.getppid()}.json"
