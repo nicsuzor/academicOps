@@ -120,7 +120,27 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Post pipeline summary
+      - name: Check outstanding review state
+        id: review-state
+        run: |
+          PR_NUM="${{ needs.setup.outputs.pr_number }}"
+
+          CHANGES_REQUESTED=$(gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews \
+            --jq '[.[] | select(.state == "CHANGES_REQUESTED")] | length')
+          COMMENT_COUNT=$(gh api repos/${{ github.repository }}/pulls/${PR_NUM}/comments \
+            --jq 'length')
+
+          echo "changes_requested=$CHANGES_REQUESTED" >> "$GITHUB_OUTPUT"
+          echo "comment_count=$COMMENT_COUNT" >> "$GITHUB_OUTPUT"
+
+          if [ "$CHANGES_REQUESTED" -gt 0 ] || [ "$COMMENT_COUNT" -gt 0 ]; then
+            echo "has_unresolved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_unresolved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post pipeline summary (clean)
+        if: steps.review-state.outputs.has_unresolved == 'false'
         run: |
           PR_NUM="${{ needs.setup.outputs.pr_number }}"
 
@@ -137,5 +157,32 @@ jobs:
           | 4. Merge Prep | Auto-fix | Review comments triaged and addressed |
 
           **Your approval is the last step needed to merge.**
+          SUMMARY
+          )"
+
+      - name: Post pipeline summary (with unresolved feedback)
+        if: steps.review-state.outputs.has_unresolved == 'true'
+        run: |
+          PR_NUM="${{ needs.setup.outputs.pr_number }}"
+          CHANGES="${{ steps.review-state.outputs.changes_requested }}"
+          COMMENTS="${{ steps.review-state.outputs.comment_count }}"
+
+          gh pr comment "$PR_NUM" --repo "${{ github.repository }}" --body "$(cat <<SUMMARY
+          ## Pipeline Complete — Unresolved Feedback Remains
+
+          All automated stages have finished:
+
+          | Stage | Agent | Role |
+          |-------|-------|------|
+          | 1. Code Quality | Lint + Gatekeeper + Type Check | Syntax, alignment, types |
+          | 2. Custodiet | Scope compliance | Principle violations, unauthorized changes |
+          | 3. QA | Acceptance criteria | Tests, regressions, correctness |
+          | 4. Merge Prep | Auto-fix | Review comments triaged and addressed |
+
+          **Unresolved feedback:**
+          - Reviews requesting changes: ${CHANGES}
+          - Inline review comments: ${COMMENTS}
+
+          **Please review the outstanding comments before approving.**
           SUMMARY
           )"
