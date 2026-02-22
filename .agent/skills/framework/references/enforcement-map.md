@@ -12,10 +12,12 @@ This document tracks all enforcement mechanisms in the academicOps framework.
 
 ## Environment Variables
 
-| Variable         | Default | Values          | Description                                             |
-| ---------------- | ------- | --------------- | ------------------------------------------------------- |
-| `TASK_GATE_MODE` | `warn`  | `warn`, `block` | Controls four-gate enforcement in task_required_gate.py |
-| `CUSTODIET_MODE` | `warn`  | `warn`, `block` | Controls custodiet compliance audit enforcement         |
+| Variable                | Default | Values          | Description                                             |
+| ----------------------- | ------- | --------------- | ------------------------------------------------------- |
+| `CUSTODIET_GATE_MODE`   | `block` | `warn`, `block` | Controls custodiet compliance audit enforcement         |
+| `HYDRATION_GATE_MODE`   | `block` | `warn`, `block` | Controls hydration gate enforcement                     |
+| `QA_GATE_MODE`          | `block` | `warn`, `block` | Controls QA gate enforcement                            |
+| `HANDOVER_GATE_MODE`    | `warn`  | `warn`, `block` | Controls handover (finalization) gate enforcement       |
 
 ## Enforcement Hooks
 
@@ -67,7 +69,7 @@ Custodiet runs periodically (every ~7 tool calls) to check for:
 | `WARN`  | warn  | Issues found, advisory warning surfaced      |
 | `BLOCK` | block | Issues found, session halted until addressed |
 
-**Mode control**: Set `CUSTODIET_MODE=block` to enable blocking (default: `warn`)
+**Mode control**: Set `CUSTODIET_GATE_MODE=block` to enable blocking (default: `block`)
 
 ### Block Flag Mechanism
 
@@ -84,8 +86,10 @@ To switch from warn to block mode:
 
 ```bash
 # In settings.local.json or CLAUDE_ENV_FILE
-export CUSTODIET_MODE=block
-export TASK_GATE_MODE=block
+export CUSTODIET_GATE_MODE=block
+export HYDRATION_GATE_MODE=block
+export QA_GATE_MODE=block
+export HANDOVER_GATE_MODE=block
 ```
 
 Or set at session start in `session_env_setup.sh`.

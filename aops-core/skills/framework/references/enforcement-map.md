@@ -12,11 +12,12 @@ This document tracks all enforcement mechanisms in the academicOps framework.
 
 ## Environment Variables
 
-| Variable                  | Default | Values          | Description                                     |
-| ------------------------- | ------- | --------------- | ----------------------------------------------- |
-| `CUSTODIET_MODE`          | `warn`  | `warn`, `block` | Controls custodiet compliance audit enforcement |
-| `HYDRATION_GATE_MODE` ... |         |                 |                                                 |
-| `HANDOVER_MODE` ...       |         |                 |                                                 |
+| Variable                | Default | Values          | Description                                     |
+| ----------------------- | ------- | --------------- | ----------------------------------------------- |
+| `CUSTODIET_GATE_MODE`   | `block` | `warn`, `block` | Controls custodiet compliance audit enforcement |
+| `HYDRATION_GATE_MODE`   | `block` | `warn`, `block` | Controls hydration gate enforcement             |
+| `QA_GATE_MODE`          | `block` | `warn`, `block` | Controls QA gate enforcement                    |
+| `HANDOVER_GATE_MODE`    | `warn`  | `warn`, `block` | Controls handover (finalization) gate           |
 
 ## Enforcement Hooks
 
