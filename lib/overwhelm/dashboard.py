@@ -5078,6 +5078,18 @@ try:
         if session.last_modified > projects[proj]["last_modified"]:
             projects[proj]["last_modified"] = session.last_modified
 
+    # Build sub→parent map to merge sub-projects into parent cards
+    tasks_by_id_proj = {t["id"]: t for t in all_tasks}
+    sub_to_parent: dict[str, str] = {}
+    for task in all_tasks:
+        if task.get("type") == "project" and task.get("parent"):
+            sub_name = task.get("project") or task["id"]
+            parent_task = tasks_by_id_proj.get(task["parent"])
+            if parent_task:
+                parent_name = parent_task.get("project") or parent_task["id"]
+                if sub_name != parent_name:
+                    sub_to_parent[sub_name] = parent_name
+
     # Define All Projects Union
     all_projects = (
         set(projects.keys())
@@ -5100,8 +5112,28 @@ try:
         # Exclude hash-like names (8+ hex chars)
         if len(name) >= 8 and all(c in "0123456789abcdef-" for c in name.lower()):
             return False
+        # Exclude sub-projects whose parent is visible on dashboard
+        if name in sub_to_parent and sub_to_parent[name] in all_projects:
+            return False
         # Must be in valid project list or look like a real project name
         return name in valid_project_ids or name.lower() in valid_project_ids
+
+    # Merge sub-project data into parent before filtering
+    for sub, parent in sub_to_parent.items():
+        if parent in all_projects or parent in valid_project_ids:
+            # Merge tasks
+            if sub in tasks_by_project:
+                tasks_by_project.setdefault(parent, []).extend(tasks_by_project.pop(sub))
+            # Merge accomplishments
+            if sub in accomplishments_by_project:
+                accomplishments_by_project.setdefault(parent, []).extend(
+                    accomplishments_by_project.pop(sub)
+                )
+            # Merge sessions
+            if sub in sessions_by_project:
+                sessions_by_project.setdefault(parent, []).extend(
+                    sessions_by_project.pop(sub)
+                )
 
     all_projects = {p for p in all_projects if is_valid_project(p)}
 
