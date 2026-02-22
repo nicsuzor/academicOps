@@ -3240,14 +3240,30 @@ st.markdown(
 
     .path-threads {
         display: flex;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255,255,255,0.15) transparent;
         gap: 16px;
         padding-bottom: 12px;
     }
 
+    .path-threads::-webkit-scrollbar {
+        height: 6px;
+    }
+
+    .path-threads::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .path-threads::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.15);
+        border-radius: 3px;
+    }
+
     .path-thread {
-        flex: 1 1 300px;
-        max-width: 450px;
+        flex: 0 0 300px;
+        min-width: 300px;
         border-left: 2px solid var(--border-color, #333);
         padding-left: 16px;
         margin-bottom: 8px;
