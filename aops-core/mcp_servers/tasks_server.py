@@ -3,15 +3,14 @@
 Implements the data access layer for task management as defined in
 specs/mcp-decomposition-tools-v2.md.
 """
-from datetime import datetime, timedelta
-from typing import Any, Optional
+
 import re
+from datetime import datetime, timedelta
+from typing import Any
 
 from fastmcp import FastMCP
-
-from lib.paths import get_data_root
 from lib.task_index import TaskIndex, TaskIndexEntry
-from lib.task_model import Task, TaskComplexity, TaskStatus, TaskType
+from lib.task_model import Task, TaskStatus, TaskType
 from lib.task_storage import TaskStorage
 
 # Initialize FastMCP server
@@ -31,11 +30,13 @@ def _get_index() -> TaskIndex:
         index.rebuild()
     return index
 
+
 def _task_to_dict(task: Task) -> dict[str, Any]:
     """Convert Task to dict including body."""
     data = task.to_frontmatter()
     data["body"] = task.body
     return data
+
 
 def _check_incomplete_markers(body: str | None) -> list[str]:
     """Check for incomplete markers in task body."""
@@ -77,6 +78,7 @@ def _check_incomplete_markers(body: str | None) -> list[str]:
 
     return markers
 
+
 def _propagate_completion(task_ids: list[str]) -> None:
     """Propagate completion to unblock dependent tasks."""
     storage = _get_storage()
@@ -117,7 +119,10 @@ def _propagate_completion(task_ids: list[str]) -> None:
                 if blocked_task.status in (TaskStatus.DONE, TaskStatus.CANCELLED):
                     queue.append(blocked_id)
 
-def _compute_graph_metrics(index: TaskIndex, tasks: Optional[list[TaskIndexEntry]] = None) -> dict[str, Any]:
+
+def _compute_graph_metrics(
+    index: TaskIndex, tasks: list[TaskIndexEntry] | None = None
+) -> dict[str, Any]:
     """Compute graph metrics for a set of tasks (or all tasks in index)."""
     if tasks is None:
         tasks = list(index._tasks.values())
@@ -135,7 +140,7 @@ def _compute_graph_metrics(index: TaskIndex, tasks: Optional[list[TaskIndexEntry
     total_edges = 0
     max_in_degree = 0
     max_out_degree = 0
-    tasks_with_high_out_degree = [] # (id, title, out_degree)
+    tasks_with_high_out_degree = []  # (id, title, out_degree)
 
     # Readiness stats
     ready_count = 0
@@ -159,10 +164,10 @@ def _compute_graph_metrics(index: TaskIndex, tasks: Optional[list[TaskIndexEntry
         total_depth += task.depth
 
         # Dependencies
-        out_degree = len(task.blocks) # tasks depending on this
-        in_degree = len(task.depends_on) # dependencies of this
+        out_degree = len(task.blocks)  # tasks depending on this
+        in_degree = len(task.depends_on)  # dependencies of this
 
-        total_edges += out_degree # This counts each edge once (from source)
+        total_edges += out_degree  # This counts each edge once (from source)
 
         if in_degree > max_in_degree:
             max_in_degree = in_degree
@@ -172,16 +177,17 @@ def _compute_graph_metrics(index: TaskIndex, tasks: Optional[list[TaskIndexEntry
     sorted_by_out = sorted(tasks, key=lambda t: len(t.blocks), reverse=True)
     tasks_with_high_out_degree = [
         {"id": t.id, "title": t.title, "out_degree": len(t.blocks)}
-        for t in sorted_by_out[:10] if len(t.blocks) > 0
+        for t in sorted_by_out[:10]
+        if len(t.blocks) > 0
     ]
 
     # Readiness re-calculation
     for task in tasks:
         if task.status == TaskStatus.ACTIVE.value and task.leaf:
-             if task.id in index._ready:
-                 ready_count += 1
-             elif task.id in index._blocked:
-                 blocked_count += 1
+            if task.id in index._ready:
+                ready_count += 1
+            elif task.id in index._blocked:
+                blocked_count += 1
         elif task.status == TaskStatus.BLOCKED.value:
             blocked_count += 1
         elif task.status == TaskStatus.IN_PROGRESS.value:
@@ -211,10 +217,11 @@ def _compute_graph_metrics(index: TaskIndex, tasks: Optional[list[TaskIndexEntry
         },
     }
 
+
 @mcp.tool()
 def get_graph_metrics(
     scope: str = "all",  # "all", "project", or task_id for subtree
-    scope_id: Optional[str] = None,
+    scope_id: str | None = None,
 ) -> dict[str, Any]:
     """
     Return raw graph metrics. Agent interprets health.
@@ -227,7 +234,7 @@ def get_graph_metrics(
         tasks = list(index._tasks.values())
     elif scope == "project" and scope_id:
         tasks = index.get_by_project(scope_id)
-    elif scope_id: # subtree
+    elif scope_id:  # subtree
         tasks = index.get_descendants(scope_id)
         # Include root of subtree
         root = index.get_task(scope_id)
@@ -255,7 +262,9 @@ def get_task_scoring_factors(
         tasks = list(index._tasks.values())
 
     if not include_done:
-        tasks = [t for t in tasks if t.status not in (TaskStatus.DONE.value, TaskStatus.CANCELLED.value)]
+        tasks = [
+            t for t in tasks if t.status not in (TaskStatus.DONE.value, TaskStatus.CANCELLED.value)
+        ]
 
     # Limit results
     tasks = tasks[:limit]
@@ -268,25 +277,28 @@ def get_task_scoring_factors(
 
         parent_chain_length = len(index.get_ancestors(task.id))
 
-        results.append({
-            "id": task.id,
-            "title": task.title,
-            "type": task.type,
-            "status": task.status,
-            "priority": task.priority,
-            "created_age_days": (datetime.now().astimezone() - full_task.created).days,
-            "modified_age_days": (datetime.now().astimezone() - full_task.modified).days,
-            "complexity": full_task.complexity.value if full_task.complexity else None,
-            "blocking_count": len(task.blocks),
-            "blocked_by_count": len(task.depends_on),
-            "soft_blocking_count": len(task.soft_blocks),
-            "child_count": len(task.children),
-            "parent_chain_length": parent_chain_length,
-            "tags": task.tags,
-            "project": task.project,
-            "body_length": len(full_task.body),
-            "has_acceptance_criteria": "acceptance" in full_task.body.lower() or "[ ]" in full_task.body,
-        })
+        results.append(
+            {
+                "id": task.id,
+                "title": task.title,
+                "type": task.type,
+                "status": task.status,
+                "priority": task.priority,
+                "created_age_days": (datetime.now().astimezone() - full_task.created).days,
+                "modified_age_days": (datetime.now().astimezone() - full_task.modified).days,
+                "complexity": full_task.complexity.value if full_task.complexity else None,
+                "blocking_count": len(task.blocks),
+                "blocked_by_count": len(task.depends_on),
+                "soft_blocking_count": len(task.soft_blocks),
+                "child_count": len(task.children),
+                "parent_chain_length": parent_chain_length,
+                "tags": task.tags,
+                "project": task.project,
+                "body_length": len(full_task.body),
+                "has_acceptance_criteria": "acceptance" in full_task.body.lower()
+                or "[ ]" in full_task.body,
+            }
+        )
 
     return {"success": True, "tasks": results}
 
@@ -379,9 +391,9 @@ def get_task_neighborhood(
     soft_blocks = []
     if entry:
         for sb_id in entry.soft_blocks:
-             sb = storage.get_task(sb_id)
-             if sb:
-                 soft_blocks.append(sb)
+            sb = storage.get_task(sb_id)
+            if sb:
+                soft_blocks.append(sb)
 
     return {
         "success": True,
@@ -400,10 +412,10 @@ def get_task_neighborhood(
 
 @mcp.tool()
 def get_tasks_with_topology(
-    project: Optional[str] = None,
-    status: Optional[str] = None,
-    min_depth: Optional[int] = None,
-    min_blocking_count: Optional[int] = None,
+    project: str | None = None,
+    status: str | None = None,
+    min_depth: int | None = None,
+    min_blocking_count: int | None = None,
 ) -> dict[str, Any]:
     """
     Return tasks with their topology metrics. Agent identifies issues.
@@ -430,25 +442,27 @@ def get_tasks_with_topology(
 
         ready_days = None
         if task.status == TaskStatus.ACTIVE.value and task.leaf:
-             ready_days = (datetime.now().astimezone() - full_task.modified).days
+            ready_days = (datetime.now().astimezone() - full_task.modified).days
 
-        results.append({
-            "id": task.id,
-            "title": task.title,
-            "type": task.type,
-            "status": task.status,
-            "project": task.project,
-            "tags": task.tags,
-            "depth": task.depth,
-            "parent": task.parent,
-            "child_count": len(task.children),
-            "blocking_count": len(task.blocks),
-            "blocked_by_count": len(task.depends_on),
-            "is_leaf": task.leaf,
-            "created": full_task.created.isoformat(),
-            "modified": full_task.modified.isoformat(),
-            "ready_days": ready_days,
-        })
+        results.append(
+            {
+                "id": task.id,
+                "title": task.title,
+                "type": task.type,
+                "status": task.status,
+                "project": task.project,
+                "tags": task.tags,
+                "depth": task.depth,
+                "parent": task.parent,
+                "child_count": len(task.children),
+                "blocking_count": len(task.blocks),
+                "blocked_by_count": len(task.depends_on),
+                "is_leaf": task.leaf,
+                "created": full_task.created.isoformat(),
+                "modified": full_task.modified.isoformat(),
+                "ready_days": ready_days,
+            }
+        )
 
     return {"success": True, "tasks": results}
 
@@ -482,13 +496,16 @@ def get_review_snapshot(
         if task.created >= since_date:
             created_since.append(_task_to_dict(task))
         if task.status in (TaskStatus.DONE, TaskStatus.CANCELLED) and task.modified >= since_date:
-             completed_since.append(_task_to_dict(task))
+            completed_since.append(_task_to_dict(task))
         if task.modified >= since_date:
-             modified_since.append(_task_to_dict(task))
+            modified_since.append(_task_to_dict(task))
 
         if task.created >= date_7_days_ago:
             created_last_7 += 1
-        if task.status in (TaskStatus.DONE, TaskStatus.CANCELLED) and task.modified >= date_7_days_ago:
+        if (
+            task.status in (TaskStatus.DONE, TaskStatus.CANCELLED)
+            and task.modified >= date_7_days_ago
+        ):
             completed_last_7 += 1
 
         if task.status == TaskStatus.ACTIVE:
@@ -498,8 +515,14 @@ def get_review_snapshot(
 
         if task.status == TaskStatus.IN_PROGRESS:
             days_in_progress = (datetime.now().astimezone() - task.modified).days
-            if oldest_in_progress is None or days_in_progress > oldest_in_progress["days_in_progress"]:
-                oldest_in_progress = {"task": _task_to_dict(task), "days_in_progress": days_in_progress}
+            if (
+                oldest_in_progress is None
+                or days_in_progress > oldest_in_progress["days_in_progress"]
+            ):
+                oldest_in_progress = {
+                    "task": _task_to_dict(task),
+                    "days_in_progress": days_in_progress,
+                }
 
     return {
         "success": True,
@@ -521,19 +544,20 @@ def get_review_snapshot(
         },
     }
 
+
 @mcp.tool()
 def update_task(
     id: str,
-    title: Optional[str] = None,
-    status: Optional[str] = None,
-    priority: Optional[int] = None,
-    assignee: Optional[str] = None,
-    project: Optional[str] = None,
-    parent: Optional[str] = None,
-    depends_on: Optional[list[str]] = None,
-    tags: Optional[list[str]] = None,
-    body: Optional[str] = None,
-    due: Optional[str] = None, # ISO format
+    title: str | None = None,
+    status: str | None = None,
+    priority: int | None = None,
+    assignee: str | None = None,
+    project: str | None = None,
+    parent: str | None = None,
+    depends_on: list[str] | None = None,
+    tags: list[str] | None = None,
+    body: str | None = None,
+    due: str | None = None,  # ISO format
 ) -> dict[str, Any]:
     """Update a task."""
     storage = _get_storage()
@@ -550,12 +574,16 @@ def update_task(
             return {"success": False, "message": f"Invalid status: {status}"}
 
         if new_status == TaskStatus.IN_PROGRESS and assignee:
-             if task.status == TaskStatus.IN_PROGRESS and task.assignee and task.assignee != assignee:
-                 return {
-                     "success": False,
-                     "message": f"Task already claimed by {task.assignee} since {task.modified.isoformat()}",
-                     "task": _task_to_dict(task)
-                 }
+            if (
+                task.status == TaskStatus.IN_PROGRESS
+                and task.assignee
+                and task.assignee != assignee
+            ):
+                return {
+                    "success": False,
+                    "message": f"Task already claimed by {task.assignee} since {task.modified.isoformat()}",
+                    "task": _task_to_dict(task),
+                }
 
     if title is not None:
         task.title = title
@@ -564,7 +592,7 @@ def update_task(
         try:
             task.status = TaskStatus(s)
         except ValueError:
-             return {"success": False, "message": f"Invalid status: {status}"}
+            return {"success": False, "message": f"Invalid status: {status}"}
     if priority is not None:
         task.priority = priority
     if assignee is not None:
@@ -590,16 +618,17 @@ def update_task(
 
     return {"success": True, "task": _task_to_dict(task)}
 
+
 @mcp.tool()
 def create_task(
     title: str,
-    project: Optional[str] = None,
+    project: str | None = None,
     type: str = "task",
     status: str = "active",
-    parent: Optional[str] = None,
-    depends_on: Optional[list[str]] = None,
+    parent: str | None = None,
+    depends_on: list[str] | None = None,
     priority: int = 2,
-    assignee: Optional[str] = None,
+    assignee: str | None = None,
     body: str = "",
 ) -> dict[str, Any]:
     """Create a new task."""
@@ -620,6 +649,7 @@ def create_task(
     storage.save_task(task)
     return {"success": True, "task": _task_to_dict(task)}
 
+
 @mcp.tool()
 def complete_task(id: str) -> dict[str, Any]:
     """Complete a task and propagate unblocks."""
@@ -634,6 +664,7 @@ def complete_task(id: str) -> dict[str, Any]:
     _propagate_completion([id])
 
     return {"success": True, "task": _task_to_dict(task)}
+
 
 @mcp.tool()
 def complete_tasks(ids: list[str]) -> dict[str, Any]:
