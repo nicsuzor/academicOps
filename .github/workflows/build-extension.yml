@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Step 1: Build PKB binaries for all platforms
+  # Step 1: Download PKB binaries from nicsuzor/mem releases
   build-pkb:
     uses: ./.github/workflows/build-pkb-binary.yml
     secrets: inherit
@@ -24,7 +24,6 @@ jobs:
   # Step 2: Build extension packages with platform-specific binaries
   build-and-deploy:
     needs: build-pkb
-    if: always()  # Run even if PKB binary build fails (produces generic packages)
     runs-on: ubuntu-latest
     permissions:
       contents: write  # For creating releases on dist repo
@@ -84,7 +83,6 @@ jobs:
           fi
 
       - name: Download PKB binaries
-        if: needs.build-pkb.result == 'success'
         uses: actions/download-artifact@v4
         with:
           path: pkb-binaries/
@@ -126,26 +124,21 @@ jobs:
             VERSION_FLAG="--set-version ${{ steps.version.outputs.version }}"
           fi
 
-          # Build for each platform that has a binary (if PKB build succeeded)
-          if [ -d "pkb-binaries" ]; then
-            for platform_dir in pkb-binaries/pkb-search-*; do
-              [ -d "$platform_dir" ] || continue
-              ARTIFACT_NAME=$(basename "$platform_dir")
-              # Extract platform info: pkb-search-{os}-{arch}
-              PLATFORM_LABEL="${ARTIFACT_NAME#pkb-search-}"
+          # Build for each platform that has a binary
+          for platform_dir in pkb-binaries/pkb-search-*; do
+            ARTIFACT_NAME=$(basename "$platform_dir")
+            # Extract platform info: pkb-search-{os}-{arch}
+            PLATFORM_LABEL="${ARTIFACT_NAME#pkb-search-}"
 
-              echo "Building with PKB binary: $ARTIFACT_NAME ($PLATFORM_LABEL)"
+            echo "Building with PKB binary: $ARTIFACT_NAME ($PLATFORM_LABEL)"
 
-              uv run python scripts/build.py \
-                --pkb-binary "$platform_dir/pkb-search" \
-                --target-platform "$PLATFORM_LABEL" \
-                $VERSION_FLAG
-            done
-          else
-            echo "No PKB binaries available, skipping platform-specific builds"
-          fi
+            uv run python scripts/build.py \
+              --pkb-binary "$platform_dir/pkb-search" \
+              --target-platform "$PLATFORM_LABEL" \
+              $VERSION_FLAG
+          done
 
-          # Always build a generic (no-binary) version
+          # Also build a generic (no-binary) version for fallback
           echo "Building generic (no PKB binary) distribution"
           uv run python scripts/build.py $VERSION_FLAG
         env:

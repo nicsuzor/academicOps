@@ -1,71 +1,73 @@
-name: Build PKB Binary
+name: Download PKB Binaries
 
 on:
   workflow_call:
     inputs:
-      mem_ref:
-        description: 'Git ref for mem repo (branch, tag, or SHA)'
+      mem_version:
+        description: 'Version tag of mem release to download (e.g. v0.1.6)'
         required: false
         type: string
-        default: 'main'
+        default: 'latest'
   workflow_dispatch:
     inputs:
-      mem_ref:
-        description: 'Git ref for mem repo (branch, tag, or SHA)'
+      mem_version:
+        description: 'Version tag of mem release to download (e.g. v0.1.6)'
         required: false
         type: string
-        default: 'main'
+        default: 'latest'
 
 jobs:
-  build:
+  download:
     strategy:
-      fail-fast: false  # Don't cancel other builds if one fails
+      fail-fast: false
       matrix:
         include:
-          - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
-            artifact: pkb-search-linux-x86_64
-          - target: aarch64-unknown-linux-gnu
-            os: ubuntu-latest
-            artifact: pkb-search-linux-aarch64
-            cross: true
-          - target: x86_64-apple-darwin
-            os: macos-14  # aarch64 runner, cross-compile to x86_64
-            artifact: pkb-search-macos-x86_64
-          - target: aarch64-apple-darwin
-            os: macos-14
-            artifact: pkb-search-macos-aarch64
+          - artifact_label: x86_64-linux
+            output_name: pkb-search-linux-x86_64
+          - artifact_label: aarch64-darwin
+            output_name: pkb-search-macos-aarch64
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout mem repo
-        uses: actions/checkout@v4
-        with:
-          repository: nicsuzor/mem
-          ref: ${{ inputs.mem_ref || 'main' }}
-          ssh-key: ${{ secrets.MEM_REPO_DEPLOY_KEY }}
+      - name: Determine version
+        id: version
+        env:
+          GH_TOKEN: ${{ secrets.MEM_REPO_PAT }}
+        run: |
+          if [ "${{ inputs.mem_version }}" = "latest" ] || [ -z "${{ inputs.mem_version }}" ]; then
+            TAG=$(gh api repos/nicsuzor/mem/releases/latest --jq '.tag_name')
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+            echo "Using latest release: $TAG"
+          else
+            echo "tag=${{ inputs.mem_version }}" >> $GITHUB_OUTPUT
+            echo "Using specified version: ${{ inputs.mem_version }}"
+          fi
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
+      - name: Download release archive
+        env:
+          GH_TOKEN: ${{ secrets.MEM_REPO_PAT }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          ARCHIVE="mem-${TAG}-${{ matrix.artifact_label }}.tar.gz"
+          echo "Downloading $ARCHIVE from nicsuzor/mem release $TAG"
 
-      - name: Install cross (Linux aarch64)
-        if: matrix.cross
-        run: cargo install cross --git https://github.com/cross-rs/cross
+          gh release download "$TAG" \
+            --repo nicsuzor/mem \
+            --pattern "$ARCHIVE"
 
-      - name: Build binary (native)
-        if: "!matrix.cross"
-        run: cargo build --release --target ${{ matrix.target }} --bin pkb-search
-
-      - name: Build binary (cross)
-        if: matrix.cross
-        run: cross build --release --target ${{ matrix.target }} --bin pkb-search
+          # Extract just the pkb binary
+          mkdir -p output
+          tar xzf "$ARCHIVE" -C output
+          # Rename pkb -> pkb-search for backward compatibility with aops configs
+          mv output/pkb output/pkb-search
+          chmod +x output/pkb-search
+          echo "Extracted pkb-search binary"
+          ls -la output/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: target/${{ matrix.target }}/release/pkb-search
+          name: ${{ matrix.output_name }}
+          path: output/pkb-search
           if-no-files-found: error
