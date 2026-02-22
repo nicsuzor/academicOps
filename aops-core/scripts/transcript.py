@@ -533,7 +533,8 @@ def git_sync():
 
         subprocess.run(
             ["git", "add", "transcripts/", "summaries/"],
-            cwd=str(sessions_root), check=True,
+            cwd=str(sessions_root),
+            check=True,
         )
 
         status = subprocess.run(
