@@ -3399,24 +3399,32 @@ def load_task_graph() -> dict | None:
     return load_graph_data("graph.json")
 
 
-# Default task graph SVG location
-TASK_GRAPH_SVG = Path.home() / ".aops" / "tasks" / "task-map.svg"
+# Default task graph SVG location (in sessions dir alongside transcripts/summaries)
+TASK_GRAPH_SVG = Path(
+    os.environ.get("AOPS_SESSIONS", str(Path.home() / ".aops" / "sessions"))
+) / "task-map.svg"
 
 
 def find_latest_svg() -> Path | None:
     """Find the task graph SVG file."""
-    # 1. Check primary location (~/.aops/tasks/)
+    # 1. Check primary location ($AOPS_SESSIONS/task-map.svg)
     if TASK_GRAPH_SVG.exists():
         return TASK_GRAPH_SVG
 
-    # 2. Check writing/data fallback
+    # 2. Check legacy location (~/.aops/tasks/)
+    legacy_svg = Path.home() / ".aops" / "tasks" / "task-map.svg"
+    if legacy_svg.exists():
+        return legacy_svg
+
+    # 3. Check writing/data fallback
     aca_data = os.environ.get("ACA_DATA", str(Path.home() / "writing/data"))
     data_svg = Path(aca_data) / "aops" / "outputs" / "task-map.svg"
     if data_svg.exists():
         return data_svg
 
-    # 3. Fallback: search for any task-viz SVG in ACA_DATA outputs or ~/.aops/tasks/
+    # 4. Fallback: search for any task-viz SVG in known output dirs
     search_dirs = [
+        Path(os.environ.get("AOPS_SESSIONS", str(Path.home() / ".aops" / "sessions"))),
         Path.home() / ".aops" / "tasks",
         Path(aca_data) / "aops" / "outputs",
         Path(aca_data) / "outputs",

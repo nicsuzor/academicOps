@@ -140,7 +140,7 @@ $AOPS/scripts/bin/fast-indexer ${ACA_DATA} -o graph -f json
 $AOPS/scripts/bin/fast-indexer ${ACA_DATA} -o data/aops/outputs/tasks -f json -t task,project,goal
 
 # 2. Apply styling and render SVG
-python3 $AOPS/scripts/task_graph.py data/aops/outputs/tasks.json -o data/aops/outputs/task-map --layout sfdp
+python3 $AOPS/scripts/task_graph.py data/aops/outputs/tasks.json -o data/aops/outputs/task-map --filter reachable --layout sfdp
 
 # 3. Open SVG
 xdg-open data/aops/outputs/task-map.svg  # Linux

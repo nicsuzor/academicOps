@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 # generate-viz.sh - Generate all PKB visualizations
 #
-# Produces:
-#   ~/.aops/tasks/tasks.json        - Full graph JSON from fast-indexer
-#   ~/.aops/tasks/task-map.svg      - Task map (active work focus)
-#   ~/.aops/tasks/task-map-rollup.svg - Pruned tree (unfinished + ancestors)
-#   ~/.aops/tasks/attention-map.svg - Under-connected important nodes
+# Produces (in $AOPS_SESSIONS, default ~/.aops/sessions/):
+#   tasks.json        - Full graph JSON from fast-indexer
+#   task-map.svg      - Task map (reachable from active leaves + ancestors)
+#   attention-map.svg - Under-connected important nodes
 #
 # Run periodically or from VSCode task. Replaces the old multi-command
 # VSCode task with a single invocation.
@@ -19,7 +18,7 @@ set -euo pipefail
 
 AOPS="${AOPS:-/Users/suzor/src/academicOps}"
 AOPS_BIN="${AOPS_BIN:-/opt/suzor/bin/aops}"
-OUT_DIR="${HOME}/.aops/tasks"
+OUT_DIR="${AOPS_SESSIONS:-${HOME}/.aops/sessions}"
 LAYOUT="sfdp"
 
 # Parse arguments
@@ -75,11 +74,12 @@ echo "==> Generating graph JSON..."
 "${AOPS_BIN}" graph -f json -o "${OUT_DIR}/tasks.json"
 echo "    Written ${OUT_DIR}/tasks.json"
 
-# Step 2: Generate task map (smart-filtered + rollup variants)
-echo "==> Generating task maps..."
+# Step 2: Generate task map (reachable from active leaves)
+echo "==> Generating task map..."
 uv run python3 "${AOPS}/scripts/task_graph.py" \
     "${OUT_DIR}/tasks.json" \
     -o "${OUT_DIR}/task-map" \
+    --filter reachable \
     --layout "${LAYOUT}"
 
 if [ "${QUICK}" = true ]; then
@@ -110,10 +110,9 @@ if [ -n "${EGO_ID}" ]; then
 fi
 
 # Step 5: Sync sessions repo and generate recent transcripts
-SESSIONS_DIR="${SESSIONS_DIR:-${HOME}/.aops/sessions}"
-if [ -d "${SESSIONS_DIR}/.git" ]; then
+if [ -d "${OUT_DIR}/.git" ]; then
     echo "==> Syncing sessions repo..."
-    git -C "${SESSIONS_DIR}" pull --ff-only --quiet 2>/dev/null || echo "    Warning: sessions repo sync failed (offline or conflict)"
+    git -C "${OUT_DIR}" pull --ff-only --quiet 2>/dev/null || echo "    Warning: sessions repo sync failed (offline or conflict)"
 fi
 echo "==> Generating recent transcripts..."
 uv run python3 "${AOPS}/aops-core/scripts/transcript.py" --recent

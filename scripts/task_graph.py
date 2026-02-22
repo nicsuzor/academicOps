@@ -245,6 +245,81 @@ def filter_rollup(nodes: list[dict], edges: list[dict]) -> tuple[list[dict], set
     return filtered_nodes, structural_ids
 
 
+def filter_reachable(nodes: list[dict], edges: list[dict]) -> tuple[list[dict], set[str]]:
+    """Filter to nodes reachable from unfinished leaf tasks.
+
+    A "leaf" is an unfinished node with no unfinished children. This catches:
+    - Actionable tasks (active, no children)
+    - Stale mid-level tasks (active but not decomposed into subtasks)
+    - Projects needing breakdown (active with only completed children)
+
+    From each leaf, walks upstream through parent, depends_on, and soft_depends_on
+    edges to show the full hierarchy and blocker chain.
+
+    Returns:
+        (filtered_nodes, structural_ids) where structural_ids are completed nodes
+        kept because they are ancestors of leaves (displayed differently).
+    """
+    done_statuses = {"done", "completed", "cancelled"}
+
+    # Build lookups
+    node_by_id = {n["id"]: n for n in nodes}
+    unfinished_ids = {n["id"] for n in nodes if n.get("status", "").lower() not in done_statuses}
+
+    # Build parent→children mapping
+    children_of: dict[str, list[str]] = {n["id"]: [] for n in nodes}
+    for node in nodes:
+        parent_id = node.get("parent")
+        if parent_id and parent_id in children_of:
+            children_of[parent_id].append(node["id"])
+
+    # Identify leaves: unfinished nodes with no unfinished children
+    leaf_ids: set[str] = set()
+    for node_id in unfinished_ids:
+        unfinished_children = [
+            c for c in children_of.get(node_id, []) if c in unfinished_ids
+        ]
+        if not unfinished_children:
+            leaf_ids.add(node_id)
+
+    # Build upstream adjacency: for each node, what can we reach by walking
+    # "up" through parent, depends_on, and soft_depends_on edges?
+    upstream_of: dict[str, set[str]] = {n["id"]: set() for n in nodes}
+    for node in nodes:
+        nid = node["id"]
+        # Parent edge (child → parent)
+        parent_id = node.get("parent")
+        if parent_id and parent_id in node_by_id:
+            upstream_of[nid].add(parent_id)
+        # Hard dependencies (task → blocker)
+        for dep_id in node.get("depends_on") or []:
+            if dep_id in node_by_id:
+                upstream_of[nid].add(dep_id)
+        # Soft dependencies (task → advisory dep)
+        for dep_id in node.get("soft_depends_on") or []:
+            if dep_id in node_by_id:
+                upstream_of[nid].add(dep_id)
+
+    # Walk upstream from all leaves (BFS)
+    reachable: set[str] = set(leaf_ids)
+    frontier = set(leaf_ids)
+    while frontier:
+        next_frontier: set[str] = set()
+        for nid in frontier:
+            for upstream_id in upstream_of.get(nid, set()):
+                if upstream_id not in reachable:
+                    reachable.add(upstream_id)
+                    next_frontier.add(upstream_id)
+        frontier = next_frontier
+
+    # Classify: structural = completed/cancelled nodes kept for context
+    keep_ids = reachable
+    structural_ids = keep_ids - unfinished_ids
+
+    filtered_nodes = [n for n in nodes if n["id"] in keep_ids]
+    return filtered_nodes, structural_ids
+
+
 def classify_edge(source_id: str, target_id: str, node_by_id: dict) -> str:
     """Determine edge type from node relationships."""
     source = node_by_id.get(source_id, {})
@@ -818,6 +893,12 @@ def main():
         help="Graphviz layout engine (default: sfdp)",
     )
     parser.add_argument(
+        "--filter",
+        choices=["smart", "rollup", "reachable", "none"],
+        default=None,
+        help="Filter type: smart (active work focus), rollup (unfinished + ancestors), reachable (upstream from active leaves), none",
+    )
+    parser.add_argument(
         "--single",
         action="store_true",
         help="Generate only single output (default generates multiple variants)",
@@ -904,7 +985,12 @@ def main():
     # Define variants to generate
     # Each variant: (suffix, filter_type, include_orphans, description)
     # filter_type: "smart" = active work focus, "rollup" = pruned tree, None = no filter
-    if args.single:
+    if args.filter:
+        # Explicit filter: single output with no suffix
+        ft = None if args.filter == "none" else args.filter
+        desc = {"smart": "smart-filtered (active work)", "rollup": "rollup (unfinished + structural ancestors)", "reachable": "reachable from active leaves", "none": "unfiltered"}
+        variants = [("", ft, args.include_orphans, desc.get(args.filter, "filtered"))]
+    elif args.single:
         # Single mode: respect --no-filter and --include-orphans flags
         variants = [
             (
@@ -941,6 +1027,8 @@ def main():
             nodes, structural_ids = filter_completed_smart(nodes, edges)
         elif filter_type == "rollup":
             nodes, structural_ids = filter_rollup(nodes, edges)
+        elif filter_type == "reachable":
+            nodes, structural_ids = filter_reachable(nodes, edges)
         # filter_type == None means no filtering
 
         excluded_count = original_count - len(nodes)
