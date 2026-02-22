@@ -907,7 +907,7 @@ def main():
     )
     parser.add_argument(
         "--layout",
-        default="sfdp",
+        default="fdp",
         choices=["dot", "neato", "sfdp", "fdp", "circo", "twopi"],
         help="Graphviz layout engine (default: sfdp)",
     )
