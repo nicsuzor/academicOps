@@ -264,9 +264,7 @@ def get_task_scoring_factors(
 
     if not include_done:
         tasks = [
-            t
-            for t in tasks
-            if t.status not in (TaskStatus.DONE.value, TaskStatus.CANCELLED.value)
+            t for t in tasks if t.status not in (TaskStatus.DONE.value, TaskStatus.CANCELLED.value)
         ]
 
     # Limit results
