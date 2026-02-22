@@ -264,7 +264,9 @@ def get_task_scoring_factors(
 
     if not include_done:
         tasks = [
-            t for t in tasks if t.status not in (TaskStatus.DONE.value, TaskStatus.CANCELLED.value)
+            t
+            for t in tasks
+            if t.status not in (TaskStatus.DONE.value, TaskStatus.CANCELLED.value)
         ]
 
     # Limit results
@@ -323,8 +325,9 @@ def get_decomposition_context(
     parent = None
     siblings = []
     if task.parent:
-        parent = storage.get_task(task.parent)
-        if parent:
+        parent_task = storage.get_task(task.parent)
+        if parent_task:
+            parent = parent_task
             siblings = [t for t in storage.get_children(task.parent) if t.id != task_id]
 
     project_tasks = []
@@ -396,11 +399,18 @@ def get_task_neighborhood(
             if sb:
                 soft_blocks.append(sb)
 
+    # Parent handling
+    parent = None
+    if task.parent:
+        parent_task = storage.get_task(task.parent)
+        if parent_task:
+            parent = _task_to_dict(parent_task)
+
     return {
         "success": True,
         "task": _task_to_dict(task),
         "existing_relationships": {
-            "parent": _task_to_dict(storage.get_task(task.parent)) if task.parent else None,
+            "parent": parent,
             "children": [_task_to_dict(c) for c in children],
             "depends_on": [_task_to_dict(d) for d in depends_on],
             "blocks": [_task_to_dict(b) for b in blocks],
