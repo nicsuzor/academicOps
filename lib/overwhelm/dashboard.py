@@ -1436,14 +1436,12 @@ def get_where_you_left_off(hours: int = 24, limit: int = 10) -> dict:
         Dict with triaged sessions:
         - active: Sessions from last 4h (full cards)
         - paused: Sessions from 4-24h (collapsed)
-        - stale_count: Number of sessions >24h (for archive prompt)
         - entries: Flat list of active+paused for backward compatibility
     """
     from datetime import timedelta
 
     active_bucket = []  # <4h
     paused_bucket = []  # 4-24h
-    stale_count = 0  # >24h
 
     now = datetime.now(UTC)
     cutoff_active = now - timedelta(hours=4)
@@ -1547,8 +1545,7 @@ def get_where_you_left_off(hours: int = 24, limit: int = 10) -> dict:
         elif session_date >= cutoff_paused:
             bucket = "paused"
         else:
-            stale_count += 1
-            continue  # Don't add stale sessions to display
+            continue  # Skip stale sessions (>24h)
 
         outcome_text, outcome_class = _classify_session_outcome(s)
 
@@ -1594,7 +1591,6 @@ def get_where_you_left_off(hours: int = 24, limit: int = 10) -> dict:
     return {
         "active": active_bucket,
         "paused": paused_bucket,
-        "stale_count": stale_count,
         "entries": active_bucket + paused_bucket,  # Backward compatibility
     }
 
@@ -2988,24 +2984,6 @@ st.markdown(
     .where-left-off-row.wlo-paused {
         font-size: 0.9em;
         padding: 4px 12px;
-    }
-
-    /* Stale sessions prompt */
-    .stale-sessions-prompt {
-        background: rgba(251, 191, 36, 0.1);
-        border: 1px solid rgba(251, 191, 36, 0.3);
-        border-radius: 8px;
-        padding: 12px 16px;
-        margin: 8px 0;
-        color: #fbbf24;
-        font-size: 0.9em;
-    }
-
-    .stale-hint {
-        display: block;
-        font-size: 0.85em;
-        color: #888;
-        margin-top: 4px;
     }
 
     /* Collapsible paused bucket */
@@ -4691,8 +4669,6 @@ activity_hours = st.sidebar.selectbox(
 where_left_off = get_where_you_left_off(hours=activity_hours, limit=10)
 active_sessions_wlo = where_left_off.get("active", [])
 paused_sessions_wlo = where_left_off.get("paused", [])
-stale_count = where_left_off.get("stale_count", 0)
-
 if active_sessions_wlo or paused_sessions_wlo:
     wlo_html = "<div class='where-left-off-panel'>"
     wlo_html += "<div class='where-left-off-header'>📍 WHERE YOU LEFT OFF</div>"
@@ -4815,26 +4791,6 @@ if active_sessions_wlo or paused_sessions_wlo:
 
     wlo_html += "</div>"
     st.markdown(wlo_html, unsafe_allow_html=True)
-
-# Stale sessions prompt (>24h) - not in main display per spec
-# Per spec: show archive prompt with action buttons
-if stale_count > 0:
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.markdown(
-            f"""<div class='stale-sessions-prompt'>
-                📦 {stale_count} stale session{"s" if stale_count != 1 else ""} (no activity &gt;24h)
-                <span class='stale-hint'>These are hidden from the main display</span>
-            </div>""",
-            unsafe_allow_html=True,
-        )
-    with col2:
-        if st.button(
-            "📦 Archive All",
-            use_container_width=True,
-            help="Move all sessions older than 24h to archive",
-        ):
-            archive_stale_sessions(hours=24)
 
 # === PATH RECONSTRUCTION SECTION ===
 try:
