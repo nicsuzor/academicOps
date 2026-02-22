@@ -52,7 +52,9 @@ def task_server_setup(tmp_path_factory):
     assert p_b_root_res["success"]
     p_b_root_id = p_b_root_res["task"]["id"]
 
-    hub_res = create_task(task_title="Hub Task", project="proj-b", type="task", parent=p_b_root_id)
+    hub_res = create_task(
+        task_title="Hub Task", project="proj-b", type="task", parent=p_b_root_id
+    )
     assert hub_res["success"]
     hub_id = hub_res["task"]["id"]
 

@@ -28,7 +28,7 @@ from lib.session_state import SessionState
 from hooks.schemas import HookContext
 
 # Gate enforcement mode environment variables
-GATE_MODE_VARS = ("CUSTODIET_MODE", "HYDRATION_GATE_MODE", "TASK_GATE_MODE")
+GATE_MODE_VARS = ("CUSTODIET_GATE_MODE", "HYDRATION_GATE_MODE", "QA_GATE_MODE", "HANDOVER_GATE_MODE")
 DEFAULT_GATE_MODE = "warn"
 
 
