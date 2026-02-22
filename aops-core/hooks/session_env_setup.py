@@ -190,6 +190,11 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     for gate_name, gate_path in gate_paths.items():
         persist[f"AOPS_GATE_FILE_{gate_name.upper()}"] = str(gate_path)
 
+    # 6. Set GH_TOKEN from AOPS_BOT_GH_TOKEN (credential isolation — issue #581)
+    bot_token = os.environ.get("AOPS_BOT_GH_TOKEN")
+    if bot_token:
+        persist["GH_TOKEN"] = bot_token
+
     # Persist all environment variables
     set_persistent_env(persist)
 

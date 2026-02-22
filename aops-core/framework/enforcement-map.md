@@ -57,6 +57,7 @@ tags: [framework, enforcement, moc]
 | [[mandatory-handover]]                      | Mandatory Handover Workflow     | prompt-hydrator-context.md (Session Completion Rules section), dump.md Step 2                | UserPromptSubmit, Stop |           |
 | [[capture-outstanding-work]]                | Capture Outstanding Work        | dump.md Step 2 (create follow-up tasks for incomplete/deferred work)                         | Stop                   |           |
 | [[explicit-approval-costly-ops]]            | Costly Operations Approval      | external-batch-submission.md workflow + AskUserQuestion before batch submit                  | During execution       |           |
+| [[data-boundaries]]                         | Credential Isolation            | `SSH_AUTH_SOCK=""` in settings.local.json; `GH_TOKEN` from limited `AOPS_BOT_GH_TOKEN` PAT  | SessionStart           | 6         |
 
 ## Heuristic → Enforcement Mapping
 
@@ -290,6 +291,22 @@ Uses passive `additionalContext` format - agent may proceed without addressing.
 
 - Claude: `~/.claude/settings.json` → `permissions.deny`
 - Gemini: `~/.gemini/policies/deny-extension-writes.toml` (policy engine)
+
+## Credential Isolation (#581)
+
+Agent must not have access to user's SSH key (which has admin/bypass rights on repos). Instead, agent uses a limited-scope fine-grained PAT.
+
+| Mechanism                   | How                                                              | Enforcement Level |
+| --------------------------- | ---------------------------------------------------------------- | ----------------- |
+| SSH agent blocked           | `SSH_AUTH_SOCK=""` in `~/.claude/settings.local.json`            | 6 (env override)  |
+| Limited PAT for GitHub      | `AOPS_BOT_GH_TOKEN` → `GH_TOKEN` via `session_env_setup.py`    | 6 (env override)  |
+| No interactive auth prompts | `GIT_TERMINAL_PROMPT=0` in `~/.claude/settings.local.json`      | 6 (env override)  |
+
+**Source files**:
+- `~/.claude/settings.local.json` — env var overrides
+- `aops-core/hooks/session_env_setup.py` — maps `AOPS_BOT_GH_TOKEN` → `GH_TOKEN` at session start
+
+**PAT scope**: User-managed fine-grained PAT with limited permissions (push to non-protected branches, create PRs/issues). No admin, no bypass branch protection.
 
 ## API Validation (Tasks MCP Server)
 
