@@ -197,25 +197,25 @@ GATE_CONFIGS = [
                     system_message_template="📤 Task bound. Handover required before exit.",
                 ),
             ),
-            # /handover skill completes -> Open
+            # /dump skill (or /handover for legacy) completes -> Open
             # Uses subagent_type_pattern to match skill name extracted by router
             # (router.py extracts tool_input["skill"] into ctx.subagent_type)
             # Matches both Claude's Skill tool and Gemini's activate_skill tool.
-            # Pattern matches both "handover" and "aops-core:handover" (prefixed form).
+            # Pattern matches "dump", "handover" (legacy), and aops-core: prefixed forms.
             GateTrigger(
                 condition=GateCondition(
                     hook_event="PostToolUse",
                     tool_name_pattern="^(Skill|activate_skill)$",
-                    subagent_type_pattern="^(aops-core:)?handover$",
+                    subagent_type_pattern="^(aops-core:)?(handover|dump)$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
-                    system_message_template="📤 Handover complete. Gate OPEN.",
+                    system_message_template="📤 Finalization complete. Gate OPEN.",
                 ),
             ),
         ],
         policies=[
-            # Block Stop when gate is CLOSED (handover not yet done)
+            # Block Stop when gate is CLOSED (dump not yet done)
             GatePolicy(
                 condition=GateCondition(
                     current_status=GateStatus.CLOSED,
@@ -225,7 +225,7 @@ GATE_CONFIGS = [
                 message_template="⛔ Handover required",
                 context_template=(
                     "⛔ Finalization required before exit.\n\n"
-                    "Please invoke the Handover Skill (`/handover`). The gate will only allow exit once the Handover Skill has completed.\n\n"
+                    "Please invoke the Dump Skill (`/dump`). The gate will only allow exit once the Dump Skill has completed.\n\n"
                     "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
                 ),
             ),

@@ -56,6 +56,8 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "aops-core:qa",
         "handover",
         "aops-core:handover",
+        "dump",
+        "aops-core:dump",
         "codebase_investigator",
         "cli_help",
         "effectual-planner",
@@ -154,7 +156,7 @@ GATE_MODE_ENV_VARS: dict[str, str] = {
 HANDOVER_GATE_MODE = os.getenv(GATE_MODE_ENV_VARS["handover"], GATE_MODE_DEFAULTS["handover"])
 QA_GATE_MODE = os.getenv(GATE_MODE_ENV_VARS["qa"], GATE_MODE_DEFAULTS["qa"])
 CUSTODIET_GATE_MODE = os.getenv(GATE_MODE_ENV_VARS["custodiet"], GATE_MODE_DEFAULTS["custodiet"])
-CUSTODIET_TOOL_CALL_THRESHOLD = int(os.getenv("CUSTODIET_TOOL_CALL_THRESHOLD", 15))
+CUSTODIET_TOOL_CALL_THRESHOLD = int(os.getenv("CUSTODIET_TOOL_CALL_THRESHOLD", 50))
 HYDRATION_GATE_MODE = os.getenv(GATE_MODE_ENV_VARS["hydration"], GATE_MODE_DEFAULTS["hydration"])
 
 # =============================================================================
