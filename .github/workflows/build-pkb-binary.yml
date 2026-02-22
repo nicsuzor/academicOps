@@ -33,7 +33,7 @@ jobs:
       - name: Determine version
         id: version
         env:
-          GH_TOKEN: ${{ secrets.MEM_REPO_PAT }}
+          GH_TOKEN: ${{ secrets.AOPS_DIST_PAT }}
         run: |
           if [ "${{ inputs.mem_version }}" = "latest" ] || [ -z "${{ inputs.mem_version }}" ]; then
             TAG=$(gh api repos/nicsuzor/mem/releases/latest --jq '.tag_name')
@@ -46,7 +46,7 @@ jobs:
 
       - name: Download release archive
         env:
-          GH_TOKEN: ${{ secrets.MEM_REPO_PAT }}
+          GH_TOKEN: ${{ secrets.AOPS_DIST_PAT }}
         run: |
           TAG="${{ steps.version.outputs.tag }}"
           ARCHIVE="mem-${TAG}-${{ matrix.artifact_label }}.tar.gz"
