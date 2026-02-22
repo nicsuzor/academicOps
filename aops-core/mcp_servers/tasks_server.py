@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from fastmcp import FastMCP
+from lib.paths import get_data_root  # noqa: F401
 from lib.task_index import TaskIndex, TaskIndexEntry
 from lib.task_model import Task, TaskStatus, TaskType
 from lib.task_storage import TaskStorage
@@ -263,7 +264,9 @@ def get_task_scoring_factors(
 
     if not include_done:
         tasks = [
-            t for t in tasks if t.status not in (TaskStatus.DONE.value, TaskStatus.CANCELLED.value)
+            t
+            for t in tasks
+            if t.status not in (TaskStatus.DONE.value, TaskStatus.CANCELLED.value)
         ]
 
     # Limit results
@@ -383,7 +386,7 @@ def get_task_neighborhood(
         same_project_tasks = [e.to_dict() for e in project_entries if e.id != task_id]
 
     orphan_tasks = []
-    for t_id, t_entry in index._tasks.items():
+    for _, t_entry in index._tasks.items():
         if not t_entry.parent and not t_entry.depends_on:
             orphan_tasks.append(t_entry.to_dict())
 

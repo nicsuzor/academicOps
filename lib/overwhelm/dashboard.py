@@ -3400,9 +3400,9 @@ def load_task_graph() -> dict | None:
 
 
 # Default task graph SVG location (in sessions dir alongside transcripts/summaries)
-TASK_GRAPH_SVG = (
-    Path(os.environ.get("AOPS_SESSIONS", str(Path.home() / ".aops" / "sessions"))) / "task-map.svg"
-)
+TASK_GRAPH_SVG = Path(
+    os.environ.get("AOPS_SESSIONS", str(Path.home() / ".aops" / "sessions"))
+) / "task-map.svg"
 
 
 def find_latest_svg() -> Path | None:
