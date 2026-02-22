@@ -267,3 +267,25 @@ jobs:
             $PRERELEASE_FLAG \
             $ARCHIVES \
             || echo "Release v$VERSION may already exist"
+
+      - name: Upload Gemini archives to source repo release
+        if: steps.check_version.outputs.version_changed == 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Upload Gemini extension archives to the academicOps release
+          # The tag/release is created by `make release` before the workflow runs
+          GEMINI_ARCHIVES=""
+          for f in ${{ github.workspace }}/dist/*aops-core*.tar.gz; do
+            [ -f "$f" ] && GEMINI_ARCHIVES="$GEMINI_ARCHIVES $f"
+          done
+
+          if [ -n "$GEMINI_ARCHIVES" ]; then
+            # Create release if it doesn't exist, or upload to existing
+            gh release upload "v$VERSION" $GEMINI_ARCHIVES --clobber \
+              || gh release create "v$VERSION" \
+                --title "v$VERSION" \
+                --notes "AcademicOps v$VERSION" \
+                $GEMINI_ARCHIVES
+          fi
