@@ -8,7 +8,7 @@ A constitutional framework for governing autonomous AI agents with:
 
 3. **Commons-based peer review** applies the **bazaar** model of F/OSS peer production to AI governance. Instead of ex-ante rules, we encourage experimentation and collaborative work. Agents review each other's work through structured PR pipelines, the way open source maintainers govern contributions from autonomous participants at scale.
 
-4. **Doctrinal development** through structured session reflections means recurring friction gets named, codified, and promoted or demoted based on evidence -- the rule system grows incrementally, the way case law does.
+4. **Reflective continuous improvemnt** through structured session summaries and explicit transcript analysis means recurring friction gets named, codified, and promoted or demoted based on evidence -- and rules evolve incrementally like common law.
 
 5. **Domain-specific academic tools** -- citation management (Zotero), research data analysis (dbt, Streamlit), document conversion, email triage, writing style enforcement.
 
