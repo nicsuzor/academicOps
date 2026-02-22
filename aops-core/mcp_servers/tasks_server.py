@@ -269,6 +269,7 @@ def get_task_scoring_factors(
     # Limit results
     tasks = tasks[:limit]
 
+    now = datetime.now().astimezone()
     results = []
     for task in tasks:
         full_task = _get_storage().get_task(task.id)
@@ -284,8 +285,8 @@ def get_task_scoring_factors(
                 "type": task.type,
                 "status": task.status,
                 "priority": task.priority,
-                "created_age_days": (datetime.now().astimezone() - full_task.created).days,
-                "modified_age_days": (datetime.now().astimezone() - full_task.modified).days,
+                "created_age_days": (now - full_task.created).days,
+                "modified_age_days": (now - full_task.modified).days,
                 "complexity": full_task.complexity.value if full_task.complexity else None,
                 "blocking_count": len(task.blocks),
                 "blocked_by_count": len(task.depends_on),
@@ -487,7 +488,8 @@ def get_review_snapshot(
 
     metrics = _compute_graph_metrics(index)
 
-    since_date = datetime.now().astimezone() - timedelta(days=since_days)
+    now = datetime.now().astimezone()
+    since_date = now - timedelta(days=since_days)
 
     created_since = []
     completed_since = []
@@ -498,7 +500,7 @@ def get_review_snapshot(
 
     completed_last_7 = 0
     created_last_7 = 0
-    date_7_days_ago = datetime.now().astimezone() - timedelta(days=7)
+    date_7_days_ago = now - timedelta(days=7)
 
     for task in storage._iter_all_tasks():
         if task.created >= since_date:
@@ -517,12 +519,12 @@ def get_review_snapshot(
             completed_last_7 += 1
 
         if task.status == TaskStatus.ACTIVE:
-            days_ready = (datetime.now().astimezone() - task.modified).days
+            days_ready = (now - task.modified).days
             if oldest_ready is None or days_ready > oldest_ready["days_ready"]:
                 oldest_ready = {"task": _task_to_dict(task), "days_ready": days_ready}
 
         if task.status == TaskStatus.IN_PROGRESS:
-            days_in_progress = (datetime.now().astimezone() - task.modified).days
+            days_in_progress = (now - task.modified).days
             if (
                 oldest_in_progress is None
                 or days_in_progress > oldest_in_progress["days_in_progress"]
@@ -534,7 +536,7 @@ def get_review_snapshot(
 
     return {
         "success": True,
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": now.isoformat(),
         "metrics": metrics,
         "signals": {},
         "changes_since": {
@@ -573,34 +575,28 @@ def update_task(
     if not task:
         return {"success": False, "message": "Task not found"}
 
-    # Double claim prevention
-    if status:
+    # Parse status once to avoid duplication
+    new_status = None
+    if status is not None:
         s = status.replace("-", "_")
         try:
             new_status = TaskStatus(s)
         except ValueError:
             return {"success": False, "message": f"Invalid status: {status}"}
 
-        if new_status == TaskStatus.IN_PROGRESS and assignee:
-            if (
-                task.status == TaskStatus.IN_PROGRESS
-                and task.assignee
-                and task.assignee != assignee
-            ):
-                return {
-                    "success": False,
-                    "message": f"Task already claimed by {task.assignee} since {task.modified.isoformat()}",
-                    "task": _task_to_dict(task),
-                }
+    # Double claim prevention
+    if new_status == TaskStatus.IN_PROGRESS and assignee:
+        if task.status == TaskStatus.IN_PROGRESS and task.assignee and task.assignee != assignee:
+            return {
+                "success": False,
+                "message": f"Task already claimed by {task.assignee} since {task.modified.isoformat()}",
+                "task": _task_to_dict(task),
+            }
 
     if title is not None:
         task.title = title
-    if status is not None:
-        s = status.replace("-", "_")
-        try:
-            task.status = TaskStatus(s)
-        except ValueError:
-            return {"success": False, "message": f"Invalid status: {status}"}
+    if new_status is not None:
+        task.status = new_status
     if priority is not None:
         task.priority = priority
     if assignee is not None:
@@ -616,7 +612,7 @@ def update_task(
     if body is not None:
         task.body = body
     if due is not None:
-        pass
+        task.due = datetime.fromisoformat(due)
 
     storage.save_task(task)
 
