@@ -109,7 +109,12 @@ if [ -n "${EGO_ID}" ]; then
         --single
 fi
 
-# Step 5: Generate recent transcripts
+# Step 5: Sync sessions repo and generate recent transcripts
+SESSIONS_DIR="${SESSIONS_DIR:-${HOME}/.aops/sessions}"
+if [ -d "${SESSIONS_DIR}/.git" ]; then
+    echo "==> Syncing sessions repo..."
+    git -C "${SESSIONS_DIR}" pull --ff-only --quiet 2>/dev/null || echo "    Warning: sessions repo sync failed (offline or conflict)"
+fi
 echo "==> Generating recent transcripts..."
 uv run python3 "${AOPS}/aops-core/scripts/transcript.py" --recent
 
