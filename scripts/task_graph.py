@@ -285,7 +285,9 @@ def filter_reachable(nodes: list[dict], edges: list[dict]) -> tuple[list[dict], 
             continue
         if node.get("node_type") not in _LEAF_TYPES:
             continue
-        unfinished_children = [c for c in children_of.get(node_id, []) if c in unfinished_ids]
+        unfinished_children = [
+            c for c in children_of.get(node_id, []) if c in unfinished_ids
+        ]
         if not unfinished_children:
             leaf_ids.add(node_id)
 
@@ -1005,12 +1007,7 @@ def main():
     if args.filter:
         # Explicit filter: single output with no suffix
         ft = None if args.filter == "none" else args.filter
-        desc = {
-            "smart": "smart-filtered (active work)",
-            "rollup": "rollup (unfinished + structural ancestors)",
-            "reachable": "reachable from active leaves",
-            "none": "unfiltered",
-        }
+        desc = {"smart": "smart-filtered (active work)", "rollup": "rollup (unfinished + structural ancestors)", "reachable": "reachable from active leaves", "none": "unfiltered"}
         variants = [("", ft, args.include_orphans, desc.get(args.filter, "filtered"))]
     elif args.single:
         # Single mode: respect --no-filter and --include-orphans flags
