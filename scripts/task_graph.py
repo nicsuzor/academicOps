@@ -627,17 +627,27 @@ def generate_svg(dot_content: str, output_base: str, layout: str, keep_dot: bool
         "twopi": [],
     }
 
-    try:
-        cmd = [layout, "-Tsvg"] + layout_opts.get(layout, []) + [dot_path, "-o", svg_path]
-        subprocess.run(cmd, check=True, capture_output=True)
+    _FALLBACKS: dict[str, str] = {"sfdp": "fdp"}
+
+    def _try_layout(eng: str) -> bool:
+        try:
+            cmd = [eng, "-Tsvg"] + layout_opts.get(eng, []) + [dot_path, "-o", svg_path]
+            subprocess.run(cmd, check=True, capture_output=True)
+            return True
+        except FileNotFoundError:
+            print(f"  Warning: {eng} not found, skipping SVG generation")
+            return False
+        except subprocess.CalledProcessError as e:
+            print(f"  Warning: {eng} failed: {e.stderr.decode().strip()}")
+            return False
+
+    success = _try_layout(layout)
+    if not success and layout in _FALLBACKS:
+        fallback = _FALLBACKS[layout]
+        print(f"  Retrying with {fallback}...")
+        success = _try_layout(fallback)
+    if success:
         print(f"  Written {svg_path}")
-        success = True
-    except FileNotFoundError:
-        print(f"  Warning: {layout} not found, skipping SVG generation")
-        success = False
-    except subprocess.CalledProcessError as e:
-        print(f"  Warning: {layout} failed: {e.stderr.decode()}")
-        success = False
 
     if not keep_dot and Path(dot_path).exists():
         Path(dot_path).unlink()
