@@ -227,14 +227,14 @@ def test_tasks_skill_invoked_for_task_queries(
 
     # tasks skill OR direct MCP tools should be used
     tasks_invoked = _skill_invoked(tool_calls, "tasks")
-    mcp_tasks_used = any(c["name"].startswith("mcp__task_manager__") for c in tool_calls)
+    mcp_tasks_used = any(c["name"].startswith("mcp__pkb__") for c in tool_calls)
 
     if not tasks_invoked and not mcp_tasks_used:
         tool_names = [c["name"] for c in tool_calls]
         skills_invoked = _skill_order(tool_calls)
         pytest.fail(
             f"Neither tasks skill nor MCP task tools used.\n"
-            f"Expected: Skill('tasks') or mcp__task_manager__* tools\n"
+            f"Expected: Skill('tasks') or mcp__pkb__* tools\n"
             f"Skills invoked: {skills_invoked}\n"
             f"All tool calls: {tool_names}"
         )

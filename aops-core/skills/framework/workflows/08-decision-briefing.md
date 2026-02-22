@@ -27,12 +27,12 @@ description: Generate user-facing briefing for tasks requiring approval or decis
 ## Tasks MCP Commands
 
 ```python
-mcp__plugin_aops-core_task_manager__search_tasks(query="[query]")           # Search tasks
-mcp__plugin_aops-core_task_manager__get_blocked_tasks()                      # Tasks with unmet dependencies
-mcp__plugin_aops-core_task_manager__list_tasks(status="active")              # Filter by status
-mcp__plugin_aops-core_task_manager__complete_task(id="[ID]")                 # Complete task
-mcp__plugin_aops-core_task_manager__update_task(id="[ID]", status="waiting") # Defer for later
-mcp__plugin_aops-core_task_manager__update_task(id="[ID]", body="...")       # Add notes to task
+mcp__pkb__task_search(query="[query]")           # Search tasks
+mcp__pkb__get_blocked_tasks()                      # Tasks with unmet dependencies
+mcp__pkb__list_tasks(status="active")              # Filter by status
+mcp__pkb__complete_task(id="[ID]")                 # Complete task
+mcp__pkb__update_task(id="[ID]", status="waiting") # Defer for later
+mcp__pkb__update_task(id="[ID]", body="...")       # Add notes to task
 ```
 
 ## Workflow
@@ -41,19 +41,19 @@ mcp__plugin_aops-core_task_manager__update_task(id="[ID]", body="...")       # A
 
 ```python
 # RFC tasks (awaiting approval)
-mcp__plugin_aops-core_task_manager__search_tasks(query="RFC")
+mcp__pkb__task_search(query="RFC")
 
 # Tasks explicitly marked as needing approval
-mcp__plugin_aops-core_task_manager__search_tasks(query="approval")
+mcp__pkb__task_search(query="approval")
 
 # Blocked tasks (something is in the way)
-mcp__plugin_aops-core_task_manager__get_blocked_tasks()
+mcp__pkb__get_blocked_tasks()
 
 # Experiments needing direction - search for experiment tag
-mcp__plugin_aops-core_task_manager__search_tasks(query="experiment")
+mcp__pkb__task_search(query="experiment")
 
 # Investigations with proposed solutions
-mcp__plugin_aops-core_task_manager__search_tasks(query="Investigate")
+mcp__pkb__task_search(query="Investigate")
 ```
 
 **If ALL searches return empty**: Report "No tasks currently require decision" and exit workflow.
@@ -146,20 +146,20 @@ Parse user response and execute. Handle one decision at a time with verification
 
 ```python
 # For approved RFCs
-task = mcp__plugin_aops-core_task_manager__get_task(id="[ID]")  # Verify still active
-mcp__plugin_aops-core_task_manager__update_task(id="[ID]", body=task["body"] + "\n\nApproved by user [DATE]")
-mcp__plugin_aops-core_task_manager__complete_task(id="[ID]")
+task = mcp__pkb__get_task(id="[ID]")  # Verify still active
+mcp__pkb__update_task(id="[ID]", body=task["body"] + "\n\nApproved by user [DATE]")
+mcp__pkb__complete_task(id="[ID]")
 # Note: Implementation task creation is SEPARATE work, not part of this workflow
 
 # For rejected RFCs
-mcp__plugin_aops-core_task_manager__update_task(id="[ID]", body="Rejected: [user-provided reason if any]", status="cancelled")
+mcp__pkb__update_task(id="[ID]", body="Rejected: [user-provided reason if any]", status="cancelled")
 
 # For deferred items
-mcp__plugin_aops-core_task_manager__update_task(id="[ID]", status="waiting")
+mcp__pkb__update_task(id="[ID]", status="waiting")
 
 # For prioritization decisions - add note documenting decision
-task = mcp__plugin_aops-core_task_manager__get_task(id="[ID]")
-mcp__plugin_aops-core_task_manager__update_task(id="[ID]", body=task["body"] + "\n\nUser decision [DATE]: [decision text]")
+task = mcp__pkb__get_task(id="[ID]")
+mcp__pkb__update_task(id="[ID]", body=task["body"] + "\n\nUser decision [DATE]: [decision text]")
 ```
 
 **Error handling**: If any MCP call fails, report error and continue to next decision. Do not halt entire workflow for single failure.
@@ -244,11 +244,11 @@ Agent: [Uses AskUserQuestion]
 User: approve ns-p8n, reject ns-0ct, defer ns-tme
 
 Agent:
-1. mcp__plugin_aops-core_task_manager__get_task(id="ns-p8n") → still active ✓
-2. mcp__plugin_aops-core_task_manager__complete_task(id="ns-p8n")  # with approval note
-3. mcp__plugin_aops-core_task_manager__get_task(id="ns-0ct") → still active ✓
-4. mcp__plugin_aops-core_task_manager__update_task(id="ns-0ct", status="cancelled")
-5. mcp__plugin_aops-core_task_manager__update_task(id="ns-tme", status="waiting")
+1. mcp__pkb__get_task(id="ns-p8n") → still active ✓
+2. mcp__pkb__complete_task(id="ns-p8n")  # with approval note
+3. mcp__pkb__get_task(id="ns-0ct") → still active ✓
+4. mcp__pkb__update_task(id="ns-0ct", status="cancelled")
+5. mcp__pkb__update_task(id="ns-tme", status="waiting")
 
 Reports: "Executed 3 decisions: ns-p8n approved, ns-0ct rejected, ns-tme deferred"
 ```

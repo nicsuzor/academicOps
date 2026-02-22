@@ -109,14 +109,14 @@ You may bypass task queue ONLY when ANY is true:
 
 **Existing task found**: `[task-id]` - [title]
 
-- Verify first: `mcp__plugin_aops-core_task_manager__get_task(id="[task-id]")` (confirm status=active or inbox)
-- Claim with: `mcp__plugin_aops-core_task_manager__update_task(id="[task-id]", status="active")`
+- Verify first: `mcp__pkb__get_task(id="[task-id]")` (confirm status=active or inbox)
+- Claim with: `mcp__pkb__update_task(id="[task-id]", status="active")`
 
 **OR**
 
 **New task needed**:
 
-- Create with: `mcp__plugin_aops-core_task_manager__create_task(task_title="[title]", type="task", project="[project]", priority=[n])`
+- Create with: `mcp__pkb__create_task(task_title="[title]", type="task", project="[project]", priority=[n])`
 
 **OR**
 

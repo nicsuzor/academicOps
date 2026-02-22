@@ -2,7 +2,7 @@
 name: hdr
 category: instruction
 description: HDR (Higher Degree Research) student task conventions, reference letter workflows, and document access patterns.
-allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,mcp__plugin_aops-core_task_manager__create_task,mcp__plugin_aops-core_task_manager__update_task,mcp__memory__retrieve_memory,mcp__memory__store_memory
+allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,mcp__pkb__create_task,mcp__pkb__update_task,mcp__memory__retrieve_memory,mcp__memory__store_memory
 version: 1.0.0
 permalink: skills-hdr
 tags:
@@ -32,7 +32,7 @@ HDR data location: `$ACA_DATA/hdr/`
 **MANDATORY**: All HDR student tasks MUST use `project=hdr`.
 
 ```python
-mcp__plugin_aops-core_task_manager__create_task(
+mcp__pkb__create_task(
     task_title="Review Sadia's dissertation chapter",
     type="task",
     project="hdr",  # NOT "supervision", NOT "academic"

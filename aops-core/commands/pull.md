@@ -14,15 +14,15 @@ permalink: commands/pull
 
 ### Step 1: Get and Claim a Task
 
-1. **List ready tasks**: Call `mcp__plugin_aops-tools_task_manager__list_tasks(status="active", limit=10)` to find ready tasks.
+1. **List ready tasks**: Call `mcp__pkb__list_tasks(status="active", limit=10)` to find ready tasks.
 2. **Select task**: Review the list and select the highest priority task (lowest priority number, e.g., P0).
-3. **Claim task**: Call `mcp__plugin_aops-tools_task_manager__update_task(id="<task-id>", status="in_progress", assignee="polecat")` to claim it.
+3. **Claim task**: Call `mcp__pkb__update_task(id="<task-id>", status="in_progress", assignee="polecat")` to claim it.
 
 **If a specific task ID is provided** (`/pull <task-id>`):
 
-1. Call `mcp__plugin_aops-tools_task_manager__get_task(id="<task-id>")` to load it.
+1. Call `mcp__pkb__get_task(id="<task-id>")` to load it.
 2. If the task has children (leaf=false), navigate to the first ready leaf subtask instead.
-3. Claim with `mcp__plugin_aops-tools_task_manager__update_task(id="<task-id>", status="in_progress", assignee="polecat")`.
+3. Claim with `mcp__pkb__update_task(id="<task-id>", status="in_progress", assignee="polecat")`.
 
 **If no tasks are ready**:
 
@@ -35,7 +35,7 @@ After claiming, check if the task has `soft_depends_on` relationships:
 
 1. Read the task's `soft_depends_on` array
 2. For each soft dependency ID:
-   - Call `mcp__plugin_aops-tools_task_manager__get_task(id="<soft-dep-id>")`
+   - Call `mcp__pkb__get_task(id="<soft-dep-id>")`
    - If status is `done`, extract the task body for context
    - If status is NOT done, log: "Soft dependency <id> not yet complete - proceeding without context"
 3. Present completed soft dependency context before execution:
@@ -125,7 +125,7 @@ For tasks with `type: learn`:
 4. **Apply learnings to framework** - Before creating follow-up tasks, check if findings warrant direct changes to framework files (HEURISTICS.md, skill prompts, specs). Knowledge files alone are insufficient — if a learning points to a process improvement, change the process.
 5. **Decompose actionable items** - Create subtasks for remaining work that can't be done in this session:
    ```
-   mcp__plugin_aops-tools_task_manager__decompose_task(
+   mcp__pkb__create_task(
      id="<spike-id>",
      children=[
        {"title": "[Fix] Issue 1", "type": "task", "body": "Context from spike..."},
@@ -156,7 +156,7 @@ Take appropriate action based on what's needed:
 If task needs specific expertise or human judgment:
 
 ```
-mcp__task_manager__update_task(
+mcp__pkb__update_task(
   id="<task-id>",
   assignee="<role>"  # e.g., "nic", "polecat"
 )
@@ -168,7 +168,7 @@ mcp__task_manager__update_task(
 - `assignee="polecat"` - Can be automated but needs clarification on scope/approach
 - Leave unassigned if role unclear
 
-Note: Use `mcp__task_manager__update_task` (not `mcp__plugin_aops-core_tasks`) for assignee support. Don't set status to "blocked" - just assign.
+Note: Use `mcp__pkb__update_task` (not `mcp__plugin_aops-core_tasks`) for assignee support. Don't set status to "blocked" - just assign.
 
 #### Option B: Decompose into Subtasks
 
@@ -177,7 +177,7 @@ If task is too large but scope is clear:
 **Architecture checkpoint (required for >3 subtasks)**: Before creating subtasks, present the architectural approach to the user — what you plan to build, how (agent prompts vs code, which patterns), and key tradeoffs. Do NOT create subtasks until the approach is confirmed. Premature decomposition before the design is stable creates waste (P#72).
 
 ```
-mcp__plugin_aops-tools_task_manager__decompose_task(
+mcp__pkb__create_task(
   id="<parent-id>",
   children=[
     {"title": "Subtask 1: [specific action]", "type": "action", "order": 0},
@@ -200,7 +200,7 @@ mcp__plugin_aops-tools_task_manager__decompose_task(
 If task is fundamentally unclear:
 
 ```
-mcp__plugin_aops-tools_task_manager__update_task(
+mcp__pkb__update_task(
   id="<task-id>",
   status="blocked",
   body="Blocked: [specific questions]. Context: [what's known so far]."
@@ -237,7 +237,7 @@ The PR review pipeline handles merge via GitHub auto-merge when a PR exists and 
 For tasks executed outside the polecat worktree system (e.g., direct `/pull` in a normal repo), use:
 
 ```
-mcp__plugin_aops-tools_task_manager__complete_task(id="<task-id>")
+mcp__pkb__complete_task(id="<task-id>")
 ```
 
 This directly marks the task as `done` since there's no branch to merge.

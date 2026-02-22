@@ -31,7 +31,7 @@ What should we do with these?
 Use `AskUserQuestion` for each capture (or batch if the user prefers):
 
 **Triage actions:**
-- **→ Task**: Create a task via `mcp__plugin_aops-core_task_manager__create_task()` with content from the capture. Ask user for project/priority if not obvious.
+- **→ Task**: Create a task via `mcp__pkb__create_task()` with content from the capture. Ask user for project/priority if not obvious.
 - **→ Note**: Keep as-is in `notes/mobile-captures/`, just mark processed. The note is already stored.
 - **→ Expand**: The idea needs fleshing out. Create a task with `type: learn` or `type: feature` and include the raw capture as the body.
 - **→ Discard**: The idea is stale or no longer relevant. Mark processed.

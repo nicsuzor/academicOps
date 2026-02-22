@@ -21,7 +21,7 @@ prompt = '''
 Search for potentially related tasks:
 
 ```
-mcp__plugin_aops-tools_task_manager__search_tasks(query="<keywords>", limit=5)
+mcp__pkb__task_search(query="<keywords>", limit=5)
 ```
 
 If a related task exists with status != "done":
@@ -32,7 +32,7 @@ If a related task exists with status != "done":
 ### Step 2: Create Task
 
 ```
-mcp__plugin_aops-tools_task_manager__create_task(
+mcp__pkb__create_task(
   task_title="<extracted title>",
   type="task",
   project="<infer from context or ask>",

@@ -161,11 +161,11 @@ If a polecat gets stuck or crashes:
 
 ### Configuration
 
-Gemini has `task_manager` MCP server configured at `~/.gemini/settings.json`. Verify with:
+Gemini has `pkb` MCP server configured at `~/.gemini/settings.json`. Verify with:
 
 ```bash
 gemini mcp list
-# Should show: ✓ task_manager: ... - Connected
+# Should show: ✓ pkb: ... - Connected
 ```
 
 ### Worker Prompt
@@ -203,7 +203,7 @@ done
 grep -l "assignee: gemini" data/aops/tasks/*.md
 
 # Check task completion rate
-mcp__plugin_aops-tools_task_manager__get_index_stats --include_projects true
+mcp__pkb__list_tasks --include_projects true
 ```
 
 ### Known Limitations

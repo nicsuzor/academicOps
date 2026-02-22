@@ -52,7 +52,7 @@ If you DID NOT claim a task AND you did meaningful work:
 Update your claimed task with progress and release it.
 
 ```
-mcp__plugin_aops-core_task_manager__update_task(
+mcp__pkb__update_task(
   id="<task-id>",
   body="## Session Progress\n- [What was accomplished]\n- [Any blockers or notes]",
   status="done"  # or "review" if needs human verification
@@ -108,7 +108,7 @@ git push -u origin polecat/<task-id>
 2. **Set task status to `merge_ready`**:
 
 ```
-mcp__plugin_aops-tools_task_manager__update_task(
+mcp__pkb__update_task(
   id="<task-id>",
   status="merge_ready"
 )
@@ -133,7 +133,7 @@ If outstanding work remains, file follow-up tasks using [[decompose]] principles
 - **Include context**: body should contain enough for the next agent to resume without re-reading the session
 
 ```
-mcp__plugin_aops-core_task_manager__create_task(
+mcp__pkb__create_task(
   title="<coherent work unit>",
   type="task",
   project="<project>",
@@ -200,7 +200,7 @@ Next: `/pull <task-id>` to resume.
 CREATE a historical task to capture the session's work:
 
 ```
-mcp__plugin_aops-core_task_manager__create_task(
+mcp__pkb__create_task(
   title="[Session] <brief description of work done>",
   type="task",
   project="<relevant project or 'aops'>",
@@ -219,7 +219,7 @@ When session ends because tooling failed and a bug was filed:
 1. **Mark original task as blocked**:
 
 ```
-mcp__plugin_aops-core_task_manager__update_task(
+mcp__pkb__update_task(
   id="<original-task-id>",
   status="blocked",
   depends_on=["<bug-task-id>"]

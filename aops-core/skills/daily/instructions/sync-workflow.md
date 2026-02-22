@@ -19,7 +19,7 @@ ls $ACA_DATA/../sessions/summaries/YYYYMMDD*.json 2>/dev/null
 Fetch recently completed tasks to provide context for today's story synthesis:
 
 ```python
-mcp__plugin_aops-core_task_manager__list_tasks(status="done", limit=20)
+mcp__pkb__list_tasks(status="done", limit=20)
 ```
 
 **Purpose**: Completed tasks represent work that may not appear in session JSONs. This context enriches the daily narrative.

@@ -188,7 +188,7 @@ git worktree remove ~/polecats/{task-id} --force
 Mark the task complete if not already:
 
 ```
-mcp__plugin_aops-tools_task_manager__complete_task(id="{task-id}")
+mcp__pkb__complete_task(id="{task-id}")
 ```
 
 ## Automated Merge (refinery/engineer.py)
@@ -275,15 +275,15 @@ Check for tasks awaiting merge. Look for **both** `merge_ready` AND `review` sta
 
 ```bash
 # Check merge_ready tasks (ready for immediate merge)
-mcp__plugin_aops-core_task_manager__list_tasks(status="merge_ready")
+mcp__pkb__list_tasks(status="merge_ready")
 
 # Check review tasks (pending engineer approval - may also be mergeable)
-mcp__plugin_aops-core_task_manager__list_tasks(status="review")
+mcp__pkb__list_tasks(status="review")
 # Or use the dedicated tool:
-mcp__plugin_aops-core_task_manager__get_review_tasks(project="")
+mcp__pkb__list_tasks(project="")
 
 # Search for polecat-related tasks
-mcp__plugin_aops-core_task_manager__search_tasks(query="polecat")
+mcp__pkb__task_search(query="polecat")
 ```
 
 **When to merge review vs merge_ready:**

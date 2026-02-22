@@ -258,4 +258,4 @@ Default: highest-activity areas (recent modifications).
 - Session summaries that restate daily log content
 - Full transcript copies outside claude/ subdirectory
 
-**If valuable patterns exist:** Extract to HEURISTICS.md or create a task via `mcp__plugin_aops-core_task_manager__create_task()`, then delete the session log.
+**If valuable patterns exist:** Extract to HEURISTICS.md or create a task via `mcp__pkb__create_task()`, then delete the session log.

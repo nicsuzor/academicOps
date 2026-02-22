@@ -124,8 +124,8 @@ Subagents (detected via `CLAUDE_AGENT_TYPE` env var) bypass the gate because:
 
 The tools that establish task binding are always allowed:
 
-- `mcp__plugin_aops-core_task_manager__create_task`
-- `mcp__plugin_aops-core_task_manager__update_task`
+- `mcp__pkb__create_task`
+- `mcp__pkb__update_task`
 
 These are how agents CLAIM tasks - blocking them would be circular.
 
@@ -201,9 +201,9 @@ The prompt-hydrator must include task routing in its output:
 
 **Before any edits**, you must have an active task:
 
-1. **Search existing tasks**: `mcp__plugin_aops-core_task_manager__search_tasks(query="keyword")`
-2. **Claim existing**: `mcp__plugin_aops-core_task_manager__update_task(id="...", status="active")`
-3. **Or create new**: `mcp__plugin_aops-core_task_manager__create_task(...)`
+1. **Search existing tasks**: `mcp__pkb__task_search(query="keyword")`
+2. **Claim existing**: `mcp__pkb__update_task(id="...", status="active")`
+3. **Or create new**: `mcp__pkb__create_task(...)`
 
 The task_required_gate will BLOCK Write/Edit until a task is bound to this session.
 ```
@@ -230,9 +230,9 @@ The `/q` command file can be removed. Its functionality is absorbed by the defau
 
 Before modifying files, you must claim or create a task:
 
-1. Search for existing task: `mcp__plugin_aops-core_task_manager__search_tasks(query="...")`
-2. Claim it: `mcp__plugin_aops-core_task_manager__update_task(id="...", status="active")`
-   Or create new: `mcp__plugin_aops-core_task_manager__create_task(...)`
+1. Search for existing task: `mcp__pkb__task_search(query="...")`
+2. Claim it: `mcp__pkb__update_task(id="...", status="active")`
+   Or create new: `mcp__pkb__create_task(...)`
 
 This ensures all work is tracked. For emergency/trivial fixes, user can prefix prompt with `.`
 ```

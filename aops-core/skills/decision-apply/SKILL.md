@@ -2,7 +2,7 @@
 name: decision-apply
 category: instruction
 description: Process annotated decisions from daily note, update task statuses, and unblock dependent tasks.
-allowed-tools: Read,Edit,mcp__plugin_aops-core_task_manager__update_task,mcp__plugin_aops-core_task_manager__get_task,mcp__plugin_aops-core_task_manager__get_children
+allowed-tools: Read,Edit,mcp__pkb__update_task,mcp__pkb__get_task,mcp__pkb__get_task_network
 version: 1.0.0
 permalink: skills-decision-apply
 ---
@@ -106,7 +106,7 @@ For each decision with a non-null choice:
 #### Approve/Yes/Go
 
 ```python
-mcp__plugin_aops-core_task_manager__update_task(
+mcp__pkb__update_task(
     id=task_id,
     status="active",
     body=f"Decision: Approved by user on {today}. Notes: {notes}"
@@ -116,7 +116,7 @@ mcp__plugin_aops-core_task_manager__update_task(
 #### Reject/No/Cancel
 
 ```python
-mcp__plugin_aops-core_task_manager__update_task(
+mcp__pkb__update_task(
     id=task_id,
     status="cancelled",
     body=f"Decision: Rejected by user on {today}. Notes: {notes}"
@@ -126,7 +126,7 @@ mcp__plugin_aops-core_task_manager__update_task(
 #### Defer
 
 ```python
-mcp__plugin_aops-core_task_manager__update_task(
+mcp__pkb__update_task(
     id=task_id,
     status="waiting",  # Keep in waiting
     body=f"Decision: Deferred on {today}. Will revisit. Notes: {notes}"
@@ -143,7 +143,7 @@ mcp__plugin_aops-core_task_manager__update_task(
 #### Needs More Info
 
 ```python
-mcp__plugin_aops-core_task_manager__update_task(
+mcp__pkb__update_task(
     id=task_id,
     status="blocked",
     body=f"Decision: Needs more info ({today}). Notes: {notes}"
@@ -153,7 +153,7 @@ mcp__plugin_aops-core_task_manager__update_task(
 #### Custom Decision
 
 ```python
-mcp__plugin_aops-core_task_manager__update_task(
+mcp__pkb__update_task(
     id=task_id,
     status="active",  # Default to unblocking
     body=f"Decision: {custom_text} ({today})"
@@ -167,12 +167,12 @@ After updating each decision task, check what got unblocked:
 ```python
 def get_newly_unblocked(task_id):
     """Find tasks that were blocked by this decision."""
-    task = mcp__plugin_aops-core_task_manager__get_task(id=task_id)
+    task = mcp__pkb__get_task(id=task_id)
 
     # Tasks in the 'blocks' list are now potentially unblocked
     unblocked = []
     for blocked_id in task.get("blocks", []):
-        blocked_task = mcp__plugin_aops-core_task_manager__get_task(id=blocked_id)
+        blocked_task = mcp__pkb__get_task(id=blocked_id)
         # Check if all dependencies are now met
         if all_deps_complete(blocked_task):
             unblocked.append(blocked_task)
@@ -266,7 +266,7 @@ Those actions require separate skills with explicit user invocation.
 When updating task bodies, APPEND to existing content:
 
 ```python
-mcp__plugin_aops-core_task_manager__update_task(
+mcp__pkb__update_task(
     id=task_id,
     body=f"## Decision Log\n\n- {today}: {decision_text}",
     replace_body=False  # Append, don't replace

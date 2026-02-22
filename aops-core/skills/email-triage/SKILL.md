@@ -2,7 +2,7 @@
 name: email-triage
 category: instruction
 description: Email triage workflow with mandatory archive receipt logging to task body
-allowed-tools: Read,Glob,Grep,Edit,Write,TodoWrite,AskUserQuestion,mcp__outlook__messages_list_recent,mcp__outlook__messages_get,mcp__outlook__messages_move,mcp__outlook__messages_search,mcp__plugin_aops-core_task_manager__update_task,mcp__plugin_aops-core_task_manager__create_task,mcp__memory__retrieve_memory
+allowed-tools: Read,Glob,Grep,Edit,Write,TodoWrite,AskUserQuestion,mcp__outlook__messages_list_recent,mcp__outlook__messages_get,mcp__outlook__messages_move,mcp__outlook__messages_search,mcp__pkb__update_task,mcp__pkb__create_task,mcp__memory__retrieve_memory
 version: 1.0.0
 permalink: skills-email-triage
 ---
@@ -63,7 +63,7 @@ N. Archive email N → immediately append receipt to task body
 task_id = "<provided-task-id>"
 
 # Option B: Create new task
-result = mcp__plugin_aops-core_task_manager__create_task(
+result = mcp__pkb__create_task(
     task_title="Email triage: [date range/criteria]",
     type="task",
     project="<project>",
@@ -79,7 +79,7 @@ task_id = result["task"]["id"]
 Before archiving ANY emails, initialize the receipt table header in the task body:
 
 ```python
-mcp__plugin_aops-core_task_manager__update_task(
+mcp__pkb__update_task(
     id=task_id,
     body="""## Archive Receipt Log
 
@@ -167,7 +167,7 @@ mcp__outlook__messages_move(
 2. **IMMEDIATELY** append receipt to task body:
 
 ```python
-mcp__plugin_aops-core_task_manager__update_task(
+mcp__pkb__update_task(
     id=task_id,
     body=f"| {count} | {email['date']} | {email['from']} | {email['subject']} |"
 )
@@ -180,7 +180,7 @@ mcp__plugin_aops-core_task_manager__update_task(
 After all emails archived, append summary:
 
 ```python
-mcp__plugin_aops-core_task_manager__update_task(
+mcp__pkb__update_task(
     id=task_id,
     body=f"\nAll {total_count} emails moved to {folder_name} folder."
 )
@@ -256,7 +256,7 @@ Task(
     Task ID for receipts: {task_id}
 
     For EACH email archived, IMMEDIATELY append receipt:
-    mcp__plugin_aops-core_task_manager__update_task(
+    mcp__pkb__update_task(
         id='{task_id}',
         body='| N | DATE | FROM | SUBJECT |'
     )

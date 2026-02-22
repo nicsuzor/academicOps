@@ -2,7 +2,7 @@
 name: dump
 category: instruction
 description: Session handover - commit changes, update task, file follow-ups, output Framework Reflection, halt
-allowed-tools: Bash, mcp__memory__store_memory, mcp__plugin_aops-core_task_manager__update_task, mcp__plugin_aops-core_task_manager__create_task, TodoWrite, AskUserQuestion, Read
+allowed-tools: Bash, mcp__memory__store_memory, mcp__pkb__update_task, mcp__pkb__create_task, TodoWrite, AskUserQuestion, Read
 permalink: commands/dump
 ---
 

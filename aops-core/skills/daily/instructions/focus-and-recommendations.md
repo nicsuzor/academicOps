@@ -8,7 +8,7 @@ Populate the `## Focus` section with priority dashboard and task recommendations
 
 ```python
 # Get all tasks (limit=0 returns all)
-tasks = mcp__plugin_aops-core_task_manager__list_tasks(limit=0)
+tasks = mcp__pkb__list_tasks(limit=0)
 ```
 
 Parse task data to identify priority distribution, overdue tasks, and blocked tasks.
@@ -44,7 +44,7 @@ for task in actionable_tasks:
 After loading task data, generate the ASCII task tree for the `## Task Tree` section:
 
 ```python
-mcp__plugin_aops-core_task_manager__get_task_tree(
+mcp__pkb__get_task_network(
     exclude_status=["done", "cancelled"],
     max_depth=2
 )
@@ -78,14 +78,14 @@ Count tasks awaiting user decisions (for decision queue summary):
 
 ```python
 # Get waiting tasks assigned to user
-waiting_tasks = mcp__plugin_aops-core_task_manager__list_tasks(
+waiting_tasks = mcp__pkb__list_tasks(
     status="waiting",
     assignee="nic",
     limit=50
 )
 
 # Get review tasks assigned to user
-review_tasks = mcp__plugin_aops-core_task_manager__list_tasks(
+review_tasks = mcp__pkb__list_tasks(
     status="review",
     assignee="nic",
     limit=50
@@ -99,7 +99,7 @@ decisions = [
 ]
 
 # Get topology for blocking counts
-topology = mcp__plugin_aops-core_task_manager__get_tasks_with_topology()
+topology = mcp__pkb__get_task_network()
 
 # Count high-priority decisions (blocking 2+ tasks)
 high_priority_count = sum(
@@ -215,4 +215,4 @@ After presenting recommendations, use `AskUserQuestion` to confirm priorities:
 
 Ask: "Any of these ready to archive?"
 
-When user picks, use `mcp__plugin_aops-core_task_manager__update_task(id="<id>", status="cancelled")` to archive.
+When user picks, use `mcp__pkb__update_task(id="<id>", status="cancelled")` to archive.

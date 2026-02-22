@@ -27,7 +27,7 @@ def _used_task_tools(tool_calls: list) -> bool:
         # Accept either Skill("tasks") or direct MCP task tools
         if name == "Skill" and "task" in str(call.get("input", {})).lower():
             return True
-        if name.startswith("mcp__task_manager__"):
+        if name.startswith("mcp__pkb__"):
             return True
     return False
 

@@ -207,7 +207,7 @@ For each project in the crew (e.g., `~/.aops/crew/cheryl/aops`):
 
 0. **Create tracking task** (before starting):
    ```
-   mcp__plugin_aops-tools_task_manager__create_task(
+   mcp__pkb__create_task(
      title="Merge crew/<name> into <project>",
      type="task",
      project="<project>",

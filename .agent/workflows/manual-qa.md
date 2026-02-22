@@ -109,7 +109,7 @@ When you find framework problems during transcript review, log them as bug tasks
 
 ```bash
 # Via MCP tool
-mcp__plugin_aops-core_task_manager__create_task(
+mcp__pkb__create_task(
     task_title="<clear description of the bug>",
     type="bug",
     project="aops",

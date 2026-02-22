@@ -25,7 +25,7 @@ Process for handling reference letter requests from HDR students or for HDR stud
 ### Step 1: Create Task
 
 ```python
-mcp__plugin_aops-core_task_manager__create_task(
+mcp__pkb__create_task(
     task_title="Write {student}'s {purpose} reference letter",
     type="task",
     project="hdr",
@@ -138,7 +138,7 @@ Add relevant context to draft file to assist human writer.
 After sending:
 
 ```python
-mcp__plugin_aops-core_task_manager__complete_task(id="{task-id}")
+mcp__pkb__complete_task(id="{task-id}")
 ```
 
 Update draft file status:

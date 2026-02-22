@@ -2,7 +2,7 @@
 name: planning
 category: instruction
 description: Patterns for decomposing work under uncertainty - spikes, dependencies, and knowledge flow
-allowed-tools: mcp__plugin_aops-core_task_manager__create_task,mcp__plugin_aops-core_task_manager__update_task,mcp__plugin_aops-core_task_manager__decompose_task,mcp__plugin_aops-core_task_manager__get_task,Read
+allowed-tools: mcp__pkb__create_task,mcp__pkb__update_task,mcp__pkb__create_task,mcp__pkb__get_task,Read
 version: 1.0.0
 permalink: skills-planning
 ---

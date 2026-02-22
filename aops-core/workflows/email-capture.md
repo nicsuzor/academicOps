@@ -411,10 +411,10 @@ Brief context: who sent this, what it's about, when received.
 
 #### 6g. Task Creation via MCP
 
-**Primary backend**: Tasks MCP (`mcp__plugin_aops-core_task_manager__create_task`)
+**Primary backend**: Tasks MCP (`mcp__pkb__create_task`)
 
 ```python
-mcp__plugin_aops-core_task_manager__create_task(
+mcp__pkb__create_task(
   task_title="Reply to <sender name>: <subject summary>",
   type="task",
   project="aops",

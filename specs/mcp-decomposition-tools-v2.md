@@ -3,11 +3,11 @@
 ## Giving Effect
 
 - [[aops-tools/tasks_server.py]] - MCP server with 18 thin data-access tools following "Dumb Server, Smart Agent" pattern
-- [[mcp__plugin_aops-core_task_manager__get_task_tree]] - Tree retrieval for decomposition
-- [[mcp__plugin_aops-core_task_manager__get_task_neighborhood]] - Graph neighborhood for relationship discovery
-- [[mcp__plugin_aops-core_task_manager__decompose_task]] - Atomic decomposition tool
-- [[mcp__plugin_aops-core_task_manager__get_tasks_with_topology]] - Topology metrics for agent analysis
-- [[mcp__plugin_aops-core_task_manager__get_graph_metrics]] - Raw graph metrics for health analysis
+- [[mcp__pkb__get_task_network]] - Tree retrieval for decomposition
+- [[mcp__pkb__get_task_network]] - Graph neighborhood for relationship discovery
+- [[mcp__pkb__create_task]] - Atomic decomposition tool
+- [[mcp__pkb__get_task_network]] - Topology metrics for agent analysis
+- [[mcp__pkb__get_network_metrics]] - Raw graph metrics for health analysis
 
 ## Architectural Principle
 

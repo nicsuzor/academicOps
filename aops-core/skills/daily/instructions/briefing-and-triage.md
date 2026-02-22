@@ -26,7 +26,7 @@ ln -snf daily/YYYYMMDD-daily.md $ACA_DATA/daily.md
 
 ```python
 for task_id in yesterday_task_ids:
-    result = mcp__plugin_aops-core_task_manager__get_task(id=task_id)
+    result = mcp__pkb__get_task(id=task_id)
     if not result["success"]:
         # Task was archived/deleted - EXCLUDE from carryover
         continue
@@ -108,10 +108,10 @@ From [sender]: [Actual content or summary]
 
 **CRITICAL - For each FYI item, IMMEDIATELY after writing it:**
 
-1. **If action required** (feedback, review, response, decision) → `mcp__plugin_aops-core_task_manager__create_task()` NOW
+1. **If action required** (feedback, review, response, decision) → `mcp__pkb__create_task()` NOW
    - Include deadline if mentioned or implied
    - **Then add task link to FYI content**: `- **→ Task**: [task-id] Task title`
-2. **If links to existing task** → `mcp__plugin_aops-core_task_manager__update_task()` with the info
+2. **If links to existing task** → `mcp__pkb__update_task()` with the info
 3. **If worth future recall** → `mcp__memory__store_memory()` with tags
 
 Do NOT batch these to a later step. Task creation happens AS you process each email, not after.

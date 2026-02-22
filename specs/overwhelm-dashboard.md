@@ -13,8 +13,8 @@ created: 2026-01-21
 - [[aops-tools/fast_indexer/]] - Rust binary for fast task indexing
 - [[skills/task-viz/SKILL.md]] - Task visualization skill (JSON, GraphML, DOT output)
 - [[skills/dashboard/SKILL.md]] - Cognitive Load Dashboard skill
-- [[mcp__plugin_aops-core_task_manager__get_graph_metrics]] - Graph metrics for dashboard
-- [[mcp__plugin_aops-core_task_manager__rebuild_index]] - Index rebuild using fast-indexer
+- [[mcp__pkb__get_network_metrics]] - Graph metrics for dashboard
+- [[mcp__pkb__reindex]] - Index rebuild using fast-indexer
 
 Single system for task visibility and cognitive load management.
 
@@ -582,10 +582,10 @@ Dashboard rendering (HTML/CSS in dashboard.py)
 | Event           | Source                                         | Description                    |
 | --------------- | ---------------------------------------------- | ------------------------------ |
 | `user_prompt`   | User message in turn                           | First ~120 chars of user input |
-| `task_create`   | `task_manager__create_task` tool call          | Task title and project         |
-| `task_complete` | `task_manager__complete_task` tool call        | Task ID completed              |
+| `task_create`   | `pkb__create_task` tool call          | Task title and project         |
+| `task_complete` | `pkb__complete_task` tool call        | Task ID completed              |
 | `task_claim`    | Polecat CLI `claim_next_task()` in `manager.py` | Task claimed from queue       |
-| `task_update`   | `task_manager__update_task` with status change | New status value               |
+| `task_update`   | `pkb__update_task` with status change | New status value               |
 
 ### Display Design
 

@@ -71,7 +71,7 @@ gh issue create --repo "$REPO" --title "[Learn] <brief-descriptive-slug>" --body
 If immediate action is required, create **ONE** task. **DO NOT** create task trees, sub-tasks, or complex dependencies.
 
 ```python
-mcp__plugin_aops-core_task_manager__create_task(
+mcp__pkb__create_task(
   title="[Learn] <slug>",
   project="aops",
   priority=2,

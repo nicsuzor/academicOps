@@ -11,7 +11,7 @@ created: 2026-01-18
 ## Giving Effect
 
 - [[aops-tools/tasks_server.py]] - MCP server implementing task CRUD and graph operations
-- [[mcp__plugin_aops-core_task_manager__*]] - MCP tools for task management
+- [[mcp__pkb__*]] - MCP tools for task management
 - [[agents/effectual-planner.md]] - Agent for strategic planning and task decomposition
 - [[workflows/decompose.md]] - Workflow for decomposing tasks into skill-sized subtasks
 

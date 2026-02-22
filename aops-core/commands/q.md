@@ -2,7 +2,7 @@
 name: q
 category: instruction
 description: Quick-queue a task for later without hydration overhead
-allowed-tools: mcp__plugin_aops-tools_task_manager__create_task, mcp__plugin_aops-tools_task_manager__search_tasks, mcp__plugin_aops-tools_task_manager__update_task
+allowed-tools: mcp__pkb__create_task, mcp__pkb__task_search, mcp__pkb__update_task
 permalink: commands/q
 triggers: ["queue task", "save for later", "add to backlog", "new task:"]
 ---
@@ -25,7 +25,7 @@ triggers: ["queue task", "save for later", "add to backlog", "new task:"]
 Search for potentially related tasks:
 
 ```
-mcp__plugin_aops-tools_task_manager__search_tasks(query="<keywords>", limit=5)
+mcp__pkb__task_search(query="<keywords>", limit=5)
 ```
 
 If a related task exists with status != "done":
@@ -52,7 +52,7 @@ If a related task exists with status != "done":
 **Create with context for workers**:
 
 ```
-mcp__plugin_aops-tools_task_manager__create_task(
+mcp__pkb__create_task(
   task_title="<clear, actionable title>",
   type="task",  # or: bug, feature, learn
   project="<infer from context>",

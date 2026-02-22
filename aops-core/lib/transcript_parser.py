@@ -540,7 +540,7 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
             if not isinstance(inp, dict):
                 continue
 
-            if "task_manager__create_task" in tool:
+            if "pkb__create_task" in tool:
                 events.append(
                     {
                         "timestamp": ts,
@@ -550,7 +550,7 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
                         "project": inp.get("project"),
                     }
                 )
-            elif "task_manager__complete_task" in tool:
+            elif "pkb__complete_task" in tool:
                 events.append(
                     {
                         "timestamp": ts,
@@ -558,7 +558,7 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
                         "task_id": inp.get("id", ""),
                     }
                 )
-            elif "task_manager__update_task" in tool:
+            elif "pkb__update_task" in tool:
                 status = inp.get("status")
                 if status:  # only record status changes
                     events.append(

@@ -83,7 +83,7 @@ Check `$ACA_SESSIONS/YYYYMMDD-daily.md`.
 
 ```python
 for task_id in yesterday_task_ids:
-    result = mcp__plugin_aops-core_task_manager__get_task(id=task_id)
+    result = mcp__pkb__get_task(id=task_id)
     if not result["success"]:
         # Task was archived/deleted - EXCLUDE from carryover
         continue
@@ -165,10 +165,10 @@ From [sender]: [Actual content or summary]
 
 **CRITICAL - For each FYI item, IMMEDIATELY after writing it:**
 
-1. **If action required** (feedback, review, response, decision) → `mcp__plugin_aops-core_task_manager__create_task()` NOW
+1. **If action required** (feedback, review, response, decision) → `mcp__pkb__create_task()` NOW
    - Include deadline if mentioned or implied
    - **Then add task link to FYI content**: `- **→ Task**: [task-id] Task title`
-2. **If links to existing task** → `mcp__plugin_aops-core_task_manager__update_task()` with the info
+2. **If links to existing task** → `mcp__pkb__update_task()` with the info
 3. **If worth future recall** → `mcp__memory__store_memory()` with tags
 
 Do NOT batch these to a later step. Task creation happens AS you process each email, not after.
@@ -204,7 +204,7 @@ Populate the `## Focus` section with priority dashboard and task recommendations
 ### 3.1: Load Task Data
 
 ```python
-mcp__plugin_aops-core_task_manager__list_tasks(limit=100)
+mcp__pkb__list_tasks(limit=100)
 ```
 
 Parse task data from output to identify:
@@ -219,7 +219,7 @@ Parse task data from output to identify:
 After loading task data, generate the ASCII task tree for the `## Task Tree` section:
 
 ```python
-mcp__plugin_aops-core_task_manager__get_task_tree(
+mcp__pkb__get_task_network(
     exclude_status=["done", "cancelled"],
     max_depth=2
 )
@@ -253,14 +253,14 @@ Count tasks awaiting user decisions (for decision queue summary):
 
 ```python
 # Get waiting tasks assigned to user
-waiting_tasks = mcp__plugin_aops-core_task_manager__list_tasks(
+waiting_tasks = mcp__pkb__list_tasks(
     status="waiting",
     assignee="nic",
     limit=50
 )
 
 # Get review tasks assigned to user
-review_tasks = mcp__plugin_aops-core_task_manager__list_tasks(
+review_tasks = mcp__pkb__list_tasks(
     status="review",
     assignee="nic",
     limit=50
@@ -274,7 +274,7 @@ decisions = [
 ]
 
 # Get topology for blocking counts
-topology = mcp__plugin_aops-core_task_manager__get_tasks_with_topology()
+topology = mcp__pkb__get_task_network()
 
 # Count high-priority decisions (blocking 2+ tasks)
 high_priority_count = sum(
@@ -390,7 +390,7 @@ After presenting recommendations, use `AskUserQuestion` to confirm priorities:
 
 Ask: "Any of these ready to archive?"
 
-When user picks, use `mcp__plugin_aops-core_task_manager__update_task(id="<id>", status="cancelled")` to archive.
+When user picks, use `mcp__pkb__update_task(id="<id>", status="cancelled")` to archive.
 
 ## 4. Daily progress sync
 
@@ -409,7 +409,7 @@ ls $ACA_SESSIONS/summaries/YYYYMMDD*.json 2>/dev/null
 Fetch recently completed tasks to provide context for today's story synthesis:
 
 ```python
-mcp__plugin_aops-core_task_manager__list_tasks(status="done", limit=20)
+mcp__pkb__list_tasks(status="done", limit=20)
 ```
 
 **Purpose**: Completed tasks represent work that may not appear in session JSONs. This context enriches the daily narrative.

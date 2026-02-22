@@ -62,10 +62,10 @@ Is this about the user? (projects, goals, context, tasks)
 
 **NEVER create files for:**
 
-- What an agent did: "Completed X on DATE" → `mcp__plugin_aops-core_task_manager__create_task(task_title="...", type="task")`
-- What an agent found: "Discovered bug in Y" → `mcp__plugin_aops-core_task_manager__create_task(task_title="...", type="task", tags=["bug"])`
-- Observations: "Noticed pattern Z" → `mcp__plugin_aops-core_task_manager__create_task(task_title="Learning: Z")`
-- Experiments: "Tried approach A" → `mcp__plugin_aops-core_task_manager__update_task(id="...", body="...")`
+- What an agent did: "Completed X on DATE" → `mcp__pkb__create_task(task_title="...", type="task")`
+- What an agent found: "Discovered bug in Y" → `mcp__pkb__create_task(task_title="...", type="task", tags=["bug"])`
+- Observations: "Noticed pattern Z" → `mcp__pkb__create_task(task_title="Learning: Z")`
+- Experiments: "Tried approach A" → `mcp__pkb__update_task(id="...", body="...")`
 - Decisions: "Chose B over C" → update task body, synthesize to HEURISTICS.md later
 
 **Rule**: If it has a timestamp or describes agent activity, it's episodic → tasks MCP.

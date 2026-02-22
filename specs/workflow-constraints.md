@@ -257,7 +257,7 @@ Not everything goes through the queue. These bypass and execute immediately:
 
 ```python
 # What main agent does when enqueuing
-mcp__plugin_aops-core_task_manager__create_task(
+mcp__pkb__create_task(
     task_title="Implement dark mode toggle",
     type="task",
     project="webapp",

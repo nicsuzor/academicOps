@@ -675,19 +675,6 @@ def build_aops_core(
                 manifest = json.loads(src_extension_json.read_text())
                 manifest["version"] = version
 
-                # Fix up task_manager path if it was using the repo-root format
-                # (where aops-core is a subdirectory, but in dist it is the root)
-                if "mcpServers" in manifest and "task_manager" in manifest["mcpServers"]:
-                    args = manifest["mcpServers"]["task_manager"].get("args", [])
-                    new_args = [
-                        a.replace(
-                            "${extensionPath}/aops-core",
-                            "${extensionPath}",
-                        )
-                        for a in args
-                    ]
-                    manifest["mcpServers"]["task_manager"]["args"] = new_args
-
                 with open(dist_extension_json, "w") as f:
                     json.dump(manifest, f, indent=2)
             except Exception as e:
@@ -840,6 +827,19 @@ def build_antigravity(aops_root: Path, dist_root: Path, all_mcps: dict):
     print("✓ Built antigravity dist")
 
 
+def install_pkb_binary(dist_dir: Path, binary_path: Path) -> None:
+    """Install a pre-built PKB binary into a distribution directory.
+
+    Copies the binary to dist_dir/bin/pkb-search and sets executable permissions.
+    """
+    bin_dir = dist_dir / "bin"
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    dest = bin_dir / "pkb-search"
+    shutil.copy2(binary_path, dest)
+    dest.chmod(0o755)
+    print(f"  ✓ Installed PKB binary -> {dest}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Build script for AcademicOps Gemini extensions.")
     parser.add_argument("--version", action="store_true", help="Print detected version and exit")
@@ -848,6 +848,18 @@ def main():
         type=str,
         default=None,
         help="Override the auto-detected version (e.g. '0.1.15-testing.42')",
+    )
+    parser.add_argument(
+        "--pkb-binary",
+        type=str,
+        default=None,
+        help="Path to pre-built pkb-search binary to include in dist",
+    )
+    parser.add_argument(
+        "--target-platform",
+        type=str,
+        default=None,
+        help="Platform label for archive naming (e.g. 'linux-x86_64', 'macos-aarch64')",
     )
     args = parser.parse_args()
 
@@ -885,26 +897,42 @@ def main():
     # Build components (Claude)
     build_aops_core(aops_root, dist_root, aca_data_path, "claude", version)
 
+    # Install PKB binary if provided
+    pkb_binary = Path(args.pkb_binary) if args.pkb_binary else None
+    if pkb_binary:
+        if not pkb_binary.exists():
+            print(f"Error: PKB binary not found at {pkb_binary}", file=sys.stderr)
+            sys.exit(1)
+        install_pkb_binary(dist_root / "aops-gemini", pkb_binary)
+        install_pkb_binary(dist_root / "aops-claude", pkb_binary)
+
     # Build Antigravity (global config if needed)
     build_antigravity(aops_root, dist_root, core_mcps_gemini)
 
-    package_artifacts(aops_root, dist_root, version)
+    package_artifacts(aops_root, dist_root, version, target_platform=args.target_platform)
 
-    # Create git tags for release
-    create_git_tags(aops_root, version)
+    # Create git tags for release (only for generic builds, not platform-specific)
+    if not args.target_platform:
+        create_git_tags(aops_root, version)
 
     print("\nBuild complete. Dist artifacts in dist/")
 
 
-def package_artifacts(aops_root: Path, dist_root: Path, version: str):
+def package_artifacts(
+    aops_root: Path, dist_root: Path, version: str, target_platform: str | None = None
+):
     """Package the built components into archives for release.
 
-    Creates three archives:
+    If target_platform is set (e.g. 'linux-x86_64'), produces platform-specific archives:
+    - aops-gemini-linux-x86_64.tar.gz
+    - aops-claude-linux-x86_64.tar.gz
+
+    Otherwise produces generic archives:
     - aops-gemini-v{version}.tar.gz
     - aops-claude-v{version}.tar.gz
     - aops-antigravity-v{version}.tar.gz
 
-    Plus 'latest' symlinks for each.
+    Plus 'latest' symlinks for generic archives.
     """
     print("\nPackaging artifacts for release...")
 
@@ -922,6 +950,21 @@ def package_artifacts(aops_root: Path, dist_root: Path, version: str):
             return None
         return tarinfo
 
+    if target_platform:
+        # Platform-specific archives (e.g. aops-gemini-linux-x86_64.tar.gz)
+        # These contain platform-specific PKB binaries
+        gemini_archive = dist_root / f"aops-gemini-{target_platform}.tar.gz"
+        with tarfile.open(gemini_archive, "w:gz") as tar:
+            tar.add(dist_root / "aops-gemini", arcname=".", filter=_source_filter)
+        print(f"  ✓ Packaged {gemini_archive.name}")
+
+        claude_archive = dist_root / f"aops-claude-{target_platform}.tar.gz"
+        with tarfile.open(claude_archive, "w:gz") as tar:
+            tar.add(dist_root / "aops-claude", arcname="aops-claude", filter=_source_filter)
+        print(f"  ✓ Packaged {claude_archive.name}")
+        return
+
+    # Generic archives (no platform-specific binary)
     # 1. aops-gemini.tar.gz (single generic archive for Gemini CLI)
     # Per gemini-packaging-guide.md: gemini-extension.json must be at archive root
     # Using arcname="." puts content at root, not nested in a subdirectory

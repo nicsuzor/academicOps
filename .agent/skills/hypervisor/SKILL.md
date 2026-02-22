@@ -125,7 +125,7 @@ Tested spawning 5 parallel haiku workers on aops framework tasks:
 git log --oneline -10
 
 # Check task completion status directly
-mcp__plugin_aops-core_tasks__get_task(id="<task-id>")
+mcp__pkb__get_task(id="<task-id>")
 
 # Poll output files while workers run (before cleanup)
 tail -f /tmp/claude/-home-nic-writing/tasks/*.output
@@ -144,11 +144,11 @@ Use Gemini CLI to process mechanical tasks from the queue with YOLO mode (auto-a
 
 ### Configuration
 
-Gemini has `task_manager` MCP server configured at `~/.gemini/settings.json`. Verify with:
+Gemini has `pkb` MCP server configured at `~/.gemini/settings.json`. Verify with:
 
 ```bash
 gemini mcp list
-# Should show: ✓ task_manager: ... - Connected
+# Should show: ✓ pkb: ... - Connected
 ```
 
 ### Worker Prompt
@@ -186,7 +186,7 @@ done
 grep -l "assignee: gemini" data/aops/tasks/*.md
 
 # Check task completion rate
-mcp__plugin_aops-tools_task_manager__get_index_stats --include_projects true
+mcp__pkb__list_tasks()
 ```
 
 ### Known Limitations

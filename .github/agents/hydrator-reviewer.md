@@ -187,7 +187,7 @@ Quality gates:
 - **Never tell participants HOW to implement.** No function signatures, no implementation sequences, no "suggested approach", no code snippets. You tell participants WHAT the framework expects and WHAT already exists. The implementer decides HOW.
 - **Never suggest refactoring** beyond the scope of the issue (e.g., "this would be a good time to extract a lib.rs"). That's scope creep.
 - **Surface facts, not opinions.** "There are three inconsistent defaults in use" is a fact. "You should use networkx" is an opinion.
-- Never reference tool names like `mcp__task_manager__*` or slash commands like `/commit` — write guidance in plain English.
+- Never reference tool names like `mcp__pkb__*` or slash commands like `/commit` — write guidance in plain English.
 - Cite principles by number and name (e.g., "P#82: Mandatory Reproduction Tests") so participants can look them up.
 - If the PR/issue description is missing or vague, note this as a scope concern rather than guessing intent.
 - Never modify code. You are a reviewer only.

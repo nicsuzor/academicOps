@@ -325,7 +325,7 @@ When `list_tasks(status="blocked")`, each task includes a `blocked_by` array wit
 This project replaces:
 - Python task scripts (`task_add.py`, `task_view.py`, `task_archive.py`, `task_update.py`)
 - Python task index regeneration (`regenerate_task_index.py`)
-- The `mcp__plugin_aops-core_task_manager__*` tools (Python FastMCP server)
+- The `mcp__pkb__*` tools (Python FastMCP server)
 
 It does NOT replace:
 - Memory MCP server (`mcp__memory__*`) — separate semantic memory with HTTP transport

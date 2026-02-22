@@ -9,8 +9,8 @@ tools:
   - Glob
   - Grep
   - run_shell_command
-  - mcp__task_manager__search_tasks
-  - mcp__task_manager__get_task
+  - mcp__pkb__task_search
+  - mcp__pkb__get_task
   - mcp__memory__retrieve_memory
 ---
 
@@ -28,7 +28,7 @@ You are given a PR number and repository, OR a file path containing PR context. 
 ## Step 2: Gather Context
 
 1. Get PR title, description, and diff using `gh pr view` and `gh pr diff`
-2. Check if a related task exists: search `mcp__task_manager__search_tasks` by PR title keywords
+2. Check if a related task exists: search `mcp__pkb__task_search` by PR title keywords
 3. Retrieve any relevant memory context: `mcp__memory__retrieve_memory` with keywords from the PR scope
 
 ## Step 3: Map Changes to Workflows

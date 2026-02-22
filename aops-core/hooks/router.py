@@ -522,9 +522,9 @@ class HookRouter:
                 notify_session_stop(config, ctx.session_id, current_task)
             elif ctx.hook_event == "PostToolUse":
                 TASK_BINDING_TOOLS = {
-                    "mcp__plugin_aops-core_task_manager__update_task",
-                    "mcp__plugin_aops-core_task_manager__complete_task",
-                    "mcp__plugin_aops-core_task_manager__complete_tasks",
+                    "mcp__pkb__update_task",
+                    "mcp__pkb__complete_task",
+                    "mcp__pkb__complete_tasks",
                     "update_task",
                     "complete_task",
                     "complete_tasks",

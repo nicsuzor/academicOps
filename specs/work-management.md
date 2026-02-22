@@ -3,11 +3,11 @@
 ## Giving Effect
 
 - [[aops-tools/tasks_server.py]] - MCP server implementing task CRUD operations
-- [[mcp__plugin_aops-core_task_manager__create_task]] - Create task
-- [[mcp__plugin_aops-core_task_manager__update_task]] - Update task (status, assignment)
-- [[mcp__plugin_aops-core_task_manager__list_tasks]] - List tasks with filters
-- [[mcp__plugin_aops-core_task_manager__complete_task]] - Mark task done
-- [[mcp__plugin_aops-core_task_manager__get_blocked_tasks]] - Get tasks with unmet dependencies
+- [[mcp__pkb__create_task]] - Create task
+- [[mcp__pkb__update_task]] - Update task (status, assignment)
+- [[mcp__pkb__list_tasks]] - List tasks with filters
+- [[mcp__pkb__complete_task]] - Mark task done
+- [[mcp__pkb__get_blocked_tasks]] - Get tasks with unmet dependencies
 - [[commands/pull.md]] - `/pull` command for claiming and executing tasks
 
 Tasks MCP is the primary work management system for multi-session tracking, dependencies, and strategic work.
@@ -50,14 +50,14 @@ flowchart LR
 
 | Function                                                           | Purpose            |
 | ------------------------------------------------------------------ | ------------------ |
-| `mcp__plugin_aops-core_task_manager__create_task()`                | Create new task    |
-| `mcp__plugin_aops-core_task_manager__get_task(id)`                 | Get task details   |
-| `mcp__plugin_aops-core_task_manager__update_task(id, ...)`         | Update task fields |
-| `mcp__plugin_aops-core_task_manager__complete_task(id)`            | Mark task done     |
-| `mcp__plugin_aops-core_task_manager__list_tasks(...)`              | List/filter tasks  |
-| `mcp__plugin_aops-core_task_manager__search_tasks(query)`          | Search tasks       |
-| `mcp__plugin_aops-core_task_manager__get_blocked_tasks()`          | Get blocked tasks  |
-| `mcp__plugin_aops-core_task_manager__decompose_task(id, children)` | Break down task    |
+| `mcp__pkb__create_task()`                | Create new task    |
+| `mcp__pkb__get_task(id)`                 | Get task details   |
+| `mcp__pkb__update_task(id, ...)`         | Update task fields |
+| `mcp__pkb__complete_task(id)`            | Mark task done     |
+| `mcp__pkb__list_tasks(...)`              | List/filter tasks  |
+| `mcp__pkb__task_search(query)`          | Search tasks       |
+| `mcp__pkb__get_blocked_tasks()`          | Get blocked tasks  |
+| `mcp__pkb__create_task(id, children)` | Break down task    |
 
 ## Task Lifecycle
 
@@ -91,7 +91,7 @@ Tasks are organized by `project` field:
 **Create with project**:
 
 ```python
-mcp__plugin_aops-core_task_manager__create_task(
+mcp__pkb__create_task(
     title="Task title",
     type="task",
     project="aops",
@@ -105,13 +105,13 @@ Tasks can depend on other tasks:
 
 ```python
 # Create dependent task
-mcp__plugin_aops-core_task_manager__create_task(
+mcp__pkb__create_task(
     title="Implement feature",
     depends_on=["task-id-of-prerequisite"]
 )
 
 # Check what's blocked
-mcp__plugin_aops-core_task_manager__get_blocked_tasks()
+mcp__pkb__get_blocked_tasks()
 ```
 
 ## Graph Insertion Responsibility
@@ -140,13 +140,13 @@ When creating a task, the agent MUST:
 
 ```python
 # WRONG: Orphaned task
-mcp__plugin_aops-core_task_manager__create_task(
+mcp__pkb__create_task(
     title="Fix login bug",
     project="webapp"
 )
 
 # RIGHT: Connected to parent epic
-mcp__plugin_aops-core_task_manager__create_task(
+mcp__pkb__create_task(
     title="Fix login bug",
     project="webapp",
     depends_on=["webapp-auth-epic"]  # Links to parent
@@ -166,7 +166,7 @@ Tasks can be assigned to a specific actor:
 **Creating assigned tasks**:
 
 ```python
-mcp__plugin_aops-core_task_manager__create_task(
+mcp__pkb__create_task(
     title="Review proposal",
     assignee="nic"  # Human task
 )
@@ -176,10 +176,10 @@ mcp__plugin_aops-core_task_manager__create_task(
 
 ```python
 # Bot tasks
-mcp__plugin_aops-core_task_manager__list_tasks(project="aops", assignee="bot")
+mcp__pkb__list_tasks(project="aops", assignee="bot")
 
 # Human tasks
-mcp__plugin_aops-core_task_manager__list_tasks(project="aops", assignee="nic")
+mcp__pkb__list_tasks(project="aops", assignee="nic")
 ```
 
 ## Task Storage

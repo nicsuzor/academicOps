@@ -13,7 +13,7 @@ Quick definitions for framework-specific terminology. Used by hydrator to interp
 | **crew** | Script that sets up polecat worktrees; located at `scripts/crew` |
 | **worktree** | Git worktree used by polecat workers for isolated file changes |
 | **swarm** | Multiple polecat workers running in parallel |
-| **task system** | Markdown-based task tracking with MCP tools (`mcp__plugin_aops-core_task_manager__*`) |
+| **task system** | Markdown-based task tracking with MCP tools (`mcp__pkb__*`) |
 | **hydrator** | Agent that transforms terse prompts into execution plans (this context) |
 | **custodiet** | Compliance-checking agent that enforces framework principles |
 | **qa** | Quality assurance agent for end-to-end verification |

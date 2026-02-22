@@ -71,7 +71,7 @@ This noise trains agents to skim past system-reminders, causing important guidan
 
 ### Example: Task Manager
 
-The `task_manager` MCP server must be defined in **aops-core** (where hooks are defined), not aops-tools. Otherwise, PreToolUse/PostToolUse hooks won't fire for task operations.
+The `pkb` MCP server must be defined in **aops-core** (where hooks are defined), not aops-tools. Otherwise, PreToolUse/PostToolUse hooks won't fire for task operations.
 
 ```
 # Correct: task_manager in aops-core/.mcp.json

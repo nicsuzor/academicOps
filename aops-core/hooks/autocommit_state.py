@@ -367,7 +367,7 @@ def get_modified_repos(tool_name: str, tool_input: dict[str, Any]) -> set[str]:
 
     # Task MCP tools (task management) -> data repo
     # Use suffix matching to be client-agnostic (handles mcp__tasks__,
-    # mcp__plugin_aops-core_task_manager__, etc.)
+    # mcp__pkb__, etc.)
     tasks_write_suffixes = (
         "__create_task",
         "__update_task",

@@ -2,7 +2,7 @@
 name: decision-extract
 category: instruction
 description: Extract pending decisions from task queue, prioritize by blocking count, output to daily note for batch processing.
-allowed-tools: Read,Edit,mcp__plugin_aops-core_task_manager__list_tasks,mcp__plugin_aops-core_task_manager__get_task,mcp__plugin_aops-core_task_manager__get_tasks_with_topology
+allowed-tools: Read,Edit,mcp__pkb__list_tasks,mcp__pkb__get_task,mcp__pkb__get_task_network
 version: 1.0.0
 permalink: skills-decision-extract
 ---
@@ -46,14 +46,14 @@ Query tasks that are waiting for your input:
 
 ```python
 # Get waiting tasks assigned to user
-waiting_tasks = mcp__plugin_aops-core_task_manager__list_tasks(
+waiting_tasks = mcp__pkb__list_tasks(
     status="waiting",
     assignee="nic",
     limit=50
 )
 
 # Get review tasks assigned to user
-review_tasks = mcp__plugin_aops-core_task_manager__list_tasks(
+review_tasks = mcp__pkb__list_tasks(
     status="review",
     assignee="nic",
     limit=50
@@ -78,7 +78,7 @@ decisions = [
 For each decision, determine how many tasks it's blocking:
 
 ```python
-topology = mcp__plugin_aops-core_task_manager__get_tasks_with_topology()
+topology = mcp__pkb__get_task_network()
 
 # Match decision IDs to topology entries to get blocking_count
 for decision in decisions:

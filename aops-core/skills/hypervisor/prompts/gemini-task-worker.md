@@ -70,7 +70,7 @@ You MAY:
 - Read any file in the codebase
 - Edit files in `aops-core/`, `aops-tools/`, `data/aops/`
 - Run tests with `pytest` or `uv run pytest`
-- Use task_manager MCP tools
+- Use pkb MCP tools
 
 You MAY NOT:
 
