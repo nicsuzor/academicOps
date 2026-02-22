@@ -3760,11 +3760,12 @@ def render_spotlight_epic():
         return sum(
             1
             for cid in children_ids
-            if tasks_by_id.get(cid, {}).get("status") not in ("done", "closed", None)
+            if tasks_by_id.get(cid, {}).get("status") not in ("done", "closed")
         )
 
-    epic = max(candidate_epics, key=_epic_activity_score)
-    if _epic_activity_score(epic) == 0:
+    scored_epics = [(ep, _epic_activity_score(ep)) for ep in candidate_epics]
+    epic, score = max(scored_epics, key=lambda item: item[1])
+    if score == 0:
         return  # No active children — skip
 
     # Get children and count by status
@@ -3789,7 +3790,7 @@ def render_spotlight_epic():
     html = f"""
     <div class="v11-progress-panel">
         <div class="v11-progress-header">
-            <div class="v11-progress-title">🚀 {epic.get("title", "Epic")}</div>
+            <div class="v11-progress-title">🚀 {esc(epic.get("title", "Epic"))}</div>
             <div class="v11-progress-pct">{done_pct:.0f}%</div>
         </div>
         <div class="v11-progress-bar">
@@ -5104,6 +5105,25 @@ try:
             # Merge sessions
             if sub in sessions_by_project:
                 sessions_by_project.setdefault(parent, []).extend(sessions_by_project.pop(sub))
+            # Merge project metadata (last_modified: max, session_count: sum)
+            if sub in projects:
+                sub_meta = projects.pop(sub) or {}
+                parent_meta = projects.get(parent, {}) or {}
+                sub_last = sub_meta.get("last_modified")
+                parent_last = parent_meta.get("last_modified")
+                if sub_last and parent_last:
+                    merged_last = max(parent_last, sub_last)
+                else:
+                    merged_last = parent_last or sub_last
+                merged_sessions = (parent_meta.get("session_count") or 0) + (
+                    sub_meta.get("session_count") or 0
+                )
+                merged_meta = dict(parent_meta)
+                if merged_last is not None:
+                    merged_meta["last_modified"] = merged_last
+                if merged_sessions:
+                    merged_meta["session_count"] = merged_sessions
+                projects[parent] = merged_meta
 
     all_projects = {p for p in all_projects if is_valid_project(p)}
 
@@ -5173,13 +5193,11 @@ try:
             and t.get("project") == proj
             and t.get("status") not in ("done", "closed")
         ]
-        rendered_epic_ids = set()
         rendered_child_ids = set()
         if project_epics:
             card_parts.append("<div class='p-section-title'>📊 EPICS</div>")
             tasks_by_id = {t["id"]: t for t in all_tasks}
             for epic in project_epics[:3]:  # Limit to 3 epics
-                rendered_epic_ids.add(epic.get("id"))
                 epic_title = epic.get("title", "").replace("Epic: ", "")
                 # Sanitize epic title
                 clean_epic = clean_activity_text(epic_title)
