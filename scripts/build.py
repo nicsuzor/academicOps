@@ -960,13 +960,26 @@ def package_artifacts(
         return tarinfo
 
     if target_platform:
-        # Platform-specific archives (e.g. aops-gemini-linux-x86_64.tar.gz)
-        # These contain platform-specific PKB binaries
-        gemini_archive = dist_root / f"aops-gemini-{target_platform}.tar.gz"
+        # Map our platform labels to Gemini CLI convention
+        # Gemini CLI expects: {platform}.{arch}.{name}.tar.gz
+        # Our labels: linux-x86_64, macos-aarch64
+        # Gemini labels: linux/darwin, x64/arm64
+        platform_map = {
+            "linux-x86_64": ("linux", "x64"),
+            "macos-aarch64": ("darwin", "arm64"),
+        }
+        gemini_os, gemini_arch = platform_map.get(target_platform, (None, None))
+
+        if gemini_os:
+            # Gemini archive: {platform}.{arch}.{name}.tar.gz (Gemini CLI convention)
+            gemini_archive = dist_root / f"{gemini_os}.{gemini_arch}.aops-core.tar.gz"
+        else:
+            gemini_archive = dist_root / f"aops-gemini-{target_platform}.tar.gz"
         with tarfile.open(gemini_archive, "w:gz") as tar:
             tar.add(dist_root / "aops-gemini", arcname=".", filter=_source_filter)
         print(f"  ✓ Packaged {gemini_archive.name}")
 
+        # Claude archive: keep existing naming (not consumed by Gemini CLI)
         claude_archive = dist_root / f"aops-claude-{target_platform}.tar.gz"
         with tarfile.open(claude_archive, "w:gz") as tar:
             tar.add(dist_root / "aops-claude", arcname="aops-claude", filter=_source_filter)
@@ -974,16 +987,13 @@ def package_artifacts(
         return
 
     # Generic archives (no platform-specific binary)
-    # 1. aops-gemini.tar.gz (single generic archive for Gemini CLI)
-    # Per gemini-packaging-guide.md: gemini-extension.json must be at archive root
-    # Using arcname="." puts content at root, not nested in a subdirectory
-    gemini_archive = dist_root / "aops-gemini.tar.gz"
+    # 1. aops-core.tar.gz (generic fallback for Gemini CLI)
+    # Named to match extension name in gemini-extension.json
+    # gemini-extension.json must be at archive root (arcname=".")
+    gemini_archive = dist_root / "aops-core.tar.gz"
     with tarfile.open(gemini_archive, "w:gz") as tar:
         tar.add(dist_root / "aops-gemini", arcname=".", filter=_source_filter)
     print(f"  ✓ Packaged {gemini_archive.name}")
-    # Also create versioned copy for reference
-    versioned_gemini = dist_root / f"aops-gemini-v{version}.tar.gz"
-    shutil.copy(gemini_archive, versioned_gemini)
 
     # 2. aops-claude-v{version}.tar.gz
     claude_archive = dist_root / f"aops-claude-v{version}.tar.gz"

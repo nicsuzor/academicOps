@@ -252,9 +252,11 @@ jobs:
             PRERELEASE_FLAG="--prerelease"
           fi
 
-          # Collect all platform archives
-          ARCHIVES="${{ github.workspace }}/dist/aops-gemini.tar.gz"
-          for f in ${{ github.workspace }}/dist/aops-*-linux-*.tar.gz ${{ github.workspace }}/dist/aops-*-macos-*.tar.gz; do
+          # Collect release archives
+          # Gemini: aops-core.tar.gz (generic) + {platform}.{arch}.aops-core.tar.gz
+          # Claude: aops-claude-{platform}.tar.gz
+          ARCHIVES=""
+          for f in ${{ github.workspace }}/dist/*.tar.gz; do
             [ -f "$f" ] && ARCHIVES="$ARCHIVES $f"
           done
 
