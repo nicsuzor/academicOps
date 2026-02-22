@@ -28,8 +28,8 @@ from lib.paths import (
     get_sessions_repo,
     get_skills_dir,
     get_summaries_dir,
-    get_transcripts_dir,
     get_tests_dir,
+    get_transcripts_dir,
     get_workflows_dir,
 )
 

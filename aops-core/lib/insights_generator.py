@@ -419,7 +419,6 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
         _validate_framework_reflections(insights["framework_reflections"])
 
 
-
 # get_summaries_dir is now imported from lib.paths
 
 
