@@ -11,6 +11,7 @@ from lib.session_state import SessionState
 from lib.template_registry import TemplateRegistry
 
 
+
 def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:
     """Create rich audit file for gate using TemplateRegistry.
 

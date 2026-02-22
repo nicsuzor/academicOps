@@ -232,10 +232,8 @@ class KnowledgeGraph:
         cmd = [
             str(binary),
             str(self._data_root),
-            "-f",
-            "json",
-            "-o",
-            output_base,
+            "-f", "json",
+            "-o", output_base,
             "--quiet",
         ]
 
@@ -342,7 +340,9 @@ class KnowledgeGraph:
 
     # ── Traversal ────────────────────────────────────────────────────
 
-    def neighbors(self, node_id: str, edge_types: list[str] | None = None) -> list[dict[str, Any]]:
+    def neighbors(
+        self, node_id: str, edge_types: list[str] | None = None
+    ) -> list[dict[str, Any]]:
         """Get nodes adjacent to a given node (outgoing edges).
 
         Args:
@@ -398,7 +398,9 @@ class KnowledgeGraph:
             groups[ntype].append(bl)
         return dict(groups)
 
-    def shortest_path(self, source: str, target: str) -> list[dict[str, Any]] | None:
+    def shortest_path(
+        self, source: str, target: str
+    ) -> list[dict[str, Any]] | None:
         """Find shortest path between two nodes.
 
         Uses undirected view for path finding (links are conceptually bidirectional).
@@ -544,7 +546,9 @@ class KnowledgeGraph:
             if priority is None:
                 priority_weight = 0.5  # unknown priority = low weight
             else:
-                priority_weight = {0: 5.0, 1: 3.0, 2: 2.0, 3: 1.0, 4: 0.5}.get(priority, 0.5)
+                priority_weight = {0: 5.0, 1: 3.0, 2: 2.0, 3: 1.0, 4: 0.5}.get(
+                    priority, 0.5
+                )
             downstream = attrs.get("downstream_weight", 0.0)
             importance = priority_weight + downstream
 
@@ -559,18 +563,16 @@ class KnowledgeGraph:
                 gap = importance / (1 + connectivity)
 
             if gap > 1.0:  # Only report meaningful gaps
-                gaps.append(
-                    {
-                        "id": nid,
-                        "label": attrs.get("label", ""),
-                        "node_type": attrs.get("node_type", DEFAULT_NODE_TYPE),
-                        "importance": round(importance, 2),
-                        "connectivity": connectivity,
-                        "gap_score": round(gap, 2),
-                        "status": attrs.get("status"),
-                        "priority": attrs.get("priority"),
-                    }
-                )
+                gaps.append({
+                    "id": nid,
+                    "label": attrs.get("label", ""),
+                    "node_type": attrs.get("node_type", DEFAULT_NODE_TYPE),
+                    "importance": round(importance, 2),
+                    "connectivity": connectivity,
+                    "gap_score": round(gap, 2),
+                    "status": attrs.get("status"),
+                    "priority": attrs.get("priority"),
+                })
 
         gaps.sort(key=lambda x: x["gap_score"], reverse=True)
         return gaps
