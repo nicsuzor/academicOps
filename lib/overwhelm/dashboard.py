@@ -5203,14 +5203,18 @@ try:
             and t.get("project") == proj
             and t.get("status") not in ("done", "closed")
         ]
+        rendered_epic_ids = set()
+        rendered_child_ids = set()
         if project_epics:
             card_parts.append("<div class='p-section-title'>📊 EPICS</div>")
             tasks_by_id = {t["id"]: t for t in all_tasks}
             for epic in project_epics[:3]:  # Limit to 3 epics
+                rendered_epic_ids.add(epic.get("id"))
                 epic_title = epic.get("title", "").replace("Epic: ", "")
                 # Sanitize epic title
                 clean_epic = clean_activity_text(epic_title)
                 children_ids = epic.get("children", [])
+                rendered_child_ids.update(children_ids)
                 done_count = sum(
                     1 for cid in children_ids if tasks_by_id.get(cid, {}).get("status") == "done"
                 )
@@ -5244,7 +5248,13 @@ try:
 
         # 3. Priority Tasks (Backlog)
         # We only show top 3-5 incomplete tasks to save space
-        incomplete_tasks = [t for t in p_tasks if t.get("status") not in ("done", "closed")]
+        # Exclude epics and their children (already shown in EPICS section)
+        incomplete_tasks = [
+            t for t in p_tasks
+            if t.get("status") not in ("done", "closed")
+            and t.get("type") != "epic"
+            and t.get("id") not in rendered_child_ids
+        ]
         if incomplete_tasks:
             card_parts.append("<div class='p-section-title'>📌 UP NEXT</div>")
             for t in incomplete_tasks[:3]:
