@@ -43,6 +43,7 @@ Curate root-level index files using LLM judgment. For each file, read the source
 | ------------------ | ----------------------------------------------------- |
 | AXIOMS.md          | `axioms/*.md` files                                   |
 | HEURISTICS.md      | `heuristics/*.md` files                               |
+| CONSTRAINTS.md     | Pre-commit hooks in `.pre-commit-config.yaml`, hard enforcement rules |
 | SKILLS.md          | `skills/*/SKILL.md` frontmatter                       |
 | WORKFLOWS.md       | `workflows/*.md`, `skills/*/workflows/*.md`           |
 | enforcement-map.md | `hooks/*.py` "Enforces:" docstrings, `gate_config.py` |
