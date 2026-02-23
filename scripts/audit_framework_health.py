@@ -689,10 +689,7 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "mcp__pkb__get_blocked_tasks",
         "mcp__pkb__get_task_network",
         "mcp__pkb__get_network_metrics",
-        "mcp__pkb__get_task_network",
         "mcp__pkb__reindex",
-        "mcp__pkb__create_task",
-        "mcp__pkb__get_task_network",
         # Template/example placeholders in specs
         "path/to/implementation.py",
         "path/to/agent.md",

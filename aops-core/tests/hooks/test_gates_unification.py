@@ -99,7 +99,7 @@ def test_handover_gate_opening_skill(mock_session):
 
     assert result is not None
     assert result.system_message is not None
-    assert "Handover complete" in result.system_message
+    assert "Finalization complete" in result.system_message
 
     # Verify status
     assert state.gates["handover"].status == GateStatus.OPEN
