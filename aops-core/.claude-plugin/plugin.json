@@ -1,6 +1,6 @@
 {
   "name": "aops-core",
-  "version": "0.1.23",
+  "version": "0.2.0",
   "description": "Core academicOps framework - skills, agents, hooks, and tools for research workflow automation",
   "author": {
     "name": "Nicolas Suzor"

@@ -47,14 +47,14 @@ result = claude_headless(
 
 ### 4. Remember Skill Tests
 
-- Delegates to memory server MCP tools
+- Delegates to PKB tools
 - Persists knowledge via Skill(skill="remember")
-- Retrieves via mcp__memory__retrieve_memory
+- Retrieves via mcp__pkb__search
 
 ## What E2E Tests Cannot Do (Gaps)
 
 1. **Hook behavior** - No tests for PreToolUse/PostToolUse execution
-2. **MCP server integration** - No tests for memory server MCP tool calls
+2. **MCP server integration** - No tests for PKB MCP tool calls
 3. **Multi-turn conversations** - All tests are single-prompt
 4. **Error recovery** - No tests for agent behavior when tools fail
 5. **Prompt Intent Router** - New spec, no tests yet

@@ -14,16 +14,25 @@ tags: [framework, routing, tools, index]
 
 Reference for agent capabilities. Use this to understand what operations are possible.
 
-## MCP Servers
+## Core Server
 
-| Server         | Purpose                    | Key Operations                                                         |
-| -------------- | -------------------------- | ---------------------------------------------------------------------- |
-| `omcp`         | Outlook email & calendar   | Search/read/draft messages, list events, create meetings               |
-| `zot`          | Zotero research library    | Search papers, get citations, find similar works, OpenAlex integration |
-| `osb`          | Meta Oversight Board cases | Search decisions, get case summaries, legal reasoning analysis         |
-| `memory`       | Semantic knowledge store   | Store/retrieve memories, tag-based search, recall by time              |
-| `pkb`          | Personal knowledge base    | Tasks, semantic search, knowledge graph, task network metrics          |
-| `context7`     | Library documentation      | Look up API docs for any programming library                           |
+| Server | Purpose                    | Key Operations                                                |
+| ------ | -------------------------- | ------------------------------------------------------------- |
+| `pkb`  | Personal knowledge base    | Tasks, semantic search, knowledge graph, memories, notes      |
+
+PKB is always available. See CONNECTORS.md for optional tool categories.
+
+## Connector Categories
+
+These are optional tools resolved at runtime. Skills reference them as `~~category`.
+
+| Category              | Placeholder            | Purpose                                                        |
+| --------------------- | ---------------------- | -------------------------------------------------------------- |
+| Email & calendar      | `~~email`              | Search/read/draft messages, list events, create meetings       |
+| Research library      | `~~research-library`   | Search papers, get citations, find similar works               |
+| Case database         | `~~case-database`      | Search decisions, get case summaries, legal reasoning analysis |
+| Documentation         | `~~documentation`      | Look up API docs for any programming library                   |
+| AI assistant          | `~~ai-assistant`       | Delegate analysis to another AI model                          |
 
 <!-- NS: exclude Standard Tools from this file. -->
 
@@ -43,8 +52,8 @@ Reference for agent capabilities. Use this to understand what operations are pos
 
 ## Routing Hints
 
-- **Email work** → `omcp` server has full Outlook access
-- **Research/citations** → `zot` for library, `osb` for Oversight Board
-- **Remember context** → `memory` server for semantic storage
-- **Task management** → `pkb` for all work tracking, search, and knowledge graph
-- **Documentation lookup** → `context7` for library APIs
+- **Email work** → use `~~email` connector (e.g., Outlook, Gmail)
+- **Research/citations** → use `~~research-library` (e.g., Zotero) or `~~case-database`
+- **Remember context** → `pkb` server: `create_memory`, `search`, `append`
+- **Task management** → `pkb` server: `create_task`, `update_task`, `list_tasks`, `complete_task`
+- **Documentation lookup** → use `~~documentation` connector (e.g., Context7)

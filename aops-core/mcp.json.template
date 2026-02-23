@@ -1,20 +1,6 @@
 {
   "claude": {
     "mcpServers": {
-      "memory": {
-        "type": "stdio",
-        "command": "env",
-        "args": [
-          "-u", "VIRTUAL_ENV",
-          "uv", "run",
-          "--directory", "${CLAUDE_PLUGIN_ROOT}",
-          "python", "mcp_servers/memory_proxy.py"
-        ],
-        "env": {
-          "MCP_MEMORY_API_KEY": "${MCP_MEMORY_API_KEY}",
-          "MEMORY_SERVER_URL": "http://services.stoat-musical.ts.net:8026/mcp"
-        }
-      },
       "pkb": {
         "type": "stdio",
         "command": "pkb",
@@ -27,15 +13,6 @@
   },
   "gemini": {
     "mcpServers": {
-      "memory": {
-        "url": "http://services.stoat-musical.ts.net:8026/mcp",
-        "headers": {
-          "Authorization": "Bearer $MCP_MEMORY_API_KEY"
-        },
-        "env": {
-          "MCP_MEMORY_API_KEY": "${MCP_MEMORY_API_KEY}"
-        }
-      },
       "pkb": {
         "command": "pkb",
         "env": {

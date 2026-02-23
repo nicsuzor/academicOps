@@ -44,9 +44,9 @@ backend: scripts
 
 ### Step 1: Fetch Recent Emails
 
-**CRITICAL**: To check if Outlook MCP is available, CALL THE TOOL. Do NOT investigate config files, check `ListMcpResourcesTool`, or grep for settings. Just invoke the tool - if it works, proceed; if it errors, HALT.
+**CRITICAL**: To check if ~~email connector is available, CALL THE TOOL. Do NOT investigate config files, check `ListMcpResourcesTool`, or grep for settings. Just invoke the tool - if it works, proceed; if it errors, HALT.
 
-**Tool**: `mcp__outlook__messages_list_recent`
+**Tool**: `~~email.messages_list_recent`
 
 **Parameters**:
 
@@ -61,7 +61,7 @@ backend: scripts
 
 ```json
 {
-  "tool": "mcp__outlook__messages_list_recent",
+  "tool": "~~email.messages_list_recent",
   "parameters": {
     "account": null,
     "limit": 20
@@ -81,7 +81,7 @@ backend: scripts
 
 For emails that look actionable, check if user has already responded (indicating the matter may be dealt with).
 
-**Tool**: `mcp__outlook__messages_query_subject_contains`
+**Tool**: `~~email.messages_query_subject_contains`
 
 **Process**:
 
@@ -139,7 +139,7 @@ For each email, classify into one of three categories:
 
 **For Important FYI emails**:
 
-1. Read full body: `mcp__outlook__messages_get(entry_id, format="text")`
+1. Read full body: `~~email.messages_get(entry_id, format="text")`
 2. Extract key information (dates, amounts, outcomes, decisions, links)
 3. Store for presentation before archiving
 
@@ -185,11 +185,11 @@ For each email, classify into one of three categories:
 }
 ```
 
-### Step 3: Gather Context from Memory Server
+### Step 3: Gather Context from PKB
 
-For each extracted action, query **memory server** for relevant context.
+For each extracted action, query **PKB** for relevant context.
 
-**Tool**: `mcp__memory__retrieve_memory`
+**Tool**: `mcp__pkb__search`
 
 **Parameters**:
 
@@ -203,7 +203,7 @@ For each extracted action, query **memory server** for relevant context.
 
 ```json
 {
-  "tool": "mcp__memory__retrieve_memory",
+  "tool": "mcp__pkb__search",
   "parameters": {
     "query": "OSB vote content removal oversight board"
   }
@@ -331,7 +331,7 @@ Use appropriate tool for each resource type:
 **Email attachments**:
 
 ```
-mcp__outlook__messages_download_attachments(
+~~email.messages_download_attachments(
   entry_id="...",
   download_dir="$ACA_DATA/reviews/{sender}/"  # or task-documents/{task-id}/
 )
@@ -580,10 +580,10 @@ Details: [logged for institutional reporting]
 
 **Halt immediately and report**:
 
-1. **Outlook MCP unavailable**
-   - Error: `mcp__outlook__messages_list_recent` returns error
+1. **Email connector unavailable**
+   - Error: `~~email.messages_list_recent` returns error
    - Action: Halt workflow, report to user
-   - Message: "Cannot check email - Outlook MCP error: [exact error message]"
+   - Message: "Cannot check email - ~~email connector error: [exact error message]"
    - **DO NOT**: Investigate configs, check ListMcpResourcesTool, or try workarounds
 
 2. **Both task backends unavailable**
@@ -600,7 +600,7 @@ Details: [logged for institutional reporting]
 
 **Continue with reduced functionality**:
 
-1. **Memory server unavailable**
+1. **PKB unavailable**
    - Impact: No context for categorization
    - Fallback: Create all tasks with #needs-categorization
    - Continue: Yes, task capture still valuable
@@ -712,9 +712,9 @@ For each action item:
 
 **Issue**: "All tasks created with #needs-categorization"
 
-- **Cause**: Memory server not responding or context insufficient
-- **Fix**: Verify memory server connection, enrich memory with more project data
-- **Check**: Query memory manually to verify it returns project matches
+- **Cause**: PKB not responding or context insufficient
+- **Fix**: Verify PKB connection, enrich PKB with more project data
+- **Check**: Query PKB manually to verify it returns project matches
 
 **Issue**: "Duplicate tasks created"
 
@@ -724,14 +724,14 @@ For each action item:
 
 **Issue**: "Wrong project assignments"
 
-- **Cause**: Memory context doesn't match email patterns well
-- **Fix**: Review categorization patterns, update memory with better project descriptions
+- **Cause**: PKB context doesn't match email patterns well
+- **Fix**: Review categorization patterns, update PKB with better project descriptions
 - **Check**: Review data/logs/task-capture.jsonl for categorization accuracy
 
 **Issue**: "Tasks created but workflow slow (>30 seconds)"
 
-- **Cause**: Too many memory queries or email processing
-- **Fix**: Batch memory queries, limit email count per check
+- **Cause**: Too many PKB queries or email processing
+- **Fix**: Batch PKB queries, limit email count per check
 - **Check**: Monitor timing in logs, optimize sequential vs parallel calls
 
 ## Configuration
@@ -748,13 +748,13 @@ Different email accounts require different tools for archiving:
 **Gmail archive** (uses `messages_archive` with folder ID):
 
 ```
-mcp__outlook__messages_archive(entry_id="...", folder_id="211")
+~~email.messages_archive(entry_id="...", folder_id="211")
 ```
 
 **Exchange/Outlook archive** (uses `messages_move` with folder path):
 
 ```
-mcp__outlook__messages_move(entry_id="...", folder_path="Archive", account="n.suzor@qut.edu.au")
+~~email.messages_move(entry_id="...", folder_path="Archive", account="n.suzor@qut.edu.au")
 ```
 
 **Why different tools?** Gmail accounts on macOS Outlook don't appear in AppleScript account enumeration, so `messages_move` with `account` parameter fails. Use `messages_list_folders` to discover folder IDs.

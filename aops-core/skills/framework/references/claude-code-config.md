@@ -160,7 +160,7 @@ Set to `true` to enable extended thinking mode by default.
 | --------------------- | -------------------------------------------------------------- |
 | TodoWrite (todo list) | ❌ No - subagent todos don't persist to parent session         |
 | File operations       | ✅ Yes - verified bidirectional (parent↔subagent reads/writes) |
-| Memory server         | ✅ Yes - mcp__memory__* calls persist globally                 |
+| PKB                   | ✅ Yes - mcp__pkb__* calls persist globally                    |
 
 **Practical implication**: If you need todos visible in the main session, the main agent must create them directly. Cannot delegate todo creation to subagents.
 

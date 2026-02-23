@@ -139,11 +139,10 @@ Match session accomplishments to related tasks using semantic search.
 For each accomplishment from session JSONs:
 
 ```python
-# Semantic search via memory server
-candidates = mcp__memory__retrieve_memory(
+# Semantic search via PKB
+candidates = mcp__pkb__search(
     query=accomplishment_text,
-    limit=5,
-    similarity_threshold=0.6
+    limit=5
 )
 ```
 
@@ -169,7 +168,7 @@ For each accomplishment with candidates:
 
 | Scenario                  | Behavior                                    |
 | ------------------------- | ------------------------------------------- |
-| Memory server unavailable | Skip semantic matching, continue processing |
+| PKB unavailable           | Skip semantic matching, continue processing |
 | Task file not found       | Log warning, continue to next               |
 | Unexpected task format    | Skip that task, log warning                 |
 

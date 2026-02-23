@@ -30,7 +30,7 @@ Agents must NOT remove or bypass lock files without explicit user authorization.
 
 ## Indices Before Exploration (P#58)
 
-Prefer curated indices (memory server, zotero, bd) over broad filesystem searches for exploratory queries.
+Prefer curated indices (PKB, zotero, bd) over broad filesystem searches for exploratory queries.
 
 **Corollaries**:
 - Grep is for needles, not fishing expeditions

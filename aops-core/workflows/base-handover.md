@@ -148,10 +148,10 @@ mcp__pkb__create_task(
 For each task complete and learning to persist:
 
 ```
-mcp__memory__store_memory(
-  content="<work done and key learnings>",
-  tags=["dump", "handover"],
-  metadata={"task_id": "<current-task>", "reason": "<reason (interrupted|complete|other|...)>"}
+mcp__pkb__create_memory(
+  title="Session handover: <brief summary>",
+  body="<work done and key learnings>",
+  tags=["dump", "handover"]
 )
 ```
 
