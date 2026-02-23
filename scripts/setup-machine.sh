@@ -5,13 +5,15 @@
 #   - ACA_DATA git hooks path
 #   - Crontab for periodic sync + viz generation
 #   - Polecat project config (local paths from master registry)
-#   - Rust CLI tools (aops, pkb)
-#   - Claude Code plugins and MCP servers
+#   - CLI tools (aops, pkb) from GitHub releases
+#   - Claude Code plugins from marketplace
 #   - Validates required environment variables and tools
 #
 # Usage:
-#   ./scripts/setup-machine.sh          # Interactive setup
+#   ./scripts/setup-machine.sh          # Release install (from GitHub)
 #   ./scripts/setup-machine.sh --check  # Validate only, don't change anything
+#
+# For development installs (local build), use: make install-dev
 
 set -euo pipefail
 
@@ -71,39 +73,65 @@ for cmd in claude aops; do
     fi
 done
 
-# --- 3. Install Rust CLI tools ---
+# --- 3. Install CLI tools (aops + pkb) ---
 echo ""
-echo -e "${BOLD}Rust CLI tools:${NC}"
+echo -e "${BOLD}CLI tools (aops + pkb):${NC}"
 
-MEM_REPO="${HOME}/src/mem"
-if [[ ! -d "$MEM_REPO" ]]; then
-    # Try common locations
-    for candidate in /opt/nic/mem /opt/*/mem; do
-        if [[ -d "$candidate/Cargo.toml" ]] || [[ -d "$candidate" && -f "$candidate/Cargo.toml" ]]; then
-            MEM_REPO="$candidate"
-            break
-        fi
-    done
-fi
+INSTALL_BIN="${USER_OPT:+${USER_OPT}/bin}"
+INSTALL_BIN="${INSTALL_BIN:-${HOME}/.local/bin}"
 
-if [[ -f "${MEM_REPO}/Cargo.toml" ]]; then
-    if [[ "$CHECK_ONLY" == true ]]; then
-        if command -v aops &>/dev/null; then
-            ok "aops installed ($(aops --version 2>/dev/null || echo 'unknown'))"
-        else
-            fail "aops not installed. Run: cargo install --path ${MEM_REPO}"
-        fi
+# Detect platform
+PLATFORM=""
+case "$(uname -s)-$(uname -m)" in
+    Linux-x86_64)   PLATFORM="linux-x86_64" ;;
+    Darwin-arm64)   PLATFORM="macos-aarch64" ;;
+esac
+
+if [[ "$CHECK_ONLY" == true ]]; then
+    if command -v aops &>/dev/null; then
+        ok "aops installed ($(aops --version 2>/dev/null || echo 'unknown'))"
     else
-        echo -n "  Installing aops + pkb from ${MEM_REPO}... "
-        if cargo install --path "${MEM_REPO}" --quiet 2>/dev/null; then
-            echo -e "${GREEN}done${NC}"
-        else
-            echo -e "${RED}failed${NC}"
-            fail "cargo install --path ${MEM_REPO} failed"
-        fi
+        fail "aops not installed. Run: make install-cli"
+    fi
+    if command -v pkb &>/dev/null; then
+        ok "pkb installed"
+    else
+        fail "pkb not installed. Run: make install-cli"
     fi
 else
-    warn "mem repo not found (checked ${MEM_REPO}). Clone it to install aops/pkb."
+    if [[ -z "$PLATFORM" ]]; then
+        fail "Cannot detect platform ($(uname -s)-$(uname -m)). Install manually: make install-cli PLATFORM=..."
+    elif ! command -v gh &>/dev/null; then
+        fail "gh (GitHub CLI) not found. Install it first, or use: make install-cli-dev"
+    else
+        echo -n "  Downloading aops + pkb for ${PLATFORM}... "
+        TMPDIR=$(mktemp -d)
+        ARCHIVE="aops-claude-${PLATFORM}.tar.gz"
+        if gh release download --repo nicsuzor/aops-dist --pattern "${ARCHIVE}" --dir "${TMPDIR}" --clobber 2>/dev/null; then
+            mkdir -p "${INSTALL_BIN}"
+            tar xzf "${TMPDIR}/${ARCHIVE}" -C "${TMPDIR}"
+            # Find and install binaries (may be at bin/ or aops-claude/bin/)
+            for bin_name in aops pkb; do
+                src=$(find "${TMPDIR}" -name "${bin_name}" -type f | head -1)
+                if [[ -n "$src" ]]; then
+                    cp "$src" "${INSTALL_BIN}/${bin_name}"
+                    chmod +x "${INSTALL_BIN}/${bin_name}"
+                fi
+            done
+            rm -rf "${TMPDIR}"
+            echo -e "${GREEN}done${NC}"
+            ok "Installed to ${INSTALL_BIN}"
+            # Check PATH
+            case ":${PATH}:" in
+                *":${INSTALL_BIN}:"*) ;;
+                *) warn "${INSTALL_BIN} is not on PATH. Add it to your shell config." ;;
+            esac
+        else
+            rm -rf "${TMPDIR}"
+            echo -e "${RED}failed${NC}"
+            fail "Download failed. Check gh auth status or use: make install-cli-dev"
+        fi
+    fi
 fi
 
 # --- 4. Install Claude Code plugins ---
@@ -111,16 +139,21 @@ echo ""
 echo -e "${BOLD}Claude Code plugins:${NC}"
 
 if command -v claude &>/dev/null; then
-    DOTFILES_SETUP="${HOME}/dotfiles/scripts/setup-ai-tools.sh"
-    if [[ -x "${DOTFILES_SETUP}" ]]; then
-        if [[ "$CHECK_ONLY" == true ]]; then
-            ok "setup-ai-tools.sh available at ${DOTFILES_SETUP}"
+    if [[ "$CHECK_ONLY" == true ]]; then
+        if claude plugin list 2>/dev/null | grep -q "aops-core"; then
+            ok "aops-core plugin installed"
         else
-            echo "  Running setup-ai-tools.sh..."
-            bash "${DOTFILES_SETUP}" 2>&1 | sed 's/^/    /'
+            fail "aops-core plugin not installed. Run: make install-claude"
         fi
     else
-        warn "setup-ai-tools.sh not found at ${DOTFILES_SETUP}"
+        echo "  Installing aops plugin from marketplace..."
+        if claude plugin marketplace add nicsuzor/aops-dist 2>&1 | sed 's/^/    /' && \
+           claude plugin marketplace update aops 2>&1 | sed 's/^/    /' && \
+           claude plugin install aops-core@aops 2>&1 | sed 's/^/    /'; then
+            ok "aops-core plugin installed"
+        else
+            fail "Plugin installation failed. Try: make install-claude"
+        fi
     fi
 else
     warn "Claude Code not installed. Skipping plugin setup."

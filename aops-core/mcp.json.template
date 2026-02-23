@@ -17,7 +17,7 @@
       },
       "pkb": {
         "type": "stdio",
-        "command": "${CLAUDE_PLUGIN_ROOT}/bin/pkb-search",
+        "command": "pkb",
         "env": {
           "ACA_DATA": "${ACA_DATA}",
           "RUST_LOG": "warn"
@@ -37,7 +37,7 @@
         }
       },
       "pkb": {
-        "command": "${extensionPath}/bin/pkb-search",
+        "command": "pkb",
         "env": {
           "ACA_DATA": "${ACA_DATA}",
           "RUST_LOG": "warn"
