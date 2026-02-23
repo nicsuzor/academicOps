@@ -3,9 +3,13 @@
 # Triggers via workflow_run — only runs when Code Quality (lint + gatekeeper + type-check)
 # ALL pass. If gatekeeper rejects, this pipeline never starts.
 #
-# Sequence: custodiet → qa → merge-prep → notify-ready
+# Sequence: custodiet -> qa -> merge-prep -> notify-ready
 # Each agent reviews in order so downstream agents see previous feedback.
 # Merge-prep auto-fixes review comments before the human sees the PR.
+#
+# Anti-cascade guard: tracks pipeline run count per PR via issue comments.
+# After MAX_PIPELINE_RUNS (default 3), the pipeline stops and asks for
+# human intervention instead of looping indefinitely.
 #
 # See specs/pr-process.md for the full process documentation.
 
@@ -30,9 +34,15 @@ concurrency:
   group: pr-review-${{ inputs.pr_number || github.event.workflow_run.pull_requests[0].number || github.run_id }}
   cancel-in-progress: true
 
+env:
+  # Maximum number of full pipeline runs per PR before requiring human intervention.
+  # Each push from merge-prep triggers Code Quality -> PR Review, so this bounds
+  # the total number of review cycles to prevent infinite bot cascades.
+  MAX_PIPELINE_RUNS: 3
+
 jobs:
   # ──────────────────────────────────────────────
-  # Setup: extract PR metadata from workflow_run
+  # Setup: extract PR metadata and check run count
   # ──────────────────────────────────────────────
   setup:
     name: Setup
@@ -45,6 +55,8 @@ jobs:
     outputs:
       pr_number: ${{ steps.pr-info.outputs.pr_number }}
       head_ref: ${{ steps.pr-info.outputs.head_ref }}
+      run_count: ${{ steps.run-count.outputs.count }}
+      should_skip: ${{ steps.run-count.outputs.should_skip }}
     steps:
       - name: Extract PR info
         id: pr-info
@@ -68,12 +80,64 @@ jobs:
           echo "head_ref=$HEAD_REF" >> "$GITHUB_OUTPUT"
           echo "PR #$PR_NUMBER on branch $HEAD_REF"
 
+      - name: Check pipeline run count
+        id: run-count
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUM="${{ steps.pr-info.outputs.pr_number }}"
+          REPO="${{ github.repository }}"
+
+          # Count previous pipeline runs by looking for our sentinel comments.
+          # Each pipeline run posts a "Pipeline Complete" comment at the end.
+          # We also count "Pipeline Halted" comments to include aborted runs.
+          RUN_COUNT=$(gh api repos/${REPO}/issues/${PR_NUM}/comments \
+            --jq '[.[] | select(
+              (.body | test("Pipeline Complete|Pipeline Halted|Merge Prep:")) and
+              (.user.login == "github-actions[bot]")
+            )] | length')
+
+          echo "Previous pipeline completions: $RUN_COUNT"
+          echo "count=$RUN_COUNT" >> "$GITHUB_OUTPUT"
+
+          if [ "$RUN_COUNT" -ge "${{ env.MAX_PIPELINE_RUNS }}" ]; then
+            echo "should_skip=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::Pipeline has run $RUN_COUNT times on PR #$PR_NUM (max: ${{ env.MAX_PIPELINE_RUNS }}). Halting to prevent cascade."
+          else
+            echo "should_skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post cascade-halt notice
+        if: steps.run-count.outputs.should_skip == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUM="${{ steps.pr-info.outputs.pr_number }}"
+          RUN_COUNT="${{ steps.run-count.outputs.count }}"
+
+          gh pr comment "$PR_NUM" --repo "${{ github.repository }}" --body "$(cat <<EOF
+          ## Pipeline Halted — Cascade Limit Reached
+
+          The review pipeline has run **${RUN_COUNT} times** on this PR (limit: ${{ env.MAX_PIPELINE_RUNS }}).
+          This usually means merge-prep and the review agents are in a cycle where
+          fixes trigger new reviews that trigger new fixes.
+
+          **Human intervention required.** Please:
+          1. Review the outstanding comments and decide what to fix vs. dismiss
+          2. Push any manual fixes
+          3. Re-run the pipeline manually via workflow_dispatch if needed
+
+          *To reset the counter, re-run via Actions > PR Review > Run workflow.*
+          EOF
+          )"
+
   # ──────────────────────────────────────────────
   # Stage 1: Custodiet (scope compliance)
   # ──────────────────────────────────────────────
   custodiet:
     name: Custodiet
     needs: [setup]
+    if: needs.setup.outputs.should_skip != 'true'
     uses: ./.github/workflows/agent-custodiet.yml
     permissions:
       contents: read
@@ -93,6 +157,7 @@ jobs:
   qa:
     name: QA
     needs: [setup, custodiet]
+    if: needs.setup.outputs.should_skip != 'true'
     uses: ./.github/workflows/agent-qa.yml
     permissions:
       contents: read
@@ -111,6 +176,7 @@ jobs:
   merge-prep:
     name: Merge Prep
     needs: [setup, qa]
+    if: needs.setup.outputs.should_skip != 'true'
     uses: ./.github/workflows/agent-merge-prep.yml
     permissions:
       contents: write
@@ -129,6 +195,7 @@ jobs:
   notify-ready:
     name: Ready for Review
     needs: [setup, merge-prep]
+    if: needs.setup.outputs.should_skip != 'true'
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -159,9 +226,10 @@ jobs:
         if: steps.review-state.outputs.has_unresolved == 'false'
         run: |
           PR_NUM="${{ needs.setup.outputs.pr_number }}"
+          RUN_NUM=$(( ${{ needs.setup.outputs.run_count }} + 1 ))
 
-          gh pr comment "$PR_NUM" --repo "${{ github.repository }}" --body "$(cat <<'SUMMARY'
-          ## Pipeline Complete — Ready for Human Review
+          gh pr comment "$PR_NUM" --repo "${{ github.repository }}" --body "$(cat <<SUMMARY
+          ## Pipeline Complete — Ready for Human Review (run ${RUN_NUM}/${{ env.MAX_PIPELINE_RUNS }})
 
           All automated stages have finished:
 
@@ -182,9 +250,10 @@ jobs:
           PR_NUM="${{ needs.setup.outputs.pr_number }}"
           CHANGES="${{ steps.review-state.outputs.changes_requested }}"
           COMMENTS="${{ steps.review-state.outputs.comment_count }}"
+          RUN_NUM=$(( ${{ needs.setup.outputs.run_count }} + 1 ))
 
           gh pr comment "$PR_NUM" --repo "${{ github.repository }}" --body "$(cat <<SUMMARY
-          ## Pipeline Complete — Unresolved Feedback Remains
+          ## Pipeline Complete — Unresolved Feedback Remains (run ${RUN_NUM}/${{ env.MAX_PIPELINE_RUNS }})
 
           All automated stages have finished:
 

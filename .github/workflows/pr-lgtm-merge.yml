@@ -8,6 +8,11 @@
 #   2. LGTM-pattern comment from nicsuzor
 #   3. Manual workflow dispatch
 #
+# Pre-merge checks:
+#   - Verifies required status checks are passing before enabling auto-merge
+#   - If lint is failing, triggers lint autofix and reports status
+#   - If other checks are failing, reports what's blocking the merge
+#
 # See specs/pr-process.md for full process documentation.
 
 name: Merge
@@ -70,6 +75,46 @@ jobs:
           PR_NUM="${{ github.event.inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}"
           echo "pr_number=$PR_NUM" >> $GITHUB_OUTPUT
 
+      - name: Check required status checks
+        id: check-status
+        if: steps.pr-ref.outputs.pr_number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
+          REPO="${{ github.repository }}"
+
+          # Get the HEAD SHA for this PR
+          HEAD_SHA=$(gh api repos/${REPO}/pulls/${PR_NUM} --jq '.head.sha')
+          HEAD_REF=$(gh api repos/${REPO}/pulls/${PR_NUM} --jq '.head.ref')
+          echo "head_sha=$HEAD_SHA" >> $GITHUB_OUTPUT
+          echo "head_ref=$HEAD_REF" >> $GITHUB_OUTPUT
+
+          # Check all check runs on the HEAD commit
+          # Focus on the required check: "Lint"
+          LINT_STATUS=$(gh api repos/${REPO}/commits/${HEAD_SHA}/check-runs \
+            --jq '[.check_runs[] | select(.name == "Lint")] | sort_by(.started_at) | last | .conclusion // .status // "not_found"')
+
+          echo "lint_status=$LINT_STATUS" >> $GITHUB_OUTPUT
+          echo "Lint status: $LINT_STATUS"
+
+          # Check overall combined status
+          COMBINED=$(gh api repos/${REPO}/commits/${HEAD_SHA}/status --jq '.state // "unknown"')
+          echo "combined_status=$COMBINED" >> $GITHUB_OUTPUT
+          echo "Combined status: $COMBINED"
+
+          # Gather all failing checks for reporting
+          FAILING_CHECKS=$(gh api repos/${REPO}/commits/${HEAD_SHA}/check-runs \
+            --jq '[.check_runs[] | select(.conclusion == "failure" or .conclusion == "cancelled")] | map(.name) | join(", ")' || echo "")
+          echo "failing_checks=$FAILING_CHECKS" >> $GITHUB_OUTPUT
+
+          # Determine if we can proceed directly
+          if [ "$LINT_STATUS" = "success" ] && [ -z "$FAILING_CHECKS" ]; then
+            echo "checks_ok=true" >> $GITHUB_OUTPUT
+          else
+            echo "checks_ok=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Acknowledge
         if: github.event_name == 'issue_comment' && steps.lgtm-check.outputs.proceed == 'true'
         env:
@@ -77,6 +122,56 @@ jobs:
         run: |
           gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
             -f content=rocket
+
+      - name: Re-run lint if failing
+        id: rerun-lint
+        if: >-
+          steps.pr-ref.outputs.pr_number != '' &&
+          steps.check-status.outputs.checks_ok != 'true' &&
+          (steps.check-status.outputs.lint_status == 'failure' ||
+           steps.check-status.outputs.lint_status == 'cancelled' ||
+           steps.check-status.outputs.lint_status == 'not_found')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
+          HEAD_REF="${{ steps.check-status.outputs.head_ref }}"
+          REPO="${{ github.repository }}"
+
+          echo "Lint is not passing — triggering Code Quality re-run via workflow_dispatch"
+
+          # Trigger the code-quality workflow on the PR's branch
+          gh workflow run code-quality.yml --repo "$REPO" --ref "$HEAD_REF" || true
+
+          echo "triggered=true" >> $GITHUB_OUTPUT
+
+      - name: Report blocking checks
+        if: >-
+          steps.pr-ref.outputs.pr_number != '' &&
+          steps.check-status.outputs.checks_ok != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
+          LINT_STATUS="${{ steps.check-status.outputs.lint_status }}"
+          FAILING="${{ steps.check-status.outputs.failing_checks }}"
+          RERUN="${{ steps.rerun-lint.outputs.triggered }}"
+
+          BODY="## Merge: Checks Not Passing"
+          BODY="${BODY}\n\nLGTM received, but required status checks are not all passing."
+          BODY="${BODY}\n\n**Lint status**: ${LINT_STATUS}"
+
+          if [ -n "$FAILING" ]; then
+            BODY="${BODY}\n**Failing checks**: ${FAILING}"
+          fi
+
+          if [ "$RERUN" = "true" ]; then
+            BODY="${BODY}\n\nLint has been re-triggered with autofix. Auto-merge is enabled and will merge once all checks pass."
+          else
+            BODY="${BODY}\n\nAuto-merge is enabled and will merge once all checks pass."
+          fi
+
+          echo -e "$BODY" | gh pr comment "$PR_NUM" --repo "${{ github.repository }}" --body-file -
 
       - name: Approve PR (Approval #2)
         if: steps.pr-ref.outputs.pr_number != ''
