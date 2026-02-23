@@ -2,19 +2,29 @@
 title: Overwhelm Dashboard
 type: spec
 status: active
-tags: [spec, dashboard, tasks, fast-indexer]
+tags: [spec, dashboard, tasks, fast-indexer, adhd, sessions]
 created: 2026-01-21
+modified: 2026-02-23
 ---
 
 # Overwhelm Dashboard
 
 ## Giving Effect
 
-- [[aops-tools/fast_indexer/]] - Rust binary for fast task indexing
-- [[skills/task-viz/SKILL.md]] - Task visualization skill (JSON, GraphML, DOT output)
-- [[skills/dashboard/SKILL.md]] - Cognitive Load Dashboard skill
-- [[mcp__pkb__get_network_metrics]] - Graph metrics for dashboard
-- [[mcp__pkb__reindex]] - Index rebuild using fast-indexer
+- [[lib/overwhelm/dashboard.py]] — Streamlit dashboard (main rendering)
+- [[lib/overwhelm/task_manager_ui.py]] — Task CRUD UI components
+- [[aops-tools/fast_indexer/]] — Rust binary for fast task indexing
+- [[specs/task-map.md]] — Task map visualization spec (extracted)
+- [[archived/specs/dashboard-narrative.md]] — Narrative synthesis design (partially implemented)
+- [[skills/task-viz/SKILL.md]] — Task visualization skill (JSON, GraphML, DOT output)
+- [[skills/dashboard/SKILL.md]] — Cognitive Load Dashboard skill
+- [[mcp__pkb__get_network_metrics]] — Graph metrics for dashboard
+- [[mcp__pkb__reindex]] — Index rebuild using fast-indexer
+- [[aops-core/lib/path_reconstructor.py]] — Path reconstruction logic
+- [[aops-core/lib/transcript_parser.py]] — `extract_timeline_events()` function
+- [[aops-core/lib/session_analyzer.py]] — Session analysis and TodoWrite extraction
+- [[aops-core/lib/session_context.py]] — Session context model
+- [[scripts/synthesize_dashboard.py]] — LLM synthesis → synthesis.json
 
 Single system for task visibility and cognitive load management.
 
@@ -31,6 +41,13 @@ graph TD
         C[Task markdown files]
         D[Daily notes]
         E[R2 cross-machine prompts]
+        F2[Session state JSONs]
+        G2[Session summaries]
+    end
+
+    subgraph "Pre-computation"
+        H[synthesize_dashboard.py]
+        I[synthesis.json]
     end
 
     subgraph "Rendering"
@@ -43,232 +60,207 @@ graph TD
     B --> F
     B --> G
     D --> F
+    D --> H
     E --> F
+    F2 --> F
+    G2 --> F
+    G2 --> H
+    H --> I
+    I --> F
 ```
 
 ## Core Problem
 
 Task state is scattered and not visible where needed. User returns to terminal and can't remember what they were doing across multiple machines and projects.
 
-## User Story
+## The User
 
-**As** an overwhelmed academic with ADHD,
-**I want** one place that shows all my tasks and what I was working on,
-**So that** I can recover context quickly and stay oriented.
+Nic is an academic with ADHD who runs parallel workstreams across multiple machines, terminals, and projects. His working memory is limited but his ambition isn't — at any given time there are 500+ tasks across research, tooling, governance, and teaching, with dozens of agent sessions running in parallel.
 
-## User Workflow
+The dashboard exists because Nic's brain can't hold all this state. He needs an external system that reconstructs context for him: what was happening, what he intended, what got dropped, and what needs attention now. Off-the-shelf dashboards fail because they're designed for people who remember what they were doing — Nic often doesn't.
 
-The dashboard is designed for a specific user pattern:
+## User Stories
 
-### Daily Activities
+### US-D1: I can tell what's happening right now
 
-- **Long-running agents**: Multiple terminals with "crew" agents working on tasks
-- **Ad-hoc work**: Direct interaction with agents for one-off tasks
-- **Polecat batches**: Invoking batch processes and overseeing merge workflows
-- **Academic tasks**: Research, writing, analysis work
-- **Email and prioritization**: Triage and task management
+**As** Nic returning to my desk after a break (or a context switch, or a meeting, or just losing track),
+**I want** to see at a glance what's actively running and what state it's in,
+**So that** I don't accidentally duplicate work or interrupt an agent mid-task.
 
-### Pain Points (What the Dashboard Solves)
+**What "right now" means**: Sessions with activity in the last 4 hours. Not yesterday. Not last week. Now.
 
-1. **Overwhelm from simultaneous tasks** - Too many things running, can't see the big picture
-2. **Losing track of progress** - What got done? What's still pending?
-3. **Context switching difficulty**:
-   - Not clear what each terminal was doing
-   - Not clear what the user wanted when they started that task
-   - Not clear what they planned to do next when they resumed
+**What I need to see for each active session**: What I asked it to do (my initial prompt, not the agent's summary of itself). What it's currently doing (in-progress step). Whether it needs me (waiting for input, errored, or finished and awaiting review).
 
-### What the User Needs to Know
+**Acceptance test**: Nic opens the dashboard and within 5 seconds can count how many agents are actively running and whether any need his attention.
 
-When returning to work, the user needs to answer:
+### US-D2: I can recover what I was doing before I got distracted
 
-- **"What terminal is this?"** → Session identity from initial prompt
-- **"What was I trying to do?"** → User intent, not agent state
-- **"What's the next step?"** → Planned action when resuming
+**As** Nic who just realized I've been down a rabbit hole for 2 hours and have lost track of my original plan,
+**I want** to see what I started today, what I intended, and what got dropped,
+**So that** I can pick up the threads I care about rather than continuing to drift.
 
-The dashboard must surface these answers directly, not require the user to reconstruct them from raw agent metadata.
+**What this means**: The dashboard should show *my* path — what I asked for, in what order, across which projects. Not what agents did (that's their business). My prompts, my context switches, my dropped threads. Dropped threads are the most actionable: things I started but didn't finish. They should appear first.
 
-## Streamlit Dashboard
+**Acceptance test**: Nic can identify at least one dropped thread from today within 10 seconds of opening the dashboard.
 
-### Data source
+### US-D3: I can see today's story, not just today's data
 
-index.json (created by [[fast-indexer]])
-**Consumers**:
+**As** Nic who runs 10+ parallel sessions and can't hold the narrative in my head,
+**I want** a brief human-readable summary that tells today's story — what started, what got sidetracked, what's still hanging,
+**So that** I can orient myself in 15 seconds without reading through session logs.
 
-- [[Task MCP server]] - `rebuild_index()` wraps fast-indexer
-- [[Overwhelm dashboard]] - reads index.json directly
-- [[task-viz]] - generates graph visualizations
+**What this means**: The synthesis panel. Not a list of accomplishments — a *narrative*. "Started on the dashboard improvements, got pulled into a Rust compilation issue, HDR review still waiting from yesterday." 3–5 bullets, written for a human, pre-computed by an LLM so it's ready instantly.
 
-### Dashboard Implementation Details
+**Acceptance test**: Nic reads the synthesis narrative and it matches his lived experience of the day. If it's stale (>60 min), the dashboard flags it.
 
-Location: `aops/lib/overwhelm/`
+### US-D4: I can see what each project needs from me
 
-Renders task state and session context. No LLM calls in render path.
+**As** Nic who works across 6+ projects simultaneously,
+**I want** per-project cards that show: what's actively being worked on, what's next in the queue, and what was recently accomplished,
+**So that** I can quickly check in on any project without opening terminals or task files.
 
-**Invocation**:
+**What this means**: Project boxes with three sections per project — current work (agents running), next priorities (sorted by priority from index.json), and recent completions (so I can see momentum). Projects with more active work should appear first. Empty projects should be hidden.
 
-```bash
-cd $AOPS && uv run streamlit run lib/overwhelm/dashboard.py
-```
+**Acceptance test**: Nic can answer "what's the status of project X?" for any active project within 5 seconds by finding its card.
 
-### Data Flow
+### US-D5: I can see what I was working on yesterday and earlier this week
 
-```
-Task files ──> fast-indexer ──> index.json ──> Dashboard
-                                    │
-                                    └──> Task MCP server
-                                    └──> task-viz
+**As** Nic who lost a whole day to meetings and needs to pick up where I left off,
+**I want** paused sessions (4–24h old) to be visible but de-emphasized, with enough context to resume them,
+**So that** I can decide which threads to pick back up without hunting through terminal history.
 
-Agent sessions --> session state json files --> Dashboard
-```
+**What this means**: Paused sessions appear in a collapsed/subdued section below active work. Each shows: what I was doing (initial prompt), the outcome (merged, completed, needs follow-up), and a re-entry point. Stale sessions (>24h) are not shown inline — they get an archive prompt.
 
-**Key principle**: Dashboard is pure rendering. All computation happens in fast-indexer or pre-computed synthesis.
+**Acceptance test**: Nic can find a session from yesterday and understand what it was doing without expanding more than one click.
 
-## Index Schema (index.json)
+### US-D6: I can capture a thought without losing my place
 
-```json
-{
-  "generated": "2026-01-21T10:00:00Z",
-  "total_tasks": 42,
-  "tasks": [
-    {
-      "id": "20260121-task-slug",
-      "title": "Task title",
-      "status": "active",
-      "priority": 0,
-      "project": "project-slug",
-      "due": "2026-01-25",
-      "parent": "20260120-parent-task",
-      "depends_on": ["20260119-dependency"],
-      "tags": ["tag1", "tag2"],
-      "file": "data/aops/tasks/20260121-task-slug.md"
-    }
-  ],
-  "priority_by_project": {
-    "aops": ["task-1", "task-2"],
-    "uncategorized": ["misc-task"]
-  },
-  "priority_by_due": {
-    "overdue": [],
-    "this_week": ["task-1"],
-    "next_week": [],
-    "later": ["task-2"],
-    "no_date": ["misc-task"]
-  }
-}
-```
+**As** Nic who just had an idea while looking at the dashboard,
+**I want** to quickly capture a task or note without navigating away,
+**So that** the idea doesn't evaporate while I context-switch to a different tool.
+
+**What this means**: A quick-capture input somewhere on the dashboard — text area + optional tags + submit. Creates a task in the PKB inbox. Minimal friction: no project selector required, no priority required, just a title and go.
+
+**Acceptance test**: Nic can go from "I just thought of something" to "it's captured" in under 5 seconds.
+
+### US-D7: The dashboard doesn't overwhelm me
+
+**As** Nic whose whole problem is overwhelm,
+**I want** the dashboard itself to not be another source of cognitive overload,
+**So that** opening it calms me down rather than stressing me out more.
+
+**What this means**: The page can't be an endless scroll of every piece of information the system has. Sections must be collapsible. Stale/irrelevant data must be hidden by default. The most important information (what's running now, what's dropped, what needs me) must be above the fold. Dense data (full project grids, graph visualizations) must be below or collapsed.
+
+**Acceptance test**: The dashboard's above-the-fold content (before scrolling) answers the three critical questions: "What's running?", "What's dropped?", and "What needs me?"
 
 ## Page Layout
 
-Single-page layout (no tabs). Content flows top-to-bottom:
+Single-page Streamlit app. Content flows top-to-bottom. Sidebar provides page navigation and time range filters.
 
-1. **Task Graph** - Interactive network visualization
-2. **Project Boxes** - One box per project with context
+### Actual Section Ordering (as implemented)
 
-### Task Graph Section
+1. **Spotlight Epic** — Progress bar for the most active open epic
+2. **Task Graph** — Interactive network visualization (see [[specs/task-map.md]])
+3. **Current Activity** — Agent count and active session indicator
+4. **Focus Synthesis** — LLM-generated narrative + status cards (from synthesis.json)
+5. **Daily Story** — Today's accomplishments from session analysis
+6. **Where You Left Off** — Active session cards (< 4h) + paused session cards (4–24h)
+7. **Your Path** — Dropped threads + timeline reconstruction
+8. **Recent Prompts** — Collapsible list of recent user prompts
+9. **Project Grid** — Per-project cards with epics, completed, up next, recently
+10. **Quick Capture** — Text input for capturing tasks
 
-Interactive force-directed graph at the top of the page.
+### Sidebar
 
-**Renderer**: Force-Graph (WebGL/Canvas)
+| Control | Options | Purpose |
+|---------|---------|---------|
+| Page selector | Dashboard, Manage Tasks, Session Summary, Network Analysis | Navigate between views |
+| Completed time range | 4H, 24H, 7D | Filter completed tasks display |
+| Context recovery range | Configurable hours | Adjust WLO/Path time window |
 
-- Replaced vis.js (slow) and Cytoscape (removed for simplicity)
-- GPU-accelerated, handles large graphs smoothly
+### Section Specifications
 
-**Controls**:
+#### Spotlight Epic
 
-| Control    | Options                                     |
-| ---------- | ------------------------------------------- |
-| **View**   | Tasks, Knowledge Base                       |
-| **Layout** | ↓ Top-Down, → Left-Right, ◎ Radial, ⚛ Force |
+Dynamically selects the most active open epic (most non-done children) and renders a progress panel: title, percentage bar, and a 3-card grid showing done/in-progress/blocked counts.
 
-**Visual Settings** (in collapsible expander):
+**Data source**: `load_tasks_from_index()` — filters for `type == "epic"` with open status, scores by active child count.
 
-| Setting      | Range       | Default | Purpose                          |
-| ------------ | ----------- | ------- | -------------------------------- |
-| Node Size    | 1-20        | 6       | Size of node circles             |
-| Link Width   | 0.5-5.0     | 1.0     | Thickness of edges               |
-| Text Size    | 6-24        | 12      | Base font size for labels        |
-| Link Opacity | 0.1-1.0     | 0.6     | Edge transparency                |
-| Repulsion    | -500 to -10 | -100    | Node repulsion strength          |
-| Show Labels  | checkbox    | On      | Toggle label visibility          |
-| Hide Orphans | checkbox    | Off     | Remove nodes with no connections |
+**Giving effect**: `render_spotlight_epic()` in dashboard.py
 
-**Filter** (in collapsible expander):
+#### Task Graph
 
-| Setting    | Type        | Purpose                          |
-| ---------- | ----------- | -------------------------------- |
-| Show Types | multiselect | Filter nodes by frontmatter type |
+See [[specs/task-map.md]].
 
-**Layout modes** (DAG layouts for hierarchical task trees):
+#### Focus Synthesis
 
-- `td` - Top-down: goals at top, actions at bottom
-- `lr` - Left-right: horizontal hierarchy
-- `radial-out` - Radial: goals in center, tasks radiate outward
-- `force` - Organic force-directed (default)
+Pre-computed LLM synthesis displayed as a panel. Shows narrative bullets, status cards (accomplishments, alignment, context, blockers, tokens), session insights (skill compliance, corrections, failures, context gaps), and a suggestion.
 
-**Data Sources**:
+**Data source**: `$ACA_DATA/dashboard/synthesis.json` — produced by `scripts/synthesize_dashboard.py` (runs outside the render path). Token metrics aggregated from session summaries.
 
-- Tasks view: `$ACA_DATA/outputs/graph.json`
-- Knowledge Base view: `$ACA_DATA/outputs/knowledge-graph.json`
+**Giving effect**: `load_synthesis()`, `load_token_metrics()`, inline HTML rendering in dashboard.py. See also [[archived/specs/dashboard-narrative.md]] for the narrative synthesis design.
 
-**Default Type Filtering**:
+**Staleness**: Shows age in minutes; displays STALE badge if >60 minutes old.
 
-- Tasks view defaults to: `goal`, `project`, `epic`, `task`, `action`, `bug`, `feature`, `learn`
-- Knowledge Base view defaults to: all types
-- Users can adjust via the Filter expander
+#### Where You Left Off
 
-**Node colors** (Tasks view by status):
+Session cards for active and paused work, implementing the session triage model.
 
-- Blue: active
-- Green: done
-- Red: blocked
-- Yellow: waiting
-- Purple: review
+**Active bucket** (<4h): Rich card layout with project name, timestamp, goal text (from prompt or TodoWrite), progress bar (completed/total steps), current task + next task, status badge (Running / Needs You).
 
-### Recent Prompts Section
+**Paused bucket** (4–24h): Collapsible cards with outcome text, accomplishment summary, and reentry link. Subdued opacity.
 
-Displays user prompts from session summaries for quick context recovery.
+**Stale sessions** (>24h): Currently hidden entirely. Spec calls for an archive prompt — not yet implemented.
 
-**Data Source**: `~/writing/sessions/summaries/*.json` - `prompts` field
+**Data sources**: R2 cross-machine prompts, local session state files (`~/.claude/projects/<project>/{date}-{hash}/session-state.json`), session summaries.
 
-**Placement**: After "Where You Left Off" section, before Project Boxes.
+**Giving effect**: `fetch_session_activity()`, `get_where_you_left_off()`, inline HTML rendering.
 
-**Display**:
+#### Your Path (Path Reconstruction)
 
-- Reverse chronological by session date
-- Grouped by session ID
-- Each session shows: project badge, session ID, date, prompts list
-- `st.expander` for collapsible display
-- `st.code()` blocks for copy functionality (built-in copyable behavior)
+Reconstructs the user's actual path across sessions: what was started, what deviated, what got dropped.
 
-**Prompts field parsing**:
+**Dropped threads** displayed first (most actionable for context recovery): tasks created/claimed but not completed, grouped by project with colored borders.
 
-- `null` → skip session (no prompts captured)
-- `"[\"prompt1\", \"prompt2\"]"` → `json.loads()` to get array
-- Plain string → wrap in array
+**Timeline threads** displayed as horizontal-scroll cards per project: initial goal, git branch, session ID, and a colored-dot timeline of events (prompts, task creates, completions, updates, claims).
 
-**Function**: `get_recent_prompts(days: int = 7) -> list[dict]`
+**Data source**: `reconstruct_path()` from `aops-core/lib/path_reconstructor.py`, which reads session summary JSONs.
 
-- Scans session summary files
-- Parses prompts field (handles null, JSON string, plain string)
-- Returns list of session dicts with prompts, sorted by date descending
+**Giving effect**: `reconstruct_path()`, inline HTML rendering. Event types: `user_prompt`, `task_create`, `task_complete`, `task_claim`, `task_update`.
 
-### Project Boxes
+**ADHD design**: Dropped threads shown first because that's the most actionable information for context recovery. Timeline is scannable — events are one line each, not paragraphs. Directive framing — "YOUR PATH" not "Session History".
 
-Grid of project cards below the graph. Each box contains:
+#### Recent Prompts
 
-| Section            | Content                                   | Data Source         |
-| ------------------ | ----------------------------------------- | ------------------- |
-| **⚡ WORKING NOW** | Active sessions with conversation context | Session state files |
-| **📌 UP NEXT**     | Top 3 priority tasks                      | index.json          |
-| **✅ RECENTLY**    | Recent accomplishments                    | Daily notes         |
+Collapsible expander showing user prompts from session summaries for the last 7 days. Grouped by session, displayed in copyable `st.code()` blocks.
 
-**Sorting**: Projects sorted by activity score:
+**Data source**: `~/writing/sessions/summaries/*.json` → `prompts` field.
 
-- +1000 per active session
-- +100 if has P0 task
-- +recency bonus
+**Giving effect**: `get_recent_prompts(days=7)`, `render_recent_prompts()`.
 
-**Filtering**: Empty projects (no sessions, tasks, or accomplishments) are hidden.
+#### Project Grid
+
+Grid of project cards (responsive, 350px min-width). Each card contains:
+
+| Section | Content | Data Source |
+|---------|---------|-------------|
+| **Header** | Project name, color-coded border | Project metadata |
+| **Epics** | Active epic titles + progress bars (max 3) | index.json |
+| **Completed** | Recently completed tasks with time_ago (max 3 + "X more") | index.json, time range filter |
+| **Up Next** | Top 3 priority incomplete tasks with priority badges | index.json |
+| **Recently** | Recent accomplishments from daily log (max 3) | Daily notes |
+
+**Sorting**: Projects sorted by activity score: +1000 per active session, +100 if has P0 task, + recency bonus.
+
+**Filtering**: Empty projects hidden. Sub-projects roll up to parents.
+
+**Giving effect**: Inline rendering loop in dashboard.py.
+
+#### Quick Capture
+
+Text area + tags input + submit button. Creates a task in the PKB inbox via `TaskStorage.create_task()`.
+
+**Giving effect**: Inline rendering at bottom of dashboard.py.
 
 ## Session Context Model
 
@@ -278,9 +270,9 @@ Grid of project cards below the graph. Each box contains:
 
 The user identifies "which terminal is this?" by:
 
-1. **Initial prompt** - What they first asked the agent to do
-2. **Follow-up prompts** - Subsequent requests that shaped the work
-3. **Working directory/project** - Secondary context
+1. **Initial prompt** — What they first asked the agent to do
+2. **Follow-up prompts** — Subsequent requests that shaped the work
+3. **Working directory/project** — Secondary context
 
 ### Session Context Schema
 
@@ -314,7 +306,7 @@ Each displayed session MUST include:
    Next: Run tests, mark PR ready
 ```
 
-**Bad** (agent-centric - REJECTED):
+**Bad** (agent-centric — REJECTED):
 
 ```
 🤖 unknown: No specific task (started 165h ago)
@@ -322,53 +314,19 @@ Each displayed session MUST include:
 
 ### Minimum Viable Context
 
-A session MUST have at least:
-
-- Initial prompt OR current task status
-- If neither exists, session is not displayed (hidden as "unidentified")
-
-Sessions showing "unknown: No specific task" provide zero value and MUST be filtered out or prompted for archival.
-
-## Design Principles
-
-### Context Recovery, Not Decision Support
-
-The dashboard answers:
-
-- **What's running where?** - Multiple terminals, multiple projects
-- **Where did I leave off?** - Per-project context recovery
-- **What's the state of X?** - Quick status check
-
-It does NOT try to:
-
-- Recommend ONE thing to do
-- Hide options or force single-focus mode
-- Make decisions for the user
-
-### Scale Considerations
-
-The problem changes at scale:
-
-| Session Count | Primary Problem                          | Solution                          |
-| ------------- | ---------------------------------------- | --------------------------------- |
-| 1-10 sessions | **Memory**: "What was I doing?"          | Context recovery (current design) |
-| 10+ sessions  | **Prioritization**: "Which one matters?" | Session triage (see below)        |
-
-At 10+ active sessions, displaying a flat list creates decision paralysis. The dashboard must shift from pure context recovery to **context recovery with triage assistance**.
+A session MUST have at least initial prompt OR current task status. If neither exists, session is not displayed (hidden as "unidentified"). Sessions showing "unknown: No specific task" provide zero value and MUST be filtered out or prompted for archival.
 
 ### Session Triage
 
-**Always apply** recency-based triage (not just at 10+ sessions):
+**Always apply** recency-based triage:
 
-| Bucket         | Definition                | Display                                      |
-| -------------- | ------------------------- | -------------------------------------------- |
-| **Active Now** | Activity within 4 hours   | Full session cards with conversation context |
-| **Paused**     | 4-24 hours since activity | Collapsed cards, click to expand             |
-| **Stale**      | >24 hours since activity  | Auto-archive prompt (see below)              |
+| Bucket | Definition | Display |
+|--------|-----------|---------|
+| **Active Now** | Activity within 4 hours | Full session cards with conversation context |
+| **Paused** | 4-24 hours since activity | Collapsed cards, click to expand |
+| **Stale** | >24 hours since activity | Archive prompt (see below) |
 
 Within buckets, group by project for orientation.
-
-**Implementation**: `fetch_session_activity(hours=4)` for Active Now bucket.
 
 ### Stale Session Handling
 
@@ -382,11 +340,37 @@ Sessions >24h without activity are **not displayed in the main list**. Instead:
 └─────────────────────────────────────────────────────┘
 ```
 
-**Archive** = Move session state to archive folder, remove from active display
-**Review** = Expand to see session summaries, select which to archive
-**Dismiss** = Hide prompt for this dashboard visit (reappears next load)
+**Archive** = Move session state to archive folder, remove from active display.
+**Review** = Expand to see session summaries, select which to archive.
+**Dismiss** = Hide prompt for this dashboard visit (reappears next load).
 
-**Rationale**: 499 sessions from days ago create noise, not signal. The user can't meaningfully act on them. Prompting for cleanup reduces cognitive load and keeps the dashboard focused on current work.
+## Design Principles
+
+### ADHD Accommodation
+
+- **Dropped threads first** — most actionable information for context recovery
+- **Scannable, not studyable** — one-line items, colored indicators, no paragraph-level reading required
+- **Reactive design** — reconstructs from existing data; no pre-planning required from user
+- **Directive framing** — "YOUR PATH" not "Session History"; "NEEDS YOU" not "Status: waiting"
+- **Collapsible density** — important information above the fold; detail available on demand
+- **No flat displays at scale** — bucket, group, and summarize; never dump 499 items in a list
+
+### Context Recovery, Not Decision Support
+
+The dashboard answers:
+
+- **What's running where?** — Multiple terminals, multiple projects
+- **Where did I leave off?** — Per-project context recovery
+- **What's the state of X?** — Quick status check
+
+It does NOT try to: recommend ONE thing to do, hide options, force single-focus, or make decisions for the user.
+
+### Scale Considerations
+
+| Session Count | Primary Problem | Solution |
+|---------------|----------------|---------|
+| 1-10 sessions | **Memory**: "What was I doing?" | Context recovery (current design) |
+| 10+ sessions | **Prioritization**: "Which one matters?" | Session triage with buckets |
 
 ### Anti-Patterns
 
@@ -394,8 +378,8 @@ Sessions >24h without activity are **not displayed in the main list**. Instead:
 
 - GPS/directive mode that hides options
 - Single-focus design that ignores multitasking reality
-- Over-indexing on "recommend ONE thing" _at baseline scale_
-- Assuming decision paralysis when the problem is memory _at baseline scale_
+- Over-indexing on "recommend ONE thing" at baseline scale
+- Assuming decision paralysis when the problem is memory at baseline scale
 
 **Display anti-patterns:**
 
@@ -413,55 +397,43 @@ Sessions >24h without activity are **not displayed in the main list**. Instead:
 - Group by project for orientation
 - LLM synthesis for human-readable summaries (pre-computed, not in render path)
 
-## Implementation Phasing
+## Known Issues (Audit Feb 2026)
 
-### Phase 1: Parameter Tuning (Non-Breaking)
+### Section ordering doesn't match ADHD priority
 
-Quick wins that don't change UI structure:
+The current layout puts the task graph first, then synthesis, then Where You Left Off. For an ADHD user returning to work, the most urgent questions are "what's running?" and "what's dropped?" — these are answered by Where You Left Off and Your Path, which are buried below the graph and synthesis panel. The graph provides structural overview (important but not urgent); synthesis provides narrative (important but requires synthesis.json to exist). The most critical sections for context recovery should be above the fold.
 
-| Change                         | File           | Line | Effort                           |
-| ------------------------------ | -------------- | ---- | -------------------------------- |
-| Truncation 60→120 chars        | `dashboard.py` | 1782 | 1 line                           |
-| Time window 24h→4h             | `dashboard.py` | 1916 | 1 line                           |
-| Kill "Local activity" fallback | `dashboard.py` | 604  | Replace with `""` or git context |
+### Stale session archive prompt not implemented
 
-### Phase 2: Session Triage UI (Breaking)
+The spec calls for a "📦 12 stale sessions" prompt with Archive All / Review / Dismiss buttons. The implementation simply hides sessions >24h entirely. Stale sessions are invisible rather than explicitly archived.
 
-Structural changes requiring new components:
+### Session context filtering too aggressive
 
-1. **Recency bucket logic**: Categorize sessions into Active Now / Paused / Stale
-2. **Collapsible cards**: Implement expand/collapse for Paused bucket
-3. **Grouped summary**: "X stale sessions" with drill-down
-4. **Project grouping**: Within-bucket organization
+`_has_meaningful_context()` filters out sessions with "unknown" project or descriptions <10 chars. This may hide valid sessions that have meaningful context in other fields (e.g., TodoWrite state). The filter should check multiple fields before rejecting a session.
 
-### Phase 3: Rich Fallback Context (Optional)
+### Synthesis section fails silently when synthesis.json missing
 
-If Phase 1 fallback removal leaves too many empty cards:
+The entire Focus Synthesis panel disappears when synthesis.json doesn't exist or is stale. No fallback message or prompt to regenerate. The user sees a gap in the layout with no explanation.
 
-1. Extract git branch from session state
-2. Show recently modified files
-3. Parse working directory for project indicators
+### Path reconstruction import fragility
 
-## Knowledge Base View
+`reconstruct_path()` is called but wrapped in a broad try/except that silently swallows all errors. If the path_reconstructor module isn't importable or the data format changes, the entire Your Path section vanishes with no error message.
 
-The graph section includes a View toggle to switch between Tasks and Knowledge Base.
+### Project boxes don't show agent activity
 
-**Node colors** (Knowledge Base view by type):
+Project box spec calls for "WORKING NOW" showing active sessions, but the implementation loads sessions_by_project without rendering them in the project cards. The connection between active sessions and their project cards is broken.
 
-- Red: goal
-- Purple: project
-- Blue: task
-- Cyan: action
-- Orange: bug
-- Pink: contact
-- Teal: workflow
-- Sky: spec
+### UP NEXT doesn't show task status
 
-The Knowledge Base graph visualizes:
+Priority tasks in the UP NEXT section show priority badges (P0, P1, P2) but not status (blocked, in_progress, waiting). A blocked P1 task looks identical to an active P1 task. Blocked tasks in UP NEXT should be visually flagged so the user doesn't try to pick them up.
 
-- Notes and documents as nodes
-- Wikilinks as edges
-- Color-coded by frontmatter `type` field
+### Page is too long
+
+10+ sections create a very long page. Only Recent Prompts and Paused Sessions are collapsible; everything else is always expanded. The user must scroll extensively to reach project cards or quick capture.
+
+### Spotlight epic has no drill-down
+
+The spotlight epic shows aggregated counts (done/in-progress/blocked) but clicking the epic title does nothing. There's no way to see which specific tasks are in the epic without going to the task manager or opening files.
 
 ## Task Management Interface
 
@@ -469,13 +441,13 @@ CRUD operations for tasks directly through the dashboard UI.
 
 ### Required Operations
 
-| Operation    | UI Element                      | Backend                  |
-| ------------ | ------------------------------- | ------------------------ |
-| **Create**   | Quick task form in sidebar      | Task MCP `create_task`   |
-| **Read**     | Task details on node click      | Task MCP `get_task`      |
-| **Update**   | Inline edit on task card        | Task MCP `update_task`   |
-| **Delete**   | Delete button with confirmation | Task MCP `delete_task`   |
-| **Complete** | Checkbox/button on task card    | Task MCP `complete_task` |
+| Operation | UI Element | Backend |
+|-----------|-----------|---------|
+| **Create** | Quick task form in sidebar | Task MCP `create_task` |
+| **Read** | Task details on node click | Task MCP `get_task` |
+| **Update** | Inline edit on task card | Task MCP `update_task` |
+| **Delete** | Delete button with confirmation | Task MCP `delete_task` |
+| **Complete** | Checkbox/button on task card | Task MCP `complete_task` |
 
 ### Inline Task Editor
 
@@ -513,8 +485,7 @@ When a task node is clicked or a task card is selected:
 - [x] fast-indexer generates valid index.json from task files
 - [ ] Dashboard renders index.json without errors
 - [ ] Cross-machine prompts visible via R2 integration
-- [ ] Mobile/tablet accessible via browser
-- [ ] Graceful degradation when data sources unavailable
+- [ ] Graceful degradation when data sources unavailable (synthesis.json, session states, daily notes)
 - [ ] No LLM calls in render path (pre-computed synthesis only)
 
 ### Session Display (Critical)
@@ -527,7 +498,7 @@ When a task node is clicked or a task card is selected:
 - [ ] Stale sessions trigger auto-archive prompt, not flat list display
 - [ ] User can answer "what was I doing?" for every displayed session
 
-### Session Triage Acceptance Criteria
+### Session Triage
 
 - [ ] Active sessions (last 4h) shown with full conversation context
 - [ ] Paused sessions (4-24h) shown collapsed, expandable
@@ -535,12 +506,26 @@ When a task node is clicked or a task card is selected:
 - [ ] Archive action moves session to archive, removes from display
 - [ ] Review action expands stale sessions for selective archival
 
-### Graph Visualization
+### Path Reconstruction
 
-- [ ] Task graph renders without freezing browser
-- [ ] Knowledge Base graph view displays notes and wikilinks
-- [ ] Graph loads within 2 seconds for typical data size
-- [ ] Node selection shows task/note details
+- [ ] Dropped threads shown first, grouped by project
+- [ ] Timeline events scannable (one line each with colored dots)
+- [ ] Path section visible even when synthesis.json is missing
+- [ ] Low-signal events filtered without losing important context
+
+### Synthesis
+
+- [ ] Narrative panel shows 3-5 bullet summary of today's story
+- [ ] Staleness clearly indicated when >60 minutes
+- [ ] Graceful fallback when synthesis.json missing (message + regeneration hint)
+
+### Project Boxes
+
+- [ ] Projects sorted by activity (active agents first)
+- [ ] Each project shows active work, next priorities, and recent completions
+- [ ] UP NEXT shows task status, not just priority
+- [ ] Empty projects hidden
+- [ ] Sub-projects roll up to parent project cards
 
 ### Task Management
 
@@ -550,91 +535,15 @@ When a task node is clicked or a task card is selected:
 - [ ] Delete task with confirmation
 - [ ] Changes sync to task files immediately
 
-## Path Reconstruction
+### Graph Visualization
 
-### Problem
-
-User runs parallel sessions, gets sidetracked by bugs, and loses their thread. After 30 minutes they can't remember what they were doing or what to do next. Two specific problems:
-
-1. **Session display shows agent output, not user intent** — WLO cards show "Successfully completed: Standardized session short hashes..." instead of the user's initial prompt
-2. **No plan-level tracking** — no way to see across sessions what path was taken, what deviated, what was dropped
-
-### Path Reconstruction Architecture
-
-**Data flow:**
-
-```
-Raw JSONL sessions
-    ↓ (transcript.py — existing processing pass)
-    ↓ extract_timeline_events() during processing
-    ↓
-Session summary JSONs (enriched with timeline_events)
-    ↓
-path_reconstructor.py (reads JSONs, assembles cross-session view)
-    ↓
-Dashboard rendering (HTML/CSS in dashboard.py)
-```
-
-**Key principle:** No double-handling. The existing `SessionProcessor` already parses tool calls from JSONL into `ConversationTurn` objects with `assistant_sequence` items containing `tool_name`, `tool_input`, and timestamps. Timeline events are extracted from this already-parsed data and saved to the summary JSON.
-
-### Event Types
-
-| Event           | Source                                         | Description                    |
-| --------------- | ---------------------------------------------- | ------------------------------ |
-| `user_prompt`   | User message in turn                           | First ~120 chars of user input |
-| `task_create`   | `pkb__create_task` tool call          | Task title and project         |
-| `task_complete` | `pkb__complete_task` tool call        | Task ID completed              |
-| `task_claim`    | Polecat CLI `claim_next_task()` in `manager.py` | Task claimed from queue       |
-| `task_update`   | `pkb__update_task` with status change | New status value               |
-
-### Display Design
-
-```
-┌─────────────────────────────────────────────────────────┐
-│  YOUR PATH (what actually happened)                      │
-│                                                          │
-│ ⚠ DROPPED THREADS (started but not finished)             │
-│   □ "Investigate daily skill bug" (aops-6c93)            │
-│   □ "Design light-touch QA gate" (aops-f67d)             │
-│                                                          │
-│ academicOps (cd6a8da0)  │ gemini (4b0ecf85)  │ writing  │
-│ ● 07:21 Started:        │ ● 07:18 Started:   │ (f36b6d)│
-│   "dogfood polecats..."  │   "learn session"  │ ● 07:25 │
-│ ○ 07:25 Created task    │ ○ 07:22 Created    │   daily  │
-│   aops-84c88881          │   learn task        │   notes  │
-│ ✓ 07:45 Done             │ ✓ 07:40 Done       │ ✓ Done   │
-└──────────────────────────┴────────────────────┴─────────┘
-```
-
-- **DROPPED THREADS first** — most actionable info for someone who's lost
-- **Parallel columns** — visual layout communicates concurrent work
-- **HH:MM timestamps** — scannable, not ISO noise
-- **Colored dots** — status at a glance without reading
-
-### ADHD Accommodation Notes
-
-- Dropped threads shown first because that's the most actionable information for context recovery
-- Timeline is scannable — events are one line each, not paragraphs
-- Reactive design — reconstructs from existing data, no pre-planning required from user
-- Directive framing — "YOUR PATH" not "Session History"
-
-### Future: Proactive Deviation Tracking
-
-Agents should eventually detect scope-escape and do task bookkeeping (e.g., when a user says "actually fix this bug first", the agent creates a deviation event). This is not yet implemented — current design is purely reactive reconstruction from transcript data.
-
-### Path Reconstruction Giving Effect
-
-- `aops-core/lib/transcript_parser.py`
-
-— `extract_timeline_events()` function
-
-- `aops-core/scripts/transcript.py` — calls extractor, saves to summary JSON
-- `aops-core/lib/path_reconstructor.py` — reads summary JSONs, assembles path
-- `lib/overwhelm/dashboard.py` — CSS + rendering for path section
+See [[specs/task-map.md#Acceptance Criteria]].
 
 ## Related
 
-- [[aops-0a7f6861]] - EPIC: fast-indexer adoption
-- [[Task MCP server]] - Primary task operations interface
-- [[task-viz]] - Network graph visualization (standalone skill)
-- [[fast-indexer]] - Rust binary for index generation
+- [[specs/task-map.md]] — Task map visualization spec
+- [[archived/specs/dashboard-narrative.md]] — Narrative synthesis design
+- [[aops-0a7f6861]] — EPIC: fast-indexer adoption
+- [[Task MCP server]] — Primary task operations interface
+- [[task-viz]] — Network graph visualization (standalone skill)
+- [[fast-indexer]] — Rust binary for index generation

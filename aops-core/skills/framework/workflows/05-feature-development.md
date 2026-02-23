@@ -68,24 +68,25 @@ Feature development follows eight phases:
 
 ### Phase 2: Requirements Analysis
 
-**Objective**: Transform user story into clear, testable requirements.
+**Objective**: Transform user story into clear, testable requirements with qualitative acceptance criteria.
 
 **Actions**:
 
 1. Extract functional requirements from user story
 2. Identify constraints and non-functional requirements
-3. Define explicit success criteria (measurable, objective)
-4. Clarify ambiguities NOW (ask user for specific decisions)
-5. Document in user story under "Requirements" and "Success Criteria" sections
+3. **Inhabit the persona**: Write a paragraph about the user's situation — cognitive/emotional state, constraints, what success feels like (see [[skills/qa/references/qa-planning.md]] Phase 1)
+4. **Design qualitative acceptance criteria**: Write dimensions requiring judgment, not binary checklists. For each dimension, describe what excellent and poor look like. Trace every criterion to a user story. (see [[skills/qa/references/qa-planning.md]] Phase 2)
+5. Clarify ambiguities NOW (ask user for specific decisions)
+6. Document in user story under "Requirements" and "Acceptance Criteria" sections
 
 **Critical Questions**:
 
-- What defines "done" for this feature?
-- How will we know it works correctly?
+- What defines "done" for this feature? (answer as a quality spectrum, not a checklist)
+- How will we know it works correctly? (distinguish qualitative acceptance from regression checks)
 - What edge cases must be handled?
 - What should NOT be in scope?
 
-**Output**: User story enhanced with explicit requirements and success criteria.
+**Output**: User story enhanced with explicit requirements, qualitative acceptance criteria with quality spectra, and regression checks.
 
 **Fail-Fast**: If requirements conflict or are unclear after discussion, HALT - don't proceed with ambiguity.
 

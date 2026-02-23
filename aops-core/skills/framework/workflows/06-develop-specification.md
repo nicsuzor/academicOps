@@ -32,14 +32,15 @@ description: Process for collaboratively developing task specifications before i
 
 1. **Define Acceptance Criteria (collaborative, USER-OWNED)**
    - **CRITICAL**: These criteria define "done" and are user-owned (agents cannot modify them)
-   - **Agent asks**: "How will we know this automation succeeded?"
-   - Focus on observable, testable outcomes (time saved, error reduction, reliability)
+   - **Before writing criteria**: Consult [[skills/qa/references/qa-planning.md]] — write qualitative dimensions (questions requiring judgment) anchored to user stories, not binary checklists. Define what excellent and poor look like for each dimension.
+   - **Agent writes**: Persona paragraph — inhabit the user's situation when they encounter this feature (cognitive/emotional state, constraints, what success feels like)
+   - **Agent asks**: "How will we know this automation succeeded?" — frame answers as qualitative dimensions, not pass/fail checks
    - **Agent asks**: "What would indicate this implementation is WRONG?"
-   - **Agent asks**: "What quality threshold is acceptable?"
-   - Define when it should fail-fast vs. best effort
-   - Write 3-5 concrete acceptance criteria (Success Tests)
+   - **Agent asks**: "What quality threshold is acceptable?" — describe the spectrum from excellent to poor
+   - Write 3-5 qualitative acceptance criteria with quality spectra (per QA Planning guidance)
    - Write 2-3 failure modes that indicate wrong implementation
-   - **Agent confirms**: "These criteria will be implemented as tests. Agents cannot modify them."
+   - Write regression checks (binary guards against breakage, separate from qualitative acceptance)
+   - **Agent confirms**: "Regression checks will be implemented as automated tests. Qualitative criteria will be evaluated narratively. Agents cannot modify these criteria."
 
 1. **Scope the work (collaborative)**
    - **Agent proposes**: Initial scope based on problem statement

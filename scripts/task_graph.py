@@ -484,6 +484,8 @@ def generate_dot(
     lines = [
         "digraph TaskGraph {",
         "    rankdir=TB;",
+        "    splines=spline;",
+        "    overlap=scalexy;",
         '    node [style=filled, fontname="Helvetica"];',
         '    edge [color="#6c757d"];',
     ]
@@ -616,10 +618,10 @@ def generate_svg(dot_content: str, output_base: str, layout: str, keep_dot: bool
 
     Path(dot_path).write_text(dot_content)
 
-    layout_opts = {
-        "sfdp": ["-Goverlap=prism", "-Gsplines=true"],
-        "neato": ["-Goverlap=prism", "-Gsplines=true"],
-        "fdp": ["-Goverlap=prism", "-Gsplines=true"],
+    layout_opts: dict[str, list[str]] = {
+        "sfdp": [],
+        "neato": [],
+        "fdp": [],
         "dot": [],
         "circo": [],
         "twopi": [],
@@ -627,10 +629,30 @@ def generate_svg(dot_content: str, output_base: str, layout: str, keep_dot: bool
 
     _FALLBACKS: dict[str, str] = {"sfdp": "fdp"}
 
+    _FORCE_DIRECTED = {"fdp", "sfdp", "neato"}
+
     def _try_layout(eng: str) -> bool:
         try:
-            cmd = [eng, "-Tsvg"] + layout_opts.get(eng, []) + [dot_path, "-o", svg_path]
-            subprocess.run(cmd, check=True, capture_output=True)
+            if eng in _FORCE_DIRECTED:
+                # Two-step: position nodes with the layout engine, then route
+                # edges separately with neato -n.
+                # Pass -Gsplines=line to sfdp/fdp so it only positions nodes
+                # and doesn't attempt (and fall back from) spline routing itself.
+                r1 = subprocess.run(
+                    [eng, "-Txdot", "-Gsplines=line"] + [dot_path],
+                    check=True,
+                    capture_output=True,
+                )
+                # neato -n keeps positions, routes edges with full spline support.
+                subprocess.run(
+                    ["neato", "-n", "-Tsvg", "-Gsplines=spline", "-o", svg_path],
+                    input=r1.stdout,
+                    check=True,
+                    capture_output=True,
+                )
+            else:
+                cmd = [eng, "-Tsvg"] + layout_opts.get(eng, []) + [dot_path, "-o", svg_path]
+                subprocess.run(cmd, check=True, capture_output=True)
             return True
         except FileNotFoundError:
             print(f"  Warning: {eng} not found, skipping SVG generation")

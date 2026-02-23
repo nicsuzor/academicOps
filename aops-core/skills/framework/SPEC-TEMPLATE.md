@@ -19,11 +19,21 @@ _Add this section once implementation exists. List [[wikilinks]] to files that i
 - [[path/to/agent.md]] - Brief description of agent role
 - [[path/to/workflow.md]] - Brief description of workflow
 
-## User Story
+## The User
 
-**As** an academic with ADHD managing research workflows,
-**I want** [specific capability this feature provides],
-**So that** [concrete benefit - how this advances zero-friction capture, consistent quality, nothing lost, fail-fast, or minimal maintenance].
+_Write a paragraph inhabiting the user's situation when they encounter this feature. Not demographics — their cognitive and emotional state, what just happened, what they're trying to do, what constraints are active, what success feels like. See [[skills/qa/references/qa-planning.md]] Phase 1._
+
+[Persona paragraph here]
+
+## User Stories
+
+_Each story needs: situation (entry state), need (real goal), constraint (what makes this hard), and success feel (what it's like when it works). Multiple stories are typical — cover the golden path, a stressed path, and an edge case._
+
+**US-1: [Story name]**
+[Situation → Need → Constraint → Success feel]
+
+**US-2: [Story name]**
+[Situation → Need → Constraint → Success feel]
 
 > **Coherence check**: This feature connects to the academicOps narrative by [explain how it serves the core mission]. If you cannot complete this sentence, the feature may not belong in the framework.
 
@@ -31,11 +41,24 @@ _Add this section once implementation exists. List [[wikilinks]] to files that i
 
 **CRITICAL**: These criteria are USER-OWNED and define what "done" means. Agents CANNOT modify, weaken, or reinterpret these criteria (see [[AXIOMS.md]] #22).
 
-### Success Criteria (ALL must pass)
+**Design guidance**: Consult [[skills/qa/references/qa-planning.md]] before writing criteria. Write qualitative dimensions (questions requiring judgment), not binary checklists. Each criterion traces to a user story. Define what excellent and poor look like.
 
-1. [ ] [Specific, observable, testable outcome - what the USER can do/see]
-2. [ ] [Another observable outcome]
-3. [ ] [Measurable improvement if applicable]
+### Qualitative Acceptance Criteria
+
+_For each: state the user story it serves, the dimension being evaluated, and what excellent vs poor looks like._
+
+1. **[Dimension as question]** — serves US-[X]
+   - _Excellent_: [What this looks and feels like when it works well]
+   - _Poor_: [What this looks and feels like when it fails the user]
+
+2. **[Dimension as question]** — serves US-[X]
+   - _Excellent_: [description]
+   - _Poor_: [description]
+
+### Regression Checks (binary, for guarding against breakage after acceptance)
+
+1. [ ] [Specific, observable check that prevents backsliding]
+2. [ ] [Another regression guard]
 
 ### Failure Modes (If ANY occur, implementation is WRONG)
 
