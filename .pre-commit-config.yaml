@@ -44,6 +44,16 @@ repos:
         args: [--check]
         exclude: '^archived/'
 
+  # Workflow length constraint (C1 in brain/CONSTRAINTS.md)
+  - repo: local
+    hooks:
+      - id: check-workflow-length
+        name: Check workflow files <= 100 lines
+        entry: ./scripts/check_workflow_length.sh
+        language: script
+        files: workflows/.*\.md$
+        types: [file]
+
   # Type checking and framework health checks run in CI only
   # (see .github/workflows/framework-health.yml)
   #
