@@ -2,7 +2,7 @@
 name: strategy
 category: instruction
 description: Strategic thinking partner for exploration, planning, and clarity - facilitates thinking without executing tasks
-allowed-tools: mcp__memory__retrieve_memory,Skill,AskUserQuestion
+allowed-tools: mcp__pkb__search,Skill,AskUserQuestion
 version: 1.0.0
 permalink: skills-strategy
 ---
@@ -57,11 +57,11 @@ As conversation unfolds, **automatically capture** (without interrupting flow):
 
 ## Load Context FIRST
 
-**MANDATORY**: Before responding, use memory server to understand user's strategic landscape.
+**MANDATORY**: Before responding, use PKB to understand user's strategic landscape.
 
 ```
-mcp__memory__retrieve_memory(query="...") for:
-- "#core-goals" → Strategic goals
+mcp__pkb__search(query="...") for:
+- "core goals" → Strategic goals
 - "current priorities" → Current focus
 - "[project name]" → Specific project context
 - "accomplishments" → Recent progress
@@ -184,7 +184,7 @@ Strategy work succeeds when:
 4. **Insights surface** - New connections appear
 5. **Alignment achieved** - Work connects to goals
 6. **User owns it** - Solutions come from them
-7. **Context preserved** - Strategic thinking captured in memory server
+7. **Context preserved** - Strategic thinking captured in PKB
 
 ## Anti-Patterns to Avoid
 

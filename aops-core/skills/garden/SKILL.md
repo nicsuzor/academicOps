@@ -2,7 +2,7 @@
 name: garden
 category: instruction
 description: Incremental PKM maintenance - weeding, pruning, linking, consolidating. Tends the knowledge base bit by bit.
-allowed-tools: Read,Grep,Glob,Edit,Write,Bash,Task,mcp__memory__*
+allowed-tools: Read,Grep,Glob,Edit,Write,Bash,Task,mcp__pkb__search,mcp__pkb__list_documents
 version: 1.0.0
 permalink: skills-garden
 ---
@@ -99,7 +99,7 @@ Connect orphans and enforce semantic link density per [[HEURISTICS.md#H34]].
 1. List files in target area
 2. For each project folder, check: does hub link to substantive content (not just `[[meetings]]`)?
 3. For files with overlapping tags in same folder, check: do they link to each other?
-4. Use `mcp__memory__retrieve_memory` on file titles - if memory returns "related" files that don't link, flag them
+4. Use `mcp__pkb__search` on file titles - if PKB returns "related" files that don't link, flag them
 
 **Fix process:**
 

@@ -2,7 +2,7 @@
 name: daily
 category: instruction
 description: Daily note lifecycle - briefing, task recommendations, progress sync, and work summary. SSoT for daily note structure.
-allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,mcp__outlook__messages_list_recent,mcp__outlook__messages_get,mcp__outlook__messages_move
+allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,~~email
 version: 2.0.0
 permalink: skills-daily
 ---
@@ -107,11 +107,11 @@ Generate natural language narratives of the day's achievements for both the dail
 ## Error Handling
 
 - **No mobile captures**: Skip triage, continue with email briefing
-- **Outlook unavailable**: Skip email triage, continue with recommendations
+- **~~email unavailable**: Skip email triage, continue with recommendations
 - **GitHub CLI unavailable**: Skip merged PR listing, note in section
 - **No session JSONs**: Skip sync, note "No sessions to sync"
 - **No tasks**: Present empty state, offer to run `/tasks`
-- **Memory server unavailable**: Skip semantic task matching, continue with daily.md updates
+- **PKB unavailable**: Skip semantic task matching, continue with daily.md updates
 - **Task file not found**: Log warning "Task file missing: {path}", continue to next accomplishment
 - **Unexpected task format**: Log warning "Skipping task {id}: unexpected format", continue processing
 

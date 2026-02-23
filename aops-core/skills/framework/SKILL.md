@@ -111,7 +111,7 @@ Every task MUST follow this lifecycle. No shortcuts.
 2. LOAD CONTEXT (as needed)
    - Read AXIOMS.md if verifying principles
    - Read VISION.md if checking scope alignment
-   - mcp__memory__retrieve_memory(query="[topic]") for prior work
+   - mcp__pkb__search(query="[topic]") for prior work
 ```
 
 ### Phase 2: Planning (For Non-Trivial Work)

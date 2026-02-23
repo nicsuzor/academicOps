@@ -2,7 +2,7 @@
 name: session-insights
 category: analysis
 description: Generate comprehensive session insights from transcripts using Gemini
-allowed-tools: Bash,Read,Write,mcp__gemini__ask-gemini,mcp__memory__store_memory
+allowed-tools: Bash,Read,Write,~~ai-assistant,mcp__pkb__create_memory
 version: 3.1.0
 tags:
   - analysis
@@ -168,12 +168,11 @@ Generate insights JSON now:"
 # Note: The transcript will be loaded via the @{path} syntax
 ```
 
-Now call `mcp__gemini__ask-gemini` with the full prompt:
+Now call ~~ai-assistant with the full prompt:
 
 ```python
-# Tool call (conceptual - actual invocation via Claude Code)
-result = mcp__gemini__ask_gemini(
-    model="gemini-2.0-flash-exp",
+# Tool call (conceptual - use whatever ~~ai-assistant connector is available)
+result = ~~ai-assistant.ask(
     prompt=FULL_PROMPT,
     timeout=120  # 2 minutes
 )
@@ -221,9 +220,9 @@ if [ $? -ne 0 ]; then
 fi
 ```
 
-### Step 6.5: Sync to Memory Server
+### Step 6.5: Sync to PKB
 
-Sync key insights to memory server for semantic search:
+Sync key insights to PKB for semantic search:
 
 ```python
 # Extract summary content for memory
@@ -241,17 +240,11 @@ Key learnings: {'; '.join([obs.get('evidence', '')[:100] for obs in learning_obs
 
 Proposed changes: {', '.join(proposed_changes[:3]) if proposed_changes else 'None'}"""
 
-# Sync to memory server
-mcp__memory__store_memory(
-    content=memory_content,
-    tags=["session-insights", f"session-{session_id}", project],
-    metadata={
-        "source": insights_file_path,
-        "type": "session-insights",
-        "date": date,
-        "session_id": session_id,
-        "outcome": insights.get('outcome', 'unknown')
-    }
+# Sync to PKB
+mcp__pkb__create_memory(
+    title=f"Session insights: {session_id}",
+    body=memory_content,
+    tags=["session-insights", f"session-{session_id}", project]
 )
 ```
 

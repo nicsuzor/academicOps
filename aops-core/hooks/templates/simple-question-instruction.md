@@ -7,7 +7,7 @@ This is a **pure informational question**. Answer directly without hydration.
 ## Instructions
 
 1. Answer the question clearly and concisely
-2. Use memory search if needed: `mcp__plugin_aops-core_memory__retrieve_memory(query="...")`
+2. Use PKB search if needed: `mcp__pkb__search(query="...")`
 3. **HALT** after answering - do not take unsolicited actions
 
 ## Constraints

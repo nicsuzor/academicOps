@@ -20,7 +20,7 @@ When you see these domain signals, invoke the corresponding skill BEFORE startin
 | New functionality, "add", "create", feature requests                      | `feature-dev`                 | Building new features with TDD         |
 | Claude Code hooks, PreToolUse, PostToolUse, hook events                   | `plugin-dev:hook-development` | Hook development                       |
 | MCP servers, .mcp.json, tool integration                                  | `plugin-dev:mcp-integration`  | MCP server integration                 |
-| "Remember", persist knowledge, save to memory                             | `remember`                    | Knowledge persistence to memory server |
+| "Remember", persist knowledge, save to memory                             | `remember`                    | Knowledge persistence to PKB           |
 | dbt, Streamlit, data analysis, statistics                                 | `analyst`                     | Research data work                     |
 | Mermaid diagrams, flowcharts                                              | `flowchart`                   | Creating Mermaid flowcharts            |
 | Excalidraw, visual diagrams, mind maps                                    | `excalidraw`                  | Hand-drawn style diagrams              |

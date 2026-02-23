@@ -475,7 +475,7 @@ Main agent has all tools except deny rules. Subagents are restricted:
 | Agent             | Tools Granted                                  | Model  | Purpose                                                                                                        |
 | ----------------- | ---------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------- |
 | Main agent        | All (minus deny rules)                         | varies | Primary task execution                                                                                         |
-| prompt-hydrator   | Read, Grep, mcp__memory__retrieve_memory, Task | haiku  | Context enrichment (Edit/Write blocked by check_subagent_tool_restrictions)                                    |
+| prompt-hydrator   | Read, Grep, mcp__pkb__search, Task              | haiku  | Context enrichment (Edit/Write blocked by check_subagent_tool_restrictions)                                    |
 | custodiet         | Read                                           | haiku  | Compliance checking                                                                                            |
 | qa                | Read, Grep, Glob                               | opus   | Independent verification (anti-sycophancy: must verify against original request verbatim, not agent reframing) |
 | planner           | All (inherits from main)                       | sonnet | Implementation planning                                                                                        |
@@ -487,13 +487,13 @@ Main agent has all tools except deny rules. Subagents are restricted:
 
 Enforcement of [[semantic-vs-episodic-storage]] and [[current-state-machine]].
 
-| Component              | Purpose                               | Sync to Memory Server |
-| ---------------------- | ------------------------------------- | --------------------- |
-| Remember skill         | Dual-write markdown + memory server   | Yes (on invocation)   |
-| Remember sync workflow | Reconcile markdown → memory server    | Yes (repair/rebuild)  |
-| Session-insights       | Extract and persist session learnings | Yes (Step 6.5)        |
+| Component              | Purpose                          | Sync to PKB           |
+| ---------------------- | -------------------------------- | --------------------- |
+| Remember skill         | Dual-write markdown + PKB        | Yes (on invocation)   |
+| Remember sync workflow | Reconcile markdown → PKB         | Yes (repair/rebuild)  |
+| Session-insights       | Extract and persist session learnings | Yes (Step 6.5)   |
 
-**Markdown is SSoT** - Memory server is derivative index for semantic search.
+**Markdown is SSoT** - PKB is derivative index for semantic search.
 
 **Insight capture flow**:
 

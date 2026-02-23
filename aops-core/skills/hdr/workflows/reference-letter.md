@@ -119,7 +119,7 @@ If student has provided supporting materials:
 Search memory for relevant context:
 
 ```python
-mcp__memory__retrieve_memory(query="{student name} research achievements")
+mcp__pkb__search(query="{student name} research achievements")
 ```
 
 Add relevant context to draft file to assist human writer.

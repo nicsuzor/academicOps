@@ -56,7 +56,7 @@ Before reporting work done:
 
 ## Context Loading
 
-**CRITICAL**: Use memory server MCP tools for ALL knowledge base access. NEVER read markdown files directly.
+**CRITICAL**: Use PKB MCP tools for ALL knowledge base access. NEVER read markdown files directly.
 
 **Framework references**: See [[hooks_guide]] and [[claude-code-config]] for technical context, [[script-design-guide]] for design principles, [[testing-with-live-data]] for verification methodology.
 
@@ -64,45 +64,45 @@ Before reporting work done:
 
 ```
 # 1. BINDING USER CONSTRAINTS (search FIRST)
-Use mcp__memory__retrieve_memory for:
+Use mcp__pkb__search for:
 - "accommodations OR work style" → User constraints (as binding as AXIOMS)
 - "core OR user context" → User context (as binding as AXIOMS)
 
 # 2. CURRENT REALITY (ground truth)
-Use mcp__memory__retrieve_memory for:
+Use mcp__pkb__search for:
 - "state OR current stage" → Current framework stage, blockers
 
 # 3. FRAMEWORK PRINCIPLES AND ASPIRATIONS
-Use mcp__memory__retrieve_memory for:
+Use mcp__pkb__search for:
 - "vision OR end state" → Framework goals
 - "roadmap OR maturity progression" → Stage progression
 - Read $AOPS/AXIOMS.md directly (framework principles, not user knowledge)
 - "experiment log OR learning patterns" → Past learnings
 
 # 4. TECHNICAL REFERENCES (search as needed for specific work)
-Use mcp__memory__retrieve_memory for:
+Use mcp__pkb__search for:
 - "hooks guide OR hook configuration"
 - Other technical docs by topic
 ```
 
 **Critical**: User constraints ([[ACCOMMODATIONS]]) come BEFORE framework aspirations. Current state establishes reality before reading vision documents.
 
-**Why memory server**: Knowledge base uses semantic search. Use memory server to find relevant context efficiently rather than reading arbitrary files.
+**Why PKB**: Knowledge base uses semantic search. Use PKB to find relevant context efficiently rather than reading arbitrary files.
 
-## Key Queries (using memory server)
+## Key Queries (using PKB)
 
 - "What have we built?" → Search for roadmap/state, show progress toward vision
 - "What should we work on next?" → Search roadmap priorities, validate strategic fit
 - "Is X a good idea?" → Search vision/goals, evaluate against AXIOMS, search experiments
-- "Why did we do Y?" → Search experiments: `mcp__memory__retrieve_memory(query="[decision topic]")`
+- "Why did we do Y?" → Search experiments: `mcp__pkb__search(query="[decision topic]")`
 - "What's our current state?" → Search for current state/roadmap status
 
-## Decision-Making Framework (using memory server)
+## Decision-Making Framework (using PKB)
 
 1. Derive from AXIOMS.md (foundational principles - read directly from $AOPS)
-2. Align with vision: Search `mcp__memory__retrieve_memory(query="vision OR strategic direction")`
-3. Consider current stage: Search `mcp__memory__retrieve_memory(query="roadmap OR current stage")`
-4. Learn from past: Search `mcp__memory__retrieve_memory(query="[relevant topic] experiments")`
+2. Align with vision: Search `mcp__pkb__search(query="vision OR strategic direction")`
+3. Consider current stage: Search `mcp__pkb__search(query="roadmap OR current stage")`
+4. Learn from past: Search `mcp__pkb__search(query="[relevant topic] experiments")`
 5. Default to simplicity and quality
 6. When uncertain, provide options with clear tradeoffs
 

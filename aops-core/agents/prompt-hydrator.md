@@ -5,7 +5,7 @@ model: haiku
 color: cyan
 tools:
   - read_file
-  - mcp__memory__retrieve_memory
+  - mcp__pkb__search
   - mcp__pkb__create_task
   - mcp__pkb__get_task
   - mcp__pkb__update_task
@@ -49,7 +49,7 @@ You transform terse user prompts into execution plans. Your key metric is **SPEE
 
 **MAY** use these tools:
 - `Read` - ONLY for workflow/rule files explicitly referenced in your input
-- `mcp__memory__retrieve_memory` - ONLY if semantic search needed for task matching
+- `mcp__pkb__search` - ONLY if semantic search needed for task matching
 - `mcp__pkb__*` - For task operations as specified
 
 **Why**: Your input file contains pre-loaded context (glossary, workflows, skills, paths). Filesystem exploration defeats the purpose of context injection and adds latency. If you don't know a term, it should be in the glossary - if it's missing, that's a glossary maintenance issue, not something to solve via exploration.
@@ -201,7 +201,7 @@ Before task completion, invoke `/remember` to persist:
 - **Findings**: What was discovered or learned
 - **Decisions**: Rationale for choices made
 
-Storage: Memory MCP (universal index) + appropriate primary storage per [[base-memory-capture]].
+Storage: PKB (universal index) + appropriate primary storage per [[base-memory-capture]].
 
 ```
 **Why mandatory**: Without memory capture, each session starts from scratch. The framework learns and improves only when insights are persisted.

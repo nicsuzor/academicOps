@@ -226,12 +226,12 @@ class SessionAnalyzer:
                     if file_path and file_path not in files_created:
                         files_created.append(file_path)
 
-                # Track memory notes
-                elif tool_name == "mcp__memory__store_memory":
+                # Track memory/knowledge notes (PKB create_memory)
+                elif "pkb__create_memory" in tool_name or "pkb__create" in tool_name:
                     title = tool_input.get("title", "")
-                    folder = tool_input.get("folder", "")
+                    memory_type = tool_input.get("memory_type", tool_input.get("type", ""))
                     if title:
-                        memory_notes.append({"title": title, "folder": folder})
+                        memory_notes.append({"title": title, "folder": memory_type})
 
                 # Track skill invocations
                 elif tool_name == "Skill":

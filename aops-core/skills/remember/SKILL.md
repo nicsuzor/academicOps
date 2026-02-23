@@ -1,14 +1,14 @@
 ---
 name: remember
 category: instruction
-description: Write knowledge to markdown AND sync to memory server. MUST invoke - do not write markdown directly.
-allowed-tools: Read,Write,Edit,mcp__memory__store_memory
+description: Write knowledge to markdown AND sync to PKB. MUST invoke - do not write markdown directly.
+allowed-tools: Read,Write,Edit,mcp__pkb__create_memory,mcp__pkb__search
 version: 2.0.0
 ---
 
 # Remember Skill
 
-Persist knowledge to markdown + memory server. **Both writes required** for semantic search.
+Persist knowledge to markdown + PKB. **Both writes required** for semantic search.
 
 ## Current State Machine
 
@@ -23,14 +23,14 @@ Persist knowledge to markdown + memory server. **Both writes required** for sema
 
 ## Storage Hierarchy (Critical)
 
-**Memory MCP is the universal index.** Write to your primary storage AND memory MCP for semantic search retrieval.
+**PKB is the universal index.** Write to your primary storage AND PKB for semantic search retrieval.
 
 | What                  | Primary Storage                                      | Also Sync To |
 | --------------------- | ---------------------------------------------------- | ------------ |
-| **Epics/projects**    | Task Manager MCP (`type="epic"` or `type="project"`) | Memory MCP   |
-| **Tasks/issues**      | GitHub Issues (`gh issue create`)                    | Memory MCP   |
-| **Durable knowledge** | `$ACA_DATA/` markdown files                          | Memory MCP   |
-| **Session findings**  | Task body updates                                    | Memory MCP   |
+| **Epics/projects**    | PKB (`type="epic"` or `type="project"`)              | PKB index    |
+| **Tasks/issues**      | GitHub Issues (`gh issue create`)                    | PKB index    |
+| **Durable knowledge** | `$ACA_DATA/` markdown files                          | PKB index    |
+| **Session findings**  | Task body updates                                    | PKB index    |
 
 See [[base-memory-capture]] workflow for when and how to invoke this skill.
 
@@ -72,7 +72,7 @@ Is this about the user? (projects, goals, context, tasks)
 
 ## Workflow
 
-1. **Search first**: `mcp__memory__retrieve_memory(query="topic")` + `Glob` under `$ACA_DATA/`
+1. **Search first**: `mcp__pkb__search(query="topic")` + `Glob` under `$ACA_DATA/`
 2. **If match**: Augment existing file
 3. **If no match**: Create new file with frontmatter:
 
@@ -87,12 +87,13 @@ created: YYYY-MM-DD
 Content with [[wikilinks]] to related concepts.
 ```
 
-4. **Sync to memory server**:
+4. **Sync to PKB**:
 
 ```
-mcp__memory__store_memory(
-  content="[content]",
-  metadata={"source": "[path]", "type": "[type]"}
+mcp__pkb__create_memory(
+  title="[descriptive title]",
+  body="[content]",
+  tags=["relevant", "tags"]
 )
 ```
 
@@ -110,7 +111,7 @@ mcp__memory__store_memory(
 
 ## Semantic Search
 
-Use memory server semantic search for `$ACA_DATA/` content. Never grep for markdown in the knowledge base. Give agents enough context to make decisions - never use algorithmic matching (fuzzy, keyword, regex).
+Use PKB semantic search for `$ACA_DATA/` content. Never grep for markdown in the knowledge base. Give agents enough context to make decisions - never use algorithmic matching (fuzzy, keyword, regex).
 
 ## Abstraction Level (CRITICAL for Framework Work)
 

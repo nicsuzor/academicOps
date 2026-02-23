@@ -89,19 +89,31 @@ def generate_commit_message(tool_name: str, tool_input: dict[str, Any]) -> str:
     if tool_name.endswith("__rebuild_index"):
         return "task: rebuild index"
 
-    # Memory operations
-    if tool_name.endswith("__store_memory"):
-        content = tool_input.get("content", "")
+    # PKB memory/knowledge operations
+    if tool_name.endswith("__create_memory"):
+        title = tool_input.get("title", "")
+        if title:
+            return f"memory: store '{title[:60]}'"
+        content = tool_input.get("body", tool_input.get("content", ""))
         if content:
             preview = content[:50].replace("\n", " ")
             return f"memory: store '{preview}'"
         return "memory: store"
 
-    if tool_name.endswith("__delete_memory"):
-        return "memory: delete"
+    if tool_name.endswith("__delete"):
+        doc_id = tool_input.get("id", "")
+        return f"pkb: delete {doc_id}" if doc_id else "pkb: delete"
 
-    if tool_name.endswith("__ingest_document") or tool_name.endswith("__ingest_directory"):
-        return "memory: ingest"
+    if tool_name.endswith("__append"):
+        doc_id = tool_input.get("id", "")
+        return f"pkb: append to {doc_id}" if doc_id else "pkb: append"
+
+    if tool_name.endswith("__create") and not tool_name.endswith("__create_task"):
+        title = tool_input.get("title", "")
+        doc_type = tool_input.get("type", "")
+        if title:
+            return f"pkb: create {doc_type} '{title[:60]}'"
+        return f"pkb: create {doc_type}" if doc_type else "pkb: create"
 
     # Write/Edit to data paths - categorize by file path
     if tool_name in ("Write", "Edit"):
@@ -346,23 +358,16 @@ def get_modified_repos(tool_name: str, tool_input: dict[str, Any]) -> set[str]:
         if any(pattern in command for pattern in task_script_patterns):
             modified.add("data")
 
-    # Memory MCP tools (knowledge base operations) -> data repo
-    # Use suffix matching to be client-agnostic (handles mcp__memory__,
-    # mcp__plugin_aops-core_memory__, etc.)
-    memory_write_suffixes = (
-        "__store_memory",
-        "__update_memory_metadata",
-        "__delete_memory",
-        "__delete_by_tag",
-        "__delete_by_tags",
-        "__delete_by_all_tags",
-        "__delete_by_timeframe",
-        "__delete_before_date",
-        "__ingest_document",
-        "__ingest_directory",
-        "__rate_memory",
+    # PKB write operations (knowledge base) -> data repo
+    # Use suffix matching to be client-agnostic (handles mcp__pkb__,
+    # mcp__plugin_aops-core_pkb__, etc.)
+    pkb_write_suffixes = (
+        "__create_memory",
+        "__create",
+        "__append",
+        "__delete",
     )
-    if any(tool_name.endswith(s) for s in memory_write_suffixes):
+    if any(tool_name.endswith(s) for s in pkb_write_suffixes):
         modified.add("data")
 
     # Task MCP tools (task management) -> data repo

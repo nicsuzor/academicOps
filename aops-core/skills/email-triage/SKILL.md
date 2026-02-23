@@ -2,7 +2,7 @@
 name: email-triage
 category: instruction
 description: Email triage workflow with mandatory archive receipt logging to task body
-allowed-tools: Read,Glob,Grep,Edit,Write,TodoWrite,AskUserQuestion,mcp__outlook__messages_list_recent,mcp__outlook__messages_get,mcp__outlook__messages_move,mcp__outlook__messages_search,mcp__pkb__update_task,mcp__pkb__create_task,mcp__memory__retrieve_memory
+allowed-tools: Read,Glob,Grep,Edit,Write,TodoWrite,AskUserQuestion,~~email,mcp__pkb__update_task,mcp__pkb__create_task,mcp__pkb__search
 version: 1.0.0
 permalink: skills-email-triage
 ---
@@ -93,11 +93,11 @@ mcp__pkb__update_task(
 Fetch emails based on criteria:
 
 ```python
-# Recent emails
-emails = mcp__outlook__messages_list_recent(limit=50, folder="inbox")
+# Recent emails (using ~~email connector)
+emails = ~~email.messages_list_recent(limit=50, folder="inbox")
 
 # Or search by criteria
-emails = mcp__outlook__messages_search(
+emails = ~~email.messages_search(
     subject="keyword",
     person="sender@example.com",
     is_unread=True
@@ -158,7 +158,7 @@ AskUserQuestion(
 1. Move the email:
 
 ```python
-mcp__outlook__messages_move(
+~~email.messages_move(
     entry_id=email["entry_id"],
     folder_path="Archive"  # Or user-specified folder
 )
@@ -219,7 +219,7 @@ When drafting responses, follow these requirements:
 **Before drafting ANY response**, load the user's email style guide from memory:
 
 ```python
-mcp__memory__retrieve_memory(query="email style guide")
+mcp__pkb__search(query="email style guide")
 ```
 
 If no style guide is found, use these defaults:
@@ -278,7 +278,7 @@ Task(
 | ----------------------- | ---------------------------------------------------------------------------------- |
 | Archive fails mid-batch | Task body contains partial receipt up to failure point - audit trail preserved     |
 | Task update fails       | HALT immediately. Log error. Do NOT continue archiving without receipt persistence |
-| Outlook unavailable     | HALT. Do not proceed without email access                                          |
+| ~~email unavailable     | HALT. Do not proceed without email access                                          |
 | No task bound           | HALT. Create or specify task before any archive operations                         |
 
 ## Quality Gates

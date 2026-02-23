@@ -61,16 +61,16 @@ Read $ACA_DATA/context/strategy.md  # Active projects and domains
 
 ### 2.1: Email Triage
 
-Fetch recent emails via Outlook MCP:
+Fetch recent emails via ~~email connector:
 
 ```
-mcp__outlook__messages_list_recent(limit=50, folder="inbox")
+~~email.messages_list_recent(limit=50, folder="inbox")
 ```
 
 **CRITICAL - Check sent mail FIRST**: Before classifying ANY inbox email, you MUST fetch sent mail and cross-reference to avoid flagging already-handled items:
 
 ```
-mcp__outlook__messages_list_recent(limit=20, folder="sent")
+~~email.messages_list_recent(limit=20, folder="sent")
 ```
 
 **For EACH inbox email**: Compare subject line (ignoring Re:/Fwd: prefixes) against sent mail subjects. If a matching sent reply exists, classify as **Skip** (already handled). This cross-reference is MANDATORY - skipping it causes duplicate task creation.
@@ -85,7 +85,7 @@ mcp__outlook__messages_list_recent(limit=20, folder="sent")
 
 **Thread grouping**: Group emails by conversation thread (same subject minus Re:/Fwd:). Present threads as unified summaries, not individual emails.
 
-**For each FYI thread/item**, fetch full content with `mcp__outlook__messages_get` and include:
+**For each FYI thread/item**, fetch full content with `~~email.messages_get` and include:
 
 - Thread participants and who said what (if multiple contributors)
 - **Actual content**: The key information - quote directly for short emails, summarize for long ones
@@ -112,7 +112,7 @@ From [sender]: [Actual content or summary]
    - Include deadline if mentioned or implied
    - **Then add task link to FYI content**: `- **→ Task**: [task-id] Task title`
 2. **If links to existing task** → `mcp__pkb__update_task()` with the info
-3. **If worth future recall** → `mcp__memory__store_memory()` with tags
+3. **If worth future recall** → `mcp__pkb__create_memory()` with tags
 
 Do NOT batch these to a later step. Task creation happens AS you process each email, not after.
 
