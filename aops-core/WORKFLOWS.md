@@ -10,6 +10,9 @@ tags: [framework, routing, workflows, index]
 
 # Workflow Index
 
+> **Curated by audit skill** - Regenerate with Skill(skill="audit")
+> Last reconciled: 2026-02-23
+
 Workflows are **hydrator hints**, not complete instructions. They tell the hydrator:
 
 1. When this workflow applies (routing signals)
@@ -20,17 +23,17 @@ Workflows are **hydrator hints**, not complete instructions. They tell the hydra
 
 **Always consider these.** Most workflows compose one or more base patterns.
 
-| Base                    | Pattern                                      | Skip When                             |
-| ----------------------- | -------------------------------------------- | ------------------------------------- |
-| [[base-task-tracking]]  | Claim/create task, update progress, complete | [[simple-question]], [[direct-skill]] |
-| [[base-tdd]]            | Red-green-refactor cycle                     | Non-code changes                      |
-| [[base-verification]]   | Checkpoint before completion                 | Trivial changes                       |
-| [[base-commit]]         | Stage, commit (why not what), push           | No file modifications                 |
-| [[base-handover]]       | Session end: task, git push, reflection      | [[simple-question]]                   |
-| [[base-memory-capture]] | Store findings to memory MCP via /remember   | No discoveries, [[simple-question]]   |
-| [[base-qa]]             | QA checkpoint: lock criteria, gather, judge  | Trivial changes, user waives          |
+| Base                    | Pattern                                      | Skip When                          |
+| ----------------------- | -------------------------------------------- | ---------------------------------- |
+| [[base-task-tracking]]  | Claim/create task, update progress, complete | [[simple-question]]                |
+| [[base-tdd]]            | Red-green-refactor cycle                     | Non-code changes                   |
+| [[base-verification]]   | Checkpoint before completion                 | Trivial changes                    |
+| [[base-commit]]         | Stage, commit (why not what), push           | No file modifications              |
+| [[base-handover]]       | Session end: task, git push, reflection      | [[simple-question]]                |
+| [[base-memory-capture]] | Store findings to memory MCP via /remember   | No discoveries, [[simple-question]]|
+| [[base-qa]]             | QA checkpoint: lock criteria, gather, judge  | Trivial changes, user waives       |
 | [[base-batch]]          | Batch processing: chunk, parallelize, aggregate | Single item, items have dependencies |
-| [[base-investigation]]  | Investigation: hypothesis → probe → conclude | Cause known, just executing           |
+| [[base-investigation]]  | Investigation: hypothesis → probe → conclude | Cause known, just executing        |
 
 ## Decision Tree
 
@@ -39,7 +42,7 @@ Workflows are **hydrator hints**, not complete instructions. They tell the hydra
 ```
 User request
     │
-    ├─ Explicit skill mentioned? ──────────────> [[direct-skill]]
+    ├─ Explicit skill mentioned? ──────────────> Invoke skill directly
     │
     ├─ Simple question only? ──────────────────> [[simple-question]]
     │
@@ -47,30 +50,22 @@ User request
     │
     ├─ Goal-level / multi-month work? ─────────> [[decompose]]
     │   (uncertain path, need to figure out steps)
-    │       └─ Task doesn't map to any skill? ─> [[skill-pilot]]
     │
-    ├─ Multiple similar items? ────────────────> [[batch-processing]]
+    ├─ Multiple similar items? ────────────────> [[base-batch]]
     │
-    ├─ Email/communications? ──────────────────> [[triage-email]]
-    │       ├─ Classifying emails? ────────────> [[email-classify]]
+    ├─ Email/communications? ──────────────────> [[email-triage]]
     │       ├─ Extracting tasks from email? ───> [[email-capture]]
     │       └─ Drafting replies? ──────────────> [[email-reply]]
     │
-    ├─ Academic/research task? ────────────────> (see below)
+    ├─ Academic/research task?
     │       ├─ Review submission? ─────────────> [[peer-review]]
-    │       ├─ Reference letter? ──────────────> [[reference-letter]]
-    │       └─ HDR supervision? ───────────────> [[hdr-supervision]]
+    │       └─ Reference letter? ──────────────> [[reference-letter]]
     │
-    ├─ Bug or issue?
-    │       ├─ Cause unknown (investigating)? ─> [[debugging]]
-    │       └─ Cause known (clear fix)? ───────> [[design]]
+    ├─ Building a feature? ────────────────────> [[feature-dev]]
     │
-    ├─ Planning/designing known work? ─────────> [[design]]
-    │   (know what to build, designing how)
+    ├─ Need QA verification? ──────────────────> [[qa]]
     │
-    ├─ Need QA verification? ──────────────────> [[qa-demo]]
-    │
-    ├─ Framework governance change? ───────────> [[framework-change]]
+    ├─ Framework governance change? ───────────> Compose: base-task-tracking + base-verification + base-commit
     │
     └─ No branch matched? ─────────────────────> Ask user to clarify
 ```
@@ -80,127 +75,102 @@ User request
 | Signal                                         | Route to             |
 | ---------------------------------------------- | -------------------- |
 | "Write a paper", "Build X", "Plan the project" | [[decompose]]        |
-| "Add feature X", "Fix bug Y" (clear steps)     | [[design]]           |
-| "Bug broken", "not working" (cause unknown)    | [[debugging]]        |
+| "Add feature X" (clear steps)                  | [[feature-dev]]      |
 | "How do I..." (information only)               | [[simple-question]]  |
-| "Process all X", "batch update"                | [[batch-processing]] |
-| "Process emails", "check inbox"                | [[triage-email]]     |
+| "Process all X", "batch update"                | [[base-batch]]       |
+| "Process emails", "check inbox"                | [[email-triage]]     |
 | "Review grant", "reference letter"             | [[peer-review]] / [[reference-letter]] |
-| "/commit", "/email" (skill name)               | [[direct-skill]]     |
+| "/commit", "/email" (skill name)               | Invoke skill directly |
 
 ## Available Workflows
 
 ### Planning & Discovery
 
-These workflows help figure out what to do and how to do it.
+| Workflow      | When to Use                                 | Bases         |
+| ------------- | ------------------------------------------- | ------------- |
+| [[decompose]] | Multi-month, uncertain path, goals to epics | task-tracking |
 
-| Workflow        | When to Use                                 | Bases         |
-| --------------- | ------------------------------------------- | ------------- |
-| [[decompose]]   | Multi-month, uncertain path, goals to epics | task-tracking |
-| [[design]]      | Known work, need architecture               | task-tracking |
-| [[collaborate]] | Open-ended exploration, brainstorming       | task-tracking |
-| [[strategy]]    | Strategic thinking partner (no execution)   | -             |
+> **Note:** `strategy` and `planning` are now skills, not workflows. Use `/strategy` and `/planning`.
 
 ### Development
 
-Core workflows for building and fixing software.
-
-| Workflow               | When to Use                          | Bases                                    |
-| ---------------------- | ------------------------------------ | ---------------------------------------- |
-| [[tdd-cycle]]          | Any testable code change             | task-tracking, tdd, verification, commit |
-| [[feature-dev]]        | Test-first feature from idea to ship | task-tracking, tdd, verification, commit |
-| [[debugging]]          | Cause unknown, investigating         | task-tracking, verification              |
+| Workflow       | When to Use                          | Bases                                    |
+| -------------- | ------------------------------------ | ---------------------------------------- |
+| [[feature-dev]]| Test-first feature from idea to ship | task-tracking, tdd, verification, commit |
 
 ### Quality Assurance
 
-Verification workflows for different scopes.
-
-| Workflow            | When to Use                     | Bases         |
-| ------------------- | ------------------------------- | ------------- |
-| [[qa-demo]]         | Pre-completion verification     | -             |
-| [[qa-test]]         | User acceptance testing         | -             |
-| [[prove-feature]]   | Integration validation          | -             |
-| [[qa-design]]       | Design QA test plans            | task-tracking |
+| Workflow | When to Use                    | Bases |
+| -------- | ------------------------------ | ----- |
+| [[qa]]   | QA verification and checkpoint | qa    |
 
 ### Operations & Batch
 
-Workflows for handling multiple items or operational tasks.
-
-| Workflow                  | When to Use                                  | Bases         |
-| ------------------------- | -------------------------------------------- | ------------- |
-| [[batch-processing]]      | Multiple independent items                   | task-tracking |
-| [[batch-task-processing]] | Batch task management operations             | task-tracking |
-| [[task-triage]]           | Backlog grooming and cleanup                 | task-tracking |
-| [[classify-task]]         | Complexity + graph positioning for new tasks | -             |
-| [[interactive-followup]]  | Simple session continuations                 | verification  |
+| Workflow                    | When to Use                        | Bases        |
+| --------------------------- | ---------------------------------- | ------------ |
+| [[interactive-followup]]    | Simple session continuations       | verification |
+| [[external-batch-submission]] | External batch submission processing | -          |
 
 ### Email & Communications
 
-Workflows for email processing and correspondence.
-
-| Workflow           | When to Use               | Bases         |
-| ------------------ | ------------------------- | ------------- |
-| [[triage-email]]   | Email classification      | task-tracking |
-| [[email-capture]]  | Extract tasks from emails | task-tracking |
-| [[email-classify]] | Classify email content    | -             |
-| [[email-reply]]    | Drafting replies          | task-tracking |
+| Workflow          | When to Use               | Bases         |
+| ----------------- | ------------------------- | ------------- |
+| [[email-triage]]  | Email classification      | task-tracking |
+| [[email-capture]] | Extract tasks from emails | task-tracking |
+| [[email-reply]]   | Drafting replies          | task-tracking |
 
 ### Academic
 
-Workflows for academic and research activities.
-
-| Workflow             | When to Use               | Bases         |
-| -------------------- | ------------------------- | ------------- |
-| [[peer-review]]      | Grant/fellowship reviews  | task-tracking |
+| Workflow             | When to Use              | Bases         |
+| -------------------- | ------------------------ | ------------- |
+| [[peer-review]]      | Grant/fellowship reviews | task-tracking |
 | [[reference-letter]] | Reference letter workflow | task-tracking |
-| [[hdr-supervision]]  | HDR student supervision   | task-tracking |
+
+> **Note:** HDR supervision is handled by the `/hdr` skill.
 
 ### Routing & Information
-
-Simple routing workflows with minimal ceremony.
 
 | Workflow            | When to Use                        | Bases |
 | ------------------- | ---------------------------------- | ----- |
 | [[simple-question]] | Pure information, no modifications | -     |
-| [[direct-skill]]    | 1:1 skill mapping                  | -     |
 
 ### Session & Handover
-
-Workflows for session management and state persistence.
 
 | Workflow          | When to Use                              | Bases  |
 | ----------------- | ---------------------------------------- | ------ |
 | [[base-handover]] | Session completion and state persistence | commit |
+| [[reflect]]       | Session reflection and learning capture  | -      |
 
 ### Meta & Framework
 
-Workflows about the framework itself.
-
-| Workflow             | When to Use                   | Bases                               |
-| -------------------- | ----------------------------- | ----------------------------------- |
-| [[framework-change]] | AXIOMS/HEURISTICS/enforcement | task-tracking, verification, commit |
-| [[dogfooding]]       | Framework self-improvement    | -                                   |
-| [[skill-pilot]]      | Building new skills from gaps | task-tracking                       |
-| [[audit]]            | Framework governance audit    | -                                   |
+| Workflow       | When to Use                | Bases |
+| -------------- | -------------------------- | ----- |
+| [[dogfooding]] | Framework self-improvement | -     |
+| [[audit]]      | Framework governance audit | -     |
 
 ### Git Operations
 
-Workflows for version control operations.
-
-| Workflow           | When to Use                | Bases  |
-| ------------------ | -------------------------- | ------ |
-| [[merge-conflict]] | Resolve merge conflicts    | commit |
-| [[worktree-merge]] | Merge worktree branches    | commit |
-| [[version-bump]]   | Version bumping automation | -      |
+| Workflow           | When to Use             | Bases  |
+| ------------------ | ----------------------- | ------ |
+| [[worktree-merge]] | Merge worktree branches | commit |
 
 ### Hydration (Internal)
-
-Internal workflows supporting prompt hydration.
 
 | Workflow             | When to Use                                  | Bases |
 | -------------------- | -------------------------------------------- | ----- |
 | [[framework-gate]]   | First check - detect framework modifications | -     |
-| [[constraint-check]] | Verify plan satisfies workflow constraints   | -     |
+| [[constraint-check]] | Verify plan satisfies workflow constraints    | -     |
+
+## Skill-Scoped Workflows
+
+Some skills define internal workflows for their own procedures. These are not routed by the hydrator — they're invoked within skill execution.
+
+| Skill     | Workflows                                                                                           |
+| --------- | --------------------------------------------------------------------------------------------------- |
+| framework | design-new-component, debug-framework-issue, experiment-design, monitor-prevent-bloat, feature-development, develop-specification, learning-log, decision-briefing, session-hook-forensics |
+| hdr       | reference-letter                                                                                    |
+| remember  | capture, prune, validate, sync                                                                      |
+| audit     | session-effectiveness                                                                               |
 
 ## Project-Specific Workflows
 
@@ -217,9 +187,8 @@ Projects can extend the global workflow catalog by defining local workflows in t
 
 ## Key Distinctions
 
-| If you're unsure between...          | Ask...                                              |
-| ------------------------------------ | --------------------------------------------------- |
-| [[decompose]] vs [[design]]          | "Figure out what to do" vs "design how to do it"    |
-| [[qa-demo]] vs [[prove-feature]]     | "Does it run?" vs "Does it integrate correctly?"    |
-| [[simple-question]] vs [[design]]    | Pure info (no file mods) vs any file-modifying work |
-| [[simple-question]] vs [[debugging]] | Pure info vs leads to investigation                 |
+| If you're unsure between...              | Ask...                                              |
+| ---------------------------------------- | --------------------------------------------------- |
+| [[decompose]] vs [[feature-dev]]         | "Figure out what to do" vs "build a known thing"    |
+| [[simple-question]] vs [[feature-dev]]   | Pure info (no file mods) vs any file-modifying work |
+| [[simple-question]] vs [[base-investigation]] | Pure info vs leads to investigation            |
