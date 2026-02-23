@@ -150,7 +150,7 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
                         aca_path, commit_message="sync: session-start auto-commit"
                     )
                     if ok:
-                        messages.append(f"ACA_DATA: committed pending changes")
+                        messages.append("ACA_DATA: committed pending changes")
                     else:
                         messages.append(f"ACA_DATA commit: {commit_msg}")
 
