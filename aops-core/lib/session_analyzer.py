@@ -227,7 +227,7 @@ class SessionAnalyzer:
                         files_created.append(file_path)
 
                 # Track memory/knowledge notes (PKB create_memory)
-                elif "pkb__create_memory" in tool_name or "pkb__create" in tool_name:
+                elif tool_name.endswith("__create_memory") or (tool_name.endswith("__create") and not tool_name.endswith("__create_task")):
                     title = tool_input.get("title", "")
                     memory_type = tool_input.get("memory_type", tool_input.get("type", ""))
                     if title:
