@@ -244,13 +244,24 @@ class PolecatManager:
 
         subprocess.run(cmd, cwd=local_repo_path, check=True)
 
-        # Prevent accidental push to main by unsetting upstream tracking.
-        # This ensures 'git push' fails unless a remote/branch is explicitly specified.
-        subprocess.run(
-            ["git", "branch", "--unset-upstream", branch_name],
-            cwd=local_repo_path,
-            check=False,  # Might fail if no upstream was set, which is fine
+        # Set upstream tracking to the feature branch (not main).
+        # This allows 'git push' to work without requiring manual 'git push -u',
+        # while preventing accidental push to main.
+        print(f"🔗 Setting upstream tracking for {branch_name}...")
+        push_result = subprocess.run(
+            ["git", "push", "-u", "origin", f"{branch_name}:{branch_name}"],
+            cwd=worktree_path,
+            capture_output=True,
+            text=True,
+            check=False,
         )
+        if push_result.returncode == 0:
+            print(f"  ✅ Upstream set: origin/{branch_name}")
+        else:
+            print(
+                f"  ⚠ Could not set upstream (offline?): {push_result.stderr.strip()}",
+                file=sys.stderr,
+            )
 
         return worktree_path
 
@@ -915,13 +926,24 @@ class PolecatManager:
             else:
                 raise e
 
-        # Prevent accidental push to main by unsetting upstream tracking.
-        # This ensures 'git push' fails unless a remote/branch is explicitly specified.
-        subprocess.run(
-            ["git", "branch", "--unset-upstream", branch_name],
-            cwd=repo_path,
-            check=False,  # Might fail if no upstream was set, which is fine
+        # Set upstream tracking to the feature branch (not main).
+        # This allows 'git push' to work without requiring manual 'git push -u',
+        # while preventing accidental push to main.
+        print(f"🔗 Setting upstream tracking for {branch_name}...")
+        push_result = subprocess.run(
+            ["git", "push", "-u", "origin", f"{branch_name}:{branch_name}"],
+            cwd=worktree_path,
+            capture_output=True,
+            text=True,
+            check=False,
         )
+        if push_result.returncode == 0:
+            print(f"  ✅ Upstream set: origin/{branch_name}")
+        else:
+            print(
+                f"  ⚠ Could not set upstream (offline?): {push_result.stderr.strip()}",
+                file=sys.stderr,
+            )
 
         # Post-creation validation: ensure worktree has valid history
         result = subprocess.run(
