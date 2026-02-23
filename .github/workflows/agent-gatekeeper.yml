@@ -1,15 +1,17 @@
 # Agent: Gatekeeper
-# Personality: Authoritative guardian. Defaults to approval. Gates the entire review pipeline.
+# Personality: Authoritative guardian. Defaults to approval. Gates merge via commit status.
 # Responsibilities:
 #   - Evaluate PR alignment, design coherence, quality, and proportionality
-#   - Lodge formal GitHub approval (Approval #1 required for merge)
-#   - Block downstream pipeline on rejection (job fails if changes requested)
-# Authority: APPROVE | REQUEST CHANGES | COMMENT (close recommendation)
+#   - Post commit status (pass/fail) as a required status check
+#   - Post PR comment with detailed assessment
+# Authority: Commit status "Gatekeeper" (success | failure)
 # Prompt: .github/agents/gatekeeper.md
 
 name: "Agent: Gatekeeper"
 
 on:
+  pull_request:
+    types: [opened, synchronize]
   workflow_dispatch:
     inputs:
       pr_number:
@@ -34,13 +36,17 @@ on:
 jobs:
   review:
     name: Gatekeeper
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.user.login != 'github-actions[bot]'
     runs-on: ubuntu-latest
     concurrency:
-      group: gatekeeper-${{ inputs.pr_number }}
+      group: gatekeeper-${{ inputs.pr_number || github.event.pull_request.number }}
       cancel-in-progress: true
     permissions:
       contents: read
       pull-requests: write
+      statuses: write
       id-token: write
       issues: write
       actions: read
@@ -48,7 +54,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ inputs.ref }}
+          ref: ${{ inputs.ref || github.event.pull_request.head.ref }}
 
       - name: Read agent instructions
         id: prompt
@@ -60,7 +66,23 @@ jobs:
             echo "AGENT_EOF"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Determine PR info
+        id: pr-info
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "pr_number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+            echo "head_sha=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "pr_number=${{ inputs.pr_number }}" >> "$GITHUB_OUTPUT"
+            HEAD_SHA=$(gh pr view "${{ inputs.pr_number }}" --repo "${{ github.repository }}" \
+              --json headRefOid --jq '.headRefOid')
+            echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Run Gatekeeper
+        id: gatekeeper
         uses: anthropics/claude-code-action@v1
         with:
           allowed_bots: "claude[bot]"
@@ -70,25 +92,32 @@ jobs:
 
             ---
 
-            Review PR #${{ inputs.pr_number }} in repository ${{ github.repository }}.
-            Use `gh pr view ${{ inputs.pr_number }}` and `gh pr diff ${{ inputs.pr_number }}` to gather information.
+            Review PR #${{ steps.pr-info.outputs.pr_number }} in repository ${{ github.repository }}.
+            Use `gh pr view ${{ steps.pr-info.outputs.pr_number }}` and `gh pr diff ${{ steps.pr-info.outputs.pr_number }}` to gather information.
+
+            IMPORTANT: Your verdict must be delivered as a COMMIT STATUS, not a PR review.
+
+            After your evaluation, you MUST run one of these commands:
+
+            On APPROVAL:
+            ```bash
+            gh api repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.head_sha }} \
+              -f state=success \
+              -f context="Gatekeeper" \
+              -f description="Scope and strategy alignment verified" \
+              -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            ```
+
+            On REJECTION:
+            ```bash
+            gh api repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.head_sha }} \
+              -f state=failure \
+              -f context="Gatekeeper" \
+              -f description="REJECT: <brief reason>" \
+              -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            ```
+
+            Also post a PR comment (`gh pr comment`) with your full assessment.
+            Do NOT use `gh pr review` — use commit status + comment instead.
 
           claude_args: '--allowed-tools "Bash(gh:*),Read"'
-
-      # Fail the job if gatekeeper requested changes.
-      # This blocks the downstream review pipeline (which triggers via workflow_run
-      # only when Code Quality succeeds).
-      - name: Check verdict
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          PR_NUM="${{ inputs.pr_number }}"
-          LATEST_STATE=$(gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews \
-            --jq '[.[] | select(.user.login == "claude[bot]")] | sort_by(.submitted_at) | last.state // "COMMENTED"')
-
-          echo "Gatekeeper verdict: $LATEST_STATE"
-
-          if [ "$LATEST_STATE" = "CHANGES_REQUESTED" ]; then
-            echo "::error::Gatekeeper requested changes — blocking review pipeline"
-            exit 1
-          fi

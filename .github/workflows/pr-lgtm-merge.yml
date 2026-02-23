@@ -1,16 +1,22 @@
-# Merge on human approval.
+# LGTM workflow: records human approval and enables auto-merge.
 #
-# By the time the human approves, all agents have reviewed and merge-prep has
-# fixed their comments. This workflow just lodges Approval #2 and merges.
+# When the human says "lgtm" (or approves via GitHub review), this workflow:
+#   1. Adds the 'lgtm' label (for the cron dispatcher to pick up)
+#   2. Enables GitHub auto-merge (rebase mode)
+#   3. Posts acknowledgment
+#
+# The human's LGTM comment may include instructions for merge-prep
+# (e.g., "lgtm, but fix the docstring on line 42"). Merge-prep reads
+# the comment when it runs.
 #
 # Tight triggers — only fires on:
 #   1. Human PR review approval (not bot reviews)
 #   2. LGTM-pattern comment from nicsuzor
 #   3. Manual workflow dispatch
 #
-# See specs/pr-process.md for full process documentation.
+# See specs/pr-process-v2-draft.md for full process documentation.
 
-name: Merge
+name: LGTM
 
 on:
   pull_request_review:
@@ -20,14 +26,13 @@ on:
   workflow_dispatch:
     inputs:
       pr_number:
-        description: 'PR number to merge'
+        description: 'PR number'
         required: true
         type: number
 
 jobs:
-  merge:
-    name: Merge
-    # Tight filters: human approval only
+  lgtm:
+    name: Record LGTM
     if: >-
       (github.event_name == 'workflow_dispatch') ||
       (github.event_name == 'pull_request_review' &&
@@ -38,24 +43,25 @@ jobs:
         github.event.comment.user.login == 'nicsuzor')
     runs-on: ubuntu-latest
     concurrency:
-      group: pr-merge-${{ github.event.inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}
+      group: pr-lgtm-${{ inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}
       cancel-in-progress: false
     permissions:
       contents: write
       pull-requests: write
       issues: write
-      actions: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Check LGTM pattern
+      - name: Check LGTM pattern (comment trigger)
         id: lgtm-check
         if: github.event_name == 'issue_comment'
         env:
           COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
-          if echo "$COMMENT_BODY" | grep -iqE '^(lgtm|merge|rebase|ship it|@claude merge)'; then
-            echo "proceed=true" >> $GITHUB_OUTPUT
+          if echo "$COMMENT_BODY" | grep -iqE '^(lgtm|merge|ship it)'; then
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "proceed=false" >> $GITHUB_OUTPUT
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Determine PR number
@@ -64,53 +70,35 @@ jobs:
           github.event_name == 'workflow_dispatch' ||
           github.event_name == 'pull_request_review' ||
           steps.lgtm-check.outputs.proceed == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_NUM="${{ github.event.inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}"
-          echo "pr_number=$PR_NUM" >> $GITHUB_OUTPUT
+          PR_NUM="${{ inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}"
+          echo "pr_number=$PR_NUM" >> "$GITHUB_OUTPUT"
 
-      - name: Acknowledge
+      # ── Record LGTM ──
+
+      - name: Add lgtm label
+        if: steps.pr-ref.outputs.pr_number != ''
+        run: |
+          gh pr edit "${{ steps.pr-ref.outputs.pr_number }}" \
+            --repo "${{ github.repository }}" \
+            --add-label "lgtm"
+
+      - name: Enable auto-merge
+        if: steps.pr-ref.outputs.pr_number != ''
+        run: |
+          gh pr merge "${{ steps.pr-ref.outputs.pr_number }}" \
+            --auto --rebase \
+            --repo "${{ github.repository }}"
+
+      - name: React to comment
         if: github.event_name == 'issue_comment' && steps.lgtm-check.outputs.proceed == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
             -f content=rocket
 
-      - name: Approve PR (Approval #2)
+      - name: Post acknowledgment
         if: steps.pr-ref.outputs.pr_number != ''
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
-          echo "Approving PR #$PR_NUM (Approval #2 — human-triggered)"
-          gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews \
-            -f event=APPROVE \
-            -f body="Human approved. Merge-prep has addressed all review comments."
-
-      - name: Enable auto-merge
-        if: steps.pr-ref.outputs.pr_number != ''
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
-          REPO="${{ github.repository }}"
-
-          gh pr merge "$PR_NUM" --auto --rebase --repo "$REPO"
-          echo "Auto-merge enabled on PR #$PR_NUM"
-
-      - name: Request conflict resolution if needed
-        if: steps.pr-ref.outputs.pr_number != ''
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
-          REPO="${{ github.repository }}"
-
-          STATE=$(gh api repos/${REPO}/pulls/${PR_NUM} --jq '.mergeable_state // "unknown"')
-          if [ "$STATE" = "dirty" ]; then
-            gh pr comment "$PR_NUM" --repo "$REPO" --body \
-              "@claude This PR has been approved (lgtm). Please rebase onto main, resolve any merge conflicts, and push. Auto-merge is enabled and will merge once checks pass."
-            echo "Requested Claude to resolve conflicts on PR #$PR_NUM"
-          fi
+          gh pr comment "${{ steps.pr-ref.outputs.pr_number }}" \
+            --repo "${{ github.repository }}" \
+            --body "LGTM recorded. Merge Prep will process this PR on the next cycle (~15 min). Auto-merge is enabled and will fire once all checks pass."
