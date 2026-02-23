@@ -29,7 +29,7 @@ QA planning closes this gap by applying qualitative thinking at the point where 
 
 Before writing any criteria, understand what the feature is FOR.
 
-**Read the spec or user story.** Not to extract a checklist — to understand the intent. What problem does this feature solve? For whom? Under what constraints? If there's no spec, write one first (see [[skills/framework/workflows/06-develop-specification]]).
+**Read the spec or user story.** Not to extract a checklist — to understand the intent. What problem does this feature solve? For whom? Under what constraints? If there's no spec, write one first (see [[skills/framework/workflows/06-develop-specification.md]]).
 
 **Inhabit the persona.** Write a paragraph about the user's situation when they encounter this feature. Not demographics — their cognitive and emotional state:
 

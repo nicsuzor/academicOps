@@ -102,6 +102,48 @@ in narrative prose. Is this good for the people it was designed for?
 ")
 ```
 
+### Acceptance Testing
+
+When running a test plan or tracking failures:
+
+```
+Task(subagent_type="aops-core:qa", model="opus", prompt="
+Acceptance Testing mode. Read references/acceptance-testing.md first.
+
+Run acceptance tests for [FEATURE] against the test plan in [SPEC/TASK].
+Black-box testing only — test as the user would. For each failure, create
+a fix task. Produce a results table with qualitative scores.
+")
+```
+
+### Integration Validation
+
+When verifying framework/structural changes:
+
+```
+Task(subagent_type="aops-core:qa", model="opus", prompt="
+Integration Validation mode. Read references/integration-validation.md first.
+
+Validate framework integration for [FEATURE]. Capture baseline state,
+execute the feature, verify structural changes, report evidence table
+(expected vs actual for each field/relationship).
+")
+```
+
+### System Design
+
+When designing QA infrastructure for a project:
+
+```
+Task(subagent_type="aops-core:qa", model="opus", prompt="
+System Design mode. Read references/system-design-qa.md first.
+
+Design QA infrastructure and criteria for [PROJECT]. Inventory existing
+tests, analyze gaps, design qualitative acceptance criteria per
+qa-planning.md, then design evaluation suites and workflow.
+")
+```
+
 ## Output
 
 Varies by mode:

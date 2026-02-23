@@ -77,7 +77,7 @@ Feature development follows eight phases:
 3. **Inhabit the persona**: Write a paragraph about the user's situation — cognitive/emotional state, constraints, what success feels like (see [[skills/qa/references/qa-planning.md]] Phase 1)
 4. **Design qualitative acceptance criteria**: Write dimensions requiring judgment, not binary checklists. For each dimension, describe what excellent and poor look like. Trace every criterion to a user story. (see [[skills/qa/references/qa-planning.md]] Phase 2)
 5. Clarify ambiguities NOW (ask user for specific decisions)
-6. Document in user story under "Requirements" and "Success Criteria" sections
+6. Document in user story under "Requirements" and "Acceptance Criteria" sections
 
 **Critical Questions**:
 

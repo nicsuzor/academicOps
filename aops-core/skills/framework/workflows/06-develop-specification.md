@@ -40,7 +40,7 @@ description: Process for collaboratively developing task specifications before i
    - Write 3-5 qualitative acceptance criteria with quality spectra (per QA Planning guidance)
    - Write 2-3 failure modes that indicate wrong implementation
    - Write regression checks (binary guards against breakage, separate from qualitative acceptance)
-   - **Agent confirms**: "These criteria will be implemented as tests. Agents cannot modify them."
+   - **Agent confirms**: "Regression checks will be implemented as automated tests. Qualitative criteria will be evaluated narratively. Agents cannot modify these criteria."
 
 1. **Scope the work (collaborative)**
    - **Agent proposes**: Initial scope based on problem statement
