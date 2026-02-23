@@ -640,12 +640,15 @@ def generate_svg(dot_content: str, output_base: str, layout: str, keep_dot: bool
                 # and doesn't attempt (and fall back from) spline routing itself.
                 r1 = subprocess.run(
                     [eng, "-Txdot", "-Gsplines=line"] + [dot_path],
-                    check=True, capture_output=True,
+                    check=True,
+                    capture_output=True,
                 )
                 # neato -n keeps positions, routes edges with full spline support.
                 subprocess.run(
                     ["neato", "-n", "-Tsvg", "-Gsplines=spline", "-o", svg_path],
-                    input=r1.stdout, check=True, capture_output=True,
+                    input=r1.stdout,
+                    check=True,
+                    capture_output=True,
                 )
             else:
                 cmd = [eng, "-Tsvg"] + layout_opts.get(eng, []) + [dot_path, "-o", svg_path]
