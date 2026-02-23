@@ -210,7 +210,9 @@ class TestPolecatWorktreeNoUpstream:
     manager.py.
     """
 
-    def test_new_polecat_branch_tracks_self_not_main(self, local_clone: Path, manager: PolecatManager):
+    def test_new_polecat_branch_tracks_self_not_main(
+        self, local_clone: Path, manager: PolecatManager
+    ):
         """Polecat branch created via _do_setup_worktree() must track itself, not main."""
         task_id = "aops-578fdde1"
         task = Task(id=task_id, title="regression test task", project="test")
