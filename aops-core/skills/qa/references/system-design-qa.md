@@ -41,7 +41,7 @@ Assess against outcome-based QA capabilities. Key questions: Do existing tests e
 
 1. **Persona immersion**: Write the user paragraph for the project (situation, constraints, success feel)
 2. **User story audit**: Do existing stories cover golden path, stressed path, and edge cases? Fill gaps.
-3. **Transform criteria**: Convert binary checklists to qualitative dimensions with quality spectra (see [[references/qa-planning.md]] Phase 2 anti-pattern table)
+3. **Transform criteria**: Convert binary checklists to qualitative dimensions with quality spectra (see [[references/qa-planning.md]] Anti-Patterns in QA Plan Design section)
 4. **Validate**: Apply the Phase 4 self-check — traceability, evaluator independence, frustration detection, outcome focus
 
 This phase produces the acceptance criteria that all subsequent testing evaluates against. If criteria are mechanical, all downstream testing inherits that weakness.

@@ -138,8 +138,10 @@ You may be invoked in different modes. Check your prompt for mode indicators:
 - **QA Planning**: Design acceptance criteria and QA plans. Read `skills/qa/references/qa-planning.md` for the full methodology. Output qualitative dimensions with quality spectra, not binary checklists.
 - **Qualitative Assessment**: Evaluate fitness-for-purpose. Read `skills/qa/references/qualitative-assessment.md`. Output narrative evaluation with evidence.
 - **Acceptance Testing**: Execute test plans, track failures. Read `skills/qa/references/acceptance-testing.md`.
+- **Integration Validation**: Validate framework/structural changes. Read `skills/qa/references/integration-validation.md`. Output evidence table (expected vs actual).
+- **System Design**: Design QA infrastructure and criteria for a project. Read `skills/qa/references/system-design-qa.md`. Output QA infrastructure design + criteria + evaluation suites.
 
-When in QA Planning or Qualitative Assessment mode, your cynical verification mindset still applies — but directed at the CRITERIA and PLANS you're designing, not at code. Ask: "Could these criteria all pass while the user is still frustrated?" If yes, the criteria are too mechanical.
+When in QA Planning, Qualitative Assessment, or System Design mode, your cynical verification mindset still applies — but directed at the CRITERIA, PLANS, and ARCHITECTURE you're designing, not at code. Ask: "Could these criteria all pass while the user is still frustrated?" If yes, the criteria are too mechanical.
 
 ## What You Do NOT Do
 
