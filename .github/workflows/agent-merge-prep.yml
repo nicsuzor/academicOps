@@ -1,11 +1,13 @@
 # Agent: Merge Prep
-# Personality: Diligent and thorough. The janitor. Fixes what the reviewers found.
+# Personality: Diligent, thorough, and judicious. The critical reviewer + janitor.
 # Responsibilities:
-#   - Read all review comments from pipeline agents and external bots
+#   - Read ALL review comments (our agents + bazaar: Gemini, Copilot, etc.)
+#   - Read human's LGTM comment for specific instructions
 #   - Triage: fix genuine bugs, respond to false positives, defer scope creep
-#   - Push fixes so the pipeline re-runs with clean code
-#   - Post a triage summary comment
-# Authority: Can EDIT code, push commits, post comments
+#   - Push fixes so cheap checks re-run with clean code
+#   - Set "Merge Prep" commit status to success (unblocks auto-merge)
+#   - Clean up labels (remove lgtm, merge-prep-running)
+# Authority: Can EDIT code, push commits, post comments, set commit status
 # Prompt: .github/agents/merge-prep.md
 
 name: "Agent: Merge Prep"
@@ -21,24 +23,18 @@ on:
         description: 'Git ref to checkout'
         type: string
         required: true
-  workflow_call:
-    inputs:
-      pr_number:
-        description: 'PR number to prepare'
-        type: string
-        required: true
-      ref:
-        description: 'Git ref to checkout'
-        type: string
-        required: true
 
 jobs:
   fix:
     name: Merge Prep
     runs-on: ubuntu-latest
+    concurrency:
+      group: merge-prep-${{ inputs.pr_number }}
+      cancel-in-progress: true
     permissions:
       contents: write
       pull-requests: write
+      statuses: write
       id-token: write
       issues: write
       actions: read
@@ -50,48 +46,26 @@ jobs:
 
       - name: Check if last push was from merge-prep
         id: loop-check
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Prevent infinite loop: if the last commit was pushed by merge-prep,
-          # skip this run. Uses a trailer in the commit message rather than
-          # author name, since other bots (autofix lint, dependabot) also
-          # commit as github-actions[bot].
           LAST_MSG=$(git log -1 --format='%B')
           if echo "$LAST_MSG" | grep -q 'Merge-Prep-By:'; then
             echo "Last commit was from merge-prep — skipping to avoid loop"
-            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "skip=true" >> "$GITHUB_OUTPUT"
           else
-            echo "skip=false" >> $GITHUB_OUTPUT
+            echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Check for outstanding review comments
-        id: review-check
-        if: steps.loop-check.outputs.skip != 'true'
+      - name: Get PR HEAD SHA
+        id: head
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_NUM="${{ inputs.pr_number }}"
-
-          # Check if any agent requested changes
-          CHANGES_REQUESTED=$(gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews \
-            --jq '[.[] | select(.state == "CHANGES_REQUESTED")] | length')
-
-          # Check for unresolved review comments
-          COMMENTS=$(gh api repos/${{ github.repository }}/pulls/${PR_NUM}/comments \
-            --jq 'length')
-
-          echo "Changes requested: $CHANGES_REQUESTED"
-          echo "Review comments: $COMMENTS"
-
-          if [ "$CHANGES_REQUESTED" -gt 0 ] || [ "$COMMENTS" -gt 0 ]; then
-            echo "has_feedback=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_feedback=false" >> $GITHUB_OUTPUT
-          fi
+          HEAD_SHA=$(gh pr view "${{ inputs.pr_number }}" --repo "${{ github.repository }}" \
+            --json headRefOid --jq '.headRefOid')
+          echo "sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
 
       - name: Read agent instructions
-        if: steps.loop-check.outputs.skip != 'true' && steps.review-check.outputs.has_feedback == 'true'
+        if: steps.loop-check.outputs.skip != 'true'
         id: prompt
         run: |
           PROMPT=$(cat .github/agents/merge-prep.md)
@@ -102,7 +76,9 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Run Merge Prep
-        if: steps.loop-check.outputs.skip != 'true' && steps.review-check.outputs.has_feedback == 'true'
+        if: steps.loop-check.outputs.skip != 'true'
+        id: claude
+        continue-on-error: true
         uses: anthropics/claude-code-action@v1
         with:
           allowed_bots: "claude[bot]"
@@ -113,50 +89,112 @@ jobs:
             ---
 
             Prepare PR #${{ inputs.pr_number }} in repository ${{ github.repository }}.
-            Use `gh pr view ${{ inputs.pr_number }}`, `gh pr diff ${{ inputs.pr_number }}`,
-            and `gh api repos/${{ github.repository }}/pulls/${{ inputs.pr_number }}/reviews`
-            to gather all review feedback.
 
-            Fix what you can, respond to false positives, and post your triage summary.
+            Use these commands to gather context:
+            - `gh pr view ${{ inputs.pr_number }}` — PR description and metadata
+            - `gh pr diff ${{ inputs.pr_number }}` — the diff
+            - `gh api repos/${{ github.repository }}/pulls/${{ inputs.pr_number }}/reviews` — all reviews
+            - `gh api repos/${{ github.repository }}/pulls/${{ inputs.pr_number }}/comments` — inline comments
+            - `gh api repos/${{ github.repository }}/issues/${{ inputs.pr_number }}/comments` — issue comments (including LGTM)
+
+            Look for the human's LGTM comment — it may contain specific instructions
+            (e.g., "lgtm, but fix the docstring on line 42"). Treat those as directives.
+
+            Read ALL reviews from every source (our agents + Gemini + Copilot + anyone).
+            Triage them all. Fix what's warranted. Dismiss what's not. Post your summary.
+
+            After you are done (whether you pushed changes or not), you MUST run:
+            ```bash
+            # Get the current HEAD SHA (may have changed if you pushed)
+            HEAD_SHA=$(gh pr view ${{ inputs.pr_number }} --repo ${{ github.repository }} --json headRefOid --jq '.headRefOid')
+
+            # Set the Merge Prep status to success — this unblocks auto-merge
+            gh api repos/${{ github.repository }}/statuses/$HEAD_SHA \
+              -f state=success \
+              -f context="Merge Prep" \
+              -f description="Review complete — ready to merge" \
+              -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            ```
 
           claude_args: '--allowed-tools "Bash,Edit,Read,Write"'
 
-      - name: Post loop-skip notice
+      # ── Post-agent cleanup ──
+
+      - name: Set Merge Prep status on success
+        if: steps.loop-check.outputs.skip != 'true' && steps.claude.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get current HEAD (may have changed if merge-prep pushed)
+          HEAD_SHA=$(gh pr view "${{ inputs.pr_number }}" --repo "${{ github.repository }}" \
+            --json headRefOid --jq '.headRefOid')
+
+          gh api "repos/${{ github.repository }}/statuses/$HEAD_SHA" \
+            -f state=success \
+            -f context="Merge Prep" \
+            -f description="Review complete — ready to merge" \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+      - name: Set Merge Prep status on skip (loop)
         if: steps.loop-check.outputs.skip == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_NUM="${{ inputs.pr_number }}"
+          gh api "repos/${{ github.repository }}/statuses/${{ steps.head.outputs.sha }}" \
+            -f state=success \
+            -f context="Merge Prep" \
+            -f description="Skipped (loop detection) — ready to merge" \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
-          # Gather unresolved review state so the human knows what's outstanding
-          CHANGES_REQUESTED=$(gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews \
-            --jq '[.[] | select(.state == "CHANGES_REQUESTED")] | length')
-          COMMENT_COUNT=$(gh api repos/${{ github.repository }}/pulls/${PR_NUM}/comments \
-            --jq 'length')
-
-          BODY="## Merge Prep: Skipped (loop detection)"
-          BODY="${BODY}\n\nThe last commit was already from merge-prep. Skipping to avoid infinite loop."
-
-          if [ "$CHANGES_REQUESTED" -gt 0 ] || [ "$COMMENT_COUNT" -gt 0 ]; then
-            BODY="${BODY}\n\n**Unresolved feedback remains:**"
-            BODY="${BODY}\n- Reviews requesting changes: ${CHANGES_REQUESTED}"
-            BODY="${BODY}\n- Inline review comments: ${COMMENT_COUNT}"
-            BODY="${BODY}\n\nPlease review these manually before merging."
-          else
-            BODY="${BODY}\n\nNo outstanding review comments detected."
-          fi
-
-          echo -e "$BODY" | gh pr comment "$PR_NUM" --repo "${{ github.repository }}" --body-file -
-
-      - name: Post no-action summary
-        if: steps.loop-check.outputs.skip != 'true' && steps.review-check.outputs.has_feedback == 'false'
+      - name: Clean up labels on success
+        if: steps.claude.outcome == 'success' || steps.loop-check.outputs.skip == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh pr comment "${{ inputs.pr_number }}" --repo "${{ github.repository }}" --body "$(cat <<'EOF'
-          ## Merge Prep: No Review Comments
+          PR_NUM="${{ inputs.pr_number }}"
+          REPO="${{ github.repository }}"
 
-          All review agents approved. No comments to address.
-          Ready for human review.
+          # Remove processing labels
+          gh pr edit "$PR_NUM" --repo "$REPO" --remove-label "lgtm" 2>/dev/null || true
+          gh pr edit "$PR_NUM" --repo "$REPO" --remove-label "merge-prep-running" 2>/dev/null || true
+
+      - name: Handle failure
+        if: steps.loop-check.outputs.skip != 'true' && steps.claude.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUM="${{ inputs.pr_number }}"
+          REPO="${{ github.repository }}"
+
+          # Remove running label so cron can retry
+          gh pr edit "$PR_NUM" --repo "$REPO" --remove-label "merge-prep-running" 2>/dev/null || true
+          # Keep lgtm label — human approval still stands
+
+          # Check failure count
+          FAIL_COUNT=$(gh api "repos/$REPO/issues/$PR_NUM/comments" \
+            --jq '[.[] | select(.body | test("Merge Prep: Failed")) and (.user.login == "github-actions[bot]")] | length')
+
+          if [ "$FAIL_COUNT" -ge "$((3 - 1))" ]; then
+            # This is the 3rd failure — stop retrying
+            gh pr edit "$PR_NUM" --repo "$REPO" --add-label "merge-prep-failed" 2>/dev/null || true
+            gh pr comment "$PR_NUM" --repo "$REPO" --body "$(cat <<'EOF'
+          ## Merge Prep: Failed (giving up)
+
+          Merge Prep has failed 3 times on this PR. Halting automatic retries.
+
+          **Human intervention required.** Please:
+          1. Check the workflow logs for errors
+          2. Fix any issues manually
+          3. Remove the `merge-prep-failed` label to allow retries
+          4. Re-run via Actions > Agent: Merge Prep > Run workflow
           EOF
           )"
+          else
+            gh pr comment "$PR_NUM" --repo "$REPO" --body "$(cat <<'EOF'
+          ## Merge Prep: Failed
+
+          Merge Prep encountered an error. It will retry on the next cron cycle (~15 min).
+          Check the workflow logs for details.
+          EOF
+          )"
+          fi

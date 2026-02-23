@@ -1,0 +1,173 @@
+# Cron dispatcher for merge-prep: runs every 15 minutes on main.
+# Finds open PRs that have the 'lgtm' label, checks qualification
+# criteria (time gate, checks passing), and dispatches the merge-prep
+# agent for each qualifying PR.
+#
+# This replaces the event-driven pr-review-pipeline.yml to eliminate
+# bot cascade loops. Time-gated dispatch cannot cascade.
+#
+# See specs/pr-process-v2-draft.md for the full process documentation.
+
+name: Merge Prep Dispatcher
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Override: process specific PR immediately (skip qualification)'
+        type: string
+        required: false
+
+jobs:
+  dispatch:
+    name: Find and dispatch qualifying PRs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      statuses: read
+      actions: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      BAZAAR_WINDOW_SECONDS: 1800  # 30 minutes
+      MAX_FAILURES: 3
+    steps:
+      # ── Manual override: process a specific PR immediately ──
+      - name: Manual override
+        if: inputs.pr_number != ''
+        run: |
+          PR_NUM="${{ inputs.pr_number }}"
+          echo "Manual override: processing PR #$PR_NUM immediately"
+
+          # Get PR details
+          PR_DATA=$(gh pr view "$PR_NUM" --repo "${{ github.repository }}" \
+            --json headRefName,headRefOid)
+          HEAD_REF=$(echo "$PR_DATA" | jq -r '.headRefName')
+          HEAD_SHA=$(echo "$PR_DATA" | jq -r '.headRefOid')
+
+          echo "Branch: $HEAD_REF, SHA: $HEAD_SHA"
+
+          # Add running label
+          gh pr edit "$PR_NUM" --repo "${{ github.repository }}" \
+            --add-label "merge-prep-running" 2>/dev/null || true
+
+          # Dispatch merge-prep
+          gh workflow run agent-merge-prep.yml \
+            --repo "${{ github.repository }}" \
+            -f pr_number="$PR_NUM" \
+            -f ref="$HEAD_REF"
+
+          echo "Dispatched merge-prep for PR #$PR_NUM"
+
+      # ── Scheduled: find qualifying PRs ──
+      - name: Find qualifying PRs
+        if: inputs.pr_number == ''
+        id: qualify
+        run: |
+          REPO="${{ github.repository }}"
+          NOW=$(date +%s)
+
+          # Get all open PRs with 'lgtm' label
+          PRS=$(gh pr list --repo "$REPO" --state open --label lgtm \
+            --json number,headRefName,headRefOid,labels)
+
+          if [ "$(echo "$PRS" | jq 'length')" -eq 0 ]; then
+            echo "No PRs with 'lgtm' label found"
+            echo "qualifying=[]" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          QUALIFYING="[]"
+
+          echo "$PRS" | jq -c '.[]' | while read -r PR; do
+            PR_NUM=$(echo "$PR" | jq -r '.number')
+            HEAD_REF=$(echo "$PR" | jq -r '.headRefName')
+            HEAD_SHA=$(echo "$PR" | jq -r '.headRefOid')
+            LABELS=$(echo "$PR" | jq -r '.labels[].name')
+
+            echo "--- Checking PR #$PR_NUM ---"
+
+            # Skip if already being processed
+            if echo "$LABELS" | grep -q "merge-prep-running"; then
+              echo "  SKIP: merge-prep-running label present"
+              continue
+            fi
+
+            # Skip if previously failed too many times
+            if echo "$LABELS" | grep -q "merge-prep-failed"; then
+              echo "  SKIP: merge-prep-failed label present"
+              continue
+            fi
+
+            # Check time gate: last commit must be ≥30 min ago
+            LAST_COMMIT_DATE=$(gh pr view "$PR_NUM" --repo "$REPO" \
+              --json commits --jq '.commits[-1].committedDate')
+            LAST_COMMIT_TS=$(date -d "$LAST_COMMIT_DATE" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$LAST_COMMIT_DATE" +%s 2>/dev/null)
+            AGE=$((NOW - LAST_COMMIT_TS))
+
+            if [ "$AGE" -lt "$BAZAAR_WINDOW_SECONDS" ]; then
+              echo "  SKIP: last commit ${AGE}s ago (need ${BAZAAR_WINDOW_SECONDS}s)"
+              continue
+            fi
+
+            # Check required status checks on HEAD commit
+            # We check Lint, Gatekeeper, Type Check, Pytest — but NOT Merge Prep (it's pending by design)
+            CHECKS_OK=true
+            for CTX in "Lint" "Gatekeeper" "Type Check" "Pytest"; do
+              STATE=$(gh api "repos/$REPO/commits/$HEAD_SHA/status" \
+                --jq ".statuses[] | select(.context == \"$CTX\") | .state" 2>/dev/null)
+
+              # Also check check-runs (GitHub Actions reports as check runs, not commit statuses)
+              if [ -z "$STATE" ]; then
+                STATE=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs" \
+                  --jq ".check_runs[] | select(.name == \"$CTX\") | .conclusion" 2>/dev/null)
+              fi
+
+              if [ "$STATE" != "success" ]; then
+                echo "  SKIP: $CTX status is '$STATE' (need 'success')"
+                CHECKS_OK=false
+                break
+              fi
+            done
+
+            if [ "$CHECKS_OK" = false ]; then
+              continue
+            fi
+
+            echo "  QUALIFIED: PR #$PR_NUM ready for merge-prep"
+            echo "$PR_NUM $HEAD_REF" >> /tmp/qualifying_prs.txt
+          done
+
+          if [ -f /tmp/qualifying_prs.txt ]; then
+            echo "qualifying_count=$(wc -l < /tmp/qualifying_prs.txt)" >> "$GITHUB_OUTPUT"
+          else
+            echo "qualifying_count=0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Dispatch merge-prep for qualifying PRs
+        if: inputs.pr_number == ''
+        run: |
+          REPO="${{ github.repository }}"
+
+          if [ ! -f /tmp/qualifying_prs.txt ]; then
+            echo "No qualifying PRs to process"
+            exit 0
+          fi
+
+          while read -r PR_NUM HEAD_REF; do
+            echo "Dispatching merge-prep for PR #$PR_NUM (branch: $HEAD_REF)"
+
+            # Add running label
+            gh pr edit "$PR_NUM" --repo "$REPO" \
+              --add-label "merge-prep-running" 2>/dev/null || true
+
+            # Dispatch merge-prep agent
+            gh workflow run agent-merge-prep.yml \
+              --repo "$REPO" \
+              -f pr_number="$PR_NUM" \
+              -f ref="$HEAD_REF"
+
+            echo "  Dispatched successfully"
+          done < /tmp/qualifying_prs.txt

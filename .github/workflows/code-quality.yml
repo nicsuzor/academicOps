@@ -1,10 +1,9 @@
-# Checks that run on every PR push: lint, gatekeeper, and type-check.
-# Lint and gatekeeper run in parallel; type-check runs after lint passes.
+# Cheap checks that run on every PR push: lint and type-check.
+# Type-check runs after lint passes.
 #
-# Gatekeeper is a reusable agent workflow (agent-gatekeeper.yml) that
-# evaluates PR alignment and lodges Approval #1 required for merge.
+# Gatekeeper runs as a separate standalone workflow (agent-gatekeeper.yml).
 #
-# See specs/pr-process.md for the full process documentation.
+# See specs/pr-process-v2-draft.md for the full process documentation.
 
 name: Code Quality
 
@@ -85,26 +84,6 @@ jobs:
       - name: Ruff format check (final)
         if: steps.format-initial.outcome == 'failure'
         run: uv run ruff format --check
-
-  # ──────────────────────────────────────────────
-  # Gatekeeper (alignment + quality gate)
-  # Runs in parallel with lint — no dependencies.
-  # Reusable agent: agent-gatekeeper.yml
-  # ──────────────────────────────────────────────
-  gatekeeper:
-    name: Gatekeeper
-    if: github.event_name == 'pull_request'
-    uses: ./.github/workflows/agent-gatekeeper.yml
-    permissions:
-      contents: read
-      pull-requests: write
-      id-token: write
-      issues: write
-      actions: read
-    with:
-      pr_number: ${{ github.event.pull_request.number }}
-      ref: ${{ github.event.pull_request.head.ref }}
-    secrets: inherit
 
   # ──────────────────────────────────────────────
   # Stage 2: Type Check

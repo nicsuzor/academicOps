@@ -1,21 +1,22 @@
-# Merge on human approval.
+# LGTM workflow: records human approval and enables auto-merge.
 #
-# By the time the human approves, all agents have reviewed and merge-prep has
-# fixed their comments. This workflow just lodges Approval #2 and merges.
+# When the human says "lgtm" (or approves via GitHub review), this workflow:
+#   1. Adds the 'lgtm' label (for the cron dispatcher to pick up)
+#   2. Enables GitHub auto-merge (rebase mode)
+#   3. Posts acknowledgment
+#
+# The human's LGTM comment may include instructions for merge-prep
+# (e.g., "lgtm, but fix the docstring on line 42"). Merge-prep reads
+# the comment when it runs.
 #
 # Tight triggers — only fires on:
 #   1. Human PR review approval (not bot reviews)
 #   2. LGTM-pattern comment from nicsuzor
 #   3. Manual workflow dispatch
 #
-# Pre-merge checks:
-#   - Verifies required status checks are passing before enabling auto-merge
-#   - If lint is failing, triggers lint autofix and reports status
-#   - If other checks are failing, reports what's blocking the merge
-#
-# See specs/pr-process.md for full process documentation.
+# See specs/pr-process-v2-draft.md for full process documentation.
 
-name: Merge
+name: LGTM
 
 on:
   pull_request_review:
@@ -25,14 +26,13 @@ on:
   workflow_dispatch:
     inputs:
       pr_number:
-        description: 'PR number to merge'
+        description: 'PR number'
         required: true
         type: number
 
 jobs:
-  merge:
-    name: Merge
-    # Tight filters: human approval only
+  lgtm:
+    name: Record LGTM
     if: >-
       (github.event_name == 'workflow_dispatch') ||
       (github.event_name == 'pull_request_review' &&
@@ -43,24 +43,25 @@ jobs:
         github.event.comment.user.login == 'nicsuzor')
     runs-on: ubuntu-latest
     concurrency:
-      group: pr-merge-${{ github.event.inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}
+      group: pr-lgtm-${{ inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}
       cancel-in-progress: false
     permissions:
       contents: write
       pull-requests: write
       issues: write
-      actions: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Check LGTM pattern
+      - name: Check LGTM pattern (comment trigger)
         id: lgtm-check
         if: github.event_name == 'issue_comment'
         env:
           COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
-          if echo "$COMMENT_BODY" | grep -iqE '^(lgtm|merge|rebase|ship it|@claude merge)'; then
-            echo "proceed=true" >> $GITHUB_OUTPUT
+          if echo "$COMMENT_BODY" | grep -iqE '^(lgtm|merge|ship it)'; then
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "proceed=false" >> $GITHUB_OUTPUT
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Determine PR number
@@ -69,143 +70,35 @@ jobs:
           github.event_name == 'workflow_dispatch' ||
           github.event_name == 'pull_request_review' ||
           steps.lgtm-check.outputs.proceed == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_NUM="${{ github.event.inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}"
-          echo "pr_number=$PR_NUM" >> $GITHUB_OUTPUT
+          PR_NUM="${{ inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}"
+          echo "pr_number=$PR_NUM" >> "$GITHUB_OUTPUT"
 
-      - name: Check required status checks
-        id: check-status
+      # ── Record LGTM ──
+
+      - name: Add lgtm label
         if: steps.pr-ref.outputs.pr_number != ''
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
-          REPO="${{ github.repository }}"
+          gh pr edit "${{ steps.pr-ref.outputs.pr_number }}" \
+            --repo "${{ github.repository }}" \
+            --add-label "lgtm"
 
-          # Get the HEAD SHA for this PR
-          HEAD_SHA=$(gh api repos/${REPO}/pulls/${PR_NUM} --jq '.head.sha')
-          HEAD_REF=$(gh api repos/${REPO}/pulls/${PR_NUM} --jq '.head.ref')
-          echo "head_sha=$HEAD_SHA" >> $GITHUB_OUTPUT
-          echo "head_ref=$HEAD_REF" >> $GITHUB_OUTPUT
+      - name: Enable auto-merge
+        if: steps.pr-ref.outputs.pr_number != ''
+        run: |
+          gh pr merge "${{ steps.pr-ref.outputs.pr_number }}" \
+            --auto --rebase \
+            --repo "${{ github.repository }}"
 
-          # Check all check runs on the HEAD commit
-          # Focus on the required check: "Lint"
-          LINT_STATUS=$(gh api repos/${REPO}/commits/${HEAD_SHA}/check-runs \
-            --jq '[.check_runs[] | select(.name == "Lint")] | sort_by(.started_at) | last | .conclusion // .status // "not_found"')
-
-          echo "lint_status=$LINT_STATUS" >> $GITHUB_OUTPUT
-          echo "Lint status: $LINT_STATUS"
-
-          # Check overall combined status
-          COMBINED=$(gh api repos/${REPO}/commits/${HEAD_SHA}/status --jq '.state // "unknown"')
-          echo "combined_status=$COMBINED" >> $GITHUB_OUTPUT
-          echo "Combined status: $COMBINED"
-
-          # Gather all failing checks for reporting
-          FAILING_CHECKS=$(gh api repos/${REPO}/commits/${HEAD_SHA}/check-runs \
-            --jq '[.check_runs[] | select(.conclusion == "failure" or .conclusion == "cancelled")] | map(.name) | join(", ")' || echo "")
-          echo "failing_checks=$FAILING_CHECKS" >> $GITHUB_OUTPUT
-
-          # Determine if we can proceed directly
-          if [ "$LINT_STATUS" = "success" ] && [ -z "$FAILING_CHECKS" ]; then
-            echo "checks_ok=true" >> $GITHUB_OUTPUT
-          else
-            echo "checks_ok=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Acknowledge
+      - name: React to comment
         if: github.event_name == 'issue_comment' && steps.lgtm-check.outputs.proceed == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
             -f content=rocket
 
-      - name: Re-run lint if failing
-        id: rerun-lint
-        if: >-
-          steps.pr-ref.outputs.pr_number != '' &&
-          steps.check-status.outputs.checks_ok != 'true' &&
-          (steps.check-status.outputs.lint_status == 'failure' ||
-           steps.check-status.outputs.lint_status == 'cancelled' ||
-           steps.check-status.outputs.lint_status == 'not_found')
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
-          HEAD_REF="${{ steps.check-status.outputs.head_ref }}"
-          REPO="${{ github.repository }}"
-
-          echo "Lint is not passing — triggering Code Quality re-run via workflow_dispatch"
-
-          # Trigger the code-quality workflow on the PR's branch
-          gh workflow run code-quality.yml --repo "$REPO" --ref "$HEAD_REF" || true
-
-          echo "triggered=true" >> $GITHUB_OUTPUT
-
-      - name: Report blocking checks
-        if: >-
-          steps.pr-ref.outputs.pr_number != '' &&
-          steps.check-status.outputs.checks_ok != 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
-          LINT_STATUS="${{ steps.check-status.outputs.lint_status }}"
-          FAILING="${{ steps.check-status.outputs.failing_checks }}"
-          RERUN="${{ steps.rerun-lint.outputs.triggered }}"
-
-          BODY="## Merge: Checks Not Passing"
-          BODY="${BODY}\n\nLGTM received, but required status checks are not all passing."
-          BODY="${BODY}\n\n**Lint status**: ${LINT_STATUS}"
-
-          if [ -n "$FAILING" ]; then
-            BODY="${BODY}\n**Failing checks**: ${FAILING}"
-          fi
-
-          if [ "$RERUN" = "true" ]; then
-            BODY="${BODY}\n\nLint has been re-triggered with autofix. Auto-merge is enabled and will merge once all checks pass."
-          else
-            BODY="${BODY}\n\nAuto-merge is enabled and will merge once all checks pass."
-          fi
-
-          echo -e "$BODY" | gh pr comment "$PR_NUM" --repo "${{ github.repository }}" --body-file -
-
-      - name: Approve PR (Approval #2)
+      - name: Post acknowledgment
         if: steps.pr-ref.outputs.pr_number != ''
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
-          echo "Approving PR #$PR_NUM (Approval #2 — human-triggered)"
-          gh api repos/${{ github.repository }}/pulls/${PR_NUM}/reviews \
-            -f event=APPROVE \
-            -f body="Human approved. Merge-prep has addressed all review comments."
-
-      - name: Enable auto-merge
-        if: steps.pr-ref.outputs.pr_number != ''
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
-          REPO="${{ github.repository }}"
-
-          gh pr merge "$PR_NUM" --auto --rebase --repo "$REPO"
-          echo "Auto-merge enabled on PR #$PR_NUM"
-
-      - name: Request conflict resolution if needed
-        if: steps.pr-ref.outputs.pr_number != ''
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
-          REPO="${{ github.repository }}"
-
-          STATE=$(gh api repos/${REPO}/pulls/${PR_NUM} --jq '.mergeable_state // "unknown"')
-          if [ "$STATE" = "dirty" ]; then
-            gh pr comment "$PR_NUM" --repo "$REPO" --body \
-              "@claude This PR has been approved (lgtm). Please rebase onto main, resolve any merge conflicts, and push. Auto-merge is enabled and will merge once checks pass."
-            echo "Requested Claude to resolve conflicts on PR #$PR_NUM"
-          fi
+          gh pr comment "${{ steps.pr-ref.outputs.pr_number }}" \
+            --repo "${{ github.repository }}" \
+            --body "LGTM recorded. Merge Prep will process this PR on the next cycle (~15 min). Auto-merge is enabled and will fire once all checks pass."
