@@ -108,6 +108,29 @@ def load_projects(config_path: Path | None = None) -> dict:
     return projects
 
 
+def load_project_aliases(config_path: Path | None = None) -> dict[str, str]:
+    """Load shorthand aliases that map to project slugs.
+
+    Aliases are defined in polecat.yaml under project_aliases, e.g.:
+        project_aliases:
+            bm: buttermilk
+
+    Built-in aliases: project slugs always resolve to themselves.
+
+    Args:
+        config_path: Optional path to config file.
+
+    Returns:
+        Dict mapping alias -> project slug
+    """
+    config = load_config(config_path)
+    aliases = dict(config.get("project_aliases", {}))
+    # Every project slug is also a valid alias for itself
+    for slug in config.get("projects", {}):
+        aliases.setdefault(slug, slug)
+    return aliases
+
+
 def load_crew_names(config_path: Path | None = None) -> list[str]:
     """Load crew names from config file.
 
@@ -163,6 +186,9 @@ class PolecatManager:
         # Load crew names for random selection
         self.crew_names = load_crew_names(self.config_path)
 
+        # Load project aliases (shorthand -> slug mapping)
+        self.project_aliases = load_project_aliases(self.config_path)
+
         # We still need access to the task DB
         self.storage = TaskStorage()
 
@@ -180,6 +206,72 @@ class PolecatManager:
             return f"{base}_{suffix}"
 
         return random.choice(available)
+
+    def resolve_project_alias(self, alias: str) -> str:
+        """Resolve a project alias to its canonical slug.
+
+        Args:
+            alias: Shorthand alias (e.g., 'bm') or full slug (e.g., 'buttermilk')
+
+        Returns:
+            Canonical project slug
+
+        Raises:
+            ValueError: If alias is not recognized
+        """
+        if alias in self.project_aliases:
+            return self.project_aliases[alias]
+        # Check if it's already a valid project slug
+        if alias in self.projects:
+            return alias
+        raise ValueError(
+            f"Unknown project alias: '{alias}'. "
+            f"Known aliases: {list(self.project_aliases.keys())}, "
+            f"Known projects: {list(self.projects.keys())}"
+        )
+
+    def register_adhoc_project(self, repo_path: Path) -> str:
+        """Register an ad-hoc project from an arbitrary repo path.
+
+        Creates a temporary project entry so crew can work on repos
+        not in polecat.yaml. The slug is derived from the directory name.
+
+        Args:
+            repo_path: Absolute path to a git repository
+
+        Returns:
+            Project slug for the ad-hoc project
+
+        Raises:
+            FileNotFoundError: If repo_path doesn't exist
+            ValueError: If repo_path is not a git repository
+        """
+        repo_path = Path(repo_path).resolve()
+        if not repo_path.exists():
+            raise FileNotFoundError(f"Repository not found: {repo_path}")
+        if not (repo_path / ".git").exists():
+            raise ValueError(f"Not a git repository: {repo_path}")
+
+        # Derive slug from directory name
+        slug = repo_path.name.lower().replace(" ", "-")
+
+        # Detect default branch
+        default_branch = "main"
+        result = subprocess.run(
+            ["git", "symbolic-ref", "refs/remotes/origin/HEAD"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            ref = result.stdout.strip()
+            default_branch = ref.rsplit("/", 1)[-1]
+
+        self.projects[slug] = {
+            "path": repo_path,
+            "default_branch": default_branch,
+        }
+        return slug
 
     def list_crew(self) -> list[str]:
         """List active crew worker names."""
@@ -262,6 +354,9 @@ class PolecatManager:
                 f"  ⚠ Could not set upstream (offline?): {push_result.stderr.strip()}",
                 file=sys.stderr,
             )
+
+        # Apply sandbox settings to isolate the worker to this worktree
+        self.create_sandbox_settings(worktree_path)
 
         return worktree_path
 
