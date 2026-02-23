@@ -616,41 +616,51 @@ def merge():
     eng.scan_and_merge()
 
 
-@main.command()
-@click.option("--project", "-p", multiple=True, help="Project(s) to work on (default: all)")
+@main.command("c", hidden=True)
+@click.argument("target", required=False, default=None)
+@click.argument("extra", required=False, default=None)
 @click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
 @click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
 @click.pass_context
-def crew(ctx, project, name, gemini, resume):
-    """Start an interactive crew session.
+def crew_alias(ctx, target, extra, name, gemini, resume):
+    """Shorthand for 'crew'. See 'polecat crew --help'."""
+    ctx.invoke(crew, target=target, extra=extra, name=name, gemini=gemini, resume=resume)
+
+
+@main.command()
+@click.argument("target", required=False, default=None)
+@click.argument("extra", required=False, default=None)
+@click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
+@click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
+@click.option("--resume", "-r", help="Resume existing crew worker by name")
+@click.pass_context
+def crew(ctx, target, extra, name, gemini, resume):
+    """Start an interactive crew session with worktree isolation.
 
     Crew workers are persistent, named agents for interactive collaboration.
-    Unlike polecats (autonomous, task-scoped), crew workers:
-    - Have randomly generated names (famous queer women of color)
-    - Persist across sessions
-    - Can work on multiple tasks
-    - Are not bound to a single task (but edits require task binding via hooks)
+    Each crew session creates an isolated git worktree and drops you into it.
+    Workers are sandboxed to their worktree — no operations outside it.
 
+    TARGET is a project alias (e.g., aops, bm), or 'repo' for arbitrary paths.
+    If TARGET is 'repo', EXTRA is the path to the repository.
+
+    \b
     Examples:
-        polecat crew                      # New crew with ALL projects
-        polecat crew -p aops              # New crew for aops only
-        polecat crew -p aops -p buttermilk  # New crew for specific projects
-        polecat crew -r audre             # Resume crew worker "audre"
+        polecat crew aops             # Crew in academicOps repo
+        polecat crew bm               # Crew in buttermilk repo
+        polecat crew repo /path/to/x  # Crew in arbitrary repo
+        polecat crew -r audre         # Resume crew worker "audre"
+        polecat crew                  # Crew with all projects (legacy)
     """
     import subprocess
 
     manager = PolecatManager(home_dir=ctx.obj.get("home"))
 
-    # Determine which projects to use
-    if project:
-        projects = list(project)
-    else:
-        # Default to all projects
-        projects = list(manager.projects.keys())
-
-    # Determine crew name
+    # --- Resolve target project(s) ---
     if resume:
+        # Resume mode: ignore target, use existing crew
+        projects = []  # Will be populated from existing worktrees
         crew_name = resume
         if crew_name not in manager.list_crew():
             print(
@@ -658,65 +668,108 @@ def crew(ctx, project, name, gemini, resume):
                 file=sys.stderr,
             )
             sys.exit(1)
-    elif name:
-        crew_name = name
+    elif target == "repo":
+        # Ad-hoc repo mode: pc crew repo /path/to/repo
+        if not extra:
+            print("Error: 'repo' target requires a path argument.", file=sys.stderr)
+            print("Usage: polecat crew repo /path/to/repo", file=sys.stderr)
+            sys.exit(1)
+        repo_path = Path(extra).expanduser().resolve()
+        try:
+            slug = manager.register_adhoc_project(repo_path)
+        except (FileNotFoundError, ValueError) as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+        projects = [slug]
+        crew_name = name or manager.generate_crew_name()
+    elif target:
+        # Named project/alias: pc crew aops, pc crew bm
+        try:
+            slug = manager.resolve_project_alias(target)
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+        projects = [slug]
+        crew_name = name or manager.generate_crew_name()
     else:
-        crew_name = manager.generate_crew_name()
+        # No target: legacy behaviour — all projects
+        projects = list(manager.projects.keys())
+        crew_name = name or manager.generate_crew_name()
 
-    print(f"🧑‍🤝‍🧑 Crew worker: {crew_name}")
+    print(f"\U0001f9d1\u200d\U0001f91d\u200d\U0001f9d1 Crew worker: {crew_name}")
 
-    # Setup worktrees for all projects
+    # Setup worktrees for project(s)
     worktree_paths = {}
-    try:
-        for proj in projects:
-            worktree_path = manager.setup_crew_worktree(crew_name, proj)
-            worktree_paths[proj] = worktree_path
-            print(f"📁 {proj}: {worktree_path}")
-    except Exception as e:
-        print(f"Error setting up worktree: {e}", file=sys.stderr)
+    if resume:
+        # Recover worktree paths from existing crew directory
+        crew_path = manager.crew_dir / crew_name
+        for project_dir in crew_path.iterdir():
+            if project_dir.is_dir():
+                worktree_paths[project_dir.name] = project_dir
+                print(f"\U0001f4c1 {project_dir.name}: {project_dir}")
+        projects = list(worktree_paths.keys())
+    else:
+        try:
+            for proj in projects:
+                worktree_path = manager.setup_crew_worktree(crew_name, proj)
+                worktree_paths[proj] = worktree_path
+                print(f"\U0001f4c1 {proj}: {worktree_path}")
+        except Exception as e:
+            print(f"Error setting up worktree: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    if not worktree_paths:
+        print("Error: No worktrees available.", file=sys.stderr)
         sys.exit(1)
 
-    # Crew root is the parent of all project worktrees
-    crew_root = manager.crew_dir / crew_name
+    # Determine working directory:
+    # Single project -> drop directly into the project worktree
+    # Multiple projects -> use crew root (parent of all project worktrees)
+    if len(worktree_paths) == 1:
+        work_dir = next(iter(worktree_paths.values()))
+    else:
+        work_dir = manager.crew_dir / crew_name
 
-    # Run agent in interactive mode (no task binding - hooks will enforce when needed)
+    # Build agent command with isolation
     cli_tool = "gemini" if gemini else "claude"
-    print(f"\n🤝 Starting {cli_tool} crew session...")
+    print(f"\n\U0001f91d Starting {cli_tool} crew session...")
     print(f"   Crew: {crew_name}")
     print(f"   Projects: {', '.join(projects)}")
-    print(f"   Working dir: {crew_root}")
+    print(f"   Working dir: {work_dir}")
     print("-" * 50)
 
     if gemini:
-        cmd = ["gemini", "--approval-mode", "yolo"]
+        # Gemini: --sandbox restricts file access to CWD (the worktree)
+        cmd = [
+            "gemini",
+            "--sandbox",
+        ]
     else:
-        # Get aops-core plugin directory
-        # aops_root = get_aops_root()
-        # plugin_dir_core = aops_root / "aops-core"
+        # Claude Code: sandbox via project settings.json + setting-sources
         cmd = [
             "claude",
             "--permission-mode=plan",
             "--dangerously-skip-permissions",
-            "--setting-sources=user",
-            # "--plugin-dir",
-            # plugin_dir_core,
+            "--setting-sources=user,project",
         ]
 
     # Set session type environment variable for hooks to detect
     env = os.environ.copy()
     env["POLECAT_SESSION_TYPE"] = "crew"
+    env["POLECAT_CREW_NAME"] = crew_name
+    env["POLECAT_WORKTREE"] = str(work_dir)
 
     try:
-        subprocess.run(cmd, cwd=crew_root, env=env)
+        subprocess.run(cmd, cwd=work_dir, env=env)
     except FileNotFoundError:
         print(f"Error: '{cli_tool}' command not found.", file=sys.stderr)
         sys.exit(1)
     except KeyboardInterrupt:
-        print("\n\n⚠️  Session interrupted")
+        print("\n\n\u26a0\ufe0f  Session interrupted")
 
     print("-" * 50)
-    print(f"\n📋 Crew '{crew_name}' session ended.")
-    print(f"   Worktrees preserved at: {crew_root}")
+    print(f"\n\U0001f4cb Crew '{crew_name}' session ended.")
+    print(f"   Worktrees preserved at: {manager.crew_dir / crew_name}")
     print(f"   To resume: polecat crew -r {crew_name}")
     print(f"   To nuke:   polecat nuke-crew {crew_name}")
 
