@@ -62,6 +62,12 @@ Based on prompt keywords, these specific files may be relevant:
 
 {task_state}
 
+## Architecture: Skills and Workflows
+
+**Skills** = portable capabilities (the work). Swappable — any email skill could substitute for another.
+**Workflows** = procedural requirements (the trust layer). They constrain HOW skills are exercised, not WHAT they do.
+**Your job** = select BOTH skills AND workflow partials, compose them into one plan. Workflows don't route to skills. You interleave skill invocations with workflow gates based on task complexity and stakes.
+
 ## Your Task
 
 1. **Understand intent** - What does the user actually want?

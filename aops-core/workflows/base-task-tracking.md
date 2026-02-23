@@ -11,15 +11,18 @@ category: base
 
 1. Search existing tasks for match
 2. If no match: create task with clear title
-3. Claim the task to lock it.
-4. Undertake work ...
+3. **Assess scope**: Is this actionable as a single task?
+   - Path is uncertain, deliverable is vague, or work spans multiple sessions → invoke `/planning` skill to decompose before proceeding
+   - Clear deliverable, known steps, single session → proceed
+4. Claim the task to lock it
+5. Undertake work ...
 
 - [ WORK ]
 - Update task body with findings during work
 
-5. Mark task as complete when done
+6. Mark task as complete when done
 
 ## When to Skip
 
 - [[simple-question]] - no task needed
-- [[direct-skill]] - skill handles its own tracking
+- Explicit skill invocation - skill handles its own tracking
