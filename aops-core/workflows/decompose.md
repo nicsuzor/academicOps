@@ -1,6 +1,15 @@
 ---
 id: decompose
 category: planning
+description: Break goals into actionable work under uncertainty, surface assumptions, and route tasks
+triggers:
+  - "plan the project"
+  - "break down"
+  - "decompose"
+  - "write a paper"
+  - "build X"
+  - "multi-month"
+  - "epic"
 bases: [base-task-tracking, base-handover]
 ---
 

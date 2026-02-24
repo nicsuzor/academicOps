@@ -1,6 +1,17 @@
 ---
 id: feature-dev
 category: development
+description: Test-first feature development from user story through requirements, design, implementation, and validation
+triggers:
+  - "add feature"
+  - "implement"
+  - "build"
+  - "new feature"
+  - "fix bug"
+  - "clear fix"
+  - "known cause"
+  - "design"
+  - "architecture"
 bases: [base-task-tracking, base-tdd, base-verification, base-handover]
 ---
 

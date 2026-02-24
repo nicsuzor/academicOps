@@ -1,6 +1,13 @@
 ---
 id: peer-review
-category: operations
+category: academic
+description: Structured peer review for grant/fellowship applications with scaffolding and human composition
+triggers:
+  - "review grant"
+  - "peer review"
+  - "fellowship review"
+  - "review submission"
+  - "assess application"
 bases: [base-task-tracking, base-handover]
 ---
 
