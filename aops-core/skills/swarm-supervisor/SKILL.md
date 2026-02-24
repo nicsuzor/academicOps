@@ -33,7 +33,7 @@ PR is the worker's problem.
 Code is limited to:
 
 - **MCP tools**: Task state management (create, update, complete)
-- **CLI**: Worker spawning via `polecat swarm` or `jules new`
+- **CLI**: Worker spawning via `polecat run -t <id>`, `polecat swarm`, or `aops task <id> | jules new`
 - **GitHub Actions**: Automated PR review and task completion on merge
 
 ## Lifecycle Phases
@@ -77,7 +77,7 @@ monitoring — the supervisor's job ends here.
 
 1. Curate batch: select tasks, set complexity, confirm assignees
 2. Mark non-approved tasks as `waiting` to prevent accidental claiming
-3. Dispatch: `polecat swarm` for polecat workers, `jules new` for Jules
+3. Dispatch: `polecat run -t <id> -g` for individual tasks, `polecat swarm` for batch, `aops task <id> | jules new --repo <owner>/<repo>` for Jules
 4. Done. Next touchpoint is when PRs arrive.
 
 **Known limitations (from dogfooding sessions):**
@@ -86,6 +86,9 @@ monitoring — the supervisor's job ends here.
   batch. Mark non-batch tasks as `waiting` to prevent claiming. See `aops-2e13ecb4`.
 - Auto-finish overrides manual task completion when a task was already fixed
   by another worker. See `aops-fdc9d0e2`.
+- Gemini polecats are slow (15-20+ min before first commit). Don't poll — let them work autonomously.
+- `polecat.yaml` `default_branch` must match reality (e.g., buttermilk uses `dev`, not `main`). Wrong config causes worktree creation failures.
+- Mirror SSH failures are non-fatal if `local` remote exists (points to `/opt/nic/<repo>`). `polecat sync` warns but recovers.
 
 ### Phase 5: PR Review & Merge
 
@@ -132,8 +135,12 @@ This closes the loop without supervisor involvement.
 
 **Jules PR workflow**: Jules sessions show "Completed" when coding is done,
 but require human approval on the Jules web UI before branches are pushed
-and PRs are created. No CLI approval mechanism exists — check session status
-with `jules remote list --session`.
+and PRs are created. Check session status with `jules remote list --session`.
+
+**Fork PR handling**: When a bot account (e.g., botnicbot) pushes to a fork
+rather than the base repo, CI workflows must use `head.sha` for checkout
+instead of `head.ref` (the branch name doesn't exist in the base repo).
+Autofix-push steps should be guarded with `head.repo.full_name == github.repository`.
 
 ### Phase 6: Knowledge Capture
 
@@ -152,11 +159,11 @@ and GitHub Actions.
 > **Configuration**: See [[WORKERS.md]] for runner types, capabilities,
 > and sizing defaults — the supervisor reads these at dispatch time.
 
-| Hook           | Trigger          | What it does                            |
-| -------------- | ---------------- | --------------------------------------- |
-| `queue-drain`  | cron / manual    | Checks queue, starts supervisor session |
-| `stale-check`  | cron / manual    | Resets tasks stuck beyond threshold     |
-| `pr-merge`     | GitHub Action    | PR merged → mark task done              |
+| Hook          | Trigger       | What it does                            |
+| ------------- | ------------- | --------------------------------------- |
+| `queue-drain` | cron / manual | Checks queue, starts supervisor session |
+| `stale-check` | cron / manual | Resets tasks stuck beyond threshold     |
+| `pr-merge`    | GitHub Action | PR merged → mark task done              |
 
 **Agent-driven dispatch**: The supervisor reads WORKERS.md, inspects the
 task queue via MCP, and decides which runners to invoke and how many.

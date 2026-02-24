@@ -102,18 +102,17 @@ polecat run -p <project>
 polecat run -g -p <project>
 
 # Jules (asynchronous, runs on Google infrastructure)
-echo "<task description>" | jules new --repo <owner>/<repo>
+aops task <task-id> | jules new --repo <owner>/<repo>
 ```
 
 **Jules Dispatch Notes**:
 
-- Pass prompt as quoted argument: `jules new --repo <owner>/<repo> "<task-id>: <description>"`
-- Single-line quoted prompts work fine; multiline heredocs may hang — keep prompts to one line
+- Pipe task context from `aops task` into `jules new` — this gives Jules the full task body, relationships, and acceptance criteria
 - Jules sessions are asynchronous — returns a session URL immediately
 - Check status: `jules remote list --session`
-- One session per task; use `--parallel N` only for independent subtasks
-- Include task ID at the start of the prompt so PRs can be linked back to tasks
-- Sessions show "Completed" when coding is done but require human approval on Jules web UI before PRs are created
+- One session per task
+- Sessions show "Completed" when coding is done but require human approval on Jules web UI before branches are pushed and PRs are created
+- Install Jules CLI: `npm install -g @anthropic-ai/jules` (verify package name)
 
 **Batch Dispatch (Swarm)**:
 
