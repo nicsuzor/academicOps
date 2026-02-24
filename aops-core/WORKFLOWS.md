@@ -20,17 +20,17 @@ Workflows are **hydrator hints**, not complete instructions. They tell the hydra
 
 **Always consider these.** Most workflows compose one or more base patterns.
 
-| Base                    | Pattern                                         | Skip When                             |
-| ----------------------- | ----------------------------------------------- | ------------------------------------- |
-| [[base-task-tracking]]  | Claim/create task, update progress, complete    | [[simple-question]], direct skill     |
-| [[base-tdd]]            | Red-green-refactor cycle                        | Non-code changes                      |
-| [[base-verification]]   | Checkpoint before completion                    | Trivial changes                       |
-| [[base-commit]]         | Stage, commit (why not what), push              | No file modifications                 |
-| [[base-handover]]       | Session end: task, git push, reflection         | [[simple-question]]                   |
-| [[base-memory-capture]] | Store findings to memory MCP via /remember      | No discoveries, [[simple-question]]   |
-| [[base-qa]]             | QA checkpoint: lock criteria, gather, judge     | Trivial changes, user waives          |
-| [[base-batch]]          | Batch processing: chunk, parallelize, aggregate | Single item, items have dependencies  |
-| [[base-investigation]]  | Investigation: hypothesis -> probe -> conclude  | Cause known, just executing           |
+| Base                    | Pattern                                         | Skip When                            |
+| ----------------------- | ----------------------------------------------- | ------------------------------------ |
+| [[base-task-tracking]]  | Claim/create task, update progress, complete    | [[simple-question]], direct skill    |
+| [[base-tdd]]            | Red-green-refactor cycle                        | Non-code changes                     |
+| [[base-verification]]   | Checkpoint before completion                    | Trivial changes                      |
+| [[base-commit]]         | Stage, commit (why not what), push              | No file modifications                |
+| [[base-handover]]       | Session end: task, git push, reflection         | [[simple-question]]                  |
+| [[base-memory-capture]] | Store findings to memory MCP via /remember      | No discoveries, [[simple-question]]  |
+| [[base-qa]]             | QA checkpoint: lock criteria, gather, judge     | Trivial changes, user waives         |
+| [[base-batch]]          | Batch processing: chunk, parallelize, aggregate | Single item, items have dependencies |
+| [[base-investigation]]  | Investigation: hypothesis -> probe -> conclude  | Cause known, just executing          |
 
 ## Decision Tree
 
@@ -91,33 +91,33 @@ User request
 
 These workflows help figure out what to do and how to do it.
 
-| Workflow      | When to Use                                 | Bases                    |
-| ------------- | ------------------------------------------- | ------------------------ |
-| [[decompose]] | Multi-month, uncertain path, goals to epics | task-tracking, handover  |
+| Workflow      | When to Use                                 | Bases                   |
+| ------------- | ------------------------------------------- | ----------------------- |
+| [[decompose]] | Multi-month, uncertain path, goals to epics | task-tracking, handover |
 
 ### Development
 
 Core workflows for building and fixing software.
 
-| Workflow       | When to Use                          | Bases                                           |
-| -------------- | ------------------------------------ | ----------------------------------------------- |
-| [[feature-dev]] | Test-first feature from idea to ship | task-tracking, tdd, verification, handover      |
+| Workflow        | When to Use                          | Bases                                      |
+| --------------- | ------------------------------------ | ------------------------------------------ |
+| [[feature-dev]] | Test-first feature from idea to ship | task-tracking, tdd, verification, handover |
 
 ### Quality Assurance
 
-| Workflow | When to Use                                                          | Bases                          |
-| -------- | -------------------------------------------------------------------- | ------------------------------ |
-| [[qa]]   | Pre-completion verification, acceptance testing, integration testing | task-tracking, qa, handover    |
+| Workflow | When to Use                                                          | Bases                       |
+| -------- | -------------------------------------------------------------------- | --------------------------- |
+| [[qa]]   | Pre-completion verification, acceptance testing, integration testing | task-tracking, qa, handover |
 
 ### Operations & Batch
 
 Workflows for handling multiple items or operational tasks.
 
-| Workflow                       | When to Use                                   | Bases                        |
-| ------------------------------ | --------------------------------------------- | ---------------------------- |
-| [[base-batch]]                 | Multiple independent items                    | (base pattern)               |
-| [[external-batch-submission]]  | Submit prediction/inference jobs to APIs       | task-tracking, verification  |
-| [[interactive-followup]]       | Simple session continuations                  | verification                 |
+| Workflow                      | When to Use                              | Bases                       |
+| ----------------------------- | ---------------------------------------- | --------------------------- |
+| [[base-batch]]                | Multiple independent items               | (base pattern)              |
+| [[external-batch-submission]] | Submit prediction/inference jobs to APIs | task-tracking, verification |
+| [[interactive-followup]]      | Simple session continuations             | verification                |
 
 ### Email & Communications
 
@@ -136,7 +136,7 @@ Workflows for academic and research activities.
 | Workflow             | When to Use               | Bases                   |
 | -------------------- | ------------------------- | ----------------------- |
 | [[peer-review]]      | Grant/fellowship reviews  | task-tracking, handover |
-| [[reference-letter]] | Reference letter workflow  | task-tracking, handover |
+| [[reference-letter]] | Reference letter workflow | task-tracking, handover |
 
 ### Routing & Information
 
@@ -179,7 +179,7 @@ Internal workflows supporting prompt hydration.
 | Workflow             | When to Use                                | Bases |
 | -------------------- | ------------------------------------------ | ----- |
 | [[framework-gate]]   | First check - detect framework intent      | -     |
-| [[constraint-check]] | Verify plan satisfies workflow constraints  | -     |
+| [[constraint-check]] | Verify plan satisfies workflow constraints | -     |
 
 ## Project-Specific Workflows
 

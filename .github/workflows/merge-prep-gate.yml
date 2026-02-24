@@ -19,7 +19,7 @@ jobs:
     steps:
       - name: Set Merge Prep status to pending
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
         run: |
           gh api repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }} \
             -f state=pending \

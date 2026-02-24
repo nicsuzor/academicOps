@@ -484,8 +484,6 @@ def generate_dot(
     lines = [
         "digraph TaskGraph {",
         "    rankdir=TB;",
-        "    splines=spline;",
-        "    overlap=scalexy;",
         '    node [style=filled, fontname="Helvetica"];',
         '    edge [color="#6c757d"];',
     ]
@@ -545,13 +543,9 @@ def generate_dot(
         if dw > 0:
             # Append weight to label
             label = f"{label}\\n\u2696 {dw:.1f}"
-            # Sqrt scaling for better visual separation across the 1-10 range
             import math
 
             sqrt_dw = math.sqrt(dw)
-            scale_w = min(1.2 + sqrt_dw * 0.7, 4.0)
-            scale_h = min(0.8 + sqrt_dw * 0.3, 2.0)
-            extra_attrs += f" width={scale_w:.2f} height={scale_h:.2f} fixedsize=false"
             # Graduated font size
             if dw >= 6.0:
                 extra_attrs += " fontsize=16"
@@ -601,7 +595,15 @@ def generate_dot(
     return "\n".join(lines)
 
 
-def generate_svg(dot_content: str, output_base: str, layout: str, keep_dot: bool = False) -> bool:
+def generate_svg(
+    dot_content: str,
+    output_base: str,
+    layout: str,
+    keep_dot: bool = False,
+    splines_override: str | None = None,
+    sep_override: str | None = None,
+    overlap_override: str | None = None,
+) -> bool:
     """Generate SVG from DOT content using Graphviz.
 
     Args:
@@ -609,6 +611,9 @@ def generate_svg(dot_content: str, output_base: str, layout: str, keep_dot: bool
         output_base: Base path for output (without extension)
         layout: Graphviz layout engine to use
         keep_dot: If True, keep the .dot file; otherwise delete after SVG generation
+        splines_override: Override splines attribute for the layout engine
+        sep_override: Override sep attribute for the layout engine
+        overlap_override: Override overlap attribute for the layout engine
 
     Returns:
         True if SVG was successfully generated
@@ -619,40 +624,34 @@ def generate_svg(dot_content: str, output_base: str, layout: str, keep_dot: bool
     Path(dot_path).write_text(dot_content)
 
     layout_opts: dict[str, list[str]] = {
-        "sfdp": [],
-        "neato": [],
-        "fdp": [],
-        "dot": [],
+        "sfdp": ["-Goverlap=prism", "-Gsplines=true", "-Gsep=+4"],
+        "neato": ["-Goverlap=prism", "-Gsplines=true", "-Gsep=+4"],
+        "fdp": ["-Goverlap=prism", "-Gsplines=true", "-Gsep=+4"],
+        "dot": ["-Gsplines=ortho", "-Granksep=0.3", "-Gnodesep=0.2"],
         "circo": [],
         "twopi": [],
     }
 
-    _FALLBACKS: dict[str, str] = {"sfdp": "fdp"}
+    # Apply CLI overrides to the selected layout's options
+    if layout in layout_opts:
+        opts = layout_opts[layout]
+        if splines_override:
+            opts = [o for o in opts if not o.startswith("-Gsplines=")]
+            opts.append(f"-Gsplines={splines_override}")
+        if sep_override:
+            opts = [o for o in opts if not o.startswith("-Gsep=")]
+            opts.append(f"-Gsep={sep_override}")
+        if overlap_override:
+            opts = [o for o in opts if not o.startswith("-Goverlap=")]
+            opts.append(f"-Goverlap={overlap_override}")
+        layout_opts[layout] = opts
 
-    _FORCE_DIRECTED = {"fdp", "sfdp", "neato"}
+    _FALLBACKS: dict[str, str] = {"sfdp": "fdp"}
 
     def _try_layout(eng: str) -> bool:
         try:
-            if eng in _FORCE_DIRECTED:
-                # Two-step: position nodes with the layout engine, then route
-                # edges separately with neato -n.
-                # Pass -Gsplines=line to sfdp/fdp so it only positions nodes
-                # and doesn't attempt (and fall back from) spline routing itself.
-                r1 = subprocess.run(
-                    [eng, "-Txdot", "-Gsplines=line"] + [dot_path],
-                    check=True,
-                    capture_output=True,
-                )
-                # neato -n keeps positions, routes edges with full spline support.
-                subprocess.run(
-                    ["neato", "-n", "-Tsvg", "-Gsplines=spline", "-o", svg_path],
-                    input=r1.stdout,
-                    check=True,
-                    capture_output=True,
-                )
-            else:
-                cmd = [eng, "-Tsvg"] + layout_opts.get(eng, []) + [dot_path, "-o", svg_path]
-                subprocess.run(cmd, check=True, capture_output=True)
+            cmd = [eng, "-Tsvg"] + layout_opts.get(eng, []) + [dot_path, "-o", svg_path]
+            subprocess.run(cmd, check=True, capture_output=True)
             return True
         except FileNotFoundError:
             print(f"  Warning: {eng} not found, skipping SVG generation")
@@ -938,6 +937,20 @@ def main():
         help="Filter type: smart (active work focus), rollup (unfinished + ancestors), reachable (upstream from active leaves), none",
     )
     parser.add_argument(
+        "--splines",
+        default=None,
+        choices=["true", "curved", "ortho", "polyline", "line", "false"],
+        help="Edge routing mode (overrides layout default)",
+    )
+    parser.add_argument(
+        "--sep", default=None, help="Node separation (e.g. +4, +2; overrides layout default)"
+    )
+    parser.add_argument(
+        "--overlap",
+        default=None,
+        help="Overlap removal: prism/false/scale/compress (overrides layout default)",
+    )
+    parser.add_argument(
         "--single",
         action="store_true",
         help="Generate only single output (default generates multiple variants)",
@@ -1018,7 +1031,15 @@ def main():
 
         dot_content = generate_attention_dot(flagged_nodes, flagged_edges, gap_data)
         output_base = f"{args.output}-attention"
-        generate_svg(dot_content, output_base, args.layout, keep_dot=True)
+        generate_svg(
+            dot_content,
+            output_base,
+            args.layout,
+            keep_dot=True,
+            splines_override=args.splines,
+            sep_override=args.sep,
+            overlap_override=args.overlap,
+        )
         return 0
 
     # Define variants to generate
@@ -1104,7 +1125,15 @@ def main():
         # Generate DOT and SVG
         dot_content = generate_dot(nodes, edges, include_orphans, structural_ids, stats)
         # Keep .dot file only for primary output (no suffix)
-        generate_svg(dot_content, output_base, args.layout, keep_dot=(suffix == ""))
+        generate_svg(
+            dot_content,
+            output_base,
+            args.layout,
+            keep_dot=(suffix == ""),
+            splines_override=args.splines,
+            sep_override=args.sep,
+            overlap_override=args.overlap,
+        )
 
     return 0
 

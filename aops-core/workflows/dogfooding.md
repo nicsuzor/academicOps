@@ -43,6 +43,7 @@ EXECUTE → OBSERVE → CODIFY
 ### 1. Execute (Do the Work)
 
 Complete the task while staying aware of friction points:
+
 - What steps feel awkward or unclear?
 - Where did you need to ask for clarification?
 - What context was missing?
@@ -50,12 +51,12 @@ Complete the task while staying aware of friction points:
 
 ### 2. Observe (Capture Learnings)
 
-| Observation | Action |
-|-------------|--------|
-| One-time friction | `/log [observation]` → continue |
-| Recurring pattern (3+) | Check HEURISTICS.md → `/learn` if missing |
-| Blocking current task | Fix minimally, note for codification |
-| Better pattern discovered | Document what worked |
+| Observation                 | Action                                                |
+| --------------------------- | ----------------------------------------------------- |
+| One-time friction           | Note in session reflection                            |
+| Recurring pattern (3+)      | Check HEURISTICS.md → `/learn` if missing             |
+| Blocking current task       | Fix minimally, note for codification                  |
+| Better pattern discovered   | Document what worked                                  |
 | Tool gap or schema mismatch | File task under `aops` project — don't work around it |
 
 ### 3. Codify (Improve the Framework)
@@ -64,14 +65,14 @@ Complete the task while staying aware of friction points:
 
 After completing work, ask: "What did I learn that should become part of the framework?"
 
-| Learning Type | Codification Target |
-|---------------|---------------------|
-| Better workflow steps | Update workflow .md file |
-| Missing guardrail | Add to constraint-check or hooks |
-| Useful question pattern | Add to AskUserQuestion templates |
-| New heuristic | Add to HEURISTICS.md via `/learn` |
-| Agent behaviour issue | Add to CORE.md Agent Rules |
-| PKB schema gap | Task under aops project |
+| Learning Type           | Codification Target               |
+| ----------------------- | --------------------------------- |
+| Better workflow steps   | Update workflow .md file          |
+| Missing guardrail       | Add to constraint-check or hooks  |
+| Useful question pattern | Add to AskUserQuestion templates  |
+| New heuristic           | Add to HEURISTICS.md via `/learn` |
+| Agent behaviour issue   | Add to CORE.md Agent Rules        |
+| PKB schema gap          | Task under aops project           |
 
 ## Conversational Knowledge Capture
 
@@ -83,29 +84,13 @@ When working through a planning or brainstorming session with the user, follow t
 4. **Cross-project links → Wire them.** One project enables another → add `soft_blocks` or `related` relationships.
 5. **Never ask "want me to update?"** — just update. The user will correct you if you got it wrong.
 
-### Example (from copper splashback session, 2026-02-22)
-
-- User shared panel dimensions, copper thickness, tool inventory → written to project document immediately
-- Design decisions (flush cut, no wrap, removable mounting) → logged in Decision Log
-- GPO inspection needed before cutouts → created as blocking task
-- Workbench fence enables copper cutting → cross-linked with `soft_blocks`
-- Agent kept asking "want me to update?" → filed as `/learn` issue, added "NEVER ask permission" to Agent Rules
-
 ## Notice List
 
-Watch for these during any task:
-
-1. **Routing friction** - unclear which workflow applies?
-2. **Missing context** - what information didn't surface?
-3. **Instruction gaps** - what guidance was absent?
-4. **Guardrail failures** - what would have prevented a mistake?
-5. **User friction** - where did the user need to correct or clarify?
-6. **Tool gaps** - what couldn't the PKB tools do that you needed?
-7. **Permission-seeking** - did you ask instead of acting?
+Watch for these: routing friction, missing context, instruction gaps, guardrail failures, user friction, tool gaps, permission-seeking.
 
 ## Key Rules
 
-1. **Don't stop to fix everything.** Log with `/log`, continue working.
+1. **Don't stop to fix everything.** Log observation, continue working.
 2. **Do codify at session end.** Before handover, ask: what learned → what changed?
 3. **Small improvements compound.** One workflow tweak per session adds up.
 4. **Write to PKB as you go.** Don't batch knowledge capture to session end.
