@@ -313,11 +313,20 @@ def build_graph(
     return g, props, len(nodes)
 
 
-def compute_layout(g: Graph, num_nodes: int, layout_hint: str = "sfdp", dense: bool = True):
+def compute_layout(
+    g: Graph,
+    num_nodes: int,
+    layout_hint: str = "sfdp",
+    dense: bool = True,
+    K_override: float | None = None,
+    C_override: float | None = None,
+):
     """Compute node positions using graph-tool layout algorithms.
 
     Args:
         dense: If True, use tighter spacing for dense, compact graphs.
+        K_override: Override optimal edge length for sfdp.
+        C_override: Override repulsive force for sfdp.
     """
     if num_nodes == 0:
         return g.new_vertex_property("vector<double>")
@@ -341,6 +350,11 @@ def compute_layout(g: Graph, num_nodes: int, layout_hint: str = "sfdp", dense: b
     else:
         K, C = 2.0, 0.4
 
+    if K_override is not None:
+        K = K_override
+    if C_override is not None:
+        C = C_override
+
     print(f"  Layout: sfdp multilevel ({num_nodes} nodes, K={K}, C={C})")
     return sfdp_layout(
         g,
@@ -354,18 +368,39 @@ def compute_layout(g: Graph, num_nodes: int, layout_hint: str = "sfdp", dense: b
     )
 
 
-def render_graphviz(g, pos, props, output_path: str, layout_engine: str = "sfdp"):
+def render_graphviz(
+    g,
+    pos,
+    props,
+    output_path: str,
+    layout_engine: str = "sfdp",
+    splines_mode: str = "true",
+    sep: str = "+2",
+    overlap: str = "true",
+):
     """Render with graphviz_draw: graph-tool positions + Graphviz spline routing.
 
     Uses pinned positions from sfdp_layout with Graphviz's spline edge router
     for bezier curves that route tightly around nodes.
     """
     svg_path = f"{output_path}.svg"
-    print(f"  Rendering: graphviz_draw -> {svg_path}")
+    print(f"  Rendering: graphviz_draw -> {svg_path} (splines={splines_mode}, sep={sep}, overlap={overlap})")
 
     # Scale canvas based on node count - larger for more nodes
     n = g.num_vertices()
     dim = max(40, min(int(math.sqrt(n) * 4), 100))
+
+    # graphviz_draw only accepts splines=True/False natively.
+    # Non-standard modes (ortho, curved, polyline) must go through gprops.
+    use_splines_param = splines_mode in ("true", "false")
+    splines_bool = splines_mode == "true" if use_splines_param else False
+
+    gprops = {
+        "outputorder": "edgesfirst",  # draw edges behind nodes
+        "concentrate": "false",  # don't merge edges
+    }
+    if not use_splines_param:
+        gprops["splines"] = splines_mode
 
     graphviz_draw(
         g,
@@ -373,9 +408,9 @@ def render_graphviz(g, pos, props, output_path: str, layout_engine: str = "sfdp"
         size=(dim, dim),
         layout=layout_engine,
         pin=True,
-        splines=True,
-        overlap="scale",  # scale up positions until nodes don't overlap
-        sep="+6",  # tight separation = edges route close to nodes
+        splines=splines_bool,
+        overlap=overlap,
+        sep=sep,
         vprops={
             "shape": props["v_dot_shape"],
             "style": props["v_dot_style"],
@@ -391,10 +426,7 @@ def render_graphviz(g, pos, props, output_path: str, layout_engine: str = "sfdp"
             "style": props["e_dot_style"],
             "penwidth": props["e_dot_penwidth"],
         },
-        gprops={
-            "outputorder": "edgesfirst",  # draw edges behind nodes
-            "concentrate": "false",  # don't merge edges
-        },
+        gprops=gprops,
         output=svg_path,
         fork=False,
     )
@@ -481,6 +513,20 @@ def main():
         action="store_true",
         help="Use sparser layout (default is dense with tight edge routing)",
     )
+    parser.add_argument(
+        "--splines",
+        default="true",
+        choices=["true", "curved", "ortho", "polyline", "line", "false"],
+        help="Edge routing mode for --graphviz (default: true)",
+    )
+    parser.add_argument("--sep", default="+4", help="Node separation for edge routing (default: +4)")
+    parser.add_argument(
+        "--overlap",
+        default="prism",
+        help="Overlap removal: true/false/scale/prism/compress (default: prism)",
+    )
+    parser.add_argument("--K", type=float, default=None, help="sfdp optimal edge length (overrides dense/sparse)")
+    parser.add_argument("--C", type=float, default=None, help="sfdp repulsive force (overrides dense/sparse)")
     parser.add_argument("--ego", metavar="ID", help="Ego-subgraph center node")
     parser.add_argument("--depth", type=int, default=2, help="Ego depth (default: 2)")
     parser.add_argument("--attention-map", action="store_true")
@@ -547,11 +593,21 @@ def main():
     layout_hint = args.layout
     if args.ego and layout_hint == "sfdp":
         layout_hint = "auto"  # auto-select for ego subgraphs
-    pos = compute_layout(g, node_count, layout_hint, dense=not args.sparse)
+    pos = compute_layout(
+        g, node_count, layout_hint,
+        dense=not args.sparse,
+        K_override=args.K,
+        C_override=args.C,
+    )
 
     # Render: Cairo is default (dense, anti-aliased), --graphviz for old style
     if args.graphviz:
-        render_graphviz(g, pos, props, args.output)
+        render_graphviz(
+            g, pos, props, args.output,
+            splines_mode=args.splines,
+            sep=args.sep,
+            overlap=args.overlap,
+        )
     else:
         render_cairo(g, pos, props, args.output, args.fmt)
 

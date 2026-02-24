@@ -23,6 +23,9 @@ AOPS_BIN="${AOPS_BIN:-$(command -v aops 2>/dev/null || echo aops)}"
 OUT_DIR="${AOPS_SESSIONS:-${HOME}/.aops/sessions}"
 LAYOUT="sfdp"
 RENDERER="dot"  # dot (default), gt (graph-tool), ogdf
+SPLINES=""
+SEP=""
+OVERLAP=""
 
 # Parse arguments
 QUICK=false
@@ -56,8 +59,20 @@ while [[ $# -gt 0 ]]; do
             RENDERER="$2"
             shift 2
             ;;
+        --splines)
+            SPLINES="$2"
+            shift 2
+            ;;
+        --sep)
+            SEP="$2"
+            shift 2
+            ;;
+        --overlap)
+            OVERLAP="$2"
+            shift 2
+            ;;
         -h|--help)
-            echo "Usage: generate-viz.sh [--quick] [--ego ID] [--ego-depth N] [--attention-top N] [--layout ENGINE] [--renderer dot|gt|ogdf]"
+            echo "Usage: generate-viz.sh [--quick] [--ego ID] [--ego-depth N] [--attention-top N] [--layout ENGINE] [--renderer dot|gt|ogdf] [--splines MODE] [--sep SEP] [--overlap MODE]"
             echo ""
             echo "Options:"
             echo "  --quick            Graph + task map only (skip attention map and transcripts)"
@@ -66,6 +81,9 @@ while [[ $# -gt 0 ]]; do
             echo "  --attention-top N  Number of top attention nodes (default: 20)"
             echo "  --layout ENGINE    Layout engine (default: sfdp)"
             echo "  --renderer TYPE    Renderer: dot (default), gt (graph-tool), ogdf"
+            echo "  --splines MODE     Edge routing: true, curved, ortho, polyline, line, false"
+            echo "  --sep SEP          Node separation (e.g. +2, +4)"
+            echo "  --overlap MODE     Overlap removal: true, false, scale, prism, compress"
             exit 0
             ;;
         *)
@@ -82,6 +100,12 @@ echo "==> Generating graph JSON..."
 "${AOPS_BIN}" graph -f json -o "${OUT_DIR}/tasks.json"
 echo "    Written ${OUT_DIR}/tasks.json"
 
+# Build density override args (shared across renderers)
+DENSITY_ARGS=()
+[ -n "${SPLINES}" ] && DENSITY_ARGS+=(--splines "${SPLINES}")
+[ -n "${SEP}" ]     && DENSITY_ARGS+=(--sep "${SEP}")
+[ -n "${OVERLAP}" ] && DENSITY_ARGS+=(--overlap "${OVERLAP}")
+
 # Renderer dispatch helper
 run_graph() {
     local extra_args=("$@")
@@ -96,6 +120,8 @@ run_graph() {
             "${GT_PYTHON}" "${AOPS}/scripts/task_graph_gt.py" \
                 "${OUT_DIR}/tasks.json" \
                 --filter reachable \
+                --graphviz \
+                "${DENSITY_ARGS[@]}" \
                 "${extra_args[@]}"
             ;;
         ogdf)
@@ -109,6 +135,7 @@ run_graph() {
                 "${OUT_DIR}/tasks.json" \
                 --filter reachable \
                 --layout "${LAYOUT}" \
+                "${DENSITY_ARGS[@]}" \
                 "${extra_args[@]}"
             ;;
     esac
