@@ -25,7 +25,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 try:
-    from ogdf_python import cppinclude, ogdf
+    from ogdf_python import cppinclude, ogdf  # type: ignore
 
     cppinclude("ogdf/fileformats/GraphIO.h")
     cppinclude("ogdf/energybased/FMMMLayout.h")

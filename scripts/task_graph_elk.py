@@ -90,10 +90,10 @@ def build_elk_graph(
     edges: list[dict],
     structural_ids: set[str],
     include_orphans: bool = False,
-) -> tuple[dict, dict]:
+) -> tuple[dict, dict, dict]:
     """Build ELK JSON graph and a styling metadata dict.
 
-    Returns (elk_graph, style_map) where style_map[node_id] = {fill, stroke, strokeWidth, shape, ...}
+    Returns (elk_graph, style_map, edge_styles)
     """
     node_by_id = {n["id"]: n for n in nodes}
 
@@ -529,6 +529,7 @@ def main():
         print(f"  Filtered: {excluded} removed, {len(structural_ids)} structural kept")
 
     # Build ELK graph
+    # Returns (elk_graph, style_map, edge_styles)
     elk_graph, style_map, edge_styles = build_elk_graph(
         all_nodes, all_edges, structural_ids, args.include_orphans
     )
