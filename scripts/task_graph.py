@@ -595,7 +595,15 @@ def generate_dot(
     return "\n".join(lines)
 
 
-def generate_svg(dot_content: str, output_base: str, layout: str, keep_dot: bool = False) -> bool:
+def generate_svg(
+    dot_content: str,
+    output_base: str,
+    layout: str,
+    keep_dot: bool = False,
+    splines_override: str | None = None,
+    sep_override: str | None = None,
+    overlap_override: str | None = None,
+) -> bool:
     """Generate SVG from DOT content using Graphviz.
 
     Args:
@@ -603,6 +611,9 @@ def generate_svg(dot_content: str, output_base: str, layout: str, keep_dot: bool
         output_base: Base path for output (without extension)
         layout: Graphviz layout engine to use
         keep_dot: If True, keep the .dot file; otherwise delete after SVG generation
+        splines_override: Override splines attribute for the layout engine
+        sep_override: Override sep attribute for the layout engine
+        overlap_override: Override overlap attribute for the layout engine
 
     Returns:
         True if SVG was successfully generated
@@ -613,13 +624,27 @@ def generate_svg(dot_content: str, output_base: str, layout: str, keep_dot: bool
     Path(dot_path).write_text(dot_content)
 
     layout_opts: dict[str, list[str]] = {
-        "sfdp": ["-Goverlap=prism", "-Gsplines=true", "-Gsep=+20"],
-        "neato": ["-Goverlap=prism", "-Gsplines=true", "-Gsep=+20"],
-        "fdp": ["-Goverlap=prism", "-Gsplines=true", "-Gsep=+20"],
-        "dot": [],
+        "sfdp": ["-Goverlap=prism", "-Gsplines=true", "-Gsep=+4"],
+        "neato": ["-Goverlap=prism", "-Gsplines=true", "-Gsep=+4"],
+        "fdp": ["-Goverlap=prism", "-Gsplines=true", "-Gsep=+4"],
+        "dot": ["-Gsplines=ortho", "-Granksep=0.3", "-Gnodesep=0.2"],
         "circo": [],
         "twopi": [],
     }
+
+    # Apply CLI overrides to the selected layout's options
+    if layout in layout_opts:
+        opts = layout_opts[layout]
+        if splines_override:
+            opts = [o for o in opts if not o.startswith("-Gsplines=")]
+            opts.append(f"-Gsplines={splines_override}")
+        if sep_override:
+            opts = [o for o in opts if not o.startswith("-Gsep=")]
+            opts.append(f"-Gsep={sep_override}")
+        if overlap_override:
+            opts = [o for o in opts if not o.startswith("-Goverlap=")]
+            opts.append(f"-Goverlap={overlap_override}")
+        layout_opts[layout] = opts
 
     _FALLBACKS: dict[str, str] = {"sfdp": "fdp"}
 
@@ -912,6 +937,20 @@ def main():
         help="Filter type: smart (active work focus), rollup (unfinished + ancestors), reachable (upstream from active leaves), none",
     )
     parser.add_argument(
+        "--splines",
+        default=None,
+        choices=["true", "curved", "ortho", "polyline", "line", "false"],
+        help="Edge routing mode (overrides layout default)",
+    )
+    parser.add_argument(
+        "--sep", default=None, help="Node separation (e.g. +4, +2; overrides layout default)"
+    )
+    parser.add_argument(
+        "--overlap",
+        default=None,
+        help="Overlap removal: prism/false/scale/compress (overrides layout default)",
+    )
+    parser.add_argument(
         "--single",
         action="store_true",
         help="Generate only single output (default generates multiple variants)",
@@ -992,7 +1031,15 @@ def main():
 
         dot_content = generate_attention_dot(flagged_nodes, flagged_edges, gap_data)
         output_base = f"{args.output}-attention"
-        generate_svg(dot_content, output_base, args.layout, keep_dot=True)
+        generate_svg(
+            dot_content,
+            output_base,
+            args.layout,
+            keep_dot=True,
+            splines_override=args.splines,
+            sep_override=args.sep,
+            overlap_override=args.overlap,
+        )
         return 0
 
     # Define variants to generate
@@ -1078,7 +1125,15 @@ def main():
         # Generate DOT and SVG
         dot_content = generate_dot(nodes, edges, include_orphans, structural_ids, stats)
         # Keep .dot file only for primary output (no suffix)
-        generate_svg(dot_content, output_base, args.layout, keep_dot=(suffix == ""))
+        generate_svg(
+            dot_content,
+            output_base,
+            args.layout,
+            keep_dot=(suffix == ""),
+            splines_override=args.splines,
+            sep_override=args.sep,
+            overlap_override=args.overlap,
+        )
 
     return 0
 
