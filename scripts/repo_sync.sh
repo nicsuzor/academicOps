@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # repo_sync.sh - Check and sync git repositories defined in polecat.yaml
 # Usage: repo_sync.sh [--check] [--quiet]
 #   (default)  Fix dirty repos with ccommit, pull clean repos that are behind
@@ -6,6 +6,14 @@
 #   --quiet    Only show repos needing attention
 
 set -euo pipefail
+
+# Check dependencies
+for cmd in git yq; do
+    if ! command -v "$cmd" &>/dev/null; then
+        echo "Error: '$cmd' is required but not installed." >&2
+        exit 1
+    fi
+done
 
 # Colors
 RED='\033[0;31m'
@@ -23,7 +31,7 @@ if [[ -f "$POLECAT_YAML" ]]; then
     # Use yq to extract paths from polecat.yaml
     while IFS= read -r path; do
         # Expand ~ if it exists
-        eval expanded_path="$path"
+        expanded_path="${path/#\~/$HOME}"
         if [[ -d "$expanded_path" ]]; then
             REPOS+=("$expanded_path")
         fi
@@ -34,10 +42,15 @@ fi
 
 # Always include AOPS_SESSIONS if defined (not in polecat.yaml but needs syncing)
 if [[ -n "${AOPS_SESSIONS:-}" ]]; then
-    eval expanded_sessions="$AOPS_SESSIONS"
+    expanded_sessions="${AOPS_SESSIONS/#\~/$HOME}"
     if [[ -d "$expanded_sessions" ]]; then
         REPOS+=("$expanded_sessions")
     fi
+fi
+
+if [[ ${#REPOS[@]} -eq 0 ]]; then
+    echo -e "${YELLOW}Warning: No repositories configured.${NC}"
+    exit 0
 fi
 
 # Parse args - default is to fix
@@ -83,8 +96,8 @@ check_repo() {
     local tracking=$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null || echo "")
     if [[ -n "$tracking" ]]; then
         local counts=$(git rev-list --left-right --count HEAD...@{u} 2>/dev/null || echo "0 0")
-        local ahead_count=$(echo "$counts" | awk '{print $1}')
-        local behind_count=$(echo "$counts" | awk '{print $2}')
+        local ahead_count=${counts%% *}
+        local behind_count=${counts##* }
         [[ "$ahead_count" -gt 0 ]] && ahead="${ahead_count} ahead"
         [[ "$behind_count" -gt 0 ]] && behind="${behind_count} behind"
     fi
@@ -108,18 +121,15 @@ check_repo() {
                 NEEDS_FIX+=("$repo")
             fi
         else
-            printf "  %-18s ${RED}%s${NC}
-" "$name" "$behind"
+            printf "  %-18s ${RED}%s${NC}\n" "$name" "$behind"
         fi
     elif [[ -n "$ahead" ]]; then
         # Ahead - needs push
-        printf "  %-18s ${BLUE}%s${NC} (needs push)
-" "$name" "$ahead"
+        printf "  %-18s ${BLUE}%s${NC} (needs push)\n" "$name" "$ahead"
         NEEDS_FIX+=("$repo")
     else
         # All good
-        [[ "$QUIET" == "false" ]] && printf "  %-18s ${GREEN}ok${NC}
-" "$name"
+        [[ "$QUIET" == "false" ]] && printf "  %-18s ${GREEN}ok${NC}\n" "$name"
     fi
 }
 
@@ -155,7 +165,7 @@ if [[ "$FIX" == "true" && ${#NEEDS_FIX[@]} -gt 0 ]]; then
         [[ "$QUIET" == "false" ]] && echo -e "${BOLD}=== $name ===${NC}"
         cd "$repo"
         # Run ccommit (the claude alias)
-        # Note: using 'claude' directly might depend on aliases. 
+        # Note: using 'claude' directly might depend on aliases.
         # In this environment, we should check if 'claude' or 'aops ccommit' is preferred.
         # The original script used 'claude'.
         claude --dangerously-skip-permissions -p "commit changed and new files, pull, fix conflicts, push" || {

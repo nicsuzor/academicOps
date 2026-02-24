@@ -10,7 +10,7 @@ uv run ruff check --fix . || true
 
 echo ""
 echo "=== Formatting Markdown/JSON/TOML with dprint ==="
-dprint fmt
+uv run dprint fmt
 
 echo ""
 echo "=== Done ==="

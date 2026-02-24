@@ -11,7 +11,7 @@ tools:
   - run_shell_command
   - mcp__pkb__task_search
   - mcp__pkb__get_task
-  - mcp__memory__retrieve_memory
+  - mcp__pkb__search
 ---
 
 # Hydrator Reviewer Agent
@@ -29,7 +29,7 @@ You are given a PR number and repository, OR a file path containing PR context. 
 
 1. Get PR title, description, and diff using `gh pr view` and `gh pr diff`
 2. Check if a related task exists: search `mcp__pkb__task_search` by PR title keywords
-3. Retrieve any relevant memory context: `mcp__memory__retrieve_memory` with keywords from the PR scope
+3. Retrieve any relevant context: `mcp__pkb__search` with keywords from the PR scope
 
 ## Step 3: Map Changes to Workflows
 

@@ -6,14 +6,14 @@ category: maintenance
 
 # Memory Sync Workflow
 
-Reconcile markdown files with memory server to ensure semantic search stays current.
+Reconcile markdown files with PKB to ensure semantic search stays current.
 
 ## When to Run
 
 - After direct markdown edits (bypassing remember skill)
 - Periodically as part of `/garden` maintenance
 - When semantic search seems stale or incomplete
-- After memory server recovery/rebuild
+- After PKB recovery/rebuild
 
 ## Modes
 
@@ -27,7 +27,7 @@ Process all markdown files in `$ACA_DATA`:
 2. For each file:
    - Read content
    - Extract frontmatter (title, type, tags)
-   - Store to memory server with source path
+   - Store to PKB with source path
 3. Report summary
 ```
 
@@ -52,22 +52,18 @@ Glob(pattern="**/*.md", path="$ACA_DATA")
 for (file of files) {
   content = Read(file_path=file)
 
-  // Extract first 500 chars for embedding (memory server handles chunking)
+  // Extract first 500 chars for embedding (PKB handles chunking)
   summary = extractSummary(content)
 
-  mcp__memory__store_memory(
-    content=summary,
-    tags=extractTags(content),
-    metadata={
-      source: file,
-      type: extractType(content),
-      synced: new Date().toISOString()
-    }
+  mcp__pkb__create_memory(
+    title=extractTitle(content),
+    body=summary,
+    tags=extractTags(content)
   )
 }
 
 // 3. Report
-"Synced X files to memory server"
+"Synced X files to PKB"
 ```
 
 ## File Filtering
@@ -87,7 +83,7 @@ for (file of files) {
 
 ## Deduplication
 
-Memory server handles deduplication via content hashing. Re-syncing the same content is safe - it updates the existing entry rather than creating duplicates.
+PKB handles deduplication via content hashing. Re-syncing the same content is safe - it updates the existing entry rather than creating duplicates.
 
 ## Integration
 
@@ -100,7 +96,7 @@ The garden skill should include memory sync as part of periodic maintenance:
 
 - Orphan detection
 - Link repair
-- **Memory sync** (reconcile markdown → memory server)
+- **PKB sync** (reconcile markdown → PKB)
 - Prune stale content
 ```
 
@@ -108,12 +104,12 @@ The garden skill should include memory sync as part of periodic maintenance:
 
 This workflow is the **repair path** for when the dual-write pattern is bypassed. Normal flow:
 
-1. New content → remember skill → markdown + memory (atomic)
-2. Direct edit → memory drifts → sync workflow → reconciled
+1. New content → remember skill → markdown + PKB (atomic)
+2. Direct edit → PKB drifts → sync workflow → reconciled
 
 ## Success Criteria
 
-- [ ] All markdown files in scope have corresponding memory entries
-- [ ] Memory entries have correct source metadata (path to markdown file)
-- [ ] No orphaned memory entries (entries without corresponding markdown)
+- [ ] All markdown files in scope have corresponding PKB entries
+- [ ] PKB entries have correct source metadata (path to markdown file)
+- [ ] No orphaned PKB entries (entries without corresponding markdown)
 - [ ] Semantic search returns results for content in `$ACA_DATA`

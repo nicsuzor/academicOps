@@ -2,7 +2,7 @@
 name: hdr
 category: instruction
 description: HDR (Higher Degree Research) student task conventions, reference letter workflows, and document access patterns.
-allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,mcp__pkb__create_task,mcp__pkb__update_task,mcp__memory__retrieve_memory,mcp__memory__store_memory
+allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,mcp__pkb__create_task,mcp__pkb__update_task,mcp__pkb__search,mcp__pkb__create_memory
 version: 1.0.0
 permalink: skills-hdr
 tags:

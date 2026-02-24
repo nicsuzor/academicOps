@@ -1,6 +1,16 @@
 ---
 id: qa
 category: quality-assurance
+description: Quality assurance with multiple modes - quick verification, acceptance testing, integration validation
+triggers:
+  - "verify"
+  - "check that"
+  - "test that"
+  - "QA"
+  - "acceptance test"
+  - "does it work"
+  - "prove"
+  - "validate"
 bases: [base-task-tracking, base-qa, base-handover]
 ---
 

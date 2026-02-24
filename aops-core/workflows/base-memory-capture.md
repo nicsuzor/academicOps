@@ -12,7 +12,7 @@ category: base
 At session end or before task completion:
 
 1. **Identify findings**: What did you learn, discover, or decide?
-2. **Store to memory MCP**: `mcp__memory__store_memory(content="...", metadata={...})`
+2. **Store to PKB**: `mcp__pkb__create_memory(title="...", body="...", tags=[...])`
 3. **Write durable artifacts**: If findings warrant persistence beyond memory, write to `$ACA_DATA`
 
 ## Storage Hierarchy
@@ -21,16 +21,16 @@ All findings flow through this hierarchy:
 
 | What                  | Primary Storage                                      | Also Store To |
 | --------------------- | ---------------------------------------------------- | ------------- |
-| **Epics/projects**    | Task Manager MCP (`type="epic"` or `type="project"`) | Memory MCP    |
-| **Tasks/issues**      | GitHub Issues (`gh issue create`)                    | Memory MCP    |
-| **Durable knowledge** | `$ACA_DATA/` markdown files                          | Memory MCP    |
-| **Session findings**  | Task body updates                                    | Memory MCP    |
+| **Epics/projects**    | Task Manager MCP (`type="epic"` or `type="project"`) | PKB    |
+| **Tasks/issues**      | GitHub Issues (`gh issue create`)                    | PKB    |
+| **Durable knowledge** | `$ACA_DATA/` markdown files                          | PKB    |
+| **Session findings**  | Task body updates                                    | PKB    |
 
-**Key principle**: Memory MCP is the **universal index** for semantic search. Write to your primary storage AND memory MCP.
+**Key principle**: PKB is the **universal index** for semantic search. Write to your primary storage AND PKB.
 
 ## Invocation
 
-Use the `/remember` skill which handles both markdown AND memory MCP writes:
+Use the `/remember` skill which handles both markdown AND PKB writes:
 
 ```
 Skill(skill="remember")
@@ -39,7 +39,7 @@ Skill(skill="remember")
 The skill ensures:
 
 - Markdown written to correct `$ACA_DATA` location
-- Memory MCP synced for semantic retrieval
+- PKB synced for semantic retrieval
 - Wikilinks created for graph connectivity
 
 ## When to Skip

@@ -1,6 +1,14 @@
 ---
 id: simple-question
 category: routing
+description: Answer pure information requests and halt with no modifications
+triggers:
+  - "how do I"
+  - "what is"
+  - "explain"
+  - "where is"
+  - "help with"
+  - "can you tell me"
 bases: []
 ---
 
@@ -35,7 +43,7 @@ These prompts skip full hydration and route directly here:
 2. "How does the task system work?" - Explanation request
 3. "Where are errors handled?" - Location inquiry
 4. "Explain the architecture" - Description request
-5. "Is the memory server running?" - Status inquiry
+5. "Is the PKB server running?" - Status inquiry
 
 ### Examples: NOT Pure Questions (full hydration)
 

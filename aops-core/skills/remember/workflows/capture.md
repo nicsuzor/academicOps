@@ -42,14 +42,14 @@ Session mining and note creation. Silently extracts information and maintains kn
 
 ### Creating Notes
 
-Use `Skill(skill="remember")` which handles both file creation and memory server sync:
+Use `Skill(skill="remember")` which handles both file creation and PKB sync:
 
 1. Write markdown file with proper frontmatter
-2. Sync to memory server via `mcp__memory__store_memory`
+2. Sync to PKB via `mcp__pkb__create_memory`
 
 ### Where to File (MANDATORY SEQUENCE)
 
-1. **Search first**: `mcp__memory__retrieve_memory(query="topic keywords")`
+1. **Search first**: `mcp__pkb__search(query="topic keywords")`
 2. **If match found**: AUGMENT existing file (integrate info, don't append dated entry)
 3. **If no match**: Create new TOPICAL file (not session/date file)
 

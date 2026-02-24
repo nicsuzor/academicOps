@@ -208,7 +208,7 @@ mcp__pkb__list_tasks --include_projects true
 
 ### Known Limitations
 
-1. **No MCP tool access**: Gemini cannot use Outlook, Zotero, memory, calendar, browser MCP tools
+1. **No MCP tool access**: Gemini cannot use ~~email, Zotero, PKB, ~~calendar, browser MCP tools
 2. **Sandbox mode requires catatonit**: May fail on systems without this dependency
 3. **YOLO mode auto-approves all**: High trust, review git history for rollback
 4. **Sequential only**: Gemini CLI doesn't support parallel execution like Claude agents

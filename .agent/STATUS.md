@@ -1,6 +1,6 @@
 # academicOps Framework Status
 
-**Last updated**: 2026-02-22
+**Last updated**: 2026-02-23
 
 ## Vision
 
@@ -17,10 +17,10 @@ academicOps/
 │   └── workflows/    # Workflow definitions (manual-qa, etc.)
 ├── .github/
 │   ├── agents/       # Agent personality prompts (gatekeeper, custodiet, qa, merge-prep, hydrator-reviewer)
-│   └── workflows/    # 17 GitHub Actions workflows
+│   └── workflows/    # 18 GitHub Actions workflows
 ├── aops-core/        # Framework core
 │   ├── hooks/        # Session hooks (router, policy_enforcer, task_binding, etc.)
-│   ├── lib/          # Shared libraries (gates, hydration, sessions, tasks, etc.)
+│   ├── lib/          # Shared libraries (gates, hydration, sessions, tasks, knowledge_graph, etc.)
 │   ├── mcp_servers/  # MCP servers (tasks_server, memory_proxy)
 │   └── scripts/      # Utility scripts (transcript, custodiet_block, etc.)
 ├── specs/            # Design specifications (37 specs)
@@ -28,24 +28,30 @@ academicOps/
 └── config/           # Configuration files
 ```
 
-**Data layer** ($ACA_DATA): `/home/nic/writing/data` — sessions, projects, logs, context, goals. Separate from framework code.
+**Data layer** ($ACA_DATA): `/opt/nic/brain` — sessions, projects, logs, context, goals. Separate from framework code.
 
 ## Key Components & Current State
 
-### PR Review Pipeline — WORKING
+### PR Review Pipeline — WORKING (with known issues being addressed)
 
-The fully automated PR review pipeline is the most mature component. As of 2026-02-22, all parts are working end-to-end:
+The fully automated PR review pipeline is the most mature component. Post-mortem on PRs 582 and 585 (2026-02-23) revealed three failure modes, all now addressed with fixes:
 
-**Pipeline flow**: `code-quality.yml` (lint + gatekeeper + type-check) -> `pr-review-pipeline.yml` (custodiet -> QA -> merge-prep -> notify-ready) -> human approval -> `pr-lgtm-merge.yml` (auto-merge)
+**Pipeline flow**: `code-quality.yml` (lint + gatekeeper + type-check) -> `pr-review-pipeline.yml` (cascade-check -> custodiet -> QA -> merge-prep -> notify-ready) -> human approval -> `pr-lgtm-merge.yml` (check-status -> lint re-trigger -> approve -> auto-merge)
 
-**Recent fixes (2026-02-22)**:
+**Safety mechanisms** (added/improved 2026-02-23):
+- **Cascade limit**: Pipeline run-count tracked per PR; halts after 3 runs to prevent infinite bot loops (`pr-review-pipeline.yml`)
+- **LGTM check-status gate**: Merge workflow now checks required status checks before enabling auto-merge; re-triggers lint if failing (`pr-lgtm-merge.yml`)
+- **Strategic gatekeeper**: Gatekeeper now reads `.agent/STATUS.md` in addition to VISION.md and AXIOMS.md, enabling it to reject PRs that delete working components or conflict with key decisions (`gatekeeper.md`)
+- **Loop detector**: Merge-prep uses `Merge-Prep-By:` commit trailer (not author name) — unchanged from prior fix
+
+**Prior fixes (2026-02-22)**:
 - Loop detector in merge-prep uses `Merge-Prep-By:` commit trailer (not author name)
 - Skip notices post honest PR comments when loop detected, including unresolved feedback count
 - Review dismissal instructions added to CLAUDE.md and merge-prep agent prompt
 - All 3 open PRs (579, 575, 576) merged successfully
 - Broken test fixed: `CUSTODIET_MODE` renamed to `CUSTODIET_GATE_MODE`
 
-**All 17 workflows have `workflow_dispatch` triggers** for manual re-runs.
+**All 18 workflows have `workflow_dispatch` triggers** for manual re-runs.
 
 **Agents**: gatekeeper, custodiet, QA, merge-prep, hydrator-reviewer (5 agents with distinct personalities and authorities)
 
@@ -77,10 +83,14 @@ Context injection at `aops-core/lib/hydration/`:
 - `context_loaders.py` — context loading strategies
 - `skip_check.py` — hydration bypass conditions
 
-### Task Management — WORKING
+### Task Management — WORKING (significant debt, sweep in progress)
 
 `aops-core/lib/task_model.py`, `task_storage.py`, `task_sync.py`, `task_index.py`
 MCP server: `aops-core/mcp_servers/tasks_server.py`
+
+**Task debt (surveyed 2026-02-23)**: ~236 open tasks across all projects (166 aops, 55 academic, 15+ other). Iterative sweep in progress (task `aops-sweep-20260223`).
+
+**Sweep progress**: Iterations 1-4 complete. 13 cancelled, 3 marked done, 9 kept, 2 fixed. ~223 open tasks remaining. Key patterns found: (1) orphaned children of done/cancelled parents, (2) tasks stuck in merge_ready/review where work was already committed to main -- this is a systemic issue where task lifecycle hooks do not automatically close tasks when PRs merge.
 
 ### Issue Review Agents — EARLY
 
@@ -101,6 +111,11 @@ Scripts for extracting insights from session transcripts in `.agent/skills/sessi
 
 | Decision | Rationale | Date |
 |----------|-----------|------|
+| Iterative stale task sweep | 236+ open tasks with significant junk; batch-review with human decisions, not bulk auto-cancel | 2026-02-23 |
+| Gatekeeper reads STATUS.md | Without strategic context, gatekeeper cannot catch PRs that delete working components (PR 582 post-mortem) | 2026-02-23 |
+| Pipeline cascade limit (max 3 runs) | PR 582 showed bots triggering bots in unbounded loops; comment-based counting bounds total cycles | 2026-02-23 |
+| LGTM triggers lint re-run if failing | PR 585 showed LGTM silently failing when lint was stale; merge workflow now checks and re-triggers | 2026-02-23 |
+| Transcript path: $AOPS_SESSIONS/polecats/ | Worker transcripts go to sessions repo, not old ~/.aops/transcripts path (updated 2026-02-23 during sweep) | 2026-02-23 |
 | Commit trailer for loop detection | Author name unreliable (multiple bots use github-actions[bot]) | 2026-02-22 |
 | All workflows get workflow_dispatch | Manual re-run capability for debugging and recovery | 2026-02-22 |
 | Review dismissal by agents | Agents should dismiss reviews they've addressed; humans override remaining | 2026-02-22 |
@@ -113,19 +128,27 @@ Scripts for extracting insights from session transcripts in `.agent/skills/sessi
 
 1. **Issue review over-triggering**: The issue review agents fire on read-only and tracking operations. Needs filtering improvement.
 2. **Hydrator guardrails**: Hydrator agent drifts into implementation advice instead of staying advisory. Needs stronger prompt constraints.
-3. **Autonomous automation readiness**: Most workflows are at "supervised" maturity. No workflows have been validated for fully autonomous operation yet.
+3. **Autonomous automation readiness**: Most workflows are at "supervised" maturity. No workflows have been validated for fully autonomous operation yet. PR 582/585 post-mortem confirms the pipeline is not yet ready for autonomous — the new safety mechanisms need supervised validation.
 4. **PATHS.md staleness**: Generated paths reference `/home/nic/src/academicOps` but the repo is at `/opt/nic/academicOps` on this machine. Environment-specific — may need regeneration.
+5. **Run-count accuracy**: The cascade limit uses comment pattern matching, not a proper counter. Could be inaccurate if comments are deleted or have unusual formatting. Monitor in practice.
+6. **Task debt**: ~223 open tasks remaining after iteration 4. Systemic pattern confirmed: tasks stuck in merge_ready/review where code was already committed to main but task status never updated. The task lifecycle hooks do not automatically close tasks when PRs merge.
 
 ## Roadmap
 
 ### Recently Completed
-- PR review pipeline end-to-end (loop detection, skip notices, review dismissal)
+- Stale task sweep iteration 4: 3 done, 2 cancelled (aops-578fdde1, aops-b55463e7, aops-47a04db0 done; aops-d35eae01, aops-d18e3442 cancelled) -- 2026-02-23
+- Stale task sweep iterations 1-3: 8 cancelled, 9 kept, 2 fixed -- 2026-02-23
+- PR pipeline post-mortem and fixes (cascade limit, LGTM check-status, strategic gatekeeper) -- 2026-02-23
+- PR review pipeline end-to-end (loop detection, skip notices, review dismissal) -- 2026-02-22
 - workflow_dispatch on all workflows
 - All open PRs merged to main
 - Test fix on main (CUSTODIET_GATE_MODE)
 
+### In Progress
+- **Iterative stale task sweep** (aops-sweep-20260223) -- iteration 4 complete; iteration 5 candidates prepared targeting more "stuck status" tasks from Feb 18-19
+
 ### Near-term
-- Validate PR pipeline on next real PR (supervised run)
+- **Validate PR pipeline fixes on next real PR** (supervised run) -- the three new safety mechanisms (cascade limit, LGTM lint re-trigger, strategic gatekeeper) need real-world validation
 - Address issue review over-triggering
 - Strengthen hydrator guardrails
 

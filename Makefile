@@ -1,6 +1,6 @@
 .PHONY: ver nextver release prerelease \
 	install install-claude install-gemini install-cli install-crontab \
-	install-dev install-claude-dev install-cli-dev
+	install-dev install-claude-dev install-cli-dev install-hooks
 
 DIST_REPO := nicsuzor/aops-dist
 MEM_REPO_PATH := $(or $(wildcard $(HOME)/src/mem),$(wildcard /opt/nic/mem))
@@ -119,7 +119,13 @@ install-crontab:
 # --- Development Install (local build) ---
 
 # Install from local source (requires mem repo + cargo)
-install-dev: install-claude-dev install-cli-dev
+install-dev: install-claude-dev install-cli-dev install-hooks
+
+# Install pre-commit hooks into local git repo
+install-hooks:
+	@echo "Installing pre-commit hooks..."
+	@uv run pre-commit install && \
+	echo "✓ Pre-commit hooks installed"
 
 # Build plugin locally and install for Claude Code
 install-claude-dev:

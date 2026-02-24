@@ -16,58 +16,58 @@ A constitutional framework for governing autonomous AI agents with:
 
 ```mermaid
 flowchart LR
-    PR([PR opened / updated]) --> CQ
+    PR([PR opened]) --> CQ
 
-    subgraph CQ [Code Quality]
+    subgraph CQ [Phase 1: Cheap Gate]
         Lint[Ruff lint + format]
-        Gate[[Gatekeeper agent]]
+        Gate[[Gatekeeper]]
         Types[Type check]
-        Lint --> Types
+        Tests[Pytest]
+        MPGate[Merge Prep: pending]
     end
 
-    subgraph Review [Sequential Review Pipeline]
+    CQ --> Bazaar
+
+    subgraph Bazaar [Phase 2: Bazaar Window]
         direction TB
-        Cust[[Custodiet:<br/>scope compliance]]
-        Cust --> QA[[QA: acceptance<br/>criteria check]]
-        QA --> MP[[Merge Prep:<br/>auto-fix comments]]
+        Gemini([Gemini Code Assist])
+        Copilot([GitHub Copilot])
+        Others([Other reviewers])
     end
 
-    subgraph Async [Advisory Review]
-        HydRev[[Hydrator reviewer]]
-        CustRev[[Custodiet reviewer]]
+    Bazaar --> Human([Phase 3: Human reviews])
+
+    Human -- "LGTM<br/>(± instructions)" --> Cron
+
+    subgraph Cron [Phase 4: Merge Prep]
+        MP[[Merge Prep:<br/>critical review +<br/>cleanup of ALL feedback]]
     end
 
-    CQ -- all pass --> Review
-    PR -.-> Async
-
-    Review --> Notify([Ready for Review])
-    Notify --> Human([Human reviews])
-
-    Human -- LGTM --> AutoMerge([Auto-merge<br/>rebase])
-    AutoMerge -- conflicts --> Claude[[Claude resolves<br/>conflicts + pushes]]
-    AutoMerge -- clean --> Done([Merged])
-    Claude --> Done
+    Cron --> AutoMerge([Phase 5: Auto-merge<br/>GitHub native])
 
     classDef agent fill:#6a1b9a,stroke:#4a148c,stroke-width:2px,color:#fff
-    classDef gate fill:#c62828,stroke:#b71c1c,stroke-width:2px,color:#fff
     classDef action fill:#0277bd,stroke:#01579b,stroke-width:2px,color:#fff
     classDef human fill:#ef6c00,stroke:#e65100,stroke-width:2px,color:#fff
     classDef success fill:#2e7d32,stroke:#1b5e20,stroke-width:2px,color:#fff
+    classDef bazaar fill:#37474f,stroke:#263238,stroke-width:1px,color:#fff
 
-    class Gate,Cust,QA,MP,HydRev,CustRev,Claude agent
-    class Lint,Types action
+    class Gate,MP agent
+    class Lint,Types,Tests,MPGate action
     class Human human
-    class Done success
+    class AutoMerge success
+    class Gemini,Copilot,Others bazaar
 
     style CQ fill:none,stroke:#888,stroke-dasharray: 5 5
-    style Review fill:none,stroke:#888,stroke-dasharray: 5 5
-    style Async fill:none,stroke:#888,stroke-dasharray: 5 5
+    style Bazaar fill:none,stroke:#888,stroke-dasharray: 5 5
+    style Cron fill:none,stroke:#888,stroke-dasharray: 5 5
 ```
 
-- **By the time the human sees the PR, everything should be clean.** Gatekeeper approves alignment (Approval #1), then custodiet, QA, and merge-prep run sequentially. Merge-prep auto-fixes review comments and pushes corrections.
-- Only humans can trigger merges. "LGTM" means **merge now** — it lodges Approval #2 and enables auto-merge (rebase). If merge conflicts exist, `@claude` is invoked to rebase and resolve them.
-- Hydrator and custodiet reviewers post non-blocking advisory comments on PR creation.
-- Full process documentation: [`specs/pr-process.md`](specs/pr-process.md).
+- **Bazaar model**: all external reviews (Gemini, Copilot, humans) are embraced as first-class feedback. The pipeline gets maximum value from them without being reliant on them.
+- **Cheap checks run on every push** (lint, typecheck, tests, gatekeeper). Expensive LLM review runs once, at the right time.
+- **One human action**: the human says "lgtm" (optionally with specific instructions like "fix the docstring on line 42"). Merge Prep handles the rest — no second approval needed.
+- **Cron-based merge-prep** (every 15 min) eliminates bot cascade loops. A 30-minute bazaar window gives external reviewers time to contribute before merge-prep processes all feedback.
+- **GitHub-native enforcement**: required status checks (Lint, Gatekeeper, Type Check, Pytest, Merge Prep) and required reviews (1 human) handle merge gating. No custom state machines.
+- Full process documentation: [`specs/pr-process-v2-draft.md`](specs/pr-process-v2-draft.md).
 
 ## Local session lifecycle
 
@@ -152,6 +152,16 @@ Gemini CLI:
 ```bash
 (command gemini extensions uninstall aops-core || echo not installed) && command gemini extensions install git@github.com:nicsuzor/aops-dist.git --consent --auto-update --pre-release
 ```
+
+## Development setup
+
+```bash
+git clone git@github.com:nicsuzor/academicOps.git && cd academicOps
+uv sync                    # install dependencies
+make install-hooks         # activate pre-commit hooks
+```
+
+Or use `make install-dev` to build, install the plugin locally, and activate hooks in one step.
 
 ## Project configuration
 

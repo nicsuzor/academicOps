@@ -1,6 +1,13 @@
 ---
 id: framework-gate
 category: routing
+description: Detect and route framework modification intent before other routing
+triggers:
+  - "framework change"
+  - "modify axiom"
+  - "change heuristic"
+  - "update enforcement"
+  - "governance change"
 bases: []
 ---
 

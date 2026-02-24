@@ -12,7 +12,7 @@ The `aops-core` hooks system uses a **Universal Router** (`hooks/router.py`) to 
    - **Gemini Context**: The router extracts `transcript_path` from Gemini's `SessionStart` payload to derive the temporary configuration root (`AOPS_GEMINI_TEMP_ROOT`), ensuring consistent path resolution for session files.
 3. **Gate Registry**:
    - `hooks/gate_registry.py` defines the mapping between events and "Gates" (compliance checks).
-   - Example: `PreToolUse` -> `TaskRequiredGate`, `CustodietGate`.
+   - Example: `PreToolUse` -> `HydrationGate`, `CustodietGate`.
 4. **Legacy Support**: The router maintains backward compatibility by ensuring environment variables like `PYTHONPATH` are correctly injected for downstream scripts.
 
 ### Key Components

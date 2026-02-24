@@ -1,6 +1,13 @@
 ---
 id: external-batch-submission
 category: operations
+description: Submit prediction/inference jobs to external APIs with approval, cost tracking, and config verification
+triggers:
+  - "batch submission"
+  - "API submission"
+  - "external batch"
+  - "submit predictions"
+  - "inference job"
 bases: [base-task-tracking, base-verification]
 ---
 

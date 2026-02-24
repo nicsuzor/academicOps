@@ -111,12 +111,11 @@ dependencies = [
   "pyyaml>=6.0",
   "pydantic>=2.0",
   "filelock>=3.13.0",
-  "fastmcp>=2.13.1,<3.0",
   "psutil>=5.9.0",
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["lib", "hooks", "mcp_servers"]
+packages = ["lib", "hooks"]
 
 [build-system]
 requires = ["hatchling"]
@@ -597,6 +596,8 @@ def build_aops_core(
         "INDEX.md",
         "WORKFLOWS.md",
         "INSTALLATION.md",
+        "CONNECTORS.md",
+        "TOOLS.md",
         "uv.lock",
     ]
 

@@ -14,8 +14,8 @@ def test_email_workflow_has_explicit_tool_examples() -> None:
     """Email-capture.md must include explicit MCP tool invocation examples.
 
     REQUIRED tool examples:
-    - Step 1 (Fetch Emails): mcp__outlook__messages_list_recent OR mcp__outlook__messages_index
-    - Step 3 (Context from memory): mcp__memory__retrieve_memory
+    - Step 1 (Fetch Emails): ~~email.messages_list_recent OR ~~email.messages_index
+    - Step 3 (Context from PKB): pkb__search or pkb__get_document
     - Step 6 (Create Tasks): Both task_add.py script format AND MCP tool structure
 
     Each tool example must include:
@@ -32,8 +32,8 @@ def test_email_workflow_has_explicit_tool_examples() -> None:
 
     # Step 1: Fetch Emails - Must show explicit Outlook MCP tool
     outlook_tools = [
-        "mcp__outlook__messages_list_recent",
-        "mcp__outlook__messages_index",
+        "messages_list_recent",
+        "messages_index",
     ]
     has_outlook_tool = any(tool in content for tool in outlook_tools)
     assert has_outlook_tool, (
@@ -42,39 +42,18 @@ def test_email_workflow_has_explicit_tool_examples() -> None:
         "Found: Generic 'Use Outlook MCP' without tool name"
     )
 
-    # Verify Outlook tool has parameter structure
-    if "mcp__outlook__messages_list_recent" in content:
-        # Check for parameter documentation near the tool name
-        outlook_section_start = content.find("### Step 1: Fetch Recent Emails")
-        outlook_section_end = content.find("### Step 2:", outlook_section_start)
-        outlook_section = content[outlook_section_start:outlook_section_end]
-
-        assert "account" in outlook_section.lower() or "limit" in outlook_section.lower(), (
-            "Outlook MCP tool example must show parameter structure.\n"
-            "Expected: Parameters like 'account' or 'limit' with type information"
-        )
-
-    # Step 3: Context from memory - Must show explicit memory MCP tool
-    memory_tools = [
-        "mcp__memory__retrieve_memory",
+    # Step 3: Context from PKB - Must show explicit PKB tool
+    pkb_tools = [
+        "pkb__search",
+        "pkb__get_document",
+        "pkb__list_documents",
     ]
-    has_memory_tool = any(tool in content for tool in memory_tools)
-    assert has_memory_tool, (
-        "Step 3 (Gather Context from memory) must include explicit memory MCP tool name.\n"
-        f"Expected one of: {memory_tools}\n"
-        "Found: Generic 'query memory MCP' without tool name"
+    has_pkb_tool = any(tool in content for tool in pkb_tools)
+    assert has_pkb_tool, (
+        "Step 3 (Gather Context) must include explicit PKB tool name.\n"
+        f"Expected one of: {pkb_tools}\n"
+        "Found: No PKB search tool reference"
     )
-
-    # Verify memory tool has parameter structure
-    if "mcp__memory__retrieve_memory" in content:
-        memory_section_start = content.find("### Step 3: Gather Context from memory")
-        memory_section_end = content.find("### Step 4:", memory_section_start)
-        memory_section = content[memory_section_start:memory_section_end]
-
-        assert "query" in memory_section.lower() or "search" in memory_section.lower(), (
-            "memory MCP tool example must show parameter structure.\n"
-            "Expected: Parameters like 'query' or 'n_results' with examples"
-        )
 
     # Step 6: Create Tasks - Must show both backend examples with full parameters
     # Scripts backend

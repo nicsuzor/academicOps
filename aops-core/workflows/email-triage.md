@@ -1,6 +1,13 @@
 ---
 id: email-triage
 category: operations
+description: Classify incoming emails into Task/FYI/Skip/Uncertain with priority inference
+triggers:
+  - "process email"
+  - "check inbox"
+  - "triage email"
+  - "email"
+  - "inbox"
 bases: [base-task-tracking, base-handover]
 ---
 

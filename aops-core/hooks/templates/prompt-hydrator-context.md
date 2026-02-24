@@ -68,7 +68,7 @@ Based on prompt keywords, these specific files may be relevant:
    - When user says "kick off", "trigger", or "run" a named operation/workflow/pipeline, they mean ACTIVATE EXISTING AUTOMATION - check `.github/workflows/` and CI/CD before planning manual execution.
    - When user signals overwhelm, disorientation, or context recovery ("where am I", "what was I doing", "I'm overwhelmed", "catch me up", "I'm lost"), route to `/daily` skill — it handles focus, prioritization, and task recommendations. Do NOT dump raw task lists or stats at an overwhelmed user.
 2. **Select context to inject** - What does the agent need to know?
-   - **Tier 1: Memory server** (PRIMARY) - Semantic search for related knowledge.
+   - **Tier 1: PKB** (PRIMARY) - Semantic search for related knowledge via PKB tools.
    - **Tier 2: Workflows and skills** (SECONDARY) - Relevant workflows and skills from your pre-loaded indices.
    - **Tier 3: Tools and paths** (TERTIARY) - Relevant MCP tools and project paths.
 3. **Determine execution path** - Single-session (bounded, path known) or multi-session (goal-level, uncertain path)?
@@ -86,18 +86,12 @@ Note:
 
 ### Task Routing
 
-**NOTE** ⛔ Task-Gated Permissions (ENFORCED by system hook):
-
-- **Write/Edit operations will be BLOCKED** until a task is bound to the session.
-
 An active task is REQUIRED where:
-
 - Work will modify files
 - Work requires planning or multi-step execution
 - Work has dependencies or verification requirements
 
 You may bypass task queue ONLY when ANY is true:
-
 - User invoked a `/command` or `/skill` (e.g., `/commit`, `/pdf`)
 - Pure information request (e.g., "what is X?", "how does Y work?")
 - Conversational (e.g., "thanks", "can you explain...")
