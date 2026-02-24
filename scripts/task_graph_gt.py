@@ -478,6 +478,229 @@ def render_cairo(g, pos, props, output_path: str, fmt: str = "svg"):
     print(f"  Written {out_file}")
 
 
+def render_manhattan(g, pos, props, output_path: str):
+    """Render with sfdp positions and Manhattan (orthogonal) edge routing.
+
+    Uses L-shaped or Z-shaped paths so edges follow axis-aligned segments,
+    routing around node bounding boxes.
+    """
+    svg_path = f"{output_path}.svg"
+    print(f"  Rendering: Manhattan edge routing -> {svg_path}")
+
+    n = g.num_vertices()
+
+    # Extract positions and compute bounds
+    node_data = []  # [(x, y, w, h, fill_hex, stroke_hex, stroke_width, stroke_dash, shape, label)]
+    xs, ys = [], []
+    for v in g.vertices():
+        x, y = pos[v]
+        xs.append(x)
+        ys.append(y)
+
+    if not xs:
+        print("  No nodes to render")
+        return
+
+    min_x, max_x = min(xs), max(xs)
+    min_y, max_y = min(ys), max(ys)
+    span_x = max_x - min_x or 1
+    span_y = max_y - min_y or 1
+
+    # Scale to a reasonable canvas size
+    canvas_w = max(2000, min(int(math.sqrt(n) * 250), 8000))
+    canvas_h = int(canvas_w * span_y / span_x) if span_x > 0 else canvas_w
+    margin = 80
+
+    def scale_x(x):
+        return margin + (x - min_x) / span_x * (canvas_w - 2 * margin)
+
+    def scale_y(y):
+        return margin + (y - min_y) / span_y * (canvas_h - 2 * margin)
+
+    # Build node rectangles for collision detection
+    node_rects = {}  # vertex_index -> (cx, cy, w, h)
+    for v in g.vertices():
+        vi = int(v)
+        x, y = pos[v]
+        cx, cy = scale_x(x), scale_y(y)
+        label = props["v_label"][v]
+        # Width based on label length, height fixed
+        w = max(40, min(len(label.split("\n")[0]) * 6.5 + 12, 180))
+        h = 24 + 12 * (label.count("\n"))
+        node_rects[vi] = (cx, cy, w, h)
+
+    def rect_contains(rect, px, py, pad=2):
+        """Check if point is inside a rectangle (with padding)."""
+        cx, cy, w, h = rect
+        return (cx - w/2 - pad <= px <= cx + w/2 + pad and
+                cy - h/2 - pad <= py <= cy + h/2 + pad)
+
+    def manhattan_route(src_rect, tgt_rect):
+        """Route an edge from src to tgt using orthogonal segments.
+
+        Returns a list of (x, y) points forming the path.
+        Uses an L-shape (one bend) or Z-shape (two bends) depending on
+        relative position.
+        """
+        sx, sy, sw, sh = src_rect
+        tx, ty, tw, th = tgt_rect
+
+        # Determine exit/entry sides based on relative position
+        dx = tx - sx
+        dy = ty - sy
+
+        # Clearance around nodes
+        pad = 6
+
+        if abs(dx) > abs(dy):
+            # Primarily horizontal relationship
+            if dx > 0:
+                # Source is left of target
+                start_x = sx + sw/2 + pad
+                end_x = tx - tw/2 - pad
+            else:
+                start_x = sx - sw/2 - pad
+                end_x = tx + tw/2 + pad
+            start_y = sy
+            end_y = ty
+
+            if abs(dy) < sh/2 + th/2 + pad:
+                # Close vertically - use Z-shape with horizontal offset
+                mid_x = (start_x + end_x) / 2
+                return [(start_x, start_y), (mid_x, start_y), (mid_x, end_y), (end_x, end_y)]
+            else:
+                # L-shape
+                return [(start_x, start_y), (end_x, start_y), (end_x, end_y)]
+        else:
+            # Primarily vertical relationship
+            if dy > 0:
+                start_y = sy + sh/2 + pad
+                end_y = ty - th/2 - pad
+            else:
+                start_y = sy - sh/2 - pad
+                end_y = ty + th/2 + pad
+            start_x = sx
+            end_x = tx
+
+            if abs(dx) < sw/2 + tw/2 + pad:
+                # Close horizontally - use Z-shape with vertical offset
+                mid_y = (start_y + end_y) / 2
+                return [(start_x, start_y), (start_x, mid_y), (end_x, mid_y), (end_x, end_y)]
+            else:
+                # L-shape
+                return [(start_x, start_y), (start_x, end_y), (end_x, end_y)]
+
+    # Build SVG
+    lines = []
+    vb_w = canvas_w + 2 * margin
+    vb_h = canvas_h + 2 * margin
+    lines.append(f'<svg xmlns="http://www.w3.org/2000/svg" '
+                 f'viewBox="0 0 {vb_w:.0f} {vb_h:.0f}" '
+                 f'width="{vb_w:.0f}" height="{vb_h:.0f}">')
+    lines.append('<style>')
+    lines.append('  text { font-family: "Helvetica Neue", Arial, sans-serif; font-size: 9px; fill: #333; }')
+    lines.append('</style>')
+
+    # Edges
+    for e in g.edges():
+        si, ti = int(e.source()), int(e.target())
+        if si not in node_rects or ti not in node_rects:
+            continue
+
+        src_r = node_rects[si]
+        tgt_r = node_rects[ti]
+        points = manhattan_route(src_r, tgt_r)
+
+        # Edge color (from RGBA to hex)
+        ec = props["e_color"][e]
+        r, g_c, b = int(ec[0]*255), int(ec[1]*255), int(ec[2]*255)
+        alpha = ec[3] if len(ec) > 3 else 0.6
+        color = f"rgb({r},{g_c},{b})"
+        pw = props["e_pen_width"][e]
+
+        # Dash
+        dash_vals = list(props["e_dash"][e])
+        dash_attr = f' stroke-dasharray="{",".join(str(int(d)) for d in dash_vals)}"' if dash_vals else ""
+
+        # Path
+        d = f'M {points[0][0]:.1f} {points[0][1]:.1f}'
+        for pt in points[1:]:
+            d += f' L {pt[0]:.1f} {pt[1]:.1f}'
+
+        lines.append(
+            f'  <path d="{d}" fill="none" stroke="{color}" '
+            f'stroke-width="{pw:.1f}" opacity="{alpha:.2f}"{dash_attr} />'
+        )
+
+        # Arrowhead
+        if len(points) >= 2:
+            p1, p2 = points[-2], points[-1]
+            ddx = p2[0] - p1[0]
+            ddy = p2[1] - p1[1]
+            length = math.sqrt(ddx*ddx + ddy*ddy)
+            if length > 0:
+                ddx /= length
+                ddy /= length
+                a = 5
+                ax, ay = p2
+                lx = ax - a*ddx + a*0.35*ddy
+                ly = ay - a*ddy - a*0.35*ddx
+                rx = ax - a*ddx - a*0.35*ddy
+                ry = ay - a*ddy + a*0.35*ddx
+                lines.append(
+                    f'  <polygon points="{ax:.1f},{ay:.1f} {lx:.1f},{ly:.1f} {rx:.1f},{ry:.1f}" '
+                    f'fill="{color}" opacity="{alpha:.2f}" />'
+                )
+
+    # Nodes
+    for v in g.vertices():
+        vi = int(v)
+        cx, cy, w, h = node_rects[vi]
+
+        # Fill color
+        fc = props["v_fill"][v]
+        fill = f"rgb({int(fc[0]*255)},{int(fc[1]*255)},{int(fc[2]*255)})"
+
+        # Border color
+        bc = props["v_border"][v]
+        stroke = f"rgb({int(bc[0]*255)},{int(bc[1]*255)},{int(bc[2]*255)})"
+        sw = props["v_pen_width"][v]
+
+        # Shape
+        shape = props["v_shape"][v]
+        dash = ' stroke-dasharray="6,3"' if "dashed" in props["v_dot_style"][v] else ""
+
+        x1 = cx - w/2
+        y1 = cy - h/2
+
+        if shape in ("circle", "double_circle"):
+            lines.append(
+                f'  <ellipse cx="{cx:.1f}" cy="{cy:.1f}" rx="{w/2:.1f}" ry="{h/2:.1f}" '
+                f'fill="{fill}" stroke="{stroke}" stroke-width="{sw:.1f}"{dash} />'
+            )
+        else:
+            rx = 3 if "3d" in props["v_dot_shape"][v] else 0
+            lines.append(
+                f'  <rect x="{x1:.1f}" y="{y1:.1f}" width="{w:.1f}" height="{h:.1f}" '
+                f'rx="{rx}" fill="{fill}" stroke="{stroke}" stroke-width="{sw:.1f}"{dash} />'
+            )
+
+        # Label
+        label = props["v_label"][v].split("\n")[0][:40]
+        label = (label.replace("&", "&amp;").replace("<", "&lt;")
+                 .replace(">", "&gt;").replace('"', "&quot;"))
+        lines.append(
+            f'  <text x="{cx:.1f}" y="{cy:.1f}" '
+            f'text-anchor="middle" dominant-baseline="central">{label}</text>'
+        )
+
+    lines.append('</svg>')
+
+    with open(svg_path, "w") as f:
+        f.write("\n".join(lines))
+    print(f"  Written {svg_path}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Generate styled task graph using graph-tool"
@@ -501,6 +724,11 @@ def main():
         "--graphviz",
         action="store_true",
         help="Use Graphviz renderer (looks like original) instead of Cairo",
+    )
+    parser.add_argument(
+        "--manhattan",
+        action="store_true",
+        help="Use Manhattan (orthogonal) edge routing with sfdp positions",
     )
     parser.add_argument(
         "--fmt",
@@ -601,7 +829,9 @@ def main():
     )
 
     # Render: Cairo is default (dense, anti-aliased), --graphviz for old style
-    if args.graphviz:
+    if args.manhattan:
+        render_manhattan(g, pos, props, args.output)
+    elif args.graphviz:
         render_graphviz(
             g, pos, props, args.output,
             splines_mode=args.splines,

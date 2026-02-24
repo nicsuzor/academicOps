@@ -33,6 +33,14 @@ try:
     cppinclude("ogdf/layered/MedianHeuristic.h")
     cppinclude("ogdf/layered/OptimalHierarchyLayout.h")
     cppinclude("ogdf/layered/OptimalRanking.h")
+    # Orthogonal layout pipeline
+    cppinclude("ogdf/planarity/PlanarizationLayout.h")
+    cppinclude("ogdf/planarity/PlanarizationGridLayout.h")
+    cppinclude("ogdf/orthogonal/OrthoLayout.h")
+    cppinclude("ogdf/planarity/SubgraphPlanarizer.h")
+    cppinclude("ogdf/planarity/PlanarSubgraphFast.h")
+    cppinclude("ogdf/planarity/VariableEmbeddingInserter.h")
+    cppinclude("ogdf/planarity/EmbedderMinDepthMaxFaceLayers.h")
 except ImportError:
     print(
         "Error: ogdf-python not available.\n"
@@ -212,7 +220,44 @@ def build_graph(
 
 def apply_layout(G, GA, layout_name: str, num_nodes: int):
     """Apply OGDF layout algorithm."""
-    if layout_name == "sugiyama":
+    if layout_name == "ortho":
+        print(f"  Layout: PlanarizationLayout + OrthoLayout ({num_nodes} nodes)")
+        pl = ogdf.PlanarizationLayout()
+
+        # Crossing minimization
+        crossMin = ogdf.SubgraphPlanarizer()
+        ps = ogdf.PlanarSubgraphFast[int]()
+        ps.runs(100)
+        ves = ogdf.VariableEmbeddingInserter()
+        ves.removeReinsert(ogdf.RemoveReinsertType.All)
+        crossMin.setSubgraph(ps)
+        crossMin.setInserter(ves)
+        ps.__python_owns__ = False
+        ves.__python_owns__ = False
+        crossMin.__python_owns__ = False
+        pl.setCrossMin(crossMin)
+
+        # Embedder
+        emb = ogdf.EmbedderMinDepthMaxFaceLayers()
+        emb.__python_owns__ = False
+        pl.setEmbedder(emb)
+
+        # Orthogonal layout module
+        ol = ogdf.OrthoLayout()
+        ol.separation(20.0)
+        ol.cOverhang(0.4)
+        ol.__python_owns__ = False
+        pl.setPlanarLayouter(ol)
+
+        pl.call(GA)
+
+    elif layout_name == "ortho-grid":
+        print(f"  Layout: PlanarizationGridLayout ({num_nodes} nodes)")
+        pgl = ogdf.PlanarizationGridLayout()
+        pgl.pageRatio(1.0)
+        pgl.call(GA)
+
+    elif layout_name == "sugiyama":
         print(f"  Layout: Sugiyama hierarchical ({num_nodes} nodes)")
         sl = ogdf.SugiyamaLayout()
         sl.call(GA)
@@ -288,7 +333,7 @@ def main():
     parser.add_argument(
         "--layout",
         default="fmmm",
-        choices=["fmmm", "sugiyama", "fmme"],
+        choices=["fmmm", "sugiyama", "fmme", "ortho", "ortho-grid"],
         help="OGDF layout algorithm (default: fmmm)",
     )
     parser.add_argument("--ego", metavar="ID", help="Ego-subgraph center node")

@@ -19,6 +19,8 @@ dependencies = [
   "scipy>=1.17.0",
   "bump-my-version[dev]>=1.2.6",
   "networkx>=3.6.1",
+  "ogdf-python>=0.3.4",
+  "cppyy>=3.5.0",
 ]
 
 [project.optional-dependencies]
