@@ -360,7 +360,7 @@ GOOD: Project: TJA
         ├── Epic: Complete paper draft
         │     ├── Task: Draft methodology section
         │     ├── Task: Write up accuracy validation results
-        │     └── Task: Draft methodology section
+        │     └── Task: Draft discussion section
         ├── Epic: Incorporate longitudinal findings
         │     ├── Learn: Analyze longitudinal data patterns
         │     └── Task: Write longitudinal findings section
