@@ -25,7 +25,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 try:
-    from ogdf_python import ogdf, cppinclude
+    from ogdf_python import cppinclude, ogdf
+
     cppinclude("ogdf/fileformats/GraphIO.h")
     cppinclude("ogdf/energybased/FMMMLayout.h")
     cppinclude("ogdf/energybased/FastMultipoleMultilevelEmbedder.h")
@@ -43,8 +44,7 @@ try:
     cppinclude("ogdf/planarity/EmbedderMinDepthMaxFaceLayers.h")
 except ImportError:
     print(
-        "Error: ogdf-python not available.\n"
-        "Install: uv pip install 'ogdf-python[quickstart]'",
+        "Error: ogdf-python not available.\nInstall: uv pip install 'ogdf-python[quickstart]'",
         file=sys.stderr,
     )
     sys.exit(1)
@@ -318,9 +318,7 @@ def render_svg(GA, output_path: str, structural_nodes: set[int]):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Generate styled task graph using OGDF"
-    )
+    parser = argparse.ArgumentParser(description="Generate styled task graph using OGDF")
     parser.add_argument("input", help="Input JSON file from fast-indexer")
     parser.add_argument("-o", "--output", default="tasks", help="Output base name")
     parser.add_argument("--include-orphans", action="store_true")

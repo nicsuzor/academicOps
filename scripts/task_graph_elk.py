@@ -176,12 +176,14 @@ def build_elk_graph(
             "h": h,
         }
 
-        elk_children.append({
-            "id": nid,
-            "width": w,
-            "height": h,
-            "labels": [{"text": label}],
-        })
+        elk_children.append(
+            {
+                "id": nid,
+                "width": w,
+                "height": h,
+                "labels": [{"text": label}],
+            }
+        )
 
     elk_edges = []
     edge_styles = {}
@@ -194,17 +196,22 @@ def build_elk_graph(
         edge_type = edge_data.get("type") or classify_edge(src, tgt, node_by_id)
         style = EDGE_STYLES.get(edge_type, EDGE_STYLES["link"])
 
-        elk_edges.append({
-            "id": eid,
-            "sources": [src],
-            "targets": [tgt],
-        })
+        elk_edges.append(
+            {
+                "id": eid,
+                "sources": [src],
+                "targets": [tgt],
+            }
+        )
 
         edge_styles[eid] = {
             "color": style["color"],
             "width": float(style.get("penwidth", "1")),
-            "dash": "4,4" if style.get("style") == "dashed" else
-                    "2,2" if style.get("style") == "dotted" else "",
+            "dash": "4,4"
+            if style.get("style") == "dashed"
+            else "2,2"
+            if style.get("style") == "dotted"
+            else "",
         }
 
     elk_graph = {
@@ -284,13 +291,17 @@ def render_svg(
     vb_h = graph_h + 2 * margin
 
     lines = []
-    lines.append(f'<svg xmlns="http://www.w3.org/2000/svg" '
-                 f'viewBox="0 0 {vb_w:.0f} {vb_h:.0f}" '
-                 f'width="{vb_w:.0f}" height="{vb_h:.0f}">')
-    lines.append('<style>')
-    lines.append('  text { font-family: "Helvetica Neue", Arial, sans-serif; font-size: 10px; fill: #333; }')
-    lines.append('  .edge-label { font-size: 8px; fill: #666; }')
-    lines.append('</style>')
+    lines.append(
+        f'<svg xmlns="http://www.w3.org/2000/svg" '
+        f'viewBox="0 0 {vb_w:.0f} {vb_h:.0f}" '
+        f'width="{vb_w:.0f}" height="{vb_h:.0f}">'
+    )
+    lines.append("<style>")
+    lines.append(
+        '  text { font-family: "Helvetica Neue", Arial, sans-serif; font-size: 10px; fill: #333; }'
+    )
+    lines.append("  .edge-label { font-size: 8px; fill: #666; }")
+    lines.append("</style>")
     lines.append(f'<g transform="translate({margin},{margin})">')
 
     # Draw edges first (behind nodes)
@@ -306,9 +317,9 @@ def render_svg(
 
             # Build path
             points = [start] + bends + [end]
-            d_parts = [f'M {points[0]["x"]:.1f} {points[0]["y"]:.1f}']
+            d_parts = [f"M {points[0]['x']:.1f} {points[0]['y']:.1f}"]
             for pt in points[1:]:
-                d_parts.append(f'L {pt["x"]:.1f} {pt["y"]:.1f}')
+                d_parts.append(f"L {pt['x']:.1f} {pt['y']:.1f}")
 
             dash_attr = f' stroke-dasharray="{es["dash"]}"' if es["dash"] else ""
             lines.append(
@@ -363,14 +374,14 @@ def render_svg(
             cy = y + h / 2
             lines.append(
                 f'  <ellipse cx="{cx:.1f}" cy="{cy:.1f}" '
-                f'rx="{w/2:.1f}" ry="{h/2:.1f}" '
+                f'rx="{w / 2:.1f}" ry="{h / 2:.1f}" '
                 f'fill="{fill}" stroke="{stroke}" '
                 f'stroke-width="{sw:.1f}"{dash_attr} />'
             )
         elif shape == "diamond":
             cx = x + w / 2
             cy = y + h / 2
-            pts = f"{cx:.1f},{y:.1f} {x+w:.1f},{cy:.1f} {cx:.1f},{y+h:.1f} {x:.1f},{cy:.1f}"
+            pts = f"{cx:.1f},{y:.1f} {x + w:.1f},{cy:.1f} {cx:.1f},{y + h:.1f} {x:.1f},{cy:.1f}"
             lines.append(
                 f'  <polygon points="{pts}" '
                 f'fill="{fill}" stroke="{stroke}" '
@@ -378,8 +389,10 @@ def render_svg(
             )
         elif shape == "hexagon":
             dx = w * 0.15
-            pts = (f"{x+dx:.1f},{y:.1f} {x+w-dx:.1f},{y:.1f} {x+w:.1f},{y+h/2:.1f} "
-                   f"{x+w-dx:.1f},{y+h:.1f} {x+dx:.1f},{y+h:.1f} {x:.1f},{y+h/2:.1f}")
+            pts = (
+                f"{x + dx:.1f},{y:.1f} {x + w - dx:.1f},{y:.1f} {x + w:.1f},{y + h / 2:.1f} "
+                f"{x + w - dx:.1f},{y + h:.1f} {x + dx:.1f},{y + h:.1f} {x:.1f},{y + h / 2:.1f}"
+            )
             lines.append(
                 f'  <polygon points="{pts}" '
                 f'fill="{fill}" stroke="{stroke}" '
@@ -387,9 +400,11 @@ def render_svg(
             )
         elif shape == "octagon":
             d = min(w, h) * 0.2
-            pts = (f"{x+d:.1f},{y:.1f} {x+w-d:.1f},{y:.1f} {x+w:.1f},{y+d:.1f} "
-                   f"{x+w:.1f},{y+h-d:.1f} {x+w-d:.1f},{y+h:.1f} {x+d:.1f},{y+h:.1f} "
-                   f"{x:.1f},{y+h-d:.1f} {x:.1f},{y+d:.1f}")
+            pts = (
+                f"{x + d:.1f},{y:.1f} {x + w - d:.1f},{y:.1f} {x + w:.1f},{y + d:.1f} "
+                f"{x + w:.1f},{y + h - d:.1f} {x + w - d:.1f},{y + h:.1f} {x + d:.1f},{y + h:.1f} "
+                f"{x:.1f},{y + h - d:.1f} {x:.1f},{y + d:.1f}"
+            )
             lines.append(
                 f'  <polygon points="{pts}" '
                 f'fill="{fill}" stroke="{stroke}" '
@@ -411,19 +426,20 @@ def render_svg(
         # Truncate label for display
         display_label = label[:40] + "..." if len(label) > 40 else label
         # Escape XML entities
-        display_label = (display_label
-                         .replace("&", "&amp;")
-                         .replace("<", "&lt;")
-                         .replace(">", "&gt;")
-                         .replace('"', "&quot;"))
+        display_label = (
+            display_label.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+        )
         lines.append(
             f'  <text x="{tx:.1f}" y="{ty:.1f}" '
             f'text-anchor="middle" dominant-baseline="central">'
-            f'{display_label}</text>'
+            f"{display_label}</text>"
         )
 
-    lines.append('</g>')
-    lines.append('</svg>')
+    lines.append("</g>")
+    lines.append("</svg>")
 
     with open(svg_path, "w") as f:
         f.write("\n".join(lines))
@@ -432,9 +448,7 @@ def render_svg(
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Generate styled task graph using ELK (elkjs)"
-    )
+    parser = argparse.ArgumentParser(description="Generate styled task graph using ELK (elkjs)")
     parser.add_argument("input", help="Input JSON file from fast-indexer")
     parser.add_argument("-o", "--output", default="tasks", help="Output base name")
     parser.add_argument("--include-orphans", action="store_true")
