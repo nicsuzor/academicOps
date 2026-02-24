@@ -200,3 +200,43 @@ The routing rules handle this (explicit > trigger > context) but the index doesn
 3. **Add `mode` column** - conversational vs execution vs batch
 4. **Add `domain` tags** - enable domain-based filtering
 5. **Document trigger disambiguation** - which skill wins on overlapping triggers
+
+## Stage 4: Workflow Frontmatter Schema
+
+### Current schema (from reading all 26 workflow files)
+
+| Field | Presence | Purpose |
+|-------|----------|---------|
+| `id` | 26/26 | Identifier (kebab-case) |
+| `category` | 26/26 | Classification |
+| `bases` | 23/26 | Composable base patterns |
+| `triggers` | 2/26 | Routing trigger phrases |
+| `title` | 1/26 | Human-readable name |
+| `description` | 2/26 | What the workflow does |
+
+Plus 5 fields used only by `email-capture.md`: `name`, `permalink`, `tags`, `version`, `phase`, `backend`.
+
+### Assessment for hydrator use
+
+**The `triggers` field is the biggest missed opportunity.** It exists in the schema (used by `interactive-followup` and `worktree-merge`) but isn't populated on 24 other workflows. If every workflow had triggers, `load_workflows_index()` could build a trigger-matching table similar to SKILLS.md, giving the hydrator fast routing before falling back to the decision tree.
+
+**The `category` field has too many values with unclear semantics:**
+
+12 distinct categories for 26 files: `base`, `governance`, `planning`, `meta`, `verification`, `instruction`, `operations`, `routing`, `session`, `development`, `quality-assurance`, `academic`, `integration`. Some categories have only 1 member. The hydrator can't use this for meaningful filtering.
+
+**Missing fields the hydrator needs:**
+
+| Proposed field | Type | Why |
+|---------------|------|-----|
+| `triggers` | `string[]` | Fast routing (already exists, just unpopulated) |
+| `modifies_files` | `boolean` | Task-gate signal |
+| `scope` | `enum: single-session, multi-session` | Scope detection |
+| `outputs` | `string[]` | What the workflow produces |
+| `description` | `string` | Already exists, just unpopulated on 24/26 |
+
+### Integrity issues
+
+1. **`reflect.md` has `id: meta-improvement`** - filename doesn't match id
+2. **`email-capture.md` has anomalous rich metadata** that no other workflow uses
+3. **`bases` field omitted vs empty array** - inconsistent (both `bases: []` and field-absent appear)
+4. **Category overlap** - `qa.md` uses `quality-assurance` while similar workflows use `operations`
