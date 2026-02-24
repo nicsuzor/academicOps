@@ -153,6 +153,16 @@ Gemini CLI:
 (command gemini extensions uninstall aops-core || echo not installed) && command gemini extensions install git@github.com:nicsuzor/aops-dist.git --consent --auto-update --pre-release
 ```
 
+## Development setup
+
+```bash
+git clone git@github.com:nicsuzor/academicOps.git && cd academicOps
+uv sync                    # install dependencies
+make install-hooks         # activate pre-commit hooks
+```
+
+Or use `make install-dev` to build, install the plugin locally, and activate hooks in one step.
+
 ## Project configuration
 
 Projects customise the framework by adding files to a `.agent/` directory:

@@ -8,7 +8,7 @@ repos:
     hooks:
       - id: dprint
         name: dprint check
-        entry: /home/nic/.dprint/bin/dprint check
+        entry: uv run dprint check
         language: system
         types_or: [markdown, json, toml]
         pass_filenames: true
@@ -43,6 +43,16 @@ repos:
       - id: ruff-format
         args: [--check]
         exclude: '^archived/'
+
+  # Workflow length constraint (C1 in brain/CONSTRAINTS.md)
+  - repo: local
+    hooks:
+      - id: check-workflow-length
+        name: Check workflow files <= 100 lines
+        entry: ./scripts/check_workflow_length.sh
+        language: script
+        files: workflows/.*\.md$
+        types: [file]
 
   # Type checking and framework health checks run in CI only
   # (see .github/workflows/framework-health.yml)

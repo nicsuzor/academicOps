@@ -68,7 +68,7 @@ class SessionState(BaseModel):
     # Structured components
     gates: dict[str, GateState] = Field(default_factory=dict)
 
-    # Main Agent / Task tracking (could move to 'task' gate metrics, but useful globally)
+    # Main Agent / Task tracking
     main_agent: MainAgentState = Field(default_factory=MainAgentState)
 
     # Subagent tracking: agent_name -> data dict

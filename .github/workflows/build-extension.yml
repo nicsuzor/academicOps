@@ -149,7 +149,7 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
           RELEASE_TYPE: ${{ steps.release_type.outputs.type }}
-          GH_TOKEN: ${{ secrets.AOPS_DIST_DEPLOY_KEY }}
+          GH_TOKEN: ${{ secrets.AOPS_DIST_PAT }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
@@ -220,6 +220,9 @@ jobs:
               json.dump(data, f, indent=2)
           EOF
           fi
+
+          # Switch remote to HTTPS with PAT so push triggers workflows
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/nicsuzor/aops-dist.git"
 
           # Commit and push
           COMMIT_PREFIX="Release"

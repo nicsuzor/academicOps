@@ -161,15 +161,15 @@ class TestCrewWorktreeNoUpstream:
     local_clone fixture) causes the new branch to inherit origin/main tracking.
     """
 
-    def test_new_branch_has_no_upstream(self, local_clone: Path, manager: PolecatManager):
-        """Crew branch created via setup_crew_worktree() must not track any upstream."""
+    def test_new_branch_tracks_self_not_main(self, local_clone: Path, manager: PolecatManager):
+        """Crew branch created via setup_crew_worktree() must track itself, not main."""
         manager.setup_crew_worktree("test-worker", "test")
 
         upstream = _get_upstream(local_clone, "crew/test-worker")
-        assert upstream is None, (
-            f"crew branch 'crew/test-worker' must not track any upstream after "
-            f"setup_crew_worktree(), but is tracking: {upstream!r}. "
-            f"The --unset-upstream fix in setup_crew_worktree() may have been removed."
+        # Should track origin/crew/test-worker, definitely NOT origin/main
+        assert upstream == "origin/crew/test-worker", (
+            f"crew branch 'crew/test-worker' should track itself, but is tracking: {upstream!r}. "
+            f"It must NOT track origin/main."
         )
 
     def test_without_fix_upstream_would_be_set(self, tmp_path: Path, local_clone: Path):
@@ -210,18 +210,20 @@ class TestPolecatWorktreeNoUpstream:
     manager.py.
     """
 
-    def test_new_polecat_branch_has_no_upstream(self, local_clone: Path, manager: PolecatManager):
-        """Polecat branch created via _do_setup_worktree() must not track any upstream."""
+    def test_new_polecat_branch_tracks_self_not_main(
+        self, local_clone: Path, manager: PolecatManager
+    ):
+        """Polecat branch created via _do_setup_worktree() must track itself, not main."""
         task_id = "aops-578fdde1"
         task = Task(id=task_id, title="regression test task", project="test")
 
         manager._do_setup_worktree(task)
 
         upstream = _get_upstream(local_clone, f"polecat/{task_id}")
-        assert upstream is None, (
-            f"polecat branch 'polecat/{task_id}' must not track any upstream after "
-            f"_do_setup_worktree(), but is tracking: {upstream!r}. "
-            f"The --unset-upstream fix in _do_setup_worktree() may have been removed."
+        expected = f"origin/polecat/{task_id}"
+        assert upstream == expected, (
+            f"polecat branch 'polecat/{task_id}' should track {expected}, but is tracking: {upstream!r}. "
+            f"It must NOT track origin/main."
         )
 
     def test_push_targets_feature_branch_not_main(

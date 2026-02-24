@@ -1,6 +1,12 @@
 ---
 id: email-reply
 category: operations
+description: Draft email replies using user voice with calendar checking for scheduling
+triggers:
+  - "reply to"
+  - "draft reply"
+  - "respond to email"
+  - "email reply"
 bases: [base-task-tracking, base-handover]
 ---
 
