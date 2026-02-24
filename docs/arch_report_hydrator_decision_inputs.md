@@ -125,3 +125,78 @@ design, collaborate, strategy, tdd-cycle, debugging, qa-demo, qa-test, prove-fea
 4. **`outputs: [code, document, tasks, information]`** - what the workflow produces
 5. **File existence indicator** - or eliminate phantom workflows from the index
 6. **Consistent naming** - index names must match filenames exactly
+
+## Stage 3: SKILLS.md as a Hydrator Input
+
+### SKILLS.md structure
+
+SKILLS.md has two sections:
+
+1. **Skills and Commands table** - Flat table with Skill, Triggers, Description columns
+2. **Routing Rules** - 4-tier matching priority (explicit → trigger → context → no match)
+
+### What SKILLS.md does well
+
+- **Triggers column** is exactly what the hydrator needs for fast matching
+- **Routing Rules** are clear and actionable
+- Descriptions are concise and informative
+- The `/skill` syntax is unambiguous for explicit invocations
+
+### Problems identified
+
+#### 1. Commands and skills are conflated
+
+The index mixes two distinct implementation types under one heading:
+
+| Type | Location | Examples | Count |
+|------|----------|----------|-------|
+| **Skills** (SKILL.md) | `skills/<name>/SKILL.md` | `/audit`, `/daily`, `/pdf`, `/python-dev`, `/strategy` | ~20 |
+| **Commands** (command .md) | `commands/<name>.md` | `/q`, `/dump`, `/bump`, `/learn`, `/pull`, `/path`, `/aops` | 7 |
+
+The hydrator treats them identically but they have different implementation mechanisms. This hasn't caused problems yet because routing works the same way, but it means the index can't accurately describe capabilities (commands don't have `allowed-tools` frontmatter, for example).
+
+#### 2. No structured metadata beyond triggers
+
+SKILLS.md provides:
+- Name (invocation syntax)
+- Trigger phrases (free text)
+- Description (free text)
+
+Missing metadata that would help the hydrator:
+
+| Metadata | Why it helps |
+|----------|-------------|
+| `modifies_files: yes/no` | Determines whether a task is needed |
+| `needs_task: yes/no` | Direct task-gate signal |
+| `mode: conversational/execution/batch` | Affects scope detection and composition |
+| `domain: [framework, academic, email, development, operations]` | Domain routing |
+| `standalone: yes/no` | Whether skill can be invoked mid-workflow |
+| `type: skill/command` | Disambiguates implementation type |
+
+#### 3. No composability information
+
+The hydrator doesn't know:
+- Which skills work together (e.g., `/python-dev` + `/commit`)
+- Which skills conflict (e.g., `/strategy` shouldn't compose with `/pull`)
+- Which skills are "advice" (injected as context) vs "action" (execute and produce output)
+
+#### 4. Skills don't declare their relationship to workflows
+
+Some skills effectively ARE workflow implementations (e.g., `/pull` implements task-tracking + execution). Others are orthogonal tools (e.g., `/pdf`). The hydrator can't distinguish these.
+
+#### 5. Trigger overlap
+
+Some triggers could match multiple skills:
+- "framework" → `/framework` or `/audit`?
+- "batch" → `/hypervisor` or `/swarm-supervisor`?
+- "task" → `/pull` or `/q`?
+
+The routing rules handle this (explicit > trigger > context) but the index doesn't surface priority between ambiguous matches.
+
+### Proposed improvements to SKILLS.md
+
+1. **Separate commands from skills** or at minimum add a `type` column
+2. **Add `modifies_files` and `needs_task` columns** - direct routing signals
+3. **Add `mode` column** - conversational vs execution vs batch
+4. **Add `domain` tags** - enable domain-based filtering
+5. **Document trigger disambiguation** - which skill wins on overlapping triggers
