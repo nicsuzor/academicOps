@@ -240,3 +240,65 @@ Plus 5 fields used only by `email-capture.md`: `name`, `permalink`, `tags`, `ver
 2. **`email-capture.md` has anomalous rich metadata** that no other workflow uses
 3. **`bases` field omitted vs empty array** - inconsistent (both `bases: []` and field-absent appear)
 4. **Category overlap** - `qa.md` uses `quality-assurance` while similar workflows use `operations`
+
+## Stage 5: Skill Frontmatter Schema
+
+### Current schema (from reading skills and commands)
+
+Skills (`skills/<name>/SKILL.md`) and commands (`commands/<name>.md`) share the same frontmatter schema:
+
+| Field | Presence | Purpose |
+|-------|----------|---------|
+| `name` | ~all | Identifier |
+| `category` | most | Always "instruction" - has no discriminating value |
+| `description` | ~all | One-line purpose description |
+| `allowed-tools` | most | Comma-separated tool names |
+| `version` | some | Semantic version |
+| `permalink` | some | URL-friendly slug |
+| `triggers` | 2 skills (swarm-supervisor, q) | Routing trigger phrases |
+| `title` | 1 (python-dev) | Human-readable name |
+
+### Skill frontmatter and the hydrator
+
+**The hydrator never reads skill frontmatter directly.** It only sees what SKILLS.md provides. This means:
+
+1. Skill frontmatter serves the audit/indexing tools, not the hydrator
+2. Any metadata the hydrator needs must be surfaced in SKILLS.md
+3. The `triggers` field in frontmatter is only used if the audit tool copies it to SKILLS.md
+
+**Implications for the frontmatter schema:**
+
+The skill frontmatter should be the **source of truth** that SKILLS.md is generated from. Currently:
+- `triggers` exists in frontmatter on only 2 items (swarm-supervisor, q command) - all other triggers live only in SKILLS.md
+- `description` in frontmatter → maps to Description column in SKILLS.md (this works)
+- No frontmatter field maps to the metadata the hydrator needs (modifies_files, needs_task, mode, domain)
+
+### Schema inconsistencies
+
+1. **`swarm-supervisor` omits `category` and `allowed-tools`** - the two most common fields
+2. **`category` is always "instruction"** - provides zero discriminating value; should either be removed or given meaningful values
+3. **`triggers` appears in 2/~27 items** - same problem as workflows: the field exists but is almost never populated
+4. **Commands have identical schema to skills** - no structural way to distinguish them
+
+### Proposed schema additions
+
+To make skill frontmatter the source of truth for SKILLS.md generation:
+
+```yaml
+---
+name: example-skill
+type: skill | command        # NEW: distinguish implementation type
+description: One-line description
+triggers:                    # EXISTING: populate on all items
+  - "trigger phrase 1"
+  - "trigger phrase 2"
+modifies_files: true         # NEW: does this skill write/edit files?
+needs_task: true             # NEW: does the hydrator need to bind a task?
+mode: execution              # NEW: conversational | execution | batch
+domain:                      # NEW: domain tags for filtering
+  - framework
+  - development
+allowed-tools: Read,Edit,Write
+version: 1.0.0
+---
+```
