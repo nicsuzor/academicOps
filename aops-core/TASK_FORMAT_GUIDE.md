@@ -263,6 +263,124 @@ The fast-indexer generates `$ACA_DATA/tasks/index.json` with this schema:
 }
 ```
 
+## Hierarchy Quality Rules
+
+These rules prevent the structural problems that make task maps unreadable and projects unnavigable.
+
+### The WHY Test
+
+Every task MUST answer: **"Why does this exist in the context of its parent?"**
+
+If you can't articulate the purpose in terms of the parent's goals, the task is either:
+- Misplaced (wrong parent)
+- Missing an intermediate epic that provides context
+- An orphan that needs to be connected or questioned
+
+**Bad**: `TJA → GCS → DuckDB dbt pipeline refactor`
+- WHY? No idea. Infrastructure task with no stated purpose under a research project.
+
+**Good**: `TJA → Epic: Move results to local cache for reproducible analysis → Task: Refactor GCS pipeline to DuckDB`
+- WHY the epic? Because TJA needs reproducible local analysis without cloud dependencies.
+- WHY the task? Because the epic requires migrating from GCS to a local store.
+
+### The Abstraction Level Test
+
+Children MUST be exactly one semantic level below their parent:
+
+```
+PROJECT children should be: EPIC (or GOAL, rarely)
+EPIC children should be:    TASK, BUG, FEATURE, LEARN
+TASK children should be:    ACTION
+```
+
+**Violations to watch for:**
+- A PROJECT with TASK children → missing EPIC layer
+- An EPIC with ACTION children → missing TASK layer
+- A GOAL containing TASKs directly → missing PROJECT and EPIC layers
+
+### The Star Pattern Anti-Pattern
+
+**If a node has more than 5 direct children, it almost certainly needs intermediate grouping.**
+
+A project with 10 direct children is a flat list, not a hierarchy. This happens when:
+- Tasks are created ad-hoc without thinking about where they fit
+- Implementation steps are parented directly to the project
+- Epics are missing
+
+**Fix:** Group related children under epics that explain a coherent milestone or workstream.
+
+### The "Is This Really a Task?" Test
+
+Before creating a task, ask:
+
+| Question | If YES → |
+|----------|----------|
+| Will this take multiple sessions? | It's probably an **epic**, not a task |
+| Does this have multiple distinct deliverables? | It's probably an **epic** |
+| Is this a single step in a larger process? | Find or create the parent epic first |
+| Is this infrastructure that serves a research goal? | Create the research epic first, then the infra task under it |
+| Can I finish this in one focused session (1-4h)? | It's a **task** |
+| Can I finish this in under 30 minutes? | It's an **action** |
+
+### Anti-Patterns with Examples
+
+**Anti-pattern 1: Implementation details at project level**
+```
+BAD:  Project: TJA
+        ├── Fetch batch results for Sonnet     ← leaf task directly under project
+        ├── Fetch batch results for 4-model    ← another leaf task
+        └── Submit Gemini batch runs           ← another leaf task
+
+GOOD: Project: TJA
+        └── Epic: Validate multi-model batch predictions
+              ├── Task: Fetch and verify Sonnet batch results
+              ├── Task: Fetch and verify 4-model batch results
+              └── Task: Submit Gemini Pro + Opus judge-only runs
+```
+
+**Anti-pattern 2: Infrastructure without strategic justification**
+```
+BAD:  Project: TJA
+        └── GCS → DuckDB pipeline refactor     ← WHY? No context.
+
+GOOD: Project: TJA
+        └── Epic: Local reproducible analysis pipeline
+              ├── Task: Refactor GCS → DuckDB pipeline
+              └── Task: Validate local results match cloud
+```
+
+**Anti-pattern 3: Mixed abstraction levels**
+```
+BAD:  Project: TJA
+        ├── Draft methodology section          ← 2-hour writing task
+        ├── Incorporate longitudinal findings   ← multi-week epic
+        └── problems with golden answers        ← investigation/bug
+
+GOOD: Project: TJA
+        ├── Epic: Complete paper draft
+        │     ├── Task: Draft methodology section
+        │     ├── Task: Write up accuracy validation results
+        │     └── Task: Draft methodology section
+        ├── Epic: Incorporate longitudinal findings
+        │     ├── Learn: Analyze longitudinal data patterns
+        │     └── Task: Write longitudinal findings section
+        └── Epic: Resolve data quality issues
+              ├── Bug: Problems with golden answers
+              └── Task: Fix golden answer validation pipeline
+```
+
+**Anti-pattern 4: Orphaned features**
+```
+BAD:  Feature: Add structured output support to buttermilk
+        (no parent, floating in space)
+
+GOOD: Project: TJA
+        └── Epic: Structured output validation
+              └── Feature: Add structured output support to buttermilk
+      (or if it's truly a buttermilk feature, parent it there with
+       a soft_depends_on from the TJA task that needs it)
+```
+
 ## Common Patterns
 
 ### Decomposition with Spikes
