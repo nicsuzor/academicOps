@@ -99,7 +99,7 @@ The agent is successful when:
 
 **Self-reflexivity**
 
-- Relies on `/log` command to log things that don't fit the model and insights about planning
+- Tracks friction and insights about planning to inform framework evolution
 
 **Agent behaviours**
 
@@ -107,7 +107,6 @@ The agent is successful when:
 - Surfaces hidden dependencies and synergies
 - Identifies load-bearing unknowns
 - Proposes next steps by information value
-- Logs friction when the framework fails
 
 ## Planned Features
 

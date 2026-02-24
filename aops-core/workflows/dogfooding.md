@@ -46,7 +46,7 @@ Complete the task while staying aware of friction points:
 
 | Observation | Action |
 |-------------|--------|
-| One-time friction | `/log [observation]` → continue |
+| One-time friction | Note in session reflection |
 | Recurring pattern (3+) | Check HEURISTICS.md → `/learn` if missing |
 | Blocking current task | Fix minimally, note for codification |
 | Better pattern discovered | Document what worked |
@@ -77,7 +77,8 @@ When working through a planning or brainstorming session with the user, follow t
 4. **Cross-project links → Wire them.** One project enables another → add `soft_blocks` or `related` relationships.
 5. **Never ask "want me to update?"** — just update. The user will correct you if you got it wrong.
 
-### Example (from copper splashback session, 2026-02-22):
+### Example (from copper splashback session, 2026-02-22)
+
 - User shared panel dimensions, copper thickness, tool inventory → written to project document immediately
 - Design decisions (flush cut, no wrap, removable mounting) → logged in Decision Log
 - GPO inspection needed before cutouts → created as blocking task
@@ -98,7 +99,7 @@ Watch for these during any task:
 
 ## Key Rules
 
-1. **Don't stop to fix everything.** Log with `/log`, continue working.
+1. **Don't stop to fix everything.** Log observation, continue working.
 2. **Do codify at session end.** Before handover, ask: what learned → what changed?
 3. **Small improvements compound.** One workflow tweak per session adds up.
 4. **Write to PKB as you go.** Don't batch knowledge capture to session end.

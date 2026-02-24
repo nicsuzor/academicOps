@@ -118,7 +118,6 @@ Verification workflows for different scopes.
 | Workflow            | When to Use                     | Bases         |
 | ------------------- | ------------------------------- | ------------- |
 | [[qa-demo]]         | Pre-completion verification     | -             |
-| [[qa-test]]         | User acceptance testing         | -             |
 | [[prove-feature]]   | Integration validation          | -             |
 | [[qa-design]]       | Design QA test plans            | task-tracking |
 

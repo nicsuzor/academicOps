@@ -42,7 +42,6 @@ This document defines the component assignments for the academicOps plugin ecosy
 **Commands**:
 
 - `/learn` - Graduated framework improvement workflow
-- `/log` - Log framework observations to bd issues
 
 **Agents**:
 
@@ -79,7 +78,6 @@ This document defines the component assignments for the academicOps plugin ecosy
 **Commands**:
 
 - `/aops` - Show framework capabilities
-- `/diag` - Diagnostic check of current session
 - `/email` - Create actionable tasks from emails
 - `/q` - Queue task for later execution (creates bd issue)
 
@@ -101,7 +99,7 @@ This document defines the component assignments for the academicOps plugin ecosy
 
 (hydrator, custodiet, qa, critic)
 
-- Core workflows (/learn, /log)
+- Core workflows (/learn)
 - Audit capabilities
 
 ### aops-core has no dependencies on aops-tools
