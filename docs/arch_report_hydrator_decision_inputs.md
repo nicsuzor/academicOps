@@ -348,3 +348,40 @@ The hydrator works around index gaps by:
 3. **Audit must validate index integrity** - every wikilink in WORKFLOWS.md must have a corresponding file
 4. **Audit must validate hydrator compatibility** - indexes should serve the hydrator, and the audit should verify they do
 5. **Triggers should migrate from SKILLS.md to frontmatter** - then the audit generates them, not preserves them
+
+## Stage 7: Synthesis and Implementation
+
+### Changes implemented in this PR
+
+#### 1. WORKFLOWS.md rewrite
+
+- Removed 18 phantom workflows (referenced but no files) from all tables
+- Fixed naming: `[[triage-email]]` → `[[email-triage]]` (matches actual file)
+- Consolidated 4 QA variants (qa-demo, qa-test, prove-feature, qa-design) → single `[[qa]]`
+- Redirected decision tree: `[[design]]`/`[[debugging]]` → `[[feature-dev]]`/`[[base-investigation]]`
+- Removed `[[direct-skill]]` concept (skill invocation uses `[[simple-question]]` + invoke directly)
+- Fixed `[[batch-processing]]` → `[[base-batch]]`
+- Fixed `[[framework-change]]` → `[[framework-gate]]`
+- Every wikilink in the index now points to an actual file
+
+#### 2. Workflow frontmatter enrichment
+
+Added `triggers` and `description` to 12 non-base workflows:
+decompose, feature-dev, simple-question, qa, email-triage, email-reply, peer-review, dogfooding, audit, external-batch-submission, framework-gate. Also: interactive-followup and worktree-merge already had triggers.
+
+The `triggers` field was already in the schema (used by 2 workflows). Now 13/14 non-base workflows have it.
+
+#### 3. Category consistency fix
+
+Changed `peer-review` from `category: operations` → `category: academic` (matches its index grouping).
+
+### Remaining work (follow-up tasks)
+
+These changes are deferred to avoid scope explosion:
+
+1. **Migrate SKILLS.md triggers to frontmatter** - Move trigger phrases from SKILLS.md to each skill/command's frontmatter, then update audit to generate SKILLS.md from frontmatter
+2. **Add routing metadata to skill frontmatter** - `modifies_files`, `needs_task`, `mode`, `domain` fields
+3. **Update audit skill instructions** - Enumerate exact fields to extract; add integrity validation (wikilink → file check)
+4. **Clean up email-capture frontmatter** - Remove anomalous fields (name, permalink, tags, version, phase, backend) that no other workflow uses
+5. **Fix reflect.md id mismatch** - `id: meta-improvement` should match filename `reflect`
+6. **Standardize `category` values** - Reduce from 12 to ~6 meaningful categories

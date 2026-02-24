@@ -1,6 +1,12 @@
 ---
 id: dogfooding
 category: meta
+description: Framework self-improvement through deliberate learning cycles (execute, observe, codify)
+triggers:
+  - "dogfood"
+  - "self-improve"
+  - "framework improvement"
+  - "learn from usage"
 bases: []
 ---
 
@@ -77,7 +83,8 @@ When working through a planning or brainstorming session with the user, follow t
 4. **Cross-project links → Wire them.** One project enables another → add `soft_blocks` or `related` relationships.
 5. **Never ask "want me to update?"** — just update. The user will correct you if you got it wrong.
 
-### Example (from copper splashback session, 2026-02-22):
+### Example (from copper splashback session, 2026-02-22)
+
 - User shared panel dimensions, copper thickness, tool inventory → written to project document immediately
 - Design decisions (flush cut, no wrap, removable mounting) → logged in Decision Log
 - GPO inspection needed before cutouts → created as blocking task

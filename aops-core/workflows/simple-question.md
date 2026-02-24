@@ -1,6 +1,14 @@
 ---
 id: simple-question
 category: routing
+description: Answer pure information requests and halt with no modifications
+triggers:
+  - "how do I"
+  - "what is"
+  - "explain"
+  - "where is"
+  - "help with"
+  - "can you tell me"
 bases: []
 ---
 

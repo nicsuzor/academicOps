@@ -1,6 +1,12 @@
 ---
 id: audit
 category: governance
+description: Framework governance audit - structure sync, index curation, acceptance tests, reporting
+triggers:
+  - "audit"
+  - "framework audit"
+  - "check structure"
+  - "governance"
 bases: [base-handover]
 ---
 
