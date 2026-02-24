@@ -73,3 +73,55 @@ Analysis for task-96c4f07f: What do WORKFLOWS.md and SKILLS.md actually need to 
 5. **Keyword-dependent workflow injection is brittle** - `_load_global_workflow_content()` uses `file_index.py` keyword matching. If the user prompt doesn't contain expected keywords, the hydrator won't see workflow content. The decision tree routing and the content injection use different matching strategies.
 
 6. **Scope detection has no explicit signals** - The hydrator must infer single-session vs multi-session from workflow characteristics, but workflows don't declare their typical scope.
+
+## Stage 2: WORKFLOWS.md as a Hydrator Input
+
+### Current structure assessment
+
+WORKFLOWS.md has three main sections the hydrator uses:
+
+1. **Base Workflows table** - Lists composable patterns with "Pattern" and "Skip When" columns
+2. **Decision Tree** - ASCII flowchart for routing user requests to workflows
+3. **Available Workflows** - Tables grouped by category with "When to Use" and "Bases" columns
+
+### What works well
+
+- The **decision tree** is the hydrator's primary routing tool and it's clear and comprehensive
+- The **bases table** gives good composability hints
+- Categorical grouping (Planning, Development, QA, etc.) provides useful signal
+- The **Key Distinctions** table at the bottom handles ambiguous cases well
+
+### Critical problem: index-to-file integrity
+
+Cross-referencing WORKFLOWS.md wikilinks against actual files in `workflows/`:
+
+**Exist as files (26):**
+base-task-tracking, base-tdd, base-verification, base-commit, base-handover, base-memory-capture, base-qa, base-batch, base-investigation, decompose, feature-dev, interactive-followup, simple-question, dogfooding, audit, constraint-check, framework-gate, email-triage, email-capture, email-reply, peer-review, reference-letter, worktree-merge, qa, reflect, external-batch-submission
+
+**Referenced in WORKFLOWS.md but NO file exists (18):**
+design, collaborate, strategy, tdd-cycle, debugging, qa-demo, qa-test, prove-feature, qa-design, batch-processing, batch-task-processing, task-triage, classify-task, email-classify, hdr-supervision, direct-skill, framework-change, skill-pilot, merge-conflict, version-bump
+
+**Name mismatches:**
+- `[[triage-email]]` in index → file is `email-triage.md`
+- `[[batch-processing]]` in index → closest file is `base-batch.md`
+
+**Impact**: The hydrator is told to "Read all workflow files you have selected." If it selects a workflow that has no file, the read silently fails. The hydrator's context template step 5 says: "Read all workflow files you have selected, including any local workflows." For 18 of the ~44 referenced workflows, this yields nothing.
+
+### What the index provides vs what the hydrator needs
+
+| What's in the index | Hydrator can use it for | Missing |
+|---------------------|------------------------|---------|
+| Workflow name (wikilink) | Identification, file lookup | File may not exist |
+| "When to Use" column | Routing decision | No structured triggers - prose only |
+| "Bases" column | Composition planning | Only names, not what bases provide |
+| Category headings | Domain filtering | Not structured, just visual grouping |
+| Decision tree | Primary routing | No fallback or confidence signal |
+
+### What would help the hydrator
+
+1. **Trigger phrases per workflow** (like SKILLS.md has) - enables fast matching before decision tree traversal
+2. **`modifies_files: yes/no`** - instant task-requirement signal
+3. **`typical_scope: single-session | multi-session`** - direct scope detection
+4. **`outputs: [code, document, tasks, information]`** - what the workflow produces
+5. **File existence indicator** - or eliminate phantom workflows from the index
+6. **Consistent naming** - index names must match filenames exactly
