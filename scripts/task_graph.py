@@ -543,13 +543,9 @@ def generate_dot(
         if dw > 0:
             # Append weight to label
             label = f"{label}\\n\u2696 {dw:.1f}"
-            # Sqrt scaling for better visual separation across the 1-10 range
             import math
 
             sqrt_dw = math.sqrt(dw)
-            scale_w = min(1.2 + sqrt_dw * 0.7, 4.0)
-            scale_h = min(0.8 + sqrt_dw * 0.3, 2.0)
-            extra_attrs += f" width={scale_w:.2f} height={scale_h:.2f} fixedsize=false"
             # Graduated font size
             if dw >= 6.0:
                 extra_attrs += " fontsize=16"
