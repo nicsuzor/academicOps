@@ -68,6 +68,7 @@ dev = [
   # Git hooks
   "pre-commit>=4.5.1",
   "bump-my-version>=1.2.6",
+  "dprint-py>=0.51.1.0",
 ]
 
 # ---- Settings ----
