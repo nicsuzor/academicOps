@@ -108,20 +108,19 @@ class TestFrameworkReflectionDemo:
         has_prompts_field = "**prompts**:" in response_text.lower()
         has_outcome_field = "**outcome**:" in response_text.lower()
 
-        # Check for framework agent or /log invocation
+        # Check for framework agent invocation
         framework_invoked = any(
             c["name"] == "Task"
             and c.get("input", {}).get("subagent_type", "").endswith("framework")
             for c in tool_calls
         )
-        log_invoked = skill_was_invoked(tool_calls, "log")
 
         criteria = [
             ("Session completed successfully", result["success"]),
             ("Reflection header present", has_reflection_header),
             ("Prompts field present", has_prompts_field),
             ("Outcome field present", has_outcome_field),
-            ("Framework agent or /log invoked", framework_invoked or log_invoked),
+            ("Framework agent invoked", framework_invoked),
         ]
 
         all_passed = True
@@ -148,98 +147,4 @@ class TestFrameworkReflectionDemo:
             pytest.fail(
                 f"Framework reflection demo FAILED. "
                 f"Critical unmet: {', '.join(failed)}. Session: {session_id}"
-            )
-
-    @pytest.mark.slow
-    def test_demo_log_command_creates_issue(self, claude_headless_tracked) -> None:
-        """Demo: /log command creates bd issue for observation.
-
-        Strategy: Invoke /log with an observation and verify bd create is called.
-        """
-        print("\n" + "=" * 80)
-        print("LOG COMMAND DEMO: Observation Logging")
-        print("=" * 80)
-
-        # Direct /log invocation
-        prompt = (
-            "/log Test observation: Router suggested framework skill but agent "
-            "ignored it - instruction wasn't task-specific"
-        )
-
-        print(f"\n--- TASK ---\n{prompt}")
-        print("\n--- EXECUTING HEADLESS SESSION ---")
-
-        result, session_id, tool_calls = claude_headless_tracked(
-            prompt, timeout_seconds=120, model="haiku", fail_on_error=False
-        )
-
-        print(f"\nSession ID: {session_id}")
-        print(f"Success: {result['success']}")
-        print(f"Total tool calls: {len(tool_calls)}")
-
-        # --- TEST EVALUATES ---
-        print("\n" + "=" * 80)
-        print("TEST EVALUATION")
-        print("=" * 80)
-
-        # Count tool types
-        tool_counts: dict[str, int] = {}
-        for call in tool_calls:
-            name = call["name"]
-            tool_counts[name] = tool_counts.get(name, 0) + 1
-
-        print("\n--- Tool Calls ---")
-        for name, count in sorted(tool_counts.items(), key=lambda x: -x[1]):
-            print(f"  {name}: {count}")
-
-        # Check for Skill tool with log or Task with framework agent
-        skill_calls = [c for c in tool_calls if c["name"] == "Skill"]
-        framework_agent_calls = [
-            c
-            for c in tool_calls
-            if c["name"] == "Task" and "framework" in c.get("input", {}).get("subagent_type", "")
-        ]
-
-        log_skill_called = any(
-            "log" in c.get("input", {}).get("skill", "").lower() for c in skill_calls
-        )
-        framework_called = len(framework_agent_calls) > 0
-
-        print("\n--- Log/Framework Invocation ---")
-        print(f"  Skill(log) called: {log_skill_called}")
-        print(f"  Framework agent called: {framework_called}")
-
-        # --- CRITERIA ---
-        print("\n" + "=" * 80)
-        print("PASS/FAIL CRITERIA")
-        print("=" * 80)
-
-        criteria = [
-            (
-                "Session completed (or made progress)",
-                result["success"] or len(tool_calls) > 0,
-            ),
-            (
-                "/log skill or framework agent invoked",
-                log_skill_called or framework_called,
-            ),
-        ]
-
-        all_passed = True
-        for name, passed in criteria:
-            status = "PASS" if passed else "FAIL"
-            if not passed:
-                all_passed = False
-            print(f"  [{status}] {name}")
-
-        print("\n" + "=" * 80)
-        print(f"OVERALL: {'PASS' if all_passed else 'FAIL'}")
-        print("=" * 80)
-
-        # Note: We don't hard-fail here since /log command may need proper
-        # plugin registration to work. This demo shows the expected behavior.
-        if not all_passed:
-            print(
-                "\nNote: /log command requires aops-core plugin to be registered. "
-                "This demo shows expected behavior pattern."
             )

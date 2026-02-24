@@ -1958,7 +1958,7 @@ class SessionProcessor:
                 elif content.startswith("/ask "):
                     content = content[5:]
                 else:
-                    # Skip other commands like /commit, /log etc
+                    # Skip other commands like /commit
                     continue
 
             # Skip very short messages
@@ -2753,7 +2753,7 @@ session_id: {session_uuid}
         return content
 
     def _is_command_invocation(self, content: str) -> bool:
-        """Check if content is a user command invocation (e.g., /meta, /log)."""
+        """Check if content is a user command invocation (e.g., /meta)."""
         return "<command-name>" in content
 
     def _is_system_pseudo_command(self, content: str) -> bool:

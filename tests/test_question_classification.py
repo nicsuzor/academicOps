@@ -36,10 +36,6 @@ class TestSkipHydrationNotifications:
         """Slash commands like /pull should skip hydration."""
         assert should_skip_hydration("/pull aops-123") is True
 
-    def test_slash_command_work(self):
-        """Slash commands like /work should skip hydration."""
-        assert should_skip_hydration("/work aops-456") is True
-
     def test_slash_command_learn(self):
         """Slash commands like /learn should skip hydration."""
         assert should_skip_hydration("/learn something") is True

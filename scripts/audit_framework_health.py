@@ -702,7 +702,6 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         # Deleted/renamed workflows (conceptual references to former workflows)
         "critic-fast",
         "critic-detailed",
-        "qa-test",
         "prove-feature",
         "qa-design",
         "batch-task-processing",
@@ -767,7 +766,6 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "commands/pull.md",
         "commands/q.md",
         "commands/learn.md",
-        "commands/log.md",
         "hooks/session_env_setup.py",
         "hooks/user_prompt_submit.py",
         "hooks/router.py",

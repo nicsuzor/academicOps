@@ -12,7 +12,6 @@ related: [[framework-observability]], [[enforcement]], [[workflow-system-spec]]
 ## Giving Effect
 
 - [[commands/learn.md]] - `/learn` command for graduated framework improvement
-- [[commands/log.md]] - `/log` command for logging observations
 - [[skills/audit/SKILL.md]] - Audit skill for framework governance validation
 - [[specs/framework-observability.md]] - Observability pipeline feeding this loop
 - [[HEURISTICS.md]] - Target for graduated learning updates (H#)
@@ -198,26 +197,6 @@ The primary feedback workflow. Invoked when:
     │
     └── 8. Report (Framework Reflection format)
 ```
-
-### /log - Learning Observation Capture
-
-Lightweight logging without immediate fix:
-
-```
-/log [observation]
-    │
-    ├── Search for existing related task
-    │
-    ├── Create or update learn-type task
-    │
-    └── Report task ID for later /qa analysis
-```
-
-Use when:
-
-- Observing a pattern but not ready to fix
-- Accumulating evidence before escalation
-- Deferring root cause analysis
 
 ### /audit - Governance Verification
 
