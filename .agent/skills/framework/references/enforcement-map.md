@@ -26,7 +26,6 @@ This document tracks all enforcement mechanisms in the academicOps framework.
 | Hook                     | Mode         | Description                                  |
 | ------------------------ | ------------ | -------------------------------------------- |
 | `hydration_gate.py`      | warn/block   | Blocks until prompt-hydrator invoked         |
-| `task_required_gate.py`  | configurable | Four-gate check for destructive operations   |
 | `command_intercept.py`   | transform    | Transforms tool inputs (e.g., Glob excludes) |
 | `overdue_enforcement.py` | warn         | Injects reminders for overdue tasks          |
 
@@ -35,22 +34,7 @@ This document tracks all enforcement mechanisms in the academicOps framework.
 | Hook                         | Mode         | Description                                     |
 | ---------------------------- | ------------ | ----------------------------------------------- |
 | `custodiet_gate.py`          | configurable | Periodic compliance audit (every ~7 tool calls) |
-| `task_binding.py`            | passive      | Binds task to session on create/claim           |
-| `todowrite_handover_gate.py` | passive      | Sets todo_with_handover gate on TodoWrite       |
 | `handover_gate.py`           | passive      | Clears stop gate when /dump invoked             |
-
-## Four-Gate Model (task_required_gate.py)
-
-Destructive operations require ALL FOUR gates to pass:
-
-1. **Task bound** - Session has an active task via update_task or create_task
-2. **Plan mode invoked** - EnterPlanMode has been called to design approach
-3. **Critic invoked** - Critic agent has reviewed the plan
-4. **Todo with handover** - TodoWrite includes a session end/dump step
-
-**Current state**: Only `task_bound` gate is enforced. Other three are tracked but not enforced (for validation).
-
-**Mode control**: Set `TASK_GATE_MODE=block` to enable blocking (default: `warn`)
 
 ## Custodiet Compliance Audit
 

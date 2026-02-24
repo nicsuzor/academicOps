@@ -28,15 +28,14 @@ This document tracks all enforcement mechanisms in the academicOps framework.
 | `hydration_gate.py`      | warn/block | Blocks until prompt-hydrator invoked                                 |
 | `axiom_enforcer`         | **DISABLED** | Real-time detection of P#8 (Fail-Fast) and P#26 (Write-Without-Read) |
 | `command_intercept.py`   | transform  | Transforms tool inputs (e.g., Glob excludes)                         |
-| `overdue_enforcement.py` | warn       | Injects reminders for overdue tasks                                 |
-
+| `overdue_enforcement.py` | warn       | Injects reminders for overdue tasks          |
 
 ### PostToolUse Hooks
 
-| Hook                                | Mode    | Description                                                     |
+| Hook
+                                | Mode    | Description                                                     |
 | ----------------------------------- | ------- | --------------------------------------------------------------- |
 | `gate_registry.py:accountant`       | passive | General state tracking (hydration, custodiet, handover)         |
-| `gate_registry.py:task_binding`     | passive | Binds task to session on create/claim                           |
 | `gate_registry.py:skill_activation` | passive | Clears hydration pending on non-infrastructure skill activation |
 
 ## Custodiet Compliance Audit

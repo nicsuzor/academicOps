@@ -261,58 +261,6 @@ Uses passive `additionalContext` format - agent may proceed without addressing.
 
 **Note**: Technical enforcement prevents accidental premature completion. Agents must either complete children first or explicitly override with force flag.
 
-## Task-Gated Permissions (PreToolUse Hook)
-
-Destructive operations require ALL THREE gates to pass. See [[specs/permission-model-v1]].
-
-| Operation Type             | Tool                           | Requires Gates               | Bypass               |
-| -------------------------- | ------------------------------ | ---------------------------- | -------------------- |
-| File creation/modification | Write, Edit, NotebookEdit      | All 3 gates                  | `.` prefix, subagent |
-| Destructive Bash           | `rm`, `mv`, `git commit`, etc. | All 3 gates                  | `.` prefix, subagent |
-| Read-only                  | Read, Glob, Grep, `git status` | None                         | N/A                  |
-| Task operations            | create_task, update_task       | None (they establish gate a) | N/A                  |
-
-**Enforcement**: `task_required_gate.py` PreToolUse hook.
-
-**Output format** (JSON, always exit 0):
-
-- Allow: `{}` (empty JSON)
-- Block: `{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "additionalContext": "..."}}`
-- Warn: `{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "additionalContext": "..."}}`
-
-### Three-Gate Requirement
-
-All three gates must pass before destructive operations are allowed:
-
-| Gate                   | Requirement                    | How Set                                              | Session State Flag         |
-| ---------------------- | ------------------------------ | ---------------------------------------------------- | -------------------------- |
-| (a) Task bound         | Session has active task        | `update_task(status="active")` or `create_task(...)` | `main_agent.current_task`  |
-| (b) Critic invoked     | Critic agent reviewed plan     | SubagentStop with `subagent_type="critic"`           | `state.critic_invoked`     |
-| (c) Todo with handover | Todo list has session end step | TodoWrite with handover pattern detected             | `state.todo_with_handover` |
-
-**Binding flow**:
-
-1. Hydrator guides: "claim existing or create new task"
-2. Agent calls `update_task(status="active")` or `create_task(...)` → gate (a) set
-3. `task_binding.py` PostToolUse hook sets `current_task` in session state
-4. Agent invokes critic: `Task(subagent_type="aops-core:critic", ...)` → gate (b) set
-5. `unified_logger.py` SubagentStop handler sets `critic_invoked` flag
-6. Agent creates todo list with handover step → gate (c) set
-7. `todowrite_handover_gate.py` PostToolUse hook sets `todo_with_handover` flag
-8. `task_required_gate.py` checks all three gates before allowing destructive operations
-
-**Handover patterns detected** (case-insensitive):
-
-- "session end", "session close", "session handover"
-- "dump", "handover", "hand over", "hand-over"
-- "commit and push", "final commit"
-- "wrap up", "framework reflection"
-
-**Bypass conditions**:
-
-- User prefix `.` (sets `gates_bypassed` flag via UserPromptSubmit)
-- Subagent sessions (`CLAUDE_AGENT_TYPE` env var set)
-
 ## Pattern Blocking (PreToolUse Hook)
 
 | Category          | Pattern             | Blocked Tools | Purpose                    | Axiom                    |
@@ -457,8 +405,8 @@ Context injected via CORE.md at SessionStart. Guides where agents place files.
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | Deny rules       | `$AOPS/config/claude/settings.json` → `permissions.deny`                                                                |
 | Agent tools      | `$AOPS/aops-core/agents/*.md` → `tools:` frontmatter                                                                    |
-| PreToolUse       | `$AOPS/aops-core/hooks/hydration_gate.py`, `task_required_gate.py`, `policy_enforcer.py`                                |
-| PostToolUse      | `$AOPS/aops-core/hooks/fail_fast_watchdog.py`, `autocommit_state.py`, `custodiet_gate.py`, `todowrite_handover_gate.py` |
+| PreToolUse       | `$AOPS/aops-core/hooks/hydration_gate.py`, `policy_enforcer.py`                                |
+| PostToolUse      | `$AOPS/aops-core/hooks/fail_fast_watchdog.py`, `autocommit_state.py`, `custodiet_gate.py` |
 | SubagentStop     | `$AOPS/aops-core/hooks/unified_logger.py` (sets `critic_invoked` flag)                                                  |
 | UserPromptSubmit | `$AOPS/aops-core/hooks/user_prompt_submit.py`                                                                           |
 | SessionStart     | `$AOPS/aops-core/hooks/sessionstart_load_axioms.py`                                                                     |

@@ -86,18 +86,12 @@ Note:
 
 ### Task Routing
 
-**NOTE** ⛔ Task-Gated Permissions (ENFORCED by system hook):
-
-- **Write/Edit operations will be BLOCKED** until a task is bound to the session.
-
 An active task is REQUIRED where:
-
 - Work will modify files
 - Work requires planning or multi-step execution
 - Work has dependencies or verification requirements
 
 You may bypass task queue ONLY when ANY is true:
-
 - User invoked a `/command` or `/skill` (e.g., `/commit`, `/pdf`)
 - Pure information request (e.g., "what is X?", "how does Y work?")
 - Conversational (e.g., "thanks", "can you explain...")

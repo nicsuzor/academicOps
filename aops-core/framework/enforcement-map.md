@@ -316,62 +316,6 @@ Agent must not have access to user's SSH key (which has admin/bypass rights on r
 
 **Note**: Technical enforcement prevents accidental premature completion. Agents must either complete children first or explicitly override with force flag.
 
-## TASK GATE (Unified PreToolUse Enforcement)
-
-Destructive operations require passing the TASK GATE. See [[specs/permission-model-v1]].
-
-The TASK GATE consolidates multiple enforcement concerns into a single PreToolUse check:
-
-- Task binding (work tracking)
-- Hydration completion (plan before execute)
-
-| Operation Type             | Tool                           | Requires TASK GATE         | Bypass               |
-| -------------------------- | ------------------------------ | -------------------------- | -------------------- |
-| File creation/modification | Write, Edit, NotebookEdit      | Yes                        | `.` prefix, subagent |
-| Destructive Bash           | `rm`, `mv`, `git commit`, etc. | Yes                        | `.` prefix, subagent |
-| Read-only                  | Read, Glob, Grep, `git status` | No                         | N/A                  |
-| Task operations            | create_task, update_task       | No (they establish gate a) | N/A                  |
-
-**Enforcement**: `check_task_required_gate()` in `gate_registry.py` (PreToolUse hook).
-
-**Output format** (JSON, always exit 0):
-
-- Allow: `{}` (empty JSON)
-- Block: `{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "additionalContext": "..."}}`
-- Warn: `{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "additionalContext": "..."}}`
-
-### Three-Gate Conditions
-
-The TASK GATE tracks three conditions for full compliance:
-
-| Gate                 | Requirement                     | How Set                                                   | Session State Flag        |
-| -------------------- | ------------------------------- | --------------------------------------------------------- | ------------------------- |
-| (a) Task bound       | Session has active task         | `update_task(status="in_progress")` or `create_task(...)` | `main_agent.current_task` |
-| (b) Hydrator invoked | Plan mode or hydrator completed | `EnterPlanMode` tool or prompt-hydrator SubagentStop      | `state.plan_mode_invoked` |
-
-**Default enforcement**: Only gate (a) task_bound is enforced. Gate (b) is tracked for observability.
-
-**Full enforcement**: Set `TASK_GATE_ENFORCE_ALL=1` to require both gates.
-
-**Hydration enforcement mode**: `warn` (default). The hydration gate is advisory; agents receive guidance but are not blocked. Override via `HYDRATION_GATE_MODE=block` env var.
-
-Warn is the appropriate default per P#105 (Standard Tooling Over Framework Gates): hydration is workflow guidance, not an integrity constraint. Hard-blocking is reserved for correctness gates (custodiet, QA). The advisory notice is surfaced on every non-exempt tool call until hydration is satisfied — this is not a silent failure (P#8 Fail-Fast): the agent is explicitly informed on each tool call and proceeding without hydration is a deliberate, visible choice.
-
-Read-only tools (`read_only` category) are excluded from the gate policy. Blocking reads before hydration creates a circular dependency: the agent cannot gather the context needed to run the hydrator if reads are blocked. Read-only operations carry no side effects that require a hydrated execution plan.
-
-**Binding flow**:
-
-1. Hydrator guides: "claim existing or create new task"
-2. Agent calls `update_task(status="in_progress")` or `create_task(...)` → gate (a) set
-3. `task_binding.py` PostToolUse hook sets `current_task` in session state
-4. Agent enters plan mode or hydrator completes → gate (b) set
-5. `check_task_required_gate()` checks gates before allowing destructive operations
-
-**Bypass conditions**:
-
-- User prefix `.` (sets `gates_bypassed` flag via UserPromptSubmit)
-- Subagent sessions (`CLAUDE_AGENT_TYPE` env var set)
-
 ## Pattern Blocking (PreToolUse Hook)
 
 | Category          | Pattern             | Blocked Tools | Purpose                    | Axiom                    |
@@ -532,8 +476,8 @@ Context injected via CORE.md at SessionStart. Guides where agents place files.
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | Deny rules       | `$AOPS/config/claude/settings.json` → `permissions.deny`                                                                              |
 | Agent tools      | `$AOPS/aops-core/agents/*.md` → `tools:` frontmatter                                                                                  |
-| PreToolUse       | `$AOPS/aops-core/hooks/gate_registry.py` (hydration, custodiet, subagent_restrictions), `task_required_gate.py`, `policy_enforcer.py` |
-| PostToolUse      | `$AOPS/aops-core/hooks/gate_registry.py` (accountant, task_binding, post_hydration, skill_activation)                                 |
+| PreToolUse      | `$AOPS/aops-core/hooks/gate_registry.py` (hydration, custodiet, subagent_restrictions), `policy_enforcer.py` |
+| PostToolUse     | `$AOPS/aops-core/hooks/gate_registry.py` (accountant, post_hydration, skill_activation)                  |
 | SubagentStop     | `$AOPS/aops-core/hooks/unified_logger.py`                                                                                            |
 | UserPromptSubmit | `$AOPS/aops-core/hooks/user_prompt_submit.py`                                                                                         |
 | SessionStart     | `$AOPS/aops-core/hooks/sessionstart_load_axioms.py`                                                                                   |
