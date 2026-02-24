@@ -168,7 +168,6 @@ Add to `HOOK_REGISTRY` in `router.py`:
     {"script": "unified_logger.py"},
     {"script": "hydration_gate.py"},
     {"script": "command_intercept.py"},  # NEW: Before policy_enforcer
-    {"script": "task_required_gate.py"},
     {"script": "policy_enforcer.py"},
     {"script": "overdue_enforcement.py"},
 ],

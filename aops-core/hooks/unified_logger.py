@@ -113,5 +113,5 @@ def log_event_to_session(
     Returns:
         None
     """
-    # Logic moved to Gate implementations (TaskGate, HydrationGate, etc.)
+    # Logic moved to Gate implementations (HydrationGate, CustodietGate, etc.)
     return None

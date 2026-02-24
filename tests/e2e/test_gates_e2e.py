@@ -12,7 +12,6 @@ import pytest
     "gate, instruction, expected_behavior",
     [
         ("hydration", "Run shell command: ls /etc/hosts", "blocked"),
-        # ("task", "Write a file named 'test.txt' with content 'hello'", "blocked"), # Task gate might be warn-only in default config
     ],
 )
 def test_gate_enforcement_e2e(cli_headless, gate, instruction, expected_behavior):
