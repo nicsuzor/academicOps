@@ -617,9 +617,9 @@ def generate_svg(dot_content: str, output_base: str, layout: str, keep_dot: bool
     Path(dot_path).write_text(dot_content)
 
     layout_opts: dict[str, list[str]] = {
-        "sfdp": ["-Goverlap=prism", "-Gsplines=true", "-Gsep=+25"],
-        "neato": ["-Goverlap=prism", "-Gsplines=true", "-Gsep=+25"],
-        "fdp": ["-Goverlap=prism", "-Gsplines=true", "-Gsep=+25"],
+        "sfdp": ["-Goverlap=prism", "-Gsplines=true", "-Gsep=+20"],
+        "neato": ["-Goverlap=prism", "-Gsplines=true", "-Gsep=+20"],
+        "fdp": ["-Goverlap=prism", "-Gsplines=true", "-Gsep=+20"],
         "dot": [],
         "circo": [],
         "twopi": [],
