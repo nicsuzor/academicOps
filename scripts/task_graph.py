@@ -942,8 +942,14 @@ def main():
         choices=["true", "curved", "ortho", "polyline", "line", "false"],
         help="Edge routing mode (overrides layout default)",
     )
-    parser.add_argument("--sep", default=None, help="Node separation (e.g. +4, +2; overrides layout default)")
-    parser.add_argument("--overlap", default=None, help="Overlap removal: prism/false/scale/compress (overrides layout default)")
+    parser.add_argument(
+        "--sep", default=None, help="Node separation (e.g. +4, +2; overrides layout default)"
+    )
+    parser.add_argument(
+        "--overlap",
+        default=None,
+        help="Overlap removal: prism/false/scale/compress (overrides layout default)",
+    )
     parser.add_argument(
         "--single",
         action="store_true",
@@ -1026,8 +1032,12 @@ def main():
         dot_content = generate_attention_dot(flagged_nodes, flagged_edges, gap_data)
         output_base = f"{args.output}-attention"
         generate_svg(
-            dot_content, output_base, args.layout, keep_dot=True,
-            splines_override=args.splines, sep_override=args.sep,
+            dot_content,
+            output_base,
+            args.layout,
+            keep_dot=True,
+            splines_override=args.splines,
+            sep_override=args.sep,
             overlap_override=args.overlap,
         )
         return 0
@@ -1116,8 +1126,12 @@ def main():
         dot_content = generate_dot(nodes, edges, include_orphans, structural_ids, stats)
         # Keep .dot file only for primary output (no suffix)
         generate_svg(
-            dot_content, output_base, args.layout, keep_dot=(suffix == ""),
-            splines_override=args.splines, sep_override=args.sep,
+            dot_content,
+            output_base,
+            args.layout,
+            keep_dot=(suffix == ""),
+            splines_override=args.splines,
+            sep_override=args.sep,
             overlap_override=args.overlap,
         )
 

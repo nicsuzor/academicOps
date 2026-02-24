@@ -188,7 +188,15 @@ def build_graph(
 
         if stakeholder:
             # Double border for stakeholder exposure
-            if gt_shape in ("square", "circle", "hexagon", "octagon", "pentagon", "triangle", "heptagon"):
+            if gt_shape in (
+                "square",
+                "circle",
+                "hexagon",
+                "octagon",
+                "pentagon",
+                "triangle",
+                "heptagon",
+            ):
                 gt_shape = f"double_{gt_shape}"
             v_dot_peripheries[v] = "2"
         else:
@@ -384,7 +392,9 @@ def render_graphviz(
     for bezier curves that route tightly around nodes.
     """
     svg_path = f"{output_path}.svg"
-    print(f"  Rendering: graphviz_draw -> {svg_path} (splines={splines_mode}, sep={sep}, overlap={overlap})")
+    print(
+        f"  Rendering: graphviz_draw -> {svg_path} (splines={splines_mode}, sep={sep}, overlap={overlap})"
+    )
 
     # Scale canvas based on node count - larger for more nodes
     n = g.num_vertices()
@@ -532,8 +542,10 @@ def render_manhattan(g, pos, props, output_path: str):
     def rect_contains(rect, px, py, pad=2):
         """Check if point is inside a rectangle (with padding)."""
         cx, cy, w, h = rect
-        return (cx - w/2 - pad <= px <= cx + w/2 + pad and
-                cy - h/2 - pad <= py <= cy + h/2 + pad)
+        return (
+            cx - w / 2 - pad <= px <= cx + w / 2 + pad
+            and cy - h / 2 - pad <= py <= cy + h / 2 + pad
+        )
 
     def manhattan_route(src_rect, tgt_rect):
         """Route an edge from src to tgt using orthogonal segments.
@@ -556,15 +568,15 @@ def render_manhattan(g, pos, props, output_path: str):
             # Primarily horizontal relationship
             if dx > 0:
                 # Source is left of target
-                start_x = sx + sw/2 + pad
-                end_x = tx - tw/2 - pad
+                start_x = sx + sw / 2 + pad
+                end_x = tx - tw / 2 - pad
             else:
-                start_x = sx - sw/2 - pad
-                end_x = tx + tw/2 + pad
+                start_x = sx - sw / 2 - pad
+                end_x = tx + tw / 2 + pad
             start_y = sy
             end_y = ty
 
-            if abs(dy) < sh/2 + th/2 + pad:
+            if abs(dy) < sh / 2 + th / 2 + pad:
                 # Close vertically - use Z-shape with horizontal offset
                 mid_x = (start_x + end_x) / 2
                 return [(start_x, start_y), (mid_x, start_y), (mid_x, end_y), (end_x, end_y)]
@@ -574,15 +586,15 @@ def render_manhattan(g, pos, props, output_path: str):
         else:
             # Primarily vertical relationship
             if dy > 0:
-                start_y = sy + sh/2 + pad
-                end_y = ty - th/2 - pad
+                start_y = sy + sh / 2 + pad
+                end_y = ty - th / 2 - pad
             else:
-                start_y = sy - sh/2 - pad
-                end_y = ty + th/2 + pad
+                start_y = sy - sh / 2 - pad
+                end_y = ty + th / 2 + pad
             start_x = sx
             end_x = tx
 
-            if abs(dx) < sw/2 + tw/2 + pad:
+            if abs(dx) < sw / 2 + tw / 2 + pad:
                 # Close horizontally - use Z-shape with vertical offset
                 mid_y = (start_y + end_y) / 2
                 return [(start_x, start_y), (start_x, mid_y), (end_x, mid_y), (end_x, end_y)]
@@ -594,12 +606,16 @@ def render_manhattan(g, pos, props, output_path: str):
     lines = []
     vb_w = canvas_w + 2 * margin
     vb_h = canvas_h + 2 * margin
-    lines.append(f'<svg xmlns="http://www.w3.org/2000/svg" '
-                 f'viewBox="0 0 {vb_w:.0f} {vb_h:.0f}" '
-                 f'width="{vb_w:.0f}" height="{vb_h:.0f}">')
-    lines.append('<style>')
-    lines.append('  text { font-family: "Helvetica Neue", Arial, sans-serif; font-size: 9px; fill: #333; }')
-    lines.append('</style>')
+    lines.append(
+        f'<svg xmlns="http://www.w3.org/2000/svg" '
+        f'viewBox="0 0 {vb_w:.0f} {vb_h:.0f}" '
+        f'width="{vb_w:.0f}" height="{vb_h:.0f}">'
+    )
+    lines.append("<style>")
+    lines.append(
+        '  text { font-family: "Helvetica Neue", Arial, sans-serif; font-size: 9px; fill: #333; }'
+    )
+    lines.append("</style>")
 
     # Edges
     for e in g.edges():
@@ -613,19 +629,21 @@ def render_manhattan(g, pos, props, output_path: str):
 
         # Edge color (from RGBA to hex)
         ec = props["e_color"][e]
-        r, g_c, b = int(ec[0]*255), int(ec[1]*255), int(ec[2]*255)
+        r, g_c, b = int(ec[0] * 255), int(ec[1] * 255), int(ec[2] * 255)
         alpha = ec[3] if len(ec) > 3 else 0.6
         color = f"rgb({r},{g_c},{b})"
         pw = props["e_pen_width"][e]
 
         # Dash
         dash_vals = list(props["e_dash"][e])
-        dash_attr = f' stroke-dasharray="{",".join(str(int(d)) for d in dash_vals)}"' if dash_vals else ""
+        dash_attr = (
+            f' stroke-dasharray="{",".join(str(int(d)) for d in dash_vals)}"' if dash_vals else ""
+        )
 
         # Path
-        d = f'M {points[0][0]:.1f} {points[0][1]:.1f}'
+        d = f"M {points[0][0]:.1f} {points[0][1]:.1f}"
         for pt in points[1:]:
-            d += f' L {pt[0]:.1f} {pt[1]:.1f}'
+            d += f" L {pt[0]:.1f} {pt[1]:.1f}"
 
         lines.append(
             f'  <path d="{d}" fill="none" stroke="{color}" '
@@ -637,16 +655,16 @@ def render_manhattan(g, pos, props, output_path: str):
             p1, p2 = points[-2], points[-1]
             ddx = p2[0] - p1[0]
             ddy = p2[1] - p1[1]
-            length = math.sqrt(ddx*ddx + ddy*ddy)
+            length = math.sqrt(ddx * ddx + ddy * ddy)
             if length > 0:
                 ddx /= length
                 ddy /= length
                 a = 5
                 ax, ay = p2
-                lx = ax - a*ddx + a*0.35*ddy
-                ly = ay - a*ddy - a*0.35*ddx
-                rx = ax - a*ddx - a*0.35*ddy
-                ry = ay - a*ddy + a*0.35*ddx
+                lx = ax - a * ddx + a * 0.35 * ddy
+                ly = ay - a * ddy - a * 0.35 * ddx
+                rx = ax - a * ddx - a * 0.35 * ddy
+                ry = ay - a * ddy + a * 0.35 * ddx
                 lines.append(
                     f'  <polygon points="{ax:.1f},{ay:.1f} {lx:.1f},{ly:.1f} {rx:.1f},{ry:.1f}" '
                     f'fill="{color}" opacity="{alpha:.2f}" />'
@@ -659,23 +677,23 @@ def render_manhattan(g, pos, props, output_path: str):
 
         # Fill color
         fc = props["v_fill"][v]
-        fill = f"rgb({int(fc[0]*255)},{int(fc[1]*255)},{int(fc[2]*255)})"
+        fill = f"rgb({int(fc[0] * 255)},{int(fc[1] * 255)},{int(fc[2] * 255)})"
 
         # Border color
         bc = props["v_border"][v]
-        stroke = f"rgb({int(bc[0]*255)},{int(bc[1]*255)},{int(bc[2]*255)})"
+        stroke = f"rgb({int(bc[0] * 255)},{int(bc[1] * 255)},{int(bc[2] * 255)})"
         sw = props["v_pen_width"][v]
 
         # Shape
         shape = props["v_shape"][v]
         dash = ' stroke-dasharray="6,3"' if "dashed" in props["v_dot_style"][v] else ""
 
-        x1 = cx - w/2
-        y1 = cy - h/2
+        x1 = cx - w / 2
+        y1 = cy - h / 2
 
         if shape in ("circle", "double_circle"):
             lines.append(
-                f'  <ellipse cx="{cx:.1f}" cy="{cy:.1f}" rx="{w/2:.1f}" ry="{h/2:.1f}" '
+                f'  <ellipse cx="{cx:.1f}" cy="{cy:.1f}" rx="{w / 2:.1f}" ry="{h / 2:.1f}" '
                 f'fill="{fill}" stroke="{stroke}" stroke-width="{sw:.1f}"{dash} />'
             )
         else:
@@ -687,14 +705,18 @@ def render_manhattan(g, pos, props, output_path: str):
 
         # Label
         label = props["v_label"][v].split("\n")[0][:40]
-        label = (label.replace("&", "&amp;").replace("<", "&lt;")
-                 .replace(">", "&gt;").replace('"', "&quot;"))
+        label = (
+            label.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+        )
         lines.append(
             f'  <text x="{cx:.1f}" y="{cy:.1f}" '
             f'text-anchor="middle" dominant-baseline="central">{label}</text>'
         )
 
-    lines.append('</svg>')
+    lines.append("</svg>")
 
     with open(svg_path, "w") as f:
         f.write("\n".join(lines))
@@ -702,9 +724,7 @@ def render_manhattan(g, pos, props, output_path: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Generate styled task graph using graph-tool"
-    )
+    parser = argparse.ArgumentParser(description="Generate styled task graph using graph-tool")
     parser.add_argument("input", help="Input JSON file from fast-indexer")
     parser.add_argument("-o", "--output", default="tasks", help="Output base name")
     parser.add_argument("--include-orphans", action="store_true")
@@ -747,14 +767,20 @@ def main():
         choices=["true", "curved", "ortho", "polyline", "line", "false"],
         help="Edge routing mode for --graphviz (default: true)",
     )
-    parser.add_argument("--sep", default="+4", help="Node separation for edge routing (default: +4)")
+    parser.add_argument(
+        "--sep", default="+4", help="Node separation for edge routing (default: +4)"
+    )
     parser.add_argument(
         "--overlap",
         default="prism",
         help="Overlap removal: true/false/scale/prism/compress (default: prism)",
     )
-    parser.add_argument("--K", type=float, default=None, help="sfdp optimal edge length (overrides dense/sparse)")
-    parser.add_argument("--C", type=float, default=None, help="sfdp repulsive force (overrides dense/sparse)")
+    parser.add_argument(
+        "--K", type=float, default=None, help="sfdp optimal edge length (overrides dense/sparse)"
+    )
+    parser.add_argument(
+        "--C", type=float, default=None, help="sfdp repulsive force (overrides dense/sparse)"
+    )
     parser.add_argument("--ego", metavar="ID", help="Ego-subgraph center node")
     parser.add_argument("--depth", type=int, default=2, help="Ego depth (default: 2)")
     parser.add_argument("--attention-map", action="store_true")
@@ -808,9 +834,7 @@ def main():
         print(f"  Filtered: {excluded} removed, {len(structural_ids)} structural kept")
 
     # Build graph
-    g, props, node_count = build_graph(
-        all_nodes, all_edges, structural_ids, args.include_orphans
-    )
+    g, props, node_count = build_graph(all_nodes, all_edges, structural_ids, args.include_orphans)
     print(f"  Graph: {g.num_vertices()} vertices, {g.num_edges()} edges")
 
     if g.num_vertices() == 0:
@@ -822,7 +846,9 @@ def main():
     if args.ego and layout_hint == "sfdp":
         layout_hint = "auto"  # auto-select for ego subgraphs
     pos = compute_layout(
-        g, node_count, layout_hint,
+        g,
+        node_count,
+        layout_hint,
         dense=not args.sparse,
         K_override=args.K,
         C_override=args.C,
@@ -833,7 +859,10 @@ def main():
         render_manhattan(g, pos, props, args.output)
     elif args.graphviz:
         render_graphviz(
-            g, pos, props, args.output,
+            g,
+            pos,
+            props,
+            args.output,
             splines_mode=args.splines,
             sep=args.sep,
             overlap=args.overlap,
