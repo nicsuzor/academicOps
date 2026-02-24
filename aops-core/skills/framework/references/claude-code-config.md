@@ -46,15 +46,15 @@ Technical reference for Claude Code configuration file locations and behavior.
 ### Our Approach
 
 - **Authoritative source**: `$AOPS/aops-tools/config/claude/mcp.json`
-- **Deployed to**: `~/.claude.json` mcpServers (merged via `setup.sh`)
-- **Sync command**: `$AOPS/setup.sh` (run after config changes)
+- **Deployed to**: `~/.claude.json` mcpServers (merged via `make install`)
+- **Sync command**: `make install` (run after config changes)
 
 ### Common Issues
 
 **"No MCP servers configured" despite config existing**:
 
 - Check `~/.claude.json` has `mcpServers` key (not `~/.mcp.json`)
-- Run `$AOPS/setup.sh` to sync from authoritative source
+- Run `make install` to sync from authoritative source
 - Verify with `claude mcp list`
 
 **Symlinks not working for MCP config**:

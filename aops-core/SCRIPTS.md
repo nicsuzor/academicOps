@@ -25,10 +25,8 @@ Utility scripts for framework development and maintenance. These are NOT user-in
 | `task_graph.py`             | Generate styled DOT/SVG graph from task JSON              | `uv run python $AOPS/scripts/task_graph.py INPUT.json [-o OUTPUT]`                   |
 | `audit_framework_health.py` | Collect framework health metrics (orphans, broken links)  | `uv run python $AOPS/scripts/audit_framework_health.py`                              |
 | `generate_context_index.py` | Scan docs and generate project-context.md                 | `uv run python $AOPS/scripts/generate_context_index.py`                              |
-| `refinery.py`               | Run polecat refinery scan and merge                       | `uv run python $AOPS/scripts/refinery.py`                                            |
 | `bump_version.py`           | Bump package version                                      | `uv run python $AOPS/scripts/bump_version.py`                                        |
 | `build.py`                  | Build/package the framework                               | `uv run python $AOPS/scripts/build.py`                                               |
-| `install.py`                | Install framework dependencies                            | `uv run python $AOPS/scripts/install.py`                                             |
 | `task_cli.py`               | CLI for task management operations                        | `uv run python $AOPS/scripts/task_cli.py <command>`                                  |
 
 ## Development/Maintenance Scripts
@@ -54,4 +52,4 @@ Utility scripts for framework development and maintenance. These are NOT user-in
 - **Token/session analysis**: Surface `session_transcript.py`, `scan_session_summaries.py`
 - **Task visualization**: Surface `task_graph.py`
 - **Framework health**: Surface `audit_framework_health.py`, `check_orphan_files.py`
-- **Build/release**: Surface `build.py`, `bump_version.py`, `install.py`
+- **Build/release**: Surface `build.py`, `bump_version.py`

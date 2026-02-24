@@ -102,7 +102,7 @@ Passed: 4/4
 If tests fail:
 
 1. **AOPS not set**: Add `export AOPS="/path/to/academicOps"` to `~/.bashrc`
-2. **Symlinks missing**: Run `$AOPS/setup.sh` to create symlinks
+2. **Symlinks missing**: Run `make install` to install the framework
 3. **Scripts not found**: Check `$AOPS/skills/tasks/scripts/` exists
 4. **Import errors**: Verify `PYTHONPATH=$AOPS` is set when running scripts
 

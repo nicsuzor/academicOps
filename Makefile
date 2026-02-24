@@ -103,18 +103,22 @@ endif
 	echo "✓ CLI tools installed" && \
 	case ":$$PATH:" in *":$(INSTALL_BIN):"*) ;; *) echo "⚠ $(INSTALL_BIN) is not on PATH. Add it to your shell config." ;; esac
 
-# Install crontab entry for repo-sync
+# Install crontab entries for dev machines (repo-sync + transcripts)
+# Idempotent: strips all aOps entries then re-adds. Also cleans up legacy entries.
 install-crontab:
-	@if crontab -l 2>/dev/null | grep -q "repo-sync-cron"; then \
-		echo "✓ repo-sync-cron already in crontab"; \
-	elif [ -x "$(CRON_SCRIPT)" ]; then \
-		echo "Installing crontab entry..."; \
-		(crontab -l 2>/dev/null || true; echo "*/30 * * * * $(CRON_SCRIPT) >> /tmp/repo-sync-cron.log 2>&1") | crontab -; \
-		echo "✓ Crontab entry installed"; \
-	else \
-		echo "✗ Cron script not found at $(CRON_SCRIPT)"; \
-		exit 1; \
-	fi
+	@echo "Installing crontab entries..."
+	@( \
+		(crontab -l 2>/dev/null || true) \
+			| grep -vE '# aOps|repo-sync-cron|transcript\.py|regenerate_task_index|refinery\.py|cron_session_insights' \
+			|| true; \
+		echo "# aOps repo-sync"; \
+		echo "*/30 * * * * $(CRON_SCRIPT) >> /tmp/repo-sync-cron.log 2>&1"; \
+		echo "# aOps transcripts"; \
+		echo "*/30 * * * * cd $(CURDIR) && uv run python aops-core/scripts/transcript.py --recent > /dev/null 2>&1"; \
+	) | crontab -
+	@echo "✓ Crontab entries installed"
+	@echo "  repo-sync:   */30 via $(CRON_SCRIPT)"
+	@echo "  transcripts: */30 via transcript.py --recent"
 
 # --- Development Install (local build) ---
 

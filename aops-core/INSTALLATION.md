@@ -71,9 +71,9 @@ For standard Claude Code Usage:
 ### 4. Antigravity / Development Install
 
 1. **Setup Script**:
-   Run `./setup.sh` in the repository root.
-   - This installs dependencies (`uv pip install ...`).
-   - Ensures `aops-core` is importable.
+   Run `make install-dev` in the repository root.
+   - This builds the plugin and installs dependencies.
+   - Installs cron jobs for dev machines.
 
 2. **Verification**:
    Run the test suite to verify installation integrity:

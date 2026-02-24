@@ -57,7 +57,7 @@ For async execution, add `"async": True`:
 {"script": "slow_hook.py", "async": True}
 ```
 
-After adding a hook, run `setup.sh` to rebuild and reinstall the extension (see Deployment Architecture below).
+After adding a hook, run `make install-claude-dev` to rebuild and reinstall the extension (see Deployment Architecture below).
 
 ## academicOps Deployment Architecture
 
@@ -95,7 +95,7 @@ Key behaviors:
 - `router.py` is the single entry point for all hook events
 - Variable substitution: `${AOPS}` replaced with absolute path
 
-### Phase 3: Install (`scripts/install.py`)
+### Phase 3: Install
 
 The extension is linked via Gemini CLI:
 
@@ -137,19 +137,19 @@ Hooks are registered in the extension manifest, **not** in settings.json:
 
 **Key differences from standard Claude Code:**
 
-| Aspect          | Standard Claude Code                    | academicOps                              |
-| --------------- | --------------------------------------- | ---------------------------------------- |
-| Config location | `settings.json`                         | `gemini-extension.json`                  |
-| Hook paths      | Absolute paths or `$CLAUDE_PROJECT_DIR` | `${AOPS}/dist/aops-core/hooks/router.py` |
-| Installation    | Manual settings edit                    | `gemini extensions link`                 |
-| Hook scripts    | Individual scripts per event            | Single router dispatches all             |
-| Rebuild needed  | No (settings hot-reload)                | Yes (`setup.sh` after changes)           |
+| Aspect          | Standard Claude Code                    | academicOps                                   |
+| --------------- | --------------------------------------- | --------------------------------------------- |
+| Config location | `settings.json`                         | `gemini-extension.json`                       |
+| Hook paths      | Absolute paths or `$CLAUDE_PROJECT_DIR` | `${AOPS}/dist/aops-core/hooks/router.py`      |
+| Installation    | Manual settings edit                    | `gemini extensions link`                      |
+| Hook scripts    | Individual scripts per event            | Single router dispatches all                  |
+| Rebuild needed  | No (settings hot-reload)                | Yes (`make install-claude-dev` after changes) |
 
 ### Workflow: Adding or Modifying Hooks
 
 1. Edit hooks in `$AOPS/aops-core/hooks/`
 2. If adding a new hook, register in `HOOK_REGISTRY` in `router.py`
-3. Run `setup.sh` (triggers build.py → install.py)
+3. Run `make install-claude-dev` (triggers build.py → plugin install)
 4. Test with `gemini --debug` to verify hooks are loading
 
 ### Event Name Mapping
