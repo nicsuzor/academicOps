@@ -227,6 +227,40 @@ Versioning logic MUST be centralized in a single source of truth.
 
 Structure tasks hierarchically under functional Epics rather than flat project lists.
 
+**The Star Pattern is a code smell.** When a project has more than 5 direct children, it almost certainly needs intermediate epics. A project with 10 direct children is a flat list, not a hierarchy.
+
+**How to fix a flat project:**
+1. Group related tasks by purpose (not by type or timing)
+2. Create epics that describe the milestone or workstream each group serves
+3. Re-parent the tasks under the appropriate epic
+4. Each epic should answer: "What outcome does this group of tasks achieve?"
+
+**Decision heuristic:** When creating a task under a project, ask: "Is there already an epic this belongs to? Should there be?" If the task is one of several related implementation steps, the answer is almost always yes.
+
+**Corollaries**:
+- Infrastructure tasks (refactors, migrations, pipeline changes) MUST be parented under an epic that explains WHY the infrastructure work is needed. "GCS → DuckDB refactor" is never a valid direct child of a research project — it needs an epic like "Local reproducible analysis pipeline" that explains the strategic purpose.
+- Leaf tasks (single-session work items) should almost never be direct children of a project. They belong under epics.
+
+## Tasks Require Purpose Context (P#106)
+
+Every task MUST be justifiable in terms of its parent's goals. If you can't articulate why a task exists in the context of its parent, it is either misplaced, missing an intermediate epic, or an orphan.
+
+**The WHY test:** Before creating a task, state: "We need [task] so that [parent goal] because [reason]." If you can't complete this sentence, the task needs restructuring.
+
+**Derivation**: Extends P#73 (Task Sequencing on Insert) from structural connection to semantic connection. A task can be connected to the graph yet still be incoherent if its purpose relative to its parent is unclear.
+
+## Match Type to Scale (P#107)
+
+Before creating a task, check its actual scope against the type hierarchy:
+
+- Multiple sessions + multiple deliverables → **epic**
+- One session, one deliverable → **task**
+- Under 30 minutes → **action**
+
+The most common error is creating a `type: task` for work that is actually epic-scale. "Incorporate longitudinal findings into paper" is not a task — it contains data collection, analysis, writing, and revision. It's an epic.
+
+**Derivation**: Operationalises the type hierarchy in TASK_FORMAT_GUIDE.md. Agents systematically underestimate scope and create shallow structures. This heuristic forces a scale check before type assignment.
+
 ## Judgment Tasks Default Unassigned (P#102)
 
 Tasks requiring human judgment default to `assignee: null`. Only mechanical work defaults to `assignee: polecat`.

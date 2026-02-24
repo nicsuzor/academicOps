@@ -154,6 +154,18 @@ When this happens, update links and note the lineage. History matters.
 
 For detailed expansion mechanics (dependency notation, automation detection, effort estimation), use the [[planner]] agent.
 
+### Hierarchy Discipline (P#101, P#106, P#107)
+
+When creating or placing tasks in the graph, enforce these checks:
+
+**The WHY test.** Every task must be justifiable in terms of its parent's goals. "We need [task] so that [parent goal] because [reason]." If you can't complete this sentence, the task needs an intermediate epic or a different parent.
+
+**Type-scale match.** Multi-session work with multiple deliverables is an epic, not a task. Single-session work is a task. Under 30 minutes is an action. The most common error is creating `type: task` for epic-scale work.
+
+**No star patterns.** If a project already has more than 5 direct children, don't add another — create or find an intermediate epic first. Group by purpose, not by type or timing.
+
+**Infrastructure needs strategic justification.** Refactors, migrations, and pipeline changes are never valid direct children of a research project. They must sit under an epic that explains WHY the infrastructure work serves the project's goals. "GCS → DuckDB refactor" under a research project is a structural violation — it needs an epic like "Local reproducible analysis pipeline" that connects the infrastructure to the research purpose.
+
 ## Principles to Hold
 
 1. **Inputs are fragments, not specifications.** Receive scraps gracefully.
