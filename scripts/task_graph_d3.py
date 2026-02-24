@@ -247,32 +247,34 @@ def prepare_graph_data(
         # Badge
         badge = TYPE_BADGE.get(node_type, "")
 
-        d3_nodes.append({
-            "id": nid,
-            "label": label,
-            "lines": lines,
-            "type": node_type,
-            "shape": shape,
-            "status": status,
-            "priority": priority,
-            "depth": depth,
-            "maxDepth": max_depth,
-            "w": round(node_w, 1),
-            "h": round(node_h, 1),
-            "fontSize": font_size,
-            "fill": fill,
-            "textColor": text_col,
-            "borderColor": border_color,
-            "borderWidth": round(border_width, 1),
-            "stakeholder": stakeholder,
-            "structural": is_structural,
-            "dw": round(dw, 1),
-            "badge": badge,
-            "charge": TYPE_CHARGE.get(node_type, -100),
-            "parent": node.get("parent"),
-            "project": node.get("project"),
-            "assignee": assignee or node.get("assignee"),
-        })
+        d3_nodes.append(
+            {
+                "id": nid,
+                "label": label,
+                "lines": lines,
+                "type": node_type,
+                "shape": shape,
+                "status": status,
+                "priority": priority,
+                "depth": depth,
+                "maxDepth": max_depth,
+                "w": round(node_w, 1),
+                "h": round(node_h, 1),
+                "fontSize": font_size,
+                "fill": fill,
+                "textColor": text_col,
+                "borderColor": border_color,
+                "borderWidth": round(border_width, 1),
+                "stakeholder": stakeholder,
+                "structural": is_structural,
+                "dw": round(dw, 1),
+                "badge": badge,
+                "charge": TYPE_CHARGE.get(node_type, -100),
+                "parent": node.get("parent"),
+                "project": node.get("project"),
+                "assignee": assignee or node.get("assignee"),
+            }
+        )
 
     d3_links = []
     for edge in valid_edges:
@@ -290,16 +292,18 @@ def prepare_graph_data(
         else:  # ref
             color, width, dash = "#94a3b8", 1.0, "4,3"
 
-        d3_links.append({
-            "source": edge["source"],
-            "target": edge["target"],
-            "type": etype,
-            "color": color,
-            "width": width,
-            "dash": dash,
-            "strength": force["strength"],
-            "distance": force["distance"],
-        })
+        d3_links.append(
+            {
+                "source": edge["source"],
+                "target": edge["target"],
+                "type": etype,
+                "color": color,
+                "width": width,
+                "dash": dash,
+                "strength": force["strength"],
+                "distance": force["distance"],
+            }
+        )
 
     return {"nodes": d3_nodes, "links": d3_links}
 
@@ -756,7 +760,9 @@ def main():
     output_path = args.output if args.output.endswith(".html") else args.output + ".html"
     html = generate_html(graph_data, title="Task Graph", theme=args.theme)
     Path(output_path).write_text(html)
-    print(f"Written {output_path} ({len(graph_data['nodes'])} nodes, {len(graph_data['links'])} edges)")
+    print(
+        f"Written {output_path} ({len(graph_data['nodes'])} nodes, {len(graph_data['links'])} edges)"
+    )
     return 0
 
 
