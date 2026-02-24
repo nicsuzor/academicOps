@@ -4,6 +4,7 @@
 # Produces (in $AOPS_SESSIONS, default ~/.aops/sessions/):
 #   tasks.json        - Full graph JSON from fast-indexer
 #   task-map.svg      - Task map (reachable from active leaves + ancestors)
+#   task-map.html     - Interactive D3-force task map
 #   attention-map.svg - Under-connected important nodes
 #
 # Run periodically or from VSCode task. Replaces the old multi-command
@@ -121,29 +122,37 @@ run_graph() {
                 "${OUT_DIR}/tasks.json" \
                 --filter reachable \
                 --graphviz \
-                "${DENSITY_ARGS[@]}" \
-                "${extra_args[@]}"
+                ${DENSITY_ARGS[@]+"${DENSITY_ARGS[@]}"} \
+                ${extra_args[@]+"${extra_args[@]}"}
             ;;
         ogdf)
             uv run python3 "${AOPS}/scripts/task_graph_ogdf.py" \
                 "${OUT_DIR}/tasks.json" \
                 --filter reachable \
-                "${extra_args[@]}"
+                ${extra_args[@]+"${extra_args[@]}"}
             ;;
         *)
             uv run python3 "${AOPS}/scripts/task_graph.py" \
                 "${OUT_DIR}/tasks.json" \
                 --filter reachable \
                 --layout "${LAYOUT}" \
-                "${DENSITY_ARGS[@]}" \
-                "${extra_args[@]}"
+                ${DENSITY_ARGS[@]+"${DENSITY_ARGS[@]}"} \
+                ${extra_args[@]+"${extra_args[@]}"}
             ;;
     esac
 }
 
-# Step 2: Generate task map (reachable from active leaves)
+# Step 2: Generate task map SVG (reachable from active leaves)
 echo "==> Generating task map (renderer: ${RENDERER})..."
 run_graph -o "${OUT_DIR}/task-map"
+
+# Step 2b: Generate interactive D3 HTML
+echo "==> Generating D3 interactive graph..."
+uv run python3 "${AOPS}/scripts/task_graph_d3.py" \
+    "${OUT_DIR}/tasks.json" \
+    --filter reachable \
+    -o "${OUT_DIR}/task-map.html"
+echo "    Written ${OUT_DIR}/task-map.html"
 
 if [ "${QUICK}" = true ]; then
     echo "==> Quick mode, skipping extras."
@@ -158,6 +167,14 @@ run_graph -o "${OUT_DIR}/attention-map" --attention-map --attention-top "${ATTEN
 if [ -n "${EGO_ID}" ]; then
     echo "==> Generating ego-subgraph for '${EGO_ID}' (depth ${EGO_DEPTH})..."
     run_graph -o "${OUT_DIR}/ego-${EGO_ID}" --ego "${EGO_ID}" --depth "${EGO_DEPTH}"
+
+    echo "==> Generating D3 ego-subgraph for '${EGO_ID}'..."
+    uv run python3 "${AOPS}/scripts/task_graph_d3.py" \
+        "${OUT_DIR}/tasks.json" \
+        --filter reachable \
+        --ego "${EGO_ID}" --depth "${EGO_DEPTH}" \
+        -o "${OUT_DIR}/ego-${EGO_ID}.html"
+    echo "    Written ${OUT_DIR}/ego-${EGO_ID}.html"
 fi
 
 # Step 5: Sync sessions repo and generate recent transcripts
