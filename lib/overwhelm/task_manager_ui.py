@@ -153,7 +153,7 @@ def render_task_manager():
                 df_data.append(
                     {
                         "ID": t.id,
-                        "Done": t.status in ("done", "cancelled", "completed", "done"),
+                        "Done": t.status in ("done", "cancelled", "completed"),
                         "Pri": f"P{t.priority}",
                         "Title": t.title,
                         "Status": t.status,

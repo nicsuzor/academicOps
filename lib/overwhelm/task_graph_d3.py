@@ -29,17 +29,18 @@ def generate_graph_from_tasks(tasks: list) -> dict:
             else (t.type.value if hasattr(t.type, "value") else t.type)
         )
 
-        nodes.append(
-            {
-                "id": tid,
-                "title": title,
-                "status": status,
-                "priority": priority,
-                "project": project,
-                "type": type_,
-            }
-        )
-        node_ids.add(tid)
+        if tid not in node_ids:
+            nodes.append(
+                {
+                    "id": tid,
+                    "title": title,
+                    "status": status,
+                    "priority": priority,
+                    "project": project,
+                    "type": type_,
+                }
+            )
+            node_ids.add(tid)
 
     # Second pass: create links
     for t in tasks:
@@ -59,21 +60,19 @@ def generate_graph_from_tasks(tasks: list) -> dict:
     return {"nodes": nodes, "links": links}
 
 
-def render_d3_graph(
-    graph_data: dict, width: int | None = None, height: int = 400, mode: str = "summary"
-):
+def render_d3_graph(graph_data: dict, height: int = 400, mode: str = "summary"):
     """
     Render a D3.js force-directed graph.
 
     Args:
         graph_data: Dict with 'nodes' and 'links'.
-        width: Width in pixels (None = 100%).
         height: Height in pixels.
         mode: 'summary' (static, simple) or 'full' (interactive, controls).
     """
 
-    nodes_json = json.dumps(graph_data.get("nodes", []))
-    links_json = json.dumps(graph_data.get("links", []))
+    # Escape </script> sequences to prevent script-tag injection when embedding JSON in HTML
+    nodes_json = json.dumps(graph_data.get("nodes", [])).replace("</", "<\\/")
+    links_json = json.dumps(graph_data.get("links", [])).replace("</", "<\\/")
 
     # Adjust physics parameters based on mode
     charge_strength = -100 if mode == "summary" else -200
@@ -165,9 +164,14 @@ def render_d3_graph(
             }}
 
             node.on("mouseover", (event, d) => {{
+                const tip = document.getElementById("tooltip");
+                tip.textContent = "";
+                const b = document.createElement("b");
+                b.textContent = d.id;
+                tip.appendChild(b);
+                tip.appendChild(document.createTextNode(": " + d.title));
                 d3.select("#tooltip")
                     .style("opacity", .9)
-                    .html("<b>" + d.id + "</b><br/>" + d.title)
                     .style("left", (event.pageX + 10) + "px")
                     .style("top", (event.pageY - 28) + "px");
             }})

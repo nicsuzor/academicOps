@@ -1,9 +1,4 @@
-import sys
-
-# Add lib/overwhelm to path to find the module
-sys.path.append("lib/overwhelm")
-
-from task_graph_d3 import generate_graph_from_tasks
+from lib.overwhelm.task_graph_d3 import generate_graph_from_tasks
 
 
 class MockTask:
@@ -91,3 +86,35 @@ def test_generate_graph_from_dicts():
     link = graph["links"][0]
     assert link["source"] == "1"
     assert link["target"] == "2"
+
+
+def test_generate_graph_empty():
+    graph = generate_graph_from_tasks([])
+
+    assert graph["nodes"] == []
+    assert graph["links"] == []
+
+
+def test_generate_graph_dangling_dependency():
+    """A dependency on a task not in the list should produce no link."""
+    tasks = [
+        MockTask(id="1", title="Task 1", depends_on=["999"]),
+    ]
+
+    graph = generate_graph_from_tasks(tasks)
+
+    assert len(graph["nodes"]) == 1
+    assert len(graph["links"]) == 0
+
+
+def test_generate_graph_duplicate_task_ids():
+    """Duplicate task IDs should result in only one node being created."""
+    tasks = [
+        MockTask(id="1", title="Task 1"),
+        MockTask(id="1", title="Task 1 duplicate"),
+    ]
+
+    graph = generate_graph_from_tasks(tasks)
+
+    assert len(graph["nodes"]) == 1
+    assert graph["nodes"][0]["title"] == "Task 1"
