@@ -34,8 +34,6 @@ viz = [
 # Anthropic API for skills that call Claude directly
 anthropic = ["anthropic>=0.75.0"]
 
-[project.scripts]
-task = "scripts.task_cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["lib", "skills", "tests", "scripts"]

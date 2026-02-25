@@ -474,40 +474,9 @@ def load_project_rules() -> str:
 
 
 def get_task_work_state() -> str:
-    """Query task system for current work state."""
-    plugin_root = get_plugin_root()
-    task_cli_path = plugin_root / "scripts" / "task_cli.py"
+    """Query task system for current work state.
 
-    if not task_cli_path.exists():
-        return ""
-
-    try:
-        active_result = subprocess.run(
-            ["python", str(task_cli_path), "list", "--status=active", "--limit=20"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-        active = active_result.stdout.strip() if active_result.returncode == 0 else ""
-
-        inbox_result = subprocess.run(
-            ["python", str(task_cli_path), "list", "--status=inbox", "--limit=20"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-        inbox = inbox_result.stdout.strip() if inbox_result.returncode == 0 else ""
-
-        if not active and not inbox:
-            return ""
-
-        sections = []
-        if active:
-            sections.append(f"### Active Tasks\n\n{active}")
-        if inbox:
-            sections.append(f"### Incoming Tasks (inbox)\n\n{inbox}")
-
-        return "\n\n".join(sections)
-
-    except (subprocess.TimeoutExpired, OSError):
-        return ""
+    Stub — Python task CLI removed; PKB is now Rust-native.
+    Kept as no-op to avoid breaking hydration callers.
+    """
+    return ""

@@ -29,7 +29,6 @@ Utility scripts for framework development and maintenance. These are NOT user-in
 | `bump_version.py`           | Bump package version                                      | `uv run python $AOPS/scripts/bump_version.py`                                        |
 | `build.py`                  | Build/package the framework                               | `uv run python $AOPS/scripts/build.py`                                               |
 | `install.py`                | Install framework dependencies                            | `uv run python $AOPS/scripts/install.py`                                             |
-| `task_cli.py`               | CLI for task management operations                        | `uv run python $AOPS/scripts/task_cli.py <command>`                                  |
 
 ## Development/Maintenance Scripts
 
