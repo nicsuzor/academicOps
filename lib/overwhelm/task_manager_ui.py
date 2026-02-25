@@ -9,7 +9,7 @@ from lib.task_model import Task, TaskComplexity, TaskStatus, TaskType
 # Add aOps root to path if not already there (dashboard.py does this, but good for standalone testing)
 # We assume this is imported by dashboard.py which sets up sys.path
 from lib.task_storage import TaskStorage
-from task_graph_d3 import render_d3_graph, generate_graph_from_tasks
+from task_graph_d3 import generate_graph_from_tasks, render_d3_graph
 
 
 def _get_storage():
