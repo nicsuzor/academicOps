@@ -362,3 +362,28 @@ def get_task_work_state() -> str:
     Kept as no-op to avoid breaking hydration callers.
     """
     return ""
+
+def load_environment_variables_context() -> str:
+    """Load specific environment variables for context."""
+    # Stub implementation to fix import error
+    return ""
+
+def load_framework_paths() -> str:
+    """Load framework paths context."""
+    # Stub implementation to fix import error
+    return ""
+
+def load_mcp_tools_context() -> str:
+    """Load MCP tools context."""
+    # Stub implementation to fix import error
+    return ""
+
+def load_project_paths_context() -> str:
+    """Load project paths context."""
+    return load_project_map()
+
+MONITORED_ENV_VARS = ["AOPS", "GITHUB_WORKSPACE"]
+
+def load_tools_index() -> str:
+    """Load tools index context."""
+    return ""
