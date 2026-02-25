@@ -3873,7 +3873,9 @@ def render_graph_section():
         d3_graph = load_graph_data("graph.json")
         if d3_graph:
             d3_data = prepare_embedded_graph_data(d3_graph)
-            st.caption(f"Showing {len(d3_data['nodes'])} nodes and {len(d3_data['links'])} links.")
+            st.caption(
+                f"Showing {len(d3_data['nodes'])} nodes and {len(d3_data['links'])} links."
+            )
             render_embedded_graph(d3_data, height=500)
         else:
             st.warning("No graph.json found. Run `/task-viz` to generate.")
