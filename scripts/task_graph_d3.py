@@ -175,8 +175,6 @@ def prepare_graph_data(
     max_depth = max((n.get("depth", 0) for n in nodes), default=0)
 
     # Compute weight range for normalization
-    weights = [n.get("downstream_weight", 0) for n in nodes]
-    max_weight = max(weights) if weights else 1
 
     d3_nodes = []
     for node in nodes:
@@ -209,7 +207,7 @@ def prepare_graph_data(
         # Wrap text
         max_text_w = 160 * scale
         lines = _wrap_text(label, font_size, max_text_w)
-        line_widths = [_estimate_text_width(l, font_size) for l in lines]
+        line_widths = [_estimate_text_width(line, font_size) for line in lines]
         text_w = max(line_widths) if line_widths else 40
 
         # Node dimensions
