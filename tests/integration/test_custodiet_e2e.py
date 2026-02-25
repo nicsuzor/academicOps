@@ -227,10 +227,7 @@ def test_custodiet_temp_file_structure() -> None:
     Reads ACTUAL existing temp files from previous sessions to verify structure.
     This test requires a local environment with existing session history.
     """
-    try:
-        temp_dir = get_audit_temp_dir()
-    except ValueError:
-        pytest.skip("No session context available (CLAUDE_SESSION_ID not set)")
+    temp_dir = get_audit_temp_dir()
 
     if not temp_dir.exists():
         pytest.skip("No custodiet temp directory - run a Claude session first")

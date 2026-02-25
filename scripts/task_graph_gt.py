@@ -500,6 +500,7 @@ def render_manhattan(g, pos, props, output_path: str):
     n = g.num_vertices()
 
     # Extract positions and compute bounds
+    # node_data = []  # [(x, y, w, h, fill_hex, stroke_hex, stroke_width, stroke_dash, shape, label)]
     xs, ys = [], []
     for v in g.vertices():
         x, y = pos[v]

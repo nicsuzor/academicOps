@@ -175,6 +175,8 @@ def prepare_graph_data(
     max_depth = max((n.get("depth", 0) for n in nodes), default=0)
 
     # Compute weight range for normalization
+    # weights = [n.get("downstream_weight", 0) for n in nodes]
+    # max_weight = max(weights) if weights else 1
 
     d3_nodes = []
     for node in nodes:
