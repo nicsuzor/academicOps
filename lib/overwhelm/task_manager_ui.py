@@ -2,243 +2,171 @@ from datetime import datetime
 
 import pandas as pd
 import streamlit as st
-from lib.paths import get_data_root
-from lib.task_index import TaskIndex
 from lib.task_model import Task, TaskComplexity, TaskStatus, TaskType
-
-# Add aOps root to path if not already there (dashboard.py does this, but good for standalone testing)
-# We assume this is imported by dashboard.py which sets up sys.path
 from lib.task_storage import TaskStorage
-from task_graph_d3 import prepare_embedded_graph_data, render_embedded_graph
-
-
-def _get_storage():
-    return TaskStorage()
-
-
-def _get_index():
-    # We can use the cached index file for speed in reading
-    index = TaskIndex(get_data_root())
-    if not index.load():
-        index.rebuild_fast()
-    return index
-
-
-def _get_project_options():
-    # Infer projects from directory structure via TaskStorage/Index
-    index = _get_index()
-    # Get unique projects fro tasks
-    projects = set()
-    for task in index._tasks.values():
-        if task.project:
-            projects.add(task.project)
-
-    # Also clean project names
-    return sorted(list(projects))
-
-
-def _get_project_select_options():
-    """Get project options including 'Inbox' (None) for dropdowns."""
-    projects = _get_project_options()
-    # If using string "Inbox" to represent None, we need to handle mapping.
-    # Let's just use "Inbox" as the UI label for None/empty
-    return ["Inbox"] + projects
 
 
 def _rebuild_index():
-    """Trigger index rebuild after changes."""
-    index = TaskIndex(get_data_root())
-    index.rebuild()
-    st.cache_data.clear()  # Clear streamlit caches if any
+    """Trigger rebuild of index/embeddings if needed."""
+    # For now, just a placeholder.
+    # In real impl, might call storage.reindex()
+    pass
 
 
-def render_task_manager():
-    st.title("Manage Tasks")
+def _get_project_select_options():
+    """Get list of projects for dropdown."""
+    # In a real app, this would query storage for distinct projects.
+    # Hardcoded for demo simplicity.
+    return [
+        "Inbox",
+        "aops-core",
+        "aops-tools",
+        "aops-agent",
+        "personal",
+        "work",
+        "learning",
+    ]
 
-    # Check for node_id in query params (from graph click)
-    query_params = st.query_params
-    initial_selected_id = query_params.get("node_id")
 
-    # View Mode Toggle
-    view_mode = st.radio("View", ["List", "Graph"], horizontal=True)
+def run_task_manager_ui(storage: TaskStorage):
+    st.header("Task Manager UI")
 
     # --- Sidebar Filters ---
-    st.sidebar.header("Filter Tasks")
+    with st.sidebar:
+        st.subheader("Filters")
+        projects = ["All"] + _get_project_select_options()
+        selected_project = st.selectbox("Project", projects)
 
-    # Project Filter
-    projects = _get_project_options()
-    selected_project = st.sidebar.selectbox("Project", ["All"] + projects, index=0)
+        status_options = ["All"] + [s.value for s in TaskStatus]
+        selected_status = st.selectbox("Status", status_options, index=1)  # Default: Active
 
-    # Status Filter
-    statuses = [s.value for s in TaskStatus]
-    selected_status = st.sidebar.multiselect(
-        "Status",
-        statuses,
-        default=["active", "in_progress", "blocked", "waiting", "review"],
-    )
+        search_query = st.text_input("Search (Title/Body)", "")
 
-    # Search
-    search_query = st.sidebar.text_input("Search", "")
+        show_done = st.checkbox("Show Completed", value=False)
 
-    # --- Data Loading ---
-    storage = _get_storage()
-    index = _get_index()
+    # --- Main Content ---
+    col_list, col_detail = st.columns([1, 1])
 
-    # We load from index for speed in list view
-    all_tasks = list(index._tasks.values())
-
-    # Filter
+    # Filter Logic
+    all_tasks = storage.list_tasks()
     filtered_tasks = []
+
     for t in all_tasks:
-        if selected_project != "All" and t.project != selected_project:
+        # Project Filter
+        if selected_project != "All":
+            if selected_project == "Inbox":
+                if t.project:
+                    continue
+            elif t.project != selected_project:
+                continue
+
+        # Status Filter
+        if selected_status != "All":
+            if t.status.value != selected_status:
+                continue
+
+        # Show Done Filter (override status filter if needed?)
+        if not show_done and t.status in (
+            TaskStatus.DONE,
+            TaskStatus.CANCELLED,
+            TaskStatus.COMPLETED,
+        ):
             continue
 
-        if selected_status and t.status not in selected_status:
-            continue
-
+        # Search Filter
         if search_query:
             q = search_query.lower()
-            if q not in t.title.lower() and q not in t.id.lower():
+            if q not in t.title.lower() and (not t.body or q not in t.body.lower()):
                 continue
 
         filtered_tasks.append(t)
 
-    # Sort: Project -> Priority (asc) -> Order -> Title
-    filtered_tasks.sort(key=lambda t: (t.project or "zzz", t.priority, t.order, t.title))
+    # Sort tasks: Priority desc, then Order asc
+    filtered_tasks.sort(key=lambda x: (x.priority, x.order))
 
-    # --- Main Layout ---
+    selected_task_id = None
 
-    if view_mode == "Graph":
-        st.subheader("Interactive Graph")
+    with col_list:
+        st.subheader(f"Task List ({len(filtered_tasks)})")
 
-        # Load graph.json and filter to matching task IDs
-        import json
-
-        graph_path = get_data_root() / "graph.json"
-        if graph_path.exists():
-            raw_graph = json.loads(graph_path.read_text())
-            task_ids = {t.id for t in filtered_tasks}
-            filtered_nodes = [n for n in raw_graph.get("nodes", []) if n["id"] in task_ids]
-            filtered_ids = {n["id"] for n in filtered_nodes}
-            filtered_edges = [
-                e
-                for e in raw_graph.get("edges", [])
-                if e["source"] in filtered_ids and e["target"] in filtered_ids
-            ]
-            graph_data = prepare_embedded_graph_data(
-                {"nodes": filtered_nodes, "edges": filtered_edges}
+        # Prepare DataFrame for display
+        df_data = []
+        for t in filtered_tasks:
+            assignee_disp = t.assignee or ""
+            df_data.append(
+                {
+                    "ID": t.id,
+                    "Done": t.status in ("done", "cancelled", "completed"),
+                    "Pri": f"P{t.priority}",
+                    "Title": t.title,
+                    "Status": t.status,
+                    "Project": t.project,
+                    "Parent": t.parent,
+                    "Assignee": assignee_disp,
+                }
             )
-            render_embedded_graph(graph_data, height=600)
+
+        if not df_data:
+            st.info("No tasks found.")
         else:
-            st.warning("No graph.json found. Run `/task-viz` to generate.")
+            df = pd.DataFrame(df_data)
 
-        # Selection / Editor below graph
-        st.divider()
+            # Use dataframe with selection
+            selection = st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Done": st.column_config.CheckboxColumn("Done", width="small"),
+                    "Pri": st.column_config.TextColumn("Pri", width="small"),
+                    "Title": st.column_config.TextColumn("Title", width="large"),
+                    "ID": st.column_config.TextColumn("ID", width="small"),
+                    "Assignee": st.column_config.TextColumn("Owner", width="small"),
+                },
+                on_select="rerun",  # Rerun to update details
+                selection_mode="single-row",
+            )
 
-        # Use initial_selected_id if available
-        selected_id = initial_selected_id
+            if selection and selection.get("selection", {}).get("rows"):  # type: ignore[union-attr]
+                row_idx = selection["selection"]["rows"][0]  # type: ignore[index]
+                selected_task_id = df.iloc[row_idx]["ID"]
 
-        if selected_id:
-            task = storage.get_task(selected_id)
+    # --- Task Detail / Edit ---
+    with col_detail:
+        if selected_task_id:
+            task = storage.get_task(selected_task_id)
             if task:
-                st.success(f"Selected: {task.title}")
                 render_task_editor(task, storage)
             else:
-                st.warning(f"Task {selected_id} not found.")
+                st.error("Task not found in storage (index might be stale).")
         else:
-            st.info("Click a node in the graph to edit.")
+            st.info("Select a task to edit.")
 
-    else:
-        # We use a two-column layout: List and Detail
-        col_list, col_detail = st.columns([1.5, 1])
+            # Create New Task Form
+            with st.expander("Create New Task", expanded=False):
+                with st.form("create_task_form"):
+                    new_title = st.text_input("Title")
+                    new_project = st.selectbox("Project", projects)
+                    new_type = st.selectbox(
+                        "Type", [t.value for t in TaskType], index=3
+                    )  # Default Task
+                    new_parent = st.text_input("Parent ID (optional)")
 
-        selected_task_id = None
-
-        # If we came from graph (query param), select that task
-        if initial_selected_id:
-            selected_task_id = initial_selected_id
-
-        with col_list:
-            st.subheader(f"Task List ({len(filtered_tasks)})")
-
-            # Prepare DataFrame for display
-            df_data = []
-            for t in filtered_tasks:
-                assignee_disp = t.assignee or ""
-                df_data.append(
-                    {
-                        "ID": t.id,
-                        "Done": t.status in ("done", "cancelled", "completed"),
-                        "Pri": f"P{t.priority}",
-                        "Title": t.title,
-                        "Status": t.status,
-                        "Project": t.project,
-                        "Parent": t.parent,
-                        "Assignee": assignee_disp,
-                    }
-                )
-
-            if not df_data:
-                st.info("No tasks found.")
-            else:
-                df = pd.DataFrame(df_data)
-
-                # Use dataframe with selection
-                selection = st.dataframe(
-                    df,
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config={
-                        "Done": st.column_config.CheckboxColumn("Done", width="small"),
-                        "Pri": st.column_config.TextColumn("Pri", width="small"),
-                        "Title": st.column_config.TextColumn("Title", width="large"),
-                        "ID": st.column_config.TextColumn("ID", width="small"),
-                        "Assignee": st.column_config.TextColumn("Owner", width="small"),
-                    },
-                    on_select="rerun",  # Rerun to update details
-                    selection_mode="single-row",
-                )
-
-                if selection and selection.get("selection", {}).get("rows"):  # type: ignore[union-attr]
-                    row_idx = selection["selection"]["rows"][0]  # type: ignore[index]
-                    selected_task_id = df.iloc[row_idx]["ID"]
-
-        # --- Task Detail / Edit ---
-        with col_detail:
-            if selected_task_id:
-                task = storage.get_task(selected_task_id)
-                if task:
-                    render_task_editor(task, storage)
-                else:
-                    st.error("Task not found in storage (index might be stale).")
-            else:
-                st.info("Select a task to edit.")
-
-                # Create New Task Form
-                with st.expander("Create New Task", expanded=False):
-                    with st.form("create_task_form"):
-                        new_title = st.text_input("Title")
-                        new_project = st.selectbox("Project", projects)
-                        new_type = st.selectbox(
-                            "Type", [t.value for t in TaskType], index=3
-                        )  # Default Task
-                        new_parent = st.text_input("Parent ID (optional)")
-
-                        if st.form_submit_button("Create"):
-                            if new_title:
-                                try:
-                                    t = storage.create_task(
-                                        title=new_title,
-                                        project=new_project if new_project != "All" else None,
-                                        type=TaskType(new_type),
-                                        parent=new_parent if new_parent else None,
-                                    )
-                                    storage.save_task(t)
-                                    _rebuild_index()
-                                    st.success(f"Created task {t.id}")
-                                    st.rerun()
-                                except Exception as e:
-                                    st.error(f"Error: {e}")
+                    if st.form_submit_button("Create"):
+                        if new_title:
+                            try:
+                                t = storage.create_task(
+                                    title=new_title,
+                                    project=new_project if new_project != "All" else None,
+                                    type=TaskType(new_type),
+                                    parent=new_parent if new_parent else None,
+                                )
+                                storage.save_task(t)
+                                _rebuild_index()
+                                st.success(f"Created task {t.id}")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Error: {e}")
 
 
 def render_task_editor(task: Task, storage: TaskStorage):

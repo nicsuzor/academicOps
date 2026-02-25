@@ -358,7 +358,9 @@ def prepare_embedded_graph_data(
 
     d3_links = []
     for edge in valid_edges:
-        etype = edge.get("type") or _classify_edge(edge["source"], edge["target"], node_by_id)
+        etype = edge.get("type") or _classify_edge(
+            edge["source"], edge["target"], node_by_id
+        )
         if etype in ("soft_depends_on", "link", "wikilink"):
             etype = "ref"
         force = EDGE_FORCE.get(etype, EDGE_FORCE["ref"])

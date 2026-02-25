@@ -1,174 +1,57 @@
-"""Context loaders for hydration - consolidated load_xxx() functions.
-
-This module consolidates the 13 near-identical context loading functions
-from hooks/user_prompt_submit.py into a unified structure.
-"""
-
-from __future__ import annotations
-
 import json
-import os
 import re
 from functools import lru_cache
 from pathlib import Path
 
-from lib.paths import (
-    get_aops_root,
-    get_commands_dir,
-    get_config_dir,
-    get_context_dir,
-    get_data_root,
-    get_goals_dir,
-    get_hooks_dir,
-    get_indices_dir,
-    get_logs_dir,
-    get_plugin_root,
-    get_projects_dir,
-    get_sessions_repo,
-    get_skills_dir,
-    get_summaries_dir,
-    get_tests_dir,
-    get_transcripts_dir,
-    get_workflows_dir,
-)
+# --- Helper Utilities ---
 
-# Environment variables to display in hydrator context
-MONITORED_ENV_VARS = (
-    "AOPS",
-    "ACA_DATA",
-    "AOPS_SESSIONS",
-    "POLECAT_HOME",
-    "NTFY_TOPIC",
-    "HYDRATION_GATE_MODE",
-    "CUSTODIET_MODE",
-    "CLAUDE_SESSION_ID",
-)
+
+@lru_cache
+def get_plugin_root() -> Path:
+    """Find the root of the plugin installation (where README.md/SKILLS.md live)."""
+    # Start from this file's directory: aops-core/lib/hydration/
+    current = Path(__file__).resolve().parent
+    # Go up to aops-core/
+    while current.name != "aops-core" and current.parent != current:
+        current = current.parent
+    if current.name == "aops-core":
+        return current
+    # Fallback if structure is weird (e.g. tests)
+    return Path.cwd()
 
 
 def _strip_frontmatter(content: str) -> str:
-    """Strip YAML frontmatter from markdown content."""
+    """Remove YAML frontmatter from markdown content."""
     if content.startswith("---"):
         parts = content.split("---", 2)
         if len(parts) >= 3:
             return parts[2].strip()
-    return content.strip()
+    return content
 
 
-@lru_cache(maxsize=8)
 def _load_framework_file(filename: str) -> str:
-    """Load a framework markdown file, stripping frontmatter.
-
-    Cached to avoid repeated file I/O within a single hook invocation.
-
-    Args:
-        filename: Name of file in plugin root (e.g., "AXIOMS.md")
-
-    Returns:
-        File content with frontmatter stripped.
-
-    Raises:
-        FileNotFoundError: If file doesn't exist (fail-fast per P#8)
-    """
-    plugin_root = get_plugin_root()
-    filepath = plugin_root / filename
-    content = filepath.read_text()
-    return _strip_frontmatter(content)
+    """Load a framework documentation file from aops-core root."""
+    path = get_plugin_root() / filename
+    if path.exists():
+        return _strip_frontmatter(path.read_text())
+    return ""
 
 
-def load_framework_paths() -> str:
-    """Generate the Framework Paths table dynamically."""
-    try:
-        plugin_root = get_plugin_root()
-        aops_root = get_aops_root()
-
-        lines = [
-            "## Resolved Paths",
-            "",
-            "These are the concrete absolute paths for this framework instance:",
-            "",
-            "| Path Variable | Resolved Path |",
-            "|--------------|---------------|",
-            f"| $AOPS        | {aops_root} |",
-            f"| $PLUGIN_ROOT | {plugin_root} |",
-            f"| $ACA_DATA    | {get_data_root()} |",
-            "",
-            "## Framework Directories",
-            "",
-            "| Directory | Absolute Path |",
-            "|-----------|---------------|",
-            f"| Skills    | {get_skills_dir()} |",
-            f"| Hooks     | {get_hooks_dir()} |",
-            f"| Commands  | {get_commands_dir()} |",
-            f"| Tests     | {get_tests_dir()} |",
-            f"| Config    | {get_config_dir()} |",
-            f"| Workflows | {get_workflows_dir()} |",
-            f"| Indices   | {get_indices_dir()} |",
-            "",
-            "## Data Directories",
-            "",
-            "| Directory | Absolute Path |",
-            "|-----------|---------------|",
-            f"| Sessions  | {get_sessions_repo()} |",
-            f"| Transcripts | {get_transcripts_dir()} |",
-            f"| Summaries | {get_summaries_dir()} |",
-            f"| Projects  | {get_projects_dir()} |",
-            f"| Data Logs | {get_logs_dir()} |",
-            f"| Context   | {get_context_dir()} |",
-            f"| Goals     | {get_goals_dir()} |",
-        ]
-        return "\n".join(lines)
-
-    except Exception as e:
-        return f"(Error gathering framework paths: {e})"
+# --- Context Loaders ---
 
 
-def load_tools_index() -> str:
-    """Load TOOLS.md for hydrator context."""
-    plugin_root = get_plugin_root()
-    tools_path = plugin_root / "TOOLS.md"
-
-    if not tools_path.exists():
-        return "(TOOLS.md not found)"
-
-    content = tools_path.read_text()
-    return _strip_frontmatter(content)
-
-
-# Alias for backwards compatibility
-def load_mcp_tools_context() -> str:
-    """Load tools index (alias for load_tools_index)."""
-    return load_tools_index()
-
-
-def load_environment_variables_context() -> str:
-    """List relevant environment variables."""
-    lines = ["## Environment Variables", ""]
-    lines.append("| Variable | Value |")
-    lines.append("|----------|-------|")
-    for var in MONITORED_ENV_VARS:
-        value = os.environ.get(var, "(not set)")
-        lines.append(f"| {var} | `{value}` |")
-
-    return "\n".join(lines)
-
-
-def load_project_paths_context() -> str:
-    """Load project-specific paths from polecat.yaml."""
-    polecat_config = Path.home() / ".aops" / "polecat.yaml"
-    if not polecat_config.exists():
+def load_project_map() -> str:
+    """Load project map for hydrator context."""
+    # Try to load projects.json from current working directory
+    projects_file = Path("projects.json")
+    if not projects_file.exists():
         return ""
 
     try:
-        import yaml
-
-        with open(polecat_config) as f:
-            config = yaml.safe_load(f)
-
-        projects = config.get("projects", {})
-        if not projects:
-            return ""
-
-        lines = ["## Project-Specific Paths", ""]
+        content = projects_file.read_text()
+        projects = json.loads(content)
+        lines = []
+        lines.append("\n\n## Known Projects (Workspace Map)")
         lines.append("| Project | Path | Default Branch |")
         lines.append("|---------|------|----------------|")
         for slug, proj in projects.items():

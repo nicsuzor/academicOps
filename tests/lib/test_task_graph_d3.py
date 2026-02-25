@@ -43,12 +43,10 @@ def test_single_node():
 
 def test_weight_based_sizing():
     """Nodes with higher downstream_weight should be larger."""
-    graph = _make_graph(
-        [
-            _node("light", downstream_weight=0),
-            _node("heavy", downstream_weight=50),
-        ]
-    )
+    graph = _make_graph([
+        _node("light", downstream_weight=0),
+        _node("heavy", downstream_weight=50),
+    ])
     result = prepare_embedded_graph_data(graph)
     nodes = {n["id"]: n for n in result["nodes"]}
 
@@ -58,12 +56,10 @@ def test_weight_based_sizing():
 
 def test_weight_driven_color_intensity():
     """High-weight node fill should differ from low-weight (desaturation)."""
-    graph = _make_graph(
-        [
-            _node("low", downstream_weight=0, status="active"),
-            _node("high", downstream_weight=100, status="active"),
-        ]
-    )
+    graph = _make_graph([
+        _node("low", downstream_weight=0, status="active"),
+        _node("high", downstream_weight=100, status="active"),
+    ])
     result = prepare_embedded_graph_data(graph)
     nodes = {n["id"]: n for n in result["nodes"]}
 
@@ -75,14 +71,12 @@ def test_weight_driven_color_intensity():
 
 def test_node_shapes_per_type():
     """Different node_types should get different shapes."""
-    graph = _make_graph(
-        [
-            _node("g1", node_type="goal"),
-            _node("p1", node_type="project"),
-            _node("e1", node_type="epic"),
-            _node("t1", node_type="task"),
-        ]
-    )
+    graph = _make_graph([
+        _node("g1", node_type="goal"),
+        _node("p1", node_type="project"),
+        _node("e1", node_type="epic"),
+        _node("t1", node_type="task"),
+    ])
     result = prepare_embedded_graph_data(graph)
     nodes = {n["id"]: n for n in result["nodes"]}
 
@@ -103,7 +97,7 @@ def test_edge_type_differentiation():
         ],
     )
     result = prepare_embedded_graph_data(graph)
-    links = {(l["source"], l["target"]): l for l in result["links"]}
+    links = {(link["source"], link["target"]): link for link in result["links"]}
 
     parent_link = links[("b", "a")]  # flipped: parent→child
     dep_link = links[("c", "d")]
@@ -178,12 +172,10 @@ def test_dangling_edges_filtered():
 
 def test_badge_for_type():
     """Goals/projects/epics should get type badges, tasks should not."""
-    graph = _make_graph(
-        [
-            _node("g1", node_type="goal"),
-            _node("t1", node_type="task"),
-        ]
-    )
+    graph = _make_graph([
+        _node("g1", node_type="goal"),
+        _node("t1", node_type="task"),
+    ])
     result = prepare_embedded_graph_data(graph)
     nodes = {n["id"]: n for n in result["nodes"]}
 
@@ -204,12 +196,10 @@ def test_label_truncation():
 
 def test_goal_larger_than_task():
     """Goal nodes should be scaled larger than task nodes at same weight."""
-    graph = _make_graph(
-        [
-            _node("g1", node_type="goal", downstream_weight=5),
-            _node("t1", node_type="task", downstream_weight=5),
-        ]
-    )
+    graph = _make_graph([
+        _node("g1", node_type="goal", downstream_weight=5),
+        _node("t1", node_type="task", downstream_weight=5),
+    ])
     result = prepare_embedded_graph_data(graph)
     nodes = {n["id"]: n for n in result["nodes"]}
 
