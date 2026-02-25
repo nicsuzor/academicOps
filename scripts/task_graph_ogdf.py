@@ -285,7 +285,7 @@ def postprocess_svg(svg_path: str, structural_node_indices: set[int]):
         tree = ET.parse(svg_path)
         root = tree.getroot()
         # OGDF SVG uses node indices in element IDs
-        ns = {"svg": "http://www.w3.org/2000/svg"}
+        # ns = {"svg": "http://www.w3.org/2000/svg"}
 
         for elem in root.iter():
             node_id = elem.get("id", "")
