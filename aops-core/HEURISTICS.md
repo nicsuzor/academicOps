@@ -310,6 +310,28 @@ This does NOT apply when:
 
 **Derivation**: Extends P#59 (Action Over Clarification) from task selection to implementation decisions. P#102 corollary establishes that pre-routing to human based on "this involves design choices" is premature. P#78 establishes that classification is LLM work. If an agent can classify one option as superior, asking the human is wasted attention.
 
+## Defer User Engagement Until Work Is Done (P#108)
+
+When the agent needs to engage the user on definitions, clarifications, or open questions, it MUST NOT do so until it has handled all other actionable work first. Premature engagement loses context.
+
+**Pattern**: Create a follow-up task for the user interaction. Then decide whether to execute it immediately (if nothing else remains) or defer it.
+
+**Why**: Context is precious. If the agent stops to ask "what did you mean by X?" before extracting decisions, creating tasks, and recording knowledge, the user's response will push the original work out of working memory. Handle everything you CAN handle first, then engage.
+
+**Derivation**: Extends P#59 (Action Over Clarification). P#59 says pick a task and start; P#108 says finish all extractable work before engaging on ambiguity.
+
+## Completion Loops Close Parent Goals (P#109)
+
+When decomposing work into subtasks, ALWAYS create a verify-parent task that depends on all subtasks. This task returns to the original problem and confirms it's fully solved or triggers another iteration.
+
+**Pattern**: After creating subtasks, create: `"Verify: [parent goal] fully resolved"` with `depends_on: [all-subtask-ids]` and `assignee: null`.
+
+**Why**: Subtasks completing does not mean the parent's goal was met. Without a completion loop, work is marked done prematurely and the original problem silently persists.
+
+**Relationship to P#71**: P#71 says complete the parent when decomposing. The verify task is not the parent — it's a NEW sibling task that checks the original goal after all implementation is done.
+
+**Derivation**: Addresses the systemic failure mode where agents complete subtasks but nobody checks the parent epic. This is the key mechanism for reliable multi-session task execution.
+
 ## Standard Tooling Over Framework Gates (P#105)
 
 When proposing enforcement for repo-level rules (file structure, naming, content format), prefer standard git tooling (pre-commit hooks, CI checks) over framework-internal mechanisms (PreToolUse gates, custom hooks). Framework gates control agent behavior in real-time; repo structure rules belong in git.

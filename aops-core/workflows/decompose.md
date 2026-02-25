@@ -81,6 +81,32 @@ Tasks cluster in visualizations based on their parent chain reaching a canonical
 3. **Tasks link to goals**: Every task has `parent:` pointing up the chain
 4. **Project field matches**: `project: {slug}` matches the project file's `id:`
 
+## Completion Loop (MANDATORY)
+
+When decomposing work into subtasks, ALWAYS create a **verify-parent** task:
+
+1. Create all subtasks as normal
+2. Create one additional task: `"Verify: [parent goal] fully resolved"`
+3. Set `depends_on:` to ALL the subtasks just created
+4. Set `assignee: null` (requires human judgment)
+5. This task's body should restate the original problem and acceptance criteria
+
+**Purpose**: Subtasks getting completed does not mean the parent's goal was met. The verify-parent task forces a return to the original problem to confirm it's fully solved or to iterate again.
+
+**Example**:
+```
+Parent: "Fix task graph quality issues"
+  ├── Subtask 1: "Update priority semantics doc"
+  ├── Subtask 2: "Implement parent requirement rules"
+  ├── Subtask 3: "Design nightly maintenance system"
+  └── Verify: "Confirm task graph quality issues are resolved"
+       depends_on: [subtask-1, subtask-2, subtask-3]
+       body: "Return to the original problem. Are task graph quality
+              issues actually resolved? Check: ..."
+```
+
+**Relationship to P#71**: P#71 says "complete the parent immediately" when decomposing. The completion loop does not contradict this — the decomposition work IS complete. The verify task is a NEW task that checks whether the original goal was achieved after all implementation is done.
+
 ## Anti-Patterns
 
 - Expanding everything at once (premature detail)
@@ -91,3 +117,4 @@ Tasks cluster in visualizations based on their parent chain reaching a canonical
 - **Missing project anchors**: Creating goals/tasks with `project: X` but no `X.md` project file exists
 - **Reflexive task creation**: Creating tasks without knowing the action path
 - **Prose instead of structure**: Writing relationships as prose when they should be graph edges
+- **Fire-and-forget decomposition**: Creating subtasks without a verify-parent task to close the loop

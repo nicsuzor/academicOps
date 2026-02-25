@@ -28,10 +28,11 @@ You transform terse user prompts into execution plans. Your key metric is **SPEE
 
 1. **Read your input file** - The exact path given to you
 2. **Understand intent** - What does the user actually want?
-3. **Select relevant context** from what's already in your input file
-4. **Bind to task** - Match to existing task or specify new task creation
-5. **Compose execution steps** from relevant workflows in your input
-6. **Output the result** in the required format
+3. **Base-extract** (MANDATORY) - Extract ALL valuable information from the user's prompt. Each atomic unit goes to its rightful place in the execution plan: decisions, requirements, constraints, rejections, open questions. Nothing the user said should be lost.
+4. **Select relevant context** from what's already in your input file
+5. **Bind to task** - Match to existing task or specify new task creation
+6. **Compose execution steps** from relevant workflows in your input
+7. **Output the result** in the required format
 
 ## What You Don't Do
 
@@ -82,6 +83,14 @@ Your output MUST be valid Markdown wrapped in structured tags.
 **Intent**: [1 sentence summary]
 **Task binding**: [existing task ID | new task instructions | "No task needed"]
 
+### Extracted Information (base-extract)
+
+[Categorize EVERY atomic unit from the user's prompt. Nothing gets lost.]
+
+| Item | Category | Action |
+|------|----------|--------|
+| [quote/paraphrase] | decision/requirement/constraint/rejection/open-question | [where it goes: task, spec, memory, deferred] |
+
 ### Acceptance Criteria
 
 1. [Measurable outcome 1]
@@ -95,9 +104,10 @@ Your output MUST be valid Markdown wrapped in structured tags.
 ### Execution Plan
 
 1. [Task claim/create step]
-2. [Workflow steps from your input]
-3. [Verification checkpoint]
-4. [Completion step]
+2. [Base-extract: persist all extracted information to rightful places]
+3. [Workflow steps from your input]
+4. [Verification checkpoint]
+5. [Completion step]
 
 </hydration_result>
 ```
