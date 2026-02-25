@@ -16,19 +16,29 @@ def generate_graph_from_tasks(tasks: list) -> dict:
         # Handle both dict and Task object
         tid = t.get("id") if isinstance(t, dict) else t.id
         title = t.get("title") if isinstance(t, dict) else t.title
-        status = t.get("status") if isinstance(t, dict) else (t.status.value if hasattr(t.status, "value") else t.status)
+        status = (
+            t.get("status")
+            if isinstance(t, dict)
+            else (t.status.value if hasattr(t.status, "value") else t.status)
+        )
         priority = t.get("priority") if isinstance(t, dict) else t.priority
         project = t.get("project") if isinstance(t, dict) else t.project
-        type_ = t.get("type") if isinstance(t, dict) else (t.type.value if hasattr(t.type, "value") else t.type)
+        type_ = (
+            t.get("type")
+            if isinstance(t, dict)
+            else (t.type.value if hasattr(t.type, "value") else t.type)
+        )
 
-        nodes.append({
-            "id": tid,
-            "title": title,
-            "status": status,
-            "priority": priority,
-            "project": project,
-            "type": type_
-        })
+        nodes.append(
+            {
+                "id": tid,
+                "title": title,
+                "status": status,
+                "priority": priority,
+                "project": project,
+                "type": type_,
+            }
+        )
         node_ids.add(tid)
 
     # Second pass: create links
@@ -47,6 +57,7 @@ def generate_graph_from_tasks(tasks: list) -> dict:
             links.append({"source": parent, "target": tid, "type": "parent"})
 
     return {"nodes": nodes, "links": links}
+
 
 def render_d3_graph(graph_data: dict, width: int = None, height: int = 400, mode: str = "summary"):
     """
