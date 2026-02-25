@@ -38,7 +38,7 @@ from lib.task_storage import TaskStorage
 
 # Add local directory to path for sibling imports
 sys.path.append(str(Path(__file__).parent))
-from task_graph_d3 import generate_graph_from_tasks, render_d3_graph
+from task_graph_d3 import prepare_embedded_graph_data, render_embedded_graph
 from task_manager_ui import render_task_manager
 
 
@@ -3865,19 +3865,20 @@ def render_graph_section():
         st.caption('Click "Show" to expand the task graph visualization.')
         return
 
-    # Load tasks and generate live graph data
-    tasks = load_tasks_from_index()
-    live_graph_data = generate_graph_from_tasks(tasks)
-
     tab_d3, tab_svg, tab_interactive = st.tabs(
         ["📊 Live Graph (D3)", "🖼️ SVG Graph", "⚛️ Force Graph"]
     )
 
     with tab_d3:
-        st.caption(
-            f"Showing {len(live_graph_data['nodes'])} nodes and {len(live_graph_data['links'])} links."
-        )
-        render_d3_graph(live_graph_data, height=300, mode="summary")
+        d3_graph = load_graph_data("graph.json")
+        if d3_graph:
+            d3_data = prepare_embedded_graph_data(d3_graph)
+            st.caption(
+                f"Showing {len(d3_data['nodes'])} nodes and {len(d3_data['links'])} links."
+            )
+            render_embedded_graph(d3_data, height=500)
+        else:
+            st.warning("No graph.json found. Run `/task-viz` to generate.")
 
     with tab_svg:
         render_svg_graph()

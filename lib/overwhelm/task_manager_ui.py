@@ -9,7 +9,7 @@ from lib.task_model import Task, TaskComplexity, TaskStatus, TaskType
 # Add aOps root to path if not already there (dashboard.py does this, but good for standalone testing)
 # We assume this is imported by dashboard.py which sets up sys.path
 from lib.task_storage import TaskStorage
-from task_graph_d3 import generate_graph_from_tasks, render_d3_graph
+from task_graph_d3 import prepare_embedded_graph_data, render_embedded_graph
 
 
 def _get_storage():
@@ -111,11 +111,27 @@ def render_task_manager():
     if view_mode == "Graph":
         st.subheader("Interactive Graph")
 
-        # Generate graph data from filtered tasks
-        graph_data = generate_graph_from_tasks(filtered_tasks)
+        # Load graph.json and filter to matching task IDs
+        import json
+        import os
 
-        # Render full graph
-        render_d3_graph(graph_data, height=600, mode="full")
+        graph_path = get_data_root() / "outputs" / "graph.json"
+        if graph_path.exists():
+            raw_graph = json.loads(graph_path.read_text())
+            task_ids = {t.id for t in filtered_tasks}
+            filtered_nodes = [n for n in raw_graph.get("nodes", []) if n["id"] in task_ids]
+            filtered_ids = {n["id"] for n in filtered_nodes}
+            filtered_edges = [
+                e
+                for e in raw_graph.get("edges", [])
+                if e["source"] in filtered_ids and e["target"] in filtered_ids
+            ]
+            graph_data = prepare_embedded_graph_data(
+                {"nodes": filtered_nodes, "edges": filtered_edges}
+            )
+            render_embedded_graph(graph_data, height=600)
+        else:
+            st.warning("No graph.json found. Run `/task-viz` to generate.")
 
         # Selection / Editor below graph
         st.divider()

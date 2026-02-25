@@ -160,7 +160,7 @@ reportMissingTypeStubs = false
 # reportUnknownArgumentType = false
 [tool.pytest.ini_options]
 testpaths = ["tests", "aops-core/tests"]
-pythonpath = [".", "aops-core", "aops-core/hooks", "aops-core/lib"]
+pythonpath = [".", "aops-core", "aops-core/hooks", "aops-core/lib", "lib/overwhelm"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
