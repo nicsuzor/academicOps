@@ -38,30 +38,6 @@ Session mining and note creation. Silently extracts information and maintains kn
 4. Deadlines → task skill
 5. Strategic context → context files
 
-### From External Artifacts (Diagrams, Old Documents, Maps)
-
-When importing from an external source (Excalidraw, old project maps, planning docs, etc.), the primary value is **connections between existing nodes**, not new nodes.
-
-**Import sequence:**
-
-1. Identify all entities mentioned in the artifact
-2. Search PKB for each: `mcp__pkb__search(query="entity")`
-3. For entities that already exist, **check their connections**: `mcp__pkb__pkb_context(id="node-id")` — do relationships to the *other* entities in this artifact already exist in the graph?
-4. **Missing connections are the import target.** Augment existing nodes with links to each other, cross-project relationships, and strategic context from the artifact.
-5. Only create new nodes for genuinely uncaptured concepts.
-
-**What to extract:**
-
-| Signal                       | Action                                             |
-| ---------------------------- | -------------------------------------------------- |
-| Two known projects linked    | Add [[wikilinks]] between their existing nodes     |
-| Strategic tension identified | Capture as observation on relevant project/goal    |
-| Cross-project dependency     | Add relationship links to both project files       |
-| Deployment philosophy        | Add to context or project strategy files           |
-| New concept                  | Create new topical file (last resort)              |
-
-**Key principle:** "Already captured" means the node exists AND its relationships to other mentioned entities are in the graph. A node without its connections is incomplete.
-
 ## How to Capture
 
 ### Creating Notes

@@ -3869,14 +3869,10 @@ def render_graph_section():
     tasks = load_tasks_from_index()
     live_graph_data = generate_graph_from_tasks(tasks)
 
-    tab_d3, tab_svg, tab_interactive = st.tabs(
-        ["📊 Live Graph (D3)", "🖼️ SVG Graph", "⚛️ Force Graph"]
-    )
+    tab_d3, tab_svg, tab_interactive = st.tabs(["📊 Live Graph (D3)", "🖼️ SVG Graph", "⚛️ Force Graph"])
 
     with tab_d3:
-        st.caption(
-            f"Showing {len(live_graph_data['nodes'])} nodes and {len(live_graph_data['links'])} links."
-        )
+        st.caption(f"Showing {len(live_graph_data['nodes'])} nodes and {len(live_graph_data['links'])} links.")
         render_d3_graph(live_graph_data, height=300, mode="summary")
 
     with tab_svg:

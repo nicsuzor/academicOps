@@ -84,7 +84,6 @@ This takes more time. That's the point. Transformations deserve scrutiny.
 
 - **Investigation**: [[instructions/data-investigation.md]], [[instructions/exploratory-analysis.md]]
 - **Research docs**: [[instructions/research-documentation.md]] (REQUIRED), [[instructions/methodology-files.md]], [[instructions/methods-vs-methodology.md]], [[instructions/experiment-logging.md]]
-- **Quality review**: [[instructions/iterative-quality-review.md]] (orchestrator: review loop, feedback patterns, quality gates), [[instructions/output-quality-checklist.md]] (worker: self-check before reporting)
 - **Technical**: [[instructions/dbt-workflow.md]], [[instructions/streamlit-workflow.md]]
 
 ### References
