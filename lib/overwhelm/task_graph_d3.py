@@ -378,10 +378,17 @@ def prepare_embedded_graph_data(
         else:
             color, width, dash = "#94a3b8", 1.0, "4,3"
 
+        # For parent edges, flip direction so arrows point parent→child
+        # (graph.json stores child→parent, but visually we want "contains")
+        if etype == "parent":
+            link_source, link_target = edge["target"], edge["source"]
+        else:
+            link_source, link_target = edge["source"], edge["target"]
+
         d3_links.append(
             {
-                "source": edge["source"],
-                "target": edge["target"],
+                "source": link_source,
+                "target": link_target,
                 "type": etype,
                 "color": color,
                 "width": round(width, 1),

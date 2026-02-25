@@ -3383,10 +3383,10 @@ def clean_activity_text(raw_text: str) -> str:
 
 
 def load_graph_data(filename: str = "graph.json") -> dict | None:
-    """Load graph JSON from outputs directory."""
-    outputs_dir = Path(os.environ["ACA_DATA"]) / "outputs"
+    """Load graph JSON from ACA_DATA (fast-indexer output location)."""
+    aca_data = Path(os.environ["ACA_DATA"])
 
-    graph_path = outputs_dir / filename
+    graph_path = aca_data / filename
     if graph_path.exists():
         try:
             return json.loads(graph_path.read_text())

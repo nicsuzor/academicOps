@@ -100,7 +100,7 @@ def test_edge_type_differentiation():
     result = prepare_embedded_graph_data(graph)
     links = {(l["source"], l["target"]): l for l in result["links"]}
 
-    parent_link = links[("a", "b")]
+    parent_link = links[("b", "a")]  # flipped: parent→child
     dep_link = links[("c", "d")]
     ref_link = links[("a", "d")]
 

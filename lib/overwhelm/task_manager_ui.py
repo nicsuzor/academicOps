@@ -115,7 +115,7 @@ def render_task_manager():
         import json
         import os
 
-        graph_path = get_data_root() / "outputs" / "graph.json"
+        graph_path = get_data_root() / "graph.json"
         if graph_path.exists():
             raw_graph = json.loads(graph_path.read_text())
             task_ids = {t.id for t in filtered_tasks}
