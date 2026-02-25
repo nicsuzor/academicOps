@@ -90,7 +90,7 @@ def build_elk_graph(
     edges: list[dict],
     structural_ids: set[str],
     include_orphans: bool = False,
-) -> tuple[dict, dict]:
+) -> tuple[dict, dict, dict]:
     """Build ELK JSON graph and a styling metadata dict.
 
     Returns (elk_graph, style_map) where style_map[node_id] = {fill, stroke, strokeWidth, shape, ...}
@@ -505,7 +505,7 @@ def main():
 
     # Attention map
     if args.attention_map:
-        flagged_nodes, flagged_edges, gap_data = generate_attention_map(
+        flagged_nodes, flagged_edges, gap_data = generate_attention_map(  # type: ignore
             all_nodes, all_edges, top_n=args.attention_top
         )
         if not gap_data:
