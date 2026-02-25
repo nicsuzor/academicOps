@@ -44,7 +44,7 @@ tags: [framework, enforcement, moc]
 | [[verify-first]]                            | Primary Evidence Before Conclusions | AXIOMS.md P#26 corollary (read all comments/reviews/logs before concluding)                | SessionStart           | 1a        |
 | [[no-excuses]]                              | No Excuses                      | AXIOMS.md                                                                                    | SessionStart           |           |
 | [[write-for-long-term]]                     | Write for Long Term             | AXIOMS.md                                                                                    | SessionStart           |           |
-| [[maintain-relational-integrity]]           | Relational Integrity            | wikilink conventions                                                                         | Pre-commit (planned)   |           |
+| [[maintain-relational-integrity]]           | Relational Integrity            | check_framework_integrity.py (index wikilinks, skill entries, workflow length)                | Pre-commit (active)    |           |
 | [[nothing-is-someone-elses-responsibility]] | Nothing Is Someone Else's       | AXIOMS.md                                                                                    | SessionStart           |           |
 | [[acceptance-criteria-own-success]]         | Acceptance Criteria Own Success | /qa skill (on-demand)                                                                        | Stop                   |           |
 | [[plan-first-development]]                  | Plan-First Development          | EnterPlanMode tool                                                                           | Before coding          |           |
@@ -400,6 +400,7 @@ Auto-commits staged changes. Blocks if unstaged changes require manual commit.
 | Formatting       | dprint                                    | Consistent formatting  | [[use-standard-tools]]     |
 | Data integrity   | bmem-validate                             | Valid frontmatter      | [[current-state-machine]]  |
 | Data purity      | data-markdown-only                        | Only `.md` in data/    | [[current-state-machine]]  |
+| Framework health | check-framework-integrity                 | Index wikilinks, skill entries, workflow length | [[maintain-relational-integrity]] |
 | Framework health | check-skill-line-count                    | SKILL.md < 500 lines   | [[self-documenting]]       |
 | Framework health | check-orphan-files                        | Detect orphan files    | [[semantic-link-density]]  |
 | Markdown style   | markdownlint                              | No horizontal dividers | [[no-horizontal-dividers]] |
@@ -482,7 +483,7 @@ Context injected via CORE.md at SessionStart. Guides where agents place files.
 | UserPromptSubmit | `$AOPS/aops-core/hooks/user_prompt_submit.py`                                                                                         |
 | SessionStart     | `$AOPS/aops-core/hooks/sessionstart_load_axioms.py`                                                                                   |
 | Stop             | `$AOPS/aops-core/hooks/reflection_check.py`, `session_end_commit_check.py`                                                            |
-| Pre-commit       | `~/writing/.pre-commit-config.yaml`                                                                                                   |
+| Pre-commit       | `$AOPS/.pre-commit-config.yaml`                                                                                                       |
 | CI/CD            | `$AOPS/.github/workflows/`                                                                                                            |
 | Remember skill   | `$AOPS/aops-core/skills/remember/SKILL.md`                                                                                            |
 | Memory sync      | `$AOPS/aops-core/skills/remember/workflows/sync.md`                                                                                   |

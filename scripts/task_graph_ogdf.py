@@ -25,7 +25,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 try:
-    from ogdf_python import cppinclude, ogdf
+    from ogdf_python import cppinclude, ogdf  # type: ignore
 
     cppinclude("ogdf/fileformats/GraphIO.h")
     cppinclude("ogdf/energybased/FMMMLayout.h")
@@ -285,7 +285,6 @@ def postprocess_svg(svg_path: str, structural_node_indices: set[int]):
         tree = ET.parse(svg_path)
         root = tree.getroot()
         # OGDF SVG uses node indices in element IDs
-        ns = {"svg": "http://www.w3.org/2000/svg"}
 
         for elem in root.iter():
             node_id = elem.get("id", "")

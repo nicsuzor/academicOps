@@ -49,9 +49,9 @@ jobs:
       - name: Check skill line counts
         run: uv run python scripts/check_skill_line_count.py
 
-      - name: Check broken wikilinks
+      - name: Check framework integrity
         run: |
-          uv run python scripts/check_broken_wikilinks.py || echo "::warning::Broken wikilinks detected"
+          uv run python scripts/check_framework_integrity.py --full || echo "::warning::Framework integrity issues detected"
         continue-on-error: true
 
       - name: Check orphan files

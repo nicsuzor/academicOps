@@ -324,7 +324,6 @@ Framework reflection format is defined in [[aops-core/commands/dump.md#Step 5: O
 
 - Stop hook **reminds** agents to reflect (does not automate it)
 - Agents MUST output Framework Reflection at end of every session (MANDATORY)
-- Agents use `/log` command when framework friction/failures observed during work
 - Reflection format is in `/dump` command (single source of truth)
 
 ## Session Insights

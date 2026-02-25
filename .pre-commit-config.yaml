@@ -8,7 +8,7 @@ repos:
     hooks:
       - id: dprint
         name: dprint check
-        entry: /home/nic/.dprint/bin/dprint check
+        entry: uv run dprint check
         language: system
         types_or: [markdown, json, toml]
         pass_filenames: true
@@ -44,22 +44,23 @@ repos:
         args: [--check]
         exclude: '^archived/'
 
-  # Workflow length constraint (C1 in brain/CONSTRAINTS.md)
+  # Framework integrity checks (index wikilinks, skill entries, workflow length)
+  # Consolidates check-workflow-length + new index integrity validation
   - repo: local
     hooks:
-      - id: check-workflow-length
-        name: Check workflow files <= 100 lines
-        entry: ./scripts/check_workflow_length.sh
-        language: script
-        files: workflows/.*\.md$
-        types: [file]
+      - id: check-framework-integrity
+        name: framework integrity check
+        entry: uv run python scripts/check_framework_integrity.py
+        language: system
+        pass_filenames: false
+        files: '(WORKFLOWS|SKILLS)\.md$|workflows/.*\.md$|skills/.*/SKILL\.md$|commands/.*\.md$'
 
-  # Type checking and framework health checks run in CI only
+  # Type checking and full framework health checks run in CI only
   # (see .github/workflows/framework-health.yml)
   #
   # Moved to CI:
   # - basedpyright: full type analysis too slow for every commit
   # - check-skill-line-count: whole-repo scan, not file-scoped
   # - check-orphan-files: whole-repo scan, not file-scoped
-  # - check-broken-wikilinks: slow full codebase scan
+  # - check-framework-integrity --full: slow full codebase wikilink scan
   # - audit_framework_health: comprehensive audit

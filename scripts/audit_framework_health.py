@@ -106,6 +106,9 @@ class HealthMetrics:
     oversized_skills: list[dict[str, str | int]] = field(default_factory=list)
     specs_missing_sections: list[dict[str, str | list[str]]] = field(default_factory=list)
 
+    # Namespace collisions
+    namespace_collisions: list[tuple[str, str, str]] = field(default_factory=list)
+
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
         return {
@@ -120,6 +123,7 @@ class HealthMetrics:
                 "broken_wikilinks": len(self.broken_wikilinks),
                 "oversized_skills": len(self.oversized_skills),
                 "specs_missing_sections": len(self.specs_missing_sections),
+                "namespace_collisions": len(self.namespace_collisions),
             },
             "details": {
                 "files_not_in_index": self.files_not_in_index,
@@ -131,6 +135,7 @@ class HealthMetrics:
                 "broken_wikilinks": self.broken_wikilinks,
                 "oversized_skills": self.oversized_skills,
                 "specs_missing_sections": self.specs_missing_sections,
+                "namespace_collisions": self.namespace_collisions,
             },
         }
 
@@ -697,7 +702,6 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         # Deleted/renamed workflows (conceptual references to former workflows)
         "critic-fast",
         "critic-detailed",
-        "qa-test",
         "prove-feature",
         "qa-design",
         "batch-task-processing",
@@ -762,7 +766,6 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "commands/pull.md",
         "commands/q.md",
         "commands/learn.md",
-        "commands/log.md",
         "hooks/session_env_setup.py",
         "hooks/user_prompt_submit.py",
         "hooks/router.py",
@@ -1235,6 +1238,9 @@ def generate_markdown_report(metrics: HealthMetrics) -> str:
     lines.append(
         f"| Specs missing sections | {summary['specs_missing_sections']} | {status_emoji(summary['specs_missing_sections'], 10)} |"
     )
+    lines.append(
+        f"| Namespace collisions | {summary['namespace_collisions']} | {status_emoji(summary['namespace_collisions'])} |"
+    )
 
     # Add details sections if there are issues
     details = data["details"]
@@ -1296,6 +1302,16 @@ def generate_markdown_report(metrics: HealthMetrics) -> str:
         for s in details["oversized_skills"]:
             lines.append(f"- {s['skill']}: {s['lines']} lines")
 
+    if details["namespace_collisions"]:
+        lines.extend(
+            [
+                "",
+                "## Namespace Collisions",
+                "",
+            ]
+        )
+        for name, ns1, ns2 in details["namespace_collisions"]:
+            lines.append(f"- Collision: `{name}` in `{ns1}` and `{ns2}`")
     return "\n".join(lines)
 
 
@@ -1360,6 +1376,8 @@ def main() -> int:
 
     print("Checking spec sections...", file=sys.stderr)
     check_spec_sections(root, metrics)
+    print("Checking namespace collisions...", file=sys.stderr)
+    metrics.namespace_collisions = check_namespace_collisions(root)
 
     # Output
     if args.json:

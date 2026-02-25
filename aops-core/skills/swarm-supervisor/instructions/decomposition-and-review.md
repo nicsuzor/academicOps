@@ -18,14 +18,35 @@ The supervisor decomposes large tasks into PR-sized subtasks.
 ## Supervisor: Decompose Task
 
 1. Read task body and context
-2. Identify natural boundaries (files, features, dependencies)
-3. Create subtasks using decompose_task():
+2. Check parent hierarchy (P#101, P#106, P#107):
+   a. Does this task have a parent? If not, find or create one.
+   b. Is the parent the right abstraction level? (Task under epic, epic under project)
+   c. Can you articulate WHY this task exists in terms of the parent's goals?
+   d. Is the task typed correctly for its scale? (See P#107: multi-session → epic)
+3. Identify natural boundaries (files, features, dependencies)
+4. Create subtasks using decompose_task():
    - Each subtask passes PR-sized criteria
    - Dependencies explicit in depends_on
-   - 3-7 subtasks ideal (>7 suggests intermediate grouping)
-4. Append decomposition summary to task body
-5. Set task status to 'consensus'
+   - 3-7 subtasks ideal (>7 suggests intermediate grouping needed)
+   - Each subtask must pass the WHY test relative to its parent
+5. Check for star pattern: if parent already has >5 children, group under intermediate epics
+6. Append decomposition summary to task body
+7. Set task status to 'consensus'
 ```
+
+**Hierarchy Quality Gate** (check BEFORE creating subtasks):
+
+Before decomposing, verify the task's position in the graph is sound:
+
+| Check | Fail condition | Fix |
+|-------|---------------|-----|
+| Parent exists | `parent` is empty or missing | Find or create appropriate epic |
+| Abstraction match | Task is direct child of project | Create intermediate epic |
+| WHY test | Can't justify task in terms of parent | Re-parent or create bridging epic |
+| Type-scale match | Multi-session work typed as `task` | Retype as `epic` |
+| Star pattern | Parent has >5 direct children | Group siblings under epics |
+
+If any check fails, fix the hierarchy BEFORE proceeding with decomposition.
 
 **Output Format** (appended to task body):
 
