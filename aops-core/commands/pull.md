@@ -133,7 +133,8 @@ For tasks with `type: learn`:
      ]
    )
    ```
-6. **Complete the spike** - Decomposition IS completion for learn tasks (per P#71, P#81)
+6. **Completion loop (P#109)** - Create a verify-parent task that depends on all subtasks just created. This task confirms the spike's parent goal was fully addressed after implementation.
+7. **Complete the spike** - Decomposition IS completion for learn tasks (per P#71, P#81)
 
 ### Step 3A.2: Commit Before Completion
 
@@ -184,6 +185,17 @@ mcp__pkb__create_task(
     {"title": "Subtask 2: [specific action]", "type": "action", "order": 1},
     {"title": "Subtask 3: [specific action]", "type": "action", "order": 2}
   ]
+)
+```
+
+**Completion loop (P#109)**: After creating all subtasks, create one additional verify-parent task:
+```
+mcp__pkb__create_task(
+  title="Verify: [parent goal] fully resolved",
+  parent="<parent-id>",
+  depends_on=["subtask-1-id", "subtask-2-id", "subtask-3-id"],
+  assignee=null,
+  body="Return to original problem. Confirm goal is met or iterate."
 )
 ```
 

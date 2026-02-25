@@ -32,7 +32,8 @@ When completing a spike/learn task:
    - Create subtasks with `depends_on: [this-spike-id]` or as siblings
    - Use clear action verbs: "Fix X", "Add Y", "Update Z"
    - Include enough context in subtask body to execute independently
-4. **Complete the spike** - Parent completes when decomposition is done
+4. **Completion loop (P#109)** - Create a verify-parent task that depends on all subtasks. This task confirms the spike's parent goal was fully addressed after all implementation completes.
+5. **Complete the spike** - Parent completes when decomposition is done
 
 ## Anti-Patterns
 

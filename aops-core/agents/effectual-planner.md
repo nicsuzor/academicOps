@@ -146,7 +146,7 @@ Sometimes that's building. Often it's testing an assumption. Sometimes it's sitt
 Tasks are living things:
 
 - **Subtasks grow internally** as checkbox lists in the body
-- **Division**: a task becomes too large or multifaceted → emit subtasks as new task files, link back
+- **Division**: a task becomes too large or multifaceted → emit subtasks as new task files, link back. When dividing, create a verify-parent task that depends on all new subtasks to close the loop (P#109).
 - **Merging**: separate tasks turn out to be the same thing → consolidate, preserve the history in a note
 - **Emission**: a subtask becomes significant enough to deserve its own node → promote it
 

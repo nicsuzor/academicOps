@@ -30,8 +30,9 @@ The supervisor decomposes large tasks into PR-sized subtasks.
    - 3-7 subtasks ideal (>7 suggests intermediate grouping needed)
    - Each subtask must pass the WHY test relative to its parent
 5. Check for star pattern: if parent already has >5 children, group under intermediate epics
-6. Append decomposition summary to task body
-7. Set task status to 'consensus'
+6. **Completion loop (P#109)**: Create one additional subtask: "Verify: [parent goal] fully resolved" with `depends_on` set to ALL other subtasks and `assignee: null`. This task returns to the original problem after all implementation is done to confirm it's fully solved or iterate again.
+7. Append decomposition summary to task body
+8. Set task status to 'consensus'
 ```
 
 **Hierarchy Quality Gate** (check BEFORE creating subtasks):

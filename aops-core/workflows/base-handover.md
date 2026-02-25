@@ -131,6 +131,7 @@ If outstanding work remains, file follow-up tasks using [[decompose]] principles
 - **Appropriate granularity**: each task should be a coherent work unit (≤4h, single "why"), not an individual checklist item
 - **No reflexive tasks**: only create tasks where the action path is clear
 - **Include context**: body should contain enough for the next agent to resume without re-reading the session
+- **Completion loop (P#109)**: If creating multiple follow-up subtasks under a parent, also create a verify-parent task that depends on all of them to close the loop
 
 ```
 mcp__pkb__create_task(
