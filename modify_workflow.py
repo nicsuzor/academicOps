@@ -1,8 +1,9 @@
 import sys
 
+
 def main():
     try:
-        with open(".github/workflows/build-extension.yml", "r") as f:
+        with open(".github/workflows/build-extension.yml") as f:
             content = f.read()
     except FileNotFoundError:
         print("Error: File not found")
@@ -71,21 +72,22 @@ def main():
         print("Error: Could not find the block to replace. Content preview around line 15:")
         lines = content.splitlines()
         for i in range(10, 25):
-             if i < len(lines):
-                 print(f"{i}: {lines[i]}")
+            if i < len(lines):
+                print(f"{i}: {lines[i]}")
         sys.exit(1)
 
     new_content = content.replace(old_block, new_block)
 
     # Also replace dependency
     if "needs: build-pkb" not in new_content:
-         print("Warning: 'needs: build-pkb' not found to replace.")
+        print("Warning: 'needs: build-pkb' not found to replace.")
     new_content = new_content.replace("needs: build-pkb", "needs: download-pkb-binaries")
 
     with open(".github/workflows/build-extension.yml", "w") as f:
         f.write(new_content)
 
     print("Successfully modified .github/workflows/build-extension.yml")
+
 
 if __name__ == "__main__":
     main()
