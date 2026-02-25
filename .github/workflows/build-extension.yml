@@ -17,13 +17,58 @@ concurrency:
 
 jobs:
   # Step 1: Download PKB binaries from nicsuzor/mem releases
-  build-pkb:
-    uses: ./.github/workflows/build-pkb-binary.yml
-    secrets: inherit
+  download-pkb-binaries:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - artifact_label: x86_64-linux
+            output_name: pkb-linux-x86_64
+          - artifact_label: aarch64-darwin
+            output_name: pkb-macos-aarch64
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine version
+        id: version
+        env:
+          GH_TOKEN: ${{ secrets.AOPS_DIST_PAT }}
+        run: |
+          TAG=$(gh api repos/nicsuzor/mem/releases/latest --jq '.tag_name')
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Using latest release: $TAG"
+
+      - name: Download release archive
+        env:
+          GH_TOKEN: ${{ secrets.AOPS_DIST_PAT }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          ARCHIVE="mem-${TAG}-${{ matrix.artifact_label }}.tar.gz"
+          echo "Downloading $ARCHIVE from nicsuzor/mem release $TAG"
+
+          gh release download "$TAG" \
+            --repo nicsuzor/mem \
+            --pattern "$ARCHIVE"
+
+          # Extract binaries (pkb and aops)
+          mkdir -p output
+          tar xzf "$ARCHIVE" -C output
+          chmod +x output/pkb output/aops
+          echo "Extracted binaries:"
+          ls -la output/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.output_name }}
+          path: |
+            output/pkb
+            output/aops
+          if-no-files-found: error
 
   # Step 2: Build extension packages with platform-specific binaries
   build-and-deploy:
-    needs: build-pkb
+    needs: download-pkb-binaries
     runs-on: ubuntu-latest
     permissions:
       contents: write  # For creating releases on dist repo
