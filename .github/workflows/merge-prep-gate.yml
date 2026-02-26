@@ -2,7 +2,7 @@
 # This blocks GitHub auto-merge until the merge-prep agent explicitly
 # sets the status to "success" after its review + cleanup pass.
 #
-# See specs/pr-process-v2-draft.md for the full process documentation.
+# See specs/pr-process.md for the full process documentation.
 
 name: Merge Prep Gate
 

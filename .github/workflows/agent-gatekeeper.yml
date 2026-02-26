@@ -79,7 +79,7 @@ jobs:
             echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
           fi
         env:
-          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run Gatekeeper
         id: gatekeeper

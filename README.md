@@ -67,7 +67,7 @@ flowchart LR
 - **One human action**: the human says "lgtm" (optionally with specific instructions like "fix the docstring on line 42"). Merge Prep handles the rest — no second approval needed.
 - **Cron-based merge-prep** (every 15 min) eliminates bot cascade loops. A 30-minute bazaar window gives external reviewers time to contribute before merge-prep processes all feedback.
 - **GitHub-native enforcement**: required status checks (Lint, Gatekeeper, Type Check, Pytest, Merge Prep) and required reviews (1 human) handle merge gating. No custom state machines.
-- Full process documentation: [`specs/pr-process-v2-draft.md`](specs/pr-process-v2-draft.md).
+- Full process documentation: [`specs/pr-process.md`](specs/pr-process.md).
 
 ## Local session lifecycle
 

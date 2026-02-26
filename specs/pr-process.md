@@ -2,214 +2,402 @@
 
 How pull requests move from open to merged (or rejected) in the aops repository.
 
+## Design principles
+
+1. **Bazaar model**: embrace ALL contributions from any source. External reviews (Gemini Code Assist, GitHub Copilot, etc.) are first-class feedback. We get maximum value from them but are not reliant on them.
+2. **Separate cheap from expensive**: deterministic checks (lint, typecheck, tests) run on every push. Expensive LLM reviews run once, at the right time.
+3. **Use GitHub affordances**: required status checks, PR reviews, and auto-merge handle state management. No custom comment counting or cascade detectors where GitHub provides a native mechanism.
+4. **One human action**: the human reviews once and says "lgtm." Everything after that is automated — no second approval needed.
+5. **Time for the bazaar**: merge-prep waits for external reviews to arrive before processing feedback. The pipeline doesn't race to completion.
+
 ## Workflow files
 
-| Workflow         | File                        | Trigger                                        | Purpose                                      |
-| ---------------- | --------------------------- | ---------------------------------------------- | -------------------------------------------- |
-| Code Quality     | `code-quality.yml`          | `push` (main), `pull_request` (opened, synchronize, assigned) | Lint + gatekeeper (parallel), then type-check |
-| PR Review        | `pr-review-pipeline.yml`    | `workflow_run` (Code Quality completed)        | Sequential: custodiet -> QA -> merge-prep -> notify |
-| Merge            | `pr-lgtm-merge.yml`         | `pull_request_review`, `issue_comment`, `workflow_dispatch` | Human-triggered: approve + auto-merge (+ lint re-run + conflict resolution) |
-| Pytest           | `pytest.yml`                | `push` (main), `pull_request` (opened, synchronize), `workflow_dispatch` | Fast unit tests (slow/integration excluded) |
-| Claude           | `claude.yml`                | `@claude` in comments                          | On-demand Claude interaction                 |
-| Polecat          | `polecat-issue-trigger.yml` | `@polecat` in comments, `workflow_dispatch`    | On-demand agent work |
-| Issue: Custodiet | `issue-review-custodiet.yml`| `issues` (opened)                              | Proposal quality review |
-| Issue: Hydrator  | `issue-review-hydrator.yml` | `issues` (opened)                              | Infrastructure context for proposals |
+| Workflow | File | Trigger | Purpose |
+|----------|------|---------|---------|
+| Code Quality | `code-quality.yml` | `pull_request`, `push` (main), `workflow_dispatch` | Lint autofix + type check (cheap, every push) |
+| Gatekeeper | `agent-gatekeeper.yml` | `pull_request: [opened, synchronize]` | Scope/strategy gate (commit status, immediate) |
+| Merge Prep Gate | `merge-prep-gate.yml` | `pull_request: [opened, synchronize]` | Sets `Merge Prep` status to `pending` (blocks auto-merge) |
+| LGTM | `pr-lgtm-merge.yml` | `pull_request_review`, `issue_comment`, `workflow_dispatch` | Records human approval, checks status, re-triggers if needed, enables auto-merge |
+| Merge Prep Dispatcher | `merge-prep-cron.yml` | `schedule: */15`, `workflow_dispatch` | Deferred review + cleanup (runs after LGTM + time gate) |
+| Pytest | `pytest.yml` | `pull_request`, `push` (main) | Unit tests (required status check) |
+| Claude | `claude.yml` | `@claude` in comments | On-demand interaction |
+| Polecat | `polecat-issue-trigger.yml` | `@polecat` in comments | On-demand agent work |
 
 ### Reusable agent workflows
 
-Each agent is a first-class entity with its own `workflow_call` file, personality, and defined authority. Orchestrators call agents; agents don't trigger on their own.
+| Agent | File | Role | Authority |
+|-------|------|------|-----------|
+| Gatekeeper | `agent-gatekeeper.yml` | Scope/strategy guardian | Commit status (pass/fail), gates merge |
+| Custodiet | `agent-custodiet.yml` | Scope compliance reviewer | APPROVE / REQUEST CHANGES on PRs, COMMENT on issues |
+| QA | `agent-qa.yml` | Verification and testing | APPROVE / REQUEST CHANGES |
+| Merge Prep | `agent-merge-prep.yml` | Critical reviewer + cleanup | Edit code, push commits, post comments, set commit status |
 
-| Agent | File | Personality | Authority |
-|-------|------|-------------|-----------|
-| Gatekeeper | `agent-gatekeeper.yml` | Authoritative guardian. Defaults to approval. Gates everything. | APPROVE, REQUEST CHANGES (fails job on rejection) |
-| Custodiet | `agent-custodiet.yml` | Vigilant, precise. Rules enforcer. | PRs: APPROVE/REQUEST CHANGES. Issues: COMMENT only |
-| QA | `agent-qa.yml` | Methodical, evidence-based. Verifies claims. | APPROVE, REQUEST CHANGES |
-| Merge Prep | `agent-merge-prep.yml` | Diligent, thorough. The janitor. Fixes what reviewers found. | EDIT code, push commits, post comments |
-| Hydrator | `agent-hydrator.yml` | Helpful, contextual. Surfaces infrastructure knowledge. | COMMENT only (advisory) |
+Custodiet and QA are independent agents that post reviews during Phase 2 (bazaar window). Merge Prep reads their feedback alongside bazaar reviews in Phase 4.
 
 Agent prompts live in `.github/agents/<name>.md`. Each reusable workflow reads its own prompt file.
 
 ## How it works
 
-The pipeline is designed so that **by the time the human looks at a PR, everything should be clean**. The human's approval is the last step -- it triggers an immediate merge.
+The pipeline is designed so that **by the time the human looks at a PR, cheap checks are already green and external reviews have arrived**. The human's approval triggers a smart LLM to clean everything up and merge — no second approval needed.
 
-```
-code-quality.yml:        [lint --- gatekeeper] (parallel)
-                              |
-                          type-check
-                              | (workflow_run: all pass, gatekeeper approved)
-pr-review-pipeline.yml:  cascade-check -> custodiet -> qa -> merge-prep -> notify-ready
+### Phase 1: Immediate (on every push)
 
-pr-lgtm-merge.yml:       human approves -> check-status -> approve (Approval #2) -> auto-merge
-                         (if lint failing -> re-trigger lint autofix)
-                         (if conflicts -> @claude resolves -> auto-merge on clean)
-```
+**Cheap, deterministic, quiet.** These run on every push including bot pushes.
 
-If gatekeeper rejects, its job fails -> Code Quality fails -> the review pipeline never starts.
+- **Lint**: `ruff check` + `ruff format`. Autofix and push if needed. Required status check.
+- **Type Check**: `basedpyright`. Required status check.
+- **Pytest**: fast unit tests (slow/integration excluded). Required status check.
+- **Gatekeeper**: evaluates scope/strategy alignment against STATUS.md, VISION.md, AXIOMS.md. Posts a **commit status** (not a PR review) — pass or fail. Required status check. If it fails, merge is blocked at the GitHub level.
+- **Merge Prep gate**: sets the `Merge Prep` commit status to `pending`. This is the key mechanism that prevents auto-merge from firing before merge-prep has run. Only the merge-prep agent can set this status to `success`.
 
-If custodiet or QA request changes, merge-prep attempts to auto-fix them and push a new commit. Each push re-triggers the PR Review pipeline and reruns the custodiet -> QA -> merge-prep chain. The notify-ready step **only** posts "Ready for human review" after verifying that the latest custodiet and QA reviews are all in the APPROVED state; if any agent still has CHANGES_REQUESTED, it does not declare readiness.
+Gatekeeper is the only LLM call in Phase 1, but it's fast (single evaluation, ~30s) and critical (locks in scope or rejects immediately).
 
-### Anti-cascade guard
+### Phase 2: Bazaar window (~30 min)
 
-The pipeline has two layers of protection against infinite bot loops:
+**No pipeline activity.** External reviewers do their thing at their own pace.
 
-1. **Merge-prep loop detector**: Checks if the last commit has a `Merge-Prep-By:` trailer. If so, merge-prep skips its run to avoid push -> review -> fix -> push cycles.
+- Gemini Code Assist posts its review
+- GitHub Copilot posts suggestions
+- Custodiet and QA post their reviews
+- Other contributors comment
+- Human reads, thinks, asks questions
 
-2. **Pipeline run-count limit**: The PR Review pipeline tracks how many times it has completed for a given PR (by counting sentinel comments from `github-actions[bot]`). After `MAX_PIPELINE_RUNS` (default: 3) completions, the pipeline halts and posts a notice requesting human intervention. This catches cascades that the merge-prep loop detector alone cannot prevent (e.g., lint autofix -> gatekeeper -> custodiet -> QA -> merge-prep cycles).
+This is not enforced mechanically — it's the natural delay between "PR opened" and "human is ready to approve." For trivial PRs, the human can approve immediately. For complex PRs, the bazaar has time to contribute.
 
-The run counter is reset when the pipeline is triggered via `workflow_dispatch` (manual re-run).
+### Phase 3: Human review (single action)
 
-### LGTM with failing checks
+The human reviews the PR with full context: the diff, Gatekeeper's verdict, and any bazaar feedback that has arrived. They give their verdict:
 
-When a human says "lgtm" but required status checks are failing:
+- **"lgtm"** — approve as-is, let merge-prep clean up and merge
+- **"lgtm, but change x y z"** — approve the direction, instruct merge-prep what to fix
+- **Approve via GitHub review UI** — same as "lgtm"
+- **Request changes** — not ready yet, author/agent needs to revise
 
-1. The merge workflow checks the current state of all check runs on the PR HEAD commit
-2. If lint is failing (or has not run), it triggers `code-quality.yml` via `workflow_dispatch` on the PR's branch
-3. It posts a comment explaining what's blocking and what it did about it
-4. It still enables auto-merge, which will merge once all checks pass
-5. The human does not need to take further action unless the lint autofix cannot resolve the issues
+The LGTM workflow (`pr-lgtm-merge.yml`):
+1. Detects human approval (PR review `state: approved` from any human, OR "lgtm" comment from authorized users)
+2. Checks whether required status checks are passing on the PR HEAD
+3. If checks haven't run or are failing, re-triggers `code-quality.yml` via `workflow_dispatch` (recovers stuck PRs where checks never triggered — e.g., bot-created branches using GITHUB_TOKEN)
+4. Lodges **Approval #2** — a formal PR review (`gh pr review --approve`) from `github-actions[bot]` that satisfies the 1-review ruleset requirement
+5. Adds the `lgtm` label to the PR (for cron to pick up)
+6. Enables GitHub auto-merge (rebase mode)
+7. If merge conflicts are detected, notes them in acknowledgment (merge-prep will resolve on next cron cycle)
+8. Posts acknowledgment summarizing status: what's passing, what's blocking, what was re-triggered
 
-## Approval architecture
+**This is the human's only action.** They do not need to approve again after merge-prep pushes.
 
-The ruleset requires **2 approving reviews** before merge:
+### Phase 4: Merge Prep (cron-triggered, after LGTM)
 
-| Approval | Actor | When | How |
-|----------|-------|------|-----|
-| #1 Gatekeeper | `claude[bot]` | Automated, parallel with lint | `gh pr review --approve` in gatekeeper agent |
-| #2 Human merge | `github-actions[bot]` | After human triggers merge via approval/LGTM | `gh pr review --approve` via GITHUB_TOKEN |
+A scheduled workflow runs every 15 minutes on `main`. It queries for open PRs that meet ALL conditions:
 
-The human reviewer's approval or LGTM comment triggers the merge workflow, which lodges Approval #2 and merges via rebase. The human only acts once.
+1. **LGTM given**: PR has the `lgtm` label
+2. **Not already being processed**: PR does NOT have the `merge-prep-running` label
+3. **Cheap checks passing**: Lint + Type Check + Pytest all green on HEAD
+4. **Gatekeeper passed**: Gatekeeper commit status is `success` on HEAD
+5. **Time gate**: last commit was ≥30 minutes ago (bazaar had time to contribute)
+
+For each qualifying PR, the cron workflow:
+1. Adds the `merge-prep-running` label (prevents re-dispatch on next tick)
+2. Dispatches the Merge Prep agent workflow via `workflow_dispatch`
+
+**Merge Prep** is a smart LLM with instructions to do critical review. It:
+
+1. Reads the PR description and diff
+2. Reads ALL review feedback from every source:
+   - Gatekeeper's assessment
+   - Custodiet and QA reviews
+   - Bazaar reviews (Gemini, Copilot, human commenters, etc.)
+   - The human's LGTM comment (including any specific instructions like "change x y z")
+3. Makes judgment calls about each piece of feedback:
+   - **Fix**: genuine bugs, valid improvements, human's explicit instructions
+   - **Dismiss**: false positives, misunderstandings, irrelevant suggestions
+   - **Defer**: scope creep, future work suggestions
+4. Runs lint + typecheck + tests locally to verify clean code
+5. Pushes fixes (if any) with a `Merge-Prep-By: agent` trailer
+6. Posts a triage summary comment
+7. Sets the `Merge Prep` commit status to `success` on the HEAD commit
+8. Removes the `merge-prep-running` label and the `lgtm` label
+
+After merge-prep pushes:
+- Lint, Type Check, Pytest re-run (required status checks) — cheap, expected
+- Gatekeeper re-runs (required status check) — evaluates final code
+- Merge Prep gate sets `Merge Prep` status to `pending` on the new commit
+- Merge Prep agent (still running) sets `Merge Prep` status to `success` on the new commit after verifying checks
+- Human's approval is still valid (`dismiss_stale_reviews_on_push: false`)
+- Auto-merge fires when all required checks pass
+
+If merge-prep makes no changes (PR was already clean), it sets the status to `success` and auto-merge fires on that tick.
+
+#### Failure handling
+
+If Merge Prep fails (API timeout, logic error, etc.):
+- The `merge-prep-running` label is removed (allows cron to retry on next tick)
+- The `lgtm` label is preserved (human approval still stands)
+- The `Merge Prep` status remains `pending` (blocks auto-merge)
+- After 3 consecutive failures, the workflow adds a `merge-prep-failed` label and posts a comment requesting human intervention
+
+### Phase 5: Auto-merge
+
+GitHub's native auto-merge handles the final step. It merges (rebase) when ALL required status checks pass AND the required review count is met:
+
+- Lint: `success`
+- Type Check: `success`
+- Pytest: `success`
+- Gatekeeper: `success`
+- Merge Prep: `success`
+- Approval: 1 approving review (lodged by LGTM workflow as Approval #2)
+
+If merge conflicts exist, the LGTM workflow adds the `lgtm` label and enables auto-merge as normal. On the next cron cycle, merge-prep dispatches for conflicting PRs (bypassing the checks-passing requirement) and the merge-prep agent resolves conflicts by merging from main. If conflicts arise later (e.g., another PR merges first), re-trigger the LGTM workflow or comment `lgtm` again.
 
 ## Flowchart
 
 ```mermaid
 flowchart TD
-    PR["PR opened / updated"]
+    PR["PR opened / push"]
 
-    %% -- Code Quality --
-    PR --> Lint["<b>1a. Lint</b><br/>Ruff lint + format"]
-    PR --> GK["<b>1b. Gatekeeper</b><br/>Alignment + strategic check<br/><i>Reads STATUS.md + VISION.md</i><br/><i>Approval #1</i>"]
+    %% Phase 1: Immediate
+    PR --> Lint["<b>Lint</b><br/>Autofix + push<br/><i>Required check</i>"]
+    PR --> GK["<b>Gatekeeper</b><br/>Scope + strategy<br/><i>Required check</i>"]
+    PR --> TC["<b>Type Check</b><br/><i>Required check</i>"]
+    PR --> Test["<b>Pytest</b><br/><i>Required check</i>"]
+    PR --> MPGate["<b>Merge Prep Gate</b><br/>Status: pending<br/><i>Blocks auto-merge</i>"]
 
     Lint --> LintOK{Pass?}
     LintOK -- No --> AutoFix["Autofix + push"]
     AutoFix --> PR
-    LintOK -- Yes --> TypeCk["<b>2. Type Check</b>"]
+    LintOK -- Yes --> Green
 
     GK --> GKV{Verdict}
-    GKV -- Reject --> Close["PR closed"]
-    GKV -- Changes --> FixGK["Author revises"]
-    FixGK --> PR
+    GKV -- Reject --> Blocked["Merge blocked<br/>Author revises"]
+    GKV -- Pass --> Green
 
-    %% -- Review Pipeline (only if Code Quality passes) --
-    TypeCk --> AllPass
-    GKV -- Approved --> AllPass["All Code Quality passed"]
+    TC --> Green
+    Test --> Green["All checks green<br/>(except Merge Prep = pending)"]
 
-    AllPass --> CascadeCheck{"Run count<br/>< limit?"}
-    CascadeCheck -- No --> Halt["Pipeline Halted<br/>Human intervention required"]
-    CascadeCheck -- Yes --> Cust["<b>3. Custodiet</b><br/>Scope, principles"]
-    Cust --> QA["<b>4. QA</b><br/>Criteria, tests"]
-    QA --> MP["<b>5. Merge Prep</b><br/>Fix review comments"]
+    %% Phase 2-3: Bazaar + Human
+    Green --> Wait["<b>Bazaar window</b><br/>External reviews arrive<br/>(Custodiet, QA, Gemini, Copilot)"]
+    Wait --> Human{"Human verdict"}
+    Human -- "Request changes" --> Blocked
+    Human -- "LGTM<br/>(± instructions)" --> LGTM
 
-    MP --> MPPush{Pushed<br/>fixes?}
-    MPPush -- Yes --> PR
-    MPPush -- No --> Notify["<b>6. Ready for Review</b><br/><i>Your approval = merge</i>"]
+    %% LGTM workflow
+    LGTM["<b>LGTM workflow</b>"]
+    LGTM --> CheckStatus{"Checks<br/>passing?"}
+    CheckStatus -- No --> Retrigger["Re-trigger code-quality<br/>via workflow_dispatch"]
+    Retrigger --> Approved
+    CheckStatus -- Yes --> Approved
+    LGTM --> Conflicts{"Merge<br/>conflicts?"}
+    Conflicts -- Yes --> WaitCron["Merge-prep resolves<br/>on next cron cycle"]
+    Conflicts -- No --> Approved
+    Approved["Approval #2 lodged<br/>lgtm label added<br/>Auto-merge enabled"]
 
-    Notify --> Human["<b>Human review</b>"]
-    Human --> HV{Decision}
-    HV -- Changes --> AuthorFix["Author fixes"]
-    AuthorFix --> PR
-    HV -- Close --> Close
-    HV -- "LGTM" --> CheckStatus{"Checks<br/>passing?"}
-    CheckStatus -- Yes --> Merge["<b>7. Merge</b><br/><i>Approval #2</i><br/>auto-merge"]
-    CheckStatus -- No --> RerunLint["Re-trigger lint<br/>+ report blockers"]
-    RerunLint --> Merge
-    Merge --> MergeOK{Conflicts?}
-    MergeOK -- No --> Done["Merged"]
-    MergeOK -- Yes --> Claude["@claude resolves<br/>conflicts + pushes"]
-    Claude --> Done
+    %% Phase 4: Merge Prep (cron)
+    Approved --> Cron["<b>Cron picks up PR</b><br/><i>≥30 min since last commit</i>"]
+    Cron --> MP["<b>Merge Prep</b><br/>Critical review of ALL feedback<br/>Fixes + cleanup"]
+    MP --> MPPush{Changes?}
+    MPPush -- Yes --> Push["Push + set Merge Prep = success"]
+    MPPush -- No --> MPDone["Set Merge Prep = success"]
+    Push --> Recheck["Lint + GK + TC + Pytest re-run"]
+    Recheck --> MPSet["Merge Prep sets status = success"]
+    MPSet --> Merge
+    MPDone --> Merge["<b>Auto-merge</b><br/><i>GitHub native</i>"]
 
-    %% -- Styling --
-    classDef gate fill:#e8f4fd,stroke:#2196f3
-    classDef agent fill:#fff3e0,stroke:#ff9800
-    classDef gatekeeper fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    %% Styling
+    classDef check fill:#e8f4fd,stroke:#2196f3
     classDef human fill:#e8f5e9,stroke:#4caf50
-    classDef fail fill:#ffebee,stroke:#f44336
+    classDef agent fill:#fff3e0,stroke:#ff9800
     classDef success fill:#e8f5e9,stroke:#4caf50,stroke-width:2px
-    classDef guard fill:#fce4ec,stroke:#e91e63
+    classDef fail fill:#ffebee,stroke:#f44336
+    classDef gate fill:#fce4ec,stroke:#e91e63
+    classDef lgtm fill:#e1f5fe,stroke:#0288d1,stroke-width:2px
 
-    class Lint,TypeCk gate
-    class Cust,QA,MP agent
-    class GK gatekeeper
-    class Human human
-    class Close,FixGK,AuthorFix fail
-    class Merge,Done success
-    class Claude agent
-    class CascadeCheck,Halt guard
+    class Lint,TC,Test check
+    class GK check
+    class Human,Wait human
+    class MP agent
+    class Merge success
+    class Blocked fail
+    class MPGate gate
+    class LGTM lgtm
+    class WaitCron agent
 ```
 
-## Stage-by-stage walkthrough
+## Approval architecture
 
-### 1a. Lint
+The ruleset requires **1 approving review** before merge:
 
-**Workflow**: `code-quality.yml` | **Blocking**: Yes (required status check)
+| Approval | Actor | When | How |
+|----------|-------|------|-----|
+| Approval #2 | `github-actions[bot]` | After human LGTM detected | `gh pr review --approve` in LGTM workflow |
 
-Runs `ruff check` and `ruff format --check`. Auto-fixes and pushes corrections on failure.
+The human's LGTM (comment or GitHub review) triggers the LGTM workflow, which lodges a formal bot review to satisfy the ruleset. Gatekeeper posts a **commit status**, not a review — it gates via required status checks, not review count.
 
-### 1b. Gatekeeper
+## GitHub ruleset
 
-**Workflow**: `code-quality.yml` -> `agent-gatekeeper.yml` | **Blocking**: Yes (Approval #1, gates pipeline)
+Current live configuration:
 
-Runs in parallel with lint. Reads three documents:
-- `docs/VISION.md` -- abstract project vision and design philosophy
-- `aops-core/AXIOMS.md` -- inviolable principles
-- `.agent/STATUS.md` -- **current strategic state**: what components exist, their maturity, key decisions, and the roadmap
+```json
+{
+  "required_approving_review_count": 1,
+  "required_status_checks": [{"context": "Lint"}],
+  "dismiss_stale_reviews_on_push": false
+}
+```
 
-The strategic check against STATUS.md is critical for catching PRs that delete working components, conflict with recorded decisions, or ignore in-progress work. A PR that removes a component listed as "WORKING" in STATUS.md without validated replacement should be rejected.
+Target (Phase 2 rollout — after workflows are verified working):
 
-On approval, lodges formal GitHub review. On rejection, the job fails -- blocking the entire downstream review pipeline.
+```json
+{
+  "required_approving_review_count": 1,
+  "required_status_checks": [
+    {"context": "Lint"},
+    {"context": "Gatekeeper"},
+    {"context": "Type Check"},
+    {"context": "Pytest"},
+    {"context": "Merge Prep"}
+  ],
+  "dismiss_stale_reviews_on_push": false
+}
+```
 
-### 2. Type Check
+The additional required status checks will be added after 1-2 successful PRs demonstrate the workflows are stable. Until then, Gatekeeper/Type Check/Pytest/Merge Prep run but are advisory.
 
-**Workflow**: `code-quality.yml` | **Blocking**: Yes
+## LGTM detection
 
-Runs `basedpyright` after lint passes.
+The LGTM workflow detects human approval via:
 
-### 3. Custodiet
+1. **`pull_request_review` event**: `state: approved` from a non-bot user
+2. **`issue_comment` event**: LGTM-pattern comment from authorized users (nicsuzor)
+3. **`workflow_dispatch`**: manual trigger with PR number
 
-**Workflow**: `pr-review-pipeline.yml` -> `agent-custodiet.yml` | **Blocking**: Advisory (may request changes)
+LGTM patterns (case-insensitive, start of comment):
+```
+lgtm | merge | ship it
+```
 
-Only runs after ALL Code Quality jobs pass (gatekeeper approved). Compares actual changes against stated scope, checks framework principles (P#87, P#65, P#25, P#5, P#31, etc.), flags unauthorized modifications.
+The LGTM comment body is preserved and passed to Merge Prep as human instructions. "lgtm, but fix the docstring on line 42" means Merge Prep will read "fix the docstring on line 42" as a directive.
 
-### 4. QA
+### LGTM with failing or missing checks
 
-**Workflow**: `pr-review-pipeline.yml` -> `agent-qa.yml` | **Blocking**: Advisory (may request changes)
+When a human says "lgtm" but required status checks are failing or haven't run:
 
-Runs after custodiet. Verifies acceptance criteria, checks CI and test coverage, scans for regressions.
+1. The LGTM workflow checks the current state of all check runs on the PR HEAD commit
+2. If any check hasn't run or is failing, it re-triggers `code-quality.yml` via `workflow_dispatch` on the PR's branch
+3. It posts a comment explaining what's blocking and what it did about it
+4. It still enables auto-merge, which will merge once all checks pass
+5. The human does not need to take further action unless the issue cannot be auto-resolved
 
-### 5. Merge Prep
+This handles the common case where bot-created branches (using `GITHUB_TOKEN`) never triggered Phase 1 workflows.
 
-**Workflow**: `pr-review-pipeline.yml` -> `agent-merge-prep.yml` | **Blocking**: May push fixes
+### LGTM with merge conflicts
 
-Runs after QA. Reads all review comments from custodiet, QA, and external bots. Triages into: genuine bugs (fix), valid improvements (fix), false positives (respond), scope creep (defer). Pushes fixes if needed -- this re-triggers the pipeline for a clean pass.
+When the PR has merge conflicts at LGTM time:
 
-Has a **loop guard**: skips if the last commit was from itself (prevents infinite re-runs).
+1. The LGTM workflow detects `mergeable: CONFLICTING` state
+2. LGTM still adds the `lgtm` label and enables auto-merge, but notes conflicts in the acknowledgment
+3. On the next cron cycle (~15 min), the merge-prep dispatcher sees the `lgtm` label and dispatches merge-prep **even though checks aren't passing** (conflicts bypass the checks-passing requirement)
+4. The merge-prep agent resolves conflicts by merging from main, then proceeds with normal review triage
+5. After merge-prep pushes the resolved branch, checks re-run and auto-merge fires when they pass
 
-### 6. Notify Ready
+The human does not need to take further action unless the merge-prep agent cannot resolve the conflicts (after 3 failures, it adds `merge-prep-failed` label and halts).
 
-Posts a summary comment: "Pipeline Complete -- Ready for Human Review. Your approval is the last step needed to merge." Includes the run count (e.g., "run 2/3") so the human can see how many review cycles have occurred.
+## Merge Prep (cron dispatcher)
 
-### 7. Human Approval -> Merge
+The cron workflow (`merge-prep-cron.yml`) runs every 15 minutes on `main`:
 
-**Workflow**: `pr-lgtm-merge.yml`
+```yaml
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Override: process specific PR immediately'
+        type: string
+```
 
-The human reviews the clean PR. Their approval or LGTM comment triggers the merge workflow, which:
-1. Checks whether required status checks are passing
-2. If lint is failing, re-triggers `code-quality.yml` via `workflow_dispatch` and reports what's blocking
-3. Lodges Approval #2 (`github-actions[bot]`)
-4. Enables GitHub auto-merge (rebase mode) -- merges immediately if clean, or waits for checks
-5. If merge conflicts exist, posts `@claude` comment requesting rebase + conflict resolution -- Claude fixes conflicts and pushes, auto-merge completes when checks pass
+Qualification logic:
+```bash
+# Find PRs ready for merge-prep
+for each open PR with label 'lgtm' and WITHOUT label 'merge-prep-running':
+  # Get last commit timestamp (not updatedAt — comments would reset that)
+  LAST_COMMIT_TIME=$(gh pr view $PR --json commits --jq '.commits[-1].committedDate')
 
-**Important**: "lgtm" means **merge now**. It is a final approval signal, not a request for changes. Use `@claude` or `@polecat` to request fixes before approving.
+  # Check: last commit was ≥30 min ago (bazaar had time)
+  if (now - LAST_COMMIT_TIME) < 1800 seconds:
+    skip  # too soon, bazaar still arriving
+
+  # Check: all required checks pass (except Merge Prep which is pending)
+  if not all checks passing (Lint, Gatekeeper, Type Check, Pytest):
+    skip  # code isn't clean yet
+
+  # Qualify: dispatch merge-prep for this PR
+  add label 'merge-prep-running'
+  dispatch agent-merge-prep workflow
+```
+
+For `workflow_dispatch` with explicit `pr_number`: skip all qualification checks and process immediately. This is the manual override for urgent merges or debugging.
+
+## Gatekeeper as commit status
+
+Gatekeeper posts a commit status (not a PR review):
+
+```bash
+# On approval
+gh api repos/{owner}/{repo}/statuses/{sha} \
+  -f state=success \
+  -f context="Gatekeeper" \
+  -f description="Scope and strategy alignment verified" \
+  -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+# On rejection
+gh api repos/{owner}/{repo}/statuses/{sha} \
+  -f state=failure \
+  -f context="Gatekeeper" \
+  -f description="REJECT: conflicts with STATUS.md — see details"
+```
+
+Gatekeeper ALSO posts a PR comment with its full assessment (strategic analysis, design notes). The commit status is the gate; the comment is the explanation.
+
+## Merge Prep gate
+
+A lightweight workflow that runs on every `pull_request: [opened, synchronize]` and sets the `Merge Prep` commit status to `pending`:
+
+```bash
+gh api repos/{owner}/{repo}/statuses/{sha} \
+  -f state=pending \
+  -f context="Merge Prep" \
+  -f description="Awaiting LGTM + merge-prep review"
+```
+
+This is the mechanism that prevents the "race to merge" — even if all other checks pass and the human approves, auto-merge waits for this status to become `success`. Only the merge-prep agent (dispatched by cron after LGTM) can set it to `success`.
+
+## Safety mechanisms
+
+| Mechanism | What it prevents |
+|-----------|-----------------|
+| Gatekeeper (required status check) | Misaligned/harmful PRs reaching merge |
+| Merge Prep gate (`pending` status) | Auto-merge firing before merge-prep reviews |
+| Required review count = 1 | Merging without human oversight |
+| `dismiss_stale_reviews_on_push: false` | Merge-prep push invalidating human approval |
+| Cron time gate (30 min since last commit) | Merge-prep running before bazaar reviews arrive |
+| `lgtm` label gating | Merge-prep running before human approval |
+| `merge-prep-running` label | Duplicate cron dispatches |
+| `merge-prep-failed` label (after 3 failures) | Infinite retry loops |
+| `Merge-Prep-By:` commit trailer | Identifying bot commits in git history |
+| LGTM check re-trigger | Stuck PRs where checks never ran (bot-created branches) |
+| LGTM conflict detection | Merge conflicts blocking auto-merge silently |
+| `workflow_dispatch` override | Manual intervention when cron isn't enough |
+| Conflict bypass in cron dispatcher | Conflicting PRs dispatch merge-prep without waiting for checks |
+
+## Concurrency
+
+| Scope | Group key | Cancel in-progress? |
+|-------|-----------|---------------------|
+| Lint + Type Check | `code-quality-{pr_number}` | Yes |
+| Gatekeeper | `gatekeeper-{pr_number}` | Yes |
+| Pytest | `pytest-{pr_number}` | Yes |
+| Merge Prep | `merge-prep-{pr_number}` | Yes |
+| LGTM | `pr-lgtm-{pr_number}` | No |
 
 ## Issue review
 
@@ -232,56 +420,34 @@ Both trigger independently on `issues: [opened]`. Skips: bot-created issues, epi
 | `issue_comment: [created]` | `nicsuzor` only, on PRs, LGTM pattern | Owner's merge signal |
 | `workflow_dispatch` | Manual | Explicit trigger for specific PRs |
 
-LGTM patterns (case-insensitive, must appear at the **start** of the comment):
-```
-lgtm | merge | rebase | ship it | @claude merge
-```
-
 ### On-demand agents
 
-| Mention   | Workflow     | Use case                              |
-| --------- | ------------ | ------------------------------------- |
+| Mention | Workflow | Use case |
+|---------|----------|----------|
 | `@claude` | `claude.yml` | Questions, debugging, analysis, fixes |
 | `@polecat` | `polecat-issue-trigger.yml` | Task processing, guided work |
 
-## Concurrency controls
-
-| Scope           | Group key                    | Cancel in-progress? |
-| --------------- | ---------------------------- | ------------------- |
-| Lint            | `code-quality-{pr_number}`   | Yes |
-| Type Check      | `code-quality-{pr_number}` (shares lint group) | Yes |
-| Gatekeeper      | `gatekeeper-{pr_number}`     | Yes |
-| Pytest          | `pytest-{pr_number}`         | Yes |
-| PR Review       | `pr-review-{pr_number}`      | Yes |
-| Merge Prep      | `pr-review-{pr_number}` (inherits PR Review group) | Yes |
-| Merge           | `pr-merge-{pr_number}`       | No |
-
-## Safety mechanisms
-
-| Mechanism | Where | What it prevents |
-|-----------|-------|-----------------|
-| Merge-prep loop detector | `agent-merge-prep.yml` | Infinite push -> review -> fix cycles (checks `Merge-Prep-By:` trailer) |
-| Pipeline run-count limit | `pr-review-pipeline.yml` | Bot cascade spirals (max 3 full pipeline runs per PR) |
-| LGTM check-status gate | `pr-lgtm-merge.yml` | Silent merge failures from failing required checks |
-| Lint re-trigger on LGTM | `pr-lgtm-merge.yml` | Stale lint failures blocking merge after human approval |
-| Bot comment filter | `claude.yml` | Bot-posted `@claude` mentions triggering Claude Code |
-| Human-only merge trigger | `pr-lgtm-merge.yml` | Bot reviews triggering merge workflow |
-
-## Known limitations
-
-- **Force-pushes disable auto-merge**: If Claude (or anyone) force-pushes to resolve conflicts, auto-merge must be re-enabled. The merge workflow does not currently handle this automatically.
-- **All agent reviews show as `github-actions[bot]`**: Reviews from gatekeeper, custodiet, QA, and merge-prep all share the `GITHUB_TOKEN` identity. Agents identify themselves in the review body text. Distinct bot identities would require registering separate GitHub Apps.
-- **`issue_comment` triggers are noisy**: Any PR comment triggers Claude Code, Polecat, and Merge workflows (all skip via job-level `if:` filters, but show as 1-second skipped runs in Actions). This is a GitHub limitation -- `on: issue_comment` cannot be filtered at the trigger level.
-- **PR Review pipeline only runs on `pull_request` events**: The `push: main` trigger on Code Quality does not cascade to the PR Review pipeline (filtered by `workflow_run.event == 'pull_request'`).
-- **Run-count limit is approximate**: The counter is based on comment pattern matching, not a database. Deleted comments or unusual comment patterns could skew the count. The `workflow_dispatch` manual trigger bypasses the counter.
-
 ## Configuration
 
-- **Add a new review agent**: Create `agent-<name>.yml` + `.github/agents/<name>.md`, add `uses:` line to orchestrator
-- **Add agent to issue review**: Create `issue-review-<name>.yml` trigger file
-- **Change agent behavior**: Edit `.github/agents/<name>.md`
-- **Change merge trigger patterns**: Edit LGTM grep in `pr-lgtm-merge.yml`
-- **Change cascade limit**: Edit `MAX_PIPELINE_RUNS` env var in `pr-review-pipeline.yml` (default: 3)
+- **Bazaar window**: 30 minutes (hardcoded in cron dispatcher; change the `1800` seconds threshold)
+- **Cron frequency**: every 15 minutes (`*/15 * * * *`)
+- **Max merge-prep retries**: 3 (before adding `merge-prep-failed` label)
+- **LGTM patterns**: `lgtm | merge | ship it` (case-insensitive, start of comment)
+- **Agent prompts**: `.github/agents/<name>.md`
 - **Lint rules**: `pyproject.toml` under `[tool.ruff.lint]`
 - **Type checking**: `pyproject.toml` under `[tool.basedpyright]`
 - **Test markers**: `@pytest.mark.slow` (skipped in CI), `@pytest.mark.integration`
+
+## Design decisions
+
+- **Custodiet and QA remain independent agents.** They post reviews during the bazaar window. Merge Prep reads their feedback alongside other reviewers. This preserves independent review perspectives.
+- **Gatekeeper skips re-evaluation on bot commits** where the PR author is `github-actions[bot]` — the LLM call is redundant for autofix pushes.
+- **30 minutes is the default bazaar window.** The human can override via `workflow_dispatch` on the cron dispatcher to process a PR immediately.
+- **LGTM workflow is lightweight** — uses only `GITHUB_TOKEN` for gh commands. Heavy work (conflict resolution, review triage) is handled by merge-prep.
+
+## Known limitations
+
+- **Force-pushes disable auto-merge**: Merge-prep uses `git merge` (not rebase) to avoid force-pushes. If a force-push happens for other reasons, auto-merge must be re-enabled manually or by re-triggering LGTM.
+- **All agent reviews show as `github-actions[bot]`**: Reviews from gatekeeper, custodiet, QA, and merge-prep all share the `GITHUB_TOKEN` identity. Agents identify themselves in the review body text.
+- **`issue_comment` triggers are noisy**: Any PR comment triggers Claude Code, Polecat, and LGTM workflows (all skip via job-level `if:` filters, but show as 1-second skipped runs in Actions).
+- **Cron dispatcher requires checks to be green**: If checks never ran, the cron dispatcher will never qualify the PR. The LGTM workflow's check re-trigger handles this, but only after the human says LGTM.

@@ -424,6 +424,14 @@ def finish(ctx, no_push, do_nuke, force):
 
         print(f"Pushing {branch_name} to origin...")
         try:
+            # Fetch the branch tracking ref so --force-with-lease has current data.
+            # Without this, rebase leaves the local tracking ref stale and push
+            # is rejected with "(stale info)".
+            subprocess.run(
+                ["git", "fetch", "origin", branch_name],
+                check=False,
+                capture_output=True,
+            )
             # Use --force for polecat branches (they're ephemeral worker branches)
             # After rebase, --force-with-lease would reject push due to stale tracking ref
             # Force is safe here: polecat branches are single-worker, disposable feature branches
