@@ -269,9 +269,14 @@ def filter_reachable(nodes: list[dict], edges: list[dict]) -> tuple[list[dict], 
     # Build parent→children mapping
     children_of: dict[str, list[str]] = {n["id"]: [] for n in nodes}
     for node in nodes:
+        # 1. Use node.parent field (child → parent)
         parent_id = node.get("parent")
         if parent_id and parent_id in children_of:
             children_of[parent_id].append(node["id"])
+        # 2. Use node.children field if present (parent → child)
+        for child_id in node.get("children") or []:
+            if child_id in children_of and child_id not in children_of[node["id"]]:
+                children_of[node["id"]].append(child_id)
 
     # Identify leaves: unfinished work-item nodes with no unfinished children.
     # Only nodes with an explicit status AND a work-item node_type can seed the BFS.
@@ -291,21 +296,38 @@ def filter_reachable(nodes: list[dict], edges: list[dict]) -> tuple[list[dict], 
 
     # Build upstream adjacency: for each node, what can we reach by walking
     # "up" through parent, depends_on, and soft_depends_on edges?
+    # We now use the edges list which contains resolved IDs from the indexer.
     upstream_of: dict[str, set[str]] = {n["id"]: set() for n in nodes}
+    
+    # 1. First, populate from node fields (for robustness)
     for node in nodes:
         nid = node["id"]
-        # Parent edge (child → parent)
+        # Parent field (this -> parent)
         parent_id = node.get("parent")
         if parent_id and parent_id in node_by_id:
             upstream_of[nid].add(parent_id)
-        # Hard dependencies (task → blocker)
-        for dep_id in node.get("depends_on") or []:
+        # Depends_on fields
+        for dep_id in (node.get("depends_on") or []):
             if dep_id in node_by_id:
                 upstream_of[nid].add(dep_id)
-        # Soft dependencies (task → advisory dep)
-        for dep_id in node.get("soft_depends_on") or []:
+        for dep_id in (node.get("soft_depends_on") or []):
             if dep_id in node_by_id:
                 upstream_of[nid].add(dep_id)
+
+    # 2. Second, populate from resolved edges list (only specific types)
+    # This catches inverse relationships computed by the indexer (blocks -> depends_on)
+    # and ensures we use the same resolved IDs as the visualization.
+    for e in edges:
+        src, tgt = e["source"], e["target"]
+        if src not in node_by_id or tgt not in node_by_id:
+            continue
+        
+        # Only certain edge types count as "upstream" structural paths.
+        # 'parent' direction is child -> parent (tgt is upstream)
+        # 'depends_on' direction is task -> blocker (tgt is upstream)
+        # We explicitly IGNORE 'link' and 'wikilink' to prevent leakage.
+        if e.get("type") in ("parent", "depends_on", "soft_depends_on"):
+            upstream_of[src].add(tgt)
 
     # Walk upstream from all leaves (BFS)
     reachable: set[str] = set(leaf_ids)
