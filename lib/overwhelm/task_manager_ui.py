@@ -16,6 +16,9 @@ def _rebuild_index():
     pass
 
 
+DEFAULT_PROJECT = "aops"
+
+
 def _get_repo_url_from_project(project: str) -> str | None:
     """Get GitHub repo URL from project name via polecat.yaml."""
     config_path = Path.home() / ".aops" / "polecat.yaml"
@@ -67,13 +70,15 @@ def launch_polecat_agent(task: Task):
             stderr=subprocess.DEVNULL,
         )
         st.success(f"✅ Launched polecat for {task.id}")
+    except FileNotFoundError:
+        st.error("❌ 'polecat' command not found. Please ensure it is installed and in your PATH.")
     except Exception as e:
         st.error(f"❌ Failed to launch polecat: {e}")
 
 
 def launch_jules_agent(task: Task):
     """Launch a jules agent for this task in background."""
-    repo = _get_repo_url_from_project(task.project or "aops")
+    repo = _get_repo_url_from_project(task.project or DEFAULT_PROJECT)
     if not repo:
         st.error(f"❌ Could not find repo for project: {task.project}")
         return
@@ -91,8 +96,12 @@ def launch_jules_agent(task: Task):
             start_new_session=True,
             text=True,
         )
-        process.communicate(input=prompt)
+        if process.stdin:
+            process.stdin.write(prompt)
+            process.stdin.close()
         st.success(f"✅ Launched jules for {task.id} on {repo}")
+    except FileNotFoundError:
+        st.error("❌ 'jules' command not found. Please ensure it is installed and in your PATH.")
     except Exception as e:
         st.error(f"❌ Failed to launch jules: {e}")
 
@@ -120,6 +129,8 @@ def launch_github_agent(task: Task):
             stderr=subprocess.DEVNULL,
         )
         st.success(f"✅ Launched polecat for issue {issue_ref}")
+    except FileNotFoundError:
+        st.error("❌ 'polecat' command not found. Please ensure it is installed and in your PATH.")
     except Exception as e:
         st.error(f"❌ Failed to launch github agent: {e}")
 
