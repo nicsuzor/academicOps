@@ -46,6 +46,7 @@ def save_worker_transcript(
     try:
         try:
             from lib.paths import get_polecat_transcripts_dir
+
             transcript_dir = get_polecat_transcripts_dir()
         except ImportError:
             # Fallback for older installations or missing lib.paths
@@ -1304,6 +1305,7 @@ def analyze(ctx, task_id, transcript_lines):
     print("\n📜 TRANSCRIPT")
     try:
         from lib.paths import get_polecat_transcripts_dir, get_sessions_repo
+
         sessions = get_sessions_repo()
         # Try primary location
         transcript_path = sessions / "polecats" / f"{task_id}.jsonl"
