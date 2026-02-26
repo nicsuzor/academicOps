@@ -58,7 +58,7 @@ jobs:
       - name: Get PR HEAD SHA
         id: head
         env:
-          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           HEAD_SHA=$(gh pr view "${{ inputs.pr_number }}" --repo "${{ github.repository }}" \
             --json headRefOid --jq '.headRefOid')
@@ -123,7 +123,7 @@ jobs:
       - name: Set Merge Prep status on success
         if: steps.loop-check.outputs.skip != 'true' && steps.claude.outcome == 'success'
         env:
-          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Get current HEAD (may have changed if merge-prep pushed)
           HEAD_SHA=$(gh pr view "${{ inputs.pr_number }}" --repo "${{ github.repository }}" \
@@ -138,7 +138,7 @@ jobs:
       - name: Set Merge Prep status on skip (loop)
         if: steps.loop-check.outputs.skip == 'true'
         env:
-          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh api "repos/${{ github.repository }}/statuses/${{ steps.head.outputs.sha }}" \
             -f state=success \
@@ -149,7 +149,7 @@ jobs:
       - name: Clean up labels on success
         if: steps.claude.outcome == 'success' || steps.loop-check.outputs.skip == 'true'
         env:
-          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_NUM="${{ inputs.pr_number }}"
           REPO="${{ github.repository }}"
@@ -161,7 +161,7 @@ jobs:
       - name: Handle failure
         if: steps.loop-check.outputs.skip != 'true' && steps.claude.outcome != 'success'
         env:
-          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_NUM="${{ inputs.pr_number }}"
           REPO="${{ github.repository }}"
