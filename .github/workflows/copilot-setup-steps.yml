@@ -1,0 +1,32 @@
+name: "Copilot Setup Steps"
+
+on: workflow_dispatch
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies (including dev tools)
+        run: uv sync --dev
+
+      - name: Install pre-commit hooks
+        run: uv run pre-commit install
+
+      - name: Verify toolchain
+        run: |
+          uv run ruff --version
+          uv run dprint --version
+          uv run pytest --version
+          echo "Toolchain ready."

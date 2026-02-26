@@ -29,7 +29,7 @@ what the supervisor can dispatch to.
 | `polecat-claude` | code, docs, refactor, test, debug         | 3    | yes   | 2              | Most tasks                   |
 | `polecat-gemini` | code, docs, analysis, bulk-ops            | 1    | yes   | 2              | Most tasks, cheaper          |
 | `jules`          | deep-code, architecture, complex-refactor | 0    | no    | 7+             | Fire-and-forget, complex     |
-| `github-agent`   | code, docs, refactor, test, bulk-ops      | 0    | no    | 3              | Free compute, standard tasks |
+| `github-agent`   | code, docs, refactor, test, bulk-ops      | 0    | no    | 3              | Free compute, most tasks     |
 
 **Cost Scale**: 0-5, where 0 = free (vendor-hosted), 5 = highest token/API expense.
 **Local**: Whether the worker consumes local machine resources.
@@ -168,11 +168,26 @@ See `aops-8f4ef5b5`.
 
 **Note on GitHub Agents**: GitHub Copilot coding agents run on GitHub-hosted
 infrastructure at no cost. They work from GitHub Issues — assign the agent to
-an issue and it creates a PR. They lack framework context (no `.agent/`
-instructions, no task MCP), so tasks need self-contained descriptions in the
-issue body. Best for well-specified, bounded tasks. Dispatch via
+an issue and it creates a PR. Dispatch via
 `gh issue edit <num> --add-assignee @copilot-swe-agent` or assign through
 the GitHub UI. PRs arrive from a `copilot/fix-*` branch.
+
+Framework integration points:
+
+- **Instructions**: `.github/copilot-instructions.md` provides project context,
+  build/test commands, and conventions. Path-specific instructions via
+  `.github/instructions/*.instructions.md` with `applyTo` globs.
+- **Agent persona**: `.github/agents/worker.agent.md` can mirror polecat worker
+  protocol (scope boundaries, fail-fast, commit format).
+- **Environment**: `.github/workflows/copilot-setup-steps.yml` installs toolchain
+  (uv, dprint, pre-commit) so the agent can run linters and tests.
+- **MCP**: GitHub MCP (read-only) and Playwright available by default. Custom MCP
+  servers configurable in repo settings or per-agent frontmatter. Task MCP
+  not available unless exposed as remote server.
+- **Task lifecycle**: Agent can't update task status via MCP directly, but the
+  existing `pr-merge` GitHub Action closes the loop on merge.
+- **Existing agents**: custodiet, gatekeeper, hydrator, merge-prep, qa already
+  defined under `.github/agents/`. These run as reviewers in the PR pipeline.
 
 ---
 
