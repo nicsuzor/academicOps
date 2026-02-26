@@ -271,7 +271,7 @@ Markdown body content.
 
 ### Vector Store
 
-Binary vector database at `$ACA_DATA/pkb_vectors.bin`. Contains MiniLM-L6-v2 embeddings (384 dimensions). This is a derived cache — can be rebuilt from files at any time.
+Binary vector database at `$ACA_DATA/pkb_vectors.bin`. Contains BGE-M3 embeddings (1024 dimensions). This is a derived cache — can be rebuilt from files at any time.
 
 ### Knowledge Graph
 

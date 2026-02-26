@@ -180,6 +180,7 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
     Gemini CLI reads hooks from <extension>/hooks/hooks.json with:
     - Different event names (BeforeTool vs PreToolUse, etc.)
     - ${extensionPath} variable instead of ${CLAUDE_PLUGIN_ROOT}
+    - Direct python3 invocation instead of uv run (no pyproject.toml in extension)
     """
     try:
         with open(src_path) as f:
@@ -234,19 +235,17 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
                             # Ensure we use the correct client flag for Gemini
                             cmd = cmd.replace("--client claude", "--client gemini")
 
-                            # Also ensure PYTHONPATH is set correctly for Gemini
-                            if "PYTHONPATH=" in cmd and "${extensionPath}" in cmd:
-                                # Simplify: use uv run --directory which handles PYTHONPATH
-                                cmd = cmd.replace(
-                                    "PYTHONPATH=${extensionPath} uv run python",
-                                    "env -u VIRTUAL_ENV uv run --directory ${extensionPath} python",
-                                )
-                            else:
-                                # For other uv run commands, also prepend env -u VIRTUAL_ENV
-                                cmd = cmd.replace(
-                                    "uv run",
-                                    "env -u VIRTUAL_ENV uv run",
-                                )
+                            # Replace uv run with direct python3 invocation.
+                            # No pyproject.toml in the extension, so uv is unnecessary.
+                            # PYTHONPATH ensures lib/ imports resolve correctly.
+                            cmd = cmd.replace(
+                                "uv run --directory ${extensionPath} python",
+                                "PYTHONPATH=${extensionPath} python3",
+                            )
+                            cmd = cmd.replace(
+                                "uv run python",
+                                "PYTHONPATH=${extensionPath} python3",
+                            )
                             # Gemini CLI doesn't pass hook_event_name in stdin payload like Claude does,
                             # so we append it as a CLI argument for router.py to detect the event type
                             new_hook["command"] = f"{cmd} {gemini_event}"
