@@ -92,18 +92,27 @@ jobs:
           PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
           REPO="${{ github.repository }}"
 
-          PR_DATA=$(gh pr view "$PR_NUM" --repo "$REPO" \
-            --json headRefName,headRefOid,mergeable,mergeStateStatus)
+          # GitHub computes mergeable state lazily — poll until it's resolved
+          for i in 1 2 3 4 5; do
+            PR_DATA=$(gh pr view "$PR_NUM" --repo "$REPO" \
+              --json headRefName,headRefOid,mergeable,mergeStateStatus)
+            MERGEABLE=$(echo "$PR_DATA" | jq -r '.mergeable')
+            if [ "$MERGEABLE" != "UNKNOWN" ]; then
+              break
+            fi
+            echo "Mergeable state is UNKNOWN (attempt $i/5), waiting 5s..."
+            sleep 5
+          done
 
           HEAD_REF=$(echo "$PR_DATA" | jq -r '.headRefName')
           HEAD_SHA=$(echo "$PR_DATA" | jq -r '.headRefOid')
-          MERGEABLE=$(echo "$PR_DATA" | jq -r '.mergeable')
           MERGE_STATE=$(echo "$PR_DATA" | jq -r '.mergeStateStatus')
 
           echo "head_ref=$HEAD_REF" >> "$GITHUB_OUTPUT"
           echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
           echo "mergeable=$MERGEABLE" >> "$GITHUB_OUTPUT"
           echo "merge_state=$MERGE_STATE" >> "$GITHUB_OUTPUT"
+          echo "Mergeable: $MERGEABLE, Merge state: $MERGE_STATE"
 
       # ── Resolve conflicts via Claude Code ──
       # Uses claude-code-action to intelligently rebase on main and resolve
