@@ -337,3 +337,17 @@ When decomposing work into subtasks, ALWAYS create a verify-parent task that dep
 When proposing enforcement for repo-level rules (file structure, naming, content format), prefer standard git tooling (pre-commit hooks, CI checks) over framework-internal mechanisms (PreToolUse gates, custom hooks). Framework gates control agent behavior in real-time; repo structure rules belong in git.
 
 **Derivation**: Extends P#5 (Do One Thing) to enforcement design. The enforcement-map.md already shows the pattern: `data-markdown-only`, `check-orphan-files`, `check-skill-line-count` are all pre-commit hooks. New rules of the same kind should follow the same pattern, not escalate to a more complex enforcement layer.
+
+## Authoritative Specs Supersede Pre-Formed Plans (P#110)
+
+When you form a plan and then encounter authoritative documentation (specs, workflow files, CLAUDE.md, framework instructions), you MUST revise the plan to align with the documentation. Specs are not input to summarize — they override your prior hypotheses.
+
+**The failure mode**: Agent forms plan → reads spec → presents spec accurately → repeats original plan unchanged. This is anchoring: the spec was treated as a reporting task, not a plan revision input.
+
+**Required behavior**:
+
+- After reading authoritative documentation, explicitly ask: "Does my plan contradict this spec?"
+- If it does, revise the plan before responding
+- "Spec says X, my recommendation is Y (which contradicts X)" = violation
+
+**Derivation**: Plans formed before reading relevant documentation are hypotheses based on incomplete information. Authoritative documentation represents documented system design and decisions. Anchoring on a pre-spec hypothesis after encountering authoritative documentation is confirmation bias. The spec always wins.

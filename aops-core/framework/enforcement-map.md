@@ -113,6 +113,7 @@ tags: [framework, enforcement, moc]
 | [[decomposed-tasks-complete]]                   | Decomposed Tasks Are Complete                         | HEURISTICS.md                                          | SessionStart                   |       |
 | [[task-sequencing-on-insert]]                   | Task Sequencing on Insert                             | HEURISTICS.md                                          | SessionStart                   |       |
 | [[methodology-belongs-to-researcher]]           | Methodology Belongs to Researcher                     | HEURISTICS.md, prompt-hydrator guidance                | SessionStart, UserPromptSubmit |       |
+| [[authoritative-specs-supersede-plans]]         | Authoritative Specs Supersede Pre-Formed Plans        | HEURISTICS.md, custodiet periodic check                | SessionStart, PostToolUse      |       |
 | [[preserve-pre-existing-content]]               | Preserve Pre-Existing Content                         | HEURISTICS.md                                          | SessionStart                   |       |
 | [[user-intent-discovery]]                       | User Intent Discovery Before Implementation           | HEURISTICS.md, prompt-hydrator guidance                | SessionStart, UserPromptSubmit |       |
 | [[user-intent-discovery]]                       | Slash Command Args Intent Parsing                     | skip_check.py: multi-word args trigger hydration       | UserPromptSubmit               | 3b    |

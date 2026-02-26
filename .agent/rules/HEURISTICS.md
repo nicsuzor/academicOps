@@ -464,3 +464,20 @@ description: Working hypotheses validated by evidence.
 - `blocked-human` complexity also defaults to unassigned (not auto-assigned to nic)
 
 **Derivation**: Human attention is the scarcest resource. Auto-assigning every judgment task to `nic` defeats the purpose of a backlog - it turns the backlog into nic's inbox. Tasks should be pulled (claimed) rather than pushed (assigned) unless explicitly requested.
+
+---
+
+## Authoritative Specs Supersede Pre-Formed Plans (P#110)
+
+**Statement**: When you form a plan and then encounter authoritative documentation (specs, workflow files, CLAUDE.md, framework instructions), you MUST revise the plan to align with the documentation. Specs are not input to summarize — they override your prior hypotheses.
+
+**The failure mode**: Agent forms plan → reads spec → presents spec accurately → repeats original plan unchanged. This is anchoring: the spec was treated as a reporting task, not a plan revision input.
+
+**Corollaries**:
+
+- After reading authoritative documentation, explicitly ask: "Does my plan contradict this spec?"
+- If it does, revise the plan before responding
+- "Spec says X, my recommendation is Y (which contradicts X)" = violation
+- Reading a spec is a plan revision input, not a reporting task
+
+**Derivation**: Plans formed before reading relevant documentation are hypotheses based on incomplete information. Authoritative documentation represents documented system design and decisions. Anchoring on a pre-spec hypothesis after encountering authoritative documentation is confirmation bias. The spec always wins.
