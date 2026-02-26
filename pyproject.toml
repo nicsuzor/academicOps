@@ -14,22 +14,28 @@ dependencies = [
   "psutil>=5.9.0",
   # Skills dependencies
   "pdfminer-six>=20260107",
-  "python-ntfy>=0.1.0",
-  "streamlit>=1.54.0",
-  "scipy>=1.17.0",
-  "bump-my-version[dev]>=1.2.6",
-  "networkx>=3.6.1",
-  "ogdf-python>=0.3.4",
-  "cppyy>=3.5.0",
 ]
 
 [project.optional-dependencies]
 # Visualization tools (streamlit dashboard, graph visualization)
 viz = [
-  "streamlit>=1.28.0",
+  "streamlit>=1.54.0",
   "streamlit-agraph>=0.0.45",
-  "networkx>=3.6",
+  "networkx>=3.6.1",
   "matplotlib>=3.10.8",
+]
+# OGDF graph layout (C++ bindings, ~60MB)
+ogdf = [
+  "ogdf-python>=0.3.4",
+  "cppyy>=3.5.0",
+]
+# Statistical analysis (analyst skill)
+analysis = [
+  "scipy>=1.17.0",
+]
+# Notifications
+notify = [
+  "python-ntfy>=0.1.0",
 ]
 # Anthropic API for skills that call Claude directly
 anthropic = ["anthropic>=0.75.0"]

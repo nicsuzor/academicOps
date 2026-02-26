@@ -10,26 +10,29 @@ resolution-markers = [
 name = "academicops"
 source = { editable = "." }
 dependencies = [
-    { name = "bump-my-version" },
     { name = "click" },
-    { name = "cppyy" },
     { name = "fastmcp" },
     { name = "filelock" },
-    { name = "networkx" },
-    { name = "ogdf-python" },
     { name = "pdfminer-six" },
     { name = "psutil" },
     { name = "pydantic" },
-    { name = "python-ntfy" },
     { name = "pyyaml" },
     { name = "rich" },
-    { name = "scipy" },
-    { name = "streamlit" },
 ]
 
 [package.optional-dependencies]
+analysis = [
+    { name = "scipy" },
+]
 anthropic = [
     { name = "anthropic" },
+]
+notify = [
+    { name = "python-ntfy" },
+]
+ogdf = [
+    { name = "cppyy" },
+    { name = "ogdf-python" },
 ]
 viz = [
     { name = "matplotlib" },
@@ -54,27 +57,24 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "anthropic", marker = "extra == 'anthropic'", specifier = ">=0.75.0" },
-    { name = "bump-my-version", extras = ["dev"], specifier = ">=1.2.6" },
     { name = "click", specifier = ">=8.1.0" },
-    { name = "cppyy", specifier = ">=3.5.0" },
+    { name = "cppyy", marker = "extra == 'ogdf'", specifier = ">=3.5.0" },
     { name = "fastmcp", specifier = ">=2.13.1" },
     { name = "filelock", specifier = ">=3.13.0" },
     { name = "matplotlib", marker = "extra == 'viz'", specifier = ">=3.10.8" },
-    { name = "networkx", specifier = ">=3.6.1" },
-    { name = "networkx", marker = "extra == 'viz'", specifier = ">=3.6" },
-    { name = "ogdf-python", specifier = ">=0.3.4" },
+    { name = "networkx", marker = "extra == 'viz'", specifier = ">=3.6.1" },
+    { name = "ogdf-python", marker = "extra == 'ogdf'", specifier = ">=0.3.4" },
     { name = "pdfminer-six", specifier = ">=20260107" },
     { name = "psutil", specifier = ">=5.9.0" },
     { name = "pydantic", specifier = ">=2.0" },
-    { name = "python-ntfy", specifier = ">=0.1.0" },
+    { name = "python-ntfy", marker = "extra == 'notify'", specifier = ">=0.1.0" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "rich", specifier = ">=13.0.0" },
-    { name = "scipy", specifier = ">=1.17.0" },
-    { name = "streamlit", specifier = ">=1.54.0" },
-    { name = "streamlit", marker = "extra == 'viz'", specifier = ">=1.28.0" },
+    { name = "scipy", marker = "extra == 'analysis'", specifier = ">=1.17.0" },
+    { name = "streamlit", marker = "extra == 'viz'", specifier = ">=1.54.0" },
     { name = "streamlit-agraph", marker = "extra == 'viz'", specifier = ">=0.0.45" },
 ]
-provides-extras = ["anthropic", "viz"]
+provides-extras = ["analysis", "anthropic", "notify", "ogdf", "viz"]
 
 [package.metadata.requires-dev]
 dev = [
