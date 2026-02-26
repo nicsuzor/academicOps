@@ -1,3 +1,10 @@
+from unittest.mock import MagicMock
+import sys
+
+# Mock streamlit before importing task_graph_d3
+sys.modules["streamlit"] = MagicMock()
+sys.modules["streamlit.components.v1"] = MagicMock()
+
 from task_graph_d3 import (
     prepare_embedded_graph_data,
 )

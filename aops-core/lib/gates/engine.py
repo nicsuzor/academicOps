@@ -174,6 +174,20 @@ class GenericGate:
         for key in transition.increment_metrics:
             state.metrics[key] = state.metrics.get(key, 0) + 1
 
+        # Custom Action (Side Effects)
+        # Execute this BEFORE rendering templates, as the action may set metrics
+        # (e.g. temp_path) that are required by the templates.
+        custom_sys_msg = None
+        custom_ctx_inj = None
+
+        if transition.custom_action:
+            from lib.gates.custom_actions import execute_custom_action
+
+            result = execute_custom_action(transition.custom_action, ctx, state, session_state)
+            if result:
+                custom_sys_msg = result.system_message
+                custom_ctx_inj = result.context_injection
+
         # Render Messages
         sys_msg = None
         if transition.system_message_template:
@@ -185,24 +199,12 @@ class GenericGate:
         if transition.context_template:
             ctx_inj = self._render_template(transition.context_template, ctx, state, session_state)
 
-        # Custom Action (Side Effects)
-        if transition.custom_action:
-            from lib.gates.custom_actions import execute_custom_action
+        # Combine Messages (Template first, then Custom Action)
+        if custom_sys_msg:
+            sys_msg = (sys_msg + "\n" + custom_sys_msg) if sys_msg else custom_sys_msg
 
-            result = execute_custom_action(transition.custom_action, ctx, state, session_state)
-            if result:
-                if result.system_message:
-                    sys_msg = (
-                        (sys_msg + "\n" + result.system_message)
-                        if sys_msg
-                        else result.system_message
-                    )
-                if result.context_injection:
-                    ctx_inj = (
-                        (ctx_inj + "\n\n" + result.context_injection)
-                        if ctx_inj
-                        else result.context_injection
-                    )
+        if custom_ctx_inj:
+            ctx_inj = (ctx_inj + "\n\n" + custom_ctx_inj) if ctx_inj else custom_ctx_inj
 
         return GateResult.allow(system_message=sys_msg, context_injection=ctx_inj)
 
