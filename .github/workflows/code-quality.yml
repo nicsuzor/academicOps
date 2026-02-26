@@ -3,7 +3,7 @@
 #
 # Gatekeeper runs as a separate standalone workflow (agent-gatekeeper.yml).
 #
-# See specs/pr-process-v2-draft.md for the full process documentation.
+# See specs/pr-process.md for the full process documentation.
 
 name: Code Quality
 

@@ -6,7 +6,7 @@
 # This replaces the event-driven pr-review-pipeline.yml to eliminate
 # bot cascade loops. Time-gated dispatch cannot cascade.
 #
-# See specs/pr-process-v2-draft.md for the full process documentation.
+# See specs/pr-process.md for the full process documentation.
 
 name: Merge Prep Dispatcher
 

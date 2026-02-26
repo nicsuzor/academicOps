@@ -1,9 +1,14 @@
-# LGTM workflow: records human approval and enables auto-merge.
+# LGTM workflow: records human approval and drives the PR toward merge.
 #
 # When the human says "lgtm" (or approves via GitHub review), this workflow:
-#   1. Adds the 'lgtm' label (for the cron dispatcher to pick up)
-#   2. Enables GitHub auto-merge (rebase mode)
-#   3. Posts acknowledgment
+#   1. Detects LGTM pattern / approval
+#   2. Checks whether required status checks are passing
+#   3. If checks haven't run or are failing, re-triggers code-quality via workflow_dispatch
+#   4. Lodges Approval #2 (bot review — satisfies the 1-review ruleset requirement)
+#   5. Adds the 'lgtm' label (for the cron dispatcher to pick up)
+#   6. Enables GitHub auto-merge (rebase mode)
+#   7. If merge conflicts, posts @claude for conflict resolution
+#   8. Posts acknowledgment summarizing what happened
 #
 # The human's LGTM comment may include instructions for merge-prep
 # (e.g., "lgtm, but fix the docstring on line 42"). Merge-prep reads
@@ -14,7 +19,7 @@
 #   2. LGTM-pattern comment from nicsuzor
 #   3. Manual workflow dispatch
 #
-# See specs/pr-process-v2-draft.md for full process documentation.
+# See specs/pr-process.md for full process documentation.
 
 name: LGTM
 
@@ -49,8 +54,11 @@ jobs:
       contents: write
       pull-requests: write
       issues: write
+      statuses: read
+      actions: write
+      checks: read
     env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
     steps:
       - name: Check LGTM pattern (comment trigger)
         id: lgtm-check
@@ -74,6 +82,98 @@ jobs:
           PR_NUM="${{ inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}"
           echo "pr_number=$PR_NUM" >> "$GITHUB_OUTPUT"
 
+      # ── Gather PR state ──
+
+      - name: Get PR details
+        id: pr-details
+        if: steps.pr-ref.outputs.pr_number != ''
+        run: |
+          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
+          REPO="${{ github.repository }}"
+
+          PR_DATA=$(gh pr view "$PR_NUM" --repo "$REPO" \
+            --json headRefName,headRefOid,mergeable,mergeStateStatus)
+
+          HEAD_REF=$(echo "$PR_DATA" | jq -r '.headRefName')
+          HEAD_SHA=$(echo "$PR_DATA" | jq -r '.headRefOid')
+          MERGEABLE=$(echo "$PR_DATA" | jq -r '.mergeable')
+          MERGE_STATE=$(echo "$PR_DATA" | jq -r '.mergeStateStatus')
+
+          echo "head_ref=$HEAD_REF" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          echo "mergeable=$MERGEABLE" >> "$GITHUB_OUTPUT"
+          echo "merge_state=$MERGE_STATE" >> "$GITHUB_OUTPUT"
+
+      # ── Check required status checks ──
+
+      - name: Check status of required checks
+        id: check-status
+        if: steps.pr-ref.outputs.pr_number != ''
+        run: |
+          HEAD_SHA="${{ steps.pr-details.outputs.head_sha }}"
+          REPO="${{ github.repository }}"
+          BLOCKERS=""
+
+          for CTX in "Lint" "Type Check" "Pytest"; do
+            # Check commit statuses first
+            STATE=$(gh api "repos/$REPO/commits/$HEAD_SHA/status" \
+              --jq ".statuses[] | select(.context == \"$CTX\") | .state" 2>/dev/null | head -1)
+
+            # Fall back to check-runs (GitHub Actions reports as check runs)
+            if [ -z "$STATE" ]; then
+              STATE=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs" \
+                --jq ".check_runs[] | select(.name == \"$CTX\") | .conclusion" 2>/dev/null | head -1)
+            fi
+
+            if [ -z "$STATE" ]; then
+              echo "$CTX: NOT RUN"
+              BLOCKERS="${BLOCKERS}${CTX} (not run), "
+            elif [ "$STATE" != "success" ]; then
+              echo "$CTX: $STATE"
+              BLOCKERS="${BLOCKERS}${CTX} ($STATE), "
+            else
+              echo "$CTX: success"
+            fi
+          done
+
+          # Check Gatekeeper (commit status)
+          GK_STATE=$(gh api "repos/$REPO/commits/$HEAD_SHA/status" \
+            --jq '.statuses[] | select(.context == "Gatekeeper") | .state' 2>/dev/null | head -1)
+          if [ -z "$GK_STATE" ]; then
+            echo "Gatekeeper: NOT RUN"
+            BLOCKERS="${BLOCKERS}Gatekeeper (not run), "
+          elif [ "$GK_STATE" != "success" ]; then
+            echo "Gatekeeper: $GK_STATE"
+            BLOCKERS="${BLOCKERS}Gatekeeper ($GK_STATE), "
+          else
+            echo "Gatekeeper: success"
+          fi
+
+          if [ -n "$BLOCKERS" ]; then
+            # Trim trailing comma+space
+            BLOCKERS="${BLOCKERS%, }"
+            echo "all_passing=false" >> "$GITHUB_OUTPUT"
+            echo "blockers=$BLOCKERS" >> "$GITHUB_OUTPUT"
+          else
+            echo "all_passing=true" >> "$GITHUB_OUTPUT"
+            echo "blockers=" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ── Re-trigger checks if they haven't run ──
+
+      - name: Re-trigger code-quality if checks are missing
+        if: steps.check-status.outputs.all_passing == 'false' && steps.pr-ref.outputs.pr_number != ''
+        run: |
+          HEAD_REF="${{ steps.pr-details.outputs.head_ref }}"
+          REPO="${{ github.repository }}"
+
+          echo "Checks not passing: ${{ steps.check-status.outputs.blockers }}"
+          echo "Re-triggering code-quality on branch $HEAD_REF"
+
+          gh workflow run code-quality.yml \
+            --repo "$REPO" \
+            --ref "$HEAD_REF" || echo "Warning: could not trigger code-quality (may need manual intervention)"
+
       # ── Record LGTM ──
 
       - name: Add lgtm label
@@ -83,12 +183,34 @@ jobs:
             --repo "${{ github.repository }}" \
             --add-label "lgtm"
 
+      - name: Lodge Approval (satisfies 1-review requirement)
+        if: steps.pr-ref.outputs.pr_number != ''
+        run: |
+          gh pr review "${{ steps.pr-ref.outputs.pr_number }}" \
+            --repo "${{ github.repository }}" \
+            --approve \
+            --body "LGTM recorded by automation. Human approval detected — lodging formal review to satisfy merge requirements."
+
       - name: Enable auto-merge
         if: steps.pr-ref.outputs.pr_number != ''
         run: |
           gh pr merge "${{ steps.pr-ref.outputs.pr_number }}" \
             --auto --rebase \
             --repo "${{ github.repository }}"
+
+      # ── Handle conflicts ──
+
+      - name: Handle merge conflicts
+        if: steps.pr-details.outputs.mergeable == 'CONFLICTING' && steps.pr-ref.outputs.pr_number != ''
+        run: |
+          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
+          REPO="${{ github.repository }}"
+
+          echo "Merge conflicts detected — posting @claude for resolution"
+          gh pr comment "$PR_NUM" --repo "$REPO" \
+            --body "@claude Please rebase this branch on main and resolve any merge conflicts. Push the result so auto-merge can proceed."
+
+      # ── React + acknowledge ──
 
       - name: React to comment
         if: github.event_name == 'issue_comment' && steps.lgtm-check.outputs.proceed == 'true'
@@ -99,6 +221,24 @@ jobs:
       - name: Post acknowledgment
         if: steps.pr-ref.outputs.pr_number != ''
         run: |
-          gh pr comment "${{ steps.pr-ref.outputs.pr_number }}" \
-            --repo "${{ github.repository }}" \
-            --body "LGTM recorded. Merge Prep will process this PR on the next cycle (~15 min). Auto-merge is enabled and will fire once all checks pass."
+          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
+          BLOCKERS="${{ steps.check-status.outputs.blockers }}"
+          CONFLICTS="${{ steps.pr-details.outputs.mergeable }}"
+
+          BODY="LGTM recorded. Auto-merge is enabled."
+
+          if [ -n "$BLOCKERS" ]; then
+            BODY="$BODY"$'\n\n'"**Checks not yet passing:** $BLOCKERS"$'\n'"Re-triggered code-quality workflow. Checks should run shortly."
+          fi
+
+          if [ "$CONFLICTS" = "CONFLICTING" ]; then
+            BODY="$BODY"$'\n\n'"**Merge conflicts detected.** Posted @claude for rebase + conflict resolution."
+          fi
+
+          if [ -z "$BLOCKERS" ] && [ "$CONFLICTS" != "CONFLICTING" ]; then
+            BODY="$BODY Merge Prep will process this PR on the next cron cycle (~15 min)."
+          else
+            BODY="$BODY"$'\n\n'"Once resolved, Merge Prep will process this PR on the next cron cycle (~15 min)."
+          fi
+
+          gh pr comment "$PR_NUM" --repo "${{ github.repository }}" --body "$BODY"
