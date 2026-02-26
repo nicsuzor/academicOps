@@ -172,17 +172,12 @@ GATE_CONFIGS = [
         ],
     ),
     # --- Handover ---
-    # Gate starts OPEN. Closes when a task is bound (work begins).
+    # Gate starts CLOSED.
     # Opens when /handover skill completes. Policy blocks Stop when CLOSED.
-    #
-    # Previous approach used missing_framework_reflection custom_check on Stop,
-    # but that fails because Claude Code fires Stop before the current turn's
-    # output (containing the reflection) is flushed to the JSONL transcript.
-    # Fix: trigger-based approach (like critic/QA gates). See aops-f6f9b5dc.
     GateConfig(
         name="handover",
         description="Requires Framework Reflection before exit.",
-        initial_status=GateStatus.OPEN,
+        initial_status=GateStatus.CLOSED,
         triggers=[
             # Task bound: update_task with status=in_progress -> Close
             # Work has begun, so handover will be required before exit.
@@ -197,7 +192,7 @@ GATE_CONFIGS = [
                     system_message_template="📤 Task bound. Handover required before exit.",
                 ),
             ),
-            # /dump skill (or /handover for legacy) completes -> Open
+            # /dump skill completes -> Open
             # Uses subagent_type_pattern to match skill name extracted by router
             # (router.py extracts tool_input["skill"] into ctx.subagent_type)
             # Matches both Claude's Skill tool and Gemini's activate_skill tool.
@@ -226,7 +221,6 @@ GATE_CONFIGS = [
                 context_template=(
                     "⛔ Finalization required before exit.\n\n"
                     "Please invoke the Dump Skill (`/dump`). The gate will only allow exit once the Dump Skill has completed.\n\n"
-                    "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
                 ),
             ),
         ],
