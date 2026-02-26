@@ -65,7 +65,7 @@ class GateTransition(BaseModel):
 
     # Templates for feedback
     system_message_template: str | None = None
-    context_injection_template: str | None = None
+    context_template: str | None = None
 
     # Side effects
     reset_ops_counter: bool = False
