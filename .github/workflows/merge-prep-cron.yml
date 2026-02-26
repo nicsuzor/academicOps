@@ -1,4 +1,4 @@
-# Cron dispatcher for merge-prep: runs every 15 minutes on main.
+# Cron dispatcher for merge-prep: runs every 5 minutes on main.
 # Finds open PRs that have the 'lgtm' label, checks qualification
 # criteria (time gate, checks passing), and dispatches the merge-prep
 # agent for each qualifying PR.
@@ -12,7 +12,7 @@ name: Merge Prep Dispatcher
 
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch:
     inputs:
       pr_number:
