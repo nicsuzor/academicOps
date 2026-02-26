@@ -136,7 +136,7 @@ jobs:
             4. After resolving each conflict: `git add <file>` then `git rebase --continue`
             5. When rebase is complete: `git push --force-with-lease`
             6. If truly unresolvable, `git rebase --abort` and explain why
-          claude_args: '--allowed-tools "Bash,Read,Edit,Write" --max-turns 15'
+          claude_args: '--allowed-tools "Bash,Read,Edit,Write" --max-turns 30'
 
       - name: Check conflict resolution result
         id: conflict-result
