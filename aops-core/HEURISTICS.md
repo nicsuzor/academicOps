@@ -337,3 +337,19 @@ When decomposing work into subtasks, ALWAYS create a verify-parent task that dep
 When proposing enforcement for repo-level rules (file structure, naming, content format), prefer standard git tooling (pre-commit hooks, CI checks) over framework-internal mechanisms (PreToolUse gates, custom hooks). Framework gates control agent behavior in real-time; repo structure rules belong in git.
 
 **Derivation**: Extends P#5 (Do One Thing) to enforcement design. The enforcement-map.md already shows the pattern: `data-markdown-only`, `check-orphan-files`, `check-skill-line-count` are all pre-commit hooks. New rules of the same kind should follow the same pattern, not escalate to a more complex enforcement layer.
+
+## Intelligent Mechanism Repair, Not Downgrade (P#110)
+
+When a spec mandates intelligent/LLM-based processing and the invocation mechanism is broken, fix the mechanism — do NOT replace intelligent processing with a mechanical fallback.
+
+**Pattern**: If `@claude` comment-based invocation doesn't work (e.g., `GITHUB_TOKEN` comments skip bot-identity filters in claude.yml), the fix is to invoke `anthropics/claude-code-action` directly as a workflow step — not to replace AI resolution with `git rebase || manual intervention`.
+
+**Why**: The spec's choice of "use an intelligent agent" is intentional design. Replacing it with a mechanical fallback violates P#80 (Fixes Preserve Spec Behavior) and eliminates capability the spec requires. "The mechanism is broken" is a reason to fix the mechanism, not to remove the requirement.
+
+**Corollaries**:
+
+- When a mechanism is broken, fix the mechanism — don't eliminate the requirement.
+- "I can't make X work as written" → reread the spec, find the alternative invocation path (direct action step vs. comment trigger), not a mechanical substitute.
+- Mechanical shortcuts that destroy intelligent capability are regressions, not fixes.
+
+**Derivation**: Addresses a recurring failure pattern (Issues #617, #618, #619) where agents consistently downgrade to the easiest mechanical solution when facing hard invocation problems. Extends P#80 (Fixes Preserve Spec Behavior) to agent behavior quality. Related: P#85 (Error Recovery Returns to Reference) — when implementation fails, reread the reference before inventing alternatives.

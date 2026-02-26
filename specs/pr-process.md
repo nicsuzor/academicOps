@@ -80,7 +80,7 @@ The LGTM workflow (`pr-lgtm-merge.yml`):
 4. Lodges **Approval #2** — a formal PR review (`gh pr review --approve`) from `github-actions[bot]` that satisfies the 1-review ruleset requirement
 5. Adds the `lgtm` label to the PR (for cron to pick up)
 6. Enables GitHub auto-merge (rebase mode)
-7. If merge conflicts are detected, posts `@claude` for rebase + conflict resolution
+7. If merge conflicts are detected, invokes `anthropics/claude-code-action` directly for intelligent rebase + conflict resolution
 8. Posts acknowledgment summarizing status: what's passing, what's blocking, what was re-triggered
 
 **This is the human's only action.** They do not need to approve again after merge-prep pushes.
@@ -146,7 +146,7 @@ GitHub's native auto-merge handles the final step. It merges (rebase) when ALL r
 - Merge Prep: `success`
 - Approval: 1 approving review (lodged by LGTM workflow as Approval #2)
 
-If merge conflicts exist at merge time, the LGTM workflow will have already posted `@claude` for conflict resolution. If conflicts arise later (e.g., another PR merges first), the human can re-trigger the LGTM workflow via `workflow_dispatch` or comment "rebase" to invoke `@claude`.
+If merge conflicts exist at merge time, the LGTM workflow will have already invoked `anthropics/claude-code-action` directly for intelligent conflict resolution. If conflicts arise later (e.g., another PR merges first), the human can re-trigger the LGTM workflow via `workflow_dispatch`, which will run the conflict resolution step again.
 
 ## Flowchart
 
@@ -186,7 +186,7 @@ flowchart TD
     Retrigger --> Approved
     CheckStatus -- Yes --> Approved
     LGTM --> Conflicts{"Merge<br/>conflicts?"}
-    Conflicts -- Yes --> Claude["@claude resolves<br/>conflicts + pushes"]
+    Conflicts -- Yes --> Claude["claude-code-action<br/>resolves conflicts + pushes"]
     Conflicts -- No --> Approved
     Approved["Approval #2 lodged<br/>lgtm label added<br/>Auto-merge enabled"]
 
@@ -293,9 +293,24 @@ This handles the common case where bot-created branches (using `GITHUB_TOKEN`) n
 When the PR has merge conflicts at LGTM time:
 
 1. The LGTM workflow detects `mergeable: CONFLICTING` state
-2. Posts `@claude` comment requesting rebase + conflict resolution
+2. Invokes Claude Code Action directly to resolve conflicts and push the result
 3. Enables auto-merge — once conflicts are resolved and checks pass, merge proceeds
 4. The human does not need to take further action
+
+**Correct implementation**: The conflict resolution step MUST invoke `anthropics/claude-code-action` directly as a workflow step — NOT post an `@claude` comment. Comments posted via `GITHUB_TOKEN` are from a Bot identity, and `claude.yml` explicitly skips bot comments (`user.type != 'Bot'`), so `@claude` comments from the workflow silently do nothing.
+
+```yaml
+- name: Resolve merge conflicts via Claude
+  if: steps.pr-details.outputs.mergeable == 'CONFLICTING'
+  uses: anthropics/claude-code-action@v1
+  with:
+    claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+    prompt: |
+      This PR has merge conflicts. Please:
+      1. Rebase the branch on main
+      2. Resolve all conflicts intelligently (understand both sides, preserve intent)
+      3. Push the result so auto-merge can proceed
+```
 
 **Known limitation**: force-pushes (from conflict resolution) disable GitHub auto-merge. The LGTM workflow does not currently re-enable auto-merge after a force-push. If this happens, re-run the LGTM workflow via `workflow_dispatch` or re-enable auto-merge manually with `gh pr merge --auto --rebase`.
 
@@ -384,7 +399,7 @@ This is the mechanism that prevents the "race to merge" — even if all other ch
 | `merge-prep-failed` label (after 3 failures) | Infinite retry loops |
 | `Merge-Prep-By:` commit trailer | Identifying bot commits in git history |
 | LGTM check re-trigger | Stuck PRs where checks never ran (bot-created branches) |
-| LGTM conflict detection | Merge conflicts blocking auto-merge silently |
+| LGTM conflict resolution (direct action invocation) | Merge conflicts blocking auto-merge silently |
 | `workflow_dispatch` override | Manual intervention when cron isn't enough |
 | AOPS_BOT_GH_TOKEN in LGTM | Ensuring workflow_dispatch triggers downstream workflows |
 
@@ -450,3 +465,4 @@ Both trigger independently on `issues: [opened]`. Skips: bot-created issues, epi
 - **All agent reviews show as `github-actions[bot]`**: Reviews from gatekeeper, custodiet, QA, and merge-prep all share the `GITHUB_TOKEN` identity. Agents identify themselves in the review body text.
 - **`issue_comment` triggers are noisy**: Any PR comment triggers Claude Code, Polecat, and LGTM workflows (all skip via job-level `if:` filters, but show as 1-second skipped runs in Actions).
 - **Cron dispatcher requires checks to be green**: If checks never ran, the cron dispatcher will never qualify the PR. The LGTM workflow's check re-trigger handles this, but only after the human says LGTM.
+- **`@claude` comments via GITHUB_TOKEN are silently ignored**: `claude.yml` skips bot-posted comments (`user.type != 'Bot'`). Any step in a workflow that posts `@claude` using `GITHUB_TOKEN` will have no effect. Conflict resolution and other intelligent agent tasks MUST use `anthropics/claude-code-action` as a direct workflow step, not a comment.
