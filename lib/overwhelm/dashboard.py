@@ -39,7 +39,7 @@ from lib.task_storage import TaskStorage
 # Add local directory to path for sibling imports
 sys.path.append(str(Path(__file__).parent))
 from task_graph_d3 import prepare_embedded_graph_data, render_embedded_graph
-from task_manager_ui import render_task_manager
+from task_manager_ui import run_task_manager_ui
 
 
 # index.json integration (2026-01-21)
@@ -4463,7 +4463,7 @@ COMPLETED_HOURS_MAP = {"4h": 4, "24h": 24, "7d": 168}
 completed_hours = COMPLETED_HOURS_MAP.get(completed_time_range, 24)
 
 if page == "Manage Tasks":
-    render_task_manager()
+    run_task_manager_ui(TaskStorage())
     st.stop()
 
 if page == "Session Summary":

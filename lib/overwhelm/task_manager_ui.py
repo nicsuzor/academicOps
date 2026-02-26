@@ -1,11 +1,10 @@
-from datetime import datetime
-import os
 import subprocess
+from datetime import datetime
 from pathlib import Path
-import yaml
 
 import pandas as pd
 import streamlit as st
+import yaml
 from lib.task_model import Task, TaskComplexity, TaskStatus, TaskType
 from lib.task_storage import TaskStorage
 
@@ -181,7 +180,6 @@ def run_task_manager_ui(storage: TaskStorage):
         if not show_done and t.status in (
             TaskStatus.DONE,
             TaskStatus.CANCELLED,
-            TaskStatus.COMPLETED,
         ):
             continue
 
