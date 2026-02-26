@@ -144,6 +144,63 @@ def load_crew_names(config_path: Path | None = None) -> list[str]:
     return config.get("crew_names", ["crew"])
 
 
+def convert_ssh_to_https(url: str) -> str:
+    """Convert SSH git URL to HTTPS format.
+
+    Converts URLs like:
+        git@github.com:owner/repo.git
+    to:
+        https://github.com/owner/repo.git
+
+    Args:
+        url: Git URL (SSH or HTTPS)
+
+    Returns:
+        HTTPS URL
+    """
+    # If already HTTPS, return as-is
+    if url.startswith("https://") or url.startswith("http://"):
+        return url
+
+    # Convert SSH format: git@host:owner/repo.git -> https://host/owner/repo.git
+    if url.startswith("git@"):
+        # Remove git@ prefix
+        url = url[4:]
+        # Replace first : with /
+        url = url.replace(":", "/", 1)
+        # Add https:// prefix
+        return f"https://{url}"
+
+    # Unknown format, return as-is
+    return url
+
+
+def configure_git_credentials(repo_path: Path):
+    """Configure git to use AOPS_BOT_GH_TOKEN for HTTPS authentication.
+
+    Sets up a credential helper that provides the token from the
+    AOPS_BOT_GH_TOKEN environment variable for HTTPS git operations.
+
+    Args:
+        repo_path: Path to git repository
+    """
+    # Check if token is available
+    token = os.environ.get("AOPS_BOT_GH_TOKEN")
+    if not token:
+        print("⚠ AOPS_BOT_GH_TOKEN not set - git push/pull may fail", file=sys.stderr)
+        return
+
+    # Configure credential helper to use the token from environment
+    # The shell will expand $AOPS_BOT_GH_TOKEN when the helper runs
+    helper_cmd = '!f() { test "$1" = get && echo "username=x-access-token" && echo "password=$AOPS_BOT_GH_TOKEN"; }; f'
+
+    subprocess.run(
+        ["git", "config", "--local", "credential.helper", helper_cmd],
+        cwd=repo_path,
+        check=True,
+    )
+
+
 class PolecatManager:
     def __init__(self, home_dir: Path | None = None):
         """Initialize the polecat manager.
@@ -336,6 +393,9 @@ class PolecatManager:
 
         subprocess.run(cmd, cwd=local_repo_path, check=True)
 
+        # Configure git credentials for HTTPS push
+        configure_git_credentials(worktree_path)
+
         # Set upstream tracking to the feature branch (not main).
         # This allows 'git push' to work without requiring manual 'git push -u',
         # while preventing accidental push to main.
@@ -481,6 +541,8 @@ class PolecatManager:
         else:
             # Derive remote URL from source repo
             remote_url = self._get_remote_url(source_path)
+            # Convert SSH URL to HTTPS for credential helper support
+            remote_url = convert_ssh_to_https(remote_url)
             print(f"Cloning {project} from {remote_url}...")
             subprocess.run(
                 ["git", "clone", "--bare", remote_url, str(mirror_path)],
@@ -1020,6 +1082,9 @@ class PolecatManager:
                 subprocess.run(cmd, cwd=repo_path, check=True)
             else:
                 raise e
+
+        # Configure git credentials for HTTPS push
+        configure_git_credentials(worktree_path)
 
         # Set upstream tracking to the feature branch (not main).
         # This allows 'git push' to work without requiring manual 'git push -u',
