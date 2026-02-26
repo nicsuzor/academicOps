@@ -80,7 +80,7 @@ The LGTM workflow (`pr-lgtm-merge.yml`):
 4. Lodges **Approval #2** — a formal PR review (`gh pr review --approve`) from `github-actions[bot]` that satisfies the 1-review ruleset requirement
 5. Adds the `lgtm` label to the PR (for cron to pick up)
 6. Enables GitHub auto-merge (rebase mode)
-7. If merge conflicts are detected, rebases the PR branch on main directly (force-push + re-enable auto-merge)
+7. If merge conflicts are detected, notes them in acknowledgment (merge-prep will resolve on next cron cycle)
 8. Posts acknowledgment summarizing status: what's passing, what's blocking, what was re-triggered
 
 **This is the human's only action.** They do not need to approve again after merge-prep pushes.
@@ -146,7 +146,7 @@ GitHub's native auto-merge handles the final step. It merges (rebase) when ALL r
 - Merge Prep: `success`
 - Approval: 1 approving review (lodged by LGTM workflow as Approval #2)
 
-If merge conflicts exist, the LGTM workflow invokes Claude Code to intelligently rebase and resolve them. If Claude succeeds, the workflow re-enables auto-merge and re-triggers checks. If Claude cannot resolve the conflicts, the workflow posts a comment explaining what needs manual attention. If conflicts arise later (e.g., another PR merges first), re-trigger the LGTM workflow via `workflow_dispatch` or comment `lgtm` again.
+If merge conflicts exist, the LGTM workflow adds the `lgtm` label and enables auto-merge as normal. On the next cron cycle, merge-prep dispatches for conflicting PRs (bypassing the checks-passing requirement) and the merge-prep agent resolves conflicts by merging from main. If conflicts arise later (e.g., another PR merges first), re-trigger the LGTM workflow or comment `lgtm` again.
 
 ## Flowchart
 
@@ -186,9 +186,7 @@ flowchart TD
     Retrigger --> Approved
     CheckStatus -- Yes --> Approved
     LGTM --> Conflicts{"Merge<br/>conflicts?"}
-    Conflicts -- Yes --> Rebase["Claude Code resolves<br/>conflicts (rebase on main)"]
-    Rebase -- Success --> Retrigger
-    Rebase -- Fail --> Manual["Manual resolution<br/>needed"]
+    Conflicts -- Yes --> WaitCron["Merge-prep resolves<br/>on next cron cycle"]
     Conflicts -- No --> Approved
     Approved["Approval #2 lodged<br/>lgtm label added<br/>Auto-merge enabled"]
 
@@ -220,8 +218,7 @@ flowchart TD
     class Blocked fail
     class MPGate gate
     class LGTM lgtm
-    class Rebase agent
-    class Manual fail
+    class WaitCron agent
 ```
 
 ## Approval architecture
@@ -296,12 +293,12 @@ This handles the common case where bot-created branches (using `GITHUB_TOKEN`) n
 When the PR has merge conflicts at LGTM time:
 
 1. The LGTM workflow detects `mergeable: CONFLICTING` state
-2. Checks out the PR branch (full history) and invokes `anthropics/claude-code-action@v1` with a prompt to rebase on main and intelligently resolve conflicts
-3. Claude reads both sides of each conflict and resolves them: additive changes are kept from both sides, logic conflicts prefer the feature branch's intent, config files take main's version with feature additions preserved
-4. On success, Claude force-pushes the rebased branch; the workflow re-enables auto-merge and re-triggers code-quality
-5. On failure (unresolvable conflicts), the workflow posts a comment explaining that manual resolution is needed
+2. LGTM still adds the `lgtm` label and enables auto-merge, but notes conflicts in the acknowledgment
+3. On the next cron cycle (~15 min), the merge-prep dispatcher sees the `lgtm` label and dispatches merge-prep **even though checks aren't passing** (conflicts bypass the checks-passing requirement)
+4. The merge-prep agent resolves conflicts by merging from main, then proceeds with normal review triage
+5. After merge-prep pushes the resolved branch, checks re-run and auto-merge fires when they pass
 
-The human does not need to take further action unless Claude cannot resolve the conflicts.
+The human does not need to take further action unless the merge-prep agent cannot resolve the conflicts (after 3 failures, it adds `merge-prep-failed` label and halts).
 
 ## Merge Prep (cron dispatcher)
 
@@ -390,7 +387,7 @@ This is the mechanism that prevents the "race to merge" — even if all other ch
 | LGTM check re-trigger | Stuck PRs where checks never ran (bot-created branches) |
 | LGTM conflict detection | Merge conflicts blocking auto-merge silently |
 | `workflow_dispatch` override | Manual intervention when cron isn't enough |
-| Claude Code conflict resolution | Intelligent merge conflict resolution via `claude-code-action` |
+| Conflict bypass in cron dispatcher | Conflicting PRs dispatch merge-prep without waiting for checks |
 
 ## Concurrency
 
@@ -446,11 +443,11 @@ Both trigger independently on `issues: [opened]`. Skips: bot-created issues, epi
 - **Custodiet and QA remain independent agents.** They post reviews during the bazaar window. Merge Prep reads their feedback alongside other reviewers. This preserves independent review perspectives.
 - **Gatekeeper skips re-evaluation on bot commits** where the PR author is `github-actions[bot]` — the LLM call is redundant for autofix pushes.
 - **30 minutes is the default bazaar window.** The human can override via `workflow_dispatch` on the cron dispatcher to process a PR immediately.
-- **LGTM workflow uses `GITHUB_TOKEN`** for gh commands and `CLAUDE_CODE_OAUTH_TOKEN` for the `claude-code-action` step that resolves merge conflicts.
+- **LGTM workflow is lightweight** — uses only `GITHUB_TOKEN` for gh commands. Heavy work (conflict resolution, review triage) is handled by merge-prep.
 
 ## Known limitations
 
-- **Force-pushes disable auto-merge**: The LGTM workflow re-enables auto-merge after conflict resolution, but if a force-push happens outside the workflow, auto-merge must be re-enabled manually or by re-triggering LGTM.
+- **Force-pushes disable auto-merge**: Merge-prep uses `git merge` (not rebase) to avoid force-pushes. If a force-push happens for other reasons, auto-merge must be re-enabled manually or by re-triggering LGTM.
 - **All agent reviews show as `github-actions[bot]`**: Reviews from gatekeeper, custodiet, QA, and merge-prep all share the `GITHUB_TOKEN` identity. Agents identify themselves in the review body text.
 - **`issue_comment` triggers are noisy**: Any PR comment triggers Claude Code, Polecat, and LGTM workflows (all skip via job-level `if:` filters, but show as 1-second skipped runs in Actions).
 - **Cron dispatcher requires checks to be green**: If checks never ran, the cron dispatcher will never qualify the PR. The LGTM workflow's check re-trigger handles this, but only after the human says LGTM.

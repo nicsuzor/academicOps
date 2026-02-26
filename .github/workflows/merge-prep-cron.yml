@@ -112,28 +112,38 @@ jobs:
               continue
             fi
 
-            # Check required status checks on HEAD commit
-            # We check Lint, Gatekeeper, Type Check, Pytest — but NOT Merge Prep (it's pending by design)
-            CHECKS_OK=true
-            for CTX in "Lint" "Gatekeeper" "Type Check" "Pytest"; do
-              STATE=$(gh api "repos/$REPO/commits/$HEAD_SHA/status" \
-                --jq ".statuses[] | select(.context == \"$CTX\") | .state" 2>/dev/null)
+            # Check if PR has merge conflicts — if so, dispatch merge-prep
+            # to resolve them (skip the checks-passing requirement since
+            # checks can't meaningfully pass on a conflicting branch).
+            MERGEABLE=$(gh pr view "$PR_NUM" --repo "$REPO" \
+              --json mergeable --jq '.mergeable')
 
-              # Also check check-runs (GitHub Actions reports as check runs, not commit statuses)
-              if [ -z "$STATE" ]; then
-                STATE=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs" \
-                  --jq ".check_runs[] | select(.name == \"$CTX\") | .conclusion" 2>/dev/null)
+            if [ "$MERGEABLE" = "CONFLICTING" ]; then
+              echo "  PR has merge conflicts — dispatching merge-prep to resolve"
+            else
+              # Check required status checks on HEAD commit
+              # We check Lint, Gatekeeper, Type Check, Pytest — but NOT Merge Prep (it's pending by design)
+              CHECKS_OK=true
+              for CTX in "Lint" "Gatekeeper" "Type Check" "Pytest"; do
+                STATE=$(gh api "repos/$REPO/commits/$HEAD_SHA/status" \
+                  --jq ".statuses[] | select(.context == \"$CTX\") | .state" 2>/dev/null)
+
+                # Also check check-runs (GitHub Actions reports as check runs, not commit statuses)
+                if [ -z "$STATE" ]; then
+                  STATE=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs" \
+                    --jq ".check_runs[] | select(.name == \"$CTX\") | .conclusion" 2>/dev/null)
+                fi
+
+                if [ "$STATE" != "success" ]; then
+                  echo "  SKIP: $CTX status is '$STATE' (need 'success')"
+                  CHECKS_OK=false
+                  break
+                fi
+              done
+
+              if [ "$CHECKS_OK" = false ]; then
+                continue
               fi
-
-              if [ "$STATE" != "success" ]; then
-                echo "  SKIP: $CTX status is '$STATE' (need 'success')"
-                CHECKS_OK=false
-                break
-              fi
-            done
-
-            if [ "$CHECKS_OK" = false ]; then
-              continue
             fi
 
             echo "  QUALIFIED: PR #$PR_NUM ready for merge-prep"
