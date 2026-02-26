@@ -81,7 +81,9 @@ def install_cron_jobs(aops_path: Path, aca_data_path: str):
     new_crontab_lines.append(quick_sync_cmd)
 
     new_crontab_lines.append("# aOps full maintenance (viz + sessions)")
-    full_sync_cmd = f"0 * * * * {aops_path}/scripts/repo-sync-cron.sh >> /tmp/repo-sync-cron.log 2>&1"
+    full_sync_cmd = (
+        f"0 * * * * {aops_path}/scripts/repo-sync-cron.sh >> /tmp/repo-sync-cron.log 2>&1"
+    )
     new_crontab_lines.append(full_sync_cmd)
 
     new_crontab_lines.append("# aOps refinery")
@@ -111,10 +113,7 @@ def uninstall_framework(aops_path: Path):
             if "# aOps full maintenance" in line or "repo-sync-cron.sh" in line:
                 if "repo-sync-cron.sh --quick" not in line:
                     continue
-            if (
-                "# aOps transcripts" in line
-                or "scripts/transcript.py" in line
-            ):
+            if "# aOps transcripts" in line or "scripts/transcript.py" in line:
                 continue
             if "# aOps task index" in line or "scripts/regenerate_task_index.py" in line:
                 continue
