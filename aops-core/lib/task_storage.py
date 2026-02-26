@@ -218,9 +218,8 @@ class TaskStorage:
                     if t.type in (TaskType.GOAL, TaskType.PROJECT, TaskType.EPIC)
                 ]
                 if candidate_list:
-                    error_msg += (
-                        f"\n\nCandidate parents in project '{project}':\n- "
-                        + "\n- ".join(candidate_list[:5])
+                    error_msg += f"\n\nCandidate parents in project '{project}':\n- " + "\n- ".join(
+                        candidate_list[:5]
                     )
 
             raise ValueError(error_msg)
