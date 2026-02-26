@@ -1113,6 +1113,7 @@ class PolecatManager:
                     check=True,
                 )
 
+
         # Configure HTTPS credential helper for AOPS_BOT_GH_TOKEN if available
         # Override the bash-style credential helper from mirror with POSIX-compatible version
         if os.environ.get("AOPS_BOT_GH_TOKEN"):
@@ -1122,10 +1123,10 @@ class PolecatManager:
             credential_cmd = (
                 "sh -c '"
                 "while read line; do "
-                'case "$line" in '
+                "case \"$line\" in "
                 "protocol=https*) "
-                'printf "username=x-access-token\\n"; '
-                'printf "password=%s\\n" "$AOPS_BOT_GH_TOKEN"; '
+                "printf \"username=x-access-token\\n\"; "
+                "printf \"password=%s\\n\" \"$AOPS_BOT_GH_TOKEN\"; "
                 "break;; "
                 "esac; "
                 "done'"
