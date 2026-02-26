@@ -89,7 +89,7 @@ Original body content.
         task = storage.create_task(
             title="New Task",
             project="myproject",
-            type=TaskType.TASK,
+            type=TaskType.GOAL,
         )
         returned_path = storage.save_task(task)
 
@@ -106,7 +106,7 @@ class TestAtomicWriteVerification:
         """Basic test that atomic write creates the file."""
         storage = TaskStorage(data_root=tmp_path)
 
-        task = storage.create_task(title="Test", project=None)
+        task = storage.create_task(title="Test", project=None, type=TaskType.GOAL)
         path = tmp_path / "tasks" / "inbox" / f"{task.id}-test.md"
 
         storage._atomic_write(path, task)

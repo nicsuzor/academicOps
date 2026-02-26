@@ -56,7 +56,7 @@ class TestHarness:
 
         task = self.storage.create_task(
             title=f"TEST: {title}",
-            type=TaskType.TASK,
+            type=TaskType.GOAL,
             status=TaskStatus.ACTIVE,
             project="aops",
             body=f"{instructions}\n\n<!-- automated-test-harness -->",
