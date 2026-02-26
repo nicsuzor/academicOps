@@ -24,13 +24,15 @@ Configuration for worker dispatch in the swarm-supervisor lifecycle.
 Available worker types and their profiles. Add or modify workers here to change
 what the supervisor can dispatch to.
 
-| Worker           | Capabilities                              | Cost | Speed | Max Concurrent | Best For                     |
+| Worker           | Capabilities                              | Cost | Local | Max Concurrent | Best For                     |
 | ---------------- | ----------------------------------------- | ---- | ----- | -------------- | ---------------------------- |
-| `polecat-claude` | code, docs, refactor, test, debug         | 3    | 5     | 2              | Most tasks                   |
-| `polecat-gemini` | code, docs, analysis, bulk-ops            | 1    | 3     | 4              | High-volume, simpler tasks   |
-| `jules`          | deep-code, architecture, complex-refactor | 5    | 1     | 1              | Critical path, complex logic |
+| `polecat-claude` | code, docs, refactor, test, debug         | 3    | yes   | 2              | Most tasks                   |
+| `polecat-gemini` | code, docs, analysis, bulk-ops            | 1    | yes   | 2              | Most tasks, cheaper          |
+| `jules`          | deep-code, architecture, complex-refactor | 0    | no    | 7+             | Fire-and-forget, complex     |
+| `github-agent`   | code, docs, refactor, test, bulk-ops      | 0    | no    | 3              | Free compute, standard tasks |
 
-**Cost/Speed Scale**: 1-5 where 5 is highest. Cost = token/API expense, Speed = tasks/hour.
+**Cost Scale**: 0-5, where 0 = free (vendor-hosted), 5 = highest token/API expense.
+**Local**: Whether the worker consumes local machine resources.
 
 ## Capability Definitions
 
@@ -63,9 +65,9 @@ Tasks with these tags require Claude's judgment capabilities:
 security, api, database, auth, payment
 ```
 
-#### Bulk Tags → Gemini
+#### Bulk Tags → Gemini or GitHub Agent
 
-Tasks with these tags are suitable for Gemini's efficiency:
+Tasks with these tags are suitable for bulk execution:
 
 ```
 formatting, lint-fix, dependency-bump, rename
@@ -73,13 +75,13 @@ formatting, lint-fix, dependency-bump, rename
 
 ### Complexity Routing
 
-| Complexity Value      | Routed To | Rationale                       |
-| --------------------- | --------- | ------------------------------- |
-| `needs-decomposition` | jules     | Requires architectural thinking |
-| `requires-judgment`   | claude    | Needs nuanced decision-making   |
-| `multi-step`          | claude    | Complex coordination            |
-| `mechanical`          | gemini    | Straightforward execution       |
-| (unset)               | claude    | Safe default                    |
+| Complexity Value      | Routed To          | Rationale                         |
+| --------------------- | ------------------ | --------------------------------- |
+| `needs-decomposition` | jules              | Requires architectural thinking   |
+| `requires-judgment`   | claude             | Needs nuanced decision-making     |
+| `multi-step`          | claude             | Complex coordination              |
+| `mechanical`          | gemini / gh-agent  | Straightforward execution         |
+| (unset)               | claude             | Safe default                      |
 
 ### Heuristic Thresholds
 
@@ -131,25 +133,30 @@ need to act on these; workers handle their own lifecycle):
 
 ## Swarm Sizing Defaults
 
-Recommended swarm composition based on queue characteristics.
+Recommended swarm composition based on queue characteristics. Prefer
+cloud-hosted workers (Jules, GitHub agents) to minimize local resource use
+and supervision. Local polecats for tasks needing framework context.
 
-| Ready Tasks | Task Mix       | Recommended Swarm            |
-| ----------- | -------------- | ---------------------------- |
-| 1-2         | Any            | `polecat run` (no swarm)     |
-| 3-5         | Mostly simple  | `-c 1 -g 2`                  |
-| 3-5         | Mostly complex | `-c 2 -g 1`                  |
-| 6-10        | Mixed          | `-c 2 -g 3`                  |
-| 10+         | Mixed          | `-c 2 -g 4` (max reasonable) |
+| Ready Tasks | Task Mix       | Recommended Dispatch                                       |
+| ----------- | -------------- | ---------------------------------------------------------- |
+| 1-3         | Any            | `polecat run` or 1-2 Jules sessions                        |
+| 4-8         | Mostly simple  | 2-3 GitHub agents + 1-2 Jules for complex                  |
+| 4-8         | Mostly complex | 3-4 Jules + `-c 1 -g 1` for framework-dependent tasks     |
+| 8+          | Mixed          | 5 Jules + 3 GitHub agents + `-c 2 -g 2` if needed         |
+
+**Graduated rollout**: Launch first wave (3-4 workers max), wait for first
+PRs to land before scaling up. Catches systemic issues early.
 
 ## Capacity Limits
 
 Hard limits on concurrent workers.
 
-| Worker Type | Max Concurrent | Reason                                  |
-| ----------- | -------------- | --------------------------------------- |
-| claude      | 2              | API rate limits, cost                   |
-| gemini      | 2              | Free tier quota; was 4, reduced after crashes |
-| jules       | 7+             | Async on Google infra, no local limits  |
+| Worker Type    | Max Concurrent | Reason                                         |
+| -------------- | -------------- | ---------------------------------------------- |
+| claude         | 2              | API rate limits, cost                          |
+| gemini         | 2              | Free tier quota; was 4, reduced after crashes  |
+| jules          | 7+             | Async on Google infra, no local limits         |
+| github-agent   | 3              | Conservative default; increase once validated  |
 
 **Note on Jules**: Jules sessions run asynchronously on Google infrastructure.
 Unlike polecat workers which consume local resources, Jules sessions are
@@ -158,6 +165,14 @@ fire-and-forget. The practical limit is how many PRs you want to review at once.
 **Note on Gemini**: Free tier quota is easily exhausted. Stagger Gemini worker
 launches (`--gemini-stagger 15` flag) to avoid simultaneous quota hits.
 See `aops-8f4ef5b5`.
+
+**Note on GitHub Agents**: GitHub Copilot coding agents run on GitHub-hosted
+infrastructure at no cost. They work from GitHub Issues — assign the agent to
+an issue and it creates a PR. They lack framework context (no `.agent/`
+instructions, no task MCP), so tasks need self-contained descriptions in the
+issue body. Best for well-specified, bounded tasks. Dispatch via
+`gh issue edit <num> --add-assignee @copilot-swe-agent` or assign through
+the GitHub UI. PRs arrive from a `copilot/fix-*` branch.
 
 ---
 
