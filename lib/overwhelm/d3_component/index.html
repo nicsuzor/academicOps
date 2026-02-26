@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>D3 Task Graph</title>
+  <script src="./d3.v7.min.js"></script>
+  <style>
+    body {
+      margin: 0; padding: 0; 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overflow: hidden;
+      background: transparent;
+    }
+    #graph { width: 100vw; height: 100vh; }
+    
+    /* Elegant Colors for Typography */
+    .node-text { font-family: -apple-system, sans-serif; pointer-events: none; }
+    .node-badge { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; pointer-events: none; }
+    
+    /* Control Panel */
+    #controls-panel {
+      position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 10;
+      background: rgba(15, 23, 42, 0.85); padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(12px); box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+    }
+    #project-filter {
+      background: transparent; color: #f8fafc; border: 1px solid rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; cursor: pointer; outline: none;
+    }
+    #project-filter option { background: #0f172a; color: #f8fafc; }
+    
+    /* Detail Popover */
+    #detail {
+      position: absolute; top: 8px; right: 8px; z-index: 10;
+      background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px;
+      padding: 14px; font-size: 11px; max-width: 280px; min-width: 220px; color: #f8fafc;
+      backdrop-filter: blur(12px); display: none; box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+    }
+    #detail h3 { font-size: 13px; margin-top: 0; margin-bottom: 8px; word-break: break-word; font-weight: 600; line-height: 1.3; padding-right: 20px; }
+    #detail .f { margin-bottom: 4px; display: flex; justify-content: space-between; align-items: baseline; }
+    #detail .fl { color: #94a3b8; font-size: 8px; text-transform: uppercase; letter-spacing: 0.4px; font-weight: 600; }
+    #detail .fv { font-weight: 500; font-size: 11px; text-align: right; }
+    .sb { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* Action Buttons inside detail pane */
+    .actions { display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1); }
+    .btn { flex: 1; padding: 6px 0; border: none; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn-edit { background: #3b82f6; color: white; }
+    .btn-edit:hover { background: #2563eb; }
+    .btn-complete { background: #10b981; color: white; }
+    .btn-complete:hover { background: #059669; }
+
+    /* Danger Pulse */
+    @keyframes danger-pulse {
+      0% { stroke-width: 2px; stroke-opacity: 0.8; }
+      50% { stroke-width: 8px; stroke-opacity: 0.1; }
+      100% { stroke-width: 2px; stroke-opacity: 0.8; }
+    }
+    .danger-pulse { animation: danger-pulse 1.5s infinite ease-in-out; }
+    
+    /* Legend toggle */
+    #legend-toggle {
+        position: absolute; bottom: 8px; right: 8px; z-index: 10;
+        background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;
+        padding: 4px 10px; font-size: 10px; cursor: pointer; color: #f8fafc; font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  
+  <div id="controls-panel">
+    <select id="project-filter">
+      <option value="ALL">All Projects</option>
+    </select>
+  </div>
+  
+  <div id="graph" style="position:relative;"></div>
+  
+  <button id="legend-toggle" onclick="toggleDetail()">Hide Details</button>
+
+  <div id="detail">
+    <div id="detail-content">
+        <h3 id="dt"></h3>
+        <div id="df"></div>
+        <div class="actions">
+            <button class="btn btn-edit" id="btn-edit" onclick="triggerAction('edit')">Edit Task</button>
+            <button class="btn btn-complete" id="btn-complete" onclick="triggerAction('complete')">Complete</button>
+        </div>
+    </div>
+  </div>
+
+  <script>
+    let graphData = null;
+    let sim = null;
+    let W = window.innerWidth;
+    let H = window.innerHeight;
+    let currentFocusProject = "ALL";
+    let activeNodeId = null;
+    let hasRendered = false;
+    
+    // Status colors
+    const sbc = {
+      active: "background:#dbeafe;color:#1e40af", 
+      done: "background:#dcfce7;color:#166534",
+      completed: "background:#dcfce7;color:#166534",
+      blocked: "background:#fee2e2;color:#991b1b", 
+      waiting: "background:#fef9c3;color:#854d0e",
+      review: "background:#f3e8ff;color:#6b21a8", 
+      inbox: "background:#f1f5f9;color:#475569"
+    };
+
+    function triggerAction(actionName) {
+        if (!activeNodeId) return;
+        // Send data back to Python!
+        Streamlit.setComponentValue({
+            action: actionName,
+            id: activeNodeId
+        });
+    }
+
+    function toggleDetail() {
+        const d = document.getElementById("detail");
+        const b = document.getElementById("legend-toggle");
+        if (d.style.display === "none") {
+            d.style.display = "block";
+            b.textContent = "Hide Details";
+        } else {
+            d.style.display = "none";
+            b.textContent = "Show Details";
+        }
+    }
+
+    const Streamlit = {
+        setComponentReady: function() {
+            window.parent.postMessage({isStreamlitMessage: true, type: "streamlit:componentReady", apiVersion: 1}, "*");
+        },
+        setFrameHeight: function(height) {
+            window.parent.postMessage({isStreamlitMessage: true, type: "streamlit:setFrameHeight", height: height}, "*");
+        },
+        setComponentValue: function(value) {
+            window.parent.postMessage({isStreamlitMessage: true, type: "streamlit:setComponentValue", value: value}, "*");
+        }
+    };
+
+    window.addEventListener("message", function(event) {
+        if (event.data && event.data.type === "streamlit:render") {
+            onRender(event.data);
+        }
+    });
+
+    // Main render function called by Streamlit
+    function onRender(data) {
+        const args = data.args;
+        if (!window.rendered) {
+            Streamlit.setFrameHeight(args.height || window.innerHeight);
+            window.rendered = true;
+        }
+
+        if (!args.data || !args.data.nodes || args.data.nodes.length === 0) {
+            return; // No data yet
+        }
+
+        if (hasRendered) {
+            // Already rendered graph, potentially update forces if needed
+            if (sim && args.force) {
+                sim.force("charge").strength(args.force.charge || -400);
+                sim.force("link").distance(args.force.linkDistance || 30);
+                sim.alpha(0.3).restart();
+            }
+            return; // Don't rebuild entirely
+        }
+        
+        hasRendered = true;
+        graphData = args.data;
+        const nodes = graphData.nodes;
+        const links = graphData.links;
+        const forceSettings = args.force || { charge: -400, linkDistance: 30, projectForce: 0.06 };
+        
+        W = document.body.clientWidth || window.innerWidth;
+        H = args.height || window.innerHeight;
+        
+        d3.select("#graph").selectAll("*").remove();
+        
+        const svg = d3.select("#graph").append("svg").attr("viewBox", [0, 0, W, H]);
+        const defs = svg.append("defs");
+        const filt = defs.append("filter").attr("id", "sh").attr("x", "-20%").attr("y", "-20%").attr("width", "140%").attr("height", "140%");
+        filt.append("feDropShadow").attr("dx", 0).attr("dy", 1).attr("stdDeviation", 2).attr("flood-color", "rgba(0,0,0,0.15)");
+
+        [["ap","#3b82f6"],["ad","#ef4444"],["ar","#94a3b8"]].forEach(([id,c]) => {
+          defs.append("marker").attr("id",id).attr("viewBox","0 -4 8 8")
+            .attr("refX",8).attr("refY",0).attr("markerWidth",4).attr("markerHeight",4).attr("orient","auto")
+            .append("path").attr("d","M0,-3L8,0L0,3").attr("fill",c);
+        });
+        const mMap = { parent:"ap", depends_on:"ad", ref:"ar" };
+
+        const container = svg.append("g");
+        const zoom = d3.zoom().scaleExtent([0.05, 8]).on("zoom", e => container.attr("transform", e.transform));
+        svg.call(zoom);
+
+        // Project filtering logic
+        const projects = Array.from(new Set(nodes.map(n => n.project).filter(Boolean))).sort();
+        const pf = document.getElementById("project-filter");
+        pf.innerHTML = '<option value="ALL">All Projects</option>';
+        projects.forEach(p => {
+            const opt = document.createElement("option");
+            opt.value = p; opt.textContent = p;
+            pf.appendChild(opt);
+        });
+
+        // Adjacency for hover
+        const adj = new Map();
+        nodes.forEach(n => adj.set(n.id, new Set()));
+        links.forEach(l => {
+          const s = typeof l.source === "object" ? l.source.id : l.source;
+          const t = typeof l.target === "object" ? l.target.id : l.target;
+          if (adj.has(s)) adj.get(s).add(t);
+          if (adj.has(t)) adj.get(t).add(s);
+        });
+
+        // Edges
+        const linkG = container.append("g");
+        const linkEls = linkG.selectAll("path").data(links).join("path")
+          .attr("fill","none").attr("stroke", d => d.color).attr("stroke-width", d => d.width)
+          .attr("stroke-dasharray", d => d.dash || null)
+          .attr("marker-end", d => `url(#${mMap[d.type]||"ar"})`)
+          .attr("opacity", d => d.type === "ref" ? 0.3 : 0.55)
+          .attr("stroke-linecap","round").attr("stroke-linejoin","round");
+
+        // Nodes
+        const nodeG = container.append("g");
+        nodes.forEach(d => {
+            // Enhanced visual aesthetics for "info absorption"
+            // Increase base size slightly
+            d.w = d.w * 1.15;
+            d.h = d.h * 1.15; 
+            d.fontSize = d.fontSize * 1.1;
+
+            let op = 1.0;
+            if (["done", "completed", "cancelled"].includes(d.status)) op = 0.2;
+            else if (d.structural) op = 0.3;
+            d.baseOpacity = Math.min(op, d.opacity || 1.0);
+        });
+
+        const nodeEls = nodeG.selectAll("g").data(nodes).join("g")
+          .attr("class", "node-g")
+          .attr("cursor","pointer").attr("opacity", d => d.baseOpacity)
+          .call(d3.drag().on("start",ds).on("drag",dr).on("end",de));
+
+        function hexPoints(w, h) {
+          const hw = w/2, hh = h/2, c = Math.min(hh * 0.6, 12);
+          return `${-hw+c},${-hh} ${hw-c},${-hh} ${hw},${0} ${hw-c},${hh} ${-hw+c},${hh} ${-hw},${0}`;
+        }
+
+        nodeEls.each(function(d) {
+          const g = d3.select(this);
+          const hw = d.w/2, hh = d.h/2;
+          
+          if (d.shape === "pill") {
+            g.append("rect").attr("x",-hw).attr("y",-hh).attr("width",d.w).attr("height",d.h)
+              .attr("rx",hh).attr("ry",hh)
+              .attr("fill",d.fill).attr("stroke",d.borderColor).attr("stroke-width",d.borderWidth)
+              .attr("stroke-dasharray",d.structural?"4,3":null).attr("filter","url(#sh)");
+          } else if (d.shape === "hexagon") {
+            g.append("polygon").attr("points", hexPoints(d.w, d.h))
+              .attr("fill",d.fill).attr("stroke",d.borderColor).attr("stroke-width",d.borderWidth)
+              .attr("stroke-dasharray",d.structural?"4,3":null).attr("filter","url(#sh)");
+          } else if (d.shape === "rounded") {
+            g.append("rect").attr("x",-hw).attr("y",-hh).attr("width",d.w).attr("height",d.h)
+              .attr("rx",10).attr("ry",10)
+              .attr("fill",d.fill).attr("stroke",d.borderColor).attr("stroke-width",d.borderWidth)
+              .attr("stroke-dasharray",d.structural?"4,3":null).attr("filter","url(#sh)");
+          } else {
+            g.append("rect").attr("x",-hw).attr("y",-hh).attr("width",d.w).attr("height",d.h)
+              .attr("rx",4).attr("ry",4)
+              .attr("fill",d.fill).attr("stroke",d.borderColor).attr("stroke-width",d.borderWidth)
+              .attr("stroke-dasharray",d.structural?"4,3":null).attr("filter","url(#sh)");
+          }
+
+          if (d.status === "blocked" && d.dw >= 2) {
+            const rx = d.shape === "pill" ? hh+4 : d.shape === "rounded" ? 14 : 6;
+            g.insert("rect",":first-child").attr("x",-hw-4).attr("y",-hh-4).attr("width",d.w+8).attr("height",d.h+8)
+              .attr("rx",rx).attr("ry",rx).attr("fill","none").attr("stroke","#ef4444")
+              .attr("class","danger-pulse");
+          }
+
+          if (d.stakeholder) {
+            const rx = d.shape === "pill" ? hh+3 : d.shape === "rounded" ? 13 : 5;
+            g.insert("rect",":first-child").attr("x",-hw-3).attr("y",-hh-3).attr("width",d.w+6).attr("height",d.h+6)
+              .attr("rx",rx).attr("ry",rx).attr("fill","none").attr("stroke",d.borderColor).attr("stroke-width",1.5).attr("opacity",0.5);
+          }
+
+          if (d.badge) {
+            const bw = d.badge.length * 6 + 10;
+            g.append("rect").attr("x",-hw+4).attr("y",-hh+4).attr("width",bw).attr("height",14)
+              .attr("rx",3).attr("fill",d.borderColor).attr("opacity",0.2);
+            g.append("text").attr("class","node-badge")
+              .attr("x",-hw+4+bw/2).attr("y",-hh+13.5).attr("text-anchor","middle")
+              .attr("font-size","8px").attr("font-weight","700").attr("fill",d.borderColor)
+              .attr("letter-spacing","0.5px").text(d.badge);
+          }
+
+          const lh = d.fontSize + 4;
+          const th = d.lines.length * lh;
+          const ty = -th/2 + d.fontSize * 0.38 + (d.badge ? 6 : 0);
+          d.lines.forEach((line, i) => {
+            g.append("text").attr("class","node-text").attr("x",0).attr("y", ty + i * lh)
+              .attr("text-anchor","middle").attr("dominant-baseline","central")
+              .attr("font-size", d.fontSize + "px")
+              .attr("font-weight", d.shape === "pill" ? "700" : d.shape === "rounded" ? "600" : "500")
+              .attr("fill", d.textColor)
+              .text(line);
+          });
+
+          if (d.dw > 0) {
+            const t = d.dw.toFixed(1), tw = t.length * 6 + 16;
+            g.append("rect").attr("x",-tw/2).attr("y",hh+4).attr("width",tw).attr("height",15)
+              .attr("rx",7).attr("fill",d.borderColor).attr("opacity",0.15);
+            g.append("text").attr("class","node-badge").attr("x",0).attr("y",hh+14.5)
+              .attr("text-anchor","middle").attr("font-size","8px").attr("font-weight","600")
+              .attr("fill",d.borderColor).text("\\u2696 "+t);
+          }
+        });
+
+        // Force simulation
+        const maxDepth = nodes.reduce((m, n) => Math.max(m, n.maxDepth), 0);
+        const projCols = projects.length || 1;
+        const projCenters = {};
+        projects.forEach((p, i) => { projCenters[p] = { x: (W / (projCols + 1)) * (i + 1) }; });
+
+        sim = d3.forceSimulation(nodes)
+          .force("link", d3.forceLink(links).id(d=>d.id).distance(d=> forceSettings.linkDistance || d.distance).strength(d=>d.strength).iterations(3))
+          .force("charge", d3.forceManyBody().strength(d=> forceSettings.charge || d.charge).distanceMax(900).theta(0.8))
+          .force("y", d3.forceY().y(d => {
+            if (maxDepth===0) return H/2;
+            return H*0.12 + (d.depth+1)*(H*0.7/(maxDepth+2));
+          }).strength(0.12))
+          .force("x", d3.forceX().x(d => {
+              if (d.project && projCenters[d.project]) return projCenters[d.project].x;
+              return W/2;
+          }).strength(forceSettings.projectForce || 0.06))
+          .force("collide", d3.forceCollide().radius(d => Math.sqrt(d.w*d.w + d.h*d.h)/2 + 12).strength(0.8).iterations(3))
+          .alphaDecay(0.016).velocityDecay(0.35);
+
+        window.updateVisibility = function() {
+            d3.selectAll(".node-g").transition().duration(300).attr("opacity", d => {
+                if (currentFocusProject !== "ALL" && d.project !== currentFocusProject) return 0.05;
+                return d.baseOpacity;
+            });
+            d3.selectAll(".edge-path").transition().duration(300).attr("opacity", l => {
+                if (currentFocusProject !== "ALL") {
+                    const sProj = (l.source.project || "none");
+                    const tProj = (l.target.project || "none");
+                    if (sProj !== currentFocusProject && tProj !== currentFocusProject) return 0.01;
+                    if (sProj !== currentFocusProject || tProj !== currentFocusProject) return 0.05;
+                    return l.type === "ref" ? 0.3 : 0.55;
+                }
+                return l.type === "ref" ? 0.3 : 0.55;
+            });
+        };
+        pf.addEventListener("change", (e) => {
+            currentFocusProject = e.target.value;
+            updateVisibility();
+        });
+
+        function ri(cx,cy,w,h,px,py) {
+          const dx=px-cx, dy=py-cy;
+          if (dx===0 && dy===0) return [cx,cy];
+          const hw=w/2+3, hh=h/2+3;
+          const t = Math.abs(dx)*hh > Math.abs(dy)*hw ? hw/Math.abs(dx) : hh/Math.abs(dy);
+          return [cx+dx*t, cy+dy*t];
+        }
+
+        function manhattan(sx,sy,sw,sh,tx,ty,tw,th) {
+          const dx = tx-sx, dy = ty-sy;
+          if (Math.abs(dx) >= Math.abs(dy)) {
+            const exitX = dx > 0 ? sx + sw/2 + 3 : sx - sw/2 - 3;
+            const enterX = dx > 0 ? tx - tw/2 - 3 : tx + tw/2 + 3;
+            const midX = (exitX + enterX) / 2;
+            return `M${exitX},${sy} L${midX},${sy} L${midX},${ty} L${enterX},${ty}`;
+          } else {
+            const exitY = dy > 0 ? sy + sh/2 + 3 : sy - sh/2 - 3;
+            const enterY = dy > 0 ? ty - th/2 - 3 : ty + th/2 + 3;
+            const midY = (exitY + enterY) / 2;
+            return `M${sx},${exitY} L${sx},${midY} L${tx},${midY} L${tx},${enterY}`;
+          }
+        }
+
+        function edgePath(d) {
+          const s=d.source, t=d.target;
+          if (d.type === "parent") {
+            const [bx,by] = ri(s.x,s.y,s.w,s.h,t.x,t.y);
+            const [ex,ey] = ri(t.x,t.y,t.w,t.h,s.x,s.y);
+            const midY = (by+ey)/2;
+            return `M${bx},${by} C${bx},${midY} ${ex},${midY} ${ex},${ey}`;
+          }
+          return manhattan(s.x,s.y,s.w,s.h,t.x,t.y,t.w,t.h);
+        }
+
+        sim.tick(300);
+        nodeEls.attr("transform", d => `translate(${d.x},${d.y})`);
+        linkEls.attr("d", edgePath);
+        sim.on("tick", () => { linkEls.attr("d", edgePath); nodeEls.attr("transform", d => `translate(${d.x},${d.y})`); });
+
+        const b = container.node().getBBox();
+        if (b.width > 0) {
+          const sc = Math.min(W/(b.width+60), H/(b.height+60), 1.5) * 0.85;
+          svg.call(zoom.transform, d3.zoomIdentity.translate(W/2,H/2).scale(sc).translate(-b.x-b.width/2,-b.y-b.height/2));
+        }
+
+        function ds(e,d) { if(!e.active) sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; }
+        function dr(e,d) { d.fx=e.x; d.fy=e.y; }
+        function de(e,d) { if(!e.active) sim.alphaTarget(0); }
+        
+        nodeEls.on("click",(e,d)=>{
+            e.stopPropagation(); 
+            activeNodeId = d.id;
+            
+            document.getElementById("dt").textContent = d.label;
+            const bs = sbc[d.status]||"background:#f1f5f9;color:#475569";
+            let h = `<div class="f"><span class="fl">Status</span> <span class="sb" style="${bs}">${d.status}</span></div>`;
+            const fs = [
+              d.badge?["Type",d.badge]:null, ["Priority","P"+d.priority],
+              d.project?["Project",d.project]:null,
+              d.dw>0?["Impact","\\u2696 "+d.dw.toFixed(1)]:null,
+              d.stakeholder?["Stakeholder","Yes"]:null,
+              d.assignee?["Assignee",d.assignee]:null, ["ID",d.id],
+            ].filter(Boolean);
+            h += fs.map(([l,v])=>`<div class="f"><span class="fl">${l}</span><span class="fv">${v}</span></div>`).join("");
+            document.getElementById("df").innerHTML = h;
+            document.getElementById("detail").style.display = "block";
+
+            // If done/completed, hide complete button
+            const cBtn = document.getElementById("btn-complete");
+            if (["done", "completed", "cancelled"].includes(d.status)) {
+                cBtn.style.display = "none";
+            } else {
+                cBtn.style.display = "flex";
+            }
+        });
+
+        nodeEls.on("mouseenter",(e,d)=>{
+          const c = adj.get(d.id) || new Set();
+          nodeEls.transition().duration(120).attr("opacity", n => {
+              if (n.id===d.id||c.has(n.id)) return 1.0;
+              if (currentFocusProject !== "ALL" && n.project !== currentFocusProject) return 0.05;
+              return 0.1;
+          });
+          linkEls.transition().duration(120).attr("opacity", l => (l.source.id===d.id||l.target.id===d.id) ? 0.85 : 0.03);
+        }).on("mouseleave",()=> { updateVisibility(); });
+        
+        svg.on("click",()=> {
+            document.getElementById("detail").style.display="none";
+            activeNodeId = null;
+        });
+    }
+
+    Streamlit.setComponentReady();
+  </script>
+</body>
+</html>

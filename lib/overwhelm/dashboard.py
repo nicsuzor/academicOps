@@ -3870,11 +3870,31 @@ def render_graph_section():
     )
 
     with tab_d3:
+        # Visual controls for the D3 physics engine
+        with st.expander("⚙️ Physics Controls", expanded=False):
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                charge = st.slider("Repel Strength", -1000, -10, -350, 10, key="d3_charge")
+            with col2:
+                link_dist = st.slider("Link Distance", 10, 150, 25, 5, key="d3_link")
+            with col3:
+                proj_force = st.slider("Project Force", 0.0, 0.2, 0.08, 0.01, key="d3_proj")
+
+        force_settings = {"charge": charge, "linkDistance": link_dist, "projectForce": proj_force}
+
         d3_graph = load_graph_data("graph.json")
         if d3_graph:
             d3_data = prepare_embedded_graph_data(d3_graph)
             st.caption(f"Showing {len(d3_data['nodes'])} nodes and {len(d3_data['links'])} links.")
-            render_embedded_graph(d3_data, height=500)
+
+            # Action handler for bi-directional clicking
+            action_event = render_embedded_graph(d3_data, height=600, force_settings=force_settings)
+
+            if action_event and isinstance(action_event, dict):
+                action = action_event.get("action")
+                task_id = action_event.get("id")
+                if action and task_id:
+                    _handle_graph_action(action, task_id)
         else:
             st.warning("No graph.json found. Run `/task-viz` to generate.")
 
@@ -4443,6 +4463,34 @@ def render_network_analysis():
 # ============================================================================
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
+
+from lib.task_model import TaskStatus
+from task_manager_ui import render_task_editor
+
+
+@st.dialog("Edit Task")
+def _edit_task_dialog(task_id: str):
+    storage = TaskStorage()
+    task = storage.get_task(task_id)
+    if not task:
+        st.error(f"Task {task_id} not found.")
+        return
+    render_task_editor(task, storage)
+
+
+def _handle_graph_action(action: str, task_id: str):
+    """Handle click events emitted by the D3 Custom Component."""
+    if action == "edit":
+        _edit_task_dialog(task_id)
+    elif action == "complete":
+        storage = TaskStorage()
+        task = storage.get_task(task_id)
+        if task:
+            task.status = TaskStatus.DONE
+            storage.save_task(task)
+            st.success(f"Task {task_id} completed!")
+            st.rerun()
+
 
 # Navigation
 page = st.sidebar.radio(
