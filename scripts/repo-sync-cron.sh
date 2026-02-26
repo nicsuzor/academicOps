@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # repo-sync-cron.sh - Periodic maintenance: repo sync + PKB visualizations
 #
 # This script is intended to be run via cron. It handles:
@@ -22,7 +22,11 @@ export AOPS="${AOPS:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
 
 # 2. Source environment
 if [[ -f "$HOME/.zshrc.local" ]]; then
-    eval "$(grep '^export ' "$HOME/.zshrc.local")"
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^export[[:space:]]+([A-Za-z_][A-Za-z0-9_]*)= ]]; then
+            export "${line#export }"
+        fi
+    done < "$HOME/.zshrc.local"
 fi
 
 export ACA_DATA="${ACA_DATA:-$HOME/brain}"
@@ -88,8 +92,25 @@ if [[ -d "${AOPS_SESSIONS}/.git" ]]; then
         git commit -m "sync: auto-generated viz and transcripts" --quiet 2>/dev/null || true
     fi
 
-    # Push everything
-    git push --quiet 2>/dev/null || echo "Warning: AOPS_SESSIONS push failed"
+    # Push everything with retry loop to handle concurrent updates
+    max_push_attempts=3
+    push_attempt=1
+    while (( push_attempt <= max_push_attempts )); do
+        if git push --quiet 2>/dev/null; then
+            break
+        fi
+        echo "Warning: AOPS_SESSIONS push failed (attempt ${push_attempt}/${max_push_attempts}), trying to rebase and retry..."
+        git fetch --quiet 2>/dev/null || true
+        if ! git pull --rebase --quiet 2>/dev/null; then
+            echo "Warning: AOPS_SESSIONS pull --rebase failed during push retry, aborting rebase"
+            git rebase --abort 2>/dev/null || true
+            break
+        fi
+        (( push_attempt++ ))
+    done
+    if (( push_attempt > max_push_attempts )); then
+        echo "Warning: AOPS_SESSIONS push failed after ${max_push_attempts} attempts"
+    fi
 fi
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') repo-sync-cron done"
