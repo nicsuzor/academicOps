@@ -113,7 +113,6 @@ def render_task_manager():
 
         # Load graph.json and filter to matching task IDs
         import json
-        import os
 
         graph_path = get_data_root() / "graph.json"
         if graph_path.exists():
