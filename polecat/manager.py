@@ -144,6 +144,36 @@ def load_crew_names(config_path: Path | None = None) -> list[str]:
     return config.get("crew_names", ["crew"])
 
 
+def configure_git_credentials(repo_path: Path):
+    """Configure git to use AOPS_BOT_GH_TOKEN for HTTPS authentication.
+
+    Sets up a POSIX-compatible credential helper that provides the token
+    from the AOPS_BOT_GH_TOKEN environment variable for git operations.
+
+    Git invokes credential helpers via /bin/sh (often dash, not bash),
+    so the helper must avoid bash-specific syntax like function definitions.
+
+    Args:
+        repo_path: Path to git repository or worktree
+    """
+    token = os.environ.get("AOPS_BOT_GH_TOKEN")
+    if not token:
+        return
+
+    # POSIX-compatible: no function syntax, just a simple conditional printf.
+    # Git passes the operation (get/store/erase) as the first argument.
+    helper_cmd = (
+        '!test "$1" = get '
+        '&& printf "username=x-access-token\\npassword=%s\\n" "$AOPS_BOT_GH_TOKEN"'
+    )
+
+    subprocess.run(
+        ["git", "config", "--local", "credential.helper", helper_cmd],
+        cwd=repo_path,
+        check=True,
+    )
+
+
 class PolecatManager:
     def __init__(self, home_dir: Path | None = None):
         """Initialize the polecat manager.
@@ -335,6 +365,9 @@ class PolecatManager:
             ]
 
         subprocess.run(cmd, cwd=local_repo_path, check=True)
+
+        # Configure git credentials for HTTPS push
+        configure_git_credentials(worktree_path)
 
         # Set upstream tracking to the feature branch (not main).
         # This allows 'git push' to work without requiring manual 'git push -u',
@@ -1020,6 +1053,9 @@ class PolecatManager:
                 subprocess.run(cmd, cwd=repo_path, check=True)
             else:
                 raise e
+
+        # Configure git credentials for HTTPS push
+        configure_git_credentials(worktree_path)
 
         # Set upstream tracking to the feature branch (not main).
         # This allows 'git push' to work without requiring manual 'git push -u',

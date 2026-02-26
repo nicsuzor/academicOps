@@ -424,6 +424,14 @@ def finish(ctx, no_push, do_nuke, force):
 
         print(f"Pushing {branch_name} to origin...")
         try:
+            # Fetch the branch tracking ref so --force-with-lease has current data.
+            # Without this, rebase leaves the local tracking ref stale and push
+            # is rejected with "(stale info)".
+            subprocess.run(
+                ["git", "fetch", "origin", branch_name],
+                check=False,
+                capture_output=True,
+            )
             # Use --force-with-lease for safe force push after rebase
             # This is safe because we just rebased and no one else should be pushing to this branch
             subprocess.run(
