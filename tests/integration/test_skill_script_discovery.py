@@ -76,7 +76,6 @@ def test_skill_scripts_exist_via_symlink():
     skills_path = Path.home() / ".claude" / "skills"
     if not skills_path.exists():
         pytest.skip("~/.claude/skills/ not found (skipping integration test)")
-    assert skills_path.exists(), "~/.claude/skills/ should exist"
     assert skills_path.is_symlink() or skills_path.is_dir(), (
         "~/.claude/skills/ should be symlink or directory"
     )
@@ -121,7 +120,6 @@ def test_framework_script_runs_from_writing_repo(data_dir):
     aops = env.get("AOPS")
     if not aops:
         pytest.skip("AOPS environment variable not set (skipping integration test)")
-    assert aops, "AOPS environment variable should be set"
     env["PYTHONPATH"] = aops
 
     # Execute from writing repo
@@ -211,7 +209,6 @@ def test_skill_self_contained_architecture():
     aops = os.environ.get("AOPS")
     if not aops:
         pytest.skip("AOPS environment variable not set (skipping integration test)")
-    assert aops, "AOPS environment variable should be set"
 
     aops_path = Path(aops)
     assert aops_path.exists(), f"AOPS path should exist: {aops_path}"
