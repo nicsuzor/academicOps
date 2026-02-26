@@ -1,4 +1,8 @@
 from datetime import datetime
+import os
+import subprocess
+from pathlib import Path
+import yaml
 
 import pandas as pd
 import streamlit as st
@@ -11,6 +15,114 @@ def _rebuild_index():
     # For now, just a placeholder.
     # In real impl, might call storage.reindex()
     pass
+
+
+def _get_repo_url_from_project(project: str) -> str | None:
+    """Get GitHub repo URL from project name via polecat.yaml."""
+    config_path = Path.home() / ".aops" / "polecat.yaml"
+    if not config_path.exists():
+        return None
+
+    try:
+        with open(config_path) as f:
+            config = yaml.safe_load(f)
+
+        projects = config.get("projects", {})
+        if project not in projects:
+            return None
+
+        repo_path = Path(projects[project]["path"]).expanduser()
+        if not repo_path.exists():
+            return None
+
+        # Get git remote URL
+        result = subprocess.run(
+            ["git", "config", "--get", "remote.origin.url"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        if result.returncode == 0:
+            url = result.stdout.strip()
+            # Convert git@github.com:owner/repo.git to owner/repo
+            if url.startswith("git@github.com:"):
+                return url.replace("git@github.com:", "").replace(".git", "")
+            elif "github.com/" in url:
+                # HTTPS URL
+                return url.split("github.com/")[-1].replace(".git", "")
+
+        return None
+    except Exception:
+        return None
+
+
+def launch_polecat_agent(task: Task):
+    """Launch a polecat worker for this task in background."""
+    try:
+        subprocess.Popen(
+            ["polecat", "run", "-t", task.id],
+            start_new_session=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        st.success(f"✅ Launched polecat for {task.id}")
+    except Exception as e:
+        st.error(f"❌ Failed to launch polecat: {e}")
+
+
+def launch_jules_agent(task: Task):
+    """Launch a jules agent for this task in background."""
+    repo = _get_repo_url_from_project(task.project or "aops")
+    if not repo:
+        st.error(f"❌ Could not find repo for project: {task.project}")
+        return
+
+    try:
+        # Construct prompt: task title + body
+        prompt = f"{task.title}\n\n{task.body or ''}"
+
+        # Launch jules in background: echo "prompt" | jules new --repo owner/repo
+        process = subprocess.Popen(
+            ["jules", "new", "--repo", repo],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+            text=True,
+        )
+        process.communicate(input=prompt)
+        st.success(f"✅ Launched jules for {task.id} on {repo}")
+    except Exception as e:
+        st.error(f"❌ Failed to launch jules: {e}")
+
+
+def launch_github_agent(task: Task):
+    """Launch a polecat worker in GitHub issue mode."""
+    # Try to extract GitHub issue URL from task body
+    import re
+
+    issue_pattern = r"https://github\.com/([^/]+)/([^/]+)/issues/(\d+)"
+    match = re.search(issue_pattern, task.body or "")
+
+    if not match:
+        st.error("❌ No GitHub issue URL found in task body")
+        return
+
+    owner, repo, issue_num = match.groups()
+    issue_ref = f"{owner}/{repo}#{issue_num}"
+
+    try:
+        subprocess.Popen(
+            ["polecat", "run", "--issue", issue_ref],
+            start_new_session=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        st.success(f"✅ Launched polecat for issue {issue_ref}")
+    except Exception as e:
+        st.error(f"❌ Failed to launch github agent: {e}")
 
 
 def _get_project_select_options():
@@ -180,6 +292,25 @@ def render_task_editor(task: Task, storage: TaskStorage):
     if col_actions[1].button("⬇️ Down"):
         move_task(task, "down", storage)
         st.rerun()
+
+    # Agent Launch Actions
+    st.markdown("### 🤖 Launch Agent")
+    agent_cols = st.columns(3)
+
+    # Polecat Launch
+    with agent_cols[0]:
+        if st.button("🐱 Polecat", key=f"polecat_{task.id}", help="Launch polecat worker"):
+            launch_polecat_agent(task)
+
+    # Jules Launch
+    with agent_cols[1]:
+        if st.button("🔮 Jules", key=f"jules_{task.id}", help="Launch Jules agent (Google)"):
+            launch_jules_agent(task)
+
+    # GitHub Launch
+    with agent_cols[2]:
+        if st.button("🐙 GitHub", key=f"github_{task.id}", help="Launch as GitHub issue"):
+            launch_github_agent(task)
 
     with st.form(key=f"edit_{task.id}"):
         # Title
