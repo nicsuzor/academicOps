@@ -163,8 +163,7 @@ def configure_git_credentials(repo_path: Path):
     # POSIX-compatible: no function syntax, just a simple conditional printf.
     # Git passes the operation (get/store/erase) as the first argument.
     helper_cmd = (
-        '!test "$1" = get '
-        '&& printf "username=x-access-token\\npassword=%s\\n" "$AOPS_BOT_GH_TOKEN"'
+        '!test "$1" = get && printf "username=x-access-token\\npassword=%s\\n" "$AOPS_BOT_GH_TOKEN"'
     )
 
     subprocess.run(
