@@ -5,6 +5,12 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
+# Add aops-core to path for lib imports
+SCRIPT_DIR = Path(__file__).parent.resolve()
+REPO_ROOT = SCRIPT_DIR.parent
+if str(REPO_ROOT / "aops-core") not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT / "aops-core"))
+
 import click
 from manager import PolecatManager
 from validation import TaskIDValidationError, validate_task_id_or_raise
@@ -21,7 +27,7 @@ def save_worker_transcript(
     """Save worker output to transcript file.
 
     Writes a JSONL entry with metadata and full output to
-    ~/.aops/transcripts/<task-id>.jsonl
+    $AOPS_SESSIONS/polecats/<task-id>.jsonl
 
     Args:
         task_id: The task identifier
@@ -29,7 +35,7 @@ def save_worker_transcript(
         stderr: Captured standard error
         exit_code: Process exit code
         agent_type: "claude" or "gemini"
-        home_dir: Polecat home directory (typically ~/.aops)
+        home_dir: Polecat home directory (fallback if AOPS_SESSIONS not set)
 
     Returns:
         Path to the transcript file
@@ -38,7 +44,13 @@ def save_worker_transcript(
         OSError: If transcript directory cannot be created or file cannot be written
     """
     try:
-        transcript_dir = home_dir / "transcripts"
+        try:
+            from lib.paths import get_polecat_transcripts_dir
+            transcript_dir = get_polecat_transcripts_dir()
+        except ImportError:
+            # Fallback for older installations or missing lib.paths
+            transcript_dir = home_dir / "transcripts"
+
         transcript_dir.mkdir(parents=True, exist_ok=True)
 
         transcript_file = transcript_dir / f"{task_id}.jsonl"
@@ -1111,7 +1123,7 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
             if result.stderr:
                 print(result.stderr, file=sys.stderr)
 
-            # Save transcript to ~/.aops/transcripts/<task-id>.jsonl
+            # Save transcript to $AOPS_SESSIONS/polecats/<task-id>.jsonl
             try:
                 transcript_path = save_worker_transcript(
                     task_id=task.id,
@@ -1290,7 +1302,21 @@ def analyze(ctx, task_id, transcript_lines):
 
     # --- Section 3: Transcript (if available) ---
     print("\n📜 TRANSCRIPT")
-    transcript_path = manager.home_dir / "transcripts" / f"{task_id}.jsonl"
+    try:
+        from lib.paths import get_polecat_transcripts_dir, get_sessions_repo
+        sessions = get_sessions_repo()
+        # Try primary location
+        transcript_path = sessions / "polecats" / f"{task_id}.jsonl"
+        if not transcript_path.exists():
+            # Try fallback location
+            fallback_path = sessions / "transcripts" / "polecats" / f"{task_id}.jsonl"
+            if fallback_path.exists():
+                transcript_path = fallback_path
+            else:
+                # Default to canonical directory
+                transcript_path = get_polecat_transcripts_dir() / f"{task_id}.jsonl"
+    except ImportError:
+        transcript_path = manager.home_dir / "transcripts" / f"{task_id}.jsonl"
 
     if not transcript_path.exists():
         print(f"   (No transcript found at {transcript_path})")
