@@ -1,5 +1,5 @@
-from unittest.mock import MagicMock
 import sys
+from unittest.mock import MagicMock
 
 # Mock streamlit before importing task_graph_d3
 sys.modules["streamlit"] = MagicMock()
