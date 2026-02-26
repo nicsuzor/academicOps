@@ -424,13 +424,14 @@ def finish(ctx, no_push, do_nuke, force):
 
         print(f"Pushing {branch_name} to origin...")
         try:
-            # Use --force-with-lease for safe force push after rebase
-            # This is safe because we just rebased and no one else should be pushing to this branch
+            # Use --force for polecat branches (they're ephemeral worker branches)
+            # After rebase, --force-with-lease would reject push due to stale tracking ref
+            # Force is safe here: polecat branches are single-worker, disposable feature branches
             subprocess.run(
                 [
                     "git",
                     "push",
-                    "--force-with-lease",
+                    "--force",
                     "-u",
                     "origin",
                     f"{branch_name}:{branch_name}",

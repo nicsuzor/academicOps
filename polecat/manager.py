@@ -1078,6 +1078,30 @@ class PolecatManager:
                     check=True,
                 )
 
+
+        # Configure HTTPS credential helper for AOPS_BOT_GH_TOKEN if available
+        # Override the bash-style credential helper from mirror with POSIX-compatible version
+        if os.environ.get("AOPS_BOT_GH_TOKEN"):
+            # Git credential helpers communicate via stdin/stdout, not positional args
+            # Use sh -c to read stdin and emit credentials when protocol=https is seen
+            # This overrides any broken credential.helper from the mirror repo config
+            credential_cmd = (
+                "sh -c '"
+                "while read line; do "
+                "case \"$line\" in "
+                "protocol=https*) "
+                "printf \"username=x-access-token\\n\"; "
+                "printf \"password=%s\\n\" \"$AOPS_BOT_GH_TOKEN\"; "
+                "break;; "
+                "esac; "
+                "done'"
+            )
+            subprocess.run(
+                ["git", "config", "credential.helper", f"!{credential_cmd}"],
+                cwd=worktree_path,
+                check=True,
+            )
+
         # --- SANDBOX SETTINGS ---
         # Write .claude/settings.json to restrict file writes to this worktree only.
         # Loaded via --setting-sources=user,project when spawning the worker.
