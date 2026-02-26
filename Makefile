@@ -5,7 +5,8 @@
 DIST_REPO := nicsuzor/aops-dist
 MEM_REPO_PATH := $(or $(wildcard $(HOME)/src/mem),$(wildcard /opt/nic/mem))
 INSTALL_BIN := $(if $(USER_OPT),$(USER_OPT)/bin,$(HOME)/.local/bin)
-CRON_SCRIPT := $(HOME)/dotfiles/scripts/repo-sync-cron.sh
+AOPS_ROOT := $(shell pwd)
+CRON_SCRIPT := $(AOPS_ROOT)/scripts/repo-sync-cron.sh
 
 # Detect platform for binary downloads
 UNAME_S := $(shell uname -s)
@@ -108,9 +109,13 @@ install-crontab:
 	@if crontab -l 2>/dev/null | grep -q "repo-sync-cron"; then \
 		echo "✓ repo-sync-cron already in crontab"; \
 	elif [ -x "$(CRON_SCRIPT)" ]; then \
-		echo "Installing crontab entry..."; \
-		(crontab -l 2>/dev/null || true; echo "*/30 * * * * $(CRON_SCRIPT) >> /tmp/repo-sync-cron.log 2>&1") | crontab -; \
-		echo "✓ Crontab entry installed"; \
+		echo "Installing crontab entries..."; \
+		(crontab -l 2>/dev/null || true; \
+		 echo "# aOps quick sync"; \
+		 echo "*/5 * * * * $(CRON_SCRIPT) --quick >> /tmp/repo-sync-quick.log 2>&1"; \
+		 echo "# aOps full maintenance"; \
+		 echo "0 * * * * $(CRON_SCRIPT) >> /tmp/repo-sync-cron.log 2>&1") | crontab -; \
+		echo "✓ Crontab entries installed"; \
 	else \
 		echo "✗ Cron script not found at $(CRON_SCRIPT)"; \
 		exit 1; \

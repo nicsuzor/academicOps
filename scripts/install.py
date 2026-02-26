@@ -76,13 +76,13 @@ def install_cron_jobs(aops_path: Path, aca_data_path: str):
             continue
         new_crontab_lines.append(line)
 
-    new_crontab_lines.append("# aOps task index")
-    cron_cmd = f"*/5 * * * * cd {aops_path} && ACA_DATA={aca_data_path} uv run python scripts/regenerate_task_index.py > /dev/null 2>&1"
-    new_crontab_lines.append(cron_cmd)
+    new_crontab_lines.append("# aOps quick sync (brain + transcripts)")
+    quick_sync_cmd = f"*/5 * * * * {aops_path}/scripts/repo-sync-cron.sh --quick >> /tmp/repo-sync-quick.log 2>&1"
+    new_crontab_lines.append(quick_sync_cmd)
 
-    new_crontab_lines.append("# aOps transcripts")
-    transcript_cmd = f"*/30 * * * * cd {aops_path} && ACA_DATA={aca_data_path} uv run python aops-core/scripts/transcript.py --recent > /dev/null 2>&1"
-    new_crontab_lines.append(transcript_cmd)
+    new_crontab_lines.append("# aOps full maintenance (viz + sessions)")
+    full_sync_cmd = f"0 * * * * {aops_path}/scripts/repo-sync-cron.sh >> /tmp/repo-sync-cron.log 2>&1"
+    new_crontab_lines.append(full_sync_cmd)
 
     new_crontab_lines.append("# aOps refinery")
     refinery_cmd = f"*/5 * * * * cd {aops_path} && ACA_DATA={aca_data_path} uv run python scripts/refinery.py > /dev/null 2>&1"
@@ -106,13 +106,17 @@ def uninstall_framework(aops_path: Path):
         ).decode()
         new_lines = []
         for line in current_crontab.splitlines():
-            if "# aOps task index" in line or "scripts/regenerate_task_index.py" in line:
+            if "# aOps quick sync" in line or "repo-sync-cron.sh --quick" in line:
                 continue
+            if "# aOps full maintenance" in line or "repo-sync-cron.sh" in line:
+                if "repo-sync-cron.sh --quick" not in line:
+                    continue
             if (
                 "# aOps transcripts" in line
                 or "scripts/transcript.py" in line
-                or "scripts/transcript.py" in line
             ):
+                continue
+            if "# aOps task index" in line or "scripts/regenerate_task_index.py" in line:
                 continue
             if "# aOps session insights" in line or "scripts/cron_session_insights.sh" in line:
                 continue

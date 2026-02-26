@@ -312,8 +312,9 @@ fi
 echo ""
 echo -e "${BOLD}Crontab:${NC}"
 
-CRON_SCRIPT="${HOME}/dotfiles/scripts/repo-sync-cron.sh"
-CRON_ENTRY="*/30 * * * * ${CRON_SCRIPT} >> /tmp/repo-sync-cron.log 2>&1"
+QUICK_CRON_SCRIPT="${AOPS}/scripts/repo-sync-cron.sh"
+QUICK_CRON_ENTRY="*/5 * * * * ${QUICK_CRON_SCRIPT} --quick >> /tmp/repo-sync-quick.log 2>&1"
+FULL_CRON_ENTRY="0 * * * * ${QUICK_CRON_SCRIPT} >> /tmp/repo-sync-cron.log 2>&1"
 
 if crontab -l 2>/dev/null | grep -q "repo-sync-cron"; then
     ok "repo-sync-cron already in crontab"
@@ -321,14 +322,14 @@ else
     if [[ "$CHECK_ONLY" == true ]]; then
         fail "repo-sync-cron not in crontab"
     else
-        if [[ -x "${CRON_SCRIPT}" ]]; then
-            echo -n "  Installing crontab entry... "
+        if [[ -x "${QUICK_CRON_SCRIPT}" ]]; then
+            echo -n "  Installing crontab entries... "
             # Preserve existing crontab entries
-            (crontab -l 2>/dev/null || true; echo "${CRON_ENTRY}") | crontab -
+            (crontab -l 2>/dev/null || true; echo "# aOps quick sync"; echo "${QUICK_CRON_ENTRY}"; echo "# aOps full maintenance"; echo "${FULL_CRON_ENTRY}") | crontab -
             echo -e "${GREEN}done${NC}"
         else
-            fail "Cron script not found at ${CRON_SCRIPT}"
-            echo "  Copy repo-sync-cron.sh from academicOps docs or dotfiles."
+            fail "Cron script not found at ${QUICK_CRON_SCRIPT}"
+            echo "  Make sure you are running from the academicOps repository."
         fi
     fi
 fi

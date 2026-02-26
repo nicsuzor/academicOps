@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# repo_sync.sh - Check and sync git repositories defined in polecat.yaml
-# Usage: repo_sync.sh [--check] [--quiet]
+# repo-sync.sh - Check and sync git repositories defined in polecat.yaml
+# Usage: repo-sync.sh [--check] [--quiet]
 #   (default)  Fix dirty repos with ccommit, pull clean repos that are behind
 #   --check    Just show status, don't fix anything
 #   --quiet    Only show repos needing attention
@@ -8,7 +8,7 @@
 set -euo pipefail
 
 # Check dependencies
-for cmd in git yq; do
+for cmd in git python3; do
     if ! command -v "$cmd" &>/dev/null; then
         echo "Error: '$cmd' is required but not installed." >&2
         exit 1
@@ -28,14 +28,26 @@ POLECAT_YAML="${HOME}/.aops/polecat.yaml"
 REPOS=()
 
 if [[ -f "$POLECAT_YAML" ]]; then
-    # Use yq to extract paths from polecat.yaml
+    # Use python3 to extract paths from polecat.yaml (requires PyYAML)
+    # If PyYAML is missing, it will fail gracefully.
     while IFS= read -r path; do
         # Expand ~ if it exists
         expanded_path="${path/#\~/$HOME}"
         if [[ -d "$expanded_path" ]]; then
             REPOS+=("$expanded_path")
         fi
-    done < <(yq -r '.projects[].path' "$POLECAT_YAML")
+    done < <(python3 -c "
+import yaml
+import sys
+try:
+    with open('$POLECAT_YAML') as f:
+        config = yaml.safe_load(f)
+        for p in config.get('projects', {}).values():
+            if 'path' in p:
+                print(p['path'])
+except Exception:
+    pass
+" 2>/dev/null)
 else
     echo -e "${YELLOW}Warning: ${POLECAT_YAML} not found.${NC}"
 fi
@@ -96,8 +108,8 @@ check_repo() {
     local tracking=$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null || echo "")
     if [[ -n "$tracking" ]]; then
         local counts=$(git rev-list --left-right --count HEAD...@{u} 2>/dev/null || echo "0 0")
-        local ahead_count=${counts%% *}
-        local behind_count=${counts##* }
+        local ahead_count=$(echo "$counts" | awk '{print $1}')
+        local behind_count=$(echo "$counts" | awk '{print $2}')
         [[ "$ahead_count" -gt 0 ]] && ahead="${ahead_count} ahead"
         [[ "$behind_count" -gt 0 ]] && behind="${behind_count} behind"
     fi
