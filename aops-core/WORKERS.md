@@ -189,6 +189,14 @@ Framework integration points:
 - **Existing agents**: custodiet, gatekeeper, hydrator, merge-prep, qa already
   defined under `.github/agents/`. These run as reviewers in the PR pipeline.
 
+**Multi-repo setup**: GitHub agent config is per-repo (no cross-org sharing).
+Each repo needs its own `copilot-instructions.md`, `copilot-setup-steps.yml`,
+and `worker.agent.md`. Templates are in `aops-core/templates/github-agent/`.
+The `worker.agent.md` persona is generic and can be copied as-is. The
+instructions file needs project-specific build/test commands. The setup-steps
+file uses a composite action for shared toolchain setup (available within
+academicOps; inline the steps for external repos).
+
 ---
 
 ## Customization Guide

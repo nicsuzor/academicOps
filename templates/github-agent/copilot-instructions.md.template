@@ -1,0 +1,53 @@
+# {{ PROJECT_NAME }} — Copilot Coding Agent Instructions
+
+## Project Overview
+
+{{ Brief description of the project — what it does, what it's for. }}
+
+## Build & Test
+
+```bash
+# Install dependencies
+{{ install command, e.g.: uv sync --dev }}
+
+# Run tests
+{{ test command, e.g.: uv run pytest }}
+
+# Lint and format (MUST pass before committing)
+{{ lint commands, e.g.: uv run ruff check --fix . && uv run ruff format . }}
+```
+
+## Project Structure
+
+```
+{{ project tree showing key directories }}
+```
+
+## Coding Conventions
+
+- **Python {{ version }}**, managed by `uv`. Always use `uv run` for tools.
+- **Type hints** throughout. Pydantic for data models.
+- **Fail-fast**: No defaults, no fallbacks, no silent failures.
+- **Tests**: {{ where tests live, e.g.: tests/ at repo root }}
+
+### Commit Messages
+
+Use descriptive messages. Include task ID if working on a tracked task:
+
+```
+<descriptive summary>
+
+Closes: <task-id>
+```
+
+### What NOT to Do
+
+- Do NOT create backup files (`.bak`, `_old`) — git is the backup system.
+- Do NOT disable CI checks or use `--no-verify`.
+- Do NOT modify `.github/workflows/` without explicit justification.
+{{ Add project-specific restrictions here }}
+
+## PR Review
+
+{{ Describe the review process — automated agents, manual review, etc. }}
+Write clear PR descriptions explaining what changed and why.
