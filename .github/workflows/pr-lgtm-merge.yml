@@ -2,12 +2,12 @@
 #
 # When the human says "lgtm" (or approves via GitHub review), this workflow:
 #   1. Detects LGTM pattern / approval
-#   2. Checks whether required status checks are passing
-#   3. If checks haven't run or are failing, re-triggers code-quality via workflow_dispatch
-#   4. Lodges Approval #2 (bot review — satisfies the 1-review ruleset requirement)
-#   5. Adds the 'lgtm' label (for the cron dispatcher to pick up)
-#   6. Enables GitHub auto-merge (rebase mode)
-#   7. If merge conflicts, posts @claude for conflict resolution
+#   2. If merge conflicts, invokes Claude Code to intelligently rebase + resolve
+#   3. Checks whether required status checks are passing
+#   4. If checks haven't run or are failing, re-triggers code-quality via workflow_dispatch
+#   5. Lodges Approval #2 (bot review — satisfies the 1-review ruleset requirement)
+#   6. Adds the 'lgtm' label (for the cron dispatcher to pick up)
+#   7. Enables GitHub auto-merge (rebase mode)
 #   8. Posts acknowledgment summarizing what happened
 #
 # The human's LGTM comment may include instructions for merge-prep
@@ -54,6 +54,7 @@ jobs:
       contents: write
       pull-requests: write
       issues: write
+      id-token: write
       statuses: read
       actions: write
       checks: read
@@ -104,13 +105,66 @@ jobs:
           echo "mergeable=$MERGEABLE" >> "$GITHUB_OUTPUT"
           echo "merge_state=$MERGE_STATE" >> "$GITHUB_OUTPUT"
 
+      # ── Resolve conflicts via Claude Code ──
+      # Uses claude-code-action to intelligently rebase on main and resolve
+      # any merge conflicts. This is the same pattern as our other agent
+      # workflows (merge-prep, gatekeeper, etc.).
+
+      - name: Checkout for conflict resolution
+        if: steps.pr-details.outputs.mergeable == 'CONFLICTING' && steps.pr-ref.outputs.pr_number != ''
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr-details.outputs.head_ref }}
+          fetch-depth: 0
+
+      - name: Resolve merge conflicts via Claude
+        id: resolve-conflicts
+        if: steps.pr-details.outputs.mergeable == 'CONFLICTING' && steps.pr-ref.outputs.pr_number != ''
+        continue-on-error: true
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            This PR branch has merge conflicts with main. Rebase it on main and resolve all conflicts intelligently.
+
+            1. Run `git fetch origin main`
+            2. Run `git rebase origin/main`
+            3. When you encounter conflicts, resolve them by reading both sides and understanding the intent:
+               - For additive changes (new imports, new list items, new functions), keep both sides
+               - For logic conflicts, prefer the feature branch's intent unless it clearly contradicts main's changes
+               - For config files (pyproject.toml, uv.lock), take main's version and re-add any feature branch additions
+            4. After resolving each conflict: `git add <file>` then `git rebase --continue`
+            5. When rebase is complete: `git push --force-with-lease`
+            6. If truly unresolvable, `git rebase --abort` and explain why
+          claude_args: '--allowed-tools "Bash,Read,Edit,Write" --max-turns 15'
+
+      - name: Check conflict resolution result
+        id: conflict-result
+        if: steps.pr-details.outputs.mergeable == 'CONFLICTING' && steps.pr-ref.outputs.pr_number != ''
+        run: |
+          if [ "${{ steps.resolve-conflicts.outcome }}" = "success" ]; then
+            echo "resolved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "resolved=false" >> "$GITHUB_OUTPUT"
+          fi
+
       # ── Check required status checks ──
+      # Skipped if conflicts could not be resolved (PR is not mergeable).
+
+      - name: Get fresh HEAD SHA
+        id: fresh-sha
+        if: steps.pr-ref.outputs.pr_number != '' && steps.conflict-result.outputs.resolved != 'false'
+        run: |
+          # After a force-push the SHA changes — always get the current one
+          SHA=$(gh pr view "${{ steps.pr-ref.outputs.pr_number }}" \
+            --repo "${{ github.repository }}" --json headRefOid --jq '.headRefOid')
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
 
       - name: Check status of required checks
         id: check-status
-        if: steps.pr-ref.outputs.pr_number != ''
+        if: steps.pr-ref.outputs.pr_number != '' && steps.conflict-result.outputs.resolved != 'false'
         run: |
-          HEAD_SHA="${{ steps.pr-details.outputs.head_sha }}"
+          HEAD_SHA="${{ steps.fresh-sha.outputs.sha }}"
           REPO="${{ github.repository }}"
           BLOCKERS=""
 
@@ -162,7 +216,10 @@ jobs:
       # ── Re-trigger checks if they haven't run ──
 
       - name: Re-trigger code-quality if checks are missing
-        if: steps.check-status.outputs.all_passing == 'false' && steps.pr-ref.outputs.pr_number != ''
+        if: >-
+          steps.pr-ref.outputs.pr_number != '' &&
+          steps.conflict-result.outputs.resolved != 'false' &&
+          steps.check-status.outputs.all_passing == 'false'
         run: |
           HEAD_REF="${{ steps.pr-details.outputs.head_ref }}"
           REPO="${{ github.repository }}"
@@ -175,6 +232,8 @@ jobs:
             --ref "$HEAD_REF" || echo "Warning: could not trigger code-quality (may need manual intervention)"
 
       # ── Record LGTM ──
+      # Always add label (records intent even if conflicts can't be resolved).
+      # Only approve + auto-merge if the PR is in a mergeable state.
 
       - name: Add lgtm label
         if: steps.pr-ref.outputs.pr_number != ''
@@ -184,7 +243,7 @@ jobs:
             --add-label "lgtm"
 
       - name: Lodge Approval (satisfies 1-review requirement)
-        if: steps.pr-ref.outputs.pr_number != ''
+        if: steps.pr-ref.outputs.pr_number != '' && steps.conflict-result.outputs.resolved != 'false'
         run: |
           gh pr review "${{ steps.pr-ref.outputs.pr_number }}" \
             --repo "${{ github.repository }}" \
@@ -192,23 +251,11 @@ jobs:
             --body "LGTM recorded by automation. Human approval detected — lodging formal review to satisfy merge requirements."
 
       - name: Enable auto-merge
-        if: steps.pr-ref.outputs.pr_number != ''
+        if: steps.pr-ref.outputs.pr_number != '' && steps.conflict-result.outputs.resolved != 'false'
         run: |
           gh pr merge "${{ steps.pr-ref.outputs.pr_number }}" \
             --auto --rebase \
             --repo "${{ github.repository }}"
-
-      # ── Handle conflicts ──
-
-      - name: Handle merge conflicts
-        if: steps.pr-details.outputs.mergeable == 'CONFLICTING' && steps.pr-ref.outputs.pr_number != ''
-        run: |
-          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
-          REPO="${{ github.repository }}"
-
-          echo "Merge conflicts detected — posting @claude for resolution"
-          gh pr comment "$PR_NUM" --repo "$REPO" \
-            --body "@claude Please rebase this branch on main and resolve any merge conflicts. Push the result so auto-merge can proceed."
 
       # ── React + acknowledge ──
 
@@ -223,22 +270,26 @@ jobs:
         run: |
           PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
           BLOCKERS="${{ steps.check-status.outputs.blockers }}"
-          CONFLICTS="${{ steps.pr-details.outputs.mergeable }}"
+          RESOLVED="${{ steps.conflict-result.outputs.resolved }}"
 
-          BODY="LGTM recorded. Auto-merge is enabled."
-
-          if [ -n "$BLOCKERS" ]; then
-            BODY="$BODY"$'\n\n'"**Checks not yet passing:** $BLOCKERS"$'\n'"Re-triggered code-quality workflow. Checks should run shortly."
-          fi
-
-          if [ "$CONFLICTS" = "CONFLICTING" ]; then
-            BODY="$BODY"$'\n\n'"**Merge conflicts detected.** Posted @claude for rebase + conflict resolution."
-          fi
-
-          if [ -z "$BLOCKERS" ] && [ "$CONFLICTS" != "CONFLICTING" ]; then
-            BODY="$BODY Merge Prep will process this PR on the next cron cycle (~15 min)."
+          if [ "$RESOLVED" = "false" ]; then
+            BODY="LGTM recorded, but **merge conflicts could not be auto-resolved** by Claude."
+            BODY="$BODY"$'\n\n'"The \`lgtm\` label has been added. Please resolve conflicts manually, then comment \`lgtm\` again to re-trigger."
+          elif [ "$RESOLVED" = "true" ]; then
+            BODY="LGTM recorded. **Resolved merge conflicts** via Claude Code (rebase on main)."
+            BODY="$BODY Auto-merge is enabled."
+            if [ -n "$BLOCKERS" ]; then
+              BODY="$BODY"$'\n\n'"**Checks not yet passing:** $BLOCKERS"$'\n'"Re-triggered code-quality workflow. Will merge automatically once checks pass."
+            else
+              BODY="$BODY Will merge once checks pass."
+            fi
           else
-            BODY="$BODY"$'\n\n'"Once resolved, Merge Prep will process this PR on the next cron cycle (~15 min)."
+            BODY="LGTM recorded. Auto-merge is enabled."
+            if [ -n "$BLOCKERS" ]; then
+              BODY="$BODY"$'\n\n'"**Checks not yet passing:** $BLOCKERS"$'\n'"Re-triggered code-quality workflow. Will merge automatically once checks pass."
+            else
+              BODY="$BODY Will merge shortly."
+            fi
           fi
 
           gh pr comment "$PR_NUM" --repo "${{ github.repository }}" --body "$BODY"
