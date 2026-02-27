@@ -67,9 +67,9 @@ cd <repo_path> && gh pr list --state merged --json number,title,author,mergedAt,
 
 ### academicOps
 
-| PR          | Title                        | Author                  | Merged |
-| ----------- | ---------------------------- | ----------------------- | ------ |
-| [#123](url) | Fix authentication bug       | @nicsuzor               | 10:15  |
+| PR          | Title                  | Author    | Merged |
+| ----------- | ---------------------- | --------- | ------ |
+| [#123](url) | Fix authentication bug | @nicsuzor | 10:15  |
 
 ### buttermilk
 
@@ -110,17 +110,17 @@ cd <repo_path> && gh pr list --state open --json number,title,author,createdAt,h
 
 ### academicOps (7 open)
 
-| PR | Title | Author | Size | Age | CI | Mergeable | Action |
-| -- | ----- | ------ | ---- | --- | -- | --------- | ------ |
-| [#631](url) | Agent launch controls in TUI | @botnicbot | +144/-4 (2f) | 0d | passing | conflict | fix conflicts then merge |
-| [#630](url) | Fix crontab broken paths | @nicsuzor | +149/-34 (6f) | 0d | type check failing | conflict | fix type check + conflicts |
-| [#640](url) | Add extraction skill | @botnicbot | +1048/-17 (6f) | 0d | skipped | unknown | review — large new skill |
+| PR          | Title                        | Author     | Size           | Age | CI                 | Mergeable | Action                     |
+| ----------- | ---------------------------- | ---------- | -------------- | --- | ------------------ | --------- | -------------------------- |
+| [#631](url) | Agent launch controls in TUI | @botnicbot | +144/-4 (2f)   | 0d  | passing            | conflict  | fix conflicts then merge   |
+| [#630](url) | Fix crontab broken paths     | @nicsuzor  | +149/-34 (6f)  | 0d  | type check failing | conflict  | fix type check + conflicts |
+| [#640](url) | Add extraction skill         | @botnicbot | +1048/-17 (6f) | 0d  | skipped            | unknown   | review — large new skill   |
 
 ### buttermilk (10 open)
 
-| PR | Title | Author | Size | Age | CI | Mergeable | Action |
-| -- | ----- | ------ | ---- | --- | -- | --------- | ------ |
-| [#304](url) | Unify processor classes | @nicsuzor | +471/-424 (22f) | 74d | failing | conflict | close or rebase — very stale |
+| PR          | Title                   | Author    | Size            | Age | CI      | Mergeable | Action                       |
+| ----------- | ----------------------- | --------- | --------------- | --- | ------- | --------- | ---------------------------- |
+| [#304](url) | Unify processor classes | @nicsuzor | +471/-424 (22f) | 74d | failing | conflict  | close or rebase — very stale |
 
 _N open PRs across M repos — X ready to merge, Y need fixes, Z need review_
 ```
@@ -163,14 +163,14 @@ _N open PRs across M repos — X ready to merge, Y need fixes, Z need review_
 
 After classifying PRs, recommend specific agent actions for each. The available GitHub agents are:
 
-| Agent | Workflow | Trigger | Purpose |
-| -- | -- | -- | -- |
-| **Custodiet** | `agent-custodiet.yml` | `workflow_dispatch` with `target_type`, `target_number`, `ref` | Scope compliance review. APPROVE or REQUEST CHANGES |
-| **Merge Prep** | `agent-merge-prep.yml` | `workflow_dispatch` with `pr_number`, `ref` | Reads ALL review feedback, pushes fixes, sets Merge Prep status |
-| **`@claude`** | `claude.yml` | Comment `@claude <instruction>` on PR | Ad-hoc fixes. General-purpose |
-| **Copilot Worker** | Copilot Coding Agent | `@copilot` comment or issue assignment | Autonomous task execution following `.github/agents/worker.agent.md` |
-| **Hydrator** | `agent-hydrator.yml` | `workflow_dispatch` | Workflow alignment review |
-| **QA** | `agent-qa.yml` | `workflow_dispatch` | End-to-end verification |
+| Agent              | Workflow               | Trigger                                                        | Purpose                                                              |
+| ------------------ | ---------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------- |
+| **Custodiet**      | `agent-custodiet.yml`  | `workflow_dispatch` with `target_type`, `target_number`, `ref` | Scope compliance review. APPROVE or REQUEST CHANGES                  |
+| **Merge Prep**     | `agent-merge-prep.yml` | `workflow_dispatch` with `pr_number`, `ref`                    | Reads ALL review feedback, pushes fixes, sets Merge Prep status      |
+| **`@claude`**      | `claude.yml`           | Comment `@claude <instruction>` on PR                          | Ad-hoc fixes. General-purpose                                        |
+| **Copilot Worker** | Copilot Coding Agent   | `@copilot` comment or issue assignment                         | Autonomous task execution following `.github/agents/worker.agent.md` |
+| **Hydrator**       | `agent-hydrator.yml`   | `workflow_dispatch`                                            | Workflow alignment review                                            |
+| **QA**             | `agent-qa.yml`         | `workflow_dispatch`                                            | End-to-end verification                                              |
 
 **Typical pipeline for a new PR**:
 

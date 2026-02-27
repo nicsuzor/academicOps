@@ -119,6 +119,7 @@ For every task that requires a human **decision** (evaluate, choose, decide, sel
 > "What information does the user need to make this decision?"
 
 If no upstream prep task supplies that information, create one:
+
 - Prep task: agent gathers data, documents current state (no human judgment needed)
 - Set the decision task's `depends_on` to include the prep task
 - Prep tasks should have `assignee: polecat` (mechanical data gathering)
@@ -154,14 +155,14 @@ When decomposing work that produces **academic output** (papers, reports, benchm
 
 For academic outputs, enforce this ordering:
 
-| Layer | Purpose | Assignee | Blocked on |
-|-------|---------|----------|------------|
-| 1. Prep | Agent gathers data, documents current state | polecat | — |
-| 2. Decision support | Agent synthesises prep into decision-ready briefings | polecat | Layer 1 |
-| 3. Decisions | Human makes informed choices | null | Layers 1-2 |
-| 4. Writing/Execution | Implement decisions | polecat | Layer 3 |
-| 5. Integration | Reconcile parallel tracks | polecat | Layer 4 |
-| 6. Audit/QA | Verify everything, present receipts | null | All above |
+| Layer                | Purpose                                              | Assignee | Blocked on |
+| -------------------- | ---------------------------------------------------- | -------- | ---------- |
+| 1. Prep              | Agent gathers data, documents current state          | polecat  | —          |
+| 2. Decision support  | Agent synthesises prep into decision-ready briefings | polecat  | Layer 1    |
+| 3. Decisions         | Human makes informed choices                         | null     | Layers 1-2 |
+| 4. Writing/Execution | Implement decisions                                  | polecat  | Layer 3    |
+| 5. Integration       | Reconcile parallel tracks                            | polecat  | Layer 4    |
+| 6. Audit/QA          | Verify everything, present receipts                  | null     | All above  |
 
 **Note**: Not every academic decomposition needs all six layers. Use judgment — but every academic decomposition needs at least Prep → Decision → Writing → Audit.
 

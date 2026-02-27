@@ -49,6 +49,7 @@ When providing detailed feedback, explicitly contextualize the volume upfront to
 **Why**: Volume of comments ≠ negative assessment. Without framing, authors may interpret many comments as harsh criticism.
 
 **How**:
+
 - State overall quality assessment first (positive)
 - Explain why there are many comments (requested, detail-oriented, etc.)
 - Clarify the nature of comments (minor, stylistic, etc.)
@@ -56,6 +57,7 @@ When providing detailed feedback, explicitly contextualize the volume upfront to
 **Example**: "This is strong work. My detailed comments below are mostly about strengthening an already solid argument, not fundamental issues."
 
 **When to use**:
+
 - More than 5-7 comments
 - Work is fundamentally sound but has improvable elements
 - Feedback was requested in detail
@@ -68,6 +70,7 @@ Explain the general pattern, why it matters, and how to recognize similar issues
 **Why**: Builds transferable skills rather than just correcting one instance. Shows investment in author's development.
 
 **How**:
+
 1. Identify the general pattern/principle
 2. Explain why it matters (consequences)
 3. Provide the specific fix
@@ -76,6 +79,7 @@ Explain the general pattern, why it matters, and how to recognize similar issues
 **Example**: "This is the type of claim that needs methodological support: any statement about what 'always' or 'never' happens. Without data, soften to 'often' or 'typically'."
 
 **When to use**:
+
 - Issue represents a broader pattern
 - Author would benefit from understanding the principle
 - Pattern appears multiple times in the work
@@ -88,6 +92,7 @@ Position feedback in terms of strategic advantage, risk reduction, and economy o
 **Why**: Positions reviewer as author's advocate. Treats revision as strategic choice rather than fixing mistakes.
 
 **How**:
+
 - Frame in terms of what author gains
 - Emphasize criticism avoided
 - Note effort saved on defending claims
@@ -96,6 +101,7 @@ Position feedback in terms of strategic advantage, risk reduction, and economy o
 **Example**: "You could defend this stronger claim, but it would take significant space. Since it's not central to your argument, a softer version saves you effort and reduces potential critique."
 
 **When to use**:
+
 - Current text isn't wrong but invites unnecessary criticism
 - Softer claim is easier to defend
 - Strong version isn't central to argument
@@ -108,6 +114,7 @@ Present two or more specific solutions with brief rationales, then leave the cho
 **Why**: Respects author agency. Shows multiple valid approaches. Teaches strategic thinking.
 
 **How**:
+
 1. Clear diagnosis of issue
 2. Two or more specific solutions
 3. Brief rationale for each option
@@ -116,6 +123,7 @@ Present two or more specific solutions with brief rationales, then leave the cho
 **Example**: "To address this, you could either: (a) cite literature to support this claim, or (b) reframe it explicitly as an illustrative example rather than a verified finding. Option (a) strengthens the empirical base; option (b) clarifies epistemic status without requiring additional evidence."
 
 **When to use**:
+
 - Multiple valid approaches exist
 - Author should make strategic choice
 - Options have different trade-offs
@@ -128,6 +136,7 @@ Frame feedback in terms of what will confuse, slow, or frustrate readers rather 
 **Why**: Teaches empathetic writing. Helps author understand the "why" behind conventions. Transfers to understanding different audiences.
 
 **How**:
+
 - Start with reader experience: "This will make readers..."
 - Explain what happens in reader's mind
 - Connect to specific issue
@@ -136,6 +145,7 @@ Frame feedback in terms of what will confuse, slow, or frustrate readers rather 
 **Example**: "Readers will stumble here because they're expecting evidence after this claim. Without it, they'll either doubt you or stop to wonder if they missed something. That pause disrupts the flow of your argument."
 
 **When to use**:
+
 - Clarity issues
 - Flow problems
 - Missing context or explanation
@@ -148,6 +158,7 @@ Help the author understand which issues are fundamental (affect argument/structu
 **Why**: Prevents paralysis. Helps author triage. Shows understanding of hierarchy of concerns.
 
 **How**:
+
 - Explicitly label major vs. minor issues
 - Group similar issues together
 - Explain why fundamental issues are fundamental
@@ -156,6 +167,7 @@ Help the author understand which issues are fundamental (affect argument/structu
 **Example**: "Two fundamental issues: (1) reorganize so your argument leads; (2) clarify your methodological approach. The rest of my comments are refinements to strengthen already-solid sections."
 
 **When to use**:
+
 - Many comments of varying importance
 - Work has structural issues alongside minor points
 - Want to help author prioritize
@@ -168,6 +180,7 @@ When work has unclear identity or framing, surface the choice, present distinct 
 **Why**: Surfaces hidden assumptions. Helps author see implications of framing choices. Respects that this is the author's work to shape.
 
 **How**:
+
 1. Identify the choice needing to be made
 2. Present distinct options clearly
 3. Explain what each option requires
@@ -176,6 +189,7 @@ When work has unclear identity or framing, surface the choice, present distinct 
 **Example**: "You need to decide if this is a theoretical contribution or an empirical study. If theoretical, strengthen the conceptual framework and use examples illustratively. If empirical, develop your methodology section and ensure data supports claims."
 
 **When to use**:
+
 - Work seems to straddle two approaches
 - Disciplinary identity is unclear
 - Scope/ambition mismatched with method
@@ -188,6 +202,7 @@ When suggesting structural changes, provide actual transition language or exampl
 **Why**: Makes implementation easy. Shows you've thought it through. Models good writing.
 
 **How**:
+
 - Suggest the reorganization
 - Provide actual transition language/text
 - Offer as suggestion ("something like") not prescription
@@ -195,6 +210,7 @@ When suggesting structural changes, provide actual transition language or exampl
 **Example**: "Consider moving this paragraph to open the section, perhaps starting with: 'Three distinct regulatory frameworks fail to address representational harm...' This frames what follows and helps readers understand the structure of your argument."
 
 **When to use**:
+
 - Suggesting moves/reorganization
 - Transitions would be unclear
 - You can see the better framing clearly
@@ -207,6 +223,7 @@ Combine specific feedback with teaching the technique that would help author cat
 **Why**: Builds author independence. Teaches transferable practice. Helps with all future work.
 
 **How**:
+
 - Identify technique that would catch this issue
 - Be explicit: "Here's how to catch this type of issue..."
 - Combine with the specific fix
@@ -214,6 +231,7 @@ Combine specific feedback with teaching the technique that would help author cat
 **Example**: "These types of logical gaps often become visible when you read your work aloud - the missing step will feel like a jump to your ear. In this case, you need to add [specific content]."
 
 **When to use**:
+
 - Issue that self-review technique would catch
 - Teaching opportunity is clear
 - Want to build author capacity
@@ -226,6 +244,7 @@ Use forward-looking language about practices to cultivate rather than backward-l
 **Why**: Positions author as developing scholar. Implies practice will serve beyond this paper. More encouraging than "you didn't do X."
 
 **How**:
+
 - Use "get into the habit of" language
 - Frame as practice to cultivate
 - Especially useful for early-career scholars
@@ -234,6 +253,7 @@ Use forward-looking language about practices to cultivate rather than backward-l
 **Example**: "Get into the habit of explicitly articulating your contribution in the introduction - readers shouldn't have to infer what's new. In this paper, state clearly [specific contribution] so readers know what to look for."
 
 **When to use**:
+
 - Practices that benefit author long-term
 - Developing craft/skill
 - Early-career scholars
@@ -349,6 +369,7 @@ Based on analysis of peer review feedback patterns.
 ### Application Sequence
 
 When reviewing, consider applying principles in this order:
+
 1. Start with positive framing (Principle 1)
 2. Identify fundamentals vs. refinements (Principle 6)
 3. For each issue:
@@ -360,6 +381,7 @@ When reviewing, consider applying principles in this order:
 ### Combination
 
 Principles often work together:
+
 - Principle 2 (teach principles) + Principle 9 (teach self-review) = comprehensive skill building
 - Principle 3 (strategic framing) + Principle 4 (multiple solutions) = empowering feedback
 - Principle 5 (reader experience) + Principle 10 (developing habits) = sustainable improvement
@@ -367,6 +389,7 @@ Principles often work together:
 ### Adaptation
 
 Adapt based on:
+
 - **Work quality**: Fundamentally sound work needs different approach than deeply flawed work
 - **Author career stage**: Early-career scholars benefit more from habit-formation language
 - **Relationship**: Peer review differs from supervision differs from editorial feedback
@@ -375,12 +398,14 @@ Adapt based on:
 ### Limitations
 
 These principles work best when:
+
 - Work is fundamentally sound (needs refinement not major revision)
 - Author is receptive to feedback
 - You have time for detailed engagement
 - Relationship is collegial/supportive
 
 Not recommended for:
+
 - Severely flawed work requiring major overhaul (need different approach)
 - Time-constrained quick reviews
 - Adversarial contexts
