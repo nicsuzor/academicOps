@@ -174,6 +174,23 @@ def get_transcripts_dir() -> Path:
     return get_sessions_repo() / "transcripts"
 
 
+def get_polecat_transcripts_dir() -> Path:
+    """Get polecat transcripts directory.
+
+    Primary: $AOPS_SESSIONS/polecats/
+    Fallback: $AOPS_SESSIONS/transcripts/polecats/
+    """
+    sessions = get_sessions_repo()
+    primary = sessions / "polecats"
+
+    if not primary.exists():
+        fallback = sessions / "transcripts" / "polecats"
+        if fallback.exists():
+            return fallback
+
+    return primary
+
+
 def get_summaries_dir() -> Path:
     """Get summaries directory ($AOPS_SESSIONS/summaries)."""
     return get_sessions_repo() / "summaries"
