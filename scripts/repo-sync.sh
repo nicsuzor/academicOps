@@ -37,17 +37,20 @@ if [[ -f "$POLECAT_YAML" ]]; then
             REPOS+=("$expanded_path")
         fi
     done < <(python3 -c "
-import yaml
-import sys
+import yaml, sys
 try:
-    with open('$POLECAT_YAML') as f:
+    with open(sys.argv[1]) as f:
         config = yaml.safe_load(f)
-        for p in config.get('projects', {}).values():
+        for p in (config or {}).get('projects', {}).values():
             if 'path' in p:
                 print(p['path'])
-except Exception:
-    pass
-" 2>/dev/null)
+except ImportError:
+    print('Error: PyYAML is required. Run: pip install PyYAML', file=sys.stderr)
+    sys.exit(1)
+except Exception as e:
+    print(f'Error parsing polecat.yaml: {e}', file=sys.stderr)
+    sys.exit(1)
+" "$POLECAT_YAML")
 else
     echo -e "${YELLOW}Warning: ${POLECAT_YAML} not found.${NC}"
 fi

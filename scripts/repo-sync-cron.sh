@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # repo-sync-cron.sh - Periodic maintenance: repo sync + PKB visualizations
 #
 # This script is intended to be run via cron. It handles:
@@ -20,9 +20,13 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export AOPS="${AOPS:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
 
-# 2. Source environment
+# 2. Source environment — avoid eval; only process simple export VAR=VALUE lines
 if [[ -f "$HOME/.zshrc.local" ]]; then
-    eval "$(grep '^export ' "$HOME/.zshrc.local")"
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^export[[:space:]]+([A-Za-z_][A-Za-z0-9_]*)= ]]; then
+            export "${line#export }"
+        fi
+    done < "$HOME/.zshrc.local"
 fi
 
 export ACA_DATA="${ACA_DATA:-$HOME/brain}"
