@@ -11,15 +11,15 @@ parent: overwhelm-dashboard
 
 ## Giving Effect
 
-- [[scripts/task_graph.py]] — DOT/SVG graph generation from fast-indexer output (Graphviz sfdp)
-- [[lib/overwhelm/dashboard.py]] — Streamlit rendering: `render_graph_section()`, `render_force_graph()`, `render_svg_graph()`
+- [[scripts/task_graph.py]] — DOT/SVG graph generation from `aops graph` output (Graphviz sfdp)
+- [[lib/overwhelm/dashboard.py]] — Streamlit rendering: D3 interactive graph
 - [[skills/task-viz/SKILL.md]] — Task visualization skill (JSON, GraphML, DOT output)
 - [[mcp__pkb__get_network_metrics]] — Graph metrics for dashboard
-- [[fast-indexer]] — Rust binary that computes graph.json, including `downstream_weight`, `stakeholder_exposure`, parent/child/dependency relationships
+- `aops graph` CLI — Computes graph.json, including `downstream_weight`, `stakeholder_exposure`, parent/child/dependency relationships
 
 ## Purpose
 
-The task map is a structural overview of the user's entire work graph. It is one section of the [[Overwhelm Dashboard]], positioned at the top of the page. Its job is to show how work *connects* — the shape of the network, where bottlenecks are, where effort has impact across branches.
+The task map is a structural overview of the user's entire work graph. It is one section of the [[Overwhelm Dashboard]], positioned at the top of the page. Its job is to show how work _connects_ — the shape of the network, where bottlenecks are, where effort has impact across branches.
 
 The task map is the only part of the dashboard that shows cross-project structure. Other sections handle session context recovery (Your Path, Where You Left Off), prioritized next actions (Project Boxes / UP NEXT), and daily accomplishments. The task map shows the forest.
 
@@ -53,83 +53,83 @@ This means the graph shows: every actionable task, plus its full ancestor chain 
 
 ### Two Rendering Tabs
 
-| Feature | SVG Tab (Graphviz sfdp) | Interactive Tab (force-graph Canvas) |
-|---------|------------------------|--------------------------------------|
-| Node shape | Per type (ellipse, box3d, octagon, box, diamond, hexagon, etc.) | All circles |
-| Node size | Uniform | Uniform (default 6px) |
-| Fill color | Per status | Per status |
-| Border color | Per assignee (purple=nic, cyan=bot, orange=worker) | None |
-| Edge style | Per type (blue solid=parent, red bold=depends_on, gray dashed=soft, dotted=wikilink) | All identical gray |
-| Weight label | `downstream_weight` shown as text | Not shown |
-| Interactivity | Pan/zoom only | Pan/zoom, click (posts message but no visible effect), layout switching, filtering |
-| Generation | Requires running `/task-viz` skill; can go stale | Real-time from graph.json |
+| Feature       | SVG Tab (Graphviz sfdp)                                                              | Interactive Tab (force-graph Canvas)                                               |
+| ------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| Node shape    | Per type (ellipse, box3d, octagon, box, diamond, hexagon, etc.)                      | All circles                                                                        |
+| Node size     | Uniform                                                                              | Uniform (default 6px)                                                              |
+| Fill color    | Per status                                                                           | Per status                                                                         |
+| Border color  | Per assignee (purple=nic, cyan=bot, orange=worker)                                   | None                                                                               |
+| Edge style    | Per type (blue solid=parent, red bold=depends_on, gray dashed=soft, dotted=wikilink) | All identical gray                                                                 |
+| Weight label  | `downstream_weight` shown as text                                                    | Not shown                                                                          |
+| Interactivity | Pan/zoom only                                                                        | Pan/zoom, click (posts message but no visible effect), layout switching, filtering |
+| Generation    | Requires running `/task-viz` skill; can go stale                                     | Real-time from graph.json                                                          |
 
 ### Controls (Interactive Tab)
 
-| Control | Options |
-|---------|---------|
-| **View** | Tasks, Knowledge Base |
+| Control    | Options                                     |
+| ---------- | ------------------------------------------- |
+| **View**   | Tasks, Knowledge Base                       |
 | **Layout** | ↓ Top-Down, → Left-Right, ◎ Radial, ⚛ Force |
 
 **Visual Settings** (in collapsible expander):
 
-| Setting | Range | Default | Purpose |
-|---------|-------|---------|---------|
-| Node Size | 1-20 | 6 | Size of node circles |
-| Link Width | 0.5-5.0 | 1.0 | Thickness of edges |
-| Text Size | 6-24 | 12 | Base font size for labels |
-| Link Opacity | 0.1-1.0 | 0.6 | Edge transparency |
-| Repulsion | -500 to -10 | -100 | Node repulsion strength |
-| Show Labels | checkbox | On | Toggle label visibility |
-| Hide Orphans | checkbox | Off | Remove nodes with no connections |
+| Setting      | Range       | Default | Purpose                          |
+| ------------ | ----------- | ------- | -------------------------------- |
+| Node Size    | 1-20        | 6       | Size of node circles             |
+| Link Width   | 0.5-5.0     | 1.0     | Thickness of edges               |
+| Text Size    | 6-24        | 12      | Base font size for labels        |
+| Link Opacity | 0.1-1.0     | 0.6     | Edge transparency                |
+| Repulsion    | -500 to -10 | -100    | Node repulsion strength          |
+| Show Labels  | checkbox    | On      | Toggle label visibility          |
+| Hide Orphans | checkbox    | Off     | Remove nodes with no connections |
 
 **Filter** (in collapsible expander):
 
-| Setting | Type | Purpose |
-|---------|------|---------|
+| Setting    | Type        | Purpose                          |
+| ---------- | ----------- | -------------------------------- |
 | Show Types | multiselect | Filter nodes by frontmatter type |
 
 Default type filtering for Tasks view: `goal`, `project`, `epic`, `task`, `action`, `bug`, `feature`, `learn`. Knowledge Base view defaults to all types.
 
 ### Data Sources
 
-- Tasks view: `$ACA_DATA/outputs/graph.json` (produced by fast-indexer)
+- Tasks view: `$ACA_DATA/outputs/graph.json` (produced by `aops graph`)
 - Knowledge Base view: `$ACA_DATA/outputs/knowledge-graph.json`
 
 ### Node Colors
 
 **Tasks view** (by status):
 
-| Color | Status |
-|-------|--------|
-| Blue (#3b82f6) | active |
-| Green (#22c55e) | done (structural only in reachable view) |
-| Red (#ef4444) | blocked |
-| Yellow (#eab308) | waiting |
-| Purple (#a855f7) | review |
-| Gray (#94a3b8) | cancelled |
+| Color            | Status                                   |
+| ---------------- | ---------------------------------------- |
+| Blue (#3b82f6)   | active                                   |
+| Green (#22c55e)  | done (structural only in reachable view) |
+| Red (#ef4444)    | blocked                                  |
+| Yellow (#eab308) | waiting                                  |
+| Purple (#a855f7) | review                                   |
+| Gray (#94a3b8)   | cancelled                                |
 
 **Knowledge Base view** (by type):
 
-| Color | Type |
-|-------|------|
-| Red | goal |
+| Color  | Type    |
+| ------ | ------- |
+| Red    | goal    |
 | Purple | project |
-| Blue | task |
-| Cyan | action |
-| Orange | bug |
+| Blue   | task    |
+| Cyan   | action  |
+| Orange | bug     |
 
 ## User Stories
 
 ### US-TM1: I can see the forest, not just the trees
 
 **As** Nic returning to work after time away,
-**I want** the task map to show me the *structure* of my work at a glance — which projects are tangled, which are linear, where clusters form,
+**I want** the task map to show me the _structure_ of my work at a glance — which projects are tangled, which are linear, where clusters form,
 **So that** I get oriented in seconds, not minutes.
 
 **What this means for the graph:**
 
-- Nodes representing higher-level structure (goals, projects, epics) must be visually larger than leaf tasks. The data exists — `downstream_weight` is computed by fast-indexer and displayed as a text label in the SVG view. The interactive graph should map it to node radius.
+- Nodes representing higher-level structure (goals, projects, epics) must be visually larger than leaf tasks. The data exists — `downstream_weight` is computed by `aops graph` and displayed as a text label in the SVG view. The interactive graph should map it to node radius.
 - Node type needs a visual channel beyond color. The SVG view uses Graphviz shapes (ellipse for goal, box3d for project, octagon for epic, etc.). The interactive view should approximate these — even simple differences (circles for leaves, squares for epics, larger circles for projects) would massively improve scanability.
 - Related nodes should visually cluster. A project and its children should form a recognizable spatial group, not scatter randomly across the canvas.
 
@@ -157,7 +157,7 @@ Default type filtering for Tasks view: `goal`, `project`, `epic`, `task`, `actio
 
 **What this means for the graph:**
 
-- A blocked node with 15 downstream tasks should look *alarming*. A blocked node with 1 downstream task is less urgent. The combination of blocked status + high `downstream_weight` should create a visually distinctive danger signal (size + red is a start).
+- A blocked node with 15 downstream tasks should look _alarming_. A blocked node with 1 downstream task is less urgent. The combination of blocked status + high `downstream_weight` should create a visually distinctive danger signal (size + red is a start).
 - When clicking or hovering a blocked node, the user should see what it's blocking — highlight the downstream subgraph, or at minimum show a count: "Blocking 12 tasks across 3 projects."
 - Dependency edges (`depends_on`) should be visually distinct from parent edges. The SVG view does this (blue solid = parent, red bold = dependency, gray dashed = soft dependency). The interactive view currently renders all edges as identical gray lines.
 
@@ -247,12 +247,12 @@ Some completed (green) nodes appear in the reachable view that shouldn't be ther
 
 The task map handles the **structural overview**. These adjacent needs belong to other dashboard sections:
 
-| Need | Handled by |
-|------|-----------|
-| "What was I doing in that terminal?" | Session cards / Where You Left Off |
-| "What got done today?" | Daily synthesis / accomplishments |
-| "What's my single next action?" | Project boxes / UP NEXT |
-| "How do I recover my dropped threads?" | Your Path / dropped threads |
+| Need                                   | Handled by                         |
+| -------------------------------------- | ---------------------------------- |
+| "What was I doing in that terminal?"   | Session cards / Where You Left Off |
+| "What got done today?"                 | Daily synthesis / accomplishments  |
+| "What's my single next action?"        | Project boxes / UP NEXT            |
+| "How do I recover my dropped threads?" | Your Path / dropped threads        |
 
 ## Acceptance Criteria
 
@@ -289,7 +289,7 @@ The task map handles the **structural overview**. These adjacent needs belong to
 
 - [[Overwhelm Dashboard]] — Parent spec; the task map is one section of this dashboard
 - [[task-viz]] — Standalone graph visualization skill
-- [[fast-indexer]] — Produces graph.json consumed by both SVG and interactive renderers
+- `aops graph` CLI — Produces graph.json consumed by both SVG and interactive renderers
 - [[pkb-server-spec]] — PKB data model and MCP tools
 - [[effectual-planning-agent]] — Strategic planning vision that the task map supports
 - [[work-management]] — Task lifecycle and graph insertion rules

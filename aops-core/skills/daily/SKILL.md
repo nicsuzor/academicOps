@@ -53,6 +53,7 @@ Every `/daily` invocation runs the **full pipeline** and updates the daily note 
 | Today's Story           | `/daily` | Synthesis from merges + sessions + tasks |
 | FYI                     | `/daily` | Email triage (mixed)                     |
 | Merged PRs              | `/daily` | GitHub API query (machine)               |
+| Open PRs                | `/daily` | GitHub API query (machine)               |
 | Session Log/Timeline    | `/daily` | Session JSON synthesis (machine)         |
 | Project Accomplishments | `/daily` | Session JSON synthesis (mixed)           |
 | Reflection              | `/daily` | Goals vs achieved analysis (machine)     |

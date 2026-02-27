@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate interactive D3-force task graph from fast-indexer JSON output.
+"""Generate interactive D3-force task graph from `aops graph` JSON output.
 
 Uses d3-force with hierarchical edge weighting for layout, S-curves for
 parent edges, and Manhattan routing for dependencies/links. Produces a
@@ -9,7 +9,7 @@ Usage:
     python task_graph_d3.py INPUT.json [-o OUTPUT.html] [--filter reachable]
 
 Examples:
-    fast-indexer ./data -o graph -f json -t task,project,goal,epic
+    aops graph -o graph -f json
     python task_graph_d3.py graph.json -o task-map.html
     python task_graph_d3.py graph.json --filter reachable --ego my-project --depth 3
 """
@@ -198,6 +198,8 @@ def prepare_graph_data(
 
         # --- Sizing: driven by total weight (type base + downstream weight) ---
         type_scale = TYPE_BASE_SCALE.get(node_type, 1.0)
+        if status in ("done", "completed", "cancelled"):
+            type_scale *= 0.6  # Shrink completed tasks
         # Weight factor: log-scale so huge weights don't dominate
         weight_factor = 1 + math.log1p(dw) * 0.3 if dw > 0 else 1.0
         scale = type_scale * weight_factor
@@ -353,6 +355,25 @@ svg {{ width: 100%; height: 100%; }}
   display: none; font-family: inherit;
 }}
 
+#controls-panel {{
+  position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 10;
+  background: {panel_bg}; padding: 8px 16px; border-radius: 8px; border: 1px solid {panel_border};
+  backdrop-filter: blur(12px); box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+}}
+#project-filter {{
+  background: transparent; color: {panel_text}; border: 1px solid {muted}; padding: 4px 10px; border-radius: 4px; font-size: 13px; font-weight: 500; cursor: pointer; outline: none;
+}}
+#project-filter option {{ background: {bg}; color: {panel_text}; }}
+
+@keyframes danger-pulse {{
+  0% {{ stroke-width: 2px; stroke-opacity: 0.8; }}
+  50% {{ stroke-width: 8px; stroke-opacity: 0.1; }}
+  100% {{ stroke-width: 2px; stroke-opacity: 0.8; }}
+}}
+.danger-pulse {{
+  animation: danger-pulse 1.5s infinite ease-in-out;
+}}
+
 #detail {{
   position: fixed; top: 16px; right: 16px; z-index: 10;
   background: {panel_bg}; border: 1px solid {panel_border}; border-radius: 12px;
@@ -380,6 +401,12 @@ svg {{ width: 100%; height: 100%; }}
 </head>
 <body>
 <div id="graph"></div>
+
+<div id="controls-panel">
+  <select id="project-filter">
+    <option value="ALL">All Projects</option>
+  </select>
+</div>
 
 <div id="legend">
   <h3>Task Graph</h3>
@@ -433,6 +460,56 @@ const links = graphData.links;
 const W = window.innerWidth, H = window.innerHeight;
 const maxDepth = nodes.reduce((m, n) => Math.max(m, n.maxDepth), 0);
 
+// Set baseOpacity based on recency heatmap + status
+nodes.forEach(d => {{
+    let op = 1.0;
+    if (["done", "completed", "cancelled"].includes(d.status)) {{
+        op = 0.2;
+    }} else if (d.structural) {{
+        op = 0.3;
+    }}
+    d.baseOpacity = op;
+}});
+
+// Calculate project spatial columns
+const projects = Array.from(new Set(nodes.map(n => n.project).filter(Boolean))).sort();
+const projCols = projects.length || 1;
+const projCenters = {{}};
+projects.forEach((p, i) => {{
+    projCenters[p] = {{ x: (W / (projCols + 1)) * (i + 1) }};
+}});
+
+// Prepare project UI filters
+const pf = document.getElementById("project-filter");
+projects.forEach(p => {{
+    const opt = document.createElement("option");
+    opt.value = p;
+    opt.textContent = p;
+    pf.appendChild(opt);
+}});
+
+let currentFocusProject = "ALL";
+window.updateVisibility = function() {{
+    d3.selectAll(".node-g").transition().duration(300).attr("opacity", d => {{
+        if (currentFocusProject !== "ALL" && d.project !== currentFocusProject) return 0.05;
+        return d.baseOpacity;
+    }});
+    d3.selectAll(".edge-path").transition().duration(300).attr("opacity", l => {{
+        if (currentFocusProject !== "ALL") {{
+            const sProj = (l.source.project || "none");
+            const tProj = (l.target.project || "none");
+            if (sProj !== currentFocusProject && tProj !== currentFocusProject) return 0.01;
+            if (sProj !== currentFocusProject || tProj !== currentFocusProject) return 0.05;
+            return l.type === "ref" ? 0.3 : 0.55;
+        }}
+        return l.type === "ref" ? 0.3 : 0.55;
+    }});
+}};
+pf.addEventListener("change", (e) => {{
+    currentFocusProject = e.target.value;
+    updateVisibility();
+}});
+
 // ---- SVG ----
 const svg = d3.select("#graph").append("svg").attr("viewBox", [0, 0, W, H]);
 const defs = svg.append("defs");
@@ -475,7 +552,9 @@ const linkEls = linkG.selectAll("path").data(links).join("path")
 // ---- Nodes ----
 const nodeG = container.append("g");
 const nodeEls = nodeG.selectAll("g").data(nodes).join("g")
+  .attr("class", "node-g")
   .attr("cursor","pointer")
+  .attr("opacity", d => d.baseOpacity)
   .call(d3.drag().on("start",ds).on("drag",dr).on("end",de));
 
 // Shape builders
@@ -508,6 +587,14 @@ nodeEls.each(function(d) {{
       .attr("rx",2).attr("ry",2)
       .attr("fill",d.fill).attr("stroke",d.borderColor).attr("stroke-width",d.borderWidth)
       .attr("stroke-dasharray",d.structural?"4,3":null).attr("filter","url(#sh)");
+  }}
+
+  // Danger pulse
+  if (d.status === "blocked" && d.dw >= 2) {{
+    const rx = d.shape === "pill" ? hh+4 : d.shape === "rounded" ? 12 : 5;
+    g.insert("rect",":first-child").attr("x",-hw-4).attr("y",-hh-4).attr("width",d.w+8).attr("height",d.h+8)
+      .attr("rx",rx).attr("ry",rx).attr("fill","none").attr("stroke","#ef4444")
+      .attr("class","danger-pulse");
   }}
 
   // Stakeholder glow
@@ -566,7 +653,10 @@ const sim = d3.forceSimulation(nodes)
     if (maxDepth===0) return H/2;
     return H*0.12 + (d.depth+1)*(H*0.7/(maxDepth+2));
   }}).strength(0.1))
-  .force("x", d3.forceX().x(W/2).strength(0.02))
+  .force("x", d3.forceX().x(d => {{
+      if (d.project && projCenters[d.project]) return projCenters[d.project].x;
+      return W/2;
+  }}).strength(0.06))
   .force("collide", d3.forceCollide().radius(d => Math.sqrt(d.w*d.w + d.h*d.h)/2 + 8).strength(0.8).iterations(3))
   .alphaDecay(0.016).velocityDecay(0.35);
 
@@ -635,11 +725,14 @@ nodeEls.on("dblclick",(e,d)=>{{ d.fx=null; d.fy=null; sim.alphaTarget(0.1).resta
 // ---- Hover ----
 nodeEls.on("mouseenter",(e,d)=>{{
   const c = adj.get(d.id) || new Set();
-  nodeEls.transition().duration(120).attr("opacity", n => (n.id===d.id||c.has(n.id)) ? 1 : 0.1);
+  nodeEls.transition().duration(120).attr("opacity", n => {{
+      if (n.id===d.id||c.has(n.id)) return 1.0;
+      if (currentFocusProject !== "ALL" && n.project !== currentFocusProject) return 0.05;
+      return 0.1;
+  }});
   linkEls.transition().duration(120).attr("opacity", l => (l.source.id===d.id||l.target.id===d.id) ? 0.85 : 0.03);
 }}).on("mouseleave",()=>{{
-  nodeEls.transition().duration(180).attr("opacity",1);
-  linkEls.transition().duration(180).attr("opacity", d => d.type==="ref" ? 0.3 : 0.55);
+  updateVisibility();
 }});
 
 // ---- Detail ----
@@ -698,9 +791,9 @@ document.getElementById("stats").textContent =
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Generate interactive D3-force task graph from fast-indexer JSON"
+        description="Generate interactive D3-force task graph from aops graph JSON"
     )
-    parser.add_argument("input", help="Input JSON file from fast-indexer")
+    parser.add_argument("input", help="Input JSON file from aops graph")
     parser.add_argument("-o", "--output", default="task-map.html", help="Output HTML file")
     parser.add_argument(
         "--filter",

@@ -48,6 +48,20 @@ Use `soft_depends_on` for "this matters but doesn't block":
 | **Infrastructure constraints** | Hook router blocks dev work      | Planning continues; only implementation blocked |
 | **Environmental factors**      | Workspace setup affects comfort  | Work possible, just less optimal                |
 
+## Prep → Decision → Execution Pattern
+
+When a task requires a human decision, enforce this ordering:
+
+```
+[prep-gather-data] Agent gathers information (assignee: polecat)
+       ↓ blocks
+[decision-choose-approach] Human decides with evidence (assignee: null)
+       ↓ blocks
+[execute-implement] Execute based on decision (assignee: polecat)
+```
+
+**Self-check**: For every decision task, ask "what information does the user need?" If no prep task supplies it, create one. For every execution task, ask "is this conditional on an unmade decision?" If yes, add the dependency.
+
 ## Human Handoff Pattern
 
 When external human input is required before work can proceed:

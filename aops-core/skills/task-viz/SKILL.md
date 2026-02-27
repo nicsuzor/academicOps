@@ -1,6 +1,6 @@
 ---
 name: task-viz
-description: Generate network graph of notes/tasks using fast-indexer (JSON, GraphML, DOT)
+description: Generate network graph of notes/tasks using `aops` CLI (JSON, GraphML, DOT)
 triggers:
   - task visualization
   - visualize tasks
@@ -13,18 +13,16 @@ triggers:
 
 # Task/Note Visualization
 
-Generate network graphs of markdown files showing wikilink connections. Uses the `fast-indexer` Rust binary for high-performance scanning and optional Python styling for task-specific color coding.
+Generate network graphs of markdown files showing wikilink connections. Uses the `aops` CLI binary (from nicsuzor/mem) for high-performance scanning and optional Python styling for task-specific color coding.
 
 ## Quick Start
 
 ```bash
-# Dashboard graphs (both needed for Overwhelm Dashboard)
-$AOPS/scripts/bin/fast-indexer ${ACA_DATA} -o ${ACA_DATA}/outputs/graph -f json
-$AOPS/scripts/bin/fast-indexer ${ACA_DATA} -o ${ACA_DATA}/outputs/knowledge-graph -f json
+# Dashboard graph (needed for Overwhelm Dashboard)
+aops graph -o graph.json -f json
 
-# Tasks only → styled SVG
-$AOPS/scripts/bin/fast-indexer ${ACA_DATA} -o tasks -f json -t task,project,goal
-python3 $AOPS/scripts/task_graph.py tasks.json -o tasks-styled
+# All formats
+aops graph -o graph -f all
 ```
 
 ## Use Cases
@@ -34,17 +32,17 @@ python3 $AOPS/scripts/task_graph.py tasks.json -o tasks-styled
 Visualize all markdown files and their wikilink connections:
 
 ```bash
-$AOPS/scripts/bin/fast-indexer ${ACA_DATA} -o knowledge-graph
+aops graph -o knowledge-graph -f json
 ```
 
-Generates: `knowledge-graph.json`, `knowledge-graph.graphml`, `knowledge-graph.dot`
+Generates: `knowledge-graph.json`, or use `-f all` for `.json`, `.graphml`, `.dot`
 
 ### 2. Task Hierarchy Graph
 
 Visualize goals, projects, and tasks with their relationships:
 
 ```bash
-$AOPS/scripts/bin/fast-indexer ${ACA_DATA} -o task-hierarchy -f json -t goal,project,task,action
+aops graph -o task-hierarchy -f json
 python3 $AOPS/scripts/task_graph.py task-hierarchy.json -o task-hierarchy-styled
 ```
 
@@ -53,31 +51,31 @@ python3 $AOPS/scripts/task_graph.py task-hierarchy.json -o task-hierarchy-styled
 Map all file references in the aops framework:
 
 ```bash
-$AOPS/scripts/bin/fast-indexer $AOPS -o framework-graph
+aops graph --pkb-root $AOPS -o framework-graph
 ```
 
 ## Tools
 
-### fast-indexer
+### aops CLI
 
-High-performance Rust binary for scanning markdown files.
+High-performance Rust binary for PKB operations including graph export (from nicsuzor/mem).
 
 ```bash
-$AOPS/scripts/bin/fast-indexer [DIRECTORY] -o OUTPUT -f FORMAT
+aops graph [-o OUTPUT] [-f FORMAT]
 ```
 
 **Options**:
 
 - `-o, --output OUTPUT`: Output file path (extension auto-added based on format)
-- `-f, --format FORMAT`: Output format - `json`, `graphml`, `dot`, `all` (default: all)
-- `-t, --filter-type TYPE`: Filter by frontmatter type (comma-separated: `task,project,goal`)
+- `-f, --format FORMAT`: Output format - `json`, `graphml`, `dot`, `mcp-index`, `all` (default: json)
+- `--pkb-root PATH`: Override PKB root directory (default: $PKB_ROOT or ~/brain)
 
 **Features**:
 
-- Respects `.gitignore` files
+- Semantic search + graph-aware indexing
 - Extracts tags from frontmatter and inline hashtags
 - Resolves wikilinks and markdown links
-- Parallel processing (3800+ files in seconds)
+- High-performance parallel processing
 
 ### task_graph.py
 
@@ -128,7 +126,7 @@ python3 $AOPS/scripts/task_graph.py INPUT.json [-o OUTPUT] [--layout LAYOUT]
 
 ```bash
 # 1. Generate JSON
-$AOPS/scripts/bin/fast-indexer ${ACA_DATA} -o graph -f json
+aops graph -o graph -f json
 
 # 2. Use with D3.js or Cytoscape.js (graph.json is standard node-link format)
 ```
@@ -136,21 +134,20 @@ $AOPS/scripts/bin/fast-indexer ${ACA_DATA} -o graph -f json
 ### Generate Print-Ready Task Map
 
 ```bash
-# 1. Generate filtered JSON
-$AOPS/scripts/bin/fast-indexer ${ACA_DATA} -o data/aops/outputs/tasks -f json -t task,project,goal
+# 1. Generate JSON
+aops graph -o tasks -f json
 
 # 2. Apply styling and render SVG
-python3 $AOPS/scripts/task_graph.py data/aops/outputs/tasks.json -o data/aops/outputs/task-map --filter reachable --layout sfdp
+python3 $AOPS/scripts/task_graph.py tasks.json -o task-map --filter reachable --layout sfdp
 
 # 3. Open SVG
-xdg-open data/aops/outputs/task-map.svg  # Linux
-open data/aops/outputs/task-map.svg       # macOS
+open task-map.svg       # macOS
 ```
 
 ### Generate yEd-Compatible Graph
 
 ```bash
-$AOPS/scripts/bin/fast-indexer ${ACA_DATA} -o graph -f graphml
+aops graph -o graph -f graphml
 # Open graph.graphml in yEd for manual layout refinement
 ```
 
@@ -182,6 +179,5 @@ The JSON output follows the standard node-link format:
 ## Tips
 
 1. **Large graphs**: Use `sfdp` layout for graphs with 100+ nodes
-2. **Focused views**: Use `-t` filter to limit to specific types
-3. **Iterative refinement**: Generate GraphML, open in yEd, apply automatic layout, export
-4. **Custom styling**: Modify `$AOPS/scripts/task_graph.py` for different color schemes
+2. **Iterative refinement**: Generate GraphML, open in yEd, apply automatic layout, export
+3. **Custom styling**: Modify `$AOPS/scripts/task_graph.py` for different color schemes

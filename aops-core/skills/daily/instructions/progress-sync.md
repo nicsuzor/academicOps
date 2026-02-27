@@ -80,6 +80,49 @@ No PRs merged today.
 
 **Error handling**: If `gh` CLI is unavailable or authentication fails, skip this section and note "GitHub CLI unavailable — skipped merge review" in the section.
 
+### Step 4.2.6: Open PR Review (Decision Queue)
+
+Fetch open PRs that need human decisions — approvals, problem triage, or closure:
+<!-- NS: this needs to be made aware of our repo map, currently stored at ~/.aops/polecat.yaml -->
+```bash
+gh pr list --state open --json number,title,author,createdAt,headRefName,url,isDraft,reviewDecision,statusCheckRollup --limit 30 2>/dev/null
+```
+
+**For each open PR**, summarize:
+
+- PR number, title, author
+- Whether CI is passing, failing, or pending
+- Whether reviews are blocking (CHANGES_REQUESTED) or clear
+- One-line description of what the PR does (from title + branch name)
+- Any problems that need attention (failing checks, conflicts, stale)
+
+**Format in daily note** (fully replace the `## Open PRs` section):
+
+```markdown
+## Open PRs
+
+| PR | Title | Author | CI | Reviews | Action needed |
+| -- | ----- | ------ | -- | ------- | ------------- |
+| [#639](url) | Fix failing pytests | @nicsuzor | pending | clear | re-trigger CI |
+| [#630](url) | Fix crontab paths | @nicsuzor | failing | clear | fix type check |
+| [#640](url) | Add extraction skill | @botnicbot | skipped | pending | review + approve |
+
+_N open PRs — M need action_
+```
+
+**Decision-oriented**: The "Action needed" column is the key output. Classify each:
+
+- **approve** — CI green, reviews clear, ready to merge
+- **review + approve** — needs human review before merge
+- **fix [issue]** — specific problem blocking merge
+- **re-trigger CI** — checks didn't run or are stale
+- **close** — draft/stale/superseded, suggest closing
+- **waiting** — blocked on external dependency, nothing to do now
+
+**Empty state**: If no open PRs: "No open PRs."
+
+**Error handling**: If `gh` CLI is unavailable, use GitHub API via curl as fallback. If both fail, skip and note "GitHub unavailable — skipped open PR review."
+
 ### Step 4.3: Verify Descriptions
 
 **CRITICAL**: Gemini mining may hallucinate. Cross-check accomplishment descriptions against actual changes (git log, file content). Per AXIOMS #2, do not propagate fabricated descriptions.
