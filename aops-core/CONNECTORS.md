@@ -26,8 +26,8 @@ servers currently connected.
 
 ## Core server (always required)
 
-| Server | Purpose | Package |
-|--------|---------|---------|
+| Server | Purpose                                                                            | Package                                                |
+| ------ | ---------------------------------------------------------------------------------- | ------------------------------------------------------ |
 | `pkb`  | Personal knowledge base — tasks, semantic search, knowledge graph, memories, notes | [nicsuzor/mem](https://github.com/nicsuzor/mem) (Rust) |
 
 PKB is the framework's core data layer. It is always referenced by name, not
@@ -35,13 +35,13 @@ as a connector category.
 
 ## Connector categories
 
-| Category | Placeholder | Purpose | Example tools |
-|----------|-------------|---------|---------------|
-| Email & calendar | `~~email` | Read, draft, search, archive messages; list and create calendar events | Outlook (omcp), Gmail, Fastmail |
-| Research library | `~~research-library` | Search papers, get citations, find similar works, discover new literature | Zotero (zot), Mendeley, Paperpile |
-| Case database | `~~case-database` | Search legal/policy decisions, get case summaries, analyse reasoning | Meta Oversight Board (osb), court databases |
-| Documentation | `~~documentation` | Look up API docs for programming libraries | Context7, DevDocs |
-| AI assistant | `~~ai-assistant` | Delegate analysis to another AI model | Gemini (gemini), OpenAI |
+| Category         | Placeholder          | Purpose                                                                   | Example tools                               |
+| ---------------- | -------------------- | ------------------------------------------------------------------------- | ------------------------------------------- |
+| Email & calendar | `~~email`            | Read, draft, search, archive messages; list and create calendar events    | Outlook (omcp), Gmail, Fastmail             |
+| Research library | `~~research-library` | Search papers, get citations, find similar works, discover new literature | Zotero (zot), Mendeley, Paperpile           |
+| Case database    | `~~case-database`    | Search legal/policy decisions, get case summaries, analyse reasoning      | Meta Oversight Board (osb), court databases |
+| Documentation    | `~~documentation`    | Look up API docs for programming libraries                                | Context7, DevDocs                           |
+| AI assistant     | `~~ai-assistant`     | Delegate analysis to another AI model                                     | Gemini (gemini), OpenAI                     |
 
 ## Resolution rules
 

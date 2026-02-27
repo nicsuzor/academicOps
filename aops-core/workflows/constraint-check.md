@@ -89,12 +89,12 @@ After listing violations:
 
 ## Predicate Evaluation
 
-| Predicate         | How to Verify                                  |
-| ----------------- | ---------------------------------------------- |
-| "Tests exist"     | Plan includes "Write test" step                |
-| "Tests pass"      | Plan includes "Run tests" step                 |
-| "Plan approved"   | Plan includes approval gate                    |
-| "Task claimed"    | Plan includes task update with status="active" |
+| Predicate       | How to Verify                                  |
+| --------------- | ---------------------------------------------- |
+| "Tests exist"   | Plan includes "Write test" step                |
+| "Tests pass"    | Plan includes "Run tests" step                 |
+| "Plan approved" | Plan includes approval gate                    |
+| "Task claimed"  | Plan includes task update with status="active" |
 
 **Static predicates** (check at planning time): "test file exists"
 **Runtime predicates** (check during execution): "tests pass", "validation succeeds"

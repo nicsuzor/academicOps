@@ -77,6 +77,7 @@ REPORT_PATH="$ACA_DATA/projects/aops/audit/$(date +%Y-%m-%d-%H%M%S)-audit.md"
 ```
 
 Report format:
+
 - YAML frontmatter with date and summary stats.
 - Results from each phase.
 - Acceptance test results table.

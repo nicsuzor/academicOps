@@ -33,6 +33,7 @@ for task in actionable_tasks:
 ```
 
 **Format**: `P0 ░░░░░░░░░░ 9/333` where:
+
 - `9` = actionable P0 tasks
 - `333` = total actionable tasks (NOT total including done/cancelled)
 

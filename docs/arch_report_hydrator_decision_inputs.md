@@ -17,25 +17,25 @@ Analysis for task-96c4f07f: What do WORKFLOWS.md and SKILLS.md actually need to 
 
 ### What signals does the hydrator consume?
 
-| Signal | Source | How loaded | Used for |
-|--------|--------|-----------|----------|
-| `{prompt}` | User input | Direct injection | Intent detection |
-| `{session_context}` | Transcript | `extract_router_context()` | Follow-up detection, task binding |
-| `{workflows_index}` | WORKFLOWS.md + project workflows + keyword-matched workflow content | `load_workflows_index(prompt)` | Workflow selection |
-| `{skills_index}` | SKILLS.md | `load_skills_index()` (static load) | Skill routing |
-| `{task_state}` | Task CLI query | `get_task_work_state()` | Task binding |
-| `{glossary}` | GLOSSARY.md | `load_glossary()` | Term resolution |
-| `{mcp_tools}` | TOOLS.md | `load_tools_index()` | Feasibility assessment |
-| `{project_context_index}` | `.agent/context-map.json` | `load_project_context_index()` | Project-specific context |
-| `{project_rules}` | `.agent/rules/*.md` | `load_project_rules()` | Constraint awareness |
-| `{relevant_files}` | `file_index.py` keyword match | `get_formatted_relevant_paths(prompt)` | JIT file injection |
-| `{project_paths}` | `polecat.yaml` | `load_project_paths_context()` | Path resolution |
-| `{scripts_index}` | SCRIPTS.md | `load_scripts_index()` | Script awareness |
+| Signal                    | Source                                                              | How loaded                             | Used for                          |
+| ------------------------- | ------------------------------------------------------------------- | -------------------------------------- | --------------------------------- |
+| `{prompt}`                | User input                                                          | Direct injection                       | Intent detection                  |
+| `{session_context}`       | Transcript                                                          | `extract_router_context()`             | Follow-up detection, task binding |
+| `{workflows_index}`       | WORKFLOWS.md + project workflows + keyword-matched workflow content | `load_workflows_index(prompt)`         | Workflow selection                |
+| `{skills_index}`          | SKILLS.md                                                           | `load_skills_index()` (static load)    | Skill routing                     |
+| `{task_state}`            | Task CLI query                                                      | `get_task_work_state()`                | Task binding                      |
+| `{glossary}`              | GLOSSARY.md                                                         | `load_glossary()`                      | Term resolution                   |
+| `{mcp_tools}`             | TOOLS.md                                                            | `load_tools_index()`                   | Feasibility assessment            |
+| `{project_context_index}` | `.agent/context-map.json`                                           | `load_project_context_index()`         | Project-specific context          |
+| `{project_rules}`         | `.agent/rules/*.md`                                                 | `load_project_rules()`                 | Constraint awareness              |
+| `{relevant_files}`        | `file_index.py` keyword match                                       | `get_formatted_relevant_paths(prompt)` | JIT file injection                |
+| `{project_paths}`         | `polecat.yaml`                                                      | `load_project_paths_context()`         | Path resolution                   |
+| `{scripts_index}`         | SCRIPTS.md                                                          | `load_scripts_index()`                 | Script awareness                  |
 
 ### Key observation: asymmetric loading
 
-- **WORKFLOWS.md** gets *enhanced* loading: the index PLUS full content of keyword-matched workflows AND their base workflows (via `_load_global_workflow_content()`). The hydrator can read workflow files it selects.
-- **SKILLS.md** gets *static* loading: just the index content, no content injection of individual skill files. The hydrator is told "DO NOT SEARCH", so it relies entirely on what's in the index.
+- **WORKFLOWS.md** gets _enhanced_ loading: the index PLUS full content of keyword-matched workflows AND their base workflows (via `_load_global_workflow_content()`). The hydrator can read workflow files it selects.
+- **SKILLS.md** gets _static_ loading: just the index content, no content injection of individual skill files. The hydrator is told "DO NOT SEARCH", so it relies entirely on what's in the index.
 - This asymmetry matters: workflow selection gets rich content, skill routing gets only the flat table.
 
 ### Decision flow reconstruction
@@ -60,7 +60,7 @@ Analysis for task-96c4f07f: What do WORKFLOWS.md and SKILLS.md actually need to 
 
 1. **WORKFLOWS.md lacks trigger phrases** - SKILLS.md has explicit triggers ("process email", "email to task") but WORKFLOWS.md relies on a prose decision tree. The hydrator must interpret the tree, not match triggers.
 
-2. **No output-type metadata on workflows** - The hydrator can't tell what a workflow *produces* (code change, document, task decomposition, information). This would help scope detection.
+2. **No output-type metadata on workflows** - The hydrator can't tell what a workflow _produces_ (code change, document, task decomposition, information). This would help scope detection.
 
 3. **No explicit conflict/composition rules** - WORKFLOWS.md says "one workflow per intent" but doesn't encode which workflows conflict. The `bases` field on individual workflows encodes composition, but the index doesn't surface it in a way the hydrator can use for selection without reading each file.
 
@@ -102,6 +102,7 @@ base-task-tracking, base-tdd, base-verification, base-commit, base-handover, bas
 design, collaborate, strategy, tdd-cycle, debugging, qa-demo, qa-test, prove-feature, qa-design, batch-processing, batch-task-processing, task-triage, classify-task, email-classify, hdr-supervision, direct-skill, framework-change, skill-pilot, merge-conflict, version-bump
 
 **Name mismatches:**
+
 - `[[triage-email]]` in index → file is `email-triage.md`
 - `[[batch-processing]]` in index → closest file is `base-batch.md`
 
@@ -109,13 +110,13 @@ design, collaborate, strategy, tdd-cycle, debugging, qa-demo, qa-test, prove-fea
 
 ### What the index provides vs what the hydrator needs
 
-| What's in the index | Hydrator can use it for | Missing |
-|---------------------|------------------------|---------|
-| Workflow name (wikilink) | Identification, file lookup | File may not exist |
-| "When to Use" column | Routing decision | No structured triggers - prose only |
-| "Bases" column | Composition planning | Only names, not what bases provide |
-| Category headings | Domain filtering | Not structured, just visual grouping |
-| Decision tree | Primary routing | No fallback or confidence signal |
+| What's in the index      | Hydrator can use it for     | Missing                              |
+| ------------------------ | --------------------------- | ------------------------------------ |
+| Workflow name (wikilink) | Identification, file lookup | File may not exist                   |
+| "When to Use" column     | Routing decision            | No structured triggers - prose only  |
+| "Bases" column           | Composition planning        | Only names, not what bases provide   |
+| Category headings        | Domain filtering            | Not structured, just visual grouping |
+| Decision tree            | Primary routing             | No fallback or confidence signal     |
 
 ### What would help the hydrator
 
@@ -148,34 +149,36 @@ SKILLS.md has two sections:
 
 The index mixes two distinct implementation types under one heading:
 
-| Type | Location | Examples | Count |
-|------|----------|----------|-------|
-| **Skills** (SKILL.md) | `skills/<name>/SKILL.md` | `/audit`, `/daily`, `/pdf`, `/python-dev`, `/strategy` | ~20 |
-| **Commands** (command .md) | `commands/<name>.md` | `/q`, `/dump`, `/bump`, `/learn`, `/pull`, `/path`, `/aops` | 7 |
+| Type                       | Location                 | Examples                                                    | Count |
+| -------------------------- | ------------------------ | ----------------------------------------------------------- | ----- |
+| **Skills** (SKILL.md)      | `skills/<name>/SKILL.md` | `/audit`, `/daily`, `/pdf`, `/python-dev`, `/strategy`      | ~20   |
+| **Commands** (command .md) | `commands/<name>.md`     | `/q`, `/dump`, `/bump`, `/learn`, `/pull`, `/path`, `/aops` | 7     |
 
 The hydrator treats them identically but they have different implementation mechanisms. This hasn't caused problems yet because routing works the same way, but it means the index can't accurately describe capabilities (commands don't have `allowed-tools` frontmatter, for example).
 
 #### 2. No structured metadata beyond triggers
 
 SKILLS.md provides:
+
 - Name (invocation syntax)
 - Trigger phrases (free text)
 - Description (free text)
 
 Missing metadata that would help the hydrator:
 
-| Metadata | Why it helps |
-|----------|-------------|
-| `modifies_files: yes/no` | Determines whether a task is needed |
-| `needs_task: yes/no` | Direct task-gate signal |
-| `mode: conversational/execution/batch` | Affects scope detection and composition |
-| `domain: [framework, academic, email, development, operations]` | Domain routing |
-| `standalone: yes/no` | Whether skill can be invoked mid-workflow |
-| `type: skill/command` | Disambiguates implementation type |
+| Metadata                                                        | Why it helps                              |
+| --------------------------------------------------------------- | ----------------------------------------- |
+| `modifies_files: yes/no`                                        | Determines whether a task is needed       |
+| `needs_task: yes/no`                                            | Direct task-gate signal                   |
+| `mode: conversational/execution/batch`                          | Affects scope detection and composition   |
+| `domain: [framework, academic, email, development, operations]` | Domain routing                            |
+| `standalone: yes/no`                                            | Whether skill can be invoked mid-workflow |
+| `type: skill/command`                                           | Disambiguates implementation type         |
 
 #### 3. No composability information
 
 The hydrator doesn't know:
+
 - Which skills work together (e.g., `/python-dev` + `/commit`)
 - Which skills conflict (e.g., `/strategy` shouldn't compose with `/pull`)
 - Which skills are "advice" (injected as context) vs "action" (execute and produce output)
@@ -187,6 +190,7 @@ Some skills effectively ARE workflow implementations (e.g., `/pull` implements t
 #### 5. Trigger overlap
 
 Some triggers could match multiple skills:
+
 - "framework" → `/framework` or `/audit`?
 - "batch" → `/hypervisor` or `/swarm-supervisor`?
 - "task" → `/pull` or `/q`?
@@ -205,14 +209,14 @@ The routing rules handle this (explicit > trigger > context) but the index doesn
 
 ### Current schema (from reading all 26 workflow files)
 
-| Field | Presence | Purpose |
-|-------|----------|---------|
-| `id` | 26/26 | Identifier (kebab-case) |
-| `category` | 26/26 | Classification |
-| `bases` | 23/26 | Composable base patterns |
-| `triggers` | 2/26 | Routing trigger phrases |
-| `title` | 1/26 | Human-readable name |
-| `description` | 2/26 | What the workflow does |
+| Field         | Presence | Purpose                  |
+| ------------- | -------- | ------------------------ |
+| `id`          | 26/26    | Identifier (kebab-case)  |
+| `category`    | 26/26    | Classification           |
+| `bases`       | 23/26    | Composable base patterns |
+| `triggers`    | 2/26     | Routing trigger phrases  |
+| `title`       | 1/26     | Human-readable name      |
+| `description` | 2/26     | What the workflow does   |
 
 Plus 5 fields used only by `email-capture.md`: `name`, `permalink`, `tags`, `version`, `phase`, `backend`.
 
@@ -226,13 +230,13 @@ Plus 5 fields used only by `email-capture.md`: `name`, `permalink`, `tags`, `ver
 
 **Missing fields the hydrator needs:**
 
-| Proposed field | Type | Why |
-|---------------|------|-----|
-| `triggers` | `string[]` | Fast routing (already exists, just unpopulated) |
-| `modifies_files` | `boolean` | Task-gate signal |
-| `scope` | `enum: single-session, multi-session` | Scope detection |
-| `outputs` | `string[]` | What the workflow produces |
-| `description` | `string` | Already exists, just unpopulated on 24/26 |
+| Proposed field   | Type                                  | Why                                             |
+| ---------------- | ------------------------------------- | ----------------------------------------------- |
+| `triggers`       | `string[]`                            | Fast routing (already exists, just unpopulated) |
+| `modifies_files` | `boolean`                             | Task-gate signal                                |
+| `scope`          | `enum: single-session, multi-session` | Scope detection                                 |
+| `outputs`        | `string[]`                            | What the workflow produces                      |
+| `description`    | `string`                              | Already exists, just unpopulated on 24/26       |
 
 ### Integrity issues
 
@@ -247,16 +251,16 @@ Plus 5 fields used only by `email-capture.md`: `name`, `permalink`, `tags`, `ver
 
 Skills (`skills/<name>/SKILL.md`) and commands (`commands/<name>.md`) share the same frontmatter schema:
 
-| Field | Presence | Purpose |
-|-------|----------|---------|
-| `name` | ~all | Identifier |
-| `category` | most | Always "instruction" - has no discriminating value |
-| `description` | ~all | One-line purpose description |
-| `allowed-tools` | most | Comma-separated tool names |
-| `version` | some | Semantic version |
-| `permalink` | some | URL-friendly slug |
-| `triggers` | 2 skills (swarm-supervisor, q) | Routing trigger phrases |
-| `title` | 1 (python-dev) | Human-readable name |
+| Field           | Presence                       | Purpose                                            |
+| --------------- | ------------------------------ | -------------------------------------------------- |
+| `name`          | ~all                           | Identifier                                         |
+| `category`      | most                           | Always "instruction" - has no discriminating value |
+| `description`   | ~all                           | One-line purpose description                       |
+| `allowed-tools` | most                           | Comma-separated tool names                         |
+| `version`       | some                           | Semantic version                                   |
+| `permalink`     | some                           | URL-friendly slug                                  |
+| `triggers`      | 2 skills (swarm-supervisor, q) | Routing trigger phrases                            |
+| `title`         | 1 (python-dev)                 | Human-readable name                                |
 
 ### Skill frontmatter and the hydrator
 
@@ -269,6 +273,7 @@ Skills (`skills/<name>/SKILL.md`) and commands (`commands/<name>.md`) share the 
 **Implications for the frontmatter schema:**
 
 The skill frontmatter should be the **source of truth** that SKILLS.md is generated from. Currently:
+
 - `triggers` exists in frontmatter on only 2 items (swarm-supervisor, q command) - all other triggers live only in SKILLS.md
 - `description` in frontmatter → maps to Description column in SKILLS.md (this works)
 - No frontmatter field maps to the metadata the hydrator needs (modifies_files, needs_task, mode, domain)
@@ -309,10 +314,10 @@ version: 1.0.0
 
 The `/audit` skill (Phase 2: Index Curation) is responsible for generating both SKILLS.md and WORKFLOWS.md:
 
-| Index | Source of truth | Method |
-|-------|----------------|--------|
-| SKILLS.md | `skills/*/SKILL.md` frontmatter | LLM-judged curation |
-| WORKFLOWS.md | `workflows/*.md` files | LLM-judged curation |
+| Index        | Source of truth                 | Method              |
+| ------------ | ------------------------------- | ------------------- |
+| SKILLS.md    | `skills/*/SKILL.md` frontmatter | LLM-judged curation |
+| WORKFLOWS.md | `workflows/*.md` files          | LLM-judged curation |
 
 The SKILLS.md header confirms: `> **Generated by audit skill** - Do not edit manually. Triggers are preserved from previous version; add new triggers to frontmatter.`
 
@@ -337,6 +342,7 @@ Actual: frontmatter → audit → index → hydrator
 ```
 
 The hydrator works around index gaps by:
+
 - Using the decision tree (prose, not structured data)
 - Reading workflow files directly (via `_load_global_workflow_content()`)
 - Relying on `file_index.py` keyword matching for content injection

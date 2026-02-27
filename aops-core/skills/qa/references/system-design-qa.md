@@ -55,12 +55,14 @@ Reviewer lifecycle, evaluation format, batch execution, reporting. Key decisions
 Two types of evaluation, kept separate:
 
 **Per-task QA**: For each task in the epic, design:
+
 - Which user story the task serves
 - 2-3 qualitative dimensions with quality spectra
 - One concrete scenario to walk through
 - Regression checks (binary guards against breakage)
 
 **E2E Evaluation Suites**: For the whole feature, design:
+
 - Persona-grounded scenarios (entry state → actions → observations)
 - Per-dimension narrative evaluation prompts
 - Synthesis prompt (holistic judgment)
@@ -73,15 +75,15 @@ Build the designed system: test infrastructure, reporting tools, automation.
 
 ## Anti-Patterns
 
-| Anti-Pattern                | Why It Fails                                           | Instead                                          |
-| --------------------------- | ------------------------------------------------------ | ------------------------------------------------ |
-| Pattern matching            | Passes without understanding                           | Reviewer examines output with judgment            |
-| "Did it run?" tests         | Passes broken behavior                                 | Verify outcome is useful to the user              |
-| Success = no errors         | Silent failures pass                                   | Define positive quality criteria                  |
-| Skip to implementation      | Build wrong thing                                      | Complete criteria design first                    |
-| Binary criteria for acceptance | Evaluator stops thinking; presence ≠ quality          | Qualitative dimensions with quality spectra       |
-| Same format for all testing | Conflates "is this good?" with "did we break it?"      | Separate qualitative acceptance from regression   |
-| Criteria without user stories | Tests what was built, not what was needed             | Trace every criterion to a story                  |
+| Anti-Pattern                   | Why It Fails                                      | Instead                                         |
+| ------------------------------ | ------------------------------------------------- | ----------------------------------------------- |
+| Pattern matching               | Passes without understanding                      | Reviewer examines output with judgment          |
+| "Did it run?" tests            | Passes broken behavior                            | Verify outcome is useful to the user            |
+| Success = no errors            | Silent failures pass                              | Define positive quality criteria                |
+| Skip to implementation         | Build wrong thing                                 | Complete criteria design first                  |
+| Binary criteria for acceptance | Evaluator stops thinking; presence ≠ quality      | Qualitative dimensions with quality spectra     |
+| Same format for all testing    | Conflates "is this good?" with "did we break it?" | Separate qualitative acceptance from regression |
+| Criteria without user stories  | Tests what was built, not what was needed         | Trace every criterion to a story                |
 
 ## Invocation
 

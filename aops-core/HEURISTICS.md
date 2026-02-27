@@ -33,6 +33,7 @@ Agents must NOT remove or bypass lock files without explicit user authorization.
 Prefer curated indices (PKB, zotero, bd) over broad filesystem searches for exploratory queries.
 
 **Corollaries**:
+
 - Grep is for needles, not fishing expeditions
 - Semantic search tools exist precisely to answer "find things related to X"
 - Broad pattern matching across directories is wasteful and may surface irrelevant or sensitive content
@@ -113,6 +114,7 @@ Every task MUST connect to the hierarchy: `action → task → epic → project 
 When user makes specific assertions about their own codebase, trust the assertion and verify with ONE minimal test. Do NOT spawn investigation to "validate" user claims.
 
 **Corollaries**:
+
 - When user/task specifies a methodology, EXECUTE THAT METHODOLOGY
 - When user provides failure data and asks for tests, WRITE TESTS FIRST
 
@@ -171,6 +173,7 @@ Never block on TaskOutput waiting for notifications. Use polling or fire-and-for
 Content you didn't write in this session is presumptively intentional. Append rather than replace. Never delete without explicit instruction.
 
 **Corollaries**:
+
 - Files must be self-contained. Never write forward-references to conversational output (e.g., "See detailed analysis below") — persist all substantive content in the file itself. Response text is ephemeral; files are state.
 
 ## User Intent Discovery Before Implementation (P#88)
@@ -230,6 +233,7 @@ Structure tasks hierarchically under functional Epics rather than flat project l
 **The Star Pattern is a code smell.** When a project has more than 5 direct children, it almost certainly needs intermediate epics. A project with 10 direct children is a flat list, not a hierarchy.
 
 **How to fix a flat project:**
+
 1. Group related tasks by purpose (not by type or timing)
 2. Create epics that describe the milestone or workstream each group serves
 3. Re-parent the tasks under the appropriate epic
@@ -238,6 +242,7 @@ Structure tasks hierarchically under functional Epics rather than flat project l
 **Decision heuristic:** When creating a task under a project, ask: "Is there already an epic this belongs to? Should there be?" If the task is one of several related implementation steps, the answer is almost always yes.
 
 **Corollaries**:
+
 - Infrastructure tasks (refactors, migrations, pipeline changes) MUST be parented under an epic that explains WHY the infrastructure work is needed. "GCS → DuckDB refactor" is never a valid direct child of a research project — it needs an epic like "Local reproducible analysis pipeline" that explains the strategic purpose.
 - Leaf tasks (single-session work items) should almost never be direct children of a project. They belong under epics.
 
@@ -282,11 +287,13 @@ brain-push.sh "knowledge: tech/new-fact"
 **Rationale**: Multiple writers (skills, task manager, /remember, manual edits) write to `$ACA_DATA`. Meaningful commit messages require the writer to say what they did—a generic sync cannot know intent.
 
 **Implementation**:
+
 - Primary path: Skills call `brain-push.sh "descriptive message"` after writing
 - Fallback: `brain-sync.sh` runs every 5 minutes via systemd timer, generating messages from paths
 - Conflict handling: Always rebase (no merge commits). On conflict, log to `${ACA_DATA}/.sync-failures.log`
 
 **Corollaries**:
+
 - `/remember` skill should commit with `knowledge: <topic>` message
 - Task manager updates should commit with `task: <task-id>` message
 - `/daily` should commit with `daily: YYYY-MM-DD` message
@@ -298,11 +305,13 @@ When your own analysis identifies a clearly superior option among alternatives, 
 Pattern: "I'm going with X because [reasoning]. Alternatives considered: Y (rejected: [reason]), Z (rejected: [reason])."
 
 This applies when:
+
 - One option is strictly dominated (your analysis already says it's "fiddly" or "preserves a bad model")
 - The choice follows from established project conventions
 - Engineering constraints clearly favor one approach
 
 This does NOT apply when:
+
 - The decision involves taste, values, or genuine ambiguity
 - Multiple options are genuinely equivalent with different trade-offs the user might weight differently
 - The decision has irreversible consequences beyond the immediate task

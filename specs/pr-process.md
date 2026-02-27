@@ -14,31 +14,31 @@ How pull requests move from open to merged (or rejected) in the aops repository.
 
 ## Workflow files
 
-| Workflow | File | Trigger | Purpose |
-|----------|------|---------|---------|
-| Lint | `lint.yml` | `pull_request`, `push` (main) | `ruff check` + `ruff format`, autofix + push. Required status check. |
-| Type Check | `typecheck.yml` | `pull_request`, `push` (main) | `basedpyright`. Required status check. |
-| Pytest | `pytest.yml` | `pull_request`, `push` (main) | Unit tests. Required status check. |
-| Gatekeeper | `agent-gatekeeper.yml` | `pull_request: [opened, synchronize]` | Scope/strategy review. Posts PR review (APPROVE or REQUEST_CHANGES). |
-| LGTM | `pr-lgtm-merge.yml` | `pull_request_review`, `issue_comment`, `workflow_dispatch` | Detects human approval, enables auto-merge, dispatches merge-prep |
-| Claude | `claude.yml` | `@claude` in comments | On-demand interaction |
-| Polecat | `polecat-issue-trigger.yml` | `@polecat` in comments | On-demand agent work |
+| Workflow   | File                        | Trigger                                                     | Purpose                                                              |
+| ---------- | --------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------- |
+| Lint       | `lint.yml`                  | `pull_request`, `push` (main)                               | `ruff check` + `ruff format`, autofix + push. Required status check. |
+| Type Check | `typecheck.yml`             | `pull_request`, `push` (main)                               | `basedpyright`. Required status check.                               |
+| Pytest     | `pytest.yml`                | `pull_request`, `push` (main)                               | Unit tests. Required status check.                                   |
+| Gatekeeper | `agent-gatekeeper.yml`      | `pull_request: [opened, synchronize]`                       | Scope/strategy review. Posts PR review (APPROVE or REQUEST_CHANGES). |
+| LGTM       | `pr-lgtm-merge.yml`         | `pull_request_review`, `issue_comment`, `workflow_dispatch` | Detects human approval, enables auto-merge, dispatches merge-prep    |
+| Claude     | `claude.yml`                | `@claude` in comments                                       | On-demand interaction                                                |
+| Polecat    | `polecat-issue-trigger.yml` | `@polecat` in comments                                      | On-demand agent work                                                 |
 
 ### Removed workflows
 
-| Old workflow | Why removed |
-|---|---|
-| `merge-prep-gate.yml` | Custom commit status gate replaced by branch protection requiring Gatekeeper PR review |
-| `merge-prep-cron.yml` | Cron polling replaced by event-driven dispatch from LGTM workflow |
-| `code-quality.yml` (combined) | Split into independent `lint.yml` and `typecheck.yml` |
+| Old workflow                  | Why removed                                                                            |
+| ----------------------------- | -------------------------------------------------------------------------------------- |
+| `merge-prep-gate.yml`         | Custom commit status gate replaced by branch protection requiring Gatekeeper PR review |
+| `merge-prep-cron.yml`         | Cron polling replaced by event-driven dispatch from LGTM workflow                      |
+| `code-quality.yml` (combined) | Split into independent `lint.yml` and `typecheck.yml`                                  |
 
 ### Agent workflows (reusable)
 
-| Agent | File | Role | Authority |
-|-------|------|------|-----------|
-| Gatekeeper | `agent-gatekeeper.yml` | Scope/strategy guardian | PR review: APPROVE / REQUEST_CHANGES |
-| Custodiet | `agent-custodiet.yml` | Scope compliance reviewer | PR review: APPROVE / REQUEST_CHANGES / COMMENT |
-| QA | `agent-qa.yml` | Verification and testing | PR review: APPROVE / REQUEST_CHANGES |
+| Agent      | File                   | Role                        | Authority                                                  |
+| ---------- | ---------------------- | --------------------------- | ---------------------------------------------------------- |
+| Gatekeeper | `agent-gatekeeper.yml` | Scope/strategy guardian     | PR review: APPROVE / REQUEST_CHANGES                       |
+| Custodiet  | `agent-custodiet.yml`  | Scope compliance reviewer   | PR review: APPROVE / REQUEST_CHANGES / COMMENT             |
+| QA         | `agent-qa.yml`         | Verification and testing    | PR review: APPROVE / REQUEST_CHANGES                       |
 | Merge Prep | `agent-merge-prep.yml` | Critical reviewer + cleanup | Edit code, push commits, post comments, PR review: APPROVE |
 
 All agents use the same GitHub affordance: **PR reviews**. This means any agent with repo access can fulfil any role — Gatekeeper, QA, Custodiet — as long as it posts the right kind of review. The pipeline doesn't check _who_ posted the review, only that the review exists and satisfies branch protection.
@@ -61,6 +61,7 @@ The pipeline is designed so that **by the time the human looks at a PR, cheap ch
 All four run concurrently on every push, including bot pushes. If Lint autofixes and pushes, the others re-run on the new commit — but they were never waiting for Lint in the first place.
 
 **Why Gatekeeper uses PR review (not commit status):**
+
 - PR reviews are GitHub's native mechanism for "does this change look right?"
 - Any agent with write access can post a PR review — interchangeable
 - `REQUEST_CHANGES` blocks merge natively via branch protection (no custom status needed)
@@ -89,6 +90,7 @@ The human reviews the PR with full context: the diff, Gatekeeper's review, and a
 - **Request changes** — not ready yet, author/agent needs to revise
 
 The LGTM workflow (`pr-lgtm-merge.yml`):
+
 1. Detects human approval (PR review `state: approved` from any human, OR "lgtm" comment from authorized users)
 2. Checks whether required status checks are passing on the PR HEAD
 3. If checks haven't run or are failing, re-triggers individual workflows via `workflow_dispatch` (recovers stuck PRs where checks never triggered — e.g., bot-created branches using GITHUB_TOKEN)
@@ -121,6 +123,7 @@ Merge Prep is dispatched directly by the LGTM workflow — no cron, no polling, 
 8. Dismisses stale REQUEST_CHANGES reviews it has addressed
 
 After merge-prep pushes:
+
 - Lint, Type Check, Pytest re-run (required status checks) — cheap, expected
 - Gatekeeper re-runs (required review) — evaluates final code
 - Human's approval is still valid (`dismiss_stale_reviews_on_push: false`)
@@ -131,6 +134,7 @@ If merge-prep makes no changes (PR was already clean), it posts APPROVE and auto
 #### Failure handling
 
 If Merge Prep fails (API timeout, logic error, etc.):
+
 - The workflow run shows as failed in the Actions tab (standard GitHub visibility)
 - The human can re-trigger via `workflow_dispatch` or comment "lgtm" again
 - After 3 consecutive failures on the same PR, merge-prep posts a comment requesting human intervention and adds a `needs-attention` label (informational, not load-bearing)
@@ -138,6 +142,7 @@ If Merge Prep fails (API timeout, logic error, etc.):
 #### Time gate
 
 Merge Prep checks the time since the last commit before starting work:
+
 - If last commit was < 30 minutes ago, merge-prep waits (sleep or re-dispatch with delay)
 - This preserves bazaar window without requiring a cron dispatcher
 - The LGTM workflow can pass `skip_time_gate: true` for urgent merges
@@ -147,11 +152,13 @@ Merge Prep checks the time since the last commit before starting work:
 GitHub's native auto-merge handles the final step. It merges (rebase) when ALL conditions are met:
 
 **Required status checks** (branch protection):
+
 - Lint: `success`
 - Type Check: `success`
 - Pytest: `success`
 
 **Required reviews** (branch protection):
+
 - At least 1 approving review from a human or bot
 - No outstanding REQUEST_CHANGES reviews (Gatekeeper's REQUEST_CHANGES blocks merge; merge-prep dismisses it after fixing the issue, or Gatekeeper re-approves on the fixed commit)
 
@@ -161,12 +168,12 @@ That's it. No custom commit statuses, no label gates, no cron polling. Branch pr
 
 The branch protection ruleset requires **1 approving review** before merge:
 
-| Review | Actor | When | How |
-|--------|-------|------|-----|
-| Gatekeeper | `github-actions[bot]` | Phase 1 (on push) | `gh pr review --approve` or `--request-changes` |
-| Bazaar | Various | Phase 2 (natural delay) | External tools + human comments |
-| Human | `nicsuzor` | Phase 3 (single action) | GitHub review UI or "lgtm" comment |
-| Merge Prep | `github-actions[bot]` | Phase 4 (after LGTM) | `gh pr review --approve` (signals completion) |
+| Review     | Actor                 | When                    | How                                             |
+| ---------- | --------------------- | ----------------------- | ----------------------------------------------- |
+| Gatekeeper | `github-actions[bot]` | Phase 1 (on push)       | `gh pr review --approve` or `--request-changes` |
+| Bazaar     | Various               | Phase 2 (natural delay) | External tools + human comments                 |
+| Human      | `nicsuzor`            | Phase 3 (single action) | GitHub review UI or "lgtm" comment              |
+| Merge Prep | `github-actions[bot]` | Phase 4 (after LGTM)    | `gh pr review --approve` (signals completion)   |
 
 Any of these can satisfy the "1 approving review" requirement. In practice, the human's approval + Gatekeeper's approval means the review count is always met.
 
@@ -178,9 +185,9 @@ Any of these can satisfy the "1 approving review" requirement. In practice, the 
 {
   "required_approving_review_count": 1,
   "required_status_checks": [
-    {"context": "Lint"},
-    {"context": "Type Check"},
-    {"context": "Pytest"}
+    { "context": "Lint" },
+    { "context": "Type Check" },
+    { "context": "Pytest" }
   ],
   "dismiss_stale_reviews_on_push": false
 }
@@ -269,6 +276,7 @@ The LGTM workflow detects human approval via:
 3. **`workflow_dispatch`**: manual trigger with PR number
 
 LGTM patterns (case-insensitive, start of comment):
+
 ```
 lgtm | merge | ship it
 ```
@@ -298,50 +306,50 @@ The human does not need to take further action unless merge-prep cannot resolve 
 
 ## Safety mechanisms
 
-| Mechanism | What it prevents |
-|-----------|-----------------|
-| Gatekeeper PR review (REQUEST_CHANGES) | Misaligned/harmful PRs reaching merge |
-| Required status checks (Lint, Type Check, Pytest) | Broken code reaching main |
-| Required review count = 1 | Merging without human oversight |
-| `dismiss_stale_reviews_on_push: false` | Merge-prep push invalidating human approval |
-| Time gate in merge-prep (30 min) | Merge-prep running before bazaar reviews arrive |
-| `Merge-Prep-By:` commit trailer | Identifying bot commits in git history |
-| LGTM check re-trigger | Stuck PRs where checks never ran (bot-created branches) |
-| LGTM conflict detection | Merge conflicts blocking auto-merge silently |
-| `workflow_dispatch` override | Manual intervention when automation isn't enough |
-| `needs-attention` label (after 3 failures) | Surfacing persistent problems |
+| Mechanism                                         | What it prevents                                        |
+| ------------------------------------------------- | ------------------------------------------------------- |
+| Gatekeeper PR review (REQUEST_CHANGES)            | Misaligned/harmful PRs reaching merge                   |
+| Required status checks (Lint, Type Check, Pytest) | Broken code reaching main                               |
+| Required review count = 1                         | Merging without human oversight                         |
+| `dismiss_stale_reviews_on_push: false`            | Merge-prep push invalidating human approval             |
+| Time gate in merge-prep (30 min)                  | Merge-prep running before bazaar reviews arrive         |
+| `Merge-Prep-By:` commit trailer                   | Identifying bot commits in git history                  |
+| LGTM check re-trigger                             | Stuck PRs where checks never ran (bot-created branches) |
+| LGTM conflict detection                           | Merge conflicts blocking auto-merge silently            |
+| `workflow_dispatch` override                      | Manual intervention when automation isn't enough        |
+| `needs-attention` label (after 3 failures)        | Surfacing persistent problems                           |
 
 ### What we removed (and why)
 
-| Old mechanism | Why it's gone |
-|---|---|
-| `Merge Prep` commit status (custom gate) | Branch protection + PR reviews do this natively |
-| `merge-prep-gate.yml` (pending status on push) | Was a workaround for not using PR reviews |
-| `merge-prep-cron.yml` (polling dispatcher) | Event-driven dispatch from LGTM is simpler and faster |
-| `lgtm` label (load-bearing) | LGTM workflow dispatches merge-prep directly; no label needed for coordination |
-| `merge-prep-running` label | No cron = no duplicate dispatch risk |
-| `merge-prep-failed` label | Replaced by `needs-attention` (informational only) |
-| Lint → Type Check dependency | They're independent checks that have no reason to chain |
+| Old mechanism                                  | Why it's gone                                                                  |
+| ---------------------------------------------- | ------------------------------------------------------------------------------ |
+| `Merge Prep` commit status (custom gate)       | Branch protection + PR reviews do this natively                                |
+| `merge-prep-gate.yml` (pending status on push) | Was a workaround for not using PR reviews                                      |
+| `merge-prep-cron.yml` (polling dispatcher)     | Event-driven dispatch from LGTM is simpler and faster                          |
+| `lgtm` label (load-bearing)                    | LGTM workflow dispatches merge-prep directly; no label needed for coordination |
+| `merge-prep-running` label                     | No cron = no duplicate dispatch risk                                           |
+| `merge-prep-failed` label                      | Replaced by `needs-attention` (informational only)                             |
+| Lint → Type Check dependency                   | They're independent checks that have no reason to chain                        |
 
 ## Concurrency
 
-| Scope | Group key | Cancel in-progress? |
-|-------|-----------|---------------------|
-| Lint | `lint-{pr_number}` | Yes |
-| Type Check | `typecheck-{pr_number}` | Yes |
-| Pytest | `pytest-{pr_number}` | Yes |
-| Gatekeeper | `gatekeeper-{pr_number}` | Yes |
-| Merge Prep | `merge-prep-{pr_number}` | Yes |
-| LGTM | `pr-lgtm-{pr_number}` | No |
+| Scope      | Group key                | Cancel in-progress? |
+| ---------- | ------------------------ | ------------------- |
+| Lint       | `lint-{pr_number}`       | Yes                 |
+| Type Check | `typecheck-{pr_number}`  | Yes                 |
+| Pytest     | `pytest-{pr_number}`     | Yes                 |
+| Gatekeeper | `gatekeeper-{pr_number}` | Yes                 |
+| Merge Prep | `merge-prep-{pr_number}` | Yes                 |
+| LGTM       | `pr-lgtm-{pr_number}`    | No                  |
 
 ## Issue review
 
 Each agent has its own trigger workflow for issues:
 
-| Workflow | Agent | What it does |
-|----------|-------|-------------|
-| `issue-review-custodiet.yml` | Custodiet | Assesses user story quality, acceptance criteria, scope clarity |
-| `issue-review-hydrator.yml` | Hydrator | Surfaces existing infrastructure, inconsistencies, downstream impacts |
+| Workflow                     | Agent     | What it does                                                          |
+| ---------------------------- | --------- | --------------------------------------------------------------------- |
+| `issue-review-custodiet.yml` | Custodiet | Assesses user story quality, acceptance criteria, scope clarity       |
+| `issue-review-hydrator.yml`  | Hydrator  | Surfaces existing infrastructure, inconsistencies, downstream impacts |
 
 Both trigger independently on `issues: [opened]`. Skips: bot-created issues, epics. Silence means the proposal is fine.
 
@@ -349,18 +357,18 @@ Both trigger independently on `issues: [opened]`. Skips: bot-created issues, epi
 
 ### Merge triggers
 
-| Event | Filter | Why |
-|-------|--------|-----|
-| `pull_request_review: [submitted]` | Human only (`user.type != 'Bot'`), state = `approved` | Formal human approval |
-| `issue_comment: [created]` | `nicsuzor` only, on PRs, LGTM pattern | Owner's merge signal |
-| `workflow_dispatch` | Manual | Explicit trigger for specific PRs |
+| Event                              | Filter                                                | Why                               |
+| ---------------------------------- | ----------------------------------------------------- | --------------------------------- |
+| `pull_request_review: [submitted]` | Human only (`user.type != 'Bot'`), state = `approved` | Formal human approval             |
+| `issue_comment: [created]`         | `nicsuzor` only, on PRs, LGTM pattern                 | Owner's merge signal              |
+| `workflow_dispatch`                | Manual                                                | Explicit trigger for specific PRs |
 
 ### On-demand agents
 
-| Mention | Workflow | Use case |
-|---------|----------|----------|
-| `@claude` | `claude.yml` | Questions, debugging, analysis, fixes |
-| `@polecat` | `polecat-issue-trigger.yml` | Task processing, guided work |
+| Mention    | Workflow                    | Use case                              |
+| ---------- | --------------------------- | ------------------------------------- |
+| `@claude`  | `claude.yml`                | Questions, debugging, analysis, fixes |
+| `@polecat` | `polecat-issue-trigger.yml` | Task processing, guided work          |
 
 ## Configuration
 
@@ -384,17 +392,20 @@ Both trigger independently on `issues: [opened]`. Skips: bot-created issues, epi
 ## Migration plan
 
 ### Step 1: Split code-quality.yml
+
 - Create `lint.yml` (lint + autofix only)
 - Create `typecheck.yml` (basedpyright only)
 - Keep `code-quality.yml` temporarily (both old and new run in parallel)
 - Verify both new workflows run correctly on 2-3 PRs
 
 ### Step 2: Convert Gatekeeper to PR review
+
 - Update `agent-gatekeeper.yml` to post `gh pr review --approve` or `--request-changes` instead of commit status
 - Remove Gatekeeper from required status checks (it's now enforced via required reviews)
 - Verify on 2-3 PRs
 
 ### Step 3: Make LGTM dispatch merge-prep
+
 - Update `pr-lgtm-merge.yml` to dispatch `agent-merge-prep.yml` directly
 - Update `agent-merge-prep.yml` to post PR review (APPROVE) instead of commit status
 - Add time gate check inside merge-prep
@@ -403,6 +414,7 @@ Both trigger independently on `issues: [opened]`. Skips: bot-created issues, epi
 - Verify on 2-3 PRs
 
 ### Step 4: Clean up
+
 - Remove `code-quality.yml` (replaced by lint.yml + typecheck.yml)
 - Remove label-based logic from all workflows
 - Update branch protection: add Type Check and Pytest to required status checks

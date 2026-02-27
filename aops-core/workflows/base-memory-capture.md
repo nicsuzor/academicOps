@@ -21,10 +21,10 @@ All findings flow through this hierarchy:
 
 | What                  | Primary Storage                                      | Also Store To |
 | --------------------- | ---------------------------------------------------- | ------------- |
-| **Epics/projects**    | Task Manager MCP (`type="epic"` or `type="project"`) | PKB    |
-| **Tasks/issues**      | GitHub Issues (`gh issue create`)                    | PKB    |
-| **Durable knowledge** | `$ACA_DATA/` markdown files                          | PKB    |
-| **Session findings**  | Task body updates                                    | PKB    |
+| **Epics/projects**    | Task Manager MCP (`type="epic"` or `type="project"`) | PKB           |
+| **Tasks/issues**      | GitHub Issues (`gh issue create`)                    | PKB           |
+| **Durable knowledge** | `$ACA_DATA/` markdown files                          | PKB           |
+| **Session findings**  | Task body updates                                    | PKB           |
 
 **Key principle**: PKB is the **universal index** for semantic search. Write to your primary storage AND PKB.
 

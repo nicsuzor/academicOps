@@ -55,13 +55,13 @@ A user story for QA planning purposes needs:
 
 **Transform binary checks into qualitative dimensions.** Every criterion should require interpretive judgment, not just observation:
 
-| Binary check (avoid)                                    | Qualitative dimension (use)                                                                                  |
-| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| "Legend is visible without interaction"                  | "Can a first-time viewer decode the graph's visual language without instructions?"                           |
-| "Node size correlates with downstream_weight"            | "Does the visual hierarchy match the importance hierarchy? Can you spot the highest-impact work at a glance?" |
-| "Labels show titles not IDs"                             | "Can you understand what each node represents without hovering or clicking?"                                 |
-| "Stale sessions have archive prompt"                     | "Does the interface help you let go of stale work without anxiety about losing context?"                     |
-| "Section order matches spec"                             | "Does the page answer your three questions (what's running, what's dropped, what needs me) before you scroll?"|
+| Binary check (avoid)                          | Qualitative dimension (use)                                                                                    |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| "Legend is visible without interaction"       | "Can a first-time viewer decode the graph's visual language without instructions?"                             |
+| "Node size correlates with downstream_weight" | "Does the visual hierarchy match the importance hierarchy? Can you spot the highest-impact work at a glance?"  |
+| "Labels show titles not IDs"                  | "Can you understand what each node represents without hovering or clicking?"                                   |
+| "Stale sessions have archive prompt"          | "Does the interface help you let go of stale work without anxiety about losing context?"                       |
+| "Section order matches spec"                  | "Does the page answer your three questions (what's running, what's dropped, what needs me) before you scroll?" |
 
 Binary checks are useful for regression testing after the feature ships. They are insufficient for evaluating whether the feature serves the user.
 
@@ -151,14 +151,14 @@ This can be evaluated by pattern matching. An agent can check these without unde
 
 ## Anti-Patterns in QA Plan Design
 
-| Anti-Pattern                        | Why It Fails                                                    | Instead                                                              |
-| ----------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------- |
-| Criteria without user stories       | No anchor — tests what was built, not what was needed           | Always trace criteria back to a story                                |
-| Pass/fail tables for acceptance     | Evaluator stops thinking; presence ≠ quality                    | Qualitative dimensions with quality spectra                          |
-| Implementation-detail criteria      | "Node size > 6px" passes when nodes are 7px but still invisible | Outcome criteria: "Can you spot the important nodes?"                |
-| Same format for acceptance and regression | Conflates "is this good?" with "did we break it?"          | Separate qualitative acceptance from binary regression               |
-| Criteria only the author understands | "Synthesis panel renders correctly" — what does correctly mean? | Describe excellent and poor so any evaluator can calibrate           |
-| No scenarios                        | Criteria evaluated in a vacuum, divorced from usage context     | Every evaluation grounded in a realistic usage scenario              |
+| Anti-Pattern                              | Why It Fails                                                    | Instead                                                    |
+| ----------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------- |
+| Criteria without user stories             | No anchor — tests what was built, not what was needed           | Always trace criteria back to a story                      |
+| Pass/fail tables for acceptance           | Evaluator stops thinking; presence ≠ quality                    | Qualitative dimensions with quality spectra                |
+| Implementation-detail criteria            | "Node size > 6px" passes when nodes are 7px but still invisible | Outcome criteria: "Can you spot the important nodes?"      |
+| Same format for acceptance and regression | Conflates "is this good?" with "did we break it?"               | Separate qualitative acceptance from binary regression     |
+| Criteria only the author understands      | "Synthesis panel renders correctly" — what does correctly mean? | Describe excellent and poor so any evaluator can calibrate |
+| No scenarios                              | Criteria evaluated in a vacuum, divorced from usage context     | Every evaluation grounded in a realistic usage scenario    |
 
 ## Integration with Other Modes
 

@@ -39,12 +39,14 @@ The fully automated PR review pipeline is the most mature component. Post-mortem
 **Pipeline flow**: `code-quality.yml` (lint + gatekeeper + type-check) -> `pr-review-pipeline.yml` (cascade-check -> custodiet -> QA -> merge-prep -> notify-ready) -> human approval -> `pr-lgtm-merge.yml` (check-status -> lint re-trigger -> approve -> auto-merge)
 
 **Safety mechanisms** (added/improved 2026-02-23):
+
 - **Cascade limit**: Pipeline run-count tracked per PR; halts after 3 runs to prevent infinite bot loops (`pr-review-pipeline.yml`)
 - **LGTM check-status gate**: Merge workflow now checks required status checks before enabling auto-merge; re-triggers lint if failing (`pr-lgtm-merge.yml`)
 - **Strategic gatekeeper**: Gatekeeper now reads `.agent/STATUS.md` in addition to VISION.md and AXIOMS.md, enabling it to reject PRs that delete working components or conflict with key decisions (`gatekeeper.md`)
 - **Loop detector**: Merge-prep uses `Merge-Prep-By:` commit trailer (not author name) — unchanged from prior fix
 
 **Prior fixes (2026-02-22)**:
+
 - Loop detector in merge-prep uses `Merge-Prep-By:` commit trailer (not author name)
 - Skip notices post honest PR comments when loop detected, including unresolved feedback count
 - Review dismissal instructions added to CLAUDE.md and merge-prep agent prompt
@@ -60,6 +62,7 @@ The fully automated PR review pipeline is the most mature component. Post-mortem
 ### Hook System — WORKING
 
 Session lifecycle hooks managed via `aops-core/hooks/router.py`:
+
 - `user_prompt_submit.py` — prompt routing and gate evaluation
 - `policy_enforcer.py` — axiom enforcement
 - `task_binding.py` — task context injection
@@ -71,6 +74,7 @@ Session lifecycle hooks managed via `aops-core/hooks/router.py`:
 ### Gate System — WORKING
 
 Predicate-based gate engine at `aops-core/lib/gates/`:
+
 - `engine.py` — gate evaluation
 - `definitions.py` — gate definitions
 - `registry.py` — gate registration
@@ -79,6 +83,7 @@ Predicate-based gate engine at `aops-core/lib/gates/`:
 ### Hydration System — WORKING
 
 Context injection at `aops-core/lib/hydration/`:
+
 - `builder.py` — hydration pipeline construction
 - `context_loaders.py` — context loading strategies
 - `skip_check.py` — hydration bypass conditions
@@ -109,20 +114,20 @@ Scripts for extracting insights from session transcripts in `.agent/skills/sessi
 
 ## Key Decisions
 
-| Decision | Rationale | Date |
-|----------|-----------|------|
-| Iterative stale task sweep | 236+ open tasks with significant junk; batch-review with human decisions, not bulk auto-cancel | 2026-02-23 |
-| Gatekeeper reads STATUS.md | Without strategic context, gatekeeper cannot catch PRs that delete working components (PR 582 post-mortem) | 2026-02-23 |
-| Pipeline cascade limit (max 3 runs) | PR 582 showed bots triggering bots in unbounded loops; comment-based counting bounds total cycles | 2026-02-23 |
-| LGTM triggers lint re-run if failing | PR 585 showed LGTM silently failing when lint was stale; merge workflow now checks and re-triggers | 2026-02-23 |
+| Decision                                  | Rationale                                                                                                  | Date       |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------- |
+| Iterative stale task sweep                | 236+ open tasks with significant junk; batch-review with human decisions, not bulk auto-cancel             | 2026-02-23 |
+| Gatekeeper reads STATUS.md                | Without strategic context, gatekeeper cannot catch PRs that delete working components (PR 582 post-mortem) | 2026-02-23 |
+| Pipeline cascade limit (max 3 runs)       | PR 582 showed bots triggering bots in unbounded loops; comment-based counting bounds total cycles          | 2026-02-23 |
+| LGTM triggers lint re-run if failing      | PR 585 showed LGTM silently failing when lint was stale; merge workflow now checks and re-triggers         | 2026-02-23 |
 | Transcript path: $AOPS_SESSIONS/polecats/ | Worker transcripts go to sessions repo, not old ~/.aops/transcripts path (updated 2026-02-23 during sweep) | 2026-02-23 |
-| Commit trailer for loop detection | Author name unreliable (multiple bots use github-actions[bot]) | 2026-02-22 |
-| All workflows get workflow_dispatch | Manual re-run capability for debugging and recovery | 2026-02-22 |
-| Review dismissal by agents | Agents should dismiss reviews they've addressed; humans override remaining | 2026-02-22 |
-| All merge methods enabled | Flexibility for different PR types | 2026-02-22 |
-| Tests at repo root, not in aops-core | Single test suite covering all components | prior |
-| Skills are read-only (P#23) | Mutable state in $ACA_DATA only | prior |
-| Categorical imperative (P#2) | Every change must be a universal rule | prior |
+| Commit trailer for loop detection         | Author name unreliable (multiple bots use github-actions[bot])                                             | 2026-02-22 |
+| All workflows get workflow_dispatch       | Manual re-run capability for debugging and recovery                                                        | 2026-02-22 |
+| Review dismissal by agents                | Agents should dismiss reviews they've addressed; humans override remaining                                 | 2026-02-22 |
+| All merge methods enabled                 | Flexibility for different PR types                                                                         | 2026-02-22 |
+| Tests at repo root, not in aops-core      | Single test suite covering all components                                                                  | prior      |
+| Skills are read-only (P#23)               | Mutable state in $ACA_DATA only                                                                            | prior      |
+| Categorical imperative (P#2)              | Every change must be a universal rule                                                                      | prior      |
 
 ## Open Questions
 
@@ -136,6 +141,7 @@ Scripts for extracting insights from session transcripts in `.agent/skills/sessi
 ## Roadmap
 
 ### Recently Completed
+
 - Stale task sweep iteration 4: 3 done, 2 cancelled (aops-578fdde1, aops-b55463e7, aops-47a04db0 done; aops-d35eae01, aops-d18e3442 cancelled) -- 2026-02-23
 - Stale task sweep iterations 1-3: 8 cancelled, 9 kept, 2 fixed -- 2026-02-23
 - PR pipeline post-mortem and fixes (cascade limit, LGTM check-status, strategic gatekeeper) -- 2026-02-23
@@ -145,19 +151,23 @@ Scripts for extracting insights from session transcripts in `.agent/skills/sessi
 - Test fix on main (CUSTODIET_GATE_MODE)
 
 ### In Progress
+
 - **Iterative stale task sweep** (aops-sweep-20260223) -- iteration 4 complete; iteration 5 candidates prepared targeting more "stuck status" tasks from Feb 18-19
 
 ### Near-term
+
 - **Validate PR pipeline fixes on next real PR** (supervised run) -- the three new safety mechanisms (cascade limit, LGTM lint re-trigger, strategic gatekeeper) need real-world validation
 - Address issue review over-triggering
 - Strengthen hydrator guardrails
 
 ### Medium-term
+
 - Graduate PR pipeline from "supervised" to "autonomous" after multiple clean runs
 - PKB server implementation (spec exists at `specs/pkb-server-spec.md`)
 - Dogfooding workflow (recently added, commit f62c0442)
 
 ### Long-term
+
 - Full autonomous agent workflows with butler oversight
 - Cross-project task management
 - Session insights automation

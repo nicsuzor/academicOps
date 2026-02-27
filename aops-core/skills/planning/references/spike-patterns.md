@@ -4,12 +4,12 @@ Patterns for using spike tasks (type: `learn`) to investigate unknowns before co
 
 ## Spike vs Placeholder Decision
 
-| Situation                              | Use Spike            | Use Placeholder   |
-| -------------------------------------- | -------------------- | ----------------- |
-| "We don't know if X is possible"       | Investigate first    |                   |
-| "We know X is needed, details TBD"     |                      | Capture intent    |
-| "We need to understand current system" | Audit/explore        |                   |
-| "Implementation approach is unclear"   | Prototype/probe      |                   |
+| Situation                              | Use Spike         | Use Placeholder |
+| -------------------------------------- | ----------------- | --------------- |
+| "We don't know if X is possible"       | Investigate first |                 |
+| "We know X is needed, details TBD"     |                   | Capture intent  |
+| "We need to understand current system" | Audit/explore     |                 |
+| "Implementation approach is unclear"   | Prototype/probe   |                 |
 
 ## Sequential Discovery Pattern
 

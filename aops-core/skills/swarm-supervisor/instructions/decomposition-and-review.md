@@ -44,13 +44,13 @@ The supervisor decomposes large tasks into PR-sized subtasks.
 
 Before decomposing, verify the task's position in the graph is sound:
 
-| Check | Fail condition | Fix |
-|-------|---------------|-----|
-| Parent exists | `parent` is empty or missing | Find or create appropriate epic |
-| Abstraction match | Task is direct child of project | Create intermediate epic |
-| WHY test | Can't justify task in terms of parent | Re-parent or create bridging epic |
-| Type-scale match | Multi-session work typed as `task` | Retype as `epic` |
-| Star pattern | Parent has >5 direct children | Group siblings under epics |
+| Check             | Fail condition                        | Fix                               |
+| ----------------- | ------------------------------------- | --------------------------------- |
+| Parent exists     | `parent` is empty or missing          | Find or create appropriate epic   |
+| Abstraction match | Task is direct child of project       | Create intermediate epic          |
+| WHY test          | Can't justify task in terms of parent | Re-parent or create bridging epic |
+| Type-scale match  | Multi-session work typed as `task`    | Retype as `epic`                  |
+| Star pattern      | Parent has >5 direct children         | Group siblings under epics        |
 
 If any check fails, fix the hierarchy BEFORE proceeding with decomposition.
 
@@ -247,7 +247,7 @@ update_task(id=task_id, status='waiting', body=synthesis_markdown)
 
 ### Issues Requiring Resolution
 
-   - **Suggested fix**: [how to address]
+- **Suggested fix**: [how to address]
 
 2. [Issue from custodiet if WARN]: [scope concern]
    - **Suggested fix**: [how to narrow scope]

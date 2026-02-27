@@ -40,7 +40,6 @@ notify = [
 # Anthropic API for skills that call Claude directly
 anthropic = ["anthropic>=0.75.0"]
 
-
 [tool.hatch.build.targets.wheel]
 packages = ["lib", "skills", "tests", "scripts"]
 

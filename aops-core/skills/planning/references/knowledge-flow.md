@@ -37,10 +37,10 @@ When requirements are partially known, structure the task body with explicit dec
 ```markdown
 ## CONFIRMED
 
-| Decision        | Status      | Notes                       |
-| --------------- | ----------- | --------------------------- |
-| Use framework X | Confirmed   | Validates system utility    |
-| Question style  | Confirmed   | Content generation approach |
+| Decision        | Status    | Notes                       |
+| --------------- | --------- | --------------------------- |
+| Use framework X | Confirmed | Validates system utility    |
+| Question style  | Confirmed | Content generation approach |
 
 ## TO BE DECIDED
 

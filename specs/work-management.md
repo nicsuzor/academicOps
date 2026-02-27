@@ -48,15 +48,15 @@ flowchart LR
 
 ## Core Functions
 
-| Function                                                           | Purpose            |
-| ------------------------------------------------------------------ | ------------------ |
-| `mcp__pkb__create_task()`                | Create new task    |
-| `mcp__pkb__get_task(id)`                 | Get task details   |
-| `mcp__pkb__update_task(id, ...)`         | Update task fields |
-| `mcp__pkb__complete_task(id)`            | Mark task done     |
-| `mcp__pkb__list_tasks(...)`              | List/filter tasks  |
-| `mcp__pkb__task_search(query)`          | Search tasks       |
-| `mcp__pkb__get_blocked_tasks()`          | Get blocked tasks  |
+| Function                              | Purpose            |
+| ------------------------------------- | ------------------ |
+| `mcp__pkb__create_task()`             | Create new task    |
+| `mcp__pkb__get_task(id)`              | Get task details   |
+| `mcp__pkb__update_task(id, ...)`      | Update task fields |
+| `mcp__pkb__complete_task(id)`         | Mark task done     |
+| `mcp__pkb__list_tasks(...)`           | List/filter tasks  |
+| `mcp__pkb__task_search(query)`        | Search tasks       |
+| `mcp__pkb__get_blocked_tasks()`       | Get blocked tasks  |
 | `mcp__pkb__create_task(id, children)` | Break down task    |
 
 ## Task Lifecycle

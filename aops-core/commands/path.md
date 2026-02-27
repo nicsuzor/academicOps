@@ -27,6 +27,7 @@ uv run python3 aops-core/scripts/show_path.py --hours 48
 ## Output Interpretation
 
 The output solves the "Mechanical Narrative" problem by:
+
 1. **Prioritizing Intent**: Showing hydrated intent or task titles instead of raw IDs.
 2. **Grouping by Project**: Categorizing abandoned work and timeline threads.
 3. **Narrative Sentences**: "Started working on: [Title]" instead of "CLAIM: ID".

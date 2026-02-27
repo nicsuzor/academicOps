@@ -165,11 +165,11 @@ For each accomplishment with candidates:
 
 ### 4.5.3: Graceful Degradation
 
-| Scenario                  | Behavior                                    |
-| ------------------------- | ------------------------------------------- |
-| PKB unavailable           | Skip semantic matching, continue processing |
-| Task file not found       | Log warning, continue to next               |
-| Unexpected task format    | Skip that task, log warning                 |
+| Scenario               | Behavior                                    |
+| ---------------------- | ------------------------------------------- |
+| PKB unavailable        | Skip semantic matching, continue processing |
+| Task file not found    | Log warning, continue to next               |
+| Unexpected task format | Skip that task, log warning                 |
 
 ## Step 4.6: Update Task Files (Cross-Linking)
 
