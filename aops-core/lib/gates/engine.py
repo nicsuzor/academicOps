@@ -182,10 +182,8 @@ class GenericGate:
             )
 
         ctx_inj = None
-        if transition.context_injection_template:
-            ctx_inj = self._render_template(
-                transition.context_injection_template, ctx, state, session_state
-            )
+        if transition.context_template:
+            ctx_inj = self._render_template(transition.context_template, ctx, state, session_state)
 
         # Custom Action (Side Effects)
         if transition.custom_action:
@@ -325,6 +323,7 @@ class GenericGate:
                     ctx_inj = self._render_template(
                         policy.context_template, ctx, state, session_state
                     )
+                    ctx_inj = "<SYSTEM HOOK INSTRUCTION>" + ctx_inj + "</SYSTEM HOOK INSTRUCTION>"
 
                 # Combine prefixes
                 final_sys_msg = sys_msg_prefix + sys_msg

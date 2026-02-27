@@ -110,9 +110,9 @@ check_repo() {
     # Check ahead/behind
     local tracking=$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null || echo "")
     if [[ -n "$tracking" ]]; then
-        local counts=$(git rev-list --left-right --count HEAD...@{u} 2>/dev/null || echo "0 0")
-        local ahead_count=$(echo "$counts" | awk '{print $1}')
-        local behind_count=$(echo "$counts" | awk '{print $2}')
+        local counts
+        counts=$(git rev-list --left-right --count HEAD...@{u} 2>/dev/null || echo "0	0")
+        read -r ahead_count behind_count <<< "$counts"
         [[ "$ahead_count" -gt 0 ]] && ahead="${ahead_count} ahead"
         [[ "$behind_count" -gt 0 ]] && behind="${behind_count} behind"
     fi

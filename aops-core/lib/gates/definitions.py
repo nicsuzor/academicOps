@@ -51,7 +51,8 @@ GATE_CONFIGS = [
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
                     custom_action="hydrate_prompt",
-                    system_message_template="💧 Hydration recommended. Gate CLOSED; hydration output pending.",
+                    system_message_template="💧 New user prompt detected; fresh hydration required.",
+                    context_template="💧 New user prompt detected; fresh hydration required. Immediately invoke the **prompt-hydrator** agent with argument: `{temp_path}`\n",
                 ),
             ),
         ],
@@ -61,11 +62,11 @@ GATE_CONFIGS = [
                 condition=GateCondition(
                     current_status=GateStatus.CLOSED,
                     hook_event="PreToolUse",
-                    excluded_tool_categories=["always_available", "read_only"],
+                    excluded_tool_categories=["always_available"],
                 ),
                 verdict=HYDRATION_GATE_MODE,
                 # Brief user-facing summary
-                message_template="💧 Hydration suggested: invoke prompt-hydrator for optimal planning",
+                message_template="💧 Hydration of new user input prompt is required.",
                 # Full agent instructions
                 context_template=(
                     "**Prompt hydration suggested.** To ensure alignment with project workflows and axioms, please invoke the **prompt-hydrator** agent with: `{temp_path}`\n\n"
@@ -86,8 +87,8 @@ GATE_CONFIGS = [
             start_before=7,
             threshold=CUSTODIET_TOOL_CALL_THRESHOLD,
             message_template=(
-                "📋 {remaining} turns until custodiet check required. "
-                "Run the check proactively (and in the background!) with: `{temp_path}`"
+                "📋 {remaining} turns until custodiet check required. \n"
+                "Run the check proactively to avoid being blocked by invoking the **custodiet** agent with file path argument:\n`{temp_path}`\n\n"
             ),
         ),
         triggers=[
@@ -100,7 +101,7 @@ GATE_CONFIGS = [
                 transition=GateTransition(
                     reset_ops_counter=True,
                     system_message_template="🛡️ Compliance verified.",
-                    context_injection_template="🛡️ Compliance verified.",
+                    context_template="🛡️ Compliance verified.",
                 ),
             ),
         ],
@@ -117,8 +118,7 @@ GATE_CONFIGS = [
                 context_template=(
                     "**Periodic compliance check required ({ops_since_open} ops since last check).** Invoke the **custodiet** agent with the file path argument: `{temp_path}`\n"
                     "- Gemini: `delegate_to_agent(name='custodiet', query='{temp_path}')`\n"
-                    "- Claude: `Task(subagent_type='custodiet', prompt='{temp_path}')`\n\n"
-                    "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
+                    "- Claude: `Task(subagent_type='custodiet', prompt='{temp_path}')`\n"
                 ),
                 custom_action="prepare_compliance_report",
             ),
@@ -172,17 +172,12 @@ GATE_CONFIGS = [
         ],
     ),
     # --- Handover ---
-    # Gate starts OPEN. Closes when a task is bound (work begins).
+    # Gate starts CLOSED.
     # Opens when /handover skill completes. Policy blocks Stop when CLOSED.
-    #
-    # Previous approach used missing_framework_reflection custom_check on Stop,
-    # but that fails because Claude Code fires Stop before the current turn's
-    # output (containing the reflection) is flushed to the JSONL transcript.
-    # Fix: trigger-based approach (like critic/QA gates). See aops-f6f9b5dc.
     GateConfig(
         name="handover",
         description="Requires Framework Reflection before exit.",
-        initial_status=GateStatus.OPEN,
+        initial_status=GateStatus.CLOSED,
         triggers=[
             # Task bound: update_task with status=in_progress -> Close
             # Work has begun, so handover will be required before exit.
@@ -197,7 +192,7 @@ GATE_CONFIGS = [
                     system_message_template="📤 Task bound. Handover required before exit.",
                 ),
             ),
-            # /dump skill (or /handover for legacy) completes -> Open
+            # /dump skill completes -> Open
             # Uses subagent_type_pattern to match skill name extracted by router
             # (router.py extracts tool_input["skill"] into ctx.subagent_type)
             # Matches both Claude's Skill tool and Gemini's activate_skill tool.
@@ -226,7 +221,6 @@ GATE_CONFIGS = [
                 context_template=(
                     "⛔ Finalization required before exit.\n\n"
                     "Please invoke the Dump Skill (`/dump`). The gate will only allow exit once the Dump Skill has completed.\n\n"
-                    "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
                 ),
             ),
         ],

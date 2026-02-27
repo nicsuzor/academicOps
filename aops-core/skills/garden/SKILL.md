@@ -1,7 +1,7 @@
 ---
 name: garden
 category: instruction
-description: Incremental PKM maintenance - weeding, pruning, linking, consolidating. Tends the knowledge base bit by bit.
+description: Incremental PKM and task graph maintenance - weeding, pruning, linking, consolidating, reparenting. Tends the knowledge base and task hierarchy bit by bit.
 allowed-tools: Read,Grep,Glob,Edit,Write,Bash,Task,mcp__pkb__search,mcp__pkb__list_documents
 version: 1.0.0
 permalink: skills-garden
@@ -9,7 +9,7 @@ permalink: skills-garden
 
 # Garden
 
-Tend the personal knowledge base incrementally. Small regular attention beats massive occasional cleanups.
+Tend the personal knowledge base and task graph incrementally. Small regular attention beats massive occasional cleanups.
 
 ## Gardening Activities
 
@@ -24,6 +24,10 @@ Tend the personal knowledge base incrementally. Small regular attention beats ma
 | **Map**        | Create/update MoCs for navigation                   |
 | **DRY**        | Remove restated content, replace with links         |
 | **Synthesize** | Strip deliberation artifacts from implemented specs |
+| **Reparent**   | Fix orphaned tasks, enforce hierarchy rules         |
+| **Hierarchy**  | Validate task→epic→project→goal structure           |
+| **Stale**      | Flag tasks with stale status or inconsistencies     |
+| **Dedup**      | Surface duplicate/overlapping tasks for review      |
 
 ## Modes
 
@@ -203,6 +207,66 @@ After synthesizing any spec, ensure `specs/specs.md` is updated:
 
 **Session length:** 15-30 minutes max. Gardening is sustainable when light.
 
+## Task Graph Gardening
+
+The task graph accumulates structural debt just like the knowledge base. Task gardening maintains hierarchy integrity and priority signal quality.
+
+### Hierarchy Rules
+
+| Level    | Must belong to              |
+| -------- | --------------------------- |
+| Task     | An epic                     |
+| Epic     | A project or another epic   |
+| Project  | A project or a goal         |
+| Goal     | Root-level (no parent required) |
+
+**No task should be a root-level orphan.** Orphan tasks degrade graph metrics, break downstream weight calculations, and become invisible to priority-based queries.
+
+### reparent [project]
+
+Detect and fix orphaned tasks within a project.
+
+**Detection:**
+
+1. List tasks for the project: `mcp__pkb__list_tasks(project="X", status="ready")`
+2. Identify root-level items (no parent) that aren't goals or projects
+3. Group orphans by theme — look for natural clusters (3-8 items)
+
+**Execution:**
+
+1. If orphans fit an existing epic, reparent with `mcp__pkb__update_task(id, {parent: epic_id})`
+2. If orphans form a new cluster, create an epic first, then reparent children to it
+3. Ensure new epics themselves have a parent (project or goal) — don't create new orphans
+4. Verify: no epic has excessive children (target: 5-10 per epic, max ~12)
+
+**Batch efficiency:** Make all `update_task` calls in parallel — parent assignment has no cross-dependencies.
+
+### hierarchy [project]
+
+Validate the full hierarchy for a project.
+
+1. Check all tasks have a parent epic
+2. Check all epics have a parent project or goal
+3. Check no epic has >12 direct children (split if needed)
+4. Check no task has `type: task` but functions as an epic (has children) — fix type to `epic`
+5. Report violations as a summary table
+
+### stale [project]
+
+Detect tasks that may need status updates.
+
+1. `in_progress` tasks with no modification in >7 days → flag for review
+2. `active` tasks with all children `done` → candidate for completion
+3. Tasks marked `done` but with `active` children → inconsistency, flag
+
+### dedup [project]
+
+Find tasks with similar titles or overlapping scope.
+
+1. Use `mcp__pkb__task_search` with each task's title against the project
+2. Flag pairs with high similarity scores
+3. Surface for human decision — don't auto-merge (requires judgment)
+
 ## Area Targeting
 
 | Area        | Focus                      |
@@ -217,15 +281,19 @@ Default: highest-activity areas (recent modifications).
 
 ## Health Metrics
 
-| Metric                                    | Target      |
-| ----------------------------------------- | ----------- |
-| Frontmatter errors                        | 0           |
-| Orphan rate                               | <5%         |
-| Link density                              | >2 per note |
-| Broken links                              | 0           |
-| MoC coverage                              | >90%        |
-| DRY violations                            | 0           |
-| Implemented specs with deliberation cruft | 0           |
+| Metric                                    | Target        |
+| ----------------------------------------- | ------------- |
+| Frontmatter errors                        | 0             |
+| Orphan rate (notes)                       | <5%           |
+| Link density                              | >2 per note   |
+| Broken links                              | 0             |
+| MoC coverage                              | >90%          |
+| DRY violations                            | 0             |
+| Implemented specs with deliberation cruft | 0             |
+| Orphan tasks (no parent)                  | 0             |
+| Epic child count                          | 5-10 per epic |
+| Hierarchy violations                      | 0             |
+| Stale in_progress tasks (>7 days)         | 0             |
 
 ## Anti-Patterns
 

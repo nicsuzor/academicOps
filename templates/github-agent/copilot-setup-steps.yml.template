@@ -1,0 +1,35 @@
+name: "Copilot Setup Steps"
+
+on: workflow_dispatch
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      # Option A: If you have the composite action available locally or published
+      # - name: Setup Python toolchain
+      #   uses: nicsuzor/academicOps/.github/actions/copilot-python-setup@main
+      #   with:
+      #     python-version: "3.12"
+
+      # Option B: Inline steps (use this if composite action isn't accessible)
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Verify toolchain
+        run: |
+          echo "Python: $(uv run python --version)"
+          uv run pytest --version
+          echo "Toolchain ready."

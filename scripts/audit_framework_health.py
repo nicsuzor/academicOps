@@ -500,7 +500,7 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "Task MCP server",
         "Overwhelm dashboard",
         "task-viz",
-        "fast-indexer",
+        "aops CLI",
         "auth-provider-comparison",
         # Axiom slugs (anchor references within AXIOMS.md)
         "no-other-truths",
@@ -728,7 +728,7 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         "archived/hooks/custodiet_gate.py",
         # Old aops-tools paths (now merged into aops-core)
         "aops-tools/tasks_server.py",
-        "aops-tools/fast_indexer/",
+        "aops-tools/fast-indexer/",
         "aops-tools/skills/",
         "aops-tools/.mcp.json",
         "aops-core/.mcp.json",
