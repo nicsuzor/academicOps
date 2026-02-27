@@ -6,12 +6,9 @@ differentiated edges (S-curves for parent, manhattan routing for deps,
 dashed for refs), legend, detail panel, and hover highlighting.
 """
 
-import json
 import math
 import re
 from pathlib import Path
-
-import streamlit.components.v1 as components
 
 # ---------------------------------------------------------------------------
 # Constants (mirrored from scripts/task_graph_d3.py to avoid cross-path import)
@@ -406,8 +403,8 @@ def prepare_embedded_graph_data(
 # ---------------------------------------------------------------------------
 
 
-
 def render_embedded_graph(graph_data: dict, height: int = 500, force_settings=None):
     """Render the graph using the bi-directional Streamlit Custom Component."""
     from d3_component import d3_task_graph
+
     return d3_task_graph(data=graph_data, height=height, force_settings=force_settings)
