@@ -5,11 +5,13 @@ Workflow for extracting training data from peer review documents with inline com
 ## Input
 
 Document containing:
+
 - Source text (the work being reviewed)
 - Inline comments/feedback (from reviewer)
 - Optional: tracked changes, suggestions, revisions
 
 **Common formats**:
+
 - DOCX with Word comments and track changes
 - Google Docs export with comments
 - PDF with annotations (limited support)
@@ -41,6 +43,7 @@ pandoc --track-changes=all -f docx -t markdown -o output.md input.docx
 ```
 
 **Verify**:
+
 - Comments are readable and attributed
 - Comment text is clearly separated from source text
 - Location/context is preserved
@@ -49,6 +52,7 @@ pandoc --track-changes=all -f docx -t markdown -o output.md input.docx
 **Step 1.2: Full Document Read**
 
 Read the complete document without extracting yet. Understand:
+
 - Overall assessment (positive, critical, mixed)
 - Document type (paper, grant, thesis, etc.)
 - Reviewer relationship (peer, supervisor, editor)
@@ -108,12 +112,14 @@ For each feedback unit, extract:
 **Step 2.3: Quality Assessment**
 
 High quality:
+
 - Clear connection between feedback and source
 - Teaches transferable pattern
 - Sufficient context
 - Well-categorized
 
 Flag for review:
+
 - Ambiguous mapping
 - Unclear teaching value
 - Very context-specific
@@ -123,6 +129,7 @@ Flag for review:
 **Step 3.1: Group by Pattern Type**
 
 Group extracted pairs by:
+
 - Feedback type (structural, methodological, etc.)
 - Teaching approach (principle explanation, strategic framing, etc.)
 - Pedagogical technique (providing options, teaching self-review, etc.)
@@ -131,6 +138,7 @@ Group extracted pairs by:
 **Step 3.2: Identify Effective Patterns**
 
 For each pattern cluster, analyze:
+
 - What makes it distinctive?
 - Why does it work?
 - What makes it transferable?
@@ -145,6 +153,7 @@ For each pattern, create:
 **Pattern observed**: [specific example from document]
 
 **Generalised principle**: [abstract pattern into transferable form]
+
 - What to do
 - When to do it
 - How to do it
@@ -152,6 +161,7 @@ For each pattern, create:
 **Why it works**: [explain the mechanism]
 
 **Application guide**: [conditions for use]
+
 - When to apply
 - What situations call for it
 - How to recognize the opportunity
@@ -162,6 +172,7 @@ For each pattern, create:
 ```
 
 **Abstraction test**:
+
 - Too specific: "When reviewing AI papers, start positive"
 - Too general: "Be nice to authors"
 - **Sweet spot**: "When providing detailed feedback, explicitly contextualize volume upfront"
@@ -185,6 +196,7 @@ Create in `$ACA_DATA/processed/review_training/{collection_name}/`:
 From extracted examples, create depersonalized version:
 
 **Remove**:
+
 - Author names → "Author" or "Student"
 - Reviewer names → "Reviewer" or omit
 - Specific work titles → "Paper on topic X"
@@ -192,11 +204,13 @@ From extracted examples, create depersonalized version:
 - Identifying contextual details
 
 **Generalize**:
+
 - "This abstract about AI bias" → "Abstract submissions"
 - "Sadia's work" → "The author's work"
 - Specific references → Generic placeholders
 
 **Create constructed examples**:
+
 - If real example can't be depersonalized, create illustrative example
 - Ensure example captures the principle
 - Mark as constructed
@@ -244,13 +258,14 @@ $ACA_DATA/processed/review_training/
 │   ├── extracted_examples.json
 │   ├── training_pairs.jsonl
 │   ├── collection_summary.md
-│   └── extraction_notes.md
+│   └── extraction_workflow_notes.md
 ├── grant-review-batch-2025/
 │   └── ...
 └── README.md  # Index of all collections
 ```
 
 **Access control**:
+
 - Not in public repo
 - Personal data directory
 - Separate backup strategy
@@ -276,18 +291,21 @@ aops-core/
 Before completing:
 
 **Extraction**:
+
 - [ ] All feedback units identified and categorized
 - [ ] Patterns grouped and analyzed
 - [ ] Principles extracted with examples
 - [ ] Quality assessment complete
 
 **Separation**:
+
 - [ ] Sensitive data stored in `$ACA_DATA/processed/`
 - [ ] Public framework updated with depersonalized content only
 - [ ] No identifying information in public docs
 - [ ] Constructed examples created where needed
 
 **Documentation**:
+
 - [ ] Collection summary written
 - [ ] Extraction notes documented
 - [ ] Workflow improvements noted
@@ -355,6 +373,7 @@ Based on validated extractions, watch for:
 ## Workflow Improvements
 
 Document what worked and what didn't:
+
 - Challenges encountered
 - Process refinements discovered
 - Tools that would help
