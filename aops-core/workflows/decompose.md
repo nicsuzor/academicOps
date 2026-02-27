@@ -130,14 +130,24 @@ For every **execution** task (run, implement, write, build, create):
 
 If the task only makes sense given a specific decision outcome, it **must** depend on that decision task. Do not leave conditional work unblocked in the ready queue.
 
-### Check 3: Academic output methodology layer
+### Check 3: Writing tasks are blocked on their data
+
+For every **writing** task (write, draft, document, report):
+
+> "What analysis or data needs to be final before this can be written?"
+
+If the writing depends on analysis results, block it on the analysis task.
+
+### Check 4: Academic output methodology layer
 
 When decomposing work that produces **academic output** (papers, reports, benchmarks, analyses, reviews), always include these methodology tasks in addition to the deliverable tasks:
 
-- **Model/sample justification**: Why this method, dataset, or sample? (prep task)
-- **Validation approach**: How will claims be tested? (decision task, blocked on justification)
-- **Claim-evidence audit**: Every claim maps to evidence (audit task, blocked on writing)
-- **Limitations completeness**: Are limitations honestly scoped? (audit task, blocked on writing)
+- **Justify every methodological choice**: model/sample selection criteria, coding schemes, categorisations (prep task)
+- **Define validation approach**: inter-rater reliability, construct validity, external review — how will claims be tested? (decision task, blocked on justification)
+- **Systematic claim-evidence audit**: every claim cross-referenced to data, unsupported claims flagged (audit task, blocked on writing)
+- **Limitations completeness**: every known limitation stated (audit task, blocked on writing)
+
+**Axiom**: Nothing goes out to the public before it's perfect. All academic output must be triple-checked and presented to the user for explicit approval with full receipts (verification logs, QA checklists, evidence) before release.
 
 ## Academic Output Layer Structure
 
@@ -168,3 +178,5 @@ For academic outputs, enforce this ordering:
 - **Decisions without prep**: Decision tasks with no upstream data-gathering task
 - **Unblocked conditional work**: Execution tasks sitting in "ready" when they depend on an unmade decision
 - **Missing methodology layer**: Academic output decomposed at project-management level only, without justification/validation/audit tasks
+- **PM-only decomposition**: Creating "run notebook, write section, ship" without methodology tasks
+- **Investigating instead of tasking**: Don't go look at code/data — work with PKB knowledge, create tasks for unknowns

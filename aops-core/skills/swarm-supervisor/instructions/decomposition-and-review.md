@@ -34,7 +34,8 @@ The supervisor decomposes large tasks into PR-sized subtasks.
 7. **Post-decomposition self-checks** (run BEFORE finalizing):
    a. For each **decision** subtask: "What information does the user need to make this decision?" — if no upstream prep task exists, create one and add it to `depends_on`
    b. For each **execution** subtask: "Is this conditional on a decision that hasn't been made?" — if yes, add the decision task to `depends_on`
-   c. If the parent task produces **academic output** (paper, report, benchmark, analysis): ensure methodology tasks exist (model/sample justification, validation approach, claim-evidence audit, limitations completeness)
+   c. For each **writing** subtask: "What analysis/data needs to be final before this can be written?" — if it depends on analysis results, add the analysis task to `depends_on`
+   d. If the parent task produces **academic output** (paper, report, benchmark, analysis): ensure methodology tasks exist (methodological justification, validation approach, claim-evidence audit, limitations completeness)
 8. Append decomposition summary to task body
 9. Set task status to 'consensus'
 ```
@@ -59,6 +60,7 @@ If any check fails, fix the hierarchy BEFORE proceeding with decomposition.
 |-------|--------------|-----|
 | Decision has prep | Decision task has no upstream data-gathering dependency | Create prep task, add to `depends_on` |
 | Execution is gated | Execution task is unconditional but depends on a decision outcome | Add decision task to `depends_on` |
+| Writing has data | Writing task depends on analysis results not yet complete | Add analysis task to `depends_on` |
 | Academic methodology | Academic output has no justification/validation/audit tasks | Add methodology layer tasks (see [[decompose]] workflow) |
 
 **Output Format** (appended to task body):
