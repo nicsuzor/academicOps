@@ -450,11 +450,11 @@ description: Working hypotheses validated by evidence.
 
 **Routing rules**:
 
-| Task Type | Default Assignee | Examples |
-| --- | --- | --- |
-| Mechanical work | `polecat` | create skill, fix bug, update docs, refactor code |
-| Judgment-call | `null` (unassigned) | re-evaluate metrics, review design, approve plan |
-| Explicit override | as specified | `/q nic: respond to email` |
+| Task Type         | Default Assignee    | Examples                                          |
+| ----------------- | ------------------- | ------------------------------------------------- |
+| Mechanical work   | `polecat`           | create skill, fix bug, update docs, refactor code |
+| Judgment-call     | `null` (unassigned) | re-evaluate metrics, review design, approve plan  |
+| Explicit override | as specified        | `/q nic: respond to email`                        |
 
 **Corollaries**:
 

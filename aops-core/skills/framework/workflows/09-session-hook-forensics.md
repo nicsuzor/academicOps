@@ -172,13 +172,13 @@ Once you identify the issue, document:
 
 ## Reference: Hook Event Types
 
-| Event              | When Fired           | What to Look For                |
-| ------------------ | -------------------- | ------------------------------- |
-| `SessionStart`     | Session begins       | Gate initialization, env setup  |
-| `UserPromptSubmit` | User sends message   | Gate resets, hydration triggers |
-| `PreToolUse`       | Before tool runs     | Gate checks, tool blocking      |
-| `PostToolUse`      | After tool completes | Gate state updates, errors      |
-| `SubagentStop`     | Subagent finishes    | Subagent success/failure        |
+| Event              | When Fired           | What to Look For                      |
+| ------------------ | -------------------- | ------------------------------------- |
+| `SessionStart`     | Session begins       | Gate initialization, env setup        |
+| `UserPromptSubmit` | User sends message   | Gate resets, hydration triggers       |
+| `PreToolUse`       | Before tool runs     | Gate checks, tool blocking            |
+| `PostToolUse`      | After tool completes | Gate state updates, errors            |
+| `SubagentStop`     | Subagent finishes    | Subagent success/failure              |
 | `Stop`             | Session ending       | QA/handover gate checks (via `/dump`) |
 
 ## Reference: Gate Status Indicators
@@ -189,12 +189,12 @@ The `system_message` field shows gate status:
 [📌✗ 💧✗ 🤝✓]
 ```
 
-| Symbol | Gate      | Meaning                |
-| ------ | --------- | ---------------------- |
-| 📌     | task      | Task binding status    |
-| 💧     | hydration | Hydration gate status  |
-| ✓      | -         | Gate open (passed)     |
-| ✗      | -         | Gate closed (blocked)  |
+| Symbol | Gate      | Meaning               |
+| ------ | --------- | --------------------- |
+| 📌     | task      | Task binding status   |
+| 💧     | hydration | Hydration gate status |
+| ✓      | -         | Gate open (passed)    |
+| ✗      | -         | Gate closed (blocked) |
 
 ## Example: Full Forensics Session
 

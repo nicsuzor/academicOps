@@ -75,23 +75,23 @@ Every mutating operation passes through gates: active task (work tracking), hydr
 
 ## Hierarchy of norms
 
-| Level | Document | Role | Analogy |
-| ----- | -------- | ---- | ------- |
-| 1 | **AXIOMS.md** | Inviolable principles (30+) | Constitutional provisions |
-| 2 | **HEURISTICS.md** | Evidence-based working rules (40+) | Common law doctrine |
-| 3 | **enforcement-map.md** | Rule-to-mechanism mapping | Regulatory implementation |
+| Level | Document               | Role                               | Analogy                   |
+| ----- | ---------------------- | ---------------------------------- | ------------------------- |
+| 1     | **AXIOMS.md**          | Inviolable principles (30+)        | Constitutional provisions |
+| 2     | **HEURISTICS.md**      | Evidence-based working rules (40+) | Common law doctrine       |
+| 3     | **enforcement-map.md** | Rule-to-mechanism mapping          | Regulatory implementation |
 
 Axioms are inviolable: "Fail-Fast" means no defaults, no silent failures; "Research Data Is Immutable" means source datasets are sacred. Heuristics are working hypotheses that evolve through use — "Subagent Verdicts Are Binding" emerged after an agent ignored a compliance finding and introduced scope drift. New rules must derive from existing axioms; if they can't, either the rule is wrong or the axiom set is incomplete.
 
 ## Graduated enforcement
 
-| Level | Mechanism | Example |
-| ----- | --------- | ------- |
-| **Hard gate** | Blocks action | Task binding for destructive ops |
-| **Soft gate** | Injects guidance | Hydrator suggests workflows |
-| **Periodic audit** | Every ~15 ops | Custodiet detects drift |
-| **Pre-commit** | Blocks commits | Orphan files, frontmatter validation |
-| **Prompt-level** | JIT injection | Relevant principles surfaced in context |
+| Level              | Mechanism        | Example                                 |
+| ------------------ | ---------------- | --------------------------------------- |
+| **Hard gate**      | Blocks action    | Task binding for destructive ops        |
+| **Soft gate**      | Injects guidance | Hydrator suggests workflows             |
+| **Periodic audit** | Every ~15 ops    | Custodiet detects drift                 |
+| **Pre-commit**     | Blocks commits   | Orphan files, frontmatter validation    |
+| **Prompt-level**   | JIT injection    | Relevant principles surfaced in context |
 
 ## Feedback loop
 
@@ -99,36 +99,36 @@ The framework treats itself as a hypothesis under continuous test. Every session
 
 ## Memory architecture
 
-| Type | Storage | Example |
-| ---- | ------- | ------- |
-| **Semantic** | `$ACA_DATA` markdown | Timeless knowledge |
+| Type         | Storage                 | Example              |
+| ------------ | ----------------------- | -------------------- |
+| **Semantic** | `$ACA_DATA` markdown    | Timeless knowledge   |
 | **Episodic** | Task graph + git issues | Session observations |
 
 `$ACA_DATA` is a current state machine. Human-readable markdown in git, with a memory server providing semantic search over vector embeddings.
 
 ## Agent architecture
 
-| Agent | Role |
-| ----- | ---- |
-| **prompt-hydrator** | Enriches prompts with context, selects workflows, applies guardrails |
-| **custodiet** | Live compliance audits — drift, violations, scope creep |
-| **critic** | Reviews execution plans for errors and hidden assumptions |
-| **qa** | Independent verification against acceptance criteria |
-| **effectual-planner** | Strategic planning under genuine uncertainty |
+| Agent                 | Role                                                                 |
+| --------------------- | -------------------------------------------------------------------- |
+| **prompt-hydrator**   | Enriches prompts with context, selects workflows, applies guardrails |
+| **custodiet**         | Live compliance audits — drift, violations, scope creep              |
+| **critic**            | Reviews execution plans for errors and hidden assumptions            |
+| **qa**                | Independent verification against acceptance criteria                 |
+| **effectual-planner** | Strategic planning under genuine uncertainty                         |
 
 ## Skills and commands
 
 24 skills, 7 commands. Skills are fungible. Key examples:
 
-| | |
-| --- | --- |
-| `/analyst` | Research data analysis (dbt, Streamlit, stats) |
-| `/strategy` | Strategic thinking under uncertainty |
-| `/swarm-supervisor` | Parallel worker orchestration with isolated worktrees |
-| `/hdr` | Higher degree research supervision workflows |
-| `/remember` | Dual-write to markdown + memory server |
-| `/learn` | Capture failures as structured knowledge |
-| `/pull` `/q` `/dump` | Task queue lifecycle |
+|                      |                                                       |
+| -------------------- | ----------------------------------------------------- |
+| `/analyst`           | Research data analysis (dbt, Streamlit, stats)        |
+| `/strategy`          | Strategic thinking under uncertainty                  |
+| `/swarm-supervisor`  | Parallel worker orchestration with isolated worktrees |
+| `/hdr`               | Higher degree research supervision workflows          |
+| `/remember`          | Dual-write to markdown + memory server                |
+| `/learn`             | Capture failures as structured knowledge              |
+| `/pull` `/q` `/dump` | Task queue lifecycle                                  |
 
 ## Installation
 

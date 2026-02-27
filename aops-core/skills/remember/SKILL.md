@@ -25,12 +25,12 @@ Persist knowledge to markdown + PKB. **Both writes required** for semantic searc
 
 **PKB is the universal index.** Write to your primary storage AND PKB for semantic search retrieval.
 
-| What                  | Primary Storage                                      | Also Sync To |
-| --------------------- | ---------------------------------------------------- | ------------ |
-| **Epics/projects**    | PKB (`type="epic"` or `type="project"`)              | PKB index    |
-| **Tasks/issues**      | GitHub Issues (`gh issue create`)                    | PKB index    |
-| **Durable knowledge** | `$ACA_DATA/` markdown files                          | PKB index    |
-| **Session findings**  | Task body updates                                    | PKB index    |
+| What                  | Primary Storage                         | Also Sync To |
+| --------------------- | --------------------------------------- | ------------ |
+| **Epics/projects**    | PKB (`type="epic"` or `type="project"`) | PKB index    |
+| **Tasks/issues**      | GitHub Issues (`gh issue create`)       | PKB index    |
+| **Durable knowledge** | `$ACA_DATA/` markdown files             | PKB index    |
+| **Session findings**  | Task body updates                       | PKB index    |
 
 See [[base-memory-capture]] workflow for when and how to invoke this skill.
 

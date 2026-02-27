@@ -47,6 +47,7 @@ Read each session JSON from `$ACA_SESSIONS/summaries/YYYYMMDD*.json`. Extract:
 **Incremental filtering**: After listing JSONs, read the current daily note's Session Log table. Extract session IDs already present. Filter the JSON list to exclude already-processed sessions. This prevents duplicate entries on repeated syncs.
 
 ### Step 4.2.5: Query Merged PRs
+
 ... (rest of the file) ...
 
 Fetch today's merged PRs from the current repository:
@@ -83,7 +84,9 @@ No PRs merged today.
 ### Step 4.2.6: Open PR Review (Decision Queue)
 
 Fetch open PRs that need human decisions — approvals, problem triage, or closure:
+
 <!-- NS: this needs to be made aware of our repo map, currently stored at ~/.aops/polecat.yaml -->
+
 ```bash
 gh pr list --state open --json number,title,author,createdAt,headRefName,url,isDraft,reviewDecision,statusCheckRollup --limit 30 2>/dev/null
 ```
@@ -101,10 +104,10 @@ gh pr list --state open --json number,title,author,createdAt,headRefName,url,isD
 ```markdown
 ## Open PRs
 
-| PR | Title | Author | CI | Reviews | Action needed |
-| -- | ----- | ------ | -- | ------- | ------------- |
-| [#639](url) | Fix failing pytests | @nicsuzor | pending | clear | re-trigger CI |
-| [#630](url) | Fix crontab paths | @nicsuzor | failing | clear | fix type check |
+| PR          | Title                | Author     | CI      | Reviews | Action needed    |
+| ----------- | -------------------- | ---------- | ------- | ------- | ---------------- |
+| [#639](url) | Fix failing pytests  | @nicsuzor  | pending | clear   | re-trigger CI    |
+| [#630](url) | Fix crontab paths    | @nicsuzor  | failing | clear   | fix type check   |
 | [#640](url) | Add extraction skill | @botnicbot | skipped | pending | review + approve |
 
 _N open PRs — M need action_
@@ -209,11 +212,11 @@ For each accomplishment with candidates:
 
 **4.5.3: Graceful Degradation**
 
-| Scenario                  | Behavior                                    |
-| ------------------------- | ------------------------------------------- |
-| PKB unavailable           | Skip semantic matching, continue processing |
-| Task file not found       | Log warning, continue to next               |
-| Unexpected task format    | Skip that task, log warning                 |
+| Scenario               | Behavior                                    |
+| ---------------------- | ------------------------------------------- |
+| PKB unavailable        | Skip semantic matching, continue processing |
+| Task file not found    | Log warning, continue to next               |
+| Unexpected task format | Skip that task, log warning                 |
 
 ### Step 4.6: Update Task Files (Cross-Linking)
 

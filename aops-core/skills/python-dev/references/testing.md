@@ -92,11 +92,11 @@ async def test_processor():
 
 When writing tests first (TDD red phase), select test scope based on what the task touches:
 
-| Task involves | Required test scope | Example |
-|---|---|---|
-| Internal logic, data transforms | Unit tests | New parser, config validation |
-| External service, API, provider | Unit + Integration | New LLM provider, API client |
-| Full pipeline, multi-component | Unit + Integration + E2E | New workflow, pipeline |
+| Task involves                   | Required test scope      | Example                       |
+| ------------------------------- | ------------------------ | ----------------------------- |
+| Internal logic, data transforms | Unit tests               | New parser, config validation |
+| External service, API, provider | Unit + Integration       | New LLM provider, API client  |
+| Full pipeline, multi-component  | Unit + Integration + E2E | New workflow, pipeline        |
 
 **Integration tests are NOT optional for external service work.** If the implementation calls an external API, the TDD red phase must include an integration test that verifies the real service responds. Unit tests alone prove your wiring logic is correct but not that the service actually works.
 

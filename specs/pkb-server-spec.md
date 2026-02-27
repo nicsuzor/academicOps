@@ -25,6 +25,7 @@ Combined CLI + MCP server for personal knowledge base operations.
 ### User 1: Nic (CLI)
 
 Academic researcher with ADHD. Uses the CLI directly at terminal for:
+
 - Quick searches ("what do I know about X?")
 - Task triage ("what should I work on?")
 - Creating tasks and notes during work
@@ -36,6 +37,7 @@ Academic researcher with ADHD. Uses the CLI directly at terminal for:
 ### User 2: AI Agents (MCP)
 
 Claude Code and Gemini agents operating in aops framework sessions. Use MCP tools for:
+
 - Gathering context before executing work (search, task state)
 - Managing work items (create, update, complete tasks)
 - Capturing knowledge (create documents, memories)
@@ -93,39 +95,39 @@ The server computes deterministic metrics (counts, depths, degrees). It does NOT
 
 Target: 18 tools across 6 groups. Each tool has one clear purpose.
 
-| # | Tool | Group | Purpose |
-|---|------|-------|---------|
-| 1 | `search` | Search | Hybrid semantic + graph-proximity search (primary search tool) |
-| 2 | `task_search` | Search | Semantic search filtered to task/project/goal types |
-| 3 | `get_document` | Search | Read full contents of a document by path |
-| 4 | `list_documents` | Search | Browse/filter documents by tag, type, status, project |
-| 5 | `list_tasks` | Task read | List tasks with filters (project, status, priority, assignee). Status filter supports `ready` (no unmet deps) and `blocked` (has unmet deps, includes blocker info). |
-| 6 | `get_task` | Task read | Single task detail + all relationships (parent, children, depends_on, blocks). Always includes relationship context. |
-| 7 | `get_network_metrics` | Task read | Centrality metrics for a node: PageRank, betweenness, degree, downstream weight |
-| 8 | `create_task` | Task write | Create a new task. Params: title (required), id, parent, priority, project, tags, depends_on, assignee, complexity, body |
-| 9 | `update_task` | Task write | Update frontmatter fields on existing task. Params: id or path, updates (object) |
-| 10 | `complete_task` | Task write | Mark task as done. Sets status=done, re-indexes. |
-| 11 | `create` | Document | Create any document type with enforced frontmatter. Routes to subdirectory by type. Params: title, type (required), plus optional metadata. |
-| 12 | `create_memory` | Document | Create memory/note (future: episodic memories — short observations grouped as dot-point lists within existing files). Params: title (required), tags, body, memory_type, source |
-| 13 | `append` | Document | Append timestamped content to existing document. Optionally target a section heading. |
-| 14 | `delete` | Document | Delete document by ID (flexible resolution). |
-| 15 | `pkb_context` | Graph | Full knowledge neighbourhood: metadata, backlinks by source type, nearby nodes within N hops |
-| 16 | `pkb_trace` | Graph | Find shortest paths between two nodes in the knowledge graph |
-| 17 | `pkb_orphans` | Graph | Find disconnected nodes with zero edges |
-| 18 | `reindex` | Admin | Force full re-scan and rebuild of vector store + knowledge graph |
+| #  | Tool                  | Group      | Purpose                                                                                                                                                                         |
+| -- | --------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1  | `search`              | Search     | Hybrid semantic + graph-proximity search (primary search tool)                                                                                                                  |
+| 2  | `task_search`         | Search     | Semantic search filtered to task/project/goal types                                                                                                                             |
+| 3  | `get_document`        | Search     | Read full contents of a document by path                                                                                                                                        |
+| 4  | `list_documents`      | Search     | Browse/filter documents by tag, type, status, project                                                                                                                           |
+| 5  | `list_tasks`          | Task read  | List tasks with filters (project, status, priority, assignee). Status filter supports `ready` (no unmet deps) and `blocked` (has unmet deps, includes blocker info).            |
+| 6  | `get_task`            | Task read  | Single task detail + all relationships (parent, children, depends_on, blocks). Always includes relationship context.                                                            |
+| 7  | `get_network_metrics` | Task read  | Centrality metrics for a node: PageRank, betweenness, degree, downstream weight                                                                                                 |
+| 8  | `create_task`         | Task write | Create a new task. Params: title (required), id, parent, priority, project, tags, depends_on, assignee, complexity, body                                                        |
+| 9  | `update_task`         | Task write | Update frontmatter fields on existing task. Params: id or path, updates (object)                                                                                                |
+| 10 | `complete_task`       | Task write | Mark task as done. Sets status=done, re-indexes.                                                                                                                                |
+| 11 | `create`              | Document   | Create any document type with enforced frontmatter. Routes to subdirectory by type. Params: title, type (required), plus optional metadata.                                     |
+| 12 | `create_memory`       | Document   | Create memory/note (future: episodic memories — short observations grouped as dot-point lists within existing files). Params: title (required), tags, body, memory_type, source |
+| 13 | `append`              | Document   | Append timestamped content to existing document. Optionally target a section heading.                                                                                           |
+| 14 | `delete`              | Document   | Delete document by ID (flexible resolution).                                                                                                                                    |
+| 15 | `pkb_context`         | Graph      | Full knowledge neighbourhood: metadata, backlinks by source type, nearby nodes within N hops                                                                                    |
+| 16 | `pkb_trace`           | Graph      | Find shortest paths between two nodes in the knowledge graph                                                                                                                    |
+| 17 | `pkb_orphans`         | Graph      | Find disconnected nodes with zero edges                                                                                                                                         |
+| 18 | `reindex`             | Admin      | Force full re-scan and rebuild of vector store + knowledge graph                                                                                                                |
 
 ### Changes from current (v0.1.4)
 
-| Change | Rationale |
-|--------|-----------|
-| `pkb_search` renamed to `search` | Primary search tool, clearer name |
-| `semantic_search` removed | `search` subsumes it (hybrid is always better) |
-| `get_ready_tasks` removed | `list_tasks(status="ready")` replaces it |
-| `get_blocked_tasks` removed | `list_tasks(status="blocked")` replaces it, includes blocker info |
-| `get_task_network` removed | `get_task` now always includes relationships |
-| `create_document` renamed to `create` | Shorter, universal — creates any document type |
-| `append_to_document` renamed to `append` | Shorter |
-| `delete_document` renamed to `delete` | Shorter |
+| Change                                   | Rationale                                                         |
+| ---------------------------------------- | ----------------------------------------------------------------- |
+| `pkb_search` renamed to `search`         | Primary search tool, clearer name                                 |
+| `semantic_search` removed                | `search` subsumes it (hybrid is always better)                    |
+| `get_ready_tasks` removed                | `list_tasks(status="ready")` replaces it                          |
+| `get_blocked_tasks` removed              | `list_tasks(status="blocked")` replaces it, includes blocker info |
+| `get_task_network` removed               | `get_task` now always includes relationships                      |
+| `create_document` renamed to `create`    | Shorter, universal — creates any document type                    |
+| `append_to_document` renamed to `append` | Shorter                                                           |
+| `delete_document` renamed to `delete`    | Shorter                                                           |
 
 ### Future research: episodic memories
 
@@ -137,14 +139,15 @@ Target: 18 tools across 6 groups. Each tool has one clear purpose.
 
 The primary job. "What do I know about X?"
 
-| Function | CLI | MCP | Purpose |
-|----------|-----|-----|---------|
-| Search | `search <query>` | `search` | Hybrid semantic + graph-proximity search |
-| Task search | — | `task_search` | Semantic search filtered to tasks |
-| Get document | — | `get_document` | Full file contents |
-| List/filter | `list` | `list_documents` | Browse by tag, type, status, project |
+| Function     | CLI              | MCP              | Purpose                                  |
+| ------------ | ---------------- | ---------------- | ---------------------------------------- |
+| Search       | `search <query>` | `search`         | Hybrid semantic + graph-proximity search |
+| Task search  | —                | `task_search`    | Semantic search filtered to tasks        |
+| Get document | —                | `get_document`   | Full file contents                       |
+| List/filter  | `list`           | `list_documents` | Browse by tag, type, status, project     |
 
 **Success criteria**:
+
 - 80%+ of queries return relevant results in top 5
 - Response time < 2 seconds
 - User thinks "what do I know about X?" not "where did I save X?"
@@ -153,17 +156,18 @@ The primary job. "What do I know about X?"
 
 Track work across sessions. "What needs doing? What's blocked?"
 
-| Function | CLI | MCP | Purpose |
-|----------|-----|-----|---------|
-| List tasks | `tasks [ready\|blocked\|all]` | `list_tasks` | Task state with filters (project, status, priority, assignee) |
-| Get task | `task <id>` | `get_task` | Task details + all relationships |
-| Create task | `new <title>` | `create_task` | Add work item |
-| Update task | `update <id>` | `update_task` | Change status, priority, etc. |
-| Complete task | `done <id>` | `complete_task` | Mark done |
-| Dependencies | `deps <id>` | (via `get_task`) | Dependency tree |
-| Metrics | `metrics [id]` | `get_network_metrics` | PageRank, betweenness, downstream weight |
+| Function      | CLI                           | MCP                   | Purpose                                                       |
+| ------------- | ----------------------------- | --------------------- | ------------------------------------------------------------- |
+| List tasks    | `tasks [ready\|blocked\|all]` | `list_tasks`          | Task state with filters (project, status, priority, assignee) |
+| Get task      | `task <id>`                   | `get_task`            | Task details + all relationships                              |
+| Create task   | `new <title>`                 | `create_task`         | Add work item                                                 |
+| Update task   | `update <id>`                 | `update_task`         | Change status, priority, etc.                                 |
+| Complete task | `done <id>`                   | `complete_task`       | Mark done                                                     |
+| Dependencies  | `deps <id>`                   | (via `get_task`)      | Dependency tree                                               |
+| Metrics       | `metrics [id]`                | `get_network_metrics` | PageRank, betweenness, downstream weight                      |
 
 **Task lifecycle**:
+
 ```
 active -> in_progress -> done
            |
@@ -173,6 +177,7 @@ active -> in_progress -> done
 **Statuses**: `active`, `in_progress`, `blocked`, `waiting`, `done`, `cancelled`, `merge_ready`, `review`
 
 **Success criteria**:
+
 - All CRUD operations work reliably (>99% success rate)
 - Format consistency enforced (frontmatter validation)
 - Fail-fast on malformed data
@@ -182,17 +187,18 @@ active -> in_progress -> done
 
 Create and maintain knowledge artifacts. Notes, memories, insights.
 
-| Function | CLI | MCP | Purpose |
-|----------|-----|-----|---------|
-| Create | `remember <title>` | `create`, `create_memory` | New document of any type |
-| Append | `append <id> <content>` | `append` | Add timestamped content to existing document |
-| Delete | `delete <id>` | `delete` | Remove document |
+| Function | CLI                     | MCP                       | Purpose                                      |
+| -------- | ----------------------- | ------------------------- | -------------------------------------------- |
+| Create   | `remember <title>`      | `create`, `create_memory` | New document of any type                     |
+| Append   | `append <id> <content>` | `append`                  | Add timestamped content to existing document |
+| Delete   | `delete <id>`           | `delete`                  | Remove document                              |
 
 **Document types**: `task`, `bug`, `epic`, `feature`, `project`, `goal`, `note`, `knowledge`, `memory`, `insight`, `observation`
 
 **Routing**: Documents auto-route to subdirectories by type (tasks/ projects/ goals/ notes/).
 
 **Success criteria**:
+
 - Frontmatter always valid YAML with required fields (id, title, type, created, modified)
 - Files human-readable without tools (US1)
 - Flexible ID resolution (by ID, filename stem, or title)
@@ -201,17 +207,18 @@ Create and maintain knowledge artifacts. Notes, memories, insights.
 
 Understand relationships and structure. "What depends on what? What's disconnected?"
 
-| Function | CLI | MCP | Purpose |
-|----------|-----|-----|---------|
-| Context | `context <id>` | `pkb_context` | Full neighbourhood: backlinks, nearby nodes |
-| Trace | `trace <from> <to>` | `pkb_trace` | Shortest paths between nodes |
-| Orphans | `orphans` | `pkb_orphans` | Disconnected nodes |
-| Metrics | `metrics [id]` | `get_network_metrics` | PageRank, betweenness, degree, downstream weight |
-| Export | `graph --format F` | — | Export graph (JSON, GraphML, DOT) |
+| Function | CLI                 | MCP                   | Purpose                                          |
+| -------- | ------------------- | --------------------- | ------------------------------------------------ |
+| Context  | `context <id>`      | `pkb_context`         | Full neighbourhood: backlinks, nearby nodes      |
+| Trace    | `trace <from> <to>` | `pkb_trace`           | Shortest paths between nodes                     |
+| Orphans  | `orphans`           | `pkb_orphans`         | Disconnected nodes                               |
+| Metrics  | `metrics [id]`      | `get_network_metrics` | PageRank, betweenness, degree, downstream weight |
+| Export   | `graph --format F`  | —                     | Export graph (JSON, GraphML, DOT)                |
 
 **Edge types**: `DependsOn` (hard blocking), `SoftDependsOn` (informational), `Parent` (hierarchy), `Link` (wikilink references)
 
 **Success criteria**:
+
 - Graph reflects all wikilinks and frontmatter relationships
 - Metrics are deterministic and reproducible
 - Orphan detection catches all disconnected nodes
@@ -220,24 +227,24 @@ Understand relationships and structure. "What depends on what? What's disconnect
 
 Keep the index in sync with files on disk.
 
-| Function | CLI | MCP | Purpose |
-|----------|-----|-----|---------|
-| Reindex | `reindex [--force]` | `reindex` | Full re-scan + rebuild |
-| Status | `status` | — | Document count, DB size |
-| Add | `add <files>` | — | Add specific files |
+| Function | CLI                 | MCP       | Purpose                 |
+| -------- | ------------------- | --------- | ----------------------- |
+| Reindex  | `reindex [--force]` | `reindex` | Full re-scan + rebuild  |
+| Status   | `status`            | —         | Document count, DB size |
+| Add      | `add <files>`       | —         | Add specific files      |
 
 ## CLI vs MCP Boundary
 
 The CLI and MCP server share the same core engine but have different affordances:
 
-| Aspect | CLI | MCP |
-|--------|-----|-----|
-| **Audience** | Human at terminal | AI agent in session |
-| **Output** | Formatted text, tables, trees | Structured JSON |
-| **Graph export** | Yes (`graph` command) | No (agent doesn't need it) |
-| **Hybrid search** | No (human uses `search`) | Yes (`pkb_search` with graph boost) |
-| **Task search** | No (human uses `tasks`) | Yes (`task_search` for semantic filtering) |
-| **Batch operations** | No (one at a time) | No (one at a time) |
+| Aspect               | CLI                           | MCP                                        |
+| -------------------- | ----------------------------- | ------------------------------------------ |
+| **Audience**         | Human at terminal             | AI agent in session                        |
+| **Output**           | Formatted text, tables, trees | Structured JSON                            |
+| **Graph export**     | Yes (`graph` command)         | No (agent doesn't need it)                 |
+| **Hybrid search**    | No (human uses `search`)      | Yes (`pkb_search` with graph boost)        |
+| **Task search**      | No (human uses `tasks`)       | Yes (`task_search` for semantic filtering) |
+| **Batch operations** | No (one at a time)            | No (one at a time)                         |
 
 **Principle**: CLI optimises for human scanning (tree views, colour, truncation). MCP optimises for machine parsing (full data, structured output).
 
@@ -279,11 +286,11 @@ In-memory graph built from frontmatter relationships and wikilinks on each start
 
 ## Environment
 
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `ACA_DATA` | `~/brain` | PKB root directory (the files) |
-| `RUST_LOG` | `info` | Log level |
-| `AOPS_OFFLINE` | `false` | Disable model auto-download |
+| Variable       | Default   | Purpose                        |
+| -------------- | --------- | ------------------------------ |
+| `ACA_DATA`     | `~/brain` | PKB root directory (the files) |
+| `RUST_LOG`     | `info`    | Log level                      |
+| `AOPS_OFFLINE` | `false`   | Disable model auto-download    |
 
 ## Non-Goals
 
@@ -318,16 +325,18 @@ MCP serves the machine-readable need. `--json` for shell scripting is low priori
 
 ### D6: Blocker info — inline per task
 
-When `list_tasks(status="blocked")`, each task includes a `blocked_by` array with blocker details (id, title, status). Consistent with how `get_task` returns relationships. Agent sees *why* a task is blocked without a second lookup.
+When `list_tasks(status="blocked")`, each task includes a `blocked_by` array with blocker details (id, title, status). Consistent with how `get_task` returns relationships. Agent sees _why_ a task is blocked without a second lookup.
 
 ## Relationship to Legacy Systems
 
 This project replaces:
+
 - Python task scripts (`task_add.py`, `task_view.py`, `task_archive.py`, `task_update.py`)
 - Python task index regeneration (`regenerate_task_index.py`)
 - The `mcp__pkb__*` tools (Python FastMCP server)
 
 It does NOT replace:
+
 - Memory MCP server (`mcp__memory__*`) — separate semantic memory with HTTP transport
 - Zotero MCP server (`mcp__zot__*`) — academic reference management
 - Outlook MCP server (`mcp__outlook__*`) — email/calendar

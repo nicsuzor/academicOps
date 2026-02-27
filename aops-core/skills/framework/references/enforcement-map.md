@@ -12,30 +12,30 @@ This document tracks all enforcement mechanisms in the academicOps framework.
 
 ## Environment Variables
 
-| Variable                | Default | Values          | Description                                     |
-| ----------------------- | ------- | --------------- | ----------------------------------------------- |
-| `CUSTODIET_GATE_MODE`   | `block` | `warn`, `block` | Controls custodiet compliance audit enforcement |
-| `HYDRATION_GATE_MODE`   | `block` | `warn`, `block` | Controls hydration gate enforcement             |
-| `QA_GATE_MODE`          | `block` | `warn`, `block` | Controls QA gate enforcement                    |
-| `HANDOVER_GATE_MODE`    | `warn`  | `warn`, `block` | Controls handover (finalization) gate           |
+| Variable              | Default | Values          | Description                                     |
+| --------------------- | ------- | --------------- | ----------------------------------------------- |
+| `CUSTODIET_GATE_MODE` | `block` | `warn`, `block` | Controls custodiet compliance audit enforcement |
+| `HYDRATION_GATE_MODE` | `block` | `warn`, `block` | Controls hydration gate enforcement             |
+| `QA_GATE_MODE`        | `block` | `warn`, `block` | Controls QA gate enforcement                    |
+| `HANDOVER_GATE_MODE`  | `warn`  | `warn`, `block` | Controls handover (finalization) gate           |
 
 ## Enforcement Hooks
 
 ### PreToolUse Hooks
 
-| Hook                     | Mode       | Description                                                          |
-| ------------------------ | ---------- | -------------------------------------------------------------------- |
-| `hydration_gate.py`      | warn/block | Blocks until prompt-hydrator invoked                                 |
+| Hook                     | Mode         | Description                                                          |
+| ------------------------ | ------------ | -------------------------------------------------------------------- |
+| `hydration_gate.py`      | warn/block   | Blocks until prompt-hydrator invoked                                 |
 | `axiom_enforcer`         | **DISABLED** | Real-time detection of P#8 (Fail-Fast) and P#26 (Write-Without-Read) |
-| `command_intercept.py`   | transform  | Transforms tool inputs (e.g., Glob excludes)                         |
-| `overdue_enforcement.py` | warn       | Injects reminders for overdue tasks          |
+| `command_intercept.py`   | transform    | Transforms tool inputs (e.g., Glob excludes)                         |
+| `overdue_enforcement.py` | warn         | Injects reminders for overdue tasks                                  |
 
 ### PostToolUse Hooks
 
 | Hook
-                                | Mode    | Description                                                     |
+| Mode | Description |
 | ----------------------------------- | ------- | --------------------------------------------------------------- |
-| `gate_registry.py:accountant`       | passive | General state tracking (hydration, custodiet, handover)         |
+| `gate_registry.py:accountant` | passive | General state tracking (hydration, custodiet, handover) |
 | `gate_registry.py:skill_activation` | passive | Clears hydration pending on non-infrastructure skill activation |
 
 ## Custodiet Compliance Audit

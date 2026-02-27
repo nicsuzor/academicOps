@@ -24,12 +24,12 @@ Configuration for worker dispatch in the swarm-supervisor lifecycle.
 Available worker types and their profiles. Add or modify workers here to change
 what the supervisor can dispatch to.
 
-| Worker           | Capabilities                              | Cost | Local | Max Concurrent | Best For                     |
-| ---------------- | ----------------------------------------- | ---- | ----- | -------------- | ---------------------------- |
-| `polecat-claude` | code, docs, refactor, test, debug         | 3    | yes   | 2              | Most tasks                   |
-| `polecat-gemini` | code, docs, analysis, bulk-ops            | 1    | yes   | 2              | Most tasks, cheaper          |
-| `jules`          | deep-code, architecture, complex-refactor | 0    | no    | 7+             | Fire-and-forget, complex     |
-| `github-agent`   | code, docs, refactor, test, bulk-ops      | 0    | no    | 3              | Free compute, most tasks     |
+| Worker           | Capabilities                              | Cost | Local | Max Concurrent | Best For                 |
+| ---------------- | ----------------------------------------- | ---- | ----- | -------------- | ------------------------ |
+| `polecat-claude` | code, docs, refactor, test, debug         | 3    | yes   | 2              | Most tasks               |
+| `polecat-gemini` | code, docs, analysis, bulk-ops            | 1    | yes   | 2              | Most tasks, cheaper      |
+| `jules`          | deep-code, architecture, complex-refactor | 0    | no    | 7+             | Fire-and-forget, complex |
+| `github-agent`   | code, docs, refactor, test, bulk-ops      | 0    | no    | 3              | Free compute, most tasks |
 
 **Cost Scale**: 0-5, where 0 = free (vendor-hosted), 5 = highest token/API expense.
 **Local**: Whether the worker consumes local machine resources.
@@ -75,13 +75,13 @@ formatting, lint-fix, dependency-bump, rename
 
 ### Complexity Routing
 
-| Complexity Value      | Routed To          | Rationale                         |
-| --------------------- | ------------------ | --------------------------------- |
-| `needs-decomposition` | jules              | Requires architectural thinking   |
-| `requires-judgment`   | claude             | Needs nuanced decision-making     |
-| `multi-step`          | claude             | Complex coordination              |
-| `mechanical`          | gemini / gh-agent  | Straightforward execution         |
-| (unset)               | claude             | Safe default                      |
+| Complexity Value      | Routed To         | Rationale                       |
+| --------------------- | ----------------- | ------------------------------- |
+| `needs-decomposition` | jules             | Requires architectural thinking |
+| `requires-judgment`   | claude            | Needs nuanced decision-making   |
+| `multi-step`          | claude            | Complex coordination            |
+| `mechanical`          | gemini / gh-agent | Straightforward execution       |
+| (unset)               | claude            | Safe default                    |
 
 ### Heuristic Thresholds
 
@@ -124,12 +124,12 @@ get picked up on the next dispatch cycle.
 Standard exit codes from `polecat run` (informational — supervisor doesn't
 need to act on these; workers handle their own lifecycle):
 
-| Exit Code | Meaning       | What happens                          |
-| --------- | ------------- | ------------------------------------- |
-| 0         | Success       | Worker pushes branch, creates PR      |
+| Exit Code | Meaning       | What happens                               |
+| --------- | ------------- | ------------------------------------------ |
+| 0         | Success       | Worker pushes branch, creates PR           |
 | 1         | Task failure  | Task stays in_progress, stale-check resets |
 | 2         | Setup failure | Task stays in_progress, stale-check resets |
-| 3         | Queue empty   | Normal - worker exits cleanly         |
+| 3         | Queue empty   | Normal - worker exits cleanly              |
 
 ## Swarm Sizing Defaults
 
@@ -137,12 +137,12 @@ Recommended swarm composition based on queue characteristics. Prefer
 cloud-hosted workers (Jules, GitHub agents) to minimize local resource use
 and supervision. Local polecats for tasks needing framework context.
 
-| Ready Tasks | Task Mix       | Recommended Dispatch                                       |
-| ----------- | -------------- | ---------------------------------------------------------- |
-| 1-3         | Any            | `polecat run` or 1-2 Jules sessions                        |
-| 4-8         | Mostly simple  | 2-3 GitHub agents + 1-2 Jules for complex                  |
-| 4-8         | Mostly complex | 3-4 Jules + `-c 1 -g 1` for framework-dependent tasks     |
-| 8+          | Mixed          | 5 Jules + 3 GitHub agents + `-c 2 -g 2` if needed         |
+| Ready Tasks | Task Mix       | Recommended Dispatch                                  |
+| ----------- | -------------- | ----------------------------------------------------- |
+| 1-3         | Any            | `polecat run` or 1-2 Jules sessions                   |
+| 4-8         | Mostly simple  | 2-3 GitHub agents + 1-2 Jules for complex             |
+| 4-8         | Mostly complex | 3-4 Jules + `-c 1 -g 1` for framework-dependent tasks |
+| 8+          | Mixed          | 5 Jules + 3 GitHub agents + `-c 2 -g 2` if needed     |
 
 **Graduated rollout**: Launch first wave (3-4 workers max), wait for first
 PRs to land before scaling up. Catches systemic issues early.
@@ -151,12 +151,12 @@ PRs to land before scaling up. Catches systemic issues early.
 
 Hard limits on concurrent workers.
 
-| Worker Type    | Max Concurrent | Reason                                         |
-| -------------- | -------------- | ---------------------------------------------- |
-| claude         | 2              | API rate limits, cost                          |
-| gemini         | 2              | Free tier quota; was 4, reduced after crashes  |
-| jules          | 7+             | Async on Google infra, no local limits         |
-| github-agent   | 3              | Conservative default; increase once validated  |
+| Worker Type  | Max Concurrent | Reason                                        |
+| ------------ | -------------- | --------------------------------------------- |
+| claude       | 2              | API rate limits, cost                         |
+| gemini       | 2              | Free tier quota; was 4, reduced after crashes |
+| jules        | 7+             | Async on Google infra, no local limits        |
+| github-agent | 3              | Conservative default; increase once validated |
 
 **Note on Jules**: Jules sessions run asynchronously on Google infrastructure.
 Unlike polecat workers which consume local resources, Jules sessions are

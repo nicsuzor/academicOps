@@ -87,11 +87,13 @@ Note:
 ### Task Routing
 
 An active task is REQUIRED where:
+
 - Work will modify files
 - Work requires planning or multi-step execution
 - Work has dependencies or verification requirements
 
 You may bypass task queue ONLY when ANY is true:
+
 - User invoked a `/command` or `/skill` (e.g., `/commit`, `/pdf`)
 - Pure information request (e.g., "what is X?", "how does Y work?")
 - Conversational (e.g., "thanks", "can you explain...")
@@ -160,8 +162,8 @@ Return this EXACT structure:
 - [COMBINED WORKFLOW STEPS] ...
 
 3. Execute steps [directly / in parallel]
-5. CHECKPOINT: [verification]
-6. Land the plane:
+4. CHECKPOINT: [verification]
+5. Land the plane:
 
 - Document progress in task and mark as complete/ready for review/failed
 - Confirm all tests pass and no regressions.

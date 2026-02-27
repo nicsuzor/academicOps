@@ -188,7 +188,7 @@ mcp__pkb__update_task(
 
 ## Interactive Supervised Mode
 
-Interactive Supervised Mode is an extension of the standard 6-step workflow for runs where a human is actively supervising (human-in-the-loop). **All of Steps 1–6 still apply**, including the mandatory user checkpoint in Step 4; the rules below are additional guardrails that change *how* you execute those steps when the user is available for real-time review.
+Interactive Supervised Mode is an extension of the standard 6-step workflow for runs where a human is actively supervising (human-in-the-loop). **All of Steps 1–6 still apply**, including the mandatory user checkpoint in Step 4; the rules below are additional guardrails that change _how_ you execute those steps when the user is available for real-time review.
 
 ### Classification Workflow
 
@@ -223,6 +223,7 @@ mcp__pkb__search(query="email style guide")
 ```
 
 If no style guide is found, use these defaults:
+
 - Sign-off: "Best" or "Cheers" (never "Best regards" or "Kind regards")
 - Tone: Warm, direct, collegial — like talking to a respected peer over coffee
 - Structure: Brief paragraphs, personal judgment language ("my intuition is...", "I'm happy to...")

@@ -14,50 +14,50 @@ tags: [framework, enforcement, moc]
 
 ## Axiom → Enforcement Mapping
 
-| Axiom                                       | Rule                            | Enforcement                                                                                  | Point                  | Level     |
-| ------------------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------- | ---------------------- | --------- |
-| [[no-other-truths]]                         | No Other Truths                 | AXIOMS.md injection                                                                          | SessionStart           |           |
-| [[categorical-imperative]]                  | Categorical Imperative          | prompt-hydrator suggests skills                                                              | UserPromptSubmit       |           |
-| [[dont-make-shit-up]]                       | Don't Make Shit Up              | AXIOMS.md                                                                                    | SessionStart           |           |
-| [[always-cite-sources]]                     | Always Cite Sources             | AXIOMS.md                                                                                    | SessionStart           |           |
-| [[do-one-thing]]                            | Do One Thing                    | TodoWrite visibility, custodiet drift detection, verbatim prompt comparison                  | During execution       |           |
-| [[do-one-thing]]                            | Hydrator Returns Plan Only      | check_subagent_tool_restrictions blocks Edit/Write for prompt-hydrator                       | PreToolUse             | Hard Gate |
-| [[data-boundaries]]                         | Data Boundaries                 | settings.json deny rules                                                                     | PreToolUse             |           |
-| [[project-independence]]                    | Project Independence            | AXIOMS.md                                                                                    | SessionStart           |           |
-| [[fail-fast-code]]                          | Fail-Fast (Code)                | policy_enforcer.py blocks destructive git                                                    | PreToolUse             |           |
-| [[fail-fast-code]]                          | Fail-Fast (Code) - No Fallbacks | check_no_fallbacks.py AST visitor detects `.get(..., "")`, `.get(..., [])`, `or ""` patterns | Pre-commit (active)    |           |
-| [[fail-fast-code]]                          | Fail-Fast (Code) Analysis       | axiom_enforcer (DISABLED)                                                                    | PreToolUse             |           |
-| [[fail-fast-agents]]                        | Fail-Fast (Agents)              | fail_fast_watchdog.py injects reminder                                                       | PostToolUse            |           |
-| [[self-documenting]]                        | Self-Documenting                | policy_enforcer.py blocks *-GUIDE.md                                                         | PreToolUse             |           |
-| [[single-purpose-files]]                    | Single-Purpose Files            | policy_enforcer.py 200-line limit                                                            | PreToolUse             |           |
-| [[dry-modular-explicit]]                    | DRY, Modular, Explicit          | AXIOMS.md                                                                                    | SessionStart           |           |
-| [[use-standard-tools]]                      | Use Standard Tools              | pyproject.toml, pre-commit                                                                   | Config                 |           |
-| [[always-dogfooding]]                       | Always Dogfooding               | AXIOMS.md                                                                                    | SessionStart           |           |
-| [[skills-are-read-only]]                    | Skills are Read-Only            | settings.json denies skill writes                                                            | PreToolUse             |           |
-| [[trust-version-control]]                   | Trust Version Control           | policy_enforcer.py blocks backup patterns                                                    | PreToolUse             |           |
-| [[no-workarounds]]                          | No Workarounds                  | fail_fast_watchdog.py                                                                        | PostToolUse            |           |
-| [[verify-first]]                            | Verify First                    | TodoWrite checkpoint                                                                         | During execution       |           |
-| [[verify-first]]                            | Verify Push Target              | AXIOMS.md corollary: explicit refspec for git push                                           | Before git push        | 1c        |
-| [[trust-version-control]]                   | Always File PR                  | AXIOMS.md P#24 corollary: commit → push → PR. Never leave work uncommitted.                 | Stop                   | 1c        |
-| [[verify-first]]                            | Write-Without-Read Check        | axiom_enforcer (DISABLED)                                                                    | PreToolUse             |           |
-| [[verify-first]], [[dont-make-shit-up]]     | Check Existing Automation First | prompt-hydrator-context.md Step 1 (check .github/workflows/ before manual execution)         | UserPromptSubmit       | 1c        |
-| [[verify-first]]                            | Primary Evidence Before Conclusions | AXIOMS.md P#26 corollary (read all comments/reviews/logs before concluding)                | SessionStart           | 1a        |
-| [[no-excuses]]                              | No Excuses                      | AXIOMS.md                                                                                    | SessionStart           |           |
-| [[write-for-long-term]]                     | Write for Long Term             | AXIOMS.md                                                                                    | SessionStart           |           |
-| [[maintain-relational-integrity]]           | Relational Integrity            | check_framework_integrity.py (index wikilinks, skill entries, workflow length)                | Pre-commit (active)    |           |
-| [[nothing-is-someone-elses-responsibility]] | Nothing Is Someone Else's       | AXIOMS.md                                                                                    | SessionStart           |           |
-| [[acceptance-criteria-own-success]]         | Acceptance Criteria Own Success | /qa skill (on-demand)                                                                        | Stop                   |           |
-| [[plan-first-development]]                  | Plan-First Development          | EnterPlanMode tool                                                                           | Before coding          |           |
-| [[research-data-immutable]]                 | Research Data Immutable         | settings.json denies records/**                                                              | PreToolUse             |           |
-| [[just-in-time-context]]                    | Just-In-Time Context            | sessionstart_load_axioms.py                                                                  | SessionStart           |           |
-| [[minimal-instructions]]                    | Minimal Instructions            | policy_enforcer.py 200-line limit                                                            | PreToolUse             |           |
-| [[feedback-loops-for-uncertainty]]          | Feedback Loops                  | AXIOMS.md                                                                                    | SessionStart           |           |
-| [[current-state-machine]]                   | Current State Machine           | autocommit_state.py (auto-commit+push)                                                       | PostToolUse            |           |
-| [[one-spec-per-feature]]                    | One Spec Per Feature            | AXIOMS.md                                                                                    | SessionStart           |           |
-| [[mandatory-handover]]                      | Mandatory Handover Workflow     | prompt-hydrator-context.md (Session Completion Rules section), dump.md Step 2                | UserPromptSubmit, Stop |           |
-| [[capture-outstanding-work]]                | Capture Outstanding Work        | dump.md Step 2 (create follow-up tasks for incomplete/deferred work)                         | Stop                   |           |
-| [[explicit-approval-costly-ops]]            | Costly Operations Approval      | external-batch-submission.md workflow + AskUserQuestion before batch submit                  | During execution       |           |
-| [[data-boundaries]]                         | Credential Isolation            | `SSH_AUTH_SOCK=""` in settings.local.json; `GH_TOKEN` from limited `AOPS_BOT_GH_TOKEN` PAT  | SessionStart           | 6         |
+| Axiom                                       | Rule                                | Enforcement                                                                                  | Point                  | Level     |
+| ------------------------------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------- | ---------------------- | --------- |
+| [[no-other-truths]]                         | No Other Truths                     | AXIOMS.md injection                                                                          | SessionStart           |           |
+| [[categorical-imperative]]                  | Categorical Imperative              | prompt-hydrator suggests skills                                                              | UserPromptSubmit       |           |
+| [[dont-make-shit-up]]                       | Don't Make Shit Up                  | AXIOMS.md                                                                                    | SessionStart           |           |
+| [[always-cite-sources]]                     | Always Cite Sources                 | AXIOMS.md                                                                                    | SessionStart           |           |
+| [[do-one-thing]]                            | Do One Thing                        | TodoWrite visibility, custodiet drift detection, verbatim prompt comparison                  | During execution       |           |
+| [[do-one-thing]]                            | Hydrator Returns Plan Only          | check_subagent_tool_restrictions blocks Edit/Write for prompt-hydrator                       | PreToolUse             | Hard Gate |
+| [[data-boundaries]]                         | Data Boundaries                     | settings.json deny rules                                                                     | PreToolUse             |           |
+| [[project-independence]]                    | Project Independence                | AXIOMS.md                                                                                    | SessionStart           |           |
+| [[fail-fast-code]]                          | Fail-Fast (Code)                    | policy_enforcer.py blocks destructive git                                                    | PreToolUse             |           |
+| [[fail-fast-code]]                          | Fail-Fast (Code) - No Fallbacks     | check_no_fallbacks.py AST visitor detects `.get(..., "")`, `.get(..., [])`, `or ""` patterns | Pre-commit (active)    |           |
+| [[fail-fast-code]]                          | Fail-Fast (Code) Analysis           | axiom_enforcer (DISABLED)                                                                    | PreToolUse             |           |
+| [[fail-fast-agents]]                        | Fail-Fast (Agents)                  | fail_fast_watchdog.py injects reminder                                                       | PostToolUse            |           |
+| [[self-documenting]]                        | Self-Documenting                    | policy_enforcer.py blocks *-GUIDE.md                                                         | PreToolUse             |           |
+| [[single-purpose-files]]                    | Single-Purpose Files                | policy_enforcer.py 200-line limit                                                            | PreToolUse             |           |
+| [[dry-modular-explicit]]                    | DRY, Modular, Explicit              | AXIOMS.md                                                                                    | SessionStart           |           |
+| [[use-standard-tools]]                      | Use Standard Tools                  | pyproject.toml, pre-commit                                                                   | Config                 |           |
+| [[always-dogfooding]]                       | Always Dogfooding                   | AXIOMS.md                                                                                    | SessionStart           |           |
+| [[skills-are-read-only]]                    | Skills are Read-Only                | settings.json denies skill writes                                                            | PreToolUse             |           |
+| [[trust-version-control]]                   | Trust Version Control               | policy_enforcer.py blocks backup patterns                                                    | PreToolUse             |           |
+| [[no-workarounds]]                          | No Workarounds                      | fail_fast_watchdog.py                                                                        | PostToolUse            |           |
+| [[verify-first]]                            | Verify First                        | TodoWrite checkpoint                                                                         | During execution       |           |
+| [[verify-first]]                            | Verify Push Target                  | AXIOMS.md corollary: explicit refspec for git push                                           | Before git push        | 1c        |
+| [[trust-version-control]]                   | Always File PR                      | AXIOMS.md P#24 corollary: commit → push → PR. Never leave work uncommitted.                  | Stop                   | 1c        |
+| [[verify-first]]                            | Write-Without-Read Check            | axiom_enforcer (DISABLED)                                                                    | PreToolUse             |           |
+| [[verify-first]], [[dont-make-shit-up]]     | Check Existing Automation First     | prompt-hydrator-context.md Step 1 (check .github/workflows/ before manual execution)         | UserPromptSubmit       | 1c        |
+| [[verify-first]]                            | Primary Evidence Before Conclusions | AXIOMS.md P#26 corollary (read all comments/reviews/logs before concluding)                  | SessionStart           | 1a        |
+| [[no-excuses]]                              | No Excuses                          | AXIOMS.md                                                                                    | SessionStart           |           |
+| [[write-for-long-term]]                     | Write for Long Term                 | AXIOMS.md                                                                                    | SessionStart           |           |
+| [[maintain-relational-integrity]]           | Relational Integrity                | check_framework_integrity.py (index wikilinks, skill entries, workflow length)               | Pre-commit (active)    |           |
+| [[nothing-is-someone-elses-responsibility]] | Nothing Is Someone Else's           | AXIOMS.md                                                                                    | SessionStart           |           |
+| [[acceptance-criteria-own-success]]         | Acceptance Criteria Own Success     | /qa skill (on-demand)                                                                        | Stop                   |           |
+| [[plan-first-development]]                  | Plan-First Development              | EnterPlanMode tool                                                                           | Before coding          |           |
+| [[research-data-immutable]]                 | Research Data Immutable             | settings.json denies records/**                                                              | PreToolUse             |           |
+| [[just-in-time-context]]                    | Just-In-Time Context                | sessionstart_load_axioms.py                                                                  | SessionStart           |           |
+| [[minimal-instructions]]                    | Minimal Instructions                | policy_enforcer.py 200-line limit                                                            | PreToolUse             |           |
+| [[feedback-loops-for-uncertainty]]          | Feedback Loops                      | AXIOMS.md                                                                                    | SessionStart           |           |
+| [[current-state-machine]]                   | Current State Machine               | autocommit_state.py (auto-commit+push)                                                       | PostToolUse            |           |
+| [[one-spec-per-feature]]                    | One Spec Per Feature                | AXIOMS.md                                                                                    | SessionStart           |           |
+| [[mandatory-handover]]                      | Mandatory Handover Workflow         | prompt-hydrator-context.md (Session Completion Rules section), dump.md Step 2                | UserPromptSubmit, Stop |           |
+| [[capture-outstanding-work]]                | Capture Outstanding Work            | dump.md Step 2 (create follow-up tasks for incomplete/deferred work)                         | Stop                   |           |
+| [[explicit-approval-costly-ops]]            | Costly Operations Approval          | external-batch-submission.md workflow + AskUserQuestion before batch submit                  | During execution       |           |
+| [[data-boundaries]]                         | Credential Isolation                | `SSH_AUTH_SOCK=""` in settings.local.json; `GH_TOKEN` from limited `AOPS_BOT_GH_TOKEN` PAT   | SessionStart           | 6         |
 
 ## Heuristic → Enforcement Mapping
 
@@ -205,37 +205,37 @@ These guardrails are applied by [[prompt-hydration]] based on task classificatio
 
 ### Guardrail Registry
 
-| Guardrail                 | Heuristic                                                                                            | Failure Prevented                                           |
-| ------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| `framework_gate`          | [[spec-first-file-modification]], [[one-spec-per-feature]]                                           | Framework changes bypassing workflow (spec review, indices) |
-| `verify_before_complete`  | [[verification-before-assertion]]                                                                    | Claiming success without checking                           |
-| `answer_only`             | [[questions-require-answers]]                                                                        | Jumping to implementation when asked a question             |
-| `require_skill`           | [[skill-first-action]]                                                                               | Skipping skill for domain work                              |
-| `plan_mode`               | [[plan-first-development]]                                                                           | Framework changes without approval                          |
-| `quote_errors_exactly`    | [[error-messages-primary-evidence]]                                                                  | Paraphrasing errors                                         |
-| `fix_within_design`       | [[debug-dont-redesign]]                                                                              | Redesigning during debugging                                |
-| `follow_literally`        | [[explicit-instructions-override]]                                                                   | Interpreting user instructions                              |
-| `use_todowrite`           | [[todowrite-vs-persistent-tasks]]                                                                    | Losing track of steps                                       |
-| `criteria_gate`           | [[acceptance-criteria-own-success]], [[no-promises-without-instructions]], [[edit-source-run-setup]] | Missing acceptance criteria                                 |
-| `capture_insights`        | [[semantic-vs-episodic-storage]]                                                                     | Losing discoveries (bd for ops, remember for knowledge)     |
-| `zero_friction_capture`   | [[action-over-clarification]]                                                                        | Asking questions on exploratory ideas instead of capturing  |
-| `hook_docs_first`         | [[verify-first]]                                                                                     | Modifying hook output fields without reading hooks.md       |
+| Guardrail                | Heuristic                                                                                            | Failure Prevented                                           |
+| ------------------------ | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `framework_gate`         | [[spec-first-file-modification]], [[one-spec-per-feature]]                                           | Framework changes bypassing workflow (spec review, indices) |
+| `verify_before_complete` | [[verification-before-assertion]]                                                                    | Claiming success without checking                           |
+| `answer_only`            | [[questions-require-answers]]                                                                        | Jumping to implementation when asked a question             |
+| `require_skill`          | [[skill-first-action]]                                                                               | Skipping skill for domain work                              |
+| `plan_mode`              | [[plan-first-development]]                                                                           | Framework changes without approval                          |
+| `quote_errors_exactly`   | [[error-messages-primary-evidence]]                                                                  | Paraphrasing errors                                         |
+| `fix_within_design`      | [[debug-dont-redesign]]                                                                              | Redesigning during debugging                                |
+| `follow_literally`       | [[explicit-instructions-override]]                                                                   | Interpreting user instructions                              |
+| `use_todowrite`          | [[todowrite-vs-persistent-tasks]]                                                                    | Losing track of steps                                       |
+| `criteria_gate`          | [[acceptance-criteria-own-success]], [[no-promises-without-instructions]], [[edit-source-run-setup]] | Missing acceptance criteria                                 |
+| `capture_insights`       | [[semantic-vs-episodic-storage]]                                                                     | Losing discoveries (bd for ops, remember for knowledge)     |
+| `zero_friction_capture`  | [[action-over-clarification]]                                                                        | Asking questions on exploratory ideas instead of capturing  |
+| `hook_docs_first`        | [[verify-first]]                                                                                     | Modifying hook output fields without reading hooks.md       |
 
 ### Task Type → Guardrail Mapping
 
-| Task Type   | Guardrails Applied                                                                                                                        |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `framework` | framework_gate, verify_before_complete, require_skill:framework, plan_mode, criteria_gate, use_todowrite, capture_insights                |
-| `cc_hook`   | verify_before_complete, require_skill:plugin-dev:hook-development, plan_mode, criteria_gate, use_todowrite, hook_docs_first               |
-| `cc_mcp`    | verify_before_complete, require_skill:plugin-dev:mcp-integration, plan_mode, criteria_gate, use_todowrite                                 |
-| `debug`     | verify_before_complete, quote_errors_exactly, fix_within_design, criteria_gate, use_todowrite, capture_insights                           |
-| `feature`   | verify_before_complete, criteria_gate, use_todowrite, capture_insights                                           |
-| `python`    | verify_before_complete, require_skill:python-dev, criteria_gate, use_todowrite                                   |
-| `question`  | answer_only                                                                                                                               |
-| `persist`   | require_skill:remember                                                                                                                    |
-| `analysis`  | require_skill:analyst, criteria_gate, use_todowrite, capture_insights                                                                     |
-| `review`    | verify_before_complete, use_todowrite, capture_insights                                                                                   |
-| `simple`    | verify_before_complete, criteria_gate                                                                                                     |
+| Task Type   | Guardrails Applied                                                                                                          |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `framework` | framework_gate, verify_before_complete, require_skill:framework, plan_mode, criteria_gate, use_todowrite, capture_insights  |
+| `cc_hook`   | verify_before_complete, require_skill:plugin-dev:hook-development, plan_mode, criteria_gate, use_todowrite, hook_docs_first |
+| `cc_mcp`    | verify_before_complete, require_skill:plugin-dev:mcp-integration, plan_mode, criteria_gate, use_todowrite                   |
+| `debug`     | verify_before_complete, quote_errors_exactly, fix_within_design, criteria_gate, use_todowrite, capture_insights             |
+| `feature`   | verify_before_complete, criteria_gate, use_todowrite, capture_insights                                                      |
+| `python`    | verify_before_complete, require_skill:python-dev, criteria_gate, use_todowrite                                              |
+| `question`  | answer_only                                                                                                                 |
+| `persist`   | require_skill:remember                                                                                                      |
+| `analysis`  | require_skill:analyst, criteria_gate, use_todowrite, capture_insights                                                       |
+| `review`    | verify_before_complete, use_todowrite, capture_insights                                                                     |
+| `simple`    | verify_before_complete, criteria_gate                                                                                       |
 
 ## Periodic Compliance (Custodiet)
 
@@ -296,13 +296,14 @@ Uses passive `additionalContext` format - agent may proceed without addressing.
 
 Agent must not have access to user's SSH key (which has admin/bypass rights on repos). Instead, agent uses a limited-scope fine-grained PAT.
 
-| Mechanism                   | How                                                              | Enforcement Level |
-| --------------------------- | ---------------------------------------------------------------- | ----------------- |
-| SSH agent blocked           | `SSH_AUTH_SOCK=""` in `~/.claude/settings.local.json`            | 6 (env override)  |
-| Limited PAT for GitHub      | `AOPS_BOT_GH_TOKEN` → `GH_TOKEN` via `session_env_setup.py`    | 6 (env override)  |
-| No interactive auth prompts | `GIT_TERMINAL_PROMPT=0` in `~/.claude/settings.local.json`      | 6 (env override)  |
+| Mechanism                   | How                                                         | Enforcement Level |
+| --------------------------- | ----------------------------------------------------------- | ----------------- |
+| SSH agent blocked           | `SSH_AUTH_SOCK=""` in `~/.claude/settings.local.json`       | 6 (env override)  |
+| Limited PAT for GitHub      | `AOPS_BOT_GH_TOKEN` → `GH_TOKEN` via `session_env_setup.py` | 6 (env override)  |
+| No interactive auth prompts | `GIT_TERMINAL_PROMPT=0` in `~/.claude/settings.local.json`  | 6 (env override)  |
 
 **Source files**:
+
 - `~/.claude/settings.local.json` — env var overrides
 - `aops-core/hooks/session_env_setup.py` — maps `AOPS_BOT_GH_TOKEN` → `GH_TOKEN` at session start
 
@@ -393,17 +394,17 @@ Auto-commits staged changes. Blocks if unstaged changes require manual commit.
 
 ## Commit-Time Validation (Pre-commit)
 
-| Category         | Hook                                      | Purpose                | Axiom                      |
-| ---------------- | ----------------------------------------- | ---------------------- | -------------------------- |
-| File hygiene     | trailing-whitespace, check-yaml/json/toml | Clean commits          | [[use-standard-tools]]     |
-| Code quality     | shellcheck, eslint, ruff                  | Catch errors           | [[use-standard-tools]]     |
-| Formatting       | dprint                                    | Consistent formatting  | [[use-standard-tools]]     |
-| Data integrity   | bmem-validate                             | Valid frontmatter      | [[current-state-machine]]  |
-| Data purity      | data-markdown-only                        | Only `.md` in data/    | [[current-state-machine]]  |
+| Category         | Hook                                      | Purpose                                         | Axiom                             |
+| ---------------- | ----------------------------------------- | ----------------------------------------------- | --------------------------------- |
+| File hygiene     | trailing-whitespace, check-yaml/json/toml | Clean commits                                   | [[use-standard-tools]]            |
+| Code quality     | shellcheck, eslint, ruff                  | Catch errors                                    | [[use-standard-tools]]            |
+| Formatting       | dprint                                    | Consistent formatting                           | [[use-standard-tools]]            |
+| Data integrity   | bmem-validate                             | Valid frontmatter                               | [[current-state-machine]]         |
+| Data purity      | data-markdown-only                        | Only `.md` in data/                             | [[current-state-machine]]         |
 | Framework health | check-framework-integrity                 | Index wikilinks, skill entries, workflow length | [[maintain-relational-integrity]] |
-| Framework health | check-skill-line-count                    | SKILL.md < 500 lines   | [[self-documenting]]       |
-| Framework health | check-orphan-files                        | Detect orphan files    | [[semantic-link-density]]  |
-| Markdown style   | markdownlint                              | No horizontal dividers | [[no-horizontal-dividers]] |
+| Framework health | check-skill-line-count                    | SKILL.md < 500 lines                            | [[self-documenting]]              |
+| Framework health | check-orphan-files                        | Detect orphan files                             | [[semantic-link-density]]         |
+| Markdown style   | markdownlint                              | No horizontal dividers                          | [[no-horizontal-dividers]]        |
 
 ## CI/CD Validation (GitHub Actions)
 
@@ -417,14 +418,14 @@ Auto-commits staged changes. Blocks if unstaged changes require manual commit.
 
 Main agent has all tools except deny rules. Subagents are restricted:
 
-| Agent             | Tools Granted                                  | Model  | Purpose                                                                                                        |
-| ----------------- | ---------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------- |
-| Main agent        | All (minus deny rules)                         | varies | Primary task execution                                                                                         |
-| prompt-hydrator   | Read, Grep, mcp__pkb__search, Task              | haiku  | Context enrichment (Edit/Write blocked by check_subagent_tool_restrictions)                                    |
-| custodiet         | Read                                           | haiku  | Compliance checking                                                                                            |
-| qa                | Read, Grep, Glob                               | opus   | Independent verification (anti-sycophancy: must verify against original request verbatim, not agent reframing) |
-| planner           | All (inherits from main)                       | sonnet | Implementation planning                                                                                        |
-| effectual-planner | All (inherits from main)                       | opus   | Strategic planning                                                                                             |
+| Agent             | Tools Granted                      | Model  | Purpose                                                                                                        |
+| ----------------- | ---------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------- |
+| Main agent        | All (minus deny rules)             | varies | Primary task execution                                                                                         |
+| prompt-hydrator   | Read, Grep, mcp__pkb__search, Task | haiku  | Context enrichment (Edit/Write blocked by check_subagent_tool_restrictions)                                    |
+| custodiet         | Read                               | haiku  | Compliance checking                                                                                            |
+| qa                | Read, Grep, Glob                   | opus   | Independent verification (anti-sycophancy: must verify against original request verbatim, not agent reframing) |
+| planner           | All (inherits from main)           | sonnet | Implementation planning                                                                                        |
+| effectual-planner | All (inherits from main)           | opus   | Strategic planning                                                                                             |
 
 **Note**: `tools:` in agent frontmatter RESTRICTS available tools - it cannot GRANT access beyond what settings.json allows. Deny rules apply globally.
 
@@ -432,11 +433,11 @@ Main agent has all tools except deny rules. Subagents are restricted:
 
 Enforcement of [[semantic-vs-episodic-storage]] and [[current-state-machine]].
 
-| Component              | Purpose                          | Sync to PKB           |
-| ---------------------- | -------------------------------- | --------------------- |
-| Remember skill         | Dual-write markdown + PKB        | Yes (on invocation)   |
-| Remember sync workflow | Reconcile markdown → PKB         | Yes (repair/rebuild)  |
-| Session-insights       | Extract and persist session learnings | Yes (Step 6.5)   |
+| Component              | Purpose                               | Sync to PKB          |
+| ---------------------- | ------------------------------------- | -------------------- |
+| Remember skill         | Dual-write markdown + PKB             | Yes (on invocation)  |
+| Remember sync workflow | Reconcile markdown → PKB              | Yes (repair/rebuild) |
+| Session-insights       | Extract and persist session learnings | Yes (Step 6.5)       |
 
 **Markdown is SSoT** - PKB is derivative index for semantic search.
 
@@ -473,19 +474,19 @@ Context injected via CORE.md at SessionStart. Guides where agents place files.
 
 ## Source Files
 
-| Mechanism        | Authoritative Source                                                                                                                  |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Deny rules       | `$AOPS/config/claude/settings.json` → `permissions.deny`                                                                              |
-| Agent tools      | `$AOPS/aops-core/agents/*.md` → `tools:` frontmatter                                                                                  |
-| PreToolUse      | `$AOPS/aops-core/hooks/gate_registry.py` (hydration, custodiet, subagent_restrictions), `policy_enforcer.py` |
-| PostToolUse     | `$AOPS/aops-core/hooks/gate_registry.py` (accountant, post_hydration, skill_activation)                  |
-| SubagentStop     | `$AOPS/aops-core/hooks/unified_logger.py`                                                                                            |
-| UserPromptSubmit | `$AOPS/aops-core/hooks/user_prompt_submit.py`                                                                                         |
-| SessionStart     | `$AOPS/aops-core/hooks/sessionstart_load_axioms.py`                                                                                   |
-| Stop             | `$AOPS/aops-core/hooks/reflection_check.py`, `session_end_commit_check.py`                                                            |
-| Pre-commit       | `$AOPS/.pre-commit-config.yaml`                                                                                                       |
-| CI/CD            | `$AOPS/.github/workflows/`                                                                                                            |
-| Remember skill   | `$AOPS/aops-core/skills/remember/SKILL.md`                                                                                            |
-| Memory sync      | `$AOPS/aops-core/skills/remember/workflows/sync.md`                                                                                   |
-| Session insights | `$AOPS/aops-core/skills/session-insights/SKILL.md`                                                                                    |
-| Session state    | `$AOPS/aops-core/lib/session_state.py` (gate flags: todo_with_handover)                                               |
+| Mechanism        | Authoritative Source                                                                                         |
+| ---------------- | ------------------------------------------------------------------------------------------------------------ |
+| Deny rules       | `$AOPS/config/claude/settings.json` → `permissions.deny`                                                     |
+| Agent tools      | `$AOPS/aops-core/agents/*.md` → `tools:` frontmatter                                                         |
+| PreToolUse       | `$AOPS/aops-core/hooks/gate_registry.py` (hydration, custodiet, subagent_restrictions), `policy_enforcer.py` |
+| PostToolUse      | `$AOPS/aops-core/hooks/gate_registry.py` (accountant, post_hydration, skill_activation)                      |
+| SubagentStop     | `$AOPS/aops-core/hooks/unified_logger.py`                                                                    |
+| UserPromptSubmit | `$AOPS/aops-core/hooks/user_prompt_submit.py`                                                                |
+| SessionStart     | `$AOPS/aops-core/hooks/sessionstart_load_axioms.py`                                                          |
+| Stop             | `$AOPS/aops-core/hooks/reflection_check.py`, `session_end_commit_check.py`                                   |
+| Pre-commit       | `$AOPS/.pre-commit-config.yaml`                                                                              |
+| CI/CD            | `$AOPS/.github/workflows/`                                                                                   |
+| Remember skill   | `$AOPS/aops-core/skills/remember/SKILL.md`                                                                   |
+| Memory sync      | `$AOPS/aops-core/skills/remember/workflows/sync.md`                                                          |
+| Session insights | `$AOPS/aops-core/skills/session-insights/SKILL.md`                                                           |
+| Session state    | `$AOPS/aops-core/lib/session_state.py` (gate flags: todo_with_handover)                                      |

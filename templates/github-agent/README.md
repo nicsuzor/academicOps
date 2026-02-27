@@ -4,11 +4,11 @@ Templates for configuring GitHub Copilot coding agent in project repos.
 
 ## Files
 
-| File | Destination | Purpose |
-| --- | --- | --- |
-| `copilot-instructions.md.template` | `.github/copilot-instructions.md` | Project-specific build/test/conventions |
-| `copilot-setup-steps.yml.template` | `.github/workflows/copilot-setup-steps.yml` | Environment setup |
-| `worker.agent.md` | `.github/agents/worker.agent.md` | Worker persona (copy as-is) |
+| File                               | Destination                                 | Purpose                                 |
+| ---------------------------------- | ------------------------------------------- | --------------------------------------- |
+| `copilot-instructions.md.template` | `.github/copilot-instructions.md`           | Project-specific build/test/conventions |
+| `copilot-setup-steps.yml.template` | `.github/workflows/copilot-setup-steps.yml` | Environment setup                       |
+| `worker.agent.md`                  | `.github/agents/worker.agent.md`            | Worker persona (copy as-is)             |
 
 ## Setup for a new repo
 

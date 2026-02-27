@@ -32,11 +32,11 @@ gh pr list --repo {repo} --state open \
 
 Classify each PR:
 
-| Status | Action |
-|--------|--------|
-| CI failing | **Hold** — do not review code until CI passes |
-| Merge conflicts | **Hold** — author must resolve conflicts first |
-| CI passing + mergeable | **Reviewable** — proceed to step 2 |
+| Status                 | Action                                         |
+| ---------------------- | ---------------------------------------------- |
+| CI failing             | **Hold** — do not review code until CI passes  |
+| Merge conflicts        | **Hold** — author must resolve conflicts first |
+| CI passing + mergeable | **Reviewable** — proceed to step 2             |
 
 Present the triage table to the human before proceeding. Holds do not need reviewer agents — the blocking issue is clear.
 
@@ -56,6 +56,7 @@ Present a per-PR verdict table to the human:
 ```
 
 For each PR, incorporate:
+
 - CI status
 - Merge conflict status
 - Custodiet-reviewer findings (blocking: approve or request-changes)

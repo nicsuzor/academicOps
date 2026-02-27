@@ -32,14 +32,14 @@ Skill(skill="qa", args="Design QA plan for the task map epic")
 
 The QA skill has six modes. Select based on what you're being asked to do:
 
-| Mode | When | Reference |
-|------|------|-----------|
-| **QA Planning** | Designing acceptance criteria or QA plans BEFORE development | [[references/qa-planning.md]] |
-| **Qualitative Assessment** | Evaluating fitness-for-purpose AFTER development | [[references/qualitative-assessment.md]] |
-| **Acceptance Testing** | Running test plans, tracking failures, creating fix tasks | [[references/acceptance-testing.md]] |
-| **Quick Verification** | Pre-completion sanity check (does it run?) | [[references/quick-verification.md]] |
-| **Integration Validation** | Verifying structural/framework changes | [[references/integration-validation.md]] |
-| **System Design** | Designing QA infrastructure and criteria for a project | [[references/system-design-qa.md]] |
+| Mode                       | When                                                         | Reference                                |
+| -------------------------- | ------------------------------------------------------------ | ---------------------------------------- |
+| **QA Planning**            | Designing acceptance criteria or QA plans BEFORE development | [[references/qa-planning.md]]            |
+| **Qualitative Assessment** | Evaluating fitness-for-purpose AFTER development             | [[references/qualitative-assessment.md]] |
+| **Acceptance Testing**     | Running test plans, tracking failures, creating fix tasks    | [[references/acceptance-testing.md]]     |
+| **Quick Verification**     | Pre-completion sanity check (does it run?)                   | [[references/quick-verification.md]]     |
+| **Integration Validation** | Verifying structural/framework changes                       | [[references/integration-validation.md]] |
+| **System Design**          | Designing QA infrastructure and criteria for a project       | [[references/system-design-qa.md]]       |
 
 ### Routing Rules
 

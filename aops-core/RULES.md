@@ -95,11 +95,11 @@ Violation = friction, not failure. Evidence-based working hypotheses.
 
 ## Enforcement Levels
 
-| Level                 | Mechanism                      | Example                   |
-| --------------------- | ------------------------------ | ------------------------- |
-| **Hard block**        | Hook returns `block`           | Hydration gate |
-| **Soft warning**      | Hook returns `warn`            | Missing reflection        |
-| **Context injection** | Principle in AXIOMS/HEURISTICS | Agent sees rule           |
-| **Behavioral**        | Agent instruction-following    | Most principles           |
+| Level                 | Mechanism                      | Example            |
+| --------------------- | ------------------------------ | ------------------ |
+| **Hard block**        | Hook returns `block`           | Hydration gate     |
+| **Soft warning**      | Hook returns `warn`            | Missing reflection |
+| **Context injection** | Principle in AXIOMS/HEURISTICS | Agent sees rule    |
+| **Behavioral**        | Agent instruction-following    | Most principles    |
 
 See [[framework/enforcement-map.md]] for full enforcement details.

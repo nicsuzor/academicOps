@@ -131,7 +131,7 @@ status: DRAFT - PENDING APPROVAL (v2)
 | **prompt-hydrator** | haiku  | Transform prompts → execution plans                   | UserPromptSubmit hook instruction |
 | **critic**          | opus   | Review plans BEFORE execution                         | Main agent after hydrator returns |
 | **custodiet**       | haiku  | Detect scope drift, BLOCK on violation                | PostToolUse hook (periodic)       |
-| **qa**              | opus   | Independent verification (on-demand)                 | Skill invocation                  |
+| **qa**              | opus   | Independent verification (on-demand)                  | Skill invocation                  |
 | **framework**       | sonnet | Stateful framework understanding, manages reflections | Before session close              |
 
 ### Tools Required

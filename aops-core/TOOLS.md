@@ -16,9 +16,9 @@ Reference for agent capabilities. Use this to understand what operations are pos
 
 ## Core Server
 
-| Server | Purpose                    | Key Operations                                                |
-| ------ | -------------------------- | ------------------------------------------------------------- |
-| `pkb`  | Personal knowledge base    | Tasks, semantic search, knowledge graph, memories, notes      |
+| Server | Purpose                 | Key Operations                                           |
+| ------ | ----------------------- | -------------------------------------------------------- |
+| `pkb`  | Personal knowledge base | Tasks, semantic search, knowledge graph, memories, notes |
 
 PKB is always available. See CONNECTORS.md for optional tool categories.
 
@@ -26,13 +26,13 @@ PKB is always available. See CONNECTORS.md for optional tool categories.
 
 These are optional tools resolved at runtime. Skills reference them as `~~category`.
 
-| Category              | Placeholder            | Purpose                                                        |
-| --------------------- | ---------------------- | -------------------------------------------------------------- |
-| Email & calendar      | `~~email`              | Search/read/draft messages, list events, create meetings       |
-| Research library      | `~~research-library`   | Search papers, get citations, find similar works               |
-| Case database         | `~~case-database`      | Search decisions, get case summaries, legal reasoning analysis |
-| Documentation         | `~~documentation`      | Look up API docs for any programming library                   |
-| AI assistant          | `~~ai-assistant`       | Delegate analysis to another AI model                          |
+| Category         | Placeholder          | Purpose                                                        |
+| ---------------- | -------------------- | -------------------------------------------------------------- |
+| Email & calendar | `~~email`            | Search/read/draft messages, list events, create meetings       |
+| Research library | `~~research-library` | Search papers, get citations, find similar works               |
+| Case database    | `~~case-database`    | Search decisions, get case summaries, legal reasoning analysis |
+| Documentation    | `~~documentation`    | Look up API docs for any programming library                   |
+| AI assistant     | `~~ai-assistant`     | Delegate analysis to another AI model                          |
 
 <!-- NS: exclude Standard Tools from this file. -->
 

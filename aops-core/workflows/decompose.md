@@ -57,11 +57,11 @@ For detailed guidance on decomposition patterns, see the [[planning]] skill:
 
 ### Spike vs Placeholder
 
-| Situation                              | Use Spike            | Use Placeholder   |
-| -------------------------------------- | -------------------- | ----------------- |
-| "We don't know if X is possible"       | Investigate first    |                   |
-| "We know X is needed, details TBD"     |                      | Capture intent    |
-| "Implementation approach is unclear"   | Prototype/probe      |                   |
+| Situation                            | Use Spike         | Use Placeholder |
+| ------------------------------------ | ----------------- | --------------- |
+| "We don't know if X is possible"     | Investigate first |                 |
+| "We know X is needed, details TBD"   |                   | Capture intent  |
+| "Implementation approach is unclear" | Prototype/probe   |                 |
 
 ### Dependency Selection
 
@@ -94,6 +94,7 @@ When decomposing work into subtasks, ALWAYS create a **verify-parent** task:
 **Purpose**: Subtasks getting completed does not mean the parent's goal was met. The verify-parent task forces a return to the original problem to confirm it's fully solved or to iterate again.
 
 **Example**:
+
 ```
 Parent: "Fix task graph quality issues"
   ├── Subtask 1: "Update priority semantics doc"

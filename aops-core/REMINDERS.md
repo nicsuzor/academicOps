@@ -12,24 +12,24 @@ tags: [framework, skills, routing]
 
 When you see these domain signals, invoke the corresponding skill BEFORE starting work.
 
-| Domain Signal                                                             | Skill                         | When to Invoke                         |
-| ------------------------------------------------------------------------- | ----------------------------- | -------------------------------------- |
-| Python code, pytest, type hints, mypy                                     | `python-dev`                  | Any Python coding work                 |
-| Framework files (skills/, hooks/, agents/, commands/, AXIOMS, HEURISTICS) | `framework`                   | Changes to framework infrastructure    |
-| Debug test failures, find session logs, investigate framework issues      | `framework`                   | Debugging (see workflow 02)            |
-| New functionality, "add", "create", feature requests                      | `feature-dev`                 | Building new features with TDD         |
-| Claude Code hooks, PreToolUse, PostToolUse, hook events                   | `plugin-dev:hook-development` | Hook development                       |
-| MCP servers, .mcp.json, tool integration                                  | `plugin-dev:mcp-integration`  | MCP server integration                 |
-| "Remember", persist knowledge, save to memory                             | `remember`                    | Knowledge persistence to PKB           |
-| dbt, Streamlit, data analysis, statistics                                 | `analyst`                     | Research data work                     |
-| Mermaid diagrams, flowcharts                                              | `flowchart`                   | Creating Mermaid flowcharts            |
-| Excalidraw, visual diagrams, mind maps                                    | `excalidraw`                  | Hand-drawn style diagrams              |
-| Review academic work, papers, dissertations                               | `review`                      | Academic review assistance             |
-| Convert documents to markdown                                             | `convert-to-md`               | Document conversion (DOCX, PDF, etc.)  |
-| Generate PDF from markdown                                                | `pdf`                         | PDF generation with academic styling   |
-| Session insights, accomplishments, daily note, daily summary              | `session-insights`            | Extract learnings from sessions        |
-| Daily briefing, morning routine, task recommendations, email triage       | `daily`                       | Daily note lifecycle management        |
-| Fact-check claims, verify sources                                         | `fact-check`                  | Verify factual claims                  |
+| Domain Signal                                                             | Skill                         | When to Invoke                        |
+| ------------------------------------------------------------------------- | ----------------------------- | ------------------------------------- |
+| Python code, pytest, type hints, mypy                                     | `python-dev`                  | Any Python coding work                |
+| Framework files (skills/, hooks/, agents/, commands/, AXIOMS, HEURISTICS) | `framework`                   | Changes to framework infrastructure   |
+| Debug test failures, find session logs, investigate framework issues      | `framework`                   | Debugging (see workflow 02)           |
+| New functionality, "add", "create", feature requests                      | `feature-dev`                 | Building new features with TDD        |
+| Claude Code hooks, PreToolUse, PostToolUse, hook events                   | `plugin-dev:hook-development` | Hook development                      |
+| MCP servers, .mcp.json, tool integration                                  | `plugin-dev:mcp-integration`  | MCP server integration                |
+| "Remember", persist knowledge, save to memory                             | `remember`                    | Knowledge persistence to PKB          |
+| dbt, Streamlit, data analysis, statistics                                 | `analyst`                     | Research data work                    |
+| Mermaid diagrams, flowcharts                                              | `flowchart`                   | Creating Mermaid flowcharts           |
+| Excalidraw, visual diagrams, mind maps                                    | `excalidraw`                  | Hand-drawn style diagrams             |
+| Review academic work, papers, dissertations                               | `review`                      | Academic review assistance            |
+| Convert documents to markdown                                             | `convert-to-md`               | Document conversion (DOCX, PDF, etc.) |
+| Generate PDF from markdown                                                | `pdf`                         | PDF generation with academic styling  |
+| Session insights, accomplishments, daily note, daily summary              | `session-insights`            | Extract learnings from sessions       |
+| Daily briefing, morning routine, task recommendations, email triage       | `daily`                       | Daily note lifecycle management       |
+| Fact-check claims, verify sources                                         | `fact-check`                  | Verify factual claims                 |
 
 ## Operational Reminders
 

@@ -4,11 +4,11 @@ AcademicOps uses multiple git repositories that need to stay in sync across mach
 
 ## Repositories
 
-| Repo | Purpose | Env var |
-|------|---------|---------|
-| `$ACA_DATA` (e.g. `~/brain`) | Personal knowledge base, tasks, notes | `ACA_DATA` |
-| `$AOPS_SESSIONS` (default `~/.aops/sessions`) | Session transcripts and summaries | `AOPS_SESSIONS` |
-| `~/dotfiles` | Shell config, scripts | - |
+| Repo                                          | Purpose                               | Env var         |
+| --------------------------------------------- | ------------------------------------- | --------------- |
+| `$ACA_DATA` (e.g. `~/brain`)                  | Personal knowledge base, tasks, notes | `ACA_DATA`      |
+| `$AOPS_SESSIONS` (default `~/.aops/sessions`) | Session transcripts and summaries     | `AOPS_SESSIONS` |
+| `~/dotfiles`                                  | Shell config, scripts                 | -               |
 
 ## Sync Layers
 
@@ -21,6 +21,7 @@ This covers agent-driven changes but **does not cover** changes from CLI tools (
 ### 2. Session-start sync (SessionStart hook)
 
 `session_env_setup.py` runs on every Claude/Gemini session start:
+
 1. **Commits and pushes** any pending local changes (catches CLI/manual edits)
 2. **Pulls** remote changes from other machines
 

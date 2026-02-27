@@ -12,29 +12,29 @@ This document tracks all enforcement mechanisms in the academicOps framework.
 
 ## Environment Variables
 
-| Variable                | Default | Values          | Description                                             |
-| ----------------------- | ------- | --------------- | ------------------------------------------------------- |
-| `CUSTODIET_GATE_MODE`   | `block` | `warn`, `block` | Controls custodiet compliance audit enforcement         |
-| `HYDRATION_GATE_MODE`   | `block` | `warn`, `block` | Controls hydration gate enforcement                     |
-| `QA_GATE_MODE`          | `block` | `warn`, `block` | Controls QA gate enforcement                            |
-| `HANDOVER_GATE_MODE`    | `warn`  | `warn`, `block` | Controls handover (finalization) gate enforcement       |
+| Variable              | Default | Values          | Description                                       |
+| --------------------- | ------- | --------------- | ------------------------------------------------- |
+| `CUSTODIET_GATE_MODE` | `block` | `warn`, `block` | Controls custodiet compliance audit enforcement   |
+| `HYDRATION_GATE_MODE` | `block` | `warn`, `block` | Controls hydration gate enforcement               |
+| `QA_GATE_MODE`        | `block` | `warn`, `block` | Controls QA gate enforcement                      |
+| `HANDOVER_GATE_MODE`  | `warn`  | `warn`, `block` | Controls handover (finalization) gate enforcement |
 
 ## Enforcement Hooks
 
 ### PreToolUse Hooks
 
-| Hook                     | Mode         | Description                                  |
-| ------------------------ | ------------ | -------------------------------------------- |
-| `hydration_gate.py`      | warn/block   | Blocks until prompt-hydrator invoked         |
-| `command_intercept.py`   | transform    | Transforms tool inputs (e.g., Glob excludes) |
-| `overdue_enforcement.py` | warn         | Injects reminders for overdue tasks          |
+| Hook                     | Mode       | Description                                  |
+| ------------------------ | ---------- | -------------------------------------------- |
+| `hydration_gate.py`      | warn/block | Blocks until prompt-hydrator invoked         |
+| `command_intercept.py`   | transform  | Transforms tool inputs (e.g., Glob excludes) |
+| `overdue_enforcement.py` | warn       | Injects reminders for overdue tasks          |
 
 ### PostToolUse Hooks
 
-| Hook                         | Mode         | Description                                     |
-| ---------------------------- | ------------ | ----------------------------------------------- |
-| `custodiet_gate.py`          | configurable | Periodic compliance audit (every ~7 tool calls) |
-| `handover_gate.py`           | passive      | Clears stop gate when /dump invoked             |
+| Hook                | Mode         | Description                                     |
+| ------------------- | ------------ | ----------------------------------------------- |
+| `custodiet_gate.py` | configurable | Periodic compliance audit (every ~7 tool calls) |
+| `handover_gate.py`  | passive      | Clears stop gate when /dump invoked             |
 
 ## Custodiet Compliance Audit
 

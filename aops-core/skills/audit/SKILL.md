@@ -39,14 +39,14 @@ Compare filesystem to `INDEX.md`:
 
 Curate root-level index files using LLM judgment. For each file, read the source materials and ensure it accurately reflects the current state.
 
-| Index File         | Sources                                               |
-| ------------------ | ----------------------------------------------------- |
-| AXIOMS.md          | `axioms/*.md` files                                   |
-| HEURISTICS.md      | `heuristics/*.md` files                               |
+| Index File         | Sources                                                               |
+| ------------------ | --------------------------------------------------------------------- |
+| AXIOMS.md          | `axioms/*.md` files                                                   |
+| HEURISTICS.md      | `heuristics/*.md` files                                               |
 | CONSTRAINTS.md     | Pre-commit hooks in `.pre-commit-config.yaml`, hard enforcement rules |
-| SKILLS.md          | `skills/*/SKILL.md` frontmatter                       |
-| WORKFLOWS.md       | `workflows/*.md`, `skills/*/workflows/*.md`           |
-| enforcement-map.md | `hooks/*.py` "Enforces:" docstrings, `gate_config.py` |
+| SKILLS.md          | `skills/*/SKILL.md` frontmatter                                       |
+| WORKFLOWS.md       | `workflows/*.md`, `skills/*/workflows/*.md`                           |
+| enforcement-map.md | `hooks/*.py` "Enforces:" docstrings, `gate_config.py`                 |
 
 **Generated File Header**:
 Each curated index (except WORKFLOWS.md) must include:
@@ -78,6 +78,7 @@ REPORT_PATH="$ACA_DATA/projects/aops/audit/$(date +%Y-%m-%d-%H%M%S)-audit.md"
 ```
 
 Report format:
+
 - YAML frontmatter with date and summary stats.
 - Results from each phase.
 - Acceptance test results table.

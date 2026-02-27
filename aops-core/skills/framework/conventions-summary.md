@@ -79,7 +79,6 @@ Information surfaces when relevant. Missing context = framework bug.
 
 ### Mandatory Critic Review
 
-
 ```
 ```
 

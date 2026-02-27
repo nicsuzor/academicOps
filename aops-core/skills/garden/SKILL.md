@@ -213,12 +213,12 @@ The task graph accumulates structural debt just like the knowledge base. Task ga
 
 ### Hierarchy Rules
 
-| Level    | Must belong to              |
-| -------- | --------------------------- |
-| Task     | An epic                     |
-| Epic     | A project or another epic   |
-| Project  | A project or a goal         |
-| Goal     | Root-level (no parent required) |
+| Level   | Must belong to                  |
+| ------- | ------------------------------- |
+| Task    | An epic                         |
+| Epic    | A project or another epic       |
+| Project | A project or a goal             |
+| Goal    | Root-level (no parent required) |
 
 **No task should be a root-level orphan.** Orphan tasks degrade graph metrics, break downstream weight calculations, and become invisible to priority-based queries.
 

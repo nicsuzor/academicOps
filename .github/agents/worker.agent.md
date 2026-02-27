@@ -58,6 +58,7 @@ GitHub issue and implement it to completion.
 ## PR Description
 
 Write a clear PR description that explains:
+
 - What the issue asked for
 - What you changed and why
 - How you verified it works
