@@ -47,7 +47,7 @@ class TestScenario1_HappyPath:
         task = storage.create_task(
             title="Implement insights pipeline E2E tests",
             project="framework",
-            type=TaskType.TASK,
+            type=TaskType.GOAL,
         )
         task.body = """# Implement insights pipeline E2E tests
 
@@ -226,7 +226,7 @@ class TestScenario3_LowConfidence:
         task = storage.create_task(
             title="Update configuration settings",
             project="framework",
-            type=TaskType.TASK,
+            type=TaskType.GOAL,
         )
         task.body = """# Update configuration settings
 
@@ -365,7 +365,7 @@ class TestScenario5_MemoryServerUnavailable:
         task = storage.create_task(
             title="Test memory fallback",
             project="test",
-            type=TaskType.TASK,
+            type=TaskType.GOAL,
         )
         task.body = """# Test memory fallback
 
@@ -429,7 +429,7 @@ class TestScenario6_BackfillNoDuplication:
         task = storage.create_task(
             title="Test backfill behavior",
             project="test",
-            type=TaskType.TASK,
+            type=TaskType.GOAL,
         )
         task.body = """# Test backfill behavior
 

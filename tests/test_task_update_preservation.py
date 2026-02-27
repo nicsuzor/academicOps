@@ -1,4 +1,4 @@
-from lib.task_model import TaskStatus
+from lib.task_model import TaskStatus, TaskType
 from lib.task_storage import TaskStorage
 
 
@@ -8,7 +8,7 @@ def test_save_task_preserves_user_edits(tmp_path):
     storage = TaskStorage(data_root=tmp_path)
 
     # 1. Create a task
-    task = storage.create_task(title="Test Task", body="Original body")
+    task = storage.create_task(title="Test Task", body="Original body", type=TaskType.GOAL)
     storage.save_task(task)
     task_id = task.id
 
@@ -42,7 +42,7 @@ def test_save_task_overwrites_when_requested(tmp_path):
     storage = TaskStorage(data_root=tmp_path)
 
     # 1. Create a task
-    task = storage.create_task(title="Overwrite Task", body="Original body")
+    task = storage.create_task(title="Overwrite Task", body="Original body", type=TaskType.GOAL)
     storage.save_task(task)
     task_id = task.id
 
