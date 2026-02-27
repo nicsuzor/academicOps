@@ -207,12 +207,6 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     bot_token = os.environ.get("AOPS_BOT_GH_TOKEN")
     if bot_token:
         persist["GH_TOKEN"] = bot_token
-        persist["GITHUB_TOKEN"] = bot_token
-
-    # 7. Ensure /opt/homebrew/bin is in PATH for gh (common on macOS)
-    current_path = os.environ.get("PATH", "")
-    if "/opt/homebrew/bin" not in current_path:
-        persist["PATH"] = f"/opt/homebrew/bin:{current_path}"
 
     # Persist all environment variables
     set_persistent_env(persist)

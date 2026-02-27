@@ -99,7 +99,6 @@ To find review IDs: `gh api repos/{owner}/{repo}/pulls/{pr}/reviews --jq '.[] | 
 
 ## Rules
 
-- **Credential Isolation (P#51):** You are authenticated as the academicOps bot. All GitHub operations (`gh`, `git push`) MUST use the `GH_TOKEN` provided in your environment. Do not use personal credentials or `gh auth login`.
 - **Fix conservatively.** If unsure whether a change is safe, don't make it — flag it for the human.
 - **Never change the PR's intent.** You fix review feedback, you don't redesign.
 - **Always run lint, typecheck, and tests after making changes.** Push clean code.

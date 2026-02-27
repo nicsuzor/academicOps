@@ -79,7 +79,6 @@ QA: FAILED
 
 ## Rules
 
-- **Credential Isolation (P#51):** You are authenticated as the academicOps bot. All GitHub operations (`gh`) MUST use the `GH_TOKEN` provided in your environment. Do not use personal credentials or `gh auth login`.
 - Be objective. Verify claims with evidence, not assumptions.
 - "Looks correct" is not evidence — check CI results and trace logic.
 - Focus on correctness, not perfection. Minor issues are comments, not change requests.

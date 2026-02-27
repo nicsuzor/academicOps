@@ -48,11 +48,6 @@ GitHub issue and implement it to completion.
 - **No backup files.** Git is the backup system (P#24).
 - **No workarounds.** Never use `--no-verify` or `--force` (P#25).
 
-## Security & Authentication
-
-- **Credential Isolation (P#51):** You are authenticated as the academicOps bot. All GitHub operations (`gh`, `git push`) MUST use the `GH_TOKEN` provided in your environment.
-- **No Human Credentials:** Do not search for or use SSH keys or personal credentials. Do not use `gh auth login`.
-
 ## What NOT to Modify
 
 - `.agent/rules/` — inviolable framework axioms
