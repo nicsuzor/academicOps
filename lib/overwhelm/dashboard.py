@@ -3832,42 +3832,28 @@ def _get_graph_node_count() -> int:
     return 0
 
 
-def render_graph_section():
-    """Render the task/knowledge graph with tabs, collapsible by default if >50 nodes."""
-    # Determine default expanded state based on node count
-    node_count = _get_graph_node_count()
-    default_expanded = True
+def render_task_graph_page():
+    """Render the task/knowledge graph on its own dedicated page."""
+    st.markdown("### 📊 Task Graph")
 
-    # Check query params for persisted state
-    query_params = st.query_params
-    if "graph" in query_params:
-        # User has explicitly set preference via toggle
-        is_expanded = query_params.get("graph") == "1"
-    else:
-        # Use default based on node count
-        is_expanded = default_expanded
-
-    # Header with toggle button
-    col_title, col_toggle = st.columns([0.85, 0.15])
-    with col_title:
-        status_text = f"({node_count} nodes)" if node_count > 0 else ""
-        st.markdown(f"### 📊 Task Graph {status_text}")
-    with col_toggle:
-        # Toggle button - when clicked, flip state and persist via query param
-        toggle_label = "▼ Hide" if is_expanded else "▶ Show"
-        if st.button(toggle_label, key="graph_toggle", use_container_width=True):
-            new_state = "0" if is_expanded else "1"
-            st.query_params["graph"] = new_state
-            st.rerun()
-
-    # Only render graph content if expanded
-    if not is_expanded:
-        st.caption('Click "Show" to expand the task graph visualization.')
-        return
+    col_view, col_filter = st.columns(2)
+    with col_view:
+        view_mode = st.radio(
+            "Graph Data",
+            ["Knowledge Base (More Edges)", "Tasks Only"],
+            horizontal=True,
+            key="tg_view",
+        )
+    with col_filter:
+        filter_mode = st.radio(
+            "Filter Nodes", ["All Nodes", "Active Tasks Only"], horizontal=True, key="tg_filter"
+        )
 
     tab_d3, tab_svg, tab_interactive = st.tabs(
         ["📊 Live Graph (D3)", "🖼️ SVG Graph", "⚛️ Force Graph"]
     )
+
+    filename = "knowledge-graph.json" if "Knowledge Base" in view_mode else "graph.json"
 
     with tab_d3:
         # Visual controls for the D3 physics engine
@@ -3883,13 +3869,23 @@ def render_graph_section():
 
         force_settings = {"charge": charge, "linkDistance": link_dist, "projectForce": proj_force}
 
-        d3_graph = load_graph_data("graph.json")
+        d3_graph = load_graph_data(filename)
         if d3_graph:
+            # Apply filtering
+            if filter_mode == "Active Tasks Only":
+                inactive_statuses = {"done", "completed", "cancelled", "inbox"}
+                active_nodes = [
+                    n
+                    for n in d3_graph.get("nodes", [])
+                    if n.get("status", "inbox").lower() not in inactive_statuses
+                ]
+                d3_graph["nodes"] = active_nodes
+
             d3_data = prepare_embedded_graph_data(d3_graph)
             st.caption(f"Showing {len(d3_data['nodes'])} nodes and {len(d3_data['links'])} links.")
 
             # Action handler for bi-directional clicking
-            action_event = render_embedded_graph(d3_data, height=600, force_settings=force_settings)
+            action_event = render_embedded_graph(d3_data, height=700, force_settings=force_settings)
 
             if action_event and isinstance(action_event, dict):
                 action = action_event.get("action")
@@ -3897,18 +3893,14 @@ def render_graph_section():
                 if action and task_id:
                     _handle_graph_action(action, task_id)
         else:
-            st.warning("No graph.json found. Run `/task-viz` to generate.")
+            st.warning(f"No {filename} found. Run `/task-viz` to generate.")
 
     with tab_svg:
         render_svg_graph()
 
     with tab_interactive:
         # Controls row
-        col_view, col_layout = st.columns(2)
-        with col_view:
-            view_mode = st.radio(
-                "View", ["Tasks", "Knowledge Base"], horizontal=True, key="fg_view"
-            )
+        (col_layout,) = st.columns(1)
         with col_layout:
             layout = st.radio(
                 "Layout",
@@ -3923,21 +3915,26 @@ def render_graph_section():
                 key="fg_layout",
             )
 
-        # Load graph data based on selection (need this first for type options)
-        filename = "graph.json"
-        if view_mode == "Knowledge Base":
-            filename = "knowledge-graph.json"
-
         graph = load_graph_data(filename)
         if not graph:
             st.warning(f"No graph found ({filename}). Run `/task-viz` to generate.")
             return
 
+        # Apply top-level filtering to interactive graph as well
+        if filter_mode == "Active Tasks Only":
+            inactive_statuses = {"done", "completed", "cancelled", "inbox"}
+            active_nodes = [
+                n
+                for n in graph.get("nodes", [])
+                if n.get("status", "inbox").lower() not in inactive_statuses
+            ]
+            graph["nodes"] = active_nodes
+
         # Get available types from graph
         all_types = sorted(set(n.get("node_type", "unknown") for n in graph.get("nodes", [])))
 
         # Default type selection based on view mode
-        if view_mode == "Tasks":
+        if "Tasks" in view_mode:
             task_types = [
                 "goal",
                 "project",
@@ -4046,7 +4043,7 @@ def render_graph_section():
         # Render graph with visual settings
         render_force_graph(
             graph,
-            view_mode,
+            "Knowledge Base" if "KnowledgeBase" in view_mode else "Tasks",
             layout,
             node_size=node_size,
             link_width=link_width,
@@ -4496,7 +4493,7 @@ def _handle_graph_action(action: str, task_id: str):
 # Navigation
 page = st.sidebar.radio(
     "View Mode",
-    ["Dashboard", "Manage Tasks", "Session Summary", "Network Analysis"],
+    ["Dashboard", "Manage Tasks", "Session Summary", "Network Analysis", "Task Graph"],
     index=0,
 )
 
@@ -4523,10 +4520,11 @@ if page == "Network Analysis":
     render_network_analysis()
     st.stop()
 
-render_spotlight_epic()
+if page == "Task Graph":
+    render_task_graph_page()
+    st.stop()
 
-# Graph section with tabs
-render_graph_section()
+render_spotlight_epic()
 
 # Then project-centric content
 # Initialize analyzer for daily log
