@@ -31,8 +31,13 @@ The supervisor decomposes large tasks into PR-sized subtasks.
    - Each subtask must pass the WHY test relative to its parent
 5. Check for star pattern: if parent already has >5 children, group under intermediate epics
 6. **Completion loop (P#109)**: Create one additional subtask: "Verify: [parent goal] fully resolved" with `depends_on` set to ALL other subtasks and `assignee: null`. This task returns to the original problem after all implementation is done to confirm it's fully solved or iterate again.
-7. Append decomposition summary to task body
-8. Set task status to 'consensus'
+7. **Post-decomposition self-checks** (run BEFORE finalizing):
+   a. For each **decision** subtask: "What information does the user need to make this decision?" — if no upstream prep task exists, create one and add it to `depends_on`
+   b. For each **execution** subtask: "Is this conditional on a decision that hasn't been made?" — if yes, add the decision task to `depends_on`
+   c. For each **writing** subtask: "What analysis/data needs to be final before this can be written?" — if it depends on analysis results, add the analysis task to `depends_on`
+   d. If the parent task produces **academic output** (paper, report, benchmark, analysis): ensure methodology tasks exist (methodological justification, validation approach, claim-evidence audit, limitations completeness)
+8. Append decomposition summary to task body
+9. Set task status to 'consensus'
 ```
 
 **Hierarchy Quality Gate** (check BEFORE creating subtasks):
@@ -48,6 +53,15 @@ Before decomposing, verify the task's position in the graph is sound:
 | Star pattern      | Parent has >5 direct children         | Group siblings under epics        |
 
 If any check fails, fix the hierarchy BEFORE proceeding with decomposition.
+
+**Post-Decomposition Self-Check Gate** (run AFTER creating subtasks, BEFORE finalizing):
+
+| Check | How to detect | Fix |
+|-------|--------------|-----|
+| Decision has prep | Decision task has no upstream data-gathering dependency | Create prep task, add to `depends_on` |
+| Execution is gated | Execution task is unconditional but depends on a decision outcome | Add decision task to `depends_on` |
+| Writing has data | Writing task depends on analysis results not yet complete | Add analysis task to `depends_on` |
+| Academic methodology | Academic output has no justification/validation/audit tasks | Add methodology layer tasks (see [[decompose]] workflow) |
 
 **Output Format** (appended to task body):
 
@@ -135,6 +149,9 @@ Check for:
 3. Missing edge cases or error handling
 4. Scope drift from original request
 5. PR-sizing violations (>4h, >10 files, multiple "whys")
+6. Decision tasks without information prerequisites (every decision needs a prep task)
+7. Execution tasks unblocked when they depend on an unmade decision
+8. Academic outputs missing methodology layer (justification, validation, audit)
 
 Return your assessment in this exact format:
 

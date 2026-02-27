@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# repo_sync.sh - Check and sync git repositories defined in polecat.yaml
-# Usage: repo_sync.sh [--check] [--quiet]
+# repo-sync.sh - Check and sync git repositories defined in polecat.yaml
+# Usage: repo-sync.sh [--check] [--quiet]
 #   (default)  Fix dirty repos with ccommit, pull clean repos that are behind
 #   --check    Just show status, don't fix anything
 #   --quiet    Only show repos needing attention
@@ -8,7 +8,7 @@
 set -euo pipefail
 
 # Check dependencies
-for cmd in git yq; do
+for cmd in git python3; do
     if ! command -v "$cmd" &>/dev/null; then
         echo "Error: '$cmd' is required but not installed." >&2
         exit 1
@@ -28,14 +28,29 @@ POLECAT_YAML="${HOME}/.aops/polecat.yaml"
 REPOS=()
 
 if [[ -f "$POLECAT_YAML" ]]; then
-    # Use yq to extract paths from polecat.yaml
+    # Use python3 to extract paths from polecat.yaml (requires PyYAML)
+    # If PyYAML is missing, it will fail gracefully.
     while IFS= read -r path; do
         # Expand ~ if it exists
         expanded_path="${path/#\~/$HOME}"
         if [[ -d "$expanded_path" ]]; then
             REPOS+=("$expanded_path")
         fi
-    done < <(yq -r '.projects[].path' "$POLECAT_YAML")
+    done < <(python3 -c "
+import yaml, sys
+try:
+    with open(sys.argv[1]) as f:
+        config = yaml.safe_load(f)
+        for p in (config or {}).get('projects', {}).values():
+            if 'path' in p:
+                print(p['path'])
+except ImportError:
+    print('Error: PyYAML is required. Run: pip install PyYAML', file=sys.stderr)
+    sys.exit(1)
+except Exception as e:
+    print(f'Error parsing polecat.yaml: {e}', file=sys.stderr)
+    sys.exit(1)
+" "$POLECAT_YAML")
 else
     echo -e "${YELLOW}Warning: ${POLECAT_YAML} not found.${NC}"
 fi

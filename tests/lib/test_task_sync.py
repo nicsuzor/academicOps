@@ -35,7 +35,7 @@ class TestTaskSyncService:
         task = storage.create_task(
             title="Implement feature X",
             project="test",
-            type=TaskType.TASK,
+            type=TaskType.GOAL,
         )
         task.body = """# Implement feature X
 

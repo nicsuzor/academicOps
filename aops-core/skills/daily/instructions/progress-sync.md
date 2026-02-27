@@ -48,12 +48,14 @@ Read each session JSON from `$ACA_SESSIONS/summaries/YYYYMMDD*.json`. Extract:
 
 ### Step 4.2.5: Query Merged PRs
 
-... (rest of the file) ...
+Fetch today's merged PRs from **all tracked repositories** defined in `~/.aops/polecat.yaml`.
 
-Fetch today's merged PRs from the current repository:
+**Repository discovery**: Read `~/.aops/polecat.yaml` to get the project registry. For each project, use the `path` field to `cd` into the repo and run the query. Skip repos that don't exist locally.
+
+**Per-repo query**:
 
 ```bash
-gh pr list --state merged --json number,title,author,mergedAt,headRefName,url --limit 50 2>/dev/null
+cd <repo_path> && gh pr list --state merged --json number,title,author,mergedAt,headRefName,url --limit 50 2>/dev/null
 ```
 
 **Post-filter**: From the JSON output, filter to PRs where `mergedAt` falls on today's date (YYYY-MM-DD).
@@ -63,68 +65,136 @@ gh pr list --state merged --json number,title,author,mergedAt,headRefName,url --
 ```markdown
 ## Merged PRs
 
+### academicOps
+
 | PR          | Title                        | Author                  | Merged |
 | ----------- | ---------------------------- | ----------------------- | ------ |
 | [#123](url) | Fix authentication bug       | @nicsuzor               | 10:15  |
-| [#124](url) | Add daily skill merge review | @claude-for-github[bot] | 14:30  |
 
-_N PRs merged today_
-```
-
-**Empty state**: If no PRs merged today:
-
-```markdown
-## Merged PRs
+### buttermilk
 
 No PRs merged today.
+
+_N PRs merged today across M repos_
 ```
 
-**Error handling**: If `gh` CLI is unavailable or authentication fails, skip this section and note "GitHub CLI unavailable — skipped merge review" in the section.
+**Empty state**: If no PRs merged today across all repos: "No PRs merged today."
+
+**Error handling**: If `gh` CLI is unavailable or authentication fails for a repo, note it inline and continue to the next repo.
 
 ### Step 4.2.6: Open PR Review (Decision Queue)
 
-Fetch open PRs that need human decisions — approvals, problem triage, or closure:
+Fetch open PRs that need human decisions from **all tracked repositories** in `~/.aops/polecat.yaml`.
 
-<!-- NS: this needs to be made aware of our repo map, currently stored at ~/.aops/polecat.yaml -->
+**Per-repo query** (use the enriched field set for decision support):
 
 ```bash
-gh pr list --state open --json number,title,author,createdAt,headRefName,url,isDraft,reviewDecision,statusCheckRollup --limit 30 2>/dev/null
+cd <repo_path> && gh pr list --state open --json number,title,author,createdAt,headRefName,url,isDraft,reviewDecision,statusCheckRollup,additions,deletions,changedFiles,mergeable,body,labels --limit 30 2>/dev/null
 ```
 
-**For each open PR**, summarize:
+**For each open PR**, extract and summarize:
 
-- PR number, title, author
-- Whether CI is passing, failing, or pending
-- Whether reviews are blocking (CHANGES_REQUESTED) or clear
-- One-line description of what the PR does (from title + branch name)
-- Any problems that need attention (failing checks, conflicts, stale)
+- **PR number, title, author** — basic identification
+- **Size**: `+additions/-deletions (N files)` — helps gauge review effort
+- **Age**: days since `createdAt` — flag PRs older than 7 days as stale
+- **CI status**: Derive from `statusCheckRollup` — passing/failing/pending/skipped/no checks. For failing, name the specific check that failed (e.g., "type check failing" not just "failing")
+- **Mergeable**: From `mergeable` field — MERGEABLE/CONFLICTING/UNKNOWN. Conflicts are blockers
+- **Reviews**: From `reviewDecision` — APPROVED/CHANGES_REQUESTED/empty (pending)
+- **Body preview**: First ~100 chars of `body` — gives context for what the PR does
+- **Draft status**: From `isDraft` — drafts are lower priority
 
-**Format in daily note** (fully replace the `## Open PRs` section):
+**Format in daily note** (fully replace the `## Open PRs` section), grouped by repo:
 
 ```markdown
 ## Open PRs
 
-| PR          | Title                | Author     | CI      | Reviews | Action needed    |
-| ----------- | -------------------- | ---------- | ------- | ------- | ---------------- |
-| [#639](url) | Fix failing pytests  | @nicsuzor  | pending | clear   | re-trigger CI    |
-| [#630](url) | Fix crontab paths    | @nicsuzor  | failing | clear   | fix type check   |
-| [#640](url) | Add extraction skill | @botnicbot | skipped | pending | review + approve |
+### academicOps (7 open)
 
-_N open PRs — M need action_
+| PR | Title | Author | Size | Age | CI | Mergeable | Action |
+| -- | ----- | ------ | ---- | --- | -- | --------- | ------ |
+| [#631](url) | Agent launch controls in TUI | @botnicbot | +144/-4 (2f) | 0d | passing | conflict | fix conflicts then merge |
+| [#630](url) | Fix crontab broken paths | @nicsuzor | +149/-34 (6f) | 0d | type check failing | conflict | fix type check + conflicts |
+| [#640](url) | Add extraction skill | @botnicbot | +1048/-17 (6f) | 0d | skipped | unknown | review — large new skill |
+
+### buttermilk (10 open)
+
+| PR | Title | Author | Size | Age | CI | Mergeable | Action |
+| -- | ----- | ------ | ---- | --- | -- | --------- | ------ |
+| [#304](url) | Unify processor classes | @nicsuzor | +471/-424 (22f) | 74d | failing | conflict | close or rebase — very stale |
+
+_N open PRs across M repos — X ready to merge, Y need fixes, Z need review_
 ```
 
-**Decision-oriented**: The "Action needed" column is the key output. Classify each:
+**Decision-oriented**: The "Action" column is the key output. Classify each:
 
-- **approve** — CI green, reviews clear, ready to merge
-- **review + approve** — needs human review before merge
-- **fix [issue]** — specific problem blocking merge
-- **re-trigger CI** — checks didn't run or are stale
-- **close** — draft/stale/superseded, suggest closing
-- **waiting** — blocked on external dependency, nothing to do now
+- **merge** — CI green, reviews clear, no conflicts, ready to merge now
+- **approve + merge** — CI green, no conflicts, needs human approval then merge
+- **review** — needs substantive human review (add brief reason: "large new skill", "architectural change")
+- **fix [specific issue]** — name the blocker (e.g., "fix type check", "fix conflicts", "fix lint")
+- **trigger CI** — checks didn't run or are stale
+- **close or rebase** — stale (>30 days) AND conflicting or superseded by newer work. Age alone is not enough to recommend closing; check if the work is still relevant
+- **draft — [context]** — draft PR; describe what it's waiting for. Check the branch name and body for clues (e.g., "sub-PR of #630", "WIP: needs tests"). Never recommend closing a draft just because it's a draft — drafts represent in-progress work
+- **waiting** — blocked on external dependency
 
-**Empty state**: If no open PRs: "No open PRs."
+**PR relationships**: Before classifying, check for relationships between PRs:
 
-**Error handling**: If `gh` CLI is unavailable, use GitHub API via curl as fallback. If both fail, skip and note "GitHub unavailable — skipped open PR review."
+- Branch names like `copilot/sub-pr-630` or `fix/pr576-followup` indicate a PR is related to another. Note the relationship in the Action column (e.g., "draft — sub-PR of #630, addresses review feedback")
+- Multiple PRs touching the same area may be a sequence — note which should merge first
+- If a repo has systemic CI failures across many PRs, identify the root cause PR (often a CI/config fix) and recommend merging it first to unblock the rest
+
+**Headline summary**: After the tables, add a brief narrative:
+
+```markdown
+### Summary
+
+- **N open PRs** across M repos — **X ready to merge, Y need fixes**
+- [repo] has N PRs with passing CI ready to merge right now
+- [repo] has systemic CI failures — likely shared issue (describe)
+- [repo] has a N-day-old stale PR — candidate for close
+```
+
+**Presentation**: Group PRs by theme/story, not just by repo. When multiple PRs form a coherent body of work (e.g., "TUI overhaul: 7 PRs ready to merge"), present them as a group with a narrative description of what they collectively achieve. Individual PR numbers are meaningless to the human — what matters is what's happening and what decisions are needed.
+
+**Empty state**: If no open PRs across all repos: "No open PRs."
+
+**Error handling**: If `gh` CLI is unavailable for a repo, note it inline and continue. If all repos fail, skip and note "GitHub unavailable — skipped open PR review."
+
+### Step 4.2.7: PR Action Pipeline
+
+After classifying PRs, recommend specific agent actions for each. The available GitHub agents are:
+
+| Agent | Workflow | Trigger | Purpose |
+| -- | -- | -- | -- |
+| **Custodiet** | `agent-custodiet.yml` | `workflow_dispatch` with `target_type`, `target_number`, `ref` | Scope compliance review. APPROVE or REQUEST CHANGES |
+| **Merge Prep** | `agent-merge-prep.yml` | `workflow_dispatch` with `pr_number`, `ref` | Reads ALL review feedback, pushes fixes, sets Merge Prep status |
+| **`@claude`** | `claude.yml` | Comment `@claude <instruction>` on PR | Ad-hoc fixes. General-purpose |
+| **Copilot Worker** | Copilot Coding Agent | `@copilot` comment or issue assignment | Autonomous task execution following `.github/agents/worker.agent.md` |
+| **Hydrator** | `agent-hydrator.yml` | `workflow_dispatch` | Workflow alignment review |
+| **QA** | `agent-qa.yml` | `workflow_dispatch` | End-to-end verification |
+
+**Typical pipeline for a new PR**:
+
+1. Custodiet reviews (scope compliance) → APPROVE or REQUEST CHANGES
+2. If CHANGES_REQUESTED → trigger Merge Prep to fix feedback
+3. Merge Prep pushes fixes → CI re-runs → sets "Merge Prep" status
+4. PR auto-merges when all checks pass
+
+**When recommending actions**, use the agent names:
+
+```markdown
+### Recommended Actions
+
+- **aops #640, #637, #631**: trigger merge-prep — custodiet requested changes, merge-prep will fix
+- **aops #636**: approved by custodiet — ready for human review
+- **mem #21-29**: approve + merge — CI green, all passing
+```
+
+**Merge infrastructure awareness**: Different repos have different merge mechanics. When merge operations fail, note the blocker (merge queue, auto-merge disabled, token permissions) rather than retrying. Common blockers:
+
+- **Merge queue enabled but auto-merge disabled** → human must enable in repo Settings > General
+- **Squash-only policy** → use `--squash` not `--merge`
+- **Branch protection / rulesets** → may block even `--admin` if rulesets are non-bypassable
+- **Token scope** → `gh` token may lack admin permissions for repo settings
 
 ### Step 4.3: Verify Descriptions
 

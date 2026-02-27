@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Generate styled DOT graph from fast-indexer JSON output.
+"""Generate styled DOT graph from `aops graph` JSON output.
 
-Reads JSON from fast-indexer and applies color coding based on
+Reads JSON from `aops graph` and applies color coding based on
 status, priority, and type. Generates SVG using Graphviz sfdp.
 
 By default, generates two SVG variants:
@@ -12,7 +12,7 @@ Usage:
     python task_graph.py INPUT.json [-o OUTPUT] [--single]
 
 Examples:
-    fast-indexer ./data -o graph -f json -t task,project,goal
+    aops graph -o graph -f json
     python task_graph.py graph.json -o task-map          # Generates 2 SVGs
     python task_graph.py graph.json -o task-map --single  # Single output only
 """
@@ -935,10 +935,8 @@ def generate_attention_dot(
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Generate styled task graph from fast-indexer JSON"
-    )
-    parser.add_argument("input", help="Input JSON file from fast-indexer")
+    parser = argparse.ArgumentParser(description="Generate styled task graph from aops graph JSON")
+    parser.add_argument("input", help="Input JSON file from aops graph")
     parser.add_argument("-o", "--output", default="tasks", help="Output base name")
     parser.add_argument("--include-orphans", action="store_true", help="Include unconnected nodes")
     parser.add_argument(

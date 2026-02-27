@@ -196,7 +196,34 @@ class TaskStorage:
 
         Returns:
             New Task instance (not yet saved)
+
+        Raises:
+            ValueError: If a non-root task type is missing a parent
         """
+        # Root-level types that do not require a parent
+        ROOT_TYPES = (TaskType.GOAL, TaskType.PROJECT, TaskType.LEARN)
+
+        if not parent and type not in ROOT_TYPES:
+            error_msg = (
+                f"Tasks of type '{type.value}' require a parent. "
+                "Suggest candidates based on project field, or pass parent=<id>."
+            )
+            if project:
+                # Suggest candidate parents in the same project
+                # We look for GOAL, PROJECT, or EPIC types as likely parents
+                candidates = self.list_tasks(project=project)
+                candidate_list = [
+                    f"{t.id} ({t.title})"
+                    for t in candidates
+                    if t.type in (TaskType.GOAL, TaskType.PROJECT, TaskType.EPIC)
+                ]
+                if candidate_list:
+                    error_msg += f"\n\nCandidate parents in project '{project}':\n- " + "\n- ".join(
+                        candidate_list[:5]
+                    )
+
+            raise ValueError(error_msg)
+
         task_id = Task.generate_id(title, project=project)
 
         # Compute depth from parent

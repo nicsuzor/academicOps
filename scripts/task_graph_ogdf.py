@@ -319,7 +319,7 @@ def render_svg(GA, output_path: str, structural_nodes: set[int]):
 
 def main():
     parser = argparse.ArgumentParser(description="Generate styled task graph using OGDF")
-    parser.add_argument("input", help="Input JSON file from fast-indexer")
+    parser.add_argument("input", help="Input JSON file from aops graph")
     parser.add_argument("-o", "--output", default="tasks", help="Output base name")
     parser.add_argument("--include-orphans", action="store_true")
     parser.add_argument(

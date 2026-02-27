@@ -1,7 +1,7 @@
 """D3 force-directed graph for the overwhelm dashboard.
 
-Renders a rich manhattan-routed force graph using graph.json data from the
-fast-indexer. Features weight-based visual dominance, shaped nodes per type,
+Renders a rich manhattan-routed force graph using graph.json data from
+`aops graph`. Features weight-based visual dominance, shaped nodes per type,
 differentiated edges (S-curves for parent, manhattan routing for deps,
 dashed for refs), legend, detail panel, and hover highlighting.
 """
