@@ -6,17 +6,17 @@
   <script src="./d3.v7.min.js"></script>
   <style>
     body {
-      margin: 0; padding: 0; 
+      margin: 0; padding: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       overflow: hidden;
       background: transparent;
     }
     #graph { width: 100vw; height: 100vh; }
-    
+
     /* Elegant Colors for Typography */
     .node-text { font-family: -apple-system, sans-serif; pointer-events: none; }
     .node-badge { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; pointer-events: none; }
-    
+
     /* Control Panel */
     #controls-panel {
       position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 10;
@@ -27,7 +27,7 @@
       background: transparent; color: #f8fafc; border: 1px solid rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; cursor: pointer; outline: none;
     }
     #project-filter option { background: #0f172a; color: #f8fafc; }
-    
+
     /* Detail Popover */
     #detail {
       position: absolute; top: 8px; right: 8px; z-index: 10;
@@ -56,7 +56,7 @@
       100% { stroke-width: 2px; stroke-opacity: 0.8; }
     }
     .danger-pulse { animation: danger-pulse 1.5s infinite ease-in-out; }
-    
+
     /* Legend toggle */
     #legend-toggle {
         position: absolute; bottom: 8px; right: 8px; z-index: 10;
@@ -66,15 +66,15 @@
   </style>
 </head>
 <body>
-  
+
   <div id="controls-panel">
     <select id="project-filter">
       <option value="ALL">All Projects</option>
     </select>
   </div>
-  
+
   <div id="graph" style="position:relative;"></div>
-  
+
   <button id="legend-toggle" onclick="toggleDetail()">Hide Details</button>
 
   <div id="detail">
@@ -90,27 +90,25 @@
 
   <script>
     let graphData = null;
-    let sim = null;
     let W = window.innerWidth;
     let H = window.innerHeight;
     let currentFocusProject = "ALL";
     let activeNodeId = null;
     let hasRendered = false;
-    
+
     // Status colors
     const sbc = {
-      active: "background:#dbeafe;color:#1e40af", 
+      active: "background:#dbeafe;color:#1e40af",
       done: "background:#dcfce7;color:#166534",
       completed: "background:#dcfce7;color:#166534",
-      blocked: "background:#fee2e2;color:#991b1b", 
+      blocked: "background:#fee2e2;color:#991b1b",
       waiting: "background:#fef9c3;color:#854d0e",
-      review: "background:#f3e8ff;color:#6b21a8", 
+      review: "background:#f3e8ff;color:#6b21a8",
       inbox: "background:#f1f5f9;color:#475569"
     };
 
     function triggerAction(actionName) {
         if (!activeNodeId) return;
-        // Send data back to Python!
         Streamlit.setComponentValue({
             action: actionName,
             id: activeNodeId
@@ -156,30 +154,23 @@
         }
 
         if (!args.data || !args.data.nodes || args.data.nodes.length === 0) {
-            return; // No data yet
+            return;
         }
 
         if (hasRendered) {
-            // Already rendered graph, potentially update forces if needed
-            if (sim && args.force) {
-                sim.force("charge").strength(args.force.charge || -400);
-                sim.force("link").distance(args.force.linkDistance || 30);
-                sim.alpha(0.3).restart();
-            }
-            return; // Don't rebuild entirely
+            return; // Tree layout is static
         }
-        
+
         hasRendered = true;
         graphData = args.data;
         const nodes = graphData.nodes;
         const links = graphData.links;
-        const forceSettings = args.force || { charge: -400, linkDistance: 30, projectForce: 0.06 };
-        
+
         W = document.body.clientWidth || window.innerWidth;
         H = args.height || window.innerHeight;
-        
+
         d3.select("#graph").selectAll("*").remove();
-        
+
         const svg = d3.select("#graph").append("svg").attr("viewBox", [0, 0, W, H]);
         const defs = svg.append("defs");
 
@@ -194,7 +185,7 @@
         const zoom = d3.zoom().scaleExtent([0.05, 8]).on("zoom", e => container.attr("transform", e.transform));
         svg.call(zoom);
 
-        // Project filtering logic
+        // Project filtering dropdown
         const projects = Array.from(new Set(nodes.map(n => n.project).filter(Boolean))).sort();
         const pf = document.getElementById("project-filter");
         pf.innerHTML = '<option value="ALL">All Projects</option>';
@@ -204,7 +195,25 @@
             pf.appendChild(opt);
         });
 
-        // Adjacency for hover
+        // === Build tree structure for hierarchical layout ===
+        const nodeById = new Map();
+        nodes.forEach(n => nodeById.set(n.id, n));
+
+        const childMap = new Map();
+        nodes.forEach(n => {
+          if (n.parent && nodeById.has(n.parent)) {
+            if (!childMap.has(n.parent)) childMap.set(n.parent, []);
+            childMap.get(n.parent).push(n);
+          }
+        });
+
+        // Resolve link source/target strings to node objects
+        links.forEach(l => {
+          if (typeof l.source === "string") l.source = nodeById.get(l.source) || l.source;
+          if (typeof l.target === "string") l.target = nodeById.get(l.target) || l.target;
+        });
+
+        // Adjacency for interaction
         const adj = new Map();
         nodes.forEach(n => adj.set(n.id, new Set()));
         links.forEach(l => {
@@ -213,6 +222,31 @@
           if (adj.has(s)) adj.get(s).add(t);
           if (adj.has(t)) adj.get(t).add(s);
         });
+
+        // Walk subtree: ancestors + descendants + direct deps
+        function getSubtreeIds(nodeId) {
+          const ids = new Set();
+          // Walk up to root
+          let cur = nodeId;
+          while (cur && nodeById.has(cur)) {
+            ids.add(cur);
+            const nd = nodeById.get(cur);
+            cur = (nd.parent && nodeById.has(nd.parent)) ? nd.parent : null;
+          }
+          // Walk down to all descendants
+          function walkDown(id) {
+            ids.add(id);
+            (childMap.get(id) || []).forEach(c => walkDown(c.id));
+          }
+          walkDown(nodeId);
+          // Include direct dependency neighbors
+          links.forEach(l => {
+            const s = typeof l.source === "object" ? l.source.id : l.source;
+            const t = typeof l.target === "object" ? l.target.id : l.target;
+            if (s === nodeId || t === nodeId) { ids.add(s); ids.add(t); }
+          });
+          return ids;
+        }
 
         // Edges
         const linkG = container.append("g");
@@ -226,10 +260,8 @@
         // Nodes
         const nodeG = container.append("g");
         nodes.forEach(d => {
-            // Enhanced visual aesthetics for "info absorption"
-            // Increase base size slightly
             d.w = d.w * 1.15;
-            d.h = d.h * 1.15; 
+            d.h = d.h * 1.15;
             d.fontSize = d.fontSize * 1.1;
 
             let op = 1.0;
@@ -237,6 +269,15 @@
             else if (d.structural) op = 0.3;
             d.baseOpacity = Math.min(op, d.opacity || 1.0);
         });
+
+        // Drag handlers (direct positioning, no force simulation)
+        function ds(e, d) { }
+        function dr(e, d) {
+          d.x = e.x; d.y = e.y;
+          d3.select(this).attr("transform", `translate(${d.x},${d.y})`);
+          linkEls.attr("d", edgePath);
+        }
+        function de(e, d) { }
 
         const nodeEls = nodeG.selectAll("g").data(nodes).join("g")
           .attr("class", "node-g")
@@ -251,7 +292,7 @@
         nodeEls.each(function(d) {
           const g = d3.select(this);
           const hw = d.w/2, hh = d.h/2;
-          
+
           if (d.shape === "pill") {
             g.append("rect").attr("x",-hw).attr("y",-hh).attr("width",d.w).attr("height",d.h)
               .attr("rx",hh).attr("ry",hh)
@@ -314,51 +355,51 @@
               .attr("rx",7).attr("fill",d.borderColor).attr("opacity",0.15);
             g.append("text").attr("class","node-badge").attr("x",0).attr("y",hh+14.5)
               .attr("text-anchor","middle").attr("font-size","8px").attr("font-weight","600")
-              .attr("fill",d.borderColor).text("\\u2696 "+t);
+              .attr("fill",d.borderColor).text("\u2696 "+t);
           }
         });
 
-        // Force simulation
-        const maxDepth = nodes.reduce((m, n) => Math.max(m, n.maxDepth), 0);
-        const projCols = projects.length || 1;
-        const projCenters = {};
-        projects.forEach((p, i) => { projCenters[p] = { x: (W / (projCols + 1)) * (i + 1) }; });
+        // === HIERARCHICAL LAYOUT using d3.tree() ===
+        // Find roots: nodes with no parent or whose parent is not in the graph
+        const roots = nodes.filter(n => !n.parent || !nodeById.has(n.parent));
+        // Sort roots by project for visual clustering
+        roots.sort((a, b) => (a.project || '').localeCompare(b.project || ''));
 
-        sim = d3.forceSimulation(nodes)
-          .force("link", d3.forceLink(links).id(d=>d.id).distance(d=> forceSettings.linkDistance || d.distance).strength(d=>d.strength).iterations(3))
-          .force("charge", d3.forceManyBody().strength(d=> forceSettings.charge || d.charge).distanceMax(900).theta(0.8))
-          .force("y", d3.forceY().y(d => {
-            if (maxDepth===0) return H/2;
-            return H*0.08 + (d.depth+1)*(H*0.8/(maxDepth+2));
-          }).strength(0.35))
-          .force("x", d3.forceX().x(d => {
-              if (d.project && projCenters[d.project]) return projCenters[d.project].x;
-              return W/2;
-          }).strength(forceSettings.projectForce || 0.06))
-          .force("collide", d3.forceCollide().radius(d => Math.sqrt(d.w*d.w + d.h*d.h)/2 + 12).strength(0.7).iterations(1))
-          .alphaDecay(0.028).velocityDecay(0.4);
+        function buildHierarchy(nd) {
+          const ch = (childMap.get(nd.id) || [])
+            .sort((a, b) => (a.project || '').localeCompare(b.project || '') || (a.label || '').localeCompare(b.label || ''));
+          const mapped = ch.map(c => buildHierarchy(c));
+          return { id: nd.id, _n: nd, children: mapped.length ? mapped : undefined };
+        }
 
-        window.updateVisibility = function() {
-            d3.selectAll(".node-g").transition().duration(300).attr("opacity", d => {
-                if (currentFocusProject !== "ALL" && d.project !== currentFocusProject) return 0.05;
-                return d.baseOpacity;
-            });
-            d3.selectAll(".edge-path").transition().duration(300).attr("opacity", l => {
-                if (currentFocusProject !== "ALL") {
-                    const sProj = (l.source.project || "none");
-                    const tProj = (l.target.project || "none");
-                    if (sProj !== currentFocusProject && tProj !== currentFocusProject) return 0.01;
-                    if (sProj !== currentFocusProject || tProj !== currentFocusProject) return 0.05;
-                    return l.type === "ref" ? 0.5 : 0.8;
-                }
-                return l.type === "ref" ? 0.5 : 0.8;
-            });
-        };
-        pf.addEventListener("change", (e) => {
-            currentFocusProject = e.target.value;
-            updateVisibility();
+        // Virtual root containing all trees
+        const vRoot = { id: '__vroot__', _n: null, children: roots.map(r => buildHierarchy(r)) };
+        const hier = d3.hierarchy(vRoot);
+
+        // Compute max node width for spacing
+        const maxNodeW = Math.max(80, ...nodes.map(n => n.w));
+        const hSpacing = maxNodeW + 15;
+        const vSpacing = 120;
+
+        d3.tree()
+          .nodeSize([hSpacing, vSpacing])
+          .separation((a, b) => {
+            if (a.parent === b.parent) return 1;
+            // Tighter for same-project subtrees
+            const ap = a.data._n ? a.data._n.project : null;
+            const bp = b.data._n ? b.data._n.project : null;
+            return (ap && bp && ap === bp) ? 1.2 : 1.8;
+          })(hier);
+
+        // Apply tree positions to nodes
+        hier.descendants().forEach(d => {
+          if (d.data._n) {
+            d.data._n.x = d.x;
+            d.data._n.y = d.y + 80;
+          }
         });
 
+        // Edge path functions
         function ri(cx,cy,w,h,px,py) {
           const dx=px-cx, dy=py-cy;
           if (dx===0 && dy===0) return [cx,cy];
@@ -384,6 +425,7 @@
 
         function edgePath(d) {
           const s=d.source, t=d.target;
+          if (typeof s === "string" || typeof t === "string") return ""; // unresolved
           if (d.type === "parent") {
             const [bx,by] = ri(s.x,s.y,s.w,s.h,t.x,t.y);
             const [ex,ey] = ri(t.x,t.y,t.w,t.h,s.x,s.y);
@@ -393,35 +435,58 @@
           return manhattan(s.x,s.y,s.w,s.h,t.x,t.y,t.w,t.h);
         }
 
-        // Pre-calculate layout off-screen, then render once
-        sim.tick(200);
+        // Render positions
         nodeEls.attr("transform", d => `translate(${d.x},${d.y})`);
         linkEls.attr("d", edgePath);
-        sim.stop(); // Stop after initial layout - only restart on drag
 
-        sim.on("tick", () => { linkEls.attr("d", edgePath); nodeEls.attr("transform", d => `translate(${d.x},${d.y})`); });
-
+        // Zoom to fit
         const b = container.node().getBBox();
         if (b.width > 0) {
           const sc = Math.min(W/(b.width+60), H/(b.height+60), 1.5) * 0.85;
           svg.call(zoom.transform, d3.zoomIdentity.translate(W/2,H/2).scale(sc).translate(-b.x-b.width/2,-b.y-b.height/2));
         }
 
-        function ds(e,d) { if(!e.active) sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; }
-        function dr(e,d) { d.fx=e.x; d.fy=e.y; }
-        function de(e,d) { if(!e.active) { sim.alphaTarget(0); setTimeout(() => sim.stop(), 2000); } }
-        
+        // === INTERACTION: click to focus subtree, no hover effects ===
+        window.updateVisibility = function() {
+          const focusIds = activeNodeId ? getSubtreeIds(activeNodeId) : null;
+
+          nodeEls.transition().duration(200).attr("opacity", d => {
+            if (currentFocusProject !== "ALL" && d.project !== currentFocusProject) return 0.05;
+            if (focusIds && !focusIds.has(d.id)) return 0.08;
+            return d.baseOpacity;
+          });
+
+          linkEls.transition().duration(200).attr("opacity", l => {
+            const sid = typeof l.source === "object" ? l.source.id : l.source;
+            const tid = typeof l.target === "object" ? l.target.id : l.target;
+            if (currentFocusProject !== "ALL") {
+              const sp = (typeof l.source === "object" ? l.source.project : null) || "none";
+              const tp = (typeof l.target === "object" ? l.target.project : null) || "none";
+              if (sp !== currentFocusProject && tp !== currentFocusProject) return 0.01;
+              if (sp !== currentFocusProject || tp !== currentFocusProject) return 0.05;
+            }
+            if (focusIds && !focusIds.has(sid) && !focusIds.has(tid)) return 0.03;
+            return l.type === "ref" ? 0.5 : 0.8;
+          });
+        };
+
+        pf.addEventListener("change", (e) => {
+            currentFocusProject = e.target.value;
+            updateVisibility();
+        });
+
+        // Click node: show detail + focus subtree
         nodeEls.on("click",(e,d)=>{
-            e.stopPropagation(); 
+            e.stopPropagation();
             activeNodeId = d.id;
-            
+
             document.getElementById("dt").textContent = d.label;
             const bs = sbc[d.status]||"background:#f1f5f9;color:#475569";
             let h = `<div class="f"><span class="fl">Status</span> <span class="sb" style="${bs}">${d.status}</span></div>`;
             const fs = [
               d.badge?["Type",d.badge]:null, ["Priority","P"+d.priority],
               d.project?["Project",d.project]:null,
-              d.dw>0?["Impact","\\u2696 "+d.dw.toFixed(1)]:null,
+              d.dw>0?["Impact","\u2696 "+d.dw.toFixed(1)]:null,
               d.stakeholder?["Stakeholder","Yes"]:null,
               d.assignee?["Assignee",d.assignee]:null, ["ID",d.id],
             ].filter(Boolean);
@@ -429,28 +494,21 @@
             document.getElementById("df").innerHTML = h;
             document.getElementById("detail").style.display = "block";
 
-            // If done/completed, hide complete button
             const cBtn = document.getElementById("btn-complete");
             if (["done", "completed", "cancelled"].includes(d.status)) {
                 cBtn.style.display = "none";
             } else {
                 cBtn.style.display = "flex";
             }
+
+            updateVisibility();
         });
 
-        nodeEls.on("mouseenter",(e,d)=>{
-          const c = adj.get(d.id) || new Set();
-          nodeEls.transition().duration(120).attr("opacity", n => {
-              if (n.id===d.id||c.has(n.id)) return 1.0;
-              if (currentFocusProject !== "ALL" && n.project !== currentFocusProject) return 0.05;
-              return 0.1;
-          });
-          linkEls.transition().duration(120).attr("opacity", l => (l.source.id===d.id||l.target.id===d.id) ? 0.85 : 0.03);
-        }).on("mouseleave",()=> { updateVisibility(); });
-        
+        // Click background: clear focus
         svg.on("click",()=> {
             document.getElementById("detail").style.display="none";
             activeNodeId = null;
+            updateVisibility();
         });
     }
 
