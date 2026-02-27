@@ -99,6 +99,46 @@ Original body content.
         assert "New Task" in returned_path.read_text()
 
 
+class TestCreateTaskParentValidation:
+    """Test that create_task enforces parent requirement for non-root task types."""
+
+    def test_task_type_without_parent_raises_value_error(self, tmp_path: Path) -> None:
+        """create_task(type=TaskType.TASK) without parent must raise ValueError."""
+        storage = TaskStorage(data_root=tmp_path)
+
+        import pytest
+
+        with pytest.raises(ValueError, match="require a parent"):
+            storage.create_task(title="Orphan Task", type=TaskType.TASK, project=None)
+
+    def test_goal_type_without_parent_succeeds(self, tmp_path: Path) -> None:
+        """create_task(type=TaskType.GOAL) without parent must not raise."""
+        storage = TaskStorage(data_root=tmp_path)
+
+        task = storage.create_task(title="My Goal", type=TaskType.GOAL, project=None)
+        assert task.title == "My Goal"
+
+    def test_error_message_suggests_candidates_when_project_set(self, tmp_path: Path) -> None:
+        """When project is provided, error message should list candidate parents."""
+        project_tasks = tmp_path / "myproject" / "tasks"
+        project_tasks.mkdir(parents=True)
+        storage = TaskStorage(data_root=tmp_path)
+
+        # Create a GOAL task in the project so it shows up as a candidate
+        goal = storage.create_task(title="Parent Goal", type=TaskType.GOAL, project="myproject")
+        storage.save_task(goal)
+
+        import pytest
+
+        with pytest.raises(ValueError) as exc_info:
+            storage.create_task(title="Child Task", type=TaskType.TASK, project="myproject")
+
+        error_text = str(exc_info.value)
+        assert "require a parent" in error_text
+        assert "myproject" in error_text
+        assert "Parent Goal" in error_text
+
+
 class TestAtomicWriteVerification:
     """Test that _atomic_write verifies the write succeeded."""
 
