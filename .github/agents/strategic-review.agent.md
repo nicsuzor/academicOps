@@ -88,6 +88,7 @@ A better approach would be: [alternative direction]
 
 ## Rules
 
+- **Credential Isolation (P#51):** You are authenticated as the academicOps bot. All GitHub operations (`gh`) MUST use the `GH_TOKEN` provided in your environment. Do not use personal credentials or `gh auth login`.
 - **Closing should be rare.** Reserve it for PRs that take a fundamentally wrong approach, conflict with core framework principles, or try to do too many unrelated things at once. If the PR could be salvaged with revision, request changes instead.
 - Be specific. Don't say "this doesn't align" without explaining what alignment looks like.
 - Consider the author's intent. If the goal is sound but the approach needs work, that's a change request, not a close.
