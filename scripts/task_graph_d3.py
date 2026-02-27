@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate interactive D3-force task graph from fast-indexer JSON output.
+"""Generate interactive D3-force task graph from `aops graph` JSON output.
 
 Uses d3-force with hierarchical edge weighting for layout, S-curves for
 parent edges, and Manhattan routing for dependencies/links. Produces a
@@ -9,7 +9,7 @@ Usage:
     python task_graph_d3.py INPUT.json [-o OUTPUT.html] [--filter reachable]
 
 Examples:
-    fast-indexer ./data -o graph -f json -t task,project,goal,epic
+    aops graph -o graph -f json
     python task_graph_d3.py graph.json -o task-map.html
     python task_graph_d3.py graph.json --filter reachable --ego my-project --depth 3
 """
@@ -791,9 +791,9 @@ document.getElementById("stats").textContent =
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Generate interactive D3-force task graph from fast-indexer JSON"
+        description="Generate interactive D3-force task graph from aops graph JSON"
     )
-    parser.add_argument("input", help="Input JSON file from fast-indexer")
+    parser.add_argument("input", help="Input JSON file from aops graph")
     parser.add_argument("-o", "--output", default="task-map.html", help="Output HTML file")
     parser.add_argument(
         "--filter",

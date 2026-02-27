@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Generate styled DOT graph from fast-indexer JSON output.
+"""Generate styled DOT graph from `aops graph` JSON output.
 
-Reads JSON from fast-indexer and applies color coding based on
+Reads JSON from `aops graph` and applies color coding based on
 status, priority, and type. Generates SVG using Graphviz sfdp.
 
 By default, generates two SVG variants:
@@ -12,7 +12,7 @@ Usage:
     python task_graph.py INPUT.json [-o OUTPUT] [--single]
 
 Examples:
-    fast-indexer ./data -o graph -f json -t task,project,goal
+    aops graph -o graph -f json
     python task_graph.py graph.json -o task-map          # Generates 2 SVGs
     python task_graph.py graph.json -o task-map --single  # Single output only
 """
@@ -298,7 +298,7 @@ def filter_reachable(nodes: list[dict], edges: list[dict]) -> tuple[list[dict], 
     # "up" through parent, depends_on, and soft_depends_on edges?
     # We now use the edges list which contains resolved IDs from the indexer.
     upstream_of: dict[str, set[str]] = {n["id"]: set() for n in nodes}
-    
+
     # 1. First, populate from node fields (for robustness)
     for node in nodes:
         nid = node["id"]
@@ -307,10 +307,10 @@ def filter_reachable(nodes: list[dict], edges: list[dict]) -> tuple[list[dict], 
         if parent_id and parent_id in node_by_id:
             upstream_of[nid].add(parent_id)
         # Depends_on fields
-        for dep_id in (node.get("depends_on") or []):
+        for dep_id in node.get("depends_on") or []:
             if dep_id in node_by_id:
                 upstream_of[nid].add(dep_id)
-        for dep_id in (node.get("soft_depends_on") or []):
+        for dep_id in node.get("soft_depends_on") or []:
             if dep_id in node_by_id:
                 upstream_of[nid].add(dep_id)
 
@@ -321,7 +321,7 @@ def filter_reachable(nodes: list[dict], edges: list[dict]) -> tuple[list[dict], 
         src, tgt = e["source"], e["target"]
         if src not in node_by_id or tgt not in node_by_id:
             continue
-        
+
         # Only certain edge types count as "upstream" structural paths.
         # 'parent' direction is child -> parent (tgt is upstream)
         # 'depends_on' direction is task -> blocker (tgt is upstream)
@@ -935,10 +935,8 @@ def generate_attention_dot(
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Generate styled task graph from fast-indexer JSON"
-    )
-    parser.add_argument("input", help="Input JSON file from fast-indexer")
+    parser = argparse.ArgumentParser(description="Generate styled task graph from aops graph JSON")
+    parser.add_argument("input", help="Input JSON file from aops graph")
     parser.add_argument("-o", "--output", default="tasks", help="Output base name")
     parser.add_argument("--include-orphans", action="store_true", help="Include unconnected nodes")
     parser.add_argument(

@@ -182,8 +182,6 @@
         
         const svg = d3.select("#graph").append("svg").attr("viewBox", [0, 0, W, H]);
         const defs = svg.append("defs");
-        const filt = defs.append("filter").attr("id", "sh").attr("x", "-20%").attr("y", "-20%").attr("width", "140%").attr("height", "140%");
-        filt.append("feDropShadow").attr("dx", 0).attr("dy", 1).attr("stdDeviation", 2).attr("flood-color", "rgba(0,0,0,0.15)");
 
         [["ap","#3b82f6"],["ad","#ef4444"],["ar","#94a3b8"]].forEach(([id,c]) => {
           defs.append("marker").attr("id",id).attr("viewBox","0 -4 8 8")
@@ -258,21 +256,21 @@
             g.append("rect").attr("x",-hw).attr("y",-hh).attr("width",d.w).attr("height",d.h)
               .attr("rx",hh).attr("ry",hh)
               .attr("fill",d.fill).attr("stroke",d.borderColor).attr("stroke-width",d.borderWidth)
-              .attr("stroke-dasharray",d.structural?"4,3":null).attr("filter","url(#sh)");
+              .attr("stroke-dasharray",d.structural?"4,3":null);
           } else if (d.shape === "hexagon") {
             g.append("polygon").attr("points", hexPoints(d.w, d.h))
               .attr("fill",d.fill).attr("stroke",d.borderColor).attr("stroke-width",d.borderWidth)
-              .attr("stroke-dasharray",d.structural?"4,3":null).attr("filter","url(#sh)");
+              .attr("stroke-dasharray",d.structural?"4,3":null);
           } else if (d.shape === "rounded") {
             g.append("rect").attr("x",-hw).attr("y",-hh).attr("width",d.w).attr("height",d.h)
               .attr("rx",10).attr("ry",10)
               .attr("fill",d.fill).attr("stroke",d.borderColor).attr("stroke-width",d.borderWidth)
-              .attr("stroke-dasharray",d.structural?"4,3":null).attr("filter","url(#sh)");
+              .attr("stroke-dasharray",d.structural?"4,3":null);
           } else {
             g.append("rect").attr("x",-hw).attr("y",-hh).attr("width",d.w).attr("height",d.h)
               .attr("rx",4).attr("ry",4)
               .attr("fill",d.fill).attr("stroke",d.borderColor).attr("stroke-width",d.borderWidth)
-              .attr("stroke-dasharray",d.structural?"4,3":null).attr("filter","url(#sh)");
+              .attr("stroke-dasharray",d.structural?"4,3":null);
           }
 
           if (d.status === "blocked" && d.dw >= 2) {
@@ -337,8 +335,8 @@
               if (d.project && projCenters[d.project]) return projCenters[d.project].x;
               return W/2;
           }).strength(forceSettings.projectForce || 0.06))
-          .force("collide", d3.forceCollide().radius(d => Math.sqrt(d.w*d.w + d.h*d.h)/2 + 12).strength(0.8).iterations(3))
-          .alphaDecay(0.016).velocityDecay(0.35);
+          .force("collide", d3.forceCollide().radius(d => Math.sqrt(d.w*d.w + d.h*d.h)/2 + 12).strength(0.7).iterations(1))
+          .alphaDecay(0.028).velocityDecay(0.4);
 
         window.updateVisibility = function() {
             d3.selectAll(".node-g").transition().duration(300).attr("opacity", d => {
@@ -395,9 +393,12 @@
           return manhattan(s.x,s.y,s.w,s.h,t.x,t.y,t.w,t.h);
         }
 
-        sim.tick(300);
+        // Pre-calculate layout off-screen, then render once
+        sim.tick(200);
         nodeEls.attr("transform", d => `translate(${d.x},${d.y})`);
         linkEls.attr("d", edgePath);
+        sim.stop(); // Stop after initial layout - only restart on drag
+
         sim.on("tick", () => { linkEls.attr("d", edgePath); nodeEls.attr("transform", d => `translate(${d.x},${d.y})`); });
 
         const b = container.node().getBBox();
@@ -408,7 +409,7 @@
 
         function ds(e,d) { if(!e.active) sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; }
         function dr(e,d) { d.fx=e.x; d.fy=e.y; }
-        function de(e,d) { if(!e.active) sim.alphaTarget(0); }
+        function de(e,d) { if(!e.active) { sim.alphaTarget(0); setTimeout(() => sim.stop(), 2000); } }
         
         nodeEls.on("click",(e,d)=>{
             e.stopPropagation(); 

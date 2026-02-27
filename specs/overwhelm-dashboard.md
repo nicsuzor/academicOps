@@ -2,7 +2,7 @@
 title: Overwhelm Dashboard
 type: spec
 status: active
-tags: [spec, dashboard, tasks, fast-indexer, adhd, sessions]
+tags: [spec, dashboard, tasks, aops-cli, adhd, sessions]
 created: 2026-01-21
 modified: 2026-02-23
 ---
@@ -13,13 +13,13 @@ modified: 2026-02-23
 
 - [[lib/overwhelm/dashboard.py]] — Streamlit dashboard (main rendering)
 - [[lib/overwhelm/task_manager_ui.py]] — Task CRUD UI components
-- [[aops-tools/fast_indexer/]] — Rust binary for fast task indexing
+- `aops` CLI (nicsuzor/mem) — Rust binary for PKB indexing and graph export
 - [[specs/task-map.md]] — Task map visualization spec (extracted)
 - [[archived/specs/dashboard-narrative.md]] — Narrative synthesis design (partially implemented)
 - [[skills/task-viz/SKILL.md]] — Task visualization skill (JSON, GraphML, DOT output)
 - [[skills/dashboard/SKILL.md]] — Cognitive Load Dashboard skill
 - [[mcp__pkb__get_network_metrics]] — Graph metrics for dashboard
-- [[mcp__pkb__reindex]] — Index rebuild using fast-indexer
+- [[mcp__pkb__reindex]] — Index rebuild using `aops` CLI
 - [[aops-core/lib/path_reconstructor.py]] — Path reconstruction logic
 - [[aops-core/lib/transcript_parser.py]] — `extract_timeline_events()` function
 - [[aops-core/lib/session_analyzer.py]] — Session analysis and TodoWrite extraction
@@ -33,7 +33,7 @@ Single system for task visibility and cognitive load management.
 ```mermaid
 graph TD
     subgraph "Indexing"
-        A[fast-indexer<br>Rust binary]
+        A[aops CLI<br>Rust binary]
         B[index.json]
     end
 
@@ -99,7 +99,7 @@ The dashboard exists because Nic's brain can't hold all this state. He needs an 
 **I want** to see what I started today, what I intended, and what got dropped,
 **So that** I can pick up the threads I care about rather than continuing to drift.
 
-**What this means**: The dashboard should show *my* path — what I asked for, in what order, across which projects. Not what agents did (that's their business). My prompts, my context switches, my dropped threads. Dropped threads are the most actionable: things I started but didn't finish. They should appear first.
+**What this means**: The dashboard should show _my_ path — what I asked for, in what order, across which projects. Not what agents did (that's their business). My prompts, my context switches, my dropped threads. Dropped threads are the most actionable: things I started but didn't finish. They should appear first.
 
 **Acceptance test**: Nic can identify at least one dropped thread from today within 10 seconds of opening the dashboard.
 
@@ -109,7 +109,7 @@ The dashboard exists because Nic's brain can't hold all this state. He needs an 
 **I want** a brief human-readable summary that tells today's story — what started, what got sidetracked, what's still hanging,
 **So that** I can orient myself in 15 seconds without reading through session logs.
 
-**What this means**: The synthesis panel. Not a list of accomplishments — a *narrative*. "Started on the dashboard improvements, got pulled into a Rust compilation issue, HDR review still waiting from yesterday." 3–5 bullets, written for a human, pre-computed by an LLM so it's ready instantly.
+**What this means**: The synthesis panel. Not a list of accomplishments — a _narrative_. "Started on the dashboard improvements, got pulled into a Rust compilation issue, HDR review still waiting from yesterday." 3–5 bullets, written for a human, pre-computed by an LLM so it's ready instantly.
 
 **Acceptance test**: Nic reads the synthesis narrative and it matches his lived experience of the day. If it's stale (>60 min), the dashboard flags it.
 
@@ -172,11 +172,11 @@ Single-page Streamlit app. Content flows top-to-bottom. Sidebar provides page na
 
 ### Sidebar
 
-| Control | Options | Purpose |
-|---------|---------|---------|
-| Page selector | Dashboard, Manage Tasks, Session Summary, Network Analysis | Navigate between views |
-| Completed time range | 4H, 24H, 7D | Filter completed tasks display |
-| Context recovery range | Configurable hours | Adjust WLO/Path time window |
+| Control                | Options                                                    | Purpose                        |
+| ---------------------- | ---------------------------------------------------------- | ------------------------------ |
+| Page selector          | Dashboard, Manage Tasks, Session Summary, Network Analysis | Navigate between views         |
+| Completed time range   | 4H, 24H, 7D                                                | Filter completed tasks display |
+| Context recovery range | Configurable hours                                         | Adjust WLO/Path time window    |
 
 ### Section Specifications
 
@@ -242,13 +242,13 @@ Collapsible expander showing user prompts from session summaries for the last 7 
 
 Grid of project cards (responsive, 350px min-width). Each card contains:
 
-| Section | Content | Data Source |
-|---------|---------|-------------|
-| **Header** | Project name, color-coded border | Project metadata |
-| **Epics** | Active epic titles + progress bars (max 3) | index.json |
+| Section       | Content                                                   | Data Source                   |
+| ------------- | --------------------------------------------------------- | ----------------------------- |
+| **Header**    | Project name, color-coded border                          | Project metadata              |
+| **Epics**     | Active epic titles + progress bars (max 3)                | index.json                    |
 | **Completed** | Recently completed tasks with time_ago (max 3 + "X more") | index.json, time range filter |
-| **Up Next** | Top 3 priority incomplete tasks with priority badges | index.json |
-| **Recently** | Recent accomplishments from daily log (max 3) | Daily notes |
+| **Up Next**   | Top 3 priority incomplete tasks with priority badges      | index.json                    |
+| **Recently**  | Recent accomplishments from daily log (max 3)             | Daily notes                   |
 
 **Sorting**: Projects sorted by activity score: +1000 per active session, +100 if has P0 task, + recency bonus.
 
@@ -282,7 +282,7 @@ Each displayed session MUST include:
 {
   "session_id": "abc123",
   "project": "academicOps",
-  "initial_prompt": "Review PR #42 for the fast-indexer changes",
+  "initial_prompt": "Review PR #42 for the aops CLI changes",
   "follow_up_prompts": [
     "Also check the test coverage",
     "Fix the linting errors you found"
@@ -301,7 +301,7 @@ Each displayed session MUST include:
 
 ```
 📍 academicOps (2h ago)
-   Started: "Review PR #42 for fast-indexer changes"
+   Started: "Review PR #42 for aops CLI changes"
    Now: Fixing 3 linting errors
    Next: Run tests, mark PR ready
 ```
@@ -320,11 +320,11 @@ A session MUST have at least initial prompt OR current task status. If neither e
 
 **Always apply** recency-based triage:
 
-| Bucket | Definition | Display |
-|--------|-----------|---------|
-| **Active Now** | Activity within 4 hours | Full session cards with conversation context |
-| **Paused** | 4-24 hours since activity | Collapsed cards, click to expand |
-| **Stale** | >24 hours since activity | Archive prompt (see below) |
+| Bucket         | Definition                | Display                                      |
+| -------------- | ------------------------- | -------------------------------------------- |
+| **Active Now** | Activity within 4 hours   | Full session cards with conversation context |
+| **Paused**     | 4-24 hours since activity | Collapsed cards, click to expand             |
+| **Stale**      | >24 hours since activity  | Archive prompt (see below)                   |
 
 Within buckets, group by project for orientation.
 
@@ -367,10 +367,10 @@ It does NOT try to: recommend ONE thing to do, hide options, force single-focus,
 
 ### Scale Considerations
 
-| Session Count | Primary Problem | Solution |
-|---------------|----------------|---------|
-| 1-10 sessions | **Memory**: "What was I doing?" | Context recovery (current design) |
-| 10+ sessions | **Prioritization**: "Which one matters?" | Session triage with buckets |
+| Session Count | Primary Problem                          | Solution                          |
+| ------------- | ---------------------------------------- | --------------------------------- |
+| 1-10 sessions | **Memory**: "What was I doing?"          | Context recovery (current design) |
+| 10+ sessions  | **Prioritization**: "Which one matters?" | Session triage with buckets       |
 
 ### Anti-Patterns
 
@@ -441,13 +441,13 @@ CRUD operations for tasks directly through the dashboard UI.
 
 ### Required Operations
 
-| Operation | UI Element | Backend |
-|-----------|-----------|---------|
-| **Create** | Quick task form in sidebar | Task MCP `create_task` |
-| **Read** | Task details on node click | Task MCP `get_task` |
-| **Update** | Inline edit on task card | Task MCP `update_task` |
-| **Delete** | Delete button with confirmation | Task MCP `delete_task` |
-| **Complete** | Checkbox/button on task card | Task MCP `complete_task` |
+| Operation    | UI Element                      | Backend                  |
+| ------------ | ------------------------------- | ------------------------ |
+| **Create**   | Quick task form in sidebar      | Task MCP `create_task`   |
+| **Read**     | Task details on node click      | Task MCP `get_task`      |
+| **Update**   | Inline edit on task card        | Task MCP `update_task`   |
+| **Delete**   | Delete button with confirmation | Task MCP `delete_task`   |
+| **Complete** | Checkbox/button on task card    | Task MCP `complete_task` |
 
 ### Inline Task Editor
 
@@ -482,7 +482,7 @@ When a task node is clicked or a task card is selected:
 
 ### Core Rendering
 
-- [x] fast-indexer generates valid index.json from task files
+- [x] `aops` CLI generates valid index.json from task files
 - [ ] Dashboard renders index.json without errors
 - [ ] Cross-machine prompts visible via R2 integration
 - [ ] Graceful degradation when data sources unavailable (synthesis.json, session states, daily notes)
@@ -543,7 +543,6 @@ See [[specs/task-map.md#Acceptance Criteria]].
 
 - [[specs/task-map.md]] — Task map visualization spec
 - [[archived/specs/dashboard-narrative.md]] — Narrative synthesis design
-- [[aops-0a7f6861]] — EPIC: fast-indexer adoption
 - [[Task MCP server]] — Primary task operations interface
 - [[task-viz]] — Network graph visualization (standalone skill)
-- [[fast-indexer]] — Rust binary for index generation
+- `aops` CLI (nicsuzor/mem) — Rust binary for index and graph generation

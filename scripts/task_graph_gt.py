@@ -725,7 +725,7 @@ def render_manhattan(g, pos, props, output_path: str):
 
 def main():
     parser = argparse.ArgumentParser(description="Generate styled task graph using graph-tool")
-    parser.add_argument("input", help="Input JSON file from fast-indexer")
+    parser.add_argument("input", help="Input JSON file from aops graph")
     parser.add_argument("-o", "--output", default="tasks", help="Output base name")
     parser.add_argument("--include-orphans", action="store_true")
     parser.add_argument(
