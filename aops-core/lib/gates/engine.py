@@ -201,10 +201,10 @@ class GenericGate:
 
         # Combine Messages (Template first, then Custom Action)
         if custom_sys_msg:
-            sys_msg = (sys_msg + "\n" + custom_sys_msg) if sys_msg else custom_sys_msg
+            sys_msg = "\n".join(filter(None, [sys_msg, custom_sys_msg]))
 
         if custom_ctx_inj:
-            ctx_inj = (ctx_inj + "\n\n" + custom_ctx_inj) if ctx_inj else custom_ctx_inj
+            ctx_inj = "\n\n".join(filter(None, [ctx_inj, custom_ctx_inj]))
 
         return GateResult.allow(system_message=sys_msg, context_injection=ctx_inj)
 
