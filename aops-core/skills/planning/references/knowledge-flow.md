@@ -76,6 +76,40 @@ Before creating any node, ask: **"What would we DO with this information?"**
 | Context for current work  | Body prose (don't create node)             |
 | Might be useful someday   | Memory (not task graph)                    |
 
+### Go Up a Level When Uncertain
+
+When you don't know WHICH solution is right, don't pick one prematurely:
+
+1. Create nodes for each alternative (marked `complexity: needs-decomposition`)
+2. Create or identify the spike that will inform the choice
+3. Link alternatives to spike via `soft_depends_on`
+4. Let the spike's findings determine which alternative to pursue
+
+```
+spike: Investigate options
+  ↑ soft_depends_on
+  ├── alternative-a (needs-decomposition)
+  ├── alternative-b (needs-decomposition)
+  └── alternative-c (needs-decomposition)
+```
+
+This captures the decision structure in the graph, not just in prose.
+
+### Parent as Project Boundary
+
+When tasks span multiple concerns, use parent to clarify scope. Cross-project relationships use soft dependencies.
+
+```
+[osb-project] Research task
+  soft_depends_on: [personal-workspace-goal]
+
+[personal-project] Workspace goal
+  └── KVM switch evaluation
+  └── Desk layout optimization
+```
+
+**Anti-pattern**: Putting personal/infrastructure tasks under unrelated project parents. The parent defines what belongs together.
+
 ### Nodes Not Prose
 
 | Don't                                     | Do                                                      |
