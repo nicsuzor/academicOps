@@ -298,7 +298,7 @@ def filter_reachable(nodes: list[dict], edges: list[dict]) -> tuple[list[dict], 
     # "up" through parent, depends_on, and soft_depends_on edges?
     # We now use the edges list which contains resolved IDs from the indexer.
     upstream_of: dict[str, set[str]] = {n["id"]: set() for n in nodes}
-    
+
     # 1. First, populate from node fields (for robustness)
     for node in nodes:
         nid = node["id"]
@@ -307,10 +307,10 @@ def filter_reachable(nodes: list[dict], edges: list[dict]) -> tuple[list[dict], 
         if parent_id and parent_id in node_by_id:
             upstream_of[nid].add(parent_id)
         # Depends_on fields
-        for dep_id in (node.get("depends_on") or []):
+        for dep_id in node.get("depends_on") or []:
             if dep_id in node_by_id:
                 upstream_of[nid].add(dep_id)
-        for dep_id in (node.get("soft_depends_on") or []):
+        for dep_id in node.get("soft_depends_on") or []:
             if dep_id in node_by_id:
                 upstream_of[nid].add(dep_id)
 
@@ -321,7 +321,7 @@ def filter_reachable(nodes: list[dict], edges: list[dict]) -> tuple[list[dict], 
         src, tgt = e["source"], e["target"]
         if src not in node_by_id or tgt not in node_by_id:
             continue
-        
+
         # Only certain edge types count as "upstream" structural paths.
         # 'parent' direction is child -> parent (tgt is upstream)
         # 'depends_on' direction is task -> blocker (tgt is upstream)
