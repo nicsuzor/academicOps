@@ -59,7 +59,7 @@ jobs:
       - name: Read agent instructions
         id: prompt
         run: |
-          PROMPT=$(cat .github/agents/gatekeeper.md)
+          PROMPT=$(cat .github/agents/gatekeeper.agent.md)
           {
             echo "prompt<<AGENT_EOF"
             echo "$PROMPT"

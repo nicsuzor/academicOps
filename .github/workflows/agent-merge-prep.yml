@@ -8,7 +8,7 @@
 #   - Set "Merge Prep" commit status to success (unblocks auto-merge)
 #   - Clean up labels (remove lgtm, merge-prep-running)
 # Authority: Can EDIT code, push commits, post comments, set commit status
-# Prompt: .github/agents/merge-prep.md
+# Prompt: .github/agents/merge-prep.agent.md
 
 name: "Agent: Merge Prep"
 
@@ -68,7 +68,7 @@ jobs:
         if: steps.loop-check.outputs.skip != 'true'
         id: prompt
         run: |
-          PROMPT=$(cat .github/agents/merge-prep.md)
+          PROMPT=$(cat .github/agents/merge-prep.agent.md)
           {
             echo "prompt<<AGENT_EOF"
             echo "$PROMPT"
