@@ -153,9 +153,48 @@ _N open PRs across M repos — X ready to merge, Y need fixes, Z need review_
 - [repo] has a N-day-old stale PR — candidate for close
 ```
 
+**Presentation**: Group PRs by theme/story, not just by repo. When multiple PRs form a coherent body of work (e.g., "TUI overhaul: 7 PRs ready to merge"), present them as a group with a narrative description of what they collectively achieve. Individual PR numbers are meaningless to the human — what matters is what's happening and what decisions are needed.
+
 **Empty state**: If no open PRs across all repos: "No open PRs."
 
 **Error handling**: If `gh` CLI is unavailable for a repo, note it inline and continue. If all repos fail, skip and note "GitHub unavailable — skipped open PR review."
+
+### Step 4.2.7: PR Action Pipeline
+
+After classifying PRs, recommend specific agent actions for each. The available GitHub agents are:
+
+| Agent | Workflow | Trigger | Purpose |
+| -- | -- | -- | -- |
+| **Custodiet** | `agent-custodiet.yml` | `workflow_dispatch` with `target_type`, `target_number`, `ref` | Scope compliance review. APPROVE or REQUEST CHANGES |
+| **Merge Prep** | `agent-merge-prep.yml` | `workflow_dispatch` with `pr_number`, `ref` | Reads ALL review feedback, pushes fixes, sets Merge Prep status |
+| **`@claude`** | `claude.yml` | Comment `@claude <instruction>` on PR | Ad-hoc fixes. General-purpose |
+| **Copilot Worker** | Copilot Coding Agent | `@copilot` comment or issue assignment | Autonomous task execution following `.github/agents/worker.agent.md` |
+| **Hydrator** | `agent-hydrator.yml` | `workflow_dispatch` | Workflow alignment review |
+| **QA** | `agent-qa.yml` | `workflow_dispatch` | End-to-end verification |
+
+**Typical pipeline for a new PR**:
+
+1. Custodiet reviews (scope compliance) → APPROVE or REQUEST CHANGES
+2. If CHANGES_REQUESTED → trigger Merge Prep to fix feedback
+3. Merge Prep pushes fixes → CI re-runs → sets "Merge Prep" status
+4. PR auto-merges when all checks pass
+
+**When recommending actions**, use the agent names:
+
+```markdown
+### Recommended Actions
+
+- **aops #640, #637, #631**: trigger merge-prep — custodiet requested changes, merge-prep will fix
+- **aops #636**: approved by custodiet — ready for human review
+- **mem #21-29**: approve + merge — CI green, all passing
+```
+
+**Merge infrastructure awareness**: Different repos have different merge mechanics. When merge operations fail, note the blocker (merge queue, auto-merge disabled, token permissions) rather than retrying. Common blockers:
+
+- **Merge queue enabled but auto-merge disabled** → human must enable in repo Settings > General
+- **Squash-only policy** → use `--squash` not `--merge`
+- **Branch protection / rulesets** → may block even `--admin` if rulesets are non-bypassable
+- **Token scope** → `gh` token may lack admin permissions for repo settings
 
 ### Step 4.3: Verify Descriptions
 
