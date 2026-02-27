@@ -3575,13 +3575,13 @@ def render_task_graph_page():
     with col_view:
         view_mode = st.radio(
             "Graph Data",
-            ["Knowledge Base (More Edges)", "Tasks Only"],
+            ["Tasks Only", "Knowledge Base (More Edges)"],
             horizontal=True,
             key="tg_view",
         )
     with col_filter:
         filter_mode = st.radio(
-            "Filter Nodes", ["All Nodes", "Active Tasks Only"], horizontal=True, key="tg_filter"
+            "Filter Nodes", ["Active Tasks Only", "All Nodes"], horizontal=True, key="tg_filter"
         )
 
     filename = "knowledge-graph.json" if "Knowledge Base" in view_mode else "graph.json"
