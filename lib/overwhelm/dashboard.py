@@ -3886,7 +3886,8 @@ COMPLETED_HOURS_MAP = {"4h": 4, "24h": 24, "7d": 168}
 completed_hours = COMPLETED_HOURS_MAP.get(completed_time_range, 24)
 
 if page == "Manage Tasks":
-    run_task_manager_ui(TaskStorage())
+    storage = TaskStorage()
+    run_task_manager_ui(storage)
     st.stop()
 
 if page == "Session Summary":
