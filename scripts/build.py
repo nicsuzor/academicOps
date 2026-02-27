@@ -235,17 +235,6 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
                             # Ensure we use the correct client flag for Gemini
                             cmd = cmd.replace("--client claude", "--client gemini")
 
-                            # Replace uv run with direct python3 invocation.
-                            # No pyproject.toml in the extension, so uv is unnecessary.
-                            # PYTHONPATH ensures lib/ imports resolve correctly.
-                            cmd = cmd.replace(
-                                "uv run --directory ${extensionPath} python",
-                                "PYTHONPATH=${extensionPath} python3",
-                            )
-                            cmd = cmd.replace(
-                                "uv run python",
-                                "PYTHONPATH=${extensionPath} python3",
-                            )
                             # Gemini CLI doesn't pass hook_event_name in stdin payload like Claude does,
                             # so we append it as a CLI argument for router.py to detect the event type
                             new_hook["command"] = f"{cmd} {gemini_event}"

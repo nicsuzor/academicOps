@@ -39,7 +39,7 @@ from lib.task_storage import TaskStorage
 # Add local directory to path for sibling imports
 sys.path.append(str(Path(__file__).parent))
 from task_graph_d3 import prepare_embedded_graph_data, render_embedded_graph
-from task_manager_ui import render_task_manager
+from task_manager_ui import run_task_manager_ui
 
 
 # index.json integration (2026-01-21)
@@ -3797,13 +3797,13 @@ def render_spotlight_epic():
 
     # Render HTML with synthesis-card pattern
     html = f"""
-    <div class="v11-progress-panel">
-        <div class="v11-progress-header">
-            <div class="v11-progress-title">🚀 {esc(epic.get("title", "Epic"))}</div>
-            <div class="v11-progress-pct">{done_pct:.0f}%</div>
+    <div class="spotlight-progress-panel" style="margin-bottom: 24px; padding: 16px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 8px;">
+        <div class="spotlight-progress-header" style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px;">
+            <div class="spotlight-progress-title" style="font-weight: 600; font-size: 1.1em; color: #60a5fa;">🚀 {esc(epic.get("title", "Epic"))}</div>
+            <div class="spotlight-progress-pct" style="font-size: 0.9em; opacity: 0.8;">{done_pct:.0f}%</div>
         </div>
-        <div class="v11-progress-bar">
-            <div class="v11-progress-fill" style="width: {done_pct}%;"></div>
+        <div class="spotlight-progress-bar" style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; margin-bottom: 16px; overflow: hidden;">
+            <div class="spotlight-progress-fill" style="width: {done_pct}%; height: 100%; background: #3b82f6; transition: width 0.3s ease;"></div>
         </div>
         <div class="synthesis-grid">
             <div class="synthesis-card done">
@@ -3832,62 +3832,75 @@ def _get_graph_node_count() -> int:
     return 0
 
 
-def render_graph_section():
-    """Render the task/knowledge graph with tabs, collapsible by default if >50 nodes."""
-    # Determine default expanded state based on node count
-    node_count = _get_graph_node_count()
-    default_expanded = True
+def render_task_graph_page():
+    """Render the task/knowledge graph on its own dedicated page."""
+    st.markdown("### 📊 Task Graph")
 
-    # Check query params for persisted state
-    query_params = st.query_params
-    if "graph" in query_params:
-        # User has explicitly set preference via toggle
-        is_expanded = query_params.get("graph") == "1"
-    else:
-        # Use default based on node count
-        is_expanded = default_expanded
-
-    # Header with toggle button
-    col_title, col_toggle = st.columns([0.85, 0.15])
-    with col_title:
-        status_text = f"({node_count} nodes)" if node_count > 0 else ""
-        st.markdown(f"### 📊 Task Graph {status_text}")
-    with col_toggle:
-        # Toggle button - when clicked, flip state and persist via query param
-        toggle_label = "▼ Hide" if is_expanded else "▶ Show"
-        if st.button(toggle_label, key="graph_toggle", use_container_width=True):
-            new_state = "0" if is_expanded else "1"
-            st.query_params["graph"] = new_state
-            st.rerun()
-
-    # Only render graph content if expanded
-    if not is_expanded:
-        st.caption('Click "Show" to expand the task graph visualization.')
-        return
+    col_view, col_filter = st.columns(2)
+    with col_view:
+        view_mode = st.radio(
+            "Graph Data",
+            ["Knowledge Base (More Edges)", "Tasks Only"],
+            horizontal=True,
+            key="tg_view",
+        )
+    with col_filter:
+        filter_mode = st.radio(
+            "Filter Nodes", ["All Nodes", "Active Tasks Only"], horizontal=True, key="tg_filter"
+        )
 
     tab_d3, tab_svg, tab_interactive = st.tabs(
         ["📊 Live Graph (D3)", "🖼️ SVG Graph", "⚛️ Force Graph"]
     )
 
+    filename = "knowledge-graph.json" if "Knowledge Base" in view_mode else "graph.json"
+
     with tab_d3:
-        d3_graph = load_graph_data("graph.json")
+        # Visual controls for the D3 physics engine
+        options_expander = st.expander("⚙️ Physics Controls", expanded=False)
+        with options_expander:
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                charge = st.slider("Repel Strength", -1000, -10, -350, 10, key="d3_charge")
+            with col2:
+                link_dist = st.slider("Link Distance", 10, 150, 25, 5, key="d3_link")
+            with col3:
+                proj_force = st.slider("Project Force", 0.0, 0.2, 0.08, 0.01, key="d3_proj")
+
+        force_settings = {"charge": charge, "linkDistance": link_dist, "projectForce": proj_force}
+
+        d3_graph = load_graph_data(filename)
         if d3_graph:
+            # Apply filtering
+            if filter_mode == "Active Tasks Only":
+                inactive_statuses = {"done", "completed", "cancelled", "inbox"}
+                active_nodes = [
+                    n
+                    for n in d3_graph.get("nodes", [])
+                    if n.get("status", "inbox").lower() not in inactive_statuses
+                ]
+                d3_graph["nodes"] = active_nodes
+
             d3_data = prepare_embedded_graph_data(d3_graph)
             st.caption(f"Showing {len(d3_data['nodes'])} nodes and {len(d3_data['links'])} links.")
-            render_embedded_graph(d3_data, height=500)
+
+            # Action handler for bi-directional clicking
+            action_event = render_embedded_graph(d3_data, height=700, force_settings=force_settings)
+
+            if action_event and isinstance(action_event, dict):
+                action = action_event.get("action")
+                task_id = action_event.get("id")
+                if action and task_id:
+                    _handle_graph_action(action, task_id)
         else:
-            st.warning("No graph.json found. Run `/task-viz` to generate.")
+            st.warning(f"No {filename} found. Run `/task-viz` to generate.")
 
     with tab_svg:
         render_svg_graph()
 
     with tab_interactive:
         # Controls row
-        col_view, col_layout = st.columns(2)
-        with col_view:
-            view_mode = st.radio(
-                "View", ["Tasks", "Knowledge Base"], horizontal=True, key="fg_view"
-            )
+        (col_layout,) = st.columns(1)
         with col_layout:
             layout = st.radio(
                 "Layout",
@@ -3902,21 +3915,26 @@ def render_graph_section():
                 key="fg_layout",
             )
 
-        # Load graph data based on selection (need this first for type options)
-        filename = "graph.json"
-        if view_mode == "Knowledge Base":
-            filename = "knowledge-graph.json"
-
         graph = load_graph_data(filename)
         if not graph:
             st.warning(f"No graph found ({filename}). Run `/task-viz` to generate.")
             return
 
+        # Apply top-level filtering to interactive graph as well
+        if filter_mode == "Active Tasks Only":
+            inactive_statuses = {"done", "completed", "cancelled", "inbox"}
+            active_nodes = [
+                n
+                for n in graph.get("nodes", [])
+                if n.get("status", "inbox").lower() not in inactive_statuses
+            ]
+            graph["nodes"] = active_nodes
+
         # Get available types from graph
         all_types = sorted(set(n.get("node_type", "unknown") for n in graph.get("nodes", [])))
 
         # Default type selection based on view mode
-        if view_mode == "Tasks":
+        if "Tasks" in view_mode:
             task_types = [
                 "goal",
                 "project",
@@ -4025,7 +4043,7 @@ def render_graph_section():
         # Render graph with visual settings
         render_force_graph(
             graph,
-            view_mode,
+            "Knowledge Base" if "KnowledgeBase" in view_mode else "Tasks",
             layout,
             node_size=node_size,
             link_width=link_width,
@@ -4444,10 +4462,38 @@ def render_network_analysis():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
+from lib.task_model import TaskStatus
+from task_manager_ui import render_task_editor
+
+
+@st.dialog("Edit Task")
+def _edit_task_dialog(task_id: str):
+    storage = TaskStorage()
+    task = storage.get_task(task_id)
+    if not task:
+        st.error(f"Task {task_id} not found.")
+        return
+    render_task_editor(task, storage)
+
+
+def _handle_graph_action(action: str, task_id: str):
+    """Handle click events emitted by the D3 Custom Component."""
+    if action == "edit":
+        _edit_task_dialog(task_id)
+    elif action == "complete":
+        storage = TaskStorage()
+        task = storage.get_task(task_id)
+        if task:
+            task.status = TaskStatus.DONE
+            storage.save_task(task)
+            st.success(f"Task {task_id} completed!")
+            st.rerun()
+
+
 # Navigation
 page = st.sidebar.radio(
     "View Mode",
-    ["Dashboard", "Manage Tasks", "Session Summary", "Network Analysis"],
+    ["Dashboard", "Manage Tasks", "Session Summary", "Network Analysis", "Task Graph"],
     index=0,
 )
 
@@ -4463,7 +4509,7 @@ COMPLETED_HOURS_MAP = {"4h": 4, "24h": 24, "7d": 168}
 completed_hours = COMPLETED_HOURS_MAP.get(completed_time_range, 24)
 
 if page == "Manage Tasks":
-    render_task_manager()
+    run_task_manager_ui(TaskStorage())
     st.stop()
 
 if page == "Session Summary":
@@ -4474,10 +4520,11 @@ if page == "Network Analysis":
     render_network_analysis()
     st.stop()
 
-render_spotlight_epic()
+if page == "Task Graph":
+    render_task_graph_page()
+    st.stop()
 
-# Graph section with tabs
-render_graph_section()
+render_spotlight_epic()
 
 # Then project-centric content
 # Initialize analyzer for daily log
@@ -4669,8 +4716,35 @@ if daily_story:
                 st.markdown(f"### 📖 Today's Story\n{daily_story['story']}")
             if daily_story["dropped_threads"]:
                 st.markdown("#### ⚠ Dropped Threads")
+
+                # Group dropped threads by project bracket or default to Uncategorized
+                grouped_threads = {}
                 for thread in daily_story["dropped_threads"]:
-                    st.markdown(f"- {thread}")
+                    match = re.match(r"^\[([^\]]+)\]\s*(.+)$", thread.strip())
+                    if match:
+                        proj = match.group(1).strip()
+                        desc = match.group(2).strip()
+                    else:
+                        proj = "Uncategorized"
+                        desc = thread.strip()
+
+                    if proj not in grouped_threads:
+                        grouped_threads[proj] = []
+                    grouped_threads[proj].append(desc)
+
+                total_threads = sum(len(ts) for ts in grouped_threads.values())
+
+                if total_threads <= 5:
+                    for proj, threads in sorted(grouped_threads.items()):
+                        st.markdown(f"**{proj}**")
+                        for t in threads:
+                            st.markdown(f"- {t}")
+                else:
+                    with st.expander(f"View {total_threads} Dropped Threads", expanded=False):
+                        for proj, threads in sorted(grouped_threads.items()):
+                            st.markdown(f"**{proj}**")
+                            for t in threads:
+                                st.markdown(f"- {t}")
 
         with col2:
             if daily_story["priorities"]:
@@ -4862,14 +4936,14 @@ try:
             proj_color = get_project_color(proj)
             path_html += "<div class='path-project-group'>"
             path_html += f"<div class='path-project-header' style='color: {proj_color}; border-left: 3px solid {proj_color}'>{esc(proj).upper()}</div>"
-            path_html += "<div class='path-threads'>"
+            path_html += "<div class='path-threads' style='display: flex; overflow-x: auto; flex-wrap: nowrap; gap: 16px; padding-bottom: 12px; margin-bottom: 16px;'>"
 
             for thread in proj_threads:
                 # Limit sessions to those with at least one event or meaningful goal
                 if not thread.events and not thread.initial_goal:
                     continue
 
-                path_html += f"<div class='path-thread' style='border-left-color: {proj_color}66'>"
+                path_html += f"<div class='path-thread' style='border-left-color: {proj_color}66; flex: 0 0 320px; white-space: normal; padding-right: 12px; min-width: 0; border-right: 1px solid rgba(255,255,255,0.05);'>"
                 sid_display = esc(thread.session_id[:8])
 
                 # Sanitize initial goal before display (prevent markdown headers from breaking layout)
@@ -5105,11 +5179,9 @@ try:
         # Exclude hash-like names (8+ hex chars)
         if len(name) >= 8 and all(c in "0123456789abcdef-" for c in name.lower()):
             return False
-        # Exclude sub-projects whose parent is visible on dashboard
-        if name in sub_to_parent and sub_to_parent[name] in all_projects:
-            return False
-        # Must be in valid project list or look like a real project name
-        return name in valid_project_ids or name.lower() in valid_project_ids
+        # Valid project if specifically defined in valid_project_ids, or has tasks mapping to it:
+        # Note: Sub-projects will be grouped into parents shortly
+        return True
 
     # Merge sub-project data into parent before filtering
     for sub, parent in sub_to_parent.items():
@@ -5145,7 +5217,10 @@ try:
                     merged_meta["session_count"] = merged_sessions
                 projects[parent] = merged_meta
 
+    # Re-evaluate all valid projects after merging parents
     all_projects = {p for p in all_projects if is_valid_project(p)}
+    # Now explicitly exclude sub-projects since they've been merged to parents
+    all_projects = {p for p in all_projects if p not in sub_to_parent}
 
     # Project Card Renderer
     project_cards = []
@@ -5256,13 +5331,15 @@ try:
 
         # 3. Priority Tasks (Backlog)
         # We only show top 3-5 incomplete tasks to save space
-        # Exclude epics and their children (already shown in EPICS section)
+        # Exclude epics and their children (already tracked in EPICS section)
+        rendered_epic_ids = {epic.get("id") for epic in project_epics}
         incomplete_tasks = [
             t
             for t in p_tasks
             if t.get("status") not in ("done", "closed")
             and t.get("type") != "epic"
             and t.get("id") not in rendered_child_ids
+            and t.get("parent") not in rendered_epic_ids
         ]
         if incomplete_tasks:
             card_parts.append("<div class='p-section-title'>📌 UP NEXT</div>")

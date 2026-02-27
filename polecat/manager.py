@@ -1154,9 +1154,7 @@ class PolecatManager:
         only. When Claude Code loads this file via --setting-sources=user,project,
         it will deny any attempt to write or edit files outside the worktree.
 
-        The allow rules take precedence over deny rules in Claude Code's permission
-        system, so worktree paths are explicitly allowed and everything else is
-        blocked by the wildcard deny.
+        Deny rules take precedence over allow rules.
 
         Args:
             worktree_path: Absolute path to the worktree root directory
@@ -1175,11 +1173,6 @@ class PolecatManager:
                 "allow": [
                     f"Write({worktree_str}/**)",
                     f"Edit({worktree_str}/**)",
-                    f"Bash(cd {worktree_str}:*)",
-                ],
-                "deny": [
-                    "Write(**)",
-                    "Edit(**)",
                 ],
             }
         }

@@ -191,7 +191,6 @@ def run_task_manager_ui(storage: TaskStorage):
         if not show_done and t.status in (
             TaskStatus.DONE,
             TaskStatus.CANCELLED,
-            TaskStatus.COMPLETED,
         ):
             continue
 
