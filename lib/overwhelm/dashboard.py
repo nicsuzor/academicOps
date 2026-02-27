@@ -3797,13 +3797,13 @@ def render_spotlight_epic():
 
     # Render HTML with synthesis-card pattern
     html = f"""
-    <div class="v11-progress-panel">
-        <div class="v11-progress-header">
-            <div class="v11-progress-title">🚀 {esc(epic.get("title", "Epic"))}</div>
-            <div class="v11-progress-pct">{done_pct:.0f}%</div>
+    <div class="spotlight-progress-panel" style="margin-bottom: 24px; padding: 16px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 8px;">
+        <div class="spotlight-progress-header" style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px;">
+            <div class="spotlight-progress-title" style="font-weight: 600; font-size: 1.1em; color: #60a5fa;">🚀 {esc(epic.get("title", "Epic"))}</div>
+            <div class="spotlight-progress-pct" style="font-size: 0.9em; opacity: 0.8;">{done_pct:.0f}%</div>
         </div>
-        <div class="v11-progress-bar">
-            <div class="v11-progress-fill" style="width: {done_pct}%;"></div>
+        <div class="spotlight-progress-bar" style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; margin-bottom: 16px; overflow: hidden;">
+            <div class="spotlight-progress-fill" style="width: {done_pct}%; height: 100%; background: #3b82f6; transition: width 0.3s ease;"></div>
         </div>
         <div class="synthesis-grid">
             <div class="synthesis-card done">
@@ -3871,7 +3871,8 @@ def render_graph_section():
 
     with tab_d3:
         # Visual controls for the D3 physics engine
-        with st.expander("⚙️ Physics Controls", expanded=False):
+        options_expander = st.expander("⚙️ Physics Controls", expanded=False)
+        with options_expander:
             col1, col2, col3 = st.columns(3)
             with col1:
                 charge = st.slider("Repel Strength", -1000, -10, -350, 10, key="d3_charge")
@@ -4717,8 +4718,35 @@ if daily_story:
                 st.markdown(f"### 📖 Today's Story\n{daily_story['story']}")
             if daily_story["dropped_threads"]:
                 st.markdown("#### ⚠ Dropped Threads")
+
+                # Group dropped threads by project bracket or default to Uncategorized
+                grouped_threads = {}
                 for thread in daily_story["dropped_threads"]:
-                    st.markdown(f"- {thread}")
+                    match = re.match(r"^\[([^\]]+)\]\s*(.+)$", thread.strip())
+                    if match:
+                        proj = match.group(1).strip()
+                        desc = match.group(2).strip()
+                    else:
+                        proj = "Uncategorized"
+                        desc = thread.strip()
+
+                    if proj not in grouped_threads:
+                        grouped_threads[proj] = []
+                    grouped_threads[proj].append(desc)
+
+                total_threads = sum(len(ts) for ts in grouped_threads.values())
+
+                if total_threads <= 5:
+                    for proj, threads in sorted(grouped_threads.items()):
+                        st.markdown(f"**{proj}**")
+                        for t in threads:
+                            st.markdown(f"- {t}")
+                else:
+                    with st.expander(f"View {total_threads} Dropped Threads", expanded=False):
+                        for proj, threads in sorted(grouped_threads.items()):
+                            st.markdown(f"**{proj}**")
+                            for t in threads:
+                                st.markdown(f"- {t}")
 
         with col2:
             if daily_story["priorities"]:
@@ -4910,14 +4938,14 @@ try:
             proj_color = get_project_color(proj)
             path_html += "<div class='path-project-group'>"
             path_html += f"<div class='path-project-header' style='color: {proj_color}; border-left: 3px solid {proj_color}'>{esc(proj).upper()}</div>"
-            path_html += "<div class='path-threads'>"
+            path_html += "<div class='path-threads' style='display: flex; overflow-x: auto; flex-wrap: nowrap; gap: 16px; padding-bottom: 12px; margin-bottom: 16px;'>"
 
             for thread in proj_threads:
                 # Limit sessions to those with at least one event or meaningful goal
                 if not thread.events and not thread.initial_goal:
                     continue
 
-                path_html += f"<div class='path-thread' style='border-left-color: {proj_color}66'>"
+                path_html += f"<div class='path-thread' style='border-left-color: {proj_color}66; flex: 0 0 320px; white-space: normal; padding-right: 12px; min-width: 0; border-right: 1px solid rgba(255,255,255,0.05);'>"
                 sid_display = esc(thread.session_id[:8])
 
                 # Sanitize initial goal before display (prevent markdown headers from breaking layout)
@@ -5153,11 +5181,9 @@ try:
         # Exclude hash-like names (8+ hex chars)
         if len(name) >= 8 and all(c in "0123456789abcdef-" for c in name.lower()):
             return False
-        # Exclude sub-projects whose parent is visible on dashboard
-        if name in sub_to_parent and sub_to_parent[name] in all_projects:
-            return False
-        # Must be in valid project list or look like a real project name
-        return name in valid_project_ids or name.lower() in valid_project_ids
+        # Valid project if specifically defined in valid_project_ids, or has tasks mapping to it:
+        # Note: Sub-projects will be grouped into parents shortly
+        return True
 
     # Merge sub-project data into parent before filtering
     for sub, parent in sub_to_parent.items():
@@ -5193,7 +5219,10 @@ try:
                     merged_meta["session_count"] = merged_sessions
                 projects[parent] = merged_meta
 
+    # Re-evaluate all valid projects after merging parents
     all_projects = {p for p in all_projects if is_valid_project(p)}
+    # Now explicitly exclude sub-projects since they've been merged to parents
+    all_projects = {p for p in all_projects if p not in sub_to_parent}
 
     # Project Card Renderer
     project_cards = []
@@ -5304,13 +5333,15 @@ try:
 
         # 3. Priority Tasks (Backlog)
         # We only show top 3-5 incomplete tasks to save space
-        # Exclude epics and their children (already shown in EPICS section)
+        # Exclude epics and their children (already tracked in EPICS section)
+        rendered_epic_ids = {epic.get("id") for epic in project_epics}
         incomplete_tasks = [
             t
             for t in p_tasks
             if t.get("status") not in ("done", "closed")
             and t.get("type") != "epic"
             and t.get("id") not in rendered_child_ids
+            and t.get("parent") not in rendered_epic_ids
         ]
         if incomplete_tasks:
             card_parts.append("<div class='p-section-title'>📌 UP NEXT</div>")
