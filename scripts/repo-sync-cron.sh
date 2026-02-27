@@ -92,8 +92,25 @@ if [[ -d "${AOPS_SESSIONS}/.git" ]]; then
         git commit -m "sync: auto-generated viz and transcripts" --quiet 2>/dev/null || true
     fi
 
-    # Push everything
-    git push --quiet 2>/dev/null || echo "Warning: AOPS_SESSIONS push failed"
+    # Push everything with retry loop to handle concurrent updates
+    max_push_attempts=3
+    push_attempt=1
+    while (( push_attempt <= max_push_attempts )); do
+        if git push --quiet 2>/dev/null; then
+            break
+        fi
+        echo "Warning: AOPS_SESSIONS push failed (attempt ${push_attempt}/${max_push_attempts}), trying to rebase and retry..."
+        git fetch --quiet 2>/dev/null || true
+        if ! git pull --rebase --quiet 2>/dev/null; then
+            echo "Warning: AOPS_SESSIONS pull --rebase failed during push retry, aborting rebase"
+            git rebase --abort 2>/dev/null || true
+            break
+        fi
+        (( push_attempt++ ))
+    done
+    if (( push_attempt > max_push_attempts )); then
+        echo "Warning: AOPS_SESSIONS push failed after ${max_push_attempts} attempts"
+    fi
 fi
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') repo-sync-cron done"
