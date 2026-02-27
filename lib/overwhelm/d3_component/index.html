@@ -220,7 +220,7 @@
           .attr("fill","none").attr("stroke", d => d.color).attr("stroke-width", d => d.width)
           .attr("stroke-dasharray", d => d.dash || null)
           .attr("marker-end", d => `url(#${mMap[d.type]||"ar"})`)
-          .attr("opacity", d => d.type === "ref" ? 0.3 : 0.55)
+          .attr("opacity", d => d.type === "ref" ? 0.5 : 0.8)
           .attr("stroke-linecap","round").attr("stroke-linejoin","round");
 
         // Nodes
@@ -329,8 +329,8 @@
           .force("charge", d3.forceManyBody().strength(d=> forceSettings.charge || d.charge).distanceMax(900).theta(0.8))
           .force("y", d3.forceY().y(d => {
             if (maxDepth===0) return H/2;
-            return H*0.12 + (d.depth+1)*(H*0.7/(maxDepth+2));
-          }).strength(0.12))
+            return H*0.08 + (d.depth+1)*(H*0.8/(maxDepth+2));
+          }).strength(0.35))
           .force("x", d3.forceX().x(d => {
               if (d.project && projCenters[d.project]) return projCenters[d.project].x;
               return W/2;
@@ -349,9 +349,9 @@
                     const tProj = (l.target.project || "none");
                     if (sProj !== currentFocusProject && tProj !== currentFocusProject) return 0.01;
                     if (sProj !== currentFocusProject || tProj !== currentFocusProject) return 0.05;
-                    return l.type === "ref" ? 0.3 : 0.55;
+                    return l.type === "ref" ? 0.5 : 0.8;
                 }
-                return l.type === "ref" ? 0.3 : 0.55;
+                return l.type === "ref" ? 0.5 : 0.8;
             });
         };
         pf.addEventListener("change", (e) => {

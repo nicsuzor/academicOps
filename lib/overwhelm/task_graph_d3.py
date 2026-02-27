@@ -363,9 +363,9 @@ def prepare_embedded_graph_data(
         force = EDGE_FORCE.get(etype, EDGE_FORCE["ref"])
 
         if etype == "parent":
-            color, width, dash = "#3b82f6", 2.5, ""
+            color, width, dash = "#3b82f6", 3.0, ""
         elif etype == "depends_on":
-            color, width, dash = "#ef4444", 2.0, ""
+            color, width, dash = "#ef4444", 2.5, ""
             tw = target_weight.get(edge["target"], 0)
             if tw > 0 and max_weight > 0:
                 crit_ratio = min(math.log1p(tw) / math.log1p(max_weight), 1.0)
@@ -373,7 +373,7 @@ def prepare_embedded_graph_data(
                     width = 2.0 + crit_ratio * 2.0
                     color = "#dc2626"
         else:
-            color, width, dash = "#94a3b8", 1.0, "4,3"
+            color, width, dash = "#94a3b8", 1.5, "4,3"
 
         # For parent edges, flip direction so arrows point parent→child
         # (graph.json stores child→parent, but visually we want "contains")

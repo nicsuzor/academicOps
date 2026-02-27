@@ -3593,9 +3593,9 @@ def render_task_graph_page():
         with col1:
             charge = st.slider("Repel Strength", -1000, -10, -350, 10, key="d3_charge")
         with col2:
-            link_dist = st.slider("Link Distance", 10, 150, 25, 5, key="d3_link")
+            link_dist = st.slider("Link Distance", 10, 150, 40, 5, key="d3_link")
         with col3:
-            proj_force = st.slider("Project Force", 0.0, 0.2, 0.08, 0.01, key="d3_proj")
+            proj_force = st.slider("Project Force", 0.0, 0.3, 0.12, 0.01, key="d3_proj")
 
     force_settings = {"charge": charge, "linkDistance": link_dist, "projectForce": proj_force}
 
