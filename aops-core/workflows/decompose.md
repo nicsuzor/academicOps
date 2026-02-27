@@ -107,6 +107,53 @@ Parent: "Fix task graph quality issues"
 
 **Relationship to P#71**: P#71 says "complete the parent immediately" when decomposing. The completion loop does not contradict this — the decomposition work IS complete. The verify task is a NEW task that checks whether the original goal was achieved after all implementation is done.
 
+## Post-Decomposition Self-Checks (MANDATORY)
+
+After creating subtasks, run these checks before finalizing:
+
+### Check 1: Decision tasks have information prerequisites
+
+For every task that requires a human **decision** (evaluate, choose, decide, select, classify, determine scope):
+
+> "What information does the user need to make this decision?"
+
+If no upstream prep task supplies that information, create one:
+- Prep task: agent gathers data, documents current state (no human judgment needed)
+- Set the decision task's `depends_on` to include the prep task
+- Prep tasks should have `assignee: polecat` (mechanical data gathering)
+
+### Check 2: Execution tasks are gated on relevant decisions
+
+For every **execution** task (run, implement, write, build, create):
+
+> "Is this task conditional on a decision that hasn't been made yet?"
+
+If the task only makes sense given a specific decision outcome, it **must** depend on that decision task. Do not leave conditional work unblocked in the ready queue.
+
+### Check 3: Academic output methodology layer
+
+When decomposing work that produces **academic output** (papers, reports, benchmarks, analyses, reviews), always include these methodology tasks in addition to the deliverable tasks:
+
+- **Model/sample justification**: Why this method, dataset, or sample? (prep task)
+- **Validation approach**: How will claims be tested? (decision task, blocked on justification)
+- **Claim-evidence audit**: Every claim maps to evidence (audit task, blocked on writing)
+- **Limitations completeness**: Are limitations honestly scoped? (audit task, blocked on writing)
+
+## Academic Output Layer Structure
+
+For academic outputs, enforce this ordering:
+
+| Layer | Purpose | Assignee | Blocked on |
+|-------|---------|----------|------------|
+| 1. Prep | Agent gathers data, documents current state | polecat | — |
+| 2. Decision support | Agent synthesises prep into decision-ready briefings | polecat | Layer 1 |
+| 3. Decisions | Human makes informed choices | null | Layers 1-2 |
+| 4. Writing/Execution | Implement decisions | polecat | Layer 3 |
+| 5. Integration | Reconcile parallel tracks | polecat | Layer 4 |
+| 6. Audit/QA | Verify everything, present receipts | null | All above |
+
+**Note**: Not every academic decomposition needs all six layers. Use judgment — but every academic decomposition needs at least Prep → Decision → Writing → Audit.
+
 ## Anti-Patterns
 
 - Expanding everything at once (premature detail)
@@ -118,3 +165,6 @@ Parent: "Fix task graph quality issues"
 - **Reflexive task creation**: Creating tasks without knowing the action path
 - **Prose instead of structure**: Writing relationships as prose when they should be graph edges
 - **Fire-and-forget decomposition**: Creating subtasks without a verify-parent task to close the loop
+- **Decisions without prep**: Decision tasks with no upstream data-gathering task
+- **Unblocked conditional work**: Execution tasks sitting in "ready" when they depend on an unmade decision
+- **Missing methodology layer**: Academic output decomposed at project-management level only, without justification/validation/audit tasks
