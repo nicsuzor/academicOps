@@ -358,9 +358,9 @@
                 .force("link", d3.forceLink(links).id(d => d.id).distance(d => d.type === "parent" ? 80 : 150))
                 .force("charge", d3.forceManyBody().strength(d => d.charge || -200))
                 .force("center", d3.forceCenter(W / 2, H / 2))
-                .force("collision", d3.forceCollide().radius(d => Math.max(d.w, d.h) / 2 + 20))
+                .force("collision", d3.forceCollide().radius(d => Math.max(d.w, d.h) / 2 + 20).strength(0.8).iterations(3))
+                .force("link", d3.forceLink(links).distance(d => d.source.project === d.target.project ? 80 : 250).strength(d => d.source.project === d.target.project ? 0.7 : 0.1))
                 .on("tick", ticked);
-
             function ticked() {
                 linkEls.attr("d", d => `M${d.source.x},${d.source.y} L${d.target.x},${d.target.y}`);
                 nodeEls.attr("transform", d => `translate(${d.x},${d.y})`);
@@ -384,7 +384,7 @@
 
             const vRoot = { id: '__vroot__', _n: null, children: roots.map(r => buildHierarchy(r)) };
             const hier = d3.hierarchy(vRoot);
-            
+
             const hSpacing = Math.max(100, d3.max(nodes, d => d.w) || 100) + 20;
             const vSpacing = 150;
 
@@ -445,8 +445,8 @@
             if (currentFocusProject !== "ALL" && d.project !== currentFocusProject) return 0.05;
             if (activeNodeId && d.id !== activeNodeId) {
                 // Dim non-neighbors
-                const isNeighbor = graphData.links.some(l => 
-                    (l.source.id === activeNodeId && l.target.id === d.id) || 
+                const isNeighbor = graphData.links.some(l =>
+                    (l.source.id === activeNodeId && l.target.id === d.id) ||
                     (l.target.id === activeNodeId && l.source.id === d.id)
                 );
                 if (!isNeighbor) return 0.1;
