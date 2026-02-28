@@ -202,19 +202,6 @@ jobs:
             Read ALL reviews from every source (our agents + Gemini + Copilot + anyone).
             Triage them all. Fix what's warranted. Dismiss what's not. Post your summary.
 
-            After you are done (whether you pushed changes or not), you MUST run:
-            ```bash
-            # Get the current HEAD SHA (may have changed if you pushed)
-            HEAD_SHA=$(gh pr view ${{ env.PR_NUMBER }} --repo ${{ github.repository }} --json headRefOid --jq '.headRefOid')
-
-            # Set the Merge Prep status to success — this unblocks auto-merge
-            gh api repos/${{ github.repository }}/statuses/$HEAD_SHA \
-              -f state=success \
-              -f context="Merge Prep" \
-              -f description="Review complete — ready to merge" \
-              -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-            ```
-
           claude_args: '--allowed-tools "Bash,Edit,Read,Write"'
 
       # ── Post-agent cleanup ──

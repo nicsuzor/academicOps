@@ -70,7 +70,7 @@ Post a comment using `gh pr comment`:
 **Changes made**: [count] fixes committed
 **Deferred**: [count] items flagged as future work
 
-All addressable feedback has been resolved. Merge Prep status set to success.
+All addressable feedback has been resolved.
 ```
 
 If there is no feedback to address:
@@ -79,7 +79,6 @@ If there is no feedback to address:
 ## Merge Prep: No Review Comments
 
 No actionable feedback found. PR is clean.
-Merge Prep status set to success.
 ```
 
 ## Review Dismissal
@@ -111,4 +110,3 @@ To find review IDs: `gh api repos/{owner}/{repo}/pulls/{pr}/reviews --jq '.[] | 
 
   Merge-Prep-By: agent"
   ```
-- **Set the Merge Prep status to success** after completing your work — the workflow provides the exact command. This is what unblocks auto-merge.
