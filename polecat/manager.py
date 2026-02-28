@@ -387,6 +387,9 @@ class PolecatManager:
                 file=sys.stderr,
             )
 
+        # Install pre-commit hooks
+        self._install_precommit_hooks(worktree_path)
+
         # Apply sandbox settings to isolate the worker to this worktree
         self.create_sandbox_settings(worktree_path)
 
@@ -1136,6 +1139,9 @@ class PolecatManager:
                 check=True,
             )
 
+        # Install pre-commit hooks
+        self._install_precommit_hooks(worktree_path)
+
         # --- SANDBOX SETTINGS ---
         # Write .claude/settings.json to restrict file writes to this worktree only.
         # Loaded via --setting-sources=user,project when spawning the worker.
@@ -1146,6 +1152,34 @@ class PolecatManager:
         self._verify_worktree_setup(worktree_path, branch_name, default_branch)
 
         return worktree_path
+
+    def _install_precommit_hooks(self, worktree_path: Path):
+        """Install pre-commit hooks in a worktree if .pre-commit-config.yaml exists."""
+        config_file = worktree_path / ".pre-commit-config.yaml"
+        if not config_file.exists():
+            return
+
+        print("🪝 Installing pre-commit hooks...")
+        try:
+            result = subprocess.run(
+                ["uv", "run", "pre-commit", "install"],
+                cwd=worktree_path,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if result.returncode == 0:
+                print("  ✅ Pre-commit hooks installed")
+            else:
+                print(
+                    f"  ⚠ Could not install pre-commit hooks: {result.stderr.strip()}",
+                    file=sys.stderr,
+                )
+        except FileNotFoundError:
+            print(
+                "  ⚠ Could not install pre-commit hooks: 'uv' command not found. Is it in your PATH?",
+                file=sys.stderr,
+            )
 
     def create_sandbox_settings(self, worktree_path: Path) -> Path:
         """Write .claude/settings.json to a worktree to sandbox file access.
