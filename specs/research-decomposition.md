@@ -182,7 +182,7 @@ No new task types or schema changes. Primitives are labels that carry semantic m
 
 1. **Start with unknowns.** Every unknown becomes a spike or pilot. Information-gathering precedes commitment.
 2. **Assumptions are first-class.** Every load-bearing assumption gets: confidence level, validation path, and contingency (what happens if wrong).
-3. **Non-linear dependencies.** Research is iterative. Use `depends_on` for hard gates, `soft_depends_on` for informational dependencies where findings reshape downstream work.
+3. **Non-linear dependencies.** Research is iterative. Use `depends_on` for hard gates, `soft_depends_on` for informational dependencies where findings reshape downstream work. When an upstream soft dependency completes, propagate its findings to any downstream task whose scope or approach may be affected (knowledge-flow pattern from `aops-core/workflows/decompose.md`). The downstream task is not blocked — it proceeds with current knowledge — but should be revisited once upstream findings arrive.
 4. **Collaboration gates.** Any step requiring human judgment or external input is a separate task marked as a gate.
 5. **Artifact-aware.** Each task specifies its output type: document, dataset, code, presentation, decision.
 
@@ -193,7 +193,7 @@ The decomposition produces:
 - **Assumptions table**: Load-bearing assumptions with confidence, validation path, and contingency
 - **Task graph**: Dependency-aware graph using research primitives
 - **Dependency visualisation**: Mermaid graph showing non-linear dependencies
-- **Minimum viable contribution**: The smallest unit of research that would still be publishable, to prevent scope collapse
+- **Minimum viable contribution**: A narrative paragraph identifying the minimum publishable claim and the tasks required to substantiate it, with those tasks tagged `mvc: true` in the task graph. Purpose: prevents scope collapse by anchoring what the project is already committed to, even if ambition expands later
 
 ### Seedling vs. Forest
 
@@ -219,7 +219,7 @@ Practising what we preach:
 | S1 | A second LLM agent reviewing catches blind spots a single agent misses                 | Medium                       | Compare single-agent vs. two-agent decompositions on real projects    | Simplify to single-agent with self-review prompts                                    |
 | S2 | 3-4 lenses per review is the right number                                              | Medium (N=1 from dogfooding) | Track which lenses produce actionable feedback across reviews         | Adjust count; too few = reviews miss issues, too many = checklist problem            |
 | S3 | Self-consistency is universally the highest-value lens                                 | Medium (N=1)                 | Track which lens produces most actionable finding across reviews      | Drop the "always on" mandate if not consistently productive                          |
-| S4 | Convergence by resolution terminates in reasonable time                                | Medium                       | Monitor round counts in practice                                      | Add a hard cap as a safety valve                                                     |
+| S4 | Convergence by resolution terminates in reasonable time                                | Medium                       | Monitor round counts in practice                                      | Lower the soft cap threshold; treat persistent non-convergence as a signal of unresolvable disagreement requiring human escalation and redesign of the escalation protocol (a cap already exists at line 102 — adjust it, don't add another) |
 | S5 | The general workflow (Layer 1) is more useful than the research-specific version alone | Low                          | Build Layer 1 first; see if it gets reused for spec/manuscript review | Collapse back to research-specific spec                                              |
 | S6 | Researchers will use formal decomposition for complex projects                         | Low                          | Track adoption; compare projects planned with/without the system      | Reduce friction or simplify; the system must feel like collaboration, not submission |
 
@@ -258,3 +258,4 @@ Practising what we preach:
 - [[non-interactive-agent-workflow-spec]] -- Phase 1 decomposition; this extends it with research primitives
 - [[mcp-decomposition-tools-v2]] -- task graph tools; reused for structured output
 - [[polecat-swarms]] -- execution layer; consumes decomposed task graphs
+- [[aops-core/workflows/decompose.md]] -- existing general decomposition workflow; this spec adds iterative multi-agent review and research-specific primitives on top of it (see Open Questions §4 on composing with the academic methodology layer)
