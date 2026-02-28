@@ -60,6 +60,7 @@ try:
             HookContext,
         )
 
+    from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES, extract_subagent_type
     from hooks.unified_logger import log_event_to_session, log_hook_event
 except ImportError as e:
     # Fail fast if schemas missing
@@ -183,22 +184,6 @@ def persist_session_data(data: dict[str, Any]) -> None:
 
 
 class HookRouter:
-    # Global bypass for compliance subagents (POLICIES ONLY)
-    # We still run triggers for these agents so gate states update correctly.
-    _COMPLIANCE_SUBAGENT_TYPES = frozenset(
-        {
-            "hydrator",
-            "prompt-hydrator",
-            "aops-core:prompt-hydrator",
-            "custodiet",
-            "aops-core:custodiet",
-            "audit",
-            "aops-core:audit",
-            "aops-core:butler",
-            "butler",
-        }
-    )
-
     def __init__(self):
         self.session_data = get_session_data()
         self._execution_timestamps = deque(maxlen=20)  # Store last 20 timestamps
@@ -279,27 +264,16 @@ class HookRouter:
             tool_output = self._normalize_json_field(raw_tool_output)
 
         # 6. Extract subagent_type from spawning tools
-        # Claude uses Task(subagent_type=...), Gemini uses delegate_to_agent(name=...)
-        # Skill tool uses skill=... parameter
-        # We check all parameter names to support both clients
-        # Track whether subagent_type was derived from a Skill/activate_skill invocation
-        # (as opposed to a real subagent-spawning tool) to avoid is_subagent misclassification.
+        # Uses the SPAWN_TOOLS table in gate_config for cross-platform detection
+        # (Claude Task/Skill, Gemini delegate_to_agent/activate_skill, extensible
+        # to Codex/Copilot). _subagent_type_from_skill prevents Skill invocations
+        # from being misclassified as subagent sessions.
         _subagent_type_from_skill = False
-        if not subagent_type and tool_name in (
-            "Task",
-            "delegate_to_agent",
-            "Skill",
-            "activate_skill",
-        ):
-            if isinstance(tool_input, dict):
-                subagent_type = (
-                    tool_input.get("subagent_type")
-                    or tool_input.get("agent_name")
-                    or tool_input.get("name")
-                    or tool_input.get("skill")  # Skill tool uses 'skill' parameter
-                )
-                if subagent_type and tool_name in ("Skill", "activate_skill"):
-                    _subagent_type_from_skill = True
+        if not subagent_type and isinstance(tool_input, dict):
+            extracted, is_skill = extract_subagent_type(tool_name, tool_input)
+            if extracted:
+                subagent_type = extracted
+                _subagent_type_from_skill = is_skill
 
         # 7. Detect Subagent Session
         # Call is_subagent_session BEFORE popping fields from raw_input
@@ -638,8 +612,7 @@ class HookRouter:
         - SubagentStop -> gate.on_subagent_stop()
         """
         is_compliance_agent = ctx.is_subagent and (
-            state.state.get("hydrator_active")
-            or ctx.subagent_type in self._COMPLIANCE_SUBAGENT_TYPES
+            state.state.get("hydrator_active") or ctx.subagent_type in COMPLIANCE_SUBAGENT_TYPES
         )
 
         messages = []

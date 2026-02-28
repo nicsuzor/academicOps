@@ -104,6 +104,22 @@ mcp__pkb__create_memory(
 - Knowledge files link proper nouns: [[Google]], [[Eugene Volokh]]
 - **Semantic Link Density**: Files about same topic/project/event MUST link to each other in prose. Project hubs link to key content files.
 
+### External References (REQUIRED)
+
+When a memory references an external issue, bug, or resource, **always link it explicitly**:
+
+- **Upstream bugs**: `[org/repo#NNN](https://github.com/org/repo/issues/NNN)` — don't just mention "#NNN" in prose
+- **Internal issues**: `gh issue create` link or `[#NNN](url)`
+- **Related PKB nodes**: Add a `## Relationships` section with typed edges:
+  ```
+  ## Relationships
+  - [related] [[task-id]] — brief description
+  - [upstream-bug] [org/repo#NNN](url)
+  - [parent] [[parent-id]]
+  ```
+
+**Why**: Unlinked references are dead ends. The PKB graph and future agents can't traverse prose mentions — they need explicit edges.
+
 ## Wikilink Conventions
 
 - **Wikilinks in Prose Only**: Only add [[wikilinks]] in prose text. Never inside code fences, inline code, or table cells with technical content.
