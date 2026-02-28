@@ -3586,6 +3586,9 @@ def render_task_graph_page():
 
     filename = "knowledge-graph.json" if "Knowledge Base" in view_mode else "graph.json"
 
+    if st.button("Reload Graph", key="tg_reload"):
+        st.cache_data.clear()
+
     # Visual controls for the D3 physics engine
     options_expander = st.expander("Physics Controls", expanded=False)
     with options_expander:
@@ -3614,8 +3617,27 @@ def render_task_graph_page():
         d3_data = prepare_embedded_graph_data(d3_graph)
         st.caption(f"Showing {len(d3_data['nodes'])} nodes and {len(d3_data['links'])} links.")
 
+        # Project filter dropdown
+        projects = sorted(set(n.get("project", "") for n in d3_data["nodes"] if n.get("project")))
+        selected_project = st.selectbox("Project", ["All Projects"] + projects, key="tg_project")
+        project_filter = "ALL" if selected_project == "All Projects" else selected_project
+
+        # Layout mode
+        layout_options = (
+            ["Precomputed", "Force", "Atlas"] if d3_data.get("hasLayout") else ["Force", "Atlas"]
+        )
+        layout_map = {"Precomputed": "precomputed", "Force": "force", "Atlas": "atlas"}
+        selected_layout = st.selectbox("Layout", layout_options, key="tg_layout")
+        layout_mode = layout_map[selected_layout]
+
         # Action handler for bi-directional clicking
-        action_event = render_embedded_graph(d3_data, height=700, force_settings=force_settings)
+        action_event = render_embedded_graph(
+            d3_data,
+            height=700,
+            force_settings=force_settings,
+            project_filter=project_filter,
+            layout_mode=layout_mode,
+        )
 
         if action_event and isinstance(action_event, dict):
             action = action_event.get("action")

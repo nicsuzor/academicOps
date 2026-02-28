@@ -17,20 +17,6 @@
     .node-text { font-family: -apple-system, sans-serif; pointer-events: none; }
     .node-badge { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; pointer-events: none; }
 
-    /* Control Panel */
-    #controls-panel {
-      position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 10;
-      background: rgba(15, 23, 42, 0.85); padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);
-      backdrop-filter: blur(12px); box-shadow: 0 4px 24px rgba(0,0,0,0.12);
-      display: flex; gap: 12px; align-items: center;
-    }
-    .control-group { display: flex; align-items: center; gap: 6px; }
-    .control-label { color: #94a3b8; font-size: 10px; font-weight: 600; text-transform: uppercase; }
-    #project-filter, #layout-select {
-      background: transparent; color: #f8fafc; border: 1px solid rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; cursor: pointer; outline: none;
-    }
-    #project-filter option, #layout-select option { background: #0f172a; color: #f8fafc; }
-
     /* Legend */
     #legend {
       position: absolute; bottom: 8px; left: 8px; z-index: 10;
@@ -88,22 +74,6 @@
   </style>
 </head>
 <body>
-
-  <div id="controls-panel">
-    <div class="control-group">
-      <span class="control-label">Project</span>
-      <select id="project-filter">
-        <option value="ALL">All Projects</option>
-      </select>
-    </div>
-    <div class="control-group">
-      <span class="control-label">Layout</span>
-      <select id="layout-select">
-        <option value="force">⚛ Force</option>
-        <option value="atlas">◉ Atlas</option>
-      </select>
-    </div>
-  </div>
 
   <div id="graph" style="position:relative;"></div>
 
@@ -200,10 +170,21 @@
             return;
         }
 
-        // Only initial render sets data
+        const newProject = args.project_filter || "ALL";
+        const newLayout = args.layout_mode || "force";
+
         if (!graphData) {
             graphData = args.data;
+            currentFocusProject = newProject;
+            currentLayout = newLayout;
             initGraph();
+        } else {
+            let needLayout = (newLayout !== currentLayout);
+            let needProject = (newProject !== currentFocusProject);
+            currentLayout = newLayout;
+            currentFocusProject = newProject;
+            if (needLayout) applyLayout();
+            else if (needProject) updateVisibility();
         }
     }
 
@@ -229,23 +210,6 @@
         container = svg.append("g");
         zoom = d3.zoom().scaleExtent([0.02, 10]).on("zoom", e => container.attr("transform", e.transform));
         svg.call(zoom);
-
-        // Project filtering dropdown
-        const projects = Array.from(new Set(nodes.map(n => n.project).filter(Boolean))).sort();
-        const pf = document.getElementById("project-filter");
-        pf.innerHTML = '<option value="ALL">All Projects</option>';
-        projects.forEach(p => {
-            const opt = document.createElement("option");
-            opt.value = p; opt.textContent = p;
-            pf.appendChild(opt);
-        });
-
-        // Layout select
-        const ls = document.getElementById("layout-select");
-        ls.addEventListener("change", (e) => {
-            currentLayout = e.target.value;
-            applyLayout();
-        });
 
         // === Build data structures ===
         const nodeById = new Map();
@@ -334,11 +298,6 @@
         });
 
         applyLayout();
-
-        pf.addEventListener("change", (e) => {
-            currentFocusProject = e.target.value;
-            updateVisibility();
-        });
 
         svg.on("click",()=> {
             document.getElementById("detail").style.display="none";
@@ -440,6 +399,50 @@
                         Math.min(W, H) * fc.orphanRadius, W / 2, H / 2
                     ).strength(d => d.linkCount === 0 ? fc.orphanStrength : 0))
                 .on("tick", ticked);
+        } else if (currentLayout === "precomputed") {
+            // Use precomputed coordinates directly — no simulation forces.
+            // Scale factor: map 0-1000 coord space to a large virtual canvas
+            // so nodes have room. The viewport zooms to fit afterwards.
+            const CANVAS = 3000;  // Virtual canvas size (px) — big enough for 500+ nodes
+            const scale = CANVAS / 1000;
+            nodes.forEach(n => {
+                if (n.x != null && n.y != null) {
+                    n.x = n.x * scale;
+                    n.y = n.y * scale;
+                } else {
+                    n.x = CANVAS / 2 + (Math.random() - 0.5) * 100;
+                    n.y = CANVAS / 2 + (Math.random() - 0.5) * 100;
+                }
+            });
+
+            // Render once — no simulation drift
+            ticked();
+
+            // Create a stopped simulation only for drag interactivity
+            simulation = d3.forceSimulation(nodes)
+                .force("collision", d3.forceCollide()
+                    .radius(d => Math.max(d.w, d.h) / 2 + fc.collisionPadding)
+                    .strength(fc.collisionStrength)
+                    .iterations(fc.collisionIterations))
+                .alpha(0)
+                .on("tick", ticked);
+            simulation.stop();
+
+            // Auto-zoom to fit all visible nodes with padding
+            const xs = nodes.map(n => n.x);
+            const ys = nodes.map(n => n.y);
+            const x0 = Math.min(...xs) - 50, x1 = Math.max(...xs) + 50;
+            const y0 = Math.min(...ys) - 50, y1 = Math.max(...ys) + 50;
+            const dx = x1 - x0, dy = y1 - y0;
+            const zoomScale = Math.min(W / dx, H / dy) * 0.9;
+            const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+            svg.transition().duration(500).call(
+                zoom.transform,
+                d3.zoomIdentity
+                    .translate(W / 2, H / 2)
+                    .scale(zoomScale)
+                    .translate(-cx, -cy)
+            );
         } else if (currentLayout === "atlas") {
             // ForceAtlas2-style: degree-scaled gravity + repulsion, no center force
             simulation = d3.forceSimulation(nodes)
