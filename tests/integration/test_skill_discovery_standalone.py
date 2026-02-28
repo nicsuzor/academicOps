@@ -150,7 +150,9 @@ def test_symlink_points_to_aops():
     aops_scripts_alt = Path(aops) / "skills" / "framework" / "scripts"
     if not aops_scripts.exists() and not aops_scripts_alt.exists():
         print(f"⚠️  SKIP: AOPS scripts don't exist: {aops_scripts} and {aops_scripts_alt}")
-        pytest.skip(f"AOPS scripts don't exist: {aops_scripts} and {aops_scripts_alt} - local setup only")
+        pytest.skip(
+            f"AOPS scripts don't exist: {aops_scripts} and {aops_scripts_alt} - local setup only"
+        )
     elif aops_scripts_alt.exists():
         aops_scripts = aops_scripts_alt
 
