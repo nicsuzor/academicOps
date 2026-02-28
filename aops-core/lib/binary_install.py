@@ -16,6 +16,7 @@ def check_pkb_available() -> str | None:
         "The personal knowledge base (pkb) will not be available this session.\n"
         "To install, run:\n"
         "  cargo binstall --git https://github.com/nicsuzor/mem --no-confirm mem\n"
-        "(Requires cargo-binstall: cargo install cargo-binstall)\n"
+        "(This installs the `pkb` binary from the `mem` project; requires cargo-binstall: "
+        "cargo install cargo-binstall)\n"
         "Or: make install-cli"
     )
