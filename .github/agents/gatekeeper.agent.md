@@ -93,6 +93,7 @@ A better approach would be: [alternative direction]
 
 ## Rules
 
+- **Credential Isolation (P#51):** You are authenticated as the academicOps bot. All GitHub operations (`gh`) MUST use the `GH_TOKEN` provided in your environment. Do not use personal credentials or `gh auth login`.
 - **Approve by default.** Most PRs are reasonable. Your job is to catch the rare misaligned or harmful PR, not to nitpick.
 - **Always read STATUS.md.** This is non-negotiable. You cannot assess strategic alignment without knowing the current state.
 - **Deletion of working components is a red flag.** If a PR removes a component that STATUS.md lists as WORKING, it needs strong justification. "Replaced by X" is not sufficient unless X is also listed as WORKING and validated.
