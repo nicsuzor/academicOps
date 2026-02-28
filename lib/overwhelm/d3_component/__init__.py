@@ -13,11 +13,7 @@ def d3_task_graph(data, width="100%", height=600, force_settings=None, key=None)
     Returns the clicked action and node ID: e.g. {"action": "edit", "id": "task_1"}
     """
     if force_settings is None:
-        force_settings = {
-            "charge": -400,
-            "linkDistance": 30,
-            "projectForce": 0.06,
-        }
+        force_settings = {}  # All defaults now in FORCE_CONFIG (task_graph_d3.py)
 
     component_value = _component_func(
         data=data, width=width, height=height, force=force_settings, key=key, default=None

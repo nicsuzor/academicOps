@@ -21,6 +21,21 @@ EDGE_FORCE = {
     "ref": {"strength": 0.02, "distance": 300},
 }
 
+# Global force simulation parameters — all tunables in one place.
+# Passed to JS via graphData.forceConfig so nothing is hardcoded in index.html.
+FORCE_CONFIG = {
+    "chargeDistanceMax": 100,  # Stop repelling beyond this distance (px)
+    "collisionPadding": 2,  # Extra px around each node for collision avoidance
+    "collisionStrength": 0.4,  # How aggressively collisions are enforced (0-1)
+    "collisionIterations": 3,  # Solver iterations per tick (more = stabler but slower)
+    "clusterStrength": 0.25,  # Pull toward project centroid (0 = off, 1 = very strong)
+    "defaultCharge": -200,  # Fallback repulsion if node type not in TYPE_CHARGE
+    "defaultLinkDistance": 150,  # Fallback link distance if not set per-edge
+    "defaultLinkStrength": 0.1,  # Fallback link strength if not set per-edge
+    "orphanRadius": 0.45,  # Fraction of viewport to push orphans toward (0-1)
+    "orphanStrength": 0.3,  # How strongly orphans are pushed to periphery (0-1)
+}
+
 TYPE_CHARGE = {
     "goal": -500,
     "project": -350,
@@ -409,7 +424,7 @@ def prepare_embedded_graph_data(
             }
         )
 
-    return {"nodes": d3_nodes, "links": d3_links}
+    return {"nodes": d3_nodes, "links": d3_links, "forceConfig": FORCE_CONFIG}
 
 
 # ---------------------------------------------------------------------------

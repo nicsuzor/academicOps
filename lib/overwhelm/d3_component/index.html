@@ -383,20 +383,46 @@
                 return force;
             }
 
+            // Diagnostic: check parent-child link data is populated from Python
+            const parentLinks = links.filter(l => l.type === 'parent');
+            console.log('Parent links sample:', parentLinks.slice(0, 5).map(l => ({
+                source: l.source.id || l.source,
+                target: l.target.id || l.target,
+                type: l.type,
+                distance: l.distance,
+                strength: l.strength
+            })));
+            console.log('Depends links sample:', links.filter(l => l.type === 'depends_on').slice(0, 3).map(l => ({
+                type: l.type, distance: l.distance, strength: l.strength
+            })));
+
+            // All tunables come from Python FORCE_CONFIG via graphData.forceConfig
+            console.log('forceConfig:', graphData.forceConfig);
+            console.log('graphData keys:', Object.keys(graphData));
+            const fc = graphData.forceConfig || {};
+
             simulation = d3.forceSimulation(nodes)
-                // Pull linked nodes together; per-link distance/strength set in Python
-                // (parent=strong/close, depends_on=weak/far, ref=minimal)
+                // Pull linked nodes together; per-link distance/strength set in EDGE_FORCE
                 .force("link", d3.forceLink(links).id(d => d.id)
-                    .distance(d => d.distance || 150)
-                    .strength(d => d.strength || 0.1))
-                // Push all nodes apart; charge varies by type (projects repel more than tasks)
-                .force("charge", d3.forceManyBody().strength(d => d.charge || -200))
+                    .distance(d => d.distance)
+                    .strength(d => d.strength))
+                // Push all nodes apart; charge varies by type (TYPE_CHARGE)
+                .force("charge", d3.forceManyBody()
+                    .strength(d => d.charge)
+                    .distanceMax(fc.chargeDistanceMax))
                 // Anchor the whole graph to the viewport center
                 .force("center", d3.forceCenter(W / 2, H / 2))
-                // Prevent node overlap with padding; 3 iterations for stability
-                .force("collision", d3.forceCollide().radius(d => Math.max(d.w, d.h) / 2 + 20).strength(0.8).iterations(3))
+                // Prevent node overlap with padding
+                .force("collision", d3.forceCollide()
+                    .radius(d => Math.max(d.w, d.h) / 2 + fc.collisionPadding)
+                    .strength(fc.collisionStrength)
+                    .iterations(fc.collisionIterations))
                 // Pull same-project nodes toward their shared centroid
-                .force("cluster", forceCluster(0.25))
+                .force("cluster", forceCluster(fc.clusterStrength))
+                // Push orphans (no links) toward the periphery
+                .force("orphanPush", d3.forceRadial(
+                        Math.min(W, H) * fc.orphanRadius, W / 2, H / 2
+                    ).strength(d => d.linkCount === 0 ? fc.orphanStrength : 0))
                 .on("tick", ticked);
             function ticked() {
                 linkEls.attr("d", d => {
