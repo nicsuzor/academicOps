@@ -29,9 +29,6 @@ FORCE_CONFIG = {
     "collisionStrength": 0.4,  # How aggressively collisions are enforced (0-1)
     "collisionIterations": 3,  # Solver iterations per tick (more = stabler but slower)
     "clusterStrength": 0.25,  # Pull toward project centroid (0 = off, 1 = very strong)
-    "defaultCharge": -200,  # Fallback repulsion if node type not in TYPE_CHARGE
-    "defaultLinkDistance": 150,  # Fallback link distance if not set per-edge
-    "defaultLinkStrength": 0.1,  # Fallback link strength if not set per-edge
     "orphanRadius": 0.45,  # Fraction of viewport to push orphans toward (0-1)
     "orphanStrength": 0.3,  # How strongly orphans are pushed to periphery (0-1)
 }
