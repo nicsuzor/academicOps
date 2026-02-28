@@ -1,15 +1,9 @@
 """Tests for lib/binary_install.py — pkb availability check."""
 
-import sys
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
-aops_core_dir = Path(__file__).parent.parent.parent / "aops-core"
-if str(aops_core_dir) not in sys.path:
-    sys.path.insert(0, str(aops_core_dir))
-
 from lib.binary_install import check_pkb_available
 
 
