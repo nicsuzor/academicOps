@@ -3599,7 +3599,15 @@ def render_task_graph_page():
             connected_ids.add(e.get("source", ""))
             connected_ids.add(e.get("target", ""))
 
-        active_statuses = {"active", "in_progress", "waiting", "todo", "review", "decomposing", "pending"}
+        active_statuses = {
+            "active",
+            "in_progress",
+            "waiting",
+            "todo",
+            "review",
+            "decomposing",
+            "pending",
+        }
         blocked_statuses = {"blocked"}
         done_statuses = {"done", "completed", "cancelled", "dormant"}
         orphan_statuses = {"inbox"}
@@ -3619,7 +3627,9 @@ def render_task_graph_page():
 
         d3_data = prepare_embedded_graph_data(d3_graph)
         layout_info = " | Precomputed layout" if d3_data.get("hasLayout") else ""
-        st.caption(f"Showing {len(d3_data['nodes'])} nodes and {len(d3_data['links'])} links.{layout_info}")
+        st.caption(
+            f"Showing {len(d3_data['nodes'])} nodes and {len(d3_data['links'])} links.{layout_info}"
+        )
 
         # Project filter dropdown (sidebar)
         projects = sorted(set(n.get("project", "") for n in d3_data["nodes"] if n.get("project")))

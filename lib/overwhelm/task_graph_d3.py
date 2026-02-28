@@ -424,7 +424,12 @@ def prepare_embedded_graph_data(
         )
 
     has_layout = any(n.get("x") is not None for n in nodes)
-    return {"nodes": d3_nodes, "links": d3_links, "forceConfig": FORCE_CONFIG, "hasLayout": has_layout}
+    return {
+        "nodes": d3_nodes,
+        "links": d3_links,
+        "forceConfig": FORCE_CONFIG,
+        "hasLayout": has_layout,
+    }
 
 
 # ---------------------------------------------------------------------------
