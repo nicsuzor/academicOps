@@ -62,18 +62,18 @@ GATE_CONFIGS = [
                 condition=GateCondition(
                     current_status=GateStatus.CLOSED,
                     hook_event="PreToolUse",
-                    excluded_tool_categories=["always_available", "read_only"],
+                    excluded_tool_categories=["always_available"],
                 ),
                 verdict=HYDRATION_GATE_MODE,
                 # Brief user-facing summary
                 message_template="💧 Hydration of new user input prompt is required.",
                 # Full agent instructions
                 context_template=(
-                    "**Prompt hydration suggested.** To ensure alignment with project workflows and axioms, please invoke the **prompt-hydrator** agent with: `{temp_path}`\n\n"
+                    "**ERROR:** You need to hydrate user prompts before you can use tools. To ensure alignment with project workflows and axioms, please invoke the **prompt-hydrator** agent with: `{temp_path}`\n\n"
                     "Command:\n"
                     "- Gemini: `delegate_to_agent(name='aops-core:prompt-hydrator', query='{temp_path}')`\n"
                     "- Claude: `Task(subagent_type='aops-core:prompt-hydrator', prompt='{temp_path}')`\n\n"
-                    "Invoke the prompt-hydrator to satisfy this gate. Applies to write-category and side-effecting tools; read-only tools are exempt."
+                    "Invoke the prompt-hydrator to satisfy this gate."
                 ),
             )
         ],
@@ -116,6 +116,7 @@ GATE_CONFIGS = [
                 verdict=CUSTODIET_GATE_MODE,
                 message_template="Periodic compliance check required ({ops_since_open} ops since last check).\nInvoke 'custodiet' agent.",
                 context_template=(
+                    "**ERROR:** Compliance check OVERDUE. You need to invoke the **custodiet** agent before you can use tools.\n\n"
                     "**Periodic compliance check required ({ops_since_open} ops since last check).** Invoke the **custodiet** agent with the file path argument: `{temp_path}`\n"
                     "- Gemini: `delegate_to_agent(name='custodiet', query='{temp_path}')`\n"
                     "- Claude: `Task(subagent_type='custodiet', prompt='{temp_path}')`\n"
