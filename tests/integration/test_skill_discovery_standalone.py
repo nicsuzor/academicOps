@@ -143,18 +143,16 @@ def test_symlink_points_to_aops():
         print("⚠️  SKIP: AOPS not set")
         pytest.skip("AOPS not set - local setup only")
 
-    # Update path to framework scripts
+    # Update path to framework scripts within aops-core
     aops_scripts = Path(aops) / "aops-core" / "skills" / "framework" / "scripts"
     symlink_scripts = Path.home() / ".claude" / "skills" / "framework" / "scripts"
 
-    if not aops_scripts.exists():
-        # Fallback for alternative structure where skills might be direct children
-        aops_scripts_alt = Path(aops) / "skills" / "framework" / "scripts"
-        if aops_scripts_alt.exists():
-            aops_scripts = aops_scripts_alt
-        else:
-            print(f"⚠️  SKIP: AOPS scripts don't exist: {aops_scripts}")
-            pytest.skip(f"AOPS scripts don't exist: {aops_scripts} - local setup only")
+    aops_scripts_alt = Path(aops) / "skills" / "framework" / "scripts"
+    if not aops_scripts.exists() and not aops_scripts_alt.exists():
+        print(f"⚠️  SKIP: AOPS scripts don't exist: {aops_scripts} and {aops_scripts_alt}")
+        pytest.skip(f"AOPS scripts don't exist: {aops_scripts} and {aops_scripts_alt} - local setup only")
+    elif aops_scripts_alt.exists():
+        aops_scripts = aops_scripts_alt
 
     if not symlink_scripts.exists():
         print(f"⚠️  SKIP: Symlink scripts don't exist: {symlink_scripts}")
