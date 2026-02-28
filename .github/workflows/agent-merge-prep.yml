@@ -49,6 +49,7 @@ jobs:
       contents: read
       pull-requests: write
       issues: write
+      actions: write
     outputs:
       pr_number: ${{ steps.pr-ref.outputs.pr_number }}
       ref: ${{ steps.pr-ref.outputs.ref }}
@@ -94,6 +95,28 @@ jobs:
         run: |
           gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
             -f content=rocket
+
+      - name: Re-trigger code-quality if checks haven't run on HEAD
+        if: steps.pr-ref.outputs.pr_number != ''
+        run: |
+          PR_NUM="${{ steps.pr-ref.outputs.pr_number }}"
+          REPO="${{ github.repository }}"
+          HEAD_REF="${{ steps.pr-ref.outputs.ref }}"
+
+          HEAD_SHA=$(gh pr view "$PR_NUM" --repo "$REPO" \
+            --json headRefOid --jq '.headRefOid')
+
+          # Check if Lint has run on this HEAD
+          LINT_STATE=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs" \
+            --jq '.check_runs[] | select(.name == "Lint") | .conclusion' 2>/dev/null | head -1)
+
+          if [ -z "$LINT_STATE" ]; then
+            echo "Lint has not run on HEAD $HEAD_SHA — re-triggering code-quality"
+            gh workflow run code-quality.yml --repo "$REPO" --ref "$HEAD_REF" \
+              || echo "Warning: could not trigger code-quality"
+          else
+            echo "Lint status on HEAD: $LINT_STATE"
+          fi
 
   # ── Main agent: triage reviews, fix code, set status ──
   fix:
