@@ -676,16 +676,37 @@ def merge():
     eng.scan_and_merge()
 
 
+def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
+    """Check if a branch has an open PR on GitHub."""
+    import subprocess as sp
+
+    try:
+        result = sp.run(
+            ["gh", "pr", "list", "--head", branch_name, "--state", "open", "--json", "number"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            prs = json.loads(result.stdout)
+            return len(prs) > 0
+    except (FileNotFoundError, sp.TimeoutExpired, json.JSONDecodeError):
+        pass
+    return False
+
+
 @main.command("c", hidden=True)
 @click.argument("target", required=False, default=None)
 @click.argument("extra", required=False, default=None)
 @click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
 @click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
+@click.option("--keep", "-k", is_flag=True, help="Keep worktree even if a PR is open")
 @click.pass_context
-def crew_alias(ctx, target, extra, name, gemini, resume):
+def crew_alias(ctx, target, extra, name, gemini, resume, keep):
     """Shorthand for 'crew'. See 'polecat crew --help'."""
-    ctx.invoke(crew, target=target, extra=extra, name=name, gemini=gemini, resume=resume)
+    ctx.invoke(crew, target=target, extra=extra, name=name, gemini=gemini, resume=resume, keep=keep)
 
 
 @main.command()
@@ -694,8 +715,9 @@ def crew_alias(ctx, target, extra, name, gemini, resume):
 @click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
 @click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
+@click.option("--keep", "-k", is_flag=True, help="Keep worktree even if a PR is open")
 @click.pass_context
-def crew(ctx, target, extra, name, gemini, resume):
+def crew(ctx, target, extra, name, gemini, resume, keep):
     """Start an interactive crew session with worktree isolation.
 
     Crew workers are persistent, named agents for interactive collaboration.
@@ -832,9 +854,21 @@ def crew(ctx, target, extra, name, gemini, resume):
 
     print("-" * 50)
     print(f"\n\U0001f4cb Crew '{crew_name}' session ended.")
-    print(f"   Worktrees preserved at: {manager.crew_dir / crew_name}")
-    print(f"   To resume: polecat crew -r {crew_name}")
-    print(f"   To nuke:   polecat nuke-crew {crew_name}")
+
+    # Auto-cleanup: nuke worktree if a PR is open (work is safely on remote)
+    branch_name = f"crew/{crew_name}"
+    if not keep and _branch_has_open_pr(branch_name, work_dir):
+        print(f"   PR open for {branch_name} — cleaning up worktree.")
+        try:
+            manager.nuke_crew(crew_name, force=True)
+            print(f"   Worktree removed. Use `polecat crew -r {crew_name}` after merge.")
+        except (ValueError, RuntimeError) as e:
+            print(f"   Cleanup failed: {e}", file=sys.stderr)
+            print(f"   Manual cleanup: polecat nuke-crew {crew_name}")
+    else:
+        print(f"   Worktrees preserved at: {manager.crew_dir / crew_name}")
+        print(f"   To resume: polecat crew -r {crew_name}")
+        print(f"   To nuke:   polecat nuke-crew {crew_name}")
 
 
 @main.command("nuke-crew")
