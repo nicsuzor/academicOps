@@ -358,24 +358,23 @@
             function forceCluster(clusterStrength) {
                 let _nodes;
                 function force(alpha) {
-                    const centroids = new Map();
-                    const counts = new Map();
+                    const clusters = new Map();
                     _nodes.forEach(n => {
                         const p = n.project || "__none__";
-                        if (!centroids.has(p)) { centroids.set(p, {x: 0, y: 0}); counts.set(p, 0); }
-                        centroids.get(p).x += n.x;
-                        centroids.get(p).y += n.y;
-                        counts.set(p, counts.get(p) + 1);
+                        if (!clusters.has(p)) { clusters.set(p, {x: 0, y: 0, count: 0}); }
+                        const c = clusters.get(p);
+                        c.x += n.x;
+                        c.y += n.y;
+                        c.count++;
                     });
-                    centroids.forEach((c, p) => {
-                        const cnt = counts.get(p);
-                        c.x /= cnt;
-                        c.y /= cnt;
+                    clusters.forEach(c => {
+                        c.x /= c.count;
+                        c.y /= c.count;
                     });
                     const k = clusterStrength * alpha;
                     _nodes.forEach(n => {
                         const p = n.project || "__none__";
-                        const c = centroids.get(p);
+                        const c = clusters.get(p);
                         n.vx += (c.x - n.x) * k;
                         n.vy += (c.y - n.y) * k;
                     });
