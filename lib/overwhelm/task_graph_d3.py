@@ -7,6 +7,7 @@ dashed for refs), legend, detail panel, and hover highlighting.
 """
 
 import math
+import os
 import re
 from pathlib import Path
 
