@@ -1160,18 +1160,24 @@ class PolecatManager:
             return
 
         print("🪝 Installing pre-commit hooks...")
-        result = subprocess.run(
-            ["uv", "run", "pre-commit", "install"],
-            cwd=worktree_path,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if result.returncode == 0:
-            print("  ✅ Pre-commit hooks installed")
-        else:
+        try:
+            result = subprocess.run(
+                ["uv", "run", "pre-commit", "install"],
+                cwd=worktree_path,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if result.returncode == 0:
+                print("  ✅ Pre-commit hooks installed")
+            else:
+                print(
+                    f"  ⚠ Could not install pre-commit hooks: {result.stderr.strip()}",
+                    file=sys.stderr,
+                )
+        except FileNotFoundError:
             print(
-                f"  ⚠ Could not install pre-commit hooks: {result.stderr.strip()}",
+                "  ⚠ Could not install pre-commit hooks: 'uv' command not found. Is it in your PATH?",
                 file=sys.stderr,
             )
 
