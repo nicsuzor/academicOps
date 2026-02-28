@@ -3580,26 +3580,20 @@ def render_task_graph_page():
         show_done = st.checkbox("Done / Cancelled", value=False, key="tg_show_done")
         show_orphans = st.checkbox("Orphans (inbox)", value=False, key="tg_show_orphans")
 
-        # Visual controls for the D3 physics engine
-        with st.expander("Physics Controls", expanded=False):
-            charge = st.slider("Repel Strength", -1000, -10, -450, 10, key="d3_charge")
-            link_dist = st.slider("Link Distance", 10, 1000, 600, 5, key="d3_link")
-            proj_force = st.slider("Project Force", 0.0, 0.3, 0.12, 0.01, key="d3_proj")
-
-    force_settings = {"charge": charge, "linkDistance": link_dist, "projectForce": proj_force}
-
     d3_graph = load_graph_data()
     if d3_graph:
         # Apply checkbox filters
         all_nodes = d3_graph.get("nodes", [])
-        all_node_ids = {n["id"] for n in all_nodes}
-        edges = d3_graph.get("edges", [])
-        connected_ids = set()
-        for e in edges:
-            connected_ids.add(e.get("source", ""))
-            connected_ids.add(e.get("target", ""))
 
-        active_statuses = {"active", "in_progress", "waiting", "todo", "review", "decomposing", "pending"}
+        active_statuses = {
+            "active",
+            "in_progress",
+            "waiting",
+            "todo",
+            "review",
+            "decomposing",
+            "pending",
+        }
         blocked_statuses = {"blocked"}
         done_statuses = {"done", "completed", "cancelled", "dormant"}
         orphan_statuses = {"inbox"}
@@ -3619,7 +3613,9 @@ def render_task_graph_page():
 
         d3_data = prepare_embedded_graph_data(d3_graph)
         layout_info = " | Precomputed layout" if d3_data.get("hasLayout") else ""
-        st.caption(f"Showing {len(d3_data['nodes'])} nodes and {len(d3_data['links'])} links.{layout_info}")
+        st.caption(
+            f"Showing {len(d3_data['nodes'])} nodes and {len(d3_data['links'])} links.{layout_info}"
+        )
 
         # Project filter dropdown (sidebar)
         projects = sorted(set(n.get("project", "") for n in d3_data["nodes"] if n.get("project")))
@@ -3646,7 +3642,6 @@ def render_task_graph_page():
         action_event = render_embedded_graph(
             d3_data,
             height=700,
-            force_settings=force_settings,
             project_filter=project_filter,
             layout_mode=layout_mode,
         )
@@ -3657,7 +3652,7 @@ def render_task_graph_page():
             if action and task_id:
                 _handle_graph_action(action, task_id)
     else:
-        st.warning(f"No {filename} found. Run `/task-viz` to generate.")
+        st.warning("No tasks.json found. Run `/task-viz` to generate.")
 
 
 _USELESS_PROMPTS = frozenset(

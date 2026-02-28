@@ -388,6 +388,42 @@
             nodeEls.attr("transform", d => `translate(${d.x},${d.y})`);
         }
 
+        // Helper: scale precomputed 0-1000 coords to a large virtual canvas
+        function initPrecomputedCoords(ns) {
+            const CANVAS = 3000;  // Virtual canvas size (px) — big enough for 500+ nodes
+            const scale = CANVAS / 1000;
+            ns.forEach(n => {
+                if (n.x != null && n.y != null) {
+                    n.x *= scale;
+                    n.y *= scale;
+                } else {
+                    n.x = CANVAS / 2 + (Math.random() - 0.5) * 100;
+                    n.y = CANVAS / 2 + (Math.random() - 0.5) * 100;
+                }
+            });
+        }
+
+        // Helper: zoom/pan to fit all nodes with padding
+        function autoZoomToFit(ns, delay) {
+            function doZoom() {
+                const xs = ns.map(n => n.x);
+                const ys = ns.map(n => n.y);
+                const x0 = Math.min(...xs) - 50, x1 = Math.max(...xs) + 50;
+                const y0 = Math.min(...ys) - 50, y1 = Math.max(...ys) + 50;
+                const dx = x1 - x0, dy = y1 - y0;
+                const zoomScale = Math.min(W / dx, H / dy) * 0.9;
+                const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+                svg.transition().duration(500).call(
+                    zoom.transform,
+                    d3.zoomIdentity
+                        .translate(W / 2, H / 2)
+                        .scale(zoomScale)
+                        .translate(-cx, -cy)
+                );
+            }
+            if (delay) { setTimeout(doZoom, delay); } else { doZoom(); }
+        }
+
         if (currentLayout === "force") {
             simulation = d3.forceSimulation(nodes)
                 // Pull linked nodes together; per-link distance/strength set in EDGE_FORCE
@@ -414,19 +450,7 @@
                 .on("tick", ticked);
         } else if (currentLayout === "precomputed") {
             // Use precomputed coordinates directly — no simulation forces.
-            // Scale factor: map 0-1000 coord space to a large virtual canvas
-            // so nodes have room. The viewport zooms to fit afterwards.
-            const CANVAS = 3000;  // Virtual canvas size (px) — big enough for 500+ nodes
-            const scale = CANVAS / 1000;
-            nodes.forEach(n => {
-                if (n.x != null && n.y != null) {
-                    n.x = n.x * scale;
-                    n.y = n.y * scale;
-                } else {
-                    n.x = CANVAS / 2 + (Math.random() - 0.5) * 100;
-                    n.y = CANVAS / 2 + (Math.random() - 0.5) * 100;
-                }
-            });
+            initPrecomputedCoords(nodes);
 
             // Render once — no simulation drift
             ticked();
@@ -441,34 +465,10 @@
                 .on("tick", ticked);
             simulation.stop();
 
-            // Auto-zoom to fit all visible nodes with padding
-            const xs = nodes.map(n => n.x);
-            const ys = nodes.map(n => n.y);
-            const x0 = Math.min(...xs) - 50, x1 = Math.max(...xs) + 50;
-            const y0 = Math.min(...ys) - 50, y1 = Math.max(...ys) + 50;
-            const dx = x1 - x0, dy = y1 - y0;
-            const zoomScale = Math.min(W / dx, H / dy) * 0.9;
-            const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-            svg.transition().duration(500).call(
-                zoom.transform,
-                d3.zoomIdentity
-                    .translate(W / 2, H / 2)
-                    .scale(zoomScale)
-                    .translate(-cx, -cy)
-            );
+            autoZoomToFit(nodes, 0);
         } else if (currentLayout === "precomputed_relax") {
             // Start from precomputed positions, then run weak forces to separate overlaps
-            const CANVAS = 3000;
-            const scale = CANVAS / 1000;
-            nodes.forEach(n => {
-                if (n.x != null && n.y != null) {
-                    n.x = n.x * scale;
-                    n.y = n.y * scale;
-                } else {
-                    n.x = CANVAS / 2 + (Math.random() - 0.5) * 100;
-                    n.y = CANVAS / 2 + (Math.random() - 0.5) * 100;
-                }
-            });
+            initPrecomputedCoords(nodes);
 
             // Very gentle simulation: collision-only to nudge apart overlapping nodes
             simulation = d3.forceSimulation(nodes)
@@ -481,23 +481,7 @@
                     .iterations(2))
                 .on("tick", ticked);
 
-            // Auto-zoom to fit
-            setTimeout(() => {
-                const xs = nodes.map(n => n.x);
-                const ys = nodes.map(n => n.y);
-                const x0 = Math.min(...xs) - 50, x1 = Math.max(...xs) + 50;
-                const y0 = Math.min(...ys) - 50, y1 = Math.max(...ys) + 50;
-                const dx = x1 - x0, dy = y1 - y0;
-                const zoomScale = Math.min(W / dx, H / dy) * 0.9;
-                const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-                svg.transition().duration(500).call(
-                    zoom.transform,
-                    d3.zoomIdentity
-                        .translate(W / 2, H / 2)
-                        .scale(zoomScale)
-                        .translate(-cx, -cy)
-                );
-            }, 500);
+            autoZoomToFit(nodes, 500);
         } else if (currentLayout === "atlas") {
             // ForceAtlas2-style: degree-scaled gravity + repulsion, no center force
             simulation = d3.forceSimulation(nodes)
