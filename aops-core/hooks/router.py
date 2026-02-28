@@ -60,6 +60,7 @@ try:
             HookContext,
         )
 
+    from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES, extract_subagent_type
     from hooks.unified_logger import log_event_to_session, log_hook_event
 except ImportError as e:
     # Fail fast if schemas missing
@@ -267,11 +268,9 @@ class HookRouter:
         # (Claude Task/Skill, Gemini delegate_to_agent/activate_skill, extensible
         # to Codex/Copilot). _subagent_type_from_skill prevents Skill invocations
         # from being misclassified as subagent sessions.
-        from hooks.gate_config import extract_subagent_type as _extract_subagent_type
-
         _subagent_type_from_skill = False
         if not subagent_type and isinstance(tool_input, dict):
-            extracted, is_skill = _extract_subagent_type(tool_name, tool_input)
+            extracted, is_skill = extract_subagent_type(tool_name, tool_input)
             if extracted:
                 subagent_type = extracted
                 _subagent_type_from_skill = is_skill
@@ -612,8 +611,6 @@ class HookRouter:
         - SubagentStart -> gate.on_subagent_start()
         - SubagentStop -> gate.on_subagent_stop()
         """
-        from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES
-
         is_compliance_agent = ctx.is_subagent and (
             state.state.get("hydrator_active") or ctx.subagent_type in COMPLIANCE_SUBAGENT_TYPES
         )

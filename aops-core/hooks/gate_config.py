@@ -198,7 +198,7 @@ HYDRATION_GATE_MODE = os.getenv(GATE_MODE_ENV_VARS["hydration"], GATE_MODE_DEFAU
 
 
 def get_tool_category(tool_name: str) -> str:
-    """Get the category for a tool. Returns 'unknown' if not categorized."""
+    """Get the category for a tool. Returns 'write' if not categorized (conservative fallback)."""
     for category, tools in TOOL_CATEGORIES.items():
         if tool_name in tools:
             return category
@@ -229,6 +229,8 @@ def extract_subagent_type(
     param_names, is_skill = spec
     for param in param_names:
         value = tool_input.get(param)
-        if value:
-            return value, is_skill
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped:
+                return stripped, is_skill
     return None, is_skill
