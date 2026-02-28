@@ -56,12 +56,12 @@ If any check fails, fix the hierarchy BEFORE proceeding with decomposition.
 
 **Post-Decomposition Self-Check Gate** (run AFTER creating subtasks, BEFORE finalizing):
 
-| Check | How to detect | Fix |
-|-------|--------------|-----|
-| Decision has prep | Decision task has no upstream data-gathering dependency | Create prep task, add to `depends_on` |
-| Execution is gated | Execution task is unconditional but depends on a decision outcome | Add decision task to `depends_on` |
-| Writing has data | Writing task depends on analysis results not yet complete | Add analysis task to `depends_on` |
-| Academic methodology | Academic output has no justification/validation/audit tasks | Add methodology layer tasks (see [[decompose]] workflow) |
+| Check                | How to detect                                                     | Fix                                                      |
+| -------------------- | ----------------------------------------------------------------- | -------------------------------------------------------- |
+| Decision has prep    | Decision task has no upstream data-gathering dependency           | Create prep task, add to `depends_on`                    |
+| Execution is gated   | Execution task is unconditional but depends on a decision outcome | Add decision task to `depends_on`                        |
+| Writing has data     | Writing task depends on analysis results not yet complete         | Add analysis task to `depends_on`                        |
+| Academic methodology | Academic output has no justification/validation/audit tasks       | Add methodology layer tasks (see [[decompose]] workflow) |
 
 **Output Format** (appended to task body):
 
