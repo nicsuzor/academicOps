@@ -1,6 +1,5 @@
 """Tests for lib/binary_install.py — pkb availability check."""
 
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
