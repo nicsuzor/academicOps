@@ -1190,7 +1190,7 @@ def _summarize_tool_input(tool_name: str, tool_input: dict) -> str:
         return tool_input.get("pattern", "")[:40]
     elif tool_name == "Grep":
         return tool_input.get("pattern", "")[:40]
-    elif tool_name == "Task":
+    elif tool_name in ("Agent", "Task"):
         return tool_input.get("description", "")[:40]
 
     # Generic fallback: first string value
@@ -1821,7 +1821,7 @@ class SessionProcessor:
                                             tool_item["exit_code"] = result_info["exit_code"]
                                         tool_item["is_error"] = result_info.get("is_error", False)
 
-                                if tool_name == "Task" and tool_id:
+                                if tool_name in ("Agent", "Task") and tool_id:
                                     agent_id = self._extract_agent_id_from_result(tool_id, entries)
                                     if agent_id and agent_entries and agent_id in agent_entries:
                                         tool_item["sidechain_summary"] = self._extract_sidechain(

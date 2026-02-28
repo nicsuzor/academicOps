@@ -72,7 +72,7 @@ GATE_CONFIGS = [
                     "**ERROR:** You need to hydrate user prompts before you can use tools. To ensure alignment with project workflows and axioms, please invoke the **prompt-hydrator** agent with: `{temp_path}`\n\n"
                     "Command:\n"
                     "- Gemini: `delegate_to_agent(name='aops-core:prompt-hydrator', query='{temp_path}')`\n"
-                    "- Claude: `Task(subagent_type='aops-core:prompt-hydrator', prompt='{temp_path}')`\n\n"
+                    "- Claude: `Agent(subagent_type='aops-core:prompt-hydrator', prompt='{temp_path}')`\n\n"
                     "Invoke the prompt-hydrator to satisfy this gate."
                 ),
             )
@@ -119,7 +119,7 @@ GATE_CONFIGS = [
                     "**ERROR:** Compliance check OVERDUE. You need to invoke the **custodiet** agent before you can use tools.\n\n"
                     "**Periodic compliance check required ({ops_since_open} ops since last check).** Invoke the **custodiet** agent with the file path argument: `{temp_path}`\n"
                     "- Gemini: `delegate_to_agent(name='custodiet', query='{temp_path}')`\n"
-                    "- Claude: `Task(subagent_type='custodiet', prompt='{temp_path}')`\n"
+                    "- Claude: `Agent(subagent_type='custodiet', prompt='{temp_path}')`\n"
                 ),
                 custom_action="prepare_compliance_report",
             ),
@@ -165,7 +165,7 @@ GATE_CONFIGS = [
                     "**Instruction**:\n"
                     "Run the qa with this command:\n"
                     "- Gemini: `delegate_to_agent(name='aops-core:qa', query='{temp_path}')`\n"
-                    "- Claude: `Task(subagent_type='aops-core:qa', prompt='{temp_path}')`\n"
+                    "- Claude: `Agent(subagent_type='aops-core:qa', prompt='{temp_path}')`\n"
                     "- Make sure you obey the instructions the tool or subagent produces, but do not print the output to the user -- it just clutters up the conversation.\n\n"
                     "This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!"
                 ),
