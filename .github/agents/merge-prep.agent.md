@@ -25,8 +25,11 @@ By the time you finish, the PR should be clean and auto-merge should fire automa
    uv run pytest -x -m "not requires_local_env"
    ```
 7. Commit and push any changes with a `Merge-Prep-By: agent` trailer.
-8. Set the `Merge Prep` commit status to `success` (the workflow provides the exact command).
-9. Post a triage summary comment.
+8. Post a triage summary comment.
+9. File a formal GitHub approval on the PR:
+   ```bash
+   gh pr review {pr} --approve --body "Merge Prep complete. All review feedback triaged and addressed."
+   ```
 
 ## Triage Categories
 
