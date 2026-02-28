@@ -174,12 +174,12 @@ Explicit user approval is REQUIRED before potentially expensive operations (batc
 
 ## Credential Isolation (P#51)
 
-Agents MUST NOT use human (user) credentials for GitHub operations. They MUST use the provided `AOPS_BOT_GH_TOKEN` (mapped to `GH_TOKEN`).
+Agents MUST NOT use human (user) credentials for GitHub operations. They MUST use the provided `AOPS_BOT_GH_TOKEN`, which is exported to the session as both `GH_TOKEN` and `GITHUB_TOKEN`.
 
 **Corollaries**:
 - Never search for or use SSH keys (`~/.ssh/`)
 - Never use `gh auth login` to authenticate as a human user
-- Always rely on the session-provided `GH_TOKEN` for git operations
+- Always rely on the session-provided bot token (`GH_TOKEN` / `GITHUB_TOKEN`) for git and GitHub operations, treating `GH_TOKEN` as the primary interface
 
 **Derivation**: Accountability and risk mitigation. Bot tokens can be scoped and rotated independently of human users, providing a clear audit trail and reducing the risk of accidental exposure of personal credentials.
 

@@ -7,6 +7,8 @@ persisted for the duration of the Claude Code session using CLAUDE_ENV_FILE.
 """
 
 import os
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -209,10 +211,18 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
         persist["GH_TOKEN"] = bot_token
         persist["GITHUB_TOKEN"] = bot_token
 
-    # 7. Ensure /opt/homebrew/bin is in PATH for gh (common on macOS)
+    # 7. Ensure gh CLI is accessible in PATH (portable: uses brew --prefix on macOS)
     current_path = os.environ.get("PATH", "")
-    if "/opt/homebrew/bin" not in current_path:
-        persist["PATH"] = f"/opt/homebrew/bin:{current_path}"
+    if not shutil.which("gh"):
+        try:
+            result = subprocess.run(["brew", "--prefix"], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                brew_bin = result.stdout.strip() + "/bin"
+                path_segments = [s for s in current_path.split(os.pathsep) if s]
+                if brew_bin not in path_segments:
+                    persist["PATH"] = os.pathsep.join([brew_bin, *path_segments])
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
 
     # Persist all environment variables
     set_persistent_env(persist)
