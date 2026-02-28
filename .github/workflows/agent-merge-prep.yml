@@ -9,27 +9,100 @@
 #   - Clean up labels (remove lgtm, merge-prep-running)
 # Authority: Can EDIT code, push commits, post comments, set commit status
 # Prompt: .github/agents/merge-prep.agent.md
+#
+# Triggers:
+#   - Human approves PR via GitHub review (non-bot)
+#   - Human comments "lgtm" / "merge" / "ship it" on a PR
+#   - Manual workflow_dispatch with pr_number
 
 name: "Agent: Merge Prep"
 
 on:
+  pull_request_review:
+    types: [submitted]
+  issue_comment:
+    types: [created]
   workflow_dispatch:
     inputs:
       pr_number:
         description: 'PR number to prepare'
         type: string
         required: true
-      ref:
-        description: 'Git ref to checkout'
-        type: string
-        required: true
 
 jobs:
-  fix:
-    name: Merge Prep
+  # ── Gate: validate LGTM signal, resolve PR details, add label ──
+  lgtm-gate:
+    name: LGTM Gate
+    if: >-
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event_name == 'pull_request_review' &&
+        github.event.review.state == 'approved' &&
+        github.event.review.user.type != 'Bot') ||
+      (github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request &&
+        github.event.comment.user.login == 'nicsuzor')
     runs-on: ubuntu-latest
     concurrency:
-      group: merge-prep-${{ inputs.pr_number }}
+      group: merge-prep-gate-${{ inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    outputs:
+      pr_number: ${{ steps.pr-ref.outputs.pr_number }}
+      ref: ${{ steps.pr-ref.outputs.ref }}
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Check LGTM pattern (comment trigger)
+        id: lgtm-check
+        if: github.event_name == 'issue_comment'
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          if echo "$COMMENT_BODY" | grep -iqE '^(lgtm|merge|ship it)'; then
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Determine PR number and ref
+        id: pr-ref
+        if: >-
+          github.event_name == 'workflow_dispatch' ||
+          github.event_name == 'pull_request_review' ||
+          steps.lgtm-check.outputs.proceed == 'true'
+        run: |
+          PR_NUM="${{ inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}"
+          echo "pr_number=$PR_NUM" >> "$GITHUB_OUTPUT"
+
+          # Look up head ref for the fix job's checkout
+          HEAD_REF=$(gh pr view "$PR_NUM" --repo "${{ github.repository }}" \
+            --json headRefName --jq '.headRefName')
+          echo "ref=$HEAD_REF" >> "$GITHUB_OUTPUT"
+
+      - name: Add lgtm label
+        if: steps.pr-ref.outputs.pr_number != ''
+        run: |
+          gh pr edit "${{ steps.pr-ref.outputs.pr_number }}" \
+            --repo "${{ github.repository }}" \
+            --add-label "lgtm"
+
+      - name: React to comment
+        if: github.event_name == 'issue_comment' && steps.lgtm-check.outputs.proceed == 'true'
+        run: |
+          gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
+            -f content=rocket
+
+  # ── Main agent: triage reviews, fix code, set status ──
+  fix:
+    name: Merge Prep
+    needs: [lgtm-gate]
+    if: needs.lgtm-gate.outputs.pr_number != ''
+    runs-on: ubuntu-latest
+    concurrency:
+      group: merge-prep-${{ needs.lgtm-gate.outputs.pr_number }}
       cancel-in-progress: true
     permissions:
       contents: write
@@ -38,11 +111,14 @@ jobs:
       id-token: write
       issues: write
       actions: read
+    env:
+      PR_NUMBER: ${{ needs.lgtm-gate.outputs.pr_number }}
+      PR_REF: ${{ needs.lgtm-gate.outputs.ref }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ inputs.ref }}
+          ref: ${{ env.PR_REF }}
 
       - name: Check if last push was from merge-prep
         id: loop-check
@@ -60,7 +136,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          HEAD_SHA=$(gh pr view "${{ inputs.pr_number }}" --repo "${{ github.repository }}" \
+          HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" \
             --json headRefOid --jq '.headRefOid')
           echo "sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
 
@@ -88,14 +164,14 @@ jobs:
 
             ---
 
-            Prepare PR #${{ inputs.pr_number }} in repository ${{ github.repository }}.
+            Prepare PR #${{ env.PR_NUMBER }} in repository ${{ github.repository }}.
 
             Use these commands to gather context:
-            - `gh pr view ${{ inputs.pr_number }}` — PR description and metadata
-            - `gh pr diff ${{ inputs.pr_number }}` — the diff
-            - `gh api repos/${{ github.repository }}/pulls/${{ inputs.pr_number }}/reviews` — all reviews
-            - `gh api repos/${{ github.repository }}/pulls/${{ inputs.pr_number }}/comments` — inline comments
-            - `gh api repos/${{ github.repository }}/issues/${{ inputs.pr_number }}/comments` — issue comments (including LGTM)
+            - `gh pr view ${{ env.PR_NUMBER }}` — PR description and metadata
+            - `gh pr diff ${{ env.PR_NUMBER }}` — the diff
+            - `gh api repos/${{ github.repository }}/pulls/${{ env.PR_NUMBER }}/reviews` — all reviews
+            - `gh api repos/${{ github.repository }}/pulls/${{ env.PR_NUMBER }}/comments` — inline comments
+            - `gh api repos/${{ github.repository }}/issues/${{ env.PR_NUMBER }}/comments` — issue comments (including LGTM)
 
             Look for the human's LGTM comment — it may contain specific instructions
             (e.g., "lgtm, but fix the docstring on line 42"). Treat those as directives.
@@ -106,7 +182,7 @@ jobs:
             After you are done (whether you pushed changes or not), you MUST run:
             ```bash
             # Get the current HEAD SHA (may have changed if you pushed)
-            HEAD_SHA=$(gh pr view ${{ inputs.pr_number }} --repo ${{ github.repository }} --json headRefOid --jq '.headRefOid')
+            HEAD_SHA=$(gh pr view ${{ env.PR_NUMBER }} --repo ${{ github.repository }} --json headRefOid --jq '.headRefOid')
 
             # Set the Merge Prep status to success — this unblocks auto-merge
             gh api repos/${{ github.repository }}/statuses/$HEAD_SHA \
@@ -126,7 +202,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Get current HEAD (may have changed if merge-prep pushed)
-          HEAD_SHA=$(gh pr view "${{ inputs.pr_number }}" --repo "${{ github.repository }}" \
+          HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" \
             --json headRefOid --jq '.headRefOid')
 
           gh api "repos/${{ github.repository }}/statuses/$HEAD_SHA" \
@@ -151,33 +227,29 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_NUM="${{ inputs.pr_number }}"
-          REPO="${{ github.repository }}"
-
           # Remove processing labels
-          gh pr edit "$PR_NUM" --repo "$REPO" --remove-label "lgtm" 2>/dev/null || true
-          gh pr edit "$PR_NUM" --repo "$REPO" --remove-label "merge-prep-running" 2>/dev/null || true
+          gh pr edit "$PR_NUMBER" --repo "${{ github.repository }}" --remove-label "lgtm" 2>/dev/null || true
+          gh pr edit "$PR_NUMBER" --repo "${{ github.repository }}" --remove-label "merge-prep-running" 2>/dev/null || true
 
       - name: Handle failure
         if: steps.loop-check.outputs.skip != 'true' && steps.claude.outcome != 'success'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_NUM="${{ inputs.pr_number }}"
           REPO="${{ github.repository }}"
 
           # Remove running label so cron can retry
-          gh pr edit "$PR_NUM" --repo "$REPO" --remove-label "merge-prep-running" 2>/dev/null || true
+          gh pr edit "$PR_NUMBER" --repo "$REPO" --remove-label "merge-prep-running" 2>/dev/null || true
           # Keep lgtm label — human approval still stands
 
           # Check failure count
-          FAIL_COUNT=$(gh api "repos/$REPO/issues/$PR_NUM/comments" \
+          FAIL_COUNT=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
             --jq '[.[] | select(.body | test("Merge Prep: Failed")) and (.user.login == "github-actions[bot]")] | length')
 
           if [ "$FAIL_COUNT" -ge "$((3 - 1))" ]; then
             # This is the 3rd failure — stop retrying
-            gh pr edit "$PR_NUM" --repo "$REPO" --add-label "merge-prep-failed" 2>/dev/null || true
-            gh pr comment "$PR_NUM" --repo "$REPO" --body "$(cat <<'EOF'
+            gh pr edit "$PR_NUMBER" --repo "$REPO" --add-label "merge-prep-failed" 2>/dev/null || true
+            gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$(cat <<'EOF'
           ## Merge Prep: Failed (giving up)
 
           Merge Prep has failed 3 times on this PR. Halting automatic retries.
@@ -190,7 +262,7 @@ jobs:
           EOF
           )"
           else
-            gh pr comment "$PR_NUM" --repo "$REPO" --body "$(cat <<'EOF'
+            gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$(cat <<'EOF'
           ## Merge Prep: Failed
 
           Merge Prep encountered an error. It will retry on the next cron cycle (~15 min).
