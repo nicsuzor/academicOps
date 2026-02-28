@@ -172,6 +172,13 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
         except Exception as e:
             messages.append(f"ACA_DATA sync error: {e}")
 
+    # Check pkb binary availability
+    from lib.binary_install import check_pkb_available
+
+    pkb_status = check_pkb_available()
+    if pkb_status:
+        messages.append(pkb_status)
+
     # 1. Persist Session ID
     if ctx.session_id:
         persist["CLAUDE_SESSION_ID"] = ctx.session_id
