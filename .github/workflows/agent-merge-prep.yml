@@ -68,7 +68,7 @@ jobs:
         if: steps.loop-check.outputs.skip != 'true'
         id: prompt
         run: |
-          PROMPT=$(cat .github/agents/merge-prep.md)
+          PROMPT=$(cat .github/agents/merge-prep.agent.md)
           {
             echo "prompt<<AGENT_EOF"
             echo "$PROMPT"

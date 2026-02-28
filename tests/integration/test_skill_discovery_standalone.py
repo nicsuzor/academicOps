@@ -151,7 +151,7 @@ def test_symlink_points_to_aops():
         # Fallback for alternative structure where skills might be direct children
         aops_scripts_alt = Path(aops) / "skills" / "framework" / "scripts"
         if aops_scripts_alt.exists():
-            aops_scripts = aops_scripts_alt
+             aops_scripts = aops_scripts_alt
         else:
             print(f"⚠️  SKIP: AOPS scripts don't exist: {aops_scripts}")
             pytest.skip(f"AOPS scripts don't exist: {aops_scripts} - local setup only")
