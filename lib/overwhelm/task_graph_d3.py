@@ -15,9 +15,9 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 
 EDGE_FORCE = {
-    "parent": {"strength": 0.8, "distance": 80},
-    "depends_on": {"strength": 0.35, "distance": 150},
-    "ref": {"strength": 0.06, "distance": 220},
+    "parent": {"strength": 0.9, "distance": 60},
+    "depends_on": {"strength": 0.15, "distance": 200},
+    "ref": {"strength": 0.02, "distance": 300},
 }
 
 TYPE_CHARGE = {
