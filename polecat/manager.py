@@ -1174,10 +1174,7 @@ class PolecatManager:
                     f"Write({worktree_str}/**)",
                     f"Edit({worktree_str}/**)",
                 ],
-                "deny": [
-                    "Write(**)",
-                    "Edit(**)",
-                ],
+                "deny": [],
             }
         }
 
