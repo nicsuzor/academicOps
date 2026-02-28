@@ -199,13 +199,13 @@ def test_badge_for_type():
 
 
 def test_label_truncation():
-    """Labels longer than 50 chars should be truncated."""
-    long_label = "A" * 60
+    """Labels longer than 60 chars should be truncated to 60 chars."""
+    long_label = "A" * 70
     graph = _make_graph([_node("t1", label=long_label)])
     result = prepare_embedded_graph_data(graph)
 
     n = result["nodes"][0]
-    assert len(n["label"]) == 50
+    assert len(n["label"]) == 60
     assert n["label"].endswith("...")
 
 
