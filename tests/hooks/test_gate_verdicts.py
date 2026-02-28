@@ -25,7 +25,6 @@ import importlib
 import json
 import sys
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -365,9 +364,7 @@ class TestComplianceSubagentTypesComplete:
 
     def test_all_expected_types_registered(self):
         for t in self.EXPECTED_TYPES:
-            assert t in COMPLIANCE_SUBAGENT_TYPES, (
-                f"'{t}' missing from COMPLIANCE_SUBAGENT_TYPES"
-            )
+            assert t in COMPLIANCE_SUBAGENT_TYPES, f"'{t}' missing from COMPLIANCE_SUBAGENT_TYPES"
 
     def test_no_unexpected_types(self):
         """Guard against accidental additions that weaken gate enforcement."""
@@ -400,9 +397,7 @@ class TestNonComplianceSubagentBlocked:
         result = router._dispatch_gates(ctx, state)
 
         # Non-compliance agents should NOT be ALLOW when gates are closed
-        assert result is not None, (
-            f"[{scenario['id']}] Expected non-allow verdict but got None"
-        )
+        assert result is not None, f"[{scenario['id']}] Expected non-allow verdict but got None"
         assert result.verdict != GateVerdict.ALLOW, (
             f"[{scenario['id']}] Non-compliance agent '{scenario['subagent_type']}' "
             f"should not be ALLOW when gate is closed"
@@ -437,9 +432,7 @@ class TestCustodietGateBlocksAtThreshold:
                     f"[{scenario['id']}] Expected ALLOW, got {result.verdict.value}"
                 )
         elif expected == "deny":
-            assert result is not None, (
-                f"[{scenario['id']}] Expected DENY but got None (allow)"
-            )
+            assert result is not None, f"[{scenario['id']}] Expected DENY but got None (allow)"
             assert result.verdict == GateVerdict.DENY, (
                 f"[{scenario['id']}] Expected DENY, got {result.verdict.value}"
             )
@@ -529,16 +522,12 @@ class TestStopGateBehavior:
                     f"[{scenario['id']}] Expected ALLOW, got {result.verdict.value}"
                 )
         elif expected == "deny":
-            assert result is not None, (
-                f"[{scenario['id']}] Expected DENY but got None"
-            )
+            assert result is not None, f"[{scenario['id']}] Expected DENY but got None"
             assert result.verdict == GateVerdict.DENY, (
                 f"[{scenario['id']}] Expected DENY, got {result.verdict.value}"
             )
         elif expected == "warn":
-            assert result is not None, (
-                f"[{scenario['id']}] Expected WARN but got None"
-            )
+            assert result is not None, f"[{scenario['id']}] Expected WARN but got None"
             assert result.verdict == GateVerdict.WARN, (
                 f"[{scenario['id']}] Expected WARN, got {result.verdict.value}"
             )
@@ -564,9 +553,7 @@ class TestClaudeOutputFormat:
         ctx = _make_context(scenario)
 
         gate_result = router._dispatch_gates(ctx, state)
-        assert gate_result is not None, (
-            f"[{scenario['id']}] Expected gate result but got None"
-        )
+        assert gate_result is not None, f"[{scenario['id']}] Expected gate result but got None"
 
         canonical = router._gate_result_to_canonical(gate_result)
         output = router.output_for_claude(canonical, scenario["hook_event"])
@@ -578,7 +565,10 @@ class TestClaudeOutputFormat:
                 f"[{scenario['id']}] Expected ClaudeGeneralHookOutput"
             )
             assert output.hookSpecificOutput is not None
-            assert output.hookSpecificOutput.permissionDecision == expected["claude_permission_decision"], (
+            assert (
+                output.hookSpecificOutput.permissionDecision
+                == expected["claude_permission_decision"]
+            ), (
                 f"[{scenario['id']}] Claude permissionDecision: "
                 f"expected {expected['claude_permission_decision']}, "
                 f"got {output.hookSpecificOutput.permissionDecision}"
@@ -656,9 +646,7 @@ class TestCombinedGateInteractions:
         expected = scenario["expected"]
 
         if expected.get("not_allow"):
-            assert result is not None, (
-                f"[{scenario['id']}] Expected non-allow verdict but got None"
-            )
+            assert result is not None, f"[{scenario['id']}] Expected non-allow verdict but got None"
             assert result.verdict != GateVerdict.ALLOW, (
                 f"[{scenario['id']}] Expected non-allow verdict, got ALLOW"
             )
@@ -706,9 +694,7 @@ class TestExhaustiveComplianceBypass:
         state.gates["custodiet"].ops_since_open = 100
         return state
 
-    @pytest.mark.parametrize(
-        "subagent_type", sorted(COMPLIANCE_SUBAGENT_TYPES)
-    )
+    @pytest.mark.parametrize("subagent_type", sorted(COMPLIANCE_SUBAGENT_TYPES))
     @pytest.mark.parametrize(
         "tool_name,tool_input",
         WRITE_TOOLS,
