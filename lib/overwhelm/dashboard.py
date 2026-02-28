@@ -3379,11 +3379,10 @@ def clean_activity_text(raw_text: str) -> str:
 # ============================================================================
 
 
-def load_graph_data(filename: str = "graph.json") -> dict | None:
-    """Load graph JSON from ACA_DATA (`aops graph` output location)."""
-    aca_data = Path(os.environ["ACA_DATA"])
-
-    graph_path = aca_data / filename
+def load_graph_data(filename: str = "tasks.json") -> dict | None:
+    """Load graph JSON from AOPS_SESSIONS (aops graph output location)."""
+    sessions_dir = Path(os.environ.get("AOPS_SESSIONS", Path.home() / ".aops" / "sessions"))
+    graph_path = sessions_dir / filename
     if graph_path.exists():
         try:
             return json.loads(graph_path.read_text())
@@ -3394,7 +3393,7 @@ def load_graph_data(filename: str = "graph.json") -> dict | None:
 
 def load_task_graph() -> dict | None:
     """Load the most recent task graph JSON (shim)."""
-    return load_graph_data("graph.json")
+    return load_graph_data()
 
 
 def calculate_graph_health(graph: dict) -> dict:
@@ -3561,7 +3560,7 @@ def render_spotlight_epic():
 
 def _get_graph_node_count() -> int:
     """Get the number of nodes in the task graph for collapse threshold."""
-    graph = load_graph_data("graph.json")
+    graph = load_graph_data()
     if graph:
         return len(graph.get("nodes", []))
     return 0
@@ -3571,63 +3570,76 @@ def render_task_graph_page():
     """Render the task/knowledge graph on its own dedicated page."""
     st.markdown("### Task Graph")
 
-    col_view, col_filter = st.columns(2)
-    with col_view:
-        view_mode = st.radio(
-            "Graph Data",
-            ["Tasks Only", "Knowledge Base (More Edges)"],
-            horizontal=True,
-            key="tg_view",
-        )
-    with col_filter:
-        filter_mode = st.radio(
-            "Filter Nodes", ["Active Tasks Only", "All Nodes"], horizontal=True, key="tg_filter"
-        )
+    with st.sidebar:
+        if st.button("Reload Graph", key="tg_reload"):
+            st.cache_data.clear()
 
-    filename = "knowledge-graph.json" if "Knowledge Base" in view_mode else "graph.json"
+        st.markdown("**Show**")
+        show_active = st.checkbox("Active", value=True, key="tg_show_active")
+        show_blocked = st.checkbox("Blocked", value=True, key="tg_show_blocked")
+        show_done = st.checkbox("Done / Cancelled", value=False, key="tg_show_done")
+        show_orphans = st.checkbox("Orphans (inbox)", value=False, key="tg_show_orphans")
 
-    if st.button("Reload Graph", key="tg_reload"):
-        st.cache_data.clear()
-
-    # Visual controls for the D3 physics engine
-    options_expander = st.expander("Physics Controls", expanded=False)
-    with options_expander:
-        col1, col2, col3 = st.columns(3)
-        with col1:
+        # Visual controls for the D3 physics engine
+        with st.expander("Physics Controls", expanded=False):
             charge = st.slider("Repel Strength", -1000, -10, -450, 10, key="d3_charge")
-        with col2:
             link_dist = st.slider("Link Distance", 10, 1000, 600, 5, key="d3_link")
-        with col3:
             proj_force = st.slider("Project Force", 0.0, 0.3, 0.12, 0.01, key="d3_proj")
 
     force_settings = {"charge": charge, "linkDistance": link_dist, "projectForce": proj_force}
 
-    d3_graph = load_graph_data(filename)
+    d3_graph = load_graph_data()
     if d3_graph:
-        # Apply filtering
-        if filter_mode == "Active Tasks Only":
-            inactive_statuses = {"done", "completed", "cancelled", "inbox"}
-            active_nodes = [
-                n
-                for n in d3_graph.get("nodes", [])
-                if n.get("status", "inbox").lower() not in inactive_statuses
-            ]
-            d3_graph["nodes"] = active_nodes
+        # Apply checkbox filters
+        all_nodes = d3_graph.get("nodes", [])
+        all_node_ids = {n["id"] for n in all_nodes}
+        edges = d3_graph.get("edges", [])
+        connected_ids = set()
+        for e in edges:
+            connected_ids.add(e.get("source", ""))
+            connected_ids.add(e.get("target", ""))
+
+        active_statuses = {"active", "in_progress", "waiting", "todo", "review", "decomposing", "pending"}
+        blocked_statuses = {"blocked"}
+        done_statuses = {"done", "completed", "cancelled", "dormant"}
+        orphan_statuses = {"inbox"}
+
+        filtered = []
+        for n in all_nodes:
+            status = n.get("status", "inbox").lower()
+            if status in active_statuses and show_active:
+                filtered.append(n)
+            elif status in blocked_statuses and show_blocked:
+                filtered.append(n)
+            elif status in done_statuses and show_done:
+                filtered.append(n)
+            elif status in orphan_statuses and show_orphans:
+                filtered.append(n)
+        d3_graph["nodes"] = filtered
 
         d3_data = prepare_embedded_graph_data(d3_graph)
-        st.caption(f"Showing {len(d3_data['nodes'])} nodes and {len(d3_data['links'])} links.")
+        layout_info = " | Precomputed layout" if d3_data.get("hasLayout") else ""
+        st.caption(f"Showing {len(d3_data['nodes'])} nodes and {len(d3_data['links'])} links.{layout_info}")
 
-        # Project filter dropdown
+        # Project filter dropdown (sidebar)
         projects = sorted(set(n.get("project", "") for n in d3_data["nodes"] if n.get("project")))
-        selected_project = st.selectbox("Project", ["All Projects"] + projects, key="tg_project")
+        selected_project = st.sidebar.selectbox(
+            "Project", ["All Projects"] + projects, key="tg_project"
+        )
         project_filter = "ALL" if selected_project == "All Projects" else selected_project
 
-        # Layout mode
-        layout_options = (
-            ["Precomputed", "Force", "Atlas"] if d3_data.get("hasLayout") else ["Force", "Atlas"]
-        )
-        layout_map = {"Precomputed": "precomputed", "Force": "force", "Atlas": "atlas"}
-        selected_layout = st.selectbox("Layout", layout_options, key="tg_layout")
+        # Layout mode (sidebar)
+        layout_map = {
+            "Precomputed": "precomputed",
+            "Precomputed + Separate": "precomputed_relax",
+            "Force": "force",
+            "ForceAtlas2": "atlas",
+        }
+        if d3_data.get("hasLayout"):
+            layout_options = ["Precomputed", "Precomputed + Separate", "Force", "ForceAtlas2"]
+        else:
+            layout_options = ["Force", "ForceAtlas2"]
+        selected_layout = st.sidebar.selectbox("Layout", layout_options, key="tg_layout")
         layout_mode = layout_map[selected_layout]
 
         # Action handler for bi-directional clicking

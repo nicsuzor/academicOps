@@ -250,7 +250,20 @@
               return cls;
           })
           .attr("cursor","pointer")
-          .on("click", (e, d) => selectNode(e, d));
+          .on("click", (e, d) => selectNode(e, d))
+          .call(d3.drag()
+            .on("start", (e, d) => {
+                if (simulation) simulation.alphaTarget(0.1).restart();
+                d.fx = d.x; d.fy = d.y;
+            })
+            .on("drag", (e, d) => {
+                d.fx = e.x; d.fy = e.y;
+            })
+            .on("end", (e, d) => {
+                if (simulation) simulation.alphaTarget(0);
+                d.fx = null; d.fy = null;
+            })
+          );
 
         nodeEls.each(function(d) {
           const g = d3.select(this);
@@ -443,6 +456,48 @@
                     .scale(zoomScale)
                     .translate(-cx, -cy)
             );
+        } else if (currentLayout === "precomputed_relax") {
+            // Start from precomputed positions, then run weak forces to separate overlaps
+            const CANVAS = 3000;
+            const scale = CANVAS / 1000;
+            nodes.forEach(n => {
+                if (n.x != null && n.y != null) {
+                    n.x = n.x * scale;
+                    n.y = n.y * scale;
+                } else {
+                    n.x = CANVAS / 2 + (Math.random() - 0.5) * 100;
+                    n.y = CANVAS / 2 + (Math.random() - 0.5) * 100;
+                }
+            });
+
+            // Very gentle simulation: collision-only to nudge apart overlapping nodes
+            simulation = d3.forceSimulation(nodes)
+                .alpha(0.15)
+                .alphaDecay(0.05)
+                .velocityDecay(0.7)
+                .force("collision", d3.forceCollide()
+                    .radius(d => Math.max(d.w, d.h) / 2 + 2)
+                    .strength(0.3)
+                    .iterations(2))
+                .on("tick", ticked);
+
+            // Auto-zoom to fit
+            setTimeout(() => {
+                const xs = nodes.map(n => n.x);
+                const ys = nodes.map(n => n.y);
+                const x0 = Math.min(...xs) - 50, x1 = Math.max(...xs) + 50;
+                const y0 = Math.min(...ys) - 50, y1 = Math.max(...ys) + 50;
+                const dx = x1 - x0, dy = y1 - y0;
+                const zoomScale = Math.min(W / dx, H / dy) * 0.9;
+                const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+                svg.transition().duration(500).call(
+                    zoom.transform,
+                    d3.zoomIdentity
+                        .translate(W / 2, H / 2)
+                        .scale(zoomScale)
+                        .translate(-cx, -cy)
+                );
+            }, 500);
         } else if (currentLayout === "atlas") {
             // ForceAtlas2-style: degree-scaled gravity + repulsion, no center force
             simulation = d3.forceSimulation(nodes)
