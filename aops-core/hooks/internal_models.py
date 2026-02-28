@@ -20,7 +20,8 @@ Migration pattern:
 """
 
 from pydantic import BaseModel, Field
-from schemas import HookContext
+
+from hooks.schemas import HookContext
 
 # --- Git Status Models (session_end_commit_check.py) ---
 
