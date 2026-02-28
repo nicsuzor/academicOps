@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+from hooks.gate_config import extract_subagent_type
 from hooks.router import HookRouter
 from hooks.schemas import HookContext
 from lib.gate_types import GateStatus
@@ -174,3 +175,70 @@ def test_router_normalize_activate_skill_extracts_skill_name(router):
     ctx = router.normalize_input(raw_input)
     assert ctx.subagent_type == "handover"
     assert ctx.is_subagent is False
+
+
+# =============================================================================
+# extract_subagent_type() unit tests
+# =============================================================================
+
+
+class TestExtractSubagentType:
+    """Tests for the cross-platform extract_subagent_type() function."""
+
+    def test_claude_task_extracts_subagent_type(self):
+        """Claude's Task tool extracts subagent_type param."""
+        result, is_skill = extract_subagent_type(
+            "Task", {"subagent_type": "custodiet", "prompt": "check"}
+        )
+        assert result == "custodiet"
+        assert is_skill is False
+
+    def test_claude_skill_extracts_skill_name(self):
+        """Claude's Skill tool extracts skill param and marks as skill."""
+        result, is_skill = extract_subagent_type("Skill", {"skill": "handover", "args": ""})
+        assert result == "handover"
+        assert is_skill is True
+
+    def test_gemini_delegate_extracts_name(self):
+        """Gemini's delegate_to_agent extracts name param."""
+        result, is_skill = extract_subagent_type(
+            "delegate_to_agent", {"name": "aops-core:qa", "query": "test"}
+        )
+        assert result == "aops-core:qa"
+        assert is_skill is False
+
+    def test_gemini_delegate_extracts_agent_name_fallback(self):
+        """Gemini's delegate_to_agent falls back to agent_name param."""
+        result, is_skill = extract_subagent_type("delegate_to_agent", {"agent_name": "custodiet"})
+        assert result == "custodiet"
+        assert is_skill is False
+
+    def test_gemini_activate_skill_extracts_skill(self):
+        """Gemini's activate_skill extracts skill param and marks as skill."""
+        result, is_skill = extract_subagent_type("activate_skill", {"skill": "dump"})
+        assert result == "dump"
+        assert is_skill is True
+
+    def test_unknown_tool_returns_none(self):
+        """Non-spawn tools return (None, False)."""
+        result, is_skill = extract_subagent_type("Read", {"file_path": "test.py"})
+        assert result is None
+        assert is_skill is False
+
+    def test_none_tool_returns_none(self):
+        """None tool_name returns (None, False)."""
+        result, is_skill = extract_subagent_type(None, {"anything": "value"})
+        assert result is None
+        assert is_skill is False
+
+    def test_missing_params_returns_none(self):
+        """Spawn tool without matching params returns (None, is_skill)."""
+        result, is_skill = extract_subagent_type("Task", {"prompt": "test"})
+        assert result is None
+        assert is_skill is False
+
+    def test_skill_with_missing_params_returns_none_with_is_skill(self):
+        """Skill tool without skill param returns (None, True)."""
+        result, is_skill = extract_subagent_type("Skill", {"args": "test"})
+        assert result is None
+        assert is_skill is True

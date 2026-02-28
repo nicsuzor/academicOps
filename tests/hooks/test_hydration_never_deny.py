@@ -13,7 +13,7 @@ if str(AOPS_CORE) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE))
 
 
-from hooks.gate_config import TOOL_CATEGORIES, get_tool_category
+from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES, TOOL_CATEGORIES, get_tool_category
 from hooks.router import HookRouter
 from hooks.schemas import HookContext
 from lib.gate_model import GateVerdict
@@ -256,3 +256,45 @@ class TestReadToolExemptFromHydration:
 
         if result:
             assert result.verdict == GateVerdict.ALLOW
+
+
+class TestAgentNamesNotInToolCategories:
+    """Agent/skill names must NOT be in TOOL_CATEGORIES.
+
+    Agent names like 'prompt-hydrator' and 'custodiet' are subagent_type
+    values, not tool names. They should be in COMPLIANCE_SUBAGENT_TYPES
+    instead of any tool category.
+    """
+
+    AGENT_NAMES = [
+        "prompt-hydrator",
+        "aops-core:prompt-hydrator",
+        "custodiet",
+        "aops-core:custodiet",
+        "qa",
+        "aops-core:qa",
+        "handover",
+        "aops-core:handover",
+        "dump",
+        "aops-core:dump",
+    ]
+
+    def test_agent_names_not_in_any_tool_category(self):
+        """No agent name should appear in any TOOL_CATEGORIES set."""
+        all_tools = set()
+        for tools in TOOL_CATEGORIES.values():
+            all_tools |= tools
+        for name in self.AGENT_NAMES:
+            assert name not in all_tools, (
+                f"Agent name '{name}' found in TOOL_CATEGORIES. "
+                f"Agent names belong in COMPLIANCE_SUBAGENT_TYPES, not tool categories."
+            )
+
+    def test_compliance_subagent_types_has_expected_members(self):
+        """COMPLIANCE_SUBAGENT_TYPES should contain the key compliance agents."""
+        expected = {"prompt-hydrator", "custodiet", "audit", "butler"}
+        for name in expected:
+            assert (
+                name in COMPLIANCE_SUBAGENT_TYPES
+                or f"aops-core:{name}" in COMPLIANCE_SUBAGENT_TYPES
+            ), f"'{name}' not found in COMPLIANCE_SUBAGENT_TYPES"
