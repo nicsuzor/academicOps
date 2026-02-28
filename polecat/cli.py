@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+import shutil
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -14,6 +15,43 @@ if str(REPO_ROOT / "aops-core") not in sys.path:
 import click
 from manager import PolecatManager
 from validation import TaskIDValidationError, validate_task_id_or_raise
+
+
+def set_terminal_title(title: str) -> None:
+    """Set terminal/tmux window title for session identification.
+
+    Uses OSC 0 escape sequence (same as dotfiles set-tab-title function).
+    In tmux, also sets the window name via rename-window so it appears
+    in set-titles-string (#W) and the window list.
+    """
+    # OSC 0: Set window title — works in Terminal.app, iTerm2, most terminals
+    sys.stdout.write(f"\033]0;{title}\007")
+    sys.stdout.flush()
+
+    # If inside tmux, also rename the window for #W in set-titles-string
+    if os.environ.get("TMUX"):
+        tmux = shutil.which("tmux")
+        if tmux:
+            import subprocess
+
+            subprocess.run([tmux, "rename-window", title], capture_output=True)
+
+
+def reset_terminal_title() -> None:
+    """Reset terminal title to automatic naming after session ends."""
+    if os.environ.get("TMUX"):
+        tmux = shutil.which("tmux")
+        if tmux:
+            import subprocess
+
+            # Re-enable automatic window renaming
+            subprocess.run(
+                [tmux, "set-window-option", "automatic-rename", "on"],
+                capture_output=True,
+            )
+    # Clear terminal title (let shell/terminal manage it)
+    sys.stdout.write("\033]0;\007")
+    sys.stdout.flush()
 
 
 def save_worker_transcript(
@@ -781,6 +819,7 @@ def crew(ctx, target, extra, name, gemini, resume):
     env["POLECAT_CREW_NAME"] = crew_name
     env["POLECAT_WORKTREE"] = str(work_dir)
 
+    set_terminal_title(f"crew:{crew_name}")
     try:
         subprocess.run(cmd, cwd=work_dir, env=env)
     except FileNotFoundError:
@@ -788,6 +827,8 @@ def crew(ctx, target, extra, name, gemini, resume):
         sys.exit(1)
     except KeyboardInterrupt:
         print("\n\n\u26a0\ufe0f  Session interrupted")
+    finally:
+        reset_terminal_title()
 
     print("-" * 50)
     print(f"\n\U0001f4cb Crew '{crew_name}' session ended.")
@@ -1098,6 +1139,8 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
     env = os.environ.copy()
     env["POLECAT_SESSION_TYPE"] = "polecat"
 
+    if interactive:
+        set_terminal_title(f"polecat:{task.id}")
     try:
         if interactive:
             # In interactive mode, we MUST NOT capture output or it will hang
@@ -1149,6 +1192,9 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
     except KeyboardInterrupt:
         print("\n\n⚠️  Agent interrupted by user")
         exit_code = 130
+    finally:
+        if interactive:
+            reset_terminal_title()
 
     print("-" * 50)
 
