@@ -384,16 +384,36 @@
             }
 
             simulation = d3.forceSimulation(nodes)
+                // Pull linked nodes together; per-link distance/strength set in Python
+                // (parent=strong/close, depends_on=weak/far, ref=minimal)
                 .force("link", d3.forceLink(links).id(d => d.id)
                     .distance(d => d.distance || 150)
                     .strength(d => d.strength || 0.1))
+                // Push all nodes apart; charge varies by type (projects repel more than tasks)
                 .force("charge", d3.forceManyBody().strength(d => d.charge || -200))
+                // Anchor the whole graph to the viewport center
                 .force("center", d3.forceCenter(W / 2, H / 2))
+                // Prevent node overlap with padding; 3 iterations for stability
                 .force("collision", d3.forceCollide().radius(d => Math.max(d.w, d.h) / 2 + 20).strength(0.8).iterations(3))
+                // Pull same-project nodes toward their shared centroid
                 .force("cluster", forceCluster(0.25))
                 .on("tick", ticked);
             function ticked() {
-                linkEls.attr("d", d => `M${d.source.x},${d.source.y} L${d.target.x},${d.target.y}`);
+                linkEls.attr("d", d => {
+                    const sx = d.source.x, sy = d.source.y;
+                    const tx = d.target.x, ty = d.target.y;
+                    if (d.type === "depends_on") {
+                        // Manhattan routing: horizontal to midpoint, vertical, horizontal
+                        const mx = (sx + tx) / 2;
+                        return `M${sx},${sy} L${mx},${sy} L${mx},${ty} L${tx},${ty}`;
+                    }
+                    if (d.type === "parent") {
+                        // S-curve for parent edges
+                        const my = (sy + ty) / 2;
+                        return `M${sx},${sy} C${sx},${my} ${tx},${my} ${tx},${ty}`;
+                    }
+                    return `M${sx},${sy} L${tx},${ty}`;
+                });
                 nodeEls.attr("transform", d => `translate(${d.x},${d.y})`);
             }
         } else {
