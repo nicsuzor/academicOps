@@ -100,7 +100,7 @@
       <span class="control-label">Layout</span>
       <select id="layout-select">
         <option value="force">⚛ Force</option>
-        <option value="tree">↓ Tree</option>
+        <option value="atlas">◉ Atlas</option>
       </select>
     </div>
   </div>
@@ -353,117 +353,116 @@
         const nodes = graphData.nodes;
         const links = graphData.links;
 
-        if (currentLayout === "force") {
-            // Custom clustering force: pull same-project nodes toward their centroid
-            function forceCluster(clusterStrength) {
-                let _nodes;
-                function force(alpha) {
-                    const clusters = new Map();
-                    _nodes.forEach(n => {
-                        const p = n.project || "__none__";
-                        if (!clusters.has(p)) { clusters.set(p, {x: 0, y: 0, count: 0}); }
-                        const c = clusters.get(p);
-                        c.x += n.x;
-                        c.y += n.y;
-                        c.count++;
-                    });
-                    clusters.forEach(c => {
-                        c.x /= c.count;
-                        c.y /= c.count;
-                    });
-                    const k = clusterStrength * alpha;
-                    _nodes.forEach(n => {
-                        const p = n.project || "__none__";
-                        const c = clusters.get(p);
-                        n.vx += (c.x - n.x) * k;
-                        n.vy += (c.y - n.y) * k;
-                    });
-                }
-                force.initialize = function(nodes) { _nodes = nodes; };
-                return force;
-            }
+        // All tunables from Python FORCE_CONFIG via graphData.forceConfig
+        const fc = graphData.forceConfig || {};
 
+        // Compute per-node link count for degree-aware forces (orphan detection, atlas gravity)
+        nodes.forEach(n => { n.linkCount = 0; });
+        links.forEach(l => {
+            if (l.source && l.target) {
+                const s = (typeof l.source === "object") ? l.source : null;
+                const t = (typeof l.target === "object") ? l.target : null;
+                if (s) s.linkCount = (s.linkCount || 0) + 1;
+                if (t) t.linkCount = (t.linkCount || 0) + 1;
+            }
+        });
+
+        // Custom clustering force: pull same-project nodes toward their centroid
+        function forceCluster(clusterStrength) {
+            let _nodes;
+            function force(alpha) {
+                const clusters = new Map();
+                _nodes.forEach(n => {
+                    const p = n.project || "__none__";
+                    if (!clusters.has(p)) { clusters.set(p, {x: 0, y: 0, count: 0}); }
+                    const c = clusters.get(p);
+                    c.x += n.x;
+                    c.y += n.y;
+                    c.count++;
+                });
+                clusters.forEach(c => {
+                    c.x /= c.count;
+                    c.y /= c.count;
+                });
+                const k = clusterStrength * alpha;
+                _nodes.forEach(n => {
+                    const p = n.project || "__none__";
+                    const c = clusters.get(p);
+                    n.vx += (c.x - n.x) * k;
+                    n.vy += (c.y - n.y) * k;
+                });
+            }
+            force.initialize = function(nodes) { _nodes = nodes; };
+            return force;
+        }
+
+        // Shared tick handler: routes edges by type, positions nodes
+        function ticked() {
+            linkEls.attr("d", d => {
+                const sx = d.source.x, sy = d.source.y;
+                const tx = d.target.x, ty = d.target.y;
+                if (d.type === "depends_on") {
+                    // Manhattan routing: horizontal to midpoint, vertical, horizontal
+                    const mx = (sx + tx) / 2;
+                    return `M${sx},${sy} L${mx},${sy} L${mx},${ty} L${tx},${ty}`;
+                }
+                if (d.type === "parent") {
+                    // S-curve for parent edges
+                    const my = (sy + ty) / 2;
+                    return `M${sx},${sy} C${sx},${my} ${tx},${my} ${tx},${ty}`;
+                }
+                return `M${sx},${sy} L${tx},${ty}`;
+            });
+            nodeEls.attr("transform", d => `translate(${d.x},${d.y})`);
+        }
+
+        if (currentLayout === "force") {
             simulation = d3.forceSimulation(nodes)
-                // Pull linked nodes together; per-link distance/strength set in Python
-                // (parent=strong/close, depends_on=weak/far, ref=minimal)
+                // Pull linked nodes together; per-link distance/strength set in EDGE_FORCE
                 .force("link", d3.forceLink(links).id(d => d.id)
-                    .distance(d => d.distance || 150)
-                    .strength(d => d.strength || 0.1))
-                // Push all nodes apart; charge varies by type (projects repel more than tasks)
-                .force("charge", d3.forceManyBody().strength(d => d.charge || -200))
+                    .distance(d => d.distance)
+                    .strength(d => d.strength))
+                // Push all nodes apart; charge varies by type (TYPE_CHARGE)
+                .force("charge", d3.forceManyBody()
+                    .strength(d => d.charge)
+                    .distanceMax(fc.chargeDistanceMax))
                 // Anchor the whole graph to the viewport center
                 .force("center", d3.forceCenter(W / 2, H / 2))
-                // Prevent node overlap with padding; 3 iterations for stability
-                .force("collision", d3.forceCollide().radius(d => Math.max(d.w, d.h) / 2 + 20).strength(0.8).iterations(3))
+                // Prevent node overlap with padding
+                .force("collision", d3.forceCollide()
+                    .radius(d => Math.max(d.w, d.h) / 2 + fc.collisionPadding)
+                    .strength(fc.collisionStrength)
+                    .iterations(fc.collisionIterations))
                 // Pull same-project nodes toward their shared centroid
-                .force("cluster", forceCluster(0.25))
+                .force("cluster", forceCluster(fc.clusterStrength))
+                // Push orphans (no links) toward the periphery
+                .force("orphanPush", d3.forceRadial(
+                        Math.min(W, H) * fc.orphanRadius, W / 2, H / 2
+                    ).strength(d => d.linkCount === 0 ? fc.orphanStrength : 0))
                 .on("tick", ticked);
-            function ticked() {
-                linkEls.attr("d", d => {
-                    const sx = d.source.x, sy = d.source.y;
-                    const tx = d.target.x, ty = d.target.y;
-                    if (d.type === "depends_on") {
-                        // Manhattan routing: horizontal to midpoint, vertical, horizontal
-                        const mx = (sx + tx) / 2;
-                        return `M${sx},${sy} L${mx},${sy} L${mx},${ty} L${tx},${ty}`;
-                    }
-                    if (d.type === "parent") {
-                        // S-curve for parent edges
-                        const my = (sy + ty) / 2;
-                        return `M${sx},${sy} C${sx},${my} ${tx},${my} ${tx},${ty}`;
-                    }
-                    return `M${sx},${sy} L${tx},${ty}`;
-                });
-                nodeEls.attr("transform", d => `translate(${d.x},${d.y})`);
-            }
-        } else {
-            // Tree layout
-            const nodeById = new Map(nodes.map(n => [n.id, n]));
-            const roots = nodes.filter(n => !n.parent || !nodeById.has(n.parent));
-            const childMap = new Map();
-            nodes.forEach(n => {
-                if (n.parent && nodeById.has(n.parent)) {
-                    if (!childMap.has(n.parent)) childMap.set(n.parent, []);
-                    childMap.get(n.parent).push(n);
-                }
-            });
-
-            function buildHierarchy(nd) {
-                const ch = childMap.get(nd.id) || [];
-                return { id: nd.id, _n: nd, children: ch.map(c => buildHierarchy(c)) };
-            }
-
-            const vRoot = { id: '__vroot__', _n: null, children: roots.map(r => buildHierarchy(r)) };
-            const hier = d3.hierarchy(vRoot);
-
-            const hSpacing = Math.max(100, d3.max(nodes, d => d.w) || 100) + 20;
-            const vSpacing = 150;
-
-            d3.tree().nodeSize([hSpacing, vSpacing])(hier);
-
-            hier.descendants().forEach(d => {
-                if (d.data._n) {
-                    d.data._n.x = d.x + W/2;
-                    d.data._n.y = d.y + 100;
-                }
-            });
-
-            nodeEls.transition().duration(750).attr("transform", d => `translate(${d.x},${d.y})`);
-            linkEls.transition().duration(750).attr("d", d => {
-                const s = d.source, t = d.target;
-                if (d.type === "parent") {
-                    const midY = (s.y + t.y) / 2;
-                    return `M${s.x},${s.y} C${s.x},${midY} ${t.x},${midY} ${t.x},${t.y}`;
-                }
-                return `M${s.x},${s.y} L${t.x},${t.y}`;
-            });
-
-            // Zoom to fit tree
-            const b = container.node().getBBox();
-            if (b.width > 0) {
-                const sc = Math.min(W/(b.width+100), H/(b.height+100), 1.2) * 0.9;
-                svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity.translate(W/2,H/2).scale(sc).translate(-b.x-b.width/2,-b.y-b.height/2));
-            }
+        } else if (currentLayout === "atlas") {
+            // ForceAtlas2-style: degree-scaled gravity + repulsion, no center force
+            simulation = d3.forceSimulation(nodes)
+                // Stronger links to tighten clusters
+                .force("link", d3.forceLink(links).id(d => d.id)
+                    .distance(d => d.distance || 80)
+                    .strength(d => (d.strength || 0.3) * 1.5))
+                // Degree-scaled repulsion: hubs push harder
+                .force("charge", d3.forceManyBody()
+                    .strength(d => -30 * (1 + (d.linkCount || 0)))
+                    .distanceMax(400))
+                // Degree-scaled gravity replaces forceCenter —
+                // high-degree nodes anchor near center, leaves drift out
+                .force("gravity", d3.forceRadial(0, W / 2, H / 2)
+                    .strength(d => 0.01 + 0.005 * (d.linkCount || 0)))
+                // Prevent node overlap
+                .force("collision", d3.forceCollide()
+                    .radius(d => Math.max(d.w, d.h) / 2 + fc.collisionPadding)
+                    .strength(fc.collisionStrength)
+                    .iterations(fc.collisionIterations))
+                // Project clustering
+                .force("cluster", forceCluster(fc.clusterStrength))
+                .on("tick", ticked);
         }
     }
 
