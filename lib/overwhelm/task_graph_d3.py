@@ -267,9 +267,21 @@ def prepare_embedded_graph_data(
         depth = node.get("depth", 0)
         is_structural = nid in structural_ids
 
-        label = node.get("label", nid)
-        if len(label) > 50:
-            label = label[:47] + "..."
+        # Prioritize title over label for human-readable names
+        label = node.get("title") or node.get("label") or nid
+        if len(label) > 60:
+            label = label[:57] + "..."
+
+        # Extract modification time for recency heatmap
+        modified = node.get("modified")
+        if not modified and node.get("path"):
+            try:
+                # Fallback to filesystem mtime if path exists and modified not in graph.json
+                p = Path(os.environ.get("ACA_DATA", "")) / node["path"]
+                if p.exists():
+                    modified = p.stat().st_mtime
+            except Exception:
+                pass
 
         type_scale = TYPE_BASE_SCALE.get(node_type, 1.0)
         if status in ("done", "completed", "cancelled"):
@@ -346,6 +358,7 @@ def prepare_embedded_graph_data(
                 "stakeholder": stakeholder,
                 "structural": is_structural,
                 "dw": round(dw, 1),
+                "modified": modified,
                 "badge": badge,
                 "charge": TYPE_CHARGE.get(node_type, -100),
                 "parent": node.get("parent"),

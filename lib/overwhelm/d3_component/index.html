@@ -22,11 +22,25 @@
       position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 10;
       background: rgba(15, 23, 42, 0.85); padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);
       backdrop-filter: blur(12px); box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+      display: flex; gap: 12px; align-items: center;
     }
-    #project-filter {
+    .control-group { display: flex; align-items: center; gap: 6px; }
+    .control-label { color: #94a3b8; font-size: 10px; font-weight: 600; text-transform: uppercase; }
+    #project-filter, #layout-select {
       background: transparent; color: #f8fafc; border: 1px solid rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; cursor: pointer; outline: none;
     }
-    #project-filter option { background: #0f172a; color: #f8fafc; }
+    #project-filter option, #layout-select option { background: #0f172a; color: #f8fafc; }
+
+    /* Legend */
+    #legend {
+      position: absolute; bottom: 8px; left: 8px; z-index: 10;
+      background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+      padding: 8px 12px; font-size: 10px; color: #f8fafc;
+      backdrop-filter: blur(8px); display: flex; flex-direction: column; gap: 4px;
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-box { width: 10px; height: 10px; border-radius: 2px; }
+    .legend-line { width: 12px; height: 2px; }
 
     /* Detail Popover */
     #detail {
@@ -57,6 +71,14 @@
     }
     .danger-pulse { animation: danger-pulse 1.5s infinite ease-in-out; }
 
+    /* Recency Highlight */
+    @keyframes recent-glow {
+      0% { filter: drop-shadow(0 0 2px #60a5fa); }
+      50% { filter: drop-shadow(0 0 8px #60a5fa); }
+      100% { filter: drop-shadow(0 0 2px #60a5fa); }
+    }
+    .recent-node { animation: recent-glow 2s infinite ease-in-out; }
+
     /* Legend toggle */
     #legend-toggle {
         position: absolute; bottom: 8px; right: 8px; z-index: 10;
@@ -68,12 +90,31 @@
 <body>
 
   <div id="controls-panel">
-    <select id="project-filter">
-      <option value="ALL">All Projects</option>
-    </select>
+    <div class="control-group">
+      <span class="control-label">Project</span>
+      <select id="project-filter">
+        <option value="ALL">All Projects</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <span class="control-label">Layout</span>
+      <select id="layout-select">
+        <option value="force">⚛ Force</option>
+        <option value="tree">↓ Tree</option>
+      </select>
+    </div>
   </div>
 
   <div id="graph" style="position:relative;"></div>
+
+  <div id="legend">
+    <div class="legend-item"><div class="legend-box" style="background:#3b82f6"></div><span>Active</span></div>
+    <div class="legend-item"><div class="legend-box" style="background:#ef4444"></div><span>Blocked</span></div>
+    <div class="legend-item"><div class="legend-box" style="background:#22c55e"></div><span>Done</span></div>
+    <div class="legend-item"><div class="legend-line" style="background:#3b82f6"></div><span>Parent</span></div>
+    <div class="legend-item"><div class="legend-line" style="background:#ef4444"></div><span>Dependency</span></div>
+    <div class="legend-item"><div class="legend-box" style="border: 1px solid #60a5fa; box-shadow: 0 0 4px #60a5fa"></div><span>Recent (<48h)</span></div>
+  </div>
 
   <button id="legend-toggle" onclick="toggleDetail()">Hide Details</button>
 
@@ -93,8 +134,10 @@
     let W = window.innerWidth;
     let H = window.innerHeight;
     let currentFocusProject = "ALL";
+    let currentLayout = "force";
     let activeNodeId = null;
-    let hasRendered = false;
+    let simulation = null;
+    let svg, container, zoom, linkEls, nodeEls;
 
     // Status colors
     const sbc = {
@@ -157,32 +200,34 @@
             return;
         }
 
-        if (hasRendered) {
-            return; // Tree layout is static
+        // Only initial render sets data
+        if (!graphData) {
+            graphData = args.data;
+            initGraph();
         }
+    }
 
-        hasRendered = true;
-        graphData = args.data;
+    function initGraph() {
         const nodes = graphData.nodes;
         const links = graphData.links;
 
         W = document.body.clientWidth || window.innerWidth;
-        H = args.height || window.innerHeight;
+        H = window.innerHeight;
 
         d3.select("#graph").selectAll("*").remove();
 
-        const svg = d3.select("#graph").append("svg").attr("viewBox", [0, 0, W, H]);
+        svg = d3.select("#graph").append("svg").attr("viewBox", [0, 0, W, H]);
         const defs = svg.append("defs");
 
         [["ap","#3b82f6"],["ad","#ef4444"],["ar","#94a3b8"]].forEach(([id,c]) => {
           defs.append("marker").attr("id",id).attr("viewBox","0 -4 8 8")
-            .attr("refX",8).attr("refY",0).attr("markerWidth",4).attr("markerHeight",4).attr("orient","auto")
+            .attr("refX",12).attr("refY",0).attr("markerWidth",4).attr("markerHeight",4).attr("orient","auto")
             .append("path").attr("d","M0,-3L8,0L0,3").attr("fill",c);
         });
         const mMap = { parent:"ap", depends_on:"ad", ref:"ar" };
 
-        const container = svg.append("g");
-        const zoom = d3.zoom().scaleExtent([0.05, 8]).on("zoom", e => container.attr("transform", e.transform));
+        container = svg.append("g");
+        zoom = d3.zoom().scaleExtent([0.02, 10]).on("zoom", e => container.attr("transform", e.transform));
         svg.call(zoom);
 
         // Project filtering dropdown
@@ -195,7 +240,14 @@
             pf.appendChild(opt);
         });
 
-        // === Build tree structure for hierarchical layout ===
+        // Layout select
+        const ls = document.getElementById("layout-select");
+        ls.addEventListener("change", (e) => {
+            currentLayout = e.target.value;
+            applyLayout();
+        });
+
+        // === Build data structures ===
         const nodeById = new Map();
         nodes.forEach(n => nodeById.set(n.id, n));
 
@@ -207,308 +259,211 @@
           }
         });
 
-        // Resolve link source/target strings to node objects
+        // Resolve link source/target
         links.forEach(l => {
           if (typeof l.source === "string") l.source = nodeById.get(l.source) || l.source;
           if (typeof l.target === "string") l.target = nodeById.get(l.target) || l.target;
         });
 
-        // Adjacency for interaction
-        const adj = new Map();
-        nodes.forEach(n => adj.set(n.id, new Set()));
-        links.forEach(l => {
-          const s = typeof l.source === "object" ? l.source.id : l.source;
-          const t = typeof l.target === "object" ? l.target.id : l.target;
-          if (adj.has(s)) adj.get(s).add(t);
-          if (adj.has(t)) adj.get(t).add(s);
-        });
-
-        // Walk subtree: ancestors + descendants + direct deps
-        function getSubtreeIds(nodeId) {
-          const ids = new Set();
-          // Walk up to root
-          let cur = nodeId;
-          while (cur && nodeById.has(cur)) {
-            ids.add(cur);
-            const nd = nodeById.get(cur);
-            cur = (nd.parent && nodeById.has(nd.parent)) ? nd.parent : null;
-          }
-          // Walk down to all descendants
-          function walkDown(id) {
-            ids.add(id);
-            (childMap.get(id) || []).forEach(c => walkDown(c.id));
-          }
-          walkDown(nodeId);
-          // Include direct dependency neighbors
-          links.forEach(l => {
-            const s = typeof l.source === "object" ? l.source.id : l.source;
-            const t = typeof l.target === "object" ? l.target.id : l.target;
-            if (s === nodeId || t === nodeId) { ids.add(s); ids.add(t); }
-          });
-          return ids;
-        }
-
         // Edges
-        const linkG = container.append("g");
-        const linkEls = linkG.selectAll("path").data(links).join("path")
+        linkEls = container.append("g")
+          .selectAll("path").data(links).join("path")
           .attr("fill","none").attr("stroke", d => d.color).attr("stroke-width", d => d.width)
           .attr("stroke-dasharray", d => d.dash || null)
           .attr("marker-end", d => `url(#${mMap[d.type]||"ar"})`)
-          .attr("opacity", d => d.type === "ref" ? 0.5 : 0.8)
+          .attr("opacity", d => d.type === "ref" ? 0.4 : 0.7)
           .attr("stroke-linecap","round").attr("stroke-linejoin","round");
 
         // Nodes
-        const nodeG = container.append("g");
-        nodes.forEach(d => {
-            d.w = d.w * 1.15;
-            d.h = d.h * 1.15;
-            d.fontSize = d.fontSize * 1.1;
+        const now = Date.now() / 1000;
+        const cutoff48h = 48 * 3600;
 
-            let op = 1.0;
-            if (["done", "completed", "cancelled"].includes(d.status)) op = 0.2;
-            else if (d.structural) op = 0.3;
-            d.baseOpacity = Math.min(op, d.opacity || 1.0);
-        });
-
-        // Drag handlers (direct positioning, no force simulation)
-        function ds(e, d) { }
-        function dr(e, d) {
-          d.x = e.x; d.y = e.y;
-          d3.select(this).attr("transform", `translate(${d.x},${d.y})`);
-          linkEls.attr("d", edgePath);
-        }
-        function de(e, d) { }
-
-        const nodeEls = nodeG.selectAll("g").data(nodes).join("g")
-          .attr("class", "node-g")
-          .attr("cursor","pointer").attr("opacity", d => d.baseOpacity)
-          .call(d3.drag().on("start",ds).on("drag",dr).on("end",de));
-
-        function hexPoints(w, h) {
-          const hw = w/2, hh = h/2, c = Math.min(hh * 0.6, 12);
-          return `${-hw+c},${-hh} ${hw-c},${-hh} ${hw},${0} ${hw-c},${hh} ${-hw+c},${hh} ${-hw},${0}`;
-        }
+        nodeEls = container.append("g")
+          .selectAll("g").data(nodes).join("g")
+          .attr("class", d => {
+              let cls = "node-g";
+              if (d.modified && (now - d.modified) < cutoff48h) cls += " recent-node";
+              return cls;
+          })
+          .attr("cursor","pointer")
+          .on("click", (e, d) => selectNode(e, d));
 
         nodeEls.each(function(d) {
           const g = d3.select(this);
           const hw = d.w/2, hh = d.h/2;
 
+          // Shape rendering
           if (d.shape === "pill") {
             g.append("rect").attr("x",-hw).attr("y",-hh).attr("width",d.w).attr("height",d.h)
               .attr("rx",hh).attr("ry",hh)
-              .attr("fill",d.fill).attr("stroke",d.borderColor).attr("stroke-width",d.borderWidth)
-              .attr("stroke-dasharray",d.structural?"4,3":null);
+              .attr("fill",d.fill).attr("stroke",d.borderColor).attr("stroke-width",d.borderWidth);
           } else if (d.shape === "hexagon") {
-            g.append("polygon").attr("points", hexPoints(d.w, d.h))
-              .attr("fill",d.fill).attr("stroke",d.borderColor).attr("stroke-width",d.borderWidth)
-              .attr("stroke-dasharray",d.structural?"4,3":null);
-          } else if (d.shape === "rounded") {
-            g.append("rect").attr("x",-hw).attr("y",-hh).attr("width",d.w).attr("height",d.h)
-              .attr("rx",10).attr("ry",10)
-              .attr("fill",d.fill).attr("stroke",d.borderColor).attr("stroke-width",d.borderWidth)
-              .attr("stroke-dasharray",d.structural?"4,3":null);
+            const c = Math.min(hh * 0.6, 12);
+            const pts = `${-hw+c},${-hh} ${hw-c},${-hh} ${hw},${0} ${hw-c},${hh} ${-hw+c},${hh} ${-hw},${0}`;
+            g.append("polygon").attr("points", pts)
+              .attr("fill",d.fill).attr("stroke",d.borderColor).attr("stroke-width",d.borderWidth);
           } else {
             g.append("rect").attr("x",-hw).attr("y",-hh).attr("width",d.w).attr("height",d.h)
-              .attr("rx",4).attr("ry",4)
-              .attr("fill",d.fill).attr("stroke",d.borderColor).attr("stroke-width",d.borderWidth)
-              .attr("stroke-dasharray",d.structural?"4,3":null);
+              .attr("rx", d.shape === "rounded" ? 10 : 4)
+              .attr("fill",d.fill).attr("stroke",d.borderColor).attr("stroke-width",d.borderWidth);
           }
 
+          // Danger pulse for high-impact blocked tasks
           if (d.status === "blocked" && d.dw >= 2) {
-            const rx = d.shape === "pill" ? hh+4 : d.shape === "rounded" ? 14 : 6;
             g.insert("rect",":first-child").attr("x",-hw-4).attr("y",-hh-4).attr("width",d.w+8).attr("height",d.h+8)
-              .attr("rx",rx).attr("ry",rx).attr("fill","none").attr("stroke","#ef4444")
+              .attr("rx",hh+4).attr("ry",hh+4).attr("fill","none").attr("stroke","#ef4444")
               .attr("class","danger-pulse");
           }
 
-          if (d.stakeholder) {
-            const rx = d.shape === "pill" ? hh+3 : d.shape === "rounded" ? 13 : 5;
-            g.insert("rect",":first-child").attr("x",-hw-3).attr("y",-hh-3).attr("width",d.w+6).attr("height",d.h+6)
-              .attr("rx",rx).attr("ry",rx).attr("fill","none").attr("stroke",d.borderColor).attr("stroke-width",1.5).attr("opacity",0.5);
-          }
-
-          if (d.badge) {
-            const bw = d.badge.length * 6 + 10;
-            g.append("rect").attr("x",-hw+4).attr("y",-hh+4).attr("width",bw).attr("height",14)
-              .attr("rx",3).attr("fill",d.borderColor).attr("opacity",0.2);
-            g.append("text").attr("class","node-badge")
-              .attr("x",-hw+4+bw/2).attr("y",-hh+13.5).attr("text-anchor","middle")
-              .attr("font-size","8px").attr("font-weight","700").attr("fill",d.borderColor)
-              .attr("letter-spacing","0.5px").text(d.badge);
-          }
-
+          // Label
           const lh = d.fontSize + 4;
-          const th = d.lines.length * lh;
-          const ty = -th/2 + d.fontSize * 0.38 + (d.badge ? 6 : 0);
+          const ty = -(d.lines.length * lh)/2 + d.fontSize * 0.38 + (d.badge ? 6 : 0);
           d.lines.forEach((line, i) => {
             g.append("text").attr("class","node-text").attr("x",0).attr("y", ty + i * lh)
               .attr("text-anchor","middle").attr("dominant-baseline","central")
               .attr("font-size", d.fontSize + "px")
-              .attr("font-weight", d.shape === "pill" ? "700" : d.shape === "rounded" ? "600" : "500")
-              .attr("fill", d.textColor)
-              .text(line);
+              .attr("fill", d.textColor).text(line);
           });
 
+          // Weight indicator
           if (d.dw > 0) {
-            const t = d.dw.toFixed(1), tw = t.length * 6 + 16;
-            g.append("rect").attr("x",-tw/2).attr("y",hh+4).attr("width",tw).attr("height",15)
-              .attr("rx",7).attr("fill",d.borderColor).attr("opacity",0.15);
-            g.append("text").attr("class","node-badge").attr("x",0).attr("y",hh+14.5)
-              .attr("text-anchor","middle").attr("font-size","8px").attr("font-weight","600")
-              .attr("fill",d.borderColor).text("\u2696 "+t);
+            const tw = d.dw.toFixed(1).length * 6 + 16;
+            g.append("rect").attr("x",-tw/2).attr("y",hh+4).attr("width",tw).attr("height",15).attr("rx",7).attr("fill",d.borderColor).attr("opacity",0.15);
+            g.append("text").attr("class","node-badge").attr("x",0).attr("y",hh+14.5).attr("text-anchor","middle").attr("font-size","8px").attr("fill",d.borderColor).text("\u2696 "+d.dw.toFixed(1));
           }
         });
 
-        // === HIERARCHICAL LAYOUT using d3.tree() ===
-        // Find roots: nodes with no parent or whose parent is not in the graph
-        const roots = nodes.filter(n => !n.parent || !nodeById.has(n.parent));
-        // Sort roots by project for visual clustering
-        roots.sort((a, b) => (a.project || '').localeCompare(b.project || ''));
-
-        function buildHierarchy(nd) {
-          const ch = (childMap.get(nd.id) || [])
-            .sort((a, b) => (a.project || '').localeCompare(b.project || '') || (a.label || '').localeCompare(b.label || ''));
-          const mapped = ch.map(c => buildHierarchy(c));
-          return { id: nd.id, _n: nd, children: mapped.length ? mapped : undefined };
-        }
-
-        // Virtual root containing all trees
-        const vRoot = { id: '__vroot__', _n: null, children: roots.map(r => buildHierarchy(r)) };
-        const hier = d3.hierarchy(vRoot);
-
-        // Compute max node width for spacing
-        const maxNodeW = Math.max(80, ...nodes.map(n => n.w));
-        const hSpacing = maxNodeW + 15;
-        const vSpacing = 120;
-
-        d3.tree()
-          .nodeSize([hSpacing, vSpacing])
-          .separation((a, b) => {
-            if (a.parent === b.parent) return 1;
-            // Tighter for same-project subtrees
-            const ap = a.data._n ? a.data._n.project : null;
-            const bp = b.data._n ? b.data._n.project : null;
-            return (ap && bp && ap === bp) ? 1.2 : 1.8;
-          })(hier);
-
-        // Apply tree positions to nodes
-        hier.descendants().forEach(d => {
-          if (d.data._n) {
-            d.data._n.x = d.x;
-            d.data._n.y = d.y + 80;
-          }
-        });
-
-        // Edge path functions
-        function ri(cx,cy,w,h,px,py) {
-          const dx=px-cx, dy=py-cy;
-          if (dx===0 && dy===0) return [cx,cy];
-          const hw=w/2+3, hh=h/2+3;
-          const t = Math.abs(dx)*hh > Math.abs(dy)*hw ? hw/Math.abs(dx) : hh/Math.abs(dy);
-          return [cx+dx*t, cy+dy*t];
-        }
-
-        function manhattan(sx,sy,sw,sh,tx,ty,tw,th) {
-          const dx = tx-sx, dy = ty-sy;
-          if (Math.abs(dx) >= Math.abs(dy)) {
-            const exitX = dx > 0 ? sx + sw/2 + 3 : sx - sw/2 - 3;
-            const enterX = dx > 0 ? tx - tw/2 - 3 : tx + tw/2 + 3;
-            const midX = (exitX + enterX) / 2;
-            return `M${exitX},${sy} L${midX},${sy} L${midX},${ty} L${enterX},${ty}`;
-          } else {
-            const exitY = dy > 0 ? sy + sh/2 + 3 : sy - sh/2 - 3;
-            const enterY = dy > 0 ? ty - th/2 - 3 : ty + th/2 + 3;
-            const midY = (exitY + enterY) / 2;
-            return `M${sx},${exitY} L${sx},${midY} L${tx},${midY} L${tx},${enterY}`;
-          }
-        }
-
-        function edgePath(d) {
-          const s=d.source, t=d.target;
-          if (typeof s === "string" || typeof t === "string") return ""; // unresolved
-          if (d.type === "parent") {
-            const [bx,by] = ri(s.x,s.y,s.w,s.h,t.x,t.y);
-            const [ex,ey] = ri(t.x,t.y,t.w,t.h,s.x,s.y);
-            const midY = (by+ey)/2;
-            return `M${bx},${by} C${bx},${midY} ${ex},${midY} ${ex},${ey}`;
-          }
-          return manhattan(s.x,s.y,s.w,s.h,t.x,t.y,t.w,t.h);
-        }
-
-        // Render positions
-        nodeEls.attr("transform", d => `translate(${d.x},${d.y})`);
-        linkEls.attr("d", edgePath);
-
-        // Zoom to fit
-        const b = container.node().getBBox();
-        if (b.width > 0) {
-          const sc = Math.min(W/(b.width+60), H/(b.height+60), 1.5) * 0.85;
-          svg.call(zoom.transform, d3.zoomIdentity.translate(W/2,H/2).scale(sc).translate(-b.x-b.width/2,-b.y-b.height/2));
-        }
-
-        // === INTERACTION: click to focus subtree, no hover effects ===
-        window.updateVisibility = function() {
-          const focusIds = activeNodeId ? getSubtreeIds(activeNodeId) : null;
-
-          nodeEls.transition().duration(200).attr("opacity", d => {
-            if (currentFocusProject !== "ALL" && d.project !== currentFocusProject) return 0.05;
-            if (focusIds && !focusIds.has(d.id)) return 0.08;
-            return d.baseOpacity;
-          });
-
-          linkEls.transition().duration(200).attr("opacity", l => {
-            const sid = typeof l.source === "object" ? l.source.id : l.source;
-            const tid = typeof l.target === "object" ? l.target.id : l.target;
-            if (currentFocusProject !== "ALL") {
-              const sp = (typeof l.source === "object" ? l.source.project : null) || "none";
-              const tp = (typeof l.target === "object" ? l.target.project : null) || "none";
-              if (sp !== currentFocusProject && tp !== currentFocusProject) return 0.01;
-              if (sp !== currentFocusProject || tp !== currentFocusProject) return 0.05;
-            }
-            if (focusIds && !focusIds.has(sid) && !focusIds.has(tid)) return 0.03;
-            return l.type === "ref" ? 0.5 : 0.8;
-          });
-        };
+        applyLayout();
 
         pf.addEventListener("change", (e) => {
             currentFocusProject = e.target.value;
             updateVisibility();
         });
 
-        // Click node: show detail + focus subtree
-        nodeEls.on("click",(e,d)=>{
-            e.stopPropagation();
-            activeNodeId = d.id;
-
-            document.getElementById("dt").textContent = d.label;
-            const bs = sbc[d.status]||"background:#f1f5f9;color:#475569";
-            let h = `<div class="f"><span class="fl">Status</span> <span class="sb" style="${bs}">${d.status}</span></div>`;
-            const fs = [
-              d.badge?["Type",d.badge]:null, ["Priority","P"+d.priority],
-              d.project?["Project",d.project]:null,
-              d.dw>0?["Impact","\u2696 "+d.dw.toFixed(1)]:null,
-              d.stakeholder?["Stakeholder","Yes"]:null,
-              d.assignee?["Assignee",d.assignee]:null, ["ID",d.id],
-            ].filter(Boolean);
-            h += fs.map(([l,v])=>`<div class="f"><span class="fl">${l}</span><span class="fv">${v}</span></div>`).join("");
-            document.getElementById("df").innerHTML = h;
-            document.getElementById("detail").style.display = "block";
-
-            const cBtn = document.getElementById("btn-complete");
-            if (["done", "completed", "cancelled"].includes(d.status)) {
-                cBtn.style.display = "none";
-            } else {
-                cBtn.style.display = "flex";
-            }
-
-            updateVisibility();
-        });
-
-        // Click background: clear focus
         svg.on("click",()=> {
             document.getElementById("detail").style.display="none";
             activeNodeId = null;
             updateVisibility();
+        });
+    }
+
+    function applyLayout() {
+        if (simulation) simulation.stop();
+
+        const nodes = graphData.nodes;
+        const links = graphData.links;
+
+        if (currentLayout === "force") {
+            simulation = d3.forceSimulation(nodes)
+                .force("link", d3.forceLink(links).id(d => d.id).distance(d => d.type === "parent" ? 80 : 150))
+                .force("charge", d3.forceManyBody().strength(d => d.charge || -200))
+                .force("center", d3.forceCenter(W / 2, H / 2))
+                .force("collision", d3.forceCollide().radius(d => Math.max(d.w, d.h) / 2 + 20))
+                .on("tick", ticked);
+
+            function ticked() {
+                linkEls.attr("d", d => `M${d.source.x},${d.source.y} L${d.target.x},${d.target.y}`);
+                nodeEls.attr("transform", d => `translate(${d.x},${d.y})`);
+            }
+        } else {
+            // Tree layout
+            const nodeById = new Map(nodes.map(n => [n.id, n]));
+            const roots = nodes.filter(n => !n.parent || !nodeById.has(n.parent));
+            const childMap = new Map();
+            nodes.forEach(n => {
+                if (n.parent && nodeById.has(n.parent)) {
+                    if (!childMap.has(n.parent)) childMap.set(n.parent, []);
+                    childMap.get(n.parent).push(n);
+                }
+            });
+
+            function buildHierarchy(nd) {
+                const ch = childMap.get(nd.id) || [];
+                return { id: nd.id, _n: nd, children: ch.map(c => buildHierarchy(c)) };
+            }
+
+            const vRoot = { id: '__vroot__', _n: null, children: roots.map(r => buildHierarchy(r)) };
+            const hier = d3.hierarchy(vRoot);
+            
+            const hSpacing = Math.max(100, d3.max(nodes, d => d.w) || 100) + 20;
+            const vSpacing = 150;
+
+            d3.tree().nodeSize([hSpacing, vSpacing])(hier);
+
+            hier.descendants().forEach(d => {
+                if (d.data._n) {
+                    d.data._n.x = d.x + W/2;
+                    d.data._n.y = d.y + 100;
+                }
+            });
+
+            nodeEls.transition().duration(750).attr("transform", d => `translate(${d.x},${d.y})`);
+            linkEls.transition().duration(750).attr("d", d => {
+                const s = d.source, t = d.target;
+                if (d.type === "parent") {
+                    const midY = (s.y + t.y) / 2;
+                    return `M${s.x},${s.y} C${s.x},${midY} ${t.x},${midY} ${t.x},${t.y}`;
+                }
+                return `M${s.x},${s.y} L${t.x},${t.y}`;
+            });
+
+            // Zoom to fit tree
+            const b = container.node().getBBox();
+            if (b.width > 0) {
+                const sc = Math.min(W/(b.width+100), H/(b.height+100), 1.2) * 0.9;
+                svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity.translate(W/2,H/2).scale(sc).translate(-b.x-b.width/2,-b.y-b.height/2));
+            }
+        }
+    }
+
+    function selectNode(e, d) {
+        e.stopPropagation();
+        activeNodeId = d.id;
+
+        document.getElementById("dt").textContent = d.label;
+        const bs = sbc[d.status]||"background:#f1f5f9;color:#475569";
+        let h = `<div class="f"><span class="fl">Status</span> <span class="sb" style="${bs}">${d.status}</span></div>`;
+        const fs = [
+          d.badge?["Type",d.badge]:null, ["Priority","P"+d.priority],
+          d.project?["Project",d.project]:null,
+          d.dw>0?["Impact","\u2696 "+d.dw.toFixed(1)]:null,
+          d.stakeholder?["Stakeholder","Yes"]:null,
+          d.assignee?["Assignee",d.assignee]:null, ["ID",d.id],
+        ].filter(Boolean);
+        h += fs.map(([l,v])=>`<div class="f"><span class="fl">${l}</span><span class="fv">${v}</span></div>`).join("");
+        document.getElementById("df").innerHTML = h;
+        document.getElementById("detail").style.display = "block";
+
+        const cBtn = document.getElementById("btn-complete");
+        cBtn.style.display = ["done", "completed", "cancelled"].includes(d.status) ? "none" : "flex";
+
+        updateVisibility();
+    }
+
+    function updateVisibility() {
+        nodeEls.transition().duration(200).attr("opacity", d => {
+            if (currentFocusProject !== "ALL" && d.project !== currentFocusProject) return 0.05;
+            if (activeNodeId && d.id !== activeNodeId) {
+                // Dim non-neighbors
+                const isNeighbor = graphData.links.some(l => 
+                    (l.source.id === activeNodeId && l.target.id === d.id) || 
+                    (l.target.id === activeNodeId && l.source.id === d.id)
+                );
+                if (!isNeighbor) return 0.1;
+            }
+            return 1.0;
+        });
+
+        linkEls.transition().duration(200).attr("opacity", l => {
+            if (currentFocusProject !== "ALL") {
+                const sp = l.source.project || "none";
+                const tp = l.target.project || "none";
+                if (sp !== currentFocusProject && tp !== currentFocusProject) return 0.01;
+            }
+            if (activeNodeId) {
+                if (l.source.id !== activeNodeId && l.target.id !== activeNodeId) return 0.05;
+            }
+            return l.type === "ref" ? 0.4 : 0.7;
         });
     }
 
