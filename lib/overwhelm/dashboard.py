@@ -3893,8 +3893,9 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from lib.task_model import TaskStatus
 from task_manager_ui import render_task_editor
+
+from lib.task_model import TaskStatus
 
 
 @st.dialog("Edit Task")
