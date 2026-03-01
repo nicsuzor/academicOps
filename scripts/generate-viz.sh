@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # generate-viz.sh - Generate all PKB visualizations
 #
-# Graph JSON files are written to $ACA_DATA (default ~/brain):
+# All output goes to $AOPS_SESSIONS (default ~/.aops/sessions/):
 #   graph.json            - Full PKB graph (used by overwhelm dashboard)
 #   knowledge-graph.json  - Same graph (dashboard "Knowledge Base" view)
-#
-# Visualization artifacts go to $AOPS_SESSIONS (default ~/.aops/sessions/):
-#   task-map.svg      - Task map (reachable from active leaves + ancestors)
-#   task-map.html     - Interactive D3-force task map
-#   attention-map.svg - Under-connected important nodes
+#   mcp-index.json        - MCP task index
+#   pkb-raw.json          - Raw PKB graph
+#   tasks.json            - Task-only graph for rendering scripts
+#   task-map.svg          - Task map (reachable from active leaves + ancestors)
+#   task-map.html         - Interactive D3-force task map
+#   attention-map.svg     - Under-connected important nodes
 #
 # Run periodically or from VSCode task. Replaces the old multi-command
 # VSCode task with a single invocation.
@@ -24,8 +25,8 @@ set -euo pipefail
 
 AOPS="${AOPS:-$(cd "$(dirname "$0")/.." && pwd)}"
 AOPS_BIN="${AOPS_BIN:-$(command -v aops 2>/dev/null || echo aops)}"
-GRAPH_DIR="${ACA_DATA:-${HOME}/brain}"          # Graph JSONs (dashboard reads from here)
-VIZ_DIR="${AOPS_SESSIONS:-${HOME}/.aops/sessions}"  # SVG/HTML artifacts
+GRAPH_DIR="${AOPS_SESSIONS:-${HOME}/.aops/sessions}"  # All output: graph JSONs + viz artifacts
+VIZ_DIR="${GRAPH_DIR}"                                # Same directory now
 LAYOUT="sfdp"
 RENDERER="dot"  # dot (default), gt (graph-tool), ogdf
 SPLINES=""
@@ -180,7 +181,7 @@ with open(os.path.join(graph_dir, 'knowledge-graph.json'), 'w') as f:
 print(f'    knowledge-graph.json: {len(enriched)} nodes, {len(raw_edges)} edges')
 " "${GRAPH_DIR}"
 
-# Also keep a copy in VIZ_DIR for the rendering scripts below
+# Copy graph.json to tasks.json for rendering scripts
 cp "${GRAPH_DIR}/graph.json" "${VIZ_DIR}/tasks.json"
 
 # Build density override args (shared across renderers)

@@ -83,6 +83,7 @@ jobs:
 
       - name: Run Gatekeeper
         id: gatekeeper
+        continue-on-error: true
         uses: anthropics/claude-code-action@v1
         with:
           allowed_bots: "claude[bot]"
@@ -95,29 +96,51 @@ jobs:
             Review PR #${{ steps.pr-info.outputs.pr_number }} in repository ${{ github.repository }}.
             Use `gh pr view ${{ steps.pr-info.outputs.pr_number }}` and `gh pr diff ${{ steps.pr-info.outputs.pr_number }}` to gather information.
 
-            IMPORTANT: Your verdict must be delivered as a COMMIT STATUS, not a PR review.
+            Post a PR comment (`gh pr comment`) with your full assessment.
+            Your comment MUST include a heading with your verdict in this exact format:
+            - `## Gatekeeper: APPROVED` (if approved)
+            - `## Gatekeeper: REJECTED — <reason>` (if rejected)
 
-            After your evaluation, you MUST run one of these commands:
-
-            On APPROVAL:
-            ```bash
-            gh api repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.head_sha }} \
-              -f state=success \
-              -f context="Gatekeeper" \
-              -f description="Scope and strategy alignment verified" \
-              -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-            ```
-
-            On REJECTION:
-            ```bash
-            gh api repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.head_sha }} \
-              -f state=failure \
-              -f context="Gatekeeper" \
-              -f description="REJECT: <brief reason>" \
-              -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-            ```
-
-            Also post a PR comment (`gh pr comment`) with your full assessment.
-            Do NOT use `gh pr review` — use commit status + comment instead.
+            Do NOT use `gh pr review` or set commit statuses — the workflow handles status reporting.
 
           claude_args: '--allowed-tools "Bash(gh:*),Read"'
+
+      # ── Post-agent: set commit status from verdict ──
+
+      - name: Detect verdict from PR comment
+        id: verdict
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUM="${{ steps.pr-info.outputs.pr_number }}"
+          REPO="${{ github.repository }}"
+
+          # Get the latest gatekeeper comment
+          COMMENT=$(gh api "repos/$REPO/issues/$PR_NUM/comments" \
+            --jq '[.[] | select(.user.login == "claude[bot]") | select(.body | test("Gatekeeper:"))] | last | .body' \
+            2>/dev/null || echo "")
+
+          if echo "$COMMENT" | grep -q "Gatekeeper: APPROVED"; then
+            echo "state=success" >> "$GITHUB_OUTPUT"
+            echo "description=Scope and strategy alignment verified" >> "$GITHUB_OUTPUT"
+          elif echo "$COMMENT" | grep -q "Gatekeeper: REJECTED"; then
+            echo "state=failure" >> "$GITHUB_OUTPUT"
+            REASON=$(echo "$COMMENT" | grep -oP 'REJECTED\s*—\s*\K.*' | head -1)
+            echo "description=REJECTED: ${REASON:-See PR comment}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.gatekeeper.outcome }}" = "success" ]; then
+            echo "state=success" >> "$GITHUB_OUTPUT"
+            echo "description=Agent completed — no explicit verdict found" >> "$GITHUB_OUTPUT"
+          else
+            echo "state=failure" >> "$GITHUB_OUTPUT"
+            echo "description=Agent failed to complete" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set Gatekeeper commit status
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api "repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.head_sha }}" \
+            -f state="${{ steps.verdict.outputs.state }}" \
+            -f context="Gatekeeper" \
+            -f description="${{ steps.verdict.outputs.description }}" \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"

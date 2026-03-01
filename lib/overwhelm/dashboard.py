@@ -3379,15 +3379,18 @@ def clean_activity_text(raw_text: str) -> str:
 # ============================================================================
 
 
-def load_graph_data(filename: str = "tasks.json") -> dict | None:
-    """Load graph JSON from AOPS_SESSIONS (aops graph output location)."""
+def load_graph_data(filename: str = "graph.json") -> dict | None:
+    """Load graph JSON from AOPS_SESSIONS, falling back to ACA_DATA."""
     sessions_dir = Path(os.environ.get("AOPS_SESSIONS", Path.home() / ".aops" / "sessions"))
-    graph_path = sessions_dir / filename
-    if graph_path.exists():
-        try:
-            return json.loads(graph_path.read_text())
-        except Exception:
-            pass
+    aca_data = Path(os.environ["ACA_DATA"])
+
+    for directory in (sessions_dir, aca_data):
+        graph_path = directory / filename
+        if graph_path.exists():
+            try:
+                return json.loads(graph_path.read_text())
+            except Exception:
+                pass
     return None
 
 
