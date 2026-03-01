@@ -81,7 +81,7 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: generate-viz.sh [--quick] [--ego ID] [--ego-depth N] [--attention-top N] [--layout ENGINE] [--renderer dot|gt|ogdf] [--splines MODE] [--sep SEP] [--overlap MODE]"
             echo ""
             echo "Options:"
-            echo "  --quick            Graph + task map only (skip attention map and transcripts)"
+            echo "  --quick            Graph + task map only (skip attention map)"
             echo "  --ego ID           Also generate ego-subgraph centered on ID"
             echo "  --ego-depth N      Ego-subgraph depth in hops (default: 2)"
             echo "  --attention-top N  Number of top attention nodes (default: 20)"
@@ -259,13 +259,5 @@ if [ -n "${EGO_ID}" ]; then
         -o "${VIZ_DIR}/ego-${EGO_ID}.html"
     echo "    Written ${VIZ_DIR}/ego-${EGO_ID}.html"
 fi
-
-# Step 5: Sync sessions repo and generate recent transcripts
-if [ -d "${VIZ_DIR}/.git" ]; then
-    echo "==> Syncing sessions repo..."
-    git -C "${VIZ_DIR}" pull --ff-only --quiet 2>/dev/null || echo "    Warning: sessions repo sync failed (offline or conflict)"
-fi
-echo "==> Generating recent transcripts..."
-uv run python3 "${AOPS}/aops-core/scripts/transcript.py" --recent
 
 echo "==> Done."
