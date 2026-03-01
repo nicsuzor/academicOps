@@ -79,17 +79,11 @@ def _flatten_scenarios(*groups: str) -> list[dict]:
 def _reinit_gates_with_defaults():
     """Reload gate_config and definitions with current env vars, reinit registry.
 
-    IMPORTANT: definitions.py imports from bare 'gate_config' (not 'hooks.gate_config').
-    Because aops-core/hooks is on sys.path, Python creates TWO separate module objects
-    for the same file: sys.modules['gate_config'] and sys.modules['hooks.gate_config'].
-    We must reload BOTH so definitions.py picks up current env var values.
+    All imports use qualified paths from aops-core/ root (e.g. hooks.gate_config,
+    not bare gate_config), so there is exactly one sys.modules entry per module.
     """
-    # Reload both module entries for the same file
-    if "gate_config" in sys.modules:
-        importlib.reload(sys.modules["gate_config"])
     if "hooks.gate_config" in sys.modules:
         importlib.reload(sys.modules["hooks.gate_config"])
-    # Now reload definitions (which imports from bare 'gate_config')
     if "lib.gates.definitions" in sys.modules:
         importlib.reload(sys.modules["lib.gates.definitions"])
     GateRegistry._initialized = False

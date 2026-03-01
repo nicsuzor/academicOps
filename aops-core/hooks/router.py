@@ -38,29 +38,16 @@ try:
     from lib.session_paths import get_pid_session_map_path, get_session_short_hash
     from lib.session_state import SessionState
 
-    # Use relative import if possible, or direct import if run as script
-    try:
-        from hooks.schemas import (
-            CanonicalHookOutput,
-            ClaudeGeneralHookOutput,
-            ClaudeHookSpecificOutput,
-            ClaudeStopHookOutput,
-            GeminiHookOutput,
-            GeminiHookSpecificOutput,
-            HookContext,
-        )
-    except ImportError:
-        from schemas import (
-            CanonicalHookOutput,
-            ClaudeGeneralHookOutput,
-            ClaudeHookSpecificOutput,
-            ClaudeStopHookOutput,
-            GeminiHookOutput,
-            GeminiHookSpecificOutput,
-            HookContext,
-        )
-
     from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES, extract_subagent_type
+    from hooks.schemas import (
+        CanonicalHookOutput,
+        ClaudeGeneralHookOutput,
+        ClaudeHookSpecificOutput,
+        ClaudeStopHookOutput,
+        GeminiHookOutput,
+        GeminiHookSpecificOutput,
+        HookContext,
+    )
     from hooks.unified_logger import log_event_to_session, log_hook_event
 except ImportError as e:
     # Fail fast if schemas missing

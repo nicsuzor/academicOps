@@ -1,4 +1,4 @@
-from gate_config import (
+from hooks.gate_config import (
     CUSTODIET_GATE_MODE,
     CUSTODIET_TOOL_CALL_THRESHOLD,
     HANDOVER_GATE_MODE,
