@@ -42,7 +42,6 @@ from hooks.schemas import (
     GeminiHookOutput,
     HookContext,
 )
-
 from lib.gate_model import GateVerdict
 from lib.gate_types import GateState, GateStatus
 from lib.gates.registry import GateRegistry
