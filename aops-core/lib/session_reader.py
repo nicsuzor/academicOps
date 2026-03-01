@@ -680,14 +680,14 @@ def build_audit_session_context(transcript_path: Path | str) -> str:
                     continue
 
                 # Format tool call with meaningful detail
-                if tool_name == "Task":
+                if tool_name in ("Agent", "Task"):
                     # Subagent calls are major decision points — show full prompt
                     desc = tool_input.get("description", "")
                     subagent = tool_input.get("subagent_type", "")
                     prompt = tool_input.get("prompt", "")
                     if len(prompt) > _TOOL_ARG_LIMIT:
                         prompt = prompt[:_TOOL_ARG_LIMIT] + "..."
-                    tool_line = f"  - **Task**({subagent}): {desc}"
+                    tool_line = f"  - **{tool_name}**({subagent}): {desc}"
                     if prompt:
                         tool_line += f"\n    > {prompt}"
                     # Show result if available

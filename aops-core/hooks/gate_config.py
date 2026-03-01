@@ -28,7 +28,8 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
     # or manage task state (needed for framework lifecycle).
     "always_available": {
         # --- Agent/skill invocation tools (cross-platform) ---
-        "Task",  # Claude Code: spawn subagent
+        "Agent",  # Claude Code: spawn subagent (current tool name)
+        "Task",  # Claude Code: spawn subagent (legacy/alias)
         "Skill",  # Claude Code: invoke skill in-session
         "delegate_to_agent",  # Gemini CLI: spawn subagent
         "activate_skill",  # Gemini CLI: invoke skill in-session
@@ -157,7 +158,8 @@ COMPLIANCE_SUBAGENT_TYPES: frozenset[str] = frozenset(
 
 SPAWN_TOOLS: dict[str, tuple[tuple[str, ...], bool]] = {
     # Claude Code
-    "Task": (("subagent_type",), False),
+    "Agent": (("subagent_type",), False),  # Current tool name
+    "Task": (("subagent_type",), False),  # Legacy/alias
     "Skill": (("skill",), True),
     # Gemini CLI
     "delegate_to_agent": (("name", "agent_name"), False),

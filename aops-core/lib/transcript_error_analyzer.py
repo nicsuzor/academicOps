@@ -275,7 +275,7 @@ def _summarize_tool_input(tool_name: str, tool_input: dict[str, Any]) -> str:
         return tool_input.get("pattern", "")[:40]
     elif tool_name == "Grep":
         return tool_input.get("pattern", "")[:40]
-    elif tool_name == "Task":
+    elif tool_name in ("Agent", "Task"):
         return tool_input.get("description", "")[:40]
     elif tool_name == "Skill":
         return tool_input.get("skill", "")
