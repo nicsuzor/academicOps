@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import pytest
 from hooks.schemas import HookContext
-
 from lib.gate_model import GateVerdict
 from lib.gate_types import CountdownConfig, GateConfig
 from lib.gates.engine import GenericGate
