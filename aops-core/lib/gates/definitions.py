@@ -62,7 +62,7 @@ GATE_CONFIGS = [
                 condition=GateCondition(
                     current_status=GateStatus.CLOSED,
                     hook_event="PreToolUse",
-                    excluded_tool_categories=["always_available", "read_only"],
+                    excluded_tool_categories=["always_available"],
                 ),
                 verdict=HYDRATION_GATE_MODE,
                 # Brief user-facing summary

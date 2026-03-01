@@ -207,14 +207,16 @@ class TestTaskHydratorSpawn:
 class TestReadToolExemptFromHydration:
     """Test that read-only tools are NOT blocked by the hydration gate.
 
-    read_only tools are excluded from the hydration gate policy (PR#516).
+    read_only tools are subject to the hydration gate (only always_available
+    is exempt), but the default hydration gate mode is WARN, not BLOCK.
+    So read_only tools get a warning but are never denied.
     """
 
     def test_read_allowed_when_hydration_not_passed(self, mock_session_state):
-        """Read should be allowed even when hydration gate is not passed.
+        """Read should not be blocked even when hydration gate is not passed.
 
-        read_only tools are excluded from the hydration gate policy, so
-        they bypass the gate entirely regardless of hydration status.
+        read_only tools get WARN from the hydration gate (not BLOCK), so
+        tool use is never denied — only warned.
         """
         state, _ = mock_session_state
         state.close_gate("hydration")
@@ -233,9 +235,9 @@ class TestReadToolExemptFromHydration:
         router = HookRouter()
         result = router._dispatch_gates(ctx, state)
 
-        # Read is a read_only tool, excluded from hydration gate: should be allowed
+        # Read is a read_only tool: gets WARN (not BLOCK) from hydration gate
         if result:
-            assert result.verdict == GateVerdict.ALLOW
+            assert result.verdict in (GateVerdict.WARN, GateVerdict.ALLOW)
 
     def test_read_allowed_when_hydration_passed(self, mock_session_state):
         """Read should be allowed when hydration gate is passed."""
