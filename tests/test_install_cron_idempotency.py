@@ -92,7 +92,9 @@ def test_install_cron_jobs_idempotency(install_mod):
     assert len(full_comments) == 1, f"Duplicate '# aOps full maintenance' markers: {full_comments}"
 
     # Refinery must not be re-added (removed from install)
-    refinery_lines = [line for line in result_lines if "# aOps refinery" in line or "scripts/refinery.py" in line]
+    refinery_lines = [
+        line for line in result_lines if "# aOps refinery" in line or "scripts/refinery.py" in line
+    ]
     assert not refinery_lines, f"Refinery should not be installed: {refinery_lines}"
 
     # Unrelated cron entries must be preserved
