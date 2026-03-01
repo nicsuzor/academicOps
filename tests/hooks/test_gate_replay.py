@@ -33,7 +33,6 @@ if str(AOPS_CORE) not in sys.path:
 from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES, TOOL_CATEGORIES
 from hooks.router import HookRouter
 from hooks.schemas import CanonicalHookOutput, HookContext
-
 from lib.gate_model import GateVerdict
 from lib.gate_types import GateState, GateStatus
 from lib.gates.registry import GateRegistry
