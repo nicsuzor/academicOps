@@ -177,6 +177,7 @@ Explicit user approval is REQUIRED before potentially expensive operations (batc
 Agents MUST NOT use human (user) credentials for GitHub operations. They MUST use the provided `AOPS_BOT_GH_TOKEN`, which is exported to the session as both `GH_TOKEN` and `GITHUB_TOKEN`.
 
 **Corollaries**:
+
 - Never search for or use SSH keys (`~/.ssh/`)
 - Never use `gh auth login` to authenticate as a human user
 - Always rely on the session-provided bot token (`GH_TOKEN` / `GITHUB_TOKEN`) for git and GitHub operations, treating `GH_TOKEN` as the primary interface

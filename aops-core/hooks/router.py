@@ -100,36 +100,56 @@ GEMINI_EVENT_MAP = {
 }
 
 # --- Gate Status Display ---
-GATE_ICONS = {
-    "hydration": ("🫗", "."),
-    "custodiet": ("🛡", "."),
-    "handover": ("📤", "."),
-}
 
 
 def format_gate_status_icons(state: SessionState) -> str:
-    """Format current gate statuses as a compact icon line.
+    """Format current gate statuses as a lifecycle-aware icon strip.
 
-    Uses the loaded SessionState object.
+    Only shows gates when they need attention:
+    - 💧  hydration gate is CLOSED (pre-hydration)
+    - ◇ N  custodiet countdown active
+    - ◇    custodiet overdue (past threshold)
+    - ≡    handover complete (gate OPEN + handover invoked)
+    - ▶ T-id  active task bound
+    - ✓    nothing needs attention
     """
-    # Collect blocking (closed) gates
-    blocking_gates = []
+    from lib.gates.registry import GateRegistry
 
-    # Iterate known gates
-    for gate_name in GATE_ICONS.keys():
-        gate_state = state.gates.get(gate_name)
-        if not gate_state or gate_state.status == "closed":
-            blocking_gates.append(gate_name)
-        elif gate_state.blocked:  # Explicit block
-            blocking_gates.append(gate_name)
+    parts: list[str] = []
 
-    # Format output
-    blocking_set = sorted(blocking_gates)
-    open_gates = sorted(set(GATE_ICONS.keys()) - set(blocking_gates))
-    blocking_icons = " ".join([GATE_ICONS[g][0] for g in blocking_set])
-    open_icons = " ".join([GATE_ICONS[g][1] for g in open_gates])
+    # Hydration: show only when CLOSED (needs hydration)
+    hydration = state.gates.get("hydration")
+    if not hydration or hydration.status == "closed":
+        parts.append("💧")
 
-    return f"[{blocking_icons}  ✓ {open_icons}]"
+    # Custodiet: countdown or overdue
+    custodiet = state.gates.get("custodiet")
+    if custodiet:
+        custodiet_gate = GateRegistry.get_gate("custodiet")
+        if custodiet_gate and custodiet_gate.config.countdown:
+            threshold = custodiet_gate.config.countdown.threshold
+            start_before = custodiet_gate.config.countdown.start_before
+            countdown_start = threshold - start_before
+            ops = custodiet.ops_since_open
+            if ops >= threshold:
+                parts.append("◇")
+            elif ops >= countdown_start:
+                remaining = threshold - ops
+                parts.append(f"◇ {remaining}")
+
+    # Handover: show only AFTER completion (gate OPEN + skill invoked)
+    handover = state.gates.get("handover")
+    if handover and handover.status == "open" and state.state.get("handover_skill_invoked"):
+        parts.append("≡")
+
+    # Active task
+    if state.main_agent.current_task:
+        parts.append(f"▶ {state.main_agent.current_task}")
+
+    if not parts:
+        return "✓"
+
+    return " ".join(parts)
 
 
 # --- Session Management ---
@@ -395,7 +415,7 @@ class HookRouter:
                 if len(block_timestamps) >= 5:
                     merged_result.verdict = "allow"
                     warn = (
-                        "⚠️ SAFETY OVERRIDE: Stop hook blocked 5+ times in 2 minutes."
+                        "⚠ SAFETY OVERRIDE: Stop hook blocked 5+ times in 2 minutes."
                         " Auto-approving to prevent stall."
                     )
                     merged_result.system_message = (
@@ -500,6 +520,8 @@ class HookRouter:
                         status = tool_input["status"]
                         task_id = tool_input["id"]
                         if status == "in_progress":
+                            state.main_agent.current_task = task_id
+                            state.main_agent.task_binding_ts = datetime.now().isoformat()
                             notify_task_bound(config, ctx.session_id, task_id)
                         elif status == "done":
                             notify_task_completed(config, ctx.session_id, task_id)

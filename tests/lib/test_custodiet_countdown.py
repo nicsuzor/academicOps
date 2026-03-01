@@ -52,7 +52,7 @@ class TestCountdownEvaluation:
             countdown=CountdownConfig(
                 start_before=5,
                 threshold=15,
-                message_template="📋 {remaining} turns left before check required.",
+                message_template="◇ {remaining} turns left before check required.",
             ),
         )
         return GenericGate(config)
@@ -158,7 +158,7 @@ class TestCountdownIntegration:
             countdown=CountdownConfig(
                 start_before=5,
                 threshold=15,
-                message_template="📋 {remaining} turns until check required.",
+                message_template="◇ {remaining} turns until check required.",
             ),
             policies=[
                 GatePolicy(
@@ -231,7 +231,7 @@ class TestCountdownIntegration:
             countdown=CountdownConfig(
                 start_before=5,
                 threshold=15,
-                message_template="📋 {remaining} turns left. File: `{temp_path}`",
+                message_template="◇ {remaining} turns left. File: `{temp_path}`",
             ),
             policies=[
                 GatePolicy(
@@ -279,7 +279,7 @@ class TestCountdownIntegration:
             countdown=CountdownConfig(
                 start_before=5,
                 threshold=15,
-                message_template="📋 {remaining} turns left. Run check with: `{temp_path}`",
+                message_template="◇ {remaining} turns left. Run check with: `{temp_path}`",
             ),
             policies=[
                 GatePolicy(

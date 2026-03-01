@@ -25,12 +25,21 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export AOPS="${AOPS:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
 
 # 2. Source environment — avoid eval; only process simple export VAR=VALUE lines
-if [[ -f "$HOME/.zshrc.local" ]]; then
+#    Expand $HOME and ~ since read -r preserves them literally.
+if [[ -f "$HOME/.env.local" ]]; then
     while IFS= read -r line; do
         if [[ "$line" =~ ^export[[:space:]]+([A-Za-z_][A-Za-z0-9_]*)= ]]; then
+            value="${line#*=}"
+            value_expanded="${value//\$HOME/$HOME}"
+            if [[ "$value_expanded" == "~" || "$value_expanded" == '"~"' || "$value_expanded" == "'~'" ]]; then
+                value_expanded="$HOME"
+            else
+                value_expanded="${value_expanded//\~\//$HOME/}"
+            fi
+            line="${line%%=*}=$value_expanded"
             export "${line#export }"
         fi
-    done < "$HOME/.zshrc.local"
+    done < "$HOME/.env.local"
 fi
 
 export ACA_DATA="${ACA_DATA:-$HOME/brain}"
@@ -39,6 +48,13 @@ export PATH="$HOME/.local/bin:$HOME/.cargo/bin:/usr/local/bin:$PATH"
 
 # Ensure we are in the AOPS directory for uv run commands
 cd "${AOPS}"
+
+# 3. Verify critical dependencies
+if ! command -v uv &>/dev/null; then
+    echo "Error: 'uv' not found on PATH. Ensure uv is installed and accessible in non-login shells." >&2
+    echo "PATH=$PATH" >&2
+    exit 1
+fi
 
 TS="$(date '+%Y-%m-%d %H:%M:%S')"
 
@@ -59,7 +75,7 @@ do_sync() {
     # Sync all configured git repos
     if [[ -f "${SCRIPT_DIR}/repo-sync.sh" ]]; then
         echo "==> Syncing repositories..."
-        "${SCRIPT_DIR}/repo-sync.sh" --quiet 2>&1 || echo "Warning: repo-sync failed"
+        "${SCRIPT_DIR}/repo-sync.sh" --check --quiet 2>&1 || echo "Warning: repo-sync failed"
     else
         echo "Warning: ${SCRIPT_DIR}/repo-sync.sh not found"
     fi
