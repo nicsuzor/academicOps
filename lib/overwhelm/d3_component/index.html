@@ -482,6 +482,37 @@
                 .on("tick", ticked);
 
             autoZoomToFit(nodes, 500);
+        } else if (currentLayout === "treemap" || currentLayout === "circle_pack" || currentLayout === "arc") {
+            // Named precomputed layout from graph.json layouts map
+            const CANVAS = 3000;
+            const scale = CANVAS / 1000;
+            nodes.forEach(n => {
+                const lp = (n.layouts || {})[currentLayout];
+                if (lp) {
+                    n.x = lp.x * scale;
+                    n.y = lp.y * scale;
+                    // Store treemap dimensions for potential rectangle rendering
+                    if (lp.w != null) { n._lw = lp.w * scale; n._lh = lp.h * scale; }
+                    if (lp.r != null) { n._lr = lp.r * scale; }
+                } else {
+                    n.x = CANVAS / 2 + (Math.random() - 0.5) * 100;
+                    n.y = CANVAS / 2 + (Math.random() - 0.5) * 100;
+                }
+            });
+
+            ticked();
+
+            // Stopped simulation for drag interactivity only
+            simulation = d3.forceSimulation(nodes)
+                .force("collision", d3.forceCollide()
+                    .radius(d => Math.max(d.w, d.h) / 2 + fc.collisionPadding)
+                    .strength(fc.collisionStrength)
+                    .iterations(fc.collisionIterations))
+                .alpha(0)
+                .on("tick", ticked);
+            simulation.stop();
+
+            autoZoomToFit(nodes, 0);
         } else if (currentLayout === "atlas") {
             // ForceAtlas2-style: degree-scaled gravity + repulsion, no center force
             simulation = d3.forceSimulation(nodes)
