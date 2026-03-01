@@ -652,6 +652,24 @@ class TestCombinedGateInteractions:
                 f"got {result.verdict.value}"
             )
 
+        if "verdict" in expected:
+            expected_verdict = expected["verdict"]
+            if expected_verdict == "allow":
+                if result is not None:
+                    assert result.verdict == GateVerdict.ALLOW, (
+                        f"[{scenario['id']}] Expected ALLOW, got {result.verdict.value}"
+                    )
+            elif expected_verdict == "deny":
+                assert result is not None, f"[{scenario['id']}] Expected DENY but got None (allow)"
+                assert result.verdict == GateVerdict.DENY, (
+                    f"[{scenario['id']}] Expected DENY, got {result.verdict.value}"
+                )
+            elif expected_verdict == "warn":
+                assert result is not None, f"[{scenario['id']}] Expected WARN but got None (allow)"
+                assert result.verdict == GateVerdict.WARN, (
+                    f"[{scenario['id']}] Expected WARN, got {result.verdict.value}"
+                )
+
 
 # ===========================================================================
 # EXHAUSTIVE COMPLIANCE BYPASS: Every compliance type x every write tool

@@ -53,6 +53,10 @@ class TestActivateSkillAlwaysAvailable:
         """Task tool should also be in always_available."""
         assert "Task" in TOOL_CATEGORIES["always_available"]
 
+    def test_agent_tool_in_always_available(self):
+        """Agent tool (Claude Code's current subagent tool) should be in always_available."""
+        assert "Agent" in TOOL_CATEGORIES["always_available"]
+
 
 class TestAskUserQuestionAlwaysAvailable:
     """Test that AskUserQuestion is never blocked by the hydration gate."""
@@ -178,7 +182,7 @@ class TestHydratorActiveBypass:
 
 
 class TestTaskHydratorSpawn:
-    """Test that Task tool with hydrator subagent is allowed and sets active."""
+    """Test that Agent/Task tool with hydrator subagent is allowed and sets active."""
 
     def test_task_hydrator_allowed_and_sets_active(self, mock_session_state):
         """Task with hydrator subagent should be allowed."""
@@ -203,18 +207,40 @@ class TestTaskHydratorSpawn:
         # Note: Task is always_available so it bypasses all gates.
         # Gate opens later on SubagentStop when hydrator finishes.
 
+    def test_agent_hydrator_allowed(self, mock_session_state):
+        """Agent (Claude Code's current tool name) with hydrator subagent should be allowed."""
+        state, _ = mock_session_state
+        state.gates["hydration"].status = "closed"
 
-class TestReadToolExemptFromHydration:
-    """Test that read-only tools are NOT blocked by the hydration gate.
+        ctx = HookContext(
+            session_id="test-session-123",
+            hook_event="PreToolUse",
+            tool_name="Agent",
+            tool_input={
+                "subagent_type": "aops-core:prompt-hydrator",
+                "prompt": "Hydrate this task",
+            },
+        )
 
-    read_only tools are excluded from the hydration gate policy (PR#516).
+        router = HookRouter()
+        result = router._dispatch_gates(ctx, state)
+
+        if result:
+            assert result.verdict == GateVerdict.ALLOW
+
+
+class TestReadToolSubjectToHydration:
+    """Test that read-only tools ARE subject to the hydration gate.
+
+    Only always_available tools bypass hydration. Read-only tools get
+    warned/blocked like any other non-exempt tool.
     """
 
-    def test_read_allowed_when_hydration_not_passed(self, mock_session_state):
-        """Read should be allowed even when hydration gate is not passed.
+    def test_read_warned_when_hydration_not_passed(self, mock_session_state):
+        """Read should be warned when hydration gate is closed.
 
-        read_only tools are excluded from the hydration gate policy, so
-        they bypass the gate entirely regardless of hydration status.
+        Only always_available tools (Agent, Task, Skill, AskUserQuestion, etc.)
+        bypass the hydration gate. Read-only tools are subject to it.
         """
         state, _ = mock_session_state
         state.close_gate("hydration")
@@ -233,12 +259,12 @@ class TestReadToolExemptFromHydration:
         router = HookRouter()
         result = router._dispatch_gates(ctx, state)
 
-        # Read is a read_only tool, excluded from hydration gate: should be allowed
-        if result:
-            assert result.verdict == GateVerdict.ALLOW
+        # Read is NOT exempt from hydration — only always_available tools are
+        assert result is not None
+        assert result.verdict == GateVerdict.WARN
 
     def test_read_allowed_when_hydration_passed(self, mock_session_state):
-        """Read should be allowed when hydration gate is passed."""
+        """Read should be allowed when hydration gate is open."""
         state, _ = mock_session_state
         state.gates["hydration"].status = "open"
         state.state["hydrator_active"] = False

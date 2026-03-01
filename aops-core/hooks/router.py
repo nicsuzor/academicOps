@@ -504,7 +504,7 @@ class HookRouter:
                         elif status == "done":
                             notify_task_completed(config, ctx.session_id, task_id)
 
-                if ctx.tool_name in ("Task", "delegate_to_agent"):
+                if ctx.tool_name in ("Agent", "Task", "delegate_to_agent"):
                     agent_type = "unknown"
                     tool_input = ctx.tool_input
                     if isinstance(tool_input, dict):
