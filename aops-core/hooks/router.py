@@ -38,29 +38,16 @@ try:
     from lib.session_paths import get_pid_session_map_path, get_session_short_hash
     from lib.session_state import SessionState
 
-    # Use relative import if possible, or direct import if run as script
-    try:
-        from hooks.schemas import (
-            CanonicalHookOutput,
-            ClaudeGeneralHookOutput,
-            ClaudeHookSpecificOutput,
-            ClaudeStopHookOutput,
-            GeminiHookOutput,
-            GeminiHookSpecificOutput,
-            HookContext,
-        )
-    except ImportError:
-        from schemas import (
-            CanonicalHookOutput,
-            ClaudeGeneralHookOutput,
-            ClaudeHookSpecificOutput,
-            ClaudeStopHookOutput,
-            GeminiHookOutput,
-            GeminiHookSpecificOutput,
-            HookContext,
-        )
-
     from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES, extract_subagent_type
+    from hooks.schemas import (
+        CanonicalHookOutput,
+        ClaudeGeneralHookOutput,
+        ClaudeHookSpecificOutput,
+        ClaudeStopHookOutput,
+        GeminiHookOutput,
+        GeminiHookSpecificOutput,
+        HookContext,
+    )
     from hooks.unified_logger import log_event_to_session, log_hook_event
 except ImportError as e:
     # Fail fast if schemas missing
@@ -126,7 +113,7 @@ def format_gate_status_icons(state: SessionState) -> str:
     - ▶ T-id  active task bound
     - ✓    nothing needs attention
     """
-    from hooks.gate_config import CUSTODIET_TOOL_CALL_THRESHOLD
+    from lib.gates.registry import GateRegistry
 
     parts: list[str] = []
 
@@ -138,14 +125,17 @@ def format_gate_status_icons(state: SessionState) -> str:
     # Custodiet: countdown or overdue
     custodiet = state.gates.get("custodiet")
     if custodiet:
-        threshold = CUSTODIET_TOOL_CALL_THRESHOLD
-        countdown_start = threshold - 7
-        ops = custodiet.ops_since_open
-        if ops >= threshold:
-            parts.append("◇")
-        elif ops >= countdown_start:
-            remaining = threshold - ops
-            parts.append(f"◇ {remaining}")
+        custodiet_gate = GateRegistry.get_gate("custodiet")
+        if custodiet_gate and custodiet_gate.config.countdown:
+            threshold = custodiet_gate.config.countdown.threshold
+            start_before = custodiet_gate.config.countdown.start_before
+            countdown_start = threshold - start_before
+            ops = custodiet.ops_since_open
+            if ops >= threshold:
+                parts.append("◇")
+            elif ops >= countdown_start:
+                remaining = threshold - ops
+                parts.append(f"◇ {remaining}")
 
     # Handover: show only AFTER completion (gate OPEN + skill invoked)
     handover = state.gates.get("handover")
@@ -536,7 +526,7 @@ class HookRouter:
                         elif status == "done":
                             notify_task_completed(config, ctx.session_id, task_id)
 
-                if ctx.tool_name in ("Task", "delegate_to_agent"):
+                if ctx.tool_name in ("Agent", "Task", "delegate_to_agent"):
                     agent_type = "unknown"
                     tool_input = ctx.tool_input
                     if isinstance(tool_input, dict):

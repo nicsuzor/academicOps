@@ -212,11 +212,10 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     for gate_name, gate_path in gate_paths.items():
         persist[f"AOPS_GATE_FILE_{gate_name.upper()}"] = str(gate_path)
 
-    # 6. Set GH_TOKEN from AOPS_BOT_GH_TOKEN (credential isolation — issue #581)
-    bot_token = os.environ.get("AOPS_BOT_GH_TOKEN")
-    if bot_token:
-        persist["GH_TOKEN"] = bot_token
-        persist["GITHUB_TOKEN"] = bot_token
+    # 6. Apply agent-env-map.conf credential isolation mappings (issue #581)
+    from lib.agent_env import get_env_mapping_persist_dict
+
+    persist.update(get_env_mapping_persist_dict())
 
     # 7. Ensure gh CLI is accessible in PATH (portable: uses brew --prefix on macOS)
     current_path = os.environ.get("PATH", "")

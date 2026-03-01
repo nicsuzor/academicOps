@@ -814,7 +814,7 @@
         "hydration": { "status": "closed", "metrics": { "temp_path": "/tmp/h.md" } },
         "custodiet": { "status": "open", "ops_since_open": 55 }
       },
-      "expected": { "verdict_in": ["warn", "deny"], "not_allow": true }
+      "expected": { "verdict": "deny", "not_allow": true }
     }
   ]
 }

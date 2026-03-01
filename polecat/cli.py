@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import json
 import os
+import shutil
+import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -14,6 +16,39 @@ if str(REPO_ROOT / "aops-core") not in sys.path:
 import click
 from manager import PolecatManager
 from validation import TaskIDValidationError, validate_task_id_or_raise
+
+
+def set_terminal_title(title: str) -> None:
+    """Set terminal/tmux window title for session identification.
+
+    Uses OSC 0 escape sequence (same as dotfiles set-tab-title function).
+    In tmux, also sets the window name via rename-window so it appears
+    in set-titles-string (#W) and the window list.
+    """
+    # OSC 0: Set window title — works in Terminal.app, iTerm2, most terminals
+    sys.stdout.write(f"\033]0;{title}\007")
+    sys.stdout.flush()
+
+    # If inside tmux, also rename the window for #W in set-titles-string
+    if os.environ.get("TMUX"):
+        tmux = shutil.which("tmux")
+        if tmux:
+            subprocess.run([tmux, "rename-window", title], capture_output=True)
+
+
+def reset_terminal_title() -> None:
+    """Reset terminal title to automatic naming after session ends."""
+    if os.environ.get("TMUX"):
+        tmux = shutil.which("tmux")
+        if tmux:
+            # Re-enable automatic window renaming
+            subprocess.run(
+                [tmux, "set-window-option", "automatic-rename", "on"],
+                capture_output=True,
+            )
+    # Clear terminal title (let shell/terminal manage it)
+    sys.stdout.write("\033]0;\007")
+    sys.stdout.flush()
 
 
 def save_worker_transcript(
@@ -638,16 +673,35 @@ def merge():
     eng.scan_and_merge()
 
 
+def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
+    """Check if a branch has an open PR on GitHub."""
+    try:
+        result = subprocess.run(
+            ["gh", "pr", "list", "--head", branch_name, "--state", "open", "--json", "number"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            prs = json.loads(result.stdout)
+            return len(prs) > 0
+    except (FileNotFoundError, subprocess.TimeoutExpired, json.JSONDecodeError):
+        pass
+    return False
+
+
 @main.command("c", hidden=True)
 @click.argument("target", required=False, default=None)
 @click.argument("extra", required=False, default=None)
 @click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
 @click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
+@click.option("--keep", "-k", is_flag=True, help="Keep worktree even if a PR is open")
 @click.pass_context
-def crew_alias(ctx, target, extra, name, gemini, resume):
+def crew_alias(ctx, target, extra, name, gemini, resume, keep):
     """Shorthand for 'crew'. See 'polecat crew --help'."""
-    ctx.invoke(crew, target=target, extra=extra, name=name, gemini=gemini, resume=resume)
+    ctx.invoke(crew, target=target, extra=extra, name=name, gemini=gemini, resume=resume, keep=keep)
 
 
 @main.command()
@@ -656,8 +710,9 @@ def crew_alias(ctx, target, extra, name, gemini, resume):
 @click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
 @click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
+@click.option("--keep", "-k", is_flag=True, help="Keep worktree even if a PR is open")
 @click.pass_context
-def crew(ctx, target, extra, name, gemini, resume):
+def crew(ctx, target, extra, name, gemini, resume, keep):
     """Start an interactive crew session with worktree isolation.
 
     Crew workers are persistent, named agents for interactive collaboration.
@@ -781,6 +836,7 @@ def crew(ctx, target, extra, name, gemini, resume):
     env["POLECAT_CREW_NAME"] = crew_name
     env["POLECAT_WORKTREE"] = str(work_dir)
 
+    set_terminal_title(f"crew:{crew_name}")
     try:
         subprocess.run(cmd, cwd=work_dir, env=env)
     except FileNotFoundError:
@@ -788,12 +844,26 @@ def crew(ctx, target, extra, name, gemini, resume):
         sys.exit(1)
     except KeyboardInterrupt:
         print("\n\n\u26a0\ufe0f  Session interrupted")
+    finally:
+        reset_terminal_title()
 
     print("-" * 50)
     print(f"\n\U0001f4cb Crew '{crew_name}' session ended.")
-    print(f"   Worktrees preserved at: {manager.crew_dir / crew_name}")
-    print(f"   To resume: polecat crew -r {crew_name}")
-    print(f"   To nuke:   polecat nuke-crew {crew_name}")
+
+    # Auto-cleanup: nuke worktree if a PR is open (work is safely on remote)
+    branch_name = f"crew/{crew_name}"
+    if not keep and _branch_has_open_pr(branch_name, work_dir):
+        print(f"   PR open for {branch_name} — cleaning up worktree.")
+        try:
+            manager.nuke_crew(crew_name, force=True)
+            print(f"   Worktree removed. Use `polecat crew -r {crew_name}` after merge.")
+        except (ValueError, RuntimeError) as e:
+            print(f"   Cleanup failed: {e}", file=sys.stderr)
+            print(f"   Manual cleanup: polecat nuke-crew {crew_name}")
+    else:
+        print(f"   Worktrees preserved at: {manager.crew_dir / crew_name}")
+        print(f"   To resume: polecat crew -r {crew_name}")
+        print(f"   To nuke:   polecat nuke-crew {crew_name}")
 
 
 @main.command("nuke-crew")
@@ -1098,6 +1168,8 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
     env = os.environ.copy()
     env["POLECAT_SESSION_TYPE"] = "polecat"
 
+    if interactive:
+        set_terminal_title(f"polecat:{task.id}")
     try:
         if interactive:
             # In interactive mode, we MUST NOT capture output or it will hang
@@ -1149,6 +1221,9 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
     except KeyboardInterrupt:
         print("\n\n⚠️  Agent interrupted by user")
         exit_code = 130
+    finally:
+        if interactive:
+            reset_terminal_title()
 
     print("-" * 50)
 
