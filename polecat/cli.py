@@ -2,6 +2,7 @@
 import json
 import os
 import shutil
+import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -32,8 +33,6 @@ def set_terminal_title(title: str) -> None:
     if os.environ.get("TMUX"):
         tmux = shutil.which("tmux")
         if tmux:
-            import subprocess
-
             subprocess.run([tmux, "rename-window", title], capture_output=True)
 
 
@@ -42,8 +41,6 @@ def reset_terminal_title() -> None:
     if os.environ.get("TMUX"):
         tmux = shutil.which("tmux")
         if tmux:
-            import subprocess
-
             # Re-enable automatic window renaming
             subprocess.run(
                 [tmux, "set-window-option", "automatic-rename", "on"],
@@ -678,10 +675,8 @@ def merge():
 
 def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
     """Check if a branch has an open PR on GitHub."""
-    import subprocess as sp
-
     try:
-        result = sp.run(
+        result = subprocess.run(
             ["gh", "pr", "list", "--head", branch_name, "--state", "open", "--json", "number"],
             cwd=repo_path,
             capture_output=True,
@@ -691,7 +686,7 @@ def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
         if result.returncode == 0 and result.stdout.strip():
             prs = json.loads(result.stdout)
             return len(prs) > 0
-    except (FileNotFoundError, sp.TimeoutExpired, json.JSONDecodeError):
+    except (FileNotFoundError, subprocess.TimeoutExpired, json.JSONDecodeError):
         pass
     return False
 
