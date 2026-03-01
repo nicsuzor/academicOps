@@ -21,15 +21,10 @@ def main():
     parser.add_argument("--limit", type=int, default=5, help="Max number of sessions to return")
     args = parser.parse_args()
 
-    aca_data_env = os.environ.get("ACA_DATA")
-    if not aca_data_env:
-        # Fallback for dev/test
-        aca_data = Path.home() / "writing/data"
-    else:
-        aca_data = Path(aca_data_env)
+    sessions_dir = Path(os.environ.get("AOPS_SESSIONS", str(Path.home() / ".aops" / "sessions")))
 
-    transcripts_dir = aca_data / "sessions" / "claude"
-    insights_dir = aca_data / "sessions" / "summaries"  # v3.4.0: summaries subdirectory
+    transcripts_dir = sessions_dir / "transcripts"
+    insights_dir = sessions_dir / "summaries"
 
     if not transcripts_dir.exists():
         print(
