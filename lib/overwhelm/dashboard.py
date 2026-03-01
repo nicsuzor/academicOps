@@ -3615,7 +3615,13 @@ def render_task_graph_page():
         d3_graph["nodes"] = filtered
 
         d3_data = prepare_embedded_graph_data(d3_graph)
-        layout_info = " | Precomputed layout" if d3_data.get("hasLayout") else ""
+        available_layouts = d3_data.get("availableLayouts", [])
+        if available_layouts:
+            layout_info = f" | Precomputed layouts: {', '.join(available_layouts)}"
+        elif d3_data.get("hasLayout"):
+            layout_info = " | Precomputed layout"
+        else:
+            layout_info = ""
         st.caption(
             f"Showing {len(d3_data['nodes'])} nodes and {len(d3_data['links'])} links.{layout_info}"
         )
@@ -3633,11 +3639,27 @@ def render_task_graph_page():
             "Precomputed + Separate": "precomputed_relax",
             "Force": "force",
             "ForceAtlas2": "atlas",
+            "Treemap": "treemap",
+            "Circle Pack": "circle_pack",
+            "Arc Diagram": "arc",
         }
+        available = d3_data.get("availableLayouts", [])
         if d3_data.get("hasLayout"):
-            layout_options = ["Precomputed", "Precomputed + Separate", "Force", "ForceAtlas2"]
+            layout_options = ["Precomputed", "Precomputed + Separate"]
         else:
-            layout_options = ["Force", "ForceAtlas2"]
+            layout_options = []
+        # Add named precomputed layouts from graph.json
+        named_layout_labels = {
+            "treemap": "Treemap",
+            "circle_pack": "Circle Pack",
+            "arc": "Arc Diagram",
+        }
+        for layout_key in available:
+            label = named_layout_labels.get(layout_key)
+            if label and label not in layout_options:
+                layout_options.append(label)
+        # Always offer client-side force layouts
+        layout_options.extend(["Force", "ForceAtlas2"])
         selected_layout = st.sidebar.selectbox("Layout", layout_options, key="tg_layout")
         layout_mode = layout_map[selected_layout]
 
@@ -3871,8 +3893,9 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from lib.task_model import TaskStatus
 from task_manager_ui import render_task_editor
+
+from lib.task_model import TaskStatus
 
 
 @st.dialog("Edit Task")

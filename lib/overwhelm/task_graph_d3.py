@@ -380,6 +380,9 @@ def prepare_embedded_graph_data(
                 "opacity": opacity,
                 "x": node.get("x"),  # Precomputed ForceAtlas2 x (50-950 range, or None)
                 "y": node.get("y"),  # Precomputed ForceAtlas2 y (50-950 range, or None)
+                "layouts": node.get(
+                    "layouts", {}
+                ),  # Named layout coords (treemap, circle_pack, arc, etc.)
             }
         )
 
@@ -424,11 +427,18 @@ def prepare_embedded_graph_data(
         )
 
     has_layout = any(n.get("x") is not None for n in nodes)
+
+    # Discover available named layouts from graph.json nodes
+    available_layouts: set[str] = set()
+    for node in nodes:
+        available_layouts.update(node.get("layouts", {}).keys())
+
     return {
         "nodes": d3_nodes,
         "links": d3_links,
         "forceConfig": FORCE_CONFIG,
         "hasLayout": has_layout,
+        "availableLayouts": sorted(available_layouts),
     }
 
 
