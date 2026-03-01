@@ -78,6 +78,8 @@ def install_cron_jobs(aops_path: Path, aca_data_path: str):
             continue
         if "scripts/repo-sync-cron.sh" in line:
             continue
+        if "# aOps refinery" in line or "scripts/refinery.py" in line:
+            continue
         new_crontab_lines.append(line)
 
     new_crontab_lines.append("# aOps quick sync (brain + transcripts)")
@@ -89,10 +91,6 @@ def install_cron_jobs(aops_path: Path, aca_data_path: str):
         f"0 * * * * {aops_path}/scripts/repo-sync-cron.sh >> /tmp/repo-sync-cron.log 2>&1"
     )
     new_crontab_lines.append(full_sync_cmd)
-
-    new_crontab_lines.append("# aOps refinery")
-    refinery_cmd = f"*/5 * * * * cd {aops_path} && ACA_DATA={aca_data_path} uv run python scripts/refinery.py > /dev/null 2>&1"
-    new_crontab_lines.append(refinery_cmd)
 
     new_crontab = "\n".join(new_crontab_lines) + "\n"
 
