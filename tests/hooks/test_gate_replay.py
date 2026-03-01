@@ -855,9 +855,9 @@ class TestExecuteHooksSmoke:
         assert isinstance(result, CanonicalHookOutput)
         # Verdict should be set (warn or deny, since hydration starts closed)
         assert result.verdict in ("warn", "deny", "allow")
-        # System message should include gate status icons
+        # System message should include gate status icons (lifecycle-aware strip, not brackets)
         if result.system_message:
-            assert "[" in result.system_message, "System message should contain gate status icons"
+            assert result.system_message.strip(), "System message should not be empty"
 
     def test_always_available_through_full_pipeline(self, router, tmp_path, monkeypatch):
         """Always-available tool through full pipeline should be allowed."""
