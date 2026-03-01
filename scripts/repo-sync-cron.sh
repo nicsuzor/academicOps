@@ -29,8 +29,14 @@ export AOPS="${AOPS:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
 if [[ -f "$HOME/.env.local" ]]; then
     while IFS= read -r line; do
         if [[ "$line" =~ ^export[[:space:]]+([A-Za-z_][A-Za-z0-9_]*)= ]]; then
-            line="${line//\$HOME/$HOME}"
-            line="${line//\~\//$HOME/}"
+            value="${line#*=}"
+            value_expanded="${value//\$HOME/$HOME}"
+            if [[ "$value_expanded" == "~" || "$value_expanded" == '"~"' || "$value_expanded" == "'~'" ]]; then
+                value_expanded="$HOME"
+            else
+                value_expanded="${value_expanded//\~\//$HOME/}"
+            fi
+            line="${line%%=*}=$value_expanded"
             export "${line#export }"
         fi
     done < "$HOME/.env.local"
