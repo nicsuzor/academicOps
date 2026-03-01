@@ -211,6 +211,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+
 from lib.paths import get_plugin_root as get_aops_root
 
 
@@ -401,6 +402,11 @@ def run_claude_headless(
             "error": "ACA_DATA environment variable not set - required for memory server tests",
         }
 
+    # Apply agent-env-map.conf credential isolation mappings
+    from lib.agent_env import apply_env_mappings
+
+    apply_env_mappings(env)
+
     try:
         # Execute command
         result = subprocess.run(
@@ -581,6 +587,11 @@ def run_gemini_headless(
             "result": {},
             "error": "AOPS environment variable not set - required for tests",
         }
+
+    # Apply agent-env-map.conf credential isolation mappings
+    from lib.agent_env import apply_env_mappings
+
+    apply_env_mappings(env)
 
     # Ensure CLAUDE_PLUGIN_ROOT is set for hooks.json variable expansion
     if "CLAUDE_PLUGIN_ROOT" not in env:
