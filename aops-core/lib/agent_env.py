@@ -143,16 +143,4 @@ def get_env_mapping_persist_dict(
     Returns:
         Dict of {TARGET: value} to persist.
     """
-    if source_env is None:
-        source_env = os.environ
-
-    result = {}
-    for entry in load_env_entries(config_path):
-        if entry.is_literal:
-            result[entry.target] = entry.value
-        else:
-            value = source_env.get(entry.value)
-            if value is not None:
-                result[entry.target] = value
-
-    return result
+    return apply_env_mappings(env={}, config_path=config_path, source_env=source_env)

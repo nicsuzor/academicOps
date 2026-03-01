@@ -175,8 +175,8 @@ class TestAgentEnvConfig:
         assert result["SSH_AUTH_SOCK"] == ""
         assert result["GIT_TERMINAL_PROMPT"] == "0"
 
-    def test_get_persist_dict_empty_when_source_absent(self):
-        """get_env_mapping_persist_dict should return {} when SOURCE not set."""
+    def test_get_persist_dict_excludes_mappings_when_source_absent(self):
+        """get_env_mapping_persist_dict should exclude env-to-env mappings when source is absent."""
         result = get_env_mapping_persist_dict(source_env={})
         # Literals are always included even with empty source_env
         # Only env-to-env mappings are excluded when source is absent
@@ -415,7 +415,7 @@ class TestClaudeCredentialIsolation:
         if not shutil.which("claude"):
             pytest.skip("claude CLI not found in PATH")
 
-    def test_claude_session_gets_bot_token(self, credential_markers, output_file):
+    def test_claude_session_gets_bot_token(self, credential_markers, output_file, tmp_path):
         """Claude's Bash tool should see GH_TOKEN = AOPS_BOT_GH_TOKEN.
 
         Both the harness (apply_env_mappings) and the hook (session_env_setup)
@@ -460,7 +460,7 @@ class TestClaudeCredentialIsolation:
             capture_output=True,
             text=True,
             timeout=120,
-            cwd="/tmp",
+            cwd=tmp_path,
             check=False,
         )
 
