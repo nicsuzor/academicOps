@@ -7,7 +7,7 @@ description: |
   Instructs the agent to invoke the aops-core:prompt-hydrator agent or skill before proceeding.
 ---
 
-⛔ HYDRATION REQUIRED: Tool call blocked.
+✕ HYDRATION REQUIRED: Tool call blocked.
 
 To proceed with file-modifying tools, you must first invoke the **prompt-hydrator** agent with the file path argument: `{temp_path}`
 

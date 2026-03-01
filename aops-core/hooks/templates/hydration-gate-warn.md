@@ -7,7 +7,7 @@ description: |
   Alerts agent that hydrator should be invoked, but allows proceeding.
 ---
 
-💧 HYDRATION ADVISORY: Prompt not yet hydrated.
+💧 Prompt not yet hydrated.
 
 To ensure alignment with project workflows and axioms, it is recommended to invoke the **prompt-hydrator** agent with the file path argument: `{temp_path}`
 

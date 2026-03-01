@@ -30,6 +30,10 @@ def temp_claude_projects(monkeypatch):
         # Mock Path.home() to use temp directory
         monkeypatch.setattr(Path, "home", lambda: Path(tmpdir))
 
+        # Clear env vars that bypass Path.home()-based path resolution
+        monkeypatch.delenv("AOPS_HOOK_LOG_PATH", raising=False)
+        monkeypatch.delenv("AOPS_SESSION_STATE_DIR", raising=False)
+
         yield tmpdir
 
 

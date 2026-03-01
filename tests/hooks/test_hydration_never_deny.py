@@ -16,6 +16,7 @@ if str(AOPS_CORE) not in sys.path:
 from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES, TOOL_CATEGORIES, get_tool_category
 from hooks.router import HookRouter
 from hooks.schemas import HookContext
+
 from lib.gate_model import GateVerdict
 from lib.gates.registry import GateRegistry
 from lib.session_state import SessionState
@@ -205,16 +206,19 @@ class TestTaskHydratorSpawn:
 
 
 class TestReadToolExemptFromHydration:
-    """Test that read-only tools are NOT blocked by the hydration gate.
+    """Test that read-only tools are warned but NOT denied by the hydration gate.
 
-    read_only tools are excluded from the hydration gate policy (PR#516).
+    The hydration gate policy excludes only always_available tools.
+    read_only tools like Read get WARN (not DENY), matching the configured
+    HYDRATION_GATE_MODE default of "warn".
     """
 
-    def test_read_allowed_when_hydration_not_passed(self, mock_session_state):
-        """Read should be allowed even when hydration gate is not passed.
+    def test_read_warned_when_hydration_not_passed(self, mock_session_state):
+        """Read should get WARN (not DENY) when hydration gate is closed.
 
-        read_only tools are excluded from the hydration gate policy, so
-        they bypass the gate entirely regardless of hydration status.
+        The hydration policy excludes only always_available tools (Task, Skill, etc.).
+        read_only tools like Read are subject to the gate but get the configured
+        mode verdict (default: warn), never deny.
         """
         state, _ = mock_session_state
         state.close_gate("hydration")
@@ -233,9 +237,10 @@ class TestReadToolExemptFromHydration:
         router = HookRouter()
         result = router._dispatch_gates(ctx, state)
 
-        # Read is a read_only tool, excluded from hydration gate: should be allowed
-        if result:
-            assert result.verdict == GateVerdict.ALLOW
+        # Read is a read_only tool — not excluded from hydration, but should
+        # get WARN (not DENY) per the default HYDRATION_GATE_MODE
+        assert result is not None
+        assert result.verdict == GateVerdict.WARN
 
     def test_read_allowed_when_hydration_passed(self, mock_session_state):
         """Read should be allowed when hydration gate is passed."""
