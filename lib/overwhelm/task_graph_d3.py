@@ -378,6 +378,8 @@ def prepare_embedded_graph_data(
                 "project": node.get("project"),
                 "assignee": assignee or node.get("assignee"),
                 "opacity": opacity,
+                "x": node.get("x"),  # Precomputed ForceAtlas2 x (50-950 range, or None)
+                "y": node.get("y"),  # Precomputed ForceAtlas2 y (50-950 range, or None)
             }
         )
 
@@ -421,7 +423,13 @@ def prepare_embedded_graph_data(
             }
         )
 
-    return {"nodes": d3_nodes, "links": d3_links, "forceConfig": FORCE_CONFIG}
+    has_layout = any(n.get("x") is not None for n in nodes)
+    return {
+        "nodes": d3_nodes,
+        "links": d3_links,
+        "forceConfig": FORCE_CONFIG,
+        "hasLayout": has_layout,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -429,8 +437,20 @@ def prepare_embedded_graph_data(
 # ---------------------------------------------------------------------------
 
 
-def render_embedded_graph(graph_data: dict, height: int = 500, force_settings=None):
+def render_embedded_graph(
+    graph_data: dict,
+    height: int = 500,
+    force_settings=None,
+    project_filter: str = "ALL",
+    layout_mode: str = "force",
+):
     """Render the graph using the bi-directional Streamlit Custom Component."""
     from d3_component import d3_task_graph
 
-    return d3_task_graph(data=graph_data, height=height, force_settings=force_settings)
+    return d3_task_graph(
+        data=graph_data,
+        height=height,
+        force_settings=force_settings,
+        project_filter=project_filter,
+        layout_mode=layout_mode,
+    )

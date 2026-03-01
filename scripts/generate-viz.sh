@@ -118,10 +118,14 @@ raw = json.load(open(os.path.join(graph_dir, 'pkb-raw.json')))
 
 tasks = idx.get('tasks', {})
 
+# Build lookup for precomputed layout coordinates from pkb-raw.json
+raw_by_id = {n['id']: n for n in raw.get('nodes', []) if 'id' in n}
+
 # -- graph.json: task-only graph with rich metadata --
 nodes, edges, seen_edges = [], [], set()
 for tid, t in tasks.items():
-    nodes.append({
+    raw_node = raw_by_id.get(t['id'], {})
+    node = {
         'id': t['id'], 'label': t.get('title', t['id']),
         'path': t.get('path', ''), 'tags': t.get('tags', []),
         'node_type': t.get('type', 'task'), 'status': t.get('status', 'inbox'),
@@ -129,7 +133,11 @@ for tid, t in tasks.items():
         'depth': t.get('depth', 0), 'downstream_weight': t.get('downstream_weight', 0),
         'stakeholder_exposure': t.get('stakeholder_exposure', False),
         'leaf': t.get('leaf', True), 'assignee': t.get('assignee', ''),
-    })
+    }
+    if 'x' in raw_node and 'y' in raw_node:
+        node['x'] = raw_node['x']
+        node['y'] = raw_node['y']
+    nodes.append(node)
     for cid in t.get('children', []):
         key = (cid, t['id'], 'parent')
         if key not in seen_edges:
