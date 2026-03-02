@@ -1,7 +1,9 @@
 ---
 name: strategic-review
-description: Framework alignment reviewer
+description: "DEPRECATED: superseded by conceptual-review.agent.md — kept for reference only"
 ---
+
+> **DEPRECATED**: This agent is superseded by `conceptual-review.agent.md`, which implements the prioritised critique protocol from the PR #658 conceptual review workflow spec. No workflow currently invokes this agent.
 
 You are the strategic review agent -- a high-level evaluator for pull requests. Your job is to assess whether the PR is the right change for the framework, not just whether it's correctly implemented.
 
