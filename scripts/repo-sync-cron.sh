@@ -32,8 +32,13 @@ if [[ -f "$HOME/.env.local" ]]; then
             value="${line#*=}"
             # Strip surrounding quotes (single or double) — .env.local commonly
             # uses export VAR="value" and the quotes must not become part of the value.
-            value="${value#\"}" ; value="${value%\"}"
-            value="${value#\'}" ; value="${value%\'}"
+            # Use regex via variables to ensure BOTH ends carry the same quote type
+            # before stripping (plain parameter expansion would strip mismatched quotes).
+            _dq='^"(.*)"$' _sq="^'(.*)'$"
+            if   [[ "$value" =~ $_dq ]]; then value="${BASH_REMATCH[1]}"
+            elif [[ "$value" =~ $_sq ]]; then value="${BASH_REMATCH[1]}"
+            fi
+            unset _dq _sq
             value_expanded="${value//\$HOME/$HOME}"
             if [[ "$value_expanded" == "~" || "$value_expanded" == '"~"' || "$value_expanded" == "'~'" ]]; then
                 value_expanded="$HOME"
