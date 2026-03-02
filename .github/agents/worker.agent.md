@@ -68,5 +68,5 @@ Write a clear PR description that explains:
 - What you changed and why
 - How you verified it works
 
-The PR will be reviewed by automated agents (gatekeeper, custodiet, QA).
+The PR will be reviewed by automated agents (conceptual-review, custodiet, QA).
 Clear descriptions help them evaluate scope compliance.

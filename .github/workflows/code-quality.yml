@@ -1,7 +1,7 @@
 # Cheap checks that run on every PR push: lint and type-check.
 # Type-check runs after lint passes.
 #
-# Gatekeeper runs as a separate standalone workflow (agent-gatekeeper.yml).
+# Conceptual Review runs as a separate standalone workflow (agent-conceptual-review.yml).
 #
 # See specs/pr-process.md for the full process documentation.
 
