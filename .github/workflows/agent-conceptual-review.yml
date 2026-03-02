@@ -1,0 +1,96 @@
+# Agent: Conceptual Review
+# Personality: Thoughtful reviewer. Provides structured critique. Advisory only — never blocks merge.
+# Responsibilities:
+#   - Evaluate PR through axiom compliance + strategic alignment lens
+#   - Apply prioritised critique protocol (primary concern + resolution, secondary concerns)
+#   - Post PR comment with structured review
+# Authority: Advisory comment only (no commit status, no PR review approval/rejection)
+# Prompt: .github/agents/conceptual-review.agent.md
+
+name: "Agent: Conceptual Review"
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        type: string
+        required: true
+      ref:
+        description: 'Git ref to checkout'
+        type: string
+        required: true
+  workflow_call:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        type: string
+        required: true
+      ref:
+        description: 'Git ref to checkout'
+        type: string
+        required: true
+
+jobs:
+  review:
+    name: Conceptual Review
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.user.login != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: conceptual-review-${{ inputs.pr_number || github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+      issues: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref || github.event.pull_request.head.ref }}
+
+      - name: Read agent instructions
+        id: prompt
+        run: |
+          PROMPT=$(cat .github/agents/conceptual-review.agent.md)
+          {
+            echo "prompt<<AGENT_EOF"
+            echo "$PROMPT"
+            echo "AGENT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Determine PR info
+        id: pr-info
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "pr_number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "pr_number=${{ inputs.pr_number }}" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run Conceptual Review
+        uses: anthropics/claude-code-action@v1
+        with:
+          allowed_bots: "claude[bot]"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            ${{ steps.prompt.outputs.prompt }}
+
+            ---
+
+            Review PR #${{ steps.pr-info.outputs.pr_number }} in repository ${{ github.repository }}.
+            Use `gh pr view ${{ steps.pr-info.outputs.pr_number }}` and `gh pr diff ${{ steps.pr-info.outputs.pr_number }}` to gather information.
+
+            Post a PR comment (`gh pr comment`) with your structured review following the output format in your instructions.
+
+            Do NOT use `gh pr review`. Do NOT set any commit statuses. Your role is advisory only.
+
+          claude_args: '--model claude-opus-4-6 --allowed-tools "Bash(gh:*),Read"'

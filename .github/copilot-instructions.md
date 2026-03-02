@@ -95,6 +95,6 @@ workflow-length-check. Run `uv run pre-commit run --all-files` to check before c
 
 ## PR Review Pipeline
 
-PRs are reviewed by automated agents (gatekeeper, custodiet, QA, merge-prep).
+PRs are reviewed by automated agents (conceptual-review, custodiet, QA, merge-prep).
 The pipeline runs on PR open/push. Write clear PR descriptions explaining what
 changed and why — the agents use this to evaluate scope compliance.

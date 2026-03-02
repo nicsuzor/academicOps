@@ -15,7 +15,7 @@ By the time you finish, the PR should be clean and auto-merge should fire automa
 3. Read ALL review feedback from every source:
    - `gh api repos/{owner}/{repo}/pulls/{pr}/reviews` — review summaries and verdicts
    - `gh api repos/{owner}/{repo}/pulls/{pr}/comments` — inline review comments
-   - This includes our agents (Gatekeeper), external bots (Gemini Code Assist, GitHub Copilot), and human commenters.
+   - This includes our agents (Conceptual Review), external bots (Gemini Code Assist, GitHub Copilot), and human commenters.
 4. Triage each piece of feedback into categories (see below).
 5. Fix genuine bugs, valid improvements, and human directives.
 6. Run lint + typecheck + tests locally to verify clean code:
