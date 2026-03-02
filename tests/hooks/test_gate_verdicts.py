@@ -354,6 +354,8 @@ class TestComplianceSubagentTypesComplete:
         "aops-core:audit",
         "butler",
         "aops-core:butler",
+        "qa",
+        "aops-core:qa",
     }
 
     def test_all_expected_types_registered(self):

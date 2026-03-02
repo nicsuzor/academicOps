@@ -33,7 +33,7 @@ academicOps/
 │   ├── rules/        # AXIOMS.md (inviolable principles)
 │   └── skills/       # Domain skills
 ├── .github/
-│   ├── agents/       # Agent personas (gatekeeper, custodiet, qa, etc.)
+│   ├── agents/       # Agent personas (conceptual-review, custodiet, qa, etc.)
 │   └── workflows/    # GitHub Actions (18 workflows)
 ├── aops-core/        # Framework core
 │   ├── hooks/        # Session lifecycle hooks

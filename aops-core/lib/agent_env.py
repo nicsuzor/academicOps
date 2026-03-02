@@ -114,7 +114,7 @@ def apply_env_mappings(
         The modified env dict (same object, for chaining).
     """
     if source_env is None:
-        source_env = os.environ
+        source_env = dict(os.environ)
 
     for entry in load_env_entries(config_path):
         if entry.is_literal:

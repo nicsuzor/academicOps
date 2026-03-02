@@ -44,7 +44,7 @@ By the time you finish, the PR should be clean and auto-merge should fire automa
 ## What to Fix
 
 - Human's explicit instructions from the LGTM comment (highest priority)
-- Code issues flagged by any reviewer (Gatekeeper, Gemini, Copilot, humans)
+- Code issues flagged by any reviewer (Conceptual Review, Gemini, Copilot, humans)
 - Scope compliance issues (revert out-of-scope changes, split if needed)
 - Lint or type errors (run `uv run ruff check --fix && uv run ruff format` after changes)
 - Broken imports or references
@@ -66,7 +66,7 @@ Post a comment using `gh pr comment`:
 | Source | Comment | Category | Action |
 |--------|---------|----------|--------|
 | Maintainer (LGTM) | Fix docstring on line 42 | Human directive | Fixed |
-| Gatekeeper | Scope aligned with STATUS.md | Approved | No action needed |
+| Conceptual Review | Aligns with axioms and vision | No concerns | No action needed |
 | Copilot | Unused import on line 42 | Valid improvement | Fixed |
 | Gemini | "Consider using dataclass" | Scope creep | Acknowledged — future work |
 

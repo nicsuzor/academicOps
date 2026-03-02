@@ -1,10 +1,14 @@
 # Cron dispatcher for merge-prep: runs every 5 minutes on main.
-# Finds open PRs that have the 'lgtm' label, checks qualification
-# criteria (time gate, checks passing), and dispatches the merge-prep
-# agent for each qualifying PR.
+# Finds open PRs that qualify for merge-prep and dispatches the agent.
 #
-# This replaces the event-driven pr-review-pipeline.yml to eliminate
-# bot cascade loops. Time-gated dispatch cannot cascade.
+# Qualification criteria:
+#   - Last commit ≥15 min ago (bazaar window for bot reviews to complete)
+#   - Not already being processed (no merge-prep-running label)
+#   - Not failed too many times (no merge-prep-failed label)
+#
+# No agent status checks required — Conceptual Review is advisory only,
+# and merge-prep handles lint/format/type fixes itself.
+# The human gates merge.
 #
 # See specs/pr-process.md for the full process documentation.
 
@@ -31,7 +35,7 @@ jobs:
       actions: write
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      BAZAAR_WINDOW_SECONDS: 1800  # 30 minutes
+      BAZAAR_WINDOW_SECONDS: 900  # 15 minutes
       MAX_FAILURES: 3
     steps:
       # ── Manual override: process a specific PR immediately ──
@@ -69,17 +73,15 @@ jobs:
           REPO="${{ github.repository }}"
           NOW=$(date +%s)
 
-          # Get all open PRs with 'lgtm' label
-          PRS=$(gh pr list --repo "$REPO" --state open --label lgtm \
+          # Get all open PRs
+          PRS=$(gh pr list --repo "$REPO" --state open \
             --json number,headRefName,headRefOid,labels)
 
           if [ "$(echo "$PRS" | jq 'length')" -eq 0 ]; then
-            echo "No PRs with 'lgtm' label found"
+            echo "No open PRs found"
             echo "qualifying=[]" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-
-          QUALIFYING="[]"
 
           echo "$PRS" | jq -c '.[]' | while read -r PR; do
             PR_NUM=$(echo "$PR" | jq -r '.number')
@@ -101,7 +103,7 @@ jobs:
               continue
             fi
 
-            # Check time gate: last commit must be ≥30 min ago
+            # Check time gate: last commit must be ≥15 min ago
             LAST_COMMIT_DATE=$(gh pr view "$PR_NUM" --repo "$REPO" \
               --json commits --jq '.commits[-1].committedDate')
             LAST_COMMIT_TS=$(date -d "$LAST_COMMIT_DATE" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$LAST_COMMIT_DATE" +%s 2>/dev/null)
@@ -112,39 +114,13 @@ jobs:
               continue
             fi
 
-            # Check if PR has merge conflicts — if so, dispatch merge-prep
-            # to resolve them (skip the checks-passing requirement since
-            # checks can't meaningfully pass on a conflicting branch).
+            # Dispatch for both mergeable and conflicting PRs.
+            # Merge-prep resolves conflicts when possible.
             MERGEABLE=$(gh pr view "$PR_NUM" --repo "$REPO" \
               --json mergeable --jq '.mergeable')
 
             if [ "$MERGEABLE" = "CONFLICTING" ]; then
               echo "  PR has merge conflicts — dispatching merge-prep to resolve"
-            else
-              # Check required status checks on HEAD commit
-              # We check Lint, Type Check, Pytest — but NOT Merge Prep (it's pending by design)
-              # Note: Conceptual Review is advisory only and not a required check
-              CHECKS_OK=true
-              for CTX in "Lint" "Type Check" "Pytest"; do
-                STATE=$(gh api "repos/$REPO/commits/$HEAD_SHA/status" \
-                  --jq ".statuses[] | select(.context == \"$CTX\") | .state" 2>/dev/null)
-
-                # Also check check-runs (GitHub Actions reports as check runs, not commit statuses)
-                if [ -z "$STATE" ]; then
-                  STATE=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs" \
-                    --jq ".check_runs[] | select(.name == \"$CTX\") | .conclusion" 2>/dev/null)
-                fi
-
-                if [ "$STATE" != "success" ]; then
-                  echo "  SKIP: $CTX status is '$STATE' (need 'success')"
-                  CHECKS_OK=false
-                  break
-                fi
-              done
-
-              if [ "$CHECKS_OK" = false ]; then
-                continue
-              fi
             fi
 
             echo "  QUALIFIED: PR #$PR_NUM ready for merge-prep"

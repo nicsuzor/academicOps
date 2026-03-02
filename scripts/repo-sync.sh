@@ -36,7 +36,7 @@ if [[ -f "$POLECAT_YAML" ]]; then
         if [[ -d "$expanded_path" ]]; then
             REPOS+=("$expanded_path")
         fi
-    done < <(python3 -c "
+    done < <(uv run --directory "${AOPS:-$(dirname "$(dirname "$0")")}" python3 -c "
 import yaml, sys
 try:
     with open(sys.argv[1]) as f:

@@ -24,7 +24,7 @@ Framework self-improvement through deliberate learning cycles.
 ## Core Principles
 
 - **PKB is always live.** Write facts, decisions, and status to PKB immediately. Do not wait to be asked.
-- **Anchor findings to a task.** Create a parent task for the session. All findings are children with specific titles referencing the artifact and finding — not generic "finding #1."
+- **Anchor findings to a task.** Create a parent task for the session. All findings are children with specific titles referencing the artifact and finding — not generic "finding #1." (e.g., "Finding: dogfooding.md - Unclear Reflect/Codify separation")
 - **Create tasks and links proactively.** Wire up `parent`, `depends_on`, `soft_blocks` as they emerge.
 - **Update, don't duplicate.** Use `append` or `update_task` for existing items.
 - **Don't be selfish.** Every fix to current work MUST propagate to instructions governing future work. The next agent must benefit from your learning.
@@ -46,14 +46,14 @@ Complete one discrete step. Notice: What felt awkward? What context was missing?
 
 Before the next step: Did the process work as designed? Did you need human input the process should have handled? Is there a finding worth recording? **Record findings immediately — don't wait to be asked.**
 
-| Observation            | Action                                    |
-| ---------------------- | ----------------------------------------- |
-| One-time friction      | Note in session reflection                |
-| Recurring pattern (3+) | Check HEURISTICS.md → `/learn` if missing |
-| Blocking current task  | Fix minimally, note for codification      |
-| Better pattern found   | Document what worked                      |
-| Tool/schema gap        | File task under `aops` project            |
-| Process gap            | Record as PKB insight, update the process |
+| Observation            | Action                                                  |
+| ---------------------- | ------------------------------------------------------- |
+| One-time friction      | Note in session reflection                              |
+| Recurring pattern (3+) | Check HEURISTICS.md, record for codification if missing |
+| Blocking current task  | Fix minimally, note for codification                    |
+| Better pattern found   | Document what worked                                    |
+| Tool/schema gap        | File task under `aops` project                          |
+| Process gap            | Record as PKB insight for codification                  |
 
 ### 3. Codify (Improve the Framework)
 
