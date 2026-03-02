@@ -13,6 +13,13 @@ tools:
   - mcp__pkb__update_task
   - mcp__pkb__list_tasks
   - mcp__pkb__task_search
+  - mcp__pkb__search
+  - mcp__pkb__get_document
+  - mcp__pkb__create_memory
+  - mcp__pkb__retrieve_memory
+  - mcp__pkb__list_memories
+  - mcp__pkb__search_by_tag
+  - mcp__pkb__delete_memory
 ---
 
 # Effectual Planning Agent
