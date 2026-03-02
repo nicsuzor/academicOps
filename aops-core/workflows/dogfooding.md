@@ -1,7 +1,7 @@
 ---
 id: dogfooding
 category: meta
-description: Framework self-improvement through deliberate learning cycles (execute, observe, codify)
+description: Framework self-improvement through deliberate learning cycles (execute, reflect, codify)
 triggers:
   - "dogfood"
   - "self-improve"
@@ -19,79 +19,69 @@ Framework self-improvement through deliberate learning cycles.
 - Working under uncertainty (new process, unclear workflow)
 - Testing framework capabilities on real work
 - Any task where the process itself is worth examining
-- Conversational planning or brainstorming sessions (where facts and decisions emerge incrementally)
+- Conversational planning or brainstorming sessions
 
-## Core Principle: The PKB Is Always Live
+## Core Principles
 
-The PKB is the single source of truth. Keep it current **during** conversation, not after.
+- **PKB is always live.** Write facts, decisions, and status to PKB immediately. Do not wait to be asked.
+- **Anchor findings to a task.** Create a parent task for the session. All findings are children with specific titles referencing the artifact and finding — not generic "finding #1."
+- **Create tasks and links proactively.** Wire up `parent`, `depends_on`, `soft_blocks` as they emerge.
+- **Update, don't duplicate.** Use `append` or `update_task` for existing items.
+- **Don't be selfish.** Every fix to current work MUST propagate to instructions governing future work. The next agent must benefit from your learning.
+- **No workarounds.** If a PKB tool can't do what you need, file a task. Don't invent a manual workaround.
 
-- **Write as you learn** — when the user shares facts, dimensions, decisions, or status updates, write them to the PKB immediately using the `pkb` MCP tools. Do not wait to be asked. Do not ask permission.
-- **Create tasks and links proactively** — when a blocker, dependency, or next action emerges in conversation, create the task and wire up relationships (`parent`, `depends_on`, `soft_blocks`) right away.
-- **Update, don't duplicate** — check if a document already exists before creating. Use `append_to_document` or `update_task` to add to existing items.
-- **No workarounds** — if a PKB tool can't do what you need, or the schema doesn't fit, that's a bug. File a task under the `aops` project describing the gap. Do NOT invent a manual workaround.
-
-## The Dogfooding Loop
-
-Dogfooding is not just passive observation—it's an active improvement cycle:
+## The Loop
 
 ```
-EXECUTE → OBSERVE → CODIFY
-   ↑                    │
-   └────────────────────┘
+EXECUTE → REFLECT → CODIFY → (repeat per step)
 ```
 
-### 1. Execute (Do the Work)
+**Per-step, not per-session.** Reflect after every step, not batched at session end.
 
-Complete the task while staying aware of friction points:
+### 1. Execute (One Step)
 
-- What steps feel awkward or unclear?
-- Where did you need to ask for clarification?
-- What context was missing?
-- What tools didn't work as expected?
+Complete one discrete step. Notice: What felt awkward? What context was missing? What tools didn't work?
 
-### 2. Observe (Capture Learnings)
+### 2. Reflect (Before Proceeding)
 
-| Observation                 | Action                                                |
-| --------------------------- | ----------------------------------------------------- |
-| One-time friction           | Note in session reflection                            |
-| Recurring pattern (3+)      | Check HEURISTICS.md → `/learn` if missing             |
-| Blocking current task       | Fix minimally, note for codification                  |
-| Better pattern discovered   | Document what worked                                  |
-| Tool gap or schema mismatch | File task under `aops` project — don't work around it |
+Before the next step: Did the process work as designed? Did you need human input the process should have handled? Is there a finding worth recording? **Record findings immediately — don't wait to be asked.**
+
+| Observation            | Action                                    |
+| ---------------------- | ----------------------------------------- |
+| One-time friction      | Note in session reflection                |
+| Recurring pattern (3+) | Check HEURISTICS.md → `/learn` if missing |
+| Blocking current task  | Fix minimally, note for codification      |
+| Better pattern found   | Document what worked                      |
+| Tool/schema gap        | File task under `aops` project            |
+| Process gap            | Record as PKB insight, update the process |
 
 ### 3. Codify (Improve the Framework)
 
-**This is the critical step most often skipped.**
+**Most often skipped.** Ask: "What did I learn that should become part of the framework?"
 
-After completing work, ask: "What did I learn that should become part of the framework?"
-
-| Learning Type           | Codification Target               |
-| ----------------------- | --------------------------------- |
-| Better workflow steps   | Update workflow .md file          |
-| Missing guardrail       | Add to constraint-check or hooks  |
-| Useful question pattern | Add to AskUserQuestion templates  |
-| New heuristic           | Add to HEURISTICS.md via `/learn` |
-| Agent behaviour issue   | Add to CORE.md Agent Rules        |
-| PKB schema gap          | Task under aops project           |
+| Learning Type       | Codification Target              |
+| ------------------- | -------------------------------- |
+| Better workflow     | Update workflow .md file         |
+| Missing guardrail   | Add to constraint-check or hooks |
+| New heuristic       | Add to HEURISTICS.md via /learn  |
+| Agent behaviour fix | Add to CORE.md Agent Rules       |
+| PKB schema gap      | Task under aops project          |
 
 ## Conversational Knowledge Capture
 
-When working through a planning or brainstorming session with the user, follow this pattern:
-
-1. **Facts → PKB immediately.** User says "the workbench is 4080 aluminium" → update the project document right now.
-2. **Decisions → Decision Log.** User resolves an open question → append to the document's Decision Log section.
-3. **Blockers → Tasks.** A dependency or unknown emerges → create a task, wire it as a blocker.
-4. **Cross-project links → Wire them.** One project enables another → add `soft_blocks` or `related` relationships.
-5. **Never ask "want me to update?"** — just update. The user will correct you if you got it wrong.
+1. **Facts → PKB immediately.** Don't ask "want me to update?" — just update.
+2. **Decisions → Decision Log** section of the relevant document.
+3. **Blockers → Tasks.** Wire as blockers.
+4. **Cross-project links → Wire them** with `soft_blocks` or `related`.
 
 ## Notice List
 
-Watch for these: routing friction, missing context, instruction gaps, guardrail failures, user friction, tool gaps, permission-seeking.
+Watch for: routing friction, missing context, instruction gaps, guardrail failures, user friction, tool gaps, permission-seeking.
 
 ## Key Rules
 
-1. **Don't stop to fix everything.** Log observation, continue working.
-2. **Do codify at session end.** Before handover, ask: what learned → what changed?
-3. **Small improvements compound.** One workflow tweak per session adds up.
-4. **Write to PKB as you go.** Don't batch knowledge capture to session end.
+1. **Reflect per step.** Complete one step → reflect → codify → next step.
+2. **Record automatically.** Don't wait for the user to say "record this."
+3. **Propagate, don't hoard.** Fix instructions, not just your current work.
+4. **Small improvements compound.** One workflow tweak per session adds up.
 5. **File tool gaps as tasks.** Workarounds hide bugs.
