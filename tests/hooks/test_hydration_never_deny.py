@@ -13,12 +13,40 @@ if str(AOPS_CORE) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE))
 
 
+import importlib
+
 from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES, TOOL_CATEGORIES, get_tool_category
 from hooks.router import HookRouter
 from hooks.schemas import HookContext
+
 from lib.gate_model import GateVerdict
 from lib.gates.registry import GateRegistry
 from lib.session_state import SessionState
+
+
+def _reinit_gates():
+    """Reload gate_config and definitions with current env vars, reinit registry."""
+    if "gate_config" in sys.modules:
+        importlib.reload(sys.modules["gate_config"])
+    if "hooks.gate_config" in sys.modules:
+        importlib.reload(sys.modules["hooks.gate_config"])
+    if "lib.gates.definitions" in sys.modules:
+        importlib.reload(sys.modules["lib.gates.definitions"])
+    GateRegistry._initialized = False
+    GateRegistry.initialize()
+
+
+@pytest.fixture(autouse=True)
+def _pin_gate_modes(monkeypatch):
+    """Pin gate env vars to prevent leaks from other test files (pytest-xdist)."""
+    monkeypatch.setenv("HYDRATION_GATE_MODE", "warn")
+    monkeypatch.setenv("CUSTODIET_GATE_MODE", "block")
+    monkeypatch.setenv("QA_GATE_MODE", "block")
+    monkeypatch.setenv("HANDOVER_GATE_MODE", "warn")
+    monkeypatch.setenv("CUSTODIET_TOOL_CALL_THRESHOLD", "50")
+    _reinit_gates()
+    yield
+    _reinit_gates()
 
 
 # Helper to mock session state loading

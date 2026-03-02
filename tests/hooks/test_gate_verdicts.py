@@ -42,6 +42,7 @@ from hooks.schemas import (
     GeminiHookOutput,
     HookContext,
 )
+
 from lib.gate_model import GateVerdict
 from lib.gate_types import GateState, GateStatus
 from lib.gates.registry import GateRegistry
@@ -354,6 +355,8 @@ class TestComplianceSubagentTypesComplete:
         "aops-core:audit",
         "butler",
         "aops-core:butler",
+        "qa",
+        "aops-core:qa",
     }
 
     def test_all_expected_types_registered(self):

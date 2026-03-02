@@ -485,19 +485,6 @@
       "expected": { "verdict": "warn" }
     },
     {
-      "id": "qa_subagent_edit_warned_when_hydration_closed",
-      "description": "QA subagent is NOT in compliance types, subject to gates",
-      "hook_event": "PreToolUse",
-      "tool_name": "Edit",
-      "tool_input": { "file_path": "/tmp/out.py", "old_string": "a", "new_string": "b" },
-      "is_subagent": true,
-      "subagent_type": "aops-core:qa",
-      "gate_overrides": {
-        "hydration": { "status": "closed", "metrics": { "temp_path": "/tmp/hydration.md" } }
-      },
-      "expected": { "verdict": "warn" }
-    },
-    {
       "id": "general_purpose_subagent_bash_warned_when_hydration_closed",
       "description": "General purpose subagent is NOT exempt from gates",
       "hook_event": "PreToolUse",
