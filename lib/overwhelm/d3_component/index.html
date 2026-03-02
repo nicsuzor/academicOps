@@ -120,6 +120,108 @@
       inbox: "background:#f1f5f9;color:#475569"
     };
 
+    // Type-based colors for simplified layout modes (treemap, circle_pack, arc)
+    const TYPE_COLORS = {
+      goal: '#e94560', project: '#0f3460', epic: '#e9a045',
+      task: '#45e980', action: '#45c9e9', bug: '#e94545',
+      note: '#888', knowledge: '#a0a0e0', learn: '#e0e0a0',
+      feature: '#59a14f', person: '#9c755f', context: '#708090',
+      template: '#a0a0a0', daily: '#607080', memory: '#c9a0e0',
+    };
+
+    // --- Layout-specific node shape builders ---
+    function buildTaskCardNode(g, d) {
+        const hw = d.w/2, hh = d.h/2;
+        if (d.shape === "pill") {
+            g.append("rect").attr("x",-hw).attr("y",-hh).attr("width",d.w).attr("height",d.h)
+              .attr("rx",hh).attr("ry",hh)
+              .attr("fill",d.fill).attr("stroke",d.borderColor).attr("stroke-width",d.borderWidth);
+        } else if (d.shape === "hexagon") {
+            const c = Math.min(hh * 0.6, 12);
+            const pts = `${-hw+c},${-hh} ${hw-c},${-hh} ${hw},${0} ${hw-c},${hh} ${-hw+c},${hh} ${-hw},${0}`;
+            g.append("polygon").attr("points", pts)
+              .attr("fill",d.fill).attr("stroke",d.borderColor).attr("stroke-width",d.borderWidth);
+        } else {
+            g.append("rect").attr("x",-hw).attr("y",-hh).attr("width",d.w).attr("height",d.h)
+              .attr("rx", d.shape === "rounded" ? 10 : 4)
+              .attr("fill",d.fill).attr("stroke",d.borderColor).attr("stroke-width",d.borderWidth);
+        }
+        if (d.status === "blocked" && d.dw >= 2) {
+            g.insert("rect",":first-child").attr("x",-hw-4).attr("y",-hh-4).attr("width",d.w+8).attr("height",d.h+8)
+              .attr("rx",hh+4).attr("ry",hh+4).attr("fill","none").attr("stroke","#ef4444")
+              .attr("class","danger-pulse");
+        }
+        const lh = d.fontSize + 4;
+        const ty = -(d.lines.length * lh)/2 + d.fontSize * 0.38 + (d.badge ? 6 : 0);
+        d.lines.forEach((line, i) => {
+            g.append("text").attr("class","node-text").attr("x",0).attr("y", ty + i * lh)
+              .attr("text-anchor","middle").attr("dominant-baseline","central")
+              .attr("font-size", d.fontSize + "px")
+              .attr("fill", d.textColor).text(line);
+        });
+        if (d.dw > 0) {
+            const tw = d.dw.toFixed(1).length * 6 + 16;
+            g.append("rect").attr("x",-tw/2).attr("y",hh+4).attr("width",tw).attr("height",15).attr("rx",7).attr("fill",d.borderColor).attr("opacity",0.15);
+            g.append("text").attr("class","node-badge").attr("x",0).attr("y",hh+14.5).attr("text-anchor","middle").attr("font-size","8px").attr("fill",d.borderColor).text("\u2696 "+d.dw.toFixed(1));
+        }
+    }
+
+    function buildTreemapNode(g, d) {
+        const w = d._lw || d.w;
+        const h = d._lh || d.h;
+        const color = TYPE_COLORS[d.type] || d.fill;
+        g.append("rect")
+          .attr("x", -w/2).attr("y", -h/2).attr("width", w).attr("height", h)
+          .attr("fill", color).attr("fill-opacity", 0.6)
+          .attr("stroke", "#333").attr("stroke-width", 0.5);
+        if (w > 40 && h > 20) {
+            const label = (d.label || '').substring(0, 25);
+            const fs = Math.max(6, Math.min(11, Math.min(w, h) * 0.25));
+            g.append("text").attr("class","node-text").attr("x",0).attr("y",0)
+              .attr("text-anchor","middle").attr("dominant-baseline","central")
+              .attr("font-size", fs + "px").attr("fill","#fff").text(label);
+        }
+    }
+
+    function buildCirclePackNode(g, d) {
+        const r = Math.max(d._lr || 5, 2);
+        const color = TYPE_COLORS[d.type] || d.fill;
+        g.append("circle").attr("cx",0).attr("cy",0).attr("r", r)
+          .attr("fill", color).attr("fill-opacity", 0.5)
+          .attr("stroke", color).attr("stroke-width", 0.5);
+        if (r > 15) {
+            const label = (d.label || '').substring(0, 18);
+            const fs = Math.max(6, Math.min(10, r * 0.35));
+            g.append("text").attr("class","node-text").attr("x",0).attr("y",0)
+              .attr("text-anchor","middle").attr("dominant-baseline","central")
+              .attr("font-size", fs + "px").attr("fill","#fff").text(label);
+        }
+    }
+
+    function buildArcNode(g, d) {
+        const r = Math.max(2, (d.dw || 1) * 0.5 + 3);
+        const color = TYPE_COLORS[d.type] || d.fill;
+        g.append("circle").attr("cx",0).attr("cy",0).attr("r", r)
+          .attr("fill", color).attr("fill-opacity", 0.8);
+    }
+
+    function buildNodeShapes(layoutMode) {
+        if (!nodeEls) return;
+        nodeEls.each(function(d) {
+            const g = d3.select(this);
+            g.selectAll("*").remove();
+            if (layoutMode === "treemap") {
+                buildTreemapNode(g, d);
+            } else if (layoutMode === "circle_pack") {
+                buildCirclePackNode(g, d);
+            } else if (layoutMode === "arc") {
+                buildArcNode(g, d);
+            } else {
+                buildTaskCardNode(g, d);
+            }
+        });
+    }
+
     function triggerAction(actionName) {
         if (!activeNodeId) return;
         Streamlit.setComponentValue({
@@ -229,6 +331,11 @@
           if (typeof l.target === "string") l.target = nodeById.get(l.target) || l.target;
         });
 
+        // Store original coords for safe re-entry when switching layouts
+        nodes.forEach(n => {
+          if (n.x != null) { n._origX = n.x; n._origY = n.y; }
+        });
+
         // Edges
         linkEls = container.append("g")
           .selectAll("path").data(links).join("path")
@@ -265,50 +372,7 @@
             })
           );
 
-        nodeEls.each(function(d) {
-          const g = d3.select(this);
-          const hw = d.w/2, hh = d.h/2;
-
-          // Shape rendering
-          if (d.shape === "pill") {
-            g.append("rect").attr("x",-hw).attr("y",-hh).attr("width",d.w).attr("height",d.h)
-              .attr("rx",hh).attr("ry",hh)
-              .attr("fill",d.fill).attr("stroke",d.borderColor).attr("stroke-width",d.borderWidth);
-          } else if (d.shape === "hexagon") {
-            const c = Math.min(hh * 0.6, 12);
-            const pts = `${-hw+c},${-hh} ${hw-c},${-hh} ${hw},${0} ${hw-c},${hh} ${-hw+c},${hh} ${-hw},${0}`;
-            g.append("polygon").attr("points", pts)
-              .attr("fill",d.fill).attr("stroke",d.borderColor).attr("stroke-width",d.borderWidth);
-          } else {
-            g.append("rect").attr("x",-hw).attr("y",-hh).attr("width",d.w).attr("height",d.h)
-              .attr("rx", d.shape === "rounded" ? 10 : 4)
-              .attr("fill",d.fill).attr("stroke",d.borderColor).attr("stroke-width",d.borderWidth);
-          }
-
-          // Danger pulse for high-impact blocked tasks
-          if (d.status === "blocked" && d.dw >= 2) {
-            g.insert("rect",":first-child").attr("x",-hw-4).attr("y",-hh-4).attr("width",d.w+8).attr("height",d.h+8)
-              .attr("rx",hh+4).attr("ry",hh+4).attr("fill","none").attr("stroke","#ef4444")
-              .attr("class","danger-pulse");
-          }
-
-          // Label
-          const lh = d.fontSize + 4;
-          const ty = -(d.lines.length * lh)/2 + d.fontSize * 0.38 + (d.badge ? 6 : 0);
-          d.lines.forEach((line, i) => {
-            g.append("text").attr("class","node-text").attr("x",0).attr("y", ty + i * lh)
-              .attr("text-anchor","middle").attr("dominant-baseline","central")
-              .attr("font-size", d.fontSize + "px")
-              .attr("fill", d.textColor).text(line);
-          });
-
-          // Weight indicator
-          if (d.dw > 0) {
-            const tw = d.dw.toFixed(1).length * 6 + 16;
-            g.append("rect").attr("x",-tw/2).attr("y",hh+4).attr("width",tw).attr("height",15).attr("rx",7).attr("fill",d.borderColor).attr("opacity",0.15);
-            g.append("text").attr("class","node-badge").attr("x",0).attr("y",hh+14.5).attr("text-anchor","middle").attr("font-size","8px").attr("fill",d.borderColor).text("\u2696 "+d.dw.toFixed(1));
-          }
-        });
+        // Node shapes are built by buildNodeShapes() called from applyLayout()
 
         applyLayout();
 
@@ -368,34 +432,56 @@
             return force;
         }
 
-        // Shared tick handler: routes edges by type, positions nodes
+        // Layout-aware tick handler: different edge routing and visibility per layout
         function ticked() {
-            linkEls.attr("d", d => {
-                const sx = d.source.x, sy = d.source.y;
-                const tx = d.target.x, ty = d.target.y;
-                if (d.type === "depends_on") {
-                    // Manhattan routing: horizontal to midpoint, vertical, horizontal
-                    const mx = (sx + tx) / 2;
-                    return `M${sx},${sy} L${mx},${sy} L${mx},${ty} L${tx},${ty}`;
-                }
-                if (d.type === "parent") {
-                    // S-curve for parent edges
-                    const my = (sy + ty) / 2;
-                    return `M${sx},${sy} C${sx},${my} ${tx},${my} ${tx},${ty}`;
-                }
-                return `M${sx},${sy} L${tx},${ty}`;
-            });
+            if (currentLayout === "treemap" || currentLayout === "circle_pack") {
+                // Containment layouts: hide edges entirely
+                linkEls.attr("d", null).attr("opacity", 0);
+            } else if (currentLayout === "arc") {
+                // Arc diagram: quadratic arc edges above the baseline
+                linkEls.attr("opacity", d => d.type === "ref" ? 0.15 : 0.4);
+                linkEls.attr("d", d => {
+                    const sx = d.source.x, sy = d.source.y;
+                    const tx = d.target.x, ty = d.target.y;
+                    const dx = tx - sx;
+                    const arcH = Math.abs(dx) * 0.3;
+                    const midX = (sx + tx) / 2;
+                    const midY = Math.min(sy, ty) - arcH;
+                    return `M${sx},${sy} Q${midX},${midY} ${tx},${ty}`;
+                });
+            } else {
+                // Force / precomputed / atlas: full edge routing
+                linkEls.attr("opacity", d => d.type === "ref" ? 0.4 : 0.7);
+                linkEls.attr("d", d => {
+                    const sx = d.source.x, sy = d.source.y;
+                    const tx = d.target.x, ty = d.target.y;
+                    if (d.type === "depends_on") {
+                        const mx = (sx + tx) / 2;
+                        return `M${sx},${sy} L${mx},${sy} L${mx},${ty} L${tx},${ty}`;
+                    }
+                    if (d.type === "parent") {
+                        const my = (sy + ty) / 2;
+                        return `M${sx},${sy} C${sx},${my} ${tx},${my} ${tx},${ty}`;
+                    }
+                    return `M${sx},${sy} L${tx},${ty}`;
+                });
+            }
             nodeEls.attr("transform", d => `translate(${d.x},${d.y})`);
         }
 
         // Helper: scale precomputed 0-1000 coords to a large virtual canvas
+        // Reads from layouts.forceatlas2 to avoid mutation bugs on re-entry
         function initPrecomputedCoords(ns) {
-            const CANVAS = 3000;  // Virtual canvas size (px) — big enough for 500+ nodes
+            const CANVAS = 3000;
             const scale = CANVAS / 1000;
             ns.forEach(n => {
-                if (n.x != null && n.y != null) {
-                    n.x *= scale;
-                    n.y *= scale;
+                const fa2 = (n.layouts || {}).forceatlas2;
+                if (fa2) {
+                    n.x = fa2.x * scale;
+                    n.y = fa2.y * scale;
+                } else if (n._origX != null) {
+                    n.x = n._origX * scale;
+                    n.y = n._origY * scale;
                 } else {
                     n.x = CANVAS / 2 + (Math.random() - 0.5) * 100;
                     n.y = CANVAS / 2 + (Math.random() - 0.5) * 100;
@@ -425,6 +511,7 @@
         }
 
         if (currentLayout === "force") {
+            buildNodeShapes(currentLayout);
             simulation = d3.forceSimulation(nodes)
                 // Pull linked nodes together; per-link distance/strength set in EDGE_FORCE
                 .force("link", d3.forceLink(links).id(d => d.id)
@@ -451,6 +538,7 @@
         } else if (currentLayout === "precomputed") {
             // Use precomputed coordinates directly — no simulation forces.
             initPrecomputedCoords(nodes);
+            buildNodeShapes(currentLayout);
 
             // Render once — no simulation drift
             ticked();
@@ -469,6 +557,7 @@
         } else if (currentLayout === "precomputed_relax") {
             // Start from precomputed positions, then run weak forces to separate overlaps
             initPrecomputedCoords(nodes);
+            buildNodeShapes(currentLayout);
 
             // Very gentle simulation: collision-only to nudge apart overlapping nodes
             simulation = d3.forceSimulation(nodes)
@@ -500,6 +589,7 @@
                 }
             });
 
+            buildNodeShapes(currentLayout);
             ticked();
 
             // Stopped simulation for drag interactivity only
@@ -515,6 +605,7 @@
             autoZoomToFit(nodes, 0);
         } else if (currentLayout === "atlas") {
             // ForceAtlas2-style: degree-scaled gravity + repulsion, no center force
+            buildNodeShapes(currentLayout);
             simulation = d3.forceSimulation(nodes)
                 // Stronger links to tighten clusters
                 .force("link", d3.forceLink(links).id(d => d.id)
