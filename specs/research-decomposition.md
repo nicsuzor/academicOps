@@ -81,16 +81,18 @@ Instead of a fixed set of review criteria, the reviewer selects from a registry 
 **Design principles:**
 
 - A given review selects **3-4 lenses**, not all of them. Breadth kills depth.
-- **Self-consistency is always on.** It was the single most productive lens in our initial dogfooding (PR #648). However, subsequent dogfooding (issue #676) found that the _primary_ lens shifts by review pass: Pass 1's most productive lens was axiom compliance + strategic alignment ("should we build this?"), while Pass 2's was assumption hygiene ("can we build this correctly?"). Self-consistency remains always-on as a background check, but the primary lens should be selected based on the review's current phase.
+- **The primary lens shifts by review phase.** Self-consistency runs as a background check on every pass. But the _primary_ lens — the one that drives the reviewer's top concern — depends on the review's current phase. Pass 1 should lead with **axiom compliance + strategic alignment** ("should we build this?"). Pass 2 should lead with **assumption hygiene** ("can we build this correctly?"). This sequencing was validated by dogfooding on issue #676: Pass 1's architectural resolution (rejecting the governor design) fundamentally changed the artifact, making Pass 2 on the reworked proposal tighter and more productive. Had Pass 2 run first, its findings would have been wasted work. _Evidence: N=2 (PR #648, issue #676). Initial dogfooding (PR #648) identified self-consistency as the most productive lens; subsequent dogfooding (issue #676) refined this — self-consistency is always valuable as a background check, but the primary lens that drives the most important finding varies by phase._
 - Lenses compose by domain. Research reviews use methodological coherence + literature awareness + ethics. Spec reviews use strategic alignment + cross-reference consistency + scope discipline. The registry is extensible.
 
 ### Prioritised Critique Protocol
 
 The reviewer does not evaluate all selected lenses exhaustively. Instead:
 
-> Lead with your single most important concern. Explain why it matters and what breaks if it's not addressed. Then list up to 2 secondary concerns. Stop.
+> Lead with your single most important concern. Explain why it matters and what breaks if it's not addressed. **Propose a specific resolution and defend it.** Then list up to 2 secondary concerns. Stop.
 
-This forces the reviewer to **rank** rather than mechanically evaluate, giving the author a clear revision target instead of a wall of feedback. It also mitigates the rubber-stamping failure mode: a reviewer required to name its top concern is more likely to engage deeply with one issue than to superficially address seven.
+This forces the reviewer to **rank** rather than mechanically evaluate, giving the author a clear revision target instead of a wall of feedback. The mandatory resolution proposal prevents the reviewer from becoming merely an issue-raiser who leaves the hard thinking to the author. It also mitigates the rubber-stamping failure mode: a reviewer required to name its top concern _and propose a fix_ is more likely to engage deeply with one issue than to superficially address seven.
+
+> **Dogfood evidence**: During issue #676 review, the agent correctly identified a tension with the fail-fast axiom but presented three options and asked the user to pick. The user immediately saw the key distinction the agent should have proposed. A reviewer that raises concerns without proposing resolutions shifts cognitive load back to the author — defeating the purpose of the review.
 
 ### Convergence
 
@@ -113,11 +115,11 @@ The reviewer records the override and stops re-raising it. This respects researc
 
 Three operating levels, selected by artifact complexity or user preference:
 
-| Level        | Lenses                                 | Review loop                           | Venue                                | When to use                                              |
-| ------------ | -------------------------------------- | ------------------------------------- | ------------------------------------ | -------------------------------------------------------- |
-| **Light**    | 1-2 (always includes self-consistency) | Single pass, no iteration             | In-session or issue comment          | Quick checks, small changes, early exploration           |
-| **Standard** | 3-4                                    | Convergence-based                     | Pull request                         | Most specs, plans, proposals                             |
-| **Thorough** | 4+ (consider multi-model review)       | Convergence-based + explicit sign-off | Pull request with multiple reviewers | Foundational specs, grant applications, research designs |
+| Level        | Lenses                               | Review loop                           | Venue                                | When to use                                              |
+| ------------ | ------------------------------------ | ------------------------------------- | ------------------------------------ | -------------------------------------------------------- |
+| **Light**    | 1-2 (self-consistency as background) | Single pass, no iteration             | In-session or issue comment          | Quick checks, small changes, early exploration           |
+| **Standard** | 3-4                                  | Convergence-based                     | Pull request                         | Most specs, plans, proposals                             |
+| **Thorough** | 4+ (consider multi-model review)     | Convergence-based + explicit sign-off | Pull request with multiple reviewers | Foundational specs, grant applications, research designs |
 
 This solves the formality gradient tension: a researcher typing "I want to study X" gets the light version. Formal decomposition uses the thorough version. The system does not force ceremony on exploratory work.
 
@@ -279,7 +281,7 @@ Practising what we preach:
 - **Spec review workflow**: Layer 1 could be instantiated as a `spec-reviewer` agent, replacing the ad-hoc 5-pass review used on PR #648. With docs-as-code orchestration, this becomes a PR reviewer role alongside gatekeeper and custodiet.
 - **Manuscript pre-submission review**: Layer 1 with literature + methodology + attribution lenses, applied to draft manuscripts before journal submission.
 - **Lens effectiveness tracking**: Instrument which lenses produce the most actionable feedback, enabling evidence-based registry curation.
-- **Multi-pass sequencing conventions**: Dogfooding suggests that multi-pass reviews (thorough level) benefit from sequencing lenses by phase — alignment/strategic concerns first, feasibility/assumption concerns second. Formalise pass ordering conventions based on accumulated evidence.
+- **Multi-pass sequencing conventions**: Dogfooding validates (N=2) that multi-pass reviews (thorough level) benefit from sequencing lenses by phase — alignment/strategic concerns first, feasibility/assumption concerns second. Issue #676 demonstrated this directly: Pass 1's architectural resolution (rejecting the local governor in favour of the bazaar model) changed the artifact so fundamentally that Pass 2's assumption hygiene findings were only productive because they targeted the revised design. Formalise pass ordering conventions based on accumulated evidence.
 
 ## Related
 
