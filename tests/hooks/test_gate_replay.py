@@ -21,6 +21,7 @@ import importlib
 import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -30,7 +31,7 @@ AOPS_CORE = Path(__file__).parent.parent.parent / "aops-core"
 if str(AOPS_CORE) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE))
 
-from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES, TOOL_CATEGORIES
+from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES, TOOL_CATEGORIES, get_tool_category
 from hooks.router import HookRouter
 from hooks.schemas import CanonicalHookOutput, HookContext
 from lib.gate_model import GateVerdict
@@ -69,16 +70,27 @@ def _reinit_gates_with_defaults():
     GateRegistry.initialize()
 
 
-@pytest.fixture(autouse=True)
-def _deterministic_gate_modes(monkeypatch):
-    """Ensure gate modes AND thresholds use known defaults regardless of env."""
-    monkeypatch.setenv("HYDRATION_GATE_MODE", "warn")
+@pytest.fixture(autouse=True, params=["warn", "deny"], ids=["hydration=warn", "hydration=deny"])
+def gate_mode(monkeypatch, request):
+    """Run ALL tests under both warn and deny hydration modes.
+
+    Yields a SimpleNamespace with:
+    - hydration_mode: "warn" or "deny"
+    - hydration_verdict: the GateVerdict the hydration policy should produce
+    - hydration_verdict_str: same as string for CanonicalHookOutput comparisons
+    """
+    mode = request.param
+    monkeypatch.setenv("HYDRATION_GATE_MODE", mode)
     monkeypatch.setenv("CUSTODIET_GATE_MODE", "block")
     monkeypatch.setenv("QA_GATE_MODE", "block")
     monkeypatch.setenv("HANDOVER_GATE_MODE", "warn")
     monkeypatch.setenv("CUSTODIET_TOOL_CALL_THRESHOLD", "50")
     _reinit_gates_with_defaults()
-    yield
+    yield SimpleNamespace(
+        hydration_mode=mode,
+        hydration_verdict=GateVerdict.DENY if mode == "deny" else GateVerdict.WARN,
+        hydration_verdict_str="deny" if mode == "deny" else "warn",
+    )
     _reinit_gates_with_defaults()
 
 
@@ -187,8 +199,8 @@ class TestRealEventInvariants:
             for e in WRITE_TOOL_EVENTS
         ],
     )
-    def test_write_tools_blocked_when_hydration_closed(self, router, event):
-        """Real write tool calls must be warned/denied when hydration is closed."""
+    def test_write_tools_blocked_when_hydration_closed(self, router, event, gate_mode):
+        """Real write tool calls must get the mode-appropriate verdict when hydration is closed."""
         state = SessionState.create("test-replay")
         state.gates["hydration"].status = GateStatus.CLOSED
         state.gates["hydration"].metrics["temp_path"] = "/tmp/h.md"
@@ -198,11 +210,12 @@ class TestRealEventInvariants:
 
         assert result is not None, (
             f"Write tool '{event['tool_name']}' (seq {event['sequence_index']}) "
-            f"should not be ALLOW when hydration closed"
+            f"should not be ALLOW when hydration closed (mode={gate_mode.hydration_mode})"
         )
-        assert result.verdict != GateVerdict.ALLOW, (
+        assert result.verdict == gate_mode.hydration_verdict, (
             f"Write tool '{event['tool_name']}' (seq {event['sequence_index']}) "
-            f"should not be ALLOW when hydration closed, got ALLOW"
+            f"expected {gate_mode.hydration_verdict.value} in {gate_mode.hydration_mode} mode, "
+            f"got {result.verdict.value}"
         )
 
 
@@ -723,7 +736,7 @@ class TestTempPathValidation:
             f"Gate file should not be in /tmp (lost on reboot), got: {path}"
         )
 
-    def test_context_injection_contains_temp_path(self, router):
+    def test_context_injection_contains_temp_path(self, router, gate_mode):
         """When hydration gate fires, context injection must contain the temp_path."""
         state = SessionState.create("test-temp-path-ctx")
         state.gates["hydration"].status = GateStatus.CLOSED
@@ -738,6 +751,10 @@ class TestTempPathValidation:
         result = router._dispatch_gates(ctx, state)
 
         assert result is not None
+        assert result.verdict == gate_mode.hydration_verdict, (
+            f"Expected {gate_mode.hydration_verdict.value} in {gate_mode.hydration_mode} mode, "
+            f"got {result.verdict.value}"
+        )
         assert result.context_injection is not None, (
             "Hydration gate should produce context injection"
         )
@@ -787,14 +804,16 @@ class TestTempPathValidation:
 
 
 class TestCombinedGateInteractionsTightened:
-    """When both hydration (warn) and custodiet (deny) fire, deny MUST win.
+    """When both hydration and custodiet fire, DENY MUST always win.
 
     This replaces the loose verdict_in assertion from the original tests.
     Verdict precedence is deterministic: DENY > WARN > ALLOW.
+    Under hydration=warn: WARN + DENY → DENY (custodiet wins).
+    Under hydration=deny: DENY + DENY → DENY (both deny).
     """
 
-    def test_deny_wins_over_warn(self, router):
-        """Both hydration (warn) and custodiet (deny) fire: result must be DENY."""
+    def test_deny_always_wins_when_both_gates_fire(self, router, gate_mode):
+        """Both hydration and custodiet fire: result must always be DENY."""
         state = SessionState.create("test-combined")
         state.gates["hydration"].status = GateStatus.CLOSED
         state.gates["hydration"].metrics["temp_path"] = "/tmp/h.md"
@@ -816,7 +835,7 @@ class TestCombinedGateInteractionsTightened:
 
         assert result is not None
         assert result.verdict == GateVerdict.DENY, (
-            f"When custodiet (deny) and hydration (warn) both fire, "
+            f"When custodiet (block) and hydration ({gate_mode.hydration_mode}) both fire, "
             f"DENY must win. Got {result.verdict.value}"
         )
 
@@ -836,8 +855,13 @@ class TestExecuteHooksSmoke:
     - Output canonical conversion
     """
 
-    def test_pretooluse_through_full_pipeline(self, router, tmp_path, monkeypatch):
-        """PreToolUse for a write tool through full pipeline."""
+    def test_pretooluse_through_full_pipeline(self, router, tmp_path, monkeypatch, gate_mode):
+        """PreToolUse for a write tool through full pipeline.
+
+        SessionState.create() pre-populates hydration as OPEN, so with a fresh
+        state dir, the hydration policy (current_status=CLOSED) won't match.
+        The expected verdict is 'allow' regardless of mode.
+        """
         # Isolate state storage
         monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(tmp_path))
         monkeypatch.setenv("AOPS_HOOK_LOG_PATH", str(tmp_path / "hooks.jsonl"))
@@ -852,13 +876,12 @@ class TestExecuteHooksSmoke:
 
         result = router.execute_hooks(ctx)
 
-        # Should produce a canonical output (CanonicalHookOutput)
         assert isinstance(result, CanonicalHookOutput)
-        # Verdict should be set (warn or deny, since hydration starts closed)
-        assert result.verdict in ("warn", "deny", "allow")
-        # System message should include gate status icons (lifecycle-aware strip, not brackets)
-        if result.system_message:
-            assert result.system_message.strip(), "System message should not be empty"
+        # Fresh state has hydration=OPEN, custodiet ops=0 — no gates fire
+        assert result.verdict == "allow", (
+            f"Fresh state should produce 'allow' (hydration=OPEN, custodiet ops=0), "
+            f"got '{result.verdict}' in {gate_mode.hydration_mode} mode"
+        )
 
     def test_always_available_through_full_pipeline(self, router, tmp_path, monkeypatch):
         """Always-available tool through full pipeline should be allowed."""
@@ -880,3 +903,385 @@ class TestExecuteHooksSmoke:
         assert result.verdict == "allow", (
             f"Always-available tool should produce 'allow', got '{result.verdict}'"
         )
+
+
+# ===========================================================================
+# REAL TOOL NAME COVERAGE: Every tool name seen in production logs
+# ===========================================================================
+
+# Each tuple: (tool_name, expected_category, description)
+# expected_category is what gate_config SHOULD return for this tool.
+# "always_available" tools bypass ALL gates.
+# "read_only" tools bypass hydration gate policy (exempt from hydration).
+# "write" tools are subject to ALL gate policies.
+#
+# Sourced from 170 hook log files spanning 7 days of production usage.
+# Includes Claude Code, Gemini CLI, and all MCP plugin name variants.
+
+REAL_TOOL_NAMES: list[tuple[str, str, str]] = [
+    # ===== Claude Code built-in tools =====
+    ("Read", "read_only", "Claude: read file"),
+    ("Bash", "write", "Claude: shell command"),
+    ("Grep", "read_only", "Claude: content search"),
+    ("Edit", "write", "Claude: edit file"),
+    ("Glob", "read_only", "Claude: file search"),
+    ("Write", "write", "Claude: write file"),
+    ("NotebookEdit", "write", "Claude: notebook edit"),
+    ("WebFetch", "read_only", "Claude: web fetch"),
+    ("WebSearch", "read_only", "Claude: web search"),
+    ("TaskOutput", "read_only", "Claude: task output"),
+    ("TaskStop", "read_only", "Claude: stop task"),
+    ("ToolSearch", "read_only", "Claude: tool search"),
+    # Claude Code meta/always-available
+    ("Agent", "always_available", "Claude: spawn subagent"),
+    ("Task", "always_available", "Claude: spawn subagent (legacy)"),
+    ("Skill", "always_available", "Claude: invoke skill"),
+    ("AskUserQuestion", "always_available", "Claude: ask user"),
+    ("TodoWrite", "always_available", "Claude: write todo"),
+    ("EnterPlanMode", "always_available", "Claude: enter plan"),
+    ("ExitPlanMode", "always_available", "Claude: exit plan"),
+    ("TaskCreate", "always_available", "Claude: create task"),
+    ("TaskUpdate", "always_available", "Claude: update task"),
+    ("TaskGet", "always_available", "Claude: get task"),
+    ("TaskList", "always_available", "Claude: list tasks"),
+    # ===== Gemini CLI tools =====
+    ("read_file", "read_only", "Gemini: read file"),
+    ("run_shell_command", "write", "Gemini: shell command"),
+    ("grep_search", "read_only", "Gemini: grep search"),
+    ("replace", "write", "Gemini: replace in file"),
+    ("write_file", "write", "Gemini: write file"),
+    ("list_directory", "read_only", "Gemini: list dir"),
+    ("glob", "read_only", "Gemini: glob search"),
+    ("activate_skill", "always_available", "Gemini: invoke skill"),
+    # Gemini bare PKB tool names (always_available for task management)
+    ("get_task", "always_available", "Gemini: get task"),
+    ("create_task", "always_available", "Gemini: create task"),
+    ("update_task", "always_available", "Gemini: update task"),
+    ("complete_task", "always_available", "Gemini: complete task"),
+    ("list_tasks", "always_available", "Gemini: list tasks"),
+    ("task_search", "read_only", "Gemini: task search"),
+    # ===== PKB MCP: mcp__plugin_aops-core_pkb__* (Claude Code full plugin prefix) =====
+    ("mcp__plugin_aops-core_pkb__update_task", "always_available", "CC plugin: update task"),
+    ("mcp__plugin_aops-core_pkb__get_task", "always_available", "CC plugin: get task"),
+    ("mcp__plugin_aops-core_pkb__create_task", "always_available", "CC plugin: create task"),
+    ("mcp__plugin_aops-core_pkb__list_tasks", "read_only", "CC plugin: list tasks"),
+    ("mcp__plugin_aops-core_pkb__complete_task", "always_available", "CC plugin: complete task"),
+    ("mcp__plugin_aops-core_pkb__reindex", "always_available", "CC plugin: reindex"),
+    ("mcp__plugin_aops-core_pkb__search", "read_only", "CC plugin: search"),
+    ("mcp__plugin_aops-core_pkb__task_search", "read_only", "CC plugin: task search"),
+    ("mcp__plugin_aops-core_pkb__pkb_orphans", "read_only", "CC plugin: orphans"),
+    ("mcp__plugin_aops-core_pkb__get_task_children", "read_only", "CC plugin: task children"),
+    ("mcp__plugin_aops-core_pkb__decompose_task", "write", "CC plugin: decompose task"),
+    ("mcp__plugin_aops-core_pkb__append", "write", "CC plugin: append"),
+    ("mcp__plugin_aops-core_pkb__create_memory", "write", "CC plugin: create memory"),
+    ("mcp__plugin_aops-core_pkb__retrieve_memory", "read_only", "CC plugin: retrieve memory"),
+    ("mcp__plugin_aops-core_pkb__create", "write", "CC plugin: create doc"),
+    ("mcp__plugin_aops-core_pkb__delete", "write", "CC plugin: delete doc"),
+    ("mcp__plugin_aops-core_pkb__delete_memory", "write", "CC plugin: delete memory"),
+    ("mcp__plugin_aops-core_pkb__search_by_tag", "read_only", "CC plugin: search by tag"),
+    # ===== PKB MCP: mcp__pkb__* (short form, in current gate_config) =====
+    ("mcp__pkb__create_task", "always_available", "short: create task"),
+    ("mcp__pkb__get_task", "always_available", "short: get task"),
+    ("mcp__pkb__task_search", "read_only", "short: task search"),
+    ("mcp__pkb__create", "write", "short: create doc"),
+    ("mcp__pkb__append", "write", "short: append"),
+    # ===== PKB MCP: mcp__pbk__* (typo variant seen in Gemini sessions) =====
+    ("mcp__pbk__update_task", "always_available", "typo: update task"),
+    ("mcp__pbk__get_task", "always_available", "typo: get task"),
+    ("mcp__pbk__create_task", "always_available", "typo: create task"),
+    ("mcp__pbk__complete_task", "always_available", "typo: complete task"),
+    ("mcp__pbk__list_tasks", "read_only", "typo: list tasks"),
+    ("mcp__pbk__pkb_context", "read_only", "typo: pkb context"),
+    ("mcp__pbk__search", "read_only", "typo: search"),
+    ("mcp__pbk__get_document", "read_only", "typo: get document"),
+    ("mcp__pbk__list_documents", "read_only", "typo: list documents"),
+    ("mcp__pbk__create", "write", "typo: create doc"),
+    ("mcp__pbk__append", "write", "typo: append"),
+    ("mcp__pbk__create_memory", "write", "typo: create memory"),
+    ("mcp__pbk__reindex", "always_available", "typo: reindex"),
+    ("mcp__pbk__pkb_orphans", "read_only", "typo: orphans"),
+    ("mcp__pbk__get_network_metrics", "read_only", "typo: network metrics"),
+    # ===== PKB MCP: versioned plugin prefix (seen once) =====
+    ("mcp__plugin_0_2_25_pkb__list_tasks", "read_only", "versioned plugin: list tasks"),
+    # ===== PKB MCP: pkb__* (bare prefix, Gemini variant) =====
+    ("pkb__search", "read_only", "bare: search"),
+    ("pkb_orphans", "read_only", "bare: orphans"),
+    # ===== Memory MCP: mcp__plugin_aops-core_memory__* =====
+    ("mcp__plugin_aops-core_memory__retrieve_memory", "read_only", "CC memory: retrieve"),
+    ("mcp__plugin_aops-core_memory__store_memory", "write", "CC memory: store"),
+    # ===== Context7 MCP =====
+    ("mcp__context7__query-docs", "read_only", "context7: query docs"),
+    ("mcp__context7__resolve-library-id", "read_only", "context7: resolve lib"),
+    # ===== Zotero MCP =====
+    ("mcp__zot__search", "read_only", "zotero: search"),
+    ("mcp__zot__search_library_by_author", "read_only", "zotero: search by author"),
+    ("mcp__zot__search_openalex_author", "read_only", "zotero: openalex author"),
+    # ===== Outlook MCP: mcp__omcp__* =====
+    ("mcp__omcp__messages_get", "read_only", "outlook: get message"),
+    ("mcp__omcp__messages_list_recent", "read_only", "outlook: list recent"),
+    ("mcp__omcp__messages_search", "read_only", "outlook: search"),
+    ("mcp__omcp__messages_reply", "write", "outlook: reply"),
+    ("mcp__omcp__messages_create_draft", "write", "outlook: create draft"),
+    ("mcp__omcp__calendar_list_today", "read_only", "outlook: calendar today"),
+    ("mcp__omcp__calendar_list_events", "read_only", "outlook: calendar events"),
+    ("mcp__omcp__calendar_get_event", "read_only", "outlook: get event"),
+    ("mcp__omcp__calendar_create_event", "write", "outlook: create event"),
+    ("mcp__omcp__help", "read_only", "outlook: help"),
+    # ===== Outlook MCP: mcp__outlook__* (alternate prefix) =====
+    ("mcp__outlook__messages_get", "read_only", "outlook alt: get message"),
+    ("mcp__outlook__messages_list_recent", "read_only", "outlook alt: list recent"),
+    ("mcp__outlook__calendar_list_today", "read_only", "outlook alt: calendar today"),
+    ("mcp__outlook__calendar_list_upcoming", "read_only", "outlook alt: calendar upcoming"),
+    # ===== Playwright MCP =====
+    ("mcp__playwright__browser_navigate", "write", "playwright: navigate"),
+    ("mcp__playwright__browser_click", "write", "playwright: click"),
+    ("mcp__playwright__browser_wait_for", "read_only", "playwright: wait"),
+    ("mcp__playwright__browser_take_screenshot", "read_only", "playwright: screenshot"),
+    ("mcp__playwright__browser_install", "write", "playwright: install"),
+    # ===== Playwright bare names (Gemini) =====
+    ("browser_navigate", "write", "Gemini playwright: navigate"),
+    ("browser_click", "write", "Gemini playwright: click"),
+    ("browser_wait_for", "read_only", "Gemini playwright: wait"),
+    ("browser_take_screenshot", "read_only", "Gemini playwright: screenshot"),
+    ("browser_evaluate", "write", "Gemini playwright: evaluate"),
+    ("browser_console_messages", "read_only", "Gemini playwright: console"),
+    ("browser_network_requests", "read_only", "Gemini playwright: network"),
+    ("browser_run_code", "write", "Gemini playwright: run code"),
+    # ===== Gemini bare tool names (miscellaneous) =====
+    ("create_memory", "write", "Gemini: create memory"),
+    ("decompose_task", "write", "Gemini: decompose task"),
+    ("append", "write", "Gemini: append"),
+    ("search", "read_only", "Gemini: search"),
+    ("get_task_children", "read_only", "Gemini: task children"),
+    ("get_internal_docs", "read_only", "Gemini: internal docs"),
+    ("shell", "write", "Gemini: shell"),
+    ("cli_help", "read_only", "Gemini: cli help"),
+    # ===== Agent/subagent type names that appeared as tool_name (bug/edge case) =====
+    ("prompt-hydrator", "always_available", "subagent name as tool (hydrator)"),
+    ("qa", "always_available", "subagent name as tool (qa)"),
+]
+
+# Build Agent/Skill spawn scenarios from real logs
+# Each tuple: (tool_name, subagent_type, is_subagent, expected_category, description)
+REAL_SPAWN_EVENTS: list[tuple[str, str, bool, str, str]] = [
+    # Claude Code Agent spawns (is_subagent=False in main agent context)
+    ("Agent", "Explore", False, "always_available", "CC Agent: Explore"),
+    ("Agent", "aops-core:custodiet", False, "always_available", "CC Agent: custodiet"),
+    ("Agent", "aops-core:prompt-hydrator", False, "always_available", "CC Agent: hydrator"),
+    ("Agent", "aops-core:butler", False, "always_available", "CC Agent: butler"),
+    ("Agent", "general-purpose", False, "always_available", "CC Agent: general-purpose"),
+    # Claude Code legacy Task spawns (is_subagent=True from subagent context)
+    ("Task", "general-purpose", True, "always_available", "CC Task: general-purpose"),
+    ("Task", "aops-core:prompt-hydrator", True, "always_available", "CC Task: hydrator"),
+    ("Task", "aops-core:custodiet", True, "always_available", "CC Task: custodiet"),
+    ("Task", "Explore", True, "always_available", "CC Task: Explore"),
+    ("Task", "claude-code-guide", True, "always_available", "CC Task: cc-guide"),
+    ("Task", "aops-core:butler", True, "always_available", "CC Task: butler"),
+    ("Task", "Plan", True, "always_available", "CC Task: Plan"),
+    (
+        "Task",
+        "aops-core:custodiet-reviewer",
+        True,
+        "always_available",
+        "CC Task: custodiet-reviewer",
+    ),
+    ("Task", "aops-core:hydrator-reviewer", True, "always_available", "CC Task: hydrator-reviewer"),
+    ("Task", "aops-core:qa", True, "always_available", "CC Task: qa"),
+    # Claude Code Skill invocations
+    ("Skill", "aops-core:dump", False, "always_available", "CC Skill: dump"),
+    ("Skill", "aops-core:daily", False, "always_available", "CC Skill: daily"),
+    ("Skill", "aops-core:learn", False, "always_available", "CC Skill: learn"),
+    ("Skill", "aops-core:strategy", False, "always_available", "CC Skill: strategy"),
+    ("Skill", "aops-core:remember", False, "always_available", "CC Skill: remember"),
+    ("Skill", "aops-core:garden", False, "always_available", "CC Skill: garden"),
+    ("Skill", "aops-core:q", False, "always_available", "CC Skill: q"),
+    ("Skill", "aops-core:framework", False, "always_available", "CC Skill: framework"),
+    ("Skill", "framework", False, "always_available", "CC Skill: framework (bare)"),
+    ("Skill", "remember", False, "always_available", "CC Skill: remember (bare)"),
+    # Gemini CLI
+    ("activate_skill", "aops-core:dump", False, "always_available", "Gemini: activate dump"),
+]
+
+
+class TestRealToolNameCategorization:
+    """Verify gate_config categorizes every real production tool name correctly.
+
+    These tool names were extracted from 170 hook log files spanning 7 days
+    of production usage across Claude Code and Gemini CLI sessions.
+
+    The gate system falls back to 'write' for unknown tool names (conservative),
+    which means any uncategorized read-only or always-available tool will be
+    incorrectly blocked under deny mode.
+    """
+
+    @pytest.mark.parametrize(
+        "tool_name,expected_category,desc",
+        REAL_TOOL_NAMES,
+        ids=[f"{t[2]}:{t[0]}" for t in REAL_TOOL_NAMES],
+    )
+    def test_tool_category_matches_expected(self, tool_name, expected_category, desc):
+        """Every real tool name must be categorized correctly by get_tool_category."""
+        actual = get_tool_category(tool_name)
+        assert actual == expected_category, (
+            f"Tool '{tool_name}' ({desc}): expected category '{expected_category}', "
+            f"got '{actual}'. This tool will be {'blocked' if expected_category != 'write' else 'correctly blocked'} "
+            f"under deny mode if miscategorized."
+        )
+
+    @pytest.mark.parametrize(
+        "tool_name,expected_category,desc",
+        [t for t in REAL_TOOL_NAMES if t[1] == "always_available"],
+        ids=[f"{t[2]}:{t[0]}" for t in REAL_TOOL_NAMES if t[1] == "always_available"],
+    )
+    def test_always_available_never_blocked_by_hydration(
+        self, router, tool_name, expected_category, desc, gate_mode
+    ):
+        """Only always_available tools bypass the hydration gate.
+
+        The hydration gate intentionally blocks ALL tools except always_available
+        until the hydrator is dispatched. This forces hydration before any exploration.
+        """
+        state = SessionState.create("test-tool-categorization")
+        state.gates["hydration"].status = GateStatus.CLOSED
+        state.gates["hydration"].metrics["temp_path"] = "/tmp/h.md"
+
+        ctx = HookContext(
+            session_id="test-tool-categorization",
+            hook_event="PreToolUse",
+            tool_name=tool_name,
+            tool_input={},
+        )
+        result = router._dispatch_gates(ctx, state)
+
+        if result is not None:
+            assert result.verdict == GateVerdict.ALLOW, (
+                f"always_available tool '{tool_name}' ({desc}) should be ALLOW, "
+                f"got {result.verdict.value} in {gate_mode.hydration_mode} mode. "
+                f"get_tool_category() returned '{get_tool_category(tool_name)}'"
+            )
+
+    @pytest.mark.parametrize(
+        "tool_name,expected_category,desc",
+        [t for t in REAL_TOOL_NAMES if t[1] == "read_only"],
+        ids=[f"{t[2]}:{t[0]}" for t in REAL_TOOL_NAMES if t[1] == "read_only"],
+    )
+    def test_read_only_blocked_before_hydration(
+        self, router, tool_name, expected_category, desc, gate_mode
+    ):
+        """Read-only tools ARE subject to hydration gate — hydrate first, explore later.
+
+        Unlike the custodiet gate (which exempts read_only), the hydration gate
+        intentionally blocks reads to force hydration before any codebase exploration.
+        """
+        state = SessionState.create("test-readonly-blocked")
+        state.gates["hydration"].status = GateStatus.CLOSED
+        state.gates["hydration"].metrics["temp_path"] = "/tmp/h.md"
+
+        ctx = HookContext(
+            session_id="test-readonly-blocked",
+            hook_event="PreToolUse",
+            tool_name=tool_name,
+            tool_input={},
+        )
+        result = router._dispatch_gates(ctx, state)
+
+        assert result is not None, (
+            f"Read-only tool '{tool_name}' ({desc}) should be blocked by hydration, "
+            f"got None (ALLOW) in {gate_mode.hydration_mode} mode"
+        )
+        assert result.verdict == gate_mode.hydration_verdict, (
+            f"Read-only tool '{tool_name}' ({desc}) expected {gate_mode.hydration_verdict.value} "
+            f"in {gate_mode.hydration_mode} mode, got {result.verdict.value}"
+        )
+
+    @pytest.mark.parametrize(
+        "tool_name,expected_category,desc",
+        [t for t in REAL_TOOL_NAMES if t[1] == "read_only"][:5],  # Sample — no need to test all
+        ids=[f"{t[2]}:{t[0]}" for t in REAL_TOOL_NAMES if t[1] == "read_only"][:5],
+    )
+    def test_read_only_allowed_after_hydrator_dispatched(
+        self, router, tool_name, expected_category, desc, gate_mode
+    ):
+        """After hydrator is dispatched, the gate opens JIT and read-only tools succeed.
+
+        The hydration trigger fires on PreToolUse for Agent(subagent_type=prompt-hydrator),
+        opening the gate BEFORE the policy evaluates. Subsequent read-only calls pass.
+        """
+        state = SessionState.create("test-readonly-after-hydrator")
+        state.gates["hydration"].status = GateStatus.CLOSED
+        state.gates["hydration"].metrics["temp_path"] = "/tmp/h.md"
+
+        # Step 1: Dispatch hydrator — trigger opens gate JIT
+        hydrator_ctx = HookContext(
+            session_id="test-readonly-after-hydrator",
+            hook_event="PreToolUse",
+            tool_name="Agent",
+            tool_input={"subagent_type": "aops-core:prompt-hydrator", "prompt": "/tmp/h.md"},
+            subagent_type="aops-core:prompt-hydrator",
+        )
+        router._dispatch_gates(hydrator_ctx, state)
+
+        # Gate should now be OPEN
+        assert state.gates["hydration"].status == GateStatus.OPEN, (
+            "Hydration gate should open when hydrator is dispatched"
+        )
+
+        # Step 2: Read-only tool should now succeed
+        ctx = HookContext(
+            session_id="test-readonly-after-hydrator",
+            hook_event="PreToolUse",
+            tool_name=tool_name,
+            tool_input={},
+        )
+        result = router._dispatch_gates(ctx, state)
+
+        if result is not None:
+            assert result.verdict != GateVerdict.DENY, (
+                f"Read-only tool '{tool_name}' ({desc}) should not be DENIED after "
+                f"hydrator dispatch in {gate_mode.hydration_mode} mode, got {result.verdict.value}"
+            )
+
+
+class TestRealSpawnEventCategorization:
+    """Verify Agent/Task/Skill spawn events are correctly handled.
+
+    These spawn combinations were extracted from real production logs.
+    Agent and Task are always_available tools that should bypass ALL gates.
+    """
+
+    @pytest.mark.parametrize(
+        "tool_name,subagent_type,is_subagent,expected_category,desc",
+        REAL_SPAWN_EVENTS,
+        ids=[f"{t[4]}" for t in REAL_SPAWN_EVENTS],
+    )
+    def test_spawn_tool_always_allowed(
+        self, router, tool_name, subagent_type, is_subagent, expected_category, desc, gate_mode
+    ):
+        """Spawn tools must always be allowed regardless of gate state."""
+        state = SessionState.create("test-spawn-categorization")
+        # Hostile state: everything closed/at threshold
+        state.gates["hydration"].status = GateStatus.CLOSED
+        state.gates["hydration"].metrics["temp_path"] = "/tmp/h.md"
+        state.gates["custodiet"].ops_since_open = 100
+
+        tool_input = (
+            {"subagent_type": subagent_type, "prompt": "test"}
+            if tool_name in ("Agent", "Task")
+            else {"skill": subagent_type}
+        )
+        ctx = HookContext(
+            session_id="test-spawn-categorization",
+            hook_event="PreToolUse",
+            tool_name=tool_name,
+            tool_input=tool_input,
+            is_subagent=is_subagent,
+            subagent_type=subagent_type,
+        )
+        result = router._dispatch_gates(ctx, state)
+
+        if result is not None:
+            assert result.verdict != GateVerdict.DENY, (
+                f"Spawn event '{tool_name}' -> '{subagent_type}' ({desc}) was DENIED "
+                f"under hostile gate state in {gate_mode.hydration_mode} mode. "
+                f"Tool category: {get_tool_category(tool_name)}"
+            )

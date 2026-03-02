@@ -6,10 +6,12 @@ This module defines:
 2. Compliance subagent types (bypass gate policies)
 3. Spawn tool detection (cross-platform agent/skill invocation)
 4. Gate modes (block/warn)
+5. PKB prefix normalization (handles MCP tool name variants)
 
 """
 
 import os
+import re
 from typing import Any
 
 # =============================================================================
@@ -21,6 +23,17 @@ from typing import Any
 # IMPORTANT: Only TOOL NAMES go here. Agent/skill names (prompt-hydrator,
 # custodiet, etc.) are subagent_type values, not tool names. They belong in
 # COMPLIANCE_SUBAGENT_TYPES below.
+#
+# MCP tool names vary by platform and plugin registration method:
+#   - mcp__pkb__<op>                         (Claude Code short form)
+#   - mcp__plugin_aops-core_pkb__<op>        (Claude Code full plugin prefix)
+#   - mcp__pbk__<op>                         (Gemini typo variant)
+#   - mcp__plugin_<version>_pkb__<op>        (versioned plugin prefix)
+#   - pkb__<op>                              (bare prefix)
+#   - <op>                                   (Gemini bare tool name)
+#
+# All known variants should be listed here. Unknown PKB variants are handled
+# by the _PKB_PREFIX_RE fallback in get_tool_category().
 
 TOOL_CATEGORIES: dict[str, set[str]] = {
     # Always available: bypass ALL gates, including hydration.
@@ -33,20 +46,31 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "Skill",  # Claude Code: invoke skill in-session
         "delegate_to_agent",  # Gemini CLI: spawn subagent
         "activate_skill",  # Gemini CLI: invoke skill in-session
-        # --- PKB task management (write operations, always needed) ---
+        # --- PKB task management: mcp__pkb__* (Claude Code short form) ---
         "mcp__pkb__get_task",
         "mcp__pkb__create_task",
         "mcp__pkb__update_task",
         "mcp__pkb__complete_task",
         "mcp__pkb__reindex",
         "mcp__pkb__delete_document",
-        # Gemini equivalents (bare tool names)
+        # --- PKB task management: mcp__plugin_aops-core_pkb__* (Claude Code full plugin) ---
+        "mcp__plugin_aops-core_pkb__get_task",
+        "mcp__plugin_aops-core_pkb__create_task",
+        "mcp__plugin_aops-core_pkb__update_task",
+        "mcp__plugin_aops-core_pkb__complete_task",
+        "mcp__plugin_aops-core_pkb__reindex",
+        # --- PKB task management: mcp__pbk__* (Gemini typo variant) ---
+        "mcp__pbk__get_task",
+        "mcp__pbk__create_task",
+        "mcp__pbk__update_task",
+        "mcp__pbk__complete_task",
+        "mcp__pbk__reindex",
+        # --- Gemini equivalents (bare tool names) ---
         "create_task",
         "update_task",
         "complete_task",
         "get_task",
         "list_tasks",
-        "task_search",
         # --- Claude Code built-in meta tools ---
         "AskUserQuestion",
         "TodoWrite",
@@ -58,10 +82,11 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "TaskGet",
         "TaskList",
     },
-    # Read-only tools: no side effects. Exempt from hydration gate.
-    # Hydrator and custodiet subagents use Read to access their context files.
+    # Read-only tools: no side effects. Exempt from custodiet gate (not hydration).
+    # Hydration gate blocks these until hydrator is dispatched (JIT gate open).
+    # Custodiet gate exempts them because compliance only tracks write operations.
     "read_only": {
-        # Claude Code
+        # --- Claude Code built-in ---
         "Read",
         "Glob",
         "Grep",
@@ -72,7 +97,7 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "TaskOutput",
         "TaskStop",
         "ToolSearch",
-        # Gemini CLI
+        # --- Gemini CLI ---
         "read_file",
         "view_file",
         "list_dir",
@@ -85,10 +110,19 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "google_web_search",
         "web_fetch",
         "read_url_content",
-        # Context7 MCP
+        # --- Gemini bare tool names ---
+        "task_search",
+        "search",
+        "get_task_children",
+        "get_internal_docs",
+        "cli_help",
+        "pkb_orphans",
+        # --- Context7 MCP (both prefix variants) ---
         "mcp__plugin_context7-plugin_context7__resolve-library-id",
         "mcp__plugin_context7-plugin_context7__query-docs",
-        # PKB read-only tools
+        "mcp__context7__resolve-library-id",
+        "mcp__context7__query-docs",
+        # --- PKB read-only: mcp__pkb__* ---
         "mcp__pkb__task_search",
         "mcp__pkb__get_task_network",
         "mcp__pkb__list_tasks",
@@ -99,19 +133,142 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "mcp__pkb__pkb_context",
         "mcp__pkb__get_document",
         "mcp__pkb__list_documents",
+        # --- PKB read-only: mcp__plugin_aops-core_pkb__* ---
+        "mcp__plugin_aops-core_pkb__list_tasks",
+        "mcp__plugin_aops-core_pkb__search",
+        "mcp__plugin_aops-core_pkb__task_search",
+        "mcp__plugin_aops-core_pkb__pkb_orphans",
+        "mcp__plugin_aops-core_pkb__get_task_children",
+        "mcp__plugin_aops-core_pkb__retrieve_memory",
+        "mcp__plugin_aops-core_pkb__search_by_tag",
+        # --- PKB read-only: mcp__pbk__* (Gemini typo variant) ---
+        "mcp__pbk__list_tasks",
+        "mcp__pbk__pkb_context",
+        "mcp__pbk__search",
+        "mcp__pbk__get_document",
+        "mcp__pbk__list_documents",
+        "mcp__pbk__pkb_orphans",
+        "mcp__pbk__get_network_metrics",
+        # --- PKB read-only: bare/versioned variants ---
+        "pkb__search",
+        "mcp__plugin_0_2_25_pkb__list_tasks",
+        # --- Memory MCP (read) ---
+        "mcp__plugin_aops-core_memory__retrieve_memory",
+        # --- Zotero MCP ---
+        "mcp__zot__search",
+        "mcp__zot__search_library_by_author",
+        "mcp__zot__search_openalex_author",
+        # --- Oversight Board MCP ---
+        "mcp__osb__search",
+        "mcp__osb__get_case_summary",
+        "mcp__osb__get_document",
+        "mcp__osb__get_collection_info",
+        "mcp__osb__get_similar_documents",
+        "mcp__osb__ping",
+        # --- Outlook MCP: mcp__omcp__* (read) ---
+        "mcp__omcp__messages_get",
+        "mcp__omcp__messages_list_recent",
+        "mcp__omcp__messages_search",
+        "mcp__omcp__messages_index",
+        "mcp__omcp__messages_list_accounts",
+        "mcp__omcp__messages_list_folders",
+        "mcp__omcp__calendar_list_today",
+        "mcp__omcp__calendar_list_events",
+        "mcp__omcp__calendar_get_event",
+        "mcp__omcp__calendar_list_upcoming",
+        "mcp__omcp__calendar_list_calendars",
+        "mcp__omcp__help",
+        "mcp__omcp__ping",
+        # --- Outlook MCP: mcp__outlook__* (alternate prefix, read) ---
+        "mcp__outlook__messages_get",
+        "mcp__outlook__messages_list_recent",
+        "mcp__outlook__calendar_list_today",
+        "mcp__outlook__calendar_list_upcoming",
+        # --- Playwright MCP (read) ---
+        "mcp__playwright__browser_wait_for",
+        "mcp__playwright__browser_take_screenshot",
+        "mcp__playwright__browser_snapshot",
+        "mcp__playwright__browser_console_messages",
+        "mcp__playwright__browser_network_requests",
+        "mcp__playwright__browser_tabs",
+        # --- Playwright bare names (Gemini, read) ---
+        "browser_wait_for",
+        "browser_take_screenshot",
+        "browser_console_messages",
+        "browser_network_requests",
     },
     # Write tools: modify USER files/state. Subject to all gates.
     "write": {
+        # --- Claude Code built-in ---
         "Edit",
         "Write",
         "Bash",
         "NotebookEdit",
         "MultiEdit",
+        # --- Gemini CLI ---
         "write_file",
         "replace",
         "run_shell_command",
         "execute_code",
         "save_memory",
+        "shell",
+        # --- Gemini bare tool names ---
+        "create_memory",
+        "decompose_task",
+        "append",
+        # --- PKB write: mcp__plugin_aops-core_pkb__* ---
+        "mcp__plugin_aops-core_pkb__decompose_task",
+        "mcp__plugin_aops-core_pkb__append",
+        "mcp__plugin_aops-core_pkb__create_memory",
+        "mcp__plugin_aops-core_pkb__create",
+        "mcp__plugin_aops-core_pkb__delete",
+        "mcp__plugin_aops-core_pkb__delete_memory",
+        # --- PKB write: mcp__pkb__* ---
+        "mcp__pkb__create",
+        "mcp__pkb__append",
+        # --- PKB write: mcp__pbk__* (Gemini typo) ---
+        "mcp__pbk__create",
+        "mcp__pbk__append",
+        "mcp__pbk__create_memory",
+        # --- Memory MCP (write) ---
+        "mcp__plugin_aops-core_memory__store_memory",
+        # --- Outlook MCP (write) ---
+        "mcp__omcp__messages_reply",
+        "mcp__omcp__messages_forward",
+        "mcp__omcp__messages_create_draft",
+        "mcp__omcp__messages_move",
+        "mcp__omcp__messages_archive",
+        "mcp__omcp__messages_set_category",
+        "mcp__omcp__messages_add_flag",
+        "mcp__omcp__messages_download_attachments",
+        "mcp__omcp__calendar_create_event",
+        "mcp__omcp__calendar_update_event",
+        "mcp__omcp__calendar_delete_event",
+        "mcp__omcp__calendar_respond_to_meeting",
+        "mcp__omcp__calendar_accept_invitation",
+        "mcp__omcp__archive_messages_monthly",
+        "mcp__omcp__archive_messages_batch",
+        # --- Playwright MCP (write) ---
+        "mcp__playwright__browser_navigate",
+        "mcp__playwright__browser_click",
+        "mcp__playwright__browser_install",
+        "mcp__playwright__browser_type",
+        "mcp__playwright__browser_fill_form",
+        "mcp__playwright__browser_press_key",
+        "mcp__playwright__browser_evaluate",
+        "mcp__playwright__browser_run_code",
+        "mcp__playwright__browser_handle_dialog",
+        "mcp__playwright__browser_file_upload",
+        "mcp__playwright__browser_close",
+        "mcp__playwright__browser_resize",
+        "mcp__playwright__browser_drag",
+        "mcp__playwright__browser_hover",
+        "mcp__playwright__browser_select_option",
+        # --- Playwright bare names (Gemini, write) ---
+        "browser_navigate",
+        "browser_click",
+        "browser_evaluate",
+        "browser_run_code",
     },
     "meta": set(),
 }
@@ -138,6 +295,8 @@ COMPLIANCE_SUBAGENT_TYPES: frozenset[str] = frozenset(
         "aops-core:audit",
         "butler",
         "aops-core:butler",
+        "qa",
+        "aops-core:qa",
     }
 )
 
@@ -195,15 +354,88 @@ CUSTODIET_TOOL_CALL_THRESHOLD = int(os.getenv("CUSTODIET_TOOL_CALL_THRESHOLD", 5
 HYDRATION_GATE_MODE = os.getenv(GATE_MODE_ENV_VARS["hydration"], GATE_MODE_DEFAULTS["hydration"])
 
 # =============================================================================
+# PKB PREFIX NORMALIZATION
+# =============================================================================
+# MCP tool names for PKB come in many prefix variants depending on how the
+# server is registered. This normalization handles unknown prefix variants
+# as a fallback when the tool name isn't found in the static TOOL_CATEGORIES.
+#
+# Known prefix patterns:
+#   mcp__plugin_aops-core_pkb__<op>    (Claude Code full plugin prefix)
+#   mcp__pkb__<op>                     (Claude Code short form)
+#   mcp__pbk__<op>                     (Gemini typo variant)
+#   mcp__plugin_<version>_pkb__<op>    (versioned plugin prefix)
+#   pkb__<op>                          (bare prefix)
+
+_PKB_OPERATIONS: dict[str, str] = {
+    # always_available: task lifecycle + indexing
+    "get_task": "always_available",
+    "create_task": "always_available",
+    "update_task": "always_available",
+    "complete_task": "always_available",
+    "reindex": "always_available",
+    "delete_document": "always_available",
+    # read_only: search, inspect, list
+    "list_tasks": "read_only",
+    "task_search": "read_only",
+    "search": "read_only",
+    "pkb_context": "read_only",
+    "pkb_orphans": "read_only",
+    "get_document": "read_only",
+    "list_documents": "read_only",
+    "get_network_metrics": "read_only",
+    "get_task_children": "read_only",
+    "retrieve_memory": "read_only",
+    "search_by_tag": "read_only",
+    "list_memories": "read_only",
+    "pkb_trace": "read_only",
+    "get_task_network": "read_only",
+    "get_blocked_tasks": "read_only",
+    "semantic_search": "read_only",
+    "pkb_search": "read_only",
+    "get_dependency_tree": "read_only",
+    # write: create, modify, delete
+    "create": "write",
+    "append": "write",
+    "create_memory": "write",
+    "decompose_task": "write",
+    "delete": "write",
+    "delete_memory": "write",
+}
+
+# Regex to match any PKB MCP prefix variant and extract the operation name.
+_PKB_PREFIX_RE = re.compile(r"^(?:mcp__(?:plugin_(?:aops-core_|[\w.]+_))?(?:pkb|pbk)__|pkb__)(.+)$")
+
+# =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
 
 
 def get_tool_category(tool_name: str) -> str:
-    """Get the category for a tool. Returns 'write' if not categorized (conservative fallback)."""
+    """Get the category for a tool.
+
+    Lookup order:
+    1. Static TOOL_CATEGORIES sets (O(1) for known tool names)
+    2. PKB prefix normalization (handles unknown MCP prefix variants)
+    3. Default: 'write' (conservative fallback for truly unknown tools)
+    """
     for category, tools in TOOL_CATEGORIES.items():
         if tool_name in tools:
             return category
+
+    # Fallback: normalize PKB MCP prefix variants
+    m = _PKB_PREFIX_RE.match(tool_name)
+    if m:
+        cat = _PKB_OPERATIONS.get(m.group(1))
+        if cat:
+            return cat
+
+    # Edge case: compliance subagent names sometimes appear as tool_name
+    # (router logs subagent_type as tool_name in some code paths).
+    # Treat them as always_available so they bypass gates.
+    if tool_name in COMPLIANCE_SUBAGENT_TYPES:
+        return "always_available"
+
     # Default: treat unknown tools as write (conservative)
     return "write"
 
