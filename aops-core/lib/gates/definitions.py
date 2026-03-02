@@ -206,7 +206,7 @@ GATE_CONFIGS = [
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
-                    system_message_template="≡ Handover complete.",
+                    system_message_template="≡ Finalization complete.",
                 ),
             ),
         ],
