@@ -1161,12 +1161,15 @@ class PolecatManager:
 
         print("🪝 Installing pre-commit hooks...")
         try:
+            # Clear VIRTUAL_ENV so uv doesn't conflict with the parent repo's venv
+            env = {k: v for k, v in os.environ.items() if k != "VIRTUAL_ENV"}
             result = subprocess.run(
                 ["uv", "run", "pre-commit", "install"],
                 cwd=worktree_path,
                 capture_output=True,
                 text=True,
                 check=False,
+                env=env,
             )
             if result.returncode == 0:
                 print("  ✅ Pre-commit hooks installed")
