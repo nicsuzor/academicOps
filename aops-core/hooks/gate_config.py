@@ -38,7 +38,7 @@ from typing import Any
 TOOL_CATEGORIES: dict[str, set[str]] = {
     # Always available: bypass ALL gates, including hydration.
     # These are tools that either invoke agents/skills (needed to satisfy gates)
-    # or manage task state (needed for framework lifecycle).
+    # or manage PKB/task state (needed for framework lifecycle).
     "always_available": {
         # --- Agent/skill invocation tools (cross-platform) ---
         "Agent",  # Claude Code: spawn subagent (current tool name)
@@ -65,12 +65,72 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "mcp__pbk__update_task",
         "mcp__pbk__complete_task",
         "mcp__pbk__reindex",
-        # --- Gemini equivalents (bare tool names) ---
+        # --- PKB all ops: mcp__pkb__* (Claude Code short form) ---
+        "mcp__pkb__task_search",
+        "mcp__pkb__get_task_network",
+        "mcp__pkb__list_tasks",
+        "mcp__pkb__get_blocked_tasks",
+        "mcp__pkb__get_network_metrics",
+        "mcp__pkb__semantic_search",
+        "mcp__pkb__pkb_search",
+        "mcp__pkb__pkb_context",
+        "mcp__pkb__get_document",
+        "mcp__pkb__list_documents",
+        "mcp__pkb__search",
+        "mcp__pkb__create",
+        "mcp__pkb__append",
+        "mcp__pkb__create_memory",
+        "mcp__pkb__retrieve_memory",
+        "mcp__pkb__list_memories",
+        "mcp__pkb__search_by_tag",
+        "mcp__pkb__delete_memory",
+        "mcp__pkb__decompose_task",
+        "mcp__pkb__delete",
+        # --- PKB all ops: mcp__plugin_aops-core_pkb__* (Claude Code full plugin) ---
+        "mcp__plugin_aops-core_pkb__list_tasks",
+        "mcp__plugin_aops-core_pkb__search",
+        "mcp__plugin_aops-core_pkb__task_search",
+        "mcp__plugin_aops-core_pkb__pkb_orphans",
+        "mcp__plugin_aops-core_pkb__get_task_children",
+        "mcp__plugin_aops-core_pkb__retrieve_memory",
+        "mcp__plugin_aops-core_pkb__search_by_tag",
+        "mcp__plugin_aops-core_pkb__decompose_task",
+        "mcp__plugin_aops-core_pkb__append",
+        "mcp__plugin_aops-core_pkb__create_memory",
+        "mcp__plugin_aops-core_pkb__create",
+        "mcp__plugin_aops-core_pkb__delete",
+        "mcp__plugin_aops-core_pkb__delete_memory",
+        # --- PKB all ops: mcp__pbk__* (Gemini typo variant) ---
+        "mcp__pbk__list_tasks",
+        "mcp__pbk__pkb_context",
+        "mcp__pbk__search",
+        "mcp__pbk__get_document",
+        "mcp__pbk__list_documents",
+        "mcp__pbk__pkb_orphans",
+        "mcp__pbk__get_network_metrics",
+        "mcp__pbk__create",
+        "mcp__pbk__append",
+        "mcp__pbk__create_memory",
+        # --- PKB: bare/versioned variants ---
+        "pkb__search",
+        "mcp__plugin_0_2_25_pkb__list_tasks",
+        # --- Memory MCP ---
+        "mcp__plugin_aops-core_memory__retrieve_memory",
+        "mcp__plugin_aops-core_memory__store_memory",
+        # --- Gemini equivalents (bare tool names, PKB ops) ---
         "create_task",
         "update_task",
         "complete_task",
         "get_task",
         "list_tasks",
+        "task_search",
+        "search",
+        "get_task_children",
+        "pkb_orphans",
+        "create_memory",
+        "decompose_task",
+        "append",
+        "save_memory",
         # --- Claude Code built-in meta tools ---
         "AskUserQuestion",
         "TodoWrite",
@@ -110,50 +170,14 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "google_web_search",
         "web_fetch",
         "read_url_content",
-        # --- Gemini bare tool names ---
-        "task_search",
-        "search",
-        "get_task_children",
+        # --- Gemini bare tool names (non-PKB) ---
         "get_internal_docs",
         "cli_help",
-        "pkb_orphans",
         # --- Context7 MCP (both prefix variants) ---
         "mcp__plugin_context7-plugin_context7__resolve-library-id",
         "mcp__plugin_context7-plugin_context7__query-docs",
         "mcp__context7__resolve-library-id",
         "mcp__context7__query-docs",
-        # --- PKB read-only: mcp__pkb__* ---
-        "mcp__pkb__task_search",
-        "mcp__pkb__get_task_network",
-        "mcp__pkb__list_tasks",
-        "mcp__pkb__get_blocked_tasks",
-        "mcp__pkb__get_network_metrics",
-        "mcp__pkb__semantic_search",
-        "mcp__pkb__pkb_search",
-        "mcp__pkb__pkb_context",
-        "mcp__pkb__get_document",
-        "mcp__pkb__list_documents",
-        # --- PKB read-only: mcp__plugin_aops-core_pkb__* ---
-        "mcp__plugin_aops-core_pkb__list_tasks",
-        "mcp__plugin_aops-core_pkb__search",
-        "mcp__plugin_aops-core_pkb__task_search",
-        "mcp__plugin_aops-core_pkb__pkb_orphans",
-        "mcp__plugin_aops-core_pkb__get_task_children",
-        "mcp__plugin_aops-core_pkb__retrieve_memory",
-        "mcp__plugin_aops-core_pkb__search_by_tag",
-        # --- PKB read-only: mcp__pbk__* (Gemini typo variant) ---
-        "mcp__pbk__list_tasks",
-        "mcp__pbk__pkb_context",
-        "mcp__pbk__search",
-        "mcp__pbk__get_document",
-        "mcp__pbk__list_documents",
-        "mcp__pbk__pkb_orphans",
-        "mcp__pbk__get_network_metrics",
-        # --- PKB read-only: bare/versioned variants ---
-        "pkb__search",
-        "mcp__plugin_0_2_25_pkb__list_tasks",
-        # --- Memory MCP (read) ---
-        "mcp__plugin_aops-core_memory__retrieve_memory",
         # --- Zotero MCP ---
         "mcp__zot__search",
         "mcp__zot__search_library_by_author",
@@ -210,28 +234,7 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "replace",
         "run_shell_command",
         "execute_code",
-        "save_memory",
         "shell",
-        # --- Gemini bare tool names ---
-        "create_memory",
-        "decompose_task",
-        "append",
-        # --- PKB write: mcp__plugin_aops-core_pkb__* ---
-        "mcp__plugin_aops-core_pkb__decompose_task",
-        "mcp__plugin_aops-core_pkb__append",
-        "mcp__plugin_aops-core_pkb__create_memory",
-        "mcp__plugin_aops-core_pkb__create",
-        "mcp__plugin_aops-core_pkb__delete",
-        "mcp__plugin_aops-core_pkb__delete_memory",
-        # --- PKB write: mcp__pkb__* ---
-        "mcp__pkb__create",
-        "mcp__pkb__append",
-        # --- PKB write: mcp__pbk__* (Gemini typo) ---
-        "mcp__pbk__create",
-        "mcp__pbk__append",
-        "mcp__pbk__create_memory",
-        # --- Memory MCP (write) ---
-        "mcp__plugin_aops-core_memory__store_memory",
         # --- Outlook MCP (write) ---
         "mcp__omcp__messages_reply",
         "mcp__omcp__messages_forward",
@@ -368,39 +371,38 @@ HYDRATION_GATE_MODE = os.getenv(GATE_MODE_ENV_VARS["hydration"], GATE_MODE_DEFAU
 #   pkb__<op>                          (bare prefix)
 
 _PKB_OPERATIONS: dict[str, str] = {
-    # always_available: task lifecycle + indexing
+    # All PKB operations are always_available — the PKB is framework
+    # infrastructure, not user files. Gates should never block PKB access.
     "get_task": "always_available",
     "create_task": "always_available",
     "update_task": "always_available",
     "complete_task": "always_available",
     "reindex": "always_available",
     "delete_document": "always_available",
-    # read_only: search, inspect, list
-    "list_tasks": "read_only",
-    "task_search": "read_only",
-    "search": "read_only",
-    "pkb_context": "read_only",
-    "pkb_orphans": "read_only",
-    "get_document": "read_only",
-    "list_documents": "read_only",
-    "get_network_metrics": "read_only",
-    "get_task_children": "read_only",
-    "retrieve_memory": "read_only",
-    "search_by_tag": "read_only",
-    "list_memories": "read_only",
-    "pkb_trace": "read_only",
-    "get_task_network": "read_only",
-    "get_blocked_tasks": "read_only",
-    "semantic_search": "read_only",
-    "pkb_search": "read_only",
-    "get_dependency_tree": "read_only",
-    # write: create, modify, delete
-    "create": "write",
-    "append": "write",
-    "create_memory": "write",
-    "decompose_task": "write",
-    "delete": "write",
-    "delete_memory": "write",
+    "list_tasks": "always_available",
+    "task_search": "always_available",
+    "search": "always_available",
+    "pkb_context": "always_available",
+    "pkb_orphans": "always_available",
+    "get_document": "always_available",
+    "list_documents": "always_available",
+    "get_network_metrics": "always_available",
+    "get_task_children": "always_available",
+    "retrieve_memory": "always_available",
+    "search_by_tag": "always_available",
+    "list_memories": "always_available",
+    "pkb_trace": "always_available",
+    "get_task_network": "always_available",
+    "get_blocked_tasks": "always_available",
+    "semantic_search": "always_available",
+    "pkb_search": "always_available",
+    "get_dependency_tree": "always_available",
+    "create": "always_available",
+    "append": "always_available",
+    "create_memory": "always_available",
+    "decompose_task": "always_available",
+    "delete": "always_available",
+    "delete_memory": "always_available",
 }
 
 # Regex to match any PKB MCP prefix variant and extract the operation name.
