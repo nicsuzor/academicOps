@@ -65,7 +65,7 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "mcp__pbk__update_task",
         "mcp__pbk__complete_task",
         "mcp__pbk__reindex",
-        # --- PKB read/search: mcp__pkb__* (Claude Code short form) ---
+        # --- PKB all ops: mcp__pkb__* (Claude Code short form) ---
         "mcp__pkb__task_search",
         "mcp__pkb__get_task_network",
         "mcp__pkb__list_tasks",
