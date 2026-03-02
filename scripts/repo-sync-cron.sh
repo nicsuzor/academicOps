@@ -30,6 +30,10 @@ if [[ -f "$HOME/.env.local" ]]; then
     while IFS= read -r line; do
         if [[ "$line" =~ ^export[[:space:]]+([A-Za-z_][A-Za-z0-9_]*)= ]]; then
             value="${line#*=}"
+            # Strip surrounding quotes (single or double) — .env.local commonly
+            # uses export VAR="value" and the quotes must not become part of the value.
+            value="${value#\"}" ; value="${value%\"}"
+            value="${value#\'}" ; value="${value%\'}"
             value_expanded="${value//\$HOME/$HOME}"
             if [[ "$value_expanded" == "~" || "$value_expanded" == '"~"' || "$value_expanded" == "'~'" ]]; then
                 value_expanded="$HOME"

@@ -137,6 +137,8 @@ for tid, t in tasks.items():
     if 'x' in raw_node and 'y' in raw_node:
         node['x'] = raw_node['x']
         node['y'] = raw_node['y']
+    if 'layouts' in raw_node:
+        node['layouts'] = raw_node['layouts']
     nodes.append(node)
     for cid in t.get('children', []):
         key = (cid, t['id'], 'parent')
