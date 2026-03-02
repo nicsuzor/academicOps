@@ -2,11 +2,7 @@
 # generate-viz.sh - Generate all PKB visualizations
 #
 # All output goes to $AOPS_SESSIONS (default ~/.aops/sessions/):
-#   graph.json            - Full PKB graph (used by overwhelm dashboard)
-#   knowledge-graph.json  - Same graph (dashboard "Knowledge Base" view)
-#   mcp-index.json        - MCP task index
-#   pkb-raw.json          - Raw PKB graph
-#   tasks.json            - Task-only graph for rendering scripts
+#   graph.json            - Full PKB graph with task metadata and precomputed layouts
 #   task-map.svg          - Task map (reachable from active leaves + ancestors)
 #   task-map.html         - Interactive D3-force task map
 #   attention-map.svg     - Under-connected important nodes
@@ -101,88 +97,9 @@ done
 
 mkdir -p "${GRAPH_DIR}" "${VIZ_DIR}"
 
-# Step 1: Generate graph data
-# - mcp-index: rich task metadata (status, priority, downstream_weight, etc.)
-# - json: full PKB graph with all nodes + wikilink edges (but sparse metadata)
+# Step 1: Generate graph data (includes task metadata and precomputed layouts)
 echo "==> Generating graph data..."
-"${AOPS_BIN}" graph -f mcp-index -o "${GRAPH_DIR}/mcp-index.json"
-"${AOPS_BIN}" graph -f json -o "${GRAPH_DIR}/pkb-raw.json"
-
-# Step 1b: Build dashboard graph files from the raw data
-python3 -c "
-import json, sys, os
-
-graph_dir = sys.argv[1]
-idx = json.load(open(os.path.join(graph_dir, 'mcp-index.json')))
-raw = json.load(open(os.path.join(graph_dir, 'pkb-raw.json')))
-
-tasks = idx.get('tasks', {})
-
-# Build lookup for precomputed layout coordinates from pkb-raw.json
-raw_by_id = {n['id']: n for n in raw.get('nodes', []) if 'id' in n}
-
-# -- graph.json: task-only graph with rich metadata --
-nodes, edges, seen_edges = [], [], set()
-for tid, t in tasks.items():
-    raw_node = raw_by_id.get(t['id'], {})
-    node = {
-        'id': t['id'], 'label': t.get('title', t['id']),
-        'path': t.get('path', ''), 'tags': t.get('tags', []),
-        'node_type': t.get('type', 'task'), 'status': t.get('status', 'inbox'),
-        'priority': t.get('priority', 2), 'project': t.get('project', ''),
-        'depth': t.get('depth', 0), 'downstream_weight': t.get('downstream_weight', 0),
-        'stakeholder_exposure': t.get('stakeholder_exposure', False),
-        'leaf': t.get('leaf', True), 'assignee': t.get('assignee', ''),
-    }
-    if 'x' in raw_node and 'y' in raw_node:
-        node['x'] = raw_node['x']
-        node['y'] = raw_node['y']
-    nodes.append(node)
-    for cid in t.get('children', []):
-        key = (cid, t['id'], 'parent')
-        if key not in seen_edges:
-            seen_edges.add(key)
-            edges.append({'source': cid, 'target': t['id'], 'type': 'parent'})
-    for did in t.get('depends_on', []):
-        key = (t['id'], did, 'depends_on')
-        if key not in seen_edges:
-            seen_edges.add(key)
-            edges.append({'source': t['id'], 'target': did, 'type': 'depends_on'})
-    for sid in t.get('soft_depends_on', []):
-        key = (t['id'], sid, 'soft_depends_on')
-        if key not in seen_edges:
-            seen_edges.add(key)
-            edges.append({'source': t['id'], 'target': sid, 'type': 'soft_depends_on'})
-
-task_ids = {n['id'] for n in nodes}
-edges = [e for e in edges if e['source'] in task_ids and e['target'] in task_ids]
-with open(os.path.join(graph_dir, 'graph.json'), 'w') as f:
-    json.dump({'nodes': nodes, 'edges': edges}, f)
-print(f'    graph.json: {len(nodes)} nodes, {len(edges)} edges')
-
-# -- knowledge-graph.json: full PKB graph enriched with task metadata --
-task_by_path = {t.get('path', ''): t for t in tasks.values() if t.get('path')}
-raw_nodes = raw.get('nodes', [])
-enriched = []
-for n in raw_nodes:
-    t = task_by_path.get(n.get('path', ''))
-    if t:
-        enriched.append({**n, 'node_type': t.get('type', 'task'),
-            'status': t.get('status', 'inbox'), 'priority': t.get('priority', 2),
-            'project': t.get('project', ''), 'depth': t.get('depth', 0),
-            'downstream_weight': t.get('downstream_weight', 0),
-            'stakeholder_exposure': t.get('stakeholder_exposure', False),
-            'assignee': t.get('assignee', ''), 'label': t.get('title', n.get('label', ''))})
-    else:
-        enriched.append({**n, 'node_type': 'note'})
-raw_edges = raw.get('edges', [])
-with open(os.path.join(graph_dir, 'knowledge-graph.json'), 'w') as f:
-    json.dump({'nodes': enriched, 'edges': raw_edges}, f)
-print(f'    knowledge-graph.json: {len(enriched)} nodes, {len(raw_edges)} edges')
-" "${GRAPH_DIR}"
-
-# Copy graph.json to tasks.json for rendering scripts
-cp "${GRAPH_DIR}/graph.json" "${VIZ_DIR}/tasks.json"
+"${AOPS_BIN}" graph -f json -o "${GRAPH_DIR}/graph.json"
 
 # Build density override args (shared across renderers)
 DENSITY_ARGS=()
@@ -202,7 +119,7 @@ run_graph() {
                 exit 1
             fi
             "${GT_PYTHON}" "${AOPS}/scripts/task_graph_gt.py" \
-                "${VIZ_DIR}/tasks.json" \
+                "${GRAPH_DIR}/graph.json" \
                 --filter reachable \
                 --graphviz \
                 ${DENSITY_ARGS[@]+"${DENSITY_ARGS[@]}"} \
@@ -210,13 +127,13 @@ run_graph() {
             ;;
         ogdf)
             uv run python3 "${AOPS}/scripts/task_graph_ogdf.py" \
-                "${VIZ_DIR}/tasks.json" \
+                "${GRAPH_DIR}/graph.json" \
                 --filter reachable \
                 ${extra_args[@]+"${extra_args[@]}"}
             ;;
         *)
             uv run python3 "${AOPS}/scripts/task_graph.py" \
-                "${VIZ_DIR}/tasks.json" \
+                "${GRAPH_DIR}/graph.json" \
                 --filter reachable \
                 --layout "${LAYOUT}" \
                 ${DENSITY_ARGS[@]+"${DENSITY_ARGS[@]}"} \
@@ -232,7 +149,7 @@ run_graph -o "${VIZ_DIR}/task-map"
 # Step 2b: Generate interactive D3 HTML
 echo "==> Generating D3 interactive graph..."
 uv run python3 "${AOPS}/scripts/task_graph_d3.py" \
-    "${VIZ_DIR}/tasks.json" \
+    "${GRAPH_DIR}/graph.json" \
     --filter reachable \
     -o "${VIZ_DIR}/task-map.html"
 echo "    Written ${VIZ_DIR}/task-map.html"
@@ -253,7 +170,7 @@ if [ -n "${EGO_ID}" ]; then
 
     echo "==> Generating D3 ego-subgraph for '${EGO_ID}'..."
     uv run python3 "${AOPS}/scripts/task_graph_d3.py" \
-        "${VIZ_DIR}/tasks.json" \
+        "${GRAPH_DIR}/graph.json" \
         --filter reachable \
         --ego "${EGO_ID}" --depth "${EGO_DEPTH}" \
         -o "${VIZ_DIR}/ego-${EGO_ID}.html"

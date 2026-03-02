@@ -3582,6 +3582,8 @@ def render_task_graph_page():
         show_blocked = st.checkbox("Blocked", value=True, key="tg_show_blocked")
         show_done = st.checkbox("Done / Cancelled", value=False, key="tg_show_done")
         show_orphans = st.checkbox("Orphans (inbox)", value=False, key="tg_show_orphans")
+        st.markdown("**Filter**")
+        show_only_reachable = st.checkbox("Reachable only", value=False, key="tg_show_reachable")
 
     d3_graph = load_graph_data()
     if d3_graph:
@@ -3612,6 +3614,8 @@ def render_task_graph_page():
                 filtered.append(n)
             elif status in orphan_statuses and show_orphans:
                 filtered.append(n)
+        if show_only_reachable:
+            filtered = [n for n in filtered if n.get("reachable")]
         d3_graph["nodes"] = filtered
 
         d3_data = prepare_embedded_graph_data(d3_graph)
@@ -3893,9 +3897,8 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from task_manager_ui import render_task_editor
-
 from lib.task_model import TaskStatus
+from task_manager_ui import render_task_editor
 
 
 @st.dialog("Edit Task")
