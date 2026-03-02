@@ -120,7 +120,9 @@
       inbox: "background:#f1f5f9;color:#475569"
     };
 
-    // Type-based colors for simplified layout modes (treemap, circle_pack, arc)
+    // Type-based colors for simplified layout modes (treemap, circle_pack, arc).
+    // Canonical node type list lives in lib/overwhelm/task_graph_d3.py (TYPE_CHARGE, TYPE_SHAPE, TYPE_BADGE).
+    // When adding new node types there, add a matching entry here to keep rendering consistent.
     const TYPE_COLORS = {
       goal: '#e94560', project: '#0f3460', epic: '#e9a045',
       task: '#45e980', action: '#45c9e9', bug: '#e94545',
@@ -205,20 +207,20 @@
           .attr("fill", color).attr("fill-opacity", 0.8);
     }
 
+    // Dispatch table: maps layout mode to node builder. Add new layouts here.
+    const nodeBuilders = {
+        treemap: buildTreemapNode,
+        circle_pack: buildCirclePackNode,
+        arc: buildArcNode,
+    };
+
     function buildNodeShapes(layoutMode) {
         if (!nodeEls) return;
         nodeEls.each(function(d) {
             const g = d3.select(this);
             g.selectAll("*").remove();
-            if (layoutMode === "treemap") {
-                buildTreemapNode(g, d);
-            } else if (layoutMode === "circle_pack") {
-                buildCirclePackNode(g, d);
-            } else if (layoutMode === "arc") {
-                buildArcNode(g, d);
-            } else {
-                buildTaskCardNode(g, d);
-            }
+            const builder = nodeBuilders[layoutMode] || buildTaskCardNode;
+            builder(g, d);
         });
     }
 
@@ -392,6 +394,10 @@
         // All tunables from Python FORCE_CONFIG via graphData.forceConfig
         const fc = graphData.forceConfig || {};
 
+        // IMPORTANT: Every layout branch below MUST call buildNodeShapes(currentLayout)
+        // after setting any layout-specific dimensions (n._lw, n._lh, n._lr) on nodes,
+        // so that node shapes are rebuilt with the correct geometry for the new layout.
+
         // Compute per-node link count for degree-aware forces (orphan detection, atlas gravity)
         nodes.forEach(n => { n.linkCount = 0; });
         links.forEach(l => {
@@ -432,40 +438,55 @@
             return force;
         }
 
-        // Layout-aware tick handler: different edge routing and visibility per layout
+        // Edge routers: one function per layout strategy
+        function routeContainmentEdges() {
+            // Containment layouts: hide edges entirely
+            linkEls.attr("d", null).attr("opacity", 0);
+        }
+
+        function routeArcEdges() {
+            // Arc diagram: quadratic arc edges above the baseline
+            linkEls.attr("opacity", d => d.type === "ref" ? 0.15 : 0.4);
+            linkEls.attr("d", d => {
+                const sx = d.source.x, sy = d.source.y;
+                const tx = d.target.x, ty = d.target.y;
+                const dx = tx - sx;
+                const arcH = Math.abs(dx) * 0.3;
+                const midX = (sx + tx) / 2;
+                const midY = Math.min(sy, ty) - arcH;
+                return `M${sx},${sy} Q${midX},${midY} ${tx},${ty}`;
+            });
+        }
+
+        function routeForceEdges() {
+            // Force / precomputed / atlas: full edge routing
+            linkEls.attr("opacity", d => d.type === "ref" ? 0.4 : 0.7);
+            linkEls.attr("d", d => {
+                const sx = d.source.x, sy = d.source.y;
+                const tx = d.target.x, ty = d.target.y;
+                if (d.type === "depends_on") {
+                    const mx = (sx + tx) / 2;
+                    return `M${sx},${sy} L${mx},${sy} L${mx},${ty} L${tx},${ty}`;
+                }
+                if (d.type === "parent") {
+                    const my = (sy + ty) / 2;
+                    return `M${sx},${sy} C${sx},${my} ${tx},${my} ${tx},${ty}`;
+                }
+                return `M${sx},${sy} L${tx},${ty}`;
+            });
+        }
+
+        // Dispatch table: maps layout mode to edge router. Add new layouts here.
+        const edgeRouters = {
+            treemap: routeContainmentEdges,
+            circle_pack: routeContainmentEdges,
+            arc: routeArcEdges,
+        };
+
+        // Layout-aware tick handler: delegates to per-layout edge router
         function ticked() {
-            if (currentLayout === "treemap" || currentLayout === "circle_pack") {
-                // Containment layouts: hide edges entirely
-                linkEls.attr("d", null).attr("opacity", 0);
-            } else if (currentLayout === "arc") {
-                // Arc diagram: quadratic arc edges above the baseline
-                linkEls.attr("opacity", d => d.type === "ref" ? 0.15 : 0.4);
-                linkEls.attr("d", d => {
-                    const sx = d.source.x, sy = d.source.y;
-                    const tx = d.target.x, ty = d.target.y;
-                    const dx = tx - sx;
-                    const arcH = Math.abs(dx) * 0.3;
-                    const midX = (sx + tx) / 2;
-                    const midY = Math.min(sy, ty) - arcH;
-                    return `M${sx},${sy} Q${midX},${midY} ${tx},${ty}`;
-                });
-            } else {
-                // Force / precomputed / atlas: full edge routing
-                linkEls.attr("opacity", d => d.type === "ref" ? 0.4 : 0.7);
-                linkEls.attr("d", d => {
-                    const sx = d.source.x, sy = d.source.y;
-                    const tx = d.target.x, ty = d.target.y;
-                    if (d.type === "depends_on") {
-                        const mx = (sx + tx) / 2;
-                        return `M${sx},${sy} L${mx},${sy} L${mx},${ty} L${tx},${ty}`;
-                    }
-                    if (d.type === "parent") {
-                        const my = (sy + ty) / 2;
-                        return `M${sx},${sy} C${sx},${my} ${tx},${my} ${tx},${ty}`;
-                    }
-                    return `M${sx},${sy} L${tx},${ty}`;
-                });
-            }
+            const router = edgeRouters[currentLayout] || routeForceEdges;
+            router();
             nodeEls.attr("transform", d => `translate(${d.x},${d.y})`);
         }
 
@@ -669,6 +690,10 @@
         });
 
         linkEls.transition().duration(200).attr("opacity", l => {
+            // Layout-specific base opacities — kept consistent with edge routers in ticked()
+            if (currentLayout === "treemap" || currentLayout === "circle_pack") return 0;
+            const baseRef = currentLayout === "arc" ? 0.15 : 0.4;
+            const baseOther = currentLayout === "arc" ? 0.4 : 0.7;
             if (currentFocusProject !== "ALL") {
                 const sp = l.source.project || "none";
                 const tp = l.target.project || "none";
@@ -677,7 +702,7 @@
             if (activeNodeId) {
                 if (l.source.id !== activeNodeId && l.target.id !== activeNodeId) return 0.05;
             }
-            return l.type === "ref" ? 0.4 : 0.7;
+            return l.type === "ref" ? baseRef : baseOther;
         });
     }
 
