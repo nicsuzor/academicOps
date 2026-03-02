@@ -1,13 +1,13 @@
-# Agent: Gatekeeper
-# Personality: Authoritative guardian. Defaults to approval. Gates merge via commit status.
+# Agent: Conceptual Review
+# Personality: Thoughtful reviewer. Provides structured critique. Advisory only — never blocks merge.
 # Responsibilities:
-#   - Evaluate PR alignment, design coherence, quality, and proportionality
-#   - Post commit status (pass/fail) as a required status check
-#   - Post PR comment with detailed assessment
-# Authority: Commit status "Gatekeeper" (success | failure)
-# Prompt: .github/agents/gatekeeper.md
+#   - Evaluate PR through axiom compliance + strategic alignment lens
+#   - Apply prioritised critique protocol (primary concern + resolution, secondary concerns)
+#   - Post PR comment with structured review
+# Authority: Advisory comment + commit status (signals completion, does NOT gate merge)
+# Prompt: .github/agents/conceptual-review.agent.md
 
-name: "Agent: Gatekeeper"
+name: "Agent: Conceptual Review"
 
 on:
   pull_request:
@@ -35,13 +35,13 @@ on:
 
 jobs:
   review:
-    name: Gatekeeper
+    name: Conceptual Review
     if: >-
       github.event_name != 'pull_request' ||
       github.event.pull_request.user.login != 'github-actions[bot]'
     runs-on: ubuntu-latest
     concurrency:
-      group: gatekeeper-${{ inputs.pr_number || github.event.pull_request.number }}
+      group: conceptual-review-${{ inputs.pr_number || github.event.pull_request.number }}
       cancel-in-progress: true
     permissions:
       contents: read
@@ -59,7 +59,7 @@ jobs:
       - name: Read agent instructions
         id: prompt
         run: |
-          PROMPT=$(cat .github/agents/gatekeeper.agent.md)
+          PROMPT=$(cat .github/agents/conceptual-review.agent.md)
           {
             echo "prompt<<AGENT_EOF"
             echo "$PROMPT"
@@ -81,8 +81,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run Gatekeeper
-        id: gatekeeper
+      - name: Run Conceptual Review
+        id: review
         continue-on-error: true
         uses: anthropics/claude-code-action@v1
         with:
@@ -96,51 +96,28 @@ jobs:
             Review PR #${{ steps.pr-info.outputs.pr_number }} in repository ${{ github.repository }}.
             Use `gh pr view ${{ steps.pr-info.outputs.pr_number }}` and `gh pr diff ${{ steps.pr-info.outputs.pr_number }}` to gather information.
 
-            Post a PR comment (`gh pr comment`) with your full assessment.
-            Your comment MUST include a heading with your verdict in this exact format:
-            - `## Gatekeeper: APPROVED` (if approved)
-            - `## Gatekeeper: REJECTED — <reason>` (if rejected)
+            Post a PR comment (`gh pr comment`) with your structured review following the output format in your instructions.
 
-            Do NOT use `gh pr review` or set commit statuses — the workflow handles status reporting.
+            Do NOT use `gh pr review`. Do NOT set any commit statuses. Your role is advisory only.
 
-          claude_args: '--allowed-tools "Bash(gh:*),Read"'
+          claude_args: '--model claude-opus-4-6 --allowed-tools "Bash(gh:*),Read"'
 
-      # ── Post-agent: set commit status from verdict ──
+      # ── Post-agent: set commit status to signal completion ──
 
-      - name: Detect verdict from PR comment
-        id: verdict
+      - name: Set Conceptual Review commit status
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_NUM="${{ steps.pr-info.outputs.pr_number }}"
-          REPO="${{ github.repository }}"
-
-          # Get the latest gatekeeper comment
-          COMMENT=$(gh api "repos/$REPO/issues/$PR_NUM/comments" \
-            --jq '[.[] | select(.user.login == "claude[bot]") | select(.body | test("Gatekeeper:"))] | last | .body' \
-            2>/dev/null || echo "")
-
-          if echo "$COMMENT" | grep -q "Gatekeeper: APPROVED"; then
-            echo "state=success" >> "$GITHUB_OUTPUT"
-            echo "description=Scope and strategy alignment verified" >> "$GITHUB_OUTPUT"
-          elif echo "$COMMENT" | grep -q "Gatekeeper: REJECTED"; then
-            echo "state=failure" >> "$GITHUB_OUTPUT"
-            REASON=$(echo "$COMMENT" | grep -oP 'REJECTED\s*—\s*\K.*' | head -1)
-            echo "description=REJECTED: ${REASON:-See PR comment}" >> "$GITHUB_OUTPUT"
-          elif [ "${{ steps.gatekeeper.outcome }}" = "success" ]; then
-            echo "state=success" >> "$GITHUB_OUTPUT"
-            echo "description=Agent completed — no explicit verdict found" >> "$GITHUB_OUTPUT"
+          if [ "${{ steps.review.outcome }}" = "success" ]; then
+            STATE="success"
+            DESC="Conceptual review completed"
           else
-            echo "state=failure" >> "$GITHUB_OUTPUT"
-            echo "description=Agent failed to complete" >> "$GITHUB_OUTPUT"
+            STATE="failure"
+            DESC="Conceptual review agent failed to complete"
           fi
 
-      - name: Set Gatekeeper commit status
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
           gh api "repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.head_sha }}" \
-            -f state="${{ steps.verdict.outputs.state }}" \
-            -f context="Gatekeeper" \
-            -f description="${{ steps.verdict.outputs.description }}" \
+            -f state="$STATE" \
+            -f context="Conceptual Review" \
+            -f description="$DESC" \
             -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"

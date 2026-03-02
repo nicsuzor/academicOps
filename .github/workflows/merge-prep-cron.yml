@@ -5,11 +5,10 @@
 #   - Last commit ≥15 min ago (bazaar window for bot reviews to complete)
 #   - Not already being processed (no merge-prep-running label)
 #   - Not failed too many times (no merge-prep-failed label)
-#   - Gatekeeper check passed (on any PR commit — autofix pushes
-#     don't re-trigger Gatekeeper, so we check all commits)
 #
-# Merge-prep agent handles lint/format/type fixes itself, so those
-# are not required as preconditions.
+# No agent status checks required — Conceptual Review is advisory only,
+# and merge-prep handles lint/format/type fixes itself.
+# The human gates merge.
 #
 # See specs/pr-process.md for the full process documentation.
 
@@ -115,40 +114,13 @@ jobs:
               continue
             fi
 
-            # Check if PR has merge conflicts — dispatch merge-prep to resolve
+            # Dispatch for both mergeable and conflicting PRs.
+            # Merge-prep resolves conflicts when possible.
             MERGEABLE=$(gh pr view "$PR_NUM" --repo "$REPO" \
               --json mergeable --jq '.mergeable')
 
             if [ "$MERGEABLE" = "CONFLICTING" ]; then
               echo "  PR has merge conflicts — dispatching merge-prep to resolve"
-            else
-              # Check Gatekeeper passed on ANY commit in the PR.
-              # Autofix commits (from github-actions[bot]) don't re-trigger
-              # Gatekeeper, so the status may be on an earlier commit.
-              GATEKEEPER_OK=false
-              COMMIT_SHAS=$(gh pr view "$PR_NUM" --repo "$REPO" \
-                --json commits --jq '.commits[].oid')
-
-              for SHA in $COMMIT_SHAS; do
-                STATE=$(gh api "repos/$REPO/commits/$SHA/status" \
-                  --jq '.statuses[] | select(.context == "Gatekeeper") | .state' 2>/dev/null | head -1)
-
-                if [ -z "$STATE" ]; then
-                  STATE=$(gh api "repos/$REPO/commits/$SHA/check-runs" \
-                    --jq '.check_runs[] | select(.name == "Gatekeeper") | .conclusion' 2>/dev/null | head -1)
-                fi
-
-                if [ "$STATE" = "success" ]; then
-                  GATEKEEPER_OK=true
-                  echo "  Gatekeeper passed on $SHA"
-                  break
-                fi
-              done
-
-              if [ "$GATEKEEPER_OK" = false ]; then
-                echo "  SKIP: Gatekeeper has not passed on any commit"
-                continue
-              fi
             fi
 
             echo "  QUALIFIED: PR #$PR_NUM ready for merge-prep"
