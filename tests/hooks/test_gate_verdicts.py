@@ -42,6 +42,7 @@ from hooks.schemas import (
     GeminiHookOutput,
     HookContext,
 )
+
 from lib.gate_model import GateVerdict
 from lib.gate_types import GateState, GateStatus
 from lib.gates.registry import GateRegistry
@@ -740,59 +741,104 @@ class TestExhaustiveComplianceBypass:
 
 
 # ===========================================================================
-# GATE MODE ENV VAR OVERRIDES
+# GATE MODE ENV VAR OVERRIDES (parameterized across all gates and modes)
 # ===========================================================================
 
 
-class TestCustodietGateModeOverride:
-    """Verify CUSTODIET_GATE_MODE env var controls enforcement level."""
+def _make_gate_trigger_state(gate_name: str) -> SessionState:
+    """Create session state that will trigger the named gate's policy."""
+    state = SessionState.create("test-gate-mode")
+    # Ensure all four gates exist (SessionState.create only populates 3)
+    for g in ("hydration", "custodiet", "qa", "handover"):
+        if g not in state.gates:
+            state.gates[g] = GateState(status=GateStatus.OPEN)
+    # Start with all gates open to isolate the gate under test
+    for g in state.gates:
+        state.gates[g].status = GateStatus.OPEN
+        state.gates[g].ops_since_open = 0
 
-    def test_custodiet_warn_mode(self, router, monkeypatch):
-        """When CUSTODIET_GATE_MODE=warn, should warn instead of block."""
-        monkeypatch.setenv("CUSTODIET_GATE_MODE", "warn")
-        _reinit_gates_with_defaults()
-
-        state = SessionState.create("test-custodiet-mode")
-        state.gates["hydration"].status = GateStatus.OPEN
-        state.gates["custodiet"].ops_since_open = 55
-
-        ctx = HookContext(
-            session_id="test-custodiet-mode",
-            hook_event="PreToolUse",
-            tool_name="Edit",
-            tool_input={"file_path": "/f.py", "old_string": "a", "new_string": "b"},
-        )
-
-        result = router._dispatch_gates(ctx, state)
-
-        assert result is not None
-        assert result.verdict == GateVerdict.WARN, (
-            f"Expected WARN in warn mode, got {result.verdict.value}"
-        )
-
-
-class TestHydrationGateModeOverride:
-    """Verify HYDRATION_GATE_MODE env var controls enforcement level."""
-
-    def test_hydration_deny_mode(self, router, monkeypatch):
-        """When HYDRATION_GATE_MODE=deny, should deny instead of warn."""
-        monkeypatch.setenv("HYDRATION_GATE_MODE", "deny")
-        _reinit_gates_with_defaults()
-
-        state = SessionState.create("test-hydration-mode")
+    if gate_name == "hydration":
         state.gates["hydration"].status = GateStatus.CLOSED
         state.gates["hydration"].metrics["temp_path"] = "/tmp/h.md"
+    elif gate_name == "custodiet":
+        state.gates["custodiet"].ops_since_open = 55
+    elif gate_name == "qa":
+        state.gates["qa"].status = GateStatus.CLOSED
+        state.gates["qa"].metrics["temp_path"] = "/tmp/qa-review.md"
+    elif gate_name == "handover":
+        state.gates["handover"].status = GateStatus.CLOSED
 
-        ctx = HookContext(
-            session_id="test-hydration-mode",
+    return state
+
+
+def _make_gate_trigger_context(gate_name: str) -> HookContext:
+    """Create hook context that fires the named gate's policy."""
+    if gate_name in ("hydration", "custodiet"):
+        return HookContext(
+            session_id="test-gate-mode",
             hook_event="PreToolUse",
             tool_name="Edit",
             tool_input={"file_path": "/f.py", "old_string": "a", "new_string": "b"},
         )
+    else:  # qa, handover -- block on Stop
+        return HookContext(
+            session_id="test-gate-mode",
+            hook_event="Stop",
+            tool_name=None,
+            tool_input={},
+        )
+
+
+# Parameterized scenarios: (gate_name, env_var, mode, expected_verdict)
+# "block" and "deny" both map to GateVerdict.DENY in the engine (engine.py:334)
+_GATE_MODE_CASES = [
+    # Hydration: default=warn
+    ("hydration", "HYDRATION_GATE_MODE", "warn", GateVerdict.WARN),
+    ("hydration", "HYDRATION_GATE_MODE", "block", GateVerdict.DENY),
+    ("hydration", "HYDRATION_GATE_MODE", "deny", GateVerdict.DENY),
+    # Custodiet: default=block
+    ("custodiet", "CUSTODIET_GATE_MODE", "warn", GateVerdict.WARN),
+    ("custodiet", "CUSTODIET_GATE_MODE", "block", GateVerdict.DENY),
+    ("custodiet", "CUSTODIET_GATE_MODE", "deny", GateVerdict.DENY),
+    # QA: default=block
+    ("qa", "QA_GATE_MODE", "warn", GateVerdict.WARN),
+    ("qa", "QA_GATE_MODE", "block", GateVerdict.DENY),
+    ("qa", "QA_GATE_MODE", "deny", GateVerdict.DENY),
+    # Handover: default=warn
+    ("handover", "HANDOVER_GATE_MODE", "warn", GateVerdict.WARN),
+    ("handover", "HANDOVER_GATE_MODE", "block", GateVerdict.DENY),
+    ("handover", "HANDOVER_GATE_MODE", "deny", GateVerdict.DENY),
+]
+
+
+class TestGateModeEnvVarOverrides:
+    """Verify *_GATE_MODE env vars control enforcement for all gates.
+
+    Each gate's mode env var (e.g. HANDOVER_GATE_MODE=block) must produce
+    the correct verdict when the gate's policy fires. Tests every gate x
+    every valid mode value (warn, block, deny).
+    """
+
+    @pytest.mark.parametrize(
+        "gate_name,env_var,mode,expected_verdict",
+        _GATE_MODE_CASES,
+        ids=[f"{g}-{m}" for g, _, m, _ in _GATE_MODE_CASES],
+    )
+    def test_gate_mode_verdict(
+        self, router, monkeypatch, gate_name, env_var, mode, expected_verdict
+    ):
+        monkeypatch.setenv(env_var, mode)
+        _reinit_gates_with_defaults()
+
+        state = _make_gate_trigger_state(gate_name)
+        ctx = _make_gate_trigger_context(gate_name)
 
         result = router._dispatch_gates(ctx, state)
 
-        assert result is not None
-        assert result.verdict == GateVerdict.DENY, (
-            f"Expected DENY in deny mode, got {result.verdict.value}"
+        assert result is not None, (
+            f"{gate_name} gate with {env_var}={mode} should produce a verdict, got None (allow)"
+        )
+        assert result.verdict == expected_verdict, (
+            f"{gate_name} gate with {env_var}={mode}: "
+            f"expected {expected_verdict.value}, got {result.verdict.value}"
         )
