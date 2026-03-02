@@ -235,6 +235,26 @@ Default type filtering for Tasks view: `goal`, `project`, `epic`, `task`, `actio
 
 **Acceptance test:** Nic can visually trace a dependency chain through the graph without confusing it with the parent hierarchy.
 
+## How to Read Each Layout View
+
+The `aops graph` command computes four precomputed layout algorithms. Each answers a different planning question.
+
+### ForceAtlas2 — "Where does everything live?"
+
+Force-directed layout where connected nodes pull together and unconnected nodes push apart. You should see **project clusters** — groups of related tasks huddled together. The core shows your most interconnected work; the periphery shows isolated items. Use this to spot: which projects are tightly organized vs scattered, which areas are central to your work, and unexpected connections between projects.
+
+### Treemap — "How big is everything?"
+
+Each rectangle's area is proportional to a project's task count. Nested rectangles show hierarchy (project > epic > task). The biggest rectangles are where most of your work lives. Filtered to task-relevant types only (task, project, epic, goal, bug, action, subproject, feature, learn, milestone). Use this to spot: disproportionately large projects that might need decomposition, tiny projects that might be stale, and the relative weight of your commitments.
+
+### Circle Pack — "What's structured vs chaotic?"
+
+The central circles show well-organized hierarchies. The radiating arms show items without clear project structure — the "clutter in your mind." Use this to spot: projects growing too large (big circles), unstructured work that needs organizing (long arms), and the overall ratio of structured vs ad-hoc work.
+
+### Arc — "What needs my attention NOW?"
+
+Filtered to only ~200 active, important tasks ranked by downstream weight (how much they unblock). The 5 horizontal bands are node types (goals at top, actions at bottom). Arcs show dependencies. Use this to spot: bottleneck tasks that block many others (lots of arcs), high-priority items by position, and dependency chains that need unblocking.
+
 ## Known Bugs
 
 ### Completed tasks leaking through the reachable filter
