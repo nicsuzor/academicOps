@@ -760,7 +760,9 @@ def _make_gate_trigger_state(gate_name: str) -> SessionState:
         state.gates["hydration"].status = GateStatus.CLOSED
         state.gates["hydration"].metrics["temp_path"] = "/tmp/h.md"
     elif gate_name == "custodiet":
-        state.gates["custodiet"].ops_since_open = 55
+        # Use threshold+5 to guarantee firing regardless of CUSTODIET_TOOL_CALL_THRESHOLD env var
+        _threshold = sys.modules["hooks.gate_config"].CUSTODIET_TOOL_CALL_THRESHOLD
+        state.gates["custodiet"].ops_since_open = _threshold + 5
     elif gate_name == "qa":
         state.gates["qa"].status = GateStatus.CLOSED
         state.gates["qa"].metrics["temp_path"] = "/tmp/qa-review.md"
