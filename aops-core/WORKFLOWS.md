@@ -83,7 +83,7 @@ User request
 | "Process all X", "batch update"                | [[base-batch]]                              |
 | "Process emails", "check inbox"                | [[email-triage]]                            |
 | "Review grant", "reference letter"             | [[peer-review]] / [[reference-letter]]      |
-| "/commit", "/email" (skill name)               | [[simple-question]] + invoke skill directly |
+| "/pdf", "/daily" (skill name)                  | [[simple-question]] + invoke skill directly |
 
 ## Available Workflows
 
