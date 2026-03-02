@@ -1,22 +1,23 @@
 #!/usr/bin/env bash
 # sync-ruleset.sh
 #
-# Applies the API-compatible portions of .github/rulesets/pr-review-and-merge.yml
-# to the live GitHub ruleset.
+# Reads .github/rulesets/pr-review-and-merge.yml and applies the
+# API-compatible rules to the live GitHub ruleset.
 #
-# Rules NOT applied by this script (API doesn't support them):
-#   - merge_queue       → set via GitHub UI
-#   - code_quality      → set via GitHub UI (also: survives API updates if already set)
+# The YAML file is the single source of truth. This script converts it
+# to the JSON payload the GitHub API expects, skipping rule types that
+# the API doesn't support (merge_queue, copilot_code_review, etc.).
 #
 # Usage:
 #   ./scripts/sync-ruleset.sh [--dry-run]
 #
-# Requires: gh CLI, authenticated as repo admin
+# Requires: gh CLI (authenticated as repo admin), python3 with PyYAML
 
 set -euo pipefail
 
 REPO="${REPO:-nicsuzor/academicOps}"
 RULESET_ID="${RULESET_ID:-12723813}"
+RULESET_FILE="${RULESET_FILE:-.github/rulesets/pr-review-and-merge.yml}"
 DRY_RUN=false
 
 if [[ "${1:-}" == "--dry-run" ]]; then
@@ -24,78 +25,71 @@ if [[ "${1:-}" == "--dry-run" ]]; then
   echo "DRY RUN: showing payload without applying"
 fi
 
-echo "Syncing ruleset $RULESET_ID for $REPO..."
+if [[ ! -f "$RULESET_FILE" ]]; then
+  echo "ERROR: Ruleset file not found: $RULESET_FILE" >&2
+  exit 1
+fi
+
+# Rule types the API doesn't support — must be set via GitHub UI
+API_UNSUPPORTED=("merge_queue" "copilot_code_review" "copilot_code_review_analysis_tools")
+
+echo "Reading ruleset from $RULESET_FILE..."
 echo ""
 
-# Fetch current state to show diff
-CURRENT=$(gh api "repos/$REPO/rulesets/$RULESET_ID" 2>/dev/null)
-CURRENT_METHODS=$(echo "$CURRENT" | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-for r in d.get('rules', []):
-    if r['type'] == 'pull_request':
-        print('allowed_merge_methods:', r['parameters']['allowed_merge_methods'])
-" 2>/dev/null || echo "(could not parse)")
+# Convert YAML -> API JSON payload, stripping unsupported rule types
+PAYLOAD=$(python3 - "$RULESET_FILE" "${API_UNSUPPORTED[@]}" << 'PYTHON_EOF'
+import json, sys, yaml
 
-echo "Current state: $CURRENT_METHODS"
-echo ""
+ruleset_file = sys.argv[1]
+unsupported = set(sys.argv[2:])
 
-# Build the payload (API-compatible rules only)
-PAYLOAD=$(cat <<'PAYLOAD_EOF'
-{
-  "name": "PR Review and Merge rules",
-  "target": "branch",
-  "enforcement": "active",
-  "conditions": {
-    "ref_name": {
-      "exclude": [],
-      "include": ["~DEFAULT_BRANCH"]
-    }
-  },
-  "bypass_actors": [
-    {
-      "actor_id": 5,
-      "actor_type": "RepositoryRole",
-      "bypass_mode": "always"
-    }
-  ],
-  "rules": [
-    {"type": "deletion"},
-    {"type": "non_fast_forward"},
-    {
-      "type": "pull_request",
-      "parameters": {
-        "required_approving_review_count": 1,
-        "dismiss_stale_reviews_on_push": false,
-        "require_code_owner_review": false,
-        "require_last_push_approval": false,
-        "required_review_thread_resolution": false,
-        "allowed_merge_methods": ["rebase"]
-      }
-    },
-    {
-      "type": "required_status_checks",
-      "parameters": {
-        "strict_required_status_checks_policy": false,
-        "do_not_enforce_on_create": false,
-        "required_status_checks": [
-          {"context": "Lint"}
-        ]
-      }
-    },
-    {
-      "type": "code_quality",
-      "parameters": {
-        "severity": "errors"
-      }
-    }
-  ]
+with open(ruleset_file) as f:
+    data = yaml.safe_load(f)
+
+api_rules = [r for r in data.get("rules", []) if r["type"] not in unsupported]
+
+payload = {
+    "name": data["name"],
+    "target": data["target"],
+    "enforcement": data["enforcement"],
+    "conditions": data["conditions"],
+    "bypass_actors": data.get("bypass_actors", []),
+    "rules": api_rules,
 }
-PAYLOAD_EOF
+
+json.dump(payload, sys.stdout, indent=2)
+PYTHON_EOF
 )
 
 echo "Payload to apply:"
 echo "$PAYLOAD" | python3 -m json.tool
+echo ""
+
+# Show diff with current live state
+echo "Fetching current live ruleset for comparison..."
+if CURRENT=$(gh api "repos/$REPO/rulesets/$RULESET_ID" 2>/dev/null); then
+  python3 - "$CURRENT" "$PAYLOAD" << 'DIFF_EOF'
+import json, sys
+
+current = json.loads(sys.argv[1])
+desired = json.loads(sys.argv[2])
+
+fields = ["name", "enforcement", "conditions", "bypass_actors", "rules"]
+diffs = []
+for field in fields:
+    c = json.dumps(current.get(field), sort_keys=True)
+    d = json.dumps(desired.get(field), sort_keys=True)
+    if c != d:
+        diffs.append(field)
+
+if diffs:
+    print(f"Fields that differ: {', '.join(diffs)}")
+else:
+    print("No differences detected — live ruleset matches file.")
+DIFF_EOF
+else
+  echo "(could not fetch current ruleset for comparison)"
+fi
 echo ""
 
 if [[ "$DRY_RUN" == "true" ]]; then
@@ -108,20 +102,19 @@ RESULT=$(echo "$PAYLOAD" | gh api "repos/$REPO/rulesets/$RULESET_ID" \
   -X PUT \
   --input - 2>&1)
 
-echo "$RESULT" | python3 -c "
-import sys, json
-try:
-    d = json.load(sys.stdin)
-    print('Updated successfully at:', d.get('updated_at', '?'))
-    print('Rules now active:')
-    for r in d.get('rules', []):
-        print(f'  - {r[\"type\"]}')
-except:
-    print(sys.stdin.read())
-" || echo "$RESULT"
+python3 - "$RESULT" << 'RESULT_EOF' || echo "$RESULT"
+import json, sys
+d = json.loads(sys.argv[1])
+print("Updated successfully at:", d.get("updated_at", "?"))
+print("Rules now active:")
+for r in d.get("rules", []):
+    print(f"  - {r['type']}")
+RESULT_EOF
 
 echo ""
-echo "NOTE: code_quality and merge_queue rules must be verified in GitHub UI."
+echo "NOTE: Rules not configurable via API must be verified in GitHub UI:"
+echo "  - merge_queue"
+echo "  - copilot_code_review / code_quality"
 echo "  Settings → Rules → Rulesets → 'PR Review and Merge rules'"
 echo ""
 echo "Running alignment check..."
