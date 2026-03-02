@@ -81,7 +81,7 @@ Instead of a fixed set of review criteria, the reviewer selects from a registry 
 **Design principles:**
 
 - A given review selects **3-4 lenses**, not all of them. Breadth kills depth.
-- **Self-consistency is always on.** It was the single most productive lens in our dogfooding -- asking "does the spec demanding assumption tracking actually track its own assumptions?" yielded the most actionable finding across all 5 review passes.
+- **Self-consistency is always on.** It was the single most productive lens in our initial dogfooding (PR #648). However, subsequent dogfooding (issue #676) found that the _primary_ lens shifts by review pass: Pass 1's most productive lens was axiom compliance + strategic alignment ("should we build this?"), while Pass 2's was assumption hygiene ("can we build this correctly?"). Self-consistency remains always-on as a background check, but the primary lens should be selected based on the review's current phase.
 - Lenses compose by domain. Research reviews use methodological coherence + literature awareness + ethics. Spec reviews use strategic alignment + cross-reference consistency + scope discipline. The registry is extensible.
 
 ### Prioritised Critique Protocol
@@ -113,13 +113,15 @@ The reviewer records the override and stops re-raising it. This respects researc
 
 Three operating levels, selected by artifact complexity or user preference:
 
-| Level        | Lenses                                 | Review loop                           | When to use                                              |
-| ------------ | -------------------------------------- | ------------------------------------- | -------------------------------------------------------- |
-| **Light**    | 1-2 (always includes self-consistency) | Single pass, no iteration             | Quick checks, small changes, early exploration           |
-| **Standard** | 3-4                                    | Convergence-based                     | Most specs, plans, proposals                             |
-| **Thorough** | 4+ (consider multi-model review)       | Convergence-based + explicit sign-off | Foundational specs, grant applications, research designs |
+| Level        | Lenses                                 | Review loop                           | Venue                                | When to use                                              |
+| ------------ | -------------------------------------- | ------------------------------------- | ------------------------------------ | -------------------------------------------------------- |
+| **Light**    | 1-2 (always includes self-consistency) | Single pass, no iteration             | In-session or issue comment          | Quick checks, small changes, early exploration           |
+| **Standard** | 3-4                                    | Convergence-based                     | Pull request                         | Most specs, plans, proposals                             |
+| **Thorough** | 4+ (consider multi-model review)       | Convergence-based + explicit sign-off | Pull request with multiple reviewers | Foundational specs, grant applications, research designs |
 
 This solves the formality gradient tension: a researcher typing "I want to study X" gets the light version. Formal decomposition uses the thorough version. The system does not force ceremony on exploratory work.
+
+The venue column reflects a key insight from dogfooding (see Orchestration below): the review loop's orchestration problem -- who goes next, what's resolved, when to re-engage -- is already solved by GitHub's PR review system when the artifact is a document in a pull request.
 
 ### Why Two Agents, Not One
 
@@ -130,6 +132,32 @@ The decomposer/author and reviewer are separate roles for the same reason academ
 - **Adversarial improvement.** An agent cannot effectively critique its own output -- it defends its choices rather than probing them.
 
 This is the core thesis of the gist pattern. It remains an assumption: LLMs reviewing their own species' output may share systematic blind spots. The value must be validated empirically (see Assumptions, below).
+
+### Orchestration: Docs as Code
+
+The review workflow needs orchestration: who goes next, what concerns are open, when to re-engage after revisions. Rather than building custom state tracking, the workflow treats **reviewable artifacts as documents in pull requests** and delegates orchestration to GitHub's native review system.
+
+**The principle**: Knowledge work artifacts (specs, proposals, research plans, manuscripts) are documents. Documents live in the repository. Changes to documents are proposed via pull requests. Pull requests have a built-in review system with state tracking, notifications, and convergence detection. Therefore: the review loop's orchestration is already solved.
+
+**What GitHub provides natively**:
+
+- **State machine**: PR review status (changes requested → approved)
+- **Notifications**: Author is notified on review; reviewer is notified on new commits
+- **Decision ledger**: Review comments with resolved/unresolved threading
+- **Convergence detection**: All review threads resolved = ready to merge
+- **Audit trail**: Commit history shows how the artifact evolved in response to review
+- **Multi-reviewer support**: Multiple agents or humans can review the same PR with different lens selections
+
+**What this replaces**: No custom labels, no state objects, no trigger protocols, no notification infrastructure. The review workflow specifies _how to review_ (lenses, critique protocol, convergence rules). GitHub handles _when and where_.
+
+**Venue selection by formality** (see Formality Gradient above):
+
+- **Light**: In-session conversation or issue comment. No orchestration needed — the review is immediate and non-iterative.
+- **Standard/Thorough**: The artifact is a file in a pull request. The reviewer submits a PR review using the critique protocol. The author pushes commits addressing concerns. The reviewer re-reviews. Merge = approved. GitHub handles the entire async loop.
+
+**Issue vs. PR convention**: Issues describe problems. Pull requests propose solutions as documents. This separation keeps discussion (issue) distinct from the reviewable artifact (PR), and ensures the review system's machinery (diff view, line comments, review status) is available.
+
+> **Dogfood evidence**: This section was added after applying the review workflow to issue #676 (Polecat Governor). The review content worked well (lenses surfaced real concerns, prioritised critique kept feedback focused). But the async orchestration broke down: there was no trigger to resume the review after the author responded, state was tracked ad-hoc in a PKB task body, and pass sequencing was improvised. Moving the reviewable artifact into a PR would have given us all of this for free.
 
 ## Layer 2: Research Decomposition
 
@@ -214,14 +242,15 @@ The entry path is selected by the system based on input maturity, or explicitly 
 
 Practising what we preach:
 
-| #  | Assumption                                                                             | Confidence                   | Validation                                                            | If wrong                                                                             |
-| -- | -------------------------------------------------------------------------------------- | ---------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| S1 | A second LLM agent reviewing catches blind spots a single agent misses                 | Medium                       | Compare single-agent vs. two-agent decompositions on real projects    | Simplify to single-agent with self-review prompts                                    |
-| S2 | 3-4 lenses per review is the right number                                              | Medium (N=1 from dogfooding) | Track which lenses produce actionable feedback across reviews         | Adjust count; too few = reviews miss issues, too many = checklist problem            |
-| S3 | Self-consistency is universally the highest-value lens                                 | Medium (N=1)                 | Track which lens produces most actionable finding across reviews      | Drop the "always on" mandate if not consistently productive                          |
-| S4 | Convergence by resolution terminates in reasonable time                                | Medium                       | Monitor round counts in practice                                      | Lower the soft cap threshold; treat persistent non-convergence as a signal of unresolvable disagreement requiring human escalation and redesign of the escalation protocol (a cap already exists at line 102 — adjust it, don't add another) |
-| S5 | The general workflow (Layer 1) is more useful than the research-specific version alone | Low                          | Build Layer 1 first; see if it gets reused for spec/manuscript review | Collapse back to research-specific spec                                              |
-| S6 | Researchers will use formal decomposition for complex projects                         | Low                          | Track adoption; compare projects planned with/without the system      | Reduce friction or simplify; the system must feel like collaboration, not submission |
+| #  | Assumption                                                                                         | Confidence                                                                          | Validation                                                                                                      | If wrong                                                                                                                                                                                                                                     |
+| -- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| S1 | A second LLM agent reviewing catches blind spots a single agent misses                             | Medium                                                                              | Compare single-agent vs. two-agent decompositions on real projects                                              | Simplify to single-agent with self-review prompts                                                                                                                                                                                            |
+| S2 | 3-4 lenses per review is the right number                                                          | Medium (N=1 from dogfooding)                                                        | Track which lenses produce actionable feedback across reviews                                                   | Adjust count; too few = reviews miss issues, too many = checklist problem                                                                                                                                                                    |
+| S3 | Self-consistency is the highest-value _background_ lens; the _primary_ lens varies by review phase | Medium (N=2: PR #648 + issue #676)                                                  | Track which lens produces most actionable finding across reviews, stratified by pass                            | If no phase-dependence emerges, revert to fixed always-on lens                                                                                                                                                                               |
+| S4 | Convergence by resolution terminates in reasonable time                                            | Medium                                                                              | Monitor round counts in practice                                                                                | Lower the soft cap threshold; treat persistent non-convergence as a signal of unresolvable disagreement requiring human escalation and redesign of the escalation protocol (a cap already exists at line 102 — adjust it, don't add another) |
+| S5 | The general workflow (Layer 1) is more useful than the research-specific version alone             | Low                                                                                 | Build Layer 1 first; see if it gets reused for spec/manuscript review                                           | Collapse back to research-specific spec                                                                                                                                                                                                      |
+| S6 | Researchers will use formal decomposition for complex projects                                     | Low                                                                                 | Track adoption; compare projects planned with/without the system                                                | Reduce friction or simplify; the system must feel like collaboration, not submission                                                                                                                                                         |
+| S7 | GitHub PR review provides sufficient orchestration for the review loop                             | Medium (N=1: issue #676 dogfood identified the gap; PR-based review not yet tested) | Run a standard-level review entirely via PR review system; compare orchestration friction to issue-based review | Build lightweight custom orchestration (labels + state object) if PR review is too coarse for multi-pass conceptual review                                                                                                                   |
 
 ## Scope
 
@@ -230,12 +259,12 @@ Practising what we preach:
 - General conceptual review workflow with composable lenses (Layer 1)
 - Research project decomposition as domain application (Layer 2)
 - Integration with existing effectual planner and task graph
+- PR-based orchestration for standard/thorough reviews (docs-as-code convention)
 
 ### Out of scope
 
 - New MCP tools or task schema changes
 - Automated execution of decomposed tasks
-- GitHub-coordinated async mode (future work -- premature to design in detail)
 - Multi-model review orchestration (desirable for thorough level, but not required for v1)
 
 ## Open Questions
@@ -247,10 +276,10 @@ Practising what we preach:
 
 ## Future Work
 
-- **GitHub-coordinated mode**: For multi-author projects, the review loop could continue in GitHub issue comments. Premature to design until the local interactive mode is validated.
-- **Spec review workflow**: Layer 1 could be instantiated as a `spec-reviewer` agent, replacing the ad-hoc 5-pass review used on PR #648.
+- **Spec review workflow**: Layer 1 could be instantiated as a `spec-reviewer` agent, replacing the ad-hoc 5-pass review used on PR #648. With docs-as-code orchestration, this becomes a PR reviewer role alongside gatekeeper and custodiet.
 - **Manuscript pre-submission review**: Layer 1 with literature + methodology + attribution lenses, applied to draft manuscripts before journal submission.
 - **Lens effectiveness tracking**: Instrument which lenses produce the most actionable feedback, enabling evidence-based registry curation.
+- **Multi-pass sequencing conventions**: Dogfooding suggests that multi-pass reviews (thorough level) benefit from sequencing lenses by phase — alignment/strategic concerns first, feasibility/assumption concerns second. Formalise pass ordering conventions based on accumulated evidence.
 
 ## Related
 
