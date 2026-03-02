@@ -85,6 +85,7 @@ jobs:
         id: review
         uses: anthropics/claude-code-action@v1
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HEAD_SHA: ${{ steps.pr-info.outputs.head_sha }}
           GITHUB_RUN_ID: ${{ github.run_id }}
         with:

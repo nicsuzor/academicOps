@@ -221,12 +221,15 @@ jobs:
           MERGEABLE=$(gh pr view "$PR_NUMBER" --repo "$REPO" \
             --json mergeable --jq '.mergeable')
 
-          if [ "$MERGEABLE" = "CONFLICTING" ]; then
+          if [ "$MERGEABLE" = "MERGEABLE" ]; then
+            STATE="success"
+            DESC="Review complete — ready to merge"
+          elif [ "$MERGEABLE" = "CONFLICTING" ]; then
             STATE="failure"
             DESC="Review complete but PR has merge conflicts"
           else
-            STATE="success"
-            DESC="Review complete — ready to merge"
+            STATE="failure"
+            DESC="Review complete but mergeable state is unknown — retry shortly"
           fi
 
           gh api "repos/$REPO/statuses/$HEAD_SHA" \

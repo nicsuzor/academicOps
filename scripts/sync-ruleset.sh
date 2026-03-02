@@ -31,7 +31,7 @@ if [[ ! -f "$RULESET_FILE" ]]; then
 fi
 
 # Rule types the API doesn't support — must be set via GitHub UI
-API_UNSUPPORTED=("merge_queue" "copilot_code_review" "copilot_code_review_analysis_tools")
+API_UNSUPPORTED=("merge_queue" "copilot_code_review" "copilot_code_review_analysis_tools" "code_quality")
 
 echo "Reading ruleset from $RULESET_FILE..."
 echo ""
@@ -74,7 +74,7 @@ import json, sys
 current = json.loads(sys.argv[1])
 desired = json.loads(sys.argv[2])
 
-fields = ["name", "enforcement", "conditions", "bypass_actors", "rules"]
+fields = ["name", "target", "enforcement", "conditions", "bypass_actors", "rules"]
 diffs = []
 for field in fields:
     c = json.dumps(current.get(field), sort_keys=True)
