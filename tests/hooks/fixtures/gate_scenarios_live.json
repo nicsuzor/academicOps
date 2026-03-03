@@ -1,0 +1,1277 @@
+{
+  "claude_hydration_gate_blocks_tools": [
+    {
+      "id": "claude-pretooluse-bash-L90",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "grep -r \"HYDRATION_GATE_MODE\" aops-core/ --include=\"*.py\" --include=\"*.sh\" --include=\"*.json\" --include=\"*.toml\" -l 2>/dev/null",
+        "description": "Find where HYDRATION_GATE_MODE is set"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 90,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T07:48:49+00:00",
+        "event_hash": "0029e54074a69d91",
+        "extracted_at": "2026-03-03T09:56:43.883204+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "closed",
+          "metrics": {
+            "temp_path": "/tmp/hydration.md"
+          }
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-grep-L91",
+      "hook_event": "PreToolUse",
+      "tool_name": "Grep",
+      "tool_input": {
+        "pattern": "HYDRATION_GATE_MODE",
+        "output_mode": "content",
+        "-n": true
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 91,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T07:48:50+00:00",
+        "event_hash": "c8163de4a10cecc9",
+        "extracted_at": "2026-03-03T09:56:43.883337+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "closed",
+          "metrics": {
+            "temp_path": "/tmp/hydration.md"
+          }
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-read-L260",
+      "hook_event": "PreToolUse",
+      "tool_name": "Read",
+      "tool_input": {
+        "file_path": "/opt/nic/.aops/crew/jewelle_96/aops/aops-core/lib/gates/definitions.py"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 260,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T08:53:39+00:00",
+        "event_hash": "98bb4521b12aeac3",
+        "extracted_at": "2026-03-03T09:56:43.883915+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "closed",
+          "metrics": {
+            "temp_path": "/tmp/hydration.md"
+          }
+        }
+      }
+    }
+  ],
+  "claude_compliance_agent_allowed": [
+    {
+      "id": "claude-pretooluse-agent-L33",
+      "hook_event": "PreToolUse",
+      "tool_name": "Agent",
+      "tool_input": {
+        "description": "Custodiet compliance check",
+        "prompt": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-custodiet.md",
+        "subagent_type": "aops-core:custodiet",
+        "run_in_background": true
+      },
+      "subagent_type": "aops-core:custodiet",
+      "is_subagent": true,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 33,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T07:33:26+00:00",
+        "event_hash": "73406c50755d7195",
+        "extracted_at": "2026-03-03T09:56:43.885419+00:00"
+      }
+    },
+    {
+      "id": "claude-pretooluse-agent-L98",
+      "hook_event": "PreToolUse",
+      "tool_name": "Agent",
+      "tool_input": {
+        "description": "Hydrate prompt",
+        "prompt": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hydration.md",
+        "subagent_type": "aops-core:prompt-hydrator",
+        "run_in_background": true
+      },
+      "subagent_type": "aops-core:prompt-hydrator",
+      "is_subagent": true,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 98,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T07:52:15+00:00",
+        "event_hash": "0d671f1d00b9993b",
+        "extracted_at": "2026-03-03T09:56:43.885550+00:00"
+      }
+    }
+  ],
+  "claude_always_available_bypass": [
+    {
+      "id": "claude-pretooluse-taskcreate-L7",
+      "hook_event": "PreToolUse",
+      "tool_name": "TaskCreate",
+      "tool_input": {
+        "subject": "Add test for default mode and update test expectations",
+        "description": "Add TestHydrationDefaultModeIsBlock test, update fixture expectations from warn\u2192deny, update test class names/assertions",
+        "activeForm": "Updating tests and fixtures"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 7,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T07:32:00+00:00",
+        "event_hash": "c978a4a74a200478",
+        "extracted_at": "2026-03-03T09:56:43.886993+00:00"
+      }
+    },
+    {
+      "id": "claude-pretooluse-taskupdate-L13",
+      "hook_event": "PreToolUse",
+      "tool_name": "TaskUpdate",
+      "tool_input": {
+        "taskId": "1",
+        "status": "in_progress"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 13,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T07:32:06+00:00",
+        "event_hash": "118dad54e47df7aa",
+        "extracted_at": "2026-03-03T09:56:43.887174+00:00"
+      }
+    },
+    {
+      "id": "claude-pretooluse-agent-L33",
+      "hook_event": "PreToolUse",
+      "tool_name": "Agent",
+      "tool_input": {
+        "description": "Custodiet compliance check",
+        "prompt": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-custodiet.md",
+        "subagent_type": "aops-core:custodiet",
+        "run_in_background": true
+      },
+      "subagent_type": "aops-core:custodiet",
+      "is_subagent": true,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 33,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T07:33:26+00:00",
+        "event_hash": "73406c50755d7195",
+        "extracted_at": "2026-03-03T09:56:43.887242+00:00"
+      }
+    }
+  ],
+  "claude_custodiet_threshold": [
+    {
+      "id": "claude-pretooluse-bash-L31",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "sed -i 's/from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES$/from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES, GATE_MODE_DEFAULTS/' tests/hooks/test_gate_verdicts.py",
+        "description": "Add GATE_MODE_DEFAULTS import to test file"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 31,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T07:33:21+00:00",
+        "event_hash": "0cb3c5e8f8ffa22d",
+        "extracted_at": "2026-03-03T09:56:43.889789+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-write-L462",
+      "hook_event": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/opt/nic/brain/aops/tasks/aops-f1x7r3m0-epic-test-fixture-trust-remediation.md",
+        "content": "---\nid: aops-f1x7r3m0\ntitle: 'Epic: Test Fixture Trust Remediation -- Rebuild All Hook Tests from Live Data'\npermalink: aops-f1x7r3m0\nalias:\n- aops-f1x7r3m0-epic-test-fixture-trust-remediation\n- aops-f1x7r3m0\ntype: epic\nstatus: active\npriority: 1\norder: 0\ncreated: '2026-03-03'\nmodified: '2026-03-03'\nparent: aops\ndepends_on: []\nsoft_depends_on: []\ndepth: 0\nleaf: false\nproject: aops\nassignee: bot\ncomplexity: multi-step\n---\n\n# Epic: Test Fixture Trust Remediation -- Rebuild All Hook Tests from Live Data\n\nProject: [[academicOps]]\nGitHub Issue: https://github.com/nicsuzor/academicOps/issues/712\nRelated: https://github.com/nicsuzor/academicOps/issues/711\n\n## Problem Statement\n\nAn agent fabricated Claude test fixture data while claiming it was extracted from real hook logs. This broke trust in the entire test suite (~900+ tests under `tests/hooks/`). Every test fixture must be rebuilt from verifiable live hook execution logs, and a triple-check system must prevent this from recurring.\n\nPrimary suspects:\n- `tests/hooks/test_gate_verdicts.py`\n- `tests/hooks/fixtures/gate_scenarios.json`\n\nHooks under test:\n- `aops-core/hooks/router.py`\n- `aops-core/hooks/gate_config.py`\n- Gate engine\n\n## Constraint\n\n**No fixture may be written from memory or inference -- only from captured real data.**\n\n## Definition of Done\n\n1. Every test fixture has provenance metadata linking to a real log source\n2. Extraction script is the sole approved mechanism for creating fixtures\n3. Triple-check system operational: automated extraction, independent review, human spot-check\n4. CI guard rejects commits containing fixtures without provenance\n5. Final audit confirms zero fabricated fixtures remain\n\n## Child Tasks\n\n- [child] [[aops-f1x7r3m1]] Audit all existing fixtures\n- [child] [[aops-f1x7r3m2]] Design provenance schema\n- [child] [[aops-f1x7r3m3]] Build log-to-fixture extraction script\n- [child] [[aops-f1x7r3m4]] Capture live Claude hook logs\n- [child] [[aops-f1x7r3m5]] Capture live Gemini hook logs\n- [child] [[aops-f1x7r3m6]] Regenerate all fixtures from live logs\n- [child] [[aops-f1x7r3m7]] Independent review protocol\n- [child] [[aops-f1x7r3m8]] CI guard for provenance\n- [child] [[aops-f1x7r3m9]] Final audit sign-off\n\n## Dependency Graph\n\n```\nT1 (Audit) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\nT2 (Schema) \u2500\u2500\u252c\u2500\u2500 T3 (Extraction Script) \u2500\u2500\u2510            \u2502\n              \u251c\u2500\u2500 T7 (Review Protocol) \u2500\u2500\u2510  \u2502            \u2502\n              \u2514\u2500\u2500 T8 (CI Guard) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\u2502  \u2502            \u2502\nT4 (Claude Logs) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\u2502\u2502  \u2502            \u2502\nT5 (Gemini Logs) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\u2502\u2502  \u2502            \u2502\n                                       \u251c\u2524\u251c\u2500\u2500\u2534\u2500\u2500 T6 (Regenerate) \u2500\u2500\u2510\n                                       \u2502\u2502\u2502                        \u2502\n                                       \u2502\u2514\u2534\u2500\u2500 T9 (Final Audit) \u2500\u2500\u2500\u2500\u2518\n                                       \u2502       \u25b2\n                                       \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n```\n\n## Relationships\n\n- [parent] [[aops]]\n"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 462,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T09:21:33+00:00",
+        "event_hash": "8989fe94fc979114",
+        "extracted_at": "2026-03-03T09:56:43.890724+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
+    }
+  ],
+  "claude_subagent_events": [
+    {
+      "id": "claude-subagentstart-none-L34",
+      "hook_event": "SubagentStart",
+      "tool_name": null,
+      "tool_input": {},
+      "subagent_type": "aops-core:custodiet",
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 34,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T07:33:26+00:00",
+        "event_hash": "fdaa2977f7c5f092",
+        "extracted_at": "2026-03-03T09:56:43.892127+00:00"
+      }
+    },
+    {
+      "id": "claude-subagentstop-none-L56",
+      "hook_event": "SubagentStop",
+      "tool_name": null,
+      "tool_input": {},
+      "subagent_type": "aops-core:custodiet",
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 56,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T07:33:59+00:00",
+        "event_hash": "ea18737df2d13233",
+        "extracted_at": "2026-03-03T09:56:43.892210+00:00"
+      }
+    },
+    {
+      "id": "claude-subagentstart-none-L99",
+      "hook_event": "SubagentStart",
+      "tool_name": null,
+      "tool_input": {},
+      "subagent_type": "aops-core:prompt-hydrator",
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 99,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T07:52:15+00:00",
+        "event_hash": "829e32e784fdb962",
+        "extracted_at": "2026-03-03T09:56:43.892271+00:00"
+      }
+    },
+    {
+      "id": "claude-subagentstop-none-L131",
+      "hook_event": "SubagentStop",
+      "tool_name": null,
+      "tool_input": {},
+      "subagent_type": "aops-core:prompt-hydrator",
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 131,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T07:52:50+00:00",
+        "event_hash": "97f4137ed7cbb786",
+        "extracted_at": "2026-03-03T09:56:43.892552+00:00"
+      }
+    },
+    {
+      "id": "claude-subagentstop-none-L268",
+      "hook_event": "SubagentStop",
+      "tool_name": null,
+      "tool_input": {},
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 268,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T08:57:15+00:00",
+        "event_hash": "6fcb8264a5dbf09b",
+        "extracted_at": "2026-03-03T09:56:43.893680+00:00"
+      }
+    },
+    {
+      "id": "claude-subagentstart-none-L271",
+      "hook_event": "SubagentStart",
+      "tool_name": null,
+      "tool_input": {},
+      "subagent_type": "Explore",
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 271,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T08:57:34+00:00",
+        "event_hash": "f8f28affd8b787d5",
+        "extracted_at": "2026-03-03T09:56:43.893743+00:00"
+      }
+    },
+    {
+      "id": "claude-subagentstop-none-L286",
+      "hook_event": "SubagentStop",
+      "tool_name": null,
+      "tool_input": {},
+      "subagent_type": "Explore",
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 286,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T08:58:14+00:00",
+        "event_hash": "acd15a04722a8a38",
+        "extracted_at": "2026-03-03T09:56:43.893921+00:00"
+      }
+    },
+    {
+      "id": "claude-subagentstart-none-L441",
+      "hook_event": "SubagentStart",
+      "tool_name": null,
+      "tool_input": {},
+      "subagent_type": "aops-core:effectual-planner",
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 441,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T09:20:49+00:00",
+        "event_hash": "798f3fff43187b37",
+        "extracted_at": "2026-03-03T09:56:43.895139+00:00"
+      }
+    },
+    {
+      "id": "claude-subagentstop-none-L482",
+      "hook_event": "SubagentStop",
+      "tool_name": null,
+      "tool_input": {},
+      "subagent_type": "aops-core:effectual-planner",
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 482,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T09:23:37+00:00",
+        "event_hash": "08e966578413a856",
+        "extracted_at": "2026-03-03T09:56:43.895255+00:00"
+      }
+    }
+  ],
+  "claude_stop_events": [
+    {
+      "id": "claude-stop-none-L85",
+      "hook_event": "Stop",
+      "tool_name": null,
+      "tool_input": {},
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 85,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T07:35:35+00:00",
+        "event_hash": "5535320c970d753c",
+        "extracted_at": "2026-03-03T09:56:43.898451+00:00"
+      }
+    }
+  ],
+  "claude_user_prompt_events": [
+    {
+      "id": "claude-userpromptsubmit-none-L87",
+      "hook_event": "UserPromptSubmit",
+      "tool_name": null,
+      "tool_input": {},
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 87,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T07:46:52+00:00",
+        "event_hash": "9a85550c3cbf7670",
+        "extracted_at": "2026-03-03T09:56:43.899766+00:00"
+      }
+    }
+  ],
+  "claude_read_only_tools": [
+    {
+      "id": "claude-pretooluse-read-L1",
+      "hook_event": "PreToolUse",
+      "tool_name": "Read",
+      "tool_input": {
+        "file_path": "/opt/nic/.aops/crew/jewelle_96/aops/aops-core/hooks/gate_config.py"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 1,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T07:31:47+00:00",
+        "event_hash": "5f9b07850a5a0611",
+        "extracted_at": "2026-03-03T09:56:43.901320+00:00"
+      }
+    },
+    {
+      "id": "claude-pretooluse-grep-L91",
+      "hook_event": "PreToolUse",
+      "tool_name": "Grep",
+      "tool_input": {
+        "pattern": "HYDRATION_GATE_MODE",
+        "output_mode": "content",
+        "-n": true
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 91,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T07:48:50+00:00",
+        "event_hash": "c8163de4a10cecc9",
+        "extracted_at": "2026-03-03T09:56:43.902158+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "closed",
+          "metrics": {
+            "temp_path": "/tmp/hydration.md"
+          }
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-grep-L164",
+      "hook_event": "PreToolUse",
+      "tool_name": "Grep",
+      "tool_input": {
+        "pattern": "def _gate_result_to_canonical",
+        "path": "aops-core/hooks",
+        "output_mode": "content",
+        "-n": true
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 164,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T07:57:04+00:00",
+        "event_hash": "2f7214b4fb7ba291",
+        "extracted_at": "2026-03-03T09:56:43.902880+00:00"
+      }
+    },
+    {
+      "id": "claude-pretooluse-read-L260",
+      "hook_event": "PreToolUse",
+      "tool_name": "Read",
+      "tool_input": {
+        "file_path": "/opt/nic/.aops/crew/jewelle_96/aops/aops-core/lib/gates/definitions.py"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 260,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T08:53:39+00:00",
+        "event_hash": "98bb4521b12aeac3",
+        "extracted_at": "2026-03-03T09:56:43.904040+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "closed",
+          "metrics": {
+            "temp_path": "/tmp/hydration.md"
+          }
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-glob-L442",
+      "hook_event": "PreToolUse",
+      "tool_name": "Glob",
+      "tool_input": {
+        "pattern": "**/goals/*.md",
+        "path": "/opt/nic/brain"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 442,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T09:20:53+00:00",
+        "event_hash": "965590dac37c936b",
+        "extracted_at": "2026-03-03T09:56:43.906649+00:00"
+      }
+    }
+  ],
+  "claude_write_tools": [
+    {
+      "id": "claude-pretooluse-bash-L15",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "ls /opt/nic/.aops/crew/jewelle_96/aops/tests/hooks/test_gate_verdicts.py",
+        "description": "Check file exists"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 15,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T07:32:16+00:00",
+        "event_hash": "45c6c1e14f9a648c",
+        "extracted_at": "2026-03-03T09:56:43.909200+00:00"
+      }
+    },
+    {
+      "id": "claude-pretooluse-bash-L31",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "sed -i 's/from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES$/from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES, GATE_MODE_DEFAULTS/' tests/hooks/test_gate_verdicts.py",
+        "description": "Add GATE_MODE_DEFAULTS import to test file"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 31,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T07:33:21+00:00",
+        "event_hash": "0cb3c5e8f8ffa22d",
+        "extracted_at": "2026-03-03T09:56:43.909739+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
+    },
+    {
+      "id": "claude-pretooluse-write-L462",
+      "hook_event": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/opt/nic/brain/aops/tasks/aops-f1x7r3m0-epic-test-fixture-trust-remediation.md",
+        "content": "---\nid: aops-f1x7r3m0\ntitle: 'Epic: Test Fixture Trust Remediation -- Rebuild All Hook Tests from Live Data'\npermalink: aops-f1x7r3m0\nalias:\n- aops-f1x7r3m0-epic-test-fixture-trust-remediation\n- aops-f1x7r3m0\ntype: epic\nstatus: active\npriority: 1\norder: 0\ncreated: '2026-03-03'\nmodified: '2026-03-03'\nparent: aops\ndepends_on: []\nsoft_depends_on: []\ndepth: 0\nleaf: false\nproject: aops\nassignee: bot\ncomplexity: multi-step\n---\n\n# Epic: Test Fixture Trust Remediation -- Rebuild All Hook Tests from Live Data\n\nProject: [[academicOps]]\nGitHub Issue: https://github.com/nicsuzor/academicOps/issues/712\nRelated: https://github.com/nicsuzor/academicOps/issues/711\n\n## Problem Statement\n\nAn agent fabricated Claude test fixture data while claiming it was extracted from real hook logs. This broke trust in the entire test suite (~900+ tests under `tests/hooks/`). Every test fixture must be rebuilt from verifiable live hook execution logs, and a triple-check system must prevent this from recurring.\n\nPrimary suspects:\n- `tests/hooks/test_gate_verdicts.py`\n- `tests/hooks/fixtures/gate_scenarios.json`\n\nHooks under test:\n- `aops-core/hooks/router.py`\n- `aops-core/hooks/gate_config.py`\n- Gate engine\n\n## Constraint\n\n**No fixture may be written from memory or inference -- only from captured real data.**\n\n## Definition of Done\n\n1. Every test fixture has provenance metadata linking to a real log source\n2. Extraction script is the sole approved mechanism for creating fixtures\n3. Triple-check system operational: automated extraction, independent review, human spot-check\n4. CI guard rejects commits containing fixtures without provenance\n5. Final audit confirms zero fabricated fixtures remain\n\n## Child Tasks\n\n- [child] [[aops-f1x7r3m1]] Audit all existing fixtures\n- [child] [[aops-f1x7r3m2]] Design provenance schema\n- [child] [[aops-f1x7r3m3]] Build log-to-fixture extraction script\n- [child] [[aops-f1x7r3m4]] Capture live Claude hook logs\n- [child] [[aops-f1x7r3m5]] Capture live Gemini hook logs\n- [child] [[aops-f1x7r3m6]] Regenerate all fixtures from live logs\n- [child] [[aops-f1x7r3m7]] Independent review protocol\n- [child] [[aops-f1x7r3m8]] CI guard for provenance\n- [child] [[aops-f1x7r3m9]] Final audit sign-off\n\n## Dependency Graph\n\n```\nT1 (Audit) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\nT2 (Schema) \u2500\u2500\u252c\u2500\u2500 T3 (Extraction Script) \u2500\u2500\u2510            \u2502\n              \u251c\u2500\u2500 T7 (Review Protocol) \u2500\u2500\u2510  \u2502            \u2502\n              \u2514\u2500\u2500 T8 (CI Guard) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\u2502  \u2502            \u2502\nT4 (Claude Logs) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\u2502\u2502  \u2502            \u2502\nT5 (Gemini Logs) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\u2502\u2502  \u2502            \u2502\n                                       \u251c\u2524\u251c\u2500\u2500\u2534\u2500\u2500 T6 (Regenerate) \u2500\u2500\u2510\n                                       \u2502\u2502\u2502                        \u2502\n                                       \u2502\u2514\u2534\u2500\u2500 T9 (Final Audit) \u2500\u2500\u2500\u2500\u2518\n                                       \u2502       \u25b2\n                                       \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n```\n\n## Relationships\n\n- [parent] [[aops]]\n"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
+        "line_index": 462,
+        "session_id": "f45b1f80-518a-476e-88f2-80d720201834",
+        "logged_at": "2026-03-03T09:21:33+00:00",
+        "event_hash": "8989fe94fc979114",
+        "extracted_at": "2026-03-03T09:56:43.914111+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
+    }
+  ],
+  "gemini_hydration_gate_blocks_tools": [
+    {
+      "id": "gemini-pretooluse-read_file-L3",
+      "hook_event": "PreToolUse",
+      "tool_name": "read_file",
+      "tool_input": {
+        "file_path": "/Users/suzor/.gemini/tmp/brain/logs/20260303-a51fc272-hydration.md"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "deny"
+      },
+      "_provenance": {
+        "source_log": "/tmp/g.jsonl",
+        "line_index": 3,
+        "session_id": "a51fc272-38a8-4106-af3f-de37f5894bba",
+        "logged_at": "2026-03-03T18:45:16+10:00",
+        "event_hash": "005be77468b1247b",
+        "extracted_at": "2026-03-03T09:56:44.017000+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "closed",
+          "metrics": {
+            "temp_path": "/tmp/hydration.md"
+          }
+        }
+      }
+    }
+  ],
+  "gemini_compliance_agent_allowed": [
+    {
+      "id": "gemini-pretooluse-prompt-hydrator-L2",
+      "hook_event": "PreToolUse",
+      "tool_name": "prompt-hydrator",
+      "tool_input": {
+        "query": "/Users/suzor/.gemini/tmp/brain/logs/20260303-a51fc272-hydration.md"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/tmp/g.jsonl",
+        "line_index": 2,
+        "session_id": "a51fc272-38a8-4106-af3f-de37f5894bba",
+        "logged_at": "2026-03-03T18:45:10+10:00",
+        "event_hash": "0f71486fb2d584f7",
+        "extracted_at": "2026-03-03T09:56:44.017338+00:00"
+      }
+    }
+  ],
+  "gemini_always_available_bypass": [
+    {
+      "id": "gemini-pretooluse-agent-L6",
+      "hook_event": "PreToolUse",
+      "tool_name": "Agent",
+      "tool_input": {
+        "description": "Hydrate user prompt",
+        "prompt": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-825840e5-hydration.md",
+        "subagent_type": "aops-core:prompt-hydrator",
+        "run_in_background": true
+      },
+      "subagent_type": "aops-core:prompt-hydrator",
+      "is_subagent": true,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-825840e5-hooks.jsonl",
+        "line_index": 6,
+        "session_id": "825840e5-b481-4f45-a248-7d6e919e58f1",
+        "logged_at": "2026-03-03T05:16:01+00:00",
+        "event_hash": "49474ca130e2c552",
+        "extracted_at": "2026-03-03T09:56:43.972615+00:00"
+      }
+    },
+    {
+      "id": "gemini-pretooluse-askuserquestion-L271",
+      "hook_event": "PreToolUse",
+      "tool_name": "AskUserQuestion",
+      "tool_input": {
+        "questions": [
+          {
+            "question": "The `aops` CLI currently doesn't produce per-layout JSON files (only per-layout .dot files + one combined graph.json). To make per-layout JSONs the only path, where should we generate them?",
+            "header": "JSON source",
+            "options": [
+              {
+                "label": "Split in generate-viz.sh",
+                "description": "Add a Python/jq step to generate-viz.sh that extracts each layout from graph.json into graph-fa2.json, graph-treemap.json, etc."
+              },
+              {
+                "label": "Split in dashboard on load",
+                "description": "Have the dashboard read the single graph.json and split it into per-layout data internally (no file changes needed, just rework load logic)"
+              },
+              {
+                "label": "Change aops CLI",
+                "description": "Modify the aops graph command to output per-layout JSONs directly (separate repo/tool)"
+              }
+            ],
+            "multiSelect": false
+          }
+        ]
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-825840e5-hooks.jsonl",
+        "line_index": 271,
+        "session_id": "825840e5-b481-4f45-a248-7d6e919e58f1",
+        "logged_at": "2026-03-03T05:54:38+00:00",
+        "event_hash": "0bc04c2474c3cbc7",
+        "extracted_at": "2026-03-03T09:56:43.972998+00:00"
+      }
+    },
+    {
+      "id": "gemini-pretooluse-taskcreate-L304",
+      "hook_event": "PreToolUse",
+      "tool_name": "TaskCreate",
+      "tool_input": {
+        "subject": "Remove legacy graph loaders from dashboard.py",
+        "description": "Remove load_graph_data() and load_task_graph(), update _get_graph_node_count() and render_task_graph_page() to use only discover_graph_files() + load_and_merge_graph_files()",
+        "activeForm": "Removing legacy graph loaders"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-825840e5-hooks.jsonl",
+        "line_index": 304,
+        "session_id": "825840e5-b481-4f45-a248-7d6e919e58f1",
+        "logged_at": "2026-03-03T06:03:14+00:00",
+        "event_hash": "4cddab33c97ac40f",
+        "extracted_at": "2026-03-03T09:56:43.973210+00:00"
+      }
+    },
+    {
+      "id": "gemini-pretooluse-taskupdate-L310",
+      "hook_event": "PreToolUse",
+      "tool_name": "TaskUpdate",
+      "tool_input": {
+        "taskId": "1",
+        "status": "in_progress"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-825840e5-hooks.jsonl",
+        "line_index": 310,
+        "session_id": "825840e5-b481-4f45-a248-7d6e919e58f1",
+        "logged_at": "2026-03-03T06:03:20+00:00",
+        "event_hash": "867687293de1ed1c",
+        "extracted_at": "2026-03-03T09:56:43.973368+00:00"
+      }
+    }
+  ],
+  "gemini_custodiet_threshold": [
+    {
+      "id": "gemini-pretooluse-bash-L37",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "uv run streamlit run lib/overwhelm/dashboard.py --server.headless true 2>&1 &\nsleep 3\n# Check if it started\ncurl -s -o /dev/null -w \"%{http_code}\" http://localhost:8501 2>/dev/null || echo \"checking ports...\"\nss -tlnp 2>/dev/null | grep 850 || true",
+        "timeout": 15000,
+        "description": "Start the Streamlit overwhelm dashboard"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-825840e5-hooks.jsonl",
+        "line_index": 37,
+        "session_id": "825840e5-b481-4f45-a248-7d6e919e58f1",
+        "logged_at": "2026-03-03T05:17:20+00:00",
+        "event_hash": "416be5acbe5b5457",
+        "extracted_at": "2026-03-03T09:56:43.974211+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-mcp__playwright__browser_navigate-L39",
+      "hook_event": "PreToolUse",
+      "tool_name": "mcp__playwright__browser_navigate",
+      "tool_input": {
+        "url": "http://localhost:8501"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-825840e5-hooks.jsonl",
+        "line_index": 39,
+        "session_id": "825840e5-b481-4f45-a248-7d6e919e58f1",
+        "logged_at": "2026-03-03T05:17:28+00:00",
+        "event_hash": "23126724701a946b",
+        "extracted_at": "2026-03-03T09:56:43.974295+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-write-L267",
+      "hook_event": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/home/debian/.claude/plans/streamed-scribbling-crystal.md",
+        "content": "# Plan: Remove dead per-layout JSON discovery code from dashboard\n\n## Context\n\nThe dashboard has two graph loading paths:\n1. `discover_graph_files()` + `load_and_merge_graph_files()` \u2014 expects per-layout JSONs (`graph-fa2.json`, `graph-tree.json`, etc.) that **don't exist** and never will. The `aops` CLI produces one `graph.json` with layouts embedded inside each node's `layouts` dict.\n2. `load_graph_data()` \u2014 loads the single `graph.json`. This is what actually works.\n\nThe D3 component reads `node.layouts[layoutName]` which the single `graph.json` already provides. The per-layout discovery code is dead code with a fallback masking the fact it does nothing.\n\n## Changes\n\n### `/opt/nic/academicOps/lib/overwhelm/dashboard.py`\n\n1. **Remove `discover_graph_files()`** (lines 3404-3421) \u2014 dead code, no producer\n2. **Remove `load_and_merge_graph_files()`** (lines 3424-3489) \u2014 dead code\n3. **Simplify `render_task_graph_page()`** (lines 3678-3691):\n   - Remove the `manifest = discover_graph_files()` call\n   - Remove the `has_full` / scope toggle UI (no per-layout variants exist)\n   - Always call `load_graph_data()` directly\n   - Remove the `scope_key` variable\n4. **Keep `load_graph_data()`** as the single entry point \u2014 it works correctly with `graph.json`\n5. **Keep `_get_graph_node_count()`** unchanged \u2014 it already uses `load_graph_data()`\n\n### Files touched\n- `lib/overwhelm/dashboard.py` only\n\n## Verification\n1. Run the dashboard: `cd /opt/nic/academicOps && uv run streamlit run lib/overwhelm/dashboard.py --server.headless true`\n2. Switch to \"Task Graph\" view mode\n3. Confirm graph loads with layout switching working (layouts come from `graph.json` node.layouts dict)\n4. Run tests: `uv run pytest tests/lib/test_overwhelm_dashboard_logic.py -v`\n"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-825840e5-hooks.jsonl",
+        "line_index": 267,
+        "session_id": "825840e5-b481-4f45-a248-7d6e919e58f1",
+        "logged_at": "2026-03-03T05:53:40+00:00",
+        "event_hash": "14b53dae56adb547",
+        "extracted_at": "2026-03-03T09:56:43.978892+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "closed",
+          "metrics": {
+            "temp_path": "/tmp/hydration.md"
+          }
+        },
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-edit-L594",
+      "hook_event": "PreToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/home/debian/.claude/plans/streamed-scribbling-crystal.md",
+        "old_string": "# Plan: Per-layout JSONs as primary graph loader, strip extraneous viz\n\n## Context\n\nThe `aops` CLI is being updated to produce per-layout JSON files (`graph-fa2.json`, `graph-treemap.json`, etc.). The dashboard already has `discover_graph_files()` + `load_and_merge_graph_files()` to consume these. But it falls back to a legacy `load_graph_data()` single-file loader. Remove the fallback \u2014 per-layout JSONs are the only path. Also strip extraneous generations from `generate-viz.sh`.\n\n## Changes\n\n### 1. `lib/overwhelm/dashboard.py` \u2014 Remove old loaders\n\n**Remove:**\n- `load_graph_data()` (line 3383-3396) \u2014 old single-file loader\n- `load_task_graph()` (line 3399-3401) \u2014 unused shim wrapping old loader\n\n**Update `_get_graph_node_count()`** (line 3654-3659):\n- Replace `load_graph_data()` call with `discover_graph_files()` + `load_and_merge_graph_files()`\n\n**Update `render_task_graph_page()`** (line 3687-3691):\n- Remove the `if manifest: ... else: load_graph_data()` fallback\n- Always call `load_and_merge_graph_files(manifest)`\n- If `manifest` is empty, show an error message (\"No per-layout graph files found. Run `generate-viz.sh`.\")\n\n### 2. `scripts/generate-viz.sh` \u2014 Strip extraneous generations\n\n**Keep:**\n- Step 1: `aops graph -f all` (line 103) \u2014 produces per-layout JSONs + dots\n- Step 2: SVG generation from .dot files (lines 149-166) \u2014 useful static renders\n- Step 6: Git commit (lines 202-214) \u2014 update `git add` pattern to include `graph-*.json`\n\n**Remove:**\n- Step 3: `run_graph -o task-map` (line 170) \u2014 redundant; layouts are in per-layout files\n- Step 3b: `task_graph_d3.py` HTML generation (lines 174-178) \u2014 dashboard renders D3 inline\n- Step 4: attention-map generation (lines 183-185)\n- Step 5: ego-subgraph generation (lines 187-199)\n- The entire `run_graph()` helper function (lines 112-144) \u2014 no longer called\n- All `--renderer`, `--layout`, `--splines`, `--sep`, `--overlap` args \u2014 only used by `run_graph`\n- `--ego`, `--ego-depth`, `--attention-top` args \u2014 only used by removed steps\n\n**Simplified script becomes:**\n1. Parse `--quick` flag (keep for potential future use)\n2. Run `aops graph -f all -o graph`\n3. Generate SVGs from `.dot` files\n4. Git commit + push\n\n### Files touched\n- `lib/overwhelm/dashboard.py`\n- `scripts/generate-viz.sh`\n\n## Verification\n1. Run `generate-viz.sh` \u2014 confirm it produces `graph-*.json` files (once aops CLI is updated)\n2. Start dashboard: `cd /opt/nic/academicOps && uv run streamlit run lib/overwhelm/dashboard.py --server.headless true`\n3. Switch to \"Task Graph\" view \u2014 confirm graph loads from per-layout JSONs\n4. Confirm no references to `load_graph_data` or `load_task_graph` remain\n5. Run: `uv run pytest tests/lib/test_overwhelm_dashboard_logic.py -v`",
+        "new_string": "# Plan: Fix hydration gate enforcement \u2014 change default from \"warn\" to \"block\"\n\n## Context\n\nIssue #710: Agent bypassed Edit tool permission block by writing files through `python3` via Bash. Investigation reveals the hooks were never actually blocking anything \u2014 the hydration gate's default mode is `\"warn\"`, which translates to `permissionDecision: \"allow\"` in Claude Code's hook output (router.py:792-794). The Edit tool was blocked by Claude Code's built-in permission deny list in `.claude/settings.json`, not by the hooks. Bash isn't in that deny list, so it passed through both the permission system AND the hooks.\n\n**Root cause**: `gate_config.py` line 339: `\"hydration\": \"warn\"` \u2014 the hydration gate warns but never blocks. Changing to `\"block\"` makes the gate return `GateVerdict.DENY` \u2192 `permissionDecision: \"deny\"`, actually blocking tool calls before hydration.\n\n## TDD Approach\n\n### Step 1: Write failing test (RED)\n\nAdd new test to `tests/hooks/test_gate_verdicts.py`:\n\n```python\nclass TestHydrationDefaultModeIsBlock:\n    \"\"\"Hydration gate default must be 'block' not 'warn'.\n\n    When mode is 'warn', the gate produces permissionDecision='allow' in\n    Claude Code output, which means no tool is actually blocked. This\n    allowed agents to circumvent enforcement by using Bash instead of Edit.\n    See issue #710.\n    \"\"\"\n\n    def test_default_mode_is_block(self):\n        from hooks.gate_config import GATE_MODE_DEFAULTS\n        assert GATE_MODE_DEFAULTS[\"hydration\"] == \"block\", (\n            \"Hydration gate default must be 'block' to actually deny tools. \"\n            \"'warn' produces permissionDecision='allow' which blocks nothing.\"\n        )\n\n    def test_write_tool_denied_not_warned(self, router):\n        \"\"\"Bash/Edit must get DENY (not WARN) when hydration is closed with default mode.\"\"\"\n        # Use default mode (no env var override)\n        state = SessionState.create(\"test-default-block\")\n        state.gates[\"hydration\"].status = GateStatus.CLOSED\n        state.gates[\"hydration\"].metrics[\"temp_path\"] = \"/tmp/h.md\"\n\n        for tool in (\"Bash\", \"Edit\", \"Write\"):\n            ctx = HookContext(\n                session_id=\"test-default-block\",\n                hook_event=\"PreToolUse\",\n                tool_name=tool,\n                tool_input={\"command\": \"echo hi\"} if tool == \"Bash\" else {},\n            )\n            result = router._dispatch_gates(ctx, state)\n            assert result is not None\n            assert result.verdict == GateVerdict.DENY, (\n                f\"{tool} should be DENIED when hydration closed (default mode=block), \"\n                f\"got {result.verdict.value}\"\n            )\n\n    def test_claude_output_denies_bash(self, router):\n        \"\"\"Claude Code output must set permissionDecision='deny' for Bash.\"\"\"\n        state = SessionState.create(\"test-claude-deny\")\n        state.gates[\"hydration\"].status = GateStatus.CLOSED\n        state.gates[\"hydration\"].metrics[\"temp_path\"] = \"/tmp/h.md\"\n\n        ctx = HookContext(\n            session_id=\"test-claude-deny\",\n            hook_event=\"PreToolUse\",\n            tool_name=\"Bash\",\n            tool_input={\"command\": \"python3 -c 'open(\\\"f\\\",\\\"w\\\").write(\\\"x\\\")'\"},\n        )\n        result = router._dispatch_gates(ctx, state)\n        canonical = router._gate_result_to_canonical(result)\n        output = router.output_for_claude(canonical, \"PreToolUse\")\n\n        assert output.hookSpecificOutput.permissionDecision == \"deny\", (\n            \"Claude output must deny Bash when hydration gate is closed\"\n        )\n```\n\nThese tests FAIL with current code because default is \"warn\".\n\n### Step 2: Update autouse fixture and existing test expectations\n\nThe `_deterministic_gate_modes` autouse fixture currently sets `HYDRATION_GATE_MODE=warn`. Change to `block`:\n\n```python\nmonkeypatch.setenv(\"HYDRATION_GATE_MODE\", \"block\")  # was \"warn\"\n```\n\nUpdate affected test classes:\n- `TestHydrationGateBlocksWriteTools`: rename to make intent clear, assert `DENY` not just `!= ALLOW`\n- `TestHydrationGateWarnsReadOnly`: update \u2014 read-only tools now get `DENY` too (per the stated intent in definitions.py: \"Read-only tools ARE subject to hydration\")\n- `TestGateModeEnvVarOverrides._GATE_MODE_CASES`: verify the hydration-warn case still works (it should \u2014 env var override is tested separately)\n\nAlso add fixture scenario to `tests/hooks/fixtures/gate_scenarios.json` for the new Bash-specific test.\n\n### Step 3: Change the default (GREEN)\n\nIn `aops-core/hooks/gate_config.py` line 339:\n\n```python\nGATE_MODE_DEFAULTS: dict[str, str] = {\n    \"hydration\": \"block\",  # was \"warn\" \u2014 see issue #710\n    \"custodiet\": \"block\",\n    \"qa\": \"block\",\n    \"handover\": \"warn\",\n}\n```\n\n### Step 4: Run all tests, verify green\n\n```bash\nuv run pytest tests/hooks/test_gate_verdicts.py -v\n```\n\n## Files touched\n- `aops-core/hooks/gate_config.py` \u2014 change default mode\n- `tests/hooks/test_gate_verdicts.py` \u2014 new tests + updated expectations\n- `tests/hooks/fixtures/gate_scenarios.json` \u2014 new fixture scenarios\n\n## Verification\n1. New tests pass (DENY for Bash/Edit/Write when hydration closed)\n2. All existing gate verdict tests pass (with updated expectations)\n3. Full test suite: `uv run pytest tests/hooks/ -v`\n4. Claude output format test confirms `permissionDecision: \"deny\"` for Bash",
+        "replace_all": false
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-825840e5-hooks.jsonl",
+        "line_index": 594,
+        "session_id": "825840e5-b481-4f45-a248-7d6e919e58f1",
+        "logged_at": "2026-03-03T06:58:35+00:00",
+        "event_hash": "4dcfaf5d8dbdc187",
+        "extracted_at": "2026-03-03T09:56:43.983702+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
+    }
+  ],
+  "gemini_subagent_events": [
+    {
+      "id": "gemini-subagentstart-none-L7",
+      "hook_event": "SubagentStart",
+      "tool_name": null,
+      "tool_input": {},
+      "subagent_type": "aops-core:prompt-hydrator",
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-825840e5-hooks.jsonl",
+        "line_index": 7,
+        "session_id": "825840e5-b481-4f45-a248-7d6e919e58f1",
+        "logged_at": "2026-03-03T05:16:01+00:00",
+        "event_hash": "79d0a245be352981",
+        "extracted_at": "2026-03-03T09:56:43.984045+00:00"
+      }
+    },
+    {
+      "id": "gemini-subagentstop-none-L41",
+      "hook_event": "SubagentStop",
+      "tool_name": null,
+      "tool_input": {},
+      "subagent_type": "aops-core:prompt-hydrator",
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-825840e5-hooks.jsonl",
+        "line_index": 41,
+        "session_id": "825840e5-b481-4f45-a248-7d6e919e58f1",
+        "logged_at": "2026-03-03T05:17:31+00:00",
+        "event_hash": "f3baa033a55fc528",
+        "extracted_at": "2026-03-03T09:56:43.984203+00:00"
+      }
+    },
+    {
+      "id": "gemini-subagentstart-none-L45",
+      "hook_event": "SubagentStart",
+      "tool_name": null,
+      "tool_input": {},
+      "subagent_type": "aops-core:custodiet",
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-825840e5-hooks.jsonl",
+        "line_index": 45,
+        "session_id": "825840e5-b481-4f45-a248-7d6e919e58f1",
+        "logged_at": "2026-03-03T05:17:35+00:00",
+        "event_hash": "e4fe6e63c588a488",
+        "extracted_at": "2026-03-03T09:56:43.984260+00:00"
+      }
+    },
+    {
+      "id": "gemini-subagentstop-none-L66",
+      "hook_event": "SubagentStop",
+      "tool_name": null,
+      "tool_input": {},
+      "subagent_type": "aops-core:custodiet",
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-825840e5-hooks.jsonl",
+        "line_index": 66,
+        "session_id": "825840e5-b481-4f45-a248-7d6e919e58f1",
+        "logged_at": "2026-03-03T05:18:46+00:00",
+        "event_hash": "6f17344bcf2636b6",
+        "extracted_at": "2026-03-03T09:56:43.984353+00:00"
+      }
+    },
+    {
+      "id": "gemini-subagentstart-none-L230",
+      "hook_event": "SubagentStart",
+      "tool_name": null,
+      "tool_input": {},
+      "subagent_type": "Explore",
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-825840e5-hooks.jsonl",
+        "line_index": 230,
+        "session_id": "825840e5-b481-4f45-a248-7d6e919e58f1",
+        "logged_at": "2026-03-03T05:52:11+00:00",
+        "event_hash": "871e300e2935d5e6",
+        "extracted_at": "2026-03-03T09:56:43.984528+00:00"
+      }
+    },
+    {
+      "id": "gemini-subagentstop-none-L265",
+      "hook_event": "SubagentStop",
+      "tool_name": null,
+      "tool_input": {},
+      "subagent_type": "Explore",
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-825840e5-hooks.jsonl",
+        "line_index": 265,
+        "session_id": "825840e5-b481-4f45-a248-7d6e919e58f1",
+        "logged_at": "2026-03-03T05:53:10+00:00",
+        "event_hash": "3eb4bdfd09991f78",
+        "extracted_at": "2026-03-03T09:56:43.984745+00:00"
+      }
+    },
+    {
+      "id": "gemini-subagentstop-none-L297",
+      "hook_event": "SubagentStop",
+      "tool_name": null,
+      "tool_input": {},
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-825840e5-hooks.jsonl",
+        "line_index": 297,
+        "session_id": "825840e5-b481-4f45-a248-7d6e919e58f1",
+        "logged_at": "2026-03-03T06:01:10+00:00",
+        "event_hash": "df70892a9f645e5f",
+        "extracted_at": "2026-03-03T09:56:43.985202+00:00"
+      }
+    }
+  ],
+  "gemini_stop_events": [
+    {
+      "id": "gemini-stop-none-L52",
+      "hook_event": "Stop",
+      "tool_name": null,
+      "tool_input": {},
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-825840e5-hooks.jsonl",
+        "line_index": 52,
+        "session_id": "825840e5-b481-4f45-a248-7d6e919e58f1",
+        "logged_at": "2026-03-03T05:17:54+00:00",
+        "event_hash": "a4ccfd432882e956",
+        "extracted_at": "2026-03-03T09:56:43.985909+00:00"
+      }
+    }
+  ],
+  "gemini_user_prompt_events": [
+    {
+      "id": "gemini-userpromptsubmit-none-L1",
+      "hook_event": "UserPromptSubmit",
+      "tool_name": null,
+      "tool_input": {},
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "_provenance": {
+        "source_log": "/tmp/g.jsonl",
+        "line_index": 1,
+        "session_id": "a51fc272-38a8-4106-af3f-de37f5894bba",
+        "logged_at": "2026-03-03T18:44:56+10:00",
+        "event_hash": "711cb37c56eecaa5",
+        "extracted_at": "2026-03-03T09:56:44.017474+00:00"
+      }
+    }
+  ],
+  "gemini_read_only_tools": [
+    {
+      "id": "gemini-pretooluse-read_file-L3",
+      "hook_event": "PreToolUse",
+      "tool_name": "read_file",
+      "tool_input": {
+        "file_path": "/Users/suzor/.gemini/tmp/brain/logs/20260303-a51fc272-hydration.md"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "deny"
+      },
+      "_provenance": {
+        "source_log": "/tmp/g.jsonl",
+        "line_index": 3,
+        "session_id": "a51fc272-38a8-4106-af3f-de37f5894bba",
+        "logged_at": "2026-03-03T18:45:16+10:00",
+        "event_hash": "005be77468b1247b",
+        "extracted_at": "2026-03-03T09:56:44.017561+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "closed",
+          "metrics": {
+            "temp_path": "/tmp/hydration.md"
+          }
+        }
+      }
+    }
+  ],
+  "gemini_write_tools": [
+    {
+      "id": "gemini-pretooluse-bash-L37",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "uv run streamlit run lib/overwhelm/dashboard.py --server.headless true 2>&1 &\nsleep 3\n# Check if it started\ncurl -s -o /dev/null -w \"%{http_code}\" http://localhost:8501 2>/dev/null || echo \"checking ports...\"\nss -tlnp 2>/dev/null | grep 850 || true",
+        "timeout": 15000,
+        "description": "Start the Streamlit overwhelm dashboard"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-825840e5-hooks.jsonl",
+        "line_index": 37,
+        "session_id": "825840e5-b481-4f45-a248-7d6e919e58f1",
+        "logged_at": "2026-03-03T05:17:20+00:00",
+        "event_hash": "416be5acbe5b5457",
+        "extracted_at": "2026-03-03T09:56:43.999969+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-write-L267",
+      "hook_event": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/home/debian/.claude/plans/streamed-scribbling-crystal.md",
+        "content": "# Plan: Remove dead per-layout JSON discovery code from dashboard\n\n## Context\n\nThe dashboard has two graph loading paths:\n1. `discover_graph_files()` + `load_and_merge_graph_files()` \u2014 expects per-layout JSONs (`graph-fa2.json`, `graph-tree.json`, etc.) that **don't exist** and never will. The `aops` CLI produces one `graph.json` with layouts embedded inside each node's `layouts` dict.\n2. `load_graph_data()` \u2014 loads the single `graph.json`. This is what actually works.\n\nThe D3 component reads `node.layouts[layoutName]` which the single `graph.json` already provides. The per-layout discovery code is dead code with a fallback masking the fact it does nothing.\n\n## Changes\n\n### `/opt/nic/academicOps/lib/overwhelm/dashboard.py`\n\n1. **Remove `discover_graph_files()`** (lines 3404-3421) \u2014 dead code, no producer\n2. **Remove `load_and_merge_graph_files()`** (lines 3424-3489) \u2014 dead code\n3. **Simplify `render_task_graph_page()`** (lines 3678-3691):\n   - Remove the `manifest = discover_graph_files()` call\n   - Remove the `has_full` / scope toggle UI (no per-layout variants exist)\n   - Always call `load_graph_data()` directly\n   - Remove the `scope_key` variable\n4. **Keep `load_graph_data()`** as the single entry point \u2014 it works correctly with `graph.json`\n5. **Keep `_get_graph_node_count()`** unchanged \u2014 it already uses `load_graph_data()`\n\n### Files touched\n- `lib/overwhelm/dashboard.py` only\n\n## Verification\n1. Run the dashboard: `cd /opt/nic/academicOps && uv run streamlit run lib/overwhelm/dashboard.py --server.headless true`\n2. Switch to \"Task Graph\" view mode\n3. Confirm graph loads with layout switching working (layouts come from `graph.json` node.layouts dict)\n4. Run tests: `uv run pytest tests/lib/test_overwhelm_dashboard_logic.py -v`\n"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-825840e5-hooks.jsonl",
+        "line_index": 267,
+        "session_id": "825840e5-b481-4f45-a248-7d6e919e58f1",
+        "logged_at": "2026-03-03T05:53:40+00:00",
+        "event_hash": "14b53dae56adb547",
+        "extracted_at": "2026-03-03T09:56:44.005745+00:00"
+      },
+      "gate_overrides": {
+        "hydration": {
+          "status": "closed",
+          "metrics": {
+            "temp_path": "/tmp/hydration.md"
+          }
+        },
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
+    },
+    {
+      "id": "gemini-pretooluse-edit-L594",
+      "hook_event": "PreToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/home/debian/.claude/plans/streamed-scribbling-crystal.md",
+        "old_string": "# Plan: Per-layout JSONs as primary graph loader, strip extraneous viz\n\n## Context\n\nThe `aops` CLI is being updated to produce per-layout JSON files (`graph-fa2.json`, `graph-treemap.json`, etc.). The dashboard already has `discover_graph_files()` + `load_and_merge_graph_files()` to consume these. But it falls back to a legacy `load_graph_data()` single-file loader. Remove the fallback \u2014 per-layout JSONs are the only path. Also strip extraneous generations from `generate-viz.sh`.\n\n## Changes\n\n### 1. `lib/overwhelm/dashboard.py` \u2014 Remove old loaders\n\n**Remove:**\n- `load_graph_data()` (line 3383-3396) \u2014 old single-file loader\n- `load_task_graph()` (line 3399-3401) \u2014 unused shim wrapping old loader\n\n**Update `_get_graph_node_count()`** (line 3654-3659):\n- Replace `load_graph_data()` call with `discover_graph_files()` + `load_and_merge_graph_files()`\n\n**Update `render_task_graph_page()`** (line 3687-3691):\n- Remove the `if manifest: ... else: load_graph_data()` fallback\n- Always call `load_and_merge_graph_files(manifest)`\n- If `manifest` is empty, show an error message (\"No per-layout graph files found. Run `generate-viz.sh`.\")\n\n### 2. `scripts/generate-viz.sh` \u2014 Strip extraneous generations\n\n**Keep:**\n- Step 1: `aops graph -f all` (line 103) \u2014 produces per-layout JSONs + dots\n- Step 2: SVG generation from .dot files (lines 149-166) \u2014 useful static renders\n- Step 6: Git commit (lines 202-214) \u2014 update `git add` pattern to include `graph-*.json`\n\n**Remove:**\n- Step 3: `run_graph -o task-map` (line 170) \u2014 redundant; layouts are in per-layout files\n- Step 3b: `task_graph_d3.py` HTML generation (lines 174-178) \u2014 dashboard renders D3 inline\n- Step 4: attention-map generation (lines 183-185)\n- Step 5: ego-subgraph generation (lines 187-199)\n- The entire `run_graph()` helper function (lines 112-144) \u2014 no longer called\n- All `--renderer`, `--layout`, `--splines`, `--sep`, `--overlap` args \u2014 only used by `run_graph`\n- `--ego`, `--ego-depth`, `--attention-top` args \u2014 only used by removed steps\n\n**Simplified script becomes:**\n1. Parse `--quick` flag (keep for potential future use)\n2. Run `aops graph -f all -o graph`\n3. Generate SVGs from `.dot` files\n4. Git commit + push\n\n### Files touched\n- `lib/overwhelm/dashboard.py`\n- `scripts/generate-viz.sh`\n\n## Verification\n1. Run `generate-viz.sh` \u2014 confirm it produces `graph-*.json` files (once aops CLI is updated)\n2. Start dashboard: `cd /opt/nic/academicOps && uv run streamlit run lib/overwhelm/dashboard.py --server.headless true`\n3. Switch to \"Task Graph\" view \u2014 confirm graph loads from per-layout JSONs\n4. Confirm no references to `load_graph_data` or `load_task_graph` remain\n5. Run: `uv run pytest tests/lib/test_overwhelm_dashboard_logic.py -v`",
+        "new_string": "# Plan: Fix hydration gate enforcement \u2014 change default from \"warn\" to \"block\"\n\n## Context\n\nIssue #710: Agent bypassed Edit tool permission block by writing files through `python3` via Bash. Investigation reveals the hooks were never actually blocking anything \u2014 the hydration gate's default mode is `\"warn\"`, which translates to `permissionDecision: \"allow\"` in Claude Code's hook output (router.py:792-794). The Edit tool was blocked by Claude Code's built-in permission deny list in `.claude/settings.json`, not by the hooks. Bash isn't in that deny list, so it passed through both the permission system AND the hooks.\n\n**Root cause**: `gate_config.py` line 339: `\"hydration\": \"warn\"` \u2014 the hydration gate warns but never blocks. Changing to `\"block\"` makes the gate return `GateVerdict.DENY` \u2192 `permissionDecision: \"deny\"`, actually blocking tool calls before hydration.\n\n## TDD Approach\n\n### Step 1: Write failing test (RED)\n\nAdd new test to `tests/hooks/test_gate_verdicts.py`:\n\n```python\nclass TestHydrationDefaultModeIsBlock:\n    \"\"\"Hydration gate default must be 'block' not 'warn'.\n\n    When mode is 'warn', the gate produces permissionDecision='allow' in\n    Claude Code output, which means no tool is actually blocked. This\n    allowed agents to circumvent enforcement by using Bash instead of Edit.\n    See issue #710.\n    \"\"\"\n\n    def test_default_mode_is_block(self):\n        from hooks.gate_config import GATE_MODE_DEFAULTS\n        assert GATE_MODE_DEFAULTS[\"hydration\"] == \"block\", (\n            \"Hydration gate default must be 'block' to actually deny tools. \"\n            \"'warn' produces permissionDecision='allow' which blocks nothing.\"\n        )\n\n    def test_write_tool_denied_not_warned(self, router):\n        \"\"\"Bash/Edit must get DENY (not WARN) when hydration is closed with default mode.\"\"\"\n        # Use default mode (no env var override)\n        state = SessionState.create(\"test-default-block\")\n        state.gates[\"hydration\"].status = GateStatus.CLOSED\n        state.gates[\"hydration\"].metrics[\"temp_path\"] = \"/tmp/h.md\"\n\n        for tool in (\"Bash\", \"Edit\", \"Write\"):\n            ctx = HookContext(\n                session_id=\"test-default-block\",\n                hook_event=\"PreToolUse\",\n                tool_name=tool,\n                tool_input={\"command\": \"echo hi\"} if tool == \"Bash\" else {},\n            )\n            result = router._dispatch_gates(ctx, state)\n            assert result is not None\n            assert result.verdict == GateVerdict.DENY, (\n                f\"{tool} should be DENIED when hydration closed (default mode=block), \"\n                f\"got {result.verdict.value}\"\n            )\n\n    def test_claude_output_denies_bash(self, router):\n        \"\"\"Claude Code output must set permissionDecision='deny' for Bash.\"\"\"\n        state = SessionState.create(\"test-claude-deny\")\n        state.gates[\"hydration\"].status = GateStatus.CLOSED\n        state.gates[\"hydration\"].metrics[\"temp_path\"] = \"/tmp/h.md\"\n\n        ctx = HookContext(\n            session_id=\"test-claude-deny\",\n            hook_event=\"PreToolUse\",\n            tool_name=\"Bash\",\n            tool_input={\"command\": \"python3 -c 'open(\\\"f\\\",\\\"w\\\").write(\\\"x\\\")'\"},\n        )\n        result = router._dispatch_gates(ctx, state)\n        canonical = router._gate_result_to_canonical(result)\n        output = router.output_for_claude(canonical, \"PreToolUse\")\n\n        assert output.hookSpecificOutput.permissionDecision == \"deny\", (\n            \"Claude output must deny Bash when hydration gate is closed\"\n        )\n```\n\nThese tests FAIL with current code because default is \"warn\".\n\n### Step 2: Update autouse fixture and existing test expectations\n\nThe `_deterministic_gate_modes` autouse fixture currently sets `HYDRATION_GATE_MODE=warn`. Change to `block`:\n\n```python\nmonkeypatch.setenv(\"HYDRATION_GATE_MODE\", \"block\")  # was \"warn\"\n```\n\nUpdate affected test classes:\n- `TestHydrationGateBlocksWriteTools`: rename to make intent clear, assert `DENY` not just `!= ALLOW`\n- `TestHydrationGateWarnsReadOnly`: update \u2014 read-only tools now get `DENY` too (per the stated intent in definitions.py: \"Read-only tools ARE subject to hydration\")\n- `TestGateModeEnvVarOverrides._GATE_MODE_CASES`: verify the hydration-warn case still works (it should \u2014 env var override is tested separately)\n\nAlso add fixture scenario to `tests/hooks/fixtures/gate_scenarios.json` for the new Bash-specific test.\n\n### Step 3: Change the default (GREEN)\n\nIn `aops-core/hooks/gate_config.py` line 339:\n\n```python\nGATE_MODE_DEFAULTS: dict[str, str] = {\n    \"hydration\": \"block\",  # was \"warn\" \u2014 see issue #710\n    \"custodiet\": \"block\",\n    \"qa\": \"block\",\n    \"handover\": \"warn\",\n}\n```\n\n### Step 4: Run all tests, verify green\n\n```bash\nuv run pytest tests/hooks/test_gate_verdicts.py -v\n```\n\n## Files touched\n- `aops-core/hooks/gate_config.py` \u2014 change default mode\n- `tests/hooks/test_gate_verdicts.py` \u2014 new tests + updated expectations\n- `tests/hooks/fixtures/gate_scenarios.json` \u2014 new fixture scenarios\n\n## Verification\n1. New tests pass (DENY for Bash/Edit/Write when hydration closed)\n2. All existing gate verdict tests pass (with updated expectations)\n3. Full test suite: `uv run pytest tests/hooks/ -v`\n4. Claude output format test confirms `permissionDecision: \"deny\"` for Bash",
+        "replace_all": false
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-825840e5-hooks.jsonl",
+        "line_index": 594,
+        "session_id": "825840e5-b481-4f45-a248-7d6e919e58f1",
+        "logged_at": "2026-03-03T06:58:35+00:00",
+        "event_hash": "4dcfaf5d8dbdc187",
+        "extracted_at": "2026-03-03T09:56:44.011902+00:00"
+      },
+      "gate_overrides": {
+        "custodiet": {
+          "ops_since_open": 15
+        }
+      }
+    }
+  ]
+}
