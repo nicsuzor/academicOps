@@ -1,132 +1,41 @@
 ---
 id: feature-dev
-category: development
-description: Test-first feature development from user story through requirements, design, implementation, and validation
-triggers:
-  - "add feature"
-  - "implement"
-  - "build"
-  - "new feature"
-  - "fix bug"
-  - "clear fix"
-  - "known cause"
-  - "design"
-  - "architecture"
+name: feature-dev-workflow
+category: instruction
 bases: [base-task-tracking, base-tdd, base-verification, base-handover]
+description: Test-first feature development from idea to ship
+permalink: workflows/feature-dev
+tags: [workflow, development, feature, tdd, ship]
+version: 1.1.0
 ---
 
 # Feature Development Workflow
 
-Test-first feature development from idea to validated implementation.
+**Purpose**: Provide a structured approach for building and shipping new features using test-driven development.
 
-## When to Use
+**When to invoke**: User says "add feature X", "build Y", "implement Z", or similar.
 
-Use this workflow when:
+## Core Feature-Dev Process
 
-- Adding new features
-- Building significant functionality
-- Implementing user-requested capabilities
+1. **Understand Requirements**: Analyze the request to identify features, UX, and constraints.
+2. **Propose Plan**: Share a concise, high-level summary of the implementation strategy.
+3. **Draft Tests**: Write tests for the first behavior before implementation.
+4. **Implement**: Build the feature following the TDD cycle (red-green-refactor).
+5. **Verify Feature**: Confirm behavioral correctness against the original request.
+6. **Submit PR**: Follow the handover workflow to commit, push, and file a PR.
 
-Do NOT use for:
+## Detailed Checklists
 
-- Bug fixes (unless requiring new functionality)
-- Simple refactoring
-- Documentation-only changes
+For comprehensive design, implementation, and verification checklists, see **[[workflows/references/feature-dev-details]]**:
 
-## Constraints
+- **Design Checklist** - Requirements, architecture, and UX
+- **Implementation Checklist** - TDD, coding standards, and documentation
+- **Verification Checklist** - Testing, polish, and build status
 
-### Phase Sequencing
+## Critical Rules
 
-Each phase must complete before the next can begin:
-
-1. **User story** must be captured before analyzing requirements
-2. **Requirements** must be documented and **success criteria** defined before designing the experiment
-3. **Experiment plan** must exist before writing tests
-4. **Tests must exist and fail** before planning development
-5. **Plan must be approved** before implementation begins
-6. **Implementation must be complete** before validation
-7. **Validation must pass** before synthesizing to spec
-
-### Commit Gates
-
-Before any commit:
-
-- All tests must pass
-- No regressions in existing tests
-
-### After Each Step
-
-- After implementing any step: run tests and update todo progress
-- After validation succeeds: commit the feature
-- After validation fails: revert the feature
-- After completion: update the spec and close the experiment task
-
-### Always True
-
-- Only one task should be in progress at a time
-- All changes must be tracked in a task
-- Documentation integrity must be maintained
-- Single source of truth principle applies
-
-### Never Do
-
-- Never commit with failing tests
-- Never implement without an approved plan
-- Never implement without tests existing first
-- Never ship partial success
-- Never work around blockers
-- Never rationalize test failures
-- Never duplicate documentation
-
-### Conditional Rules
-
-- If tests fail: halt and fix, or revert
-- If blocked on infrastructure: halt and report
-- If requirements are unclear: return to analysis phase
-- If an iteration fails: revert
-
-## Triggers
-
-Phase transitions happen automatically:
-
-- When user story is captured → analyze requirements
-- When requirements are documented → design experiment
-- When experiment plan exists → write tests
-- When tests fail → plan development
-- When plan is approved → implement
-- When implementation is complete → validate
-- When validation passes → synthesize to spec
-
-Review gates:
-
-- When plan is ready → invoke plan-agent
-
-Error handling:
-
-- On unexpected test failure → halt
-- On blocker → halt and report
-- On validation failure → revert or iterate
-
-## How to Check
-
-**Phase completion checks:**
-
-- User story captured: task body contains "## User Story" or file exists with user-story content
-- Requirements documented: task body contains "## Requirements"
-- Success criteria defined: task body contains "## Success Criteria"
-- Experiment plan exists: task with tag "experiment" exists for this feature
-- Tests exist: grep finds "def test_" or "test(" in relevant test files
-- Tests fail: pytest exit code is not 0 for feature tests
-- Tests pass: pytest exit code is 0 for all tests
-- Plan approved: task body contains "## Approved Plan" or user said "approved" or "lgtm"
-- Implementation complete: all execution steps for implementation are done
-- No regressions: full test suite passes (not just feature tests)
-- Validation passed: all success criteria met and tests pass
-
-**Condition checks:**
-
-- Framework feature: files touched include "aops-core/" or tags include "framework"
-- Routine feature: not a framework feature
-- Blocked on infrastructure: error indicates missing tool/service/permission
-- Requirements unclear: user asks clarifying question or requirements conflict
-- Iteration fails: second validation attempt fails
+- **Test-First**: Always write failing tests before implementation (TDD).
+- **Minimal Implementation**: Only build what the tests require.
+- **Refactoring**: Keep tests green while cleaning up code.
+- **Validation**: Verify against the original goal, not just the tests.
+- **No Reverts**: Do not revert changes unless they cause errors.
