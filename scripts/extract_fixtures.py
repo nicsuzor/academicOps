@@ -21,6 +21,8 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
+from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES
+
 
 def _detect_platform(events: list[dict]) -> str:
     """Detect whether log is from Claude Code or Gemini CLI."""
@@ -147,7 +149,7 @@ def extract_scenarios_from_log(log_path, scenario_groups=None):
             continue
         st = event.get("subagent_type") or ""
         tn = event.get("tool_name") or ""
-        if "hydrator" in st or "custodiet" in st or "hydrator" in tn or "custodiet" in tn:
+        if st in COMPLIANCE_SUBAGENT_TYPES or tn in COMPLIANCE_SUBAGENT_TYPES:
             s = _event_to_scenario(event, idx, str(path), platform, "compliance_agent_allowed")
             compliance_allowed.append(s)
 

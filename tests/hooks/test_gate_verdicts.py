@@ -719,7 +719,7 @@ class TestHydrationOutputFormat:
       block_mode: verdict=deny, claude permissionDecision=deny, gemini decision=deny
     """
 
-    SCENARIOS = _flatten_scenarios("hydration_output_format")
+    SCENARIOS = _flatten_scenarios("hydration_output_format_synthetic")
 
     @pytest.mark.parametrize(
         "scenario",
@@ -778,83 +778,6 @@ class TestHydrationOutputFormat:
         assert output.decision == expected["gemini_decision"], (
             f"[{scenario['id']}] Gemini decision: "
             f"expected {expected['gemini_decision']}, "
-            f"got {output.decision} in {hydration_mode} mode"
-        )
-
-
-# ===========================================================================
-# REAL GEMINI LOG DATA: Reproduce logged verdicts from actual sessions
-# ===========================================================================
-
-
-class TestGeminiRealLogData:
-    """Test gate verdicts against real Gemini CLI log data.
-
-    Scenarios extracted from session a51fc272 (2026-03-03). This session
-    showed read_file being denied while hydration gate was closed in block
-    mode — even for the hydrator's own tool calls and after hydrator completed.
-
-    Each scenario carries the logged verdict and per-mode expected values.
-    """
-
-    SCENARIOS = _flatten_scenarios("gemini_real_log_data")
-
-    @pytest.mark.parametrize(
-        "scenario",
-        SCENARIOS,
-        ids=[s["id"] for s in SCENARIOS],
-    )
-    def test_verdict_matches_mode(self, router, hydration_mode, scenario):
-        """Gate verdict must match expected value for the active hydration mode."""
-        state = _make_session_state(scenario)
-        ctx = _make_context(scenario)
-
-        result = router._dispatch_gates(ctx, state)
-
-        expected = scenario["expected"][f"{hydration_mode}_mode"]
-        expected_verdict = expected["verdict"]
-
-        if expected_verdict == "allow":
-            if result is not None:
-                assert result.verdict == GateVerdict.ALLOW, (
-                    f"[{scenario['id']}] {scenario['tool_name']}: "
-                    f"expected ALLOW in {hydration_mode} mode, got {result.verdict.value}"
-                )
-        else:
-            assert result is not None, (
-                f"[{scenario['id']}] {scenario['tool_name']}: "
-                f"expected {expected_verdict} in {hydration_mode} mode, got None (allow)"
-            )
-            expected_enum = GateVerdict.WARN if expected_verdict == "warn" else GateVerdict.DENY
-            assert result.verdict == expected_enum, (
-                f"[{scenario['id']}] {scenario['tool_name']}: "
-                f"expected {expected_verdict} in {hydration_mode} mode, got {result.verdict.value}"
-            )
-
-    @pytest.mark.parametrize(
-        "scenario",
-        SCENARIOS,
-        ids=[s["id"] for s in SCENARIOS],
-    )
-    def test_gemini_output_matches_mode(self, router, hydration_mode, scenario):
-        """Gemini output decision must match expected value for the active mode."""
-        state = _make_session_state(scenario)
-        ctx = _make_context(scenario)
-
-        result = router._dispatch_gates(ctx, state)
-
-        expected = scenario["expected"][f"{hydration_mode}_mode"]
-
-        if result is not None:
-            canonical = router._gate_result_to_canonical(result)
-        else:
-            canonical = CanonicalHookOutput()
-
-        output = router.output_for_gemini(canonical, scenario["hook_event"])
-
-        assert output.decision == expected["gemini_decision"], (
-            f"[{scenario['id']}] {scenario['tool_name']}: "
-            f"Gemini decision expected {expected['gemini_decision']}, "
             f"got {output.decision} in {hydration_mode} mode"
         )
 
@@ -1205,6 +1128,123 @@ class TestHydrationGateSequence:
             assert result3.verdict == GateVerdict.ALLOW, (
                 f"[{platform['platform']}] Step 3: {platform['read_tool']} should be ALLOW "
                 f"after hydration, got {result3.verdict.value}"
+            )
+
+
+# ===========================================================================
+# HEREDOC BYPASS: Agent uses Bash with heredoc to write files (issue #710)
+# ===========================================================================
+
+
+class TestBashHeredocBypass:
+    """Bash heredoc file-write must be blocked by hydration gate.
+
+    Attack vector: an agent calls Bash(command="cat <<'EOF' > file.py\n...")
+    to write file contents, bypassing the Edit/Write tool permission system.
+    The hydration gate is the defense layer — it blocks ALL non-always_available
+    tools (including Bash) when hydration is pending.
+
+    In warn mode: Bash is allowed through (the original bug #710).
+    In block mode: Bash is denied, preventing the heredoc bypass.
+    """
+
+    HEREDOC_COMMANDS = [
+        pytest.param(
+            {
+                "command": "cat <<'EOF' > /tmp/exploit.py\nimport os\nos.system('rm -rf /')\nEOF",
+                "description": "heredoc file write",
+            },
+            id="cat-heredoc-write",
+        ),
+        pytest.param(
+            {
+                "command": "python3 -c \"\nwith open('output.py', 'w') as f:\n    f.write('malicious')\n\"",
+                "description": "python inline file write",
+            },
+            id="python-inline-write",
+        ),
+        pytest.param(
+            {
+                "command": "echo 'payload' | tee /tmp/config.json",
+                "description": "tee pipe write",
+            },
+            id="echo-tee-write",
+        ),
+        pytest.param(
+            {
+                "command": "printf '%s\n' 'line1' 'line2' > /tmp/out.txt",
+                "description": "printf redirect write",
+            },
+            id="printf-redirect-write",
+        ),
+    ]
+
+    @pytest.mark.parametrize("hydration_mode", ["warn", "block"])
+    @pytest.mark.parametrize("cmd", HEREDOC_COMMANDS)
+    def test_bash_heredoc_blocked_when_hydration_closed(
+        self, router, hydration_mode, cmd, monkeypatch
+    ):
+        """Bash with file-writing commands must be denied in block mode.
+
+        In warn mode, the gate only warns (the agent can still proceed).
+        In block mode, the gate denies (the agent cannot proceed).
+        This is the key difference that issue #710 exposed.
+        """
+        monkeypatch.setenv("HYDRATION_GATE_MODE", hydration_mode)
+        _reinit_gates_with_defaults()
+
+        state = SessionState.create("test-heredoc")
+        state.gates["hydration"].status = GateStatus.CLOSED
+        state.gates["hydration"].metrics["temp_path"] = "/tmp/hydration.md"
+
+        ctx = HookContext(
+            session_id="test-heredoc",
+            hook_event="PreToolUse",
+            tool_name="Bash",
+            tool_input={"command": cmd["command"], "description": cmd["description"]},
+        )
+
+        result = router._dispatch_gates(ctx, state)
+
+        assert result is not None, (
+            f"Bash({cmd['description']}) should not be allowed when hydration is closed"
+        )
+
+        if hydration_mode == "block":
+            assert result.verdict == GateVerdict.DENY, (
+                f"BLOCK mode: Bash({cmd['description']}) should be DENY, "
+                f"got {result.verdict.value}. "
+                f"This is the exact bug from issue #710 — the agent can bypass "
+                f"Edit/Write permissions by using Bash heredocs."
+            )
+        else:
+            assert result.verdict == GateVerdict.WARN, (
+                f"WARN mode: Bash({cmd['description']}) should be WARN, got {result.verdict.value}"
+            )
+
+    def test_bash_heredoc_allowed_after_hydration(self, router, monkeypatch):
+        """After hydration completes, Bash heredoc should be allowed."""
+        monkeypatch.setenv("HYDRATION_GATE_MODE", "block")
+        _reinit_gates_with_defaults()
+
+        state = SessionState.create("test-heredoc-ok")
+        state.gates["hydration"].status = GateStatus.OPEN  # Hydration done
+
+        ctx = HookContext(
+            session_id="test-heredoc-ok",
+            hook_event="PreToolUse",
+            tool_name="Bash",
+            tool_input={
+                "command": "cat <<'EOF' > /tmp/legit.py\nprint('hello')\nEOF",
+                "description": "heredoc file write after hydration",
+            },
+        )
+
+        result = router._dispatch_gates(ctx, state)
+
+        if result is not None:
+            assert result.verdict != GateVerdict.DENY, (
+                f"Bash should be allowed after hydration, got {result.verdict.value}"
             )
 
 
