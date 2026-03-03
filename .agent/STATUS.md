@@ -183,7 +183,7 @@ Scripts for extracting insights from session transcripts in `.agent/skills/sessi
 | Gate verdict + replay regression tests                   | 150 scenario tests + 31 real-event replay tests to prevent gate regressions permanently.                   | 2026-03-01 |
 | "Agent" added to always_available tools                  | Claude Code's subagent tool is "Agent" not "Task". Gate config must list both.                             | 2026-02-28 |
 | Iterative stale task sweep                               | 236+ open tasks with significant junk; batch-review with human decisions, not bulk auto-cancel             | 2026-02-23 |
-| Gatekeeper reads STATUS.md                               | Without strategic context, gatekeeper cannot catch PRs that delete working components (PR 582 post-mortem) | 2026-02-23 |
+| Conceptual review agent reads STATUS.md                  | Without strategic context, the review agent cannot catch PRs that delete working components (PR 582 post-mortem) | 2026-02-23 |
 | Pipeline cascade limit (max 3 runs)                      | PR 582 showed bots triggering bots in unbounded loops; comment-based counting bounds total cycles          | 2026-02-23 |
 | LGTM triggers lint re-run if failing                     | PR 585 showed LGTM silently failing when lint was stale; merge workflow now checks and re-triggers         | 2026-02-23 |
 | Transcript path: $AOPS_SESSIONS/polecats/                | Worker transcripts go to sessions repo, not old ~/.aops/transcripts path                                   | 2026-02-23 |
