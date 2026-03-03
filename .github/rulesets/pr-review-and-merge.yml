@@ -69,8 +69,9 @@ rules:
       required_review_thread_resolution: false
       allowed_merge_methods:
         - rebase
-      # Note: squash and merge-commit are disabled at repo level and here.
-      # Rebase-only keeps a linear history compatible with the merge queue.
+        - squash
+        - merge
+      # Note: All three merge methods are currently enabled in the live ruleset.
 
   # ─────────────────────────────────────────
   # Required status checks
@@ -86,6 +87,8 @@ rules:
           # CRITICAL: This must exactly match the `name:` of the job in code-quality.yml.
           # Current job name: "Lint" (capital L). Any mismatch silently blocks all PRs.
           # Run `scripts/validate-ruleset-alignment.sh` to verify alignment.
+        - context: Type Check
+          # Must match the `name:` of the type-check job in CI.
 
   # ─────────────────────────────────────────
   # Code quality (CodeQL / Copilot analysis)

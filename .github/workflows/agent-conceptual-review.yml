@@ -1,10 +1,10 @@
 # Agent: Conceptual Review
-# Personality: Thoughtful reviewer. Provides structured critique. Advisory only — never blocks merge.
+# Personality: Thoughtful reviewer. Provides structured critique.
 # Responsibilities:
 #   - Evaluate PR through axiom compliance + strategic alignment lens
 #   - Apply prioritised critique protocol (primary concern + resolution, secondary concerns)
 #   - Post PR comment with structured review
-# Authority: Advisory comment + commit status (signals completion, does NOT gate merge)
+#   - Set commit status honestly based on findings
 # Prompt: .github/agents/conceptual-review.agent.md
 
 name: "Agent: Conceptual Review"
@@ -83,8 +83,11 @@ jobs:
 
       - name: Run Conceptual Review
         id: review
-        continue-on-error: true
         uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ steps.pr-info.outputs.head_sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
         with:
           allowed_bots: "claude[bot]"
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -98,26 +101,18 @@ jobs:
 
             Post a PR comment (`gh pr comment`) with your structured review following the output format in your instructions.
 
-            Do NOT use `gh pr review`. Do NOT set any commit statuses. Your role is advisory only.
+            Then set the commit status honestly as described in your instructions. The environment variables HEAD_SHA, GITHUB_REPOSITORY, GITHUB_SERVER_URL, and GITHUB_RUN_ID are available.
 
           claude_args: '--model claude-opus-4-6 --allowed-tools "Bash(gh:*),Read"'
 
-      # ── Post-agent: set commit status to signal completion ──
-
-      - name: Set Conceptual Review commit status
+      # Fallback: if the agent crashes, mark the status as failure so it doesn't silently hang as pending
+      - name: Set failure status if agent crashed
+        if: failure()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ "${{ steps.review.outcome }}" = "success" ]; then
-            STATE="success"
-            DESC="Conceptual review completed"
-          else
-            STATE="failure"
-            DESC="Conceptual review agent failed to complete"
-          fi
-
           gh api "repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.head_sha }}" \
-            -f state="$STATE" \
+            -f state="failure" \
             -f context="Conceptual Review" \
-            -f description="$DESC" \
+            -f description="Conceptual review agent crashed" \
             -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
