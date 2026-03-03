@@ -17,7 +17,19 @@ category: base
 - [ WORK ]
 - Update task body with findings during work
 
-5. Mark task as complete when done
+5. **Record commits and PRs** in the task log:
+
+```python
+mcp__pkb__append(
+    id="<task-id>",
+    content="PR: https://github.com/.../pull/123",
+    section="Log"
+)
+```
+
+6. Mark task as complete when done
+
+This creates bidirectional traceability: commits reference tasks (via `Task:` trailer in [[base-commit]]), and tasks reference commits/PRs (via log entries).
 
 ## When to Skip
 

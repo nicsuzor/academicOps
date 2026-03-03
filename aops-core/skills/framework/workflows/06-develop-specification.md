@@ -84,14 +84,20 @@ description: Process for collaboratively developing task specifications before i
    - **Agent asks**: "Does this feel right? Anything missing?"
    - Iterate on any unclear or incomplete sections
 
-1. **Finalize specification**
+1. **Finalize and submit for bazaar review**
    - Move completed spec to `$AOPS/specs/` (AUTHORITATIVE location)
-   - Specification is now the contract for implementation
+   - Create a feature branch and commit the spec
+   - Open a GitHub PR for bazaar review (see [[specs/pr-process.md]])
+   - Include task ID references in the PR description (see [[skills/framework/workflows/05-feature-development.md#GitHub Integration]])
+   - Record the PR URL in the task body via `mcp__pkb__append(id="task-id", content="PR: [url]", section="Log")`
+   - Bazaar reviews the spec (Gatekeeper, Custodiet, QA, human)
+   - After approval and merge, specification is the contract for implementation
    - Ready to proceed with workflow 01 (Design New Component)
 
 **Output**:
 
 - Complete specification document ready for implementation
+- GitHub PR open for bazaar review with task ID references
 - User-owned acceptance criteria (observable, testable, cannot be modified by agents)
 - Integration tests that implement each acceptance criterion
 - Identified dependencies and risks
