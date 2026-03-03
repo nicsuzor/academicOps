@@ -3652,15 +3652,20 @@ def render_task_graph_page():
             layout_options = ["Precomputed"]
         else:
             layout_options = []
-        # Add named precomputed layouts from graph.json
+        # Add precomputed layouts discovered in graph.json
         named_layout_labels = {
             "treemap": "Treemap",
             "circle_pack": "Circle Pack",
             "arc": "Arc Diagram",
+            "forceatlas2": None,  # already exposed as "Precomputed"
         }
         for layout_key in available:
-            label = named_layout_labels.get(layout_key)
-            if label and label not in layout_options:
+            known_label = named_layout_labels.get(layout_key)
+            if known_label is None and layout_key in named_layout_labels:
+                continue  # explicitly skipped (e.g. forceatlas2)
+            label = known_label or layout_key.replace("_", " ").title()
+            if label not in layout_options:
+                layout_map[label] = layout_key  # register dynamically
                 layout_options.append(label)
         # Always offer client-side force layouts
         layout_options.extend(["Force", "ForceAtlas2"])
