@@ -3,6 +3,7 @@
 #
 # All output goes to $AOPS_SESSIONS (default ~/.aops/sessions/):
 #   graph.json            - Full PKB graph with task metadata and precomputed layouts
+#   graph-*.svg           - SVG renders of each precomputed .dot layout
 #   task-map.svg          - Task map (reachable from active leaves + ancestors)
 #   task-map.html         - Interactive D3-force task map
 #   attention-map.svg     - Under-connected important nodes
@@ -99,7 +100,7 @@ mkdir -p "${GRAPH_DIR}" "${VIZ_DIR}"
 
 # Step 1: Generate graph data (includes task metadata and precomputed layouts)
 echo "==> Generating graph data..."
-"${AOPS_BIN}" graph -f json -o "${GRAPH_DIR}/graph.json"
+"${AOPS_BIN}" graph -f all -o "${GRAPH_DIR}/graph"
 
 # Build density override args (shared across renderers)
 DENSITY_ARGS=()
@@ -142,11 +143,33 @@ run_graph() {
     esac
 }
 
-# Step 2: Generate task map SVG (reachable from active leaves)
+# Step 2: Generate SVGs from precomputed layout .dot files
+# Uses neato -n (fixed positions from aops export). Overrides splines to
+# avoid expensive ortho routing. Skips files with errors (e.g. missing pos).
+echo "==> Generating SVGs from layout .dot files..."
+DOT_COUNT=0
+DOT_FAIL=0
+for dotfile in "${GRAPH_DIR}"/graph*.dot; do
+    [ -f "${dotfile}" ] || continue
+    svgfile="${dotfile%.dot}.svg"
+    dotbase="$(basename "${dotfile}")"
+    echo -n "    ${dotbase} -> ${dotbase%.dot}.svg ... "
+    if timeout 120 neato -n -Tsvg -Gsplines=false "${dotfile}" -o "${svgfile}" 2>/dev/null; then
+        echo "ok ($(du -h "${svgfile}" | cut -f1))"
+        DOT_COUNT=$((DOT_COUNT + 1))
+    else
+        rm -f "${svgfile}"
+        echo "SKIP (missing positions or timeout)"
+        DOT_FAIL=$((DOT_FAIL + 1))
+    fi
+done
+echo "    Generated ${DOT_COUNT} SVG(s), ${DOT_FAIL} skipped"
+
+# Step 3: Generate task map SVG (reachable from active leaves)
 echo "==> Generating task map (renderer: ${RENDERER})..."
 run_graph -o "${VIZ_DIR}/task-map"
 
-# Step 2b: Generate interactive D3 HTML
+# Step 3b: Generate interactive D3 HTML
 echo "==> Generating D3 interactive graph..."
 uv run python3 "${AOPS}/scripts/task_graph_d3.py" \
     "${GRAPH_DIR}/graph.json" \
@@ -156,25 +179,38 @@ echo "    Written ${VIZ_DIR}/task-map.html"
 
 if [ "${QUICK}" = true ]; then
     echo "==> Quick mode, skipping extras."
-    exit 0
+else
+    # Step 4: Generate attention map (unknown unknowns heat map)
+    echo "==> Generating attention map..."
+    run_graph -o "${VIZ_DIR}/attention-map" --attention-map --attention-top "${ATTENTION_TOP}"
+
+    # Step 5: Generate ego-subgraph if requested
+    if [ -n "${EGO_ID}" ]; then
+        echo "==> Generating ego-subgraph for '${EGO_ID}' (depth ${EGO_DEPTH})..."
+        run_graph -o "${VIZ_DIR}/ego-${EGO_ID}" --ego "${EGO_ID}" --depth "${EGO_DEPTH}"
+
+        echo "==> Generating D3 ego-subgraph for '${EGO_ID}'..."
+        uv run python3 "${AOPS}/scripts/task_graph_d3.py" \
+            "${GRAPH_DIR}/graph.json" \
+            --filter reachable \
+            --ego "${EGO_ID}" --depth "${EGO_DEPTH}" \
+            -o "${VIZ_DIR}/ego-${EGO_ID}.html"
+        echo "    Written ${VIZ_DIR}/ego-${EGO_ID}.html"
+    fi
 fi
 
-# Step 3: Generate attention map (unknown unknowns heat map)
-echo "==> Generating attention map..."
-run_graph -o "${VIZ_DIR}/attention-map" --attention-map --attention-top "${ATTENTION_TOP}"
-
-# Step 4: Generate ego-subgraph if requested
-if [ -n "${EGO_ID}" ]; then
-    echo "==> Generating ego-subgraph for '${EGO_ID}' (depth ${EGO_DEPTH})..."
-    run_graph -o "${VIZ_DIR}/ego-${EGO_ID}" --ego "${EGO_ID}" --depth "${EGO_DEPTH}"
-
-    echo "==> Generating D3 ego-subgraph for '${EGO_ID}'..."
-    uv run python3 "${AOPS}/scripts/task_graph_d3.py" \
-        "${GRAPH_DIR}/graph.json" \
-        --filter reachable \
-        --ego "${EGO_ID}" --depth "${EGO_DEPTH}" \
-        -o "${VIZ_DIR}/ego-${EGO_ID}.html"
-    echo "    Written ${VIZ_DIR}/ego-${EGO_ID}.html"
+# Step 6: Commit graph layouts to sessions repo
+echo "==> Committing graph layouts to sessions repo..."
+if [ -d "${GRAPH_DIR}/.git" ]; then
+    git -C "${GRAPH_DIR}" add -f graph*.dot graph*.svg graph.graphml graph-*.json 2>/dev/null || true
+    if ! git -C "${GRAPH_DIR}" diff --cached --quiet 2>/dev/null; then
+        git -C "${GRAPH_DIR}" commit -m "update graph layouts $(date +%Y-%m-%d)" --no-gpg-sign 2>/dev/null || true
+        git -C "${GRAPH_DIR}" push 2>/dev/null && echo "    Pushed to remote" || echo "    Push failed (will retry next run)"
+    else
+        echo "    No changes to commit"
+    fi
+else
+    echo "    Skipped (${GRAPH_DIR} is not a git repo)"
 fi
 
 echo "==> Done."

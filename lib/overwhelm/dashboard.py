@@ -3400,6 +3400,94 @@ def load_task_graph() -> dict | None:
     return load_graph_data()
 
 
+def discover_graph_files() -> dict[str, dict[str, Path]]:
+    """Scan sessions dir for per-layout graph-*.json files.
+
+    Returns manifest like:
+        {"fa2": {"default": Path(...), "full": Path(...)}, "tree": {"default": Path(...)}, ...}
+    Excludes the legacy graph.json (no layout suffix).
+    """
+    sessions_dir = Path(os.environ.get("AOPS_SESSIONS", Path.home() / ".aops" / "sessions"))
+    manifest: dict[str, dict[str, Path]] = {}
+    for f in sorted(sessions_dir.glob("graph-*.json")):
+        stem = f.stem.removeprefix("graph-")  # "fa2", "fa2-full", "tree-filtered"
+        parts = stem.rsplit("-", 1)
+        if len(parts) == 2 and parts[1] in ("full", "filtered"):
+            layout, variant = parts
+        else:
+            layout, variant = stem, "default"
+        manifest.setdefault(layout, {})[variant] = f
+    return manifest
+
+
+def load_and_merge_graph_files(
+    manifest: dict[str, dict[str, Path]], scope: str = "default"
+) -> dict | None:
+    """Load per-layout JSON files and merge into single graph with layouts dict.
+
+    Each per-layout file has nodes with direct x,y (+ optional w,h,r).
+    We merge these into node.layouts[layout_name] = {x, y, ...} to match
+    the format the D3 component expects for client-side layout switching.
+
+    Args:
+        manifest: From discover_graph_files().
+        scope: "default" or "full" -- which variant to prefer per layout.
+
+    Returns:
+        Combined graph dict with nodes containing a ``layouts`` dict, or None.
+    """
+    all_nodes: dict[str, dict] = {}  # id -> node dict (union across files)
+    all_edges: dict[tuple[str, str], dict] = {}  # (source, target) -> edge
+    extra_keys: dict = {}  # top-level metadata from first file loaded
+
+    for layout_name, variants in manifest.items():
+        path = variants.get(scope) or variants.get("default") or next(iter(variants.values()))
+        try:
+            data = json.loads(path.read_text())
+        except Exception:
+            continue
+
+        # Grab non-node/edge top-level keys from the first file
+        if not extra_keys:
+            extra_keys = {k: v for k, v in data.items() if k not in ("nodes", "edges")}
+
+        for node in data.get("nodes", []):
+            nid = node["id"]
+            if nid not in all_nodes:
+                # First time seeing this node -- store full metadata
+                all_nodes[nid] = {**node, "layouts": {}}
+                # Clear direct coords (they live in layouts dict instead)
+                all_nodes[nid].pop("x", None)
+                all_nodes[nid].pop("y", None)
+
+            # Store this layout's coordinates
+            coords: dict = {}
+            if node.get("x") is not None:
+                coords["x"] = node["x"]
+                coords["y"] = node.get("y", 0)
+            if node.get("w") is not None:
+                coords["w"] = node["w"]
+                coords["h"] = node.get("h", 0)
+            if node.get("r") is not None:
+                coords["r"] = node["r"]
+            if coords:
+                all_nodes[nid]["layouts"][layout_name] = coords
+
+        for edge in data.get("edges", []):
+            key = (edge["source"], edge["target"])
+            if key not in all_edges:
+                all_edges[key] = edge
+
+    if not all_nodes:
+        return None
+
+    return {
+        **extra_keys,
+        "nodes": list(all_nodes.values()),
+        "edges": list(all_edges.values()),
+    }
+
+
 def calculate_graph_health(graph: dict) -> dict:
     """Calculate health metrics for the task graph.
 
@@ -3586,7 +3674,20 @@ def render_task_graph_page():
         st.markdown("**Filter**")
         show_only_reachable = st.checkbox("Reachable only", value=False, key="tg_show_reachable")
 
-    d3_graph = load_graph_data()
+        # Scope toggle (full vs filtered) — shown when per-layout files exist
+        manifest = discover_graph_files()
+        has_full = any("full" in v for v in manifest.values()) if manifest else False
+        if manifest and has_full:
+            scope = st.radio("Scope", ["Filtered", "Full"], key="tg_scope", horizontal=True)
+            scope_key = "full" if scope == "Full" else "default"
+        else:
+            scope_key = "default"
+
+    # Try per-layout files first, fall back to legacy single graph.json
+    if manifest:
+        d3_graph = load_and_merge_graph_files(manifest, scope=scope_key)
+    else:
+        d3_graph = load_graph_data()
     if d3_graph:
         # Apply checkbox filters
         all_nodes = d3_graph.get("nodes", [])
@@ -3904,8 +4005,9 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from lib.task_model import TaskStatus
 from task_manager_ui import render_task_editor
+
+from lib.task_model import TaskStatus
 
 
 @st.dialog("Edit Task")
