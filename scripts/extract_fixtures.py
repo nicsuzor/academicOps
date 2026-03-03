@@ -296,17 +296,11 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Extract test fixtures from hook logs")
-    parser.add_argument("log_files", nargs="*", help="JSONL log files to extract from")
+    parser.add_argument("log_files", nargs="+", help="JSONL log files to extract from")
     parser.add_argument("--output", "-o", default=None, help="Output JSON file")
     args = parser.parse_args()
 
     log_files = args.log_files
-    if not log_files:
-        log_files = [
-            "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hooks.jsonl",
-            "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-825840e5-hooks.jsonl",
-            "/tmp/g.jsonl",
-        ]
 
     all_scenarios = {}
     for lf in log_files:
