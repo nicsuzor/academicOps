@@ -3,6 +3,8 @@
 **Last updated**: 2026-03-03
 
 > **Authoritative scope**: This document describes the state of the aops framework codebase and its immediately-connected infrastructure. It is kept current by the butler on each invocation. Automated reviewers (gatekeeper, conceptual-review, etc.) read this document -- accuracy matters. If something is described as "working" here, it is integrated and tested. If it is described as "planned", it does not yet exist in production.
+>
+> **Canonical direction**: This document reflects actual state. When the codebase or infrastructure changes, update this document to match reality -- do not change behavior to match this document. If there is a discrepancy between this document and the actual codebase, the codebase is correct and this document needs updating.
 
 ## Vision
 
@@ -234,7 +236,7 @@ Scripts for extracting insights from session transcripts in `.agent/skills/sessi
 
 ---
 
-_Update log_:
+_Update log_ (keep last 3 entries; older history is in git):
 
 - **2026-03-03**: Major accuracy update. Corrected PKB server status from "medium-term roadmap" to "deployed and running" (was causing false review findings, issue #701). Updated workflow count (18->11), agent list (now 5: qa, worker, strategic-review, merge-prep, conceptual-review), skills count (13->17), test count (~90->~100), architecture tree (removed nonexistent aops-tools/). Added PKB Server section as top component. Added authoritative-scope notice. Removed references to merged PRs from "In Progress". Added update log.
 - **2026-03-02**: Previous update (gate system, hydration policy).
