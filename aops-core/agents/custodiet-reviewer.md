@@ -50,38 +50,17 @@ If a related task was found in Step 2, compare changes against the task's accept
 
 ### Framework Principle Violations
 
-**P#87 (Preserve Pre-Existing Content)**
-Was substantial content deleted from any file? Especially: AXIOMS.md, HEURISTICS.md, WORKFLOWS.md, VISION.md, README.md, enforcement-map.md. Is the deletion explained?
+Read `aops-core/AXIOMS.md` and `aops-core/HEURISTICS.md` in full. Evaluate the PR against **every** axiom and heuristic. Do not rely on a hardcoded subset — axioms are added and refined over time.
 
-**P#65 (Enforcement Changes Require enforcement-map.md Update)**
-Does the PR add or modify hooks/gates without updating `enforcement-map.md`?
+For each violation found, cite the principle by number and name (e.g., P#45 Feedback Loops For Uncertainty) and explain specifically how the PR triggers it.
 
-**P#25 (No Workarounds)**
-Does the PR disable CI checks, use `--no-verify` / `--force`, or weaken quality gates?
+**Common high-signal checks** (not exhaustive — apply all axioms, not just these):
 
-**P#23 (Skills Are Read-Only)**
-Do changes to skills embed mutable state that belongs in `$ACA_DATA`?
-
-**P#11 (Single-Purpose Files)**
-Does the PR change a file to serve a second audience or purpose?
-
-**P#82 (Mandatory Reproduction Tests)**
-For bug fixes: does the PR include a test that reproduces the bug before fixing it?
-
-**P#31 (Acceptance Criteria Own Success)**
-Does the PR weaken, remove, or reinterpret acceptance criteria from the original task?
-
-**P#5 (Do One Thing)**
-Does the PR contain changes that exceed the single objective stated in the description?
-
-**P#6 (Data Boundaries)**
-Does the PR expose private data (user paths, credentials, personal info) in repository files?
-
-**P#24 (Trust Version Control)**
-Are backup files created (`.bak`, `_old`, `_ARCHIVED_*`)?
-
-**P#41 (Plan-First Development)**
-For significant architectural changes: is there evidence of a prior approved plan or task?
+- Content removed without explanation from framework files (AXIOMS.md, HEURISTICS.md, VISION.md, enforcement-map.md)
+- Enforcement changes without enforcement-map.md update
+- Workarounds (`--no-verify`, `--force`, weakened quality gates)
+- Data boundary violations (private data in repo files)
+- Plan-first violations (significant changes without prior approved plan or task)
 
 ### Unauthorized Modifications
 

@@ -20,7 +20,7 @@ academicOps/
 |   +-- skills/       # 17 domain skills (see Skills System below)
 |   +-- workflows/    # Workflow definitions (manual-qa, etc.)
 +-- .github/
-|   +-- agents/       # 5 agent prompts (qa, worker, strategic-review, merge-prep, conceptual-review)
+|   +-- agents/       # 3 agent prompts (worker, merge-prep, conceptual-review)
 |   +-- workflows/    # 11 GitHub Actions workflows
 +-- aops-core/        # Framework core
 |   +-- hooks/        # Session hooks (router, policy_enforcer, gate_config, etc.)
@@ -92,7 +92,7 @@ Automated PR review pipeline with safety mechanisms.
 - `ios-note-capture.yml` -- iOS note capture workflow
 - `merge-prep-cron.yml` -- scheduled merge preparation
 
-**Agents** (5 prompt files in `.github/agents/`): qa, worker, strategic-review, merge-prep, conceptual-review
+**Agents** (3 prompt files in `.github/agents/`): worker, merge-prep, conceptual-review
 
 **Merge methods**: merge commit, squash, and rebase all enabled.
 
@@ -176,26 +176,29 @@ Scripts for extracting insights from session transcripts in `.agent/skills/sessi
 
 ## Key Decisions
 
-| Decision                                                 | Rationale                                                                                                        | Date       |
-| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------- |
-| PKB server is Rust-native (replaces Python task scripts) | Performance, reliability, single binary deployment. CLI + MCP from same codebase.                                | 2026-02-22 |
-| All PKB tools are always_available in gate system        | PKB is framework infrastructure. Gates must never block PKB access.                                              | 2026-03-01 |
-| Hydration gate: only always_available exempt             | Read-only tools get WARN (not exempt). Prevents gate from blocking its own hydrator (Agent tool).                | 2026-03-01 |
-| Import convention: qualified paths from aops-core/       | Bare imports caused dual sys.modules entries breaking importlib.reload() in tests.                               | 2026-03-01 |
-| Gate verdict + replay regression tests                   | 150 scenario tests + 31 real-event replay tests to prevent gate regressions permanently.                         | 2026-03-01 |
-| "Agent" added to always_available tools                  | Claude Code's subagent tool is "Agent" not "Task". Gate config must list both.                                   | 2026-02-28 |
-| Iterative stale task sweep                               | 236+ open tasks with significant junk; batch-review with human decisions, not bulk auto-cancel                   | 2026-02-23 |
-| Conceptual review agent reads STATUS.md                  | Without strategic context, the review agent cannot catch PRs that delete working components (PR 582 post-mortem) | 2026-02-23 |
-| Pipeline cascade limit (max 3 runs)                      | PR 582 showed bots triggering bots in unbounded loops; comment-based counting bounds total cycles                | 2026-02-23 |
-| LGTM triggers lint re-run if failing                     | PR 585 showed LGTM silently failing when lint was stale; merge workflow now checks and re-triggers               | 2026-02-23 |
-| Transcript path: $AOPS_SESSIONS/polecats/                | Worker transcripts go to sessions repo, not old $POLECAT_HOME/transcripts path                                   | 2026-02-23 |
-| Commit trailer for loop detection                        | Author name unreliable (multiple bots use github-actions[bot])                                                   | 2026-02-22 |
-| All workflows get workflow_dispatch                      | Manual re-run capability for debugging and recovery                                                              | 2026-02-22 |
-| Review dismissal by agents                               | Agents should dismiss reviews they've addressed; humans override remaining                                       | 2026-02-22 |
-| All merge methods enabled                                | Flexibility for different PR types                                                                               | 2026-02-22 |
-| Tests at repo root, not in aops-core                     | Single test suite covering all components                                                                        | prior      |
-| Skills are read-only (P#23)                              | Mutable state in $ACA_DATA only                                                                                  | prior      |
-| Categorical imperative (P#2)                             | Every change must be a universal rule                                                                            | prior      |
+| Decision                                                 | Rationale                                                                                                             | Date       |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ---------- |
+| Delete qa.agent.md and strategic-review.agent.md         | Neither was invoked by any workflow; dead weight. Conceptual-review and custodiet-reviewer cover these concerns.      | 2026-03-03 |
+| custodiet-reviewer reads AXIOMS.md dynamically           | Hardcoded axiom list missed new axioms (e.g. P#45 Feedback Loops). Dynamic reading ensures full coverage.             | 2026-03-03 |
+| conceptual-review uses assumption audit lens             | Effectual reasoning: treat all unvalidated parameters as assumptions requiring feedback loops, not settled decisions. | 2026-03-03 |
+| PKB server is Rust-native (replaces Python task scripts) | Performance, reliability, single binary deployment. CLI + MCP from same codebase.                                     | 2026-02-22 |
+| All PKB tools are always_available in gate system        | PKB is framework infrastructure. Gates must never block PKB access.                                                   | 2026-03-01 |
+| Hydration gate: only always_available exempt             | Read-only tools get WARN (not exempt). Prevents gate from blocking its own hydrator (Agent tool).                     | 2026-03-01 |
+| Import convention: qualified paths from aops-core/       | Bare imports caused dual sys.modules entries breaking importlib.reload() in tests.                                    | 2026-03-01 |
+| Gate verdict + replay regression tests                   | 150 scenario tests + 31 real-event replay tests to prevent gate regressions permanently.                              | 2026-03-01 |
+| "Agent" added to always_available tools                  | Claude Code's subagent tool is "Agent" not "Task". Gate config must list both.                                        | 2026-02-28 |
+| Iterative stale task sweep                               | 236+ open tasks with significant junk; batch-review with human decisions, not bulk auto-cancel                        | 2026-02-23 |
+| Conceptual review agent reads STATUS.md                  | Without strategic context, the review agent cannot catch PRs that delete working components (PR 582 post-mortem)      | 2026-02-23 |
+| Pipeline cascade limit (max 3 runs)                      | PR 582 showed bots triggering bots in unbounded loops; comment-based counting bounds total cycles                     | 2026-02-23 |
+| LGTM triggers lint re-run if failing                     | PR 585 showed LGTM silently failing when lint was stale; merge workflow now checks and re-triggers                    | 2026-02-23 |
+| Transcript path: $AOPS_SESSIONS/polecats/                | Worker transcripts go to sessions repo, not old ~/.aops/transcripts path                                              | 2026-02-23 |
+| Commit trailer for loop detection                        | Author name unreliable (multiple bots use github-actions[bot])                                                        | 2026-02-22 |
+| All workflows get workflow_dispatch                      | Manual re-run capability for debugging and recovery                                                                   | 2026-02-22 |
+| Review dismissal by agents                               | Agents should dismiss reviews they've addressed; humans override remaining                                            | 2026-02-22 |
+| All merge methods enabled                                | Flexibility for different PR types                                                                                    | 2026-02-22 |
+| Tests at repo root, not in aops-core                     | Single test suite covering all components                                                                             | prior      |
+| Skills are read-only (P#23)                              | Mutable state in $ACA_DATA only                                                                                       | prior      |
+| Categorical imperative (P#2)                             | Every change must be a universal rule                                                                                 | prior      |
 
 ## Open Questions
 
@@ -209,6 +212,7 @@ Scripts for extracting insights from session transcripts in `.agent/skills/sessi
 
 ### Recently Completed
 
+- **Review agent consolidation** (PR #705) -- deleted qa.agent.md and strategic-review.agent.md (both unused); custodiet-reviewer now reads AXIOMS.md dynamically; conceptual-review refocused on assumption audit + effectual reasoning.
 - **PKB server deployed** -- Rust-native CLI + MCP server replacing Python task scripts. 18 MCP tools, deep gate integration, binary availability check at session start.
 - **Conceptual review agent** -- Replaced gatekeeper/custodiet/hydrator-reviewer issue-review pattern with strategic-review and conceptual-review agents.
 - Gate hardening sprint: 150 verdict tests, 31 replay tests, Agent tool fix, import convention fix, gate status strip -- 2026-02-28 / 2026-03-01
@@ -217,10 +221,11 @@ Scripts for extracting insights from session transcripts in `.agent/skills/sessi
 
 ### Near-term
 
-- Fix STATUS.md staleness problem (this update; issue #701)
 - Address task lifecycle gap (auto-close tasks when PRs merge)
 - Strengthen hydrator guardrails
 - Address issue review over-triggering
+- Wire custodiet-reviewer into a GitHub Actions workflow (deferred from PR #705)
+- Axiom clustering refactor (reorganize AXIOMS.md into logical groups)
 
 ### Medium-term
 
@@ -238,5 +243,6 @@ Scripts for extracting insights from session transcripts in `.agent/skills/sessi
 
 _Update log_ (keep last 3 entries; older history is in git):
 
-- **2026-03-03**: Major accuracy update. Corrected PKB server status from "medium-term roadmap" to "deployed and running" (was causing false review findings, issue #701). Updated workflow count (18->11), agent list (now 5: qa, worker, strategic-review, merge-prep, conceptual-review), skills count (13->17), test count (~90->~100), architecture tree (removed nonexistent aops-tools/). Added PKB Server section as top component. Added authoritative-scope notice. Removed references to merged PRs from "In Progress". Added update log.
+- **2026-03-03**: Agent consolidation (PR #705). Deleted qa.agent.md and strategic-review.agent.md (dead agents, no workflow invocations). Agent count updated: 5 -> 3 (worker, merge-prep, conceptual-review). custodiet-reviewer now reads AXIOMS.md dynamically. conceptual-review refocused on assumption audit + effectual reasoning.
+- **2026-03-03**: Major accuracy update (PR #702). Corrected PKB server status from "medium-term roadmap" to "deployed and running" (was causing false review findings, issue #701). Updated workflow count (18->11), agent list (now 5: qa, worker, strategic-review, merge-prep, conceptual-review), skills count (13->17), test count (~90->~100), architecture tree (removed nonexistent aops-tools/). Added PKB Server section as top component. Added authoritative-scope notice. Removed references to merged PRs from "In Progress". Added update log.
 - **2026-03-02**: Previous update (gate system, hydration policy).
