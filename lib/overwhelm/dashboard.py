@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
 import sys
 import textwrap
 import time
@@ -3640,7 +3641,6 @@ def render_task_graph_page():
         # Layout mode (sidebar)
         layout_map = {
             "Precomputed": "precomputed",
-            "Precomputed + Separate": "precomputed_relax",
             "Force": "force",
             "ForceAtlas2": "atlas",
             "Treemap": "treemap",
@@ -3649,7 +3649,7 @@ def render_task_graph_page():
         }
         available = d3_data.get("availableLayouts", [])
         if d3_data.get("hasLayout"):
-            layout_options = ["Precomputed", "Precomputed + Separate"]
+            layout_options = ["Precomputed"]
         else:
             layout_options = []
         # Add named precomputed layouts from graph.json
@@ -3664,7 +3664,9 @@ def render_task_graph_page():
                 layout_options.append(label)
         # Always offer client-side force layouts
         layout_options.extend(["Force", "ForceAtlas2"])
-        selected_layout = st.sidebar.selectbox("Layout", layout_options, key="tg_layout")
+        selected_layout = st.sidebar.radio(
+            "Layout", layout_options, key="tg_layout", horizontal=True
+        )
         layout_mode = layout_map[selected_layout]
 
         # Action handler for bi-directional clicking
@@ -3897,8 +3899,9 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from lib.task_model import TaskStatus
 from task_manager_ui import render_task_editor
+
+from lib.task_model import TaskStatus
 
 
 @st.dialog("Edit Task")
@@ -3942,6 +3945,18 @@ completed_time_range = st.sidebar.selectbox(
 # Convert to hours
 COMPLETED_HOURS_MAP = {"4h": 4, "24h": 24, "7d": 168}
 completed_hours = COMPLETED_HOURS_MAP.get(completed_time_range, 24)
+
+# Version info at bottom of sidebar
+try:
+    _git_desc = subprocess.check_output(
+        ["git", "describe", "--tags", "--always", "--dirty"],
+        cwd=str(aops_root),
+        stderr=subprocess.DEVNULL,
+        text=True,
+    ).strip()
+except Exception:
+    _git_desc = "unknown"
+st.sidebar.caption(f"aOps {_git_desc}")
 
 if page == "Manage Tasks":
     storage = TaskStorage()

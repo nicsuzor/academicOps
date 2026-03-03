@@ -131,6 +131,18 @@
       template: '#a0a0a0', daily: '#607080', memory: '#c9a0e0',
     };
 
+    // Helper: status-based opacity for precomputed layouts
+    function statusOpacity(d) {
+        if (d.status === "done" || d.status === "completed" || d.status === "cancelled") return 0.4;
+        if (d.status === "active") return 0.8;
+        return 0.6;
+    }
+
+    // Helper: does this layout use a force simulation?
+    function isForceLayout(layout) {
+        return layout === "force" || layout === "atlas";
+    }
+
     // --- Layout-specific node shape builders ---
     function buildTaskCardNode(g, d) {
         const hw = d.w/2, hh = d.h/2;
@@ -171,40 +183,46 @@
     function buildTreemapNode(g, d) {
         const w = d._lw || d.w;
         const h = d._lh || d.h;
-        const color = TYPE_COLORS[d.type] || d.fill;
+        const opacity = statusOpacity(d);
         g.append("rect")
           .attr("x", -w/2).attr("y", -h/2).attr("width", w).attr("height", h)
-          .attr("fill", color).attr("fill-opacity", 0.6)
-          .attr("stroke", "#333").attr("stroke-width", 0.5);
+          .attr("fill", d.fill).attr("fill-opacity", opacity)
+          .attr("stroke", d.borderColor).attr("stroke-width", 1.5);
         if (w > 40 && h > 20) {
             const label = (d.label || '').substring(0, 25);
             const fs = Math.max(6, Math.min(11, Math.min(w, h) * 0.25));
             g.append("text").attr("class","node-text").attr("x",0).attr("y",0)
               .attr("text-anchor","middle").attr("dominant-baseline","central")
-              .attr("font-size", fs + "px").attr("fill","#fff").text(label);
+              .attr("font-size", fs + "px").attr("fill", d.textColor || "#fff").text(label);
         }
     }
 
     function buildCirclePackNode(g, d) {
         const r = Math.max(d._lr || 5, 2);
-        const color = TYPE_COLORS[d.type] || d.fill;
+        const opacity = statusOpacity(d);
         g.append("circle").attr("cx",0).attr("cy",0).attr("r", r)
-          .attr("fill", color).attr("fill-opacity", 0.5)
-          .attr("stroke", color).attr("stroke-width", 0.5);
+          .attr("fill", d.fill).attr("fill-opacity", opacity)
+          .attr("stroke", d.borderColor).attr("stroke-width", 1);
+        if (d.status === "blocked" && d.dw >= 2) {
+            g.insert("circle",":first-child").attr("cx",0).attr("cy",0).attr("r", r + 4)
+              .attr("fill","none").attr("stroke","#ef4444")
+              .attr("class","danger-pulse");
+        }
         if (r > 15) {
             const label = (d.label || '').substring(0, 18);
             const fs = Math.max(6, Math.min(10, r * 0.35));
             g.append("text").attr("class","node-text").attr("x",0).attr("y",0)
               .attr("text-anchor","middle").attr("dominant-baseline","central")
-              .attr("font-size", fs + "px").attr("fill","#fff").text(label);
+              .attr("font-size", fs + "px").attr("fill", d.textColor || "#fff").text(label);
         }
     }
 
     function buildArcNode(g, d) {
-        const r = Math.max(2, (d.dw || 1) * 0.5 + 3);
-        const color = TYPE_COLORS[d.type] || d.fill;
+        const r = Math.max(4, (d.dw || 1) * 0.5 + 3);
+        const opacity = statusOpacity(d);
         g.append("circle").attr("cx",0).attr("cy",0).attr("r", r)
-          .attr("fill", color).attr("fill-opacity", 0.8);
+          .attr("fill", d.fill).attr("fill-opacity", opacity)
+          .attr("stroke", d.borderColor).attr("stroke-width", 1);
     }
 
     // Dispatch table: maps layout mode to node builder. Add new layouts here.
@@ -362,14 +380,22 @@
           .on("click", (e, d) => selectNode(e, d))
           .call(d3.drag()
             .on("start", (e, d) => {
-                if (simulation) simulation.alphaTarget(0.1).restart();
+                if (isForceLayout(currentLayout) && simulation) {
+                    simulation.alphaTarget(0.1).restart();
+                }
                 d.fx = d.x; d.fy = d.y;
             })
             .on("drag", (e, d) => {
                 d.fx = e.x; d.fy = e.y;
+                if (!isForceLayout(currentLayout)) {
+                    d.x = e.x; d.y = e.y;
+                    ticked();
+                }
             })
             .on("end", (e, d) => {
-                if (simulation) simulation.alphaTarget(0);
+                if (isForceLayout(currentLayout) && simulation) {
+                    simulation.alphaTarget(0);
+                }
                 d.fx = null; d.fy = null;
             })
           );
@@ -383,6 +409,58 @@
             activeNodeId = null;
             updateVisibility();
         });
+    }
+
+    // Edge routers: one function per layout strategy
+    function routeContainmentEdges() {
+        // Containment layouts: hide edges entirely
+        linkEls.attr("d", null).attr("opacity", 0);
+    }
+
+    function routeArcEdges() {
+        // Arc diagram: quadratic arc edges above the baseline
+        linkEls.attr("opacity", d => d.type === "ref" ? 0.15 : 0.4);
+        linkEls.attr("d", d => {
+            const sx = d.source.x, sy = d.source.y;
+            const tx = d.target.x, ty = d.target.y;
+            const dx = tx - sx;
+            const arcH = Math.abs(dx) * 0.3;
+            const midX = (sx + tx) / 2;
+            const midY = Math.min(sy, ty) - arcH;
+            return `M${sx},${sy} Q${midX},${midY} ${tx},${ty}`;
+        });
+    }
+
+    function routeForceEdges() {
+        // Force / precomputed / atlas: full edge routing
+        linkEls.attr("opacity", d => d.type === "ref" ? 0.4 : 0.7);
+        linkEls.attr("d", d => {
+            const sx = d.source.x, sy = d.source.y;
+            const tx = d.target.x, ty = d.target.y;
+            if (d.type === "depends_on") {
+                const mx = (sx + tx) / 2;
+                return `M${sx},${sy} L${mx},${sy} L${mx},${ty} L${tx},${ty}`;
+            }
+            if (d.type === "parent") {
+                const my = (sy + ty) / 2;
+                return `M${sx},${sy} C${sx},${my} ${tx},${my} ${tx},${ty}`;
+            }
+            return `M${sx},${sy} L${tx},${ty}`;
+        });
+    }
+
+    // Dispatch table: maps layout mode to edge router
+    const edgeRouters = {
+        treemap: routeContainmentEdges,
+        circle_pack: routeContainmentEdges,
+        arc: routeArcEdges,
+    };
+
+    // Layout-aware tick handler: delegates to per-layout edge router
+    function ticked() {
+        const router = edgeRouters[currentLayout] || routeForceEdges;
+        router();
+        nodeEls.attr("transform", d => `translate(${d.x},${d.y})`);
     }
 
     function applyLayout() {
@@ -438,57 +516,6 @@
             return force;
         }
 
-        // Edge routers: one function per layout strategy
-        function routeContainmentEdges() {
-            // Containment layouts: hide edges entirely
-            linkEls.attr("d", null).attr("opacity", 0);
-        }
-
-        function routeArcEdges() {
-            // Arc diagram: quadratic arc edges above the baseline
-            linkEls.attr("opacity", d => d.type === "ref" ? 0.15 : 0.4);
-            linkEls.attr("d", d => {
-                const sx = d.source.x, sy = d.source.y;
-                const tx = d.target.x, ty = d.target.y;
-                const dx = tx - sx;
-                const arcH = Math.abs(dx) * 0.3;
-                const midX = (sx + tx) / 2;
-                const midY = Math.min(sy, ty) - arcH;
-                return `M${sx},${sy} Q${midX},${midY} ${tx},${ty}`;
-            });
-        }
-
-        function routeForceEdges() {
-            // Force / precomputed / atlas: full edge routing
-            linkEls.attr("opacity", d => d.type === "ref" ? 0.4 : 0.7);
-            linkEls.attr("d", d => {
-                const sx = d.source.x, sy = d.source.y;
-                const tx = d.target.x, ty = d.target.y;
-                if (d.type === "depends_on") {
-                    const mx = (sx + tx) / 2;
-                    return `M${sx},${sy} L${mx},${sy} L${mx},${ty} L${tx},${ty}`;
-                }
-                if (d.type === "parent") {
-                    const my = (sy + ty) / 2;
-                    return `M${sx},${sy} C${sx},${my} ${tx},${my} ${tx},${ty}`;
-                }
-                return `M${sx},${sy} L${tx},${ty}`;
-            });
-        }
-
-        // Dispatch table: maps layout mode to edge router. Add new layouts here.
-        const edgeRouters = {
-            treemap: routeContainmentEdges,
-            circle_pack: routeContainmentEdges,
-            arc: routeArcEdges,
-        };
-
-        // Layout-aware tick handler: delegates to per-layout edge router
-        function ticked() {
-            const router = edgeRouters[currentLayout] || routeForceEdges;
-            router();
-            nodeEls.attr("transform", d => `translate(${d.x},${d.y})`);
-        }
 
         // Helper: scale precomputed 0-1000 coords to a large virtual canvas
         // Reads from layouts.forceatlas2 to avoid mutation bugs on re-entry
@@ -500,12 +527,14 @@
                 if (fa2) {
                     n.x = fa2.x * scale;
                     n.y = fa2.y * scale;
+                    n._hasLayout = true;
                 } else if (n._origX != null) {
                     n.x = n._origX * scale;
                     n.y = n._origY * scale;
+                    n._hasLayout = true;
                 } else {
-                    n.x = CANVAS / 2 + (Math.random() - 0.5) * 100;
-                    n.y = CANVAS / 2 + (Math.random() - 0.5) * 100;
+                    n.x = -9999; n.y = -9999;
+                    n._hasLayout = false;
                 }
             });
         }
@@ -530,6 +559,9 @@
             }
             if (delay) { setTimeout(doZoom, delay); } else { doZoom(); }
         }
+
+        // Reset visibility when switching layouts (precomputed may have hidden nodes)
+        nodeEls.attr("display", null);
 
         if (currentLayout === "force") {
             buildNodeShapes(currentLayout);
@@ -560,38 +592,14 @@
             // Use precomputed coordinates directly — no simulation forces.
             initPrecomputedCoords(nodes);
             buildNodeShapes(currentLayout);
+            nodeEls.attr("display", d => d._hasLayout ? null : "none");
 
             // Render once — no simulation drift
             ticked();
 
-            // Create a stopped simulation only for drag interactivity
-            simulation = d3.forceSimulation(nodes)
-                .force("collision", d3.forceCollide()
-                    .radius(d => Math.max(d.w, d.h) / 2 + fc.collisionPadding)
-                    .strength(fc.collisionStrength)
-                    .iterations(fc.collisionIterations))
-                .alpha(0)
-                .on("tick", ticked);
-            simulation.stop();
+            simulation = null;
 
-            autoZoomToFit(nodes, 0);
-        } else if (currentLayout === "precomputed_relax") {
-            // Start from precomputed positions, then run weak forces to separate overlaps
-            initPrecomputedCoords(nodes);
-            buildNodeShapes(currentLayout);
-
-            // Very gentle simulation: collision-only to nudge apart overlapping nodes
-            simulation = d3.forceSimulation(nodes)
-                .alpha(0.15)
-                .alphaDecay(0.05)
-                .velocityDecay(0.7)
-                .force("collision", d3.forceCollide()
-                    .radius(d => Math.max(d.w, d.h) / 2 + 2)
-                    .strength(0.3)
-                    .iterations(2))
-                .on("tick", ticked);
-
-            autoZoomToFit(nodes, 500);
+            autoZoomToFit(nodes.filter(n => n._hasLayout), 0);
         } else if (currentLayout === "treemap" || currentLayout === "circle_pack" || currentLayout === "arc") {
             // Named precomputed layout from graph.json layouts map
             const CANVAS = 3000;
@@ -601,29 +609,32 @@
                 if (lp) {
                     n.x = lp.x * scale;
                     n.y = lp.y * scale;
-                    // Store treemap dimensions for potential rectangle rendering
                     if (lp.w != null) { n._lw = lp.w * scale; n._lh = lp.h * scale; }
                     if (lp.r != null) { n._lr = lp.r * scale; }
+                    n._hasLayout = true;
                 } else {
-                    n.x = CANVAS / 2 + (Math.random() - 0.5) * 100;
-                    n.y = CANVAS / 2 + (Math.random() - 0.5) * 100;
+                    n.x = -9999; n.y = -9999;
+                    n._hasLayout = false;
                 }
             });
 
             buildNodeShapes(currentLayout);
+
+            // Z-order: bigger nodes behind (first in DOM), smaller on top for clickability
+            if (currentLayout === "treemap") {
+                nodeEls.sort((a, b) => ((b._lw || 0) * (b._lh || 0)) - ((a._lw || 0) * (a._lh || 0)));
+            } else if (currentLayout === "circle_pack") {
+                nodeEls.sort((a, b) => (b._lr || 0) - (a._lr || 0));
+            }
+
+            // Hide nodes without layout data for this mode
+            nodeEls.attr("display", d => d._hasLayout ? null : "none");
+
             ticked();
 
-            // Stopped simulation for drag interactivity only
-            simulation = d3.forceSimulation(nodes)
-                .force("collision", d3.forceCollide()
-                    .radius(d => Math.max(d.w, d.h) / 2 + fc.collisionPadding)
-                    .strength(fc.collisionStrength)
-                    .iterations(fc.collisionIterations))
-                .alpha(0)
-                .on("tick", ticked);
-            simulation.stop();
+            simulation = null;
 
-            autoZoomToFit(nodes, 0);
+            autoZoomToFit(nodes.filter(n => n._hasLayout), 0);
         } else if (currentLayout === "atlas") {
             // ForceAtlas2-style: degree-scaled gravity + repulsion, no center force
             buildNodeShapes(currentLayout);
