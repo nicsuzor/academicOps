@@ -144,7 +144,7 @@ check_repo() {
         NEEDS_FIX+=("$repo")
     else
         # All good
-        [[ "$QUIET" == "false" ]] && printf "  %-18s ${GREEN}ok${NC}\n" "$name"
+        [[ "$QUIET" == "false" ]] && printf "  %-18s ${GREEN}ok${NC}\n" "$name" || true
     fi
 }
 
