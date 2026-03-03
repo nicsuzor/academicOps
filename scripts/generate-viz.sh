@@ -70,6 +70,13 @@ echo "    Generated ${DOT_COUNT} SVG(s), ${DOT_FAIL} skipped"
 # Step 3: Commit graph layouts to sessions repo
 echo "==> Committing graph layouts to sessions repo..."
 if [ -d "${GRAPH_DIR}/.git" ]; then
+    # Resolve conflicts in graph files (freshly generated version wins)
+    echo "    Checking for graph file conflicts..."
+    conflicted_files=$(git -C "${GRAPH_DIR}" diff --name-only --diff-filter=U | grep -E "graph.*\.(dot|svg|json|graphml)" || true)
+    if [[ -n "$conflicted_files" ]]; then
+        echo "$conflicted_files" | xargs -r git -C "${GRAPH_DIR}" add 2>/dev/null || true
+    fi
+
     git -C "${GRAPH_DIR}" add -f graph*.dot graph*.svg graph.graphml graph-*.json 2>/dev/null || true
     if ! git -C "${GRAPH_DIR}" diff --cached --quiet 2>/dev/null; then
         git -C "${GRAPH_DIR}" commit -m "update graph layouts $(date +%Y-%m-%d)" --no-gpg-sign 2>/dev/null || true
