@@ -1,0 +1,198 @@
+# Task Focus Scoring
+
+How tasks are classified as "hot" (visible in default views) or "cold" (searchable but hidden), and how the ready queue is ranked.
+
+## Problem
+
+A task system serving an ADHD brain will always have more tasks than capacity. This is a permanent condition, not a backlog to be cleared. The system must:
+
+1. Accept unbounded task accumulation without degrading usability
+2. Surface the right tasks at the right time without manual triage
+3. Keep old tasks searchable without cluttering focus views
+4. Rank by strategic value, not by insertion order
+
+The current state: 547 active tasks, 495 "ready," 109 orphans. A queue with 495 items is no queue at all.
+
+## Design principles
+
+1. **Scoring, not sorting.** Tasks get a continuous focus score. Views apply a threshold. No binary hot/cold tag to maintain.
+2. **Transparent.** The score is visible and the formula is documented. Users can understand why a task is surfaced.
+3. **Automatic.** Scores recompute on query. No manual tagging, no "move to cold" action needed.
+4. **Reversible.** Nothing is deleted or archived by the scoring system. A task's score can rise if conditions change (e.g., a dependency chain activates it).
+5. **ADHD-aware.** The system manages overflow by design. "Too many tasks" is the normal state, not an error.
+
+## Focus score
+
+Each task's focus score is computed from weighted signals:
+
+```
+focus_score = (
+    w_downstream  * downstream_signal   +
+    w_priority    * priority_signal      +
+    w_project     * project_activity     +
+    w_recency     * recency_signal       +
+    w_blocking    * blocking_urgency     +
+    w_user        * user_boost
+)
+```
+
+### Signal definitions
+
+| Signal              | Range     | Description                                                                                                                                                           |
+| ------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `downstream_signal` | 0.0 - 1.0 | Normalized downstream dependency weight. Tasks that unblock many others score higher. Computed from the task graph.                                                   |
+| `priority_signal`   | 0.0 - 1.0 | Derived from the `priority` field: `(4 - priority) / 4`. Priority 0 (critical) = 1.0, priority 4 = 0.0.                                                               |
+| `project_activity`  | 0.0 - 1.0 | How active is this task's project? Measured by proportion of tasks in the project that have been modified in the last 14 days. An active project lifts all its tasks. |
+| `recency_signal`    | 0.0 - 1.0 | Decay function on `modified` timestamp. 1.0 if modified today, decaying over 90 days to 0.0. Uses exponential decay: `exp(-days / 30)`.                               |
+| `blocking_urgency`  | 0.0 - 1.0 | 1.0 if this task is explicitly blocking an in_progress task. 0.5 if blocking an active task. 0.0 otherwise.                                                           |
+| `user_boost`        | 0.0 - 1.0 | Explicit user signal. Set via `focus: boost` in frontmatter or daily note mentions. Decays after 7 days if not refreshed.                                             |
+
+### Default weights
+
+| Weight         | Value | Rationale                                             |
+| -------------- | ----- | ----------------------------------------------------- |
+| `w_downstream` | 0.25  | Unblocking value is the strongest objective signal    |
+| `w_priority`   | 0.20  | User-assigned priority is a strong intentional signal |
+| `w_project`    | 0.15  | Active projects pull related tasks into focus         |
+| `w_recency`    | 0.15  | Recently-touched tasks are more likely to be relevant |
+| `w_blocking`   | 0.15  | Urgency from blocking in-progress work                |
+| `w_user`       | 0.10  | Explicit user focus boost                             |
+
+Weights are configurable via `config/focus-weights.yaml`. They MUST sum to 1.0.
+
+### Why not FIFO or LIFO
+
+- **FIFO** (oldest first) punishes the user for capturing ideas early. Old tasks rot at the top.
+- **LIFO** (newest first) means older important work never surfaces. Recency bias.
+- **Focus scoring** is multi-dimensional. A 6-month-old task that blocks three other tasks and is in an active project scores higher than yesterday's low-priority note-to-self.
+
+## Hot/cold threshold
+
+The focus score determines visibility in default views:
+
+| Score range | Classification | Behaviour                                                                                                |
+| ----------- | -------------- | -------------------------------------------------------------------------------------------------------- |
+| >= 0.3      | **Hot**        | Shown in `list_tasks(status="ready")` by default                                                         |
+| < 0.3       | **Cold**       | Hidden from default view. Shown with `list_tasks(temperature="all")` or `list_tasks(temperature="cold")` |
+
+The threshold (0.3) is configurable via `config/focus-weights.yaml`.
+
+### What makes a task go cold
+
+A task naturally goes cold when:
+
+- Its project has no recent activity (low `project_activity`)
+- It hasn't been touched in weeks (decaying `recency_signal`)
+- It has no downstream dependencies (zero `downstream_signal`)
+- Its priority is low (3-4)
+- No user boost active
+
+This is automatic. No manual archival, no triage, no "declare bankruptcy."
+
+### What brings a task back hot
+
+A cold task warms up automatically when:
+
+- The user boosts it (`focus: boost`)
+- Its project becomes active again (someone works on a sibling task)
+- It starts blocking in-progress work
+- Its priority is raised
+- It's mentioned in a daily note
+
+## API changes
+
+### `list_tasks` additions
+
+```python
+list_tasks(
+    status="ready",        # existing
+    temperature="hot",     # NEW: "hot" (default), "cold", "all"
+    sort_by="focus_score", # NEW: "focus_score" (default for ready), "priority", "created", "modified"
+    limit=30,              # existing, default changes from 50 to 30 for "hot"
+)
+```
+
+When `temperature` is not specified:
+
+- `status="ready"` defaults to `temperature="hot"`
+- All other statuses default to `temperature="all"`
+
+### Task metadata additions
+
+Each task gains computed (not stored) fields:
+
+```yaml
+# Returned in list_tasks and get_task responses
+_focus_score: 0.72
+_temperature: hot    # derived from score vs threshold
+_score_breakdown:    # optional, for debugging
+  downstream: 0.18
+  priority: 0.20
+  project_activity: 0.12
+  recency: 0.10
+  blocking: 0.15
+  user_boost: 0.00
+```
+
+These are computed at query time, not stored in the task file.
+
+## Assignee policy (consolidation)
+
+Resolves current conflict between `bot`, `polecat`, and unset:
+
+| Assignee       | Meaning                                                               | When to use                                                   |
+| -------------- | --------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `nic`          | Requires human judgment, external context, or relationship management | Reviews, decisions, emails, meetings                          |
+| (unset / null) | Any actor can claim -- human or agent                                 | Default for most tasks                                        |
+| `worker:<id>`  | Claimed by a specific worker (lock)                                   | Set automatically by polecat/swarm claim. Cleared on release. |
+
+**Changes from current state:**
+
+- **`bot` is removed.** The old `nic`/`bot` binary assumed all tasks are either human or agent. In practice, most tasks can be done by either. The default (unset) means "available."
+- **`polecat` is replaced by `worker:<id>`.** Worker identity is a lock for concurrency, not a permanent assignment. It's set when a worker claims a task and cleared when done.
+- **Unset is no longer "legacy compatibility."** It's the intentional default meaning "any actor can pick this up."
+
+### Migration
+
+- Existing tasks with `assignee: bot` -> clear the field (set to null).
+- Existing tasks with `assignee: polecat` -> clear the field.
+- Tasks with `assignee: nic` -> keep as-is.
+
+## Configuration
+
+```yaml
+# config/focus-weights.yaml
+focus:
+  weights:
+    downstream: 0.25
+    priority: 0.20
+    project_activity: 0.15
+    recency: 0.15
+    blocking: 0.15
+    user_boost: 0.10
+  threshold: 0.3
+  recency_halflife_days: 30
+  project_activity_window_days: 14
+  user_boost_decay_days: 7
+```
+
+## Implementation notes
+
+- Focus scores are computed at query time, not stored. This avoids stale scores and index maintenance.
+- For large task sets (>1000), consider caching scores with a TTL matching the shortest decay window.
+- The `_score_breakdown` field is optional and only returned when requested (e.g., `list_tasks(debug=true)`).
+- Graph metrics (downstream weight) are already computed by the PKB server. This spec adds a normalization layer.
+
+## Giving effect
+
+- [[aops-tools/tasks_server.py]] -- Implementation of focus scoring in list_tasks
+- [[config/focus-weights.yaml]] -- Weight and threshold configuration
+- [[specs/work-management.md]] -- Update assignee policy section
+- [[aops-core/WORKFLOWS.md]] -- No changes needed (routing is unaffected)
+
+## Open questions
+
+1. **Should the daily note auto-boost tasks?** If a task is mentioned in today's daily note, should that count as a user boost signal? (Proposed: yes, with 7-day decay.)
+2. **Should completed tasks in a project count toward project_activity?** (Proposed: yes -- completing tasks shows the project is alive.)
+3. **Should orphan tasks get a penalty?** Tasks with no parent have missing graph context. (Proposed: no explicit penalty -- they naturally score low on downstream_signal.)
+4. **Weight tuning.** The default weights are a starting point. Should there be a calibration period where scores are logged but not used for filtering?
