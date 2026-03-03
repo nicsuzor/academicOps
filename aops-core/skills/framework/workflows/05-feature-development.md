@@ -47,7 +47,7 @@ Feature development follows eight phases:
 5. **Development Planning** - Break into discrete steps
 6. **Execution** - Build with continuous validation
 7. **Validation** - Verify and decide keep/revert/iterate
-8. **Spec Synthesis** - Update spec, delete implementation artifacts
+8. **Spec Synthesis & Bazaar Review** - Update spec, submit PR for review
 
 ## Workflow
 
@@ -267,11 +267,11 @@ Feature development follows eight phases:
 
 **Fail-Fast**: Never commit partial success. Better to revert and learn than ship broken features.
 
-### Phase 8: Spec Synthesis
+### Phase 8: Spec Synthesis & Bazaar Review
 
-**Objective**: Update the authoritative spec; delete implementation artifacts.
+**Objective**: Update the authoritative spec and submit for review via GitHub PR.
 
-**Rationale**: Per [[AXIOMS]] #29, one spec per feature. Experiment tracking (tasks) is episodic; specs are timeless. After validation, merge implementation knowledge into the spec and complete the experiment task.
+**Rationale**: Per [[AXIOMS]] #29, one spec per feature. Experiment tracking (tasks) is episodic; specs are timeless. After validation, merge implementation knowledge into the spec and submit for bazaar review (see [[specs/pr-process.md]]).
 
 **Actions**:
 
@@ -281,21 +281,70 @@ Feature development follows eight phases:
 2. **Merge implementation content**: Design decisions, key functions, UX patterns
 3. **Strip temporal content**: Remove "what was built" narrative, dates, deliberation
 4. **Verify spec is timeless**: Reads as "how it works" not "how it was built"
-5. **Complete experiment task**: `mcp__pkb__complete_task(id="[task-id]")` with body noting "Synthesized to spec: [spec-name]"
-6. **Update spec index**: Ensure `specs/specs.md` lists the spec with correct status
-7. **Commit spec update**
+5. **Update spec index**: Ensure `specs/INDEX.md` lists the spec with correct status
+6. **Create branch and PR**: Commit spec and index update to a feature branch and open a GitHub PR for bazaar review. Include task ID references in the PR description (see GitHub Integration below).
+7. **Complete experiment task**: `mcp__pkb__complete_task(id="[task-id]")` with body noting "Synthesized to spec: [spec-name], PR: [url]"
 
 **TodoWrite items** (mandatory):
 
 ```
 - [ ] Update spec with implementation details
 - [ ] Complete experiment task
-- [ ] Verify specs/specs.md index updated
+- [ ] Verify specs/INDEX.md index updated
 ```
 
 **Output**: Updated timeless spec; experiment issue closed with link to spec.
 
 **Fail-Fast**: If spec and implementation doc describe different behaviors, HALT - resolve the discrepancy before proceeding.
+
+## GitHub Integration
+
+Framework features go through bazaar review on GitHub (see [[specs/pr-process.md]]). This creates bidirectional links between the task system (PKB) and GitHub.
+
+### When to create a PR
+
+| Change type                          | PR required? | Rationale                                                             |
+| ------------------------------------ | ------------ | --------------------------------------------------------------------- |
+| New spec or spec amendment           | **Yes**      | Design decisions need bazaar review                                   |
+| Code implementation                  | **Yes**      | Standard code review                                                  |
+| Workflow/skill documentation changes | **Yes**      | Shared infrastructure                                                 |
+| Bug fix with no design decisions     | Optional     | Non-framework only; PR still required where branch protection applies |
+
+### Spec-first vs implementation-first
+
+**Spec-first** (when the design needs review before building):
+
+1. Write the spec in `specs/`
+2. Create branch, commit spec, open PR
+3. Bazaar reviews the design (Gatekeeper, Custodiet, QA, human reviewer)
+4. After approval, implement (may be a separate PR)
+
+**Implementation-first** (when the design emerges from building):
+
+1. Build and validate (Phases 1-7)
+2. Synthesize spec (Phase 8)
+3. Create branch with both implementation and spec, open PR
+
+### Task-GitHub linking conventions
+
+**In PR descriptions**, reference task IDs:
+
+```markdown
+Task: aops-focus-spec
+Epic: aops-focus-epic
+```
+
+**In task bodies**, record PR URLs:
+
+```python
+mcp__pkb__append(
+    id="task-id",
+    content="PR: https://github.com/.../pull/123",
+    section="Log"
+)
+```
+
+This enables traceability: from a task, find the PR; from a PR, find the task.
 
 ## Templates
 
@@ -393,7 +442,7 @@ Use TodoWrite at key points:
 6. Plan development (Phase 5)
 7. Implement feature (Phase 6)
 8. Validate and decide (Phase 7)
-9. Synthesize to spec (Phase 8)
+9. Synthesize to spec and open PR for bazaar review (Phase 8)
 
 **At each phase**:
 
