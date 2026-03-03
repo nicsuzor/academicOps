@@ -3380,27 +3380,6 @@ def clean_activity_text(raw_text: str) -> str:
 # ============================================================================
 
 
-def load_graph_data(filename: str = "graph.json") -> dict | None:
-    """Load graph JSON from AOPS_SESSIONS, falling back to ACA_DATA."""
-    polecat_home = Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat")))
-    sessions_dir = Path(os.environ.get("AOPS_SESSIONS", polecat_home / "sessions"))
-    aca_data = Path(os.environ["ACA_DATA"])
-
-    for directory in (sessions_dir, aca_data):
-        graph_path = directory / filename
-        if graph_path.exists():
-            try:
-                return json.loads(graph_path.read_text())
-            except Exception:
-                pass
-    return None
-
-
-def load_task_graph() -> dict | None:
-    """Load the most recent task graph JSON (shim)."""
-    return load_graph_data()
-
-
 def discover_graph_files() -> dict[str, dict[str, Path]]:
     """Scan sessions dir for per-layout graph-*.json files.
 
@@ -3653,9 +3632,11 @@ def render_spotlight_epic():
 
 def _get_graph_node_count() -> int:
     """Get the number of nodes in the task graph for collapse threshold."""
-    graph = load_graph_data()
-    if graph:
-        return len(graph.get("nodes", []))
+    manifest = discover_graph_files()
+    if manifest:
+        graph = load_and_merge_graph_files(manifest)
+        if graph:
+            return len(graph.get("nodes", []))
     return 0
 
 
@@ -3684,11 +3665,8 @@ def render_task_graph_page():
         else:
             scope_key = "default"
 
-    # Try per-layout files first, fall back to legacy single graph.json
-    if manifest:
-        d3_graph = load_and_merge_graph_files(manifest, scope=scope_key)
-    else:
-        d3_graph = load_graph_data()
+    # Load from per-layout JSON files (graph-*.json)
+    d3_graph = load_and_merge_graph_files(manifest, scope=scope_key) if manifest else None
     if d3_graph:
         # Apply checkbox filters
         all_nodes = d3_graph.get("nodes", [])
@@ -3790,7 +3768,7 @@ def render_task_graph_page():
             if action and task_id:
                 _handle_graph_action(action, task_id)
     else:
-        st.warning("No tasks.json found. Run `/task-viz` to generate.")
+        st.warning("No per-layout graph files found. Run `generate-viz.sh` to generate.")
 
 
 _USELESS_PROMPTS = frozenset(
