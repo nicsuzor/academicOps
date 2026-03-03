@@ -53,7 +53,7 @@ Complete the task while staying aware of friction points: awkward steps, needed 
 
 ## Further Meta-Activities
 
-For auditing and piloting procedures, see **[[workflows/references/meta-details]]**:
+For auditing and piloting procedures, see **[[references/meta-details]]**:
 
 - **Tool Effectiveness Audit** - Reflect on search, memory, and graph tools
 - **Section: Skill Piloting** - How to build new standardized skills

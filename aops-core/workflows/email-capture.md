@@ -37,7 +37,7 @@ backend: scripts
 
 ## Detailed Procedures
 
-For step-by-step instructions and technical configurations, see **[[workflows/references/email-capture-details]]**:
+For step-by-step instructions and technical configurations, see **[[references/email-capture-details]]**:
 
 - Detailed duplication check and response detection logic
 - Classification matrix and signal indicators

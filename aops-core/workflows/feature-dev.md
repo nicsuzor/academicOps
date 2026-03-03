@@ -26,7 +26,7 @@ version: 1.1.0
 
 ## Detailed Checklists
 
-For comprehensive design, implementation, and verification checklists, see **[[workflows/references/feature-dev-details]]**:
+For comprehensive design, implementation, and verification checklists, see **[[references/feature-dev-details]]**:
 
 - **Design Checklist** - Requirements, architecture, and UX
 - **Implementation Checklist** - TDD, coding standards, and documentation

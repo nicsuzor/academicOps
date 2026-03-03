@@ -48,7 +48,7 @@ git add <files> && git commit -m "<type>: <desc>" && git push
 
 ## Detailed Procedures
 
-For procedures on following steps, see **[[workflows/references/handover-details]]**:
+For procedures on following steps, see **[[references/handover-details]]**:
 
 - **Quick Exit** - Protocol for sessions with no work done
 - **Step 3: Follow-up Tasks** - Procedure for task decomposition
@@ -59,7 +59,7 @@ For procedures on following steps, see **[[workflows/references/handover-details
 
 ## Step 5: Output Framework Reflection
 
-Output the reflection in exact AGENTS.md format (see **[[workflows/references/handover-details]]** for template):
+Output the reflection in exact AGENTS.md format (see **[[references/handover-details]]** for template):
 
 ```markdown
 ## Framework Reflection
