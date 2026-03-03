@@ -56,6 +56,7 @@ mcp__pkb__create_task(
   task_title="<clear, actionable title>",
   type="task",  # or: bug, feature, learn
   project="<infer from context>",
+  parent="<epic-id or project-id>", # MANDATORY: Link to hierarchy
   priority=2,
   assignee="polecat",  # or null for judgment tasks, "nic" only if explicitly requested
   tags=["<relevant>", "<tags>"],

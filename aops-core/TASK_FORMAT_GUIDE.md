@@ -98,6 +98,7 @@ diagnostic: null
 | `type`    | enum   | Task semantic level                  | `task`, `goal`, `project`, `epic`, `action`, `bug`, `feature`, `learn`      |
 | `status`  | enum   | Current state                        | `inbox`, `active`, `in_progress`, `done`, `blocked`, `waiting`, `cancelled` |
 | `project` | string | Project slug or `uncategorized`      | `aops`, `book`, `dissertation`                                              |
+| `parent`  | string | Parent task ID for hierarchy         | `20260115-cognitive-load` (MANDATORY per P#73)                              |
 
 ### Optional Fields
 
@@ -105,7 +106,6 @@ diagnostic: null
 | ------------------- | ------------ | ----------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | `priority`          | int          | 0=critical, 1=high, 2=medium, 3=low, 4=someday        | `0`                                                                                     |
 | `due`               | date         | Due date in YYYY-MM-DD format                         | `2026-02-15`                                                                            |
-| `parent`            | string       | Parent task ID for hierarchy                          | `20260115-cognitive-load`                                                               |
 | `depends_on`        | list[string] | Hard blocking dependencies                            | `[20260110-aops-cli, 20260114-indexing]`                                                |
 | `soft_depends_on`   | list[string] | Non-blocking context dependencies                     | `[20260112-ux-research]`                                                                |
 | `tags`              | list[string] | Topic tags for categorization                         | `[dashboard, priority, visibility]`                                                     |

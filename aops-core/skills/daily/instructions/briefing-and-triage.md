@@ -110,6 +110,7 @@ From [sender]: [Actual content or summary]
 
 1. **If action required** (feedback, review, response, decision) → `mcp__pkb__create_task()` NOW
    - Include deadline if mentioned or implied
+   - **MANDATORY**: set `parent` to a project epic or the project task itself (P#73)
    - **Then add task link to FYI content**: `- **→ Task**: [task-id] Task title`
 2. **If links to existing task** → `mcp__pkb__update_task()` with the info
 3. **If worth future recall** → `mcp__pkb__create_memory()` with tags

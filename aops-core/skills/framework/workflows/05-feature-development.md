@@ -101,7 +101,7 @@ Feature development follows eight phases:
 3. Define success criteria (from Phase 2)
 4. Specify scope boundaries (what's in/out)
 5. Identify control state (current behavior without feature)
-6. **Create task** (per AXIOM #28 - episodic content → tasks): `mcp__pkb__create_task(task_title="experiment: [feature-name]", tags=["experiment"], body="[experiment plan content]")`
+6. **Create task** (per AXIOM #28 - episodic content → tasks): `mcp__pkb__create_task(task_title="experiment: [feature-name]", project="aops", parent="aops-d109aeee", tags=["experiment"], body="[experiment plan content]")`
 
 **Experiment Tracking Required For**:
 

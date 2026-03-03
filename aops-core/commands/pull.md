@@ -130,6 +130,8 @@ For tasks with `type: learn`:
    ```
    mcp__pkb__create_task(
      id="<spike-id>",
+     project="<project>",
+     parent="<parent-id>", # MANDATORY: Link to hierarchy
      children=[
        {"title": "[Fix] Issue 1", "type": "task", "body": "Context from spike..."},
        {"title": "[Fix] Issue 2", "type": "task", "body": "Context from spike..."}
@@ -183,6 +185,8 @@ If task is too large but scope is clear:
 ```
 mcp__pkb__create_task(
   id="<parent-id>",
+  project="<project>",
+  parent="<parent-epic-id or project-id>", # MANDATORY: Link to hierarchy
   children=[
     {"title": "Subtask 1: [specific action]", "type": "action", "order": 0},
     {"title": "Subtask 2: [specific action]", "type": "action", "order": 1},

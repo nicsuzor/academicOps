@@ -67,6 +67,7 @@ result = mcp__pkb__create_task(
     task_title="Email triage: [date range/criteria]",
     type="task",
     project="<project>",
+    parent="<project-id or epic-id>", # MANDATORY: Link to hierarchy
     tags=["email", "triage"]
 )
 task_id = result["task"]["id"]
