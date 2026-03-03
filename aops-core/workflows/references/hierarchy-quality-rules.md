@@ -4,11 +4,11 @@ To prevent task map fragmentation and orphan tasks, all task creation MUST adher
 
 ## Rule 1: Mandatory Parent Linkage
 
-Every task created with a `project` MUST have a `parent` set.
+Every non-root task created with a `project` MUST have a `parent` set. Root-level project and goal tasks are exempt (they are the hierarchy entry points).
 
 - If the task is part of an epic, set `parent: <epic-id>`.
 - If the task is a new workstream, set `parent: <project-id>`.
-- **Never** set `parent: null` when a project is known.
+- **Never** set `parent: null` for a regular task when a project is known.
 
 ## Rule 2: The WHY Test
 

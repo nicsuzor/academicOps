@@ -88,7 +88,7 @@ Create **ONE** task if immediate action is required.
 mcp__pkb__create_task(
   title="[Learn] <slug>",
   project="aops",
-  parent="aops-d109aeee", # Example parent (Infrastructure/Framework)
+  parent="<project-epic-id>",  # MANDATORY: infer from project context
   priority=2,
   body="Reference GitHub Issue: [link]\n\nProposed fix: ..."
 )
