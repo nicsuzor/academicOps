@@ -49,7 +49,9 @@ focus_score = (
 
 ### Default weights
 
-| Weight         | Value | Rationale                                             |
+These are **starting values only** — there are no theoretically correct ratios. The right weights depend on the task graph shape, project cadence, and how the system is used in practice. Expect to recalibrate after observing score distributions.
+
+| Weight         | Value | Initial rationale                                     |
 | -------------- | ----- | ----------------------------------------------------- |
 | `w_downstream` | 0.25  | Unblocking value is the strongest objective signal    |
 | `w_priority`   | 0.20  | User-assigned priority is a strong intentional signal |
@@ -136,28 +138,6 @@ _score_breakdown:    # optional, for debugging
 
 These are computed at query time, not stored in the task file.
 
-## Assignee policy (consolidation)
-
-Resolves current conflict between `bot`, `polecat`, and unset:
-
-| Assignee       | Meaning                                                               | When to use                                                                                 |
-| -------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `nic`          | Requires human judgment, external context, or relationship management | Reviews, decisions, emails, meetings                                                        |
-| (unset / null) | Any actor can claim -- human or agent                                 | Default for most tasks                                                                      |
-| `worker:<id>`  | Claimed by a specific worker (lock)                                   | Set automatically by the task worker on claim (e.g., `worker:swarm-1`). Cleared on release. |
-
-**Changes from current state:**
-
-- **`bot` is removed.** The old `nic`/`bot` binary assumed all tasks are either human or agent. In practice, most tasks can be done by either. The default (unset) means "available."
-- **The `polecat` assignee is removed; mechanical workers now use `worker:<id>` locks instead.** Worker identity is a transient lock for concurrency, not a permanent assignment. The runtime sets `assignee: worker:<id>` when it claims a task and clears it on completion or release.
-- **Unset is no longer "legacy compatibility."** It's the intentional default meaning "any actor can pick this up."
-
-### Migration
-
-- Existing tasks with `assignee: bot` -> clear the field (set to null).
-- Existing tasks with `assignee: polecat` -> clear the field.
-- Tasks with `assignee: nic` -> keep as-is.
-
 ## Configuration
 
 ```yaml
@@ -181,7 +161,7 @@ focus:
 - Focus scores are computed at query time, not stored. This avoids stale scores and index maintenance.
 - For large task sets (>1000), consider caching scores with a TTL matching the shortest decay window.
 - The `_score_breakdown` field is optional and only returned when requested (e.g., `list_tasks(debug=true)`).
-- Graph metrics (downstream weight) are already computed by the PKB server. This spec adds a normalization layer.
+- The PKB server already computes weighted scores. This spec extends that existing capability with additional signals and a hot/cold threshold.
 
 ### Reconciliation with "Dumb Server, Smart Agent" (P#78)
 
@@ -195,7 +175,6 @@ This is explicitly acknowledged as an extension of the server's role from pure d
 
 - `aops-tools/tasks_server.py` (external tools package) -- Implementation of focus scoring in list_tasks
 - `$AOPS_CONFIG/focus-weights.yaml` (external config, not tracked in this repo) -- Weight and threshold configuration
-- [[specs/work-management.md]] -- Update assignee policy section
 - [[aops-core/WORKFLOWS.md]] -- No changes needed (routing is unaffected)
 
 ## Open questions
@@ -203,4 +182,4 @@ This is explicitly acknowledged as an extension of the server's role from pure d
 1. **Should the daily note auto-boost tasks?** If a task is mentioned in today's daily note, should that count as a user boost signal? (Proposed: yes, with 7-day decay.)
 2. **Should completed tasks in a project count toward project_activity?** (Proposed: yes -- completing tasks shows the project is alive.)
 3. **Should orphan tasks get a penalty?** Tasks with no parent have missing graph context. (Proposed: no explicit penalty -- they naturally score low on downstream_signal.)
-4. **Weight tuning.** The default weights are a starting point. Should there be a calibration period where scores are logged but not used for filtering?
+4. **Weight tuning.** The default weights are a starting point — there are no theoretically correct ratios. Plan to observe score distributions in practice and adjust. The `_score_breakdown` field exists specifically to support this calibration.
