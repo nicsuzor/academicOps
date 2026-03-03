@@ -3468,6 +3468,19 @@ def load_and_merge_graph_files(
     }
 
 
+@st.cache_data(ttl=300)
+def _load_merged_graph(scope: str = "default") -> dict | None:
+    """Load and merge per-layout graph files (cached, 5min TTL).
+
+    Wraps discover + merge into a single cached call. The 'Reload Graph'
+    button calls st.cache_data.clear() to force refresh.
+    """
+    manifest = discover_graph_files()
+    if not manifest:
+        return None
+    return load_and_merge_graph_files(manifest, scope=scope)
+
+
 def calculate_graph_health(graph: dict) -> dict:
     """Calculate health metrics for the task graph.
 
@@ -3632,11 +3645,9 @@ def render_spotlight_epic():
 
 def _get_graph_node_count() -> int:
     """Get the number of nodes in the task graph for collapse threshold."""
-    manifest = discover_graph_files()
-    if manifest:
-        graph = load_and_merge_graph_files(manifest)
-        if graph:
-            return len(graph.get("nodes", []))
+    graph = _load_merged_graph()
+    if graph:
+        return len(graph.get("nodes", []))
     return 0
 
 
@@ -3665,8 +3676,8 @@ def render_task_graph_page():
         else:
             scope_key = "default"
 
-    # Load from per-layout JSON files (graph-*.json)
-    d3_graph = load_and_merge_graph_files(manifest, scope=scope_key) if manifest else None
+    # Load from per-layout JSON files (graph-*.json) — cached
+    d3_graph = _load_merged_graph(scope=scope_key)
     if d3_graph:
         # Apply checkbox filters
         all_nodes = d3_graph.get("nodes", [])

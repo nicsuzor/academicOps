@@ -620,6 +620,15 @@ class HookRouter:
         - SubagentStart -> gate.on_subagent_start()
         - SubagentStop -> gate.on_subagent_stop()
         """
+        # Ensure subagent_type is populated for trigger evaluation.
+        # normalize_input() handles this for production calls, but tests may
+        # construct HookContext directly. extract_subagent_type() covers both
+        # SPAWN_TOOLS lookup and Gemini's bare agent name pattern.
+        if not ctx.subagent_type and ctx.tool_name:
+            extracted, _ = extract_subagent_type(ctx.tool_name, ctx.tool_input or {})
+            if extracted:
+                ctx.subagent_type = extracted
+
         is_compliance_agent = ctx.is_subagent and (
             state.state.get("hydrator_active") or ctx.subagent_type in COMPLIANCE_SUBAGENT_TYPES
         )

@@ -51,12 +51,24 @@ from lib.session_state import SessionState
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 SCENARIOS_FILE = FIXTURES_DIR / "gate_scenarios.json"
+LIVE_SCENARIOS_FILE = FIXTURES_DIR / "gate_scenarios_live.json"
 
 
 def _load_scenarios() -> dict:
-    """Load all scenarios from the JSON fixture file."""
+    """Load scenarios from both fixture files.
+
+    Legacy fixtures (gate_scenarios.json) provide scenarios for test invariants
+    like gate_overrides, compliance bypass, etc. Live fixtures (gate_scenarios_live.json)
+    are extracted from real hook logs with provenance metadata — these are the
+    source of truth for platform-specific behavior.
+    """
     with SCENARIOS_FILE.open() as f:
-        return json.load(f)
+        scenarios = json.load(f)
+    if LIVE_SCENARIOS_FILE.exists():
+        with LIVE_SCENARIOS_FILE.open() as f:
+            live = json.load(f)
+        scenarios.update(live)
+    return scenarios
 
 
 ALL_SCENARIOS = _load_scenarios()
@@ -150,13 +162,25 @@ def router(monkeypatch):
     return HookRouter()
 
 
+@pytest.fixture(params=["warn", "block"], ids=["hydration=warn", "hydration=block"])
+def hydration_mode(request, monkeypatch):
+    """Run hydration gate tests in both warn and block modes."""
+    monkeypatch.setenv("HYDRATION_GATE_MODE", request.param)
+    _reinit_gates_with_defaults()
+    return request.param
+
+
 # ===========================================================================
 # HYDRATION GATE: Write tools warned when closed
 # ===========================================================================
 
 
 class TestHydrationGateBlocksWriteTools:
-    """Write-category tools must be warned when hydration gate is closed (default mode=warn)."""
+    """Write-category tools get mode-appropriate verdict when hydration gate is closed.
+
+    warn mode -> WARN (tool allowed, agent warned to hydrate)
+    block mode -> DENY (tool blocked until hydration)
+    """
 
     SCENARIOS = _flatten_scenarios("hydration_gate_blocks_write_tools")
 
@@ -165,18 +189,20 @@ class TestHydrationGateBlocksWriteTools:
         SCENARIOS,
         ids=[s["id"] for s in SCENARIOS],
     )
-    def test_write_tool_warned(self, router, scenario):
+    def test_write_tool_verdict_matches_mode(self, router, hydration_mode, scenario):
         state = _make_session_state(scenario)
         ctx = _make_context(scenario)
 
         result = router._dispatch_gates(ctx, state)
 
+        expected = GateVerdict.WARN if hydration_mode == "warn" else GateVerdict.DENY
         assert result is not None, (
-            f"[{scenario['id']}] Expected non-allow verdict but got None (allow)"
+            f"[{scenario['id']}] Expected {expected.value} but got None (allow) "
+            f"in {hydration_mode} mode"
         )
-        assert result.verdict != GateVerdict.ALLOW, (
-            f"[{scenario['id']}] Write tool '{scenario['tool_name']}' should not be "
-            f"ALLOW when hydration gate is closed"
+        assert result.verdict == expected, (
+            f"[{scenario['id']}] Write tool '{scenario['tool_name']}' should be "
+            f"{expected.value} in {hydration_mode} mode, got {result.verdict.value}"
         )
 
 
@@ -186,13 +212,11 @@ class TestHydrationGateBlocksWriteTools:
 # ===========================================================================
 
 
-class TestHydrationGateWarnsReadOnly:
+class TestHydrationGateReadOnlyTools:
     """Read-only tools are subject to hydration gate — only always_available is exempt.
 
-    The hydration gate policy excludes only always_available tools. Read-only
-    tools like Read, Glob, Grep get the hydration warning (not block) when
-    the gate is closed. This is intentional: the warning tells the agent to
-    hydrate, but doesn't prevent tool use (warn != deny).
+    warn mode -> WARN (tool allowed, agent warned to hydrate)
+    block mode -> DENY (tool blocked until hydration)
     """
 
     SCENARIOS = _flatten_scenarios("hydration_gate_warns_read_only")
@@ -202,20 +226,20 @@ class TestHydrationGateWarnsReadOnly:
         SCENARIOS,
         ids=[s["id"] for s in SCENARIOS],
     )
-    def test_read_tool_warned(self, router, scenario):
+    def test_read_tool_verdict_matches_mode(self, router, hydration_mode, scenario):
         state = _make_session_state(scenario)
         ctx = _make_context(scenario)
 
         result = router._dispatch_gates(ctx, state)
 
-        # Read-only tools get WARN from hydration gate (not exempt)
+        expected = GateVerdict.WARN if hydration_mode == "warn" else GateVerdict.DENY
         assert result is not None, (
-            f"[{scenario['id']}] Read-only tool '{scenario['tool_name']}' should get "
-            f"WARN from hydration gate, got None (allow)"
+            f"[{scenario['id']}] Expected {expected.value} but got None (allow) "
+            f"in {hydration_mode} mode"
         )
-        assert result.verdict == GateVerdict.WARN, (
-            f"[{scenario['id']}] Read-only tool '{scenario['tool_name']}' "
-            f"should be WARN (not {result.verdict.value}) when hydration closed"
+        assert result.verdict == expected, (
+            f"[{scenario['id']}] Read-only tool '{scenario['tool_name']}' should be "
+            f"{expected.value} in {hydration_mode} mode, got {result.verdict.value}"
         )
 
 
@@ -377,7 +401,11 @@ class TestComplianceSubagentTypesComplete:
 
 
 class TestNonComplianceSubagentBlocked:
-    """Non-compliance subagents must still be subject to gate policies."""
+    """Non-compliance subagents get mode-appropriate verdict when hydration gate is closed.
+
+    warn mode -> WARN
+    block mode -> DENY
+    """
 
     SCENARIOS = _flatten_scenarios("non_compliance_subagent_blocked")
 
@@ -386,17 +414,20 @@ class TestNonComplianceSubagentBlocked:
         SCENARIOS,
         ids=[s["id"] for s in SCENARIOS],
     )
-    def test_non_compliance_subagent_blocked(self, router, scenario):
+    def test_non_compliance_verdict_matches_mode(self, router, hydration_mode, scenario):
         state = _make_session_state(scenario)
         ctx = _make_context(scenario)
 
         result = router._dispatch_gates(ctx, state)
 
-        # Non-compliance agents should NOT be ALLOW when gates are closed
-        assert result is not None, f"[{scenario['id']}] Expected non-allow verdict but got None"
-        assert result.verdict != GateVerdict.ALLOW, (
+        expected = GateVerdict.WARN if hydration_mode == "warn" else GateVerdict.DENY
+        assert result is not None, (
+            f"[{scenario['id']}] Expected {expected.value} but got None (allow) "
+            f"in {hydration_mode} mode"
+        )
+        assert result.verdict == expected, (
             f"[{scenario['id']}] Non-compliance agent '{scenario['subagent_type']}' "
-            f"should not be ALLOW when gate is closed"
+            f"should be {expected.value} in {hydration_mode} mode, got {result.verdict.value}"
         )
 
 
@@ -671,6 +702,549 @@ class TestCombinedGateInteractions:
                 assert result.verdict == GateVerdict.WARN, (
                     f"[{scenario['id']}] Expected WARN, got {result.verdict.value}"
                 )
+
+
+# ===========================================================================
+# HYDRATION OUTPUT FORMAT: Verify Claude/Gemini output across modes (issue #710)
+# ===========================================================================
+
+
+class TestHydrationOutputFormat:
+    """Verify Claude and Gemini output format reflects hydration gate mode.
+
+    Parameterized across warn/block modes using JSON fixture scenarios.
+    Each scenario defines expected output for both modes:
+      warn_mode: verdict=warn, claude permissionDecision=allow, gemini decision=allow
+      block_mode: verdict=deny, claude permissionDecision=deny, gemini decision=deny
+    """
+
+    SCENARIOS = _flatten_scenarios("hydration_output_format_synthetic")
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    def test_claude_output_matches_mode(self, router, hydration_mode, scenario):
+        """Claude permissionDecision must match hydration gate mode."""
+        state = _make_session_state(scenario)
+        ctx = _make_context(scenario)
+
+        gate_result = router._dispatch_gates(ctx, state)
+        assert gate_result is not None, (
+            f"[{scenario['id']}] Expected gate result but got None (allow) in {hydration_mode} mode"
+        )
+
+        expected = scenario["expected"][f"{hydration_mode}_mode"]
+
+        assert gate_result.verdict.value == expected["verdict"], (
+            f"[{scenario['id']}] verdict: expected {expected['verdict']}, "
+            f"got {gate_result.verdict.value} in {hydration_mode} mode"
+        )
+
+        canonical = router._gate_result_to_canonical(gate_result)
+        output = router.output_for_claude(canonical, scenario["hook_event"])
+
+        assert isinstance(output, ClaudeGeneralHookOutput)
+        assert output.hookSpecificOutput is not None
+        assert (
+            output.hookSpecificOutput.permissionDecision == expected["claude_permission_decision"]
+        ), (
+            f"[{scenario['id']}] Claude permissionDecision: "
+            f"expected {expected['claude_permission_decision']}, "
+            f"got {output.hookSpecificOutput.permissionDecision} "
+            f"in {hydration_mode} mode"
+        )
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    def test_gemini_output_matches_mode(self, router, hydration_mode, scenario):
+        """Gemini decision must match hydration gate mode."""
+        state = _make_session_state(scenario)
+        ctx = _make_context(scenario)
+
+        gate_result = router._dispatch_gates(ctx, state)
+        assert gate_result is not None
+
+        expected = scenario["expected"][f"{hydration_mode}_mode"]
+
+        canonical = router._gate_result_to_canonical(gate_result)
+        output = router.output_for_gemini(canonical, scenario["hook_event"])
+
+        assert output.decision == expected["gemini_decision"], (
+            f"[{scenario['id']}] Gemini decision: "
+            f"expected {expected['gemini_decision']}, "
+            f"got {output.decision} in {hydration_mode} mode"
+        )
+
+
+# ===========================================================================
+# LIVE DATA TESTS: Scenarios extracted from real hook logs with provenance
+# Source: scripts/extract_fixtures.py against real session JSONL logs
+# ===========================================================================
+
+
+class TestLiveHydrationGateBlocks:
+    """Hydration gate blocks tools when closed — from real logged events.
+
+    Source logs:
+    - Claude: 20260303-f45b1f80-hooks.jsonl, 20260303-825840e5-hooks.jsonl
+    - Gemini: /tmp/g.jsonl (session a51fc272)
+    """
+
+    SCENARIOS = _flatten_scenarios(
+        "claude_hydration_gate_blocks_tools",
+        "gemini_hydration_gate_blocks_tools",
+    )
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    def test_hydration_blocks_tool(self, router, hydration_mode, scenario):
+        state = _make_session_state(scenario)
+        ctx = _make_context(scenario)
+
+        result = router._dispatch_gates(ctx, state)
+
+        expected = GateVerdict.WARN if hydration_mode == "warn" else GateVerdict.DENY
+        assert result is not None, (
+            f"[{scenario['id']}] Expected {expected.value} but got None (allow) "
+            f"in {hydration_mode} mode"
+        )
+        assert result.verdict == expected, (
+            f"[{scenario['id']}] {scenario['tool_name']} should be "
+            f"{expected.value} in {hydration_mode} mode, got {result.verdict.value}"
+        )
+
+
+class TestLiveComplianceAgentAllowed:
+    """Compliance agents always allowed — from real logged events.
+
+    Verifies that real hydrator/custodiet calls from live sessions are not blocked.
+    """
+
+    SCENARIOS = _flatten_scenarios(
+        "claude_compliance_agent_allowed",
+        "gemini_compliance_agent_allowed",
+    )
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    def test_compliance_agent_allowed(self, router, scenario):
+        state = _make_session_state(scenario)
+        ctx = _make_context(scenario)
+
+        result = router._dispatch_gates(ctx, state)
+
+        if result is not None:
+            assert result.verdict != GateVerdict.DENY, (
+                f"[{scenario['id']}] Compliance agent call "
+                f"'{scenario['tool_name']}' (subagent_type={scenario.get('subagent_type')}) "
+                f"should not be DENY, got {result.verdict.value}"
+            )
+
+
+class TestLiveAlwaysAvailableBypass:
+    """Always-available tools bypass gates — from real logged events."""
+
+    SCENARIOS = _flatten_scenarios(
+        "claude_always_available_bypass",
+        "gemini_always_available_bypass",
+    )
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    def test_always_available_allowed(self, router, scenario):
+        state = _make_session_state(scenario)
+        ctx = _make_context(scenario)
+
+        result = router._dispatch_gates(ctx, state)
+
+        if result is not None:
+            assert result.verdict == GateVerdict.ALLOW, (
+                f"[{scenario['id']}] Always-available tool '{scenario['tool_name']}' "
+                f"should be ALLOW, got {result.verdict.value}"
+            )
+
+
+class TestLiveCustodietThreshold:
+    """Custodiet blocks at ops threshold — from real logged events.
+
+    The test env sets CUSTODIET_GATE_MODE=block, so we expect DENY (not the
+    WARN that may have been recorded in the live session with mode=warn).
+    """
+
+    SCENARIOS = _flatten_scenarios(
+        "claude_custodiet_threshold",
+        "gemini_custodiet_threshold",
+    )
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    def test_custodiet_threshold(self, router, scenario):
+        state = _make_session_state(scenario)
+        ctx = _make_context(scenario)
+
+        result = router._dispatch_gates(ctx, state)
+
+        # Custodiet at threshold must not be ALLOW
+        assert result is not None, (
+            f"[{scenario['id']}] Expected non-allow verdict at custodiet threshold"
+        )
+        assert result.verdict != GateVerdict.ALLOW, (
+            f"[{scenario['id']}] {scenario['tool_name']} should be blocked/warned "
+            f"at custodiet threshold, got ALLOW"
+        )
+
+
+class TestLiveReadOnlyTools:
+    """Read-only tools from real sessions.
+
+    Validates that real Read/Grep/Glob/read_file calls produce the correct
+    verdict. These are subject to hydration gate (warn/deny when closed)
+    but exempt from custodiet.
+    """
+
+    SCENARIOS = _flatten_scenarios(
+        "claude_read_only_tools",
+        "gemini_read_only_tools",
+    )
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    def test_read_only_verdict(self, router, hydration_mode, scenario):
+        state = _make_session_state(scenario)
+        ctx = _make_context(scenario)
+
+        result = router._dispatch_gates(ctx, state)
+
+        # If gate_overrides include hydration=closed, expect mode-dependent verdict
+        if scenario.get("gate_overrides", {}).get("hydration", {}).get("status") == "closed":
+            expected = GateVerdict.WARN if hydration_mode == "warn" else GateVerdict.DENY
+            assert result is not None, (
+                f"[{scenario['id']}] Expected {expected.value} in {hydration_mode} mode"
+            )
+            assert result.verdict == expected, (
+                f"[{scenario['id']}] {scenario['tool_name']}: expected {expected.value} "
+                f"in {hydration_mode} mode, got {result.verdict.value}"
+            )
+        else:
+            # No hydration gate override — should be allowed
+            if result is not None:
+                assert result.verdict == GateVerdict.ALLOW, (
+                    f"[{scenario['id']}] {scenario['tool_name']}: expected ALLOW, "
+                    f"got {result.verdict.value}"
+                )
+
+
+class TestLiveWriteTools:
+    """Write tools from real sessions.
+
+    Write tools are subject to BOTH hydration and custodiet gates.
+    Expected verdict depends on which gate is active and its mode.
+    """
+
+    SCENARIOS = _flatten_scenarios(
+        "claude_write_tools",
+        "gemini_write_tools",
+    )
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    def test_write_tool_verdict(self, router, hydration_mode, scenario):
+        state = _make_session_state(scenario)
+        ctx = _make_context(scenario)
+
+        result = router._dispatch_gates(ctx, state)
+
+        overrides = scenario.get("gate_overrides", {})
+        hydration_closed = overrides.get("hydration", {}).get("status") == "closed"
+        custodiet_active = "custodiet" in overrides
+
+        if hydration_closed and custodiet_active:
+            # Both gates fire -- engine merges: deny > warn > allow.
+            # Custodiet is "block" in test env -> DENY.
+            # Hydration is parameterized -> WARN or DENY.
+            # Merged verdict is always DENY (custodiet forces it).
+            assert result is not None
+            assert result.verdict == GateVerdict.DENY, (
+                f"[{scenario['id']}] {scenario['tool_name']}: both hydration+custodiet active, "
+                f"expected DENY (custodiet=block), got {result.verdict.value}"
+            )
+        elif hydration_closed:
+            expected = GateVerdict.WARN if hydration_mode == "warn" else GateVerdict.DENY
+            assert result is not None
+            assert result.verdict == expected, (
+                f"[{scenario['id']}] {scenario['tool_name']}: expected {expected.value} "
+                f"in {hydration_mode} mode (hydration closed), got {result.verdict.value}"
+            )
+        elif custodiet_active:
+            # Custodiet mode is block in test env
+            assert result is not None, (
+                f"[{scenario['id']}] Expected non-allow at custodiet threshold"
+            )
+            assert result.verdict != GateVerdict.ALLOW, (
+                f"[{scenario['id']}] {scenario['tool_name']}: should be blocked/warned "
+                f"at custodiet threshold, got ALLOW"
+            )
+        else:
+            if result is not None:
+                assert result.verdict == GateVerdict.ALLOW
+
+
+# ===========================================================================
+# HYDRATION GATE SEQUENCE: Trigger opens gate for subsequent tools (issue #710)
+# ===========================================================================
+
+
+_HYDRATOR_SEQUENCE_PLATFORMS = [
+    pytest.param(
+        # Claude Code: from session f45b1f80, lines 90+98
+        # Source: 20260303-f45b1f80-hooks.jsonl
+        {
+            "platform": "claude",
+            "read_tool": "Read",
+            "read_input": {
+                "file_path": "/opt/nic/.aops/crew/jewelle_96/aops/aops-core/hooks/gate_config.py"
+            },
+            "hydrator_tool": "Agent",
+            "hydrator_input": {
+                "description": "Hydrate prompt",
+                "prompt": "/home/debian/.claude/projects/-opt-nic-_aops-crew-jewelle_96-aops/20260303-f45b1f80-hydration.md",
+                "subagent_type": "aops-core:prompt-hydrator",
+                "run_in_background": True,
+            },
+        },
+        id="claude",
+    ),
+    pytest.param(
+        # Gemini CLI: from session a51fc272, lines 2+3
+        # Source: /tmp/g.jsonl
+        # Real Gemini logs: tool_name IS the agent name, subagent_type=None
+        {
+            "platform": "gemini",
+            "read_tool": "read_file",
+            "read_input": {
+                "file_path": "/Users/suzor/.gemini/tmp/brain/logs/20260303-a51fc272-hydration.md"
+            },
+            "hydrator_tool": "prompt-hydrator",
+            "hydrator_input": {
+                "query": "/Users/suzor/.gemini/tmp/brain/logs/20260303-a51fc272-hydration.md"
+            },
+        },
+        id="gemini",
+    ),
+]
+
+
+class TestHydrationGateSequence:
+    """Three-step sequence: read denied -> hydrator allowed -> read allowed.
+
+    Reproduces issue #710: in Gemini, the hydrator call doesn't open the gate
+    because tool_name='prompt-hydrator' (not 'delegate_to_agent'), so the
+    router never extracts the subagent_type, the trigger never fires, and
+    subsequent reads remain denied.
+
+    This test must pass for BOTH platforms. It currently fails for Gemini.
+    """
+
+    @pytest.fixture
+    def block_mode(self, monkeypatch):
+        monkeypatch.setenv("HYDRATION_GATE_MODE", "block")
+        _reinit_gates_with_defaults()
+
+    @pytest.mark.parametrize("platform", _HYDRATOR_SEQUENCE_PLATFORMS)
+    def test_read_then_hydrator_then_read(self, router, block_mode, platform):
+        """After hydrator call, subsequent reads must be allowed."""
+        # Shared state across the three steps
+        state = SessionState.create("test-sequence")
+        state.gates["hydration"].status = GateStatus.CLOSED
+        state.gates["hydration"].metrics["temp_path"] = "/tmp/hydration.md"
+
+        # --- Step 1: read_file/Read before hydration -> DENY ---
+        ctx1 = HookContext(
+            session_id="test-sequence",
+            hook_event="PreToolUse",
+            tool_name=platform["read_tool"],
+            tool_input=platform["read_input"],
+        )
+        result1 = router._dispatch_gates(ctx1, state)
+        assert result1 is not None and result1.verdict == GateVerdict.DENY, (
+            f"[{platform['platform']}] Step 1: {platform['read_tool']} should be DENY "
+            f"before hydration, got {result1.verdict.value if result1 else 'None (allow)'}"
+        )
+
+        # --- Step 2: hydrator call -> ALLOW (and trigger opens gate) ---
+        ctx2 = HookContext(
+            session_id="test-sequence",
+            hook_event="PreToolUse",
+            tool_name=platform["hydrator_tool"],
+            tool_input=platform["hydrator_input"],
+        )
+        result2 = router._dispatch_gates(ctx2, state)
+        # Hydrator must not be denied
+        if result2 is not None:
+            assert result2.verdict != GateVerdict.DENY, (
+                f"[{platform['platform']}] Step 2: hydrator call should not be DENY, "
+                f"got {result2.verdict.value}"
+            )
+
+        # --- Step 3: read_file/Read after hydration -> ALLOW ---
+        # The hydrator trigger should have opened the gate
+        assert state.gates["hydration"].status == GateStatus.OPEN, (
+            f"[{platform['platform']}] Gate should be OPEN after hydrator call, "
+            f"got {state.gates['hydration'].status}"
+        )
+
+        ctx3 = HookContext(
+            session_id="test-sequence",
+            hook_event="PreToolUse",
+            tool_name=platform["read_tool"],
+            tool_input=platform["read_input"],
+        )
+        result3 = router._dispatch_gates(ctx3, state)
+        if result3 is not None:
+            assert result3.verdict == GateVerdict.ALLOW, (
+                f"[{platform['platform']}] Step 3: {platform['read_tool']} should be ALLOW "
+                f"after hydration, got {result3.verdict.value}"
+            )
+
+
+# ===========================================================================
+# HEREDOC BYPASS: Agent uses Bash with heredoc to write files (issue #710)
+# ===========================================================================
+
+
+class TestBashHeredocBypass:
+    """Bash heredoc file-write must be blocked by hydration gate.
+
+    Attack vector: an agent calls Bash(command="cat <<'EOF' > file.py\n...")
+    to write file contents, bypassing the Edit/Write tool permission system.
+    The hydration gate is the defense layer — it blocks ALL non-always_available
+    tools (including Bash) when hydration is pending.
+
+    In warn mode: Bash is allowed through (the original bug #710).
+    In block mode: Bash is denied, preventing the heredoc bypass.
+    """
+
+    HEREDOC_COMMANDS = [
+        pytest.param(
+            {
+                "command": "cat <<'EOF' > /tmp/exploit.py\nimport os\nos.system('rm -rf /')\nEOF",
+                "description": "heredoc file write",
+            },
+            id="cat-heredoc-write",
+        ),
+        pytest.param(
+            {
+                "command": "python3 -c \"\nwith open('output.py', 'w') as f:\n    f.write('malicious')\n\"",
+                "description": "python inline file write",
+            },
+            id="python-inline-write",
+        ),
+        pytest.param(
+            {
+                "command": "echo 'payload' | tee /tmp/config.json",
+                "description": "tee pipe write",
+            },
+            id="echo-tee-write",
+        ),
+        pytest.param(
+            {
+                "command": "printf '%s\n' 'line1' 'line2' > /tmp/out.txt",
+                "description": "printf redirect write",
+            },
+            id="printf-redirect-write",
+        ),
+    ]
+
+    @pytest.mark.parametrize("hydration_mode", ["warn", "block"])
+    @pytest.mark.parametrize("cmd", HEREDOC_COMMANDS)
+    def test_bash_heredoc_blocked_when_hydration_closed(
+        self, router, hydration_mode, cmd, monkeypatch
+    ):
+        """Bash with file-writing commands must be denied in block mode.
+
+        In warn mode, the gate only warns (the agent can still proceed).
+        In block mode, the gate denies (the agent cannot proceed).
+        This is the key difference that issue #710 exposed.
+        """
+        monkeypatch.setenv("HYDRATION_GATE_MODE", hydration_mode)
+        _reinit_gates_with_defaults()
+
+        state = SessionState.create("test-heredoc")
+        state.gates["hydration"].status = GateStatus.CLOSED
+        state.gates["hydration"].metrics["temp_path"] = "/tmp/hydration.md"
+
+        ctx = HookContext(
+            session_id="test-heredoc",
+            hook_event="PreToolUse",
+            tool_name="Bash",
+            tool_input={"command": cmd["command"], "description": cmd["description"]},
+        )
+
+        result = router._dispatch_gates(ctx, state)
+
+        assert result is not None, (
+            f"Bash({cmd['description']}) should not be allowed when hydration is closed"
+        )
+
+        if hydration_mode == "block":
+            assert result.verdict == GateVerdict.DENY, (
+                f"BLOCK mode: Bash({cmd['description']}) should be DENY, "
+                f"got {result.verdict.value}. "
+                f"This is the exact bug from issue #710 — the agent can bypass "
+                f"Edit/Write permissions by using Bash heredocs."
+            )
+        else:
+            assert result.verdict == GateVerdict.WARN, (
+                f"WARN mode: Bash({cmd['description']}) should be WARN, got {result.verdict.value}"
+            )
+
+    def test_bash_heredoc_allowed_after_hydration(self, router, monkeypatch):
+        """After hydration completes, Bash heredoc should be allowed."""
+        monkeypatch.setenv("HYDRATION_GATE_MODE", "block")
+        _reinit_gates_with_defaults()
+
+        state = SessionState.create("test-heredoc-ok")
+        state.gates["hydration"].status = GateStatus.OPEN  # Hydration done
+
+        ctx = HookContext(
+            session_id="test-heredoc-ok",
+            hook_event="PreToolUse",
+            tool_name="Bash",
+            tool_input={
+                "command": "cat <<'EOF' > /tmp/legit.py\nprint('hello')\nEOF",
+                "description": "heredoc file write after hydration",
+            },
+        )
+
+        result = router._dispatch_gates(ctx, state)
+
+        if result is not None:
+            assert result.verdict != GateVerdict.DENY, (
+                f"Bash should be allowed after hydration, got {result.verdict.value}"
+            )
 
 
 # ===========================================================================

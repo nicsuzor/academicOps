@@ -445,28 +445,42 @@ def get_tool_category(tool_name: str) -> str:
 def extract_subagent_type(
     tool_name: str | None, tool_input: dict[str, Any]
 ) -> tuple[str | None, bool]:
-    """Extract subagent_type from a tool invocation using SPAWN_TOOLS table.
+    """Extract subagent_type from a tool invocation.
+
+    Two extraction strategies:
+    1. SPAWN_TOOLS table: tool_name is a spawning tool (e.g. "Agent",
+       "delegate_to_agent") and the agent name is in tool_input.
+    2. Direct match: tool_name IS the agent name (e.g. Gemini reports
+       tool_name="prompt-hydrator" rather than "delegate_to_agent").
+       Matched against COMPLIANCE_SUBAGENT_TYPES.
 
     Args:
-        tool_name: The tool being called (e.g. "Task", "delegate_to_agent").
+        tool_name: The tool being called (e.g. "Task", "delegate_to_agent",
+            or the agent name directly like "prompt-hydrator").
         tool_input: The tool's input parameters.
 
     Returns:
         (subagent_type, is_skill) tuple.
-        subagent_type is None if this is not a spawn tool or if no
-        agent/skill name was found in tool_input.
+        subagent_type is None if this is not a spawn/agent tool.
         is_skill is True for skill-like tools that run in the main session.
     """
     if not tool_name:
         return None, False
+
+    # Strategy 1: SPAWN_TOOLS lookup (Claude Agent/Task, Gemini delegate_to_agent)
     spec = SPAWN_TOOLS.get(tool_name)
-    if not spec:
-        return None, False
-    param_names, is_skill = spec
-    for param in param_names:
-        value = tool_input.get(param)
-        if isinstance(value, str):
-            stripped = value.strip()
-            if stripped:
-                return stripped, is_skill
-    return None, is_skill
+    if spec:
+        param_names, is_skill = spec
+        for param in param_names:
+            value = tool_input.get(param)
+            if isinstance(value, str):
+                stripped = value.strip()
+                if stripped:
+                    return stripped, is_skill
+        return None, is_skill
+
+    # Strategy 2: tool_name IS the agent name (Gemini bare agent pattern)
+    if tool_name in COMPLIANCE_SUBAGENT_TYPES:
+        return tool_name, False
+
+    return None, False

@@ -1306,5 +1306,166 @@
         "not_allow": true
       }
     }
+  ],
+  "hydration_output_format_synthetic": [
+    {
+      "id": "bash_hydration_output",
+      "description": "Bash with closed hydration gate \u2014 output format depends on mode",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "python3 -c 'open(\"/tmp/x\",\"w\").write(\"pwned\")'"
+      },
+      "is_subagent": false,
+      "subagent_type": null,
+      "gate_overrides": {
+        "hydration": {
+          "status": "closed",
+          "metrics": {
+            "temp_path": "/tmp/hydration.md"
+          }
+        }
+      },
+      "expected": {
+        "warn_mode": {
+          "verdict": "warn",
+          "claude_permission_decision": "allow",
+          "gemini_decision": "allow"
+        },
+        "block_mode": {
+          "verdict": "deny",
+          "claude_permission_decision": "deny",
+          "gemini_decision": "deny"
+        }
+      }
+    },
+    {
+      "id": "edit_hydration_output",
+      "description": "Edit with closed hydration gate \u2014 output format depends on mode",
+      "hook_event": "PreToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/f.py",
+        "old_string": "a",
+        "new_string": "b"
+      },
+      "is_subagent": false,
+      "subagent_type": null,
+      "gate_overrides": {
+        "hydration": {
+          "status": "closed",
+          "metrics": {
+            "temp_path": "/tmp/hydration.md"
+          }
+        }
+      },
+      "expected": {
+        "warn_mode": {
+          "verdict": "warn",
+          "claude_permission_decision": "allow",
+          "gemini_decision": "allow"
+        },
+        "block_mode": {
+          "verdict": "deny",
+          "claude_permission_decision": "deny",
+          "gemini_decision": "deny"
+        }
+      }
+    },
+    {
+      "id": "write_hydration_output",
+      "description": "Write with closed hydration gate \u2014 output format depends on mode",
+      "hook_event": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/f.py",
+        "content": "x"
+      },
+      "is_subagent": false,
+      "subagent_type": null,
+      "gate_overrides": {
+        "hydration": {
+          "status": "closed",
+          "metrics": {
+            "temp_path": "/tmp/hydration.md"
+          }
+        }
+      },
+      "expected": {
+        "warn_mode": {
+          "verdict": "warn",
+          "claude_permission_decision": "allow",
+          "gemini_decision": "allow"
+        },
+        "block_mode": {
+          "verdict": "deny",
+          "claude_permission_decision": "deny",
+          "gemini_decision": "deny"
+        }
+      }
+    },
+    {
+      "id": "gemini_run_shell_hydration_output",
+      "description": "Gemini run_shell_command with closed hydration gate",
+      "hook_event": "PreToolUse",
+      "tool_name": "run_shell_command",
+      "tool_input": {
+        "command": "ls -la"
+      },
+      "is_subagent": false,
+      "subagent_type": null,
+      "gate_overrides": {
+        "hydration": {
+          "status": "closed",
+          "metrics": {
+            "temp_path": "/tmp/hydration.md"
+          }
+        }
+      },
+      "expected": {
+        "warn_mode": {
+          "verdict": "warn",
+          "claude_permission_decision": "allow",
+          "gemini_decision": "allow"
+        },
+        "block_mode": {
+          "verdict": "deny",
+          "claude_permission_decision": "deny",
+          "gemini_decision": "deny"
+        }
+      }
+    },
+    {
+      "id": "notebook_edit_hydration_output",
+      "description": "NotebookEdit with closed hydration gate",
+      "hook_event": "PreToolUse",
+      "tool_name": "NotebookEdit",
+      "tool_input": {
+        "notebook_path": "/n.ipynb",
+        "new_source": "import os; os.system('rm -rf /')"
+      },
+      "is_subagent": false,
+      "subagent_type": null,
+      "gate_overrides": {
+        "hydration": {
+          "status": "closed",
+          "metrics": {
+            "temp_path": "/tmp/hydration.md"
+          }
+        }
+      },
+      "expected": {
+        "warn_mode": {
+          "verdict": "warn",
+          "claude_permission_decision": "allow",
+          "gemini_decision": "allow"
+        },
+        "block_mode": {
+          "verdict": "deny",
+          "claude_permission_decision": "deny",
+          "gemini_decision": "deny"
+        }
+      }
+    }
   ]
 }
