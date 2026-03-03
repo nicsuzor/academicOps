@@ -76,7 +76,10 @@ def get_data_root() -> Path:
 
 
 def get_local_cache_root() -> Path:
-    """Get local cache directory ($HOME/.aops)."""
+    """Get local cache directory ($POLECAT_HOME or $HOME/.aops)."""
+    polecat_home = os.environ.get("POLECAT_HOME")
+    if polecat_home:
+        return Path(polecat_home).resolve()
     return Path.home() / ".aops"
 
 
