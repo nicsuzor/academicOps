@@ -38,14 +38,14 @@ focus_score = (
 
 ### Signal definitions
 
-| Signal              | Range     | Description                                                                                                                                                           |
-| ------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `downstream_signal` | 0.0 - 1.0 | Normalized downstream dependency weight. Tasks that unblock many others score higher. Computed from the task graph.                                                   |
-| `priority_signal`   | 0.0 - 1.0 | Derived from the `priority` field: `(4 - priority) / 4`. Priority 0 (critical) = 1.0, priority 4 = 0.0.                                                               |
-| `project_activity`  | 0.0 - 1.0 | How active is this task's project? Measured by proportion of tasks in the project that have been modified in the last 14 days. An active project lifts all its tasks. |
-| `recency_signal`    | 0.0 - 1.0 | Decay function on `modified` timestamp. 1.0 if modified today, decaying over 90 days to 0.0. Uses exponential decay: `exp(-days / 30)`.                               |
-| `blocking_urgency`  | 0.0 - 1.0 | 1.0 if this task is explicitly blocking an in_progress task. 0.5 if blocking an active task. 0.0 otherwise.                                                           |
-| `user_boost`        | 0.0 - 1.0 | Explicit user signal. Set via `focus: boost` in frontmatter or daily note mentions. Decays after 7 days if not refreshed.                                             |
+| Signal              | Range     | Description                                                                                                                                                                                                                                                                                                |
+| ------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `downstream_signal` | 0.0 - 1.0 | Normalized downstream dependency weight. Tasks that unblock many others score higher. Computed from the task graph.                                                                                                                                                                                        |
+| `priority_signal`   | 0.0 - 1.0 | Derived from the `priority` field: `(4 - priority) / 4`. Priority 0 (critical) = 1.0, priority 4 = 0.0.                                                                                                                                                                                                    |
+| `project_activity`  | 0.0 - 1.0 | How active is this task's project? Measured by proportion of tasks in the project modified in the last 14 days. An active project lifts all its tasks. For tasks with `project: null`, `project_activity` = 0.0. For projects with fewer than 3 tasks, uses binary "any activity in window?" (1.0 or 0.0). |
+| `recency_signal`    | 0.0 - 1.0 | Decay function on `modified` timestamp. 1.0 if modified today, decaying exponentially with `exp(-days / 30)` (≈0.05 at 90 days). Implementations may clamp to 0.0 at or after 90 days.                                                                                                                     |
+| `blocking_urgency`  | 0.0 - 1.0 | 1.0 if this task is explicitly blocking a task with `status: in_progress`. 0.5 if blocking a task with `status: active`. 0.0 otherwise.                                                                                                                                                                    |
+| `user_boost`        | 0.0 - 1.0 | Explicit user signal. Set via `focus: boost` in frontmatter or daily note mentions. Decays after 7 days if not refreshed.                                                                                                                                                                                  |
 
 ### Default weights
 
@@ -58,7 +58,7 @@ focus_score = (
 | `w_blocking`   | 0.15  | Urgency from blocking in-progress work                |
 | `w_user`       | 0.10  | Explicit user focus boost                             |
 
-Weights are configurable via `config/focus-weights.yaml`. They MUST sum to 1.0.
+Weights are configurable via `$AOPS_CONFIG/focus-weights.yaml`. They MUST sum to 1.0.
 
 ### Why not FIFO or LIFO
 
@@ -72,10 +72,10 @@ The focus score determines visibility in default views:
 
 | Score range | Classification | Behaviour                                                                                                |
 | ----------- | -------------- | -------------------------------------------------------------------------------------------------------- |
-| >= 0.3      | **Hot**        | Shown in `list_tasks(status="ready")` by default                                                         |
+| >= 0.3      | **Hot**        | Shown in `list_tasks(status="active")` by default                                                        |
 | < 0.3       | **Cold**       | Hidden from default view. Shown with `list_tasks(temperature="all")` or `list_tasks(temperature="cold")` |
 
-The threshold (0.3) is configurable via `config/focus-weights.yaml`.
+The threshold (0.3) is configurable via `$AOPS_CONFIG/focus-weights.yaml`.
 
 ### What makes a task go cold
 
@@ -105,7 +105,7 @@ A cold task warms up automatically when:
 
 ```python
 list_tasks(
-    status="ready",        # existing
+    status="active",       # existing (active = ready to work on)
     temperature="hot",     # NEW: "hot" (default), "cold", "all"
     sort_by="focus_score", # NEW: "focus_score" (default for ready), "priority", "created", "modified"
     limit=30,              # existing, default changes from 50 to 30 for "hot"
@@ -114,7 +114,7 @@ list_tasks(
 
 When `temperature` is not specified:
 
-- `status="ready"` defaults to `temperature="hot"`
+- `status="active"` defaults to `temperature="hot"`
 - All other statuses default to `temperature="all"`
 
 ### Task metadata additions
@@ -140,16 +140,16 @@ These are computed at query time, not stored in the task file.
 
 Resolves current conflict between `bot`, `polecat`, and unset:
 
-| Assignee       | Meaning                                                               | When to use                                                   |
-| -------------- | --------------------------------------------------------------------- | ------------------------------------------------------------- |
-| `nic`          | Requires human judgment, external context, or relationship management | Reviews, decisions, emails, meetings                          |
-| (unset / null) | Any actor can claim -- human or agent                                 | Default for most tasks                                        |
-| `worker:<id>`  | Claimed by a specific worker (lock)                                   | Set automatically by polecat/swarm claim. Cleared on release. |
+| Assignee       | Meaning                                                               | When to use                                                                                 |
+| -------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `nic`          | Requires human judgment, external context, or relationship management | Reviews, decisions, emails, meetings                                                        |
+| (unset / null) | Any actor can claim -- human or agent                                 | Default for most tasks                                                                      |
+| `worker:<id>`  | Claimed by a specific worker (lock)                                   | Set automatically by the task worker on claim (e.g., `worker:swarm-1`). Cleared on release. |
 
 **Changes from current state:**
 
 - **`bot` is removed.** The old `nic`/`bot` binary assumed all tasks are either human or agent. In practice, most tasks can be done by either. The default (unset) means "available."
-- **`polecat` is replaced by `worker:<id>`.** Worker identity is a lock for concurrency, not a permanent assignment. It's set when a worker claims a task and cleared when done.
+- **The `polecat` assignee is removed; mechanical workers now use `worker:<id>` locks instead.** Worker identity is a transient lock for concurrency, not a permanent assignment. The runtime sets `assignee: worker:<id>` when it claims a task and clears it on completion or release.
 - **Unset is no longer "legacy compatibility."** It's the intentional default meaning "any actor can pick this up."
 
 ### Migration
@@ -161,7 +161,7 @@ Resolves current conflict between `bot`, `polecat`, and unset:
 ## Configuration
 
 ```yaml
-# config/focus-weights.yaml
+# $AOPS_CONFIG/focus-weights.yaml
 focus:
   weights:
     downstream: 0.25
@@ -171,7 +171,7 @@ focus:
     blocking: 0.15
     user_boost: 0.10
   threshold: 0.3
-  recency_halflife_days: 30
+  recency_time_constant_days: 30
   project_activity_window_days: 14
   user_boost_decay_days: 7
 ```
@@ -183,10 +183,18 @@ focus:
 - The `_score_breakdown` field is optional and only returned when requested (e.g., `list_tasks(debug=true)`).
 - Graph metrics (downstream weight) are already computed by the PKB server. This spec adds a normalization layer.
 
+### Reconciliation with "Dumb Server, Smart Agent" (P#78)
+
+This spec extends the server's computation scope. The focus score is deterministic — a fixed formula over existing fields (priority, modified date, graph topology) with externally configured weights. It contains no semantic analysis, no NLP, and no judgment calls.
+
+The key distinction: the **formula and weights** are configured externally (agent/user domain), while the **computation** is server-side (same category as graph metrics like downstream dependency counts). The threshold is a configured number, not an inference.
+
+This is explicitly acknowledged as an extension of the server's role from pure data access to include deterministic aggregation. The `mcp-decomposition-tools-v2.md` and `pkb-server-spec.md` specs should be updated to reflect this when implementation proceeds.
+
 ## Giving effect
 
-- [[aops-tools/tasks_server.py]] -- Implementation of focus scoring in list_tasks
-- [[config/focus-weights.yaml]] -- Weight and threshold configuration
+- `aops-tools/tasks_server.py` (external tools package) -- Implementation of focus scoring in list_tasks
+- `$AOPS_CONFIG/focus-weights.yaml` (external config, not tracked in this repo) -- Weight and threshold configuration
 - [[specs/work-management.md]] -- Update assignee policy section
 - [[aops-core/WORKFLOWS.md]] -- No changes needed (routing is unaffected)
 
