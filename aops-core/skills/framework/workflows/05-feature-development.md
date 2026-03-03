@@ -281,8 +281,8 @@ Feature development follows eight phases:
 2. **Merge implementation content**: Design decisions, key functions, UX patterns
 3. **Strip temporal content**: Remove "what was built" narrative, dates, deliberation
 4. **Verify spec is timeless**: Reads as "how it works" not "how it was built"
-5. **Create branch and PR**: Commit spec to a feature branch and open a GitHub PR for bazaar review. Include task ID references in the PR description (see GitHub Integration below).
-6. **Update spec index**: Ensure `specs/specs.md` lists the spec with correct status
+5. **Update spec index**: Ensure `specs/INDEX.md` lists the spec with correct status
+6. **Create branch and PR**: Commit spec and index update to a feature branch and open a GitHub PR for bazaar review. Include task ID references in the PR description (see GitHub Integration below).
 7. **Complete experiment task**: `mcp__pkb__complete_task(id="[task-id]")` with body noting "Synthesized to spec: [spec-name], PR: [url]"
 
 **TodoWrite items** (mandatory):
@@ -290,7 +290,7 @@ Feature development follows eight phases:
 ```
 - [ ] Update spec with implementation details
 - [ ] Complete experiment task
-- [ ] Verify specs/specs.md index updated
+- [ ] Verify specs/INDEX.md index updated
 ```
 
 **Output**: Updated timeless spec; experiment issue closed with link to spec.
@@ -303,12 +303,12 @@ Framework features go through bazaar review on GitHub (see [[specs/pr-process.md
 
 ### When to create a PR
 
-| Change type                          | PR required? | Rationale                           |
-| ------------------------------------ | ------------ | ----------------------------------- |
-| New spec or spec amendment           | **Yes**      | Design decisions need bazaar review |
-| Code implementation                  | **Yes**      | Standard code review                |
-| Workflow/skill documentation changes | **Yes**      | Shared infrastructure               |
-| Bug fix with no design decisions     | Optional     | Can merge directly if trivial       |
+| Change type                          | PR required? | Rationale                                                             |
+| ------------------------------------ | ------------ | --------------------------------------------------------------------- |
+| New spec or spec amendment           | **Yes**      | Design decisions need bazaar review                                   |
+| Code implementation                  | **Yes**      | Standard code review                                                  |
+| Workflow/skill documentation changes | **Yes**      | Shared infrastructure                                                 |
+| Bug fix with no design decisions     | Optional     | Non-framework only; PR still required where branch protection applies |
 
 ### Spec-first vs implementation-first
 
@@ -316,7 +316,7 @@ Framework features go through bazaar review on GitHub (see [[specs/pr-process.md
 
 1. Write the spec in `specs/`
 2. Create branch, commit spec, open PR
-3. Bazaar reviews the design (Gatekeeper, Custodiet, human)
+3. Bazaar reviews the design (Gatekeeper, Custodiet, QA, human reviewer)
 4. After approval, implement (may be a separate PR)
 
 **Implementation-first** (when the design emerges from building):
@@ -339,7 +339,7 @@ Epic: aops-focus-epic
 ```python
 mcp__pkb__append(
     id="task-id",
-    content="PR opened: https://github.com/.../pull/123",
+    content="PR: https://github.com/.../pull/123",
     section="Log"
 )
 ```

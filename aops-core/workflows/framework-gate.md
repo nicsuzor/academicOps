@@ -32,7 +32,7 @@ Framework modification intent detected via prompt content (NOT file paths). Watc
 | Framework code (specs, workflows, agents, skills, scripts)                  | `[[design]]` + PR for bazaar review | Framework code is shared infrastructure          |
 | Framework debugging                                                         | `[[debugging]]` + framework context | Still needs spec awareness                       |
 
-**Spec review process**: Framework specs and significant code changes go through GitHub PR bazaar review (see [[specs/pr-process.md]]). The agent creates a branch, commits the spec/code, opens a PR with task ID references, and the bazaar (Gatekeeper, Custodiet, QA, human) reviews before merge. See [[05-feature-development.md#GitHub Integration]] for linking conventions.
+**Spec review process**: Framework specs and significant code changes go through GitHub PR bazaar review (see [[specs/pr-process.md]]). The agent creates a branch, commits the spec/code, opens a PR with task ID references, and the bazaar (Gatekeeper, Custodiet, QA, human) reviews before merge. See [[skills/framework/workflows/05-feature-development.md#GitHub Integration]] for linking conventions.
 
 ## Framework Context Output
 

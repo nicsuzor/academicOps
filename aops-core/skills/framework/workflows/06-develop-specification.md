@@ -88,7 +88,7 @@ description: Process for collaboratively developing task specifications before i
    - Move completed spec to `$AOPS/specs/` (AUTHORITATIVE location)
    - Create a feature branch and commit the spec
    - Open a GitHub PR for bazaar review (see [[specs/pr-process.md]])
-   - Include task ID references in the PR description (see [[05-feature-development.md#GitHub Integration]])
+   - Include task ID references in the PR description (see [[skills/framework/workflows/05-feature-development.md#GitHub Integration]])
    - Record the PR URL in the task body via `mcp__pkb__append(id="task-id", content="PR: [url]", section="Log")`
    - Bazaar reviews the spec (Gatekeeper, Custodiet, QA, human)
    - After approval and merge, specification is the contract for implementation
