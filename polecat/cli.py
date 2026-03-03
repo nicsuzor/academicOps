@@ -266,8 +266,13 @@ def checkout(ctx, task_id, caller):
     is_flag=True,
     help="Skip confirmation prompts (required in non-interactive mode)",
 )
+@click.option(
+    "--force-done",
+    is_flag=True,
+    help="Force task status to 'done' even if no git changes detected",
+)
 @click.pass_context
-def finish(ctx, no_push, do_nuke, force):
+def finish(ctx, no_push, do_nuke, force, force_done):
     """Mark current task as ready for merge.
 
     Must be run from within a polecat worktree.
@@ -293,6 +298,33 @@ def finish(ctx, no_push, do_nuke, force):
     if not task:
         print(f"Error: Task {task_id} not found in task database", file=sys.stderr)
         sys.exit(1)
+
+    # --- SAFEGUARD 0: Completion Protection ---
+    # If the task is already DONE, or in review/merge phase, do NOT override it.
+    # This prevents the "infinite retry loop" where auto-finish resets a manually completed task.
+    try:
+        from lib.task_model import TaskStatus
+
+        terminal_or_pr_statuses = (
+            TaskStatus.DONE,
+            TaskStatus.REVIEW,
+            TaskStatus.MERGE_READY,
+            TaskStatus.MERGING,
+            TaskStatus.CANCELLED,
+        )
+
+        if task.status in terminal_or_pr_statuses:
+            print(
+                f"✅ Task {task_id} is in status '{task.status.value}'. Skipping auto-retry reset."
+            )
+            if do_nuke:
+                print("Nuking worktree...")
+                os.chdir(Path.home())  # Move out of worktree before nuking
+                manager.nuke_worktree(task_id, force=False)
+                print("Worktree removed")
+            return
+    except ImportError:
+        pass
 
     print(f"Finishing task: {task.title} ({task_id})")
 
@@ -338,34 +370,56 @@ def finish(ctx, no_push, do_nuke, force):
         )
         # git diff --quiet returns 0 if no changes, 1 if changes exist
         if diff_check.returncode == 0:
-            print("📭 No changes detected. Agent likely did not complete the task.")
-            print("⚠️  Marking as 'active' for retry (not 'done').")
-            # Mark task as ACTIVE for retry, NOT done
-            # Zero changes = worker didn't actually complete the work
-            try:
-                from lib.task_model import TaskStatus
+            if force_done:
+                print("📭 No changes detected, but --force-done specified.")
+                print("✅ Proceeding to mark as DONE (verified complete without changes).")
+                try:
+                    from lib.task_model import TaskStatus
 
-                task.status = TaskStatus.ACTIVE
-                task.assignee = None  # Clear assignee so another worker can claim
-                task.body = (
-                    (task.body or "")
-                    + "\n\n## 🔄 Auto-retry (zero changes detected)\n"
-                    + "Worker finished without making changes. Task returned to queue.\n"
-                )
-                manager.storage.save_task(task)
-                print("🔄 Task returned to queue for retry")
-            except ImportError:
-                print("Warning: Could not update task status (lib.task_model not available)")
+                    task.status = TaskStatus.DONE
+                    manager.storage.save_task(task)
+                    print(f"✅ Task {task_id} marked as DONE.")
+                except ImportError:
+                    print("Warning: Could not update task status (lib.task_model not available)")
 
-            # Optionally nuke
-            if do_nuke:
-                print("Nuking worktree...")
-                os.chdir(Path.home())  # Move out of worktree before nuking
-                manager.nuke_worktree(task_id, force=False)
-                print("Worktree removed")
+                # Optionally nuke
+                if do_nuke:
+                    print("Nuking worktree...")
+                    os.chdir(Path.home())  # Move out of worktree before nuking
+                    manager.nuke_worktree(task_id, force=True)
+                    print("Worktree removed")
+                else:
+                    print(f"\nTo clean up later: polecat nuke {task_id}")
+                return  # Exit early, task is DONE
             else:
-                print(f"\nTo clean up later: polecat nuke {task_id}")
-            return  # Exit early, skip rest of finish flow
+                print("📭 No changes detected. Agent likely did not complete the task.")
+                print("⚠️  Marking as 'active' for retry (not 'done').")
+                # Mark task as ACTIVE for retry, NOT done
+                # Zero changes = worker didn't actually complete the work
+                try:
+                    from lib.task_model import TaskStatus
+
+                    task.status = TaskStatus.ACTIVE
+                    task.assignee = None  # Clear assignee so another worker can claim
+                    task.body = (
+                        (task.body or "")
+                        + "\n\n## 🔄 Auto-retry (zero changes detected)\n"
+                        + "Worker finished without making changes. Task returned to queue.\n"
+                    )
+                    manager.storage.save_task(task)
+                    print("🔄 Task returned to queue for retry")
+                except ImportError:
+                    print("Warning: Could not update task status (lib.task_model not available)")
+
+                # Optionally nuke
+                if do_nuke:
+                    print("Nuking worktree...")
+                    os.chdir(Path.home())  # Move out of worktree before nuking
+                    manager.nuke_worktree(task_id, force=False)
+                    print("Worktree removed")
+                else:
+                    print(f"\nTo clean up later: polecat nuke {task_id}")
+                return  # Exit early, skip rest of finish flow
 
     except Exception as e:
         print(f"Warning: Could not check for changes: {e}")
@@ -1053,9 +1107,14 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
         if not task:
             print(f"Task not found: {task_id}", file=sys.stderr)
             sys.exit(1)
+
         # Claim if not already in progress
         try:
             from lib.task_model import TaskStatus
+
+            if task.status in (TaskStatus.DONE, TaskStatus.CANCELLED):
+                print(f"✅ Task {task_id} is already '{task.status.value}'.")
+                sys.exit(0)
 
             if task.status == TaskStatus.ACTIVE:
                 task.status = TaskStatus.IN_PROGRESS
@@ -1230,13 +1289,46 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
     # Step 5: Auto-finish on success (unless disabled)
     if exit_code == 0:
         print("\n✅ Agent completed successfully.")
+
+        # Check for completion signals in stdout/stderr (e.g. fix already deployed)
+        # This allows us to auto-finish even if no git changes were detected.
+        auto_force_done = False
+        completion_signals = [
+            "verified complete",
+            "fix already deployed",
+            "no changes needed",
+            "work already done",
+            "verified the change is present",
+            "verified the fix is already there",
+            "task already completed",
+            "already been completed",
+        ]
+
+        # Use result.stdout if it exists (not captured in interactive mode)
+        agent_output = ""
+        try:
+            if not interactive and result.stdout:
+                agent_output += result.stdout
+            if not interactive and result.stderr:
+                agent_output += result.stderr
+        except (AttributeError, NameError):
+            pass
+
+        if agent_output:
+            for signal in completion_signals:
+                if signal.lower() in agent_output.lower():
+                    print(f"✨ Found completion signal: '{signal}'")
+                    auto_force_done = True
+                    break
+
         if not no_auto_finish:
             print("🔄 Running auto-finish...")
             # Change to worktree directory and invoke finish directly
             original_cwd = os.getcwd()
             try:
                 os.chdir(worktree_path)
-                ctx.invoke(finish, no_push=False, do_nuke=True)
+                # Pass force_done if we detected a completion signal
+                ctx.invoke(finish, no_push=False, do_nuke=True, force_done=auto_force_done)
                 print("✅ Auto-finish completed.")
             except SystemExit as e:
                 if e.code != 0:
