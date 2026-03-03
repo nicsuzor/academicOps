@@ -46,7 +46,11 @@ def ensure_test_environment(monkeypatch, tmp_path):
     (data_dir / "goals").mkdir(parents=True, exist_ok=True)
     (data_dir / "context").mkdir(parents=True, exist_ok=True)
     # Sessions is sibling of data_root
-    (data_dir.parent / "sessions").mkdir(parents=True, exist_ok=True)
+    sessions_dir = data_dir.parent / "sessions"
+    sessions_dir.mkdir(parents=True, exist_ok=True)
+
+    # Force AOPS_SESSIONS to ensure isolation from user's local sessions
+    monkeypatch.setenv("AOPS_SESSIONS", str(sessions_dir))
 
 
 @pytest.fixture(autouse=True)
@@ -211,6 +215,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+
 from lib.paths import get_plugin_root as get_aops_root
 
 
