@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # generate-viz.sh - Generate all PKB visualizations
 #
-# All output goes to $AOPS_SESSIONS (default ~/.aops/sessions/):
+# All output goes to $AOPS_SESSIONS (default $POLECAT_HOME/sessions/):
 #   graph.json            - Full PKB graph with task metadata and precomputed layouts
 #   graph-*.svg           - SVG renders of each precomputed .dot layout
 #   task-map.svg          - Task map (reachable from active leaves + ancestors)
@@ -22,7 +22,7 @@ set -euo pipefail
 
 AOPS="${AOPS:-$(cd "$(dirname "$0")/.." && pwd)}"
 AOPS_BIN="${AOPS_BIN:-$(command -v aops 2>/dev/null || echo aops)}"
-GRAPH_DIR="${AOPS_SESSIONS:-${HOME}/.aops/sessions}"  # All output: graph JSONs + viz artifacts
+GRAPH_DIR="${AOPS_SESSIONS:-${POLECAT_HOME:-$HOME/.polecat}/sessions}"  # All output: graph JSONs + viz artifacts
 VIZ_DIR="${GRAPH_DIR}"                                # Same directory now
 LAYOUT="sfdp"
 RENDERER="dot"  # dot (default), gt (graph-tool), ogdf

@@ -3,7 +3,7 @@
 
 Validates task IDs before use in:
 - Git branch names (polecat/<task_id>)
-- Filesystem paths (~/.aops/<task_id>/)
+- Filesystem paths ($POLECAT_HOME/<task_id>/)
 - Subprocess commands
 
 This prevents path traversal attacks and git ref injection by ensuring

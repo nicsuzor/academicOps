@@ -59,9 +59,9 @@ def _get_plugin_version() -> str:
         try:
             text = pyproject.read_text()
             m = re.search(r'^version\s*=\s*"([^"]+)"', text, re.MULTILINE)
-            if m:
-                _PLUGIN_VERSION = m.group(1)
-                return _PLUGIN_VERSION
+            if m and (ver := m.group(1)) is not None:
+                _PLUGIN_VERSION = ver
+                return ver
         except OSError:
             pass
 
@@ -73,7 +73,7 @@ def _get_plugin_version() -> str:
             ver = manifest.get("version")
             if ver and ver != "0.2.0":  # Skip static placeholder
                 _PLUGIN_VERSION = ver
-                return _PLUGIN_VERSION
+                return ver
         except (OSError, json.JSONDecodeError):
             pass
 

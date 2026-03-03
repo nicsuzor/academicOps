@@ -120,7 +120,7 @@ def is_interactive() -> bool:
     "--home",
     envvar="POLECAT_HOME",
     type=click.Path(path_type=Path),
-    help="Polecat home directory (default: ~/.aops, or POLECAT_HOME env var)",
+    help="Polecat home directory (default: $POLECAT_HOME, or ~/.polecat)",
 )
 @click.pass_context
 def main(ctx, home):

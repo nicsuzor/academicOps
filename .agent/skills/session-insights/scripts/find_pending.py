@@ -21,7 +21,8 @@ def main():
     parser.add_argument("--limit", type=int, default=5, help="Max number of sessions to return")
     args = parser.parse_args()
 
-    sessions_dir = Path(os.environ.get("AOPS_SESSIONS", str(Path.home() / ".aops" / "sessions")))
+    polecat_home = Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat")))
+    sessions_dir = Path(os.environ.get("AOPS_SESSIONS", str(polecat_home / "sessions")))
 
     transcripts_dir = sessions_dir / "transcripts"
     insights_dir = sessions_dir / "summaries"

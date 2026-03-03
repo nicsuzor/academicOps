@@ -27,7 +27,7 @@ The Swarm builds upon the [Polecat System](./polecat-system.md) (ephemeral git w
 
 - **Task Queue**: The single source of truth (TaskDB). Holds tasks in `ready` state.
 - **Worker Registry**: [[WORKERS.md]] defines available worker types, capabilities, selection rules, and operational thresholds. Deployment-specific; modify without changing code or skill prompts.
-- **Swarm Workers**: Independent agent instances, each operating in its own isolated polecat worktree (`~/.aops/polecat/<task-id>`). Worker types and dispatch rules are configured in the registry.
+- **Swarm Workers**: Independent agent instances, each operating in its own isolated polecat worktree (`$POLECAT_HOME/polecat/<task-id>`). Worker types and dispatch rules are configured in the registry.
 - **The Refinery**: A centralized process (or singleton agent) responsible for integrating completed work.
 - **Engineer Agent**: A specialized persona responsible for code review and quality assurance.
 

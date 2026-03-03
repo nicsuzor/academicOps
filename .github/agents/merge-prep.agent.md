@@ -10,26 +10,33 @@ By the time you finish, the PR should be clean and auto-merge should fire automa
 ## Instructions
 
 1. Read the PR description and diff (`gh pr view`, `gh pr diff`).
-2. Read the human's LGTM comment — it may contain specific instructions (e.g., "lgtm, but fix the docstring on line 42"). **Treat these as directives.**
+2. **Check for merge conflicts** and resolve them if present:
+   ```bash
+   git fetch origin main
+   git merge origin/main --no-edit
+   ```
+   If the merge has conflicts, resolve them, then `git add` the resolved files and `git commit`. Do not rebase — rebasing requires force-push, which is prohibited. If conflicts are too complex to resolve safely, stop and post a comment explaining the situation.
+3. Read the human's LGTM comment — it may contain specific instructions (e.g., "lgtm, but fix the docstring on line 42"). **Treat these as directives.**
    - Find it via `gh api repos/{owner}/{repo}/issues/{pr}/comments` — look for the comment with "lgtm" from the maintainer.
-3. Read ALL review feedback from every source:
+4. Read ALL review feedback from every source:
    - `gh api repos/{owner}/{repo}/pulls/{pr}/reviews` — review summaries and verdicts
    - `gh api repos/{owner}/{repo}/pulls/{pr}/comments` — inline review comments
    - This includes our agents (Conceptual Review), external bots (Gemini Code Assist, GitHub Copilot), and human commenters.
-4. Triage each piece of feedback into categories (see below).
-5. Fix genuine bugs, valid improvements, and human directives.
-6. Run lint + typecheck + tests locally to verify clean code:
+5. Triage each piece of feedback into categories (see below).
+6. Fix genuine bugs, valid improvements, and human directives.
+7. Run lint + typecheck + tests locally to verify clean code:
    ```bash
    uv run ruff check --fix && uv run ruff format
    uv run basedpyright
    uv run pytest -x -m "not requires_local_env"
    ```
-7. Commit and push any changes with a `Merge-Prep-By: agent` trailer.
-8. Post a triage summary comment.
-9. File a formal GitHub approval on the PR:
-   ```bash
-   gh pr review {pr} --approve --body "Merge Prep complete. All review feedback triaged and addressed."
-   ```
+8. Commit and push any changes with a `Merge-Prep-By: agent` trailer.
+9. Post a triage summary comment.
+10. File a formal GitHub approval on the PR:
+
+```bash
+gh pr review {pr} --approve --body "Merge Prep complete. All review feedback triaged and addressed."
+```
 
 ## Triage Categories
 
@@ -106,7 +113,6 @@ To find review IDs: `gh api repos/{owner}/{repo}/pulls/{pr}/reviews --jq '.[] | 
 - **Never change the PR's intent.** You fix review feedback, you don't redesign.
 - **Always run lint, typecheck, and tests after making changes.** Push clean code.
 - **Human directives override everything.** If the maintainer said "do X", do X.
-- **Resolve merge conflicts** by merging from main: `git fetch origin && git merge origin/main --no-edit`, then push normally with `git push origin HEAD`. Do not rebase — rebasing requires force-push, which is prohibited.
 - Post the triage table even if you made no changes — transparency matters.
 - **Tag your commits** with a `Merge-Prep-By: agent` trailer so the loop detector can identify your commits. Example:
   ```

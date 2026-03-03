@@ -24,7 +24,7 @@ BOLD='\033[1m'
 NC='\033[0m' # No Color
 
 # Build repo list from polecat.yaml
-POLECAT_YAML="${HOME}/.aops/polecat.yaml"
+POLECAT_YAML="${POLECAT_HOME:-${HOME}/.polecat}/polecat.yaml"
 REPOS=()
 
 if [[ -f "$POLECAT_YAML" ]]; then

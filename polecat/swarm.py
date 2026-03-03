@@ -257,7 +257,7 @@ def main():
     parser.add_argument(
         "--home",
         type=str,
-        help="Polecat home directory (default: ~/.aops, or POLECAT_HOME env var)",
+        help="Polecat home directory (default: $POLECAT_HOME)",
     )
 
     args = parser.parse_args()

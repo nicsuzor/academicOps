@@ -20,16 +20,16 @@ Quick definitions for framework-specific terminology. Used by hydrator to interp
 
 ## Directories
 
-| Term            | Location                                                |
-| --------------- | ------------------------------------------------------- |
-| **plugin root** | `~/.aops/aops-XXXXXXXX/aops-core/` - framework code     |
-| **skills/**     | Skill definitions (markdown prompts)                    |
-| **workflows/**  | Workflow definitions                                    |
-| **agents/**     | Agent specifications (canonical source)                 |
-| **specs/**      | Design documents and specifications                     |
-| **hooks/**      | Claude/Gemini hook scripts                              |
-| **lib/**        | Python library code                                     |
-| **scripts/**    | Shell scripts (including `crew`, `polecat`, `build.py`) |
+| Term            | Location                                                  |
+| --------------- | --------------------------------------------------------- |
+| **plugin root** | `$POLECAT_HOME/aops-XXXXXXXX/aops-core/` - framework code |
+| **skills/**     | Skill definitions (markdown prompts)                      |
+| **workflows/**  | Workflow definitions                                      |
+| **agents/**     | Agent specifications (canonical source)                   |
+| **specs/**      | Design documents and specifications                       |
+| **hooks/**      | Claude/Gemini hook scripts                                |
+| **lib/**        | Python library code                                       |
+| **scripts/**    | Shell scripts (including `crew`, `polecat`, `build.py`)   |
 
 ## Build Pipeline & Generated Files
 
