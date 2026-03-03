@@ -38,35 +38,10 @@ Skip constraint checking for:
 
 ## Verification Process
 
-For each constraint type in the selected workflow:
-
-**1. BEFORE rules** - "X must complete before Y"
-
-- Verify X appears before Y in the plan
-- If X is missing entirely, flag as violation
-
-**2. AFTER rules** - "After X: do Y"
-
-- Find step X in the plan
-- Verify Y appears after X
-
-**3. ALWAYS rules** - Invariants
-
-- Verify no step would violate the invariant
-
-**4. NEVER rules** - Prohibitions
-
-- Check no step matches the prohibited pattern
-
-**5. IF-THEN rules** - Conditionals
-
-- If condition applies to this task, verify action is in plan
-- If can't evaluate statically, note as "runtime check needed"
-
-**6. ON-INVOKE rules** - Triggers
-
-- Identify if trigger condition will occur
-- Verify corresponding action is invoked
+1. **BEFORE rules**: Verify X appears before Y in the plan.
+2. **AFTER rules**: Verify Y appears after X.
+3. **ALWAYS/NEVER rules**: Verify no step violates invariants or prohibited patterns.
+4. **IF-THEN/ON-INVOKE rules**: Verify action is in plan if condition triggers.
 
 ## Violation Reporting
 
@@ -77,15 +52,12 @@ If any constraint is violated, output:
 
 [N] workflow constraint(s) violated:
 
-1. **[Constraint type]**: [Quoted constraint from workflow]
-   - **Violation**: [What's wrong with the current plan]
-   - **Remediation**: [How to fix]
+1. **[Type]**: [Constraint]
+   - **Violation**: [Description]
+   - **Remediation**: [Fix]
 ```
 
-After listing violations:
-
-- **Revise the plan** to satisfy all constraints (preferred)
-- **Flag for human review** if constraints conflict or are ambiguous
+Plan must then be revised or flagged for human review.
 
 ## Predicate Evaluation
 

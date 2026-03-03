@@ -38,40 +38,23 @@ Red-green-refactor cycle for any testable code change.
 
 ### Commit Gates
 
-- Cannot commit while tests fail
-- Cannot commit a failing test without implementation (that's an incomplete cycle)
-
-### Cycle Iteration
-
-- If acceptance criteria remain, repeat the cycle
+- Cannot commit while tests fail or without implementation (incomplete cycle)
 
 ### Always True
 
-- One behavior per cycle
-- Test before code
+- One behavior per cycle; test before code.
 
 ### Never Do
 
-- Never implement before writing a test
-- Never commit with a failing test
-- Never skip verifying that the test fails first
-- Never implement beyond the minimal needed to pass
+- Never implement before writing a test; never commit with a failing test.
 
 ## Triggers
 
 Cycle state transitions:
 
-- When test is written → verify it fails
-- When test fails (as expected) → proceed to implement
-- When test passes → proceed to refactor or commit
-- When refactor is complete → verify tests still pass
-- When tests pass and acceptance criteria remain → start new cycle
-- When tests pass and acceptance is complete → proceed to commit
-
-Error handling:
-
-- If test passes unexpectedly → HALT with message "test may not be testing what you think"
-- If tests fail after refactor → undo the refactor
+- Written → verify failure; Failure (expected) → implement; Pass → refactor or commit.
+- Refactor complete → verify pass; Criteria remain → start new cycle.
+- Unexpected pass → HALT; Fail after refactor → undo refactor.
 
 ## State Machine
 
