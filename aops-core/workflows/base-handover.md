@@ -68,7 +68,10 @@ If you made ANY changes (code, config, docs), commit them NOW before memory/refl
 ```bash
 git status  # Review changes
 git add <specific-files>  # Stage relevant changes
-git commit -m "<type>: <description>"
+git commit -m "<type>: <description>
+
+Task: <task-id>
+Epic: <epic-id>"
 git push  # Push to remote
 ```
 
@@ -83,12 +86,25 @@ gh pr create --title "<type>: <description>" --body "$(cat <<'EOF'
 ## Summary
 - <What was done and why>
 
+Task: `<task-id>`
+Epic: `<epic-id>`
+
 ## Test plan
 - [ ] Tests pass
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 EOF
 )"
+```
+
+After creating the PR, record its URL in the task:
+
+```python
+mcp__pkb__append(
+    id="<task-id>",
+    content="PR: <url>",
+    section="Log"
+)
 ```
 
 If a PR already exists for the branch, link it in the task body instead.
