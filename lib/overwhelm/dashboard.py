@@ -182,7 +182,7 @@ def _format_project_name(project_folder: str) -> str:
 
     Folder names encode paths with dashes replacing slashes:
     -home-nic-src-academicOps -> academicOps
-    -home-nic-.aops-aops-008c345f -> aops (skip hash suffix, skip hidden dirs)
+    -home-nic-.polecat-aops-008c345f -> aops (skip hash suffix, skip hidden dirs)
     -Users-suzor-src-buttermilk -> buttermilk
     -home-nic-writing-academicOps-hooks -> academicOps (skip -hooks suffix)
 
@@ -3381,7 +3381,8 @@ def clean_activity_text(raw_text: str) -> str:
 
 def load_graph_data(filename: str = "graph.json") -> dict | None:
     """Load graph JSON from AOPS_SESSIONS, falling back to ACA_DATA."""
-    sessions_dir = Path(os.environ.get("AOPS_SESSIONS", Path.home() / ".aops" / "sessions"))
+    polecat_home = Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat")))
+    sessions_dir = Path(os.environ.get("AOPS_SESSIONS", polecat_home / "sessions"))
     aca_data = Path(os.environ["ACA_DATA"])
 
     for directory in (sessions_dir, aca_data):
@@ -3897,8 +3898,9 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from lib.task_model import TaskStatus
 from task_manager_ui import render_task_editor
+
+from lib.task_model import TaskStatus
 
 
 @st.dialog("Edit Task")

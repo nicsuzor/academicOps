@@ -231,7 +231,7 @@ After successful execution (EXECUTE path only), finalize the task:
 
 #### If in a Polecat Worktree
 
-Detect via: current directory is under `~/.aops/polecat/` or `$POLECAT_HOME/polecat/`
+Detect via: current directory is under `$POLECAT_HOME/polecat/`
 
 Run `polecat finish` via Bash:
 

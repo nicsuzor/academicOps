@@ -162,7 +162,7 @@ Before merging worker output to main:
    - Use `rg "<task-id>" ~/writing/sessions/` to find relevant transcript
 2. **Review the DIFF, not just agent claims** - Check actual code changes:
    ```bash
-   cd ~/.aops/polecat/<task-id>
+   cd $POLECAT_HOME/polecat/<task-id>
    git diff  # See uncommitted changes
    git log --oneline -5  # See what was committed
    ```
@@ -171,14 +171,14 @@ Before merging worker output to main:
 5. **Check for uncommitted work** - Workers often mark done without committing (known bug)
 6. **Commit if salvaging uncommitted work**:
    ```bash
-   cd ~/.aops/polecat/<task-id>
+   cd $POLECAT_HOME/polecat/<task-id>
    git add -A && git commit -m "feat(<area>): <task summary>"
    ```
 7. **Create REVIEW task** - Document findings for approval before merge
 8. **Merge only after approval** - Use the correct workflow:
    ```bash
    # Step 1: Push from worktree to origin (worktrees use separate repo)
-   cd ~/.aops/polecat/<task-id>
+   cd $POLECAT_HOME/polecat/<task-id>
    git push origin polecat/<task-id>:polecat/<task-id>
 
    # Step 2: Fetch and merge in main worktree
@@ -188,7 +188,7 @@ Before merging worker output to main:
    git push origin main
    ```
 
-**IMPORTANT**: You CANNOT merge directly from worktree path - polecat worktrees use a separate bare repo (`~/.aops/polecat/.repos/aops.git`). Must push to origin first.
+**IMPORTANT**: You CANNOT merge directly from worktree path - polecat worktrees use a separate bare repo (`$POLECAT_HOME/polecat/.repos/aops.git`). Must push to origin first.
 
 ## 6. Report Generation
 

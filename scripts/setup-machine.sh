@@ -33,7 +33,7 @@ warn() { echo -e "  ${YELLOW}warn${NC}  $1"; }
 fail() { echo -e "  ${RED}FAIL${NC}  $1"; ERRORS=$((ERRORS + 1)); }
 
 AOPS="${AOPS:-$(cd "$(dirname "$0")/.." && pwd)}"
-AOPS_SESSIONS="${AOPS_SESSIONS:-${HOME}/.aops/sessions}"
+AOPS_SESSIONS="${AOPS_SESSIONS:-${POLECAT_HOME:-${HOME}/.polecat}/sessions}"
 MASTER_REGISTRY="${AOPS_SESSIONS}/projects.yaml"
 
 echo -e "${BOLD}academicOps machine setup${NC}"
@@ -216,7 +216,7 @@ fi
 echo ""
 echo -e "${BOLD}Polecat config:${NC}"
 
-POLECAT_YAML="${HOME}/.aops/polecat.yaml"
+POLECAT_YAML="${POLECAT_HOME:-${HOME}/.polecat}/polecat.yaml"
 
 if [[ ! -f "${MASTER_REGISTRY}" ]]; then
     fail "Master project registry not found at ${MASTER_REGISTRY}"

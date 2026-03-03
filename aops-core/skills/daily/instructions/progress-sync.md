@@ -48,9 +48,9 @@ Read each session JSON from `$ACA_SESSIONS/summaries/YYYYMMDD*.json`. Extract:
 
 ### Step 4.2.5: Query Merged PRs
 
-Fetch today's merged PRs from **all tracked repositories** defined in `~/.aops/polecat.yaml`.
+Fetch today's merged PRs from **all tracked repositories** defined in `$POLECAT_HOME/polecat.yaml`.
 
-**Repository discovery**: Read `~/.aops/polecat.yaml` to get the project registry. For each project, use the `path` field to `cd` into the repo and run the query. Skip repos that don't exist locally.
+**Repository discovery**: Read `$POLECAT_HOME/polecat.yaml` to get the project registry. For each project, use the `path` field to `cd` into the repo and run the query. Skip repos that don't exist locally.
 
 **Per-repo query**:
 
@@ -84,7 +84,7 @@ _N PRs merged today across M repos_
 
 ### Step 4.2.6: Open PR Review (Decision Queue)
 
-Fetch open PRs that need human decisions from **all tracked repositories** in `~/.aops/polecat.yaml`.
+Fetch open PRs that need human decisions from **all tracked repositories** in `$POLECAT_HOME/polecat.yaml`.
 
 **Per-repo query** (use the enriched field set for decision support):
 

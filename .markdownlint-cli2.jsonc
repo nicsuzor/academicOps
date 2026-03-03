@@ -18,5 +18,5 @@
     "MD041": false
   },
   "customRules": [],
-  "ignores": ["node_modules/**", ".git/**", ".agent/**", ".aops/**", ".venv/**", ".claude/**"]
+  "ignores": ["node_modules/**", ".git/**", ".agent/**", ".aops/**", ".polecat/**", ".venv/**", ".claude/**"]
 }

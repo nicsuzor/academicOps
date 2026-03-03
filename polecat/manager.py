@@ -28,7 +28,7 @@ def get_polecat_home() -> Path:
 
     Checks in order:
     1. POLECAT_HOME environment variable
-    2. Default: ~/.aops
+    2. Default: ~/.polecat
 
     Returns:
         Path to the polecat home directory
@@ -38,7 +38,7 @@ def get_polecat_home() -> Path:
         if env_home.startswith("~"):
             return Path(env_home).expanduser()
         return Path(env_home)
-    return Path.home() / ".aops"
+    return Path.home() / ".polecat"
 
 
 def get_config_path(home_dir: Path | None = None) -> Path:
@@ -179,7 +179,7 @@ class PolecatManager:
 
         Args:
             home_dir: Optional home directory override. If not specified,
-                      uses POLECAT_HOME env var or defaults to ~/.aops
+                      uses POLECAT_HOME env var or defaults to ~/.polecat
         """
         # Determine home directory
         if home_dir is not None:
@@ -452,7 +452,7 @@ class PolecatManager:
     def get_repo_path(self, task) -> Path:
         """Returns the repository path to use as source for the worktree.
 
-        Prefers bare mirror in ~/.aops/polecat/.repos/ if it exists (for isolation).
+        Prefers bare mirror in $POLECAT_HOME/polecat/.repos/ if it exists (for isolation).
         Falls back to local project path from config.
         """
         project = task.project or "aops"
@@ -897,7 +897,7 @@ class PolecatManager:
         return None
 
     def setup_worktree(self, task, lock_timeout: float = 30.0):
-        """Creates a git worktree in ~/.aops/polecat linked to the project repo.
+        """Creates a git worktree in $POLECAT_HOME/polecat linked to the project repo.
 
         Before creating the worktree, performs a safe sync of the mirror (if used)
         to ensure we have the latest commits from origin. Sync failures are non-fatal
