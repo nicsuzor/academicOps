@@ -76,17 +76,17 @@ def get_data_root() -> Path:
 
 
 def get_local_cache_root() -> Path:
-    """Get local cache directory ($POLECAT_HOME or $HOME/.aops)."""
+    """Get local cache directory ($POLECAT_HOME or ~/.polecat)."""
     polecat_home = os.environ.get("POLECAT_HOME")
     if polecat_home:
         return Path(polecat_home).resolve()
-    return Path.home() / ".aops"
+    return Path.home() / ".polecat"
 
 
 def get_sessions_repo() -> Path:
     """Get sessions repository root.
 
-    Uses $AOPS_SESSIONS if set, otherwise defaults to ~/.aops/sessions.
+    Uses $AOPS_SESSIONS if set, otherwise defaults to $POLECAT_HOME/sessions.
     Creates the directory if it doesn't exist.
 
     Returns:

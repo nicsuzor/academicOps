@@ -1,3 +1,4 @@
+import os
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -5,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 import yaml
+
 from lib.task_model import Task, TaskComplexity, TaskStatus, TaskType
 from lib.task_storage import TaskStorage
 
@@ -21,7 +23,8 @@ DEFAULT_PROJECT = "aops"
 
 def _get_repo_url_from_project(project: str) -> str | None:
     """Get GitHub repo URL from project name via polecat.yaml."""
-    config_path = Path.home() / ".aops" / "polecat.yaml"
+    polecat_home = Path(os.environ.get("POLECAT_HOME", str(Path.home() / ".polecat")))
+    config_path = polecat_home / "polecat.yaml"
     if not config_path.exists():
         return None
 

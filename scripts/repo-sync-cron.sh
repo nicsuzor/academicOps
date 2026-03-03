@@ -52,8 +52,17 @@ if [[ -f "$HOME/.env.local" ]]; then
 fi
 
 export ACA_DATA="${ACA_DATA:-$HOME/brain}"
-export AOPS_SESSIONS="${AOPS_SESSIONS:-$HOME/.aops/sessions}"
-export PATH="$HOME/.local/bin:$HOME/.cargo/bin:/usr/local/bin:$PATH"
+export AOPS_SESSIONS="${AOPS_SESSIONS:-${POLECAT_HOME:-$HOME/.polecat}/sessions}"
+export PATH="${CARGO_HOME:-$HOME/.cargo}/bin:$HOME/.local/bin:/usr/local/bin:$PATH"
+
+# Git HTTPS auth for cron (no SSH agent available)
+# Uses env-based git config so nothing persists to ~/.gitconfig
+if [[ -n "${AOPS_BOT_GH_TOKEN:-}" ]]; then
+    export GH_TOKEN="${AOPS_BOT_GH_TOKEN}"
+    export GIT_CONFIG_COUNT=1
+    export GIT_CONFIG_KEY_0="credential.helper"
+    export GIT_CONFIG_VALUE_0='!f() { echo "username=x-access-token"; echo "password=${AOPS_BOT_GH_TOKEN}"; }; f'
+fi
 
 # Ensure we are in the AOPS directory for uv run commands
 cd "${AOPS}"

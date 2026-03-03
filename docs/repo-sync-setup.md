@@ -4,11 +4,11 @@ AcademicOps uses multiple git repositories that need to stay in sync across mach
 
 ## Repositories
 
-| Repo                                          | Purpose                               | Env var         |
-| --------------------------------------------- | ------------------------------------- | --------------- |
-| `$ACA_DATA` (e.g. `~/brain`)                  | Personal knowledge base, tasks, notes | `ACA_DATA`      |
-| `$AOPS_SESSIONS` (default `~/.aops/sessions`) | Session transcripts and summaries     | `AOPS_SESSIONS` |
-| `~/dotfiles`                                  | Shell config, scripts                 | -               |
+| Repo                                                | Purpose                               | Env var         |
+| --------------------------------------------------- | ------------------------------------- | --------------- |
+| `$ACA_DATA` (e.g. `~/brain`)                        | Personal knowledge base, tasks, notes | `ACA_DATA`      |
+| `$AOPS_SESSIONS` (default `$POLECAT_HOME/sessions`) | Session transcripts and summaries     | `AOPS_SESSIONS` |
+| `~/dotfiles`                                        | Shell config, scripts                 | -               |
 
 ## Sync Layers
 
@@ -141,7 +141,7 @@ if [[ -f "$HOME/.zshrc.local" ]]; then
 fi
 
 export ACA_DATA="${ACA_DATA:-/opt/nic/brain}"
-export AOPS_SESSIONS="${AOPS_SESSIONS:-$HOME/.aops/sessions}"
+export AOPS_SESSIONS="${AOPS_SESSIONS:-${POLECAT_HOME:-$HOME/.polecat}/sessions}"
 export PATH="$HOME/.local/bin:$HOME/.cargo/bin:/usr/local/bin:$PATH"
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') repo-sync-cron starting"

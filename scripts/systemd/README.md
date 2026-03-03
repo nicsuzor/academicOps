@@ -14,7 +14,7 @@ mkdir -p ~/.config/systemd/user
 cp brain-sync.service brain-sync.timer ~/.config/systemd/user/
 
 # Make scripts executable
-chmod +x ~/.aops/aops/scripts/brain-sync.sh ~/.aops/aops/scripts/brain-push.sh
+chmod +x ~/.polecat/aops/scripts/brain-sync.sh ~/.polecat/aops/scripts/brain-push.sh
 
 # Reload systemd
 systemctl --user daemon-reload

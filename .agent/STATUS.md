@@ -176,26 +176,26 @@ Scripts for extracting insights from session transcripts in `.agent/skills/sessi
 
 ## Key Decisions
 
-| Decision                                                 | Rationale                                                                                                  | Date       |
-| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------- |
-| PKB server is Rust-native (replaces Python task scripts) | Performance, reliability, single binary deployment. CLI + MCP from same codebase.                          | 2026-02-22 |
-| All PKB tools are always_available in gate system        | PKB is framework infrastructure. Gates must never block PKB access.                                        | 2026-03-01 |
-| Hydration gate: only always_available exempt             | Read-only tools get WARN (not exempt). Prevents gate from blocking its own hydrator (Agent tool).          | 2026-03-01 |
-| Import convention: qualified paths from aops-core/       | Bare imports caused dual sys.modules entries breaking importlib.reload() in tests.                         | 2026-03-01 |
-| Gate verdict + replay regression tests                   | 150 scenario tests + 31 real-event replay tests to prevent gate regressions permanently.                   | 2026-03-01 |
-| "Agent" added to always_available tools                  | Claude Code's subagent tool is "Agent" not "Task". Gate config must list both.                             | 2026-02-28 |
-| Iterative stale task sweep                               | 236+ open tasks with significant junk; batch-review with human decisions, not bulk auto-cancel             | 2026-02-23 |
+| Decision                                                 | Rationale                                                                                                        | Date       |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------- |
+| PKB server is Rust-native (replaces Python task scripts) | Performance, reliability, single binary deployment. CLI + MCP from same codebase.                                | 2026-02-22 |
+| All PKB tools are always_available in gate system        | PKB is framework infrastructure. Gates must never block PKB access.                                              | 2026-03-01 |
+| Hydration gate: only always_available exempt             | Read-only tools get WARN (not exempt). Prevents gate from blocking its own hydrator (Agent tool).                | 2026-03-01 |
+| Import convention: qualified paths from aops-core/       | Bare imports caused dual sys.modules entries breaking importlib.reload() in tests.                               | 2026-03-01 |
+| Gate verdict + replay regression tests                   | 150 scenario tests + 31 real-event replay tests to prevent gate regressions permanently.                         | 2026-03-01 |
+| "Agent" added to always_available tools                  | Claude Code's subagent tool is "Agent" not "Task". Gate config must list both.                                   | 2026-02-28 |
+| Iterative stale task sweep                               | 236+ open tasks with significant junk; batch-review with human decisions, not bulk auto-cancel                   | 2026-02-23 |
 | Conceptual review agent reads STATUS.md                  | Without strategic context, the review agent cannot catch PRs that delete working components (PR 582 post-mortem) | 2026-02-23 |
-| Pipeline cascade limit (max 3 runs)                      | PR 582 showed bots triggering bots in unbounded loops; comment-based counting bounds total cycles          | 2026-02-23 |
-| LGTM triggers lint re-run if failing                     | PR 585 showed LGTM silently failing when lint was stale; merge workflow now checks and re-triggers         | 2026-02-23 |
-| Transcript path: $AOPS_SESSIONS/polecats/                | Worker transcripts go to sessions repo, not old ~/.aops/transcripts path                                   | 2026-02-23 |
-| Commit trailer for loop detection                        | Author name unreliable (multiple bots use github-actions[bot])                                             | 2026-02-22 |
-| All workflows get workflow_dispatch                      | Manual re-run capability for debugging and recovery                                                        | 2026-02-22 |
-| Review dismissal by agents                               | Agents should dismiss reviews they've addressed; humans override remaining                                 | 2026-02-22 |
-| All merge methods enabled                                | Flexibility for different PR types                                                                         | 2026-02-22 |
-| Tests at repo root, not in aops-core                     | Single test suite covering all components                                                                  | prior      |
-| Skills are read-only (P#23)                              | Mutable state in $ACA_DATA only                                                                            | prior      |
-| Categorical imperative (P#2)                             | Every change must be a universal rule                                                                      | prior      |
+| Pipeline cascade limit (max 3 runs)                      | PR 582 showed bots triggering bots in unbounded loops; comment-based counting bounds total cycles                | 2026-02-23 |
+| LGTM triggers lint re-run if failing                     | PR 585 showed LGTM silently failing when lint was stale; merge workflow now checks and re-triggers               | 2026-02-23 |
+| Transcript path: $AOPS_SESSIONS/polecats/                | Worker transcripts go to sessions repo, not old $POLECAT_HOME/transcripts path                                   | 2026-02-23 |
+| Commit trailer for loop detection                        | Author name unreliable (multiple bots use github-actions[bot])                                                   | 2026-02-22 |
+| All workflows get workflow_dispatch                      | Manual re-run capability for debugging and recovery                                                              | 2026-02-22 |
+| Review dismissal by agents                               | Agents should dismiss reviews they've addressed; humans override remaining                                       | 2026-02-22 |
+| All merge methods enabled                                | Flexibility for different PR types                                                                               | 2026-02-22 |
+| Tests at repo root, not in aops-core                     | Single test suite covering all components                                                                        | prior      |
+| Skills are read-only (P#23)                              | Mutable state in $ACA_DATA only                                                                                  | prior      |
+| Categorical imperative (P#2)                             | Every change must be a universal rule                                                                            | prior      |
 
 ## Open Questions
 

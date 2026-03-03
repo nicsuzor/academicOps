@@ -288,7 +288,7 @@ For large operations (100+ files), use manual checkpointing across sessions:
 Session 1: Process batch 1 (files 1-30)
   - /parallel-batch processes ~30 files with 4-8 subagents
   - Commit checkpoint: "batch-1: [description]"
-  - Update tracking file (e.g., .aops/batch-audit/tracking.jsonl)
+  - Update tracking file (e.g., .polecat/batch-audit/tracking.jsonl)
 
 Session 2: Process batch 2 (files 31-60)
   - Read tracking file, identify unprocessed files
