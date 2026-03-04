@@ -3350,6 +3350,8 @@ def clean_activity_text(raw_text: str) -> str:
     import re as _re
 
     s = str(raw_text)
+    # Strip ANSI escape codes (e.g. \x1b[1m...\x1b[0m)
+    s = _re.sub(r"\x1b\[[0-9;]*m", "", s)
     # Remove HTML comments <!-- ... -->
     s = _re.sub(r"<!--.*?-->", "", s, flags=_re.DOTALL)
     # Remove paired HTML tags AND their content (e.g. <system-reminder>...</system-reminder>)
@@ -4019,8 +4021,9 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from lib.task_model import TaskStatus
 from task_manager_ui import render_task_editor
+
+from lib.task_model import TaskStatus
 
 
 @st.dialog("Edit Task")
@@ -4232,177 +4235,6 @@ if active_sessions_wlo or paused_sessions_wlo:
     wlo_html += "</div>"
     st.markdown(wlo_html, unsafe_allow_html=True)
 
-# === PATH RECONSTRUCTION SECTION ===
-try:
-    path = reconstruct_path(hours=activity_hours)
-    if path.threads:
-        path_html = "<div class='path-timeline'>"
-        path_html += "<h3>YOUR PATH</h3>"
-
-        # Unfinished tasks callout (most actionable — show first)
-        if path.abandoned_work:
-            path_html += "<div class='path-abandoned'>"
-            path_html += f"<div class='path-abandoned-title'>📋 UNFINISHED TASKS ({len(path.abandoned_work)} started but not finished)</div>"
-            path_html += "<div style='font-size: 0.8em; opacity: 0.7; margin-bottom: 8px;'>Tasks created or claimed across all sessions that haven't been marked done.</div>"
-
-            # Group abandoned work by project
-            abandoned_by_project = {}
-            for ab in path.abandoned_work:
-                proj = ab.project or "unknown"
-                if proj not in abandoned_by_project:
-                    abandoned_by_project[proj] = []
-                abandoned_by_project[proj].append(ab)
-
-            for proj, items in sorted(abandoned_by_project.items()):
-                proj_color = get_project_color(proj)
-                path_html += "<div style='margin-bottom: 8px;'>"
-                path_html += f"<div style='font-size: 0.7em; font-weight: 700; text-transform: uppercase; color: {proj_color}; opacity: 0.8; margin-bottom: 4px;'>{esc(proj)}</div>"
-                path_html += "<div style='display: flex; flex-wrap: wrap; gap: 8px;'>"
-                for ab in items:
-                    # Use resolved title for abandoned work if available
-                    title = ab.resolved_title or ab.description or ab.task_id
-                    task_label = esc(title)
-                    task_id_display = esc(ab.task_id or "unknown")
-                    path_html += f"<div class='path-abandoned-item' style='border-left: 2px solid {proj_color}; background: rgba(255,255,255,0.03); padding: 4px 10px; border-radius: 4px; font-size: 0.85em;' title='Task ID: {task_id_display}'>□ {task_label}</div>"
-                path_html += "</div>"
-                path_html += "</div>"
-
-            path_html += "</div>"
-
-        # Group threads by project
-        threads_by_project = {}
-        for thread in path.threads:
-            proj = thread.project or "unknown"
-            if proj not in threads_by_project:
-                threads_by_project[proj] = []
-            threads_by_project[proj].append(thread)
-
-        for proj, proj_threads in threads_by_project.items():
-            proj_color = get_project_color(proj)
-            path_html += "<div class='path-project-group'>"
-            path_html += f"<div class='path-project-header' style='color: {proj_color}; border-left: 3px solid {proj_color}'>{esc(proj).upper()}</div>"
-            path_html += "<div class='path-threads' style='display: flex; overflow-x: auto; flex-wrap: nowrap; gap: 16px; padding-bottom: 12px; margin-bottom: 16px;'>"
-
-            for thread in proj_threads:
-                # Limit sessions to those with at least one event or meaningful goal
-                if not thread.events and not thread.initial_goal:
-                    continue
-
-                path_html += f"<div class='path-thread' style='border-left-color: {proj_color}66; flex: 0 0 320px; white-space: normal; padding-right: 12px; min-width: 0; border-right: 1px solid rgba(255,255,255,0.05);'>"
-                sid_display = esc(thread.session_id[:8])
-
-                # Sanitize initial goal before display (prevent markdown headers from breaking layout)
-                # Prioritize hydrated_intent if available for better narrative recognition
-                goal_to_show = thread.hydrated_intent or thread.initial_goal
-                cleaned_goal = clean_activity_text(goal_to_show)
-                goal_display = esc(
-                    cleaned_goal[:120] + "..." if len(cleaned_goal) > 120 else cleaned_goal
-                )
-
-                # Add branch information if available as secondary context
-                branch_html = ""
-                if thread.git_branch:
-                    # Filter out mechanical branch names that are just task IDs
-                    if not re.match(r"^[a-z]+-[a-f0-9]+$", thread.git_branch):
-                        branch_html = f"<div class='session-branch' style='font-size: 0.75em; opacity: 0.6; margin-top: -8px; margin-bottom: 8px;' title='Git Branch'>branch: {esc(thread.git_branch)}</div>"
-
-                path_html += f"<div class='path-thread-header' title='{esc(cleaned_goal)}'>{goal_display} <span class='session-hash'>({sid_display})</span></div>"
-                path_html += branch_html
-
-                # Consolidate consecutive TASK_UPDATE events
-                display_events = []
-                update_buffer = []
-
-                for event in thread.events:
-                    if event.event_type == EventType.TASK_UPDATE:
-                        update_buffer.append(event)
-                    else:
-                        if update_buffer:
-                            # Add the last update from the buffer
-                            display_events.append(update_buffer[-1])
-                            update_buffer = []
-                        display_events.append(event)
-                if update_buffer:
-                    display_events.append(update_buffer[-1])
-
-                for event in display_events:
-                    # Timestamp in HH:MM format
-                    time_str = event.timestamp.strftime("%H:%M") if event.timestamp else ""
-
-                    # Dot color class
-                    dot_class = {
-                        EventType.USER_PROMPT: "prompt",
-                        EventType.TASK_CREATE: "create",
-                        EventType.TASK_COMPLETE: "complete",
-                        EventType.TASK_UPDATE: "update",
-                        EventType.TASK_CLAIM: "claim",
-                        EventType.TASK_ABANDON: "abandon",
-                        EventType.SESSION_START: "start",
-                    }.get(event.event_type, "start")
-
-                    # Event priority/style
-                    is_minor = event.event_type == EventType.TASK_UPDATE
-                    event_class = "path-event minor" if is_minor else "path-event"
-
-                    # Use the new narrative renderer from path_reconstructor
-                    narrative = event.render_narrative()
-                    cleaned_desc = clean_activity_text(narrative)
-
-                    # Increase truncation to 120 as per spec
-                    desc = esc(cleaned_desc[:120]) if cleaned_desc else ""
-
-                    # Add bolding for key actions for better scannability
-                    if event.event_type == EventType.TASK_CREATE:
-                        desc = desc.replace("Created: ", "<b>Created:</b> ")
-                    elif event.event_type == EventType.TASK_COMPLETE:
-                        desc = desc.replace("Finished: ", "<b>✓</b> ")
-                    elif event.event_type == EventType.TASK_CLAIM:
-                        desc = desc.replace("Started working on: ", "<b>Claimed:</b> ")
-                    elif event.event_type == EventType.USER_PROMPT:
-                        desc = desc.replace("Requested: ", "<b>Requested:</b> ")
-
-                    # Skip low-signal/empty events
-                    is_low_signal = not cleaned_desc or cleaned_desc.lower().strip() in (
-                        "working...",
-                        "push",
-                        "/dump",
-                        "created:",
-                        "claimed:",
-                        "session",
-                        "session started",
-                    )
-
-                    if is_low_signal:
-                        # Only keep low-signal events if they are high-importance types
-                        if event.event_type not in (
-                            EventType.TASK_COMPLETE,
-                            EventType.TASK_CLAIM,
-                            EventType.TASK_CREATE,
-                        ):
-                            continue
-
-                        # If description is empty but it's a create/claim, we need the task_id at least
-                        if not cleaned_desc and not event.task_id:
-                            continue
-
-                    path_html += f"<div class='{event_class}'>"
-                    path_html += f"<span class='dot {dot_class}'></span>"
-                    path_html += f"<span class='time'>{esc(time_str)}</span>"
-                    path_html += f"<span class='desc'>{desc}</span>"
-                    path_html += "</div>"
-
-                path_html += "</div>"  # end path-thread
-
-            path_html += "</div>"  # end path-threads
-            path_html += "</div>"  # end path-project-group
-
-        if path.filtered_session_count > 0:
-            path_html += f"<div style='text-align: center; color: var(--text-muted, #666); font-size: 0.8em; padding: 8px 0; opacity: 0.7;'>{path.filtered_session_count} session{'s' if path.filtered_session_count != 1 else ''} hidden (insufficient context)</div>"
-
-        path_html += "</div>"  # end path-timeline
-        st.markdown(path_html, unsafe_allow_html=True)
-except Exception:
-    pass  # Path reconstruction is non-critical; fail silently
 # Load synthesis
 synthesis = load_synthesis()
 
@@ -4581,6 +4413,218 @@ else:
         "</div></div>",
         unsafe_allow_html=True,
     )
+
+# === PATH RECONSTRUCTION SECTION ===
+try:
+    path = reconstruct_path(hours=activity_hours)
+    if path.threads:
+        path_html = "<div class='path-timeline'>"
+        path_html += "<h3>YOUR PATH</h3>"
+
+        # Unfinished tasks callout (most actionable — show first)
+        if path.abandoned_work:
+            path_html += "<div class='path-abandoned'>"
+            path_html += f"<div class='path-abandoned-title'>📋 UNFINISHED TASKS ({len(path.abandoned_work)} started but not finished)</div>"
+            path_html += "<div style='font-size: 0.8em; opacity: 0.7; margin-bottom: 8px;'>Tasks created or claimed across all sessions that haven't been marked done.</div>"
+
+            # Group abandoned work by project
+            abandoned_by_project = {}
+            for ab in path.abandoned_work:
+                proj = ab.project or "unknown"
+                if proj not in abandoned_by_project:
+                    abandoned_by_project[proj] = []
+                abandoned_by_project[proj].append(ab)
+
+            for proj, items in sorted(abandoned_by_project.items()):
+                proj_color = get_project_color(proj)
+                path_html += "<div style='margin-bottom: 8px;'>"
+                path_html += f"<div style='font-size: 0.7em; font-weight: 700; text-transform: uppercase; color: {proj_color}; opacity: 0.8; margin-bottom: 4px;'>{esc(proj)}</div>"
+                path_html += "<div style='display: flex; flex-wrap: wrap; gap: 8px;'>"
+                for ab in items:
+                    # Use resolved title for abandoned work if available
+                    title = ab.resolved_title or ab.description or ab.task_id
+                    task_label = esc(title)
+                    task_id_display = esc(ab.task_id or "unknown")
+                    path_html += f"<div class='path-abandoned-item' style='border-left: 2px solid {proj_color}; background: rgba(255,255,255,0.03); padding: 4px 10px; border-radius: 4px; font-size: 0.85em;' title='Task ID: {task_id_display}'>□ {task_label}</div>"
+                path_html += "</div>"
+                path_html += "</div>"
+
+            path_html += "</div>"
+
+        # Group threads by project
+        threads_by_project = {}
+        for thread in path.threads:
+            proj = thread.project or "unknown"
+            if proj not in threads_by_project:
+                threads_by_project[proj] = []
+            threads_by_project[proj].append(thread)
+
+        for proj, proj_threads in threads_by_project.items():
+            proj_color = get_project_color(proj)
+            # Buffer project HTML — only emit if at least one thread survives filtering
+            proj_buf = ""
+            thread_count = 0
+
+            # Limit to 5 most recent threads per project
+            for thread in proj_threads[:5]:
+                # Limit sessions to those with at least one event or meaningful goal
+                if not thread.events and not thread.initial_goal:
+                    continue
+
+                # Skip threads whose goal is pure noise
+                _goal_text = (
+                    clean_activity_text(thread.hydrated_intent or thread.initial_goal or "")
+                    .lower()
+                    .strip()
+                )
+                if (
+                    _goal_text in ("working...", "/clear", "/dump", "/q", "")
+                    or "commit changed and new files, pull, fix conflicts, push" in _goal_text
+                    or "commit changed and new files" == _goal_text
+                    or "you are a polecat worker" in _goal_text
+                    or "waiting for mcp servers to initialize" in _goal_text
+                    or (_goal_text.startswith("/") and " " not in _goal_text)
+                ):
+                    continue
+
+                thread_count += 1
+                proj_buf += f"<div class='path-thread' style='border-left-color: {proj_color}66; flex: 0 0 320px; white-space: normal; padding-right: 12px; min-width: 0; border-right: 1px solid rgba(255,255,255,0.05);'>"
+                sid_display = esc(thread.session_id[:8])
+
+                # Sanitize initial goal before display (prevent markdown headers from breaking layout)
+                # Prioritize hydrated_intent if available for better narrative recognition
+                goal_to_show = thread.hydrated_intent or thread.initial_goal
+                cleaned_goal = clean_activity_text(goal_to_show)
+                goal_display = esc(
+                    cleaned_goal[:120] + "..." if len(cleaned_goal) > 120 else cleaned_goal
+                )
+
+                # Add branch information if available as secondary context
+                branch_html = ""
+                if thread.git_branch:
+                    # Filter out mechanical branch names that are just task IDs
+                    if not re.match(r"^[a-z]+-[a-f0-9]+$", thread.git_branch):
+                        branch_html = f"<div class='session-branch' style='font-size: 0.75em; opacity: 0.6; margin-top: -8px; margin-bottom: 8px;' title='Git Branch'>branch: {esc(thread.git_branch)}</div>"
+
+                proj_buf += f"<div class='path-thread-header' title='{esc(cleaned_goal)}'>{goal_display} <span class='session-hash'>({sid_display})</span></div>"
+                proj_buf += branch_html
+
+                # Consolidate consecutive TASK_UPDATE events
+                display_events = []
+                update_buffer = []
+
+                for event in thread.events:
+                    if event.event_type == EventType.TASK_UPDATE:
+                        update_buffer.append(event)
+                    else:
+                        if update_buffer:
+                            # Add the last update from the buffer
+                            display_events.append(update_buffer[-1])
+                            update_buffer = []
+                        display_events.append(event)
+                if update_buffer:
+                    display_events.append(update_buffer[-1])
+
+                for event in display_events:
+                    # Timestamp in HH:MM format
+                    time_str = event.timestamp.strftime("%H:%M") if event.timestamp else ""
+
+                    # Dot color class
+                    dot_class = {
+                        EventType.USER_PROMPT: "prompt",
+                        EventType.TASK_CREATE: "create",
+                        EventType.TASK_COMPLETE: "complete",
+                        EventType.TASK_UPDATE: "update",
+                        EventType.TASK_CLAIM: "claim",
+                        EventType.TASK_ABANDON: "abandon",
+                        EventType.SESSION_START: "start",
+                    }.get(event.event_type, "start")
+
+                    # Event priority/style
+                    is_minor = event.event_type == EventType.TASK_UPDATE
+                    event_class = "path-event minor" if is_minor else "path-event"
+
+                    # Use the new narrative renderer from path_reconstructor
+                    narrative = event.render_narrative()
+                    cleaned_desc = clean_activity_text(narrative)
+
+                    # Increase truncation to 120 as per spec
+                    desc = esc(cleaned_desc[:120]) if cleaned_desc else ""
+
+                    # Add bolding for key actions for better scannability
+                    if event.event_type == EventType.TASK_CREATE:
+                        desc = desc.replace("Created: ", "<b>Created:</b> ")
+                    elif event.event_type == EventType.TASK_COMPLETE:
+                        desc = desc.replace("Finished: ", "<b>✓</b> ")
+                    elif event.event_type == EventType.TASK_CLAIM:
+                        desc = desc.replace("Started working on: ", "<b>Claimed:</b> ")
+                    elif event.event_type == EventType.USER_PROMPT:
+                        desc = desc.replace("Requested: ", "<b>Requested:</b> ")
+
+                    # Skip low-signal/empty events
+                    _desc_lower = cleaned_desc.lower().strip() if cleaned_desc else ""
+                    is_low_signal = (
+                        not cleaned_desc
+                        or _desc_lower
+                        in (
+                            "working...",
+                            "push",
+                            "/dump",
+                            "/clear",
+                            "/q",
+                            "created:",
+                            "claimed:",
+                            "session",
+                            "session started",
+                        )
+                        # Git sync housekeeping
+                        or "commit changed and new files, pull, fix conflicts, push" in _desc_lower
+                        or _desc_lower == "commit changed and new files"
+                        # Polecat worker system prompts
+                        or "you are a polecat worker" in _desc_lower
+                        # Placeholder text from Framework Reflection
+                        or _desc_lower.startswith("successfully completed: [")
+                        # Bare slash commands
+                        or (cleaned_desc.startswith("/") and " " not in cleaned_desc.strip())
+                    )
+
+                    if is_low_signal:
+                        # Only keep low-signal events if they are high-importance types
+                        if event.event_type not in (
+                            EventType.TASK_COMPLETE,
+                            EventType.TASK_CLAIM,
+                            EventType.TASK_CREATE,
+                        ):
+                            continue
+
+                        # If description is empty but it's a create/claim, we need the task_id at least
+                        if not cleaned_desc and not event.task_id:
+                            continue
+
+                    proj_buf += f"<div class='{event_class}'>"
+                    proj_buf += f"<span class='dot {dot_class}'></span>"
+                    proj_buf += f"<span class='time'>{esc(time_str)}</span>"
+                    proj_buf += f"<span class='desc'>{desc}</span>"
+                    proj_buf += "</div>"
+
+                proj_buf += "</div>"  # end path-thread
+
+            # Only emit project group if at least one thread survived filtering
+            if thread_count > 0:
+                path_html += "<div class='path-project-group'>"
+                path_html += f"<div class='path-project-header' style='color: {proj_color}; border-left: 3px solid {proj_color}'>{esc(proj).upper()}</div>"
+                path_html += "<div class='path-threads' style='display: flex; overflow-x: auto; flex-wrap: nowrap; gap: 16px; padding-bottom: 12px; margin-bottom: 16px;'>"
+                path_html += proj_buf
+                path_html += "</div>"  # end path-threads
+                path_html += "</div>"  # end path-project-group
+
+        if path.filtered_session_count > 0:
+            path_html += f"<div style='text-align: center; color: var(--text-muted, #666); font-size: 0.8em; padding: 8px 0; opacity: 0.7;'>{path.filtered_session_count} session{'s' if path.filtered_session_count != 1 else ''} hidden (insufficient context)</div>"
+
+        path_html += "</div>"  # end path-timeline
+        st.markdown(path_html, unsafe_allow_html=True)
+except Exception:
+    pass  # Path reconstruction is non-critical; fail silently
 
 render_spotlight_epic()
 
