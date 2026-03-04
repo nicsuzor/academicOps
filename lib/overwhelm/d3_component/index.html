@@ -91,6 +91,16 @@
     }
     .btn-focus { background: #7c3aed; color: white; }
     .btn-focus:hover { background: #6d28d9; }
+
+    /* Spotlight "Start Here" ring for top-priority nodes */
+    @keyframes spotlight-pulse {
+      0%   { stroke-opacity: 0.95; stroke-width: 3px; }
+      50%  { stroke-opacity: 0.35; stroke-width: 6px; }
+      100% { stroke-opacity: 0.95; stroke-width: 3px; }
+    }
+    .spotlight-ring { animation: spotlight-pulse 2.2s infinite ease-in-out; }
+    .hull-path { pointer-events: none; }
+    .hull-label { pointer-events: none; user-select: none; }
   </style>
 </head>
 <body>
@@ -135,7 +145,7 @@
     let focusNodeId = null;       // non-null = ego network focus mode
     let focusNeighborSet = null;  // Set of visible node IDs in focus mode
     let simulation = null;
-    let svg, container, zoom, linkEls, nodeEls;
+    let svg, container, zoom, linkEls, nodeEls, hullLayer;
 
     // --- Ego network helpers ---
 
@@ -223,6 +233,22 @@
     // --- Layout-specific node shape builders ---
     function buildTaskCardNode(g, d) {
         const hw = d.w/2, hh = d.h/2;
+        // Spotlight ring: top-priority "start here" nodes get a pulsing gold ring
+        if (d.spotlight) {
+            const pad = 9;
+            const rx = d.shape === "pill" ? hh + pad : d.shape === "rounded" ? 14 : 8;
+            g.insert("rect", ":first-child")
+              .attr("x", -hw - pad).attr("y", -hh - pad)
+              .attr("width", (hw + pad) * 2).attr("height", (hh + pad) * 2)
+              .attr("rx", rx).attr("fill", "none")
+              .attr("stroke", "#f59e0b").attr("class", "spotlight-ring");
+            g.append("text")
+              .attr("x", 0).attr("y", -hh - pad - 5)
+              .attr("text-anchor", "middle").attr("font-size", "8px")
+              .attr("font-weight", "700").attr("fill", "#f59e0b")
+              .attr("letter-spacing", "0.6px").attr("pointer-events", "none")
+              .text("★ START HERE");
+        }
         if (d.shape === "pill") {
             g.append("rect").attr("x",-hw).attr("y",-hh).attr("width",d.w).attr("height",d.h)
               .attr("rx",hh).attr("ry",hh)
@@ -326,6 +352,80 @@
 
             builder(g, d);
         });
+    }
+
+    // --- Project convex hull helpers ---
+
+    function projectColor(projectId) {
+        let hash = 0;
+        for (let i = 0; i < projectId.length; i++) {
+            hash = ((hash << 5) - hash) + projectId.charCodeAt(i);
+            hash |= 0;
+        }
+        const hue = Math.abs(hash) % 360;
+        return `hsl(${hue}, 55%, 52%)`;
+    }
+
+    function updateHulls() {
+        if (!hullLayer) return;
+        // Only show hulls in force/precomputed/atlas layouts
+        const isContainment = currentLayout.startsWith("tree") ||
+                              currentLayout.startsWith("circle") ||
+                              currentLayout.startsWith("arc");
+        // Hide hulls in focus mode or containment layouts
+        if (isContainment || focusNodeId) {
+            hullLayer.selectAll("*").remove();
+            return;
+        }
+
+        const projectNodes = new Map();
+        graphData.nodes.forEach(n => {
+            if (n.x == null || n.x < -9000) return;
+            const p = n.project;
+            if (!p) return;
+            if (!projectNodes.has(p)) projectNodes.set(p, []);
+            projectNodes.get(p).push([n.x, n.y]);
+        });
+
+        const hullData = [];
+        projectNodes.forEach((pts, pid) => {
+            if (pts.length < 3) return;
+            const hull = d3.polygonHull(pts);
+            if (!hull) return;
+            // Expand hull outward from centroid by 40px so it wraps around nodes
+            const cx = d3.mean(hull, p => p[0]);
+            const cy = d3.mean(hull, p => p[1]);
+            const expanded = hull.map(([x, y]) => {
+                const dx = x - cx, dy = y - cy;
+                const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                return [x + dx / dist * 40, y + dy / dist * 40];
+            });
+            hullData.push({ id: pid, points: expanded, cx, cy });
+        });
+
+        hullLayer.selectAll(".hull-path").data(hullData, d => d.id)
+            .join("path")
+            .attr("class", "hull-path")
+            .attr("d", d => "M" + d.points.map(p => p.join(",")).join("L") + "Z")
+            .attr("fill", d => projectColor(d.id))
+            .attr("fill-opacity", 0.05)
+            .attr("stroke", d => projectColor(d.id))
+            .attr("stroke-opacity", 0.22)
+            .attr("stroke-width", 1.5)
+            .attr("stroke-dasharray", "5,3");
+
+        hullLayer.selectAll(".hull-label").data(hullData, d => d.id)
+            .join("text")
+            .attr("class", "hull-label")
+            .attr("x", d => d3.mean(d.points, p => p[0]))
+            .attr("y", d => d3.min(d.points, p => p[1]) - 5)
+            .attr("text-anchor", "middle")
+            .attr("font-size", "9px")
+            .attr("font-weight", "700")
+            .attr("fill", d => projectColor(d.id))
+            .attr("opacity", 0.55)
+            .attr("letter-spacing", "0.5px")
+            .text(d => d.id.replace(/_/g, " ").toUpperCase().substring(0, 22));
     }
 
     // Outer-scope zoom-to-fit (also used by enterFocusMode / exitFocusMode)
@@ -438,6 +538,9 @@
         container = svg.append("g");
         zoom = d3.zoom().scaleExtent([0.02, 10]).on("zoom", e => container.attr("transform", e.transform));
         svg.call(zoom);
+
+        // Hull layer for project cluster backgrounds (inserted before edges and nodes)
+        hullLayer = container.append("g").attr("class", "hull-layer");
 
         // === Build data structures ===
         const nodeById = new Map();
@@ -580,6 +683,7 @@
 
         router();
         nodeEls.attr("transform", d => `translate(${d.x},${d.y})`);
+        updateHulls();
     }
 
     function applyLayout() {

@@ -3689,6 +3689,22 @@ def render_task_graph_page():
         else:
             scope_key = "default"
 
+        st.markdown("**Quick View**")
+        quick_view_enabled = st.checkbox(
+            "Top N by importance",
+            value=True,
+            key="tg_quickview",
+            help="Show only the highest-priority active nodes + their structural parents. "
+            "Dramatically reduces visual noise.",
+        )
+        quick_view_n = st.select_slider(
+            "N",
+            options=[25, 50, 80, 120, 200],
+            value=80,
+            key="tg_quickview_n",
+            disabled=not quick_view_enabled,
+        )
+
     # Load from per-layout JSON files (graph-*.json) — cached
     d3_graph = _load_merged_graph(scope=scope_key)
     if d3_graph:
@@ -3721,6 +3737,76 @@ def render_task_graph_page():
                 filtered.append(n)
         if show_only_reachable:
             filtered = [n for n in filtered if n.get("reachable")]
+
+        # Quick View: keep top N nodes by importance score + their structural parents
+        if quick_view_enabled and len(filtered) > quick_view_n:
+            import time as _time
+            from datetime import datetime as _dt
+
+            def _parse_mod(mod) -> float | None:
+                """Return Unix timestamp from either a float/int or ISO datetime string."""
+                if mod is None:
+                    return None
+                try:
+                    return float(mod)
+                except (TypeError, ValueError):
+                    pass
+                try:
+                    # Handle ISO 8601 with nanoseconds (Python doesn't parse those directly)
+                    s = str(mod)
+                    # Truncate sub-microsecond precision (ns → µs)
+                    s = __import__("re").sub(r"(\.\d{6})\d+", r"\1", s)
+                    return _dt.fromisoformat(s).timestamp()
+                except Exception:
+                    return None
+
+            def _importance_score(node: dict) -> float:
+                p = node.get("priority", 2)
+                if not isinstance(p, int):
+                    p = 2
+                s = (node.get("status") or "inbox").lower()
+                dw = node.get("downstream_weight") or 0
+                mod = node.get("modified")
+                p_score = {0: 1000, 1: 200, 2: 50, 3: 10, 4: 2}.get(p, 50)
+                s_score = {
+                    "blocked": 500,
+                    "in_progress": 300,
+                    "active": 100,
+                    "waiting": 50,
+                    "review": 80,
+                    "merge_ready": 150,
+                }.get(s, 0)
+                dw_score = min(float(dw) * 20, 200)
+                r_score = 0.0
+                mod_ts = _parse_mod(mod)
+                if mod_ts:
+                    days = (_time.time() - mod_ts) / 86400
+                    r_score = max(0.0, 50.0 - days * 2)
+                # Structural nodes (goals/projects/epics) get a depth bonus
+                depth_bonus = max(0, (3 - int(node.get("depth") or 3)) * 30)
+                return p_score + s_score + dw_score + r_score + depth_bonus
+
+            scored = sorted(filtered, key=_importance_score, reverse=True)
+            top_ids = {n["id"] for n in scored[:quick_view_n]}
+            # Always include structural parents (goals/projects/epics) of top nodes
+            parent_ids: set[str] = set()
+            node_by_id = {n["id"]: n for n in filtered}
+            for nid in top_ids:
+                parent = node_by_id.get(nid, {}).get("parent")
+                if parent and parent in node_by_id:
+                    parent_ids.add(parent)
+                    # One more level up
+                    grandparent = node_by_id.get(parent, {}).get("parent")
+                    if grandparent and grandparent in node_by_id:
+                        parent_ids.add(grandparent)
+            keep_ids = top_ids | parent_ids
+            filtered = [n for n in filtered if n["id"] in keep_ids]
+
+            # Tag the top 3 as "spotlight" for the "start here" visual signal
+            top3_ids = {n["id"] for n in scored[:3]}
+            for n in filtered:
+                n["spotlight"] = n["id"] in top3_ids
+
         d3_graph["nodes"] = filtered
 
         d3_data = prepare_embedded_graph_data(d3_graph)
