@@ -40,7 +40,13 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 mkdir -p "${GRAPH_DIR}"
+
+# Step 0: Generate dashboard synthesis
+echo "==> Generating dashboard synthesis..."
+uv run python3 "${SCRIPT_DIR}/synthesize_dashboard.py" 2>&1 || echo "Warning: synthesis generation failed"
 
 # Step 1: Generate graph data (per-layout JSONs + .dot files)
 echo "==> Generating graph data..."
