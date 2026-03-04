@@ -81,7 +81,7 @@ The dashboard loads without crashes and provides useful project-level context re
 | --------- | -------------- | ------------------------ | -------------------------------------------------------- |
 | D5.1–D5.5 | Error handling | NOT TESTED (destructive) | Path reconstruction is working correctly with live data. |
 
-YOUR PATH section renders successfully with dropped threads grouped by 10 projects. The section is functional.
+YOUR PATH section renders successfully with dropped threads grouped by 10 projects. The section is functional. Data source is the git-synced sessions repo (`/opt/nic/.aops/sessions/summaries/`), which includes sessions from **all machines** — not local-only.
 
 ### QA-D6: Project Boxes Show Agents — FAIL
 
