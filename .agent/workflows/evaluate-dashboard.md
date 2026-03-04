@@ -1,60 +1,99 @@
 ---
 name: evaluate-dashboard
 title: Evaluate Overwhelm Dashboard
-description: Dynamic visual QA and structural verification of the Overwhelm Dashboard against live acceptance criteria and ADHD design principles.
+description: User-centered evaluation of the Overwhelm Dashboard — does it reduce overwhelm for an ADHD user returning to work?
 triggers: [evaluate dashboard, overwhelm dashboard, visual QA, dashboard evaluation, dashboard QA]
 ---
 
 # Workflow: Evaluate Overwhelm Dashboard
 
-Instructions for dynamic visual QA and structural verification against the live specifications.
+This is not a test matrix. This is an evaluation of whether the dashboard **serves its user** — an academic with ADHD who is already overwhelmed, returning to work after a break, trying to reconstruct what was happening across multiple projects and machines.
 
-## 1. Setup & Execution
+The primary question is always: **does opening this dashboard make Nic feel more oriented, or more stressed?**
 
-Ensure visualization dependencies are installed, the `ACA_DATA` environment variable is set, and start the server:
+## 1. Setup
+
+Start the dashboard:
 
 ```bash
-# 1. Install 'viz' extra
 uv sync --extra viz
-
-# 2. Start dashboard in headless mode (default port 8501)
 uv run streamlit run lib/overwhelm/dashboard.py --server.headless true
 ```
 
-## 2. Dynamic Specification Discovery
+Read the current specs before evaluating:
 
-Before evaluating, read the current "Acceptance Criteria" and "ADHD Design Principles" from the source specs:
+- `specs/overwhelm-dashboard.md` — acceptance criteria and ADHD design principles
+- `specs/task-map.md` — task graph spec
 
-- `specs/overwhelm-dashboard.md`
-- `specs/task-map.md`
+## 2. The Cold Open (do this FIRST, before any technical checks)
 
-## 3. Visual Validation Routine
+Navigate to the dashboard. Pretend you are Nic at 9am. You slept badly. You have 6 projects, agents ran overnight, you can't remember what you were doing yesterday. You open this page.
 
-Use browser tools to navigate the dashboard and perform the following for each view:
+**Narrate what you see and feel**, section by section, as you scroll:
 
-1. **Read Specs:** Identify the "Acceptance Criteria" for the current view mode (Dashboard vs. Task Graph).
-2. **Verify UI:** Confirm every mandated feature in the spec is present and functional in the browser.
-3. **Stress Test:** Verify the ADHD Design Principles (e.g., "Scannable, not studyable", "No flat displays at scale") are upheld by the current rendering.
-4. **Check Data Integrity:** Confirm the UI matches the underlying state in `$ACA_DATA/tasks/index.json` and the relevant graph file: `$ACA_DATA/outputs/graph.json` for the Tasks view, or `$ACA_DATA/outputs/knowledge-graph.json` for the Knowledge Base view.
+- What's the first thing your eyes land on? Does it answer a question you actually have?
+- How many seconds before you feel oriented? Before you feel _calm_?
+- Is there a moment where the page makes you feel _worse_ — more confused, more overwhelmed, more lost?
+- When you reach the bottom, can you articulate what you should do next?
+- Did anything feel like noise — information that exists because the system has it, not because you need it?
 
-## 4. Documentation of Deviations
+Write this narration honestly. It is the most important part of the evaluation.
 
-Record any gaps where the implementation diverges from the live specifications. Do not rely on previous evaluations; verify the implementation against the spec as it exists _now_.
+## 3. The Three Questions Test
 
-Write QA results to `qa/dashboard-qa-results-{date}.md` with:
+Without scrolling, within 5 seconds of the page loading, can you answer:
 
-- Per-task check results (pass/fail/untested with evidence)
-- End-to-end scenario results
-- Emotional assessment
-- Verdict: VERIFIED or ISSUES
+1. **"What's running right now?"** — How many agents are active? Do any need me?
+2. **"What got dropped?"** — What did I start yesterday that isn't done?
+3. **"What needs me?"** — Is anything blocked on my input?
 
-## 5. Decomposition & Task Creation
+For each question: note whether the answer is _visible_, _findable with effort_, or _not there at all_. Note how it makes you feel — relieved, frustrated, anxious?
 
-After finalising the QA report, create actionable follow-up work:
+## 4. Section-by-Section Experience Review
 
-1. **Create or update an epic** for the dashboard improvement work if one doesn't exist.
-2. **Decompose each critical/major finding** into individual tasks with clear acceptance criteria derived from the QA check that failed.
-3. **Set task priorities** based on QA severity: critical findings → P1, major → P2, minor → P3.
-4. **Link tasks** to the QA report and the relevant spec section.
+For each visible section, evaluate through the user's lens:
 
-This ensures QA findings are not just documented but enter the task queue for resolution.
+| Question                                   | What to look for                                                    |
+| ------------------------------------------ | ------------------------------------------------------------------- |
+| **Does this section earn its space?**      | Would removing it make the page better or worse?                    |
+| **Is this scannable in 3 seconds?**        | Can you get the gist without reading? Color, shape, density.        |
+| **Does this create anxiety or reduce it?** | Long uncollapsible lists create anxiety. Progress bars reduce it.   |
+| **Is the framing directive?**              | "YOUR PATH" vs "Session History". "NEEDS YOU" vs "Status: waiting". |
+| **Would Nic actually use this?**           | Or is it there because it was in the spec?                          |
+
+Pay special attention to:
+
+- **YOUR PATH**: Is it signal or noise? Do "/clear" and "commit and push" sessions help or clutter?
+- **Synthesis**: Does the narrative match the lived experience? Or is it generic?
+- **Project Grid**: Can you find a specific project in under 5 seconds?
+- **Page length**: How much scrolling? Does it feel like "there's a lot going on but I can handle it" or "oh god"?
+
+## 5. Technical Verification
+
+Now — and only now — check the spec compliance. Use `qa/dashboard-qa.md` for the detailed check matrix (D1-D9 per-task checks, E2E scenarios).
+
+For each technical check, note not just pass/fail but: **does the user care?** A feature that passes its spec check but doesn't serve the user is still a problem. A feature that fails its spec check but the dashboard works better without it is fine.
+
+Check data integrity against `$ACA_DATA/tasks/index.json` and `$ACA_DATA/outputs/graph.json`.
+
+## 6. Write the Report
+
+Write results to `qa/dashboard-qa-results-{date}.md`.
+
+**Structure the report with the user experience FIRST:**
+
+1. **Cold Open narration** — what you saw and felt
+2. **Three Questions verdict** — could you answer them? How did it feel?
+3. **Section experience review** — which sections earn their space?
+4. **Emotional assessment** — overall, does this dashboard reduce overwhelm?
+5. **Technical checks** — spec compliance matrix (pass/fail/untested)
+6. **Issues** — prioritized by user impact, not spec severity
+7. **Verdict**: VERIFIED or ISSUES
+
+## 7. Decomposition & Task Creation
+
+After the report, create follow-up work:
+
+1. Prioritize by **user impact**, not spec compliance. A missing feature that nobody notices is P3. A rendering issue that creates anxiety is P1.
+2. Each task's acceptance criteria should describe the _user experience change_, not just the technical fix. Not "add STALE badge" but "user sees clear indicator that synthesis is outdated and knows how to refresh it."
+3. Link tasks to the QA report and relevant spec section.
