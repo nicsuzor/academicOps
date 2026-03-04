@@ -16,9 +16,12 @@ Usage:
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
+
+import yaml
 
 from lib.paths import get_plugin_root
 
@@ -34,6 +37,66 @@ class FileEntry:
     def absolute_path(self) -> Path:
         """Return absolute path."""
         return get_plugin_root() / self.path
+
+
+def _get_project_workflow_entries() -> list[FileEntry]:
+    """Discover project-specific workflows in .agent/workflows/."""
+    entries = []
+    cwd = Path.cwd()
+    plugin_root = get_plugin_root()
+
+    # Check both CWD and plugin_root parent for .agent/workflows/
+    search_dirs = []
+    if (cwd / ".agent" / "workflows").exists():
+        search_dirs.append(cwd / ".agent" / "workflows")
+    if (plugin_root.parent / ".agent" / "workflows").exists():
+        search_dirs.append(plugin_root.parent / ".agent" / "workflows")
+
+    processed_paths = set()
+
+    for workflows_dir in search_dirs:
+        for wf_file in workflows_dir.glob("*.md"):
+            if wf_file in processed_paths:
+                continue
+            processed_paths.add(wf_file)
+
+            try:
+                content = wf_file.read_text()
+                name = wf_file.stem
+                desc = f"Project-specific workflow: {name}"
+                keywords = [name.lower()]
+                # Add individual words from filename
+                keywords.extend(name.lower().replace("-", " ").replace("_", " ").split())
+
+                # Parse frontmatter for better description and keywords
+                if content.startswith("---"):
+                    parts = content.split("---", 2)
+                    if len(parts) >= 3:
+                        try:
+                            fm = yaml.safe_load(parts[1])
+                            if isinstance(fm, dict):
+                                desc = fm.get("description", desc).strip()
+                                triggers = fm.get("triggers", [])
+                                if isinstance(triggers, list):
+                                    keywords.extend([str(t).lower() for t in triggers])
+                                elif isinstance(triggers, str):
+                                    keywords.append(triggers.lower())
+                        except Exception:
+                            pass
+
+                # Calculate path relative to plugin root for FileEntry.absolute_path() compatibility
+                try:
+                    rel_path = os.path.relpath(wf_file, plugin_root)
+                except ValueError:
+                    rel_path = str(wf_file)
+
+                entries.append(
+                    FileEntry(path=rel_path, description=desc, keywords=tuple(set(keywords)))
+                )
+            except Exception:
+                continue
+
+    return entries
 
 
 # File index organized by category
@@ -469,7 +532,10 @@ def get_relevant_file_paths(prompt: str, max_files: int = 10) -> list[dict[str, 
     # Score each file entry by number of keyword matches
     scored_entries: list[tuple[int, FileEntry]] = []
 
-    for entry in FILE_INDEX:
+    # Combined framework and project entries
+    all_entries = list(FILE_INDEX) + _get_project_workflow_entries()
+
+    for entry in all_entries:
         score = 0
         for keyword in entry.keywords:
             keyword_lower = keyword.lower()
