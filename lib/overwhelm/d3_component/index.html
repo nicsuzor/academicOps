@@ -241,10 +241,11 @@
             g.selectAll("*").remove();
 
             let builder = buildTaskCardNode;
-            if (layoutMode.startsWith("tree") || layoutMode.startsWith("treemap")) builder = buildTreemapNode;
-            else if (layoutMode.startsWith("circle")) builder = buildCirclePackNode;
-            else if (layoutMode.startsWith("arc")) builder = buildArcNode;
-            else if (nodeBuilders[layoutMode]) builder = nodeBuilders[layoutMode];
+            // Sort keys by length descending to match more specific prefixes first (e.g. 'circle_pack' before 'circle').
+            const sortedNodeKeys = Object.keys(nodeBuilders).sort((a, b) => b.length - a.length);
+            for (const key of sortedNodeKeys) {
+                if (layoutMode.startsWith(key)) { builder = nodeBuilders[key]; break; }
+            }
 
             builder(g, d);
         });
@@ -469,9 +470,11 @@
     // Layout-aware tick handler: delegates to per-layout edge router
     function ticked() {
         let router = routeForceEdges;
-        if (currentLayout.startsWith("tree") || currentLayout.startsWith("treemap") || currentLayout.startsWith("circle")) router = routeContainmentEdges;
-        else if (currentLayout.startsWith("arc")) router = routeArcEdges;
-        else if (edgeRouters[currentLayout]) router = edgeRouters[currentLayout];
+        // Sort keys by length descending to match more specific prefixes first.
+        const sortedRouterKeys = Object.keys(edgeRouters).sort((a, b) => b.length - a.length);
+        for (const key of sortedRouterKeys) {
+            if (currentLayout.startsWith(key)) { router = edgeRouters[key]; break; }
+        }
 
         router();
         nodeEls.attr("transform", d => `translate(${d.x},${d.y})`);
@@ -659,7 +662,7 @@
             buildNodeShapes(currentLayout);
 
             // Z-order: bigger nodes behind (first in DOM), smaller on top for clickability
-            if (currentLayout.startsWith("tree") || currentLayout.startsWith("treemap")) {
+            if (currentLayout.startsWith("tree")) {
                 nodeEls.sort((a, b) => ((b._lw || 0) * (b._lh || 0)) - ((a._lw || 0) * (a._lh || 0)));
             } else if (currentLayout.startsWith("circle")) {
                 nodeEls.sort((a, b) => (b._lr || 0) - (a._lr || 0));
@@ -717,7 +720,7 @@
 
         linkEls.transition().duration(200).attr("opacity", l => {
             // Layout-specific base opacities — kept consistent with edge routers in ticked()
-            if (currentLayout.startsWith("tree") || currentLayout.startsWith("treemap") || currentLayout.startsWith("circle")) return 0;
+            if (currentLayout.startsWith("tree") || currentLayout.startsWith("circle")) return 0;
             const baseRef = currentLayout.startsWith("arc") ? 0.15 : 0.4;
             const baseOther = currentLayout.startsWith("arc") ? 0.4 : 0.7;
             if (currentFocusProject !== "ALL") {

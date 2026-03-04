@@ -3411,7 +3411,7 @@ def load_and_merge_graph_files(
 
     Args:
         manifest: From discover_graph_files().
-        scope: "default" or "full" -- which variant to prefer per layout.
+        scope: "default", "full", "filtered", or "focus" -- which variant to prefer per layout.
 
     Returns:
         Combined graph dict with nodes containing a ``layouts`` dict, or None.
