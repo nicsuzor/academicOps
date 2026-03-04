@@ -17,9 +17,9 @@ related:
 
 _No implementation yet. This spec defines a general-purpose iterative review pattern for intellectual artifacts._
 
-- [[specs/effectual-planning-agent.md]] -- upstream dependency (strategic planning under uncertainty)
-- [[specs/non-interactive-agent-workflow-spec.md]] -- agent lifecycle (Phase 1 decomposition protocol)
-- [[specs/research-decomposition.md]] -- downstream domain application (research project planning instantiates this workflow)
+- [[effectual-planning-agent]] -- upstream dependency (strategic planning under uncertainty)
+- [[non-interactive-agent-workflow-spec]] -- agent lifecycle (Phase 1 decomposition protocol)
+- [[research-decomposition]] -- downstream domain application (research project planning instantiates this workflow)
 
 ## Motivation
 
@@ -93,6 +93,8 @@ The review loop converges by **resolution**, not by counting rounds:
 - If all raised concerns are resolved or explicitly overridden, the review is **APPROVED**.
 - A soft safety cap (e.g. 7 rounds) prevents runaway loops, but it's a safety valve, not a design target.
 
+> **Authority boundary**: Review convergence is a recommendation to the merge authority (human maintainer), not a merge trigger. The reviewer declares the review loop complete; the human decides whether to merge. This preserves the clean state machine (convergence = review loop terminates) while keeping authority unambiguous per P#99.
+
 ## User Override
 
 The researcher or author can override any review concern with a reason:
@@ -110,6 +112,8 @@ Three operating levels, selected by artifact complexity or user preference:
 | **Light**    | 1-2 (self-consistency as background) | Single pass, no iteration             | In-session or issue comment          | Quick checks, small changes, early exploration           |
 | **Standard** | 3-4                                  | Convergence-based                     | Pull request                         | Most specs, plans, proposals                             |
 | **Thorough** | 4+ (consider multi-model review)     | Convergence-based + explicit sign-off | Pull request with multiple reviewers | Foundational specs, grant applications, research designs |
+
+_"Explicit sign-off" at thorough level means a human reviewer actively approves — it is not sufficient for all automated concerns to be resolved. A maintainer or domain expert must review the convergence report and confirm the artifact is ready. This is distinct from the standard level, where convergence by resolution is sufficient._
 
 This solves the formality gradient tension: a researcher typing "I want to study X" gets the light version. Formal decomposition uses the thorough version. The system does not force ceremony on exploratory work.
 
