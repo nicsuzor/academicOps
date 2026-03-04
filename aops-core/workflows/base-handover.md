@@ -51,7 +51,7 @@ Epic: <epic-id>" && git push
 
 ## Detailed Procedures
 
-For procedures on following steps, see **[[handover-details]]**:
+For procedures on following steps, see **[[references/handover-details]]**:
 
 - **Quick Exit** - Protocol for sessions with no work done
 - **Step 3: Follow-up Tasks** - Procedure for task decomposition (MANDATORY: set `parent` for all new tasks)
@@ -62,15 +62,28 @@ For procedures on following steps, see **[[handover-details]]**:
 
 ## Step 5: Output Framework Reflection
 
-Output the reflection in exact AGENTS.md format (see **[[handover-details]]** for template):
+Output the reflection using `## Framework Reflection` as an **H2 heading** (not bold text). Use `**Field**: value` for each field. Minimum 3 fields: Outcome, Accomplishments, Next step.
+
+### DO (correct — parseable by session-insights)
 
 ```markdown
 ## Framework Reflection
 
-**Prompts**: [Brief] | **Outcome**: [success/partial]
-**Accomplishments**: [Summary]
-**Next step**: [Context for next session, including Task ID]
+**Outcome**: success
+**Accomplishments**: Fixed the repo-sync cron script
+**Next step**: None — PR merged, task complete
 ```
+
+### DON'T (broken — parser cannot extract fields)
+
+```markdown
+**Framework Reflection:**
+
+- Fixed the repo-sync cron script
+- Everything looks good now
+```
+
+For the full 9-field template, see **[[references/handover-details]]**.
 
 ## Step 6: Halt
 

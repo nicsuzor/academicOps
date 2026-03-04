@@ -166,15 +166,27 @@ def parse_framework_reflection(text: str) -> dict[str, Any] | None:
     - Prompts, Guidance received, Followed, Outcome, Accomplishments,
     - Friction points, Root cause, Proposed changes, Next step
 
+    Accepts multiple heading styles:
+    - ``## Framework Reflection`` (spec)
+    - ``### Framework Reflection`` or ``#### Framework Reflection`` (heading variants)
+    - ``**Framework Reflection**:`` or ``**Framework Reflection:**`` (bold-text drift)
+    - ``Framework Reflection:`` preceded by a newline (bare text)
+
+    When the body lacks structured ``**Field**: value`` lines, falls back to
+    inferring outcome from keywords and treating bullet points as accomplishments.
+
     Args:
         text: Markdown text that may contain a Framework Reflection section
 
     Returns:
         Dict with parsed fields, or None if no reflection found
     """
-    # Find the Framework Reflection section
+    # Find the Framework Reflection section — accept heading or bold-text variants
     reflection_match = re.search(
-        r"##\s*Framework Reflection\s*\n(.*?)(?=\n##\s|\Z)",
+        r"(?:#{2,4}\s*Framework Reflection"
+        r"|(?:^|\n)\*\*Framework Reflection\*\*\s*:?"
+        r"|(?:^|\n)Framework Reflection\s*:)"
+        r"\s*\n(.*?)(?=\n#{2,4}\s|\n\*\*[A-Z](?!ccomplish|utcome|rompt|riction|ollowed|uidance|oot|roposed|ext)|\Z)",
         text,
         re.DOTALL | re.IGNORECASE,
     )
@@ -188,7 +200,7 @@ def parse_framework_reflection(text: str) -> dict[str, Any] | None:
 
     # Field patterns: **Field**: value or **Field** (if not success): value
     field_patterns = [
-        (r"\*\*Prompts\*\*:\s*(.+?)(?=\n\*\*|\Z)", "prompts"),
+        (r"\*\*Prompts?\*\*:\s*(.+?)(?=\n\*\*|\Z)", "prompts"),
         (r"\*\*Guidance received\*\*:\s*(.+?)(?=\n\*\*|\Z)", "guidance_received"),
         (r"\*\*Followed\*\*:\s*(.+?)(?=\n\*\*|\Z)", "followed"),
         (r"\*\*Outcome\*\*:\s*(.+?)(?=\n\*\*|\Z)", "outcome"),
@@ -199,7 +211,7 @@ def parse_framework_reflection(text: str) -> dict[str, Any] | None:
             "root_cause",
         ),
         (r"\*\*Proposed changes?\*\*:\s*(.+?)(?=\n\*\*|\Z)", "proposed_changes"),
-        (r"\*\*Next step\*\*:\s*(.+?)(?=\n\*\*|\Z)", "next_step"),
+        (r"\*\*Next steps?\*\*:\s*(.+?)(?=\n\*\*|\Z)", "next_step"),
     ]
 
     for pattern, field_name in field_patterns:
@@ -212,7 +224,11 @@ def parse_framework_reflection(text: str) -> dict[str, Any] | None:
             else:
                 result[field_name] = value
 
-    # If no structured fields found, check for Quick Exit format:
+    # If no structured fields found, try unstructured fallback
+    if not result:
+        result = _parse_unstructured_reflection(reflection_text)
+
+    # If still nothing, check for Quick Exit format:
     # "Answered user's question: <summary>"
     if not result:
         quick_exit_match = re.search(
@@ -250,6 +266,45 @@ def parse_framework_reflection(text: str) -> dict[str, Any] | None:
             }
 
     return result if result else None
+
+
+def _infer_outcome(text: str) -> str:
+    """Infer outcome from content keywords in unstructured reflection text."""
+    lower = text.lower()
+    success_kw = ("fixed", "completed", "shipped", "merged", "success", "done", "resolved")
+    failure_kw = ("failed", "error", "couldn't", "broken", "unable")
+    if any(kw in lower for kw in success_kw):
+        return "success"
+    if any(kw in lower for kw in failure_kw):
+        return "failure"
+    # Partial indicators or default
+    return "partial"
+
+
+def _parse_unstructured_reflection(text: str) -> dict[str, Any] | None:
+    """Fallback parser for reflections without structured **Field**: value lines.
+
+    Treats bullet points as accomplishments and infers outcome from keywords.
+    Returns None if the text is empty/whitespace.
+    """
+    stripped = text.strip()
+    if not stripped:
+        return None
+
+    result: dict[str, Any] = {"inferred": True}
+
+    # Extract bullet points as accomplishments
+    bullets = re.findall(r"^[\s]*[-*]\s+(.+)$", stripped, re.MULTILINE)
+    if bullets:
+        result["accomplishments"] = [b.strip() for b in bullets if b.strip()]
+    else:
+        # No bullets — use the full text as a single accomplishment
+        result["accomplishments"] = [stripped]
+
+    result["outcome"] = _infer_outcome(stripped)
+    result["summary"] = stripped
+
+    return result
 
 
 def _parse_list_field(value: str) -> list[str]:

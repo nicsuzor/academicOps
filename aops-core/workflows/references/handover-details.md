@@ -51,7 +51,19 @@ mcp__pkb__create_memory(
 
 ## Step 5: Reflection Template (AGENTS.md Format)
 
-Output the reflection in **exact AGENTS.md format**:
+Output the reflection using `## Framework Reflection` as an **H2 heading** — this is critical for the session-insights parser to extract fields. Use `**Field**: value` on each line.
+
+**Minimum** (3 fields — for simple sessions):
+
+```markdown
+## Framework Reflection
+
+**Outcome**: success
+**Accomplishments**: Fixed the repo-sync cron script
+**Next step**: None — PR merged, task complete
+```
+
+**Full** (9 fields — for complex or partial sessions):
 
 ```markdown
 ## Framework Reflection
@@ -66,6 +78,8 @@ Output the reflection in **exact AGENTS.md format**:
 **Proposed changes**: [Framework improvements identified]
 **Next step**: [Exact context for next session to resume, including Task ID]
 ```
+
+> **WARNING**: Do NOT use `**Framework Reflection:**` (bold text) — use `## Framework Reflection` (heading). The bold-text variant is not reliably parsed and results in empty session summaries on the dashboard.
 
 ## Edge Cases
 

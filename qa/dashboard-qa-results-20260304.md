@@ -184,6 +184,10 @@ Only 1 of 42 session summaries renders successfully (the FAILURE-status aops ses
 
 8. **Project cards don't show active agents** — "WORKING NOW" section not rendered in project cards.
 
+### Critical (data pipeline)
+
+12. **Framework Reflection format mismatch** — Claude agents output `**Framework Reflection:**` (bold text) with unstructured bullets, but the parser requires `## Framework Reflection` (heading) with structured `**Field**: value` fields. Result: every Claude session summary has `summary: None, accomplishments: [], outcome: None`. Only Gemini sessions parse correctly. This explains why YOUR PATH is sparse — the enrichment pipeline is effectively a no-op for Claude sessions. Fix: relaxed parser regex to accept bold-text variants + added fallback parser for unstructured reflections + strengthened agent instructions with DO/DON'T examples.
+
 ### Minor
 
 9. **Recent Prompts section not rendering** — May be a data availability issue rather than a code bug.
