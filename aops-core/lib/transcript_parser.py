@@ -181,15 +181,37 @@ def parse_framework_reflection(text: str) -> dict[str, Any] | None:
     Returns:
         Dict with parsed fields, or None if no reflection found
     """
-    # Find the Framework Reflection section — accept heading or bold-text variants
+    # Find the Framework Reflection section — try multiple heading styles in order.
+    # Use [^\S\n]* (horizontal whitespace only) to avoid consuming newlines
+    # that the body terminator \n#{2,4}\s needs to detect next sections.
+
+    # Pattern 1: Markdown heading (## / ### / ####)
     reflection_match = re.search(
-        r"(?:#{2,4}\s*Framework Reflection"
-        r"|(?:^|\n)\*\*Framework Reflection\*\*\s*:?"
-        r"|(?:^|\n)Framework Reflection\s*:)"
-        r"\s*\n(.*?)(?=\n#{2,4}\s|\n\*\*[A-Z](?!ccomplish|utcome|rompt|riction|ollowed|uidance|oot|roposed|ext)|\Z)",
+        r"#{2,4}\s*Framework Reflection[^\S\n]*\n(.*?)(?=\n#{2,4}\s|\Z)",
         text,
         re.DOTALL | re.IGNORECASE,
     )
+    # Pattern 2: Bold-text with body on next line (**Framework Reflection:**\n...)
+    if not reflection_match:
+        reflection_match = re.search(
+            r"(?:^|\n)\*\*Framework Reflection:?\*\*[^\S\n]*:?[^\S\n]*\n(.*?)(?=\n#{2,4}\s|\Z)",
+            text,
+            re.DOTALL | re.IGNORECASE,
+        )
+    # Pattern 3: Bold-text with inline body (**Framework Reflection**: text...)
+    if not reflection_match:
+        reflection_match = re.search(
+            r"(?:^|\n)\*\*Framework Reflection:?\*\*[^\S\n]*:?[^\S\n]*(.+?)(?=\n#{2,4}\s|\Z)",
+            text,
+            re.DOTALL | re.IGNORECASE,
+        )
+    # Pattern 4: Bare text (Framework Reflection: ...)
+    if not reflection_match:
+        reflection_match = re.search(
+            r"(?:^|\n)Framework Reflection[^\S\n]*:[^\S\n]*\n?(.*?)(?=\n#{2,4}\s|\Z)",
+            text,
+            re.DOTALL | re.IGNORECASE,
+        )
     if not reflection_match:
         return None
 
@@ -224,12 +246,9 @@ def parse_framework_reflection(text: str) -> dict[str, Any] | None:
             else:
                 result[field_name] = value
 
-    # If no structured fields found, try unstructured fallback
-    if not result:
-        result = _parse_unstructured_reflection(reflection_text)
+    # If no structured fields found, check for specific formats before fallback
 
-    # If still nothing, check for Quick Exit format:
-    # "Answered user's question: <summary>"
+    # Check for Quick Exit format: "Answered user's question: <summary>"
     if not result:
         quick_exit_match = re.search(
             r"Answered user's question:\s*[\"']?(.+?)[\"']?\s*$",
@@ -244,7 +263,6 @@ def parse_framework_reflection(text: str) -> dict[str, Any] | None:
             }
 
     # Check for brief status format: "AOPS status: [done|in progress|interrupted|error]"
-    # This can appear within the reflection section
     if not result:
         status_match = re.search(
             r"AOPS status:\s*(done|in progress|interrupted|error)",
@@ -253,7 +271,6 @@ def parse_framework_reflection(text: str) -> dict[str, Any] | None:
         )
         if status_match:
             status_value = status_match.group(1).lower()
-            # Map status values to standard outcome values
             outcome_map = {
                 "done": "success",
                 "in progress": "partial",
@@ -264,6 +281,10 @@ def parse_framework_reflection(text: str) -> dict[str, Any] | None:
                 "outcome": outcome_map.get(status_value, status_value),
                 "brief_status": True,  # Marker for brief status format
             }
+
+    # Last resort: unstructured fallback (infer from bullets/keywords)
+    if not result:
+        result = _parse_unstructured_reflection(reflection_text)
 
     return result if result else None
 

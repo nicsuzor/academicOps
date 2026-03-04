@@ -30,7 +30,8 @@ class TestStandardHeadingFormat:
         assert result is not None
         assert result["outcome"] == "success"
         assert result["prompts"] == "Fix the repo-sync cron script"
-        assert result["accomplishments"] == ["Fixed cron timing, added error handling"]
+        # _parse_list_field splits comma-separated values
+        assert result["accomplishments"] == ["Fixed cron timing", "added error handling"]
         assert result["next_step"] == "None — PR merged, task complete"
 
     def test_minimal_three_field_reflection(self):
