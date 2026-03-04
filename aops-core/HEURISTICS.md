@@ -230,21 +230,35 @@ Versioning logic MUST be centralized in a single source of truth.
 
 Structure tasks hierarchically under functional Epics rather than flat project lists.
 
-**The Star Pattern is a code smell.** When a project has more than 5 direct children, it almost certainly needs intermediate epics. A project with 10 direct children is a flat list, not a hierarchy.
+**The Star Pattern is a code smell.** When a project or epic has more than 5 direct children, it almost certainly needs intermediate grouping. A flat list is not a hierarchy; it's a lack of structure that leads to "wide and shallow" graphs that are unnavigable.
 
-**How to fix a flat project:**
+**How to fix a flat project or epic:**
 
 1. Group related tasks by purpose (not by type or timing)
-2. Create epics that describe the milestone or workstream each group serves
+2. Create intermediate epics that describe the milestone or workstream each group serves
 3. Re-parent the tasks under the appropriate epic
 4. Each epic should answer: "What outcome does this group of tasks achieve?"
 
-**Decision heuristic:** When creating a task under a project, ask: "Is there already an epic this belongs to? Should there be?" If the task is one of several related implementation steps, the answer is almost always yes.
+**Decision heuristic:** When creating a task, ask: "Is there already an epic this belongs to? Should there be?" If the task is one of several related implementation steps, the answer is almost always yes.
 
 **Corollaries**:
 
-- Infrastructure tasks (refactors, migrations, pipeline changes) MUST be parented under an epic that explains WHY the infrastructure work is needed. "GCS → DuckDB refactor" is never a valid direct child of a research project — it needs an epic like "Local reproducible analysis pipeline" that explains the strategic purpose.
+- Infrastructure tasks (refactors, migrations, pipeline changes) MUST be parented under an epic that explains WHY the infrastructure work is needed.
 - Leaf tasks (single-session work items) should almost never be direct children of a project. They belong under epics.
+- **Complexity = Depth.** If a task's requirements or body contains more than 5 distinct steps, it MUST be converted to an epic and decomposed.
+
+## Depth is the Metric of Understanding (P#110)
+
+A flat task list indicates a failure to understand a problem's structure. Deeply nested hierarchies (minimum depth 3 for any multi-session work) demonstrate a clear mapping of goals to implementation.
+
+**Rules for Depth:**
+
+- **Prefer Depth over Breadth.** If you have 10 tasks, don't make them siblings. Group them into 2-3 epics with 3-5 tasks each.
+- **Target Depth:** Multi-session work should aim for a hierarchy of at least `Project -> Epic -> Task -> Action`.
+- **Decompose Early and Often.** If a subtask reveals its own internal complexity, don't just add more bullet points to its body—decompose it into its own children.
+- **Traceability.** Depth provides a trail of "Whys". Each level explains the purpose of the level below it. Shallow graphs lose this traceability.
+
+**Derivation**: Addresses the "wide and shallow" graph problem. Agents naturally prefer flat structures because they are easier to generate in a single turn. P#110 forces the agent to do the harder cognitive work of structural mapping.
 
 ## Tasks Require Purpose Context (P#106)
 

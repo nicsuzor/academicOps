@@ -27,30 +27,33 @@ The supervisor decomposes large tasks into PR-sized subtasks.
 4. Create subtasks using decompose_task():
    - Each subtask passes PR-sized criteria
    - Dependencies explicit in depends_on
-   - 3-7 subtasks ideal (>7 suggests intermediate grouping needed)
+   - 3-7 subtasks ideal
+   - **Prefer Depth over Breadth**: If decomposition produces >5 subtasks, group them under intermediate epics to maintain a deep, manageable hierarchy.
    - Each subtask must pass the WHY test relative to its parent
-5. Check for star pattern: if parent already has >5 children, group under intermediate epics
-6. **Completion loop (P#109)**: Create one additional subtask: "Verify: [parent goal] fully resolved" with `depends_on` set to ALL other subtasks and `assignee: null`. This task returns to the original problem after all implementation is done to confirm it's fully solved or iterate again.
-7. **Post-decomposition self-checks** (run BEFORE finalizing):
+5. Check for **Star Pattern** (P#101): if parent or proposal has >5 direct children, group under intermediate epics.
+6. Check for **Depth** (P#110): Multi-session projects should target a hierarchy of Project → Epic → Task → Action.
+7. **Completion loop (P#109)**: Create one additional subtask: "Verify: [parent goal] fully resolved" with `depends_on` set to ALL other subtasks and `assignee: null`. This task returns to the original problem after all implementation is done to confirm it's fully solved or iterate again.
+8. **Post-decomposition self-checks** (run BEFORE finalizing):
    a. For each **decision** subtask: "What information does the user need to make this decision?" — if no upstream prep task exists, create one and add it to `depends_on`
    b. For each **execution** subtask: "Is this conditional on a decision that hasn't been made?" — if yes, add the decision task to `depends_on`
    c. For each **writing** subtask: "What analysis/data needs to be final before this can be written?" — if it depends on analysis results, add the analysis task to `depends_on`
    d. If the parent task produces **academic output** (paper, report, benchmark, analysis): ensure methodology tasks exist (methodological justification, validation approach, claim-evidence audit, limitations completeness)
-8. Append decomposition summary to task body
-9. Set task status to 'consensus'
+9. Append decomposition summary to task body
+10. Set task status to 'consensus'
 ```
 
 **Hierarchy Quality Gate** (check BEFORE creating subtasks):
 
 Before decomposing, verify the task's position in the graph is sound:
 
-| Check             | Fail condition                        | Fix                               |
-| ----------------- | ------------------------------------- | --------------------------------- |
-| Parent exists     | `parent` is empty or missing          | Find or create appropriate epic   |
-| Abstraction match | Task is direct child of project       | Create intermediate epic          |
-| WHY test          | Can't justify task in terms of parent | Re-parent or create bridging epic |
-| Type-scale match  | Multi-session work typed as `task`    | Retype as `epic`                  |
-| Star pattern      | Parent has >5 direct children         | Group siblings under epics        |
+| Check             | Fail condition                          | Fix                                          |
+| ----------------- | --------------------------------------- | -------------------------------------------- |
+| Parent exists     | `parent` is empty or missing            | Find or create appropriate epic              |
+| Abstraction match | Task is direct child of project         | Create intermediate epic                     |
+| WHY test          | Can't justify task in terms of parent   | Re-parent or create bridging epic            |
+| Type-scale match  | Multi-session work typed as `task`      | Retype as `epic`                             |
+| Star pattern      | Parent/Proposal has >5 direct children  | Group siblings under sub-epics               |
+| Depth check       | Project graph is shallow (Avg depth <1) | Deepen hierarchy with intermediate groupings |
 
 If any check fails, fix the hierarchy BEFORE proceeding with decomposition.
 

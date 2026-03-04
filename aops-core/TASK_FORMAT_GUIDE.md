@@ -309,13 +309,27 @@ TASK children should be:    ACTION
 
 **If a node has more than 5 direct children, it almost certainly needs intermediate grouping.**
 
-A project with 10 direct children is a flat list, not a hierarchy. This happens when:
+A project or epic with 10 direct children is a flat list, not a hierarchy. This happens when:
 
 - Tasks are created ad-hoc without thinking about where they fit
-- Implementation steps are parented directly to the project
-- Epics are missing
+- Implementation steps are parented directly to the project or epic
+- Intermediate milestones (epics) are missing
 
 **Fix:** Group related children under epics that explain a coherent milestone or workstream.
+
+### The Depth Test
+
+**Complex work MUST be represented as a deep tree, not a wide star.**
+
+Multi-session projects should aim for a minimum depth of 3 edges from the project root (Project → Epic → Task → Action). A shallow graph (max depth 1 or 2) is a failure of decomposition.
+
+**When to deepen:**
+
+- If a task has more than 5 sub-steps in its body, convert it to an **epic** and decompose into child tasks.
+- If an epic has more than 5 child tasks, group related tasks under **sub-epics**.
+- If a task touches more than 5 files or takes more than 4 hours, it is likely too broad and needs further nesting.
+
+**Goal:** Each level of the hierarchy should provide context and justification for the level below it.
 
 ### The "Is This Really a Task?" Test
 
