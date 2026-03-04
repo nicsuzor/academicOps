@@ -95,7 +95,7 @@ check_repo() {
     # Fetch to check remote state
     [[ "$QUIET" == "false" ]] && echo -ne "  ${name}: fetching... "
     git fetch --quiet 2>/dev/null || true
-    [[ "$QUIET" == "false" ]] && echo -ne "  ${name}: checking...  "
+    [[ "$QUIET" == "false" ]] && echo -ne "  ${name}: checking...  "
 
     # Get status
     local dirty=""
@@ -144,7 +144,9 @@ check_repo() {
         NEEDS_FIX+=("$repo")
     else
         # All good
-        [[ "$QUIET" == "false" ]] && printf "  %-18s ${GREEN}ok${NC}\n" "$name"
+        if [[ "$QUIET" == "false" ]]; then
+            printf "  %-18s ${GREEN}ok${NC}\n" "$name"
+        fi
     fi
 }
 
