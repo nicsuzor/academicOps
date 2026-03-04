@@ -37,6 +37,20 @@ def load_today_sessions(summaries_dir: Path, date_prefix: str) -> list[dict]:
     return sessions
 
 
+def _is_placeholder(text: str) -> bool:
+    """Return True if text is a template placeholder with no real content."""
+    if not text:
+        return True
+    t = text.strip().lower()
+    # Literal bracket placeholders from Framework Reflection templates
+    if "[summary]" in t or "[link]" in t or "[description]" in t:
+        return True
+    # Generic "Successfully completed:" with nothing meaningful after
+    if t.startswith("successfully completed:") and len(t) < 60:
+        return True
+    return False
+
+
 def synthesize(sessions: list[dict], today: str) -> dict:
     """Build synthesis.json from a list of per-session dicts."""
     now = datetime.now(UTC)
@@ -60,7 +74,7 @@ def synthesize(sessions: list[dict], today: str) -> dict:
     narrative = []
     for s in sessions:
         summary = s.get("summary")
-        if summary:
+        if summary and not _is_placeholder(summary):
             proj = s.get("project") or "unknown"
             narrative.append(f"[{proj}] {summary}")
     narrative = narrative[:10]
@@ -71,6 +85,8 @@ def synthesize(sessions: list[dict], today: str) -> dict:
     for s in sessions:
         proj = s.get("project") or "unknown"
         for item in s.get("accomplishments") or []:
+            if _is_placeholder(item):
+                continue
             all_accomplishments.append({"text": item, "project": proj})
             if item not in unique_items:
                 unique_items.append(item)
