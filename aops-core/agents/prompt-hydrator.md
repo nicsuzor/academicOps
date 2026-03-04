@@ -125,7 +125,10 @@ Always add this section to execution plans (except [[simple-question]]):
 ### Scope Detection
 
 - **Single-session**: One execution plan, one task, no deferred work section
-- **Multi-session**: Execution steps for immediate work + decomposition task for the rest
+- **Multi-session**: Execution steps for immediate work + **hierarchical decomposition** task for the rest.
+  - **Prefer Depth (P#110)**: Break multi-session work into logical workstreams (Epics).
+  - Do not create a flat list of tasks; create a structure of Project → Epic → Task.
+  - If a workstream is complex, create a sub-decomposition task for it.
 
 ### Verification Task Detection
 

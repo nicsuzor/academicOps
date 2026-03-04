@@ -34,6 +34,13 @@ For common patterns and heuristics for task granularity, see **[[references/deco
 - **Complexity Patterns** - Spikes, prototypes, and productionization
 - **Granularity Heuristics** - Guidelines for task sizing and focus
 
+## Hierarchy and Depth (P#101, P#110)
+
+- **Prefer Depth over Breadth**: If a goal produces >5 tasks, group them into functional **Epics**.
+- **Target Structure**: Multi-session work should aim for `Project -> Epic -> Task -> Action`.
+- **Avoid the Star Pattern**: A flat list of sibling tasks under a project is a failure of decomposition.
+- **Traceability**: Each level of the hierarchy must provide context and justification for the level below it (The WHY Test).
+
 ## Critical Rules
 
 - **Completeness**: All tasks together must fully achieve the original goal.
