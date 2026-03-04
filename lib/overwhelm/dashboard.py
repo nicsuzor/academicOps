@@ -3350,6 +3350,8 @@ def clean_activity_text(raw_text: str) -> str:
     import re as _re
 
     s = str(raw_text)
+    # Strip ANSI escape codes (e.g. \x1b[1m...\x1b[0m)
+    s = _re.sub(r"\x1b\[[0-9;]*m", "", s)
     # Remove HTML comments <!-- ... -->
     s = _re.sub(r"<!--.*?-->", "", s, flags=_re.DOTALL)
     # Remove paired HTML tags AND their content (e.g. <system-reminder>...</system-reminder>)
@@ -3959,8 +3961,8 @@ def render_session_summary():
                 # Extract Data
                 project = data.get("project", "unknown")
                 sid = data.get("session_id", "unknown")[:8]
-                summary = data.get("summary", "No summary")
-                outcome = data.get("outcome", "unknown")
+                summary = data.get("summary") or "No summary"
+                outcome = data.get("outcome") or "unknown"
 
                 # Metrics
                 metrics = data.get("token_metrics", {})
@@ -4090,14 +4092,147 @@ if page == "Task Graph":
     render_task_graph_page()
     st.stop()
 
-render_spotlight_epic()
-
-# Then project-centric content
+# ADHD-optimized order: running -> needs me -> dropped -> context -> counts -> story
 # Initialize analyzer for daily log
 analyzer = SessionAnalyzer()
 
 # Render Active Agents
 render_agents_working()
+
+# === WHERE YOU LEFT OFF SECTION ===
+# Time range selector in sidebar
+activity_hours = st.sidebar.selectbox(
+    "Context Recovery Range",
+    options=[6, 12, 24, 48, 72],
+    index=2,  # Default to 24 hours
+    format_func=lambda h: f"Last {h}h",
+)
+
+where_left_off = get_where_you_left_off(hours=activity_hours, limit=10)
+active_sessions_wlo = where_left_off.get("active", [])
+paused_sessions_wlo = where_left_off.get("paused", [])
+if active_sessions_wlo or paused_sessions_wlo:
+    wlo_html = "<div class='where-left-off-panel'>"
+    wlo_html += "<div class='where-left-off-header'>📍 WHERE YOU LEFT OFF</div>"
+
+    # Active sessions (<4h) - card-based display with rich context, grouped by project
+    if active_sessions_wlo:
+        wlo_html += "<div class='wlo-bucket-label'>⚡ ACTIVE NOW</div>"
+
+        # Group active sessions by project per spec
+        active_by_project: dict[str, list] = {}
+        for entry in active_sessions_wlo:
+            proj = entry["project"]
+            if proj not in active_by_project:
+                active_by_project[proj] = []
+            active_by_project[proj].append(entry)
+
+        for project, entries in sorted(active_by_project.items()):
+            if len(active_by_project) > 1:
+                wlo_html += "<div class='wlo-project-group'>"
+                wlo_html += f"<div class='wlo-project-group-label'>{esc(project)}</div>"
+
+            for entry in entries:
+                session_type = entry["session_type"]
+                time_display = entry["time_display"]
+                time_class = "now" if entry["is_active"] else ""
+
+                wlo_html += f"<div class='wlo-card {session_type}'>"
+
+                # Header: project (only if single project) + time
+                wlo_html += "<div class='wlo-card-header'>"
+                if len(active_by_project) == 1:
+                    wlo_html += f"<span class='wlo-card-project'>{esc(entry['project'])}</span>"
+                wlo_html += f"<span class='wlo-card-time {time_class}'>{esc(time_display)}</span>"
+                wlo_html += "</div>"
+
+                # Goal line
+                goal = entry["goal"] or entry["description"]
+                wlo_html += f"<div class='wlo-card-goal'>{esc(goal)}</div>"
+
+                # Meta: progress, now, next
+                wlo_html += "<div class='wlo-card-meta'>"
+
+                progress_total = entry["progress_total"]
+                progress_done = entry["progress_done"]
+                if progress_total > 0:
+                    wlo_html += f"<span class='wlo-card-progress'><span class='done'>{progress_done}</span>/{progress_total} steps</span>"
+
+                now_task = entry["now_task"]
+                if now_task:
+                    wlo_html += f"<span class='wlo-card-now'>Now: {esc(now_task)}</span>"
+
+                next_task = entry["next_task"]
+                if next_task:
+                    wlo_html += f"<span class='wlo-card-next'>Next: {esc(next_task)}</span>"
+
+                # Status badge
+                if session_type == "running":
+                    wlo_html += "<span class='wlo-card-status running'>Running</span>"
+                elif session_type == "interactive":
+                    wlo_html += "<span class='wlo-card-status interactive'>Needs You</span>"
+
+                wlo_html += "</div>"  # End meta
+                wlo_html += "</div>"  # End card
+
+            if len(active_by_project) > 1:
+                wlo_html += "</div>"  # End project group
+
+    # Paused sessions (4-24h) - collapsible per spec
+    if paused_sessions_wlo:
+        paused_count = len(paused_sessions_wlo)
+        wlo_html += "<details class='wlo-paused-collapsible'>"
+        wlo_html += f"<summary><span class='wlo-bucket-label wlo-paused-label'>⏸️ PAUSED SESSIONS ({paused_count} session{'s' if paused_count != 1 else ''}, 4-24h ago)</span></summary>"
+        wlo_html += "<div class='wlo-paused-content'>"
+        wlo_html += "<div style='font-size: 0.8em; opacity: 0.7; margin: 5px 0 10px 10px;'>Sessions with activity between 4 and 24 hours ago.</div>"
+
+        # Group paused sessions by project
+        paused_by_project: dict[str, list] = {}
+        for entry in paused_sessions_wlo:
+            proj = entry["project"]
+            if proj not in paused_by_project:
+                paused_by_project[proj] = []
+            paused_by_project[proj].append(entry)
+
+        for project, entries in sorted(paused_by_project.items()):
+            if len(paused_by_project) > 1:
+                wlo_html += "<div class='wlo-project-group'>"
+                wlo_html += f"<div class='wlo-project-group-label'>{esc(project)}</div>"
+
+            for entry in entries:
+                time_display = entry["time_display"]
+
+                wlo_html += "<div class='wlo-card paused'>"
+                wlo_html += "<div class='wlo-card-header'>"
+                # Only show project in header if not already grouped
+                if len(paused_by_project) == 1:
+                    wlo_html += f"<span class='wlo-card-project'>{esc(entry['project'])}</span>"
+                wlo_html += f"<span class='wlo-card-time'>{esc(time_display)}</span>"
+                wlo_html += "</div>"
+
+                # For paused sessions, show description (usually accomplishment summary)
+                description = entry["description"]
+                wlo_html += f"<div class='wlo-card-goal'>{esc(description)}</div>"
+
+                wlo_html += "<div class='wlo-card-meta'>"
+                outcome_text = entry["outcome_text"]
+                if outcome_text:
+                    wlo_html += f"<span class='wlo-card-status done'>{esc(outcome_text)}</span>"
+
+                reentry_link = entry["reentry_link"]
+                if reentry_link:
+                    wlo_html += f"<a href='{reentry_link}' class='wlo-link' title='Open in Obsidian'>↗ View</a>"
+                wlo_html += "</div>"
+                wlo_html += "</div>"
+
+            if len(paused_by_project) > 1:
+                wlo_html += "</div>"  # End project group
+
+        wlo_html += "</div>"  # End paused content
+        wlo_html += "</details>"
+
+    wlo_html += "</div>"
+    st.markdown(wlo_html, unsafe_allow_html=True)
 
 # Load synthesis
 synthesis = load_synthesis()
@@ -4112,7 +4247,7 @@ if synthesis:
     # Stale indicator styling
     stale_class = "stale" if is_stale else ""
     stale_badge = (
-        " <span style='background: #f59e0b; color: #000; padding: 2px 6px; border-radius: 3px; font-size: 0.7em; margin-left: 8px;'>STALE - re-run /session-insights</span>"
+        " <span style='background: #f59e0b; color: #000; padding: 2px 6px; border-radius: 3px; font-size: 0.7em; margin-left: 8px;'>STALE</span>"
         if is_stale
         else ""
     )
@@ -4266,192 +4401,17 @@ if synthesis:
 
     synth_html += "</div>"  # End panel
     st.markdown(synth_html, unsafe_allow_html=True)
-
-# === DAILY STORY SECTION ===
-daily_story = analyzer.extract_daily_story()
-if daily_story:
-    with st.container():
-        st.markdown(
-            "<div class='daily-story-container' style='margin-bottom: 24px; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 8px; border-left: 4px solid #60a5fa;'>",
-            unsafe_allow_html=True,
-        )
-        col1, col2 = st.columns([2, 1])
-
-        with col1:
-            if daily_story["story"]:
-                st.markdown(f"### 📖 Today's Story\n{daily_story['story']}")
-            if daily_story["dropped_threads"]:
-                st.markdown("#### ⚠ Dropped Threads")
-
-                # Group dropped threads by project bracket or default to Uncategorized
-                grouped_threads = {}
-                for thread in daily_story["dropped_threads"]:
-                    match = re.match(r"^\[([^\]]+)\]\s*(.+)$", thread.strip())
-                    if match:
-                        proj = match.group(1).strip()
-                        desc = match.group(2).strip()
-                    else:
-                        proj = "Uncategorized"
-                        desc = thread.strip()
-
-                    if proj not in grouped_threads:
-                        grouped_threads[proj] = []
-                    grouped_threads[proj].append(desc)
-
-                total_threads = sum(len(ts) for ts in grouped_threads.values())
-
-                if total_threads <= 5:
-                    for proj, threads in sorted(grouped_threads.items()):
-                        st.markdown(f"**{proj}**")
-                        for t in threads:
-                            st.markdown(f"- {t}")
-                else:
-                    with st.expander(f"View {total_threads} Dropped Threads", expanded=False):
-                        for proj, threads in sorted(grouped_threads.items()):
-                            st.markdown(f"**{proj}**")
-                            for t in threads:
-                                st.markdown(f"- {t}")
-
-        with col2:
-            if daily_story["priorities"]:
-                st.markdown(f"### 🎯 Focus\n{daily_story['priorities']}")
-
-        st.markdown("</div>", unsafe_allow_html=True)
-
-# === WHERE YOU LEFT OFF SECTION ===
-# Time range selector in sidebar
-activity_hours = st.sidebar.selectbox(
-    "Context Recovery Range",
-    options=[6, 12, 24, 48, 72],
-    index=2,  # Default to 24 hours
-    format_func=lambda h: f"Last {h}h",
-)
-
-where_left_off = get_where_you_left_off(hours=activity_hours, limit=10)
-active_sessions_wlo = where_left_off.get("active", [])
-paused_sessions_wlo = where_left_off.get("paused", [])
-if active_sessions_wlo or paused_sessions_wlo:
-    wlo_html = "<div class='where-left-off-panel'>"
-    wlo_html += "<div class='where-left-off-header'>📍 WHERE YOU LEFT OFF</div>"
-
-    # Active sessions (<4h) - card-based display with rich context, grouped by project
-    if active_sessions_wlo:
-        wlo_html += "<div class='wlo-bucket-label'>⚡ ACTIVE NOW</div>"
-
-        # Group active sessions by project per spec
-        active_by_project: dict[str, list] = {}
-        for entry in active_sessions_wlo:
-            proj = entry["project"]
-            if proj not in active_by_project:
-                active_by_project[proj] = []
-            active_by_project[proj].append(entry)
-
-        for project, entries in sorted(active_by_project.items()):
-            if len(active_by_project) > 1:
-                wlo_html += "<div class='wlo-project-group'>"
-                wlo_html += f"<div class='wlo-project-group-label'>{esc(project)}</div>"
-
-            for entry in entries:
-                session_type = entry["session_type"]
-                time_display = entry["time_display"]
-                time_class = "now" if entry["is_active"] else ""
-
-                wlo_html += f"<div class='wlo-card {session_type}'>"
-
-                # Header: project (only if single project) + time
-                wlo_html += "<div class='wlo-card-header'>"
-                if len(active_by_project) == 1:
-                    wlo_html += f"<span class='wlo-card-project'>{esc(entry['project'])}</span>"
-                wlo_html += f"<span class='wlo-card-time {time_class}'>{esc(time_display)}</span>"
-                wlo_html += "</div>"
-
-                # Goal line
-                goal = entry["goal"] or entry["description"]
-                wlo_html += f"<div class='wlo-card-goal'>{esc(goal)}</div>"
-
-                # Meta: progress, now, next
-                wlo_html += "<div class='wlo-card-meta'>"
-
-                progress_total = entry["progress_total"]
-                progress_done = entry["progress_done"]
-                if progress_total > 0:
-                    wlo_html += f"<span class='wlo-card-progress'><span class='done'>{progress_done}</span>/{progress_total} steps</span>"
-
-                now_task = entry["now_task"]
-                if now_task:
-                    wlo_html += f"<span class='wlo-card-now'>Now: {esc(now_task)}</span>"
-
-                next_task = entry["next_task"]
-                if next_task:
-                    wlo_html += f"<span class='wlo-card-next'>Next: {esc(next_task)}</span>"
-
-                # Status badge
-                if session_type == "running":
-                    wlo_html += "<span class='wlo-card-status running'>Running</span>"
-                elif session_type == "interactive":
-                    wlo_html += "<span class='wlo-card-status interactive'>Needs You</span>"
-
-                wlo_html += "</div>"  # End meta
-                wlo_html += "</div>"  # End card
-
-            if len(active_by_project) > 1:
-                wlo_html += "</div>"  # End project group
-
-    # Paused sessions (4-24h) - collapsible per spec
-    if paused_sessions_wlo:
-        paused_count = len(paused_sessions_wlo)
-        wlo_html += "<details class='wlo-paused-collapsible'>"
-        wlo_html += f"<summary><span class='wlo-bucket-label wlo-paused-label'>⏸️ PAUSED SESSIONS ({paused_count} session{'s' if paused_count != 1 else ''}, 4-24h ago)</span></summary>"
-        wlo_html += "<div class='wlo-paused-content'>"
-        wlo_html += "<div style='font-size: 0.8em; opacity: 0.7; margin: 5px 0 10px 10px;'>Sessions with activity between 4 and 24 hours ago.</div>"
-
-        # Group paused sessions by project
-        paused_by_project: dict[str, list] = {}
-        for entry in paused_sessions_wlo:
-            proj = entry["project"]
-            if proj not in paused_by_project:
-                paused_by_project[proj] = []
-            paused_by_project[proj].append(entry)
-
-        for project, entries in sorted(paused_by_project.items()):
-            if len(paused_by_project) > 1:
-                wlo_html += "<div class='wlo-project-group'>"
-                wlo_html += f"<div class='wlo-project-group-label'>{esc(project)}</div>"
-
-            for entry in entries:
-                time_display = entry["time_display"]
-
-                wlo_html += "<div class='wlo-card paused'>"
-                wlo_html += "<div class='wlo-card-header'>"
-                # Only show project in header if not already grouped
-                if len(paused_by_project) == 1:
-                    wlo_html += f"<span class='wlo-card-project'>{esc(entry['project'])}</span>"
-                wlo_html += f"<span class='wlo-card-time'>{esc(time_display)}</span>"
-                wlo_html += "</div>"
-
-                # For paused sessions, show description (usually accomplishment summary)
-                description = entry["description"]
-                wlo_html += f"<div class='wlo-card-goal'>{esc(description)}</div>"
-
-                wlo_html += "<div class='wlo-card-meta'>"
-                outcome_text = entry["outcome_text"]
-                if outcome_text:
-                    wlo_html += f"<span class='wlo-card-status done'>{esc(outcome_text)}</span>"
-
-                reentry_link = entry["reentry_link"]
-                if reentry_link:
-                    wlo_html += f"<a href='{reentry_link}' class='wlo-link' title='Open in Obsidian'>↗ View</a>"
-                wlo_html += "</div>"
-                wlo_html += "</div>"
-
-            if len(paused_by_project) > 1:
-                wlo_html += "</div>"  # End project group
-
-        wlo_html += "</div>"  # End paused content
-        wlo_html += "</details>"
-
-    wlo_html += "</div>"
-    st.markdown(wlo_html, unsafe_allow_html=True)
+else:
+    st.markdown(
+        "<div style='padding: 16px; background: rgba(255,255,255,0.03); "
+        "border-radius: 8px; border: 1px dashed rgba(255,255,255,0.15); "
+        "margin-bottom: 16px; text-align: center;'>"
+        "<div style='font-size: 1.1em; margin-bottom: 4px;'>🧠 Focus Synthesis unavailable</div>"
+        "<div style='font-size: 0.85em; opacity: 0.6;'>"
+        "Synthesis is generated automatically from session transcripts."
+        "</div></div>",
+        unsafe_allow_html=True,
+    )
 
 # === PATH RECONSTRUCTION SECTION ===
 try:
@@ -4500,16 +4460,34 @@ try:
 
         for proj, proj_threads in threads_by_project.items():
             proj_color = get_project_color(proj)
-            path_html += "<div class='path-project-group'>"
-            path_html += f"<div class='path-project-header' style='color: {proj_color}; border-left: 3px solid {proj_color}'>{esc(proj).upper()}</div>"
-            path_html += "<div class='path-threads' style='display: flex; overflow-x: auto; flex-wrap: nowrap; gap: 16px; padding-bottom: 12px; margin-bottom: 16px;'>"
+            # Buffer project HTML — only emit if at least one thread survives filtering
+            proj_buf = ""
+            thread_count = 0
 
-            for thread in proj_threads:
+            # Limit to 5 most recent threads per project
+            for thread in proj_threads[:5]:
                 # Limit sessions to those with at least one event or meaningful goal
                 if not thread.events and not thread.initial_goal:
                     continue
 
-                path_html += f"<div class='path-thread' style='border-left-color: {proj_color}66; flex: 0 0 320px; white-space: normal; padding-right: 12px; min-width: 0; border-right: 1px solid rgba(255,255,255,0.05);'>"
+                # Skip threads whose goal is pure noise
+                _goal_text = (
+                    clean_activity_text(thread.hydrated_intent or thread.initial_goal or "")
+                    .lower()
+                    .strip()
+                )
+                if (
+                    _goal_text in ("working...", "/clear", "/dump", "/q", "")
+                    or "commit changed and new files, pull, fix conflicts, push" in _goal_text
+                    or "commit changed and new files" == _goal_text
+                    or "you are a polecat worker" in _goal_text
+                    or "waiting for mcp servers to initialize" in _goal_text
+                    or (_goal_text.startswith("/") and " " not in _goal_text)
+                ):
+                    continue
+
+                thread_count += 1
+                proj_buf += f"<div class='path-thread' style='border-left-color: {proj_color}66; flex: 0 0 320px; white-space: normal; padding-right: 12px; min-width: 0; border-right: 1px solid rgba(255,255,255,0.05);'>"
                 sid_display = esc(thread.session_id[:8])
 
                 # Sanitize initial goal before display (prevent markdown headers from breaking layout)
@@ -4527,8 +4505,8 @@ try:
                     if not re.match(r"^[a-z]+-[a-f0-9]+$", thread.git_branch):
                         branch_html = f"<div class='session-branch' style='font-size: 0.75em; opacity: 0.6; margin-top: -8px; margin-bottom: 8px;' title='Git Branch'>branch: {esc(thread.git_branch)}</div>"
 
-                path_html += f"<div class='path-thread-header' title='{esc(cleaned_goal)}'>{goal_display} <span class='session-hash'>({sid_display})</span></div>"
-                path_html += branch_html
+                proj_buf += f"<div class='path-thread-header' title='{esc(cleaned_goal)}'>{goal_display} <span class='session-hash'>({sid_display})</span></div>"
+                proj_buf += branch_html
 
                 # Consolidate consecutive TASK_UPDATE events
                 display_events = []
@@ -4583,14 +4561,30 @@ try:
                         desc = desc.replace("Requested: ", "<b>Requested:</b> ")
 
                     # Skip low-signal/empty events
-                    is_low_signal = not cleaned_desc or cleaned_desc.lower().strip() in (
-                        "working...",
-                        "push",
-                        "/dump",
-                        "created:",
-                        "claimed:",
-                        "session",
-                        "session started",
+                    _desc_lower = cleaned_desc.lower().strip() if cleaned_desc else ""
+                    is_low_signal = (
+                        not cleaned_desc
+                        or _desc_lower
+                        in (
+                            "working...",
+                            "push",
+                            "/dump",
+                            "/clear",
+                            "/q",
+                            "created:",
+                            "claimed:",
+                            "session",
+                            "session started",
+                        )
+                        # Git sync housekeeping
+                        or "commit changed and new files, pull, fix conflicts, push" in _desc_lower
+                        or _desc_lower == "commit changed and new files"
+                        # Polecat worker system prompts
+                        or "you are a polecat worker" in _desc_lower
+                        # Placeholder text from Framework Reflection
+                        or _desc_lower.startswith("successfully completed: [")
+                        # Bare slash commands
+                        or (cleaned_desc.startswith("/") and " " not in cleaned_desc.strip())
                     )
 
                     if is_low_signal:
@@ -4606,16 +4600,22 @@ try:
                         if not cleaned_desc and not event.task_id:
                             continue
 
-                    path_html += f"<div class='{event_class}'>"
-                    path_html += f"<span class='dot {dot_class}'></span>"
-                    path_html += f"<span class='time'>{esc(time_str)}</span>"
-                    path_html += f"<span class='desc'>{desc}</span>"
-                    path_html += "</div>"
+                    proj_buf += f"<div class='{event_class}'>"
+                    proj_buf += f"<span class='dot {dot_class}'></span>"
+                    proj_buf += f"<span class='time'>{esc(time_str)}</span>"
+                    proj_buf += f"<span class='desc'>{desc}</span>"
+                    proj_buf += "</div>"
 
-                path_html += "</div>"  # end path-thread
+                proj_buf += "</div>"  # end path-thread
 
-            path_html += "</div>"  # end path-threads
-            path_html += "</div>"  # end path-project-group
+            # Only emit project group if at least one thread survived filtering
+            if thread_count > 0:
+                path_html += "<div class='path-project-group'>"
+                path_html += f"<div class='path-project-header' style='color: {proj_color}; border-left: 3px solid {proj_color}'>{esc(proj).upper()}</div>"
+                path_html += "<div class='path-threads' style='display: flex; overflow-x: auto; flex-wrap: nowrap; gap: 16px; padding-bottom: 12px; margin-bottom: 16px;'>"
+                path_html += proj_buf
+                path_html += "</div>"  # end path-threads
+                path_html += "</div>"  # end path-project-group
 
         if path.filtered_session_count > 0:
             path_html += f"<div style='text-align: center; color: var(--text-muted, #666); font-size: 0.8em; padding: 8px 0; opacity: 0.7;'>{path.filtered_session_count} session{'s' if path.filtered_session_count != 1 else ''} hidden (insufficient context)</div>"
@@ -4624,6 +4624,59 @@ try:
         st.markdown(path_html, unsafe_allow_html=True)
 except Exception:
     pass  # Path reconstruction is non-critical; fail silently
+
+render_spotlight_epic()
+
+# === DAILY STORY SECTION ===
+daily_story = analyzer.extract_daily_story()
+if daily_story:
+    with st.container():
+        st.markdown(
+            "<div class='daily-story-container' style='margin-bottom: 24px; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 8px; border-left: 4px solid #60a5fa;'>",
+            unsafe_allow_html=True,
+        )
+        col1, col2 = st.columns([2, 1])
+
+        with col1:
+            if daily_story["story"]:
+                st.markdown(f"### 📖 Today's Story\n{daily_story['story']}")
+            if daily_story["dropped_threads"]:
+                st.markdown("#### ⚠ Dropped Threads")
+
+                # Group dropped threads by project bracket or default to Uncategorized
+                grouped_threads = {}
+                for thread in daily_story["dropped_threads"]:
+                    match = re.match(r"^\[([^\]]+)\]\s*(.+)$", thread.strip())
+                    if match:
+                        proj = match.group(1).strip()
+                        desc = match.group(2).strip()
+                    else:
+                        proj = "Uncategorized"
+                        desc = thread.strip()
+
+                    if proj not in grouped_threads:
+                        grouped_threads[proj] = []
+                    grouped_threads[proj].append(desc)
+
+                total_threads = sum(len(ts) for ts in grouped_threads.values())
+
+                if total_threads <= 5:
+                    for proj, threads in sorted(grouped_threads.items()):
+                        st.markdown(f"**{proj}**")
+                        for t in threads:
+                            st.markdown(f"- {t}")
+                else:
+                    with st.expander(f"View {total_threads} Dropped Threads", expanded=False):
+                        for proj, threads in sorted(grouped_threads.items()):
+                            st.markdown(f"**{proj}**")
+                            for t in threads:
+                                st.markdown(f"- {t}")
+
+        with col2:
+            if daily_story["priorities"]:
+                st.markdown(f"### 🎯 Focus\n{daily_story['priorities']}")
+
+        st.markdown("</div>", unsafe_allow_html=True)
 
 # === RECENT PROMPTS SECTION ===
 render_recent_prompts()

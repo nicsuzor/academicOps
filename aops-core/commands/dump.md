@@ -34,7 +34,21 @@ Execute the [[base-handover]] workflow. The steps are:
 2. **Update task with progress** (or create historical task if none claimed)
 3. **File follow-up tasks** for outstanding work — use [[decompose]] principles and ensure all have a **parent** set to the current task or epic
 4. **Persist discoveries to memory** (optional)
-5. **Output Framework Reflection**
+5. **Output Framework Reflection** (format below)
 6. **Confirm handover complete** and halt
 
 > **CRITICAL**: Do not proceed past Step 1 until ALL changes are committed and pushed. The only acceptable reason to skip is if you made NO file changes.
+
+## Framework Reflection Format
+
+Use `## Framework Reflection` as an **H2 heading** with `**Field**: value` lines. Minimum 3 fields:
+
+```markdown
+## Framework Reflection
+
+**Outcome**: success
+**Accomplishments**: Fixed the repo-sync cron script
+**Next step**: None — PR merged, task complete
+```
+
+Do NOT use `**Framework Reflection:**` (bold text) — the parser requires a heading.

@@ -22,22 +22,14 @@ Some conversation...
 ## Framework Reflection
 
 **Prompts**: Used strict prompting.
-
 **Guidance Received**: None.
-
 **Followed**: Yes.
-
 **Outcome**: Success.
-
 **Accomplishments**:
 - Fixed the bug.
-
 **Friction Points**: None.
-
 **Root Cause**: Typo.
-
 **Proposed Changes**: None.
-
 **Next Step**: Merge.
 """
         reflection = parser_module.parse_framework_reflection(content)
@@ -54,7 +46,6 @@ Some conversation...
 ## Framework Reflection
 
 **Outcome**: Partial success.
-
 **Next Step**: Retry.
 """
         reflection = parser_module.parse_framework_reflection(content)
