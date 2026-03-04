@@ -141,7 +141,7 @@ class TestRealEventInvariants:
     ]
 
     ALWAYS_AVAILABLE_EVENTS = [
-        e for e in PRETOOLUSE_EVENTS if e.get("tool_name") in TOOL_CATEGORIES["always_available"]
+        e for e in PRETOOLUSE_EVENTS if e.get("tool_name") in TOOL_CATEGORIES["infrastructure"]
     ]
 
     @pytest.mark.parametrize(
@@ -883,25 +883,27 @@ class TestExecuteHooksSmoke:
             f"got '{result.verdict}' in {gate_mode.hydration_mode} mode"
         )
 
-    def test_always_available_through_full_pipeline(self, router, tmp_path, monkeypatch):
-        """Always-available tool through full pipeline should be allowed."""
+    def test_infrastructure_through_full_pipeline(self, router, tmp_path, monkeypatch):
+        """Infrastructure tool through full pipeline should always be allowed.
+
+        Infrastructure tools (PKB ops, AskUserQuestion, etc.) bypass all gates.
+        Spawn tools (Agent, Task, Skill) are now subject to hydration gate.
+        """
         monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(tmp_path))
         monkeypatch.setenv("AOPS_HOOK_LOG_PATH", str(tmp_path / "hooks.jsonl"))
 
         ctx = HookContext(
-            session_id="test-smoke-always",
+            session_id="test-smoke-infra",
             hook_event="PreToolUse",
-            tool_name="Task",
-            tool_input={"subagent_type": "Explore", "prompt": "test"},
-            is_subagent=True,
-            subagent_type="Explore",
+            tool_name="AskUserQuestion",
+            tool_input={"prompt": "What should I do next?"},
         )
 
         result = router.execute_hooks(ctx)
 
         assert isinstance(result, CanonicalHookOutput)
         assert result.verdict == "allow", (
-            f"Always-available tool should produce 'allow', got '{result.verdict}'"
+            f"Infrastructure tool should produce 'allow', got '{result.verdict}'"
         )
 
 
@@ -911,8 +913,9 @@ class TestExecuteHooksSmoke:
 
 # Each tuple: (tool_name, expected_category, description)
 # expected_category is what gate_config SHOULD return for this tool.
-# "always_available" tools bypass ALL gates.
-# "read_only" tools bypass hydration gate policy (exempt from hydration).
+# "infrastructure" tools bypass ALL gates (PKB ops, meta tools like AskUserQuestion).
+# "spawn" tools are subject to hydration gate (Agent, Task, Skill, etc.).
+# "read_only" tools bypass custodiet gate but are subject to hydration.
 # "write" tools are subject to ALL gate policies.
 #
 # Sourced from 170 hook log files spanning 7 days of production usage.
@@ -932,18 +935,19 @@ REAL_TOOL_NAMES: list[tuple[str, str, str]] = [
     ("TaskOutput", "read_only", "Claude: task output"),
     ("TaskStop", "read_only", "Claude: stop task"),
     ("ToolSearch", "read_only", "Claude: tool search"),
-    # Claude Code meta/always-available
-    ("Agent", "always_available", "Claude: spawn subagent"),
-    ("Task", "always_available", "Claude: spawn subagent (legacy)"),
-    ("Skill", "always_available", "Claude: invoke skill"),
-    ("AskUserQuestion", "always_available", "Claude: ask user"),
-    ("TodoWrite", "always_available", "Claude: write todo"),
-    ("EnterPlanMode", "always_available", "Claude: enter plan"),
-    ("ExitPlanMode", "always_available", "Claude: exit plan"),
-    ("TaskCreate", "always_available", "Claude: create task"),
-    ("TaskUpdate", "always_available", "Claude: update task"),
-    ("TaskGet", "always_available", "Claude: get task"),
-    ("TaskList", "always_available", "Claude: list tasks"),
+    # Claude Code spawn tools (subject to hydration gate)
+    ("Agent", "spawn", "Claude: spawn subagent"),
+    ("Task", "spawn", "Claude: spawn subagent (legacy)"),
+    ("Skill", "spawn", "Claude: invoke skill"),
+    ("TaskCreate", "spawn", "Claude: create task"),
+    ("TaskUpdate", "spawn", "Claude: update task"),
+    ("TaskGet", "spawn", "Claude: get task"),
+    ("TaskList", "spawn", "Claude: list tasks"),
+    # Claude Code infrastructure (bypass all gates)
+    ("AskUserQuestion", "infrastructure", "Claude: ask user"),
+    ("TodoWrite", "infrastructure", "Claude: write todo"),
+    ("EnterPlanMode", "infrastructure", "Claude: enter plan"),
+    ("ExitPlanMode", "infrastructure", "Claude: exit plan"),
     # ===== Gemini CLI tools =====
     ("read_file", "read_only", "Gemini: read file"),
     ("run_shell_command", "write", "Gemini: shell command"),
@@ -952,71 +956,71 @@ REAL_TOOL_NAMES: list[tuple[str, str, str]] = [
     ("write_file", "write", "Gemini: write file"),
     ("list_directory", "read_only", "Gemini: list dir"),
     ("glob", "read_only", "Gemini: glob search"),
-    ("activate_skill", "always_available", "Gemini: invoke skill"),
-    # Gemini bare PKB tool names (always_available for task management)
-    ("get_task", "always_available", "Gemini: get task"),
-    ("create_task", "always_available", "Gemini: create task"),
-    ("update_task", "always_available", "Gemini: update task"),
-    ("complete_task", "always_available", "Gemini: complete task"),
-    ("list_tasks", "always_available", "Gemini: list tasks"),
-    ("task_search", "always_available", "Gemini: task search"),
+    ("activate_skill", "spawn", "Gemini: invoke skill"),
+    # Gemini bare PKB tool names (infrastructure: bypass all gates)
+    ("get_task", "infrastructure", "Gemini: get task"),
+    ("create_task", "infrastructure", "Gemini: create task"),
+    ("update_task", "infrastructure", "Gemini: update task"),
+    ("complete_task", "infrastructure", "Gemini: complete task"),
+    ("list_tasks", "infrastructure", "Gemini: list tasks"),
+    ("task_search", "infrastructure", "Gemini: task search"),
     # ===== PKB MCP: mcp__plugin_aops-core_pkb__* (Claude Code full plugin prefix) =====
-    ("mcp__plugin_aops-core_pkb__update_task", "always_available", "CC plugin: update task"),
-    ("mcp__plugin_aops-core_pkb__get_task", "always_available", "CC plugin: get task"),
-    ("mcp__plugin_aops-core_pkb__create_task", "always_available", "CC plugin: create task"),
-    ("mcp__plugin_aops-core_pkb__list_tasks", "always_available", "CC plugin: list tasks"),
-    ("mcp__plugin_aops-core_pkb__complete_task", "always_available", "CC plugin: complete task"),
-    ("mcp__plugin_aops-core_pkb__reindex", "always_available", "CC plugin: reindex"),
-    ("mcp__plugin_aops-core_pkb__search", "always_available", "CC plugin: search"),
-    ("mcp__plugin_aops-core_pkb__task_search", "always_available", "CC plugin: task search"),
-    ("mcp__plugin_aops-core_pkb__pkb_orphans", "always_available", "CC plugin: orphans"),
+    ("mcp__plugin_aops-core_pkb__update_task", "infrastructure", "CC plugin: update task"),
+    ("mcp__plugin_aops-core_pkb__get_task", "infrastructure", "CC plugin: get task"),
+    ("mcp__plugin_aops-core_pkb__create_task", "infrastructure", "CC plugin: create task"),
+    ("mcp__plugin_aops-core_pkb__list_tasks", "infrastructure", "CC plugin: list tasks"),
+    ("mcp__plugin_aops-core_pkb__complete_task", "infrastructure", "CC plugin: complete task"),
+    ("mcp__plugin_aops-core_pkb__reindex", "infrastructure", "CC plugin: reindex"),
+    ("mcp__plugin_aops-core_pkb__search", "infrastructure", "CC plugin: search"),
+    ("mcp__plugin_aops-core_pkb__task_search", "infrastructure", "CC plugin: task search"),
+    ("mcp__plugin_aops-core_pkb__pkb_orphans", "infrastructure", "CC plugin: orphans"),
     (
         "mcp__plugin_aops-core_pkb__get_task_children",
-        "always_available",
+        "infrastructure",
         "CC plugin: task children",
     ),
-    ("mcp__plugin_aops-core_pkb__decompose_task", "always_available", "CC plugin: decompose task"),
-    ("mcp__plugin_aops-core_pkb__append", "always_available", "CC plugin: append"),
-    ("mcp__plugin_aops-core_pkb__create_memory", "always_available", "CC plugin: create memory"),
+    ("mcp__plugin_aops-core_pkb__decompose_task", "infrastructure", "CC plugin: decompose task"),
+    ("mcp__plugin_aops-core_pkb__append", "infrastructure", "CC plugin: append"),
+    ("mcp__plugin_aops-core_pkb__create_memory", "infrastructure", "CC plugin: create memory"),
     (
         "mcp__plugin_aops-core_pkb__retrieve_memory",
-        "always_available",
+        "infrastructure",
         "CC plugin: retrieve memory",
     ),
-    ("mcp__plugin_aops-core_pkb__create", "always_available", "CC plugin: create doc"),
-    ("mcp__plugin_aops-core_pkb__delete", "always_available", "CC plugin: delete doc"),
-    ("mcp__plugin_aops-core_pkb__delete_memory", "always_available", "CC plugin: delete memory"),
-    ("mcp__plugin_aops-core_pkb__search_by_tag", "always_available", "CC plugin: search by tag"),
+    ("mcp__plugin_aops-core_pkb__create", "infrastructure", "CC plugin: create doc"),
+    ("mcp__plugin_aops-core_pkb__delete", "infrastructure", "CC plugin: delete doc"),
+    ("mcp__plugin_aops-core_pkb__delete_memory", "infrastructure", "CC plugin: delete memory"),
+    ("mcp__plugin_aops-core_pkb__search_by_tag", "infrastructure", "CC plugin: search by tag"),
     # ===== PKB MCP: mcp__pkb__* (short form, in current gate_config) =====
-    ("mcp__pkb__create_task", "always_available", "short: create task"),
-    ("mcp__pkb__get_task", "always_available", "short: get task"),
-    ("mcp__pkb__task_search", "always_available", "short: task search"),
-    ("mcp__pkb__create", "always_available", "short: create doc"),
-    ("mcp__pkb__append", "always_available", "short: append"),
+    ("mcp__pkb__create_task", "infrastructure", "short: create task"),
+    ("mcp__pkb__get_task", "infrastructure", "short: get task"),
+    ("mcp__pkb__task_search", "infrastructure", "short: task search"),
+    ("mcp__pkb__create", "infrastructure", "short: create doc"),
+    ("mcp__pkb__append", "infrastructure", "short: append"),
     # ===== PKB MCP: mcp__pbk__* (typo variant seen in Gemini sessions) =====
-    ("mcp__pbk__update_task", "always_available", "typo: update task"),
-    ("mcp__pbk__get_task", "always_available", "typo: get task"),
-    ("mcp__pbk__create_task", "always_available", "typo: create task"),
-    ("mcp__pbk__complete_task", "always_available", "typo: complete task"),
-    ("mcp__pbk__list_tasks", "always_available", "typo: list tasks"),
-    ("mcp__pbk__pkb_context", "always_available", "typo: pkb context"),
-    ("mcp__pbk__search", "always_available", "typo: search"),
-    ("mcp__pbk__get_document", "always_available", "typo: get document"),
-    ("mcp__pbk__list_documents", "always_available", "typo: list documents"),
-    ("mcp__pbk__create", "always_available", "typo: create doc"),
-    ("mcp__pbk__append", "always_available", "typo: append"),
-    ("mcp__pbk__create_memory", "always_available", "typo: create memory"),
-    ("mcp__pbk__reindex", "always_available", "typo: reindex"),
-    ("mcp__pbk__pkb_orphans", "always_available", "typo: orphans"),
-    ("mcp__pbk__get_network_metrics", "always_available", "typo: network metrics"),
+    ("mcp__pbk__update_task", "infrastructure", "typo: update task"),
+    ("mcp__pbk__get_task", "infrastructure", "typo: get task"),
+    ("mcp__pbk__create_task", "infrastructure", "typo: create task"),
+    ("mcp__pbk__complete_task", "infrastructure", "typo: complete task"),
+    ("mcp__pbk__list_tasks", "infrastructure", "typo: list tasks"),
+    ("mcp__pbk__pkb_context", "infrastructure", "typo: pkb context"),
+    ("mcp__pbk__search", "infrastructure", "typo: search"),
+    ("mcp__pbk__get_document", "infrastructure", "typo: get document"),
+    ("mcp__pbk__list_documents", "infrastructure", "typo: list documents"),
+    ("mcp__pbk__create", "infrastructure", "typo: create doc"),
+    ("mcp__pbk__append", "infrastructure", "typo: append"),
+    ("mcp__pbk__create_memory", "infrastructure", "typo: create memory"),
+    ("mcp__pbk__reindex", "infrastructure", "typo: reindex"),
+    ("mcp__pbk__pkb_orphans", "infrastructure", "typo: orphans"),
+    ("mcp__pbk__get_network_metrics", "infrastructure", "typo: network metrics"),
     # ===== PKB MCP: versioned plugin prefix (seen once) =====
-    ("mcp__plugin_0_2_25_pkb__list_tasks", "always_available", "versioned plugin: list tasks"),
+    ("mcp__plugin_0_2_25_pkb__list_tasks", "infrastructure", "versioned plugin: list tasks"),
     # ===== PKB MCP: pkb__* (bare prefix, Gemini variant) =====
-    ("pkb__search", "always_available", "bare: search"),
-    ("pkb_orphans", "always_available", "bare: orphans"),
+    ("pkb__search", "infrastructure", "bare: search"),
+    ("pkb_orphans", "infrastructure", "bare: orphans"),
     # ===== Memory MCP: mcp__plugin_aops-core_memory__* =====
-    ("mcp__plugin_aops-core_memory__retrieve_memory", "always_available", "CC memory: retrieve"),
-    ("mcp__plugin_aops-core_memory__store_memory", "always_available", "CC memory: store"),
+    ("mcp__plugin_aops-core_memory__retrieve_memory", "infrastructure", "CC memory: retrieve"),
+    ("mcp__plugin_aops-core_memory__store_memory", "infrastructure", "CC memory: store"),
     # ===== Context7 MCP =====
     ("mcp__context7__query-docs", "read_only", "context7: query docs"),
     ("mcp__context7__resolve-library-id", "read_only", "context7: resolve lib"),
@@ -1055,59 +1059,59 @@ REAL_TOOL_NAMES: list[tuple[str, str, str]] = [
     ("browser_console_messages", "read_only", "Gemini playwright: console"),
     ("browser_network_requests", "read_only", "Gemini playwright: network"),
     ("browser_run_code", "write", "Gemini playwright: run code"),
-    # ===== Gemini bare tool names (miscellaneous) =====
-    ("create_memory", "always_available", "Gemini: create memory"),
-    ("decompose_task", "always_available", "Gemini: decompose task"),
-    ("append", "always_available", "Gemini: append"),
-    ("search", "always_available", "Gemini: search"),
-    ("get_task_children", "always_available", "Gemini: task children"),
+    # ===== Gemini bare tool names (miscellaneous PKB ops - infrastructure) =====
+    ("create_memory", "infrastructure", "Gemini: create memory"),
+    ("decompose_task", "infrastructure", "Gemini: decompose task"),
+    ("append", "infrastructure", "Gemini: append"),
+    ("search", "infrastructure", "Gemini: search"),
+    ("get_task_children", "infrastructure", "Gemini: task children"),
     ("get_internal_docs", "read_only", "Gemini: internal docs"),
     ("shell", "write", "Gemini: shell"),
     ("cli_help", "read_only", "Gemini: cli help"),
     # ===== Agent/subagent type names that appeared as tool_name (bug/edge case) =====
-    ("prompt-hydrator", "always_available", "subagent name as tool (hydrator)"),
-    ("qa", "always_available", "subagent name as tool (qa)"),
+    ("prompt-hydrator", "infrastructure", "subagent name as tool (hydrator)"),
+    ("qa", "infrastructure", "subagent name as tool (qa)"),
 ]
 
 # Build Agent/Skill spawn scenarios from real logs
 # Each tuple: (tool_name, subagent_type, is_subagent, expected_category, description)
 REAL_SPAWN_EVENTS: list[tuple[str, str, bool, str, str]] = [
     # Claude Code Agent spawns (is_subagent=False in main agent context)
-    ("Agent", "Explore", False, "always_available", "CC Agent: Explore"),
-    ("Agent", "aops-core:custodiet", False, "always_available", "CC Agent: custodiet"),
-    ("Agent", "aops-core:prompt-hydrator", False, "always_available", "CC Agent: hydrator"),
-    ("Agent", "aops-core:butler", False, "always_available", "CC Agent: butler"),
-    ("Agent", "general-purpose", False, "always_available", "CC Agent: general-purpose"),
+    ("Agent", "Explore", False, "spawn", "CC Agent: Explore"),
+    ("Agent", "aops-core:custodiet", False, "spawn", "CC Agent: custodiet"),
+    ("Agent", "aops-core:prompt-hydrator", False, "spawn", "CC Agent: hydrator"),
+    ("Agent", "aops-core:butler", False, "spawn", "CC Agent: butler"),
+    ("Agent", "general-purpose", False, "spawn", "CC Agent: general-purpose"),
     # Claude Code legacy Task spawns (is_subagent=True from subagent context)
-    ("Task", "general-purpose", True, "always_available", "CC Task: general-purpose"),
-    ("Task", "aops-core:prompt-hydrator", True, "always_available", "CC Task: hydrator"),
-    ("Task", "aops-core:custodiet", True, "always_available", "CC Task: custodiet"),
-    ("Task", "Explore", True, "always_available", "CC Task: Explore"),
-    ("Task", "claude-code-guide", True, "always_available", "CC Task: cc-guide"),
-    ("Task", "aops-core:butler", True, "always_available", "CC Task: butler"),
-    ("Task", "Plan", True, "always_available", "CC Task: Plan"),
+    ("Task", "general-purpose", True, "spawn", "CC Task: general-purpose"),
+    ("Task", "aops-core:prompt-hydrator", True, "spawn", "CC Task: hydrator"),
+    ("Task", "aops-core:custodiet", True, "spawn", "CC Task: custodiet"),
+    ("Task", "Explore", True, "spawn", "CC Task: Explore"),
+    ("Task", "claude-code-guide", True, "spawn", "CC Task: cc-guide"),
+    ("Task", "aops-core:butler", True, "spawn", "CC Task: butler"),
+    ("Task", "Plan", True, "spawn", "CC Task: Plan"),
     (
         "Task",
         "aops-core:custodiet-reviewer",
         True,
-        "always_available",
+        "spawn",
         "CC Task: custodiet-reviewer",
     ),
-    ("Task", "aops-core:hydrator-reviewer", True, "always_available", "CC Task: hydrator-reviewer"),
-    ("Task", "aops-core:qa", True, "always_available", "CC Task: qa"),
+    ("Task", "aops-core:hydrator-reviewer", True, "spawn", "CC Task: hydrator-reviewer"),
+    ("Task", "aops-core:qa", True, "spawn", "CC Task: qa"),
     # Claude Code Skill invocations
-    ("Skill", "aops-core:dump", False, "always_available", "CC Skill: dump"),
-    ("Skill", "aops-core:daily", False, "always_available", "CC Skill: daily"),
-    ("Skill", "aops-core:learn", False, "always_available", "CC Skill: learn"),
-    ("Skill", "aops-core:strategy", False, "always_available", "CC Skill: strategy"),
-    ("Skill", "aops-core:remember", False, "always_available", "CC Skill: remember"),
-    ("Skill", "aops-core:garden", False, "always_available", "CC Skill: garden"),
-    ("Skill", "aops-core:q", False, "always_available", "CC Skill: q"),
-    ("Skill", "aops-core:framework", False, "always_available", "CC Skill: framework"),
-    ("Skill", "framework", False, "always_available", "CC Skill: framework (bare)"),
-    ("Skill", "remember", False, "always_available", "CC Skill: remember (bare)"),
+    ("Skill", "aops-core:dump", False, "spawn", "CC Skill: dump"),
+    ("Skill", "aops-core:daily", False, "spawn", "CC Skill: daily"),
+    ("Skill", "aops-core:learn", False, "spawn", "CC Skill: learn"),
+    ("Skill", "aops-core:strategy", False, "spawn", "CC Skill: strategy"),
+    ("Skill", "aops-core:remember", False, "spawn", "CC Skill: remember"),
+    ("Skill", "aops-core:garden", False, "spawn", "CC Skill: garden"),
+    ("Skill", "aops-core:q", False, "spawn", "CC Skill: q"),
+    ("Skill", "aops-core:framework", False, "spawn", "CC Skill: framework"),
+    ("Skill", "framework", False, "spawn", "CC Skill: framework (bare)"),
+    ("Skill", "remember", False, "spawn", "CC Skill: remember (bare)"),
     # Gemini CLI
-    ("activate_skill", "aops-core:dump", False, "always_available", "Gemini: activate dump"),
+    ("activate_skill", "aops-core:dump", False, "spawn", "Gemini: activate dump"),
 ]
 
 
@@ -1138,16 +1142,17 @@ class TestRealToolNameCategorization:
 
     @pytest.mark.parametrize(
         "tool_name,expected_category,desc",
-        [t for t in REAL_TOOL_NAMES if t[1] == "always_available"],
-        ids=[f"{t[2]}:{t[0]}" for t in REAL_TOOL_NAMES if t[1] == "always_available"],
+        [t for t in REAL_TOOL_NAMES if t[1] == "infrastructure"],
+        ids=[f"{t[2]}:{t[0]}" for t in REAL_TOOL_NAMES if t[1] == "infrastructure"],
     )
-    def test_always_available_never_blocked_by_hydration(
+    def test_infrastructure_never_blocked_by_hydration(
         self, router, tool_name, expected_category, desc, gate_mode
     ):
-        """Only always_available tools bypass the hydration gate.
+        """Infrastructure tools bypass the hydration gate entirely.
 
-        The hydration gate intentionally blocks ALL tools except always_available
-        until the hydrator is dispatched. This forces hydration before any exploration.
+        PKB ops (mcp__pkb__*, create_task, etc.) and meta tools (AskUserQuestion,
+        TodoWrite, etc.) are in the infrastructure category and bypass all gates.
+        This allows the framework to function even while hydration is pending.
         """
         state = SessionState.create("test-tool-categorization")
         state.gates["hydration"].status = GateStatus.CLOSED
@@ -1163,7 +1168,7 @@ class TestRealToolNameCategorization:
 
         if result is not None:
             assert result.verdict == GateVerdict.ALLOW, (
-                f"always_available tool '{tool_name}' ({desc}) should be ALLOW, "
+                f"infrastructure tool '{tool_name}' ({desc}) should be ALLOW, "
                 f"got {result.verdict.value} in {gate_mode.hydration_mode} mode. "
                 f"get_tool_category() returned '{get_tool_category(tool_name)}'"
             )
@@ -1251,10 +1256,12 @@ class TestRealToolNameCategorization:
 
 
 class TestRealSpawnEventCategorization:
-    """Verify Agent/Task/Skill spawn events are correctly handled.
+    """Verify Agent/Task/Skill spawn events are correctly categorized.
 
     These spawn combinations were extracted from real production logs.
-    Agent and Task are always_available tools that should bypass ALL gates.
+    Spawn tools (Agent, Task, Skill) are now in the 'spawn' category and are
+    subject to the hydration gate. Only prompt-hydrator dispatches bypass the
+    hydration gate via the JIT trigger.
     """
 
     @pytest.mark.parametrize(
@@ -1262,12 +1269,12 @@ class TestRealSpawnEventCategorization:
         REAL_SPAWN_EVENTS,
         ids=[f"{t[4]}" for t in REAL_SPAWN_EVENTS],
     )
-    def test_spawn_tool_always_allowed(
+    def test_spawn_tool_category_and_hydrator_bypass(
         self, router, tool_name, subagent_type, is_subagent, expected_category, desc, gate_mode
     ):
-        """Spawn tools must always be allowed regardless of gate state."""
+        """Spawn tools are in 'spawn' category; hydrator dispatches bypass hydration gate JIT."""
         state = SessionState.create("test-spawn-categorization")
-        # Hostile state: everything closed/at threshold
+        # Hostile state: hydration closed, custodiet at threshold
         state.gates["hydration"].status = GateStatus.CLOSED
         state.gates["hydration"].metrics["temp_path"] = "/tmp/h.md"
         state.gates["custodiet"].ops_since_open = 100
@@ -1287,9 +1294,25 @@ class TestRealSpawnEventCategorization:
         )
         result = router._dispatch_gates(ctx, state)
 
-        if result is not None:
-            assert result.verdict != GateVerdict.DENY, (
-                f"Spawn event '{tool_name}' -> '{subagent_type}' ({desc}) was DENIED "
-                f"under hostile gate state in {gate_mode.hydration_mode} mode. "
-                f"Tool category: {get_tool_category(tool_name)}"
-            )
+        # 1. Category must be "spawn" for all spawn tools
+        actual_cat = get_tool_category(tool_name)
+        assert actual_cat == expected_category, (
+            f"Spawn tool '{tool_name}' ({desc}): expected category '{expected_category}', "
+            f"got '{actual_cat}'"
+        )
+
+        # 2. Only prompt-hydrator dispatches bypass hydration gate via JIT trigger.
+        #    Other spawns (including non-hydrator compliance agents) are subject to
+        #    hydration gate — WARN/DENY is correct when hydration hasn't been done.
+        is_hydrator_dispatch = subagent_type in (
+            "aops-core:prompt-hydrator",
+            "prompt-hydrator",
+            "hydrator",
+        )
+        if is_hydrator_dispatch:
+            if result is not None:
+                assert result.verdict == GateVerdict.ALLOW, (
+                    f"Hydrator dispatch '{tool_name}' -> '{subagent_type}' ({desc}) "
+                    f"should bypass hydration gate (JIT trigger opens it) but got "
+                    f"{result.verdict.value} in {gate_mode.hydration_mode} mode."
+                )

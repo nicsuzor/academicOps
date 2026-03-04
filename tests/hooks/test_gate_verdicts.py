@@ -34,7 +34,12 @@ AOPS_CORE = Path(__file__).parent.parent.parent / "aops-core"
 if str(AOPS_CORE) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE))
 
-from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES, get_tool_category
+from hooks.gate_config import (
+    COMPLIANCE_SUBAGENT_TYPES,
+    CUSTODIET_TOOL_CALL_THRESHOLD,
+    extract_subagent_type,
+    get_tool_category,
+)
 from hooks.router import HookRouter
 from hooks.schemas import (
     CanonicalHookOutput,
@@ -955,10 +960,29 @@ class TestLiveCustodietThreshold:
         _exempt_categories = {"infrastructure", "read_only"}
         tool_cat = get_tool_category(scenario["tool_name"] or "")
 
+        # Check if this scenario dispatches custodiet specifically.
+        # The custodiet gate has a PreToolUse trigger that fires ONLY for custodiet
+        # dispatches, resetting ops_since_open BEFORE the policy evaluates (deadlock
+        # prevention fix). Agent(custodiet) at threshold → trigger resets → ALLOW.
+        # Other compliance agents (prompt-hydrator, butler) do NOT reset the custodiet
+        # counter, so they are still subject to the policy at threshold.
+        tool_input = scenario.get("tool_input") or {}
+        extracted_st, _ = extract_subagent_type(scenario["tool_name"] or "", tool_input)
+        effective_subagent = scenario.get("subagent_type") or extracted_st
+        is_custodiet_dispatch = effective_subagent in ("custodiet", "aops-core:custodiet")
+
         if tool_cat in _exempt_categories:
             assert result is None or result.verdict == GateVerdict.ALLOW, (
                 f"[{scenario['id']}] {scenario['tool_name']} is exempt from custodiet "
                 f"but got non-allow verdict: {result.verdict if result else 'None'}"
+            )
+        elif is_custodiet_dispatch:
+            # Agent(custodiet) resets the custodiet counter via PreToolUse trigger
+            # before the policy evaluates → must be ALLOW (deadlock prevention).
+            assert result is None or result.verdict == GateVerdict.ALLOW, (
+                f"[{scenario['id']}] {scenario['tool_name']}({effective_subagent}) is a "
+                f"custodiet dispatch; trigger resets ops_since_open=0 before policy. "
+                f"Expected ALLOW but got {result.verdict if result else 'None'}"
             )
         else:
             # Non-exempt tools (like Bash, Write) MUST be blocked/warned
@@ -1143,9 +1167,12 @@ class TestLiveWriteTools:
 
         overrides = scenario.get("gate_overrides", {})
         hydration_closed = overrides.get("hydration", {}).get("status") == "closed"
-        custodiet_active = "custodiet" in overrides
+        # Custodiet only fires when ops_since_open >= threshold.
+        # A scenario may include a custodiet override without actually being at threshold.
+        custodiet_ops = overrides.get("custodiet", {}).get("ops_since_open", 0)
+        custodiet_at_threshold = custodiet_ops >= CUSTODIET_TOOL_CALL_THRESHOLD
 
-        if hydration_closed and custodiet_active:
+        if hydration_closed and custodiet_at_threshold:
             # Both gates fire -- engine merges: deny > warn > allow.
             # Custodiet is "block" in test env -> DENY.
             # Hydration is parameterized -> WARN or DENY.
@@ -1162,7 +1189,7 @@ class TestLiveWriteTools:
                 f"[{scenario['id']}] {scenario['tool_name']}: expected {expected.value} "
                 f"in {hydration_mode} mode (hydration closed), got {result.verdict.value}"
             )
-        elif custodiet_active:
+        elif custodiet_at_threshold:
             # Custodiet mode is block in test env
             assert result is not None, (
                 f"[{scenario['id']}] Expected non-allow at custodiet threshold"
