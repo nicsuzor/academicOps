@@ -133,14 +133,13 @@ def extract_scenarios_from_log(log_path, scenario_groups=None):
             hydration_blocked.append(s)
 
     if hydration_blocked:
-        seen = set()
-        deduped = []
-        for s in hydration_blocked:
-            key = (s["tool_name"], s["expected"]["verdict"])
-            if key not in seen:
-                seen.add(key)
-                deduped.append(s)
-        scenario_groups[f"{platform}_hydration_gate_blocks_tools"] = deduped
+        group_name = f"{platform}_hydration_gate_blocks_tools"
+        if group_name not in scenario_groups:
+            scenario_groups[group_name] = []
+        # Add new scenarios if we haven't reached the limit (e.g., 50 per group)
+        if len(scenario_groups[group_name]) < 50:
+            remaining = 50 - len(scenario_groups[group_name])
+            scenario_groups[group_name].extend(hydration_blocked[:remaining])
 
     # 2. Compliance agents: hydrator/custodiet calls that should be allowed
     compliance_allowed = []
@@ -154,14 +153,12 @@ def extract_scenarios_from_log(log_path, scenario_groups=None):
             compliance_allowed.append(s)
 
     if compliance_allowed:
-        seen = set()
-        deduped = []
-        for s in compliance_allowed:
-            key = (s["tool_name"], s.get("subagent_type"))
-            if key not in seen:
-                seen.add(key)
-                deduped.append(s)
-        scenario_groups[f"{platform}_compliance_agent_allowed"] = deduped
+        group_name = f"{platform}_compliance_agent_allowed"
+        if group_name not in scenario_groups:
+            scenario_groups[group_name] = []
+        if len(scenario_groups[group_name]) < 50:
+            remaining = 50 - len(scenario_groups[group_name])
+            scenario_groups[group_name].extend(compliance_allowed[:remaining])
 
     # 3. Always-available tools that bypass gates
     always_available = []
@@ -183,13 +180,12 @@ def extract_scenarios_from_log(log_path, scenario_groups=None):
             always_available.append(s)
 
     if always_available:
-        seen = set()
-        deduped = []
-        for s in always_available:
-            if s["tool_name"] not in seen:
-                seen.add(s["tool_name"])
-                deduped.append(s)
-        scenario_groups[f"{platform}_always_available_bypass"] = deduped
+        group_name = f"{platform}_always_available_bypass"
+        if group_name not in scenario_groups:
+            scenario_groups[group_name] = []
+        if len(scenario_groups[group_name]) < 50:
+            remaining = 50 - len(scenario_groups[group_name])
+            scenario_groups[group_name].extend(always_available[:remaining])
 
     # 4. Custodiet threshold warnings/blocks
     custodiet_blocked = []
@@ -203,14 +199,12 @@ def extract_scenarios_from_log(log_path, scenario_groups=None):
             custodiet_blocked.append(s)
 
     if custodiet_blocked:
-        seen = set()
-        deduped = []
-        for s in custodiet_blocked:
-            key = (s["tool_name"], s["expected"]["verdict"])
-            if key not in seen:
-                seen.add(key)
-                deduped.append(s)
-        scenario_groups[f"{platform}_custodiet_threshold"] = deduped
+        group_name = f"{platform}_custodiet_threshold"
+        if group_name not in scenario_groups:
+            scenario_groups[group_name] = []
+        if len(scenario_groups[group_name]) < 50:
+            remaining = 50 - len(scenario_groups[group_name])
+            scenario_groups[group_name].extend(custodiet_blocked[:remaining])
 
     # 5. SubagentStart/SubagentStop events
     subagent_events = []
@@ -220,14 +214,12 @@ def extract_scenarios_from_log(log_path, scenario_groups=None):
             subagent_events.append(s)
 
     if subagent_events:
-        seen = set()
-        deduped = []
-        for s in subagent_events:
-            key = (s["hook_event"], s.get("subagent_type"))
-            if key not in seen:
-                seen.add(key)
-                deduped.append(s)
-        scenario_groups[f"{platform}_subagent_events"] = deduped
+        group_name = f"{platform}_subagent_events"
+        if group_name not in scenario_groups:
+            scenario_groups[group_name] = []
+        if len(scenario_groups[group_name]) < 50:
+            remaining = 50 - len(scenario_groups[group_name])
+            scenario_groups[group_name].extend(subagent_events[:remaining])
 
     # 6. Stop events
     stop_events = []
@@ -237,7 +229,12 @@ def extract_scenarios_from_log(log_path, scenario_groups=None):
             stop_events.append(s)
 
     if stop_events:
-        scenario_groups[f"{platform}_stop_events"] = [stop_events[0]]  # one example
+        group_name = f"{platform}_stop_events"
+        if group_name not in scenario_groups:
+            scenario_groups[group_name] = []
+        if len(scenario_groups[group_name]) < 50:
+            remaining = 50 - len(scenario_groups[group_name])
+            scenario_groups[group_name].extend(stop_events[:remaining])
 
     # 7. UserPromptSubmit events
     prompt_events = []
@@ -247,7 +244,12 @@ def extract_scenarios_from_log(log_path, scenario_groups=None):
             prompt_events.append(s)
 
     if prompt_events:
-        scenario_groups[f"{platform}_user_prompt_events"] = [prompt_events[0]]  # one example
+        group_name = f"{platform}_user_prompt_events"
+        if group_name not in scenario_groups:
+            scenario_groups[group_name] = []
+        if len(scenario_groups[group_name]) < 50:
+            remaining = 50 - len(scenario_groups[group_name])
+            scenario_groups[group_name].extend(prompt_events[:remaining])
 
     # 8. Read-only tools
     read_only_events = []
@@ -260,14 +262,12 @@ def extract_scenarios_from_log(log_path, scenario_groups=None):
             read_only_events.append(s)
 
     if read_only_events:
-        seen = set()
-        deduped = []
-        for s in read_only_events:
-            key = (s["tool_name"], s["expected"]["verdict"])
-            if key not in seen:
-                seen.add(key)
-                deduped.append(s)
-        scenario_groups[f"{platform}_read_only_tools"] = deduped
+        group_name = f"{platform}_read_only_tools"
+        if group_name not in scenario_groups:
+            scenario_groups[group_name] = []
+        if len(scenario_groups[group_name]) < 50:
+            remaining = 50 - len(scenario_groups[group_name])
+            scenario_groups[group_name].extend(read_only_events[:remaining])
 
     # 9. Write tools
     write_events = []
@@ -280,14 +280,12 @@ def extract_scenarios_from_log(log_path, scenario_groups=None):
             write_events.append(s)
 
     if write_events:
-        seen = set()
-        deduped = []
-        for s in write_events:
-            key = (s["tool_name"], s["expected"]["verdict"])
-            if key not in seen:
-                seen.add(key)
-                deduped.append(s)
-        scenario_groups[f"{platform}_write_tools"] = deduped
+        group_name = f"{platform}_write_tools"
+        if group_name not in scenario_groups:
+            scenario_groups[group_name] = []
+        if len(scenario_groups[group_name]) < 50:
+            remaining = 50 - len(scenario_groups[group_name])
+            scenario_groups[group_name].extend(write_events[:remaining])
 
     return scenario_groups
 

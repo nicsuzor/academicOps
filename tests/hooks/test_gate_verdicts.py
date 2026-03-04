@@ -42,6 +42,7 @@ from hooks.schemas import (
     GeminiHookOutput,
     HookContext,
 )
+
 from lib.gate_model import GateVerdict
 from lib.gate_types import GateState, GateStatus
 from lib.gates.registry import GateRegistry
@@ -276,8 +277,8 @@ class TestReadOnlyBypassesCustodiet:
 # ===========================================================================
 
 
-class TestHydrationGateAllowsAlwaysAvailable:
-    """Always-available tools must bypass ALL gates."""
+class TestHydrationGateAllowsInfrastructure:
+    """Infrastructure tools must bypass ALL gates."""
 
     SCENARIOS = _flatten_scenarios("hydration_gate_allows_always_available")
 
@@ -286,17 +287,66 @@ class TestHydrationGateAllowsAlwaysAvailable:
         SCENARIOS,
         ids=[s["id"] for s in SCENARIOS],
     )
-    def test_always_available_allowed(self, router, scenario):
+    def test_infrastructure_allowed(self, router, scenario):
         state = _make_session_state(scenario)
         ctx = _make_context(scenario)
 
         result = router._dispatch_gates(ctx, state)
 
         if result is not None:
-            assert result.verdict == GateVerdict.ALLOW, (
-                f"[{scenario['id']}] Always-available tool '{scenario['tool_name']}' "
-                f"should be ALLOW, got {result.verdict.value}"
-            )
+            # Note: always_available_bypass contains some Agent calls which are now BLOCKED.
+            # We filter those out in the logic below.
+            from hooks.gate_config import get_tool_category
+
+            if get_tool_category(scenario["tool_name"]) == "infrastructure":
+                assert result.verdict == GateVerdict.ALLOW, (
+                    f"[{scenario['id']}] Infrastructure tool '{scenario['tool_name']}' "
+                    f"should be ALLOW, got {result.verdict.value}"
+                )
+
+
+class TestHydrationGateBlocksSpawn:
+    """Spawn tools (Agent, Task, Skill) are BLOCKED by hydration gate."""
+
+    SCENARIOS = [
+        {
+            "id": "agent_blocked_when_hydration_closed",
+            "description": "Agent (spawn) blocked by hydration gate",
+            "hook_event": "PreToolUse",
+            "tool_name": "Agent",
+            "tool_input": {"subagent_type": "explorer"},
+            "is_subagent": False,
+            "gate_overrides": {
+                "hydration": {"status": "closed", "metrics": {"temp_path": "/tmp/hydration.md"}}
+            },
+        },
+        {
+            "id": "delegate_to_agent_blocked_when_hydration_closed",
+            "description": "delegate_to_agent (spawn) blocked by hydration gate",
+            "hook_event": "PreToolUse",
+            "tool_name": "delegate_to_agent",
+            "tool_input": {"name": "explorer"},
+            "is_subagent": False,
+            "gate_overrides": {
+                "hydration": {"status": "closed", "metrics": {"temp_path": "/tmp/hydration.md"}}
+            },
+        },
+    ]
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    def test_spawn_blocked(self, router, scenario):
+        state = _make_session_state(scenario)
+        ctx = _make_context(scenario)
+
+        result = router._dispatch_gates(ctx, state)
+
+        # Spawn tools must be BLOCKED/WARNED
+        assert result is not None
+        assert result.verdict != GateVerdict.ALLOW
 
 
 # ===========================================================================
@@ -901,14 +951,40 @@ class TestLiveCustodietThreshold:
 
         result = router._dispatch_gates(ctx, state)
 
-        # Custodiet at threshold must not be ALLOW
-        assert result is not None, (
-            f"[{scenario['id']}] Expected non-allow verdict at custodiet threshold"
-        )
-        assert result.verdict != GateVerdict.ALLOW, (
-            f"[{scenario['id']}] {scenario['tool_name']} should be blocked/warned "
-            f"at custodiet threshold, got ALLOW"
-        )
+        # Some tools are exempt from custodiet threshold (infrastructure, read_only)
+        # Check production definitions.py: excluded_tool_categories=["infrastructure", "read_only"]
+        exempt_tools = {
+            # infrastructure
+            "mcp__plugin_aops-core_pkb__get_task",
+            "mcp__plugin_aops-core_pkb__list_tasks",
+            "get_task",
+            "list_tasks",
+            "ask_user",
+            "AskUserQuestion",
+            # read_only
+            "Read",
+            "read_file",
+            "Grep",
+            "grep_search",
+            "Glob",
+            "list_files",
+        }
+
+        if scenario["tool_name"] in exempt_tools:
+            assert result is None or result.verdict == GateVerdict.ALLOW, (
+                f"[{scenario['id']}] {scenario['tool_name']} is exempt from custodiet "
+                f"but got non-allow verdict: {result.verdict if result else 'None'}"
+            )
+        else:
+            # Non-exempt tools (like Bash, Write) MUST be blocked/warned
+            assert result is not None, (
+                f"[{scenario['id']}] Expected non-allow verdict for {scenario['tool_name']} "
+                f"at custodiet threshold"
+            )
+            assert result.verdict != GateVerdict.ALLOW, (
+                f"[{scenario['id']}] {scenario['tool_name']} should be blocked/warned "
+                f"at custodiet threshold, got ALLOW"
+            )
 
 
 class TestLiveReadOnlyTools:
