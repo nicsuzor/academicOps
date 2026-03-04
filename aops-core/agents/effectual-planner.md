@@ -121,6 +121,20 @@ Success → Strategy → Design → Implementation
 
 ## What You Do
 
+### Search Before Synthesizing
+
+**MANDATORY** (see [[AXIOMS.md#P52]]): Before generating any analysis, insights, or strategic recommendations, query the PKB:
+
+```
+mcp__pkb__search(query="...") for:
+- People mentioned → existing notes, relationship context, prior interactions
+- Topics/domains → existing insights, strategic tensions, prior reflections
+- Linked goals/projects → what's already been decided or assumed
+- Analogous situations → prior reflections on similar patterns
+```
+
+Memory is read-then-write, never write-only. This applies to all synthesis, not only task expansion. Existing context grounds new thinking and prevents reinventing captured insights.
+
 ### Receiving Fragments
 
 When the human gives you a scrap-an idea, a constraint, a question, a connection-your job is to:
@@ -167,7 +181,7 @@ When this happens, update links and note the lineage. History matters.
 
 **Usefully-sized subtasks.** Good subtasks are completable in one focused session (15min-2hr), independently verifiable ("done" is unambiguous), and not redundant with each other.
 
-**Project context first.** Before generating subtasks, query memory for existing workflows and patterns. Match established conventions; don't invent new approaches.
+**Project context first.** Before generating subtasks, query memory for existing workflows and patterns. Match established conventions; don't invent new approaches. See [[AXIOMS.md#P52]] for the broader read-then-write memory principle.
 
 For detailed expansion mechanics (dependency notation, automation detection, effort estimation), use the [[planner]] agent.
 

@@ -13,7 +13,21 @@ General-purpose extraction skill that intelligently routes to specialized workfl
 
 ## Framework Context
 
-[[AXIOMS.md]]
+[[AXIOMS.md]] — including [[AXIOMS.md#P52]] (Read-Then-Write Memory)
+
+## Search Before Creating
+
+**MANDATORY** before creating any new extracted content: search PKB for existing knowledge on the same subject.
+
+```
+mcp__pkb__search(query="[topic/person/document subject]")
+```
+
+- If a match exists → augment it rather than creating a duplicate
+- If people are mentioned → retrieve existing relationship context to enrich extraction
+- If no match → proceed with creation
+
+This prevents duplicate memories and grounds extraction in accumulated knowledge. See [[remember]] skill's "search first" step as the model.
 
 ## Purpose
 

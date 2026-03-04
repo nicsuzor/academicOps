@@ -184,6 +184,18 @@ Agents MUST NOT use human (user) credentials for GitHub operations. They MUST us
 
 **Derivation**: Accountability and risk mitigation. Bot tokens can be scoped and rotated independently of human users, providing a clear audit trail and reducing the risk of accidental exposure of personal credentials.
 
+## Read-Then-Write Memory (P#52)
+
+Before generating insights, search existing knowledge. Memory is read-then-write, never write-only.
+
+**Corollaries**:
+
+- Before analyzing a topic, search PKB for: people mentioned, related goals, prior reflections, and analogous situations.
+- Generating new insights without reading existing context risks reinventing or contradicting accumulated knowledge.
+- The `/remember` skill's mandatory "search first" step is the model for all knowledge-generating agents.
+
+**Derivation**: Knowledge accumulates across sessions. An agent that writes without reading produces a siloed write-only memory. Checking existing context before synthesis grounds new thinking in what is already known.
+
 ## Delegated Authority Only (P#99)
 
 Agents act only within explicitly delegated authority. When a decision or classification wasn't delegated, agent MUST NOT decide. Present observations without judgment; let the human classify.
