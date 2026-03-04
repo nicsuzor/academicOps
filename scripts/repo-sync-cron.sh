@@ -93,7 +93,7 @@ do_sync() {
     # Sync all configured git repos
     if [[ -f "${SCRIPT_DIR}/repo-sync.sh" ]]; then
         echo "==> Syncing repositories..."
-        "${SCRIPT_DIR}/repo-sync.sh" --check --quiet 2>&1 || echo "Warning: repo-sync failed"
+        "${SCRIPT_DIR}/repo-sync.sh" --quiet 2>&1 || echo "Warning: repo-sync failed"
     else
         echo "Warning: ${SCRIPT_DIR}/repo-sync.sh not found"
     fi
