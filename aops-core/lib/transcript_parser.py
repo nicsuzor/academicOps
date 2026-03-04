@@ -274,7 +274,7 @@ def parse_framework_reflection(text: str) -> dict[str, Any] | None:
 
     # Last resort: unstructured fallback (infer from bullets/keywords)
     if not result:
-        result = _parse_unstructured_reflection(reflection_text)
+        result = _parse_unstructured_reflection(reflection_text) or {}
 
     return result if result else None
 
