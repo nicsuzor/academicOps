@@ -53,7 +53,7 @@ Before decomposing, verify the task's position in the graph is sound:
 | WHY test          | Can't justify task in terms of parent   | Re-parent or create bridging epic            |
 | Type-scale match  | Multi-session work typed as `task`      | Retype as `epic`                             |
 | Star pattern      | Parent/Proposal has >5 direct children  | Group siblings under sub-epics               |
-| Depth check       | Project graph is shallow (Avg depth <1) | Deepen hierarchy with intermediate groupings |
+| Depth check       | Project graph is shallow (Avg depth <2) | Deepen hierarchy with intermediate groupings |
 
 If any check fails, fix the hierarchy BEFORE proceeding with decomposition.
 
