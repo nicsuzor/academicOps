@@ -12,7 +12,7 @@ supersedes: specs/pr-process.md
 ## Giving Effect
 
 - [[.github/workflows/code-quality.yml]] → split into [[.github/workflows/lint.yml]] + [[.github/workflows/typecheck.yml]]
-- [[.github/workflows/agent-merge-prep.yml]] → rewrite: drop LGTM gate, cron-driven, post PR review instead of commit status, add `workflow_dispatch` trigger (already exists in current impl), add loop ceiling check, set `merge-prep-status` commit status on halt
+- [[.github/workflows/agent-merge-prep.yml]] → rewrite: drop LGTM gate, cron-driven, post `gh pr review --approve` on success, add `workflow_dispatch` trigger (already exists in current impl), add loop ceiling check, set `merge-prep-status` commit status on success and on halt
 - [[.github/workflows/merge-prep-cron.yml]] → simplify: 10-min cron, label-free qualification (commit status replaces comment-text scanning)
 - [[.github/workflows/agent-conceptual-review.yml]] → rename to [[.github/workflows/agent-review.yml]], switch to `gh pr review`
 - [[.github/workflows/summary-and-merge.yml]] → **new**: environment-gated merge workflow
@@ -122,7 +122,7 @@ A PR qualifies for merge-prep if ALL of the following are true:
 
 1. **Age gate:** Last commit was >= 15 minutes ago. This preserves a bazaar window for external reviews (Gemini, Copilot) to arrive before merge-prep triages them.
 2. **No in-progress run:** `gh run list --workflow=agent-merge-prep.yml --json status` shows no `in_progress` or `queued` run for this PR. Replaces the `merge-prep-running` label.
-3. **Not permanently halted:** The latest commit does not have a `merge-prep-status` commit status (via `gh api repos/{owner}/{repo}/commits/{sha}/statuses`) with `state: failure`. Set by merge-prep after 3 consecutive failures. Replaces the `merge-prep-failed` label and comment-text scanning.
+3. **Not already completed or permanently halted:** The latest commit does not have a `merge-prep-status` commit status (via `gh api repos/{owner}/{repo}/commits/{sha}/statuses`) with `state: success` or `state: failure`. Merge-prep sets `success` at the end of every successful run (preventing redundant re-processing if no new commits have arrived); it sets `failure` after 3 consecutive failures. A new commit from any actor clears this automatically — the new SHA has no status yet, so merge-prep will re-run. Replaces the `merge-prep-failed` label and comment-text scanning.
 
 The cron dispatcher does not check whether checks are passing. Merge-prep runs regardless — it will fix what it can and post an honest outcome.
 
@@ -134,9 +134,11 @@ The cron dispatcher does not check whether checks are passing. Merge-prep runs r
 4. Resolves merge conflicts if present (`git merge origin/main --no-edit`).
 5. Reads ALL GitHub PR review feedback: Agent Review, external bots (Gemini, Copilot), human reviewers. Triages each piece: fix, dismiss, or defer.
 6. Runs `ruff check --fix && ruff format`, `basedpyright`, `pytest` locally.
-7. Commits and pushes fixes with `Merge-Prep-By: agent` trailer.
+7. Commits and pushes fixes with `Merge-Prep-By: agent` trailer (if any fixes are needed).
 8. Posts a triage summary comment.
-9. Triggers `summary-and-merge.yml` via `gh workflow run` (or `workflow_dispatch`).
+9. Posts `gh pr review --approve` (satisfies `required_approving_review_count: 1` in branch protection, and ensures approval always reflects this run's output).
+10. Sets `merge-prep-status: success` commit status on the latest commit.
+11. Triggers `summary-and-merge.yml` via `gh workflow run` (or `workflow_dispatch`).
 
 **No comment parsing.** Merge-prep reads GitHub PR _reviews_ (step 5) — a structured, native GitHub mechanism. It does not scan arbitrary comment text for instructions. Human direction comes through the review mechanism (REQUEST_CHANGES with notes), not freeform comments.
 
@@ -147,7 +149,7 @@ Merge-prep signals readiness by triggering **`summary-and-merge.yml`**, which:
 - **Job 1 (summary):** Posts a decision brief comment on the PR — a concise summary of what changed, what reviews said, what merge-prep fixed, and what's left. The human reads this one comment, not 30 scattered review threads.
 - **Job 2 (merge):** Requires the `production` environment. The maintainer sees the summary, clicks "Approve" in the GitHub Environments UI, and the PR merges automatically.
 
-This replaces the previous design where merge-prep posted `gh pr review --approve` and the human had to separately approve in the PR review UI.
+Merge-prep still posts `gh pr review --approve` (step 9 above) to satisfy the `required_approving_review_count: 1` branch protection rule. The environment gate supplements this: rather than the human providing a second approval in the PR review UI (same interface, same comment thread), the human decides via the Actions environment gate — a clean, separate UI that presents only the decision brief and an Approve/Reject button.
 
 **Why GitHub Environments?** The maintainer's stated requirement is "I want a summary and a decision, not a bunch of PR comments." Environments provide exactly this: a clean gate with a single approval button, separate from the PR review thread. The decision brief gives context; the environment gate gives the action.
 
@@ -162,7 +164,7 @@ All merge-prep runs share a global concurrency group `merge-prep-global` to prev
 | 1st failure   | Workflow run shows as failed in Actions tab. Retry on next cron tick (10 min).                                                                                                                                                                                            |
 | 2nd failure   | Same.                                                                                                                                                                                                                                                                     |
 | 3rd failure   | (1) Dismiss any prior merge-prep approval. (2) Set `merge-prep-status: failure` commit status on latest commit via GitHub API. (3) Post notification comment for human visibility. Subsequent cron ticks skip this PR (detected via commit status API, not comment text). |
-| Manual retry  | Human uses Actions → Agent: Merge Prep → Run workflow (with PR number). The workflow_dispatch trigger already exists. Merge-prep re-runs; if successful, sets `merge-prep-status: success` and triggers summary-and-merge.                                                |
+| Manual retry  | Human uses Actions → Agent: Merge Prep → Run workflow (with PR number). The workflow_dispatch trigger already exists. Merge-prep re-runs; if successful, posts `gh pr review --approve`, sets `merge-prep-status: success`, and triggers summary-and-merge (same as a normal successful run).                                                |
 
 No `merge-prep-failed` label. No `merge-prep-running` label. No comment-text scanning. State is read from run history (in-progress check) and the commit status API (halt check).
 
@@ -247,8 +249,8 @@ No separate auto-merge configuration needed — the merge is executed by the wor
 | ----------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `code-quality.yml`            | **Split into two**  | Create `lint.yml` (Lint job) and `typecheck.yml` (Type Check job). Remove `needs: lint` dependency.                                                                                                                                                                                          |
 | `agent-conceptual-review.yml` | **Rename + update** | Rename to `agent-review.yml`. Switch from commit status to `gh pr review`.                                                                                                                                                                                                                   |
-| `agent-merge-prep.yml`        | **Rewrite**         | Drop `lgtm-gate` job. Remove all label operations. Add: dismiss prior approval (step 1), loop ceiling check (step 3), set `merge-prep-status` commit status on halt. Add `workflow_dispatch` trigger with `pr_number` input (already present in current impl). Add global concurrency group. |
-| `merge-prep-cron.yml`         | **Simplify**        | Change cron to `*/10 * * * *`. Replace label checks with `gh run list` (in-progress) + commit status API (halt). Remove `gh workflow run` label manipulation.                                                                                                                                |
+| `agent-merge-prep.yml`        | **Rewrite**         | Drop `lgtm-gate` job. Remove all label operations. Add: dismiss prior approval (step 1), loop ceiling check (step 3), post `gh pr review --approve` on success (step 9), set `merge-prep-status: success` commit status on success (step 10), set `merge-prep-status: failure` on halt. Add `workflow_dispatch` trigger with `pr_number` input (already present in current impl). Add global concurrency group. |
+| `merge-prep-cron.yml`         | **Simplify**        | Change cron to `*/10 * * * *`. Replace label checks with `gh run list` (in-progress) + commit status API (`success` or `failure` = skip). Remove `gh workflow run` label manipulation.                                                                                                      |
 | `summary-and-merge.yml`       | **New**             | Two-job workflow: decision brief + environment-gated merge. Triggered by merge-prep on success.                                                                                                                                                                                              |
 | `pytest.yml`                  | **No change**       | Already independent.                                                                                                                                                                                                                                                                         |
 | Ruleset                       | **Update**          | Add `Pytest` to required status checks.                                                                                                                                                                                                                                                      |
@@ -312,9 +314,11 @@ environment:
 - [ ] No `lgtm`, `merge-prep-running`, or `merge-prep-failed` labels in any workflow file
 - [ ] No comment-text scanning in merge-prep-cron.yml (halt detection uses commit status API)
 - [ ] In-progress detection uses `gh run list` — no duplicate merge-prep runs
+- [ ] On every successful merge-prep run: `gh pr review --approve` posted, `merge-prep-status: success` commit status set on latest commit, `summary-and-merge.yml` triggered
+- [ ] Cron qualification skips PRs where latest commit has `merge-prep-status: success` (already processed) or `failure` (halted)
 - [ ] After 3 consecutive merge-prep failures: merge-prep approval dismissed, `merge-prep-status: failure` commit status set, notification comment posted, cron skips the PR
 - [ ] Runaway loop ceiling: merge-prep halts (same as above) when `Merge-Prep-By:` commit count in branch ≥ 5
-- [ ] Manual retry via workflow_dispatch resets halt state
+- [ ] Manual retry via workflow_dispatch resets halt state (re-runs full success sequence if successful)
 - [ ] Merge-prep does not parse arbitrary comment text for instructions (reads PR reviews only)
 - [ ] Global concurrency group prevents simultaneous merge-prep runs across PRs
 - [ ] `validate-ruleset.yml` passes with new job names
@@ -345,6 +349,9 @@ The v1 cascade limit (max 3 pipeline runs, tracked via comments) was added after
 
 **Why dismiss merge-prep's prior approval before each run?**
 `dismiss_stale_reviews_on_push: false` is set so that the _human's_ approval is not wiped out by every bot push. Without this setting, a lint autofix push would dismiss the human's approval and require a second human action. However, this means merge-prep's approval from a prior run would also survive subsequent pushes. If merge-prep then runs again (because new commits arrived), its old approval might represent code that no longer exists. Dismissing the prior approval at the start of each run ensures merge-prep's approval is always freshly earned.
+
+**Why set `merge-prep-status: success` on every successful run, not just manual retry?**
+Without a `success` status, the cron qualification criteria only check for `failure` (permanent halt) and in-progress runs. If merge-prep succeeds without pushing any commits (all checks pass, no review feedback to address), there is no `Merge-Prep-By:` trailer on the latest commit (the self-loop check relies on this), so the next cron tick dispatches merge-prep again. This repeats every 10 minutes until the human approves — posting duplicate triage summaries and triggering duplicate `summary-and-merge` runs. Setting `merge-prep-status: success` after every successful completion closes this gap: the cron skips the PR until a new commit arrives (which creates a new SHA without any status, resetting the check naturally). This uses zero new infrastructure — the same commit status API already specified for the failure path.
 
 **Why remove LGTM entirely?**
 The LGTM workflow was a dispatch mechanism because merge-prep was event-driven. With cron, there is no dispatch to coordinate — the cron finds qualifying PRs itself. The `lgtm` label, comment pattern, and LGTM workflow are all eliminated.
@@ -397,7 +404,7 @@ Each step leaves the pipeline functional. Never delete a workflow until its repl
 - Remove all label operations.
 - Add step 1: dismiss prior merge-prep approval.
 - Add step 3: check loop ceiling (`git log origin/main..HEAD --grep="^Merge-Prep-By:"`) — halt if ≥ 5.
-- On success: trigger `summary-and-merge.yml` instead of posting PR review approval.
+- On success: post `gh pr review --approve` (step 9), set `merge-prep-status: success` commit status (step 10), then trigger `summary-and-merge.yml` (step 11).
 - Add global concurrency group `merge-prep-global`.
 - On 3rd failure or ceiling breach: dismiss approval + set `merge-prep-status: failure` commit status + post notification comment.
 
@@ -424,6 +431,8 @@ Each step leaves the pipeline functional. Never delete a workflow until its repl
 7. **Loop ceiling calibration.** The ceiling of 5 is conservative. After 20 real PRs, review actual `Merge-Prep-By:` commit counts and adjust if warranted. A ceiling too low causes false halts; too high defeats the purpose.
 
 8. **Summary workflow trigger filtering.** `summary-and-merge.yml` should only run when triggered by merge-prep (not manually or accidentally). Consider using a `workflow_dispatch` input to pass the PR number and a validation step to confirm merge-prep actually succeeded.
+
+9. **Decision brief + environment approval UX.** The maintainer reads the decision brief as a PR comment (Job 1) but approves in the GitHub Actions environment UI (Job 2) — two different pages. After 5–10 real PRs, evaluate whether this navigation split causes friction in practice, or whether the clean separation of "reading" (PR tab) and "deciding" (Actions tab) is actually preferred over a single-page decision point.
 
 ## Related Specifications
 
