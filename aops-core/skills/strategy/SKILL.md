@@ -57,7 +57,7 @@ As conversation unfolds, **automatically capture** (without interrupting flow):
 
 ## Load Context FIRST
 
-**MANDATORY**: Before responding, use PKB to understand user's strategic landscape.
+**MANDATORY** (see [[AXIOMS.md#P52]] — read-then-write memory): Before responding, use PKB to understand user's strategic landscape.
 
 ```
 mcp__pkb__search(query="...") for:
