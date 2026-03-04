@@ -62,9 +62,9 @@ Is this about the user? (projects, goals, context, tasks)
 
 **NEVER create files for:**
 
-- What an agent did: "Completed X on DATE" → `mcp__pkb__create_task(task_title="...", type="task")`
-- What an agent found: "Discovered bug in Y" → `mcp__pkb__create_task(task_title="...", type="task", tags=["bug"])`
-- Observations: "Noticed pattern Z" → `mcp__pkb__create_task(task_title="Learning: Z")`
+- What an agent did: "Completed X on DATE" → `mcp__pkb__create_task(task_title="...", type="task", project="<project>", parent="<parent-id>")`
+- What an agent found: "Discovered bug in Y" → `mcp__pkb__create_task(task_title="...", type="task", project="<project>", parent="<parent-id>", tags=["bug"])`
+- Observations: "Noticed pattern Z" → `mcp__pkb__create_task(task_title="Learning: Z", project="<project>", parent="<parent-id>")`
 - Experiments: "Tried approach A" → `mcp__pkb__update_task(id="...", body="...")`
 - Decisions: "Chose B over C" → update task body, synthesize to HEURISTICS.md later
 

@@ -126,10 +126,12 @@ For tasks with `type: learn`:
 2. **Write findings to task body** - Use `update_task(id, body=...)` to append findings
 3. **Summarize in parent epic** - Read parent, append to "## Findings from Spikes"
 4. **Apply learnings to framework** - Before creating follow-up tasks, check if findings warrant direct changes to framework files (HEURISTICS.md, skill prompts, specs). Knowledge files alone are insufficient — if a learning points to a process improvement, change the process.
-5. **Decompose actionable items** - Create subtasks for remaining work that can't be done in this session:
+5. **Decompose actionable items** - Create subtasks for remaining work that can't be done in this session. Resolve parent per [[references/hierarchy-quality-rules]]:
    ```
    mcp__pkb__create_task(
      id="<spike-id>",
+     project="<project>",
+     parent="<resolved-parent-id>",
      children=[
        {"title": "[Fix] Issue 1", "type": "task", "body": "Context from spike..."},
        {"title": "[Fix] Issue 2", "type": "task", "body": "Context from spike..."}
@@ -183,6 +185,8 @@ If task is too large but scope is clear:
 ```
 mcp__pkb__create_task(
   id="<parent-id>",
+  project="<project>",
+  parent="<resolved-parent-id>",
   children=[
     {"title": "Subtask 1: [specific action]", "type": "action", "order": 0},
     {"title": "Subtask 2: [specific action]", "type": "action", "order": 1},

@@ -71,13 +71,14 @@ Output the reflection in **exact AGENTS.md format**:
 
 ### No task currently claimed BUT work was completed
 
-CREATE a historical task to capture the session's work:
+CREATE a historical task to capture the session's work (MANDATORY: set `parent` to project task):
 
 ```python
 mcp__pkb__create_task(
   title="[Session] <brief description of work done>",
   type="task",
   project="<relevant project or 'aops'>",
+  parent="<project-id>", # MANDATORY: Link to hierarchy
   status="done",
   priority=3,
   body="Historical task created at /dump.\n\n## Work Completed\n<what was accomplished>\n\n## Outcome\n<success/partial/failed>\n\n## Context\n<any follow-up notes>"

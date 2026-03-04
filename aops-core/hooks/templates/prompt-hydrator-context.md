@@ -114,7 +114,7 @@ You may bypass task queue ONLY when ANY is true:
 
 **New task needed**:
 
-- Create with: `mcp__pkb__create_task(task_title="[title]", type="task", project="[project]", priority=[n])`
+- Create with: `mcp__pkb__create_task(task_title="[title]", type="task", project="[project]", parent="[epic-id or project-id]", priority=[n])`
 
 **OR**
 

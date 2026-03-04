@@ -36,6 +36,8 @@ If a related task exists with status != "done":
 
 ### Step 2: Route and Create Task
 
+**Resolve parent** per [[references/hierarchy-quality-rules]] before creating.
+
 **Determine assignee**:
 
 - `polecat` (DEFAULT): Almost everything. Workers decompose tasks and escalate at actual decision forks via `status: blocked` or AskUserQuestion. A task having design aspects does NOT make it a judgment task.
@@ -56,6 +58,7 @@ mcp__pkb__create_task(
   task_title="<clear, actionable title>",
   type="task",  # or: bug, feature, learn
   project="<infer from context>",
+  parent="<resolved-parent-id>",
   priority=2,
   assignee="polecat",  # or null for judgment tasks, "nic" only if explicitly requested
   tags=["<relevant>", "<tags>"],

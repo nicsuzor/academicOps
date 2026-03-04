@@ -32,7 +32,7 @@ Execute the [[base-handover]] workflow. The steps are:
 
 1. **Commit and push all work** (MANDATORY per P#24)
 2. **Update task with progress** (or create historical task if none claimed)
-3. **File follow-up tasks** for outstanding work — use [[decompose]] principles for appropriate granularity
+3. **File follow-up tasks** for outstanding work — use [[decompose]] principles and ensure all have a **parent** set to the current task or epic
 4. **Persist discoveries to memory** (optional)
 5. **Output Framework Reflection**
 6. **Confirm handover complete** and halt

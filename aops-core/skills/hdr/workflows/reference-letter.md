@@ -29,6 +29,7 @@ mcp__pkb__create_task(
     task_title="Write {student}'s {purpose} reference letter",
     type="task",
     project="hdr",
+    parent="hdr-tasks-root", # MANDATORY: Link to HDR project
     priority=1,  # Reference letters typically have deadlines
     due="{deadline}",  # ISO format: 2026-02-02T00:00:00+00:00
     tags=["reference", "{student-firstname}", "{purpose}"],
