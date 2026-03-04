@@ -92,6 +92,16 @@
     .btn-focus { background: #7c3aed; color: white; }
     .btn-focus:hover { background: #6d28d9; }
 
+    /* Critical path overlay on selected node's dependency chain */
+    @keyframes chain-pulse {
+      0%   { stroke-opacity: 0.9; stroke-width: 4px; }
+      50%  { stroke-opacity: 0.5; stroke-width: 6px; }
+      100% { stroke-opacity: 0.9; stroke-width: 4px; }
+    }
+    .chain-upstream { animation: chain-pulse 1.8s infinite ease-in-out; stroke: #f97316; }
+    .chain-downstream { animation: chain-pulse 1.8s infinite ease-in-out; stroke: #a78bfa; }
+    .chain-path { pointer-events: none; fill: none; }
+
     /* Spotlight "Start Here" ring for top-priority nodes */
     @keyframes spotlight-pulse {
       0%   { stroke-opacity: 0.95; stroke-width: 3px; }
@@ -145,7 +155,7 @@
     let focusNodeId = null;       // non-null = ego network focus mode
     let focusNeighborSet = null;  // Set of visible node IDs in focus mode
     let simulation = null;
-    let svg, container, zoom, linkEls, nodeEls, hullLayer;
+    let svg, container, zoom, linkEls, nodeEls, hullLayer, critPathLayer;
 
     // --- Ego network helpers ---
 
@@ -188,6 +198,7 @@
         activeNodeId = null;
         document.getElementById("focus-back").style.display = "none";
         document.getElementById("detail").style.display = "none";
+        clearCriticalPath();
         updateVisibility();
         autoZoomToFit(graphData.nodes.filter(n => n.x != null && n.x > -9000), 0);
     }
@@ -428,12 +439,108 @@
             .text(d => d.id.replace(/_/g, " ").toUpperCase().substring(0, 22));
     }
 
+    // --- Critical path helpers ---
+
+    // Returns {upstream: Set<edgeIndex>, downstream: Set<edgeIndex>}
+    // upstream  = depends_on edges on paths LEADING TO nodeId (blockers)
+    // downstream = depends_on edges on paths FROM nodeId (what it enables)
+    function getChainEdges(nodeId) {
+        const links = graphData.links;
+        const upstream = new Set();
+        const downstream = new Set();
+
+        // BFS upstream (walk depends_on edges backwards)
+        let frontier = new Set([nodeId]);
+        const visitedUp = new Set([nodeId]);
+        while (frontier.size > 0) {
+            const next = new Set();
+            links.forEach((l, i) => {
+                if (l.type !== "depends_on") return;
+                const sid = (typeof l.source === "object") ? l.source.id : l.source;
+                const tid = (typeof l.target === "object") ? l.target.id : l.target;
+                if (frontier.has(tid) && !visitedUp.has(sid)) {
+                    upstream.add(i);
+                    next.add(sid);
+                    visitedUp.add(sid);
+                }
+            });
+            frontier = next;
+        }
+
+        // BFS downstream (walk depends_on edges forwards)
+        frontier = new Set([nodeId]);
+        const visitedDown = new Set([nodeId]);
+        while (frontier.size > 0) {
+            const next = new Set();
+            links.forEach((l, i) => {
+                if (l.type !== "depends_on") return;
+                const sid = (typeof l.source === "object") ? l.source.id : l.source;
+                const tid = (typeof l.target === "object") ? l.target.id : l.target;
+                if (frontier.has(sid) && !visitedDown.has(tid)) {
+                    downstream.add(i);
+                    next.add(tid);
+                    visitedDown.add(tid);
+                }
+            });
+            frontier = next;
+        }
+
+        return {upstream, downstream};
+    }
+
+    function updateCriticalPath(nodeId) {
+        if (!critPathLayer) return;
+        critPathLayer.selectAll("*").remove();
+        if (!nodeId) return;
+
+        const {upstream, downstream} = getChainEdges(nodeId);
+        if (upstream.size === 0 && downstream.size === 0) return;
+
+        const allChainLinks = graphData.links.filter((l, i) => upstream.has(i) || downstream.has(i));
+        const isContainment = currentLayout.startsWith("tree") ||
+                              currentLayout.startsWith("circle") ||
+                              currentLayout.startsWith("arc");
+        if (isContainment) return;
+
+        critPathLayer.selectAll(".chain-path")
+            .data(allChainLinks)
+            .join("path")
+            .attr("class", (l, i) => {
+                const idx = graphData.links.indexOf(l);
+                return `chain-path ${upstream.has(idx) ? "chain-upstream" : "chain-downstream"}`;
+            })
+            .attr("d", l => {
+                const sx = l.source.x, sy = l.source.y;
+                const tx = l.target.x, ty = l.target.y;
+                const mx = (sx + tx) / 2;
+                return `M${sx},${sy} L${mx},${sy} L${mx},${ty} L${tx},${ty}`;
+            });
+    }
+
+    function clearCriticalPath() {
+        if (critPathLayer) critPathLayer.selectAll("*").remove();
+    }
+
     // Outer-scope zoom-to-fit (also used by enterFocusMode / exitFocusMode)
-    function autoZoomToFit(ns, delay) {
+    // When trimOutliers=true (default for initial layout fit), compute bounding box from
+    // the 5th–95th percentile of node positions so distant outliers don't force the whole
+    // graph to zoom out to an unreadable scale.
+    function autoZoomToFit(ns, delay, trimOutliers) {
         if (!ns || ns.length === 0) return;
         function doZoom() {
-            const xs = ns.map(n => n.x);
-            const ys = ns.map(n => n.y);
+            let fitNodes = ns;
+            if (trimOutliers !== false && ns.length > 8) {
+                const xs = ns.map(n => n.x).slice().sort((a, b) => a - b);
+                const ys = ns.map(n => n.y).slice().sort((a, b) => a - b);
+                const p5x = xs[Math.floor(xs.length * 0.05)];
+                const p95x = xs[Math.ceil(xs.length * 0.95) - 1];
+                const p5y = ys[Math.floor(ys.length * 0.05)];
+                const p95y = ys[Math.ceil(ys.length * 0.95) - 1];
+                const core = ns.filter(n => n.x >= p5x && n.x <= p95x && n.y >= p5y && n.y <= p95y);
+                if (core.length >= 4) fitNodes = core;
+            }
+            const xs = fitNodes.map(n => n.x);
+            const ys = fitNodes.map(n => n.y);
             const x0 = Math.min(...xs) - 80, x1 = Math.max(...xs) + 80;
             const y0 = Math.min(...ys) - 80, y1 = Math.max(...ys) + 80;
             const dx = x1 - x0, dy = y1 - y0;
@@ -575,6 +682,9 @@
           .attr("stroke-linecap","round").attr("stroke-linejoin","round");
 
         // Nodes
+        // Critical path overlay — above edges, below nodes
+        critPathLayer = container.append("g").attr("class", "crit-path-layer");
+
         const now = Date.now() / 1000;
         const cutoff48h = 48 * 3600;
 
@@ -620,6 +730,7 @@
             } else {
                 document.getElementById("detail").style.display="none";
                 activeNodeId = null;
+                clearCriticalPath();
                 updateVisibility();
             }
         });
@@ -683,6 +794,15 @@
 
         router();
         nodeEls.attr("transform", d => `translate(${d.x},${d.y})`);
+        // Update critical path overlay positions each tick (needed for force simulation)
+        if (activeNodeId && critPathLayer && critPathLayer.selectAll(".chain-path").size() > 0) {
+            critPathLayer.selectAll(".chain-path").attr("d", l => {
+                const sx = l.source.x, sy = l.source.y;
+                const tx = l.target.x, ty = l.target.y;
+                const mx = (sx + tx) / 2;
+                return `M${sx},${sy} L${mx},${sy} L${mx},${ty} L${tx},${ty}`;
+            });
+        }
         updateHulls();
     }
 
@@ -886,6 +1006,19 @@
         const cBtn = document.getElementById("btn-complete");
         cBtn.style.display = ["done", "completed", "cancelled"].includes(d.status) ? "none" : "flex";
 
+        // Show blocking chain count in detail panel
+        const {upstream, downstream} = getChainEdges(d.id);
+        if (upstream.size > 0 || downstream.size > 0) {
+            const chainDiv = document.createElement("div");
+            chainDiv.className = "f";
+            chainDiv.innerHTML = `<span class="fl">Chain</span><span class="fv" style="color:#f97316">` +
+                `${upstream.size > 0 ? "▲ blocked by " + upstream.size : ""}` +
+                `${upstream.size > 0 && downstream.size > 0 ? " · " : ""}` +
+                `${downstream.size > 0 ? "▼ enables " + downstream.size : ""}` +
+                `</span>`;
+            document.getElementById("df").appendChild(chainDiv);
+        }
+        updateCriticalPath(d.id);
         updateVisibility();
     }
 

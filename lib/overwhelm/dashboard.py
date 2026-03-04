@@ -3833,7 +3833,17 @@ def render_task_graph_page():
         _status_str = (
             " · ".join(_summary_parts) if _summary_parts else f"{len(d3_data['nodes'])} nodes"
         )
-        st.caption(f"{_status_str} | {len(d3_data['links'])} links{layout_info}")
+        # Add "start here" names to status bar for immediate actionability
+        _spotlight_nodes = [n for n in d3_data["nodes"] if n.get("spotlight")]
+        if _spotlight_nodes:
+            _spotlight_labels = [
+                (n.get("title") or n.get("label") or n["id"])[:40] for n in _spotlight_nodes[:3]
+            ]
+            _star_str = "★ Start: " + " · ".join(_spotlight_labels)
+            st.caption(f"{_status_str} | {len(d3_data['links'])} links{layout_info}")
+            st.caption(f"**{_star_str}**")
+        else:
+            st.caption(f"{_status_str} | {len(d3_data['links'])} links{layout_info}")
 
         # Project filter dropdown (sidebar)
         projects = sorted(set(n.get("project", "") for n in d3_data["nodes"] if n.get("project")))

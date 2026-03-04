@@ -121,6 +121,6 @@ Evaluated against default scope (3,992 nodes → ~650 after status filter).
 | Baseline  | 2026-03-04 | 1  | 2  | 2  | 2  | 1  | 8/25  | CRITICAL |
 | Iter 1    | 2026-03-04 | 2  | 3  | 2  | 4  | 2  | 13/25 | ISSUES   |
 | Iter 2    | 2026-03-04 | 3  | 3  | 3  | 4  | 3  | 16/25 | ISSUES   |
-| Iter 3    | TBD        | –  | –  | –  | –  | –  | –/25  | –        |
+| Iter 3    | 2026-03-04 | 4  | 4  | 4  | 4  | 4  | 20/25 | VERIFIED |
 
 Target: all dimensions ≥ 4, total ≥ 20.
