@@ -16,7 +16,7 @@ Usage:
 
 from __future__ import annotations
 
-import os
+import logging
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -52,19 +52,35 @@ def _get_project_workflow_entries() -> list[FileEntry]:
     if (plugin_root.parent / ".agent" / "workflows").exists():
         search_dirs.append(plugin_root.parent / ".agent" / "workflows")
 
-    processed_paths = set()
+    # Resolve allowed roots for symlink boundary checking
+    allowed_roots = [d.resolve() for d in search_dirs]
+    processed_paths: set[Path] = set()
 
     for workflows_dir in search_dirs:
         for wf_file in workflows_dir.glob("*.md"):
-            if wf_file in processed_paths:
+            # Resolve to canonical path for deduplication and symlink boundary check
+            try:
+                resolved = wf_file.resolve(strict=True)
+            except OSError:
+                logging.warning("Skipping %s: could not resolve path", wf_file)
                 continue
-            processed_paths.add(wf_file)
+
+            if resolved in processed_paths:
+                continue
+            processed_paths.add(resolved)
+
+            # Security: skip files that resolve outside allowed directories (symlink escape)
+            if not any(resolved.is_relative_to(root) for root in allowed_roots):
+                logging.warning(
+                    "Skipping %s: resolved path is outside allowed directories", wf_file
+                )
+                continue
 
             try:
-                content = wf_file.read_text()
+                content = resolved.read_text()
                 name = wf_file.stem
                 desc = f"Project-specific workflow: {name}"
-                keywords = [name.lower()]
+                keywords: list[str] = [name.lower()]
                 # Add individual words from filename
                 keywords.extend(name.lower().replace("-", " ").replace("_", " ").split())
 
@@ -78,22 +94,24 @@ def _get_project_workflow_entries() -> list[FileEntry]:
                                 desc = fm.get("description", desc).strip()
                                 triggers = fm.get("triggers", [])
                                 if isinstance(triggers, list):
-                                    keywords.extend([str(t).lower() for t in triggers])
+                                    # Cap triggers to prevent keyword flooding
+                                    keywords.extend([str(t).lower() for t in triggers[:20]])
                                 elif isinstance(triggers, str):
                                     keywords.append(triggers.lower())
-                        except Exception:
+                        except yaml.YAMLError:
                             pass
 
                 # Calculate path relative to plugin root for FileEntry.absolute_path() compatibility
                 try:
-                    rel_path = os.path.relpath(wf_file, plugin_root)
+                    rel_path = str(wf_file.relative_to(plugin_root))
                 except ValueError:
                     rel_path = str(wf_file)
 
                 entries.append(
                     FileEntry(path=rel_path, description=desc, keywords=tuple(set(keywords)))
                 )
-            except Exception:
+            except Exception as e:
+                logging.warning("Failed to process project workflow file %s: %s", wf_file, e)
                 continue
 
     return entries
