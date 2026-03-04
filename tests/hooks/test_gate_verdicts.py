@@ -8,14 +8,15 @@ actual Claude Code and Gemini CLI hook invocations.
 Key invariants tested:
 1. Compliance agents (hydrator, custodiet, audit, butler) are NEVER blocked
 2. Write tools ARE blocked/warned when hydration gate is closed
-3. Read-only tools are subject to hydration gate (only always_available is exempt)
+3. Read-only tools are subject to hydration gate (only infrastructure is exempt)
 4. Read-only tools bypass custodiet gate (unlike write tools)
-5. Always-available tools bypass ALL gates
-6. Custodiet blocks at ops threshold for write tools only
+5. Infrastructure tools bypass ALL gates; spawn tools (Agent, Skill) do NOT
+6. Custodiet blocks at ops threshold for write/spawn tools only
 7. Stop event respects handover and QA gates
 8. Claude Code and Gemini CLI output formats match their respective schemas
 9. Gate triggers (hydrator opens gate, custodiet resets counter) fire correctly
 10. Gate mode env var overrides work correctly
+11. Custodiet deadlock prevented: Agent(custodiet) dispatch resets counter before policy fires
 
 Run with:
     uv run pytest tests/hooks/test_gate_verdicts.py -v
@@ -33,7 +34,7 @@ AOPS_CORE = Path(__file__).parent.parent.parent / "aops-core"
 if str(AOPS_CORE) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE))
 
-from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES
+from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES, get_tool_category
 from hooks.router import HookRouter
 from hooks.schemas import (
     CanonicalHookOutput,
@@ -295,8 +296,6 @@ class TestHydrationGateAllowsInfrastructure:
         if result is not None:
             # Note: always_available_bypass contains some Agent calls which are now BLOCKED.
             # We filter those out in the logic below.
-            from hooks.gate_config import get_tool_category
-
             if get_tool_category(scenario["tool_name"]) == "infrastructure":
                 assert result.verdict == GateVerdict.ALLOW, (
                     f"[{scenario['id']}] Infrastructure tool '{scenario['tool_name']}' "
@@ -950,26 +949,13 @@ class TestLiveCustodietThreshold:
 
         result = router._dispatch_gates(ctx, state)
 
-        # Some tools are exempt from custodiet threshold (infrastructure, read_only)
-        # Check production definitions.py: excluded_tool_categories=["infrastructure", "read_only"]
-        exempt_tools = {
-            # infrastructure
-            "mcp__plugin_aops-core_pkb__get_task",
-            "mcp__plugin_aops-core_pkb__list_tasks",
-            "get_task",
-            "list_tasks",
-            "ask_user",
-            "AskUserQuestion",
-            # read_only
-            "Read",
-            "read_file",
-            "Grep",
-            "grep_search",
-            "Glob",
-            "list_files",
-        }
+        # Some tools are exempt from custodiet threshold (infrastructure, read_only).
+        # Derived dynamically from gate_config to stay in sync with production config.
+        # Matches excluded_tool_categories=["infrastructure", "read_only"] in definitions.py.
+        _exempt_categories = {"infrastructure", "read_only"}
+        tool_cat = get_tool_category(scenario["tool_name"] or "")
 
-        if scenario["tool_name"] in exempt_tools:
+        if tool_cat in _exempt_categories:
             assert result is None or result.verdict == GateVerdict.ALLOW, (
                 f"[{scenario['id']}] {scenario['tool_name']} is exempt from custodiet "
                 f"but got non-allow verdict: {result.verdict if result else 'None'}"
@@ -984,6 +970,109 @@ class TestLiveCustodietThreshold:
                 f"[{scenario['id']}] {scenario['tool_name']} should be blocked/warned "
                 f"at custodiet threshold, got ALLOW"
             )
+
+
+# ===========================================================================
+# CUSTODIET DEADLOCK PREVENTION: Agent(custodiet) must never be self-blocked
+# ===========================================================================
+
+
+class TestCustodietDeadlockPrevention:
+    """Agent(custodiet) must bypass the custodiet gate when dispatched.
+
+    Before the PreToolUse trigger was added to the custodiet gate, there was
+    a deadlock: when ops >= threshold, the gate blocked Agent(custodiet)
+    itself (because Agent is in 'spawn' category, not exempt). The agent
+    needed to satisfy the gate, but the gate blocked the agent dispatch.
+
+    Fix (definitions.py): added PreToolUse to the custodiet trigger's
+    hook_event pattern. The trigger fires (resets ops_since_open=0) BEFORE
+    the policy evaluates, so the policy sees 0 < threshold and doesn't fire.
+
+    This mirrors how the hydration gate opens via PreToolUse for the hydrator.
+    """
+
+    @pytest.mark.parametrize(
+        "subagent_type,tool_name,tool_input",
+        [
+            # Claude Code: Agent tool dispatching custodiet
+            (
+                "custodiet",
+                "Agent",
+                {"subagent_type": "custodiet", "prompt": "/tmp/custodiet.md"},
+            ),
+            (
+                "aops-core:custodiet",
+                "Agent",
+                {"subagent_type": "aops-core:custodiet", "prompt": "/tmp/custodiet.md"},
+            ),
+            # Gemini CLI: delegate_to_agent dispatching custodiet
+            (
+                "custodiet",
+                "delegate_to_agent",
+                {"name": "custodiet", "query": "/tmp/custodiet.md"},
+            ),
+            (
+                "aops-core:custodiet",
+                "delegate_to_agent",
+                {"name": "aops-core:custodiet", "query": "/tmp/custodiet.md"},
+            ),
+        ],
+        ids=[
+            "claude-custodiet",
+            "claude-aops-core-custodiet",
+            "gemini-custodiet",
+            "gemini-aops-core-custodiet",
+        ],
+    )
+    def test_custodiet_dispatch_not_blocked_at_threshold(
+        self, router, subagent_type, tool_name, tool_input
+    ):
+        """Dispatching custodiet agent must not be blocked when threshold is exceeded."""
+        state = SessionState.create("test-deadlock")
+        # Set ops well above threshold
+        state.gates["custodiet"].ops_since_open = 75
+
+        ctx = HookContext(
+            session_id="test-deadlock",
+            hook_event="PreToolUse",
+            tool_name=tool_name,
+            tool_input=tool_input,
+            is_subagent=False,
+            subagent_type=subagent_type,
+        )
+
+        result = router._dispatch_gates(ctx, state)
+
+        if result is not None:
+            assert result.verdict != GateVerdict.DENY, (
+                f"DEADLOCK REGRESSION: {tool_name}(subagent_type={subagent_type!r}) "
+                f"was DENIED at custodiet threshold. This is the deadlock bug: "
+                f"the agent cannot dispatch custodiet to reset the counter it needs "
+                f"to satisfy. The PreToolUse trigger must fire before the policy."
+            )
+
+    def test_custodiet_dispatch_resets_ops_counter(self, router):
+        """Dispatching custodiet resets the ops counter via PreToolUse trigger."""
+        state = SessionState.create("test-deadlock-reset")
+        state.gates["custodiet"].ops_since_open = 75
+
+        ctx = HookContext(
+            session_id="test-deadlock-reset",
+            hook_event="PreToolUse",
+            tool_name="Agent",
+            tool_input={"subagent_type": "custodiet", "prompt": "/tmp/custodiet.md"},
+            is_subagent=False,
+            subagent_type="custodiet",
+        )
+
+        router._dispatch_gates(ctx, state)
+
+        assert state.gates["custodiet"].ops_since_open == 0, (
+            f"PreToolUse trigger for custodiet dispatch should reset ops_since_open to 0, "
+            f"got {state.gates['custodiet'].ops_since_open}. "
+            f"Without this reset, the policy still fires after the dispatch attempt."
+        )
 
 
 class TestLiveReadOnlyTools:
