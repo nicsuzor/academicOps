@@ -1,6 +1,13 @@
 ---
-
-## id: review-responsename: review-response-workflowcategory: academicbases: [base-task-tracking]description: Respond to reviewer comments in a Word document, showing how each has been addressed in an updated draftpermalink: workflows/review-responsetags: [workflow, academic, writing, revision, docx, comments]version: 1.0.0
+id: review-response
+name: review-response-workflow
+category: academic
+bases: [base-task-tracking]
+description: Respond to reviewer comments in a Word document, showing how each has been addressed in an updated draft
+permalink: workflows/review-response
+tags: [workflow, academic, writing, revision, docx, comments]
+version: 1.0.0
+---
 
 # Review Response Workflow
 

@@ -1,3 +1,14 @@
+---
+id: report-finalization
+name: report-finalization-workflow
+category: academic
+bases: [base-task-tracking]
+description: Finalize and revise academic reports after receiving reviewer/stakeholder feedback
+permalink: workflows/report-finalization
+tags: [workflow, academic, writing, revision, report]
+version: 1.0.0
+---
+
 # Workflow: Academic Report Finalization
 
 **Trigger**: User asks to finalize, revise, or prepare a research report for
@@ -77,8 +88,7 @@ implementation.
 
 ### 4.3 Commit and report
 
-- [ ] Commit changes with descriptive message
-- [ ] Update PKB task status
+- [ ] Commit changes with descriptive message; update PKB task status
 - [ ] Summarise: what changed, what was deferred, what needs user review
 
 ## Anti-patterns

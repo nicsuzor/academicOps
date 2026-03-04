@@ -2,6 +2,7 @@ import os
 from unittest.mock import patch
 
 import pytest
+
 from lib.session_paths import _is_gemini_session, get_gate_file_path, get_session_short_hash
 
 
@@ -39,6 +40,12 @@ class TestIsGeminiSession:
 
 class TestGetGateFilePath:
     """Tests for get_gate_file_path function."""
+
+    @pytest.fixture(autouse=True)
+    def _clear_gate_env_vars(self, monkeypatch):
+        """Clear gate file env vars that leak from live sessions."""
+        monkeypatch.delenv("AOPS_GATE_FILE_HYDRATION", raising=False)
+        monkeypatch.delenv("AOPS_GATE_FILE_CUSTODIET", raising=False)
 
     def test_env_override(self):
         """Test that AOPS_GATE_FILE_<GATE> environment variable overrides the path."""

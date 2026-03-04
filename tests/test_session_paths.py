@@ -201,12 +201,16 @@ class TestSessionPaths(unittest.TestCase):
             with patch.object(Path, "home", return_value=Path(tmpdir)):
                 # Mock get_claude_project_folder to avoid needing real cwd
                 with patch("lib.session_paths.get_claude_project_folder", return_value="-project"):
-                    gate_path = session_paths.get_gate_file_path(
-                        "hydration", "07328230-44d4-414b-9fec-191a6eec0948", date="2026-01-24"
-                    )
+                    # Clear env vars that leak from live sessions
+                    with patch.dict(os.environ, {}, clear=False):
+                        os.environ.pop("AOPS_GATE_FILE_HYDRATION", None)
+                        os.environ.pop("AOPS_GATE_FILE_CUSTODIET", None)
+                        gate_path = session_paths.get_gate_file_path(
+                            "hydration", "07328230-44d4-414b-9fec-191a6eec0948", date="2026-01-24"
+                        )
 
-                    self.assertIn(".claude/projects/-project", str(gate_path))
-                    self.assertIn("20260124-07328230-hydration.md", str(gate_path))
+                        self.assertIn(".claude/projects/-project", str(gate_path))
+                        self.assertIn("20260124-07328230-hydration.md", str(gate_path))
 
     def test_get_gate_file_path_gemini_prefix(self):
         """get_gate_file_path returns a valid path for Gemini sessions via prefix."""
@@ -217,13 +221,16 @@ class TestSessionPaths(unittest.TestCase):
             project_hash = hashlib.sha256(b"test").hexdigest()
             gemini_base = Path(tmpdir) / ".gemini" / "tmp" / project_hash
 
+            env_overrides = {
+                "GEMINI_PROJECT_DIR": "test",
+                "AOPS_SESSION_STATE_DIR": str(gemini_base),
+            }
             with (
                 patch.object(Path, "home", return_value=Path(tmpdir)),
-                patch.dict(
-                    os.environ,
-                    {"GEMINI_PROJECT_DIR": "test", "AOPS_SESSION_STATE_DIR": str(gemini_base)},
-                ),
+                patch.dict(os.environ, env_overrides, clear=False),
             ):
+                os.environ.pop("AOPS_GATE_FILE_HYDRATION", None)
+                os.environ.pop("AOPS_GATE_FILE_CUSTODIET", None)
                 gate_path = session_paths.get_gate_file_path(
                     "hydration", "gemini-2026-01-24-abc12345", date="2026-01-24"
                 )
@@ -243,8 +250,10 @@ class TestSessionPaths(unittest.TestCase):
 
             with (
                 patch.object(Path, "home", return_value=Path(tmpdir)),
-                patch.dict(os.environ, {"AOPS_SESSION_STATE_DIR": str(state_dir)}),
+                patch.dict(os.environ, {"AOPS_SESSION_STATE_DIR": str(state_dir)}, clear=False),
             ):
+                os.environ.pop("AOPS_GATE_FILE_HYDRATION", None)
+                os.environ.pop("AOPS_GATE_FILE_CUSTODIET", None)
                 gate_path = session_paths.get_gate_file_path(
                     "hydration", "07328230-44d4-414b-9fec-191a6eec0948", date="2026-01-24"
                 )
