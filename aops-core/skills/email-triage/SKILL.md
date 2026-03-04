@@ -62,12 +62,12 @@ N. Archive email N → immediately append receipt to task body
 # Option A: Use existing task
 task_id = "<provided-task-id>"
 
-# Option B: Create new task
+# Option B: Create new task — resolve parent per [[references/hierarchy-quality-rules]] first
 result = mcp__pkb__create_task(
     task_title="Email triage: [date range/criteria]",
     type="task",
     project="<project>",
-    parent="<project-id or epic-id>", # MANDATORY: Link to hierarchy
+    parent="<resolved-parent-id>",
     tags=["email", "triage"]
 )
 task_id = result["task"]["id"]

@@ -24,3 +24,15 @@ If you can't articulate the purpose in terms of the parent's goals, the task is 
 ## Rule 4: Star Pattern Prevention
 
 Avoid nodes with > 5 direct children. If a project or epic has too many children, group related tasks under new intermediate epics.
+
+## Parent Resolution Protocol
+
+Before calling `create_task`, resolve the correct `parent` using this fallback chain:
+
+1. **Current task context** — If executing under a claimed task, read its parent epic and use that.
+2. **Active epics** — Query the project for active epics and select the most relevant:
+   `mcp__pkb__list_tasks(project="<project>", type="epic", status="active")`
+3. **Project root** — If no matching epic exists, use the project root task as parent.
+4. **Ask user** — If no project is known, ask before creating the task.
+
+This protocol is the canonical procedure. Call sites must reference `[[references/hierarchy-quality-rules]]` rather than re-implementing it.

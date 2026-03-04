@@ -82,13 +82,13 @@ gh issue create --repo "$REPO" --title "[Learn] <brief-slug>" --body "$BODY"
 
 ### 5. Create Single Follow-up Task (Optional)
 
-Create **ONE** task if immediate action is required.
+Create **ONE** task if immediate action is required. Resolve parent per [[references/hierarchy-quality-rules]] first.
 
 ```python
 mcp__pkb__create_task(
   title="[Learn] <slug>",
   project="aops",
-  parent="<project-epic-id>",  # MANDATORY: infer from project context
+  parent="<resolved-parent-id>",
   priority=2,
   body="Reference GitHub Issue: [link]\n\nProposed fix: ..."
 )
