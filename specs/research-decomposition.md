@@ -16,7 +16,7 @@ related:
 
 ## Giving Effect
 
-_No implementation yet. This spec defines research-specific decomposition as a domain application of two upstream specs:_
+_No implementation yet. This spec defines research-specific decomposition as a domain application of several upstream specs:_
 
 - [[specs/conceptual-review-workflow.md]] -- review workflow; this spec instantiates it for research
 - [[specs/effectual-planning-agent.md]] -- strategic planning; this spec specialises it for research projects
@@ -73,7 +73,7 @@ This spec does NOT replace the effectual planner. Instead, it provides three thi
 
 3. **A maturity-gated entry path.** The effectual planner's formality gradient (seeds vs. active projects) maps to seedling vs. forest mode. A half-formed research idea enters as a seedling; a defined project enters as a forest. The planner's maturity indicators determine which path applies.
 
-The handoff works as follows: the effectual planner receives a research idea, applies the primitives and sequencing rules from this spec, produces a decomposition, and then the conceptual review workflow reviews it using the research-specific lenses. The planner's assumption-surfacing capability feeds directly into the assumptions table that this spec requires as output.
+The intended handoff works as follows: the effectual planner receives a research idea, applies the primitives and sequencing rules from this spec, produces a decomposition, and then the conceptual review workflow reviews it using the research-specific lenses. The planner's assumption-surfacing capability feeds directly into the assumptions table that this spec requires as output. (See Open Question #5 for integration path alternatives -- this handoff mechanism is not yet specified.)
 
 ### Decompose Workflow
 
@@ -140,13 +140,15 @@ No new task types or schema changes. Primitives are labels that carry semantic m
 graph LR
     spike --> litreview[lit-review]
     litreview --> methodology
+    methodology --> pilot
     methodology --> ethics
     ethics --> datacollection[data-collection]
+    pilot -.soft.-> datacollection
     datacollection --> analysis
     analysis --> writing
     spike -.soft.-> methodology
     litreview -.soft.-> analysis
-    collaboration -.-> methodology
+    collaboration --> methodology
 ```
 
 Key relationships:
@@ -336,14 +338,15 @@ verify: "Verify: platform governance study objectives met"
 
 ## Assumptions About This Spec
 
-| #  | Assumption                                                     | Confidence | Validation                                                  | If wrong                                                       |
-| -- | -------------------------------------------------------------- | ---------- | ----------------------------------------------------------- | -------------------------------------------------------------- |
-| R1 | Research primitives capture meaningful task types              | Medium     | Use on 3+ real projects; track whether custom labels emerge | Add primitives or allow custom labels                          |
-| R2 | Typical sequencing is useful as a default                      | Low        | Track decomposer deviations from the default sequence       | Remove default; infer sequencing from context each time        |
-| R3 | Seedling-to-forest transition preserves information            | Low        | Track whether forest mode actually uses seedling output     | Redesign transition; may need richer seedling output           |
-| R4 | Researchers will use formal decomposition for complex projects | Low        | Track adoption; compare projects planned with/without       | Reduce friction or simplify; must feel like collaboration      |
-| R5 | Academic Output Layer applies to research without modification | Medium     | Validate on a real research project end-to-end              | Add research-specific layers or modify existing layer ordering |
-| R6 | MVC definition prevents scope collapse                         | Medium     | Track whether MVC anchors hold in practice                  | Stronger mechanisms needed; possibly contractual MVC           |
+| #  | Assumption                                                                                                                                   | Confidence | Validation                                                                         | If wrong                                                                                                                                          |
+| -- | -------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1 | Research primitives capture meaningful task types                                                                                            | Medium     | Use on 3+ real projects; track whether custom labels emerge                        | Add primitives or allow custom labels                                                                                                             |
+| R2 | Typical sequencing is useful as a default                                                                                                    | Low        | Track decomposer deviations from the default sequence                              | Remove default; infer sequencing from context each time                                                                                           |
+| R3 | Seedling-to-forest transition preserves information                                                                                          | Low        | Track whether forest mode actually uses seedling output                            | Redesign transition; may need richer seedling output                                                                                              |
+| R4 | Researchers will use formal decomposition for complex projects                                                                               | Low        | Track adoption; compare projects planned with/without                              | Reduce friction or simplify; must feel like collaboration                                                                                         |
+| R5 | Academic Output Layer applies to research without modification                                                                               | Medium     | Validate on a real research project end-to-end                                     | Add research-specific layers or modify existing layer ordering                                                                                    |
+| R6 | MVC definition prevents scope collapse                                                                                                       | Medium     | Track whether MVC anchors hold in practice                                         | Stronger mechanisms needed; possibly contractual MVC                                                                                              |
+| R7 | Conceptual review workflow spec (#692) lands with the protocols described here (prioritised critique, convergence rules, formality gradient) | Medium     | #692 is reviewed and merged; compare its protocols against this spec's assumptions | Update the review integration sections (Conceptual Review Workflow relationship, forest mode steps 2-3) to match whatever #692 actually specifies |
 
 ## Scope
 
@@ -377,9 +380,9 @@ verify: "Verify: platform governance study objectives met"
 
 ## Related
 
-- [[conceptual-review-workflow]] -- review layer; this spec is a domain application
-- [[effectual-planning-agent]] -- upstream strategic planning; this spec specialises it for research
-- [[mcp-decomposition-tools-v2]] -- task graph tools; reused for structured output
-- [[non-interactive-agent-workflow-spec]] -- lifecycle management for non-interactive agent execution
-- [[polecat-swarms]] -- execution layer; consumes decomposed task graphs
+- [[specs/conceptual-review-workflow.md]] -- review layer; this spec is a domain application
+- [[specs/effectual-planning-agent.md]] -- upstream strategic planning; this spec specialises it for research
+- [[specs/mcp-decomposition-tools-v2.md]] -- task graph tools; reused for structured output
+- [[specs/non-interactive-agent-workflow-spec.md]] -- lifecycle management for non-interactive agent execution
+- [[specs/polecat-swarms.md]] -- execution layer; consumes decomposed task graphs
 - [[aops-core/workflows/decompose.md]] -- general decomposition workflow; this spec extends it with research primitives
