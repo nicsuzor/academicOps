@@ -24,7 +24,7 @@ BOLD='\033[1m'
 NC='\033[0m' # No Color
 
 # Build repo list from polecat.yaml
-POLECAT_YAML="${HOME}/.aops/polecat.yaml"
+POLECAT_YAML="${POLECAT_HOME:-${HOME}/.polecat}/polecat.yaml"
 REPOS=()
 
 if [[ -f "$POLECAT_YAML" ]]; then
@@ -36,7 +36,7 @@ if [[ -f "$POLECAT_YAML" ]]; then
         if [[ -d "$expanded_path" ]]; then
             REPOS+=("$expanded_path")
         fi
-    done < <(python3 -c "
+    done < <(uv run --directory "${AOPS:-$(dirname "$(dirname "$0")")}" python3 -c "
 import yaml, sys
 try:
     with open(sys.argv[1]) as f:
@@ -95,7 +95,7 @@ check_repo() {
     # Fetch to check remote state
     [[ "$QUIET" == "false" ]] && echo -ne "  ${name}: fetching... "
     git fetch --quiet 2>/dev/null || true
-    [[ "$QUIET" == "false" ]] && echo -ne "  ${name}: checking...  "
+    [[ "$QUIET" == "false" ]] && echo -ne "  ${name}: checking...  "
 
     # Get status
     local dirty=""
@@ -144,7 +144,9 @@ check_repo() {
         NEEDS_FIX+=("$repo")
     else
         # All good
-        [[ "$QUIET" == "false" ]] && printf "  %-18s ${GREEN}ok${NC}\n" "$name"
+        if [[ "$QUIET" == "false" ]]; then
+            printf "  %-18s ${GREEN}ok${NC}\n" "$name"
+        fi
     fi
 }
 

@@ -94,11 +94,13 @@ An active task is REQUIRED where:
 
 You may bypass task queue ONLY when ANY is true:
 
-- User invoked a `/command` or `/skill` (e.g., `/commit`, `/pdf`)
+- User invoked a `/command` or `/skill` (e.g., `/dump`, `/pdf`, `/daily`)
 - Pure information request (e.g., "what is X?", "how does Y work?")
 - Conversational (e.g., "thanks", "can you explain...")
 - No file modifications needed
 - Workflow is `simple-question` or `direct-skill`
+
+**CRITICAL**: Only reference skills that appear in the Skills Index above. Do NOT invent or assume skills exist (e.g., there is no `/commit` skill — git operations are direct shell commands, not skills). If the user's intent maps to a git operation (push, commit, rebase), route as direct execution, not as a skill invocation.
 
 ```markdown
 [Choose ONE:]
@@ -112,7 +114,7 @@ You may bypass task queue ONLY when ANY is true:
 
 **New task needed**:
 
-- Create with: `mcp__pkb__create_task(task_title="[title]", type="task", project="[project]", priority=[n])`
+- Create with: `mcp__pkb__create_task(task_title="[title]", type="task", project="[project]", parent="[epic-id or project-id]", priority=[n])`
 
 **OR**
 

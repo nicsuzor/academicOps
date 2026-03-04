@@ -14,7 +14,6 @@ Checks:
 
 from __future__ import annotations
 
-import os
 import re
 import sys
 from pathlib import Path
@@ -134,7 +133,9 @@ def main() -> int:
     --full: also run full codebase wikilink scan (for CI).
     """
     full_mode = "--full" in sys.argv
-    root = Path(os.environ.get("AOPS", Path(__file__).parent.parent)).resolve()
+    # Prefer current script's root over environment variable to ensure
+    # we always check the repository we are actually in.
+    root = Path(__file__).parent.parent.resolve()
 
     if not root.is_dir():
         print(f"Error: Root directory does not exist: {root}", file=sys.stderr)

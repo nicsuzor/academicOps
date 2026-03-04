@@ -38,28 +38,16 @@ try:
     from lib.session_paths import get_pid_session_map_path, get_session_short_hash
     from lib.session_state import SessionState
 
-    # Use relative import if possible, or direct import if run as script
-    try:
-        from hooks.schemas import (
-            CanonicalHookOutput,
-            ClaudeGeneralHookOutput,
-            ClaudeHookSpecificOutput,
-            ClaudeStopHookOutput,
-            GeminiHookOutput,
-            GeminiHookSpecificOutput,
-            HookContext,
-        )
-    except ImportError:
-        from schemas import (
-            CanonicalHookOutput,
-            ClaudeGeneralHookOutput,
-            ClaudeHookSpecificOutput,
-            ClaudeStopHookOutput,
-            GeminiHookOutput,
-            GeminiHookSpecificOutput,
-            HookContext,
-        )
-
+    from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES, extract_subagent_type
+    from hooks.schemas import (
+        CanonicalHookOutput,
+        ClaudeGeneralHookOutput,
+        ClaudeHookSpecificOutput,
+        ClaudeStopHookOutput,
+        GeminiHookOutput,
+        GeminiHookSpecificOutput,
+        HookContext,
+    )
     from hooks.unified_logger import log_event_to_session, log_hook_event
 except ImportError as e:
     # Fail fast if schemas missing
@@ -112,36 +100,56 @@ GEMINI_EVENT_MAP = {
 }
 
 # --- Gate Status Display ---
-GATE_ICONS = {
-    "hydration": ("🫗", "."),
-    "custodiet": ("🛡", "."),
-    "handover": ("📤", "."),
-}
 
 
 def format_gate_status_icons(state: SessionState) -> str:
-    """Format current gate statuses as a compact icon line.
+    """Format current gate statuses as a lifecycle-aware icon strip.
 
-    Uses the loaded SessionState object.
+    Only shows gates when they need attention:
+    - 💧  hydration gate is CLOSED (pre-hydration)
+    - ◇ N  custodiet countdown active
+    - ◇    custodiet overdue (past threshold)
+    - ≡    handover complete (gate OPEN + handover invoked)
+    - ▶ T-id  active task bound
+    - ✓    nothing needs attention
     """
-    # Collect blocking (closed) gates
-    blocking_gates = []
+    from lib.gates.registry import GateRegistry
 
-    # Iterate known gates
-    for gate_name in GATE_ICONS.keys():
-        gate_state = state.gates.get(gate_name)
-        if not gate_state or gate_state.status == "closed":
-            blocking_gates.append(gate_name)
-        elif gate_state.blocked:  # Explicit block
-            blocking_gates.append(gate_name)
+    parts: list[str] = []
 
-    # Format output
-    blocking_set = sorted(blocking_gates)
-    open_gates = sorted(set(GATE_ICONS.keys()) - set(blocking_gates))
-    blocking_icons = " ".join([GATE_ICONS[g][0] for g in blocking_set])
-    open_icons = " ".join([GATE_ICONS[g][1] for g in open_gates])
+    # Hydration: show only when CLOSED (needs hydration)
+    hydration = state.gates.get("hydration")
+    if not hydration or hydration.status == "closed":
+        parts.append("💧")
 
-    return f"[{blocking_icons}  ✓ {open_icons}]"
+    # Custodiet: countdown or overdue
+    custodiet = state.gates.get("custodiet")
+    if custodiet:
+        custodiet_gate = GateRegistry.get_gate("custodiet")
+        if custodiet_gate and custodiet_gate.config.countdown:
+            threshold = custodiet_gate.config.countdown.threshold
+            start_before = custodiet_gate.config.countdown.start_before
+            countdown_start = threshold - start_before
+            ops = custodiet.ops_since_open
+            if ops >= threshold:
+                parts.append("◇")
+            elif ops >= countdown_start:
+                remaining = threshold - ops
+                parts.append(f"◇ {remaining}")
+
+    # Handover: show only AFTER completion (gate OPEN + skill invoked)
+    handover = state.gates.get("handover")
+    if handover and handover.status == "open" and state.state.get("handover_skill_invoked"):
+        parts.append("≡")
+
+    # Active task
+    if state.main_agent.current_task:
+        parts.append(f"▶ {state.main_agent.current_task}")
+
+    if not parts:
+        return "✓"
+
+    return " ".join(parts)
 
 
 # --- Session Management ---
@@ -183,22 +191,6 @@ def persist_session_data(data: dict[str, Any]) -> None:
 
 
 class HookRouter:
-    # Global bypass for compliance subagents (POLICIES ONLY)
-    # We still run triggers for these agents so gate states update correctly.
-    _COMPLIANCE_SUBAGENT_TYPES = frozenset(
-        {
-            "hydrator",
-            "prompt-hydrator",
-            "aops-core:prompt-hydrator",
-            "custodiet",
-            "aops-core:custodiet",
-            "audit",
-            "aops-core:audit",
-            "aops-core:butler",
-            "butler",
-        }
-    )
-
     def __init__(self):
         self.session_data = get_session_data()
         self._execution_timestamps = deque(maxlen=20)  # Store last 20 timestamps
@@ -279,27 +271,16 @@ class HookRouter:
             tool_output = self._normalize_json_field(raw_tool_output)
 
         # 6. Extract subagent_type from spawning tools
-        # Claude uses Task(subagent_type=...), Gemini uses delegate_to_agent(name=...)
-        # Skill tool uses skill=... parameter
-        # We check all parameter names to support both clients
-        # Track whether subagent_type was derived from a Skill/activate_skill invocation
-        # (as opposed to a real subagent-spawning tool) to avoid is_subagent misclassification.
+        # Uses the SPAWN_TOOLS table in gate_config for cross-platform detection
+        # (Claude Task/Skill, Gemini delegate_to_agent/activate_skill, extensible
+        # to Codex/Copilot). _subagent_type_from_skill prevents Skill invocations
+        # from being misclassified as subagent sessions.
         _subagent_type_from_skill = False
-        if not subagent_type and tool_name in (
-            "Task",
-            "delegate_to_agent",
-            "Skill",
-            "activate_skill",
-        ):
-            if isinstance(tool_input, dict):
-                subagent_type = (
-                    tool_input.get("subagent_type")
-                    or tool_input.get("agent_name")
-                    or tool_input.get("name")
-                    or tool_input.get("skill")  # Skill tool uses 'skill' parameter
-                )
-                if subagent_type and tool_name in ("Skill", "activate_skill"):
-                    _subagent_type_from_skill = True
+        if not subagent_type and isinstance(tool_input, dict):
+            extracted, is_skill = extract_subagent_type(tool_name, tool_input)
+            if extracted:
+                subagent_type = extracted
+                _subagent_type_from_skill = is_skill
 
         # 7. Detect Subagent Session
         # Call is_subagent_session BEFORE popping fields from raw_input
@@ -434,7 +415,7 @@ class HookRouter:
                 if len(block_timestamps) >= 5:
                     merged_result.verdict = "allow"
                     warn = (
-                        "⚠️ SAFETY OVERRIDE: Stop hook blocked 5+ times in 2 minutes."
+                        "⚠ SAFETY OVERRIDE: Stop hook blocked 5+ times in 2 minutes."
                         " Auto-approving to prevent stall."
                     )
                     merged_result.system_message = (
@@ -539,11 +520,13 @@ class HookRouter:
                         status = tool_input["status"]
                         task_id = tool_input["id"]
                         if status == "in_progress":
+                            state.main_agent.current_task = task_id
+                            state.main_agent.task_binding_ts = datetime.now().isoformat()
                             notify_task_bound(config, ctx.session_id, task_id)
                         elif status == "done":
                             notify_task_completed(config, ctx.session_id, task_id)
 
-                if ctx.tool_name in ("Task", "delegate_to_agent"):
+                if ctx.tool_name in ("Agent", "Task", "delegate_to_agent"):
                     agent_type = "unknown"
                     tool_input = ctx.tool_input
                     if isinstance(tool_input, dict):
@@ -637,9 +620,18 @@ class HookRouter:
         - SubagentStart -> gate.on_subagent_start()
         - SubagentStop -> gate.on_subagent_stop()
         """
+        # Ensure subagent_type is populated for trigger evaluation.
+        # normalize_input() handles this for production calls, but tests may
+        # construct HookContext directly. extract_subagent_type() covers both
+        # SPAWN_TOOLS lookup and Gemini's bare agent name pattern.
+        if not ctx.subagent_type and ctx.tool_name:
+            tool_input: dict[str, Any] = ctx.tool_input if isinstance(ctx.tool_input, dict) else {}
+            extracted, _ = extract_subagent_type(ctx.tool_name, tool_input)
+            if extracted:
+                ctx.subagent_type = extracted
+
         is_compliance_agent = ctx.is_subagent and (
-            state.state.get("hydrator_active")
-            or ctx.subagent_type in self._COMPLIANCE_SUBAGENT_TYPES
+            state.state.get("hydrator_active") or ctx.subagent_type in COMPLIANCE_SUBAGENT_TYPES
         )
 
         messages = []

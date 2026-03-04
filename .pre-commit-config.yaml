@@ -3,7 +3,7 @@
 
 repos:
   # Markdown/JSON/TOML validation (dprint - check-only, no auto-fix)
-  # Run `./scripts/format.sh` to format files before staging
+  # Ruff check --fix auto-fixes what it can; ruff-format checks formatting
   - repo: local
     hooks:
       - id: dprint
@@ -33,12 +33,13 @@ repos:
       - id: check-added-large-files
         args: ['--maxkb=500']
 
-  # Python linting (check-only, no auto-fix)
-  # Run `./scripts/format.sh` to format files before staging
+  # Python linting (auto-fix enabled)
+  # Ruff check --fix auto-fixes what it can; ruff-format checks formatting
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.9.4
     hooks:
       - id: ruff
+        args: [--fix]
         exclude: '^archived/'
       - id: ruff-format
         args: [--check]

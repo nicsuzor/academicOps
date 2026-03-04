@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
 import sys
 import textwrap
 import time
@@ -182,7 +183,7 @@ def _format_project_name(project_folder: str) -> str:
 
     Folder names encode paths with dashes replacing slashes:
     -home-nic-src-academicOps -> academicOps
-    -home-nic-.aops-aops-008c345f -> aops (skip hash suffix, skip hidden dirs)
+    -home-nic-.polecat-aops-008c345f -> aops (skip hash suffix, skip hidden dirs)
     -Users-suzor-src-buttermilk -> buttermilk
     -home-nic-writing-academicOps-hooks -> academicOps (skip -hooks suffix)
 
@@ -3379,22 +3380,105 @@ def clean_activity_text(raw_text: str) -> str:
 # ============================================================================
 
 
-def load_graph_data(filename: str = "graph.json") -> dict | None:
-    """Load graph JSON from ACA_DATA (`aops graph` output location)."""
-    aca_data = Path(os.environ["ACA_DATA"])
+def discover_graph_files() -> dict[str, dict[str, Path]]:
+    """Scan sessions dir for per-layout graph-*.json files.
 
-    graph_path = aca_data / filename
-    if graph_path.exists():
+    Returns manifest like:
+        {"fa2": {"default": Path(...), "full": Path(...)}, "tree": {"default": Path(...)}, ...}
+    Excludes the legacy graph.json (no layout suffix).
+    """
+    sessions_dir = Path(os.environ.get("AOPS_SESSIONS", Path.home() / ".aops" / "sessions"))
+    manifest: dict[str, dict[str, Path]] = {}
+    for f in sorted(sessions_dir.glob("graph-*.json")):
+        stem = f.stem.removeprefix("graph-")  # "fa2", "fa2-full", "tree-filtered"
+        parts = stem.rsplit("-", 1)
+        if len(parts) == 2 and parts[1] in ("full", "filtered", "focus"):
+            layout, variant = parts
+        else:
+            layout, variant = stem, "default"
+        manifest.setdefault(layout, {})[variant] = f
+    return manifest
+
+
+def load_and_merge_graph_files(
+    manifest: dict[str, dict[str, Path]], scope: str = "default"
+) -> dict | None:
+    """Load per-layout JSON files and merge into single graph with layouts dict.
+
+    Each per-layout file has nodes with direct x,y (+ optional w,h,r).
+    We merge these into node.layouts[layout_name] = {x, y, ...} to match
+    the format the D3 component expects for client-side layout switching.
+
+    Args:
+        manifest: From discover_graph_files().
+        scope: "default", "full", "filtered", or "focus" -- which variant to prefer per layout.
+
+    Returns:
+        Combined graph dict with nodes containing a ``layouts`` dict, or None.
+    """
+    all_nodes: dict[str, dict] = {}  # id -> node dict (union across files)
+    all_edges: dict[tuple[str, str], dict] = {}  # (source, target) -> edge
+    extra_keys: dict = {}  # top-level metadata from first file loaded
+
+    for layout_name, variants in manifest.items():
+        path = variants.get(scope) or variants.get("default") or next(iter(variants.values()))
         try:
-            return json.loads(graph_path.read_text())
+            data = json.loads(path.read_text())
         except Exception:
-            pass
-    return None
+            continue
+
+        # Grab non-node/edge top-level keys from the first file
+        if not extra_keys:
+            extra_keys = {k: v for k, v in data.items() if k not in ("nodes", "edges")}
+
+        for node in data.get("nodes", []):
+            nid = node["id"]
+            if nid not in all_nodes:
+                # First time seeing this node -- store full metadata
+                all_nodes[nid] = {**node, "layouts": {}}
+                # Clear direct coords (they live in layouts dict instead)
+                all_nodes[nid].pop("x", None)
+                all_nodes[nid].pop("y", None)
+
+            # Store this layout's coordinates
+            coords: dict = {}
+            if node.get("x") is not None:
+                coords["x"] = node["x"]
+                coords["y"] = node.get("y", 0)
+            if node.get("w") is not None:
+                coords["w"] = node["w"]
+                coords["h"] = node.get("h", 0)
+            if node.get("r") is not None:
+                coords["r"] = node["r"]
+            if coords:
+                all_nodes[nid]["layouts"][layout_name] = coords
+
+        for edge in data.get("edges", []):
+            key = (edge["source"], edge["target"])
+            if key not in all_edges:
+                all_edges[key] = edge
+
+    if not all_nodes:
+        return None
+
+    return {
+        **extra_keys,
+        "nodes": list(all_nodes.values()),
+        "edges": list(all_edges.values()),
+    }
 
 
-def load_task_graph() -> dict | None:
-    """Load the most recent task graph JSON (shim)."""
-    return load_graph_data("graph.json")
+@st.cache_data(ttl=300)
+def _load_merged_graph(scope: str = "default") -> dict | None:
+    """Load and merge per-layout graph files (cached, 5min TTL).
+
+    Wraps discover + merge into a single cached call. The 'Reload Graph'
+    button calls st.cache_data.clear() to force refresh.
+    """
+    manifest = discover_graph_files()
+    if not manifest:
+        return None
+    return load_and_merge_graph_files(manifest, scope=scope)
 
 
 def calculate_graph_health(graph: dict) -> dict:
@@ -3561,7 +3645,7 @@ def render_spotlight_epic():
 
 def _get_graph_node_count() -> int:
     """Get the number of nodes in the task graph for collapse threshold."""
-    graph = load_graph_data("graph.json")
+    graph = _load_merged_graph()
     if graph:
         return len(graph.get("nodes", []))
     return 0
@@ -3571,40 +3655,147 @@ def render_task_graph_page():
     """Render the task/knowledge graph on its own dedicated page."""
     st.markdown("### Task Graph")
 
-    col_view, col_filter = st.columns(2)
-    with col_view:
-        view_mode = st.radio(
-            "Graph Data",
-            ["Tasks Only", "Knowledge Base (More Edges)"],
-            horizontal=True,
-            key="tg_view",
-        )
-    with col_filter:
-        filter_mode = st.radio(
-            "Filter Nodes", ["Active Tasks Only", "All Nodes"], horizontal=True, key="tg_filter"
-        )
+    with st.sidebar:
+        if st.button("Reload Graph", key="tg_reload"):
+            st.cache_data.clear()
 
-    filename = "knowledge-graph.json" if "Knowledge Base" in view_mode else "graph.json"
+        st.markdown("**Show**")
+        show_active = st.checkbox("Active", value=True, key="tg_show_active")
+        show_blocked = st.checkbox("Blocked", value=True, key="tg_show_blocked")
+        show_done = st.checkbox("Done / Cancelled", value=False, key="tg_show_done")
+        show_orphans = st.checkbox("Orphans (inbox)", value=False, key="tg_show_orphans")
+        st.markdown("**Filter**")
+        show_only_reachable = st.checkbox("Reachable only", value=False, key="tg_show_reachable")
 
-    force_settings = None  # Tree layout, no physics controls needed
+        # Scope toggle (full vs filtered vs focus) — shown when per-layout files exist
+        manifest = discover_graph_files()
+        has_full = any("full" in v for v in manifest.values()) if manifest else False
+        has_focus = any("focus" in v for v in manifest.values()) if manifest else False
 
-    d3_graph = load_graph_data(filename)
+        scope_options = ["Filtered"]
+        if has_full:
+            scope_options.append("Full")
+        if has_focus:
+            scope_options.append("Focus")
+
+        if len(scope_options) > 1:
+            scope = st.radio("Scope", scope_options, key="tg_scope", horizontal=True)
+            scope_key = scope.lower()
+        else:
+            scope_key = "default"
+
+    # Load from per-layout JSON files (graph-*.json) — cached
+    d3_graph = _load_merged_graph(scope=scope_key)
     if d3_graph:
-        # Apply filtering
-        if filter_mode == "Active Tasks Only":
-            inactive_statuses = {"done", "completed", "cancelled", "inbox"}
-            active_nodes = [
-                n
-                for n in d3_graph.get("nodes", [])
-                if n.get("status", "inbox").lower() not in inactive_statuses
-            ]
-            d3_graph["nodes"] = active_nodes
+        # Apply checkbox filters
+        all_nodes = d3_graph.get("nodes", [])
+
+        active_statuses = {
+            "active",
+            "in_progress",
+            "waiting",
+            "todo",
+            "review",
+            "decomposing",
+            "pending",
+        }
+        blocked_statuses = {"blocked"}
+        done_statuses = {"done", "completed", "cancelled", "dormant"}
+        orphan_statuses = {"inbox"}
+
+        filtered = []
+        for n in all_nodes:
+            status = n.get("status", "inbox").lower()
+            if status in active_statuses and show_active:
+                filtered.append(n)
+            elif status in blocked_statuses and show_blocked:
+                filtered.append(n)
+            elif status in done_statuses and show_done:
+                filtered.append(n)
+            elif status in orphan_statuses and show_orphans:
+                filtered.append(n)
+        if show_only_reachable:
+            filtered = [n for n in filtered if n.get("reachable")]
+        d3_graph["nodes"] = filtered
 
         d3_data = prepare_embedded_graph_data(d3_graph)
-        st.caption(f"Showing {len(d3_data['nodes'])} nodes and {len(d3_data['links'])} links.")
+        available_layouts = d3_data.get("availableLayouts", [])
+        if available_layouts:
+            layout_info = f" | Precomputed layouts: {', '.join(available_layouts)}"
+        elif d3_data.get("hasLayout"):
+            layout_info = " | Precomputed layout"
+        else:
+            layout_info = ""
+        st.caption(
+            f"Showing {len(d3_data['nodes'])} nodes and {len(d3_data['links'])} links.{layout_info}"
+        )
+
+        # Project filter dropdown (sidebar)
+        projects = sorted(set(n.get("project", "") for n in d3_data["nodes"] if n.get("project")))
+        selected_project = st.sidebar.selectbox(
+            "Project", ["All Projects"] + projects, key="tg_project"
+        )
+        project_filter = "ALL" if selected_project == "All Projects" else selected_project
+
+        # Layout mode (sidebar)
+        # Start with standard client-side force layouts
+        layout_map = {
+            "Force": "force",
+            "ForceAtlas2": "atlas",
+        }
+
+        available = d3_data.get("availableLayouts", [])
+        layout_options = []
+
+        # Add "Precomputed" (ForceAtlas2) if available
+        if d3_data.get("hasLayout"):
+            layout_options.append("Precomputed")
+            # Map "Precomputed" to "fa2" if available, else generic "precomputed"
+            if "fa2" in available:
+                layout_map["Precomputed"] = "fa2"
+            elif "forceatlas2" in available:
+                layout_map["Precomputed"] = "forceatlas2"
+            else:
+                layout_map["Precomputed"] = "precomputed"
+
+        # Add precomputed layouts discovered in graph.json
+        named_layout_labels = {
+            "tree": "Treemap",
+            "circle": "Circle Pack",
+            "arc": "Arc Diagram",
+            "treemap": "Treemap",
+            "circle_pack": "Circle Pack",
+            "fa2": None,  # already exposed as "Precomputed"
+            "forceatlas2": None,
+        }
+
+        for layout_key in available:
+            known_label = named_layout_labels.get(layout_key)
+            if known_label is None and layout_key in named_layout_labels:
+                continue  # explicitly skipped (e.g. fa2)
+
+            label = known_label or layout_key.replace("_", " ").title()
+            if label not in layout_options:
+                layout_map[label] = layout_key  # register dynamically
+                layout_options.append(label)
+
+        # Ensure client-side force layouts are always offered at the end
+        for force_label in ["Force", "ForceAtlas2"]:
+            if force_label not in layout_options:
+                layout_options.append(force_label)
+
+        selected_layout = st.sidebar.radio(
+            "Layout", layout_options, key="tg_layout", horizontal=True
+        )
+        layout_mode = layout_map[selected_layout]
 
         # Action handler for bi-directional clicking
-        action_event = render_embedded_graph(d3_data, height=700, force_settings=force_settings)
+        action_event = render_embedded_graph(
+            d3_data,
+            height=700,
+            project_filter=project_filter,
+            layout_mode=layout_mode,
+        )
 
         if action_event and isinstance(action_event, dict):
             action = action_event.get("action")
@@ -3612,7 +3803,7 @@ def render_task_graph_page():
             if action and task_id:
                 _handle_graph_action(action, task_id)
     else:
-        st.warning(f"No {filename} found. Run `/task-viz` to generate.")
+        st.warning("No per-layout graph files found. Run `generate-viz.sh` to generate.")
 
 
 _USELESS_PROMPTS = frozenset(
@@ -3873,6 +4064,18 @@ completed_time_range = st.sidebar.selectbox(
 # Convert to hours
 COMPLETED_HOURS_MAP = {"4h": 4, "24h": 24, "7d": 168}
 completed_hours = COMPLETED_HOURS_MAP.get(completed_time_range, 24)
+
+# Version info at bottom of sidebar
+try:
+    _git_desc = subprocess.check_output(
+        ["git", "describe", "--tags", "--always", "--dirty"],
+        cwd=str(aops_root),
+        stderr=subprocess.DEVNULL,
+        text=True,
+    ).strip()
+except Exception:
+    _git_desc = "unknown"
+st.sidebar.caption(f"aOps {_git_desc}")
 
 if page == "Manage Tasks":
     storage = TaskStorage()

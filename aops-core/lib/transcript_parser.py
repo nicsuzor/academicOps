@@ -97,7 +97,7 @@ def infer_project_from_working_dir(working_dir: str | None) -> str | None:
     - /home/user/src/myproject -> myproject
     - /home/user/projects/client-work -> client-work
     - /opt/user/code -> code
-    - /home/user/.aops/polecat/aops-008c345f -> aops (polecat worktree)
+    - /home/user/.polecat/polecat/aops-008c345f -> aops (polecat worktree)
 
     Args:
         working_dir: Full path to working directory
@@ -115,9 +115,9 @@ def infer_project_from_working_dir(working_dir: str | None) -> str | None:
     if len(parts) < 2:
         return None
 
-    # Handle polecat worktree paths: ~/.aops/polecat/{project}-{hash}
+    # Handle polecat worktree paths: $POLECAT_HOME/polecat/{project}-{hash}
     # The project name is before the 8-char hash suffix
-    if ".aops" in parts and "polecat" in parts:
+    if (".aops" in parts or ".polecat" in parts) and "polecat" in parts:
         project = parts[-1]
         # Polecat worktree format: {project}-{8char-hash}
         # e.g., "aops-008c345f" -> "aops"
@@ -1190,7 +1190,7 @@ def _summarize_tool_input(tool_name: str, tool_input: dict) -> str:
         return tool_input.get("pattern", "")[:40]
     elif tool_name == "Grep":
         return tool_input.get("pattern", "")[:40]
-    elif tool_name == "Task":
+    elif tool_name in ("Agent", "Task"):
         return tool_input.get("description", "")[:40]
 
     # Generic fallback: first string value
@@ -1821,7 +1821,7 @@ class SessionProcessor:
                                             tool_item["exit_code"] = result_info["exit_code"]
                                         tool_item["is_error"] = result_info.get("is_error", False)
 
-                                if tool_name == "Task" and tool_id:
+                                if tool_name in ("Agent", "Task") and tool_id:
                                     agent_id = self._extract_agent_id_from_result(tool_id, entries)
                                     if agent_id and agent_entries and agent_id in agent_entries:
                                         tool_item["sidechain_summary"] = self._extract_sidechain(

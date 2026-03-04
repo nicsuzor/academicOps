@@ -48,7 +48,7 @@ uv 0.9.10
 - **Result**: PASS
 - **Observations**:
   - Task created and claimed by polecat
-  - Worktree set up at `/home/nic/.aops/polecat/aops-9e78192b`
+  - Worktree set up at `$POLECAT_HOME/polecat/aops-9e78192b`
   - Agent executed successfully in YOLO mode
   - Task marked as `done`
   - Transcript verified

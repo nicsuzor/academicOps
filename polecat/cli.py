@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import json
 import os
+import shutil
+import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -14,6 +16,39 @@ if str(REPO_ROOT / "aops-core") not in sys.path:
 import click
 from manager import PolecatManager
 from validation import TaskIDValidationError, validate_task_id_or_raise
+
+
+def set_terminal_title(title: str) -> None:
+    """Set terminal/tmux window title for session identification.
+
+    Uses OSC 0 escape sequence (same as dotfiles set-tab-title function).
+    In tmux, also sets the window name via rename-window so it appears
+    in set-titles-string (#W) and the window list.
+    """
+    # OSC 0: Set window title — works in Terminal.app, iTerm2, most terminals
+    sys.stdout.write(f"\033]0;{title}\007")
+    sys.stdout.flush()
+
+    # If inside tmux, also rename the window for #W in set-titles-string
+    if os.environ.get("TMUX"):
+        tmux = shutil.which("tmux")
+        if tmux:
+            subprocess.run([tmux, "rename-window", title], capture_output=True)
+
+
+def reset_terminal_title() -> None:
+    """Reset terminal title to automatic naming after session ends."""
+    if os.environ.get("TMUX"):
+        tmux = shutil.which("tmux")
+        if tmux:
+            # Re-enable automatic window renaming
+            subprocess.run(
+                [tmux, "set-window-option", "automatic-rename", "on"],
+                capture_output=True,
+            )
+    # Clear terminal title (let shell/terminal manage it)
+    sys.stdout.write("\033]0;\007")
+    sys.stdout.flush()
 
 
 def save_worker_transcript(
@@ -85,7 +120,7 @@ def is_interactive() -> bool:
     "--home",
     envvar="POLECAT_HOME",
     type=click.Path(path_type=Path),
-    help="Polecat home directory (default: ~/.aops, or POLECAT_HOME env var)",
+    help="Polecat home directory (default: $POLECAT_HOME, or ~/.polecat)",
 )
 @click.pass_context
 def main(ctx, home):
@@ -231,8 +266,13 @@ def checkout(ctx, task_id, caller):
     is_flag=True,
     help="Skip confirmation prompts (required in non-interactive mode)",
 )
+@click.option(
+    "--force-done",
+    is_flag=True,
+    help="Force task status to 'done' even if no git changes detected",
+)
 @click.pass_context
-def finish(ctx, no_push, do_nuke, force):
+def finish(ctx, no_push, do_nuke, force, force_done):
     """Mark current task as ready for merge.
 
     Must be run from within a polecat worktree.
@@ -258,6 +298,33 @@ def finish(ctx, no_push, do_nuke, force):
     if not task:
         print(f"Error: Task {task_id} not found in task database", file=sys.stderr)
         sys.exit(1)
+
+    # --- SAFEGUARD 0: Completion Protection ---
+    # If the task is already DONE, or in review/merge phase, do NOT override it.
+    # This prevents the "infinite retry loop" where auto-finish resets a manually completed task.
+    try:
+        from lib.task_model import TaskStatus
+
+        terminal_or_pr_statuses = (
+            TaskStatus.DONE,
+            TaskStatus.REVIEW,
+            TaskStatus.MERGE_READY,
+            TaskStatus.MERGING,
+            TaskStatus.CANCELLED,
+        )
+
+        if task.status in terminal_or_pr_statuses:
+            print(
+                f"✅ Task {task_id} is in status '{task.status.value}'. Skipping auto-retry reset."
+            )
+            if do_nuke:
+                print("Nuking worktree...")
+                os.chdir(Path.home())  # Move out of worktree before nuking
+                manager.nuke_worktree(task_id, force=False)
+                print("Worktree removed")
+            return
+    except ImportError:
+        pass
 
     print(f"Finishing task: {task.title} ({task_id})")
 
@@ -303,34 +370,56 @@ def finish(ctx, no_push, do_nuke, force):
         )
         # git diff --quiet returns 0 if no changes, 1 if changes exist
         if diff_check.returncode == 0:
-            print("📭 No changes detected. Agent likely did not complete the task.")
-            print("⚠️  Marking as 'active' for retry (not 'done').")
-            # Mark task as ACTIVE for retry, NOT done
-            # Zero changes = worker didn't actually complete the work
-            try:
-                from lib.task_model import TaskStatus
+            if force_done:
+                print("📭 No changes detected, but --force-done specified.")
+                print("✅ Proceeding to mark as DONE (verified complete without changes).")
+                try:
+                    from lib.task_model import TaskStatus
 
-                task.status = TaskStatus.ACTIVE
-                task.assignee = None  # Clear assignee so another worker can claim
-                task.body = (
-                    (task.body or "")
-                    + "\n\n## 🔄 Auto-retry (zero changes detected)\n"
-                    + "Worker finished without making changes. Task returned to queue.\n"
-                )
-                manager.storage.save_task(task)
-                print("🔄 Task returned to queue for retry")
-            except ImportError:
-                print("Warning: Could not update task status (lib.task_model not available)")
+                    task.status = TaskStatus.DONE
+                    manager.storage.save_task(task)
+                    print(f"✅ Task {task_id} marked as DONE.")
+                except ImportError:
+                    print("Warning: Could not update task status (lib.task_model not available)")
 
-            # Optionally nuke
-            if do_nuke:
-                print("Nuking worktree...")
-                os.chdir(Path.home())  # Move out of worktree before nuking
-                manager.nuke_worktree(task_id, force=False)
-                print("Worktree removed")
+                # Optionally nuke
+                if do_nuke:
+                    print("Nuking worktree...")
+                    os.chdir(Path.home())  # Move out of worktree before nuking
+                    manager.nuke_worktree(task_id, force=True)
+                    print("Worktree removed")
+                else:
+                    print(f"\nTo clean up later: polecat nuke {task_id}")
+                return  # Exit early, task is DONE
             else:
-                print(f"\nTo clean up later: polecat nuke {task_id}")
-            return  # Exit early, skip rest of finish flow
+                print("📭 No changes detected. Agent likely did not complete the task.")
+                print("⚠️  Marking as 'active' for retry (not 'done').")
+                # Mark task as ACTIVE for retry, NOT done
+                # Zero changes = worker didn't actually complete the work
+                try:
+                    from lib.task_model import TaskStatus
+
+                    task.status = TaskStatus.ACTIVE
+                    task.assignee = None  # Clear assignee so another worker can claim
+                    task.body = (
+                        (task.body or "")
+                        + "\n\n## 🔄 Auto-retry (zero changes detected)\n"
+                        + "Worker finished without making changes. Task returned to queue.\n"
+                    )
+                    manager.storage.save_task(task)
+                    print("🔄 Task returned to queue for retry")
+                except ImportError:
+                    print("Warning: Could not update task status (lib.task_model not available)")
+
+                # Optionally nuke
+                if do_nuke:
+                    print("Nuking worktree...")
+                    os.chdir(Path.home())  # Move out of worktree before nuking
+                    manager.nuke_worktree(task_id, force=False)
+                    print("Worktree removed")
+                else:
+                    print(f"\nTo clean up later: polecat nuke {task_id}")
+                return  # Exit early, skip rest of finish flow
 
     except Exception as e:
         print(f"Warning: Could not check for changes: {e}")
@@ -638,16 +727,35 @@ def merge():
     eng.scan_and_merge()
 
 
+def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
+    """Check if a branch has an open PR on GitHub."""
+    try:
+        result = subprocess.run(
+            ["gh", "pr", "list", "--head", branch_name, "--state", "open", "--json", "number"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            prs = json.loads(result.stdout)
+            return len(prs) > 0
+    except (FileNotFoundError, subprocess.TimeoutExpired, json.JSONDecodeError):
+        pass
+    return False
+
+
 @main.command("c", hidden=True)
 @click.argument("target", required=False, default=None)
 @click.argument("extra", required=False, default=None)
 @click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
 @click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
+@click.option("--keep", "-k", is_flag=True, help="Keep worktree even if a PR is open")
 @click.pass_context
-def crew_alias(ctx, target, extra, name, gemini, resume):
+def crew_alias(ctx, target, extra, name, gemini, resume, keep):
     """Shorthand for 'crew'. See 'polecat crew --help'."""
-    ctx.invoke(crew, target=target, extra=extra, name=name, gemini=gemini, resume=resume)
+    ctx.invoke(crew, target=target, extra=extra, name=name, gemini=gemini, resume=resume, keep=keep)
 
 
 @main.command()
@@ -656,8 +764,9 @@ def crew_alias(ctx, target, extra, name, gemini, resume):
 @click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
 @click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
+@click.option("--keep", "-k", is_flag=True, help="Keep worktree even if a PR is open")
 @click.pass_context
-def crew(ctx, target, extra, name, gemini, resume):
+def crew(ctx, target, extra, name, gemini, resume, keep):
     """Start an interactive crew session with worktree isolation.
 
     Crew workers are persistent, named agents for interactive collaboration.
@@ -781,6 +890,7 @@ def crew(ctx, target, extra, name, gemini, resume):
     env["POLECAT_CREW_NAME"] = crew_name
     env["POLECAT_WORKTREE"] = str(work_dir)
 
+    set_terminal_title(f"crew:{crew_name}")
     try:
         subprocess.run(cmd, cwd=work_dir, env=env)
     except FileNotFoundError:
@@ -788,12 +898,26 @@ def crew(ctx, target, extra, name, gemini, resume):
         sys.exit(1)
     except KeyboardInterrupt:
         print("\n\n\u26a0\ufe0f  Session interrupted")
+    finally:
+        reset_terminal_title()
 
     print("-" * 50)
     print(f"\n\U0001f4cb Crew '{crew_name}' session ended.")
-    print(f"   Worktrees preserved at: {manager.crew_dir / crew_name}")
-    print(f"   To resume: polecat crew -r {crew_name}")
-    print(f"   To nuke:   polecat nuke-crew {crew_name}")
+
+    # Auto-cleanup: nuke worktree if a PR is open (work is safely on remote)
+    branch_name = f"crew/{crew_name}"
+    if not keep and _branch_has_open_pr(branch_name, work_dir):
+        print(f"   PR open for {branch_name} — cleaning up worktree.")
+        try:
+            manager.nuke_crew(crew_name, force=True)
+            print(f"   Worktree removed. Use `polecat crew -r {crew_name}` after merge.")
+        except (ValueError, RuntimeError) as e:
+            print(f"   Cleanup failed: {e}", file=sys.stderr)
+            print(f"   Manual cleanup: polecat nuke-crew {crew_name}")
+    else:
+        print(f"   Worktrees preserved at: {manager.crew_dir / crew_name}")
+        print(f"   To resume: polecat crew -r {crew_name}")
+        print(f"   To nuke:   polecat nuke-crew {crew_name}")
 
 
 @main.command("nuke-crew")
@@ -983,9 +1107,14 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
         if not task:
             print(f"Task not found: {task_id}", file=sys.stderr)
             sys.exit(1)
+
         # Claim if not already in progress
         try:
             from lib.task_model import TaskStatus
+
+            if task.status in (TaskStatus.DONE, TaskStatus.CANCELLED):
+                print(f"✅ Task {task_id} is already '{task.status.value}'.")
+                sys.exit(0)
 
             if task.status == TaskStatus.ACTIVE:
                 task.status = TaskStatus.IN_PROGRESS
@@ -1098,6 +1227,8 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
     env = os.environ.copy()
     env["POLECAT_SESSION_TYPE"] = "polecat"
 
+    if interactive:
+        set_terminal_title(f"polecat:{task.id}")
     try:
         if interactive:
             # In interactive mode, we MUST NOT capture output or it will hang
@@ -1149,19 +1280,55 @@ def run(ctx, project, caller, task_id, issue, no_finish, gemini, interactive, no
     except KeyboardInterrupt:
         print("\n\n⚠️  Agent interrupted by user")
         exit_code = 130
+    finally:
+        if interactive:
+            reset_terminal_title()
 
     print("-" * 50)
 
     # Step 5: Auto-finish on success (unless disabled)
     if exit_code == 0:
         print("\n✅ Agent completed successfully.")
+
+        # Check for completion signals in stdout/stderr (e.g. fix already deployed)
+        # This allows us to auto-finish even if no git changes were detected.
+        auto_force_done = False
+        completion_signals = [
+            "verified complete",
+            "fix already deployed",
+            "no changes needed",
+            "work already done",
+            "verified the change is present",
+            "verified the fix is already there",
+            "task already completed",
+            "already been completed",
+        ]
+
+        # Use result.stdout if it exists (not captured in interactive mode)
+        agent_output = ""
+        try:
+            if not interactive and result.stdout:
+                agent_output += result.stdout
+            if not interactive and result.stderr:
+                agent_output += result.stderr
+        except (AttributeError, NameError):
+            pass
+
+        if agent_output:
+            for signal in completion_signals:
+                if signal.lower() in agent_output.lower():
+                    print(f"✨ Found completion signal: '{signal}'")
+                    auto_force_done = True
+                    break
+
         if not no_auto_finish:
             print("🔄 Running auto-finish...")
             # Change to worktree directory and invoke finish directly
             original_cwd = os.getcwd()
             try:
                 os.chdir(worktree_path)
-                ctx.invoke(finish, no_push=False, do_nuke=True)
+                # Pass force_done if we detected a completion signal
+                ctx.invoke(finish, no_push=False, do_nuke=True, force_done=auto_force_done)
                 print("✅ Auto-finish completed.")
             except SystemExit as e:
                 if e.code != 0:

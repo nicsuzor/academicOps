@@ -45,8 +45,11 @@ def ensure_test_environment(monkeypatch, tmp_path):
     (data_dir / "logs").mkdir(parents=True, exist_ok=True)
     (data_dir / "goals").mkdir(parents=True, exist_ok=True)
     (data_dir / "context").mkdir(parents=True, exist_ok=True)
-    # Sessions is sibling of data_root
-    (data_dir.parent / "sessions").mkdir(parents=True, exist_ok=True)
+    # Always use tmp_path for AOPS_SESSIONS to ensure full test isolation
+    # (avoids writing alongside external ACA_DATA paths when ACA_DATA is set externally)
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("AOPS_SESSIONS", str(sessions_dir))
 
 
 @pytest.fixture(autouse=True)
@@ -401,6 +404,11 @@ def run_claude_headless(
             "error": "ACA_DATA environment variable not set - required for memory server tests",
         }
 
+    # Apply agent-env-map.conf credential isolation mappings
+    from lib.agent_env import apply_env_mappings
+
+    apply_env_mappings(env)
+
     try:
         # Execute command
         result = subprocess.run(
@@ -581,6 +589,11 @@ def run_gemini_headless(
             "result": {},
             "error": "AOPS environment variable not set - required for tests",
         }
+
+    # Apply agent-env-map.conf credential isolation mappings
+    from lib.agent_env import apply_env_mappings
+
+    apply_env_mappings(env)
 
     # Ensure CLAUDE_PLUGIN_ROOT is set for hooks.json variable expansion
     if "CLAUDE_PLUGIN_ROOT" not in env:

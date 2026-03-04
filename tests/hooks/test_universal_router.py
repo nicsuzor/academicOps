@@ -229,8 +229,19 @@ class TestSubagentTypeExtraction:
         ctx = router_instance.normalize_input(raw)
         assert ctx.subagent_type == "prompt-hydrator"
 
-    def test_skill_tool_subagent_type(self, router_instance):
-        """Skill tool with subagent_type extracts correctly."""
+    def test_skill_tool_uses_skill_param(self, router_instance):
+        """Skill tool extracts from 'skill' param (not 'subagent_type')."""
+        raw = {
+            "hook_event_name": "PreToolUse",
+            "session_id": "test-123",
+            "tool_name": "Skill",
+            "tool_input": {"skill": "qa"},
+        }
+        ctx = router_instance.normalize_input(raw)
+        assert ctx.subagent_type == "qa"
+
+    def test_skill_tool_ignores_subagent_type_param(self, router_instance):
+        """Skill tool does NOT extract from 'subagent_type' — it uses 'skill'."""
         raw = {
             "hook_event_name": "PreToolUse",
             "session_id": "test-123",
@@ -238,7 +249,7 @@ class TestSubagentTypeExtraction:
             "tool_input": {"subagent_type": "qa"},
         }
         ctx = router_instance.normalize_input(raw)
-        assert ctx.subagent_type == "qa"
+        assert ctx.subagent_type is None
 
     def test_subagent_type_from_payload_takes_precedence(self, router_instance):
         """If subagent_type already in payload, tool_input is not used."""

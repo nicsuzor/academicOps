@@ -377,7 +377,7 @@ class LaborExtractor:
         # Check tool_input from entry (hook-based)
         if entry.tool_input and entry.tool_name:
             tool_params = self._extract_tool_params(entry.tool_input)
-            is_delegation = entry.tool_name == "Task"
+            is_delegation = entry.tool_name in ("Agent", "Task")
             delegation_prompt = None
 
             if is_delegation:
@@ -422,7 +422,7 @@ class LaborExtractor:
                                 continue  # Skip malformed tool_use blocks
                             tool_input = block.get("input", {})
                             tool_params = self._extract_tool_params(tool_input)
-                            is_delegation = tool_name == "Task"
+                            is_delegation = tool_name in ("Agent", "Task")
                             delegation_prompt = None
 
                             if is_delegation:

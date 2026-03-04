@@ -20,6 +20,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from lib.paths import get_summaries_dir, get_transcripts_dir
 from lib.transcript_parser import (
     SessionInfo,
     SessionProcessor,
@@ -680,14 +681,14 @@ def build_audit_session_context(transcript_path: Path | str) -> str:
                     continue
 
                 # Format tool call with meaningful detail
-                if tool_name == "Task":
+                if tool_name in ("Agent", "Task"):
                     # Subagent calls are major decision points — show full prompt
                     desc = tool_input.get("description", "")
                     subagent = tool_input.get("subagent_type", "")
                     prompt = tool_input.get("prompt", "")
                     if len(prompt) > _TOOL_ARG_LIMIT:
                         prompt = prompt[:_TOOL_ARG_LIMIT] + "..."
-                    tool_line = f"  - **Task**({subagent}): {desc}"
+                    tool_line = f"  - **{tool_name}**({subagent}): {desc}"
                     if prompt:
                         tool_line += f"\n    > {prompt}"
                     # Show result if available
@@ -1347,19 +1348,21 @@ def get_session_state(session: SessionInfo, aca_data: Path) -> SessionState:
     session_prefix = session_id[:8] if len(session_id) >= 8 else session_id
 
     # 1. Check for Transcript
-    # Patterns vary by source
+    # Primary: $AOPS_SESSIONS/transcripts/, fallback: $ACA_DATA/sessions/claude/
     if session.source == "gemini":
-        transcript_dir = aca_data / "sessions" / "gemini"
+        transcript_dirs = [get_transcripts_dir(), aca_data / "sessions" / "gemini"]
     else:
-        transcript_dir = aca_data / "sessions" / "claude"
+        transcript_dirs = [get_transcripts_dir(), aca_data / "sessions" / "claude"]
 
     transcript_path = None
-    if transcript_dir.exists():
-        # Match EXACT session ID prefix
-        pattern = str(transcript_dir / f"*-*-{session_prefix}*-abridged.md")
-        matches = glob.glob(pattern)
-        if matches:
-            transcript_path = Path(matches[0])
+    for transcript_dir in transcript_dirs:
+        if transcript_dir.exists():
+            # Match EXACT session ID prefix
+            pattern = str(transcript_dir / f"*-*-{session_prefix}*-abridged.md")
+            matches = glob.glob(pattern)
+            if matches:
+                transcript_path = Path(matches[0])
+                break
 
     # Missing transcript or session updated since last transcript
     if not transcript_path:
@@ -1369,17 +1372,17 @@ def get_session_state(session: SessionInfo, aca_data: Path) -> SessionState:
         return SessionState.PENDING_TRANSCRIPT
 
     # 2. Check for Mining JSON (unified session file)
-    insights_dir = aca_data / "sessions" / "summaries"
+    # Primary: $AOPS_SESSIONS/summaries/, fallback: $ACA_DATA/sessions/summaries/
     has_mining = False
-
-    if insights_dir.exists():
-        # Support various formats (with/without slug, project, hour)
-        # Match anything containing the session_prefix and ending in .json
-        pattern = str(insights_dir / f"*{session_prefix}*.json")
-        import glob as glob_module
-
-        matches = glob_module.glob(pattern)
-        has_mining = bool(matches)
+    for insights_dir in (get_summaries_dir(), aca_data / "sessions" / "summaries"):
+        if insights_dir.exists():
+            # Support various formats (with/without slug, project, hour)
+            # Match anything containing the session_prefix and ending in .json
+            pattern = str(insights_dir / f"*{session_prefix}*.json")
+            matches = glob.glob(pattern)
+            if matches:
+                has_mining = True
+                break
 
     if not has_mining:
         return SessionState.PENDING_MINING

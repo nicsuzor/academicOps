@@ -24,7 +24,7 @@ flowchart TD
     end
 
     subgraph REPO["Repo Structure"]
-        R1[~/src/repo] -->|Spawns| R2[~/.aops/polecat/task-id]
+        R1[~/src/repo] -->|Spawns| R2[$POLECAT_HOME/polecat/task-id]
         R2 -.->|Links back| R1
     end
 
@@ -41,20 +41,20 @@ flowchart TD
 
 Instead of creating temporary clones inside the main repo (which confuses IDEs), we use a centralized directory:
 
-- **Location:** `~/.aops/polecat/`
-- **Structure:** `~/.aops/polecat/<task-id>/`
+- **Location:** `$POLECAT_HOME/polecat/`
+- **Structure:** `$POLECAT_HOME/polecat/<task-id>/`
 - **Mechanism:** `git worktree` linked to bare mirror repositories.
 
 ### Bare Mirror Architecture
 
-Worktrees are spawned from **bare mirror clones** stored in `~/.aops/polecat/.repos/`, not from your active development repos in `~/src/`. This provides:
+Worktrees are spawned from **bare mirror clones** stored in `$POLECAT_HOME/polecat/.repos/`, not from your active development repos in `~/src/`. This provides:
 
 - **Isolation**: Complete decoupling from your dev environment
 - **Concurrency**: Bare repos handle unlimited concurrent worktrees
 - **Clean state**: Each spawn starts from origin, not local uncommitted changes
 
 ```
-~/.aops/polecat/
+$POLECAT_HOME/polecat/
 ├── .repos/                    # Hidden bare mirror repos
 │   ├── aops.git               # bare clone of academicOps
 │   ├── buttermilk.git         # bare clone of buttermilk
@@ -87,7 +87,7 @@ A Python library that handles the lifecycle:
   - Performs a safe sync of the mirror (if used) before creating the worktree.
   - Checks mirror freshness and warns if stale.
   - Identifies the correct parent repo (e.g., `academicOps`, `buttermilk`).
-  - Creates a `git worktree` at `~/.aops/polecat/<task-id>`.
+  - Creates a `git worktree` at `$POLECAT_HOME/polecat/<task-id>`.
   - Creates a feature branch `polecat/<task-id>` from `main`.
 - **`nuke_worktree(task_id)`**:
   - Force-removes the worktree.
@@ -203,7 +203,7 @@ Merge a crew branch when:
 
 ### Merge Steps
 
-For each project in the crew (e.g., `~/.aops/crew/cheryl/aops`):
+For each project in the crew (e.g., `$POLECAT_HOME/crew/cheryl/aops`):
 
 0. **Create tracking task** (before starting):
    ```
@@ -217,7 +217,7 @@ For each project in the crew (e.g., `~/.aops/crew/cheryl/aops`):
 
 1. **Check status**:
    ```bash
-   cd ~/.aops/crew/<name>/<project>
+   cd $POLECAT_HOME/crew/<name>/<project>
    git status
    git log main..HEAD --oneline  # See commits to merge
    ```

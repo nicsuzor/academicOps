@@ -17,3 +17,13 @@ lib/overwhelm/d3_component/index.html
 
 4. Streamlit Python Import Paths
    Be cautious with absolute imports inside the Streamlit applications. The Streamlit runner's execution context can cause ModuleNotFoundError for absolute paths like from lib.overwhelm.task_manager_ui import .... Use direct sibling imports (e.g., from task_manager_ui import ...) where the path has already been appended to sys.path.
+
+5. Running the Dashboard Locally
+   ```bash
+   uv run streamlit run lib/overwhelm/dashboard.py \
+     --server.headless true --server.port 8501 --server.fileWatcherType poll
+   ```
+   - Use `--server.fileWatcherType poll` (NOT `none`) so edits are picked up live.
+   - Run from the repo/worktree root so relative imports resolve correctly.
+   - Graph data is loaded from `$AOPS_SESSIONS/graph.json` (default `~/.aops/sessions/`).
+     Regenerate with: `aops graph -f json -o ~/.aops/sessions/graph.json`

@@ -7,6 +7,8 @@ persisted for the duration of the Claude Code session using CLAUDE_ENV_FILE.
 """
 
 import os
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -172,6 +174,13 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
         except Exception as e:
             messages.append(f"ACA_DATA sync error: {e}")
 
+    # Check pkb binary availability
+    from lib.binary_install import check_pkb_available
+
+    pkb_status = check_pkb_available()
+    if pkb_status:
+        messages.append(pkb_status)
+
     # 1. Persist Session ID
     if ctx.session_id:
         persist["CLAUDE_SESSION_ID"] = ctx.session_id
@@ -203,10 +212,23 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     for gate_name, gate_path in gate_paths.items():
         persist[f"AOPS_GATE_FILE_{gate_name.upper()}"] = str(gate_path)
 
-    # 6. Set GH_TOKEN from AOPS_BOT_GH_TOKEN (credential isolation — issue #581)
-    bot_token = os.environ.get("AOPS_BOT_GH_TOKEN")
-    if bot_token:
-        persist["GH_TOKEN"] = bot_token
+    # 6. Apply agent-env-map.conf credential isolation mappings (issue #581)
+    from lib.agent_env import get_env_mapping_persist_dict
+
+    persist.update(get_env_mapping_persist_dict())
+
+    # 7. Ensure gh CLI is accessible in PATH (portable: uses brew --prefix on macOS)
+    current_path = os.environ.get("PATH", "")
+    if not shutil.which("gh"):
+        try:
+            result = subprocess.run(["brew", "--prefix"], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                brew_bin = result.stdout.strip() + "/bin"
+                path_segments = [s for s in current_path.split(os.pathsep) if s]
+                if brew_bin not in path_segments:
+                    persist["PATH"] = os.pathsep.join([brew_bin, *path_segments])
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
 
     # Persist all environment variables
     set_persistent_env(persist)

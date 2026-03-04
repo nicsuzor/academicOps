@@ -7,11 +7,11 @@ description: |
   Instructs the agent to invoke the aops-core:prompt-hydrator agent or skill before proceeding.
 ---
 
-⛔ HYDRATION REQUIRED: Tool call blocked.
+✕ HYDRATION REQUIRED: Tool call blocked.
 
 To proceed with file-modifying tools, you must first invoke the **prompt-hydrator** agent with the file path argument: `{temp_path}`
 
 - Gemini: `delegate_to_agent(name='aops-core:prompt-hydrator', query='{temp_path}')`
-- Claude: `Task(subagent_type='aops-core:prompt-hydrator', prompt='{temp_path}')`
+- Claude: `Agent(subagent_type='aops-core:prompt-hydrator', prompt='{temp_path}')`
 
-Read-only tools and always-available tools are not blocked.
+Only always-available tools are not blocked.

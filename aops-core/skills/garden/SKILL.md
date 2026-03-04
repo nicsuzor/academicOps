@@ -211,7 +211,9 @@ After synthesizing any spec, ensure `specs/specs.md` is updated:
 
 The task graph accumulates structural debt just like the knowledge base. Task gardening maintains hierarchy integrity and priority signal quality.
 
-### Hierarchy Rules
+### Hierarchy Rules (P#73)
+
+**MANDATORY**: Every task MUST have a `parent` set to prevent graph orphans.
 
 | Level   | Must belong to                  |
 | ------- | ------------------------------- |

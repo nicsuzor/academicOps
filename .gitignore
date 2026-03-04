@@ -2,6 +2,7 @@
 .claude/
 .gemini/
 .aops/
+.polecat/
 !.agent/commands/
 !.agent/skills/
 !.agent/rules

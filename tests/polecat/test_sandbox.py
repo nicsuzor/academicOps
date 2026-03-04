@@ -2,7 +2,7 @@
 """Tests for polecat worker sandbox settings.
 
 Verifies that create_sandbox_settings() produces a .claude/settings.json
-that restricts Write and Edit operations to the worktree directory.
+that permits Write and Edit operations within the worktree directory.
 """
 
 import json
@@ -54,21 +54,6 @@ class TestCreateSandboxSettings:
         with open(settings_path) as f:
             data = json.load(f)
         assert isinstance(data, dict)
-
-    def test_deny_rules_block_writes_outside_worktree(self, tmp_path):
-        """Deny rules cover Write and Edit for all paths."""
-        manager = _make_manager(tmp_path)
-        worktree = tmp_path / "worktree"
-        worktree.mkdir()
-
-        settings_path = manager.create_sandbox_settings(worktree)
-
-        with open(settings_path) as f:
-            data = json.load(f)
-
-        deny = data["permissions"]["deny"]
-        assert "Write(**)" in deny, "Must deny Write outside worktree"
-        assert "Edit(**)" in deny, "Must deny Edit outside worktree"
 
     def test_allow_rules_permit_worktree_writes(self, tmp_path):
         """Allow rules permit Write and Edit within the worktree path."""

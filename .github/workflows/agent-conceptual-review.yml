@@ -1,13 +1,13 @@
-# Agent: Gatekeeper
-# Personality: Authoritative guardian. Defaults to approval. Gates merge via commit status.
+# Agent: Conceptual Review
+# Personality: Thoughtful reviewer. Provides structured critique.
 # Responsibilities:
-#   - Evaluate PR alignment, design coherence, quality, and proportionality
-#   - Post commit status (pass/fail) as a required status check
-#   - Post PR comment with detailed assessment
-# Authority: Commit status "Gatekeeper" (success | failure)
-# Prompt: .github/agents/gatekeeper.md
+#   - Evaluate PR through axiom compliance + strategic alignment lens
+#   - Apply prioritised critique protocol (primary concern + resolution, secondary concerns)
+#   - Post PR comment with structured review
+#   - Set commit status honestly based on findings
+# Prompt: .github/agents/conceptual-review.agent.md
 
-name: "Agent: Gatekeeper"
+name: "Agent: Conceptual Review"
 
 on:
   pull_request:
@@ -35,13 +35,13 @@ on:
 
 jobs:
   review:
-    name: Gatekeeper
+    name: Conceptual Review
     if: >-
       github.event_name != 'pull_request' ||
       github.event.pull_request.user.login != 'github-actions[bot]'
     runs-on: ubuntu-latest
     concurrency:
-      group: gatekeeper-${{ inputs.pr_number || github.event.pull_request.number }}
+      group: conceptual-review-${{ inputs.pr_number || github.event.pull_request.number }}
       cancel-in-progress: true
     permissions:
       contents: read
@@ -59,7 +59,7 @@ jobs:
       - name: Read agent instructions
         id: prompt
         run: |
-          PROMPT=$(cat .github/agents/gatekeeper.agent.md)
+          PROMPT=$(cat .github/agents/conceptual-review.agent.md)
           {
             echo "prompt<<AGENT_EOF"
             echo "$PROMPT"
@@ -81,9 +81,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run Gatekeeper
-        id: gatekeeper
+      - name: Run Conceptual Review
+        id: review
         uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ steps.pr-info.outputs.head_sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
         with:
           allowed_bots: "claude[bot]"
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -95,29 +99,20 @@ jobs:
             Review PR #${{ steps.pr-info.outputs.pr_number }} in repository ${{ github.repository }}.
             Use `gh pr view ${{ steps.pr-info.outputs.pr_number }}` and `gh pr diff ${{ steps.pr-info.outputs.pr_number }}` to gather information.
 
-            IMPORTANT: Your verdict must be delivered as a COMMIT STATUS, not a PR review.
+            Post a PR comment (`gh pr comment`) with your structured review following the output format in your instructions.
 
-            After your evaluation, you MUST run one of these commands:
+            Then set the commit status honestly as described in your instructions. The environment variables HEAD_SHA, GITHUB_REPOSITORY, GITHUB_SERVER_URL, and GITHUB_RUN_ID are available.
 
-            On APPROVAL:
-            ```bash
-            gh api repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.head_sha }} \
-              -f state=success \
-              -f context="Gatekeeper" \
-              -f description="Scope and strategy alignment verified" \
-              -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-            ```
+          claude_args: '--model claude-opus-4-6 --allowed-tools "Bash(gh:*),Read"'
 
-            On REJECTION:
-            ```bash
-            gh api repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.head_sha }} \
-              -f state=failure \
-              -f context="Gatekeeper" \
-              -f description="REJECT: <brief reason>" \
-              -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-            ```
-
-            Also post a PR comment (`gh pr comment`) with your full assessment.
-            Do NOT use `gh pr review` — use commit status + comment instead.
-
-          claude_args: '--allowed-tools "Bash(gh:*),Read"'
+      # Fallback: if the agent crashes, mark the status as failure so it doesn't silently hang as pending
+      - name: Set failure status if agent crashed
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api "repos/${{ github.repository }}/statuses/${{ steps.pr-info.outputs.head_sha }}" \
+            -f state="failure" \
+            -f context="Conceptual Review" \
+            -f description="Conceptual review agent crashed" \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"

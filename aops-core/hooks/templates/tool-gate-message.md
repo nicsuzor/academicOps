@@ -14,7 +14,7 @@ description: |
     {next_instruction} - What the agent should do next
 ---
 
-⏸️ **Gate Check ({mode})** - `{tool_name}`
+✕ **Gate Check ({mode})** - `{tool_name}`
 The academicOps framework requires strict compliance with a quality assurance workflow, even for simple and minor tasks.
 
 **Current status**:

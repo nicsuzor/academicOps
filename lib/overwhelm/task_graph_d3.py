@@ -7,6 +7,7 @@ dashed for refs), legend, detail panel, and hover highlighting.
 """
 
 import math
+import os
 import re
 from pathlib import Path
 
@@ -15,9 +16,21 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 
 EDGE_FORCE = {
-    "parent": {"strength": 0.8, "distance": 80},
-    "depends_on": {"strength": 0.35, "distance": 150},
-    "ref": {"strength": 0.06, "distance": 220},
+    "parent": {"strength": 1.0, "distance": 40},
+    "depends_on": {"strength": 0.15, "distance": 200},
+    "ref": {"strength": 0.02, "distance": 300},
+}
+
+# Global force simulation parameters — all tunables in one place.
+# Passed to JS via graphData.forceConfig so nothing is hardcoded in index.html.
+FORCE_CONFIG = {
+    "chargeDistanceMax": 100,  # Stop repelling beyond this distance (px)
+    "collisionPadding": 2,  # Extra px around each node for collision avoidance
+    "collisionStrength": 0.4,  # How aggressively collisions are enforced (0-1)
+    "collisionIterations": 3,  # Solver iterations per tick (more = stabler but slower)
+    "clusterStrength": 0.25,  # Pull toward project centroid (0 = off, 1 = very strong)
+    "orphanRadius": 0.45,  # Fraction of viewport to push orphans toward (0-1)
+    "orphanStrength": 0.3,  # How strongly orphans are pushed to periphery (0-1)
 }
 
 TYPE_CHARGE = {
@@ -267,9 +280,21 @@ def prepare_embedded_graph_data(
         depth = node.get("depth", 0)
         is_structural = nid in structural_ids
 
-        label = node.get("label", nid)
-        if len(label) > 50:
-            label = label[:47] + "..."
+        # Prioritize title over label for human-readable names
+        label = node.get("title") or node.get("label") or nid
+        if len(label) > 60:
+            label = label[:57] + "..."
+
+        # Extract modification time for recency heatmap
+        modified = node.get("modified")
+        if not modified and node.get("path"):
+            try:
+                # Fallback to filesystem mtime if path exists and modified not in graph.json
+                p = Path(os.environ.get("ACA_DATA", "")) / node["path"]
+                if p.exists():
+                    modified = p.stat().st_mtime
+            except Exception:
+                pass
 
         type_scale = TYPE_BASE_SCALE.get(node_type, 1.0)
         if status in ("done", "completed", "cancelled"):
@@ -346,12 +371,18 @@ def prepare_embedded_graph_data(
                 "stakeholder": stakeholder,
                 "structural": is_structural,
                 "dw": round(dw, 1),
+                "modified": modified,
                 "badge": badge,
                 "charge": TYPE_CHARGE.get(node_type, -100),
                 "parent": node.get("parent"),
                 "project": node.get("project"),
                 "assignee": assignee or node.get("assignee"),
                 "opacity": opacity,
+                "x": node.get("x"),  # Precomputed ForceAtlas2 x (50-950 range, or None)
+                "y": node.get("y"),  # Precomputed ForceAtlas2 y (50-950 range, or None)
+                "layouts": node.get(
+                    "layouts", {}
+                ),  # Named layout coords (treemap, circle_pack, arc, etc.)
             }
         )
 
@@ -395,7 +426,25 @@ def prepare_embedded_graph_data(
             }
         )
 
-    return {"nodes": d3_nodes, "links": d3_links}
+    has_layout = any(
+        n.get("x") is not None
+        or "forceatlas2" in n.get("layouts", {})
+        or "fa2" in n.get("layouts", {})
+        for n in nodes
+    )
+
+    # Discover available named layouts from graph.json nodes
+    available_layouts: set[str] = set()
+    for node in nodes:
+        available_layouts.update(node.get("layouts", {}).keys())
+
+    return {
+        "nodes": d3_nodes,
+        "links": d3_links,
+        "forceConfig": FORCE_CONFIG,
+        "hasLayout": has_layout,
+        "availableLayouts": sorted(available_layouts),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -403,8 +452,20 @@ def prepare_embedded_graph_data(
 # ---------------------------------------------------------------------------
 
 
-def render_embedded_graph(graph_data: dict, height: int = 500, force_settings=None):
+def render_embedded_graph(
+    graph_data: dict,
+    height: int = 500,
+    force_settings=None,
+    project_filter: str = "ALL",
+    layout_mode: str = "force",
+):
     """Render the graph using the bi-directional Streamlit Custom Component."""
     from d3_component import d3_task_graph
 
-    return d3_task_graph(data=graph_data, height=height, force_settings=force_settings)
+    return d3_task_graph(
+        data=graph_data,
+        height=height,
+        force_settings=force_settings,
+        project_filter=project_filter,
+        layout_mode=layout_mode,
+    )

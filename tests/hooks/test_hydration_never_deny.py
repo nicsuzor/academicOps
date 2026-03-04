@@ -13,12 +13,39 @@ if str(AOPS_CORE) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE))
 
 
-from hooks.gate_config import TOOL_CATEGORIES, get_tool_category
+import importlib
+
+from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES, TOOL_CATEGORIES, get_tool_category
 from hooks.router import HookRouter
 from hooks.schemas import HookContext
 from lib.gate_model import GateVerdict
 from lib.gates.registry import GateRegistry
 from lib.session_state import SessionState
+
+
+def _reinit_gates():
+    """Reload gate_config and definitions with current env vars, reinit registry."""
+    if "gate_config" in sys.modules:
+        importlib.reload(sys.modules["gate_config"])
+    if "hooks.gate_config" in sys.modules:
+        importlib.reload(sys.modules["hooks.gate_config"])
+    if "lib.gates.definitions" in sys.modules:
+        importlib.reload(sys.modules["lib.gates.definitions"])
+    GateRegistry._initialized = False
+    GateRegistry.initialize()
+
+
+@pytest.fixture(autouse=True)
+def _pin_gate_modes(monkeypatch):
+    """Pin gate env vars to prevent leaks from other test files (pytest-xdist)."""
+    monkeypatch.setenv("HYDRATION_GATE_MODE", "warn")
+    monkeypatch.setenv("CUSTODIET_GATE_MODE", "block")
+    monkeypatch.setenv("QA_GATE_MODE", "block")
+    monkeypatch.setenv("HANDOVER_GATE_MODE", "warn")
+    monkeypatch.setenv("CUSTODIET_TOOL_CALL_THRESHOLD", "50")
+    _reinit_gates()
+    yield
+    _reinit_gates()
 
 
 # Helper to mock session state loading
@@ -52,6 +79,10 @@ class TestActivateSkillAlwaysAvailable:
     def test_task_tool_in_always_available(self):
         """Task tool should also be in always_available."""
         assert "Task" in TOOL_CATEGORIES["always_available"]
+
+    def test_agent_tool_in_always_available(self):
+        """Agent tool (Claude Code's current subagent tool) should be in always_available."""
+        assert "Agent" in TOOL_CATEGORIES["always_available"]
 
 
 class TestAskUserQuestionAlwaysAvailable:
@@ -178,7 +209,7 @@ class TestHydratorActiveBypass:
 
 
 class TestTaskHydratorSpawn:
-    """Test that Task tool with hydrator subagent is allowed and sets active."""
+    """Test that Agent/Task tool with hydrator subagent is allowed and sets active."""
 
     def test_task_hydrator_allowed_and_sets_active(self, mock_session_state):
         """Task with hydrator subagent should be allowed."""
@@ -203,18 +234,40 @@ class TestTaskHydratorSpawn:
         # Note: Task is always_available so it bypasses all gates.
         # Gate opens later on SubagentStop when hydrator finishes.
 
+    def test_agent_hydrator_allowed(self, mock_session_state):
+        """Agent (Claude Code's current tool name) with hydrator subagent should be allowed."""
+        state, _ = mock_session_state
+        state.gates["hydration"].status = "closed"
 
-class TestReadToolExemptFromHydration:
-    """Test that read-only tools are NOT blocked by the hydration gate.
+        ctx = HookContext(
+            session_id="test-session-123",
+            hook_event="PreToolUse",
+            tool_name="Agent",
+            tool_input={
+                "subagent_type": "aops-core:prompt-hydrator",
+                "prompt": "Hydrate this task",
+            },
+        )
 
-    read_only tools are excluded from the hydration gate policy (PR#516).
+        router = HookRouter()
+        result = router._dispatch_gates(ctx, state)
+
+        if result:
+            assert result.verdict == GateVerdict.ALLOW
+
+
+class TestReadToolSubjectToHydration:
+    """Test that read-only tools ARE subject to the hydration gate.
+
+    Only always_available tools bypass hydration. Read-only tools get
+    warned/blocked like any other non-exempt tool.
     """
 
-    def test_read_allowed_when_hydration_not_passed(self, mock_session_state):
-        """Read should be allowed even when hydration gate is not passed.
+    def test_read_warned_when_hydration_not_passed(self, mock_session_state):
+        """Read should be warned when hydration gate is closed.
 
-        read_only tools are excluded from the hydration gate policy, so
-        they bypass the gate entirely regardless of hydration status.
+        Only always_available tools (Agent, Task, Skill, AskUserQuestion, etc.)
+        bypass the hydration gate. Read-only tools are subject to it.
         """
         state, _ = mock_session_state
         state.close_gate("hydration")
@@ -233,12 +286,12 @@ class TestReadToolExemptFromHydration:
         router = HookRouter()
         result = router._dispatch_gates(ctx, state)
 
-        # Read is a read_only tool, excluded from hydration gate: should be allowed
-        if result:
-            assert result.verdict == GateVerdict.ALLOW
+        # Read is NOT exempt from hydration — only always_available tools are
+        assert result is not None
+        assert result.verdict == GateVerdict.WARN
 
     def test_read_allowed_when_hydration_passed(self, mock_session_state):
-        """Read should be allowed when hydration gate is passed."""
+        """Read should be allowed when hydration gate is open."""
         state, _ = mock_session_state
         state.gates["hydration"].status = "open"
         state.state["hydrator_active"] = False
@@ -256,3 +309,45 @@ class TestReadToolExemptFromHydration:
 
         if result:
             assert result.verdict == GateVerdict.ALLOW
+
+
+class TestAgentNamesNotInToolCategories:
+    """Agent/skill names must NOT be in TOOL_CATEGORIES.
+
+    Agent names like 'prompt-hydrator' and 'custodiet' are subagent_type
+    values, not tool names. They should be in COMPLIANCE_SUBAGENT_TYPES
+    instead of any tool category.
+    """
+
+    AGENT_NAMES = [
+        "prompt-hydrator",
+        "aops-core:prompt-hydrator",
+        "custodiet",
+        "aops-core:custodiet",
+        "qa",
+        "aops-core:qa",
+        "handover",
+        "aops-core:handover",
+        "dump",
+        "aops-core:dump",
+    ]
+
+    def test_agent_names_not_in_any_tool_category(self):
+        """No agent name should appear in any TOOL_CATEGORIES set."""
+        all_tools = set()
+        for tools in TOOL_CATEGORIES.values():
+            all_tools |= tools
+        for name in self.AGENT_NAMES:
+            assert name not in all_tools, (
+                f"Agent name '{name}' found in TOOL_CATEGORIES. "
+                f"Agent names belong in COMPLIANCE_SUBAGENT_TYPES, not tool categories."
+            )
+
+    def test_compliance_subagent_types_has_expected_members(self):
+        """COMPLIANCE_SUBAGENT_TYPES should contain the key compliance agents."""
+        expected = {"prompt-hydrator", "custodiet", "audit", "butler"}
+        for name in expected:
+            assert (
+                name in COMPLIANCE_SUBAGENT_TYPES
+                or f"aops-core:{name}" in COMPLIANCE_SUBAGENT_TYPES
+            ), f"'{name}' not found in COMPLIANCE_SUBAGENT_TYPES"

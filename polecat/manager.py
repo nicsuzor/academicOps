@@ -28,7 +28,7 @@ def get_polecat_home() -> Path:
 
     Checks in order:
     1. POLECAT_HOME environment variable
-    2. Default: ~/.aops
+    2. Default: ~/.polecat
 
     Returns:
         Path to the polecat home directory
@@ -38,7 +38,7 @@ def get_polecat_home() -> Path:
         if env_home.startswith("~"):
             return Path(env_home).expanduser()
         return Path(env_home)
-    return Path.home() / ".aops"
+    return Path.home() / ".polecat"
 
 
 def get_config_path(home_dir: Path | None = None) -> Path:
@@ -179,7 +179,7 @@ class PolecatManager:
 
         Args:
             home_dir: Optional home directory override. If not specified,
-                      uses POLECAT_HOME env var or defaults to ~/.aops
+                      uses POLECAT_HOME env var or defaults to ~/.polecat
         """
         # Determine home directory
         if home_dir is not None:
@@ -387,6 +387,9 @@ class PolecatManager:
                 file=sys.stderr,
             )
 
+        # Install pre-commit hooks
+        self._install_precommit_hooks(worktree_path)
+
         # Apply sandbox settings to isolate the worker to this worktree
         self.create_sandbox_settings(worktree_path)
 
@@ -449,7 +452,7 @@ class PolecatManager:
     def get_repo_path(self, task) -> Path:
         """Returns the repository path to use as source for the worktree.
 
-        Prefers bare mirror in ~/.aops/polecat/.repos/ if it exists (for isolation).
+        Prefers bare mirror in $POLECAT_HOME/polecat/.repos/ if it exists (for isolation).
         Falls back to local project path from config.
         """
         project = task.project or "aops"
@@ -894,7 +897,7 @@ class PolecatManager:
         return None
 
     def setup_worktree(self, task, lock_timeout: float = 30.0):
-        """Creates a git worktree in ~/.aops/polecat linked to the project repo.
+        """Creates a git worktree in $POLECAT_HOME/polecat linked to the project repo.
 
         Before creating the worktree, performs a safe sync of the mirror (if used)
         to ensure we have the latest commits from origin. Sync failures are non-fatal
@@ -1136,6 +1139,9 @@ class PolecatManager:
                 check=True,
             )
 
+        # Install pre-commit hooks
+        self._install_precommit_hooks(worktree_path)
+
         # --- SANDBOX SETTINGS ---
         # Write .claude/settings.json to restrict file writes to this worktree only.
         # Loaded via --setting-sources=user,project when spawning the worker.
@@ -1146,6 +1152,37 @@ class PolecatManager:
         self._verify_worktree_setup(worktree_path, branch_name, default_branch)
 
         return worktree_path
+
+    def _install_precommit_hooks(self, worktree_path: Path):
+        """Install pre-commit hooks in a worktree if .pre-commit-config.yaml exists."""
+        config_file = worktree_path / ".pre-commit-config.yaml"
+        if not config_file.exists():
+            return
+
+        print("🪝 Installing pre-commit hooks...")
+        try:
+            # Clear VIRTUAL_ENV so uv doesn't conflict with the parent repo's venv
+            env = {k: v for k, v in os.environ.items() if k != "VIRTUAL_ENV"}
+            result = subprocess.run(
+                ["uv", "run", "pre-commit", "install"],
+                cwd=worktree_path,
+                capture_output=True,
+                text=True,
+                check=False,
+                env=env,
+            )
+            if result.returncode == 0:
+                print("  ✅ Pre-commit hooks installed")
+            else:
+                print(
+                    f"  ⚠ Could not install pre-commit hooks: {result.stderr.strip()}",
+                    file=sys.stderr,
+                )
+        except FileNotFoundError:
+            print(
+                "  ⚠ Could not install pre-commit hooks: 'uv' command not found. Is it in your PATH?",
+                file=sys.stderr,
+            )
 
     def create_sandbox_settings(self, worktree_path: Path) -> Path:
         """Write .claude/settings.json to a worktree to sandbox file access.
