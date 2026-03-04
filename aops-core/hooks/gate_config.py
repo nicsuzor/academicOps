@@ -39,13 +39,9 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
     # Always available: bypass ALL gates, including hydration.
     # These are tools that either invoke agents/skills (needed to satisfy gates)
     # or manage PKB/task state (needed for framework lifecycle).
-    "always_available": {
-        # --- Agent/skill invocation tools (cross-platform) ---
-        "Agent",  # Claude Code: spawn subagent (current tool name)
-        "Task",  # Claude Code: spawn subagent (legacy/alias)
-        "Skill",  # Claude Code: invoke skill in-session
-        "delegate_to_agent",  # Gemini CLI: spawn subagent
-        "activate_skill",  # Gemini CLI: invoke skill in-session
+    # Infrastructure: bypass ALL gates, including hydration.
+    # These are tools required for the framework itself to function (PKB ops).
+    "infrastructure": {
         # --- PKB task management: mcp__pkb__* (Claude Code short form) ---
         "mcp__pkb__get_task",
         "mcp__pkb__create_task",
@@ -133,10 +129,21 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "save_memory",
         # --- Claude Code built-in meta tools ---
         "AskUserQuestion",
+        "ask_user",
         "TodoWrite",
         "EnterPlanMode",
         "ExitPlanMode",
         "KillShell",
+    },
+    # Spawn: tools that invoke subagents or skills.
+    # Subject to hydration gate (must hydrate before doing substantive work).
+    # Always allowed if the target subagent is a compliance agent (hydrator, custodiet, etc).
+    "spawn": {
+        "Agent",  # Claude Code: spawn subagent (current tool name)
+        "Task",  # Claude Code: spawn subagent (legacy/alias)
+        "Skill",  # Claude Code: invoke skill in-session
+        "delegate_to_agent",  # Gemini CLI: spawn subagent
+        "activate_skill",  # Gemini CLI: invoke skill in-session
         "TaskCreate",
         "TaskUpdate",
         "TaskGet",
@@ -371,38 +378,38 @@ HYDRATION_GATE_MODE = os.getenv(GATE_MODE_ENV_VARS["hydration"], GATE_MODE_DEFAU
 #   pkb__<op>                          (bare prefix)
 
 _PKB_OPERATIONS: dict[str, str] = {
-    # All PKB operations are always_available — the PKB is framework
+    # All PKB operations are infrastructure — the PKB is framework
     # infrastructure, not user files. Gates should never block PKB access.
-    "get_task": "always_available",
-    "create_task": "always_available",
-    "update_task": "always_available",
-    "complete_task": "always_available",
-    "reindex": "always_available",
-    "delete_document": "always_available",
-    "list_tasks": "always_available",
-    "task_search": "always_available",
-    "search": "always_available",
-    "pkb_context": "always_available",
-    "pkb_orphans": "always_available",
-    "get_document": "always_available",
-    "list_documents": "always_available",
-    "get_network_metrics": "always_available",
-    "get_task_children": "always_available",
-    "retrieve_memory": "always_available",
-    "search_by_tag": "always_available",
-    "list_memories": "always_available",
-    "pkb_trace": "always_available",
-    "get_task_network": "always_available",
-    "get_blocked_tasks": "always_available",
-    "semantic_search": "always_available",
-    "pkb_search": "always_available",
-    "get_dependency_tree": "always_available",
-    "create": "always_available",
-    "append": "always_available",
-    "create_memory": "always_available",
-    "decompose_task": "always_available",
-    "delete": "always_available",
-    "delete_memory": "always_available",
+    "get_task": "infrastructure",
+    "create_task": "infrastructure",
+    "update_task": "infrastructure",
+    "complete_task": "infrastructure",
+    "reindex": "infrastructure",
+    "delete_document": "infrastructure",
+    "list_tasks": "infrastructure",
+    "task_search": "infrastructure",
+    "search": "infrastructure",
+    "pkb_context": "infrastructure",
+    "pkb_orphans": "infrastructure",
+    "get_document": "infrastructure",
+    "list_documents": "infrastructure",
+    "get_network_metrics": "infrastructure",
+    "get_task_children": "infrastructure",
+    "retrieve_memory": "infrastructure",
+    "search_by_tag": "infrastructure",
+    "list_memories": "infrastructure",
+    "pkb_trace": "infrastructure",
+    "get_task_network": "infrastructure",
+    "get_blocked_tasks": "infrastructure",
+    "semantic_search": "infrastructure",
+    "pkb_search": "infrastructure",
+    "get_dependency_tree": "infrastructure",
+    "create": "infrastructure",
+    "append": "infrastructure",
+    "create_memory": "infrastructure",
+    "decompose_task": "infrastructure",
+    "delete": "infrastructure",
+    "delete_memory": "infrastructure",
 }
 
 # Regex to match any PKB MCP prefix variant and extract the operation name.
@@ -434,9 +441,9 @@ def get_tool_category(tool_name: str) -> str:
 
     # Edge case: compliance subagent names sometimes appear as tool_name
     # (router logs subagent_type as tool_name in some code paths).
-    # Treat them as always_available so they bypass gates.
+    # Treat them as infrastructure so they bypass gates.
     if tool_name in COMPLIANCE_SUBAGENT_TYPES:
-        return "always_available"
+        return "infrastructure"
 
     # Default: treat unknown tools as write (conservative)
     return "write"
