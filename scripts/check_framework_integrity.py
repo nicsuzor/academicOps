@@ -34,10 +34,22 @@ def check_index_wikilinks(plugin_root: Path) -> list[str]:
     wikilinks = wikilink_pattern.findall(content)
 
     # Build set of existing workflow stems
+    existing: set[str] = set()
+
+    # 1. Global workflows
     workflows_dir = plugin_root / "workflows"
-    existing = set()
     if workflows_dir.exists():
-        existing = {f.stem for f in workflows_dir.glob("*.md")}
+        existing |= {f.stem for f in workflows_dir.glob("*.md")}
+
+    # 2. Skill-specific workflows
+    skills_dir = plugin_root / "skills"
+    if skills_dir.exists():
+        for skill_dir in skills_dir.iterdir():
+            if not skill_dir.is_dir():
+                continue
+            skill_workflows_dir = skill_dir / "workflows"
+            if skill_workflows_dir.exists():
+                existing |= {f.stem for f in skill_workflows_dir.glob("*.md")}
 
     for target in wikilinks:
         target = target.strip()
@@ -94,14 +106,30 @@ def check_workflow_length(plugin_root: Path) -> list[str]:
     """Validate workflow files are <= WORKFLOW_MAX_LINES lines."""
     errors: list[str] = []
 
+    # Check global workflows
     workflows_dir = plugin_root / "workflows"
-    if not workflows_dir.exists():
-        return errors
+    if workflows_dir.exists():
+        for path in sorted(workflows_dir.glob("*.md")):
+            line_count = len(path.read_text().splitlines())
+            if line_count > WORKFLOW_MAX_LINES:
+                errors.append(
+                    f"workflows/{path.name}: {line_count} lines (max {WORKFLOW_MAX_LINES})"
+                )
 
-    for path in sorted(workflows_dir.glob("*.md")):
-        line_count = len(path.read_text().splitlines())
-        if line_count > WORKFLOW_MAX_LINES:
-            errors.append(f"workflows/{path.name}: {line_count} lines (max {WORKFLOW_MAX_LINES})")
+    # Check skill-specific workflows (skills/*/workflows/*.md)
+    skills_dir = plugin_root / "skills"
+    if skills_dir.exists():
+        for skill_dir in sorted(skills_dir.iterdir()):
+            if not skill_dir.is_dir():
+                continue
+            skill_workflows_dir = skill_dir / "workflows"
+            if skill_workflows_dir.exists():
+                for path in sorted(skill_workflows_dir.glob("*.md")):
+                    line_count = len(path.read_text().splitlines())
+                    if line_count > WORKFLOW_MAX_LINES:
+                        errors.append(
+                            f"skills/{skill_dir.name}/workflows/{path.name}: {line_count} lines (max {WORKFLOW_MAX_LINES})"
+                        )
 
     return errors
 

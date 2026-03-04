@@ -27,7 +27,7 @@ version: 1.1.0
 
 ## Detailed Procedures and Selection
 
-For specific tool configurations and batch management steps, see **[[references/batch-submission-details]]**:
+For specific tool configurations and batch management steps, see **[[batch-submission-details]]**:
 
 - **Tool Selection Criteria** - Choosing between LiteLLM, Boto3, or custom scripts
 - **Batch Management** - Data preparation, status polling, and output retrieval

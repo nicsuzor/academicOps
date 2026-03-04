@@ -8,78 +8,29 @@ category: maintenance
 
 Reconcile markdown files with PKB to ensure semantic search stays current.
 
-## When to Run
+**When to Run**: After direct markdown edits, periodically as part of `/garden` maintenance, or when semantic search seems stale.
 
-- After direct markdown edits (bypassing remember skill)
-- Periodically as part of `/garden` maintenance
-- When semantic search seems stale or incomplete
-- After PKB recovery/rebuild
-
-## Modes
+## Sync Modes
 
 ### Full Rebuild
 
-Process all markdown files in `$ACA_DATA`:
-
-```bash
-# Pseudo-workflow (agent executes these steps)
-1. Glob: $ACA_DATA/**/*.md
-2. For each file:
-   - Read content
-   - Extract frontmatter (title, type, tags)
-   - Store to PKB with source path
-3. Report summary
-```
+Process all markdown files in `$ACA_DATA`. Read content, extract frontmatter, and store to PKB with source path.
 
 ### Incremental Sync
 
-Process only files changed since last sync:
+Process only files changed since the last sync (e.g., using `git diff` to find recent changes).
 
-```bash
-# Use git to find changed files
-git diff --name-only HEAD~10 -- $ACA_DATA/**/*.md
-```
+## Implementation Steps
 
-## Implementation
-
-Agent should execute:
-
-```javascript
-// 1. Get all markdown files
-Glob(pattern="**/*.md", path="$ACA_DATA")
-
-// 2. For each file, read and sync
-for (file of files) {
-  content = Read(file_path=file)
-
-  // Extract first 500 chars for embedding (PKB handles chunking)
-  summary = extractSummary(content)
-
-  mcp__pkb__create_memory(
-    title=extractTitle(content),
-    body=summary,
-    tags=extractTags(content)
-  )
-}
-
-// 3. Report
-"Synced X files to PKB"
-```
+1. **Discovery**: Get all markdown files in `$ACA_DATA` (excluding sessions and files with `sync: false`).
+2. **Read and Extract**: For each file, read the content and extract the title, body summary, and tags.
+3. **PKB Update**: Use `mcp__pkb__create_memory` to sync the extracted content to the PKB.
+4. **Report**: Summarize the number of files successfully synced.
 
 ## File Filtering
 
-**Include:**
-
-- `$ACA_DATA/projects/**/*.md`
-- `$ACA_DATA/goals/*.md`
-- `$ACA_DATA/context/*.md`
-- `$ACA_DATA/knowledge/**/*.md`
-
-**Exclude:**
-
-- `$ACA_DATA/../sessions/*.md` (daily notes, not semantic knowledge - now outside $ACA_DATA)
-- Files with `sync: false` in frontmatter
-- Empty files
+- **Include**: `$ACA_DATA/projects/**/*.md`, `goals/*.md`, `context/*.md`, `knowledge/**/*.md`.
+- **Exclude**: Daily notes outside `$ACA_DATA`, files with `sync: false` in frontmatter, and empty files.
 
 ## Deduplication
 
@@ -89,27 +40,15 @@ PKB handles deduplication via content hashing. Re-syncing the same content is sa
 
 ### With /garden
 
-The garden skill should include memory sync as part of periodic maintenance:
-
-```markdown
-## Garden Maintenance Includes
-
-- Orphan detection
-- Link repair
-- **PKB sync** (reconcile markdown → PKB)
-- Prune stale content
-```
+The garden skill includes memory sync as part of its periodic maintenance (orphan detection, link repair, prune stale content).
 
 ### With Remember Skill
 
-This workflow is the **repair path** for when the dual-write pattern is bypassed. Normal flow:
-
-1. New content → remember skill → markdown + PKB (atomic)
-2. Direct edit → PKB drifts → sync workflow → reconciled
+This workflow is the **repair path** for when the dual-write pattern is bypassed. Normal flow is atomic (markdown + PKB). Direct edits cause drift, which this workflow reconciles.
 
 ## Success Criteria
 
-- [ ] All markdown files in scope have corresponding PKB entries
-- [ ] PKB entries have correct source metadata (path to markdown file)
-- [ ] No orphaned PKB entries (entries without corresponding markdown)
-- [ ] Semantic search returns results for content in `$ACA_DATA`
+- [ ] All markdown files in scope have corresponding PKB entries.
+- [ ] PKB entries have correct source metadata (path to markdown file).
+- [ ] No orphaned PKB entries (entries without corresponding markdown).
+- [ ] Semantic search returns results for content in `$ACA_DATA`.
