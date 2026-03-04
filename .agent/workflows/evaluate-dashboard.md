@@ -1,18 +1,13 @@
 ---
 name: evaluate-dashboard
 title: Evaluate Overwhelm Dashboard
-description: "Phase 1 of the QA handoff chain: dynamic visual QA and structural verification. Produces a report, then STOPS."
+description: Dynamic visual QA and structural verification of the Overwhelm Dashboard against live acceptance criteria and ADHD design principles.
 triggers: [evaluate dashboard, overwhelm dashboard, visual QA, dashboard evaluation, dashboard QA]
-chain: qa-handoff-chain
-phase: 1-evaluate
-next: decompose-qa-report
 ---
 
 # Workflow: Evaluate Overwhelm Dashboard
 
-Phase 1 of the QA handoff chain (Evaluate → Decompose → Implement). This workflow produces a QA report and **STOPS**. It does NOT decompose findings into tasks or fix issues.
-
-> **Why the split?** QA evaluation requires user-empathy and design judgment. Decomposition requires task design skills. Implementation requires engineering. Mixing these in one session causes QA agents to make technical rearrangements thinking they are UX fixes. See issues #729, #731, #732.
+Instructions for dynamic visual QA and structural verification against the live specifications.
 
 ## 1. Setup & Execution
 
@@ -42,55 +37,24 @@ Use browser tools to navigate the dashboard and perform the following for each v
 3. **Stress Test:** Verify the ADHD Design Principles (e.g., "Scannable, not studyable", "No flat displays at scale") are upheld by the current rendering.
 4. **Check Data Integrity:** Confirm the UI matches the underlying state in `$ACA_DATA/tasks/index.json` and the relevant graph file: `$ACA_DATA/outputs/graph.json` for the Tasks view, or `$ACA_DATA/outputs/knowledge-graph.json` for the Knowledge Base view.
 
-## 4. Write QA Report
+## 4. Documentation of Deviations
 
-Write the report to `qa/dashboard-qa-results-{YYYY-MM-DD}.md` with this structure:
+Record any gaps where the implementation diverges from the live specifications. Do not rely on previous evaluations; verify the implementation against the spec as it exists _now_.
 
-```markdown
-# Dashboard QA Report — {YYYY-MM-DD}
+Write QA results to `qa/dashboard-qa-results-{date}.md` with:
 
-## Verdict: {VERIFIED | ISSUES}
+- Per-task check results (pass/fail/untested with evidence)
+- End-to-end scenario results
+- Emotional assessment
+- Verdict: VERIFIED or ISSUES
 
-## Summary
+## 5. Decomposition & Task Creation
 
-{1-3 sentence overview of findings}
+After finalising the QA report, create actionable follow-up work:
 
-## Per-View Findings
+1. **Create or update an epic** for the dashboard improvement work if one doesn't exist.
+2. **Decompose each critical/major finding** into individual tasks with clear acceptance criteria derived from the QA check that failed.
+3. **Set task priorities** based on QA severity: critical findings → P1, major → P2, minor → P3.
+4. **Link tasks** to the QA report and the relevant spec section.
 
-### {View Name}
-
-#### Spec Compliance
-
-{What matches spec, what diverges}
-
-#### ADHD Design Principles
-
-{Assessment against each principle — narrative, not checklist}
-
-#### Data Integrity
-
-{Any mismatches between UI and underlying data}
-
-## Deviations from Spec
-
-{Numbered list of gaps, each with:}
-
-1. **{Title}**: {description} — Severity: {critical|major|minor}
-
-## Recommendations
-
-{Specific, actionable, empathetic to both user AND developer}
-```
-
-## 5. STOP — Handoff Boundary
-
-**You are done.** Do not:
-
-- Create tasks from the findings
-- Decompose issues into subtasks
-- Fix any problems you found
-- Suggest code changes
-
-Instead, report the file path of your QA results file. The next phase (decompose-qa-report) will review your report and create properly scoped tasks with UX-centered acceptance criteria.
-
-> **Next phase**: `decompose-qa-report` — Review this QA report and create tasks with UX acceptance criteria.
+This ensures QA findings are not just documented but enter the task queue for resolution.
