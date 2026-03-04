@@ -697,7 +697,10 @@
       "is_subagent": false,
       "gate_overrides": {
         "qa": {
-          "status": "closed"
+          "status": "closed",
+          "metrics": {
+            "temp_path": "/tmp/qa_review.md"
+          }
         },
         "handover": {
           "status": "open"
@@ -720,7 +723,10 @@
           "status": "closed"
         },
         "qa": {
-          "status": "closed"
+          "status": "closed",
+          "metrics": {
+            "temp_path": "/tmp/qa_review.md"
+          }
         }
       },
       "expected": {

@@ -4,7 +4,7 @@
 Ensures:
 - No tool appears in multiple categories (prevents ambiguous matching)
 - Agent/skill names are NOT in tool categories (they're subagent_type values)
-- All spawn tools are in always_available (so they bypass gates)
+- All spawn tools are in spawn category (subject to hydration gate, not infrastructure)
 - COMPLIANCE_SUBAGENT_TYPES and SPAWN_TOOLS are internally consistent
 """
 
@@ -55,23 +55,28 @@ class TestAgentNameSeparation:
             )
 
 
-class TestSpawnToolsInAlwaysAvailable:
-    """All spawn tool names must be in always_available."""
+class TestSpawnToolsInSpawnCategory:
+    """All spawn tool names must be in spawn category (subject to hydration gate)."""
 
-    def test_all_spawn_tools_bypass_gates(self):
-        """Every tool in SPAWN_TOOLS should be in always_available."""
-        always_available = TOOL_CATEGORIES["always_available"]
+    def test_all_spawn_tools_in_spawn_category(self):
+        """Every tool in SPAWN_TOOLS should be in spawn category.
+
+        Spawn tools (Agent, Task, Skill, etc.) are subject to the hydration gate —
+        they cannot dispatch subagents until hydration is complete. This is distinct
+        from infrastructure tools (PKB ops) which bypass all gates entirely.
+        """
+        spawn_cat = TOOL_CATEGORIES["spawn"]
         for tool_name in SPAWN_TOOLS:
-            assert tool_name in always_available, (
-                f"Spawn tool '{tool_name}' not in always_available. "
-                f"Spawn tools must bypass all gates so agents can be invoked."
+            assert tool_name in spawn_cat, (
+                f"Spawn tool '{tool_name}' not in spawn category. "
+                f"Spawn tools must be subject to hydration gate."
             )
 
     def test_get_tool_category_for_spawn_tools(self):
-        """get_tool_category should return always_available for all spawn tools."""
+        """get_tool_category should return spawn for all spawn tools."""
         for tool_name in SPAWN_TOOLS:
-            assert get_tool_category(tool_name) == "always_available", (
-                f"get_tool_category('{tool_name}') didn't return 'always_available'"
+            assert get_tool_category(tool_name) == "spawn", (
+                f"get_tool_category('{tool_name}') didn't return 'spawn'"
             )
 
 
