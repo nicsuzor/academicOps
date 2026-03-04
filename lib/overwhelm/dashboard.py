@@ -4019,8 +4019,9 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from lib.task_model import TaskStatus
 from task_manager_ui import render_task_editor
+
+from lib.task_model import TaskStatus
 
 
 @st.dialog("Edit Task")
@@ -4416,7 +4417,7 @@ if synthesis:
     # Stale indicator styling
     stale_class = "stale" if is_stale else ""
     stale_badge = (
-        " <span style='background: #f59e0b; color: #000; padding: 2px 6px; border-radius: 3px; font-size: 0.7em; margin-left: 8px;'>STALE - re-run /session-insights</span>"
+        " <span style='background: #f59e0b; color: #000; padding: 2px 6px; border-radius: 3px; font-size: 0.7em; margin-left: 8px;'>STALE</span>"
         if is_stale
         else ""
     )
@@ -4577,7 +4578,7 @@ else:
         "margin-bottom: 16px; text-align: center;'>"
         "<div style='font-size: 1.1em; margin-bottom: 4px;'>🧠 Focus Synthesis unavailable</div>"
         "<div style='font-size: 0.85em; opacity: 0.6;'>"
-        "Run <code>/session-insights</code> to generate a narrative synthesis."
+        "Synthesis is generated automatically from session transcripts."
         "</div></div>",
         unsafe_allow_html=True,
     )
