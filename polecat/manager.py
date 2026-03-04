@@ -1187,11 +1187,13 @@ class PolecatManager:
     def create_sandbox_settings(self, worktree_path: Path) -> Path:
         """Write .claude/settings.json to a worktree to sandbox file access.
 
-        The settings restrict Write and Edit operations to the worktree directory
-        only. When Claude Code loads this file via --setting-sources=user,project,
-        it will deny any attempt to write or edit files outside the worktree.
+        The settings permit Write and Edit operations within the worktree directory.
+        Claude Code's default sandbox already restricts file operations to the
+        project directory, so we only need allow rules -- no blanket deny rules.
 
-        Deny rules take precedence over allow rules.
+        Previously this method included deny rules (Write(**), Edit(**)) but
+        Claude Code uses deny-wins semantics, so blanket deny rules override
+        specific allow rules, breaking Write/Edit tools inside the worktree.
 
         Args:
             worktree_path: Absolute path to the worktree root directory
@@ -1210,10 +1212,6 @@ class PolecatManager:
                 "allow": [
                     f"Write({worktree_str}/**)",
                     f"Edit({worktree_str}/**)",
-                ],
-                "deny": [
-                    "Write(**)",
-                    "Edit(**)",
                 ],
             }
         }
