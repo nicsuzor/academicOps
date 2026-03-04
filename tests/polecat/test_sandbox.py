@@ -101,6 +101,25 @@ class TestCreateSandboxSettings:
 
         assert settings_path.exists()
 
+    def test_no_deny_rules(self, tmp_path):
+        """Settings must not contain blanket deny rules that override allow rules.
+
+        Claude Code uses deny-wins semantics, so deny Write(**) would block
+        all writes even when specific paths are allowed.
+        """
+        manager = _make_manager(tmp_path)
+        worktree = tmp_path / "worktree"
+        worktree.mkdir()
+
+        settings_path = manager.create_sandbox_settings(worktree)
+
+        with open(settings_path) as f:
+            data = json.load(f)
+
+        deny = data["permissions"].get("deny", [])
+        assert "Write(**)" not in deny, "Blanket Write(**) deny breaks worktree writes"
+        assert "Edit(**)" not in deny, "Blanket Edit(**) deny breaks worktree edits"
+
     def test_out_of_bounds_path_not_in_allow(self, tmp_path):
         """Paths outside the worktree are NOT in the allow list."""
         manager = _make_manager(tmp_path)
