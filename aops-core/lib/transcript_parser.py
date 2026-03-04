@@ -184,34 +184,24 @@ def parse_framework_reflection(text: str) -> dict[str, Any] | None:
     # Find the Framework Reflection section — try multiple heading styles in order.
     # Use [^\S\n]* (horizontal whitespace only) to avoid consuming newlines
     # that the body terminator \n#{2,4}\s needs to detect next sections.
+    # \n\n is added to the lookahead to stop at blank lines for unstructured sections.
+    patterns = [
+        # Pattern 1: Markdown heading (## / ### / ####)
+        r"#{2,4}\s*Framework Reflection[^\S\n]*\n(.*?)(?=\n\n|\n#{2,4}\s|\Z)",
+        # Pattern 2: Bold-text with body on next line (**Framework Reflection:**\n...)
+        r"(?:^|\n)\*\*Framework Reflection:?\*\*[^\S\n]*:?[^\S\n]*\n(.*?)(?=\n\n|\n#{2,4}\s|\Z)",
+        # Pattern 3: Bold-text with inline body (**Framework Reflection**: text...)
+        r"(?:^|\n)\*\*Framework Reflection:?\*\*[^\S\n]*:?[^\S\n]*(.+?)(?=\n\n|\n#{2,4}\s|\Z)",
+        # Pattern 4: Bare text (Framework Reflection: ...)
+        r"(?:^|\n)Framework Reflection[^\S\n]*:[^\S\n]*\n?(.*?)(?=\n\n|\n#{2,4}\s|\Z)",
+    ]
 
-    # Pattern 1: Markdown heading (## / ### / ####)
-    reflection_match = re.search(
-        r"#{2,4}\s*Framework Reflection[^\S\n]*\n(.*?)(?=\n#{2,4}\s|\Z)",
-        text,
-        re.DOTALL | re.IGNORECASE,
-    )
-    # Pattern 2: Bold-text with body on next line (**Framework Reflection:**\n...)
-    if not reflection_match:
-        reflection_match = re.search(
-            r"(?:^|\n)\*\*Framework Reflection:?\*\*[^\S\n]*:?[^\S\n]*\n(.*?)(?=\n#{2,4}\s|\Z)",
-            text,
-            re.DOTALL | re.IGNORECASE,
-        )
-    # Pattern 3: Bold-text with inline body (**Framework Reflection**: text...)
-    if not reflection_match:
-        reflection_match = re.search(
-            r"(?:^|\n)\*\*Framework Reflection:?\*\*[^\S\n]*:?[^\S\n]*(.+?)(?=\n#{2,4}\s|\Z)",
-            text,
-            re.DOTALL | re.IGNORECASE,
-        )
-    # Pattern 4: Bare text (Framework Reflection: ...)
-    if not reflection_match:
-        reflection_match = re.search(
-            r"(?:^|\n)Framework Reflection[^\S\n]*:[^\S\n]*\n?(.*?)(?=\n#{2,4}\s|\Z)",
-            text,
-            re.DOTALL | re.IGNORECASE,
-        )
+    reflection_match = None
+    for pattern in patterns:
+        reflection_match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
+        if reflection_match:
+            break
+
     if not reflection_match:
         return None
 
@@ -294,9 +284,9 @@ def _infer_outcome(text: str) -> str:
     lower = text.lower()
     success_kw = ("fixed", "completed", "shipped", "merged", "success", "done", "resolved")
     failure_kw = ("failed", "error", "couldn't", "broken", "unable")
-    if any(kw in lower for kw in success_kw):
+    if any(re.search(r"\b" + re.escape(kw) + r"\b", lower) for kw in success_kw):
         return "success"
-    if any(kw in lower for kw in failure_kw):
+    if any(re.search(r"\b" + re.escape(kw) + r"\b", lower) for kw in failure_kw):
         return "failure"
     # Partial indicators or default
     return "partial"
