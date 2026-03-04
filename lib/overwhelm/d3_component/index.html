@@ -228,7 +228,9 @@
     // Dispatch table: maps layout mode to node builder. Add new layouts here.
     const nodeBuilders = {
         treemap: buildTreemapNode,
+        tree: buildTreemapNode,
         circle_pack: buildCirclePackNode,
+        circle: buildCirclePackNode,
         arc: buildArcNode,
     };
 
@@ -237,7 +239,13 @@
         nodeEls.each(function(d) {
             const g = d3.select(this);
             g.selectAll("*").remove();
-            const builder = nodeBuilders[layoutMode] || buildTaskCardNode;
+
+            let builder = buildTaskCardNode;
+            if (layoutMode.startsWith("tree") || layoutMode.startsWith("treemap")) builder = buildTreemapNode;
+            else if (layoutMode.startsWith("circle")) builder = buildCirclePackNode;
+            else if (layoutMode.startsWith("arc")) builder = buildArcNode;
+            else if (nodeBuilders[layoutMode]) builder = nodeBuilders[layoutMode];
+
             builder(g, d);
         });
     }
@@ -452,13 +460,19 @@
     // Dispatch table: maps layout mode to edge router
     const edgeRouters = {
         treemap: routeContainmentEdges,
+        tree: routeContainmentEdges,
         circle_pack: routeContainmentEdges,
+        circle: routeContainmentEdges,
         arc: routeArcEdges,
     };
 
     // Layout-aware tick handler: delegates to per-layout edge router
     function ticked() {
-        const router = edgeRouters[currentLayout] || routeForceEdges;
+        let router = routeForceEdges;
+        if (currentLayout.startsWith("tree") || currentLayout.startsWith("treemap") || currentLayout.startsWith("circle")) router = routeContainmentEdges;
+        else if (currentLayout.startsWith("arc")) router = routeArcEdges;
+        else if (edgeRouters[currentLayout]) router = edgeRouters[currentLayout];
+
         router();
         nodeEls.attr("transform", d => `translate(${d.x},${d.y})`);
     }
@@ -645,9 +659,9 @@
             buildNodeShapes(currentLayout);
 
             // Z-order: bigger nodes behind (first in DOM), smaller on top for clickability
-            if (currentLayout === "treemap") {
+            if (currentLayout.startsWith("tree") || currentLayout.startsWith("treemap")) {
                 nodeEls.sort((a, b) => ((b._lw || 0) * (b._lh || 0)) - ((a._lw || 0) * (a._lh || 0)));
-            } else if (currentLayout === "circle_pack") {
+            } else if (currentLayout.startsWith("circle")) {
                 nodeEls.sort((a, b) => (b._lr || 0) - (a._lr || 0));
             }
 
@@ -703,9 +717,9 @@
 
         linkEls.transition().duration(200).attr("opacity", l => {
             // Layout-specific base opacities — kept consistent with edge routers in ticked()
-            if (currentLayout === "treemap" || currentLayout === "circle_pack") return 0;
-            const baseRef = currentLayout === "arc" ? 0.15 : 0.4;
-            const baseOther = currentLayout === "arc" ? 0.4 : 0.7;
+            if (currentLayout.startsWith("tree") || currentLayout.startsWith("treemap") || currentLayout.startsWith("circle")) return 0;
+            const baseRef = currentLayout.startsWith("arc") ? 0.15 : 0.4;
+            const baseOther = currentLayout.startsWith("arc") ? 0.4 : 0.7;
             if (currentFocusProject !== "ALL") {
                 const sp = l.source.project || "none";
                 const tp = l.target.project || "none";

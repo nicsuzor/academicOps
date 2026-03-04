@@ -3392,7 +3392,7 @@ def discover_graph_files() -> dict[str, dict[str, Path]]:
     for f in sorted(sessions_dir.glob("graph-*.json")):
         stem = f.stem.removeprefix("graph-")  # "fa2", "fa2-full", "tree-filtered"
         parts = stem.rsplit("-", 1)
-        if len(parts) == 2 and parts[1] in ("full", "filtered"):
+        if len(parts) == 2 and parts[1] in ("full", "filtered", "focus"):
             layout, variant = parts
         else:
             layout, variant = stem, "default"
@@ -3667,12 +3667,20 @@ def render_task_graph_page():
         st.markdown("**Filter**")
         show_only_reachable = st.checkbox("Reachable only", value=False, key="tg_show_reachable")
 
-        # Scope toggle (full vs filtered) — shown when per-layout files exist
+        # Scope toggle (full vs filtered vs focus) — shown when per-layout files exist
         manifest = discover_graph_files()
         has_full = any("full" in v for v in manifest.values()) if manifest else False
-        if manifest and has_full:
-            scope = st.radio("Scope", ["Filtered", "Full"], key="tg_scope", horizontal=True)
-            scope_key = "full" if scope == "Full" else "default"
+        has_focus = any("focus" in v for v in manifest.values()) if manifest else False
+
+        scope_options = ["Filtered"]
+        if has_full:
+            scope_options.append("Full")
+        if has_focus:
+            scope_options.append("Focus")
+
+        if len(scope_options) > 1:
+            scope = st.radio("Scope", scope_options, key="tg_scope", horizontal=True)
+            scope_key = scope.lower()
         else:
             scope_key = "default"
 
@@ -3730,36 +3738,52 @@ def render_task_graph_page():
         project_filter = "ALL" if selected_project == "All Projects" else selected_project
 
         # Layout mode (sidebar)
+        # Start with standard client-side force layouts
         layout_map = {
-            "Precomputed": "precomputed",
             "Force": "force",
             "ForceAtlas2": "atlas",
-            "Treemap": "treemap",
-            "Circle Pack": "circle_pack",
-            "Arc Diagram": "arc",
         }
+
         available = d3_data.get("availableLayouts", [])
+        layout_options = []
+
+        # Add "Precomputed" (ForceAtlas2) if available
         if d3_data.get("hasLayout"):
-            layout_options = ["Precomputed"]
-        else:
-            layout_options = []
+            layout_options.append("Precomputed")
+            # Map "Precomputed" to "fa2" if available, else generic "precomputed"
+            if "fa2" in available:
+                layout_map["Precomputed"] = "fa2"
+            elif "forceatlas2" in available:
+                layout_map["Precomputed"] = "forceatlas2"
+            else:
+                layout_map["Precomputed"] = "precomputed"
+
         # Add precomputed layouts discovered in graph.json
         named_layout_labels = {
+            "tree": "Treemap",
+            "circle": "Circle Pack",
+            "arc": "Arc Diagram",
             "treemap": "Treemap",
             "circle_pack": "Circle Pack",
-            "arc": "Arc Diagram",
-            "forceatlas2": None,  # already exposed as "Precomputed"
+            "fa2": None,  # already exposed as "Precomputed"
+            "forceatlas2": None,
         }
+
         for layout_key in available:
             known_label = named_layout_labels.get(layout_key)
             if known_label is None and layout_key in named_layout_labels:
-                continue  # explicitly skipped (e.g. forceatlas2)
+                continue  # explicitly skipped (e.g. fa2)
+
             label = known_label or layout_key.replace("_", " ").title()
             if label not in layout_options:
                 layout_map[label] = layout_key  # register dynamically
                 layout_options.append(label)
-        # Always offer client-side force layouts
-        layout_options.extend(["Force", "ForceAtlas2"])
+
+        # Ensure client-side force layouts are always offered at the end
+        for force_label in ["Force", "ForceAtlas2"]:
+            if force_label not in layout_options:
+                layout_options.append(force_label)
+
         selected_layout = st.sidebar.radio(
             "Layout", layout_options, key="tg_layout", horizontal=True
         )
@@ -3995,8 +4019,9 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from lib.task_model import TaskStatus
 from task_manager_ui import render_task_editor
+
+from lib.task_model import TaskStatus
 
 
 @st.dialog("Edit Task")

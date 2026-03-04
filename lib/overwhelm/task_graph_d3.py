@@ -426,7 +426,12 @@ def prepare_embedded_graph_data(
             }
         )
 
-    has_layout = any(n.get("x") is not None or "forceatlas2" in n.get("layouts", {}) for n in nodes)
+    has_layout = any(
+        n.get("x") is not None
+        or "forceatlas2" in n.get("layouts", {})
+        or "fa2" in n.get("layouts", {})
+        for n in nodes
+    )
 
     # Discover available named layouts from graph.json nodes
     available_layouts: set[str] = set()
