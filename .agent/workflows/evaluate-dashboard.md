@@ -35,7 +35,7 @@ Use browser tools to navigate the dashboard and perform the following for each v
 1.  **Read Specs:** Identify the "Acceptance Criteria" for the current view mode (Dashboard vs. Task Graph).
 2.  **Verify UI:** Confirm every mandated feature in the spec is present and functional in the browser.
 3.  **Stress Test:** Verify the ADHD Design Principles (e.g., "Scannable, not studyable", "No flat displays at scale") are upheld by the current rendering.
-4.  **Check Data Integrity:** Confirm the UI matches the underlying `$ACA_DATA/tasks/index.json` and `$ACA_DATA/outputs/graph.json` (or `$ACA_DATA/outputs/knowledge-graph.json`) state.
+4.  **Check Data Integrity:** Confirm the UI matches the underlying state in `$ACA_DATA/tasks/index.json` and the relevant graph file: `$ACA_DATA/outputs/graph.json` for the Tasks view, or `$ACA_DATA/outputs/knowledge-graph.json` for the Knowledge Base view.
 
 ## 4. Documentation of Deviations
 
