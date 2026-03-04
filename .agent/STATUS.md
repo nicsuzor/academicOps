@@ -122,11 +122,18 @@ Predicate-based gate engine at `aops-core/lib/gates/`:
 
 **Gate testing suite**:
 
-- `tests/hooks/test_gate_verdicts.py` -- 150 scenario-driven regression tests from `fixtures/gate_scenarios.json`
+- `tests/hooks/test_gate_verdicts.py` -- 150+ scenario-driven regression tests from `fixtures/gate_scenarios.json` (edge cases) + `fixtures/gate_scenarios_live.json` (provenance-tracked live data)
 - `tests/hooks/test_gate_replay.py` -- 31 tests replaying real hook events from `fixtures/real_hook_events.json`
-- `tests/hooks/test_hydration_never_deny.py` -- ensures hydration gate never blocks always_available tools, hydrator itself, or user question tools
+- `tests/hooks/test_hydration_never_deny.py` -- ensures hydration gate never blocks infrastructure tools, hydrator itself, or user question tools
 
-**Hydration gate policy**: Only `always_available` tools (Agent, Task, Skill, AskUserQuestion, activate_skill, all PKB tools) bypass the hydration gate. Read-only tools get WARN, not exempt. Custodiet excludes both `always_available` and `read_only`.
+**Tool categories** (gate_config.py `TOOL_CATEGORIES`):
+
+- `infrastructure` -- PKB tools, AskUserQuestion, TodoWrite, EnterPlanMode, ExitPlanMode. Bypass ALL gates.
+- `spawn` -- Agent, Task, Skill, delegate_to_agent, activate_skill. Subject to hydration gate; always allowed when dispatching a compliance agent (hydrator, custodiet, etc.).
+- `read_only` -- Read, Glob, Grep, WebFetch, and read-equivalent tools. Subject to hydration gate; exempt from custodiet.
+- `write` -- Bash, Edit, Write, run_shell_command, etc. Subject to all gates.
+
+**Hydration gate policy**: Only `infrastructure` tools bypass the hydration gate. `spawn` tools (including Agent/Skill) are blocked until hydration completes. Read-only tools are also subject to hydration (forced hydration before exploration). Gate opens JIT when the hydrator is dispatched (PreToolUse trigger). Custodiet excludes both `infrastructure` and `read_only`.
 
 ### Hydration System -- WORKING
 
@@ -182,11 +189,12 @@ Scripts for extracting insights from session transcripts in `.agent/skills/sessi
 | custodiet-reviewer reads AXIOMS.md dynamically           | Hardcoded axiom list missed new axioms (e.g. P#45 Feedback Loops). Dynamic reading ensures full coverage.             | 2026-03-03 |
 | conceptual-review uses assumption audit lens             | Effectual reasoning: treat all unvalidated parameters as assumptions requiring feedback loops, not settled decisions. | 2026-03-03 |
 | PKB server is Rust-native (replaces Python task scripts) | Performance, reliability, single binary deployment. CLI + MCP from same codebase.                                     | 2026-02-22 |
-| All PKB tools are always_available in gate system        | PKB is framework infrastructure. Gates must never block PKB access.                                                   | 2026-03-01 |
-| Hydration gate: only always_available exempt             | Read-only tools get WARN (not exempt). Prevents gate from blocking its own hydrator (Agent tool).                     | 2026-03-01 |
+| All PKB tools are `infrastructure` in gate system        | PKB is framework infrastructure. Gates must never block PKB access. (Was `always_available` pre-PR #730.)             | 2026-03-04 |
+| Hydration gate: only `infrastructure` exempt             | Read-only and `spawn` tools (Agent, Skill, etc.) are blocked until hydration. Gate opens JIT on hydrator PreToolUse. | 2026-03-04 |
+| Agent tool in `spawn` category (not `infrastructure`)    | Prevents bypassing hydration via Agent spawns; compliance agents get a pre-dispatch trigger bypass instead.          | 2026-03-04 |
 | Import convention: qualified paths from aops-core/       | Bare imports caused dual sys.modules entries breaking importlib.reload() in tests.                                    | 2026-03-01 |
 | Gate verdict + replay regression tests                   | 150 scenario tests + 31 real-event replay tests to prevent gate regressions permanently.                              | 2026-03-01 |
-| "Agent" added to always_available tools                  | Claude Code's subagent tool is "Agent" not "Task". Gate config must list both.                                        | 2026-02-28 |
+| "Agent" and "Task" are both `spawn` tools                | Claude Code's subagent tool is "Agent" not "Task". Gate config must list both. (Moved from `always_available` in PR #730.) | 2026-02-28 |
 | Iterative stale task sweep                               | 236+ open tasks with significant junk; batch-review with human decisions, not bulk auto-cancel                        | 2026-02-23 |
 | Conceptual review agent reads STATUS.md                  | Without strategic context, the review agent cannot catch PRs that delete working components (PR 582 post-mortem)      | 2026-02-23 |
 | Pipeline cascade limit (max 3 runs)                      | PR 582 showed bots triggering bots in unbounded loops; comment-based counting bounds total cycles                     | 2026-02-23 |
@@ -243,6 +251,7 @@ Scripts for extracting insights from session transcripts in `.agent/skills/sessi
 
 _Update log_ (keep last 3 entries; older history is in git):
 
+- **2026-03-04**: Gate hardening (PR #730). Tool categories refactored: `always_available` split into `infrastructure` (PKB, meta tools) and `spawn` (Agent, Task, Skill, delegate_to_agent). Spawn tools now blocked by hydration gate. Custodiet deadlock fixed: PreToolUse trigger resets counter before policy evaluates. Test fixtures rebuilt from live production logs (861 provenance-tracked scenarios). Gate test count: 150+ verdict tests + 31 replay tests.
 - **2026-03-03**: Agent consolidation (PR #705). Deleted qa.agent.md and strategic-review.agent.md (dead agents, no workflow invocations). Agent count updated: 5 -> 3 (worker, merge-prep, conceptual-review). custodiet-reviewer now reads AXIOMS.md dynamically. conceptual-review refocused on assumption audit + effectual reasoning.
 - **2026-03-03**: Major accuracy update (PR #702). Corrected PKB server status from "medium-term roadmap" to "deployed and running" (was causing false review findings, issue #701). Updated workflow count (18->11), agent list (now 5: qa, worker, strategic-review, merge-prep, conceptual-review), skills count (13->17), test count (~90->~100), architecture tree (removed nonexistent aops-tools/). Added PKB Server section as top component. Added authoritative-scope notice. Removed references to merged PRs from "In Progress". Added update log.
 - **2026-03-02**: Previous update (gate system, hydration policy).

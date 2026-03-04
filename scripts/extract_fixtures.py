@@ -23,6 +23,10 @@ from pathlib import Path
 
 from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES
 
+# Maximum number of scenarios to collect per group from a single log.
+# Caps breadth without deduplication — ensures no single session floods a group.
+SCENARIO_GROUP_LIMIT = 50
+
 
 def _detect_platform(events: list[dict]) -> str:
     """Detect whether log is from Claude Code or Gemini CLI."""
@@ -137,8 +141,8 @@ def extract_scenarios_from_log(log_path, scenario_groups=None):
         if group_name not in scenario_groups:
             scenario_groups[group_name] = []
         # Add new scenarios if we haven't reached the limit (e.g., 50 per group)
-        if len(scenario_groups[group_name]) < 50:
-            remaining = 50 - len(scenario_groups[group_name])
+        if len(scenario_groups[group_name]) < SCENARIO_GROUP_LIMIT:
+            remaining = SCENARIO_GROUP_LIMIT - len(scenario_groups[group_name])
             scenario_groups[group_name].extend(hydration_blocked[:remaining])
 
     # 2. Compliance agents: hydrator/custodiet calls that should be allowed
@@ -156,8 +160,8 @@ def extract_scenarios_from_log(log_path, scenario_groups=None):
         group_name = f"{platform}_compliance_agent_allowed"
         if group_name not in scenario_groups:
             scenario_groups[group_name] = []
-        if len(scenario_groups[group_name]) < 50:
-            remaining = 50 - len(scenario_groups[group_name])
+        if len(scenario_groups[group_name]) < SCENARIO_GROUP_LIMIT:
+            remaining = SCENARIO_GROUP_LIMIT - len(scenario_groups[group_name])
             scenario_groups[group_name].extend(compliance_allowed[:remaining])
 
     # 3. Always-available tools that bypass gates
@@ -183,8 +187,8 @@ def extract_scenarios_from_log(log_path, scenario_groups=None):
         group_name = f"{platform}_always_available_bypass"
         if group_name not in scenario_groups:
             scenario_groups[group_name] = []
-        if len(scenario_groups[group_name]) < 50:
-            remaining = 50 - len(scenario_groups[group_name])
+        if len(scenario_groups[group_name]) < SCENARIO_GROUP_LIMIT:
+            remaining = SCENARIO_GROUP_LIMIT - len(scenario_groups[group_name])
             scenario_groups[group_name].extend(always_available[:remaining])
 
     # 4. Custodiet threshold warnings/blocks
@@ -202,8 +206,8 @@ def extract_scenarios_from_log(log_path, scenario_groups=None):
         group_name = f"{platform}_custodiet_threshold"
         if group_name not in scenario_groups:
             scenario_groups[group_name] = []
-        if len(scenario_groups[group_name]) < 50:
-            remaining = 50 - len(scenario_groups[group_name])
+        if len(scenario_groups[group_name]) < SCENARIO_GROUP_LIMIT:
+            remaining = SCENARIO_GROUP_LIMIT - len(scenario_groups[group_name])
             scenario_groups[group_name].extend(custodiet_blocked[:remaining])
 
     # 5. SubagentStart/SubagentStop events
@@ -217,8 +221,8 @@ def extract_scenarios_from_log(log_path, scenario_groups=None):
         group_name = f"{platform}_subagent_events"
         if group_name not in scenario_groups:
             scenario_groups[group_name] = []
-        if len(scenario_groups[group_name]) < 50:
-            remaining = 50 - len(scenario_groups[group_name])
+        if len(scenario_groups[group_name]) < SCENARIO_GROUP_LIMIT:
+            remaining = SCENARIO_GROUP_LIMIT - len(scenario_groups[group_name])
             scenario_groups[group_name].extend(subagent_events[:remaining])
 
     # 6. Stop events
@@ -232,8 +236,8 @@ def extract_scenarios_from_log(log_path, scenario_groups=None):
         group_name = f"{platform}_stop_events"
         if group_name not in scenario_groups:
             scenario_groups[group_name] = []
-        if len(scenario_groups[group_name]) < 50:
-            remaining = 50 - len(scenario_groups[group_name])
+        if len(scenario_groups[group_name]) < SCENARIO_GROUP_LIMIT:
+            remaining = SCENARIO_GROUP_LIMIT - len(scenario_groups[group_name])
             scenario_groups[group_name].extend(stop_events[:remaining])
 
     # 7. UserPromptSubmit events
@@ -247,8 +251,8 @@ def extract_scenarios_from_log(log_path, scenario_groups=None):
         group_name = f"{platform}_user_prompt_events"
         if group_name not in scenario_groups:
             scenario_groups[group_name] = []
-        if len(scenario_groups[group_name]) < 50:
-            remaining = 50 - len(scenario_groups[group_name])
+        if len(scenario_groups[group_name]) < SCENARIO_GROUP_LIMIT:
+            remaining = SCENARIO_GROUP_LIMIT - len(scenario_groups[group_name])
             scenario_groups[group_name].extend(prompt_events[:remaining])
 
     # 8. Read-only tools
@@ -265,8 +269,8 @@ def extract_scenarios_from_log(log_path, scenario_groups=None):
         group_name = f"{platform}_read_only_tools"
         if group_name not in scenario_groups:
             scenario_groups[group_name] = []
-        if len(scenario_groups[group_name]) < 50:
-            remaining = 50 - len(scenario_groups[group_name])
+        if len(scenario_groups[group_name]) < SCENARIO_GROUP_LIMIT:
+            remaining = SCENARIO_GROUP_LIMIT - len(scenario_groups[group_name])
             scenario_groups[group_name].extend(read_only_events[:remaining])
 
     # 9. Write tools
@@ -283,8 +287,8 @@ def extract_scenarios_from_log(log_path, scenario_groups=None):
         group_name = f"{platform}_write_tools"
         if group_name not in scenario_groups:
             scenario_groups[group_name] = []
-        if len(scenario_groups[group_name]) < 50:
-            remaining = 50 - len(scenario_groups[group_name])
+        if len(scenario_groups[group_name]) < SCENARIO_GROUP_LIMIT:
+            remaining = SCENARIO_GROUP_LIMIT - len(scenario_groups[group_name])
             scenario_groups[group_name].extend(write_events[:remaining])
 
     return scenario_groups
