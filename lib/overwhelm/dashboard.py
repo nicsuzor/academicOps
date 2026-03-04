@@ -3959,8 +3959,8 @@ def render_session_summary():
                 # Extract Data
                 project = data.get("project", "unknown")
                 sid = data.get("session_id", "unknown")[:8]
-                summary = data.get("summary", "No summary")
-                outcome = data.get("outcome", "unknown")
+                summary = data.get("summary") or "No summary"
+                outcome = data.get("outcome") or "unknown"
 
                 # Metrics
                 metrics = data.get("token_metrics", {})
@@ -4019,8 +4019,9 @@ def render_session_summary():
 # UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-from lib.task_model import TaskStatus
 from task_manager_ui import render_task_editor
+
+from lib.task_model import TaskStatus
 
 
 @st.dialog("Edit Task")
@@ -4090,233 +4091,12 @@ if page == "Task Graph":
     render_task_graph_page()
     st.stop()
 
-render_spotlight_epic()
-
-# Then project-centric content
+# ADHD-optimized order: running -> needs me -> dropped -> context -> counts -> story
 # Initialize analyzer for daily log
 analyzer = SessionAnalyzer()
 
 # Render Active Agents
 render_agents_working()
-
-# Load synthesis
-synthesis = load_synthesis()
-
-# === LLM SYNTHESIS PANEL (if available) ===
-if synthesis:
-    # Calculate age and staleness
-    age_minutes = synthesis.get("_age_minutes", 0)
-    age_str = f"{int(age_minutes)}m ago"
-    is_stale = age_minutes > 60
-
-    # Stale indicator styling
-    stale_class = "stale" if is_stale else ""
-    stale_badge = (
-        " <span style='background: #f59e0b; color: #000; padding: 2px 6px; border-radius: 3px; font-size: 0.7em; margin-left: 8px;'>STALE - re-run /session-insights</span>"
-        if is_stale
-        else ""
-    )
-
-    synth_html = "<div class='synthesis-panel'>"
-    synth_html += f"<div class='synthesis-header'><div class='synthesis-title'>🧠 FOCUS SYNTHESIS{stale_badge}</div><div class='synthesis-age'>{age_str}</div></div>"
-
-    # Narrative section - tell the day's story
-    narrative = synthesis.get("narrative", [])
-    if narrative:
-        synth_html += "<div class='synthesis-narrative'>"
-        synth_html += "<div class='synthesis-narrative-title'>📖 TODAY'S STORY</div>"
-        synth_html += "<ul class='synthesis-narrative-list'>"
-        for bullet in narrative:
-            synth_html += f"<li>{esc(bullet)}</li>"
-        synth_html += "</ul></div>"
-
-    # Grid of status cards
-    synth_html += "<div class='synthesis-grid'>"
-
-    # Done card
-    accomplishments = synthesis.get("accomplishments", {})
-    if accomplishments.get("summary"):
-        synth_html += "<div class='synthesis-card done'>"
-        synth_html += (
-            f"<div class='synthesis-card-title'>✅ DONE ({accomplishments.get('count', 0)})</div>"
-        )
-        synth_html += (
-            f"<div class='synthesis-card-content'>{esc(accomplishments.get('summary', ''))}</div>"
-        )
-        synth_html += "</div>"
-
-    # Alignment card
-    alignment = synthesis.get("alignment", {})
-    if alignment.get("note"):
-        status = alignment.get("status", "drifted")
-        status_class = f"alignment {status}"
-        status_icon = "✅" if status == "on_track" else "⚠️" if status == "drifted" else "🚫"
-        synth_html += f"<div class='synthesis-card {status_class}'>"
-        synth_html += f"<div class='synthesis-card-title'>{status_icon} ALIGNMENT</div>"
-        synth_html += f"<div class='synthesis-card-content'>{esc(alignment.get('note', ''))}</div>"
-        synth_html += "</div>"
-
-    # Context card
-    context = synthesis.get("context", {})
-    if context.get("recent_threads"):
-        threads = ", ".join(context.get("recent_threads", [])[:2])
-        synth_html += "<div class='synthesis-card context'>"
-        synth_html += "<div class='synthesis-card-title'>📍 CONTEXT</div>"
-        synth_html += f"<div class='synthesis-card-content'>{esc(threads)}</div>"
-        synth_html += "</div>"
-
-    # Waiting card
-    waiting_on = synthesis.get("waiting_on", [])
-    if waiting_on:
-        first_blocker = waiting_on[0]
-        synth_html += "<div class='synthesis-card waiting'>"
-        synth_html += f"<div class='synthesis-card-title'>⏳ BLOCKED ({len(waiting_on)})</div>"
-        synth_html += (
-            f"<div class='synthesis-card-content'>{esc(first_blocker.get('task', ''))}</div>"
-        )
-        synth_html += "</div>"
-
-    # Token usage card
-    token_metrics = load_token_metrics()
-    if token_metrics:
-        total_tokens = token_metrics["input_tokens"] + token_metrics["output_tokens"]
-        # Format tokens: K for thousands, M for millions
-        if total_tokens >= 1_000_000:
-            tokens_str = f"{total_tokens / 1_000_000:.1f}M"
-        elif total_tokens >= 1_000:
-            tokens_str = f"{total_tokens / 1_000:.0f}K"
-        else:
-            tokens_str = str(total_tokens)
-
-        cache_rate = token_metrics["cache_hit_rate"]
-        # Color coding: green >70%, yellow 40-70%, red <40%
-        if cache_rate >= 70:
-            gauge_color = "#4ade80"
-        elif cache_rate >= 40:
-            gauge_color = "#fbbf24"
-        else:
-            gauge_color = "#f87171"
-
-        session_count = token_metrics["session_count"]
-        synth_html += "<div class='synthesis-card tokens'>"
-        synth_html += (
-            f"<div class='synthesis-card-title'>📊 TOKENS ({session_count} sessions)</div>"
-        )
-        synth_html += f"<div class='synthesis-card-content'>{tokens_str} total <span class='cache-gauge'><span class='cache-gauge-fill' style='width: {cache_rate:.0f}%; background: {gauge_color};'></span></span> {cache_rate:.0f}% cache</div>"
-        synth_html += "</div>"
-
-    synth_html += "</div>"  # End grid
-
-    # Session Insights panel (skill compliance, context gaps)
-    skill_insights = synthesis.get("skill_insights", {})
-    if skill_insights:
-        synth_html += "<div class='insights-panel'>"
-        synth_html += "<div class='insights-title'>🔍 SESSION INSIGHTS</div>"
-
-        # Stats row
-        compliance = skill_insights.get("compliance_rate")
-        if compliance is not None:
-            pct = int(compliance * 100)
-            color = "#4ade80" if pct >= 70 else "#fbbf24" if pct >= 40 else "#f87171"
-            synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Skill Compliance:</span> <span class='insights-stat-value' style='color: {color};'>{pct}%</span></span>"
-
-        corrections = skill_insights.get("corrections_count", 0)
-        if corrections > 0:
-            synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Corrections:</span> <span class='insights-stat-value'>{corrections}</span></span>"
-
-        failures = skill_insights.get("failures_count", 0)
-        if failures > 0:
-            synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Failures:</span> <span class='insights-stat-value' style='color: #f87171;'>{failures}</span></span>"
-
-        successes = skill_insights.get("successes_count", 0)
-        if successes > 0:
-            synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Successes:</span> <span class='insights-stat-value' style='color: #4ade80;'>{successes}</span></span>"
-
-        # Token stats (reuse token_metrics if already loaded, or load now)
-        tm = token_metrics if "token_metrics" in dir() and token_metrics else load_token_metrics()
-        if tm:
-            # Format helper for tokens
-            def fmt_tokens(n):
-                if n >= 1_000_000:
-                    return f"{n / 1_000_000:.1f}M"
-                elif n >= 1_000:
-                    return f"{n / 1_000:.0f}K"
-                return str(n)
-
-            in_tokens = fmt_tokens(tm["input_tokens"])
-            out_tokens = fmt_tokens(tm["output_tokens"])
-            cache_read = fmt_tokens(tm["cache_read"])
-            synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>In/Out:</span> <span class='insights-stat-value' style='color: #a78bfa;'>{in_tokens}/{out_tokens}</span></span>"
-            synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Cache Read:</span> <span class='insights-stat-value' style='color: #a78bfa;'>{cache_read}</span></span>"
-
-        # Context gaps
-        context_gaps = skill_insights.get("top_context_gaps", [])
-        if context_gaps:
-            synth_html += "<div style='margin-top: 8px;'>"
-            for gap in context_gaps[:3]:
-                synth_html += f"<div class='insights-gap'>{esc(gap)}</div>"
-            synth_html += "</div>"
-
-        synth_html += "</div>"
-
-    # Suggestion
-    suggestion = synthesis.get("suggestion")
-    if suggestion:
-        synth_html += f"<div class='synthesis-suggestion'>{esc(suggestion)}</div>"
-
-    synth_html += "</div>"  # End panel
-    st.markdown(synth_html, unsafe_allow_html=True)
-
-# === DAILY STORY SECTION ===
-daily_story = analyzer.extract_daily_story()
-if daily_story:
-    with st.container():
-        st.markdown(
-            "<div class='daily-story-container' style='margin-bottom: 24px; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 8px; border-left: 4px solid #60a5fa;'>",
-            unsafe_allow_html=True,
-        )
-        col1, col2 = st.columns([2, 1])
-
-        with col1:
-            if daily_story["story"]:
-                st.markdown(f"### 📖 Today's Story\n{daily_story['story']}")
-            if daily_story["dropped_threads"]:
-                st.markdown("#### ⚠ Dropped Threads")
-
-                # Group dropped threads by project bracket or default to Uncategorized
-                grouped_threads = {}
-                for thread in daily_story["dropped_threads"]:
-                    match = re.match(r"^\[([^\]]+)\]\s*(.+)$", thread.strip())
-                    if match:
-                        proj = match.group(1).strip()
-                        desc = match.group(2).strip()
-                    else:
-                        proj = "Uncategorized"
-                        desc = thread.strip()
-
-                    if proj not in grouped_threads:
-                        grouped_threads[proj] = []
-                    grouped_threads[proj].append(desc)
-
-                total_threads = sum(len(ts) for ts in grouped_threads.values())
-
-                if total_threads <= 5:
-                    for proj, threads in sorted(grouped_threads.items()):
-                        st.markdown(f"**{proj}**")
-                        for t in threads:
-                            st.markdown(f"- {t}")
-                else:
-                    with st.expander(f"View {total_threads} Dropped Threads", expanded=False):
-                        for proj, threads in sorted(grouped_threads.items()):
-                            st.markdown(f"**{proj}**")
-                            for t in threads:
-                                st.markdown(f"- {t}")
-
-        with col2:
-            if daily_story["priorities"]:
-                st.markdown(f"### 🎯 Focus\n{daily_story['priorities']}")
-
-        st.markdown("</div>", unsafe_allow_html=True)
 
 # === WHERE YOU LEFT OFF SECTION ===
 # Time range selector in sidebar
@@ -4624,6 +4404,237 @@ try:
         st.markdown(path_html, unsafe_allow_html=True)
 except Exception:
     pass  # Path reconstruction is non-critical; fail silently
+# Load synthesis
+synthesis = load_synthesis()
+
+# === LLM SYNTHESIS PANEL (if available) ===
+if synthesis:
+    # Calculate age and staleness
+    age_minutes = synthesis.get("_age_minutes", 0)
+    age_str = f"{int(age_minutes)}m ago"
+    is_stale = age_minutes > 60
+
+    # Stale indicator styling
+    stale_class = "stale" if is_stale else ""
+    stale_badge = (
+        " <span style='background: #f59e0b; color: #000; padding: 2px 6px; border-radius: 3px; font-size: 0.7em; margin-left: 8px;'>STALE - re-run /session-insights</span>"
+        if is_stale
+        else ""
+    )
+
+    synth_html = "<div class='synthesis-panel'>"
+    synth_html += f"<div class='synthesis-header'><div class='synthesis-title'>🧠 FOCUS SYNTHESIS{stale_badge}</div><div class='synthesis-age'>{age_str}</div></div>"
+
+    # Narrative section - tell the day's story
+    narrative = synthesis.get("narrative", [])
+    if narrative:
+        synth_html += "<div class='synthesis-narrative'>"
+        synth_html += "<div class='synthesis-narrative-title'>📖 TODAY'S STORY</div>"
+        synth_html += "<ul class='synthesis-narrative-list'>"
+        for bullet in narrative:
+            synth_html += f"<li>{esc(bullet)}</li>"
+        synth_html += "</ul></div>"
+
+    # Grid of status cards
+    synth_html += "<div class='synthesis-grid'>"
+
+    # Done card
+    accomplishments = synthesis.get("accomplishments", {})
+    if accomplishments.get("summary"):
+        synth_html += "<div class='synthesis-card done'>"
+        synth_html += (
+            f"<div class='synthesis-card-title'>✅ DONE ({accomplishments.get('count', 0)})</div>"
+        )
+        synth_html += (
+            f"<div class='synthesis-card-content'>{esc(accomplishments.get('summary', ''))}</div>"
+        )
+        synth_html += "</div>"
+
+    # Alignment card
+    alignment = synthesis.get("alignment", {})
+    if alignment.get("note"):
+        status = alignment.get("status", "drifted")
+        status_class = f"alignment {status}"
+        status_icon = "✅" if status == "on_track" else "⚠️" if status == "drifted" else "🚫"
+        synth_html += f"<div class='synthesis-card {status_class}'>"
+        synth_html += f"<div class='synthesis-card-title'>{status_icon} ALIGNMENT</div>"
+        synth_html += f"<div class='synthesis-card-content'>{esc(alignment.get('note', ''))}</div>"
+        synth_html += "</div>"
+
+    # Context card
+    context = synthesis.get("context", {})
+    if context.get("recent_threads"):
+        threads = ", ".join(context.get("recent_threads", [])[:2])
+        synth_html += "<div class='synthesis-card context'>"
+        synth_html += "<div class='synthesis-card-title'>📍 CONTEXT</div>"
+        synth_html += f"<div class='synthesis-card-content'>{esc(threads)}</div>"
+        synth_html += "</div>"
+
+    # Waiting card
+    waiting_on = synthesis.get("waiting_on", [])
+    if waiting_on:
+        first_blocker = waiting_on[0]
+        synth_html += "<div class='synthesis-card waiting'>"
+        synth_html += f"<div class='synthesis-card-title'>⏳ BLOCKED ({len(waiting_on)})</div>"
+        synth_html += (
+            f"<div class='synthesis-card-content'>{esc(first_blocker.get('task', ''))}</div>"
+        )
+        synth_html += "</div>"
+
+    # Token usage card
+    token_metrics = load_token_metrics()
+    if token_metrics:
+        total_tokens = token_metrics["input_tokens"] + token_metrics["output_tokens"]
+        # Format tokens: K for thousands, M for millions
+        if total_tokens >= 1_000_000:
+            tokens_str = f"{total_tokens / 1_000_000:.1f}M"
+        elif total_tokens >= 1_000:
+            tokens_str = f"{total_tokens / 1_000:.0f}K"
+        else:
+            tokens_str = str(total_tokens)
+
+        cache_rate = token_metrics["cache_hit_rate"]
+        # Color coding: green >70%, yellow 40-70%, red <40%
+        if cache_rate >= 70:
+            gauge_color = "#4ade80"
+        elif cache_rate >= 40:
+            gauge_color = "#fbbf24"
+        else:
+            gauge_color = "#f87171"
+
+        session_count = token_metrics["session_count"]
+        synth_html += "<div class='synthesis-card tokens'>"
+        synth_html += (
+            f"<div class='synthesis-card-title'>📊 TOKENS ({session_count} sessions)</div>"
+        )
+        synth_html += f"<div class='synthesis-card-content'>{tokens_str} total <span class='cache-gauge'><span class='cache-gauge-fill' style='width: {cache_rate:.0f}%; background: {gauge_color};'></span></span> {cache_rate:.0f}% cache</div>"
+        synth_html += "</div>"
+
+    synth_html += "</div>"  # End grid
+
+    # Session Insights panel (skill compliance, context gaps)
+    skill_insights = synthesis.get("skill_insights", {})
+    if skill_insights:
+        synth_html += "<div class='insights-panel'>"
+        synth_html += "<div class='insights-title'>🔍 SESSION INSIGHTS</div>"
+
+        # Stats row
+        compliance = skill_insights.get("compliance_rate")
+        if compliance is not None:
+            pct = int(compliance * 100)
+            color = "#4ade80" if pct >= 70 else "#fbbf24" if pct >= 40 else "#f87171"
+            synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Skill Compliance:</span> <span class='insights-stat-value' style='color: {color};'>{pct}%</span></span>"
+
+        corrections = skill_insights.get("corrections_count", 0)
+        if corrections > 0:
+            synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Corrections:</span> <span class='insights-stat-value'>{corrections}</span></span>"
+
+        failures = skill_insights.get("failures_count", 0)
+        if failures > 0:
+            synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Failures:</span> <span class='insights-stat-value' style='color: #f87171;'>{failures}</span></span>"
+
+        successes = skill_insights.get("successes_count", 0)
+        if successes > 0:
+            synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Successes:</span> <span class='insights-stat-value' style='color: #4ade80;'>{successes}</span></span>"
+
+        # Token stats (reuse token_metrics if already loaded, or load now)
+        tm = token_metrics if "token_metrics" in dir() and token_metrics else load_token_metrics()
+        if tm:
+            # Format helper for tokens
+            def fmt_tokens(n):
+                if n >= 1_000_000:
+                    return f"{n / 1_000_000:.1f}M"
+                elif n >= 1_000:
+                    return f"{n / 1_000:.0f}K"
+                return str(n)
+
+            in_tokens = fmt_tokens(tm["input_tokens"])
+            out_tokens = fmt_tokens(tm["output_tokens"])
+            cache_read = fmt_tokens(tm["cache_read"])
+            synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>In/Out:</span> <span class='insights-stat-value' style='color: #a78bfa;'>{in_tokens}/{out_tokens}</span></span>"
+            synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Cache Read:</span> <span class='insights-stat-value' style='color: #a78bfa;'>{cache_read}</span></span>"
+
+        # Context gaps
+        context_gaps = skill_insights.get("top_context_gaps", [])
+        if context_gaps:
+            synth_html += "<div style='margin-top: 8px;'>"
+            for gap in context_gaps[:3]:
+                synth_html += f"<div class='insights-gap'>{esc(gap)}</div>"
+            synth_html += "</div>"
+
+        synth_html += "</div>"
+
+    # Suggestion
+    suggestion = synthesis.get("suggestion")
+    if suggestion:
+        synth_html += f"<div class='synthesis-suggestion'>{esc(suggestion)}</div>"
+
+    synth_html += "</div>"  # End panel
+    st.markdown(synth_html, unsafe_allow_html=True)
+else:
+    st.markdown(
+        "<div style='padding: 16px; background: rgba(255,255,255,0.03); "
+        "border-radius: 8px; border: 1px dashed rgba(255,255,255,0.15); "
+        "margin-bottom: 16px; text-align: center;'>"
+        "<div style='font-size: 1.1em; margin-bottom: 4px;'>🧠 Focus Synthesis unavailable</div>"
+        "<div style='font-size: 0.85em; opacity: 0.6;'>"
+        "Run <code>/session-insights</code> to generate a narrative synthesis."
+        "</div></div>",
+        unsafe_allow_html=True,
+    )
+
+render_spotlight_epic()
+
+# === DAILY STORY SECTION ===
+daily_story = analyzer.extract_daily_story()
+if daily_story:
+    with st.container():
+        st.markdown(
+            "<div class='daily-story-container' style='margin-bottom: 24px; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 8px; border-left: 4px solid #60a5fa;'>",
+            unsafe_allow_html=True,
+        )
+        col1, col2 = st.columns([2, 1])
+
+        with col1:
+            if daily_story["story"]:
+                st.markdown(f"### 📖 Today's Story\n{daily_story['story']}")
+            if daily_story["dropped_threads"]:
+                st.markdown("#### ⚠ Dropped Threads")
+
+                # Group dropped threads by project bracket or default to Uncategorized
+                grouped_threads = {}
+                for thread in daily_story["dropped_threads"]:
+                    match = re.match(r"^\[([^\]]+)\]\s*(.+)$", thread.strip())
+                    if match:
+                        proj = match.group(1).strip()
+                        desc = match.group(2).strip()
+                    else:
+                        proj = "Uncategorized"
+                        desc = thread.strip()
+
+                    if proj not in grouped_threads:
+                        grouped_threads[proj] = []
+                    grouped_threads[proj].append(desc)
+
+                total_threads = sum(len(ts) for ts in grouped_threads.values())
+
+                if total_threads <= 5:
+                    for proj, threads in sorted(grouped_threads.items()):
+                        st.markdown(f"**{proj}**")
+                        for t in threads:
+                            st.markdown(f"- {t}")
+                else:
+                    with st.expander(f"View {total_threads} Dropped Threads", expanded=False):
+                        for proj, threads in sorted(grouped_threads.items()):
+                            st.markdown(f"**{proj}**")
+                            for t in threads:
+                                st.markdown(f"- {t}")
+
+        with col2:
+            if daily_story["priorities"]:
+                st.markdown(f"### 🎯 Focus\n{daily_story['priorities']}")
+
+        st.markdown("</div>", unsafe_allow_html=True)
 
 # === RECENT PROMPTS SECTION ===
 render_recent_prompts()
